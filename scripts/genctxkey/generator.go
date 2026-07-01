@@ -13,6 +13,8 @@ import (
 	"unicode"
 
 	_ "embed"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -39,7 +41,7 @@ type Param struct {
 
 func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string) error {
 	if name == "" || typ == "" {
-		return fmt.Errorf("name and type are required")
+		return xerrors.New("name and type are required")
 	}
 
 	if outDir == "" {
@@ -119,21 +121,22 @@ func writeFile(path, tpl string, p Param) error {
 func toExportedName(s string) (string, error) {
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
 
-	var out string
+	var sb strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
 		runes := []rune(p)
-		out += strings.ToUpper(string(runes[0])) + string(runes[1:])
+		sb.WriteString(strings.ToUpper(string(runes[0])) + string(runes[1:]))
 	}
+	out := sb.String()
 
 	if out == "" {
-		return "", fmt.Errorf("invalid name: %s", s)
+		return "", xerrors.New("invalid name: " + s)
 	}
 
 	if !isValidIdentifier(out) {
-		return "", fmt.Errorf("invalid identifier: %s", out)
+		return "", xerrors.New("invalid identifier: " + out)
 	}
 
 	return out, nil
@@ -142,15 +145,16 @@ func toExportedName(s string) (string, error) {
 func toIdentifierLower(s string) (string, error) {
 	// split on non-alnum, join, and lower
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
-	var out string
+	var sb strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
-		out += strings.ToLower(p)
+		sb.WriteString(strings.ToLower(p))
 	}
+	out := sb.String()
 	if out == "" {
-		return "", fmt.Errorf("invalid name: %s", s)
+		return "", xerrors.New("invalid name: " + s)
 	}
 	// ensure starts with a letter or '_'
 	runes := []rune(out)
@@ -158,7 +162,7 @@ func toIdentifierLower(s string) (string, error) {
 		out = "x" + out
 	}
 	if !isValidIdentifier(out) {
-		return "", fmt.Errorf("invalid identifier: %s", out)
+		return "", xerrors.New("invalid identifier: " + out)
 	}
 	return out, nil
 }
@@ -213,7 +217,7 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 	// Alias provided: validate against qualifier when present
 	if qualifier != "" && qualifier != importAlias {
-		return "", fmt.Errorf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias)
+		return "", xerrors.New(fmt.Sprintf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias))
 	}
 
 	return importAlias, nil

@@ -5,9 +5,11 @@ import (
 	"go-boilerplate/internal/controller/handler/healthz"
 	"go-boilerplate/internal/controller/handler/metrics"
 	"go-boilerplate/internal/controller/handler/ready"
-	"go-boilerplate/internal/controller/handler/v1/users"        // sample-api:line
-	"go-boilerplate/internal/controller/handler/v1/users/detail" // sample-api:line
-	"go-boilerplate/internal/controller/handler/v1/users/search" // sample-api:line
+	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate" // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users"                            // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/detail"                     // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/feed"                       // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/search"                     // sample-api:line
 	"go-boilerplate/internal/controller/handler/version"
 
 	"go.uber.org/fx"
@@ -26,7 +28,9 @@ func ControllerModule() fx.Option {
 			// サンプルのハンドラー
 			users.BindHandler,
 			detail.BindHandler,
+			feed.BindHandler,
 			search.BindHandler,
+			exchangeratehandler.BindHandler,
 			// sample-api:end
 		),
 	)

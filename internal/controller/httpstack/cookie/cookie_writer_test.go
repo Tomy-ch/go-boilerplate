@@ -122,6 +122,20 @@ func Test_cookieRewriteWriter_Write(t *testing.T) {
 			assert.Equal(t, http.StatusOK, orig.wroteCode)
 			assert.Equal(t, "hello", orig.body.String())
 		})
+
+		t.Run("ヘッダ書き込み済みならWriteHeaderを再実行しない", func(t *testing.T) {
+			t.Parallel()
+			orig := newFakeOrig()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(orig, cfg)
+			w.wroteHdr = true
+
+			n, err := w.Write([]byte("hi"))
+			require.NoError(t, err)
+			assert.Equal(t, 2, n)
+			assert.Equal(t, 0, orig.wroteCode)
+			assert.Equal(t, "hi", orig.body.String())
+		})
 	})
 }
 
@@ -140,6 +154,16 @@ func Test_cookieRewriteWriter_Flush(t *testing.T) {
 			w.Flush()
 			assert.True(t, orig.flushed)
 			assert.Equal(t, http.StatusOK, orig.wroteCode)
+		})
+
+		t.Run("origがFlusherを実装しない場合はno-op", func(t *testing.T) {
+			t.Parallel()
+			orig := newFakeOrig()
+			w := newCookieRewriteWriter(&minimalResponseWriter{rw: orig}, &SecurityCookie{})
+
+			w.Flush()
+			assert.False(t, orig.flushed)
+			assert.Equal(t, 0, orig.wroteCode)
 		})
 	})
 }
@@ -181,7 +205,6 @@ func Test_cookieRewriteWriter_Hijack(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, conn)
 			require.NotNil(t, rw)
-			// rewrite がスキップされ HttpOnly は付与されない
 			assert.Equal(t, []string{"id=1"}, w.hdr.Values("Set-Cookie"))
 			require.NoError(t, conn.Close())
 		})

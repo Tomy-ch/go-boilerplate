@@ -1,7 +1,6 @@
 package response
 
 import (
-	"errors"
 	"net/http"
 	"testing"
 
@@ -17,13 +16,73 @@ func TestLookupErrorMetaByHTTPStatus(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("既知のステータスコードの場合、対応するエラーを返す", func(t *testing.T) {
+		t.Run("400の場合、BadRequestが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusBadRequest, Code: codeBadRequest, Message: errorMessageBadRequest}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusBadRequest))
+		})
+
+		t.Run("401の場合、Unauthorizedが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusUnauthorized, Code: codeUnauthorized, Message: errorMessageUnauthorized}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusUnauthorized))
+		})
+
+		t.Run("403の場合、AccessDeniedが返される", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusForbidden, Code: codeAccessDenied, Message: errorMessageAccessDenied}
 			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusForbidden))
 		})
 
-		t.Run("未知のステータスコードの場合、内部サーバーエラーとして扱う", func(t *testing.T) {
+		t.Run("404の場合、NotFoundが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusNotFound, Code: codeNotFound, Message: errorMessageNotFound}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusNotFound))
+		})
+
+		t.Run("409の場合、Conflictが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusConflict, Code: codeResourceConflict, Message: errorMessageResourceConflict}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusConflict))
+		})
+
+		t.Run("422の場合、ValidationFailedが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusUnprocessableEntity, Code: codeValidationFailed, Message: errorMessageValidationFailed}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusUnprocessableEntity))
+		})
+
+		t.Run("429の場合、TooManyRequestsが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusTooManyRequests, Code: codeTooManyRequests, Message: errorMessageTooManyRequests}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusTooManyRequests))
+		})
+
+		t.Run("499の場合、ClientClosedRequestが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: statusClientClosedRequest, Code: codeClientClosedRequest, Message: errorMessageClientClosedRequest}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(statusClientClosedRequest))
+		})
+
+		t.Run("500の場合、InternalServerErrorが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusInternalServerError, Code: codeInternalError, Message: errorMessageInternalError}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusInternalServerError))
+		})
+
+		t.Run("501の場合、NotImplementedが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusNotImplemented, Code: codeNotImplemented, Message: errorMessageNotImplemented}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusNotImplemented))
+		})
+
+		t.Run("503の場合、ServiceUnavailableが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusServiceUnavailable, Code: codeServiceUnavailable, Message: errorMessageServiceUnavailable}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusServiceUnavailable))
+		})
+
+		t.Run("未知のステータスコードの場合、内部サーバーエラーにフォールバックする", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusInternalServerError, Code: codeInternalError, Message: errorMessageInternalError}
 			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(999))
@@ -112,7 +171,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 		t.Run("未定義のエラーの場合、InternalServerErrorにフォールバックする", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusInternalServerError, Code: codeInternalError, Message: errorMessageInternalError}
-			assert.Equal(t, want, lookupErrorMetaByAppError(errors.New("unknown error")))
+			assert.Equal(t, want, lookupErrorMetaByAppError(xerrors.New("unknown error")))
 		})
 
 		t.Run("nilエラーの場合、InternalServerErrorにフォールバックする", func(t *testing.T) {

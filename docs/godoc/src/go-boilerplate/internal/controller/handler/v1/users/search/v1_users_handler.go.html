@@ -78,57 +78,58 @@
 <span id="L21" class="ln">    21  </span>	uc     search.Usecase
 <span id="L22" class="ln">    22  </span>}
 <span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase) {
-<span id="L25" class="ln">    25  </span>	gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
-<span id="L26" class="ln">    26  </span>		tracer: tf.Controller(),
-<span id="L27" class="ln">    27  </span>		uc:     us,
-<span id="L28" class="ln">    28  </span>	}, nil))
-<span id="L29" class="ln">    29  </span>}
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span><span class="comment">// GetUsersSearch は、検索条件に基づいてユーザーの一覧を取得します。</span>
-<span id="L32" class="ln">    32  </span>func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchRequestObject) (gen.GetUsersSearchResponseObject, error) {
-<span id="L33" class="ln">    33  </span>	ctx, endSpan := s.tracer.Start(ctx)
-<span id="L34" class="ln">    34  </span>	defer endSpan()
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>	page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
-<span id="L37" class="ln">    37  </span>	if err != nil {
-<span id="L38" class="ln">    38  </span>		return nil, err
-<span id="L39" class="ln">    39  </span>	}
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	filter := &amp;search.SearchParams{
-<span id="L42" class="ln">    42  </span>		Keyword: request.Params.Keyword,
-<span id="L43" class="ln">    43  </span>		Active:  request.Params.Active,
-<span id="L44" class="ln">    44  </span>	}
-<span id="L45" class="ln">    45  </span>	list, err := s.uc.ListUsersByKeywordWithTotal(ctx, filter, page)
-<span id="L46" class="ln">    46  </span>	if err != nil {
-<span id="L47" class="ln">    47  </span>		return nil, err
-<span id="L48" class="ln">    48  </span>	}
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	users := make([]gen.UsersSearchResponseItem, len(list.Items))
-<span id="L51" class="ln">    51  </span>	for i, dto := range list.Items {
-<span id="L52" class="ln">    52  </span>		users[i] = gen.UsersSearchResponseItem{
-<span id="L53" class="ln">    53  </span>			FirstName:    dto.FirstName,
-<span id="L54" class="ln">    54  </span>			LastName:     dto.LastName,
-<span id="L55" class="ln">    55  </span>			Email:        types.Email(dto.Email),
-<span id="L56" class="ln">    56  </span>			Phone:        dto.Phone,
-<span id="L57" class="ln">    57  </span>			PostalCode:   dto.PostalCode,
-<span id="L58" class="ln">    58  </span>			Prefecture:   dto.PrefectureName,
-<span id="L59" class="ln">    59  </span>			City:         dto.City,
-<span id="L60" class="ln">    60  </span>			Street:       dto.Street,
-<span id="L61" class="ln">    61  </span>			Building:     dto.Building,
-<span id="L62" class="ln">    62  </span>			RegisteredAt: dto.RegisteredAt,
-<span id="L63" class="ln">    63  </span>			DeletedAt:    dto.DeletedAt,
-<span id="L64" class="ln">    64  </span>		}
-<span id="L65" class="ln">    65  </span>	}
-<span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>	return gen.GetUsersSearch200JSONResponse(gen.UsersSearchResponse{
-<span id="L68" class="ln">    68  </span>		Users:  users,
-<span id="L69" class="ln">    69  </span>		Total:  list.Total,
-<span id="L70" class="ln">    70  </span>		Limit:  page.Limit(),
-<span id="L71" class="ln">    71  </span>		Offset: page.Offset(),
-<span id="L72" class="ln">    72  </span>	}), nil
-<span id="L73" class="ln">    73  </span>}
-<span id="L74" class="ln">    74  </span>
+<span id="L24" class="ln">    24  </span><span class="comment">// BindHandler は、ユーザー検索エンドポイントのハンドラーをEchoに登録します。</span>
+<span id="L25" class="ln">    25  </span>func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase) {
+<span id="L26" class="ln">    26  </span>	gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
+<span id="L27" class="ln">    27  </span>		tracer: tf.Controller(),
+<span id="L28" class="ln">    28  </span>		uc:     us,
+<span id="L29" class="ln">    29  </span>	}, nil))
+<span id="L30" class="ln">    30  </span>}
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span><span class="comment">// GetUsersSearch は、検索条件に基づいてユーザーの一覧を取得します。</span>
+<span id="L33" class="ln">    33  </span>func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchRequestObject) (gen.GetUsersSearchResponseObject, error) {
+<span id="L34" class="ln">    34  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L35" class="ln">    35  </span>	defer endSpan()
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
+<span id="L38" class="ln">    38  </span>	if err != nil {
+<span id="L39" class="ln">    39  </span>		return nil, err
+<span id="L40" class="ln">    40  </span>	}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>	filter := &amp;search.SearchParams{
+<span id="L43" class="ln">    43  </span>		Keyword: request.Params.Keyword,
+<span id="L44" class="ln">    44  </span>		Active:  request.Params.Active,
+<span id="L45" class="ln">    45  </span>	}
+<span id="L46" class="ln">    46  </span>	list, err := s.uc.ListUsersByKeywordWithTotal(ctx, filter, page)
+<span id="L47" class="ln">    47  </span>	if err != nil {
+<span id="L48" class="ln">    48  </span>		return nil, err
+<span id="L49" class="ln">    49  </span>	}
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>	users := make([]gen.UsersSearchResponseItem, len(list.Items))
+<span id="L52" class="ln">    52  </span>	for i, dto := range list.Items {
+<span id="L53" class="ln">    53  </span>		users[i] = gen.UsersSearchResponseItem{
+<span id="L54" class="ln">    54  </span>			FirstName:    dto.FirstName,
+<span id="L55" class="ln">    55  </span>			LastName:     dto.LastName,
+<span id="L56" class="ln">    56  </span>			Email:        types.Email(dto.Email),
+<span id="L57" class="ln">    57  </span>			Phone:        dto.Phone,
+<span id="L58" class="ln">    58  </span>			PostalCode:   dto.PostalCode,
+<span id="L59" class="ln">    59  </span>			Prefecture:   dto.PrefectureName,
+<span id="L60" class="ln">    60  </span>			City:         dto.City,
+<span id="L61" class="ln">    61  </span>			Street:       dto.Street,
+<span id="L62" class="ln">    62  </span>			Building:     dto.Building,
+<span id="L63" class="ln">    63  </span>			RegisteredAt: dto.RegisteredAt,
+<span id="L64" class="ln">    64  </span>			DeletedAt:    dto.DeletedAt,
+<span id="L65" class="ln">    65  </span>		}
+<span id="L66" class="ln">    66  </span>	}
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>	return gen.GetUsersSearch200JSONResponse(gen.UsersSearchResponse{
+<span id="L69" class="ln">    69  </span>		Users:  users,
+<span id="L70" class="ln">    70  </span>		Total:  list.Total,
+<span id="L71" class="ln">    71  </span>		Limit:  page.Limit(),
+<span id="L72" class="ln">    72  </span>		Offset: page.Offset(),
+<span id="L73" class="ln">    73  </span>	}), nil
+<span id="L74" class="ln">    74  </span>}
+<span id="L75" class="ln">    75  </span>
 </pre><p><a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/v1_users_handler.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

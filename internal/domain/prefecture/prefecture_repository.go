@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_prefecture_repository.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 package prefecture
 
 import (
@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
+// Repository は、都道府県の永続化操作を定義するドメインリポジトリインターフェースです。
 type Repository interface {
 	// FindByID は、IDから都道府県を取得します。存在しない場合は NotFound を返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Prefecture, error)

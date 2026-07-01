@@ -1,0 +1,56 @@
+# Dependabot 設定
+#
+# 対象エコシステム: Go modules / Docker / GitHub Actions の3種。
+# cooldown: バージョン公開から指定日数が経過するまで更新 PR を作成しない。
+#           - gomod: patch=5 / minor=7 / major=30 日。
+#           - docker / github-actions: default-days=5 日。
+# groups : 1 エコシステムあたり 1 PR にまとめる。
+# 注意: セキュリティアップデートは cooldown をスキップして即時 PR が作成される。
+version: 2
+updates:
+  # ---- Go modules ----
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 5
+      semver-patch-days: 5
+      semver-minor-days: 7
+      semver-major-days: 30
+    groups:
+      gomod:
+        patterns:
+          - "*"
+
+  # ---- Docker ----
+  # docker/ 配下の3イメージを個別にスキャンする。
+  - package-ecosystem: "docker"
+    directories:
+      - "/docker/tools"
+      - "/docker/server"
+      - "/docker/document"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 5
+    groups:
+      docker:
+        patterns:
+          - "*"
+
+  # ---- GitHub Actions ----
+  # .github/workflows と .github/actions の Actions 依存を更新する。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"

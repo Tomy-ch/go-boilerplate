@@ -103,25 +103,48 @@
 			
 			
 			
+				
+				<dd><a href="#EncodeCursor">func EncodeCursor(keys ...string) string</a></dd>
+			
 			
 				
-				<dd><a href="#Paging">type Paging</a></dd>
+				<dd><a href="#Cursor">type Cursor</a></dd>
 				
 					
-					<dd>    <a href="#NewPagingFrom1Based">func NewPagingFrom1Based(page, perPage *int) (*Paging, error)</a></dd>
+					<dd>    <a href="#NewCursor">func NewCursor(after *string, first *int) (*Cursor, error)</a></dd>
 				
 				
 					
-					<dd>    <a href="#Paging.Limit">func (p Paging) Limit() int</a></dd>
+					<dd>    <a href="#Cursor.HasCursor">func (c Cursor) HasCursor() bool</a></dd>
 				
 					
-					<dd>    <a href="#Paging.Limit32">func (p Paging) Limit32() int32</a></dd>
+					<dd>    <a href="#Cursor.Keys">func (c Cursor) Keys() []string</a></dd>
 				
 					
-					<dd>    <a href="#Paging.Offset">func (p Paging) Offset() int</a></dd>
+					<dd>    <a href="#Cursor.Limit">func (c Cursor) Limit() int</a></dd>
 				
 					
-					<dd>    <a href="#Paging.Offset32">func (p Paging) Offset32() int32</a></dd>
+					<dd>    <a href="#Cursor.Limit32">func (c Cursor) Limit32() int32</a></dd>
+				
+			
+				
+				<dd><a href="#Page">type Page</a></dd>
+				
+					
+					<dd>    <a href="#NewPageFrom1Based">func NewPageFrom1Based(page, perPage *int) (*Page, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Page.Limit">func (p Page) Limit() int</a></dd>
+				
+					
+					<dd>    <a href="#Page.Limit32">func (p Page) Limit32() int32</a></dd>
+				
+					
+					<dd>    <a href="#Page.Offset">func (p Page) Offset() int</a></dd>
+				
+					
+					<dd>    <a href="#Page.Offset32">func (p Page) Offset32() int32</a></dd>
 				
 			
 			
@@ -135,7 +158,9 @@
 			<p>
 			<span style="font-size:90%">
 			
-				<a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/paging.go.html">paging.go</a>
+				<a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html">cursor.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html">page.go</a>
 			
 			</span>
 			</p>
@@ -148,16 +173,41 @@
 		
 		
 		
-		
 			
 			
-			<h2 id="Paging">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/paging.go.html?s=548:594#L14">Paging</a>
-				<a class="permalink" href="#Paging">¶</a>
+			<h2 id="EncodeCursor">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=3319:3359#L71">EncodeCursor</a>
+				<a class="permalink" href="#EncodeCursor">¶</a>
 				
 				
 			</h2>
+			<pre>func EncodeCursor(keys ...<a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#string">string</a></pre>
+			<p>EncodeCursor は、ソートキーのタプルを不透明なカーソル文字列へエンコードします。
+</p><pre>クエリ層が「現在ページ末尾行」のソートキー（文字列化済み）を渡して次ページ用カーソルを生成します。
+キーが1つも渡されない場合は、先頭ページを表す空文字を返します。
+</pre>
+
 			
-			<pre>type Paging struct {
+			
+
+		
+		
+			
+			
+			<h2 id="Cursor">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=933:982#L10">Cursor</a>
+				<a class="permalink" href="#Cursor">¶</a>
+				
+				
+			</h2>
+			<p>Cursor は、キーセット（cursor）ページネーションのリクエストを表す値オブジェクトです。
+</p><pre>offset 版（Page）がページ番号を起点に LIMIT/OFFSET へ変換するのに対し、
+Cursor は「直前ページ末尾行のソートキー」を不透明トークンとして受け取り、
+keyset 比較（例: WHERE (created_at, id) &lt; (:k0, :k1)）で次ページを取得するための情報を保持します。
+
+keys はソートキーのタプルを文字列化したものです。型の解釈（RFC3339 → time、UUID 文字列 → uuid 等）は
+Cursor を受け取る呼び出し元（usecase 等）の責務であり、本パッケージは輸送（エンコード/デコード）と件数ポリシーのみを担います。
+</pre>
+
+			<pre>type Cursor struct {
     <span class="comment">// contains filtered or unexported fields</span>
 }
 </pre>
@@ -172,13 +222,111 @@
 
 			
 				
-				<h3 id="NewPagingFrom1Based">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/paging.go.html?s=1098:1159#L24">NewPagingFrom1Based</a>
-					<a class="permalink" href="#NewPagingFrom1Based">¶</a>
+				<h3 id="NewCursor">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=1651:1709#L22">NewCursor</a>
+					<a class="permalink" href="#NewCursor">¶</a>
 					
 					
 				</h3>
-				<pre>func NewPagingFrom1Based(page, perPage *<a href="../../../../../builtin/#int">int</a>) (*<a href="#Paging">Paging</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				<p>NewPagingFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算して Paging を返します。
+				<pre>func NewCursor(after *<a href="../../../../../builtin/#string">string</a>, first *<a href="../../../../../builtin/#int">int</a>) (*<a href="#Cursor">Cursor</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>NewCursor は、不透明カーソル文字列（after）と取得件数（first）から Cursor を生成します。
+</p><pre>after が nil または空文字の場合は先頭ページとして扱い、keys は空になります。
+after の形式が不正な場合は apperror.ErrInvalidArgument を返します。
+first[limit] の補完・クランプ規約は offset 版（NewPageFrom1Based）と共通で、
+0以下または nil の場合は defaultPerPage、maxPerPage を超える場合は maxPerPage を使用します。
+keyset はページ番号を持たないため、offset 版のような最大ページ数エラーは発生しません。
+</pre>
+
+				
+				
+			
+
+			
+				
+				<h3 id="Cursor.HasCursor">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2491:2523#L53">HasCursor</a>
+					<a class="permalink" href="#Cursor.HasCursor">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#Cursor">Cursor</a>) HasCursor() <a href="../../../../../builtin/#bool">bool</a></pre>
+				<p>HasCursor は、カーソルが指定されている（＝先頭ページではない）場合に true を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cursor.Keys">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2801:2832#L58">Keys</a>
+					<a class="permalink" href="#Cursor.Keys">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#Cursor">Cursor</a>) Keys() []<a href="../../../../../builtin/#string">string</a></pre>
+				<p>Keys は、直前ページ末尾行のソートキー（タプル）のコピーを返します。
+</p><pre>先頭ページの場合は空スライスを返します。呼び出し元はこの値を keyset 比較の境界として解釈します。
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Cursor.Limit">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2030:2057#L43">Limit</a>
+					<a class="permalink" href="#Cursor.Limit">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#Cursor">Cursor</a>) Limit() <a href="../../../../../builtin/#int">int</a></pre>
+				<p>Limit は、ページの取得上限を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cursor.Limit32">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2149:2180#L46">Limit32</a>
+					<a class="permalink" href="#Cursor.Limit32">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#Cursor">Cursor</a>) Limit32() <a href="../../../../../builtin/#int32">int32</a></pre>
+				<p>Limit32 は、ページの取得上限をint32型で返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Page">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=697:741#L15">Page</a>
+				<a class="permalink" href="#Page">¶</a>
+				
+				
+			</h2>
+			<p>Page は、ページネーションに必要な取得上限（limit）とオフセット（offset）を保持する値オブジェクトです。
+
+			</p><pre>type Page struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewPageFrom1Based">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1241:1298#L25">NewPageFrom1Based</a>
+					<a class="permalink" href="#NewPageFrom1Based">¶</a>
+					
+					
+				</h3>
+				<pre>func NewPageFrom1Based(page, perPage *<a href="../../../../../builtin/#int">int</a>) (*<a href="#Page">Page</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>NewPageFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算して Page を返します。
 </p><pre>ページ番号が1未満の場合は1に、1ページあたりの件数が0以下の場合はデフォルト値を使用します。
 page[offsetの係数]は最小値1で、maxPage を超える場合はエラーを返します。
 perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPageまで許容します。
@@ -190,12 +338,12 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 
 			
 				
-				<h3 id="Paging.Limit">func (Paging) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/paging.go.html?s=1637:1664#L48">Limit</a>
-					<a class="permalink" href="#Paging.Limit">¶</a>
+				<h3 id="Page.Limit">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1774:1799#L49">Limit</a>
+					<a class="permalink" href="#Page.Limit">¶</a>
 					
 					
 				</h3>
-				<pre>func (p <a href="#Paging">Paging</a>) Limit() <a href="../../../../../builtin/#int">int</a></pre>
+				<pre>func (p <a href="#Page">Page</a>) Limit() <a href="../../../../../builtin/#int">int</a></pre>
 				<p>Limit は、ページの取得上限を返します。
 
 				
@@ -203,12 +351,12 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 				
 			
 				
-				</p><h3 id="Paging.Limit32">func (Paging) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/paging.go.html?s=1756:1787#L51">Limit32</a>
-					<a class="permalink" href="#Paging.Limit32">¶</a>
+				</p><h3 id="Page.Limit32">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1891:1920#L52">Limit32</a>
+					<a class="permalink" href="#Page.Limit32">¶</a>
 					
 					
 				</h3>
-				<pre>func (p <a href="#Paging">Paging</a>) Limit32() <a href="../../../../../builtin/#int32">int32</a></pre>
+				<pre>func (p <a href="#Page">Page</a>) Limit32() <a href="../../../../../builtin/#int32">int32</a></pre>
 				<p>Limit32 は、ページの取得上限をint32型で返します。
 
 				
@@ -216,12 +364,12 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 				
 			
 				
-				</p><h3 id="Paging.Offset">func (Paging) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/paging.go.html?s=1943:1971#L60">Offset</a>
-					<a class="permalink" href="#Paging.Offset">¶</a>
+				</p><h3 id="Page.Offset">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=2168:2194#L59">Offset</a>
+					<a class="permalink" href="#Page.Offset">¶</a>
 					
 					
 				</h3>
-				<pre>func (p <a href="#Paging">Paging</a>) Offset() <a href="../../../../../builtin/#int">int</a></pre>
+				<pre>func (p <a href="#Page">Page</a>) Offset() <a href="../../../../../builtin/#int">int</a></pre>
 				<p>Offset は、ページのオフセットを返します。
 
 				
@@ -229,12 +377,12 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 				
 			
 				
-				</p><h3 id="Paging.Offset32">func (Paging) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/paging.go.html?s=2068:2100#L63">Offset32</a>
-					<a class="permalink" href="#Paging.Offset32">¶</a>
+				</p><h3 id="Page.Offset32">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=2291:2321#L62">Offset32</a>
+					<a class="permalink" href="#Page.Offset32">¶</a>
 					
 					
 				</h3>
-				<pre>func (p <a href="#Paging">Paging</a>) Offset32() <a href="../../../../../builtin/#int32">int32</a></pre>
+				<pre>func (p <a href="#Page">Page</a>) Offset32() <a href="../../../../../builtin/#int32">int32</a></pre>
 				<p>Offset32 は、ページのオフセットをint32型で返します。
 
 				

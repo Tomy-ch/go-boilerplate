@@ -118,7 +118,7 @@ subagent が観点を返さない場合は最小デフォルトで継続、警�
 実装ファイル convention:
 
 - `package <package>`（lowercase aggregate name）
-- ファイル先頭に `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE`
+- ファイル先頭に `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE`（リポジトリ共通の標準ディレクティブ・全 interface ファイルで同一）
 - `type Usecase interface { ... }` を spec Interface から
 - DTO は `type XxxDTO struct { ... }` を spec DTOs から
 - `type usecase struct { tracer observability.LayerTracer; <deps...> }` を spec Dependencies から
@@ -143,7 +143,7 @@ subagent が観点を返さない場合は最小デフォルトで継続、警�
 make gen-api
 ```
 
-新 usecase ファイルの `//go:generate mockgen` を処理し `internal/usecase/<package>/mock/mock_<package>_usecase.go` を生成。ファイル存在確認。
+新 usecase ファイルの `//go:generate mockgen` を処理し `internal/usecase/<package>/mock/mock_<package>_usecase.go.gen.go` を生成。ファイル存在確認。
 
 ## Step 6. 検証
 

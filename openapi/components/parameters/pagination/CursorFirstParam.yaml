@@ -1,0 +1,10 @@
+name: first
+in: query
+description: 取得件数の上限
+required: false
+schema:
+  type: integer
+  minimum: 1
+  maximum: 200
+  default: 50
+  example: 50

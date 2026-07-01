@@ -27,6 +27,7 @@ The following table maps services defined in docker-compose.yaml to their corres
 |---|---|---|---|
 |`api_server`|`docker/server/Dockerfile` (target: `tooling`)|8080, 2345, 6060|Development API server (hot reload via air)|
 |`database`|`postgres:18.3-bookworm`|5432|PostgreSQL database|
+|`observability`|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|Local observability stack (OTLP endpoint / Grafana) for o11y verification|
 
 ### Auxiliary Services (profile: `tools`)
 
@@ -39,7 +40,7 @@ The following table maps services defined in docker-compose.yaml to their corres
 
 |Service|Dockerfile / Image|Description|
 |---|---|---|
-|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
 |`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|redocly-cli|
 |`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|sqlfluff|
 |`er_diagram_generator`|`schemaspy/schemaspy`|ER diagram generation (SchemaSpy)|
@@ -52,7 +53,6 @@ The Dockerfile for the application server. Provides the following targets via mu
 |---|---|---|
 |`builder`|Go binary build|`golang:1.26.4-alpine`|
 |`runtime`|Production runtime container|`alpine:3.23`|
-|`migration`|Migration execution container|Inherits `runtime`|
 |`tooling`|Local development environment|`golang:1.26.4-alpine`|
 
 ### runtime
@@ -60,6 +60,7 @@ The Dockerfile for the application server. Provides the following targets via mu
 - Runs as non-root user (`app`)
 - Embeds version / revision / build date via `ldflags`
 - Builds in `vendor` mode (`GOPROXY=off`)
+- Migrations run via a command override on the same image (`./server migrate-up`); there is no dedicated migration image
 
 ### tooling
 
@@ -79,7 +80,7 @@ Tool containers for code generation and bundling. Split into three stages.
 
 |Stage|Base|Included Tools|
 |---|---|---|
-|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
 |`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 

@@ -148,7 +148,7 @@ integration テストの目的は **HTTP boundary の検証**であり
 
 例
 
-- `mock_user.NewMockUsecase`
+- `mock_<feature>.NewMockUsecase`
 - `mock_healthcheck.NewMockUsecase`
 
 ## テストの流れ
@@ -164,10 +164,14 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponse()"]
+    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponseType()"]
 ```
 
-## integration_test.go で定義されている関数
+## helper_test.go で定義されている関数
+
+各ハンドラの `BindHandler` は tracer factory を受け取ります。これらのテストでは
+`observability.NewNoopTracerFactory(t)` から得た no-op のものを渡します。feature
+ハンドラは加えて **mock 化した usecase** を受け取ります（「なぜ Usecase を mock するのか」参照）。
 
 ### `StartServer(t *testing.T, e *echo.Echo) *Server`
 
@@ -183,7 +187,8 @@ Echo を `httptest.NewServer` で立ち上げ、結合テスト用の簡易サ�
 
 ```go
 e := echo.New()
-handler.BindHandler(e)
+tf := observability.NewNoopTracerFactory(t)
+<feature>.BindHandler(e, tf, mockUsecase)
 
 srv := StartServer(t, e)
 ```
@@ -224,20 +229,54 @@ JSON 用のショートカット関数です。
 actual := srv.DoJSON(http.MethodGet, "/health", nil, nil)
 ```
 
-### `AssertJSONResponse[T any]`
+### `AssertJSONResponseType[T any]`
 
-JSON レスポンスの内容を検証するユーティリティです。
+HTTP 境界の到達確認アサーションです。レスポンスが HTTP 経路を通り、期待した型へ
+シリアライズされることを検証します。**個々のフィールド値の正しさは検証しません。**
 
 検証内容
 
 - HTTP Status Code = 200
 - Content-Type = application/json
-- JSON が型 `T` に Unmarshal 可能
+- レスポンスボディが型 `T` に Unmarshal 可能
+
+このヘルパーは意図的に値比較を行いません。上記のテストピラミッドのとおり、レスポンス値の
+正しさ（Presenter のフィールドマッピング）は **Controller Unit Test** が独立したオラクルで
+検証する責務です。ここで値比較を重複させると integration テストが Presenter の詳細に結合し
+壊れやすくなります。build info や `RegisteredAt` などの動的な値を含むレスポンスでは、
+そもそも型のみが検証可能です。
 
 使用例
 
 ```go
-AssertJSONResponse(t, gen.ResponseHealth{}, actual)
+AssertJSONResponseType[gen.HealthResponse](t, actual)
+```
+
+### `UseAppErrorHandler(t, e)`
+
+本番相当の `HTTPErrorHandler` を Echo に登録します。素の `echo.New()` は Echo 標準の
+エラーハンドラしか持たないため、`apperror` → HTTP ステータスの実マッピングを観測する異常系
+テストでは、先に本番ハンドラを配線する必要があります。
+
+各エンドポイントが返し得るエラーレスポンスは **OpenAPI の契約**（各オペレーションの
+`responses`）で定義されます。異常系テストは、そのオペレーションが契約上宣言している
+ステータスコードのみを対象とし、恣意的なコードは対象にしません。
+
+### `AssertErrorResponse(t, actual, wantStatus)`
+
+異常系レスポンスが `wantStatus` を返し、ボディが JSON のエラー形式（`ErrorResponse`）へ
+デシリアライズ可能であることを検証します。`AssertJSONResponseType` と同様に、検証するのは
+境界の関心事（`apperror` → ステータスのマッピングとエラーボディの形）のみで、`code` /
+`message` の値の正しさはユニットテストの責務のままです。
+
+使用例
+
+```go
+e := echo.New()
+UseAppErrorHandler(t, e)
+// ... usecase モックが apperror.ErrNotFound を返すよう設定し、handler を bind ...
+actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
+AssertErrorResponse(t, actual, http.StatusNotFound)
 ```
 
 ## Auth テストヘルパー
@@ -246,14 +285,15 @@ AssertJSONResponse(t, gen.ResponseHealth{}, actual)
 
 integration テストで **認証済みユーザーを模擬するヘルパー**です。
 
-内部では Echo Middleware を追加し  
-`ctxhelper.SetAuthnToEcho` を使って認証情報を設定します。
+内部では `auth.New` で認証済みプリンシパルを生成し、それを `ctxhelper.WithAuthn` /
+`ctxhelper.SetAuthn` でリクエストコンテキストに注入する Echo Middleware を追加したうえで、
+リクエストに付与する `Authorization: Bearer debug:<id>` ヘッダーを返します。
 
 使用例
 
 ```go
 headers := MakeAvailableUserID(t, e, userID)
-srv.DoJSON(http.MethodPost, "/v1/users", body, headers)
+srv.DoJSON(http.MethodPost, "/v1/<resource>", body, headers)
 ```
 
 ## テスト設計ポリシー
@@ -284,6 +324,6 @@ handler を直接呼ぶのではなく `httptest.Server` を利用します。
 
 レスポンスは **OpenAPI 型**で検証します。
 
-- `gen.ResponseV1Users`
-- `gen.ResponseHealth`
-- `gen.ResponseVersion`
+- `gen.HealthResponse`
+- `gen.VersionResponse`
+- feature ハンドラの `gen` パッケージが公開するレスポンス型 — `gen.<Xxx>Response`（1 テストファイルで複数 handler の `gen` を import する場合は `detailgen.<Xxx>Response` のようにエイリアス）

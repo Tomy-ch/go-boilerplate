@@ -1,0 +1,28 @@
+get:
+  operationId: GetUsersFeed
+  tags:
+    - v1/users/feed
+  summary: ユーザーフィードの取得
+  description: 未削除のユーザーを作成日時の降順（cursor ページネーション）で取得します。先頭ページは after を省略し、以降は前ページのレスポンスに含まれる nextCursor を after に指定します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../components/parameters/pagination/CursorAfterParam.yaml'
+    - $ref: '../../../components/parameters/pagination/CursorFirstParam.yaml'
+  responses:
+    '200':
+      description: cursor ページネーションで取得したユーザーフィード
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/users/UsersFeedResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

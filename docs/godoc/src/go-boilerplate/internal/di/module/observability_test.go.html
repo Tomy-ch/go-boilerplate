@@ -61,48 +61,74 @@
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
 <span id="L5" class="ln">     5  </span>	&#34;testing&#34;
 <span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go.uber.org/fx&#34;
-<span id="L9" class="ln">     9  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/di/lifecycle&#34;
-<span id="L12" class="ln">    12  </span>	mock_lifecycle &#34;go-boilerplate/internal/di/lifecycle/mock&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L14" class="ln">    14  </span>	mock_logging &#34;go-boilerplate/internal/logging/mock&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L16" class="ln">    16  </span>)
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
-<span id="L19" class="ln">    19  </span>	t.Run(&#34;fx アプリで TracerFactory が提供される&#34;, func(t *testing.T) {
-<span id="L20" class="ln">    20  </span>		t.Parallel()
+<span id="L7" class="ln">     7  </span>	&#34;github.com/prometheus/client_golang/prometheus&#34;
+<span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go.uber.org/fx&#34;
+<span id="L11" class="ln">    11  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/di/lifecycle&#34;
+<span id="L15" class="ln">    15  </span>	mock_lifecycle &#34;go-boilerplate/internal/di/lifecycle/mock&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L17" class="ln">    17  </span>	mock_logging &#34;go-boilerplate/internal/logging/mock&#34;
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/internal/system&#34;
+<span id="L20" class="ln">    20  </span>)
 <span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>		ctrl := gomock.NewController(t)
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>		mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
-<span id="L25" class="ln">    25  </span>		mockLog := mock_logging.NewMockLogger(ctrl)
-<span id="L26" class="ln">    26  </span>		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+<span id="L22" class="ln">    22  </span>func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
+<span id="L23" class="ln">    23  </span>	t.Parallel()
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L26" class="ln">    26  </span>		t.Parallel()
 <span id="L27" class="ln">    27  </span>
-<span id="L28" class="ln">    28  </span>		<span class="comment">// TracerProvider will register a stop hook</span>
-<span id="L29" class="ln">    29  </span>		mockReg.EXPECT().RegisterStop(gomock.Any()).Times(1)
+<span id="L28" class="ln">    28  </span>		t.Run(&#34;fx アプリで TracerFactory が提供される&#34;, func(t *testing.T) {
+<span id="L29" class="ln">    29  </span>			t.Parallel()
 <span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span>		var tf observability.TracerFactory
+<span id="L31" class="ln">    31  </span>			ctrl := gomock.NewController(t)
 <span id="L32" class="ln">    32  </span>
-<span id="L33" class="ln">    33  </span>		app := fx.New(
-<span id="L34" class="ln">    34  </span>			ObservabilityModule(),
-<span id="L35" class="ln">    35  </span>			fx.Provide(func() testing.TB { return t }),
-<span id="L36" class="ln">    36  </span>			fx.Provide(func() lifecycle.Registrar { return mockReg }),
-<span id="L37" class="ln">    37  </span>			fx.Provide(func() logging.Logger { return mockLog }),
-<span id="L38" class="ln">    38  </span>			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
-<span id="L39" class="ln">    39  </span>			fx.Populate(&amp;tf),
-<span id="L40" class="ln">    40  </span>			fx.NopLogger,
-<span id="L41" class="ln">    41  </span>		)
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>		require.NoError(t, app.Start(context.Background()))
-<span id="L44" class="ln">    44  </span>		require.NotNil(t, tf)
-<span id="L45" class="ln">    45  </span>		require.NoError(t, app.Stop(context.Background()))
-<span id="L46" class="ln">    46  </span>	})
-<span id="L47" class="ln">    47  </span>}
-<span id="L48" class="ln">    48  </span>
+<span id="L33" class="ln">    33  </span>			mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
+<span id="L34" class="ln">    34  </span>			mockLog := mock_logging.NewMockLogger(ctrl)
+<span id="L35" class="ln">    35  </span>			mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>			<span class="comment">// ProviderShutdowner の Shutdown が単一の Stop フックとして登録される。</span>
+<span id="L38" class="ln">    38  </span>			mockReg.EXPECT().RegisterStop(gomock.Any()).Times(1)
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>			<span class="comment">// buildinfo.Register はデフォルトレジストリへ登録するため、テスト間の汚染を避ける。</span>
+<span id="L41" class="ln">    41  </span>			origReg := prometheus.DefaultRegisterer
+<span id="L42" class="ln">    42  </span>			prometheus.DefaultRegisterer = prometheus.NewRegistry()
+<span id="L43" class="ln">    43  </span>			t.Cleanup(func() { prometheus.DefaultRegisterer = origReg })
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>			var tf observability.TracerFactory
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>			app := fx.New(
+<span id="L48" class="ln">    48  </span>				ObservabilityModule(),
+<span id="L49" class="ln">    49  </span>				fx.Provide(func() testing.TB { return t }),
+<span id="L50" class="ln">    50  </span>				fx.Provide(func() lifecycle.Registrar { return mockReg }),
+<span id="L51" class="ln">    51  </span>				fx.Provide(func() logging.Logger { return mockLog }),
+<span id="L52" class="ln">    52  </span>				fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+<span id="L53" class="ln">    53  </span>				fx.Provide(func() *config.ApplicationConfig {
+<span id="L54" class="ln">    54  </span>					return config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L55" class="ln">    55  </span>				}),
+<span id="L56" class="ln">    56  </span>				fx.Provide(func() *config.ObservabilityConfig {
+<span id="L57" class="ln">    57  </span>					oc := config.NewObservabilityConfig(config.MockConfigForTest(t))
+<span id="L58" class="ln">    58  </span>					oc.SetObservabilityTracesExporter(t, &#34;&#34;)
+<span id="L59" class="ln">    59  </span>					oc.SetObservabilityMetricsExporter(t, &#34;&#34;)
+<span id="L60" class="ln">    60  </span>					oc.SetObservabilityLogsExporter(t, &#34;&#34;)
+<span id="L61" class="ln">    61  </span>					return oc
+<span id="L62" class="ln">    62  </span>				}),
+<span id="L63" class="ln">    63  </span>				fx.Provide(system.NewBuildInfo),
+<span id="L64" class="ln">    64  </span>				fx.Populate(&amp;tf),
+<span id="L65" class="ln">    65  </span>				fx.NopLogger,
+<span id="L66" class="ln">    66  </span>			)
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>			require.NoError(t, app.Start(context.Background()))
+<span id="L69" class="ln">    69  </span>			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+<span id="L70" class="ln">    70  </span>			assert.NotNil(t, tf)
+<span id="L71" class="ln">    71  </span>		})
+<span id="L72" class="ln">    72  </span>	})
+<span id="L73" class="ln">    73  </span>}
+<span id="L74" class="ln">    74  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/observability_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

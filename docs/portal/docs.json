@@ -158,6 +158,13 @@
               "guideId": "rules"
             },
             {
+              "name": "Testing Conventions",
+              "path": "../testing-conventions.md",
+              "lang": "en",
+              "source": "docs/testing-conventions.md",
+              "guideId": "testing-conventions"
+            },
+            {
               "name": "Architecture",
               "path": "../ja/architecture.ja.md",
               "lang": "ja",
@@ -191,6 +198,13 @@
               "lang": "ja",
               "source": "docs/ja/rules.ja.md",
               "guideId": "rules"
+            },
+            {
+              "name": "Testing Conventions",
+              "path": "../ja/testing-conventions.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/testing-conventions.ja.md",
+              "guideId": "testing-conventions"
             }
           ]
         },
@@ -423,6 +437,13 @@
               "guideId": "controller-server"
             },
             {
+              "name": "Controller Worker",
+              "path": "./guides/controller-worker.md",
+              "lang": "en",
+              "source": "internal/controller/worker/README.md",
+              "guideId": "controller-worker"
+            },
+            {
               "name": "Controller",
               "path": "./guides/ja/controller.ja.md",
               "lang": "ja",
@@ -491,6 +512,13 @@
               "lang": "ja",
               "source": "internal/controller/server/README.ja.md",
               "guideId": "controller-server"
+            },
+            {
+              "name": "Controller Worker",
+              "path": "./guides/ja/controller-worker.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/worker/README.ja.md",
+              "guideId": "controller-worker"
             }
           ],
           "subgroups": [
@@ -557,6 +585,20 @@
                   "lang": "ja",
                   "source": "internal/controller/job/README.ja.md",
                   "guideId": "controller-job"
+                },
+                {
+                  "name": "Controller Worker",
+                  "path": "./guides/controller-worker.md",
+                  "lang": "en",
+                  "source": "internal/controller/worker/README.md",
+                  "guideId": "controller-worker"
+                },
+                {
+                  "name": "Controller Worker",
+                  "path": "./guides/ja/controller-worker.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/worker/README.ja.md",
+                  "guideId": "controller-worker"
                 }
               ]
             },
@@ -690,13 +732,6 @@
               "guideId": "infrastructure-rdb-driver"
             },
             {
-              "name": "Infrastructure Rdb Driver Loggingdb",
-              "path": "./guides/infrastructure-rdb-driver-loggingdb.md",
-              "lang": "en",
-              "source": "internal/infrastructure/rdb/driver/loggingdb/README.md",
-              "guideId": "infrastructure-rdb-driver-loggingdb"
-            },
-            {
               "name": "Infrastructure Rdb Pgerror",
               "path": "./guides/infrastructure-rdb-pgerror.md",
               "lang": "en",
@@ -772,13 +807,6 @@
               "lang": "ja",
               "source": "internal/infrastructure/rdb/driver/README.ja.md",
               "guideId": "infrastructure-rdb-driver"
-            },
-            {
-              "name": "Infrastructure Rdb Driver Loggingdb",
-              "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md",
-              "lang": "ja",
-              "source": "internal/infrastructure/rdb/driver/loggingdb/README.ja.md",
-              "guideId": "infrastructure-rdb-driver-loggingdb"
             },
             {
               "name": "Infrastructure Rdb Pgerror",
@@ -880,20 +908,6 @@
                   "lang": "ja",
                   "source": "internal/infrastructure/rdb/driver/README.ja.md",
                   "guideId": "infrastructure-rdb-driver"
-                },
-                {
-                  "name": "Infrastructure Rdb Driver Loggingdb",
-                  "path": "./guides/infrastructure-rdb-driver-loggingdb.md",
-                  "lang": "en",
-                  "source": "internal/infrastructure/rdb/driver/loggingdb/README.md",
-                  "guideId": "infrastructure-rdb-driver-loggingdb"
-                },
-                {
-                  "name": "Infrastructure Rdb Driver Loggingdb",
-                  "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md",
-                  "lang": "ja",
-                  "source": "internal/infrastructure/rdb/driver/loggingdb/README.ja.md",
-                  "guideId": "infrastructure-rdb-driver-loggingdb"
                 },
                 {
                   "name": "Infrastructure Rdb Pgerror",
@@ -1018,6 +1032,138 @@
                   "guideId": "infrastructure-system"
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Design",
+      "slug": "design",
+      "sections": [
+        {
+          "id": "rest-design",
+          "slug": "rest-design",
+          "title": "Rest Design",
+          "items": [
+            {
+              "name": "Rest Design",
+              "path": "./guides/rest-design.md",
+              "lang": "en",
+              "source": "docs/design/rest.md",
+              "guideId": "rest-design"
+            },
+            {
+              "name": "Rest Design",
+              "path": "./guides/ja/rest-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/rest.ja.md",
+              "guideId": "rest-design"
+            }
+          ]
+        },
+        {
+          "id": "worker-design",
+          "slug": "worker-design",
+          "title": "Worker Design",
+          "items": [
+            {
+              "name": "Worker Design",
+              "path": "./guides/worker-design.md",
+              "lang": "en",
+              "source": "docs/design/worker.md",
+              "guideId": "worker-design"
+            },
+            {
+              "name": "Worker Design",
+              "path": "./guides/ja/worker-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/worker.ja.md",
+              "guideId": "worker-design"
+            }
+          ]
+        },
+        {
+          "id": "job-design",
+          "slug": "job-design",
+          "title": "Job Design",
+          "items": [
+            {
+              "name": "Job Design",
+              "path": "./guides/job-design.md",
+              "lang": "en",
+              "source": "docs/design/job.md",
+              "guideId": "job-design"
+            },
+            {
+              "name": "Job Design",
+              "path": "./guides/ja/job-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/job.ja.md",
+              "guideId": "job-design"
+            }
+          ]
+        },
+        {
+          "id": "outbox-design",
+          "slug": "outbox-design",
+          "title": "Outbox Design",
+          "items": [
+            {
+              "name": "Outbox Design",
+              "path": "./guides/outbox-design.md",
+              "lang": "en",
+              "source": "docs/design/outbox.md",
+              "guideId": "outbox-design"
+            },
+            {
+              "name": "Outbox Design",
+              "path": "./guides/ja/outbox-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/outbox.ja.md",
+              "guideId": "outbox-design"
+            }
+          ]
+        },
+        {
+          "id": "idempotency-design",
+          "slug": "idempotency-design",
+          "title": "Idempotency Design",
+          "items": [
+            {
+              "name": "Idempotency Design",
+              "path": "./guides/idempotency-design.md",
+              "lang": "en",
+              "source": "docs/design/idempotency.md",
+              "guideId": "idempotency-design"
+            },
+            {
+              "name": "Idempotency Design",
+              "path": "./guides/ja/idempotency-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/idempotency.ja.md",
+              "guideId": "idempotency-design"
+            }
+          ]
+        },
+        {
+          "id": "observability-design",
+          "slug": "observability-design",
+          "title": "Observability Design",
+          "items": [
+            {
+              "name": "Observability Design",
+              "path": "./guides/observability-design.md",
+              "lang": "en",
+              "source": "docs/design/observability.md",
+              "guideId": "observability-design"
+            },
+            {
+              "name": "Observability Design",
+              "path": "./guides/ja/observability-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/observability.ja.md",
+              "guideId": "observability-design"
             }
           ]
         }
@@ -1914,6 +2060,117 @@
           ]
         }
       ]
+    },
+    {
+      "title": "Uncategorized",
+      "slug": "uncategorized",
+      "sections": [
+        {
+          "id": "design",
+          "slug": "design",
+          "title": "Design",
+          "items": [
+            {
+              "name": "Idempotency",
+              "path": "../design/idempotency.md",
+              "lang": "en",
+              "source": "docs/design/idempotency.md",
+              "guideId": "idempotency"
+            },
+            {
+              "name": "Job",
+              "path": "../design/job.md",
+              "lang": "en",
+              "source": "docs/design/job.md",
+              "guideId": "job"
+            },
+            {
+              "name": "Observability",
+              "path": "../design/observability.md",
+              "lang": "en",
+              "source": "docs/design/observability.md",
+              "guideId": "observability"
+            },
+            {
+              "name": "Outbox",
+              "path": "../design/outbox.md",
+              "lang": "en",
+              "source": "docs/design/outbox.md",
+              "guideId": "outbox"
+            },
+            {
+              "name": "README",
+              "path": "../design/README.md",
+              "lang": "en",
+              "source": "docs/design/README.md",
+              "guideId": "README"
+            },
+            {
+              "name": "Rest",
+              "path": "../design/rest.md",
+              "lang": "en",
+              "source": "docs/design/rest.md",
+              "guideId": "rest"
+            },
+            {
+              "name": "Worker",
+              "path": "../design/worker.md",
+              "lang": "en",
+              "source": "docs/design/worker.md",
+              "guideId": "worker"
+            },
+            {
+              "name": "Idempotency",
+              "path": "../ja/design/idempotency.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/idempotency.ja.md",
+              "guideId": "idempotency"
+            },
+            {
+              "name": "Job",
+              "path": "../ja/design/job.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/job.ja.md",
+              "guideId": "job"
+            },
+            {
+              "name": "Observability",
+              "path": "../ja/design/observability.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/observability.ja.md",
+              "guideId": "observability"
+            },
+            {
+              "name": "Outbox",
+              "path": "../ja/design/outbox.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/outbox.ja.md",
+              "guideId": "outbox"
+            },
+            {
+              "name": "README",
+              "path": "../ja/design/README.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/README.ja.md",
+              "guideId": "README"
+            },
+            {
+              "name": "Rest",
+              "path": "../ja/design/rest.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/rest.ja.md",
+              "guideId": "rest"
+            },
+            {
+              "name": "Worker",
+              "path": "../ja/design/worker.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/worker.ja.md",
+              "guideId": "worker"
+            }
+          ]
+        }
+      ]
     }
   ],
   "referenceLinks": [
@@ -1922,12 +2179,6 @@
       "title": "OpenAPI Reference",
       "path": "../openapi/index.html",
       "source": "docs/openapi/index.html"
-    },
-    {
-      "sectionId": "godoc",
-      "title": "Godoc",
-      "path": "../godoc/index.html",
-      "source": "docs/godoc/index.html"
     },
     {
       "sectionId": "db-schema",

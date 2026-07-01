@@ -73,9 +73,9 @@
 <span id="L16" class="ln">    16  </span>			t.Parallel()
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>			expected := &amp;buildInfo{
-<span id="L19" class="ln">    19  </span>				version:   &#34;dev&#34;,
-<span id="L20" class="ln">    20  </span>				revision:  &#34;none&#34;,
-<span id="L21" class="ln">    21  </span>				buildDate: &#34;2024-12-31T21:00:00Z&#34;,
+<span id="L19" class="ln">    19  </span>				version:   Version,
+<span id="L20" class="ln">    20  </span>				revision:  Revision,
+<span id="L21" class="ln">    21  </span>				buildDate: BuildDate,
 <span id="L22" class="ln">    22  </span>			}
 <span id="L23" class="ln">    23  </span>
 <span id="L24" class="ln">    24  </span>			assert.Equal(t, expected, NewBuildInfo())

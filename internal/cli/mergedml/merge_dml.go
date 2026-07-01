@@ -12,12 +12,13 @@ import (
 	"strings"
 
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_merge_dml.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 const (
 	// ▼ カテゴリ単位のファイル連結ジョブの並列数チューニング定数（値の由来は README に記載）
@@ -46,6 +47,7 @@ type FileSystem interface {
 // osFileSystem は os パッケージを用いた FileSystem の実装です。
 type osFileSystem struct{}
 
+// Generator は、DML ファイルから sqlc 用の統合 SQL ファイルを生成するオブジェクトです。
 type Generator struct {
 	logger          logging.Logger
 	callerSkipCount int
@@ -244,7 +246,7 @@ func (g *Generator) buildCategorySQLFile(category, targetType string) error {
 		return err
 	}
 
-	// 連結結果はメモリ上に構築し、成功時のみ一括書き込みします（部分生成物を残さない）。
+	// 成功時のみ一括書き込みし、途中失敗でも部分生成物を残しません。
 	var buf bytes.Buffer
 	for _, fpath := range files {
 		// 由来が分かるように見出しを入れる（sqlcはSQLコメントなら無害）
@@ -284,7 +286,7 @@ func (g *Generator) ensureUnderDir(path string) error {
 	}
 	rel = filepath.Clean(rel)
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return fmt.Errorf("path is outside of baseDir: path=%s base=%s", absPath, absBase)
+		return xerrors.New(fmt.Sprintf("path is outside of baseDir: path=%s base=%s", absPath, absBase))
 	}
 	return nil
 }
@@ -301,14 +303,7 @@ func resolveConcurrencyConst() int {
 
 // resolveConcurrency は、CPU 数を [minSQLCConcurrency, maxSQLCConcurrency] にクランプして同時実行数を返します。
 func resolveConcurrency(numCPU int) int {
-	n := numCPU
-	if n > maxSQLCConcurrency {
-		n = maxSQLCConcurrency
-	}
-	if n < minSQLCConcurrency {
-		n = minSQLCConcurrency
-	}
-	return n
+	return max(min(numCPU, maxSQLCConcurrency), minSQLCConcurrency)
 }
 
 func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {

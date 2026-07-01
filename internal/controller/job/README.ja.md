@@ -17,28 +17,6 @@ internal/controller/job は、CLI（Cobra）から起動される **バッチ/�
 
 配下の `usercount/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
 
-## 公開 API
-
-### Runner
-
-ジョブの登録と実行を管理します。
-
-|関数 / メソッド|説明|
-|---|---|
-|`NewRunner(jobs []job.Job)`|Job 一覧から Runner を生成（重複名はエラー）|
-|`Run(ctx, jobName, args)`|指定されたジョブを実行|
-|`Names()`|登録済みジョブ名の一覧を返す|
-
-### State
-
-ジョブの実行状態をスレッドセーフに保持します。
-
-|関数 / メソッド|説明|
-|---|---|
-|`NewState()`|新しい State を生成|
-|`Set(name, args, done)`|ジョブの状態を設定|
-|`Snapshot()`|現在の状態のスナップショットを取得|
-
 ## アーキテクチャ
 
 ### ジョブ実行時の処理フロー
@@ -231,7 +209,7 @@ flowchart TB
 
 - **Controller → Usecase のみ**（＋生成物`gen`、DTO/Presenter、`apperror`/`errorresponse`）。  
 - **Infra / Domain を直接呼ばない**。  
-- DI（`fx`）で `handler` は `usecase.Service` を受け取る。
+- DI（`fx`）で各 Job は必要な Usecase インターフェース（例：`user.Usecase`）を受け取る。
 
 ## やっていいこと / いけないこと(まとめ)
 
@@ -399,7 +377,10 @@ flowchart TB
 func JobModule() fx.Option {
     return fx.Module("job",
         provideJobs(
-            usercount.New,
+            // ここにジョブのコンストラクタを追加します。
+            idempotencygc.New,
+            outboxgc.New,
+            usercount.New, // サンプル（setup-remove-sample-api で削除）
         ),
         fx.Provide(
             dijob.ProvideRunner,
@@ -423,14 +404,14 @@ Job は **Usecase / Logger / Tracer を DI で受け取る**構造にします�
 
 ```go
 func New(
+    logging logging.Logger,
     tf observability.TracerFactory,
     usecase user.Usecase,
-    logging logging.Logger,
 ) job.Job {
     return &jobImpl{
+        logging: logging,
         tracer:  tf.Controller(),
         usecase: usecase,
-        logging: logging,
     }
 }
 ```
@@ -482,24 +463,24 @@ Controllerは以下のようにobservability.LayerTracerを依存として受け
 
 ```go
 type jobImpl struct {
-    tracer  observability.LayerTracer // o11y用のトレーサー
     logging logging.Logger // 結果ログ出力用
-    usecase hoge.Usecase // それぞれのジョブで使うユースケース
+    tracer  observability.LayerTracer // o11y用のトレーサー
+    usecase user.Usecase // それぞれのジョブで使うユースケース
 }
 ```
 
-BindHandler側では、`observability.NewControllerTracer`でController専用のトレーサーを生成します。
+`New` コンストラクタで、Controller 層のトレーサーを `tf.Controller()`（`TracerFactory` のメソッド）から取得します。Job に `BindHandler` はなく、トレーサーはここで結線します。
 
 ```go
 func New(
+    logging logging.Logger,
     tf observability.TracerFactory,
     usecase user.Usecase,
-    logging logging.Logger,
 ) job.Job {
     return &jobImpl{
+        logging: logging,
         tracer:  tf.Controller(),
         usecase: usecase,
-        logging: logging,
     }
 }
 ```
@@ -523,21 +504,21 @@ import (
 const jobName = "user-count"
 
 type jobImpl struct {
+    logging logging.Logger // 結果ログ出力用
     tracer  observability.LayerTracer // o11y用のトレーサー
     usecase user.Usecase // コントローラからはUsecaseを呼び出す
-    logging logging.Logger // 結果ログ出力用
 }
 
 // この関数をinternal/di/module/job.goで、[<package>.New,]として登録する。
 func New(
+    logging logging.Logger,
     tf observability.TracerFactory,
     usecase user.Usecase,
-    logging logging.Logger,
 ) job.Job {
     return &jobImpl{
+        logging: logging,
         tracer:  tf.Controller(),
         usecase: usecase,
-        logging: logging,
     }
 }
 

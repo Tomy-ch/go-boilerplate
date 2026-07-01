@@ -1,11 +1,11 @@
 package logging
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,14 +17,20 @@ func TestNewLogFields(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("非nilのLogFieldsを返す", func(t *testing.T) {
+		t.Run("生成したLogFieldBuilderが渡した設定を保持する", func(t *testing.T) {
 			t.Parallel()
+
 			cfg := config.MockConfigForTest(t)
 			obsCfg := config.NewObservabilityConfig(cfg)
 			osCfg := config.NewOperatingSystemConfig(cfg)
 
-			lf := NewLogFields(obsCfg, osCfg)
-			require.NotNil(t, lf)
+			builder := NewLogFields(obsCfg, osCfg)
+			require.NotNil(t, builder)
+
+			impl, ok := builder.(*logFieldBuilder)
+			require.True(t, ok)
+			assert.Same(t, obsCfg, impl.obsCfg)
+			assert.Same(t, osCfg, impl.osCfg)
 		})
 	})
 }
@@ -223,74 +229,6 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 	})
 }
 
-func TestLogFields_BuildSQLStartFields(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperatingSystemConfig(cfg)
-
-	lf := NewLogFields(obsCfg, osCfg)
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("trace/spanがある場合は基本項目に追加される", func(t *testing.T) {
-			t.Parallel()
-
-			s := SQLFieldsStartInput{
-				EventAt:      time.Now(),
-				Layer:        "layer",
-				PkgName:      "pkg",
-				FuncName:     "fn",
-				SpanName:     "sn",
-				TraceID:      "tx",
-				SpanID:       "sx",
-				ParentSpanID: "px",
-			}
-
-			expected := []*Field{
-				String(EventTypeKey, EventTypeStart),
-				Time(EventAtKey, s.EventAt),
-				String(EventTzKey, osCfg.TimeZone()),
-				String(LayerKey, s.Layer),
-				String(PackageKey, s.PkgName),
-				String(FunctionKey, s.FuncName),
-				String(SpanNameKey, s.SpanName),
-				String(TraceIDKey, s.TraceID),
-				String(SpanIDKey, s.SpanID),
-				String(ParentSpanIDKey, s.ParentSpanID),
-			}
-
-			assert.Equal(t, expected, lf.BuildSQLStartFields(s))
-		})
-
-		t.Run("trace/spanが無い場合は基本項目のみを返す", func(t *testing.T) {
-			t.Parallel()
-
-			s := SQLFieldsStartInput{
-				EventAt:  time.Now(),
-				Layer:    "layer",
-				PkgName:  "pkg",
-				FuncName: "fn",
-				SpanName: "sn",
-			}
-
-			expected := []*Field{
-				String(EventTypeKey, EventTypeStart),
-				Time(EventAtKey, s.EventAt),
-				String(EventTzKey, osCfg.TimeZone()),
-				String(LayerKey, s.Layer),
-				String(PackageKey, s.PkgName),
-				String(FunctionKey, s.FuncName),
-				String(SpanNameKey, s.SpanName),
-			}
-
-			assert.Equal(t, expected, lf.BuildSQLStartFields(s))
-		})
-	})
-}
-
 func TestLogFields_BuildSQLEndFields(t *testing.T) {
 	t.Parallel()
 
@@ -337,7 +275,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		t.Run("引数/エラー/trace有りの場合、内部エラーとtrace/spanが追加される", func(t *testing.T) {
 			t.Parallel()
 
-			err := fmt.Errorf("boom")
+			err := xerrors.New("boom")
 			args := []any{1, "a"}
 			s := SQLFieldsEndInput{
 				EventAt:  time.Now(),
@@ -372,77 +310,54 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 
 			assert.Equal(t, expected, lf.BuildSQLEndFields(s))
 		})
+
+		t.Run("引数のみ有りエラー無しの場合、引数件数のみ追加されエラーは追加されない", func(t *testing.T) {
+			t.Parallel()
+
+			s := SQLFieldsEndInput{
+				EventAt:  time.Now(),
+				Layer:    "layer",
+				PkgName:  "pkg",
+				FuncName: "fn",
+				SpanName: "sn",
+				Query:    q,
+				Latency:  12 * time.Millisecond,
+				Args:     []any{1, "a"},
+			}
+
+			keys := fieldKeys(lf.BuildSQLEndFields(s))
+			assert.Contains(t, keys, QueryArgsCountKey)
+			assert.NotContains(t, keys, InternalErrorKey)
+		})
+
+		t.Run("エラーのみ有り引数無しの場合、エラーのみ追加され引数件数は追加されない", func(t *testing.T) {
+			t.Parallel()
+
+			s := SQLFieldsEndInput{
+				EventAt:  time.Now(),
+				Layer:    "layer",
+				PkgName:  "pkg",
+				FuncName: "fn",
+				SpanName: "sn",
+				Query:    q,
+				Latency:  12 * time.Millisecond,
+				Err:      xerrors.New("boom"),
+			}
+
+			keys := fieldKeys(lf.BuildSQLEndFields(s))
+			assert.Contains(t, keys, InternalErrorKey)
+			assert.NotContains(t, keys, QueryArgsCountKey)
+		})
 	})
 }
 
-func TestLogFields_BuildObservabilityFields(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperatingSystemConfig(cfg)
-
-	lf := NewLogFields(obsCfg, osCfg)
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("trace/span無しの場合、基本項目とレイテンシのみを返す", func(t *testing.T) {
-			t.Parallel()
-
-			obs := ObservabilityFieldsInput{
-				EventAt:   time.Now(),
-				Layer:     "layer",
-				PkgName:   "pkg",
-				FuncName:  "fn",
-				EventType: "ev",
-				SpanName:  "sn",
-				Latency:   5 * time.Millisecond,
-			}
-
-			expected := []*Field{
-				String(EventTypeKey, obs.EventType),
-				Time(EventAtKey, obs.EventAt),
-				String(EventTzKey, osCfg.TimeZone()),
-				String(SpanNameKey, obs.SpanName),
-				String(LayerKey, obs.Layer),
-				String(PackageKey, obs.PkgName),
-				String(FunctionKey, obs.FuncName),
-				Float64(LatencyKey, float64(5)),
-			}
-
-			assert.Equal(t, expected, lf.BuildObservabilityFields(obs))
-		})
-
-		t.Run("trace/spanがある場合は基本項目に追加される", func(t *testing.T) {
-			t.Parallel()
-
-			obs := ObservabilityFieldsInput{
-				EventAt:   time.Now(),
-				EventType: "ev",
-				SpanName:  "sn",
-				Layer:     "layer",
-				PkgName:   "pkg",
-				FuncName:  "fn",
-				TraceID:   "tr",
-				SpanID:    "sp",
-			}
-
-			expected := []*Field{
-				String(EventTypeKey, obs.EventType),
-				Time(EventAtKey, obs.EventAt),
-				String(EventTzKey, osCfg.TimeZone()),
-				String(SpanNameKey, obs.SpanName),
-				String(LayerKey, obs.Layer),
-				String(PackageKey, obs.PkgName),
-				String(FunctionKey, obs.FuncName),
-				String(TraceIDKey, obs.TraceID),
-				String(SpanIDKey, obs.SpanID),
-			}
-
-			assert.Equal(t, expected, lf.BuildObservabilityFields(obs))
-		})
-	})
+// fieldKeys は、Field スライスからキー文字列の一覧を抽出するテストヘルパーです。
+func fieldKeys(fs []*Field) []string {
+	keys := make([]string, 0, len(fs))
+	for _, f := range fs {
+		keys = append(keys, f.key)
+	}
+	return keys
 }
 
 func Test_appendTraceSpanFields(t *testing.T) {
@@ -451,7 +366,8 @@ func Test_appendTraceSpanFields(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
-	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	require.True(t, ok)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -467,6 +383,20 @@ func Test_appendTraceSpanFields(t *testing.T) {
 			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "", "", "c")
+			assert.Equal(t, base, got)
+		})
+
+		t.Run("traceIDのみありspanID無しの場合、何も追加しない", func(t *testing.T) {
+			t.Parallel()
+			base := []*Field{String("a", "b")}
+			got := impl.appendTraceSpanFields(base, "t-1", "", "")
+			assert.Equal(t, base, got)
+		})
+
+		t.Run("spanIDのみありtraceID無しの場合、何も追加しない", func(t *testing.T) {
+			t.Parallel()
+			base := []*Field{String("a", "b")}
+			got := impl.appendTraceSpanFields(base, "", "s-1", "")
 			assert.Equal(t, base, got)
 		})
 
@@ -494,6 +424,24 @@ func Test_appendTraceSpanFields(t *testing.T) {
 			}
 			assert.Equal(t, expected, got)
 		})
+
+		t.Run("obsが無効な場合、traceID/spanIDが有効でも何も追加しない", func(t *testing.T) {
+			t.Parallel()
+
+			disabledCfg := config.MockConfigForTest(t)
+			disabledObsCfg := config.NewObservabilityConfig(disabledCfg)
+			disabledObsCfg.SetObservabilityTracesExporter(t, "")
+			disabledObsCfg.SetObservabilityMetricsExporter(t, "")
+			disabledObsCfg.SetObservabilityLogsExporter(t, "")
+			require.False(t, disabledObsCfg.Enabled())
+
+			disabledImpl, ok := NewLogFields(disabledObsCfg, osCfg).(*logFieldBuilder)
+			require.True(t, ok)
+
+			base := []*Field{String("a", "b")}
+			got := disabledImpl.appendTraceSpanFields(base, "t-1", "s-1", "p-1")
+			assert.Equal(t, base, got)
+		})
 	})
 }
 
@@ -503,7 +451,8 @@ func Test_buildCompactQuery(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
-	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	require.True(t, ok)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -517,7 +466,7 @@ func Test_buildCompactQuery(t *testing.T) {
 
 		t.Run("空文字は空を返す", func(t *testing.T) {
 			t.Parallel()
-			require.Empty(t, impl.buildCompactQuery(""))
+			assert.Empty(t, impl.buildCompactQuery(""))
 		})
 	})
 }

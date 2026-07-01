@@ -61,15 +61,15 @@
 <span id="L4" class="ln">     4  </span>	&#34;testing&#34;
 <span id="L5" class="ln">     5  </span>
 <span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L7" class="ln">     7  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L8" class="ln">     8  </span>)
-<span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span>func TestForceJSONMiddleware(t *testing.T) {
-<span id="L11" class="ln">    11  </span>	t.Parallel()
-<span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span>	out := ForceJSONMiddleware()
-<span id="L14" class="ln">    14  </span>	assert.Equal(t, forceJSONPriority, out.Middleware.Priority)
-<span id="L15" class="ln">    15  </span>	require.NotNil(t, out.Middleware.Middleware)
+<span id="L7" class="ln">     7  </span>)
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>func TestForceJSONMiddleware(t *testing.T) {
+<span id="L10" class="ln">    10  </span>	t.Parallel()
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	out := ForceJSONMiddleware()
+<span id="L13" class="ln">    13  </span>	assert.Equal(t, forceJSONPriority, out.Middleware.Priority)
+<span id="L14" class="ln">    14  </span>	assert.NotNil(t, out.Middleware.Middleware)
+<span id="L15" class="ln">    15  </span>	assert.Equal(t, &#34;forcejson&#34;, out.Middleware.Name)
 <span id="L16" class="ln">    16  </span>}
 <span id="L17" class="ln">    17  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/di/server/extension/outbound/force_json_di_test.go.html?m=text">View as plain text</a></p>

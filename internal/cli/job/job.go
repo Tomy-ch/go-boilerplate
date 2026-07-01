@@ -4,26 +4,28 @@ package job
 import (
 	"context"
 	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
-const stopTimeout = 30 * time.Second
-
-// StartFunc は、ジョブの開始関数の型です（DI から取得した開始関数を注入します）。
+// StartFunc は、ジョブを起動してエラーチャネルを返す関数の型です。
 type StartFunc func(ctx context.Context, name string, args []string) <-chan error
 
-// StopFunc は、ジョブの停止関数の型です（DI から取得した停止関数を注入します）。
+// StopFunc は、ジョブをグレースフルに停止する関数の型です。
 type StopFunc func(ctx context.Context) error
 
-// RunJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。
+// RunJobWith は、provide が返す開始・停止関数でジョブを実行します。
+// grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。
 func RunJobWith(
 	ctx context.Context,
 	name string,
 	args []string,
 	timeout time.Duration,
+	grace time.Duration,
 	provide func() (StartFunc, StopFunc),
 ) error {
 	start, stop := provide()
-	return runJob(ctx, name, args, timeout, start, stop)
+	return runJob(ctx, name, args, timeout, grace, start, stop)
 }
 
 // runJob は、ジョブ実行のオーケストレーション（タイムアウト分岐と停止処理）を行います。
@@ -32,6 +34,7 @@ func runJob(
 	name string,
 	args []string,
 	timeout time.Duration,
+	grace time.Duration,
 	start StartFunc,
 	stop StopFunc,
 ) error {
@@ -39,8 +42,7 @@ func runJob(
 
 	if timeout <= 0 {
 		err := <-done
-		gracefulStop(ctx, stop)
-		return err
+		return xerrors.Join(err, gracefulStop(ctx, grace, stop))
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -48,19 +50,20 @@ func runJob(
 
 	select {
 	case err := <-done:
-		gracefulStop(ctx, stop)
-		return err
+		return xerrors.Join(err, gracefulStop(ctx, grace, stop))
 	case <-waitCtx.Done():
 		// waitCtx は ctx の子。タイムアウト(DeadlineExceeded)・親キャンセル(Canceled)の両方で発火する。
 		// 停止は期限切れの waitCtx ではなく専用 context を作り直して猶予を与える。
-		gracefulStop(ctx, stop)
-		return waitCtx.Err()
+		return xerrors.Join(waitCtx.Err(), gracefulStop(ctx, grace, stop))
 	}
 }
 
-// gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop）を実行します。
-func gracefulStop(ctx context.Context, stop StopFunc) {
-	stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
+// gracefulStop は、親キャンセルに左右されない grace の猶予を停止処理（app.Stop）に与え、
+// その結果を返します。SIGINT 伝播や親 ctx タイムアウト後でも OTel flush / DB pool close に
+// grace の全猶予が保証されます。停止失敗を呼び出し元のエラーチェーンに含め exit code へ
+// 反映できるよう、エラーは破棄せず返します。
+func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) error {
+	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
 	defer cancel()
-	_ = stop(stopCtx)
+	return stop(stopCtx)
 }

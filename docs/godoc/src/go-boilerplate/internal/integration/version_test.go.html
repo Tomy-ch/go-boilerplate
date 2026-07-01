@@ -94,7 +94,7 @@
 <span id="L37" class="ln">    37  </span>
 <span id="L38" class="ln">    38  </span>			version.BindHandler(e, tf, loc, bi, appCfg)
 <span id="L39" class="ln">    39  </span>			actual := StartServer(t, e).DoJSON(http.MethodGet, &#34;/version&#34;, nil, nil)
-<span id="L40" class="ln">    40  </span>			AssertJSONResponse(t, gen.VersionResponse{}, actual)
+<span id="L40" class="ln">    40  </span>			AssertJSONResponseType[gen.VersionResponse](t, actual)
 <span id="L41" class="ln">    41  </span>		})
 <span id="L42" class="ln">    42  </span>	})
 <span id="L43" class="ln">    43  </span>}

@@ -17,6 +17,8 @@ include .makefiles/database/gen.mk
 # Application関連
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk
+include .makefiles/app/worker.mk
+include .makefiles/app/env.mk
 # GitHub関連
 include .makefiles/github/operation/release-branch.mk
 include .makefiles/github/operation/release-tag.mk
@@ -24,6 +26,7 @@ include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
 include .makefiles/github/lint.mk
+include .makefiles/github/commitlint.mk
 include .makefiles/github/pin.mk
 # Go言語関連
 include .makefiles/go/fmt.mk

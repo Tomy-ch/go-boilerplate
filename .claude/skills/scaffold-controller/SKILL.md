@@ -143,21 +143,10 @@ Order:
 Implementation file conventions (per `internal/controller/handler/README.md` reference snippet — README is canonical):
 
 - `package <handler-package>` (lowercase)
-- `type server struct { tracer observability.LayerTracer; <usecase-deps...> }` (struct name `server` per README convention)
-- **Constructor name**: `BindHandler` (NOT `New`):
-
-  ```go
-  func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc <pkg>.Usecase) {
-      gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
-          tracer: tf.Controller(),
-          uc:     uc,
-      }, nil))
-  }
-  ```
-
+- `server` struct + `BindHandler(e, tf, uc)` constructor + `gen.RegisterHandlers(e, gen.NewStrictHandler(&server{...}, nil))` registration — follow the exact shape in the `internal/controller/handler/README.md` reference snippet (canonical; not restated here). Constructor name is `BindHandler`, NOT `New`.
 - Each method:
   - Match the generated `ServerInterface` signature exactly
-  - Start with `ctx, endSpan := s.tracer.Start(ctx); defer endSpan()` (tracer span)
+  - Open the tracer span at the top (`s.tracer.Start(ctx)` / `defer endSpan()`), per the README reference snippet
   - Extract request from generated request type
   - Call mapped usecase method (resolved in Step 2)
   - Convert DTO → generated response type (1:1 field map per README reference snippet; complex conversions left as TODO)

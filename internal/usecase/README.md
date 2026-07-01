@@ -302,7 +302,7 @@ These belong to:
   - Command: create/update/delete (start Tx and ensure Domain invariants).
   - Query (QS): read optimization. Returning DTO directly is allowed.
   - Centralize protocol-independent policies such as Pagination / Validation.
-    - Example: `paging.NewPagingFrom1Based(page, perPage)`
+    - Example: `paging.NewPageFrom1Based(page, perPage)`
 - Wrap errors using `apperror.ErrXXX` so Controller can map them to HTTP responses.
 - DI (fx) injects dependencies such as Repository interfaces, TxManager, and Config.
 
@@ -310,6 +310,7 @@ These belong to:
 
 - Usecase should rely mostly on **standard library** (`context`, `time`, `errors`, `fmt` etc.).
 - ORM / SQL execution / HTTP clients / Echo / I/O frameworks must not be used.
+- Cross-cutting exception: `internal/logging.Logger` may be injected directly (constructor DI) without a dedicated boundary, like `internal/apperror`. It is a pure, mockable interface, and only background workers that need failure logging (e.g. the outbox relay's dead-message warning) use it. Prefer `metrics` / boundaries for everything else.
 - DTOs and types should remain inside the project. sqlc types, driver types, and OpenAPI generated types should be isolated to other layers.
 - Tests should use minimal tools (`testify`, `mock`). Mocks are injected via interfaces.
 - If absolutely necessary, create a thin wrapper under `[pkg/](../../pkg/)`.
@@ -368,7 +369,7 @@ still matches the sentinel.
 
 ### Pagination
 
-- Use `NewPagingFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
+- Use `NewPageFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
 - If the page number exceeds the allowed maximum, return `apperror.ErrInvalidArgument` (the offset is clamped on int32 conversion).
 
 ## Callable / Non-callable Layers
@@ -583,8 +584,15 @@ Observability layer hides SDK details.
 
 ## Implementation Example
 
+> The example below uses a sample `<aggregate>` (`user`, with a related `prefecture`)
+> **only to illustrate the permanent patterns** — span start/end via the tracer,
+> `clock.Now()` for time, `txm.Do` for the transaction boundary, and Domain → DTO
+> conversion. These sample aggregates are removed by `make setup-remove-sample-api`,
+> so read `user` / `prefecture` as stand-ins for your own aggregate; the load-bearing
+> content is the patterns, not the concrete names.
+
 ```go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 // Unique package name
 package user
 
@@ -629,7 +637,7 @@ type usecase struct {
 // Usecase defines the use cases related to users.
 type Usecase interface {
     // ListUsersByKeyword retrieves a list of users.
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
 
     // CreateUser creates a user.
     CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
@@ -659,7 +667,7 @@ func New(
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
     // Start and end the span
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()

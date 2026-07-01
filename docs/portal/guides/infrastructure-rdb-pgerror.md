@@ -115,14 +115,27 @@ This determination can be used for recovery processing such as:
 - circuit breaker
 - failover
 
+## Retryable / Lock Predicates
+
+In addition to normalization, `pgerror` exposes predicates used by the driver's retry / metrics paths. They match on the **raw** `pgconn.PgError` SQLSTATE (not the normalized sentinel), so unrelated `Unavailable` errors (e.g. connection loss) are not swept into retry.
+
+```go
+func IsRetryableTxError(err error) bool // 40001 serialization_failure / 40P01 deadlock_detected
+func IsLockNotAvailable(err error) bool // 55P03 lock_not_available (lock_timeout expiry)
+```
+
+`IsRetryableTxError` is what `driver.NewTransactionManager` uses to decide whether to retry the whole transaction.
+
 ## Error Wrapping
 
-pgerror wraps errors using `xerrors.Wrap` in the form of `apperror + original error message` while preserving the original DB error.
+`NormalizeError` combines the `apperror` sentinel with the original DB error via `xerrors.Join`, preserving the original error in the chain.
 
-This allows retaining both:
+This allows `xerrors.Is` to match both:
 
-- application error classification
-- original DB error
+- application error classification (e.g. `apperror.ErrConflict`)
+- the original DB error (e.g. the underlying `pgconn.PgError` / `pgx.ErrNoRows`)
+
+(`NormalizeExecResult`'s 0-rows case is the exception: it uses `xerrors.Wrap(apperror.ErrNotFound, ...)` since there is no underlying DB error to join.)
 
 ## Necessity
 

@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,10 +19,10 @@ func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	out := provideErrorHandlerServeConfig(log, lf, obsCfg)
-	require.NotNil(t, out)
-	require.NotNil(t, out.SrvCfg)
+	require.NotNil(t, out.SrvCfg.Config)
+	assert.Equal(t, "errorhandler", out.SrvCfg.Name)
 
 	e := &echo.Echo{}
-	out.SrvCfg(e)
-	require.NotNil(t, e.HTTPErrorHandler)
+	out.SrvCfg.Config(e)
+	assert.NotNil(t, e.HTTPErrorHandler)
 }

@@ -1,0 +1,220 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>outbox - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package outbox
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/cli/outbox&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package outbox は、outbox relay の起動・グレースフルシャットダウンと replay 実行のコアロジックを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#RunRelay">func RunRelay(ctx context.Context, shutdownTimeout time.Duration, startApp func(context.Context) error, stopApp func(context.Context) error) error</a></dd>
+			
+				
+				<dd><a href="#RunReplayWith">func RunReplayWith(ctx context.Context, rawMessageID string, replay ReplayFunc) (int64, error)</a></dd>
+			
+			
+				
+				<dd><a href="#ReplayFunc">type ReplayFunc</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/cli/outbox/relay.go.html">relay.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/cli/outbox/replay.go.html">replay.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="RunRelay">func <a href="../../../../src/go-boilerplate/internal/cli/outbox/relay.go.html?s=520:673#L2">RunRelay</a>
+				<a class="permalink" href="#RunRelay">¶</a>
+				
+				
+			</h2>
+			<pre>func RunRelay(
+    ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>,
+    shutdownTimeout <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>,
+    startApp func(<a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a>,
+    stopApp func(<a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a>,
+) <a href="../../../../builtin/#error">error</a></pre>
+			<p>RunRelay は、relay アプリを起動し、ctx のキャンセル（終了シグナル）を受けてから
+グレースフルシャットダウンを行います。停止用 context のタイムアウトは「停止開始時点」から
+計測することで稼働時間に消費されないようにします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RunReplayWith">func <a href="../../../../src/go-boilerplate/internal/cli/outbox/replay.go.html?s=492:586#L4">RunReplayWith</a>
+				<a class="permalink" href="#RunReplayWith">¶</a>
+				
+				
+			</h2>
+			<pre>func RunReplayWith(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, rawMessageID <a href="../../../../builtin/#string">string</a>, replay <a href="#ReplayFunc">ReplayFunc</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>RunReplayWith は、rawMessageID を解釈して replay を実行し、戻した件数を返します。
+rawMessageID が空なら全 dead 行、指定時は当該 message_id のみを対象とします。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="ReplayFunc">type <a href="../../../../src/go-boilerplate/internal/cli/outbox/replay.go.html?s=200:278#L1">ReplayFunc</a>
+				<a class="permalink" href="#ReplayFunc">¶</a>
+				
+				
+			</h2>
+			<p>ReplayFunc は、messageID（任意）を対象に dead→pending 復帰を実行し戻した件数を返す関数の型です。
+
+			</p><pre>type ReplayFunc func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, messageID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

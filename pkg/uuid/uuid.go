@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 )
 
-//nolint:recvcheck // safe: UUID is immutable (value object); pointer receiver is required only for Scan to implement sql.Scanner
-type UUID struct{ b [16]byte }
+// UUID は、128 ビットの一意識別子を表す値オブジェクトです。
+type UUID struct{ b [16]byte } //nolint:recvcheck // immutable VO; pointer receiver only for Scan (sql.Scanner)
 
-// New は、uuidを生成します。生成に失敗した場合はエラーを返します。
+// New は、UUIDv7（時刻単調増加）を生成します。生成に失敗した場合はエラーを返します。
 func New() (UUID, error) {
 	g, err := uuid.NewV7()
 	if err != nil {

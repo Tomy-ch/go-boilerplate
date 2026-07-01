@@ -64,56 +64,69 @@
 <span id="L7" class="ln">     7  </span>	&#34;testing&#34;
 <span id="L8" class="ln">     8  </span>
 <span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/controller/httpstack/basicauth&#34;
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>	&#34;github.com/labstack/echo/v4&#34;
-<span id="L13" class="ln">    13  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L14" class="ln">    14  </span>)
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>func TestBindHandler_BasicAuth(t *testing.T) {
-<span id="L17" class="ln">    17  </span>	t.Parallel()
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>	cfg := config.MockConfigForTest(t)
-<span id="L20" class="ln">    20  </span>	mtc := config.NewMetricsConfig(cfg)
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>	exec := func(t *testing.T, withAuth bool, user, pass string) int {
-<span id="L23" class="ln">    23  </span>		t.Helper()
-<span id="L24" class="ln">    24  </span>		e := echo.New()
-<span id="L25" class="ln">    25  </span>		BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span>		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/metrics&#34;, nil)
-<span id="L28" class="ln">    28  </span>		if withAuth {
-<span id="L29" class="ln">    29  </span>			req.SetBasicAuth(user, pass)
-<span id="L30" class="ln">    30  </span>		}
-<span id="L31" class="ln">    31  </span>		rec := httptest.NewRecorder()
-<span id="L32" class="ln">    32  </span>		e.ServeHTTP(rec, req)
-<span id="L33" class="ln">    33  </span>		return rec.Code
-<span id="L34" class="ln">    34  </span>	}
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L37" class="ln">    37  </span>		t.Parallel()
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span>		t.Run(&#34;正しい認証情報で200を返す&#34;, func(t *testing.T) {
-<span id="L40" class="ln">    40  </span>			t.Parallel()
-<span id="L41" class="ln">    41  </span>			assert.Equal(t, http.StatusOK, exec(t, true, mtc.UserName(), mtc.Password()))
-<span id="L42" class="ln">    42  </span>		})
-<span id="L43" class="ln">    43  </span>	})
-<span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L46" class="ln">    46  </span>		t.Parallel()
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span>		t.Run(&#34;認証情報なしで401を返す&#34;, func(t *testing.T) {
-<span id="L49" class="ln">    49  </span>			t.Parallel()
-<span id="L50" class="ln">    50  </span>			assert.Equal(t, http.StatusUnauthorized, exec(t, false, &#34;&#34;, &#34;&#34;))
-<span id="L51" class="ln">    51  </span>		})
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>		t.Run(&#34;不正な認証情報で401を返す&#34;, func(t *testing.T) {
-<span id="L54" class="ln">    54  </span>			t.Parallel()
-<span id="L55" class="ln">    55  </span>			assert.Equal(t, http.StatusUnauthorized, exec(t, true, &#34;wrong-user&#34;, &#34;wrong-pass&#34;))
-<span id="L56" class="ln">    56  </span>		})
-<span id="L57" class="ln">    57  </span>	})
-<span id="L58" class="ln">    58  </span>}
-<span id="L59" class="ln">    59  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/controller/handler/testkit/testassert&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/controller/httpstack/basicauth&#34;
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L14" class="ln">    14  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L15" class="ln">    15  </span>)
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>func TestBindHandler(t *testing.T) {
+<span id="L18" class="ln">    18  </span>	t.Parallel()
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>	cfg := config.MockConfigForTest(t)
+<span id="L21" class="ln">    21  </span>	mtc := config.NewMetricsConfig(cfg)
+<span id="L22" class="ln">    22  </span>	e := echo.New()
+<span id="L23" class="ln">    23  </span>	BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	testassert.AssertEchoRouterPath(t, &#34;/metrics&#34;, e.Routes())
+<span id="L26" class="ln">    26  </span>	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
+<span id="L27" class="ln">    27  </span>}
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>func TestBindHandler_BasicAuth(t *testing.T) {
+<span id="L30" class="ln">    30  </span>	t.Parallel()
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span>	cfg := config.MockConfigForTest(t)
+<span id="L33" class="ln">    33  </span>	mtc := config.NewMetricsConfig(cfg)
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>	exec := func(t *testing.T, withAuth bool, user, pass string) int {
+<span id="L36" class="ln">    36  </span>		t.Helper()
+<span id="L37" class="ln">    37  </span>		e := echo.New()
+<span id="L38" class="ln">    38  </span>		BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/metrics&#34;, nil)
+<span id="L41" class="ln">    41  </span>		if withAuth {
+<span id="L42" class="ln">    42  </span>			req.SetBasicAuth(user, pass)
+<span id="L43" class="ln">    43  </span>		}
+<span id="L44" class="ln">    44  </span>		rec := httptest.NewRecorder()
+<span id="L45" class="ln">    45  </span>		e.ServeHTTP(rec, req)
+<span id="L46" class="ln">    46  </span>		return rec.Code
+<span id="L47" class="ln">    47  </span>	}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L50" class="ln">    50  </span>		t.Parallel()
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>		t.Run(&#34;正しい認証情報で200を返す&#34;, func(t *testing.T) {
+<span id="L53" class="ln">    53  </span>			t.Parallel()
+<span id="L54" class="ln">    54  </span>			assert.Equal(t, http.StatusOK, exec(t, true, mtc.UserName(), mtc.Password()))
+<span id="L55" class="ln">    55  </span>		})
+<span id="L56" class="ln">    56  </span>	})
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L59" class="ln">    59  </span>		t.Parallel()
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>		t.Run(&#34;認証情報なしで401を返す&#34;, func(t *testing.T) {
+<span id="L62" class="ln">    62  </span>			t.Parallel()
+<span id="L63" class="ln">    63  </span>			assert.Equal(t, http.StatusUnauthorized, exec(t, false, &#34;&#34;, &#34;&#34;))
+<span id="L64" class="ln">    64  </span>		})
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>		t.Run(&#34;不正な認証情報で401を返す&#34;, func(t *testing.T) {
+<span id="L67" class="ln">    67  </span>			t.Parallel()
+<span id="L68" class="ln">    68  </span>			assert.Equal(t, http.StatusUnauthorized, exec(t, true, &#34;wrong-user&#34;, &#34;wrong-pass&#34;))
+<span id="L69" class="ln">    69  </span>		})
+<span id="L70" class="ln">    70  </span>	})
+<span id="L71" class="ln">    71  </span>}
+<span id="L72" class="ln">    72  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/handler/metrics/metrics_handler_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

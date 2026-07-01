@@ -34,13 +34,6 @@ flowchart TB
     AddReqID --> Write --> Log
 ```
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`New(e, log, lf, obsCfg)`|Echo インスタンスに統一エラーハンドラを設定（`e.HTTPErrorHandler`）|
-|`NewHTTPErrorHandler(logger, lf, obsCfg)`|すべてのエラー型を正規化する `echo.HTTPErrorHandler` を返す|
-
 ## エラー正規化
 
 ハンドラは以下の優先順位でエラーを処理します。
@@ -74,14 +67,14 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 
 ```json
 {
-  "Code": "BAD_REQUEST",
-  "Message": "...",
-  "Details": ["..."],
-  "RequestID": "..."
+  "code": "BAD_REQUEST",
+  "message": "...",
+  "details": ["..."],
+  "requestId": "..."
 }
 ```
 
-- `RequestID` は常に付与（`requestid.GetRequestIDFromResponse` で取得）
+- `requestId` は常に付与（`requestid.GetRequestIDFromResponse` で取得）
 - `Details` と `Internal` エラーは利用可能な場合に含まれる
 - `Internal` エラーとスタックトレースはログに出力されるが、**クライアントには返されない**
 

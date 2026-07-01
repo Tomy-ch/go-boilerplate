@@ -1,0 +1,359 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>idempotency - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package idempotency
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/idempotency&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package idempotency は、冪等性キーの永続化境界（Store）を定義します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+				
+				<dd><a href="#ClaimParams">type ClaimParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CompleteParams">type CompleteParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Record">type Record</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Status">type Status</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Store">type Store</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html">store.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrLockTimeout は、並行 claim のロック待ちタイムアウトを表します（usecase 側で 409 へマップ）。
+
+				</p><pre>var <span id="ErrLockTimeout">ErrLockTimeout</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;idempotency: claim lock timeout&#34;)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="ClaimParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html?s=1083:1233#L25">ClaimParams</a>
+				<a class="permalink" href="#ClaimParams">¶</a>
+				
+				
+			</h2>
+			<p>ClaimParams は、Claim の入力です。
+
+			</p><pre>type ClaimParams struct {
+<span id="ClaimParams.Scope"></span>    Scope       <a href="../../../../../builtin/#string">string</a>
+<span id="ClaimParams.Key"></span>    Key         <a href="../../../../../builtin/#string">string</a>
+<span id="ClaimParams.Method"></span>    Method      <a href="../../../../../builtin/#string">string</a>
+<span id="ClaimParams.Path"></span>    Path        <a href="../../../../../builtin/#string">string</a>
+<span id="ClaimParams.Fingerprint"></span>    Fingerprint []<a href="../../../../../builtin/#byte">byte</a>
+<span id="ClaimParams.ExpiresAt"></span>    ExpiresAt   <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CompleteParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html?s=1287:1412#L35">CompleteParams</a>
+				<a class="permalink" href="#CompleteParams">¶</a>
+				
+				
+			</h2>
+			<p>CompleteParams は、Complete の入力です。
+
+			</p><pre>type CompleteParams struct {
+<span id="CompleteParams.Scope"></span>    Scope           <a href="../../../../../builtin/#string">string</a>
+<span id="CompleteParams.Key"></span>    Key             <a href="../../../../../builtin/#string">string</a>
+<span id="CompleteParams.ResponseStatus"></span>    ResponseStatus  <a href="../../../../../builtin/#int32">int32</a>
+<span id="CompleteParams.ResponsePayload"></span>    ResponsePayload []<a href="../../../../../builtin/#byte">byte</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Record">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html?s=917:1035#L17">Record</a>
+				<a class="permalink" href="#Record">¶</a>
+				
+				
+			</h2>
+			<p>Record は、replay / 409 / 422 判定に必要な保存済み状態です。ResponseStatus / ResponsePayload は completed まで nil。
+
+			</p><pre>type Record struct {
+<span id="Record.Status"></span>    Status          <a href="#Status">Status</a>
+<span id="Record.ResponseStatus"></span>    ResponseStatus  *<a href="../../../../../builtin/#int32">int32</a>
+<span id="Record.ResponsePayload"></span>    ResponsePayload []<a href="../../../../../builtin/#byte">byte</a>
+<span id="Record.Fingerprint"></span>    Fingerprint     []<a href="../../../../../builtin/#byte">byte</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Status">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html?s=756:774#L14">Status</a>
+				<a class="permalink" href="#Status">¶</a>
+				
+				
+			</h2>
+			<p>Status は、冪等性キーの状態です。
+
+			</p><pre>type Status <a href="../../../../../builtin/#string">string</a></pre>
+
+			
+				
+				<pre>const (
+    <span class="comment">// StatusClaimed は、claim 済み（保存前）の状態です。</span>
+    <span id="StatusClaimed">StatusClaimed</span> <a href="#Status">Status</a> = &#34;claimed&#34;
+    <span class="comment">// StatusCompleted は、完了し結果を保存済みの状態です。</span>
+    <span id="StatusCompleted">StatusCompleted</span> <a href="#Status">Status</a> = &#34;completed&#34;
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Store">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html?s=1550:2487#L43">Store</a>
+				<a class="permalink" href="#Store">¶</a>
+				
+				
+			</h2>
+			<p>Store は、冪等性キーの永続化境界です。すべて scope 必須（id 単独 lookup を持たない＝越境防止）。
+
+			</p><pre>type Store interface {
+    <span class="comment">// Claim は、claimed 行を作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。</span>
+    <span class="comment">// ロック待ちタイムアウト時は ErrLockTimeout を返します。</span>
+    <span class="comment">// 業務トランザクション内から呼び出すこと（ロック待ちの上限がトランザクションスコープのため）。</span>
+    Claim(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p <a href="#ClaimParams">ClaimParams</a>) (claimed <a href="../../../../../builtin/#bool">bool</a>, err <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// Get は、(scope, key) の保存済み状態を返します（存在しなければ nil, nil）。</span>
+    Get(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, scope, key <a href="../../../../../builtin/#string">string</a>) (*<a href="#Record">Record</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// Complete は、claimed → completed へ遷移し結果を保存します。</span>
+    Complete(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p <a href="#CompleteParams">CompleteParams</a>) <a href="../../../../../builtin/#error">error</a>
+    <span class="comment">// DeleteExpired は、cutoff より古い行を limit 件まで削除し、削除件数を返します。</span>
+    DeleteExpired(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, cutoff <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>, limit <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

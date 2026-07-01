@@ -1,19 +1,23 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_driver.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package driver は、RDBの接続のための基盤的な機能を提供します。
 package driver
 
 import (
 	"context"
-	"fmt"
+	"strconv"
+	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// DatabaseDriver は、PostgreSQL 接続プールに対するトランザクション開始・疎通確認・統計取得を含む
+// DB アクセスの最上位インタフェースです。
 type DatabaseDriver interface {
 	DBTX
 
@@ -26,35 +30,72 @@ type DatabaseDriver interface {
 // dbDriver は pgxpool.Pool への薄いアダプタです。
 type dbDriver struct{ pool *pgxpool.Pool }
 
-// NewDB は Postgres のDB接続を初期化して返します。
+// NewDB は Postgres のDB接続を初期化して返します（クエリトレーサーなし）。
 func NewDB(
 	dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig,
 ) (DatabaseDriver, error) {
+	return newDB(dbCfg, osCfg, dbConnCfg, nil)
+}
+
+// NewTracedDB は、pgx クエリトレーサーを結線した Postgres のDB接続を初期化して返します。
+func NewTracedDB(
+	dbCfg *config.DatabaseConfig,
+	osCfg *config.OperatingSystemConfig,
+	dbConnCfg *config.DBConnectionConfig,
+	tracer pgx.QueryTracer,
+) (DatabaseDriver, error) {
+	return newDB(dbCfg, osCfg, dbConnCfg, tracer)
+}
+
+// newDB は、DB接続プールを初期化する共通処理です。tracer が非 nil の場合のみクエリ計装を結線します。
+func newDB(
+	dbCfg *config.DatabaseConfig,
+	osCfg *config.OperatingSystemConfig,
+	dbConnCfg *config.DBConnectionConfig,
+	tracer pgx.QueryTracer,
+) (DatabaseDriver, error) {
 	poolCfg, err := pgxpool.ParseConfig(DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse DB config: %w", err)
+		return nil, xerrors.Wrap(err, "failed to parse DB config")
 	}
 
-	// 接続プール設定
 	poolCfg.MaxConns = dbConnCfg.MaxConns()
 	poolCfg.MinConns = dbConnCfg.MinConns()
 	poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()
 	poolCfg.MaxConnIdleTime = dbConnCfg.MaxIdleTime()
+
+	// SQL 層の backstop。ctx を無視する runaway query / 長時間ロック待ちを Postgres 側で打ち切る。
+	applyDBTimeouts(poolCfg, dbCfg.StatementTimeout(), dbCfg.LockTimeout())
+
+	if tracer != nil {
+		poolCfg.ConnConfig.Tracer = tracer
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
 	defer cancel()
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create DB connection pool: %w", err)
+		return nil, xerrors.Wrap(err, "failed to create DB connection pool")
 	}
 
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("failed to ping DB: %w", err)
+		return nil, xerrors.Wrap(err, "failed to ping DB")
 	}
 
 	return &dbDriver{pool: pool}, nil
+}
+
+// applyDBTimeouts は、statement_timeout / lock_timeout を接続 RuntimeParams（ミリ秒）として設定します。
+// 0 以下は設定せず Postgres 既定（無制限）のままにします。全コネクションに適用されます。
+func applyDBTimeouts(poolCfg *pgxpool.Config, statementTimeout, lockTimeout time.Duration) {
+	if statementTimeout > 0 {
+		poolCfg.ConnConfig.RuntimeParams["statement_timeout"] = strconv.FormatInt(statementTimeout.Milliseconds(), 10)
+	}
+	if lockTimeout > 0 {
+		poolCfg.ConnConfig.RuntimeParams["lock_timeout"] = strconv.FormatInt(lockTimeout.Milliseconds(), 10)
+	}
 }
 
 func (d *dbDriver) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {

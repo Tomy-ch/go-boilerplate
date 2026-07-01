@@ -8,11 +8,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	SpanEventStart = "start"
-	SpanEventEnd   = "end"
-)
-
 // TraceContext は、トレースを識別するための情報を保持します。
 type TraceContext struct {
 	traceID      string
@@ -20,8 +15,7 @@ type TraceContext struct {
 	parentSpanID string
 }
 
-// ShouldLogWithSpan は、o11y モードと Span の有無から span 前提ログを出してよいか判定する公開ヘルパです。
-// span 前提ログを足す際の拡張ポイントとして提供しており、現状は本番未結線（利用例は README 参照）。
+// ShouldLogWithSpan は、o11y モードが有効かつ ctx にアクティブな Span が存在するとき true を返す。span 付きログを出す前提条件チェックに使う。
 func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool {
 	return obsCfg.Enabled() && trace.SpanFromContext(ctx).SpanContext().IsValid()
 }

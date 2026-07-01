@@ -4,13 +4,11 @@ English | [日本語](README.ja.md)
 
 Panic recovery middleware with structured logging.
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`Middleware(z, lf, appCfg)`|Return Echo middleware that catches panics and logs with request context and stack trace|
-
 Stack size: 4KB (production), 10KB (development).
+
+## Role
+
+An unhandled panic in any handler would otherwise crash the request (or the process) with no structured trace. Placing recovery at the outermost layer of the stack turns every panic into a logged, controlled `500` response in one place, so individual handlers never need their own defensive recovery and the failure is always observable.
 
 ## Coordination with errorhandler
 

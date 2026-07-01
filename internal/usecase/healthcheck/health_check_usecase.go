@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_health_check_usecase.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package healthcheck は、システムの健全性チェックに関するユースケースを提供します。
 package healthcheck
@@ -12,9 +12,13 @@ import (
 	"go-boilerplate/internal/usecase/healthcheck/query"
 )
 
+// ヘルスチェックの総合ステータスを表す値。
 const (
-	Degraded  = "degraded"
-	Ok        = "ok"
+	// Degraded は、一部の依存が不調だが稼働継続できる状態を表します。
+	Degraded = "degraded"
+	// Ok は、すべて正常な状態を表します。
+	Ok = "ok"
+	// Unhealthy は、サービスが正常に応答できない状態を表します。
 	Unhealthy = "unhealthy"
 )
 

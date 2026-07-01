@@ -25,8 +25,11 @@ func provideErrorHandlerServeConfig(
 	log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig,
 ) extension.ServeCfgOut {
 	return extension.ServeCfgOut{
-		SrvCfg: func(e *echo.Echo) {
-			errorhandler.New(e, log, lf, obsCfg)
+		SrvCfg: extension.SrvCfg{
+			Name: "errorhandler",
+			Config: func(e *echo.Echo) {
+				errorhandler.New(e, log, lf, obsCfg)
+			},
 		},
 	}
 }

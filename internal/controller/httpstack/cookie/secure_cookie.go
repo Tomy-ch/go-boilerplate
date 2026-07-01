@@ -2,11 +2,10 @@
 package cookie
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/pkg/ptr"
 )
 
 // SecurityCookie は Set-Cookie を正規化するための設定です。
@@ -52,7 +51,7 @@ func NewSecurityCookie(
 		applyToAll: true,
 
 		// HttpOnly は既定で常に付与する（拡張時はここを直接変更する）
-		forceHTTPOnly: ptr.To(true),
+		forceHTTPOnly: new(true),
 
 		// SameSite=None のとき Secure を要求（ブラウザ仕様に沿って安全側）
 		enforceSecureWhenSameSiteNone: true,
@@ -60,7 +59,6 @@ func NewSecurityCookie(
 		// 多くのケースで "/" 固定
 		forcePath: "/",
 
-		// 以下は拡張時にここを直接変更する
 		cookieNames:     map[string]struct{}{},
 		skipCookieNames: map[string]struct{}{},
 		forceMaxAge:     nil,
@@ -105,9 +103,9 @@ func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
 		setKVAttr(attrs, "domain", cfg.forceDomain)
 	}
 	if cfg.forceMaxAge != nil {
-		setKVAttr(attrs, "max-age", fmt.Sprintf("%d", *cfg.forceMaxAge))
+		setKVAttr(attrs, "max-age", strconv.Itoa(*cfg.forceMaxAge))
 	}
-	// expires は整合性が難しいので、この雛形では触らない（必要なら追加）
+	// expires は Secure 属性との整合性を保つのが困難なため、Max-Age と並行して操作しない。
 	cfg.applyNamePrefix(name, attrs)
 
 	return buildSetCookie(name, value, attrs)

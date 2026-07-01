@@ -1,7 +1,9 @@
+// Package sqlc は、LIKE/ILIKE クエリのパターン生成とエスケープのユーティリティを提供します。
 package sqlc
 
 import "strings"
 
+// DefaultLikeEscapeChar は、PostgreSQL の LIKE/ILIKE クエリで使用するデフォルトのエスケープ文字です。
 const DefaultLikeEscapeChar = "\\"
 
 // WrapPrefixLikePattern は、前方一致（prefix match）用に pattern を作ります。

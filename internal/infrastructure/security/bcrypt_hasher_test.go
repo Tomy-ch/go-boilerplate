@@ -11,85 +11,96 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewBcryptHasher(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("設定を渡すと非nilのHasherを返す", func(t *testing.T) {
+			t.Parallel()
+
+			hasher := NewBcryptHasher(config.NewSecurityConfig(config.MockConfigForTest(t)))
+
+			assert.NotNil(t, hasher)
+		})
+	})
+}
+
 func TestBcryptHasher_Hash(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	secCfg := config.NewSecurityConfig(cfg)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	hasher := NewBcryptHasher(secCfg)
+		t.Run("ハッシュ化に成功し平文とは異なる値を返す", func(t *testing.T) {
+			t.Parallel()
+			hasher := NewBcryptHasher(config.NewSecurityConfig(config.MockConfigForTest(t)))
 
-	hash, err := hasher.Hash("password")
+			hash, err := hasher.Hash("password")
+			require.NoError(t, err)
+			assert.NotEmpty(t, hash)
+			assert.NotEqual(t, "password", hash)
+		})
+	})
 
-	require.NoError(t, err)
-	require.NotEmpty(t, hash)
-	assert.NotEqual(t, "password", hash)
-}
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
-func TestBcryptHasher_Hash_Error(t *testing.T) {
-	t.Parallel()
+		t.Run("72バイト超のパスワードはErrInternalへ変換される", func(t *testing.T) {
+			t.Parallel()
+			hasher := NewBcryptHasher(config.NewSecurityConfig(config.MockConfigForTest(t)))
 
-	cfg := config.MockConfigForTest(t)
-	secCfg := config.NewSecurityConfig(cfg)
-
-	hasher := NewBcryptHasher(secCfg)
-
-	// bcrypt は72バイト超のパスワードを拒否する。生エラーは apperror.ErrInternal へ変換される。
-	hash, err := hasher.Hash(strings.Repeat("a", 73))
-
-	require.ErrorIs(t, err, apperror.ErrInternal)
-	require.ErrorContains(t, err, "bcrypt hash failed")
-	assert.Empty(t, hash)
-}
-
-func TestBcryptHasher_Compare_Error(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	secCfg := config.NewSecurityConfig(cfg)
-
-	hasher := NewBcryptHasher(secCfg)
-
-	// 不一致以外の失敗（不正なハッシュ）は apperror.ErrInternal へ変換されて返る。
-	ok, err := hasher.Compare("not-a-bcrypt-hash", "password")
-
-	require.ErrorIs(t, err, apperror.ErrInternal)
-	require.ErrorContains(t, err, "bcrypt compare failed")
-	assert.False(t, ok)
+			hash, err := hasher.Hash(strings.Repeat("a", 73))
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			require.ErrorContains(t, err, "bcrypt hash failed")
+			assert.Empty(t, hash)
+		})
+	})
 }
 
 func TestBcryptHasher_Compare(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	secCfg := config.NewSecurityConfig(cfg)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	hasher := NewBcryptHasher(secCfg)
+		t.Run("ハッシュとパスワードが一致する場合trueを返す", func(t *testing.T) {
+			t.Parallel()
+			hasher := NewBcryptHasher(config.NewSecurityConfig(config.MockConfigForTest(t)))
 
-	password := "password"
+			hash, err := hasher.Hash("password")
+			require.NoError(t, err)
 
-	hash, err := hasher.Hash(password)
-	require.NoError(t, err)
+			ok, err := hasher.Compare(hash, "password")
+			require.NoError(t, err)
+			assert.True(t, ok)
+		})
+	})
 
-	ok, err := hasher.Compare(hash, password)
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
-	require.NoError(t, err)
-	assert.True(t, ok)
-}
+		t.Run("パスワードが不一致の場合falseとnilを返す", func(t *testing.T) {
+			t.Parallel()
+			hasher := NewBcryptHasher(config.NewSecurityConfig(config.MockConfigForTest(t)))
 
-func TestBcryptHasher_Compare_Mismatch(t *testing.T) {
-	t.Parallel()
+			hash, err := hasher.Hash("password")
+			require.NoError(t, err)
 
-	cfg := config.MockConfigForTest(t)
-	secCfg := config.NewSecurityConfig(cfg)
+			ok, err := hasher.Compare(hash, "wrong-password")
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
 
-	hasher := NewBcryptHasher(secCfg)
+		t.Run("不正なハッシュ形式の場合ErrInternalへ変換される", func(t *testing.T) {
+			t.Parallel()
+			hasher := NewBcryptHasher(config.NewSecurityConfig(config.MockConfigForTest(t)))
 
-	hash, err := hasher.Hash("password")
-	require.NoError(t, err)
-
-	ok, err := hasher.Compare(hash, "wrong-password")
-
-	require.NoError(t, err)
-	assert.False(t, ok)
+			ok, err := hasher.Compare("not-a-bcrypt-hash", "password")
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			require.ErrorContains(t, err, "bcrypt compare failed")
+			assert.False(t, ok)
+		})
+	})
 }

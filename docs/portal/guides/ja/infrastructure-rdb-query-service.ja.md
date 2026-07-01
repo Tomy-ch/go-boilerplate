@@ -85,8 +85,8 @@ QueryService 実装は次の場所に配置します。
 
 ```txt
 query_service/
- └ user/
-     └ user_query_service.go
+ └ <aggregate>/
+     └ <aggregate>_query_service.go
 ```
 
 QueryService Interface は **Usecase 層**に配置します。
@@ -96,7 +96,7 @@ QueryService Interface は **Usecase 層**に配置します。
 例
 
 ```txt
-internal/usecase/user/query/user_query_service.go
+internal/usecase/<aggregate>/query/<aggregate>_query_service.go
 ```
 
 Infra はこの Interface を **実装するのみ**です。
@@ -122,7 +122,7 @@ QueryService は次を行いません。
 QueryService は **sqlc 生成クエリ**を利用します。
 
 ```go
-rows, err := db.SearchUsers(ctx, &gen.SearchUsersParams{...})
+rows, err := db.Search<Entities>(ctx, &gen.Search<Entities>Params{...})
 ```
 
 ## SQL分割設計
@@ -131,9 +131,9 @@ rows, err := db.SearchUsers(ctx, &gen.SearchUsersParams{...})
 
 例：
 
-- SearchUsers
-- SearchActiveUsers
-- SearchDeletedUsers
+- Search<Entities>
+- SearchActive<Entities>
+- SearchDeleted<Entities>
 
 理由：
 
@@ -192,10 +192,10 @@ sqlc が返す Row 構造体は **Infrastructure 専用型**です。
 そのため QueryService では、追加の変換処理をほとんど行わず、生成済みの型をそのまま Domain constructor または DTO に渡せます。
 
 ```go
-u, err := user.New(
+u, err := <aggregate>.New(
     row.ID,
-    row.FirstName,
-    row.LastName,
+    row.Field1,
+    row.Field2,
     ...
 )
 ```
@@ -212,7 +212,7 @@ u, err := user.New(
 そのため QueryService での明示的な UUID 変換は基本的に不要です。
 
 ```go
-row.Users.ID // そのまま利用可能
+row.<Entity>.ID // そのまま利用可能
 ```
 
 UUID の生成・比較・補助処理は `pkg/uuid` のラッパーを利用します。
@@ -224,25 +224,25 @@ nullable 値は sqlc override により pointer 型として扱われます。
 そのため QueryService では追加の変換処理は不要です。
 
 ```go
-row.Users.Building   // *string
-row.Users.DeletedAt  // *time.Time
+row.<Entity>.OptionalText  // *string
+row.<Entity>.DeletedAt     // *time.Time
 ```
 
-## LoggingDBProvider
+## DB アクセス（driver）
 
-QueryService は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
+QueryService は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
-db := gen.New(s.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, s.db))
 ```
 
-`loggingdb.DBProvider` は次を提供します。
+`driver.New(ctx, db)` は次を提供します。
 
-- SQL ログ出力
-- DB / Tx の透過切り替え
-- Contextベース接続取得
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-QueryService は **DB接続状態を意識しない設計**になります。
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため QueryService は **DB 接続状態を意識しない設計**になります。
 
 ## エラー正規化
 
@@ -304,21 +304,24 @@ Query Service は `fx.Provide` により登録され、Usecase に注入され�
 ```mermaid
 flowchart TB
     Module["InfrastructureModule"]
-    Provide["fx.Provide(userqs.New)"]
-    IF["query.UserQueryService (interface)"]
+    Provide["fx.Provide(<aggregate>qs.New)"]
+    IF["query.<Aggregate>QueryService (interface)"]
     Usecase["Usecase"]
 
     Module --> Provide --> IF --> Usecase
 ```
 
-### internal/di/module/infrastructure.go の役割
+### internal/di/module/persistence.go の役割
+
+永続化系のプロバイダ（repository / query_service / system_query）は `persistenceModule`
+に登録され、`InfrastructureModule()` がこれを合成します。
 
 ```go
-func InfrastructureModule() fx.Option {
-    return fx.Module("infrastructure",
+func persistenceModule() fx.Option {
+    return fx.Module("persistence",
         fx.Module("query_service",
             fx.Provide(
-                userqs.New,
+                <aggregate>qs.New,
             ),
         ),
     )
@@ -328,15 +331,15 @@ func InfrastructureModule() fx.Option {
 - `fx.Provide`
   - Query Service のコンストラクタを登録
 - 戻り値は **Usecase 層で定義された interface**
-  - 例: `query.UserQueryService`
+  - 例: `query.<Aggregate>QueryService`
 
 ### Query Service のコンストラクタ設計
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) query.UserQueryService {
+) query.<Aggregate>QueryService {
     return &service{
         db:     db,
         tracer: tf.Infra(),
@@ -354,8 +357,8 @@ func New(
 
 ```mermaid
 flowchart TB
-    Provide["fx.Provide(userqs.New)"]
-    IF["query.UserQueryService"]
+    Provide["fx.Provide(<aggregate>qs.New)"]
+    IF["query.<Aggregate>QueryService"]
     Usecase["Usecase (依存)"]
 
     Provide --> IF --> Usecase
@@ -365,7 +368,7 @@ Usecase 側では
 
 ```go
 type service struct {
-    qs query.UserQueryService
+    qs query.<Aggregate>QueryService
 }
 ```
 
@@ -390,7 +393,7 @@ type service struct {
 - Query Service の constructor は必ず `New` で定義すること
 - 戻り値は Usecase interface にすること
 - Query Service 内で依存を new しないこと
-- DI登録は `internal/di/module/infrastructure.go` に追加すること
+- DI登録は `internal/di/module/persistence.go`（`persistenceModule`）に追加すること
 
 ## QueryService 構造体
 
@@ -398,7 +401,7 @@ QueryService は次の依存を持ちます。
 
 ```go
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -407,9 +410,9 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) query.UserQueryService {
+) query.<Aggregate>QueryService {
     return &service{
         db:     db,
         tracer: tf.Infra(),
@@ -449,7 +452,7 @@ QueryService は **データ取得のみ**です。
 NG
 
 ```go
-if user.IsPremium() {
+if entity.IsPremium() {
 }
 ```
 
@@ -469,92 +472,89 @@ return rows
 // service は QueryService の実装です。
 // DBアクセスとトレーシングを責務として持ちます。
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New は QueryService のコンストラクタです。
 // 依存はすべて外から注入し、内部で new は行いません。
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) query.UserQueryService {
+) query.<Aggregate>QueryService {
     return &service{
         db:     db,
         tracer: tf.Infra(),
     }
 }
 
-// FindByFilter は、キーワードと削除状態に基づいてユーザーを検索します。
-// - キーワードは LIKE パターンに変換
-// - 削除状態は Go 側で分岐
-// - SQL は専用クエリを呼び分ける
-func (s *service) FindByFilter(ctx context.Context, filter *query.UserSearchFilter, limit, offset int32) (query.UserSearchResults, error) {
-    ctx, endSpan := s.tracer.Start(ctx)
-    defer endSpan()
-
-    // キーワードを LIKE 検索用のパターンに変換
-    tokens := make([]string, len(filter.Keywords))
-    for i, kw := range filter.Keywords {
+// buildLikeTokens は、キーワードを LIKE パターンへ変換します。空の場合は全件マッチの ["%"] を返します。
+func buildLikeTokens(keywords []string) []string {
+    if len(keywords) == 0 {
+        return []string{"%"}
+    }
+    tokens := make([]string, len(keywords))
+    for i, kw := range keywords {
         escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
         tokens[i] = sqlc.WrapContainsLikePattern(escaped)
     }
+    return tokens
+}
 
-    // loggingDB を利用して DB 接続を取得
-    db := gen.New(s.db.NewLoggingDB(ctx))
+// FindByFilter は、キーワードと削除状態に基づいて検索します。
+// - キーワードは LIKE パターンに変換
+// - 削除状態は Go 側で分岐
+// - SQL は専用クエリを呼び分ける
+func (s *service) FindByFilter(ctx context.Context, filter *query.<Aggregate>SearchFilter, limit, offset int32) (query.<Aggregate>SearchResults, error) {
+    ctx, endSpan := s.tracer.Start(ctx)
+    defer endSpan()
+
+    tokens := buildLikeTokens(filter.Keywords)
+    db := gen.New(driver.New(ctx, s.db))
 
     // 削除状態に応じてクエリを切り替える
     switch {
     case filter.Active == nil:
-        return fetchSearchAll(ctx, db, &gen.SearchUsersParams{
+        return fetchSearchAll(ctx, db, &gen.Search<Entities>Params{
             PatternsParam: tokens,
             LimitParam:    limit,
             OffsetParam:   offset,
         })
     case *filter.Active:
-        return fetchSearchActive(ctx, db, &gen.SearchActiveUsersParams{
-            PatternsParam: tokens,
-            LimitParam:    limit,
-            OffsetParam:   offset,
-        })
-    case !*filter.Active:
-        return fetchSearchDeleted(ctx, db, &gen.SearchDeletedUsersParams{
+        return fetchSearchActive(ctx, db, &gen.SearchActive<Entities>Params{
             PatternsParam: tokens,
             LimitParam:    limit,
             OffsetParam:   offset,
         })
     default:
-        panic("unreachable: invalid active")
+        return fetchSearchDeleted(ctx, db, &gen.SearchDeleted<Entities>Params{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
     }
 }
 
-// fetchSearchAll は、全ユーザーを検索するヘルパー関数です。
-// QueryService からロジックを分離し、責務を明確にします。
+// fetchSearchAll は、全件を検索するヘルパー関数です。
+// service メソッドからロジックを分離し、責務を明確にします。
 func fetchSearchAll(
     ctx context.Context,
     db *gen.Queries,
-    params *gen.SearchUsersParams,
-) (query.UserSearchResults, error) {
-    rows, err := db.SearchUsers(ctx, params)
+    params *gen.Search<Entities>Params,
+) (query.<Aggregate>SearchResults, error) {
+    rows, err := db.Search<Entities>(ctx, params)
     if err != nil {
         return nil, pgerror.NormalizeError(err)
     }
 
     // Row → DTO 変換
-    results := make(query.UserSearchResults, len(rows))
+    // sqlc override により nullable → pointer / UUID → pkg/uuid は変換済みのため、
+    // 各カラムを最小限の追加変換で DTO へ詰め替えます。
+    results := make(query.<Aggregate>SearchResults, len(rows))
     for i, row := range rows {
-        results[i] = &query.UserSearchResult{
-            FirstName:      row.FirstName,
-            LastName:       row.LastName,
-            Email:          row.Email,
-            Phone:          row.Phone,
-            PostalCode:     row.PostalCode,
-            PrefectureName: row.PrefectureName,
-            City:           row.City,
-            Street:         row.Street,
-            Building:       row.Building,
-            RegisteredAt:   row.CreatedAt,
-            DeletedAt:      row.DeletedAt,
+        results[i] = &query.<Aggregate>SearchResult{
+            // Field: row.Field,
+            // ...
         }
     }
 

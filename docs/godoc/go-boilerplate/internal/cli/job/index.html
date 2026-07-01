@@ -104,7 +104,7 @@
 			
 			
 				
-				<dd><a href="#RunJobWith">func RunJobWith(ctx context.Context, name string, args []string, timeout time.Duration, provide func() (StartFunc, StopFunc)) error</a></dd>
+				<dd><a href="#RunJobWith">func RunJobWith(ctx context.Context, name string, args []string, timeout time.Duration, grace time.Duration, provide func() (StartFunc, StopFunc)) error</a></dd>
 			
 			
 				
@@ -143,7 +143,7 @@
 		
 			
 			
-			<h2 id="RunJobWith">func <a href="../../../../src/go-boilerplate/internal/cli/job/job.go.html?s=732:871#L8">RunJobWith</a>
+			<h2 id="RunJobWith">func <a href="../../../../src/go-boilerplate/internal/cli/job/job.go.html?s=748:909#L9">RunJobWith</a>
 				<a class="permalink" href="#RunJobWith">¶</a>
 				
 				
@@ -153,9 +153,11 @@
     name <a href="../../../../builtin/#string">string</a>,
     args []<a href="../../../../builtin/#string">string</a>,
     timeout <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>,
+    grace <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>,
     provide func() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>),
 ) <a href="../../../../builtin/#error">error</a></pre>
-			<p>RunJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。
+			<p>RunJobWith は、provide が返す開始・停止関数でジョブを実行します。
+grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。
 
 			
 			
@@ -164,12 +166,12 @@
 		
 			
 			
-			</p><h2 id="StartFunc">type <a href="../../../../src/go-boilerplate/internal/cli/job/job.go.html?s=355:436#L2">StartFunc</a>
+			</p><h2 id="StartFunc">type <a href="../../../../src/go-boilerplate/internal/cli/job/job.go.html?s=327:408#L2">StartFunc</a>
 				<a class="permalink" href="#StartFunc">¶</a>
 				
 				
 			</h2>
-			<p>StartFunc は、ジョブの開始関数の型です（DI から取得した開始関数を注入します）。
+			<p>StartFunc は、ジョブを起動してエラーチャネルを返す関数の型です。
 
 			</p><pre>type StartFunc func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>, args []<a href="../../../../builtin/#string">string</a>) &lt;-chan <a href="../../../../builtin/#error">error</a></pre>
 
@@ -187,12 +189,12 @@
 		
 			
 			
-			<h2 id="StopFunc">type <a href="../../../../src/go-boilerplate/internal/cli/job/job.go.html?s=553:598#L5">StopFunc</a>
+			<h2 id="StopFunc">type <a href="../../../../src/go-boilerplate/internal/cli/job/job.go.html?s=495:540#L5">StopFunc</a>
 				<a class="permalink" href="#StopFunc">¶</a>
 				
 				
 			</h2>
-			<p>StopFunc は、ジョブの停止関数の型です（DI から取得した停止関数を注入します）。
+			<p>StopFunc は、ジョブをグレースフルに停止する関数の型です。
 
 			</p><pre>type StopFunc func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
 

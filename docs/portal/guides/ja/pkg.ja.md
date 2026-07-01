@@ -13,8 +13,8 @@
 
 1つの機能からしか使われないヘルパーは、その機能のパッケージ内に配置してください。
 
-外部 I/O を伴うパッケージ（例: `exec`, `fs`, `xerrors`）は共通の形を取ります。すなわち、機能を
-**インターフェース**として定義し、実依存を配線する具象実装（`OS{}` / `stdErrors{}` 等）を提供し、
+外部 I/O を伴うパッケージ（例: `exec`, `fs`）は共通の形を取ります。すなわち、機能を
+**インターフェース**として定義し、実依存を配線する具象実装（`OS{}` 等）を提供し、
 `//go:generate mockgen` ディレクティブを付与してテストでモック注入を可能にします。
 
 ### `pkg/` とアプリ全体の横断的関心の違い
@@ -35,24 +35,36 @@
 - ビジネスロジックを含めてはならない
 - `internal/` のパッケージに依存してはならない
 - infrastructure やフレームワーク固有のパッケージに依存してはならない
+- 他の `pkg/` パッケージに依存してはならない — 唯一の例外は `pkg/xerrors`（`.golangci-full.yaml` の depguard `independent_pkg` で強制）
 - 1パッケージ = 1責務を守ること
 
 ## パッケージ一覧
 
 |パッケージ|概要|ラップ対象|
 |---|---|---|
+|`backoff`|指数バックオフの待機時間算出（純粋・時刻/乱数非依存）|なし|
 |`datetime`|日時パース|標準ライブラリ `time`|
 |`envutil`|環境変数の一時上書き（テスト補助）|標準ライブラリ `os`|
 |`exec`|外部コマンド実行（インターフェース + モック）|標準ライブラリ `os/exec`|
-|`fnmeta`|関数 / パッケージ名の抽出|標準ライブラリ `runtime`|
+|`fnmeta`|関数 / パッケージ名の抽出|なし|
 |`fs`|ファイルシステム操作（インターフェース + モック）|標準ライブラリ `os`|
 |`ptr`|ポインタ操作|なし|
+|`retry`|有限リトライの行動層（backoff + full jitter, deadline-aware）|なし|
 |`safecast`|オーバーフロー検出付き型変換|なし|
 |`stringkit`|文字列長バリデーション|なし|
 |`uuid`|UUID 値オブジェクト|`github.com/google/uuid`|
 |`xerrors`|スタックトレース付きエラー|`github.com/cockroachdb/errors`|
 
 ## 各パッケージの詳細
+
+### backoff
+
+試行回数のみから指数バックオフの待機時間を算出する純関数で、時刻や乱数に依存しません（ジッタ付与は `retry` 側）。
+
+|シンボル|説明|
+|---|---|
+|`Exponential`（struct）|`Initial` / `Max` / `Multiplier` の設定|
+|`Duration(attempt)`|指定試行回数の基本待機時間を返す|
 
 ### datetime
 
@@ -119,6 +131,17 @@
 |`Copy[T]`|ポインタのコピー（nil安全）|
 |`Deref[T]`|ポインタをデリファレンスし、nil の場合はフォールバック値を返す|
 
+### retry
+
+失敗分類を消費する有限リトライの行動層です（`classify → bounded attempts → backoff + full jitter → deadline-aware`）。乱数（full jitter）を本パッケージに閉じることで `backoff` の純粋性を保ちます。
+
+|シンボル|説明|
+|---|---|
+|`Do`|分類関数がリトライ可能と判定する間、関数を有限リトライで実行|
+|`Full`|full jitter（`[0, d]` の一様乱数）|
+|`Policy`|`MaxAttempts` ＋ `Backoff`（`func(attempt int) time.Duration`）|
+|`Sleeper`（インターフェース）|`Sleep(ctx, d)` 待機抽象（`clock.Sleeper` が充足）|
+
 ### safecast
 
 オーバーフローを検出する安全な型変換を提供します。
@@ -142,6 +165,7 @@
 |`StrictInRange`|長さが開区間内か判定|
 |`LessThanMax`|長さが最大値未満か判定|
 |`GreaterThanMin`|長さが最小値超過か判定|
+|`ValidateInRange`|閉区間の長さ判定とエラーメッセージを同時に返す|
 
 各関数に対応する `ErrorMsg` 関数があり、バリデーションエラーメッセージを生成できます。
 
@@ -159,6 +183,10 @@ UUIDv7 を生成し、データベース連携（`sql.Scanner` / `driver.Valuer`
 |`String`|文字列表現を返す|
 |`IsNil`|ゼロ値か判定|
 |`Equal`|UUID の比較|
+|`EqualPtr`|`*UUID` との比較（nil 安全）|
+|`Bytes`|生の `[16]byte` を返す|
+|`ToPtr`|値へのポインタを返す|
+|`ToPrimitive` / `FromPrimitive`|`github.com/google/uuid` との相互変換（sqlc 連携など）|
 |`Scan` / `Value`|DB 連携用インターフェース実装|
 
 ### xerrors
@@ -171,6 +199,7 @@ UUIDv7 を生成し、データベース連携（`sql.Scanner` / `driver.Valuer`
 |`Wrap`|既存エラーをラップ|
 |`Is`|エラーの同一性を判定|
 |`As`|エラーの型アサーション|
+|`Join`|複数エラーを結合|
 |`StackTrace`|スタックトレース文字列を取得|
 
 ## 新しいパッケージを追加する際のチェックリスト

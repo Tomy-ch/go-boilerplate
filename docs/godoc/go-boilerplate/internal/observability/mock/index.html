@@ -86,6 +86,7 @@
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package mock_observability is a generated GoMock package.
 </p><p>Package mock_observability is a generated GoMock package.
+</p><p>Package mock_observability is a generated GoMock package.
 
 				
 			</p></div>
@@ -104,6 +105,28 @@
 			
 			
 			
+			
+				
+				<dd><a href="#MockProviderShutdowner">type MockProviderShutdowner</a></dd>
+				
+					
+					<dd>    <a href="#NewMockProviderShutdowner">func NewMockProviderShutdowner(ctrl *gomock.Controller) *MockProviderShutdowner</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockProviderShutdowner.EXPECT">func (m *MockProviderShutdowner) EXPECT() *MockProviderShutdownerMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockProviderShutdowner.Shutdown">func (m *MockProviderShutdowner) Shutdown(ctx context.Context) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockProviderShutdownerMockRecorder">type MockProviderShutdownerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockProviderShutdownerMockRecorder.Shutdown">func (mr *MockProviderShutdownerMockRecorder) Shutdown(ctx any) *gomock.Call</a></dd>
+				
 			
 				
 				<dd><a href="#MockTracerFactory">type MockTracerFactory</a></dd>
@@ -150,9 +173,11 @@
 			<p>
 			<span style="font-size:90%">
 			
-				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_layer_tracer.gen.go.html">mock_layer_tracer.gen.go</a>
+				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_layer_tracer.go.gen.go.html">mock_layer_tracer.go.gen.go</a>
 			
-				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html">mock_tracer_factory.gen.go</a>
+				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.go.gen.go.html">mock_shutdown.go.gen.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html">mock_tracer_factory.go.gen.go</a>
 			
 			</span>
 			</p>
@@ -168,7 +193,110 @@
 		
 			
 			
-			<h2 id="MockTracerFactory">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=491:613#L10">MockTracerFactory</a>
+			<h2 id="MockProviderShutdowner">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.go.gen.go.html?s=450:582#L10">MockProviderShutdowner</a>
+				<a class="permalink" href="#MockProviderShutdowner">¶</a>
+				
+				
+			</h2>
+			<p>MockProviderShutdowner is a mock of ProviderShutdowner interface.
+
+			</p><pre>type MockProviderShutdowner struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockProviderShutdowner">func <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.go.gen.go.html?s=811:890#L22">NewMockProviderShutdowner</a>
+					<a class="permalink" href="#NewMockProviderShutdowner">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockProviderShutdowner(ctrl *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockProviderShutdowner">MockProviderShutdowner</a></pre>
+				<p>NewMockProviderShutdowner creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockProviderShutdowner.EXPECT">func (*MockProviderShutdowner) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.go.gen.go.html?s=1090:1167#L29">EXPECT</a>
+					<a class="permalink" href="#MockProviderShutdowner.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockProviderShutdowner">MockProviderShutdowner</a>) EXPECT() *<a href="#MockProviderShutdownerMockRecorder">MockProviderShutdownerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockProviderShutdowner.Shutdown">func (*MockProviderShutdowner) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.go.gen.go.html?s=1223:1291#L34">Shutdown</a>
+					<a class="permalink" href="#MockProviderShutdowner.Shutdown">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockProviderShutdowner">MockProviderShutdowner</a>) Shutdown(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>Shutdown mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockProviderShutdownerMockRecorder">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.go.gen.go.html?s=671:751#L17">MockProviderShutdownerMockRecorder</a>
+				<a class="permalink" href="#MockProviderShutdownerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockProviderShutdownerMockRecorder is the mock recorder for MockProviderShutdowner.
+
+			</p><pre>type MockProviderShutdownerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockProviderShutdownerMockRecorder.Shutdown">func (*MockProviderShutdownerMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.go.gen.go.html?s=1448:1524#L42">Shutdown</a>
+					<a class="permalink" href="#MockProviderShutdownerMockRecorder.Shutdown">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockProviderShutdownerMockRecorder">MockProviderShutdownerMockRecorder</a>) Shutdown(ctx <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Shutdown indicates an expected call of Shutdown.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockTracerFactory">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=494:616#L10">MockTracerFactory</a>
 				<a class="permalink" href="#MockTracerFactory">¶</a>
 				
 				
@@ -190,7 +318,7 @@
 
 			
 				
-				<h3 id="NewMockTracerFactory">func <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=817:886#L22">NewMockTracerFactory</a>
+				<h3 id="NewMockTracerFactory">func <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=820:889#L22">NewMockTracerFactory</a>
 					<a class="permalink" href="#NewMockTracerFactory">¶</a>
 					
 					
@@ -204,7 +332,7 @@
 
 			
 				
-				</p><h3 id="MockTracerFactory.Controller">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=1201:1267#L34">Controller</a>
+				</p><h3 id="MockTracerFactory.Controller">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=1204:1270#L34">Controller</a>
 					<a class="permalink" href="#MockTracerFactory.Controller">¶</a>
 					
 					
@@ -217,7 +345,7 @@
 				
 			
 				
-				</p><h3 id="MockTracerFactory.EXPECT">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=1076:1143#L29">EXPECT</a>
+				</p><h3 id="MockTracerFactory.EXPECT">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=1079:1146#L29">EXPECT</a>
 					<a class="permalink" href="#MockTracerFactory.EXPECT">¶</a>
 					
 					
@@ -230,7 +358,7 @@
 				
 			
 				
-				</p><h3 id="MockTracerFactory.Infra">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=1693:1754#L48">Infra</a>
+				</p><h3 id="MockTracerFactory.Infra">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=1696:1757#L48">Infra</a>
 					<a class="permalink" href="#MockTracerFactory.Infra">¶</a>
 					
 					
@@ -243,7 +371,7 @@
 				
 			
 				
-				</p><h3 id="MockTracerFactory.Usecase">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=2152:2215#L62">Usecase</a>
+				</p><h3 id="MockTracerFactory.Usecase">func (*MockTracerFactory) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=2155:2218#L62">Usecase</a>
 					<a class="permalink" href="#MockTracerFactory.Usecase">¶</a>
 					
 					
@@ -258,7 +386,7 @@
 		
 			
 			
-			</p><h2 id="MockTracerFactoryMockRecorder">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=692:762#L17">MockTracerFactoryMockRecorder</a>
+			</p><h2 id="MockTracerFactoryMockRecorder">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=695:765#L17">MockTracerFactoryMockRecorder</a>
 				<a class="permalink" href="#MockTracerFactoryMockRecorder">¶</a>
 				
 				
@@ -282,7 +410,7 @@
 
 			
 				
-				<h3 id="MockTracerFactoryMockRecorder.Controller">func (*MockTracerFactoryMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=1445:1511#L42">Controller</a>
+				<h3 id="MockTracerFactoryMockRecorder.Controller">func (*MockTracerFactoryMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=1448:1514#L42">Controller</a>
 					<a class="permalink" href="#MockTracerFactoryMockRecorder.Controller">¶</a>
 					
 					
@@ -295,7 +423,7 @@
 				
 			
 				
-				</p><h3 id="MockTracerFactoryMockRecorder.Infra">func (*MockTracerFactoryMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=1917:1978#L56">Infra</a>
+				</p><h3 id="MockTracerFactoryMockRecorder.Infra">func (*MockTracerFactoryMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=1920:1981#L56">Infra</a>
 					<a class="permalink" href="#MockTracerFactoryMockRecorder.Infra">¶</a>
 					
 					
@@ -308,7 +436,7 @@
 				
 			
 				
-				</p><h3 id="MockTracerFactoryMockRecorder.Usecase">func (*MockTracerFactoryMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=2384:2447#L70">Usecase</a>
+				</p><h3 id="MockTracerFactoryMockRecorder.Usecase">func (*MockTracerFactoryMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.go.gen.go.html?s=2387:2450#L70">Usecase</a>
 					<a class="permalink" href="#MockTracerFactoryMockRecorder.Usecase">¶</a>
 					
 					

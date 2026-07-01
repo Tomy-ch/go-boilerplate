@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_field_builder.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 package logging
 
 import (
@@ -8,12 +8,11 @@ import (
 	"go-boilerplate/internal/config"
 )
 
+// LogFieldBuilder は、各種ログ入力から構造化ログのフィールド列を構築するインターフェースです。
 type LogFieldBuilder interface {
 	BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field
 	BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field
-	BuildSQLStartFields(sql SQLFieldsStartInput) []*Field
 	BuildSQLEndFields(sql SQLFieldsEndInput) []*Field
-	BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field
 }
 
 type logFieldBuilder struct {
@@ -62,20 +61,6 @@ type HTTPResponseLogInput struct {
 	SpanID    string
 }
 
-// SQLFieldsStartInput は、SQL ログ出力用の入力情報をまとめた構造体です。
-type SQLFieldsStartInput struct {
-	Layer    string
-	PkgName  string
-	FuncName string
-	SpanName string
-
-	EventAt time.Time
-
-	TraceID      string
-	SpanID       string
-	ParentSpanID string
-}
-
 // SQLFieldsEndInput は、SQL ログ出力用の入力情報をまとめた構造体です。
 type SQLFieldsEndInput struct {
 	Layer    string
@@ -90,23 +75,6 @@ type SQLFieldsEndInput struct {
 	Query string
 	Args  []any
 	Err   error
-
-	TraceID      string
-	SpanID       string
-	ParentSpanID string
-}
-
-// ObservabilityFieldsInput は、オブザーバビリティ用のログフィールド生成の入力情報をまとめた構造体です。
-type ObservabilityFieldsInput struct {
-	Layer    string
-	PkgName  string
-	FuncName string
-	SpanName string
-
-	EventType string
-	EventAt   time.Time
-
-	Latency time.Duration
 
 	TraceID      string
 	SpanID       string
@@ -162,18 +130,6 @@ func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*
 	return l.appendTraceSpanFields(fields, resp.TraceID, resp.SpanID, "")
 }
 
-// BuildSQLStartFields は、SQLの開始時点のログ出力用の Field スライスを構築します。
-func (l *logFieldBuilder) BuildSQLStartFields(sql SQLFieldsStartInput) []*Field {
-	fields := append(l.buildEventHeader(EventTypeStart, sql.EventAt),
-		String(LayerKey, sql.Layer),
-		String(PackageKey, sql.PkgName),
-		String(FunctionKey, sql.FuncName),
-		String(SpanNameKey, sql.SpanName),
-	)
-
-	return l.appendTraceSpanFields(fields, sql.TraceID, sql.SpanID, sql.ParentSpanID)
-}
-
 // BuildSQLEndFields は、SQLの終了時点のログ出力用の Field スライスを構築します。
 func (l *logFieldBuilder) BuildSQLEndFields(sql SQLFieldsEndInput) []*Field {
 	compact := l.buildCompactQuery(sql.Query)
@@ -199,24 +155,6 @@ func (l *logFieldBuilder) BuildSQLEndFields(sql SQLFieldsEndInput) []*Field {
 	}
 
 	return l.appendTraceSpanFields(fields, sql.TraceID, sql.SpanID, sql.ParentSpanID)
-}
-
-// BuildObservabilityFields は、オブザーバビリティ用のログフィールドを生成します。
-func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field {
-	fields := append(l.buildEventHeader(obs.EventType, obs.EventAt),
-		String(SpanNameKey, obs.SpanName),
-		String(LayerKey, obs.Layer),
-		String(PackageKey, obs.PkgName),
-		String(FunctionKey, obs.FuncName),
-	)
-
-	if obs.Latency > 0 {
-		fields = append(fields,
-			DurationMs(LatencyKey, obs.Latency),
-		)
-	}
-
-	return l.appendTraceSpanFields(fields, obs.TraceID, obs.SpanID, obs.ParentSpanID)
 }
 
 // buildEventHeader は、全イベントログ共通の先頭フィールド

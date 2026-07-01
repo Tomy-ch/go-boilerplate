@@ -126,6 +126,28 @@
 					<dd>    <a href="#MockClockMockRecorder.Now">func (mr *MockClockMockRecorder) Now() *gomock.Call</a></dd>
 				
 			
+				
+				<dd><a href="#MockSleeper">type MockSleeper</a></dd>
+				
+					
+					<dd>    <a href="#NewMockSleeper">func NewMockSleeper(ctrl *gomock.Controller) *MockSleeper</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockSleeper.EXPECT">func (m *MockSleeper) EXPECT() *MockSleeperMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockSleeper.Sleep">func (m *MockSleeper) Sleep(ctx context.Context, d time.Duration) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockSleeperMockRecorder">type MockSleeperMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockSleeperMockRecorder.Sleep">func (mr *MockSleeperMockRecorder) Sleep(ctx, d any) *gomock.Call</a></dd>
+				
+			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -137,7 +159,7 @@
 			<p>
 			<span style="font-size:90%">
 			
-				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.gen.go.html">mock_clock.gen.go</a>
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html">mock_clock.go.gen.go</a>
 			
 			</span>
 			</p>
@@ -153,7 +175,7 @@
 		
 			
 			
-			<h2 id="MockClock">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.gen.go.html?s=382:488#L10">MockClock</a>
+			<h2 id="MockClock">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=404:510#L11">MockClock</a>
 				<a class="permalink" href="#MockClock">¶</a>
 				
 				
@@ -175,7 +197,7 @@
 
 			
 				
-				<h3 id="NewMockClock">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.gen.go.html?s=652:705#L22">NewMockClock</a>
+				<h3 id="NewMockClock">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=674:727#L23">NewMockClock</a>
 					<a class="permalink" href="#NewMockClock">¶</a>
 					
 					
@@ -189,7 +211,7 @@
 
 			
 				
-				</p><h3 id="MockClock.EXPECT">func (*MockClock) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.gen.go.html?s=879:930#L29">EXPECT</a>
+				</p><h3 id="MockClock.EXPECT">func (*MockClock) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=901:952#L30">EXPECT</a>
 					<a class="permalink" href="#MockClock.EXPECT">¶</a>
 					
 					
@@ -202,7 +224,7 @@
 				
 			
 				
-				</p><h3 id="MockClock.Now">func (*MockClock) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.gen.go.html?s=981:1016#L34">Now</a>
+				</p><h3 id="MockClock.Now">func (*MockClock) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=1003:1038#L35">Now</a>
 					<a class="permalink" href="#MockClock.Now">¶</a>
 					
 					
@@ -217,7 +239,7 @@
 		
 			
 			
-			</p><h2 id="MockClockMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.gen.go.html?s=551:605#L17">MockClockMockRecorder</a>
+			</p><h2 id="MockClockMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=573:627#L18">MockClockMockRecorder</a>
 				<a class="permalink" href="#MockClockMockRecorder">¶</a>
 				
 				
@@ -241,13 +263,116 @@
 
 			
 				
-				<h3 id="MockClockMockRecorder.Now">func (*MockClockMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.gen.go.html?s=1157:1208#L42">Now</a>
+				<h3 id="MockClockMockRecorder.Now">func (*MockClockMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=1179:1230#L43">Now</a>
 					<a class="permalink" href="#MockClockMockRecorder.Now">¶</a>
 					
 					
 				</h3>
 				<pre>func (mr *<a href="#MockClockMockRecorder">MockClockMockRecorder</a>) Now() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Now indicates an expected call of Now.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockSleeper">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=1409:1519#L49">MockSleeper</a>
+				<a class="permalink" href="#MockSleeper">¶</a>
+				
+				
+			</h2>
+			<p>MockSleeper is a mock of Sleeper interface.
+
+			</p><pre>type MockSleeper struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockSleeper">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=1693:1750#L61">NewMockSleeper</a>
+					<a class="permalink" href="#NewMockSleeper">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockSleeper(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockSleeper">MockSleeper</a></pre>
+				<p>NewMockSleeper creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockSleeper.EXPECT">func (*MockSleeper) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=1928:1983#L68">EXPECT</a>
+					<a class="permalink" href="#MockSleeper.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockSleeper">MockSleeper</a>) EXPECT() *<a href="#MockSleeperMockRecorder">MockSleeperMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockSleeper.Sleep">func (*MockSleeper) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=2036:2107#L73">Sleep</a>
+					<a class="permalink" href="#MockSleeper.Sleep">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockSleeper">MockSleeper</a>) Sleep(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, d <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Sleep mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockSleeperMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=1586:1644#L56">MockSleeperMockRecorder</a>
+				<a class="permalink" href="#MockSleeperMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockSleeperMockRecorder is the mock recorder for MockSleeper.
+
+			</p><pre>type MockSleeperMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockSleeperMockRecorder.Sleep">func (*MockSleeperMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/mock/mock_clock.go.gen.go.html?s=2258:2323#L81">Sleep</a>
+					<a class="permalink" href="#MockSleeperMockRecorder.Sleep">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockSleeperMockRecorder">MockSleeperMockRecorder</a>) Sleep(ctx, d <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Sleep indicates an expected call of Sleep.
 
 				
 				

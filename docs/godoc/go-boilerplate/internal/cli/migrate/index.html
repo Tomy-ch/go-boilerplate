@@ -152,13 +152,14 @@
 		
 			
 			
-			<h2 id="MigrateDownRun">func <a href="../../../../src/go-boilerplate/internal/cli/migrate/migratedown.go.html?s=263:368#L4">MigrateDownRun</a>
+			<h2 id="MigrateDownRun">func <a href="../../../../src/go-boilerplate/internal/cli/migrate/migratedown.go.html?s=516:621#L5">MigrateDownRun</a>
 				<a class="permalink" href="#MigrateDownRun">¶</a>
 				
 				
 			</h2>
 			<pre>func MigrateDownRun(steps <a href="../../../../builtin/#int">int</a>, database <a href="../../../../builtin/#string">string</a>, logger <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, newMigrator <a href="#MigratorFactory">MigratorFactory</a>) <a href="../../../../builtin/#error">error</a></pre>
-			<p>MigrateDownRun は、マイグレーションをダウングレードするための実行関数です。
+			<p>MigrateDownRun は、データベースマイグレーションを Down 方向に適用します。
+steps=0 なら全マイグレーションをロールバックし、正数なら段数分だけ戻します。steps が負の場合はエラーを返します。dirty 状態の DB は Force で整合を取ってから Down します。
 
 			
 			
@@ -166,13 +167,14 @@
 		
 			
 			
-			</p><h2 id="MigrateUpRun">func <a href="../../../../src/go-boilerplate/internal/cli/migrate/migrateup.go.html?s=230:333#L3">MigrateUpRun</a>
+			</p><h2 id="MigrateUpRun">func <a href="../../../../src/go-boilerplate/internal/cli/migrate/migrateup.go.html?s=460:563#L4">MigrateUpRun</a>
 				<a class="permalink" href="#MigrateUpRun">¶</a>
 				
 				
 			</h2>
 			<pre>func MigrateUpRun(steps <a href="../../../../builtin/#int">int</a>, database <a href="../../../../builtin/#string">string</a>, logger <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, newMigrator <a href="#MigratorFactory">MigratorFactory</a>) <a href="../../../../builtin/#error">error</a></pre>
-			<p>MigrateUpRun は、マイグレーションをアップグレードするための実行関数です。
+			<p>MigrateUpRun は、データベースマイグレーションを Up 方向に適用します。
+steps=0 なら全マイグレーションを適用し、正数なら段数分だけ適用します。steps が負の場合はエラーを返します。既に最新の場合（ErrNoChange）は成功扱いです。
 
 			
 			
@@ -181,12 +183,12 @@
 		
 			
 			
-			</p><h2 id="Migrator">type <a href="../../../../src/go-boilerplate/internal/cli/migrate/common.go.html?s=403:551#L1">Migrator</a>
+			</p><h2 id="Migrator">type <a href="../../../../src/go-boilerplate/internal/cli/migrate/common.go.html?s=421:569#L1">Migrator</a>
 				<a class="permalink" href="#Migrator">¶</a>
 				
 				
 			</h2>
-			<p>Migrator は、golang-migrate の操作を抽象化し、テストでモック差し替え可能にします。
+			<p>Migrator は、golang-migrate のマイグレーション操作（Up / Down / Steps / Version / Force）を抽象化します。
 
 			</p><pre>type Migrator interface {
     Up() <a href="../../../../builtin/#error">error</a>
@@ -210,7 +212,7 @@
 		
 			
 			
-			<h2 id="MigratorFactory">type <a href="../../../../src/go-boilerplate/internal/cli/migrate/common.go.html?s=641:701#L6">MigratorFactory</a>
+			<h2 id="MigratorFactory">type <a href="../../../../src/go-boilerplate/internal/cli/migrate/common.go.html?s=659:719#L6">MigratorFactory</a>
 				<a class="permalink" href="#MigratorFactory">¶</a>
 				
 				

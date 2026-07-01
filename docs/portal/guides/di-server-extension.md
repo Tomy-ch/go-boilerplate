@@ -28,36 +28,26 @@ flowchart TB
 - **Configurator**: Configuration applied to Echo instance (debug mode, etc.)
 - Duplicate priorities are automatically detected and cause an error
 
-## Public API
-
-|Type / Function|Description|
-|---|---|
-|`ServerExtends`|`fx.In` struct receiving all three groups|
-|`ApplyExtends()`|Apply Pre / Use / Configurators in bulk|
-|`PreMiddleware`|Pre middleware (Name + Priority + Middleware)|
-|`PreMiddlewareOut`|fx output wrapper for Pre middleware|
-|`UseMiddleware`|Use middleware (Name + Priority + Middleware)|
-|`UseMiddlewareOut`|fx output wrapper for Use middleware|
-|`SrvCfg`|`func(*echo.Echo)` configurator function type|
-|`ServeCfgOut`|fx output wrapper for Configurator|
-
 ## Subdirectory List
 
 ### inbound (Request Receiving)
 
 |Module|Type|Description|
 |---|---|---|
+|`URIModule()`|Pre|Remove trailing slashes|
+|`TimeoutModule()`|Pre|Request deadline budget (`SERVER_REQUEST_TIMEOUT`)|
+|`BodyLimitModule()`|Pre|Request body size limit (`SERVER_BODY_LIMIT_MB`)|
 |`IPExtractorModule()`|Configurator|Client IP extraction|
 |`OpenAPIModule()`|Use|OpenAPI validation|
-|`URIModule()`|Pre|Remove trailing slashes|
 
 ### instrumentation (Instrumentation)
 
 |Module|Type|Description|
 |---|---|---|
 |`RequestIDModule()`|Use|X-Request-ID generation|
-|`LoggingModule()`|Use|HTTP request / response logging|
 |`ObservabilityModule()`|Use|OpenTelemetry tracing|
+|`HTTPRedMetricsModule()`|Use|HTTP RED (Rate / Errors / Duration) metrics|
+|`LoggingModule()`|Use|HTTP request / response logging|
 
 ### outbound (Response Output)
 

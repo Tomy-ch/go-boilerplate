@@ -35,7 +35,7 @@ SystemQuery は **ビジネスドメインに属さない運用・監視目的�
 DB の疎通確認を行い、応答時間を計測します。
 
 ```go
-func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery
+func New(provider driver.DatabaseDriver, tf observability.TracerFactory) query.DBSystemQuery
 ```
 
 |メソッド|説明|
@@ -58,20 +58,53 @@ interface は Usecase 層に定義されています。
 internal/usecase/healthcheck/query/health_check_system_query.go
 ```
 
+### idempotency
+
+冪等性キーを永続化し、リクエストの at-most-once 処理を支えます。`internal/usecase/boundary/idempotency/` の `Store` 境界を実装します。
+
+```go
+func New(provider driver.DatabaseDriver, tf observability.TracerFactory) idempotencybndry.Store
+```
+
+|メソッド|説明|
+|---|---|
+|`Claim(ctx, p)`|業務 tx 内で claimed 行を作成（`SET LOCAL lock_timeout` が効く）|
+|`Get(ctx, scope, key)`|scope + key に対応する `Record` を取得|
+|`Complete(ctx, p)`|claim 済みキーに対し完了レスポンスを記録|
+|`DeleteExpired(ctx, cutoff, limit)`|`cutoff` より古い期限切れ行を `limit` 件まで削除（GC）|
+
+境界 interface の詳細は [`internal/usecase/boundary/idempotency/README.ja.md`](../../../usecase/boundary/idempotency/README.ja.md) を参照。
+
+### outbox
+
+トランザクショナル outbox テーブルを永続化します。`internal/usecase/boundary/outbox/` の `Store` 境界を実装します。
+
+```go
+func New(provider driver.DatabaseDriver, tf observability.TracerFactory) outboxbndry.Store
+```
+
+主なメソッド：`Insert` / `ClaimPending`（`FOR UPDATE SKIP LOCKED`）/ `MarkPublished` / `MarkFailed` / `MarkDead` / `ReplayDead` / `DeletePublished`（GC）/ `OldestPendingCreatedAt`（outbox-lag SLI）。
+
+境界 interface の全詳細は [`internal/usecase/boundary/outbox/README.ja.md`](../../../usecase/boundary/outbox/README.ja.md) を参照。
+
 ## 構成
 
 ```text
 internal/infrastructure/rdb/system_query/
-└── healthcheck/
-    └── health_check_system_query.go
+├── healthcheck/
+│   └── health_check_system_query.go
+├── idempotency/
+│   └── idempotency_system_query.go
+└── outbox/
+    └── outbox_system_query.go
 ```
 
 ## 設計方針
 
-- interface は Usecase 層（`internal/usecase/<concern>/query`）に定義
+- interface は Usecase 層（`internal/usecase/<concern>/query`、または idempotency / outbox のような運用永続化では `internal/usecase/boundary/<concern>` の Store）に定義
 - 実装は Infrastructure 層に配置
 - ビジネスロジックを含まない
-- `loggingdb.DBProvider` + `observability.LayerTracer` を DI で受け取る
+- `driver.DatabaseDriver` + `observability.LayerTracer` を DI で受け取る
 - DB エラーは `pgerror.NormalizeError` で正規化
 
 ## 拡張する場合
@@ -80,4 +113,4 @@ internal/infrastructure/rdb/system_query/
 
 1. `internal/usecase/<concern>/query/` に interface を定義
 2. `internal/infrastructure/rdb/system_query/<concern>/` に実装を配置
-3. `internal/di/module/infrastructure.go` に DI 登録を追加
+3. `internal/di/module/persistence.go`（`persistenceModule` の `system_query` サブモジュール）に DI 登録を追加

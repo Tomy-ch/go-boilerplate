@@ -153,7 +153,7 @@ os への直接依存を一点に集約し、利用側はインターフェー�
 		
 			
 			
-			<h2 id="FS">type <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=458:619#L3">FS</a>
+			<h2 id="FS">type <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=463:624#L3">FS</a>
 				<a class="permalink" href="#FS">¶</a>
 				
 				
@@ -180,7 +180,7 @@ os への直接依存を一点に集約し、利用側はインターフェー�
 		
 			
 			
-			<h2 id="OS">type <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=687:703#L10">OS</a>
+			<h2 id="OS">type <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=692:708#L10">OS</a>
 				<a class="permalink" href="#OS">¶</a>
 				
 				
@@ -202,37 +202,40 @@ os への直接依存を一点に集約し、利用側はインターフェー�
 
 			
 				
-				<h3 id="OS.Glob">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=970:1018#L20">Glob</a>
+				<h3 id="OS.Glob">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1287:1335#L23">Glob</a>
 					<a class="permalink" href="#OS.Glob">¶</a>
 					
 					
 				</h3>
 				<pre>func (<a href="#OS">OS</a>) Glob(pattern <a href="../../../builtin/#string">string</a>) ([]<a href="../../../builtin/#string">string</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				
+				<p>Glob は、pattern に一致するファイルパスの一覧を返します。
+
 				
 				
 				
 			
 				
-				<h3 id="OS.ReadFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=705:752#L12">ReadFile</a>
+				</p><h3 id="OS.ReadFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=794:841#L13">ReadFile</a>
 					<a class="permalink" href="#OS.ReadFile">¶</a>
 					
 					
 				</h3>
 				<pre>func (<a href="#OS">OS</a>) ReadFile(name <a href="../../../builtin/#string">string</a>) ([]<a href="../../../builtin/#byte">byte</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				
+				<p>ReadFile は、name のファイル内容全体を読み込んで返します。
+
 				
 				
 				
 			
 				
-				<h3 id="OS.WriteFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=856:925#L16">WriteFile</a>
+				</p><h3 id="OS.WriteFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1090:1159#L18">WriteFile</a>
 					<a class="permalink" href="#OS.WriteFile">¶</a>
 					
 					
 				</h3>
 				<pre>func (<a href="#OS">OS</a>) WriteFile(name <a href="../../../builtin/#string">string</a>, data []<a href="../../../builtin/#byte">byte</a>, perm <a href="../../../os/">os</a>.<a href="../../../os/#FileMode">FileMode</a>) <a href="../../../builtin/#error">error</a></pre>
-				
+				<p>WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成します。
+
 				
 				
 				
@@ -248,7 +251,7 @@ os への直接依存を一点に集約し、利用側はインターフェー�
 
 	
 	
-		<h2 id="pkg-subdirectories">Subdirectories</h2>
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
 	
 	<div class="pkg-dir">
 		<table>

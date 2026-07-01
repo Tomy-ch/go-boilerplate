@@ -82,15 +82,13 @@ Repository 実装は次の場所に配置します。
 
 ```txt
 repository/
- ├ user/
- │   └ user_repository.go
- └ prefecture/
-     └ prefecture_repository.go
+ └ <aggregate>/
+     └ <aggregate>_repository.go
 ```
 
 Repository Interface は **Domain 層に配置**されます。
 
-配置場所：`internal/domain/<aggregate>/repository.go`
+配置場所：`internal/domain/<aggregate>/<aggregate>_repository.go`
 
 Infra はこのインターフェースを **実装するのみ**です。
 
@@ -126,7 +124,7 @@ Repository は次を行いません。
 Repository は **sqlc が生成したクエリコード**を利用します。
 
 ```go
-rows, err := db.ListUsers(ctx, &gen.ListUsersParams{...})
+rows, err := db.List<Entities>(ctx, &gen.List<Entities>Params{...})
 ```
 
 sqlc により
@@ -152,10 +150,10 @@ sqlc が返す Row 構造体は **Infrastructure 専用型**です。
 そのため Repository では、追加の変換処理をほとんど行わず、生成済みの型をそのまま Domain constructor に渡せます。
 
 ```go
-userEntity, err := user.New(
-    row.Users.ID,
-    row.Users.FirstName,
-    row.Users.LastName,
+entity, err := <aggregate>.New(
+    row.<Entity>.ID,
+    row.<Entity>.Field1,
+    row.<Entity>.Field2,
     ...
 )
 ```
@@ -172,7 +170,7 @@ Domain エンティティ生成に失敗した場合、
 そのエラーは **そのまま返却します。**
 
 ```go
-userEntity, err := user.New(...)
+entity, err := <aggregate>.New(...)
 if err != nil {
     return nil, err
 }
@@ -193,7 +191,7 @@ if err != nil {
 そのため Repository での明示的な UUID 変換は基本的に不要です。
 
 ```go
-row.Users.ID // そのまま Domain constructor に渡せる
+row.<Entity>.ID // そのまま Domain constructor に渡せる
 ```
 
 UUID の生成・比較・補助処理は `pkg/uuid` のラッパーを利用します。
@@ -245,21 +243,21 @@ LIKE 検索は Repository で実装して問題ありません。
 - 複雑なフィルタ + ソート + ページング
 - 一覧画面専用の読み取り最適化検索
 
-## LoggingDBProvider
+## DB アクセス（driver）
 
-Repository は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
+Repository は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
-db := gen.New(r.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, r.db))
 ```
 
-`loggingdb.DBProvider` は次を提供します。
+`driver.New(ctx, db)` は次を提供します。
 
-- SQL ログ出力
-- DB / Tx の透過切り替え
-- Contextベース接続取得
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-Repository は **DB接続状態を意識しない設計**になります。
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため Repository は **DB 接続状態を意識しない設計**になります。
 
 ## エラー正規化
 
@@ -292,7 +290,7 @@ flowchart TB
 クエリ実行は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を利用して行います。
@@ -302,7 +300,7 @@ gen.New(r.db.NewLoggingDB(ctx))
 Repository は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を使用して `Tx / DB` を透過的に利用します。
@@ -349,8 +347,8 @@ Repository は `fx.Provide` により登録され、Usecase に注入されま�
 ```mermaid
 flowchart TB
     Module["InfrastructureModule"]
-    Provide["fx.Provide(user.New)"]
-    Interface["user.Repository (interface)"]
+    Provide["fx.Provide(<aggregate>.New)"]
+    Interface["<aggregate>.Repository (interface)"]
     Usecase["Usecase"]
 
     Module --> Provide
@@ -358,15 +356,17 @@ flowchart TB
     Interface --> Usecase
 ```
 
-### internal/di/module/infrastructure.go の役割
+### internal/di/module/persistence.go の役割
+
+永続化系のプロバイダ（repository / query_service / system_query）は `persistenceModule`
+に登録され、`InfrastructureModule()` がこれを合成します。
 
 ```go
-func InfrastructureModule() fx.Option {
-    return fx.Module("infrastructure",
+func persistenceModule() fx.Option {
+    return fx.Module("persistence",
         fx.Module("repository",
             fx.Provide(
-                user.New,
-                prefecture.New,
+                <aggregate>.New,
             ),
         ),
     )
@@ -376,15 +376,15 @@ func InfrastructureModule() fx.Option {
 - `fx.Provide`
   - Repository のコンストラクタを登録
 - 戻り値は **Domain の interface 型**
-  - 例: `user.Repository`
+  - 例: `<aggregate>.Repository`
 
 ### Repository のコンストラクタ設計
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) user.Repository {
+) <aggregate>.Repository {
     return &repository{
         db:       db,
         tracer:   tf.Infra(),
@@ -402,8 +402,8 @@ func New(
 
 ```mermaid
 flowchart TB
-    Provide["fx.Provide(user.New)"]
-    Interface["user.Repository (interface)"]
+    Provide["fx.Provide(<aggregate>.New)"]
+    Interface["<aggregate>.Repository (interface)"]
     Usecase["Usecase (依存)"]
 
     Provide --> Interface
@@ -414,7 +414,7 @@ Usecase 側では
 
 ```go
 type service struct {
-    repo user.Repository
+    repo <aggregate>.Repository
 }
 ```
 
@@ -431,13 +431,13 @@ type service struct {
 - Repository の constructor は必ず `New` で定義すること
 - 戻り値は interface（Domain定義）にすること
 - Repository 内で依存を new しないこと
-- DI登録は `internal/di/module/infrastructure.go` に追加すること
+- DI登録は `internal/di/module/persistence.go`（`persistenceModule`）に追加すること
 
 ## Repository構造体
 
 Repository 実装は次の依存を持ちます。
 
-- loggingdb.DBProvider は、Repository が通常利用する DB アクセス入口です。
+- driver.DatabaseDriver は、Repository が通常利用する DB アクセス入口です。
   - SQL ログ出力
   - トレース連携
   - DB / Tx の透過切り替え
@@ -448,7 +448,7 @@ Repository 実装は次の依存を持ちます。
 
 ```go
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -457,9 +457,9 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) user.Repository {
+) <aggregate>.Repository {
     return &repository{
         db:       db,
         tracer:   tf.Infra(),
@@ -508,13 +508,11 @@ Repository テストは `testkit` を使用して DB を初期化します。
 
 ```go
 db := testkit.NewTestDB(t)
-provider := testkit.NewTestLoggingProvider(t)
 ```
 
-これらの関数は次を提供します。
+この関数は次を提供します。
 
-- `NewTestDB`: テスト用 DB 接続（`driver.DatabaseDriver`）
-- `NewTestLoggingProvider`: `loggingdb.DBProvider`
+- `NewTestDB`: 共有テスト用 DB 接続（`driver.DatabaseDriver`）。Repository コンストラクタへ直接渡す
 
 ### トランザクションテスト
 
@@ -590,7 +588,7 @@ Domain エラーが発生します。
 テストではこれも検証します。
 
 ```go
-require.ErrorIs(t, err, user.ErrInvalidLastName)
+require.ErrorIs(t, err, <aggregate>.ErrInvalid<Field>)
 ```
 
 これは次のケースを検証します。
@@ -636,8 +634,8 @@ Repository は **永続化層**です。
 NG例
 
 ```go
-func (r *repository) Create(ctx context.Context, user *user.User) error {
-    if user.IsPremium() {
+func (r *repository) Create(ctx context.Context, entity *<aggregate>.<Aggregate>) error {
+    if entity.IsPremium() {
         // ❌ ビジネスルール
     }
 }
@@ -666,15 +664,15 @@ Repository は **DTO を生成しません。**
 NG例
 
 ```go
-return UserDTO{
-    Name: row.Users.Name,
+return <Aggregate>DTO{
+    Name: row.<Entity>.Name,
 }
 ```
 
 Repository は **Domain エンティティのみ返却**します。
 
 ```go
-return user.New(...)
+return <aggregate>.New(...)
 ```
 
 DTO 変換は **Usecase / Presenter 層の責務**です。
@@ -692,7 +690,7 @@ return rows
 必ず Domain へ変換します。
 
 ```go
-u, err := user.New(...)
+entity, err := <aggregate>.New(...)
 ```
 
 理由：**sqlc 型を上位層に漏らさない**
@@ -739,7 +737,7 @@ tx, _ := db.Begin()
 Repository は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を使用して `Tx / DB` を透過的に利用します。
@@ -757,7 +755,7 @@ func (r *repository) Create(ctx echo.Context)
 Repository は **純粋な Go インターフェース**で実装します。
 
 ```go
-func (r *repository) Create(ctx context.Context, user *user.User)
+func (r *repository) Create(ctx context.Context, entity *<aggregate>.<Aggregate>)
 ```
 
 ### 7. Domain interface を Infra に定義する
@@ -766,11 +764,11 @@ Repository Interface は **Domain 層に定義します。**
 
 NG例
 
-`internal/infrastructure/repository/user_repository_interface.go`
+`internal/infrastructure/repository/<aggregate>_repository_interface.go`
 
 正しい配置
 
-`internal/domain/user/repository.go`
+`internal/domain/<aggregate>/<aggregate>_repository.go`
 
 Infra は **Domain Interface の実装のみ**を行います。
 
@@ -780,8 +778,8 @@ Infra は **Domain Interface の実装のみ**を行います。
 
 - sqlc 生成コードを使用
 - Row → Domain 変換
-- nullable 変換は conv を利用
-- pgerror.NormalizeError を利用
+- nullable → pointer 変換は sqlc override に任せる
+- pgerror.NormalizeError を利用（INSERT/UPDATE の影響行数 0 → NotFound は NormalizeExecResult）
 - LIKE helper を利用
 
 ### Don't
@@ -795,46 +793,46 @@ Infra は **Domain Interface の実装のみ**を行います。
 ## 実装例
 
 ```go
-package user
+package <aggregate>
 
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New は Repository のコンストラクタです。
 // 依存はすべて外から注入します。
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) user.Repository {
+) <aggregate>.Repository {
     return &repository{
         db:     db,
         tracer: tf.Infra(),
     }
 }
 
-// FindByActive は、アクティブ状態に基づいてユーザーを取得します。
+// FindByActive は、アクティブ状態に基づいてエンティティを取得します。
 // 削除状態は Go 側で分岐し、SQL は専用クエリを呼び分けます。
-func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (user.Users, error) {
+func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (<aggregate>.<Aggregate>s, error) {
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    db := gen.New(r.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, r.db))
 
     switch {
     case active == nil:
-        return fetchListUsersRows(ctx, db, &gen.ListUsersParams{
+        return fetchList(ctx, db, &gen.List<Entities>Params{
             OffsetParam: offset,
             LimitParam:  limit,
         })
     case *active:
-        return fetchListUsersRowsByActive(ctx, db, &gen.ListActiveUsersParams{
+        return fetchListByActive(ctx, db, &gen.ListActive<Entities>Params{
             OffsetParam: offset,
             LimitParam:  limit,
         })
     case !*active:
-        return fetchListUsersRowsByDeleted(ctx, db, &gen.ListDeletedUsersParams{
+        return fetchListByDeleted(ctx, db, &gen.ListDeleted<Entities>Params{
             OffsetParam: offset,
             LimitParam:  limit,
         })
@@ -843,41 +841,32 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
     }
 }
 
-// fetchListUsersRows は、全ユーザー取得処理を行います。
-// QueryService からロジックを分離し、責務を明確にします。
-func fetchListUsersRows(
+// fetchList は、全エンティティ取得処理を行います。
+// Repository からロジックを分離し、責務を明確にします。
+func fetchList(
     ctx context.Context,
     db *gen.Queries,
-    params *gen.ListUsersParams,
-) (user.Users, error) {
-    rows, err := db.ListUsers(ctx, params)
+    params *gen.List<Entities>Params,
+) (<aggregate>.<Aggregate>s, error) {
+    rows, err := db.List<Entities>(ctx, params)
     if err != nil {
         return nil, pgerror.NormalizeError(err)
     }
 
-    users := make(user.Users, len(rows))
+    entities := make(<aggregate>.<Aggregate>s, len(rows))
     for i, row := range rows {
-        u, err := user.New(
-            row.Users.ID,
-            row.Users.FirstName,
-            row.Users.LastName,
-            row.Users.PasswordHash,
-            row.Users.Email,
-            row.Users.Phone,
-            row.Users.PrefectureID,
-            row.Users.City,
-            row.Users.Street,
-            row.Users.Building,
-            row.Users.PostalCode,
-            row.Users.CreatedAt,
-            row.Users.UpdatedAt,
-            row.Users.DeletedAt,
+        // sqlc override により nullable → pointer / UUID → pkg/uuid は変換済みのため、
+        // 各カラムをそのまま Domain constructor へ渡します。
+        e, err := <aggregate>.New(
+            row.<Entity>.ID,
+            row.<Entity>.Field1,
+            // ...
         )
         if err != nil {
             return nil, err
         }
-        users[i] = u
+        entities[i] = e
     }
-    return users, nil
+    return entities, nil
 }
 ```

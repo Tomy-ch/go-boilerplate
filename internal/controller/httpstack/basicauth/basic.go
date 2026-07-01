@@ -10,7 +10,7 @@ import (
 	echomw "github.com/labstack/echo/v4/middleware"
 )
 
-// NewBasicAuthValidator は、Basic認証のバリデータを返します。
+// NewBasicAuthValidator は、MetricsConfig のユーザ名・パスワードを用いる Basic 認証バリデータを返します。タイミング攻撃を防ぐために定数時間比較（subtle.ConstantTimeCompare）を用います。
 func NewBasicAuthValidator(mtcCfg *config.MetricsConfig) echomw.BasicAuthValidator {
 	return func(username, password string, _ echo.Context) (bool, error) {
 		userOK := subtle.ConstantTimeCompare([]byte(username), []byte(mtcCfg.UserName())) == 1

@@ -1,3 +1,4 @@
+// Package hook は、起動と停止のライフサイクルフックを提供します。
 package hook
 
 import (
@@ -51,7 +52,7 @@ func newStartServerFunc(
 		lc := &net.ListenConfig{}
 		ln, err := lc.Listen(ctx, "tcp", ":"+strconv.Itoa(port))
 		if err != nil {
-			return fmt.Errorf("failed to listen on port %d: %w", port, err)
+			return xerrors.Wrap(err, fmt.Sprintf("failed to listen on port %d", port))
 		}
 		e.Listener = ln
 

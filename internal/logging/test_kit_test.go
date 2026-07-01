@@ -27,6 +27,51 @@ func TestNewTestLogger(t *testing.T) {
 	})
 }
 
+func TestNewObservedTestLogger(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("出力を捕捉するLoggerと観測ログを返す", func(t *testing.T) {
+			t.Parallel()
+
+			lg, observed := NewObservedTestLogger(t)
+			require.NotNil(t, lg)
+			require.NotNil(t, observed)
+
+			lg.Info("hello", String("key", "value"))
+
+			logs := observed.All()
+			require.Len(t, logs, 1)
+			assert.Equal(t, "hello", logs[0].Message)
+		})
+	})
+}
+
+func TestNewObservedTestLoggerWithCaller(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("caller情報付きで出力を捕捉するLoggerと観測ログを返す", func(t *testing.T) {
+			t.Parallel()
+
+			lg, observed := NewObservedTestLoggerWithCaller(t)
+			require.NotNil(t, lg)
+			require.NotNil(t, observed)
+
+			lg.Info("hello", String("key", "value"))
+
+			logs := observed.All()
+			require.Len(t, logs, 1)
+			assert.Equal(t, "hello", logs[0].Message)
+			assert.True(t, logs[0].Caller.Defined)
+		})
+	})
+}
+
 func TestNewTestLogFieldBuilder(t *testing.T) {
 	t.Parallel()
 

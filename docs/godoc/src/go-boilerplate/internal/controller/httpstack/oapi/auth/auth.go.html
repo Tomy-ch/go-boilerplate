@@ -107,51 +107,52 @@
 <span id="L50" class="ln">    50  </span>) (*authbd.Authn, error) {
 <span id="L51" class="ln">    51  </span>	token := extractToken(req, authCfg)
 <span id="L52" class="ln">    52  </span>	if token == &#34;&#34; {
-<span id="L53" class="ln">    53  </span>		return nil, nil
-<span id="L54" class="ln">    54  </span>	}
-<span id="L55" class="ln">    55  </span>
-<span id="L56" class="ln">    56  </span>	cred, err := authbd.NewCredential(token)
-<span id="L57" class="ln">    57  </span>	if err != nil {
-<span id="L58" class="ln">    58  </span>		return nil, err
-<span id="L59" class="ln">    59  </span>	}
-<span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span>	authn, err := authenticator.Authenticate(ctx, cred)
-<span id="L62" class="ln">    62  </span>	if err != nil {
-<span id="L63" class="ln">    63  </span>		return nil, ErrUnauthorizedInvalidToken
-<span id="L64" class="ln">    64  </span>	}
-<span id="L65" class="ln">    65  </span>
-<span id="L66" class="ln">    66  </span>	return authn, nil
-<span id="L67" class="ln">    67  </span>}
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span><span class="comment">// extractToken は、認証トークンを抽出します。</span>
-<span id="L70" class="ln">    70  </span>func extractToken(r *http.Request, authCfg *config.AuthConfig) string {
-<span id="L71" class="ln">    71  </span>	<span class="comment">// extract from Cookie</span>
-<span id="L72" class="ln">    72  </span>	if authCfg.CookieName() != &#34;&#34; {
-<span id="L73" class="ln">    73  </span>		if ck, err := r.Cookie(authCfg.CookieName()); err == nil &amp;&amp; ck != nil {
-<span id="L74" class="ln">    74  </span>			if v := strings.TrimSpace(ck.Value); v != &#34;&#34; {
-<span id="L75" class="ln">    75  </span>				return v
-<span id="L76" class="ln">    76  </span>			}
-<span id="L77" class="ln">    77  </span>		}
-<span id="L78" class="ln">    78  </span>	}
-<span id="L79" class="ln">    79  </span>
-<span id="L80" class="ln">    80  </span>	<span class="comment">// extract from Header</span>
-<span id="L81" class="ln">    81  </span>	if authCfg.HeaderName() == &#34;&#34; {
-<span id="L82" class="ln">    82  </span>		return &#34;&#34;
-<span id="L83" class="ln">    83  </span>	}
-<span id="L84" class="ln">    84  </span>
-<span id="L85" class="ln">    85  </span>	raw := strings.TrimSpace(r.Header.Get(authCfg.HeaderName()))
-<span id="L86" class="ln">    86  </span>	if raw == &#34;&#34; {
-<span id="L87" class="ln">    87  </span>		return &#34;&#34;
-<span id="L88" class="ln">    88  </span>	}
-<span id="L89" class="ln">    89  </span>	if authCfg.AllowedHeaderBearer() &amp;&amp; strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) {
-<span id="L90" class="ln">    90  </span>		if strings.HasPrefix(raw, prefixBearer) {
-<span id="L91" class="ln">    91  </span>			return strings.TrimSpace(strings.TrimPrefix(raw, prefixBearer))
-<span id="L92" class="ln">    92  </span>		}
-<span id="L93" class="ln">    93  </span>		return &#34;&#34;
-<span id="L94" class="ln">    94  </span>	}
-<span id="L95" class="ln">    95  </span>	return raw
-<span id="L96" class="ln">    96  </span>}
-<span id="L97" class="ln">    97  </span>
+<span id="L53" class="ln">    53  </span>		<span class="comment">//nolint:nilnil // トークン未提供を表す。呼び出し側で authn==nil を判定し未提供エラーへ変換するため意図的にnil,nilを返す</span>
+<span id="L54" class="ln">    54  </span>		return nil, nil
+<span id="L55" class="ln">    55  </span>	}
+<span id="L56" class="ln">    56  </span>
+<span id="L57" class="ln">    57  </span>	cred, err := authbd.NewCredential(token)
+<span id="L58" class="ln">    58  </span>	if err != nil {
+<span id="L59" class="ln">    59  </span>		return nil, err
+<span id="L60" class="ln">    60  </span>	}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>	authn, err := authenticator.Authenticate(ctx, cred)
+<span id="L63" class="ln">    63  </span>	if err != nil {
+<span id="L64" class="ln">    64  </span>		return nil, ErrUnauthorizedInvalidToken
+<span id="L65" class="ln">    65  </span>	}
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span>	return authn, nil
+<span id="L68" class="ln">    68  </span>}
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span><span class="comment">// extractToken は、認証トークンを抽出します。</span>
+<span id="L71" class="ln">    71  </span>func extractToken(r *http.Request, authCfg *config.AuthConfig) string {
+<span id="L72" class="ln">    72  </span>	<span class="comment">// extract from Cookie</span>
+<span id="L73" class="ln">    73  </span>	if authCfg.CookieName() != &#34;&#34; {
+<span id="L74" class="ln">    74  </span>		if ck, err := r.Cookie(authCfg.CookieName()); err == nil &amp;&amp; ck != nil {
+<span id="L75" class="ln">    75  </span>			if v := strings.TrimSpace(ck.Value); v != &#34;&#34; {
+<span id="L76" class="ln">    76  </span>				return v
+<span id="L77" class="ln">    77  </span>			}
+<span id="L78" class="ln">    78  </span>		}
+<span id="L79" class="ln">    79  </span>	}
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>	<span class="comment">// extract from Header</span>
+<span id="L82" class="ln">    82  </span>	if authCfg.HeaderName() == &#34;&#34; {
+<span id="L83" class="ln">    83  </span>		return &#34;&#34;
+<span id="L84" class="ln">    84  </span>	}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>	raw := strings.TrimSpace(r.Header.Get(authCfg.HeaderName()))
+<span id="L87" class="ln">    87  </span>	if raw == &#34;&#34; {
+<span id="L88" class="ln">    88  </span>		return &#34;&#34;
+<span id="L89" class="ln">    89  </span>	}
+<span id="L90" class="ln">    90  </span>	if authCfg.AllowedHeaderBearer() &amp;&amp; strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) {
+<span id="L91" class="ln">    91  </span>		if after, ok := strings.CutPrefix(raw, prefixBearer); ok {
+<span id="L92" class="ln">    92  </span>			return strings.TrimSpace(after)
+<span id="L93" class="ln">    93  </span>		}
+<span id="L94" class="ln">    94  </span>		return &#34;&#34;
+<span id="L95" class="ln">    95  </span>	}
+<span id="L96" class="ln">    96  </span>	return raw
+<span id="L97" class="ln">    97  </span>}
+<span id="L98" class="ln">    98  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

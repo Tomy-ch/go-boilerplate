@@ -1,4 +1,4 @@
-// Package user は、ユーザー関連のドメインを提供します。
+// Package user は、ユーザードメインを定義します。User エンティティ（論理削除・パスワード変更・プロフィール更新）・RawPassword 値オブジェクト・FeedCursor 値オブジェクト・Repository インターフェースを提供します。
 package user
 
 import (
@@ -10,8 +10,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// Users は、User エンティティのスライス型です。
 type Users []*User
 
+// User は、ユーザーを表すドメインエンティティです。
 type User struct {
 	id           uuid.UUID
 	firstName    string
@@ -30,6 +32,7 @@ type User struct {
 }
 
 // New は、ユーザーエンティティの検証と生成を行います。
+// updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt および updatedAt 以降である必要があり、違反時はそれぞれ ErrInvalidUpdatedAt / ErrInvalidDeletedAt を返します。
 func New(
 	id uuid.UUID,
 	firstName string,
@@ -132,7 +135,7 @@ func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 func (u *User) FullName() string { return u.firstName + " " + u.lastName }
 
 // UpdateProfile は、プロフィール（氏名・連絡先・住所・都道府県ID）と更新日時を一括で置き換えます。
-// パスワードは変更しません。各フィールドは New と同じ不変条件で検証します。
+// パスワードは変更しません。各フィールドは New と同じ不変条件で検証します。論理削除済みユーザーには ErrAlreadyDeleted を返します。
 func (u *User) UpdateProfile(
 	firstName, lastName, email, phone string,
 	prefectureID uuid.UUID,
@@ -164,7 +167,7 @@ func (u *User) UpdateProfile(
 	return nil
 }
 
-// ChangePassword は、パスワードハッシュと更新日時を置き換えます。
+// ChangePassword は、パスワードハッシュと更新日時を置き換えます。論理削除済みユーザーには ErrAlreadyDeleted を返します。updatedAt は現在値以降（単調非減少）である必要があり、違反時は ErrInvalidUpdatedAt を返します。
 func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error {
 	if err := u.ensureNotDeleted(); err != nil {
 		return err
@@ -181,8 +184,7 @@ func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error {
 	return nil
 }
 
-// MarkAsDeleted は、ユーザーを論理削除します（deletedAt を設定）。
-// 既に削除済みの場合は ErrAlreadyDeleted を返します。
+// MarkAsDeleted は、ユーザーを論理削除します（deletedAt を設定）。論理削除は更新操作でもあるため updatedAt も deletedAt の値に更新されます。既に削除済みの場合は ErrAlreadyDeleted を返します。
 func (u *User) MarkAsDeleted(deletedAt time.Time) error {
 	if err := u.ensureNotDeleted(); err != nil {
 		return err

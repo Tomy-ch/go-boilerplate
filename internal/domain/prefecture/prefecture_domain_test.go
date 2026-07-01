@@ -36,6 +36,20 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, expected.name, actual.name)
 			assert.Equal(t, expected.code, actual.code)
 		})
+
+		t.Run("コードが最小値ちょうど(1)の場合、生成される", func(t *testing.T) {
+			t.Parallel()
+			actual, err := New(expectedUUID, expectedName, minCode)
+			require.NoError(t, err)
+			assert.Equal(t, minCode, actual.code)
+		})
+
+		t.Run("コードが最大値ちょうど(47)の場合、生成される", func(t *testing.T) {
+			t.Parallel()
+			actual, err := New(expectedUUID, expectedName, maxCode)
+			require.NoError(t, err)
+			assert.Equal(t, maxCode, actual.code)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

@@ -16,78 +16,6 @@ Design points:
 - Missing required values are detected in `validateConfig()`, and startup failure (explicit error return) is triggered to prevent running in an invalid state.
 - Testing helpers and mocks (`config_testing_mock.go`, `config_testing_setter.go`) are provided to allow substituting environment variables and verifying the behavior of `New()` in test environments.
 
-## Public API
-
-### Initialization
-
-|Function|Description|
-|---|---|
-|`SetUpConfig()`|Load `.env` files and initialize `Config` in one step|
-|`New()`|Create `Config` from environment variables (assumes `Load()` has been called)|
-|`Load()`|Load `.env` files and set environment variables|
-
-### SubConfig List
-
-SubConfigs are created from `Config` for each component. All follow the `New*Config(cfg *Config)` signature.
-
-|Type|Constructor|Description|
-|---|---|---|
-|`OperatingSystemConfig`|`NewOperatingSystemConfig`|Timezone|
-|`ApplicationConfig`|`NewApplicationConfig`|Execution mode, environment identifier, app name|
-|`ServerConfig`|`NewServerConfig`|Host, port, timeouts|
-|`MetricsConfig`|`NewMetricsConfig`|Metrics endpoint authentication|
-|`ObservabilityConfig`|`NewObservabilityConfig`|Tracing enablement, DB query masking|
-|`DatabaseConfig`|`NewDatabaseConfig`|DB connection info|
-|`DBConnectionConfig`|`NewDBConnectionConfig`|Connection pool settings|
-|`SecurityConfig`|`NewSecurityConfig`|CORS, HSTS, CIDR|
-|`SecureCookieConfig`|`NewSecureCookieConfig`|Cookie security attributes|
-|`AuthConfig`|`NewAuthConfig`|Auth header / cookie name|
-
-### Utilities
-
-|Function|Description|
-|---|---|
-|`NewTimeLocation(osCfg)`|Create `*time.Location` from `OperatingSystemConfig` timezone|
-
-### Environment / Mode Constants
-
-|Constant|Value|Description|
-|---|---|---|
-|`EnvLocal`|`local`|Local development|
-|`EnvCI`|`ci`|CI environment|
-|`EnvTest`|`test`|Test environment|
-|`EnvDevelopment`|`development`|Development environment|
-|`EnvStaging`|`staging`|Staging environment|
-|`EnvProduction`|`production`|Production environment|
-|`DevelopmentMode`|`development`|Development mode|
-|`ProductionMode`|`production`|Production mode|
-|`MinPort`|`1`|Minimum allowed port number|
-|`MaxPort`|`65535`|Maximum allowed port number|
-
-### Validation Errors
-
-Errors detected by `validateConfig()`. All wrap `apperror.ErrInvalidArgument`.
-
-|Error|Description|
-|---|---|
-|`ErrInvalidAppMode`|Invalid application mode|
-|`ErrInvalidPortRange`|Port number out of range|
-|`ErrEmptyAllowedOrigins`|Allowed origins is empty|
-|`ErrInvalidBcryptCost`|Bcrypt cost out of range|
-|`ErrHTTPOnlyAllowedForLocalhost`|HTTP only allowed for localhost|
-|`ErrFailedToParseConfig`|Failed to parse environment variables|
-|`ErrInvalidReadHeaderTimeout`|Invalid ReadHeaderTimeout|
-|`ErrInvalidReadTimeout`|Invalid ReadTimeout|
-|`ErrInvalidWriteTimeout`|Invalid WriteTimeout|
-|`ErrInvalidIdleTimeout`|Invalid IdleTimeout|
-|`ErrReadHeaderTimeoutExceedsReadTimeout`|ReadHeaderTimeout exceeds ReadTimeout|
-|`ErrInvalidDBPortRange`|DB port number out of range|
-|`ErrInvalidDBPingTimeout`|Invalid DB ping timeout|
-|`ErrInvalidSlowQueryWarnThreshold`|Invalid slow query threshold|
-|`ErrInvalidExceedMaxConns`|Min connections exceeds max connections|
-|`ErrFailedToParseCIDR`|Failed to parse CIDR|
-|`ErrAuthConfigMissing`|Auth config (cookie name or header name) not set|
-
 ## Config Loading Flow
 
 The configuration loading flow at application startup is as follows.
@@ -108,7 +36,7 @@ flowchart TB
 ### Responsibilities of Each Step
 
 - **Load()**
-  - Loads `env/.env` and `env/.env.<ENV>` and sets environment variables.
+  - Reads the embedded `env/.env` (via the `go:embed` `root.FS`), parses it with godotenv, and sets each variable only if it is not already set (runtime-injected environment variables take precedence). No `env/.env.<ENV>` file is read.
 
 - **env.ParseAs[Loader]**
   - Maps environment variables into the `Loader` struct defined in `envspec.go`.
@@ -341,14 +269,47 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |---|---|
 |`SetApplicationMode`|`ApplicationConfig`|
 |`SetApplicationEnv`|`ApplicationConfig`|
+|`SetApplicationLogLevel`|`ApplicationConfig`|
 |`SetServerPort`|`ServerConfig`|
 |`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetObservabilityTracesExporter`|`ObservabilityConfig`|
+|`SetObservabilityMetricsExporter`|`ObservabilityConfig`|
+|`SetObservabilityLogsExporter`|`ObservabilityConfig`|
+|`SetObservabilityOTLPProtocol`|`ObservabilityConfig`|
+|`SetObservabilityOTLPEndpoint`|`ObservabilityConfig`|
 |`SetDatabaseHost`|`DatabaseConfig`|
 |`SetDatabaseName`|`DatabaseConfig`|
+|`SetMetricsPort`|`MetricsConfig`|
+|`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
+|`SetOutboxBatchSize`|`OutboxConfig`|
+|`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetSameSite`|`SecureCookieConfig`|
+|`SetDomain`|`SecureCookieConfig`|
+
+### Test exceptions (files not required to reach full unit coverage)
+
+Most of this package (SubConfig getters, `New()` binding, the test setters) is expected to
+stay near 100% unit coverage. The following are the **intentional exceptions**: their
+uncovered parts are error branches on the loading / composition boundary that cannot be
+exercised without failure injection, and the real path is already verified end-to-end by
+the boot-check CI (`app-di-startup-check` / `worker-boot-check` / `job-boot-check`, which
+run the actual binary through `SetUpConfig`).
+
+|File|Function|Why not unit-tested|
+|---|---|---|
+|`loader.go`|`Load`|The remaining branches are I/O failures on the **embedded** env file (`root.FS.ReadFile` / `godotenv.Parse` / `os.Setenv`). These effectively never fail at runtime and would need an injected failing FS / env to hit.|
+|`setup.go`|`SetUpConfig`|Composition-root glue called from `cmd/` (itself excluded from the coverage gate). Only the `Load()` error early-return is uncovered; startup is exercised by the boot-check CI.|
+
+> Do **not** add contrived failure-injection tests just to color these lines. If one of
+> these functions gains real branching logic (not I/O error plumbing), that logic must be
+> unit-tested like everything else.
+>
+> **Governance:** coverage exceptions are **not added at will**. A new entry may be recorded
+> in this section **only with an appropriate approver's (e.g. architect) sign-off**.
 
 ## Notes
 

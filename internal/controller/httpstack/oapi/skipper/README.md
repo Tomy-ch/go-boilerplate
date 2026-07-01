@@ -4,12 +4,6 @@ English | [日本語](README.ja.md)
 
 Skipper function that bypasses OpenAPI validation for operational endpoints.
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`New()`|Return `echomw.Skipper` that skips validation for ops paths|
-
 ## Skipped Paths
 
 - `/metrics`

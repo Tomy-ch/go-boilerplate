@@ -7,11 +7,24 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/httpstack/basicauth"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestBindHandler(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+	mtc := config.NewMetricsConfig(cfg)
+	e := echo.New()
+	BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
+
+	testassert.AssertEchoRouterPath(t, "/metrics", e.Routes())
+	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
+}
 
 func TestBindHandler_BasicAuth(t *testing.T) {
 	t.Parallel()

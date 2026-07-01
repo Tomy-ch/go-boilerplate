@@ -58,85 +58,86 @@
 <pre><span id="L1" class="ln">     1  </span>package migrate
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;errors&#34;
-<span id="L5" class="ln">     5  </span>	&#34;fmt&#34;
-<span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/safecast&#34;
+<span id="L4" class="ln">     4  </span>	&#34;fmt&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/pkg/safecast&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L9" class="ln">     9  </span>
 <span id="L10" class="ln">    10  </span>	&#34;github.com/golang-migrate/migrate/v4&#34;
 <span id="L11" class="ln">    11  </span>)
 <span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span><span class="comment">// MigrateDownRun は、マイグレーションをダウングレードするための実行関数です。</span>
-<span id="L14" class="ln">    14  </span>func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
-<span id="L15" class="ln">    15  </span>	if steps &lt; 0 {
-<span id="L16" class="ln">    16  </span>		<span class="comment">// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。</span>
-<span id="L17" class="ln">    17  </span>		err := fmt.Errorf(&#34;steps must be zero or positive, got %d&#34;, steps)
-<span id="L18" class="ln">    18  </span>		logger.Named(&#34;migrateDownRun&#34;).Error(&#34;invalid steps&#34;, logging.Error(logging.ErrorKey, err))
-<span id="L19" class="ln">    19  </span>		return err
-<span id="L20" class="ln">    20  </span>	}
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>	m, err := newMigrator(database)
-<span id="L23" class="ln">    23  </span>	if err != nil {
-<span id="L24" class="ln">    24  </span>		logger.Named(&#34;migrateDownRun.buildMigrateInstance&#34;).Error(&#34;failed to create migrate instance&#34;,
-<span id="L25" class="ln">    25  </span>			logging.Error(logging.ErrorKey, err),
-<span id="L26" class="ln">    26  </span>		)
-<span id="L27" class="ln">    27  </span>		return err
-<span id="L28" class="ln">    28  </span>	}
-<span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span>	if steps == 0 {
-<span id="L31" class="ln">    31  </span>		logger.Named(&#34;migrateDownRun&#34;).Info(&#34;running full migration down&#34;)
-<span id="L32" class="ln">    32  </span>		if err := executeMigrateFullDown(m); err != nil {
-<span id="L33" class="ln">    33  </span>			logger.Named(&#34;migrateDownRun.executeMigrateFullDown&#34;).Error(&#34;down migration failed&#34;,
-<span id="L34" class="ln">    34  </span>				logging.Error(logging.ErrorKey, err),
-<span id="L35" class="ln">    35  </span>			)
-<span id="L36" class="ln">    36  </span>			return err
-<span id="L37" class="ln">    37  </span>		}
-<span id="L38" class="ln">    38  </span>	} else {
-<span id="L39" class="ln">    39  </span>		logger.Named(&#34;migrateDownRun&#34;).Info(&#34;running migration down steps&#34;, logging.Int(&#34;steps&#34;, steps))
-<span id="L40" class="ln">    40  </span>		if err := executeMigrateDownSteps(m, steps); err != nil {
-<span id="L41" class="ln">    41  </span>			logger.Named(&#34;migrateDownRun.executeMigrateDownSteps&#34;).Error(&#34;down migration steps failed&#34;,
-<span id="L42" class="ln">    42  </span>				logging.Error(logging.ErrorKey, err),
-<span id="L43" class="ln">    43  </span>			)
-<span id="L44" class="ln">    44  </span>			return err
-<span id="L45" class="ln">    45  </span>		}
-<span id="L46" class="ln">    46  </span>	}
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span>	logger.Named(&#34;migrateDownRun&#34;).Info(&#34;✅ migration down completed&#34;)
-<span id="L49" class="ln">    49  </span>	return nil
-<span id="L50" class="ln">    50  </span>}
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span><span class="comment">// executeMigrateDownSteps は、現在位置から steps 段だけ Down します。無変更（ErrNoChange）は成功扱いです。</span>
-<span id="L53" class="ln">    53  </span>func executeMigrateDownSteps(m Migrator, steps int) error {
-<span id="L54" class="ln">    54  </span>	<span class="comment">// golang-migrate の Steps は負数を渡すとその段数だけ Down するため、検証済みの正値を反転します。</span>
-<span id="L55" class="ln">    55  </span>	if err := m.Steps(-steps); err != nil &amp;&amp; !errors.Is(err, migrate.ErrNoChange) {
-<span id="L56" class="ln">    56  </span>		return err
-<span id="L57" class="ln">    57  </span>	}
-<span id="L58" class="ln">    58  </span>	return nil
-<span id="L59" class="ln">    59  </span>}
-<span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span><span class="comment">// executeMigrateFullDown は、マイグレーションを全てダウングレードして、DBを初期状態に戻します。</span>
-<span id="L62" class="ln">    62  </span>func executeMigrateFullDown(m Migrator) error {
-<span id="L63" class="ln">    63  </span>	<span class="comment">// dirty 状態のままでは Down できないため、現在バージョンで整合を取り直してから巻き戻します。</span>
-<span id="L64" class="ln">    64  </span>	v, dirty, err := m.Version()
-<span id="L65" class="ln">    65  </span>	if err != nil &amp;&amp; !errors.Is(err, migrate.ErrNilVersion) {
-<span id="L66" class="ln">    66  </span>		return err
-<span id="L67" class="ln">    67  </span>	}
-<span id="L68" class="ln">    68  </span>	if dirty {
-<span id="L69" class="ln">    69  </span>		safeValue, err := safecast.UintToInt(v)
-<span id="L70" class="ln">    70  </span>		if err != nil {
-<span id="L71" class="ln">    71  </span>			return err
-<span id="L72" class="ln">    72  </span>		}
-<span id="L73" class="ln">    73  </span>		if err := m.Force(safeValue); err != nil {
-<span id="L74" class="ln">    74  </span>			return err
-<span id="L75" class="ln">    75  </span>		}
-<span id="L76" class="ln">    76  </span>	}
-<span id="L77" class="ln">    77  </span>	if err := m.Down(); err != nil &amp;&amp; !errors.Is(err, migrate.ErrNoChange) {
-<span id="L78" class="ln">    78  </span>		return err
-<span id="L79" class="ln">    79  </span>	}
-<span id="L80" class="ln">    80  </span>	return nil
-<span id="L81" class="ln">    81  </span>}
-<span id="L82" class="ln">    82  </span>
+<span id="L13" class="ln">    13  </span><span class="comment">// MigrateDownRun は、データベースマイグレーションを Down 方向に適用します。</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// steps=0 なら全マイグレーションをロールバックし、正数なら段数分だけ戻します。steps が負の場合はエラーを返します。dirty 状態の DB は Force で整合を取ってから Down します。</span>
+<span id="L15" class="ln">    15  </span>func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
+<span id="L16" class="ln">    16  </span>	if steps &lt; 0 {
+<span id="L17" class="ln">    17  </span>		<span class="comment">// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。</span>
+<span id="L18" class="ln">    18  </span>		err := xerrors.New(fmt.Sprintf(&#34;steps must be zero or positive, got %d&#34;, steps))
+<span id="L19" class="ln">    19  </span>		logger.Named(&#34;migrateDownRun&#34;).Error(&#34;invalid steps&#34;, logging.Error(logging.ErrorKey, err))
+<span id="L20" class="ln">    20  </span>		return err
+<span id="L21" class="ln">    21  </span>	}
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span>	m, err := newMigrator(database)
+<span id="L24" class="ln">    24  </span>	if err != nil {
+<span id="L25" class="ln">    25  </span>		logger.Named(&#34;migrateDownRun.buildMigrateInstance&#34;).Error(&#34;failed to create migrate instance&#34;,
+<span id="L26" class="ln">    26  </span>			logging.Error(logging.ErrorKey, err),
+<span id="L27" class="ln">    27  </span>		)
+<span id="L28" class="ln">    28  </span>		return err
+<span id="L29" class="ln">    29  </span>	}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>	if steps == 0 {
+<span id="L32" class="ln">    32  </span>		logger.Named(&#34;migrateDownRun&#34;).Info(&#34;running full migration down&#34;)
+<span id="L33" class="ln">    33  </span>		if err := executeMigrateFullDown(m); err != nil {
+<span id="L34" class="ln">    34  </span>			logger.Named(&#34;migrateDownRun.executeMigrateFullDown&#34;).Error(&#34;down migration failed&#34;,
+<span id="L35" class="ln">    35  </span>				logging.Error(logging.ErrorKey, err),
+<span id="L36" class="ln">    36  </span>			)
+<span id="L37" class="ln">    37  </span>			return err
+<span id="L38" class="ln">    38  </span>		}
+<span id="L39" class="ln">    39  </span>	} else {
+<span id="L40" class="ln">    40  </span>		logger.Named(&#34;migrateDownRun&#34;).Info(&#34;running migration down steps&#34;, logging.Int(&#34;steps&#34;, steps))
+<span id="L41" class="ln">    41  </span>		if err := executeMigrateDownSteps(m, steps); err != nil {
+<span id="L42" class="ln">    42  </span>			logger.Named(&#34;migrateDownRun.executeMigrateDownSteps&#34;).Error(&#34;down migration steps failed&#34;,
+<span id="L43" class="ln">    43  </span>				logging.Error(logging.ErrorKey, err),
+<span id="L44" class="ln">    44  </span>			)
+<span id="L45" class="ln">    45  </span>			return err
+<span id="L46" class="ln">    46  </span>		}
+<span id="L47" class="ln">    47  </span>	}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	logger.Named(&#34;migrateDownRun&#34;).Info(&#34;✅ migration down completed&#34;)
+<span id="L50" class="ln">    50  </span>	return nil
+<span id="L51" class="ln">    51  </span>}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span><span class="comment">// executeMigrateDownSteps は、現在位置から steps 段だけ Down します。無変更（ErrNoChange）は成功扱いです。</span>
+<span id="L54" class="ln">    54  </span>func executeMigrateDownSteps(m Migrator, steps int) error {
+<span id="L55" class="ln">    55  </span>	<span class="comment">// golang-migrate の Steps は負数を渡すとその段数だけ Down するため、検証済みの正値を反転します。</span>
+<span id="L56" class="ln">    56  </span>	if err := m.Steps(-steps); err != nil &amp;&amp; !xerrors.Is(err, migrate.ErrNoChange) {
+<span id="L57" class="ln">    57  </span>		return err
+<span id="L58" class="ln">    58  </span>	}
+<span id="L59" class="ln">    59  </span>	return nil
+<span id="L60" class="ln">    60  </span>}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span><span class="comment">// executeMigrateFullDown は、マイグレーションを全てダウングレードして、DBを初期状態に戻します。</span>
+<span id="L63" class="ln">    63  </span>func executeMigrateFullDown(m Migrator) error {
+<span id="L64" class="ln">    64  </span>	<span class="comment">// dirty 状態のままでは Down できないため、現在バージョンで整合を取り直してから巻き戻します。</span>
+<span id="L65" class="ln">    65  </span>	v, dirty, err := m.Version()
+<span id="L66" class="ln">    66  </span>	if err != nil &amp;&amp; !xerrors.Is(err, migrate.ErrNilVersion) {
+<span id="L67" class="ln">    67  </span>		return err
+<span id="L68" class="ln">    68  </span>	}
+<span id="L69" class="ln">    69  </span>	if dirty {
+<span id="L70" class="ln">    70  </span>		safeValue, err := safecast.UintToInt(v)
+<span id="L71" class="ln">    71  </span>		if err != nil {
+<span id="L72" class="ln">    72  </span>			return err
+<span id="L73" class="ln">    73  </span>		}
+<span id="L74" class="ln">    74  </span>		if err := m.Force(safeValue); err != nil {
+<span id="L75" class="ln">    75  </span>			return err
+<span id="L76" class="ln">    76  </span>		}
+<span id="L77" class="ln">    77  </span>	}
+<span id="L78" class="ln">    78  </span>	if err := m.Down(); err != nil &amp;&amp; !xerrors.Is(err, migrate.ErrNoChange) {
+<span id="L79" class="ln">    79  </span>		return err
+<span id="L80" class="ln">    80  </span>	}
+<span id="L81" class="ln">    81  </span>	return nil
+<span id="L82" class="ln">    82  </span>}
+<span id="L83" class="ln">    83  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/migrate/migratedown.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

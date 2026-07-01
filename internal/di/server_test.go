@@ -26,6 +26,7 @@ func Test_NewApplicationCore_GraphIsValid(t *testing.T) {
 	require.NoError(t, fx.ValidateApp(opts...))
 }
 
+//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func Test_NewApplicationCore_BootsWithMockedDB(t *testing.T) {
 	// 実 DB とポート衝突を避けつつ、全コンストラクタの実行とライフサイクル(OnStart/OnStop)を検証する。
 	// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避し、サーバポートは 0（エフェメラル）にする。

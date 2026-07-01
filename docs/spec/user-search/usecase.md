@@ -16,7 +16,7 @@ package: internal/usecase/user/search
 name: Usecase
 methods:
   - name: ListUsersByKeyword
-    signature: ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error)
+    signature: ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error)
   - name: CountUsersByKeyword
     signature: CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error)
 ```

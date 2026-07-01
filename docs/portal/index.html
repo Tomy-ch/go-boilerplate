@@ -5,26 +5,17 @@
   <meta charset="utf-8" />
   <title>Docs Portal</title>
 
+  <!-- dist/ 配下は scripts/build-portal.mjs (esbuild) が docs/portal/src/main.jsx を
+       バンドルして生成する成果物（編集禁止）。CDN とブラウザ内 Babel への依存は
+       廃止済み。再生成は `make gen-portal-build`。 -->
   <link rel="stylesheet" href="./styles.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-
-  <!-- React CDN -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
-  <!-- Babel for JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="stylesheet" href="./dist/bundle.css" />
 </head>
 
 <body>
 
   <div id="root"></div>
-  <script type="text/babel" data-presets="react" src="./main.jsx"></script>
+  <script type="module" src="./dist/bundle.js"></script>
 
 </body>
 

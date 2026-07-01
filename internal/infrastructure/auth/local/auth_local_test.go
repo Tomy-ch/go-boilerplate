@@ -45,7 +45,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		require.NoError(t, err)
 
 		authn, err := authenticator.Authenticate(ctx, cred)
-		require.Nil(t, authn)
+		assert.Nil(t, authn)
 		require.ErrorIs(t, err, ErrLocalMockAuthenticatorInvalidToken)
 	})
 
@@ -55,7 +55,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		authenticator := New()
 
 		authn, err := authenticator.Authenticate(ctx, nil)
-		require.Nil(t, authn)
+		assert.Nil(t, authn)
 		require.ErrorIs(t, err, ErrLocalMockAuthenticatorInvalidToken)
 	})
 }
@@ -77,6 +77,18 @@ func Test_authenticator_resolveSubject(t *testing.T) {
 		token := "invalid-token"
 
 		subject := authenticator.resolveSubject(token)
-		require.Empty(t, subject)
+		assert.Empty(t, subject)
+	})
+
+	t.Run("prefixのみでsubjectが空の場合、空文字が返される", func(t *testing.T) {
+		t.Parallel()
+		authenticator := &authenticator{}
+		assert.Empty(t, authenticator.resolveSubject("debug:"))
+	})
+
+	t.Run("prefixありでsubjectが空白のみの場合、空文字が返される", func(t *testing.T) {
+		t.Parallel()
+		authenticator := &authenticator{}
+		assert.Empty(t, authenticator.resolveSubject("debug:   "))
 	})
 }

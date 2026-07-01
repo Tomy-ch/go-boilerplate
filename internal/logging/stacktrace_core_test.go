@@ -3,9 +3,6 @@ package logging
 import (
 	"bytes"
 	"encoding/json"
-	"net/url"
-	"strings"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,51 +10,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
-
-// メモリ書き込み可能な zap.Sink を 1 度だけ登録する。
-// OutputPaths に "mem://buildlogger" を指定すると、test 側で取り出したバッファに書き込まれる。
-var (
-	memSinkOnce sync.Once
-	memSinks    = sync.Map{} // key: URL.Host, val: *memSink
-)
-
-type memSink struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (m *memSink) Write(p []byte) (int, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.buf.Write(p)
-}
-func (m *memSink) Sync() error  { return nil }
-func (m *memSink) Close() error { return nil }
-func (m *memSink) Bytes() []byte {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return append([]byte(nil), m.buf.Bytes()...)
-}
-
-// registerMemSink は、test 用メモリ sink スキームをプロセス内で 1 度だけ登録する。
-func registerMemSink(t *testing.T) {
-	t.Helper()
-	memSinkOnce.Do(func() {
-		require.NoError(t, zap.RegisterSink("mem", func(u *url.URL) (zap.Sink, error) {
-			s := &memSink{}
-			memSinks.Store(u.Host, s)
-			return s, nil
-		}))
-	})
-}
-
-// readMemSink は、登録済みメモリ sink に書き込まれた内容を取り出す。
-func readMemSink(t *testing.T, name string) []byte {
-	t.Helper()
-	v, ok := memSinks.Load(name)
-	require.True(t, ok, "mem sink %q not found", name)
-	return v.(*memSink).Bytes()
-}
 
 // newJSONStacktraceLogger は、JSON エンコード + stacktraceArrayCore ラップ付きの zap ロガーを生成する。
 func newJSONStacktraceLogger(t *testing.T, stacktraceLevel zapcore.Level) (*zap.Logger, *bytes.Buffer) {
@@ -116,83 +68,48 @@ func Test_stacktraceArrayCore_Write(t *testing.T) {
 	})
 }
 
-// 本番ロガー相当の Encoding=json + 非空 StacktraceKey 設定で buildLogger を組み、
-// JSON 出力の stacktrace キーが配列になるエンドツーエンド経路を検証する。
-func Test_buildLogger_jsonStacktraceIsArray(t *testing.T) {
+func Test_stacktraceArrayCore_Check(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("json設定でErrorログのstacktraceが配列で出力される", func(t *testing.T) {
+		t.Run("有効レベルのエントリは自身をCheckedEntryへ登録し出力される", func(t *testing.T) {
 			t.Parallel()
 
-			registerMemSink(t)
-			const sinkName = "buildlogger-json"
-			cfg := zap.Config{
-				Level:       zap.NewAtomicLevelAt(zapcore.InfoLevel),
-				Encoding:    "json",
-				OutputPaths: []string{"mem://" + sinkName},
-				EncoderConfig: zapcore.EncoderConfig{
-					MessageKey:    "msg",
-					LevelKey:      "level",
-					StacktraceKey: "stacktrace",
-					EncodeLevel:   zapcore.LowercaseLevelEncoder,
-				},
-			}
-			l, err := buildLogger(cfg, zapcore.ErrorLevel)
-			require.NoError(t, err)
-			l.Error("simulated server error")
+			var buf bytes.Buffer
+			encCfg := zap.NewProductionEncoderConfig()
+			enc := zapcore.NewJSONEncoder(encCfg)
+			wrapped := wrapStacktraceCore(
+				zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.InfoLevel), "stacktrace")
 
-			raw := readMemSink(t, sinkName)
+			zl := zap.New(wrapped)
+			zl.Info("hello")
 
-			var got map[string]any
-			require.NoError(t, json.Unmarshal(bytes.TrimRight(raw, "\n"), &got))
-
-			st, ok := got["stacktrace"]
-			require.True(t, ok, "stacktrace key must exist")
-			arr, ok := st.([]any)
-			require.True(t, ok, "stacktrace must be JSON array, got %T", st)
-			require.NotEmpty(t, arr)
+			assert.Contains(t, buf.String(), "hello")
 		})
 	})
-}
 
-// console エンコーダで wrap が適用されると一行 JSON 化して可読性が破壊されるため、
-// buildLogger は console 設定では wrap を適用せず、zap 標準の改行付きスタックを保つ。
-func Test_buildLogger_consoleStacktraceStaysMultiline(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("console設定ではstacktraceが改行付きの単一文字列として出力される", func(t *testing.T) {
+		t.Run("無効レベルのエントリは登録されずceを素通しする", func(t *testing.T) {
 			t.Parallel()
 
-			registerMemSink(t)
-			const sinkName = "buildlogger-console"
-			cfg := zap.Config{
-				Level:       zap.NewAtomicLevelAt(zapcore.DebugLevel),
-				Encoding:    "console",
-				OutputPaths: []string{"mem://" + sinkName},
-				EncoderConfig: zapcore.EncoderConfig{
-					MessageKey:    "msg",
-					LevelKey:      "level",
-					StacktraceKey: "Stack",
-					EncodeLevel:   zapcore.CapitalLevelEncoder,
-				},
-			}
-			l, err := buildLogger(cfg, zapcore.ErrorLevel)
-			require.NoError(t, err)
-			l.Error("simulated server error")
+			var wrappedBuf, teeBuf bytes.Buffer
+			encCfg := zap.NewProductionEncoderConfig()
+			enc := zapcore.NewJSONEncoder(encCfg)
+			// wrapped は Error 以上のみ有効。Debug core との Tee により Info でも Check は
+			// 呼ばれるが、wrapped 側は無効レベルとして ce を素通し（未登録）する。
+			wrapped := wrapStacktraceCore(
+				zapcore.NewCore(enc, zapcore.AddSync(&wrappedBuf), zapcore.ErrorLevel), "stacktrace")
+			debugCore := zapcore.NewCore(enc, zapcore.AddSync(&teeBuf), zapcore.DebugLevel)
 
-			raw := readMemSink(t, sinkName)
-			out := string(raw)
-			// console エンコーダ標準の改行+インデント形式が保たれる（一行 JSON 配列化していない）。
-			require.Contains(t, out, "\n", "console output must keep newlines")
-			require.NotContains(t, out, `"Stack":[`, "console output must not contain JSON array form of stack")
-			// 少なくとも複数行に渡るスタックが出力されていること。
-			assert.GreaterOrEqual(t, strings.Count(out, "\n"), 2)
+			zl := zap.New(zapcore.NewTee(debugCore, wrapped))
+			zl.Info("info-only")
+
+			assert.NotContains(t, wrappedBuf.String(), "info-only")
+			assert.Contains(t, teeBuf.String(), "info-only")
 		})
 	})
 }

@@ -1,0 +1,228 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>queue - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/observability">observability</a>/<a href="../../../../../../src/go-boilerplate/internal/observability/metrics">metrics</a>/<a href="../../../../../../src/go-boilerplate/internal/observability/metrics/queue">queue</a>/<span class="text-muted">collector.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/observability/metrics/queue">go-boilerplate/internal/observability/metrics/queue</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package queue は、worker が対象とする broker queue の滞留量（depth / DLQ count）を</span>
+<span id="L2" class="ln">     2  </span><span class="comment">// Prometheus メトリクスとして公開する収集器を提供します。</span>
+<span id="L3" class="ln">     3  </span><span class="comment">//</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// engine は worker.QueueStatsProvider を知りません。収集器が capability を実装する adapter</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// （SQS など）からのみ滞留量を pull します。scrape のたびに provider 経由で broker API を呼ぶため、</span>
+<span id="L6" class="ln">     6  </span><span class="comment">// SQS では値が approximate（厳密な件数ではなく滞留傾向の gauge）になります。</span>
+<span id="L7" class="ln">     7  </span>package queue
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>import (
+<span id="L10" class="ln">    10  </span>	&#34;context&#34;
+<span id="L11" class="ln">    11  </span>	&#34;sync&#34;
+<span id="L12" class="ln">    12  </span>	&#34;time&#34;
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>	&#34;github.com/prometheus/client_golang/prometheus&#34;
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/usecase/boundary/worker&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L18" class="ln">    18  </span>)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>const (
+<span id="L21" class="ln">    21  </span>	namespace = &#34;worker&#34;
+<span id="L22" class="ln">    22  </span>	subsystem = &#34;queue&#34;
+<span id="L23" class="ln">    23  </span>)
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// collectTimeout は、1 回の scrape（Collect）で全 target の滞留量取得に許す上限時間です。</span>
+<span id="L26" class="ln">    26  </span><span class="comment">// registry は Gather のたびに Collect を goroutine で並行起動するため、deadline なしで</span>
+<span id="L27" class="ln">    27  </span><span class="comment">// broker API（SQS GetQueueAttributes 等）を呼ぶと、応答不能時に goroutine が蓄積して</span>
+<span id="L28" class="ln">    28  </span><span class="comment">// リソースを枯渇させ得ます。これを防ぐため scrape 単位で timeout を設けます。</span>
+<span id="L29" class="ln">    29  </span>const collectTimeout = 5 * time.Second
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// queue label の値。URL / ARN / message id 等の高カーディナリティ・秘匿情報は label にしません。</span>
+<span id="L32" class="ln">    32  </span>const (
+<span id="L33" class="ln">    33  </span>	queueSource  = &#34;source&#34;
+<span id="L34" class="ln">    34  </span>	queueDLQ     = &#34;dlq&#34;
+<span id="L35" class="ln">    35  </span>	queueUnknown = &#34;unknown&#34;
+<span id="L36" class="ln">    36  </span>)
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// state label の値（QueueDepth のフィールド対応）。</span>
+<span id="L39" class="ln">    39  </span>const (
+<span id="L40" class="ln">    40  </span>	stateVisible    = &#34;visible&#34;
+<span id="L41" class="ln">    41  </span>	stateNotVisible = &#34;not_visible&#34;
+<span id="L42" class="ln">    42  </span>	stateDelayed    = &#34;delayed&#34;
+<span id="L43" class="ln">    43  </span>)
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// Target は、収集対象の worker と滞留量取得 capability の対応です。</span>
+<span id="L46" class="ln">    46  </span><span class="comment">// DI group &#34;worker.queue_stats_targets&#34; 経由で、QueueStatsProvider を実装する adapter（SQS など）を</span>
+<span id="L47" class="ln">    47  </span><span class="comment">// 使う worker のときだけ任意登録されます。</span>
+<span id="L48" class="ln">    48  </span>type Target struct {
+<span id="L49" class="ln">    49  </span>	<span class="comment">// WorkerName は、metric の worker label に使う worker 名です。</span>
+<span id="L50" class="ln">    50  </span>	WorkerName string
+<span id="L51" class="ln">    51  </span>	<span class="comment">// Adapter は、metric の adapter label に使う broker adapter 種別（例: &#34;sqs&#34;）です。</span>
+<span id="L52" class="ln">    52  </span>	Adapter string
+<span id="L53" class="ln">    53  </span>	<span class="comment">// Provider は、滞留量を取得する capability 実装です。</span>
+<span id="L54" class="ln">    54  </span>	Provider worker.QueueStatsProvider
+<span id="L55" class="ln">    55  </span>}
+<span id="L56" class="ln">    56  </span>
+<span id="L57" class="ln">    57  </span><span class="comment">// StatsCollector は、QueueStatsProvider capability を呼んで滞留量を公開する Prometheus 収集器です。</span>
+<span id="L58" class="ln">    58  </span>type StatsCollector struct {
+<span id="L59" class="ln">    59  </span>	targets []Target
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>	depthDesc   *prometheus.Desc
+<span id="L62" class="ln">    62  </span>	failureDesc *prometheus.Desc
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	<span class="comment">// failures は、収集失敗の累積回数です。Collect は Prometheus の Gather から並行呼び出し</span>
+<span id="L65" class="ln">    65  </span>	<span class="comment">// されるため、mu で保護します。</span>
+<span id="L66" class="ln">    66  </span>	mu       sync.Mutex
+<span id="L67" class="ln">    67  </span>	failures map[failureKey]int64
+<span id="L68" class="ln">    68  </span>}
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span><span class="comment">// failureKey は、収集失敗 counter の label 組です。</span>
+<span id="L71" class="ln">    71  </span>type failureKey struct {
+<span id="L72" class="ln">    72  </span>	worker  string
+<span id="L73" class="ln">    73  </span>	adapter string
+<span id="L74" class="ln">    74  </span>	queue   string
+<span id="L75" class="ln">    75  </span>}
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span><span class="comment">// NewStatsCollector は、指定の収集対象から StatsCollector を生成します。</span>
+<span id="L78" class="ln">    78  </span>func NewStatsCollector(targets []Target) *StatsCollector {
+<span id="L79" class="ln">    79  </span>	return &amp;StatsCollector{
+<span id="L80" class="ln">    80  </span>		targets: targets,
+<span id="L81" class="ln">    81  </span>		depthDesc: prometheus.NewDesc(
+<span id="L82" class="ln">    82  </span>			prometheus.BuildFQName(namespace, subsystem, &#34;depth&#34;),
+<span id="L83" class="ln">    83  </span>			&#34;Approximate number of messages in the queue by state. SQS values are approximate.&#34;,
+<span id="L84" class="ln">    84  </span>			[]string{&#34;worker&#34;, &#34;adapter&#34;, &#34;queue&#34;, &#34;state&#34;}, nil,
+<span id="L85" class="ln">    85  </span>		),
+<span id="L86" class="ln">    86  </span>		failureDesc: prometheus.NewDesc(
+<span id="L87" class="ln">    87  </span>			prometheus.BuildFQName(namespace, subsystem, &#34;stats_collection_failures_total&#34;),
+<span id="L88" class="ln">    88  </span>			&#34;Total number of queue stats collection failures.&#34;,
+<span id="L89" class="ln">    89  </span>			[]string{&#34;worker&#34;, &#34;adapter&#34;, &#34;queue&#34;}, nil,
+<span id="L90" class="ln">    90  </span>		),
+<span id="L91" class="ln">    91  </span>		failures: make(map[failureKey]int64),
+<span id="L92" class="ln">    92  </span>	}
+<span id="L93" class="ln">    93  </span>}
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span><span class="comment">// Describe は、収集器のメトリクス説明を Prometheus に提供します。</span>
+<span id="L96" class="ln">    96  </span>func (c *StatsCollector) Describe(ch chan&lt;- *prometheus.Desc) {
+<span id="L97" class="ln">    97  </span>	ch &lt;- c.depthDesc
+<span id="L98" class="ln">    98  </span>	ch &lt;- c.failureDesc
+<span id="L99" class="ln">    99  </span>}
+<span id="L100" class="ln">   100  </span>
+<span id="L101" class="ln">   101  </span><span class="comment">// Collect は、各 target から滞留量を取得して Prometheus に提供します。</span>
+<span id="L102" class="ln">   102  </span><span class="comment">// provider がエラーを返した場合は depth を出さず、収集失敗 counter を増やします。</span>
+<span id="L103" class="ln">   103  </span>func (c *StatsCollector) Collect(ch chan&lt;- prometheus.Metric) {
+<span id="L104" class="ln">   104  </span>	ctx, cancel := context.WithTimeout(context.Background(), collectTimeout)
+<span id="L105" class="ln">   105  </span>	defer cancel()
+<span id="L106" class="ln">   106  </span>	for _, t := range c.targets {
+<span id="L107" class="ln">   107  </span>		stats, err := t.Provider.QueueStats(ctx)
+<span id="L108" class="ln">   108  </span>		if err != nil {
+<span id="L109" class="ln">   109  </span>			<span class="comment">// QueueStats は source / DLQ いずれの失敗かを区別しないため queue=&#34;unknown&#34; とします。</span>
+<span id="L110" class="ln">   110  </span>			c.recordFailure(t.WorkerName, t.Adapter, queueUnknown)
+<span id="L111" class="ln">   111  </span>			continue
+<span id="L112" class="ln">   112  </span>		}
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span>		c.collectDepth(ch, t, queueSource, stats.Source)
+<span id="L115" class="ln">   115  </span>		if stats.DLQ != nil {
+<span id="L116" class="ln">   116  </span>			c.collectDepth(ch, t, queueDLQ, *stats.DLQ)
+<span id="L117" class="ln">   117  </span>		}
+<span id="L118" class="ln">   118  </span>	}
+<span id="L119" class="ln">   119  </span>	c.emitFailures(ch)
+<span id="L120" class="ln">   120  </span>}
+<span id="L121" class="ln">   121  </span>
+<span id="L122" class="ln">   122  </span><span class="comment">// collectDepth は、1 queue の滞留量を state 別の gauge として出力します。</span>
+<span id="L123" class="ln">   123  </span>func (c *StatsCollector) collectDepth(ch chan&lt;- prometheus.Metric, t Target, queue string, d worker.QueueDepth) {
+<span id="L124" class="ln">   124  </span>	ch &lt;- prometheus.MustNewConstMetric(
+<span id="L125" class="ln">   125  </span>		c.depthDesc, prometheus.GaugeValue, float64(d.Visible), t.WorkerName, t.Adapter, queue, stateVisible)
+<span id="L126" class="ln">   126  </span>	ch &lt;- prometheus.MustNewConstMetric(
+<span id="L127" class="ln">   127  </span>		c.depthDesc, prometheus.GaugeValue, float64(d.InFlight), t.WorkerName, t.Adapter, queue, stateNotVisible)
+<span id="L128" class="ln">   128  </span>	ch &lt;- prometheus.MustNewConstMetric(
+<span id="L129" class="ln">   129  </span>		c.depthDesc, prometheus.GaugeValue, float64(d.Delayed), t.WorkerName, t.Adapter, queue, stateDelayed)
+<span id="L130" class="ln">   130  </span>}
+<span id="L131" class="ln">   131  </span>
+<span id="L132" class="ln">   132  </span><span class="comment">// recordFailure は、収集失敗の累積回数を増やします。</span>
+<span id="L133" class="ln">   133  </span>func (c *StatsCollector) recordFailure(workerName, adapter, queue string) {
+<span id="L134" class="ln">   134  </span>	c.mu.Lock()
+<span id="L135" class="ln">   135  </span>	defer c.mu.Unlock()
+<span id="L136" class="ln">   136  </span>	c.failures[failureKey{worker: workerName, adapter: adapter, queue: queue}]++
+<span id="L137" class="ln">   137  </span>}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span><span class="comment">// emitFailures は、累積した収集失敗回数を counter として出力します。</span>
+<span id="L140" class="ln">   140  </span>func (c *StatsCollector) emitFailures(ch chan&lt;- prometheus.Metric) {
+<span id="L141" class="ln">   141  </span>	c.mu.Lock()
+<span id="L142" class="ln">   142  </span>	defer c.mu.Unlock()
+<span id="L143" class="ln">   143  </span>	for k, v := range c.failures {
+<span id="L144" class="ln">   144  </span>		ch &lt;- prometheus.MustNewConstMetric(
+<span id="L145" class="ln">   145  </span>			c.failureDesc, prometheus.CounterValue, float64(v), k.worker, k.adapter, k.queue)
+<span id="L146" class="ln">   146  </span>	}
+<span id="L147" class="ln">   147  </span>}
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span><span class="comment">// RegisterStatsCollector は、StatsCollector を指定レジストリに登録します。</span>
+<span id="L150" class="ln">   150  </span><span class="comment">// 既に登録済みの場合はエラーを返さず無視します。</span>
+<span id="L151" class="ln">   151  </span>func RegisterStatsCollector(reg prometheus.Registerer, c *StatsCollector) error {
+<span id="L152" class="ln">   152  </span>	err := reg.Register(c)
+<span id="L153" class="ln">   153  </span>	if err != nil {
+<span id="L154" class="ln">   154  </span>		var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+<span id="L155" class="ln">   155  </span>		if xerrors.As(err, &amp;alreadyRegisteredErr) {
+<span id="L156" class="ln">   156  </span>			return nil
+<span id="L157" class="ln">   157  </span>		}
+<span id="L158" class="ln">   158  </span>		return err
+<span id="L159" class="ln">   159  </span>	}
+<span id="L160" class="ln">   160  </span>	return nil
+<span id="L161" class="ln">   161  </span>}
+<span id="L162" class="ln">   162  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/observability/metrics/queue/collector.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

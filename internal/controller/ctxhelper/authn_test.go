@@ -47,6 +47,7 @@ func TestSetAuthn(t *testing.T) {
 			got, ok := GetAuthn(ctx)
 			assert.True(t, ok)
 			assert.Equal(t, want.Subject(), got.Subject())
+			assert.Equal(t, want.Provider(), got.Provider())
 		})
 	})
 

@@ -26,7 +26,7 @@ func TestHealth_Integration(t *testing.T) {
 			health.BindHandler(e, tf)
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/health", nil, nil)
-			AssertJSONResponse(t, gen.HealthResponse{}, actual)
+			AssertJSONResponseType[gen.HealthResponse](t, actual)
 		})
 	})
 }

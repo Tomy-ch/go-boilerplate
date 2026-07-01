@@ -7,17 +7,20 @@ import (
 	"fmt"
 
 	"go-boilerplate/internal/controller/error/response/gen"
-	"go-boilerplate/pkg/ptr"
 )
 
 // HTTPErrorResponse は、HTTPエラーレスポンスの構造体です。
+//
+//nolint:errname // HTTPエラーレスポンスのDTOであり、レスポンス本体を表す名称が適切なため XxxError 形式には改名しない
 type HTTPErrorResponse struct {
 	gen.ErrorResponse
+
 	HTTPStatus int   `json:"-"`
 	Internal   error `json:"-"`
 }
 
-// NewHTTPErrorFromAppError は、エラーの中身がアプリケーションエラーである場合に、対応するHTTPエラーレスポンスを生成します。
+// NewHTTPErrorFromAppError は、err をアプリケーションエラーとして解釈し、対応する HTTP エラーレスポンスを返します。
+// 既知のエラー型に一致しない場合は 500 Internal Server Error として扱います。
 func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByAppError(err)
 
@@ -48,7 +51,7 @@ func (e *HTTPErrorResponse) Error() string {
 func newHTTPErrorFromMeta(meta httpErrorMeta, details ...string) *HTTPErrorResponse {
 	var detailsPtr *[]string
 	if len(details) > 0 {
-		detailsPtr = ptr.To(details)
+		detailsPtr = new(details)
 	}
 	return &HTTPErrorResponse{
 		ErrorResponse: gen.ErrorResponse{

@@ -79,7 +79,7 @@
 <span id="L22" class="ln">    22  </span>			got, err := ParseRFC3339(input)
 <span id="L23" class="ln">    23  </span>			require.NoError(t, err)
 <span id="L24" class="ln">    24  </span>
-<span id="L25" class="ln">    25  </span>			assert.True(t, got.Equal(want))
+<span id="L25" class="ln">    25  </span>			assert.Equal(t, want, got)
 <span id="L26" class="ln">    26  </span>		})
 <span id="L27" class="ln">    27  </span>	})
 <span id="L28" class="ln">    28  </span>
@@ -109,7 +109,7 @@
 <span id="L52" class="ln">    52  </span>			got, err := ParseRFC3339UTC(input)
 <span id="L53" class="ln">    53  </span>			require.NoError(t, err)
 <span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>			assert.True(t, got.Equal(want))
+<span id="L55" class="ln">    55  </span>			assert.Equal(t, want, got)
 <span id="L56" class="ln">    56  </span>		})
 <span id="L57" class="ln">    57  </span>	})
 <span id="L58" class="ln">    58  </span>
@@ -139,14 +139,14 @@
 <span id="L82" class="ln">    82  </span>			got, err := ParseRFC3339Nano(input)
 <span id="L83" class="ln">    83  </span>			require.NoError(t, err)
 <span id="L84" class="ln">    84  </span>
-<span id="L85" class="ln">    85  </span>			assert.True(t, got.Equal(want))
+<span id="L85" class="ln">    85  </span>			assert.Equal(t, want, got)
 <span id="L86" class="ln">    86  </span>		})
 <span id="L87" class="ln">    87  </span>	})
 <span id="L88" class="ln">    88  </span>
 <span id="L89" class="ln">    89  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
 <span id="L90" class="ln">    90  </span>		t.Parallel()
 <span id="L91" class="ln">    91  </span>
-<span id="L92" class="ln">    92  </span>		t.Run(&#34;ナノ秒なしはエラーを返す&#34;, func(t *testing.T) {
+<span id="L92" class="ln">    92  </span>		t.Run(&#34;タイムゾーン指定なしはエラーを返す&#34;, func(t *testing.T) {
 <span id="L93" class="ln">    93  </span>			t.Parallel()
 <span id="L94" class="ln">    94  </span>			empty, err := ParseRFC3339Nano(&#34;2025-12-05T09:30:00&#34;)
 <span id="L95" class="ln">    95  </span>			require.Error(t, err)
@@ -169,7 +169,7 @@
 <span id="L112" class="ln">   112  </span>			got, err := ParseISO8601(input)
 <span id="L113" class="ln">   113  </span>			require.NoError(t, err)
 <span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>			assert.True(t, got.Equal(want))
+<span id="L115" class="ln">   115  </span>			assert.Equal(t, want, got)
 <span id="L116" class="ln">   116  </span>		})
 <span id="L117" class="ln">   117  </span>	})
 <span id="L118" class="ln">   118  </span>
@@ -199,7 +199,7 @@
 <span id="L142" class="ln">   142  </span>			got, err := ParseDateTime(input)
 <span id="L143" class="ln">   143  </span>			require.NoError(t, err)
 <span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>			assert.True(t, got.Equal(want))
+<span id="L145" class="ln">   145  </span>			assert.Equal(t, want, got)
 <span id="L146" class="ln">   146  </span>		})
 <span id="L147" class="ln">   147  </span>	})
 <span id="L148" class="ln">   148  </span>
@@ -229,7 +229,7 @@
 <span id="L172" class="ln">   172  </span>			got, err := ParseDateOnly(input)
 <span id="L173" class="ln">   173  </span>			require.NoError(t, err)
 <span id="L174" class="ln">   174  </span>
-<span id="L175" class="ln">   175  </span>			assert.True(t, got.Equal(want))
+<span id="L175" class="ln">   175  </span>			assert.Equal(t, want, got)
 <span id="L176" class="ln">   176  </span>		})
 <span id="L177" class="ln">   177  </span>	})
 <span id="L178" class="ln">   178  </span>
@@ -261,7 +261,7 @@
 <span id="L204" class="ln">   204  </span>			got, err := ParseCustomLayout(layout, input)
 <span id="L205" class="ln">   205  </span>			require.NoError(t, err)
 <span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>			assert.True(t, got.Equal(want))
+<span id="L207" class="ln">   207  </span>			assert.Equal(t, want, got)
 <span id="L208" class="ln">   208  </span>		})
 <span id="L209" class="ln">   209  </span>	})
 <span id="L210" class="ln">   210  </span>

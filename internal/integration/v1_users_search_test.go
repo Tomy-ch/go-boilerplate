@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	searchhandler "go-boilerplate/internal/controller/handler/v1/users/search"
 	"go-boilerplate/internal/controller/handler/v1/users/search/gen"
 	"go-boilerplate/internal/observability"
@@ -53,7 +54,30 @@ func TestV1UsersSearch_Integration(t *testing.T) {
 			searchhandler.BindHandler(e, tf, mockApp)
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, nil)
-			AssertJSONResponse(t, gen.UsersSearchResponse{}, actual)
+			AssertJSONResponseType[gen.UsersSearchResponse](t, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("GET /v1/users/searchがErrInternalで500を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_search.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, apperror.ErrInternal)
+
+			searchhandler.BindHandler(e, tf, mockApp)
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, nil)
+			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
 	})
 }

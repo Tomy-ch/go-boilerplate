@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 
@@ -14,13 +15,13 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &systemQuery{
 		tracer: tf.Infra(),
-		db:     loggingDB,
+		db:     testDB,
 	}
-	actual := New(loggingDB, tf)
+	actual := New(testDB, tf)
 
 	assert.Equal(t, expected, actual)
 }
@@ -28,14 +29,14 @@ func TestNew(t *testing.T) {
 func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionRunner(t)
 
 	s := &systemQuery{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -48,9 +49,24 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 				res, err := s.CheckDBHealth(ctx)
 				require.NoError(t, err)
 				assert.True(t, res.Ready)
-				require.Positive(t, res.Latency.Microseconds())
-				require.NotZero(t, res.RespondedAt)
+				assert.Positive(t, res.Latency.Microseconds())
+				assert.NotZero(t, res.RespondedAt)
 			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			res, err := s.CheckDBHealth(ctx)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.False(t, res.Ready)
 		})
 	})
 }

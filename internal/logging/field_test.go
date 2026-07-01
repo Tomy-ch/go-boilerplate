@@ -205,6 +205,19 @@ func TestError(t *testing.T) {
 
 			assert.Equal(t, expected, Error(expectedKey, expectedError))
 		})
+
+		t.Run("nilエラーの場合、errorValueがnilのFieldを生成する", func(t *testing.T) {
+			t.Parallel()
+
+			const expectedKey = "key"
+			expected := &Field{
+				key:        expectedKey,
+				kind:       fieldError,
+				errorValue: nil,
+			}
+
+			assert.Equal(t, expected, Error(expectedKey, nil))
+		})
 	})
 }
 
@@ -267,6 +280,18 @@ func TestSplitStackLines(t *testing.T) {
 
 			input := "frame1\n\t\t/path/to/file.go:10"
 			expected := []string{"frame1", "/path/to/file.go:10"}
+			assert.Equal(t, expected, SplitStackLines(input))
+		})
+
+		t.Run("cockroachdb_errorsのガター（空白・パイプ・タブ）を行頭から除去する", func(t *testing.T) {
+			t.Parallel()
+
+			input := "  | go-boilerplate/pkg/xerrors.Join\n  | \t/app/pkg/xerrors/errors.go:34\n  -- stack trace:"
+			expected := []string{
+				"go-boilerplate/pkg/xerrors.Join",
+				"/app/pkg/xerrors/errors.go:34",
+				"-- stack trace:",
+			}
 			assert.Equal(t, expected, SplitStackLines(input))
 		})
 

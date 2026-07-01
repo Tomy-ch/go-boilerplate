@@ -4,16 +4,6 @@ English | [日本語](README.ja.md)
 
 Provides interfaces and value objects for authentication.
 
-## Public API
-
-|Type / Function|Description|
-|---|---|
-|`Authenticator`|Interface: generate `Authn` from `Credential`|
-|`Authn`|Authentication result (subject / id / provider / scopes / claims)|
-|`New(subject, provider, scopes, claims)`|Create `Authn` (empty subject → `ErrUnauthorizedSubjectMissing`)|
-|`Credential`|Value object holding access token|
-|`NewCredential(accessToken)`|Create `Credential` (empty token → `ErrArgumentTokenMissing`)|
-
 ## Authn Details
 
 - `Subject()` — returns the authenticated subject (e.g., userID)
@@ -27,9 +17,9 @@ Provides interfaces and value objects for authentication.
 
 |Error|Description|
 |---|---|
-|`ErrUnauthorizedSubjectMissing`|Subject is empty (wraps `apperror.ErrUnauthenticated`)|
-|`ErrInvalidIDMissing`|Subject cannot be parsed as UUID (wraps `apperror.ErrValidation`)|
-|`ErrArgumentTokenMissing`|Access token is empty (wraps `apperror.ErrInvalidArgument`)|
+|`ErrUnauthenticatedSubjectMissing`|Subject is empty (wraps `apperror.ErrUnauthenticated`)|
+|`ErrSubjectNotUUID`|Subject cannot be parsed as UUID (wraps `apperror.ErrValidation`)|
+|`ErrTokenMissing`|Access token is empty (wraps `apperror.ErrInvalidArgument`)|
 
 ## Design Intent
 
@@ -39,4 +29,4 @@ Provides interfaces and value objects for authentication.
 
 ## Implementation
 
-`internal/infrastructure/auth/` provides environment-specific implementations.
+`internal/infrastructure/auth/` provides environment-specific implementations of the `Authenticator` interface, which generates an `Authn` from a `Credential`.

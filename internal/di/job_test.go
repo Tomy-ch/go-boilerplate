@@ -24,6 +24,7 @@ func TestNewJobCore(t *testing.T) {
 	require.NoError(t, fx.ValidateApp(NewJobCore(), fx.WithLogger(NewFxEventLogger)))
 }
 
+//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func TestNewJobCore_BootsWithMockedDB(t *testing.T) {
 	// 実 DB を避けつつ、ジョブ用 fx グラフの全コンストラクタ実行とライフサイクル(OnStart/OnStop)を検証する。
 	// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避する（ジョブは HTTP サーバを起動しないためポート上書きは不要）。
@@ -51,67 +52,78 @@ func TestNewJobCore_BootsWithMockedDB(t *testing.T) {
 	require.NoError(t, app.Stop(stopCtx))
 }
 
+//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func TestRunJob(t *testing.T) {
 	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 
-	t.Run("start: キャンセル済みコンテキストで開始すると start は context.Canceled を返してチャンネルを閉じることを期待する", func(t *testing.T) {
-		start, stop := RunJob()
-		require.NotNil(t, start)
-		require.NotNil(t, stop)
+	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
+	t.Run("正常系", func(t *testing.T) {
+		//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
+		t.Run("stop: start していない状態で stop を呼ぶとエラーなしで成功することを期待する", func(t *testing.T) {
+			_, stop := RunJob(30 * time.Second)
+			require.NotNil(t, stop)
 
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		done := start(ctx, "no-job", []string{})
-		// start は err を送ってチャンネルを閉じる
-		err := <-done
-		require.Error(t, err)
-		assert.Equal(t, context.Canceled, err)
-
-		// チャンネルが閉じられていることを検証
-		_, ok := <-done
-		assert.False(t, ok)
-
-		_ = stop(context.Background())
+			err := stop(context.Background())
+			require.NoError(t, err)
+		})
 	})
 
-	t.Run("stop: start していない状態で stop を呼ぶとエラーなしで成功することを期待する", func(t *testing.T) {
-		_, stop := RunJob()
-		require.NotNil(t, stop)
+	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
+	t.Run("異常系", func(t *testing.T) {
+		//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
+		t.Run("start: キャンセル済みコンテキストで開始すると start は context.Canceled を返してチャンネルを閉じることを期待する", func(t *testing.T) {
+			start, stop := RunJob(30 * time.Second)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
 
-		err := stop(context.Background())
-		require.NoError(t, err)
-	})
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
 
-	t.Run("stop: キャンセル済みコンテキストを与えると stop は context.Canceled を返すことを期待する", func(t *testing.T) {
-		_, stop := RunJob()
-		require.NotNil(t, stop)
+			done := start(ctx, "no-job", []string{})
+			// start は err を送ってチャンネルを閉じる
+			err := <-done
+			require.Error(t, err)
+			require.ErrorIs(t, err, context.Canceled)
 
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
+			// チャンネルが閉じられていることを検証
+			_, ok := <-done
+			assert.False(t, ok)
 
-		err := stop(ctx)
-		require.Error(t, err)
-		assert.Equal(t, context.Canceled, err)
-	})
+			_ = stop(context.Background())
+		})
 
-	t.Run("start: 存在しないジョブ名で start すると runner の unknown job エラーが done チャンネルに流れることを期待する", func(t *testing.T) {
-		start, stop := RunJob()
-		require.NotNil(t, start)
-		require.NotNil(t, stop)
+		//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
+		t.Run("stop: キャンセル済みコンテキストを与えると stop は context.Canceled を返すことを期待する", func(t *testing.T) {
+			_, stop := RunJob(30 * time.Second)
+			require.NotNil(t, stop)
 
-		// app.Start が完了できるように background コンテキストを使用
-		done := start(context.Background(), "no-such-job", []string{})
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
 
-		err := <-done
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unknown job")
-		assert.Contains(t, err.Error(), "no-such-job")
+			err := stop(ctx)
+			require.Error(t, err)
+			require.ErrorIs(t, err, context.Canceled)
+		})
 
-		// チャンネルが閉じられていることを検証
-		_, ok := <-done
-		assert.False(t, ok)
+		//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
+		t.Run("start: 存在しないジョブ名で start すると runner の unknown job エラーが done チャンネルに流れることを期待する", func(t *testing.T) {
+			start, stop := RunJob(30 * time.Second)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
 
-		_ = stop(context.Background())
+			// app.Start が完了できるように background コンテキストを使用
+			done := start(context.Background(), "no-such-job", []string{})
+
+			err := <-done
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "unknown job")
+			assert.Contains(t, err.Error(), "no-such-job")
+
+			// チャンネルが閉じられていることを検証
+			_, ok := <-done
+			assert.False(t, ok)
+
+			_ = stop(context.Background())
+		})
 	})
 }

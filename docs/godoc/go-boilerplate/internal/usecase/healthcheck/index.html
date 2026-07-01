@@ -145,10 +145,14 @@
 		
 			<h2 id="pkg-constants">Constants</h2>
 			
-				
-				<pre>const (
-    <span id="Degraded">Degraded</span>  = &#34;degraded&#34;
-    <span id="Ok">Ok</span>        = &#34;ok&#34;
+				<p>ヘルスチェックの総合ステータスを表す値。
+
+				</p><pre>const (
+    <span class="comment">// Degraded は、一部の依存が不調だが稼働継続できる状態を表します。</span>
+    <span id="Degraded">Degraded</span> = &#34;degraded&#34;
+    <span class="comment">// Ok は、すべて正常な状態を表します。</span>
+    <span id="Ok">Ok</span> = &#34;ok&#34;
+    <span class="comment">// Unhealthy は、サービスが正常に応答できない状態を表します。</span>
     <span id="Unhealthy">Unhealthy</span> = &#34;unhealthy&#34;
 )</pre>
 			
@@ -158,7 +162,7 @@
 		
 			
 			
-			<h2 id="DTO">type <a href="../../../../src/go-boilerplate/internal/usecase/healthcheck/health_check_usecase.go.html?s=605:707#L12">DTO</a>
+			<h2 id="DTO">type <a href="../../../../src/go-boilerplate/internal/usecase/healthcheck/health_check_usecase.go.html?s=886:988#L16">DTO</a>
 				<a class="permalink" href="#DTO">¶</a>
 				
 				
@@ -186,7 +190,7 @@
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/healthcheck/health_check_usecase.go.html?s=1047:1233#L26">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/healthcheck/health_check_usecase.go.html?s=1328:1514#L30">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -208,7 +212,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/healthcheck/health_check_usecase.go.html?s=1339:1432#L32">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/healthcheck/health_check_usecase.go.html?s=1620:1713#L36">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					

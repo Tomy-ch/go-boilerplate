@@ -11,44 +11,85 @@ linters:
     - unused
 
     # Disabled by Default
+    - asasalint # ユニバーサルインターフェースを扱うときの潜在的なバグを防ぐチェックです
     - asciicheck # ASCII以外の文字を変数名などで使用しているかをチェックします
     - bidichk # バイディレクショナルテキストのチェックをします
+    - bodyclose # HTTPレスポンスのボディが閉じられているかをチェックします
+    - canonicalheader # HTTPヘッダーの正規化をチェックします
+    - containedctx # context.Contextが構造体に含まれているかをチェックします
     - contextcheck # context.Contextの伝播が破棄されていないかをチェックします
+    - copyloopvar # ループ変数のコピーをチェックします
     - decorder # constやvarなどの宣言順序をチェックします
     - depguard # 外部ライブラリの使用を制限します
+    - dogsled # _ が複数使用されているかをチェックします
     - dupl # 重複コードの検出を行います
+    - dupword # 重複した単語を検出します
+    - durationcheck # time.Duration型同士を掛け算してしまう誤用を静的分析で検出する
+    - embeddedstructfieldcheck # 埋め込み構造体フィールドの配置をチェックします
+    - errchkjson # JSON エンコーディングに関する安全性をチェックします
+    - errname # エラー名の命名規則をチェックします
     - errorlint # エラー処理のベストプラクティスをチェックします
+    - exhaustive # enum型の全ての値を網羅しているかをチェックします
     - exptostd # 標準ライブラリの使用を推奨します
+    - fatcontext # context.Contextがループで設定されているかをチェックします
     - forbidigo # 識別子の使用禁止ルールを設定します
+    - forcetypeassert # チェックなしの型アサーション(panicの恐れ)を検出します
     - funcorder # 構造体に関連する関数・メソッドの配置順序をチェックします
     - funlen # 関数の長さを制限して、冗長性と複雑さを減らします
     - gocheckcompilerdirectives # // go:ディレクティブのチェックを行います
+    - gochecknoinits # init() 関数が存在しないかを検出します
+    - gochecksumtype # 合併型／タグ付き列挙型の網羅性を静的にチェックします
     - gocognit # 人間の理解難度を測る指標として、関数・メソッドの認知的複雑度を算出します
     - gocritic # Goコードの高級な静的解析を行います
     - gocyclo # 関数単位での複雑度を計算します
+    - goprintffuncname # Printfライクな引数を取る関数が「f」で終わる名前になっているかをチェックします
     - gosec # セキュリティ上の脆弱性を検出します
+    - grouper # const/var/import等のグループ化スタイルをチェックします
+    - iface # インターフェースの不適切な使用を検出します
+    - importas # import文のエイリアスの一貫性を強制します
     - inamedparam # インターフェースのメソッド定義において「名前なしパラメータ」が使われていないかを検出します
     - interfacebloat # 1つのインターフェースにメソッドが多すぎる場合に警告を出します
+    - intrange # 書き換えられる“for”ループ構造を検出し、最適な書き方を提案します
+    - iotamixing # constブロック内でiotaと非iota宣言が混在していないかをチェックします
     - lll # 行の長さを制限します
+    - loggercheck # ログ呼び出しでキーと値の奇数組合せを静的に検出し、もし不一致があれば警告を出します
     - makezero # make()でのスライス初期化に関するバグを防ぐためのチェックを行います
+    - mirror # 文字列とバイトスライスの変換を最適化するパターンを検出します
     - misspell # スペルミスを検出します
     - mnd # マジックナンバーの使用を検出します
+    - modernize # モダンなGo言語・標準ライブラリ機能への簡素化を提案します
     - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
+    - nakedret # naked returnを使う関数が一定の長さを超えていないかを検出します
     - nestif # ネストされたif文の深さを制限します
+    - nilerr # エラーチェックでnilが返されているかを検出します
     - nilnesserr # 正しいエラーが返されているかを検出します
+    - nilnil # nilのエラーと無効な値(nil)を同時に返していないかを検出します
     - noctx # context.Contextを使用していない非推奨なコードを検出します
     - nolintlint # nolintコメントの使用をチェックします
     - nonamedreturns # 名前付きリターン値を全部検出して警告します
+    - nosprintfhostport # IPv6 アドレスを含むホスト名とポートの文字列化にfmt.Sprintfを使っていないかを検出します
+    - paralleltest # テスト関数が並列実行(t.Parallel)されているかを検出します
+    - perfsprint # fmt.Sprintfのパフォーマンスに関する問題を検出します
     - prealloc # スライスの事前割り当てを推奨します
     - predeclared # 予約語の使用をチェックします
+    - reassign # グローバル変数の再代入を検出します
     - recvcheck # 関数のレシーバーが統一的に使用されているかをチェックします
     - revive # Goコードの静的解析を行うツールで、特にコードの品質とスタイルに焦点を当てています
     - rowserrcheck # sql系のインスタンスで、行の取得やエラー処理が正しく行われているかをチェックします
     - spancheck # OpenTelemetryのSpanの使用をチェックします
     - sqlclosecheck # SQLの接続やトランザクションのクローズ処理をチェックします
+    - tagliatelle # 構造体タグのスタイルをチェックします
+    - testableexamples # Example関数の末尾に出力内容に関するコメントがあるかをチェックします
     - testifylint # Testifyのアサーションやモックの使用をチェックします
+    - thelper # テストヘルパー関数がt.Helper()を呼んでいるかを検出します
+    - tparallel # テスト関数の不適切なt.Parallel使用を検出します
+    - unconvert # 型が既に同じなのに再度キャストしている冗長コードを検出します
     - unparam # 使用されていない関数のパラメータを検出します
+    - unqueryvet # SQLクエリ/ビルダー内のSELECT *を検出し、明示的なカラム指定を促します
     - usestdlibvars # 標準ライブラリの変数を使用しているかをチェックします
+    - usetesting # テストコードで誤った標準ライブラリの関数を使っていないかを検出します
+    - wastedassign # 不要な代入を検出します
+    - whitespace # 不要な空白を検出します
 
   settings:
     decorder:
@@ -72,6 +113,9 @@ linters:
             - pkg: github.com/cockroachdb/errors
               desc: "スタックトレース用として導入したライブラリです。
                 代わりに pkg/xerrors を使用してください。"
+            - pkg: errors
+              desc: "標準の errors パッケージは直接使用しないでください。
+                pkg/xerrors の New / Wrap / Join / Is / As を使用してください。"
         only_the_original_uuid_is_permitted:
           files:
             - "**/*.go"
@@ -82,6 +126,15 @@ linters:
             - pkg: github.com/google/uuid
               desc: "uuid作成用として導入したライブラリです。
                 代わりに pkg/uuid を使用してください。"
+        discourage_reflect: # reflect の使用を原則禁止します（型安全性・可読性のため）
+          files:
+            - "**/*.go"
+            - "!**/*.gen.go" # 生成物(gomock 等)は reflect を用いるため除外します
+          list-mode: lax
+          deny:
+            - pkg: reflect
+              desc: "reflect は原則使用しないでください（型安全性・可読性を損なうため）。
+                必要な場合は設計を見直し、個別に相談してください。"
         # アプリケーションの健全性を保つためのルール
         reject_dangerous_os: # os系のライブラリの使用を禁止します
           files:
@@ -134,6 +187,35 @@ linters:
             - pkg: go.opentelemetry.io/otel
               desc: "オブザーバビリティ関連ライブラリの使用は制限されています。
                 可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_otel_contrib: # OTel contrib(計装/エクスポータ)の使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/observability/**.go" # otel 初期化(exporter / runtime 計装)で使用を許可します
+            - "!**/internal/controller/httpstack/observability/**.go" # HTTP層の otelecho ミドルウェア統合で使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.opentelemetry.io/contrib
+              desc: "OTel contrib ライブラリの使用は observability の初期化 / HTTP otel ミドルウェアに限定されています。
+                可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
+        restrict_lifecycle_to_di: # di 層外からの lifecycle.Registrar への参照を禁止する
+          files:
+            - "**/*.go"
+            - "!**/internal/di/**.go" # di 配下(composition root / module / hook)でのみ使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/di/lifecycle
+              desc: "lifecycle.Registrar への直接依存は di 層の責務です。
+                コンポーネントは Close()/Shutdown() 等のハンドルを公開し、その登録は di の hook に委ねてください。"
+        restrict_di_hook_to_di: # di 層外からの di hook パッケージへの参照を禁止する
+          files:
+            - "**/*.go"
+            - "!**/internal/di/**.go" # di 配下(module / composition root)でのみ参照を許可します
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/di/server/hook
+              desc: "di の hook パッケージは di 層の内部実装です。コンポーネントから直接参照せず、結線は di 層で行ってください。"
+            - pkg: go-boilerplate/internal/di/job/hook
+              desc: "di の hook パッケージは di 層の内部実装です。コンポーネントから直接参照せず、結線は di 層で行ってください。"
         independent_apperror: # apperrorパッケージが責務の実装層にも依存しないことを保証します
           files:
             - "**/internal/apperror/**.go"
@@ -192,6 +274,9 @@ linters:
           files:
             - "**/pkg/**.go"
           list-mode: lax
+          allow:
+            # pkg 配下からの参照のみ例外的に許可します。
+            - go-boilerplate/pkg/xerrors
           deny:
             - pkg: go-boilerplate/internal/
               desc: "pkgディレクトリはinternalディレクトリから独立している必要があります。
@@ -270,9 +355,14 @@ linters:
                 出力する値は必ずDTOなどを介して受け渡してください。"
         # infrastructure層では、主に永続化を行うライブラリの使用を許可します。
         # ただし、HTTPリクエストを扱うライブラリの使用は禁止します。(主にnet/httpなど)
+        # net/http 全面 deny の本来の趣旨は「infra で HTTP ハンドラ(inbound)を定義させない」ことです。
+        # 外部送信(outbound)専用の resilient HTTP client substrate はハンドラを定義しないため、
+        # httpclient 配下のみ本ルールから除外し、専用ルール(maintain_a_sound_outbound_http_client)で
+        # echo / controller の deny を再掲して多層防御を維持します。
         maintain_a_sound_infrastructure:
           files:
             - "**/internal/infrastructure/**.go"
+            - "!**/internal/infrastructure/httpclient/**.go" # outbound HTTP client substrate は net/http を許可(下の専用ルールで別途制限)
           list-mode: lax
           deny:
             - pkg: net/http
@@ -283,6 +373,20 @@ linters:
                 controller層にて処理して、DTOなどを介して値を受け渡してください。"
             - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
+        # outbound HTTP client substrate 専用ルール。
+        # net/http は許可(外部送信のため)しますが、inbound(ハンドラ)用ライブラリと controller 参照は引き続き禁止します。
+        maintain_a_sound_outbound_http_client:
+          files:
+            - "**/internal/infrastructure/httpclient/**.go"
+          list-mode: lax
+          deny:
+            - pkg: github.com/labstack/echo/v4
+              desc: "outbound HTTP client では echo(inbound ハンドラ用)を使用しないでください。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "infrastructure層でcontroller層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/domain/
+              desc: "汎用 substrate である outbound HTTP client は domain 層に依存してはいけません。
+                domain 概念を扱うのは external gateway / repository 実装の責務です。"
         # diコンテナのcontroller層の設定ファイルでは、internal/controller/handler配下で定義されたもののみをimport可能とします。
         configure_only_the_controller_layer:
           files:
@@ -323,6 +427,9 @@ linters:
       # 重複コードの検出を行います。
       # 約300トークン以上の重複を検出します。
       threshold: 300
+    exhaustive:
+      # default節で残りのケースを処理している場合は網羅とみなします。
+      default-signifies-exhaustive: true
     forbidigo:
       forbid:
         - pattern: '^print(ln)?$'
@@ -332,6 +439,9 @@ linters:
                 ログ出力にはzap.Loggerを使用してください"
         - pattern: '^spew\.Dump$'
           msg: "禁止：spew.Dumpは禁止されています"
+        - pattern: '^fmt\.Errorf$'
+          msg: "禁止：fmt.Errorf は使用しないでください。
+                pkg/xerrors の New / Wrap / Join を使用してください。"
       analyze-types: true
     funcorder:
       constructor: true
@@ -360,6 +470,9 @@ linters:
       enable-all: true
     revive:
       rules:
+        - name: exported # exported な宣言にはドキュメントコメントを必須とする
+          arguments:
+            - "disableStutteringCheck" # 命名の stutter 検査は行わない
         - name: var-naming
           arguments:
             - []
@@ -379,14 +492,18 @@ linters:
       time-month: true         # time.Month の検出
 
   exclusions:
-    presets:
-      - comments
     paths:
       - vendor
     rules:
       - path: (.+)_test\.go
         linters:
           - lll
+          # bodyclose は誤検知するためテストファイルでは除外する。
+          - bodyclose
+      # modernize の new(expr) 置換提案は ptr_test.go では不適のため除外する。
+      - path: pkg/ptr/ptr_test\.go
+        linters:
+          - modernize
 
 run:
   timeout: "3m"

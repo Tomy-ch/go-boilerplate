@@ -13,6 +13,8 @@ services:
       - "6060:6060"   # メトリクス(pprof)ポート
     volumes:
       - .:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     tty: true
     stdin_open: true
     working_dir: /app
@@ -45,6 +47,16 @@ services:
       - database
       - tools
 
+  observability:
+    image: grafana/otel-lgtm:0.28.0
+    ports:
+      - "3000:3000" # Grafana UI
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "3200:3200" # Tempo API（任意・スクリプト確認用）
+    profiles:
+      - development
+
 # -------------------------------------
 # 補助サービス
 # -------------------------------------
@@ -72,6 +84,7 @@ services:
         condition: service_healthy
     profiles:
       - tools
+      - database
 
   er_diagram_generator: # ER図生成ツール
     image: schemaspy/schemaspy:latest

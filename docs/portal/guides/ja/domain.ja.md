@@ -8,7 +8,7 @@
 
 ## このプロジェクトでの役割
 
-- `internal/domain/<bounded-context>/<aggregate>/` 配下に **Entity / ValueObject / DomainService / Repository(IF)** を配置する。
+- `internal/domain/<aggregate>/` 配下に **Entity / ValueObject / DomainService / Repository(IF)** を配置する。
 
 例）`internal/domain/user/`
 
@@ -138,6 +138,15 @@ validate
 
 これらは DTO / Infra に置く。
 
+### DB のすべてのカラムをエンティティのフィールドにしない
+
+エンティティは**ドメイン上の意味を持つ状態**のみを表現する。永続化や検索インフラのためだけに存在するカラムは、テーブルに存在してもエンティティには意図的に含めない：
+
+- 監査列（`created_at` / `updated_at`）— 必要なら DB を直接参照すればよく、エンティティのフィールドや不変条件にする必要はない。
+- DB 生成列・計算列（例: `GENERATED ALWAYS AS ... STORED` の検索用テキスト列）— インフラの検索最適化であり、ドメインの状態ではない。
+
+したがって entity ↔ カラムの 1 対 1 対応は**必須ではない**。こうしたカラムがエンティティに無いのは意図的な設計判断であり、ドリフトではない。
+
 ### 時刻・ID の扱い
 
 - `time.Now()` は Domain で使わない
@@ -177,6 +186,16 @@ NewEmail(...)
 minLength
 maxEmailLength
 ```
+
+#### oapi 側で検証しているのに、なぜここでも検証するのか
+
+OpenAPI のリクエスト検証ミドルウェアとこのレイヤは **冗長ではありません**。オーナーもスコープも異なります。
+
+- **オーナーが違う。** OpenAPI の制約は *ワイヤー契約*（HTTP API が受け入れる形）、domain の定数は *業務ルール*（業務が valid と認める値）。両者は正当に食い違える — [入力境界値のオーナーシップ](../../openapi/boundary-ownership.ja.md) を参照。
+- **唯一の共通チョークポイント — 入力側と永続化側の両方。** すべてのエンティティは `New(...)` を通って構築される。非HTTPの書き込み経路（seed・CLI・バッチ・テスト・将来の入口）がリクエストミドルウェアを完全に迂回するだけでなく、**DB からの再構築も同じ検証付きコンストラクタを通る**（`rowToUser` が全行を `user.New(...)` で組み立てる）。したがって `New(...)` は **infra 側から来る不正データ**も弾く：破損・手動 INSERT・レガシーなど、ドメイン不変条件に違反する行は、valid に見えるエンティティとして上がってくるのではなく再構築時にエラーになる。この読み取り経路はミドルウェアでは一切守れず、domain だけが守れる。
+- **framework-agnostic な自己防衛。** domain は呼び出し元に依存せず常に正しくある必要がある。検証をトランスポート層に委ねると domain の正しさが Echo／ミドルウェアに結合し、レイヤの framework-agnostic 規約に反する。
+
+要するに：ミドルウェアは HTTP 境界を守り、domain は *業務ルールそのもの* を全呼び出し元に対して守る。
 
 #### エラー
 
@@ -218,7 +237,7 @@ Usecase / Repository は
 このプロジェクトでは **Aggregate を設計単位**とする。
 
 ```text
-internal/domain/<bounded-context>/<aggregate>/
+internal/domain/<aggregate>/
 ```
 
 ### Aggregate Root
@@ -337,7 +356,7 @@ type Repository interface {
 実装：
 
 ```text
-internal/infrastructure/persistence/postgres/
+internal/infrastructure/rdb/repository/<aggregate>/
 ```
 
 `sqlc` でドメインへマッピング。
@@ -783,7 +802,7 @@ func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // creat
 
 ```go
 // user_repository.go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 package user
 
 import (

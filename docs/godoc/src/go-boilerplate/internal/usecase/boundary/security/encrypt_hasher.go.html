@@ -55,7 +55,7 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_encrypt_hasher.gen.go -package=mock_$GOPACKAGE</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span><span class="comment">// Package security は、ユースケースが必要とするパスワードのハッシュ化・比較機能のインターフェース（境界）を提供します。</span>
 <span id="L4" class="ln">     4  </span>package security
@@ -64,7 +64,7 @@
 <span id="L7" class="ln">     7  </span>type Hasher interface {
 <span id="L8" class="ln">     8  </span>	<span class="comment">// Hash は、パスワードをハッシュ化します。ハッシュ化に失敗した場合はエラーを返します。</span>
 <span id="L9" class="ln">     9  </span>	Hash(password string) (string, error)
-<span id="L10" class="ln">    10  </span>	<span class="comment">// Compare は、ハッシュとパスワードを比較します。比較に失敗した場合はエラーを返します。</span>
+<span id="L10" class="ln">    10  </span>	<span class="comment">// Compare は、hash とパスワードが一致するかを検証します。一致すれば (true, nil)、不一致なら (false, nil) を返します。ハッシュ形式が不正など系レベルの失敗時のみ error を返します。</span>
 <span id="L11" class="ln">    11  </span>	Compare(hash, password string) (bool, error)
 <span id="L12" class="ln">    12  </span>}
 <span id="L13" class="ln">    13  </span>

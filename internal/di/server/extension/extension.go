@@ -13,11 +13,13 @@ import (
 	"go.uber.org/fx"
 )
 
+// callerSkip は、applyMiddlewares → ApplyPreMiddlewares/ApplyUseMiddlewares の呼び出し経路で挟まるフレームを飛ばし、ログの caller を実呼び出し位置に合わせる段数。
 const callerSkip = 2
 
 // ServerExtends は、サーバーの拡張機能を表します。
 type ServerExtends struct {
 	fx.In
+
 	// PreList は、Preミドルウェアとして適用されるミドルウェアのリストです。
 	PreList []PreMiddleware `group:"middlewares.pre"`
 	// UseList は、Useミドルウェアとして適用されるミドルウェアのリストです。
@@ -29,12 +31,18 @@ type ServerExtends struct {
 // AppliedServerExtends は、サーバー拡張が適用されたことを示すトークンです。
 type AppliedServerExtends struct{}
 
-// SrvCfg は、サーバーの設定関数を表します。
-type SrvCfg func(*echo.Echo)
+// SrvCfg は、サーバーの設定関数とその名前（ログ出力用）を表します。
+type SrvCfg struct {
+	// Name は、設定関数の名前です（ログ出力用）
+	Name string
+	// Config は、Echo に副作用で適用される設定関数です。
+	Config func(*echo.Echo)
+}
 
 // ServeCfgOut は、サーバーの設定の出力時に使用される構造体です。
 type ServeCfgOut struct {
 	fx.Out
+
 	SrvCfg SrvCfg `group:"server.configurators"`
 }
 
@@ -61,12 +69,14 @@ type UseMiddleware struct {
 // PreMiddlewareOut は、fx の group 出力用のラッパーです。
 type PreMiddlewareOut struct {
 	fx.Out
+
 	Middleware PreMiddleware `group:"middlewares.pre"`
 }
 
 // UseMiddlewareOut は、fx の group 出力用のラッパーです。
 type UseMiddlewareOut struct {
 	fx.Out
+
 	Middleware UseMiddleware `group:"middlewares.use"`
 }
 
@@ -78,6 +88,7 @@ type middlewareEntry struct {
 }
 
 // ApplyExtends は、サーバー拡張を適用します。
+// ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数を Priority 昇順に Echo へ適用する。同一 kind 内で Priority が重複するミドルウェアが存在する場合はエラーを返す。
 func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*AppliedServerExtends, error) {
 	if err := ApplyPreMiddlewares(e, logger, extends.PreList); err != nil {
 		return nil, err
@@ -90,6 +101,7 @@ func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*
 }
 
 // ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
+// ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
 func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error {
 	entries := make([]middlewareEntry, len(mws))
 	for i, mw := range mws {
@@ -99,6 +111,7 @@ func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddlewar
 }
 
 // ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
+// ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
 func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error {
 	entries := make([]middlewareEntry, len(mws))
 	for i, mw := range mws {
@@ -176,11 +189,16 @@ func extractPriorityConflicts(byPriority map[int][]string) []string {
 
 // ApplyConfigurators は、Echoに対して設定関数を適用します。
 func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) {
-	logger.Named("ApplyConfigurators").CallerSkip(callerSkip).Info(
+	log := logger.Named("ApplyConfigurators").CallerSkip(callerSkip)
+	log.Info(
 		"Applying server configurator",
 		logging.Int("count", len(cfgs)),
 	)
 	for _, cfg := range cfgs {
-		cfg(e)
+		log.Info(
+			"Applying server configurator",
+			logging.String("configurator", cfg.Name),
+		)
+		cfg.Config(e)
 	}
 }

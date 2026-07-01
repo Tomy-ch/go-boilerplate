@@ -24,7 +24,7 @@ internal/controller/handler は、CLI（Cobra）から起動される **サー�
   - 送信用の **DTO/VO** に詰め替えて渡す
   - Usecaseから返却されたDTO→OpenAPI型への詰め替え
 - エラーは[apperrorで定義されているマップピング](../../apperror/README.ja.md)で apperrorのエラーを統一マッピングして返却される。
-- ページングは`paging.NewPagingFrom1Based()` に渡して正規化。
+- ページングは`paging.NewPageFrom1Based()` に渡して正規化。
 - リクエストID/ロギングなどはミドルウェア（Echo + Zap）で実施。
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
@@ -34,6 +34,8 @@ handler は 1 アクションにつき **単一の Usecase 操作へ委譲**し�
 ## Presenter とは
 
 Presenterとは`Usecase DTO → OpenAPIレスポンス型`への変換処理です。
+
+同一の変換を複数のハンドラーメソッドで再利用する場合は、ハンドラーパッケージ内に private な `toXxxResponse(dto …) gen.XxxResponse` ヘルパー（例: `toItemResponse`）として定義します。単発の変換はハンドラー本体にインラインで書いてかまいません。
 
 ## アーキテクチャ
 
@@ -226,13 +228,13 @@ Handler --> Usecase
   1. [openapi/openapi.yaml](../../../openapi/openapi.yaml)などにAPI定義を作成
      - [生成を前提としたOpenAPIガイドライン](../../../openapi/README.ja.md)を参照
   2. `internal/controller/handler/`の先のディレクトリをURIとして再現
-     - 例1: `/v1/users` → `internal/controller/handler/v1/users/`
-     - 例2: `/v1/users/{id}` → `internal/controller/handler/v1/users/detail/`
+     - 例1: `/v1/<resource>` → `internal/controller/handler/v1/<resource>/`
+     - 例2: `/v1/<resource>/{id}` → `internal/controller/handler/v1/<resource>/detail/`
   3. 作成したファイルの先頭に生成用のコメントを追加
 
      ```go
-     //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-     //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
      ```
 
   4. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
@@ -245,11 +247,11 @@ Handler --> Usecase
 
 ### パスパラメータの型変換（UUID）
 
-`uuid` 型のパス/クエリパラメータは oapi-codegen の `openapi_types.UUID`（例: 生成された `UserIdParam`）として渡される。usecase に渡す前に、**controller 専用の境界ヘルパー `internal/controller/conv` 経由**でドメイン側の `pkg/uuid.UUID` へ変換する。**生成 UUID 型を usecase / domain に持ち込まない**こと:
+`uuid` 型のパス/クエリパラメータは oapi-codegen の `openapi_types.UUID`（例: 生成された `<Resource>IdParam`）として渡される。usecase に渡す前に、**controller 専用の境界ヘルパー `internal/controller/conv` 経由**でドメイン側の `pkg/uuid.UUID` へ変換する。**生成 UUID 型を usecase / domain に持ち込まない**こと:
 
 ```go
-id := conv.UUID(request.UserId)
-dto, err := s.uc.GetUser(ctx, id)
+id := conv.UUID(request.ItemId)
+dto, err := s.uc.GetItem(ctx, id)
 ```
 
 なぜ `pkg/uuid` のコンバータではなく `conv` か:
@@ -322,6 +324,8 @@ defer endSpan()
 ポイント：Controllerはspanの開始・終了だけを知り、
 OpenTelemetry SDK の詳細には一切触れません。
 
+例外：下流の usecase を呼ばないハンドラー（liveness/health/version 等のプローブ）は再束縛した `ctx` を使わないため、未使用変数エラーを避けつつ span を記録する目的で `_, endSpan := s.tracer.Start(ctx)` と書いてよい。
+
 #### 2. TracerのDI（observability.LayerTracer）
 
 Controllerは以下のようにobservability.LayerTracerを依存として受け取ります。
@@ -329,15 +333,15 @@ Controllerは以下のようにobservability.LayerTracerを依存として受け
 ```go
 type server struct {
     tracer observability.LayerTracer
-    uc      user.Usecase // それぞれのユースケース
+    uc      item.Usecase // それぞれのユースケース
 }
 ```
 
-BindHandler側では、`observability.NewControllerTracer`でController専用のトレーサーを生成します。
+BindHandler では、`tf.Controller()` で Controller 専用のトレーサーを生成します。
 
 ```go
 func BindHandler(
-  e *echo.Echo, tf observability.TracerFactory, uc user.Usecase
+  e *echo.Echo, tf observability.TracerFactory, uc item.Usecase
 ) {
     gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
         tracer: tf.Controller(),
@@ -379,7 +383,7 @@ func ControllerModule() fx.Option {
     return fx.Module("controller",
         fx.Invoke(
             health.BindHandler,
-            users.BindHandler,
+            items.BindHandler,
             // 他のハンドラ
         ),
     )
@@ -396,7 +400,7 @@ func ControllerModule() fx.Option {
 func BindHandler(
     e *echo.Echo,
     tf observability.TracerFactory,
-    uc user.Service,
+    uc item.Usecase,
 ) {
     gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
         tracer: tf.Controller(),
@@ -416,13 +420,15 @@ func BindHandler(
 ```go
 type server struct {
     tracer observability.LayerTracer
-    uc     user.Service
+    uc     item.Usecase
 }
 ```
 
 - フィールドは **DIで受け取る依存のみ**
 - new を使って内部で依存生成しない
 - interface（Usecase）に依存する
+
+例外：OpenAPI に定義されない運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は生成された `ServerInterface` を持たないため、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外は非 OpenAPI の運用エンドポイントに限ります。
 
 ### なぜ fx.Invoke を使うのか
 
@@ -455,8 +461,8 @@ type server struct {
 
 #### ページング
 
-- Controller: `page & per_page`を受け取り、`paging.NewPagingFrom1Based()`でhttpを意味（Paging）へ変換。
-- Usecase: `Paging`を受け、方針（上限・既定）を一元管理。
+- Controller: `page & per_page`を受け取り、`paging.NewPageFrom1Based()`でhttpを意味（Page）へ変換。
+- Usecase: `Page`を受け、方針（上限・既定）を一元管理。
 
 #### エラーマッピング
 
@@ -561,11 +567,8 @@ func Test_server_<Operation>(t *testing.T) {
 func TestBindHandler(t *testing.T) {
     // Routerへの登録を検証
 }
-func Test_server_GetUsers(t *testing.T) {
-    // Handlerの振る舞いを検証
-}
-func Test_server_PostUsers(t *testing.T) {
-    // Handlerの振る舞いを検証
+func Test_server_<Operation>(t *testing.T) {
+    // Handlerの振る舞いを検証（operationId ごとに1つ）
 }
 func Test_server_GetHealth(t *testing.T) {
     // Handlerの振る舞いを検証
@@ -603,9 +606,9 @@ Handler テストでは **Usecase を mock 化**し、Controller の責務のみ
 例：
 
 ```go
-mockApp := mock_user.NewMockUsecase(ctrl)
+mockApp := mock_item.NewMockUsecase(ctrl)
 mockApp.EXPECT().
-    ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+    ListItems(gomock.Any(), expectedParams, mockPage).
     Return(mockDTO, nil)
 ```
 
@@ -623,10 +626,10 @@ Response は **OpenAPI 生成型** を通して検証します。
 例：
 
 ```go
-actual, ok := resp.(gen.GetUsers200JSONResponse)
+actual, ok := resp.(gen.ListItems200JSONResponse)
 require.True(t, ok)
 
-require.Equal(t, expectedResponse, gen.UsersResponse(actual))
+require.Equal(t, expectedResponse, gen.ItemsResponse(actual))
 ```
 
 Controller テストでは **HTTPレスポンス境界の型変換**が正しいことを確認します。
@@ -744,6 +747,7 @@ Controller テストでは次を扱いません。
 |`testauth`|テスト用の認証情報をコンテキストに設定|
 |`testecho`|Echo テスト用のビルダークライアント（リクエスト構築・送信）|
 |`testspan`|Echo コンテキストにテスト用 span を埋め込み|
+|`testuuid`|テスト用のパス/クエリパラメータ用 UUID 値を生成|
 
 ### testassert
 
@@ -766,14 +770,15 @@ Controller テストでは次を扱いません。
 ```go
 rec := testecho.NewEchoTestClient(t, e).
     Method(http.MethodGet).
-    RequestURL("/v1/users?page=1&per_page=10").
+    RequestURL("/v1/items?page=1&per_page=10").
     AuthBearer("test-token").
     Serve()
 ```
 
 |メソッド|説明|
 |---|---|
-|`NewEchoTestClient`|テスト用クライアントを生成（エラーハンドラ自動設定）|
+|`NewEchoTestClient`|テスト用クライアントを生成|
+|`WithAppErrorHandler`|本番相当のエラーハンドラを Echo に設定（`HTTPErrorHandler` を上書き）|
 |`Method`|HTTPメソッドを設定|
 |`RoutePattern`|ルートパターンを設定（例: `/users/:id`）|
 |`RequestURL`|実際のリクエストURLを設定|
@@ -792,15 +797,21 @@ rec := testecho.NewEchoTestClient(t, e).
 |---|---|
 |`StartTestSpanForEcho`|echo.Context にテスト用 span を埋め込み、終了関数を返す|
 
+### testuuid
+
+|関数|説明|
+|---|---|
+|`RequestUUID`|テストのパス/クエリパラメータに使う有効な `openapi_types.UUID` を生成|
+
 ## Example
 
 ## 参考スニペット
 
 ```go
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-package users
+package items
 
 import (
     "context"
@@ -813,12 +824,12 @@ import (
 
 type server struct {
     tracer observability.LayerTracer
-    uc      user.Service
+    uc      item.Usecase
 }
 
-// この関数をdi/handler.goで、[<package>.BindHandler,]として登録する。
+// この関数を di/module/controller.go で、[<package>.BindHandler,] として登録する。
 func BindHandler(
-  e *echo.Echo, tf observability.TracerFactory, uc user.Service,
+  e *echo.Echo, tf observability.TracerFactory, uc item.Usecase,
 ) {
     gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
         tracer: tf.Controller(),
@@ -827,46 +838,45 @@ func BindHandler(
 }
 
 // handler
-func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
+func (s *server) ListItems(ctx context.Context, request gen.ListItemsRequestObject) (gen.ListItemsResponseObject, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+    page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
     if err != nil {
         return nil, err
     }
 
-    params := &user.GetParamsDTO{
+    params := &item.ListParamsDTO{
         Keyword: request.Params.Keyword,
         Active:  request.Params.Active,
     }
 
-    // Usecase 呼び出し（DTO返却）
-    // user.ConditionByName はUsecaseの持ち物
-    dtos, err := s.uc.ListUsersByKeyword(ctx, params, page)
+    // Usecase 呼び出し（DTO返却）。フィルタ条件などの方針は Usecase の持ち物。
+    dtos, err := s.uc.ListItems(ctx, params, page)
     if err != nil {
         // エラーの基底値に従って、対応するHTTPステータスを返すのでハンドリングは不要
         return nil, err
     }
 
     // プレゼンター処理(DTO → OpenAPIの型)
-    users := make([]gen.UserResponse, len(dtos))
+    items := make([]gen.ItemResponse, len(dtos))
     for i, dto := range dtos {
-      users[i] = gen.UserResponse{
+      items[i] = gen.ItemResponse{
         Name:  dto.Name,
         Email: types.Email(dto.Email),
         Phone: ptr.To(dto.Phone),
       }
     }
 
-    res := gen.UsersResponse{
-      Users:  users,
+    res := gen.ItemsResponse{
+      Items:  items,
       Limit:  page.Limit(),
       Offset: page.Offset(),
     }
 
     // OpenAPIのレスポンス型へ詰め替えて返却(ここは、gen/に定義される型を使うので、実装箇所によってメソッド名が変わります。)
-    return gen.GetUsers200JSONResponse(res), nil
+    return gen.ListItems200JSONResponse(res), nil
 }
 ```

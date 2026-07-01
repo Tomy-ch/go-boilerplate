@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUint32ToInt(t *testing.T) {
+func TestUintToInt(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

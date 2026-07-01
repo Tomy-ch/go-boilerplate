@@ -9,7 +9,7 @@ import (
 	osexec "os/exec"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_exec.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Runner は、外部コマンド実行を抽象化するインターフェースです。
 type Runner interface {
@@ -19,9 +19,11 @@ type Runner interface {
 	Output(ctx context.Context, dir string, env []string, name string, args []string) ([]byte, error)
 }
 
-// OS は、os/exec を用いた Runner の実装です。
+// OS は、オペレーティングシステムのコマンドを実行する Runner の実装です。
 type OS struct{}
 
+// Output は、dir をカレントとしてコマンドを実行し、標準出力を返します。
+// env は追加で設定する環境変数（"KEY=VALUE"）です。標準エラーは os.Stderr へ流します。コマンドが非ゼロ終了した場合はエラーを返します。
 func (OS) Output(ctx context.Context, dir string, env []string, name string, args []string) ([]byte, error) {
 	var stdout bytes.Buffer
 	cmd := osexec.CommandContext(ctx, name, args...) //nolint:gosec // name/args は呼び出し側で固定された信頼値

@@ -8,7 +8,7 @@
 
 ## Role in this project
 
-- Place **Entity / ValueObject / DomainService / Repository (IF)** under `internal/domain/<bounded-context>/<aggregate>/`.
+- Place **Entity / ValueObject / DomainService / Repository (IF)** under `internal/domain/<aggregate>/`.
 
 Example: `internal/domain/user/`
 
@@ -138,6 +138,15 @@ validate
 
 These belong to DTO / Infrastructure.
 
+### Not every DB column is an entity field
+
+An entity models only state that carries **domain meaning**. Columns that exist purely for persistence or search infrastructure are intentionally left off the entity, even when present in the table:
+
+- Audit columns (`created_at` / `updated_at`) — read them directly from the DB when needed; they need not become entity fields or invariants.
+- DB-generated / computed columns (e.g. `GENERATED ALWAYS AS ... STORED` search-text columns) — infrastructure search optimization, not domain state.
+
+So a 1:1 entity ↔ column correspondence is **not** required; absence of such columns from an entity is a deliberate design choice, not drift.
+
 ### Handling time and ID
 
 - Do not use `time.Now()` in Domain
@@ -177,6 +186,16 @@ Boundary values are defined in `constant.go`
 minLength
 maxEmailLength
 ```
+
+#### Why validate here when OpenAPI already validates the request?
+
+The OpenAPI request-validation middleware and this layer are **not redundant** — they have different owners and different scopes:
+
+- **Different owner.** OpenAPI constraints are the *wire contract* (what the HTTP API accepts); the domain constants are the *business rule* (what the business considers valid). They may legitimately differ — see [Input Boundary Value Ownership](../../openapi/boundary-ownership.md).
+- **The only universal chokepoint — both inbound and from persistence.** Every entity is built through `New(...)`. Not only do non-HTTP write paths (seed, CLI, batch jobs, tests, any future entrypoint) bypass the request middleware entirely — reconstruction from the database also goes through the same validating constructor (`rowToUser` rebuilds every row via `user.New(...)`). So `New(...)` also guards against invalid data coming *from* infra: a corrupt, manually-inserted, or legacy row that violates a domain invariant fails at reconstruction instead of surfacing as a valid-looking entity. The middleware cannot protect this read path at all; only the domain can.
+- **Framework-agnostic self-protection.** The domain must be correct independent of its caller. Delegating validation to the transport layer would couple the domain's correctness to Echo / the middleware, violating the layer's framework-agnostic rule.
+
+In short: the middleware protects the HTTP boundary; the domain protects the *business rule itself*, for all callers.
 
 #### Errors
 
@@ -218,7 +237,7 @@ Usecase / Repository
 In this project, **Aggregate is the design unit**.
 
 ```text
-internal/domain/<bounded-context>/<aggregate>/
+internal/domain/<aggregate>/
 ```
 
 ### Aggregate Root
@@ -335,7 +354,7 @@ type Repository interface {
 Implementation:
 
 ```text
-internal/infrastructure/persistence/postgres/
+internal/infrastructure/rdb/repository/<aggregate>/
 ```
 
 Mapping to Domain is done by `sqlc`.
@@ -781,7 +800,7 @@ func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // creat
 
 ```go
 // user_repository.go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 package user
 
 import (

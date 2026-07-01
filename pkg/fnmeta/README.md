@@ -6,13 +6,6 @@ Extracts function and package names from runtime full function names.
 
 Primarily used by `internal/observability` for span name generation.
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`ExtractFunctionName(full)`|Extract method name from full function name|
-|`ExtractPackageName(full)`|Extract package name from full function name|
-
 ## Wraps
 
-Standard library `runtime` package.
+Standard library `strings` package. Parses the full function-name strings produced by `runtime` (e.g. `runtime.FuncForPC(...).Name()`), but does not import `runtime` itself — the caller obtains those names.

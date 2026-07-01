@@ -4,9 +4,6 @@ English | [日本語](README.ja.md)
 
 Generates unique X-Request-ID header for each request.
 
-## Public API
+## Role
 
-|Function|Description|
-|---|---|
-|`Middleware()`|Return Echo middleware that generates X-Request-ID|
-|`GetRequestIDFromResponse(c)`|Extract Request ID from response headers|
+Correlating logs, traces, and client-reported failures requires a stable identifier that spans a single request end to end. Generating it once in a middleware guarantees every request carries an ID before any handler or log runs, giving the whole stack a shared correlation key without each layer inventing its own.

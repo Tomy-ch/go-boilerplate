@@ -29,7 +29,7 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   include_dir = ["internal", "cmd", "pkg"]
 
   # 追加で個別に監視したいファイル（例：環境ファイルなど）
-  include_file = ["env/.env.local"]
+  include_file = ["env/.env"]
 
   # 無視するファイルのパターン（正規表現）
   exclude_regex = ["_test\\.go$", "mock_.*\\.go$"]

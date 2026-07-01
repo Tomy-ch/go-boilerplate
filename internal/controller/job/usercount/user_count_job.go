@@ -3,13 +3,11 @@ package usercount
 
 import (
 	"context"
-	"fmt"
 
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/job"
 	"go-boilerplate/internal/usecase/user"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -39,7 +37,8 @@ func (u *jobImpl) Name() string {
 	return jobName
 }
 
-// Execute は、ジョブを実行します。
+// Execute は、ユーザ件数を集計してログに出力します。
+// --active-only / --inactive-only でカウント対象を絞り込めます。両フラグの併用はエラーです。
 func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -51,18 +50,18 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 		switch a {
 		case "--active-only":
 			if active != nil {
-				return xerrors.New(fmt.Sprintf("conflicting filter flag: %s", a))
+				return xerrors.New("conflicting filter flag: " + a)
 			}
-			active = ptr.To(true)
+			active = new(true)
 			filter = "active"
 		case "--inactive-only":
 			if active != nil {
-				return xerrors.New(fmt.Sprintf("conflicting filter flag: %s", a))
+				return xerrors.New("conflicting filter flag: " + a)
 			}
-			active = ptr.To(false)
+			active = new(false)
 			filter = "inactive"
 		default:
-			return xerrors.New(fmt.Sprintf("unknown flag: %s", a))
+			return xerrors.New("unknown flag: " + a)
 		}
 	}
 	count, err := u.usecase.CountUsers(ctx, active)

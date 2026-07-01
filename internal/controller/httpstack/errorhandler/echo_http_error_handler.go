@@ -1,8 +1,6 @@
 package errorhandler
 
 import (
-	"errors"
-
 	"go-boilerplate/internal/controller/error/response"
 	"go-boilerplate/pkg/xerrors"
 
@@ -12,7 +10,7 @@ import (
 // normalizeEchoHTTPError は、EchoのHTTPエラーを正規化し、エラーレスポンスを生成します。
 func normalizeEchoHTTPError(err error, details ...string) *response.HTTPErrorResponse {
 	var ehe *echo.HTTPError
-	if !errors.As(err, &ehe) || !isErrorStatus(ehe.Code) {
+	if !xerrors.As(err, &ehe) || !isErrorStatus(ehe.Code) {
 		return nil
 	}
 
