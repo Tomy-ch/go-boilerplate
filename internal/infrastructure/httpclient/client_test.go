@@ -448,8 +448,9 @@ func TestClientDoDeadline(t *testing.T) {
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
 			// Sleep で fake 時刻を 20ms/サイクル進める clock を注入し、deadline 到達での打ち切りを検証する。
-			// 開始時刻を遠未来にすることで、context.WithDeadline が用いる実時刻ベースの overall deadline は
-			// テスト実行中に発火せず、打ち切りは fake clock 由来の canRetryWithin のみが担う（実時間非依存）。
+			// context の overall デッドラインは実時間 60ms だが、fake sleep は即時進むためテストは数 ms で
+			// 完了し実タイマーは発火しない。打ち切りは注入 clock 基準の canRetryWithin（overallDeadline 到達）
+			// のみが担う（実時間・jitter 非依存）。開始時刻は実時刻と混同しないよう遠未来に置く。
 			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Millisecond)
 			client := httpclient.New(
 				observability.NewNoopHTTPClientTransport(t),

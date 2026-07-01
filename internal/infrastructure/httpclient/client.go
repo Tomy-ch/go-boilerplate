@@ -74,16 +74,19 @@ func (c *client) Do(ctx context.Context, req *Request) (*Response, error) {
 	profile := c.registry.Profile(req.downstream)
 	ds := string(req.downstream)
 
-	// overall deadline は注入 clock 基準で算出する（実 clock では WithTimeout と等価）。
-	ctx, cancel := context.WithDeadline(ctx, c.clk.Now().Add(profile.OverallTimeout))
+	// overall I/O デッドラインは実時間で設定する。context のタイマーは実時刻基準のため、
+	// 注入 clock を絶対期限に使うと実時刻とのズレで期限が意図せずずれる。
+	ctx, cancel := context.WithTimeout(ctx, profile.OverallTimeout)
 	defer cancel()
+	// retry 可否は注入 clock のタイムライン上で決定的に判定するため、期限を注入 clock 基準でも保持する。
+	overallDeadline := c.clk.Now().Add(profile.OverallTimeout)
 
 	c.metrics.InFlightAdd(ctx, ds, 1)
 	defer c.metrics.InFlightAdd(ctx, ds, -1)
 	c.budget.refill(req.downstream, profile.RetryBudgetRatio)
 
 	start := c.clk.Now()
-	resp, err := c.doWithRetry(ctx, req, profile, ds)
+	resp, err := c.doWithRetry(ctx, req, profile, ds, overallDeadline)
 	c.metrics.RecordLatencyMs(ctx, ds, float64(c.clk.Now().Sub(start).Milliseconds()))
 
 	c.recordOutcome(ctx, ds, resp, err)
@@ -91,7 +94,8 @@ func (c *client) Do(ctx context.Context, req *Request) (*Response, error) {
 }
 
 // doWithRetry は、breaker / budget / backoff を伴う retry ループを回します。
-func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile, ds string) (*Response, error) {
+// overallDeadline は注入 clock 基準の overall デッドラインで、retry 可否判定に用います。
+func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile, ds string, overallDeadline time.Time) (*Response, error) {
 	retrySafe := isRetrySafe(req)
 	br := c.breakers.get(req.downstream, profile.Breaker)
 
@@ -127,7 +131,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		}
 
 		wait := retryWait(attempt, profile, resp, c.clk.Now())
-		if !c.canRetryWithin(ctx, wait) {
+		if !c.canRetryWithin(overallDeadline, wait) {
 			return resp, err
 		}
 
@@ -139,13 +143,10 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 	return resp, err
 }
 
-// canRetryWithin は、backoff 待機後も overall deadline 内に次の試行を開始できるかを返します。
-func (c *client) canRetryWithin(ctx context.Context, backoff time.Duration) bool {
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		return true
-	}
-	return c.clk.Now().Add(backoff).Before(deadline)
+// canRetryWithin は、backoff 待機後も overall デッドライン内に次の試行を開始できるかを、
+// 注入 clock のタイムライン上で判定します（実時間・jitter に依存しない決定的判定）。
+func (c *client) canRetryWithin(overallDeadline time.Time, backoff time.Duration) bool {
+	return c.clk.Now().Add(backoff).Before(overallDeadline)
 }
 
 // attempt は、1 回の HTTP 試行を行います。
