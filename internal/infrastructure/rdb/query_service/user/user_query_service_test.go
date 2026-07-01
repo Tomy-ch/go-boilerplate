@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user/search/query"
@@ -184,6 +185,31 @@ func Test_service_FindByFilter(t *testing.T) {
 			assert.Len(t, actual, expectedLength)
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			active := true
+			deleted := false
+			keywords := []string{"x"}
+
+			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
+			_, allErr := repo.FindByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: nil}, 10, 0)
+			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+
+			_, activeErr := repo.FindByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &active}, 10, 0)
+			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+
+			_, deletedErr := repo.FindByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &deleted}, 10, 0)
+			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
+		})
+	})
 }
 
 func Test_service_CountByFilter(t *testing.T) {
@@ -268,6 +294,31 @@ func Test_service_CountByFilter(t *testing.T) {
 			})
 			require.NoError(t, err)
 			assert.Equal(t, expectedCount, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			active := true
+			deleted := false
+			keywords := []string{"x"}
+
+			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
+			_, allErr := repo.CountByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: nil})
+			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+
+			_, activeErr := repo.CountByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &active})
+			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+
+			_, deletedErr := repo.CountByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &deleted})
+			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
 		})
 	})
 }
