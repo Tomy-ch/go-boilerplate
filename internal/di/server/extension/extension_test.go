@@ -424,7 +424,7 @@ func TestExtractPriorityConflicts(t *testing.T) {
 
 		got := extractPriorityConflicts(input)
 
-		assert.Len(t, got, 1)
+		require.Len(t, got, 1)
 		assert.Contains(t, got[0], "priority=1")
 		assert.Contains(t, got[0], "[A B]") // names の出力
 	})
@@ -440,7 +440,7 @@ func TestExtractPriorityConflicts(t *testing.T) {
 
 		got := extractPriorityConflicts(input)
 
-		assert.Len(t, got, 2)
+		require.Len(t, got, 2)
 		assert.Contains(t, got[0], "priority=")
 		assert.Contains(t, got[1], "priority=")
 
@@ -458,7 +458,7 @@ func TestExtractPriorityConflicts(t *testing.T) {
 		}
 
 		got := extractPriorityConflicts(input)
-		assert.Len(t, got, 1)
+		require.Len(t, got, 1)
 		assert.Contains(t, got[0], "priority=5")
 		assert.Contains(t, got[0], "[A B C]")
 	})

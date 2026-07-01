@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
+	jobrunner "go-boilerplate/internal/controller/job"
 	usecasejob "go-boilerplate/internal/usecase/boundary/job"
 	mock_job "go-boilerplate/internal/usecase/boundary/job/mock"
 )
@@ -26,7 +27,7 @@ func TestProvideRunner(t *testing.T) {
 		r, err := ProvideRunner(in)
 		require.NoError(t, err)
 		require.NotNil(t, r)
-		assert.Len(t, r.Names(), 1)
+		assert.Equal(t, []string{"job1"}, r.Names())
 	})
 
 	t.Run("異常系: 同一名ジョブがあるとエラー", func(t *testing.T) {
@@ -41,7 +42,7 @@ func TestProvideRunner(t *testing.T) {
 
 		in := RunnerIn{Jobs: []usecasejob.Job{j1, j2}}
 		r, err := ProvideRunner(in)
-		require.Error(t, err)
-		require.Nil(t, r)
+		require.ErrorIs(t, err, jobrunner.ErrDuplicateJob)
+		assert.Nil(t, r)
 	})
 }

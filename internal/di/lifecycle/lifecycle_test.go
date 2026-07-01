@@ -22,6 +22,7 @@ func Test_RegisterStartExecutesOnAppStart(t *testing.T) {
 				return nil
 			})
 		}),
+		fx.NopLogger,
 	)
 
 	require.NoError(t, app.Start(context.Background()))
@@ -43,6 +44,7 @@ func Test_RegisterShutdownExecutesOnAppStop(t *testing.T) {
 				return nil
 			})
 		}),
+		fx.NopLogger,
 	)
 
 	// start and then stop to trigger OnStop hooks

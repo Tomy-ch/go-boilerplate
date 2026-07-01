@@ -6,7 +6,6 @@ import (
 	"go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -17,5 +16,6 @@ func TestMiddleware(t *testing.T) {
 
 	mw := Middleware(secCfg)
 	assert.Equal(t, securityPriority, mw.Middleware.Priority)
-	require.NotNil(t, mw.Middleware.Middleware)
+	assert.NotNil(t, mw.Middleware.Middleware)
+	assert.Equal(t, "security", mw.Middleware.Name)
 }

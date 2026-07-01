@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestForceJSONMiddleware(t *testing.T) {
@@ -12,5 +11,6 @@ func TestForceJSONMiddleware(t *testing.T) {
 
 	out := ForceJSONMiddleware()
 	assert.Equal(t, forceJSONPriority, out.Middleware.Priority)
-	require.NotNil(t, out.Middleware.Middleware)
+	assert.NotNil(t, out.Middleware.Middleware)
+	assert.Equal(t, "forcejson", out.Middleware.Name)
 }
