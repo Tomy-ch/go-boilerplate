@@ -345,6 +345,13 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make pin-actions-apply` | lockfile を元に `uses:` を `@<sha> # <tag>` へ固定します。 | なし |
 | `make pin-actions-check` | `uses:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
 
+### コミットメッセージ Lint 関連
+
+| コマンド | 説明 | 備考 |
+| --- | --- | --- |
+| `make commitlint COMMIT_MSG_FILE=<file>` | コミットメッセージを commitlint で検証します。 | `node_tool_runner` コンテナ内で `make commitlint-ci` を呼び出します。`commit-msg` フックに配線。`COMMIT_MSG_FILE` 既定は `.git/COMMIT_EDITMSG`。 |
+| `make commitlint-ci COMMIT_MSG_FILE=<file>` | `commitlint --edit <file>` を直接実行します。 | CI 用ターゲット。 |
+
 ### GitHub 設定関連
 
 | コマンド | 説明 | 補足 |

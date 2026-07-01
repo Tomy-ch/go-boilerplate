@@ -345,6 +345,13 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
 | `make pin-actions-apply` | Pins `uses:` to `@<sha> # <tag>` from the lockfile. | None |
 | `make pin-actions-check` | Verifies `uses:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
 
+### Commit message lint related
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make commitlint COMMIT_MSG_FILE=<file>` | Lints a commit message with commitlint. | Invokes `make commitlint-ci` inside the `node_tool_runner` container. Wired to the `commit-msg` hook; `COMMIT_MSG_FILE` defaults to `.git/COMMIT_EDITMSG`. |
+| `make commitlint-ci COMMIT_MSG_FILE=<file>` | Runs `commitlint --edit <file>` directly. | CI target. |
+
 ### GitHub configuration related
 
 | Command | Description | Notes |

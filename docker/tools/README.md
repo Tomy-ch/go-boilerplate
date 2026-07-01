@@ -6,14 +6,14 @@ This Dockerfile provides **code generation and bundling tool containers** for th
 
 ## Role
 
-`docker/tools/Dockerfile` packages every code-generation / linting / security / documentation tool the build needs (oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static, redocly-cli, markdownlint-cli2, js-yaml, sqlfluff) into language-isolated runner images. Developers and CI invoke these containers from `make` targets (`make gen-api`, `make gen-query`, `make sql-lint`, etc.) so nobody has to install Go, Node, or Python toolchains locally. This keeps tool versions reproducible across machines and locks generated output to a known toolchain set.
+`docker/tools/Dockerfile` packages every code-generation / linting / security / documentation tool the build needs (oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static, redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, sqlfluff) into language-isolated runner images. Developers and CI invoke these containers from `make` targets (`make gen-api`, `make gen-query`, `make sql-lint`, etc.) so nobody has to install Go, Node, or Python toolchains locally. This keeps tool versions reproducible across machines and locks generated output to a known toolchain set.
 
 ## Build Targets
 
 |Target|Base Image|Included Tools|
 |---|---|---|
 |`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.14-alpine`|redocly-cli, markdownlint-cli2, js-yaml, esbuild (+ portal bundling libs)|
+|`node_tools`|`node:24.14-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild (+ portal bundling libs)|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 
 ## go_tools
@@ -41,6 +41,7 @@ Tools for OpenAPI document processing and portal frontend bundling:
 |---|---|
 |`redocly-cli`|Bundle OpenAPI YAML (`$ref` resolution) and generate HTML docs|
 |`markdownlint-cli2`|Markdown linter for docs (`make md-lint`)|
+|`@commitlint/cli`|Commit-message linter (`make commitlint`, wired to the `commit-msg` hook)|
 |`js-yaml`|YAML processing for portal doc generation scripts|
 |`esbuild`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`make gen-portal-build`)|
 |`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|Portal frontend runtime libraries bundled by esbuild (replacing the former CDN + in-browser Babel setup). `mermaid` is also reused by `scripts/mermaid-lint.mjs` to validate ` ```mermaid ` fences (`make md-lint`).|
