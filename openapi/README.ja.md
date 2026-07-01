@@ -140,3 +140,5 @@ URL パスバージョニング: `/v1/users`
 - [paths/README.ja.md](paths/README.ja.md) — エンドポイント定義とバージョニング
 - [components/schemas/README.ja.md](components/schemas/README.ja.md) — スキーマ設計ポリシー
 - [components/parameters/README.ja.md](components/parameters/README.ja.md) — パラメータ規約
+- [components/requests/README.ja.md](components/requests/README.ja.md) — リクエストボディのセマンティクス（content / required）
+- [components/responses/README.ja.md](components/responses/README.ja.md) — レスポンスのセマンティクス（status / description）

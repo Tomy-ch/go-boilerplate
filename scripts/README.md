@@ -17,6 +17,7 @@ scripts/
 ├── make_help.mjs                # Generate Make target help output
 ├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
 ├── genctxkey/                  # Context key code generator (Go)
+├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)
 └── setup/                     # Initial project setup scripts
     ├── replace-module.mjs
     ├── replace-app-metadata.mjs
@@ -62,9 +63,15 @@ All other tool versions are managed by [`mise.toml`](../mise.toml) as the single
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`genctxkey/`|Generate Echo context key helpers (Go code generator)|`make gen-ctxkey`|
+|`genctxkey/`|Generate Echo context key helpers (Go code generator). Driven by the `//go:generate` directives in `internal/controller/ctxhelper/generate.go`, run via `go generate ./...`.|`make gen-go-code`|
 
 See [genctxkey/README.md](genctxkey/README.md) for details.
+
+### CI / Supply Chain
+
+|Script|Description|Invoked By|
+|---|---|---|
+|`pin-actions/`|Pin every external GitHub Actions `uses:` in `.github/workflows/**` and `.github/actions/**` to an immutable commit SHA. `resolve` walks the references and resolves each tag/branch to a SHA via `git ls-remote`, writing the lockfile `.github/actions-pin.toml` (SSOT) — with a supply-chain quarantine that refuses commits younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14, keeping the existing pin instead). `apply` rewrites each `uses:` to `@<sha> # <tag>` from the lockfile. `check` runs the same comparison without writing and exits non-zero on any unpinned/stale/unregistered reference (for CI / hooks). Idempotent: an already-pinned line re-resolves off its trailing `# <tag>` comment.|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
 
 ### Initial Setup (`setup/`)
 
