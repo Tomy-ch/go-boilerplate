@@ -469,6 +469,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExchangeRateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
 components:
   parameters:
     PageParam:

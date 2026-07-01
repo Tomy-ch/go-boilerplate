@@ -109,6 +109,12 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 }
 
+type BadRequest400JSONResponse ErrorResponse
+
+type InternalServerError500JSONResponse ErrorResponse
+
+type ServiceUnavailable503JSONResponse ErrorResponse
+
 type GetExchangeRatesRequestObject struct {
 	Params GetExchangeRatesParams
 }
@@ -127,6 +133,52 @@ func (response GetExchangeRates200JSONResponse) VisitGetExchangeRatesResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetExchangeRates400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetExchangeRates400JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetExchangeRates500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response GetExchangeRates500JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetExchangeRates503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response GetExchangeRates503JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }

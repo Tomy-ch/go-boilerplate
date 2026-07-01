@@ -36,3 +36,9 @@ get:
         application/json:
           schema:
             $ref: '../../components/responses/exchange-rates/ExchangeRateResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
