@@ -28,7 +28,7 @@ gen-test-repo:
 		| grep -Ev '$(GO_TEST_EXCLUDE)' \
 		| tr '\n' ',' \
 		| sed 's/,$$//')"; \
-	go test $$TGT_PKGS -coverpkg=$$COVER_PKGS -coverprofile=docs/coverage/coverage.out -covermode=atomic  >/dev/null 2>&1
+	go test $$TGT_PKGS -coverpkg=$$COVER_PKGS -coverprofile=docs/coverage/coverage.out -covermode=set  >/dev/null 2>&1
 	go tool cover -html=docs/coverage/coverage.out -o docs/coverage/index.html
 	rm -f docs/coverage/coverage.out
 	@echo "✅ テストレポートの生成が完了しました。"
