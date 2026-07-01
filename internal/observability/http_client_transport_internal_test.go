@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -91,6 +92,33 @@ func TestGuardedDialControl(t *testing.T) {
 			require.Error(t, guardedDialControl(allow, "tcp", "192.0.0.1:80", nil))
 			// RFC 3849 IPv6 ドキュメント用（2001:db8::/32）— テスト/文書専用で実到達不能。
 			require.Error(t, guardedDialControl(allow, "tcp", "[2001:db8::1]:443", nil))
+		})
+	})
+}
+
+func TestMustParseCIDR(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("正当なCIDRリテラルを*net.IPNetへ解析する", func(t *testing.T) {
+			t.Parallel()
+
+			n := mustParseCIDR("10.0.0.0/8")
+
+			require.NotNil(t, n)
+			assert.True(t, n.Contains(net.ParseIP("10.1.2.3")))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("不正なCIDRリテラルはpanicする", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Panics(t, func() { mustParseCIDR("not-a-cidr") })
 		})
 	})
 }

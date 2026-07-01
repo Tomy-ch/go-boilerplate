@@ -198,5 +198,30 @@ func TestEngine_Run(t *testing.T) {
 			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
 			assert.Equal(t, context.Canceled, ctx.Err())
 		})
+
+		t.Run("RelayBatch エラー後に ErrorBackoff を待機完了したら次 poll を実行する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			gomock.InOrder(
+				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
+					outboxuc.RelayResult{}, xerrors.New("batch failed")),
+				// ErrorBackoff の Sleep が nil（待機完了）を返すと continue し、次 poll を実行する。
+				sleeper.EXPECT().Sleep(gomock.Any(), testErrorBackoff).Return(nil),
+				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).DoAndReturn(
+					func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
+						cancel()
+						return outboxuc.RelayResult{}, nil
+					}),
+				sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled),
+			)
+
+			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
+			assert.Equal(t, context.Canceled, ctx.Err())
+		})
 	})
 }

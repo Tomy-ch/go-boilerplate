@@ -2,9 +2,14 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
@@ -15,6 +20,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+// metricsBlockPathSeq は、DefaultServeMux への二重登録 panic を避けるため一意な登録パスを払い出します。
+var metricsBlockPathSeq atomic.Int64
 
 func TestMetricsServer(t *testing.T) {
 	t.Parallel()
@@ -119,4 +127,97 @@ func TestNewMetricsServer(t *testing.T) {
 			assert.NotPanics(t, func() { end(context.Background()) })
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("進行中リクエストがあるとShutdownの失敗をエラーとしてログする", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			entered := make(chan struct{}, 1)
+			release := make(chan struct{})
+
+			// 補助サーバーは DefaultServeMux を公開するため、専用パスに進行中ハンドラを登録する。
+			blockPath := fmt.Sprintf("/__metrics_shutdown_block__%d", metricsBlockPathSeq.Add(1))
+			http.HandleFunc(blockPath, blockingHandler(entered, release))
+
+			mtcCfg := config.NewMetricsConfig(config.MockConfigForTest(t))
+			port := reservePort(t, mtcCfg.Host())
+			mtcCfg.SetMetricsPort(t, port)
+
+			start, end := NewMetricsServer(mtcCfg, logger)
+			start()
+
+			driveInFlight(t, "http://"+mtcCfg.Host()+":"+strconv.Itoa(port)+blockPath, entered, release)
+
+			// 非アイドル接続が残る状態へ、期限切れの ctx で Shutdown を当てる。
+			end(canceledContext())
+			close(release)
+
+			assert.Positive(t, observed.FilterMessage("metrics server shutdown error").Len())
+		})
+	})
+}
+
+// blockingHandler は、最初の呼び出しで entered を通知し release まで待機するハンドラを返します。
+func blockingHandler(entered chan<- struct{}, release <-chan struct{}) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+		<-release
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// reservePort は、host と同じ family で bind 可能なポートを予約し確定ポートを返します。
+func reservePort(t *testing.T, host string) int {
+	t.Helper()
+	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", host+":0")
+	require.NoError(t, err)
+	_, portStr, err := net.SplitHostPort(ln.Addr().String())
+	require.NoError(t, err)
+	port, err := strconv.Atoi(portStr)
+	require.NoError(t, err)
+	require.NoError(t, ln.Close())
+	return port
+}
+
+// driveInFlight は、url へ接続してハンドラを進行中（非アイドル接続）にし、進入を待ちます。
+func driveInFlight(t *testing.T, url string, entered <-chan struct{}, release chan struct{}) {
+	t.Helper()
+	go sendUntilConnected(url)
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		close(release)
+		t.Fatal("進行中ハンドラへ到達しなかった")
+	}
+}
+
+// sendUntilConnected は、bind 完了まで接続を試み、接続できたら応答を読み切ります。
+func sendUntilConnected(url string) {
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+		if err != nil {
+			return
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err == nil {
+			_, _ = io.Copy(io.Discard, res.Body)
+			_ = res.Body.Close()
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// canceledContext は、生成直後にキャンセル済みの context を返します。
+func canceledContext() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
 }

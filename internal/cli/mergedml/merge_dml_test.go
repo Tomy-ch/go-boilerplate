@@ -147,6 +147,34 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
 		})
+
+		t.Run("SQLが空でも生成先がgenRootDir外ならensureUnderDirで弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			// カテゴリ名に相対上昇を含めると生成先が genRootDir の外へ抜け、Remove 前に弾かれる。
+			escCategory := "../../../../etc"
+			escDmlDir := filepath.Join(testWorkDir, "database/dml/", "repository", escCategory)
+			fs.EXPECT().FindSQLFiles(escDmlDir).Return(nil, nil)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
+		})
+
+		t.Run("SQLがあっても生成先がgenRootDir外なら連結前にensureUnderDirで弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			// 生成先が genRootDir の外を指すため、ReadFile/WriteFile へ進む前に弾かれる。
+			escCategory := "../../../../etc"
+			escDmlDir := filepath.Join(testWorkDir, "database/dml/", "repository", escCategory)
+			fs.EXPECT().FindSQLFiles(escDmlDir).Return([]string{filepath.Join(escDmlDir, "001.sql")}, nil)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
+		})
 	})
 }
 
@@ -217,6 +245,18 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+		})
+
+		t.Run("削除対象がgenRootDir外を指すとensureUnderDirで弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			// suffix 一致かつ keep 外だが、相対上昇で genRootDir の外へ抜けるため Remove 前に弾かれる。
+			fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"../../../../etc_repository.gen.sql"}, nil)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, g.cleanupStaleGeneratedFiles(nil, "repository"))
 		})
 	})
 }

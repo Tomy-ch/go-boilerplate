@@ -2,11 +2,13 @@ package logging
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -55,6 +57,74 @@ func TestWithCore(t *testing.T) {
 
 			got.Info("passed")
 			assert.Contains(t, buf.String(), "passed")
+		})
+
+		t.Run("追加core自身のレベル未満のログはゲートされ書き込まれない", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			// 元 Logger は Debug のため tee は Info でも呼ばれるが、追加 core は Error 以上のみ有効。
+			// 追加 core 側は Info で Check がゲート（未登録で ce を素通し）することを検証する。
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.ErrorLevel)
+
+			base := NewConsoleLogger(LevelDebug(), LevelError())
+			got := WithCore(base, extra)
+
+			got.Info("gated-info")
+			assert.NotContains(t, buf.String(), "gated-info")
+
+			got.Error("passed-error")
+			assert.Contains(t, buf.String(), "passed-error")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("logger以外のLogger実装はゲートできず受け取った値をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			// *logger 以外（ここでは nil interface）は core を内包しないため、
+			// ゲートせず受け取った Logger をそのまま返す。
+			var other Logger
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&bytes.Buffer{}), zapcore.DebugLevel)
+
+			got := WithCore(other, extra)
+			assert.Nil(t, got)
+		})
+	})
+}
+
+func Test_levelGatedCore_With(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("minを保持しつつ内側coreへフィールドを伝播した新coreを返す", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			inner := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+			gated := levelGatedCore{Core: inner, min: zapcore.WarnLevel}
+
+			got := gated.With([]zapcore.Field{zap.String("svc", "demo")})
+
+			gc, ok := got.(levelGatedCore)
+			require.True(t, ok)
+			assert.Equal(t, zapcore.WarnLevel, gc.min)
+			// min ゲートが維持される（Info は無効、Warn は有効）。
+			assert.False(t, gc.Enabled(zapcore.InfoLevel))
+			assert.True(t, gc.Enabled(zapcore.WarnLevel))
+
+			// With で付与したフィールドが後続 Write に伝播する。
+			require.NoError(t, gc.Write(zapcore.Entry{Level: zapcore.WarnLevel, Message: "hi"}, nil))
+			var m map[string]any
+			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), "\n"), &m))
+			assert.Equal(t, "demo", m["svc"])
 		})
 	})
 }

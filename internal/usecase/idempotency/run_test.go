@@ -417,6 +417,20 @@ func TestRun(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
+		t.Run("Metrics 未設定でも Complete 失敗はエラーを伝播する(計上は no-op)", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(apperror.ErrInternal)
+
+			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
+				func(context.Context) (payload, error) { return payload{V: "created"}, nil })
+
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
 		t.Run("claimed への並行再送は IncConflict を計上する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)

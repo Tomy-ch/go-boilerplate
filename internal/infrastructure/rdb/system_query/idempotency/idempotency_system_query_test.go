@@ -255,6 +255,21 @@ func Test_store_errors(t *testing.T) {
 			require.ErrorIs(t, <-holderDone, errHolderRollback)
 		})
 
+		t.Run("claim挿入が汎用DBエラーで失敗した場合はErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// NUL バイトを含む scope は PostgreSQL の TEXT に格納できず、ロック競合でも既存行でもない
+				// 汎用エラーとなるため、Claim の default 分岐（ErrInternal 正規化）へ落ちる。
+				params := idempotencybndry.ClaimParams{
+					Scope: "bad\x00scope", Key: "key-1", Method: "POST", Path: "/v1/users",
+					Fingerprint: newFingerprint(0x05), ExpiresAt: time.Now().Add(time.Hour),
+				}
+				_, err := s.Claim(ctx, params)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
 		t.Run("キャンセル済みコンテキストでは各操作がErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 

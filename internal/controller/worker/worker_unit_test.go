@@ -436,3 +436,76 @@ func Test_run_routePermanent(t *testing.T) {
 		})
 	})
 }
+
+func Test_run_onPollError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Receive 失敗をエラーログに残しサーキットへ失敗を計上する", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			set := baseSettings()
+			set.CircuitFailureThreshold = 1 // 1 度の poll 失敗で Open へ遷移させる
+			eng, err := New([]bw.Worker{w}, set, observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			r.onPollError(context.Background(), xerrors.New("broker unreachable"))
+
+			assert.Equal(t, 1, observed.FilterMessage("receive error").Len())
+			assert.Equal(t, phaseOpen, r.cb.phaseNow())
+		})
+	})
+}
+
+func Test_run_dispatchAll(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("受信メッセージが 0 件の場合は何も dispatch せず返る", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, baseSettings(), w), w)
+
+			r.dispatchAll(context.Background(), nil)
+
+			assert.Empty(t, r.inflight) // in-flight トークンが 1 つも計上されないこと
+		})
+	})
+}
+
+func Test_msgFields(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("trace が無い場合は worker 名・message id・receive count のみを返す", func(t *testing.T) {
+			t.Parallel()
+
+			fields := msgFields(context.Background(), "w", bw.Message{ID: "a", ReceiveCount: 1})
+
+			assert.Len(t, fields, 3)
+		})
+
+		t.Run("trace がある場合は trace id フィールドを追加する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, end := observability.NewStubSpanContext(t)
+			defer end()
+
+			fields := msgFields(ctx, "w", bw.Message{ID: "a", ReceiveCount: 1})
+
+			assert.Len(t, fields, 4)
+		})
+	})
+}

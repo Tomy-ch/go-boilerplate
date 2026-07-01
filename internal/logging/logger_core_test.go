@@ -11,6 +11,28 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+func Test_mustOpenSink(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("解決可能なsinkはWriteSyncerを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.NotNil(t, mustOpenSink("stdout"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未登録スキームのsinkはpanicする", func(t *testing.T) {
+			t.Parallel()
+			assert.Panics(t, func() { _ = mustOpenSink("bogus-scheme://x") })
+		})
+	})
+}
+
 func TestBuildLogger(t *testing.T) {
 	t.Parallel()
 

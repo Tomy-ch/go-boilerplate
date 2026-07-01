@@ -210,6 +210,36 @@ func TestClientDo(t *testing.T) {
 			assert.Nil(t, resp)
 		})
 
+		t.Run("ボディ読み取り中に接続が切れるとErrUnavailableを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// Content-Length を過大申告しつつ本文を途中で切って接続を閉じ、ボディ読み取りを失敗させる。
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hj, ok := w.(http.Hijacker)
+				if !ok {
+					return
+				}
+				conn, buf, err := hj.Hijack()
+				if err != nil {
+					return
+				}
+				_, _ = buf.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nhello")
+				_ = buf.Flush()
+				_ = conn.Close()
+			}))
+			t.Cleanup(srv.Close)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxAttempts = 1 // 再送させず readBody の失敗経路を単独で踏ませる
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"body": profile})
+
+			client := newClient(t, registry)
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "body", srv.URL))
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, resp)
+		})
+
 		t.Run("ボディが上限超過ならErrUnavailableを返す", func(t *testing.T) {
 			t.Parallel()
 

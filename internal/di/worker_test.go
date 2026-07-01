@@ -63,6 +63,23 @@ func TestRunWorker(t *testing.T) {
 
 			require.NoError(t, stop(context.Background()))
 		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("start: 正常に起動すると done を返し stop で正常終了する", func(t *testing.T) {
+			// health listener のポート衝突を避けるため OS 割り当ての空きポートを使う。
+			t.Setenv("WORKER_HEALTH_LISTEN_ADDR", "127.0.0.1:0")
+
+			start, stop := RunWorker(30 * time.Second)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			done := start(context.Background(), "no-worker", nil)
+			require.NotNil(t, done)
+			// no-worker は未登録のため engine が即座にエラーを done へ返す（起動自体は成功）。
+			require.Error(t, <-done)
+
+			require.NoError(t, stop(context.Background()))
+		})
 	})
 
 	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
@@ -84,6 +101,23 @@ func TestRunWorker(t *testing.T) {
 			require.False(t, ok)
 
 			require.NoError(t, stop(context.Background()))
+		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("stop: 起動後に期限切れ context で停止するとエラーを返す", func(t *testing.T) {
+			t.Setenv("WORKER_HEALTH_LISTEN_ADDR", "127.0.0.1:0")
+
+			start, stop := RunWorker(30 * time.Second)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			done := start(context.Background(), "no-worker", nil)
+			require.Error(t, <-done)
+
+			// 既にキャンセル済みの context で停止すると app.Stop がエラーを返す。
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			require.Error(t, stop(ctx))
 		})
 	})
 }

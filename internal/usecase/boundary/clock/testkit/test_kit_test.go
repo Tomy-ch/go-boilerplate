@@ -1,6 +1,7 @@
 package testkit
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -34,6 +35,22 @@ func TestNewMockClock(t *testing.T) {
 
 		assert.Equal(t, now, clk.Now())
 		assert.Equal(t, now, clk.Now())
+	})
+}
+
+func TestNewNoopSleeper(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("待機せず常に nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			s := NewNoopSleeper(t)
+
+			require.NoError(t, s.Sleep(context.Background(), time.Hour))
+		})
 	})
 }
 

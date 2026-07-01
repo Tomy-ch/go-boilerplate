@@ -196,6 +196,26 @@ func Test_repository_FindByActive(t *testing.T) {
 			})
 		})
 
+		t.Run("activeがtrueでlimitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByActive(ctx, new(true), -1, 0)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
+		t.Run("activeがfalseでlimitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByActive(ctx, new(false), -1, 0)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
 		t.Run("無効なユーザーが挿入されていてもDomain化の時にエラーになる", func(t *testing.T) {
 			t.Parallel()
 
@@ -418,6 +438,21 @@ func Test_repository_CountByActive(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, int64(10), got)
 			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := repo.CountByActive(ctx, new(true))
+			assert.Zero(t, got)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
 }

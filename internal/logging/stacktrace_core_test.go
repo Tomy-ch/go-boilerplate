@@ -68,6 +68,52 @@ func Test_stacktraceArrayCore_Write(t *testing.T) {
 	})
 }
 
+func Test_stacktraceArrayCore_Check(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("有効レベルのエントリは自身をCheckedEntryへ登録し出力される", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			encCfg := zap.NewProductionEncoderConfig()
+			enc := zapcore.NewJSONEncoder(encCfg)
+			wrapped := wrapStacktraceCore(
+				zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.InfoLevel), "stacktrace")
+
+			zl := zap.New(wrapped)
+			zl.Info("hello")
+
+			assert.Contains(t, buf.String(), "hello")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("無効レベルのエントリは登録されずceを素通しする", func(t *testing.T) {
+			t.Parallel()
+
+			var wrappedBuf, teeBuf bytes.Buffer
+			encCfg := zap.NewProductionEncoderConfig()
+			enc := zapcore.NewJSONEncoder(encCfg)
+			// wrapped は Error 以上のみ有効。Debug core との Tee により Info でも Check は
+			// 呼ばれるが、wrapped 側は無効レベルとして ce を素通し（未登録）する。
+			wrapped := wrapStacktraceCore(
+				zapcore.NewCore(enc, zapcore.AddSync(&wrappedBuf), zapcore.ErrorLevel), "stacktrace")
+			debugCore := zapcore.NewCore(enc, zapcore.AddSync(&teeBuf), zapcore.DebugLevel)
+
+			zl := zap.New(zapcore.NewTee(debugCore, wrapped))
+			zl.Info("info-only")
+
+			assert.NotContains(t, wrappedBuf.String(), "info-only")
+			assert.Contains(t, teeBuf.String(), "info-only")
+		})
+	})
+}
+
 func Test_stacktraceArrayCore_With(t *testing.T) {
 	t.Parallel()
 

@@ -95,6 +95,28 @@ func Test_extractFromCarrier_D1(t *testing.T) {
 	})
 }
 
+func Test_mapCarrier_Keys(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャリアが保持する全キーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := mapCarrier{"traceparent": "v1", "tracestate": "v2"}
+
+			assert.ElementsMatch(t, []string{"traceparent", "tracestate"}, c.Keys())
+		})
+
+		t.Run("空のキャリアは空のキー集合を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, mapCarrier{}.Keys())
+		})
+	})
+}
+
 func Test_injectToCarrier_D1(t *testing.T) {
 	t.Parallel()
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -228,6 +229,39 @@ func TestTxManager_Do(t *testing.T) {
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("fnが成功してもcommitが失敗するとそのエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// fn 内でトランザクションをアボート（0除算）させた上でエラーを握り潰し nil を返すと、
+			// commit がロールバックへ倒れ ErrTxCommitRollback が doOnce から返る。
+			ctx := context.Background()
+			err := manager.Do(ctx, func(txCtx context.Context) error {
+				_, _ = driver.New(txCtx, db).Exec(txCtx, "SELECT 1/0")
+				return nil
+			})
+			require.ErrorIs(t, err, pgx.ErrTxCommitRollback)
+		})
+
+		t.Run("rollback失敗時はエラーログを出力し元のエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// fn 内で先に tx をクローズしておくと、doOnce の後始末 rollback が ErrTxClosed で失敗し、
+			// 「Failed to rollback transaction」ログが出力される。
+			observedLogger, logs := logging.NewObservedTestLogger(t)
+			m := driver.NewTransactionManager(db, dbCfg, observedLogger, system.NewSleeper())
+
+			fnErr := xerrors.New("fn failed after closing tx")
+			err := m.Do(context.Background(), func(txCtx context.Context) error {
+				tx, ok := driver.TxFromContext(txCtx)
+				require.True(t, ok)
+				require.NoError(t, tx.Rollback(txCtx))
+				return fnErr
+			})
+
+			require.ErrorIs(t, err, fnErr)
+			assert.Equal(t, 1, logs.FilterMessage("Failed to rollback transaction").Len())
 		})
 
 		t.Run("fnがruntime.Goexitで中断しても接続がリークしない", func(t *testing.T) {

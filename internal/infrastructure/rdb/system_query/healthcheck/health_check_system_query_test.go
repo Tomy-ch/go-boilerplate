@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 
@@ -51,6 +52,21 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 				assert.Positive(t, res.Latency.Microseconds())
 				assert.NotZero(t, res.RespondedAt)
 			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			res, err := s.CheckDBHealth(ctx)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.False(t, res.Ready)
 		})
 	})
 }

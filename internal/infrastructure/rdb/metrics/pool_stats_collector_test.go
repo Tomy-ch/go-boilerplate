@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -131,6 +132,29 @@ func TestRegisterPoolStatsCollector(t *testing.T) {
 
 			err = RegisterPoolStatsCollector(reg, collector)
 			require.NoError(t, err)
+		})
+
+		t.Run("AlreadyRegistered以外の登録エラーはそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
+			db := testkit.NewTestDB(t)
+			collector := New(db)
+
+			// collector が公開する pgxpool_max_conns と同名・別 help のメトリクスを先に登録しておくと、
+			// 記述子の不整合により AlreadyRegisteredError ではない一般の登録エラーとなる。
+			conflicting := prometheus.NewCounter(prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "max_conns",
+				Help:      "conflicting metric with a different help string",
+			})
+			require.NoError(t, reg.Register(conflicting))
+
+			err := RegisterPoolStatsCollector(reg, collector)
+			require.Error(t, err)
+
+			var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+			assert.False(t, xerrors.As(err, &alreadyRegisteredErr))
 		})
 	})
 }

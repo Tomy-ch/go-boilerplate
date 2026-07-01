@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
@@ -18,6 +19,12 @@ import (
 // errMeter は、failingMeter が Int64Counter 生成で返す注入エラーです。
 var errMeter = xerrors.New("int64 counter creation failed")
 
+// errHistogram は、histogramFailingMeter が Float64Histogram 生成で返す注入エラーです。
+var errHistogram = xerrors.New("float64 histogram creation failed")
+
+// errUpDownCounter は、upDownCounterFailingMeter が Int64UpDownCounter 生成で返す注入エラーです。
+var errUpDownCounter = xerrors.New("int64 up down counter creation failed")
+
 // failingMeterProvider は、Int64Counter 生成に失敗する Meter を返す MeterProvider スタブです。
 type failingMeterProvider struct{ embedded.MeterProvider }
 
@@ -25,10 +32,44 @@ type failingMeterProvider struct{ embedded.MeterProvider }
 // NewWorkerMetrics は最初に Int64Counter を呼ぶため、ここでエラーを注入すれば生成失敗経路を通せます。
 type failingMeter struct{ metric.Meter }
 
+// histogramFailingMeterProvider は、Float64Histogram 生成のみに失敗する Meter を返す MeterProvider スタブです。
+type histogramFailingMeterProvider struct{ embedded.MeterProvider }
+
+// histogramFailingMeter は、Counter 生成は no-op へ委譲しつつ Float64Histogram のみエラーを返す Meter スタブです。
+// NewWorkerMetrics は Counter 群の後に Histogram を生成するため、histogram 生成失敗経路を選択的に通せます。
+type histogramFailingMeter struct{ metric.Meter }
+
+// upDownCounterFailingMeterProvider は、Int64UpDownCounter 生成のみに失敗する Meter を返す MeterProvider スタブです。
+type upDownCounterFailingMeterProvider struct{ embedded.MeterProvider }
+
+// upDownCounterFailingMeter は、Counter/Histogram 生成は no-op へ委譲しつつ Int64UpDownCounter のみエラーを返す Meter スタブです。
+// NewWorkerMetrics は最後に UpDownCounter を生成するため、その生成失敗経路を選択的に通せます。
+type upDownCounterFailingMeter struct{ metric.Meter }
+
 func (failingMeterProvider) Meter(string, ...metric.MeterOption) metric.Meter { return failingMeter{} }
 
 func (failingMeter) Int64Counter(string, ...metric.Int64CounterOption) (metric.Int64Counter, error) {
 	return nil, errMeter
+}
+
+func (histogramFailingMeterProvider) Meter(string, ...metric.MeterOption) metric.Meter {
+	return histogramFailingMeter{Meter: metricnoop.NewMeterProvider().Meter("")}
+}
+
+func (histogramFailingMeter) Float64Histogram(
+	string, ...metric.Float64HistogramOption,
+) (metric.Float64Histogram, error) {
+	return nil, errHistogram
+}
+
+func (upDownCounterFailingMeterProvider) Meter(string, ...metric.MeterOption) metric.Meter {
+	return upDownCounterFailingMeter{Meter: metricnoop.NewMeterProvider().Meter("")}
+}
+
+func (upDownCounterFailingMeter) Int64UpDownCounter(
+	string, ...metric.Int64UpDownCounterOption,
+) (metric.Int64UpDownCounter, error) {
+	return nil, errUpDownCounter
 }
 
 func Test_NewWorkerMetrics_D2(t *testing.T) {
@@ -93,6 +134,24 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 			wm, err := observability.NewWorkerMetrics(failingMeterProvider{})
 
 			require.ErrorIs(t, err, errMeter)
+			assert.Nil(t, wm)
+		})
+
+		t.Run("histogram 生成に失敗した場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			wm, err := observability.NewWorkerMetrics(histogramFailingMeterProvider{})
+
+			require.ErrorIs(t, err, errHistogram)
+			assert.Nil(t, wm)
+		})
+
+		t.Run("upDownCounter 生成に失敗した場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			wm, err := observability.NewWorkerMetrics(upDownCounterFailingMeterProvider{})
+
+			require.ErrorIs(t, err, errUpDownCounter)
 			assert.Nil(t, wm)
 		})
 	})
