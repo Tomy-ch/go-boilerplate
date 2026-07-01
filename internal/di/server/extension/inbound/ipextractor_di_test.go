@@ -28,10 +28,11 @@ func Test_provideIPExtractorServeConfig(t *testing.T) {
 		secCfg.SetCIDR(t, parsedCIDR)
 
 		out := provideIPExtractorServeConfig(appCfg, secCfg)
-		require.NotNil(t, out.SrvCfg)
+		require.NotNil(t, out.SrvCfg.Config)
+		assert.Equal(t, "ipextractor", out.SrvCfg.Name)
 
 		e := &echo.Echo{}
-		out.SrvCfg(e)
+		out.SrvCfg.Config(e)
 		require.NotNil(t, e.IPExtractor)
 		return e.IPExtractor
 	}

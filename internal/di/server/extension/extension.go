@@ -31,8 +31,13 @@ type ServerExtends struct {
 // AppliedServerExtends は、サーバー拡張が適用されたことを示すトークンです。
 type AppliedServerExtends struct{}
 
-// SrvCfg は、サーバーの設定関数を表します。
-type SrvCfg func(*echo.Echo)
+// SrvCfg は、サーバーの設定関数とその名前（ログ出力用）を表します。
+type SrvCfg struct {
+	// Name は、設定関数の名前です（ログ出力用）
+	Name string
+	// Config は、Echo に副作用で適用される設定関数です。
+	Config func(*echo.Echo)
+}
 
 // ServeCfgOut は、サーバーの設定の出力時に使用される構造体です。
 type ServeCfgOut struct {
@@ -184,11 +189,16 @@ func extractPriorityConflicts(byPriority map[int][]string) []string {
 
 // ApplyConfigurators は、Echoに対して設定関数を適用します。
 func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) {
-	logger.Named("ApplyConfigurators").CallerSkip(callerSkip).Info(
+	log := logger.Named("ApplyConfigurators").CallerSkip(callerSkip)
+	log.Info(
 		"Applying server configurator",
 		logging.Int("count", len(cfgs)),
 	)
 	for _, cfg := range cfgs {
-		cfg(e)
+		log.Info(
+			"Applying server configurator",
+			logging.String("configurator", cfg.Name),
+		)
+		cfg.Config(e)
 	}
 }

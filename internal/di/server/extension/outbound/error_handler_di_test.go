@@ -19,9 +19,10 @@ func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	out := provideErrorHandlerServeConfig(log, lf, obsCfg)
-	require.NotNil(t, out.SrvCfg)
+	require.NotNil(t, out.SrvCfg.Config)
+	assert.Equal(t, "errorhandler", out.SrvCfg.Name)
 
 	e := &echo.Echo{}
-	out.SrvCfg(e)
+	out.SrvCfg.Config(e)
 	assert.NotNil(t, e.HTTPErrorHandler)
 }
