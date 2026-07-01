@@ -278,6 +278,23 @@ Before generating code, AI agents must refer to the following documents.
 - `architecture.md`
 - `development-flow.md`
 
+## Toolchain Execution Rules
+
+Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
+containerized tool-runners so they stay reproducible across machines.
+
+- Tool execution — lint / format / codegen / doc generation / commit-message lint / etc. — runs
+  through the `make` targets that execute inside the tool-runners (`go_tool_runner` /
+  `node_tool_runner` / `python_tool_runner`).
+- Automation — git hooks (lefthook), CI steps, and skills — MUST invoke these tools via the
+  `make` targets, never by running a tool directly on the host (e.g. `mise exec <tool> -- …` or a
+  bare tool binary). Bypassing the container breaks reproducibility and depends on host-local
+  tool state.
+- The `-ci` targets are the intended bare-metal path (they run the tool directly, for CI runners
+  or inside the containers). Host `mise` is only for provisioning versions (`make install-tools`,
+  Quick Start). One-off human diagnostics (e.g. checking a version) are not tool execution and
+  are exempt.
+
 ## Summary
 
 These rules exist to achieve the following.

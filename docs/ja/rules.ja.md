@@ -278,6 +278,21 @@ AI エージェントは以下を守る必要があります。
 - `architecture.ja.md`
 - `development-flow.ja.md`
 
+## ツールチェイン実行ルール
+
+ツールのバージョンは `mise.toml`（単一の真実源）に固定され、コンテナ化された tool-runner 内で
+実行することで、マシン間の再現性を保ちます。
+
+- ツール実行（lint / format / codegen / doc 生成 / commit-message lint 等）は、tool-runner
+  （`go_tool_runner` / `node_tool_runner` / `python_tool_runner`）内で走る `make` ターゲット経由で
+  行います。
+- 自動化（lefthook フック・CI・skill）は、これらのツールを必ず `make` ターゲット経由で実行し、
+  ホスト上でツールを直接実行（例: `mise exec <tool> -- …` や素のツール binary）してコンテナを
+  バイパスしてはなりません。再現性を壊し、ホスト固有のツール状態に依存するためです。
+- `-ci` ターゲットが bare-metal 実行の正規経路です（CI ランナーやコンテナ内でツールを直接実行）。
+  ホストの `mise` はバージョン供給（`make install-tools`・Quick Start）専用です。単発の人手による
+  診断（バージョン確認等）はツール実行ではないため対象外です。
+
 ## Summary
 
 これらのルールは以下を実現するために存在します。
