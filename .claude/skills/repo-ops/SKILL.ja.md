@@ -59,11 +59,11 @@ docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/
 # .env.stg のみが焼き込まれたか検証
 ```
 
-migration イメージは `--target migration`（同 base 継承）。
+migration 専用イメージは無い。`env/` と `database/migrations` はバイナリに埋め込まれるため、マイグレーションは同じ `runtime` イメージの command override（`./server migrate-up`）で実行する。
 
 ## 5. commit-msg フック / commitlint エラー
 
-lefthook の **commit-msg** フックは `make commitlint COMMIT_MSG_FILE={1}` を実行し、`commitlint` を `node_tool_runner` コンテナ内で走らせる（ツールはホストではなくコンテナ化ランナーで解決する。他の lint / 生成ターゲットと同じ再現性ルール。`docs/rules.md` 参照）。`node_tool_runner` イメージが未ビルド／古い（例: `@commitlint/cli` 追加直後）と `commitlint: not found` で失敗するので、`make tool-runners-build`（または `docker compose build node_tool_runner`）で一度再ビルドする:
+lefthook の **commit-msg** フックは `make commitlint COMMIT_MSG_FILE={1}` を実行し、`commitlint` を `node_tool_runner` コンテナ内で走らせる（ツールはホストではなくコンテナ化ランナーで解決する。他の lint / 生成ターゲットと同じ再現性ルール。`docs/rules.md` 参照）。`node_tool_runner` イメージが未ビルド／古いと `commitlint: not found` で失敗するので、`make tool-runners-build`（または `docker compose build node_tool_runner`）で一度再ビルドする:
 
 ```text
 make commitlint COMMIT_MSG_FILE={1}
