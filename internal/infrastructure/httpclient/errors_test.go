@@ -2,12 +2,12 @@ package httpclient
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/url"
 	"testing"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,7 +131,7 @@ func TestNormalizeTransportError(t *testing.T) {
 
 		t.Run("その他のtransport失敗はErrUnavailableに写像する", func(t *testing.T) {
 			t.Parallel()
-			got := normalizeTransportError(errors.New("dial tcp: connection refused"))
+			got := normalizeTransportError(xerrors.New("dial tcp: connection refused"))
 			require.ErrorIs(t, got, apperror.ErrUnavailable)
 		})
 	})
@@ -149,7 +149,7 @@ func TestRedactErrMessage(t *testing.T) {
 			urlErr := &url.Error{
 				Op:  "Get",
 				URL: "https://api.example.com/rates?token=secret123&base=USD",
-				Err: errors.New("dial tcp 93.184.216.34:443: connect: connection refused"),
+				Err: xerrors.New("dial tcp 93.184.216.34:443: connect: connection refused"),
 			}
 
 			msg := redactErrMessage(urlErr)
@@ -164,7 +164,7 @@ func TestRedactErrMessage(t *testing.T) {
 			urlErr := &url.Error{ //nolint:gosec // G101: redact 対象を検証するための擬似 userinfo 付き URL（実認証情報ではない）
 				Op:  "Get",
 				URL: "https://user:pass@api.example.com/rates",
-				Err: errors.New("connection refused"),
+				Err: xerrors.New("connection refused"),
 			}
 
 			msg := redactErrMessage(urlErr)
@@ -179,7 +179,7 @@ func TestRedactErrMessage(t *testing.T) {
 			urlErr := &url.Error{
 				Op:  "Get",
 				URL: "https://api.example.com/rates#section-secret",
-				Err: errors.New("connection refused"),
+				Err: xerrors.New("connection refused"),
 			}
 
 			msg := redactErrMessage(urlErr)
@@ -190,7 +190,7 @@ func TestRedactErrMessage(t *testing.T) {
 		t.Run("url_Error以外はそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
-			msg := redactErrMessage(errors.New("plain error"))
+			msg := redactErrMessage(xerrors.New("plain error"))
 			assert.Equal(t, "plain error", msg)
 		})
 	})

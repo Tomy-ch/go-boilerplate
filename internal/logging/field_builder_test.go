@@ -1,11 +1,11 @@
 package logging
 
 import (
-	"errors"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -275,7 +275,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		t.Run("引数/エラー/trace有りの場合、内部エラーとtrace/spanが追加される", func(t *testing.T) {
 			t.Parallel()
 
-			err := errors.New("boom")
+			err := xerrors.New("boom")
 			args := []any{1, "a"}
 			s := SQLFieldsEndInput{
 				EventAt:  time.Now(),
@@ -341,7 +341,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 				SpanName: "sn",
 				Query:    q,
 				Latency:  12 * time.Millisecond,
-				Err:      errors.New("boom"),
+				Err:      xerrors.New("boom"),
 			}
 
 			keys := fieldKeys(lf.BuildSQLEndFields(s))

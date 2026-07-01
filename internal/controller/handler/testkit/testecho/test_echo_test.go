@@ -2,11 +2,12 @@ package testecho
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -133,7 +134,7 @@ func TestEchoTestClient_WithAppErrorHandler(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			e.GET("/boom", func(_ echo.Context) error {
-				return errors.New("boom")
+				return xerrors.New("boom")
 			})
 
 			rec := NewEchoTestClient(t, e).

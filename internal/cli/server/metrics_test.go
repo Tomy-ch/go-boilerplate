@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strconv"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,7 +77,7 @@ func TestLogListenError(t *testing.T) {
 			logger.EXPECT().Named("metrics.ListenAndServe").Return(logger)
 			logger.EXPECT().Error("metrics server error", gomock.Any())
 
-			logListenError(logger, errors.New("bind failed"))
+			logListenError(logger, xerrors.New("bind failed"))
 		})
 	})
 }

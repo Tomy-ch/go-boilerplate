@@ -2,11 +2,11 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -31,7 +31,7 @@ func NewHealthServer(addr string, ready func() bool, logger logging.Logger) (fun
 
 	start := func() {
 		go func() {
-			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err := srv.ListenAndServe(); err != nil && !xerrors.Is(err, http.ErrServerClosed) {
 				logger.Named("worker.health").Error("health server error", logging.Error(logging.ErrorKey, err))
 			}
 		}()

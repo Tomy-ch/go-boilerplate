@@ -1,12 +1,12 @@
 package buildinfo
 
 import (
-	"errors"
 	"runtime"
 	"testing"
 
 	"go-boilerplate/internal/config"
 	mock_system "go-boilerplate/internal/system/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -16,7 +16,7 @@ import (
 )
 
 // errRegisterFailed は、fakeRegisterer が Register で返すテスト用の番兵エラーです。
-var errRegisterFailed = errors.New("register failed")
+var errRegisterFailed = xerrors.New("register failed")
 
 // fakeRegisterer は、Register が常に errRegisterFailed を返す prometheus.Registerer の
 // テスト用スタブです。AlreadyRegisteredError 以外のエラー分岐を到達させるために用います。

@@ -2,13 +2,13 @@ package outbox_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"go-boilerplate/internal/observability"
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -76,7 +76,7 @@ func TestReplayUsecase_ReplayDead(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			wantErr := errors.New("replay failed")
+			wantErr := xerrors.New("replay failed")
 
 			store.EXPECT().ReplayDead(gomock.Any(), gomock.Any()).Return(int64(0), wantErr)
 

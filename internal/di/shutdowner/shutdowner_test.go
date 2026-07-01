@@ -1,10 +1,10 @@
 package shutdowner
 
 import (
-	"errors"
 	"testing"
 
 	mock_shutdowner "go-boilerplate/internal/di/shutdowner/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,7 +52,7 @@ func Test_Shutdowner_Shutdown(t *testing.T) {
 		t.Run("fx.ShutdownerのShutdownのエラーをそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := errors.New("shutdown error")
+			expectedErr := xerrors.New("shutdown error")
 			ctrl := gomock.NewController(t)
 			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
 			fxSD.EXPECT().Shutdown().Return(expectedErr)

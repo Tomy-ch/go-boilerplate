@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"time"
 
 	"go-boilerplate/internal/apperror"
@@ -76,7 +75,7 @@ func Run[T any](
 			ExpiresAt:   deps.Clock.Now().Add(ttl),
 		})
 		if err != nil {
-			if errors.Is(err, idempotencybndry.ErrLockTimeout) {
+			if xerrors.Is(err, idempotencybndry.ErrLockTimeout) {
 				deps.metrics().IncConflict(ctx, req.OperationID)
 				return xerrors.Wrap(apperror.ErrConflict, "idempotency key is being processed, retry later")
 			}

@@ -1,7 +1,6 @@
 package response
 
 import (
-	"errors"
 	"net/http"
 	"testing"
 
@@ -172,7 +171,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 		t.Run("未定義のエラーの場合、InternalServerErrorにフォールバックする", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusInternalServerError, Code: codeInternalError, Message: errorMessageInternalError}
-			assert.Equal(t, want, lookupErrorMetaByAppError(errors.New("unknown error")))
+			assert.Equal(t, want, lookupErrorMetaByAppError(xerrors.New("unknown error")))
 		})
 
 		t.Run("nilエラーの場合、InternalServerErrorにフォールバックする", func(t *testing.T) {

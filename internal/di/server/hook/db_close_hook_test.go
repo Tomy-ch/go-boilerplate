@@ -2,12 +2,12 @@ package hook
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	mock_logging "go-boilerplate/internal/logging/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -68,7 +68,7 @@ func TestRegisterDBCloseHooks(t *testing.T) {
 			namedMock := mock_logging.NewMockLogger(ctrl)
 			logger.EXPECT().Named("db.CloseHook").Return(namedMock)
 			namedMock.EXPECT().Info("Closing database connection")
-			wantErr := errors.New("close failed")
+			wantErr := xerrors.New("close failed")
 			db.EXPECT().Close().Return(wantErr)
 			namedMock.EXPECT().Error("failed to close database", gomock.Any()).Times(1)
 

@@ -2,7 +2,6 @@ package driver_test
 
 import (
 	"context"
-	"errors"
 	"runtime"
 	"testing"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	"go-boilerplate/pkg/xerrors"
 )
 
 func TestTxManager_Do(t *testing.T) {
@@ -119,7 +119,7 @@ func TestTxManager_Do(t *testing.T) {
 
 			ctx := context.Background()
 			err := manager.Do(ctx, func(_ context.Context) error {
-				return errors.New("rollback")
+				return xerrors.New("rollback")
 			})
 			// fn が返す非 DB エラー（pg / 接続でない）は正規化せず生のまま返す（既存契約の維持）。
 			require.Error(t, err)

@@ -3,7 +3,6 @@ package outbox_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"regexp"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -176,7 +176,7 @@ func TestEmitUsecase_Emit(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			wantErr := errors.New("insert failed")
+			wantErr := xerrors.New("insert failed")
 
 			store.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, wantErr)
 

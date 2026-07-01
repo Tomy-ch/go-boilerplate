@@ -2,13 +2,14 @@ package retry
 
 import (
 	"context"
-	"errors"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 // fakeSleeper は、Sleeper のテスト用 fake です。
@@ -34,9 +35,9 @@ func neverRetryable(error) bool  { return false }
 func TestDo(t *testing.T) {
 	t.Parallel()
 
-	errRetryable := errors.New("retryable")
-	errFatal := errors.New("fatal")
-	errSleep := errors.New("ctx canceled")
+	errRetryable := xerrors.New("retryable")
+	errFatal := xerrors.New("fatal")
+	errSleep := xerrors.New("ctx canceled")
 
 	policy := Policy{
 		MaxAttempts: 3,

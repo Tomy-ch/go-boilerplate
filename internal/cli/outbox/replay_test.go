@@ -2,11 +2,11 @@ package outbox_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	outboxcli "go-boilerplate/internal/cli/outbox"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,7 +73,7 @@ func TestRunReplayWith(t *testing.T) {
 		t.Run("replayが失敗するとそのエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			wantErr := errors.New("replay failed")
+			wantErr := xerrors.New("replay failed")
 			replay := func(context.Context, *uuid.UUID) (int64, error) {
 				return 0, wantErr
 			}

@@ -2,13 +2,13 @@ package seed
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/logging"
 	mock_fs "go-boilerplate/pkg/fs/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,7 @@ import (
 func TestHandleSeedExecResult(t *testing.T) {
 	t.Parallel()
 
-	otherErr := errors.New("boom")
+	otherErr := xerrors.New("boom")
 	pgRelationNotExist := &pgconn.PgError{Code: relationDoesNotExistCode}
 	pgSyntaxErr := &pgconn.PgError{Code: "42601"} // syntax_error
 
@@ -90,7 +90,7 @@ func TestExecSeedFile(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fsys := mock_fs.NewMockFS(ctrl)
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
-			fsys.EXPECT().ReadFile(path).Return(nil, errors.New("read failed"))
+			fsys.EXPECT().ReadFile(path).Return(nil, xerrors.New("read failed"))
 
 			err := execSeedFile(context.Background(), fsys, db, logging.NewTestLogger(t), path)
 			require.Error(t, err)
@@ -186,7 +186,7 @@ func TestRunDBSeed(t *testing.T) {
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
 
 			fsys.EXPECT().Glob(seedFilePlace+"/*.sql").Return([]string{}, nil)
-			db.EXPECT().Close().Return(errors.New("close failed"))
+			db.EXPECT().Close().Return(xerrors.New("close failed"))
 
 			openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
 			err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
@@ -203,7 +203,7 @@ func TestRunDBSeed(t *testing.T) {
 			fsys := mock_fs.NewMockFS(ctrl)
 
 			openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) {
-				return nil, errors.New("open failed")
+				return nil, xerrors.New("open failed")
 			}
 			err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
 			require.Error(t, err)
@@ -215,7 +215,7 @@ func TestRunDBSeed(t *testing.T) {
 			fsys := mock_fs.NewMockFS(ctrl)
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
 
-			fsys.EXPECT().Glob(seedFilePlace+"/*.sql").Return(nil, errors.New("glob failed"))
+			fsys.EXPECT().Glob(seedFilePlace+"/*.sql").Return(nil, xerrors.New("glob failed"))
 			// 接続は確立済みのため Close は必ず呼ばれる。
 			db.EXPECT().Close().Return(nil)
 

@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,7 +144,7 @@ func TestRunServer(t *testing.T) {
 		t.Run("起動失敗時は停止処理を行わずエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			startErr := errors.New("start failed")
+			startErr := xerrors.New("start failed")
 			start := func(context.Context) error { return startErr }
 
 			var stopCalled bool
@@ -165,7 +165,7 @@ func TestRunServer(t *testing.T) {
 			cancel() // 即時にシグナル受信相当にする
 
 			start := func(context.Context) error { return nil }
-			stopErr := errors.New("stop failed")
+			stopErr := xerrors.New("stop failed")
 			stop := func(context.Context) error { return stopErr }
 
 			err := RunServer(ctx, shutdownTimeout, start, stop, nil)

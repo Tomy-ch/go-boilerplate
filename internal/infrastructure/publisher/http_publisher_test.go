@@ -2,7 +2,6 @@ package publisher_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"go-boilerplate/internal/infrastructure/httpclient"
@@ -11,6 +10,7 @@ import (
 	"go-boilerplate/internal/observability"
 	pubbndry "go-boilerplate/internal/usecase/boundary/publisher"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,7 +81,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
-			wantErr := errors.New("unavailable")
+			wantErr := xerrors.New("unavailable")
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, wantErr)
 

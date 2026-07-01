@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go-boilerplate/internal/config"
@@ -12,6 +11,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/pkg/backoff"
 	"go-boilerplate/pkg/retry"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -101,10 +101,10 @@ func normalizeTxResult(err error) error {
 		return nil
 	}
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) || pgerror.IsUnavailable(err) {
+	if xerrors.As(err, &pgErr) || pgerror.IsUnavailable(err) {
 		return pgerror.NormalizeError(err)
 	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if xerrors.Is(err, context.Canceled) || xerrors.Is(err, context.DeadlineExceeded) {
 		return pgerror.NormalizeError(err)
 	}
 	return err

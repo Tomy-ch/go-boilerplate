@@ -2,8 +2,9 @@ package logging
 
 import (
 	"bytes"
-	"errors"
 	"testing"
+
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -120,7 +121,7 @@ func Test_logger_convertFields(t *testing.T) {
 			expectedInt64 := int64(100)
 			expectedFloat64 := 3.14
 			expectedBool := true
-			expectedError := errors.New("boom")
+			expectedError := xerrors.New("boom")
 			expectedAny := "value7"
 
 			fields := []*Field{

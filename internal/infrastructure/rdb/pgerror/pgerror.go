@@ -3,7 +3,6 @@ package pgerror
 
 import (
 	"context"
-	"errors"
 	"net"
 	"strings"
 
@@ -39,18 +38,18 @@ func NormalizeError(err error) error {
 		return err
 	}
 
-	if errors.Is(err, pgx.ErrNoRows) {
+	if xerrors.Is(err, pgx.ErrNoRows) {
 		return xerrors.Join(apperror.ErrNotFound, err)
 	}
 
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if xerrors.As(err, &pgErr) {
 		if appErr, ok := sqlstateToAppError[pgErr.Code]; ok {
 			return xerrors.Join(appErr, err)
 		}
 	}
 
-	if errors.Is(err, context.Canceled) {
+	if xerrors.Is(err, context.Canceled) {
 		return xerrors.Join(apperror.ErrCanceled, err)
 	}
 
@@ -80,12 +79,12 @@ func IsUnavailable(err error) bool {
 		return false
 	}
 
-	if errors.Is(err, context.DeadlineExceeded) {
+	if xerrors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 
 	var ne net.Error
-	if errors.As(err, &ne) {
+	if xerrors.As(err, &ne) {
 		return true
 	}
 
@@ -95,7 +94,7 @@ func IsUnavailable(err error) bool {
 // isPgConnectionError は、与えられたエラーがPostgreSQLの接続エラーであるかを判定します。
 func isPgConnectionError(err error) bool {
 	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) {
+	if !xerrors.As(err, &pgErr) {
 		return false
 	}
 	return strings.HasPrefix(pgErr.Code, "08")
@@ -104,7 +103,7 @@ func isPgConnectionError(err error) bool {
 // IsLockNotAvailable は、lock_timeout 失効によるエラーであるかを判定します。
 func IsLockNotAvailable(err error) bool {
 	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "55P03"
+	return xerrors.As(err, &pgErr) && pgErr.Code == "55P03"
 }
 
 // IsRetryableTxError は、リトライで解消しうる tx エラーかを判定します。
@@ -113,5 +112,5 @@ func IsLockNotAvailable(err error) bool {
 // 接続断など他の ErrUnavailable をリトライ対象に巻き込まないようにします。
 func IsRetryableTxError(err error) bool {
 	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && (pgErr.Code == "40001" || pgErr.Code == "40P01")
+	return xerrors.As(err, &pgErr) && (pgErr.Code == "40001" || pgErr.Code == "40P01")
 }

@@ -1,7 +1,6 @@
 package response
 
 import (
-	"errors"
 	"net/http"
 	"testing"
 
@@ -60,7 +59,7 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 
 		t.Run("未知のエラーの場合、500のエラー構造体にフォールバックする", func(t *testing.T) {
 			t.Parallel()
-			err := errors.New("unknown error")
+			err := xerrors.New("unknown error")
 			expected := &HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{Code: codeInternalError, Message: errorMessageInternalError},
 				HTTPStatus:    http.StatusInternalServerError,
@@ -101,7 +100,7 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 
 		t.Run("errを渡した場合、Internalに格納される", func(t *testing.T) {
 			t.Parallel()
-			internalErr := errors.New("boom")
+			internalErr := xerrors.New("boom")
 			want := &HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{Code: codeBadRequest, Message: errorMessageBadRequest},
 				HTTPStatus:    http.StatusBadRequest,
@@ -144,7 +143,7 @@ func TestHTTPErrorResponse_Error(t *testing.T) {
 
 		t.Run("Internalがある場合、内部エラーの内容が表示される", func(t *testing.T) {
 			t.Parallel()
-			internalErr := errors.New("some internal error")
+			internalErr := xerrors.New("some internal error")
 			httpError := &HTTPErrorResponse{
 				HTTPStatus: http.StatusInternalServerError,
 				ErrorResponse: gen.ErrorResponse{

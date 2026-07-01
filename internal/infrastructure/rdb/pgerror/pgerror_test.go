@@ -2,10 +2,10 @@ package pgerror
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -157,7 +157,7 @@ func TestNormalizePgError(t *testing.T) {
 
 		t.Run("その他のエラー", func(t *testing.T) {
 			t.Parallel()
-			got := NormalizeError(errors.New("generic"))
+			got := NormalizeError(xerrors.New("generic"))
 			require.Error(t, got)
 			require.ErrorIs(t, got, apperror.ErrInternal)
 		})
@@ -210,7 +210,7 @@ func TestIsUnavailable(t *testing.T) {
 
 	t.Run("その他のエラー", func(t *testing.T) {
 		t.Parallel()
-		got := IsUnavailable(errors.New("other"))
+		got := IsUnavailable(xerrors.New("other"))
 		assert.False(t, got)
 	})
 }
@@ -231,7 +231,7 @@ func Test_isPgConnectionError(t *testing.T) {
 
 	t.Run("その他のエラー", func(t *testing.T) {
 		t.Parallel()
-		got := isPgConnectionError(errors.New("other"))
+		got := isPgConnectionError(xerrors.New("other"))
 		assert.False(t, got)
 	})
 }
@@ -251,7 +251,7 @@ func TestIsLockNotAvailable(t *testing.T) {
 
 	t.Run("PgError以外はfalse", func(t *testing.T) {
 		t.Parallel()
-		assert.False(t, IsLockNotAvailable(errors.New("plain error")))
+		assert.False(t, IsLockNotAvailable(xerrors.New("plain error")))
 	})
 }
 
@@ -275,7 +275,7 @@ func TestIsRetryableTxError(t *testing.T) {
 
 	t.Run("PgError以外はfalse", func(t *testing.T) {
 		t.Parallel()
-		assert.False(t, IsRetryableTxError(errors.New("plain error")))
+		assert.False(t, IsRetryableTxError(xerrors.New("plain error")))
 	})
 }
 

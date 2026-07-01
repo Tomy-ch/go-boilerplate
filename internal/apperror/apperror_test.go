@@ -1,7 +1,6 @@
 package apperror_test
 
 import (
-	"errors"
 	"testing"
 
 	"go-boilerplate/internal/apperror"
@@ -33,7 +32,7 @@ func TestIsAppError(t *testing.T) {
 
 		t.Run("apperror に該当しないエラーの場合 false", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, apperror.IsAppError(errors.New("generic")))
+			assert.False(t, apperror.IsAppError(xerrors.New("generic")))
 		})
 
 		t.Run("nil の場合 false", func(t *testing.T) {

@@ -5,8 +5,9 @@ package idempotency
 
 import (
 	"context"
-	"errors"
 	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 )
 
 // ErrLockTimeout は、並行 claim のロック待ちタイムアウトを表します（usecase 側で 409 へマップ）。
-var ErrLockTimeout = errors.New("idempotency: claim lock timeout")
+var ErrLockTimeout = xerrors.New("idempotency: claim lock timeout")
 
 // Status は、冪等性キーの状態です。
 type Status string

@@ -2,11 +2,11 @@ package outbox_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	outboxcli "go-boilerplate/internal/cli/outbox"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +46,7 @@ func TestRunRelay(t *testing.T) {
 		t.Run("起動失敗時は停止せずエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			wantErr := errors.New("start failed")
+			wantErr := xerrors.New("start failed")
 			stopped := false
 			start := func(context.Context) error { return wantErr }
 			stop := func(context.Context) error { stopped = true; return nil }
@@ -59,7 +59,7 @@ func TestRunRelay(t *testing.T) {
 		t.Run("停止失敗時は起動済みでも停止エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			wantErr := errors.New("stop failed")
+			wantErr := xerrors.New("stop failed")
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel() // 即時に <-ctx.Done() を抜けさせる
 

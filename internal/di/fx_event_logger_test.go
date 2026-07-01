@@ -1,10 +1,10 @@
 package di
 
 import (
-	"errors"
 	"testing"
 
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +27,7 @@ func TestNewFxEventLogger(t *testing.T) {
 func TestFxEventLogger_LogEvent(t *testing.T) {
 	t.Parallel()
 
-	boom := errors.New("boom")
+	boom := xerrors.New("boom")
 
 	// assertLogged は、指定イベントが期待メッセージ・レベルで 1 件だけ記録されることを検証する。
 	assertLogged := func(t *testing.T, event fxevent.Event, wantMsg, wantLevel string) {

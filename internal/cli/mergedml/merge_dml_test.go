@@ -2,7 +2,6 @@ package mergedml
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	mock_mergedml "go-boilerplate/internal/cli/mergedml/mock"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,7 +103,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
-			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, errors.New("walk failed"))
+			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, xerrors.New("walk failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
@@ -116,7 +116,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 
 			f1 := filepath.Join(dmlDir, "001.sql")
 			fs.EXPECT().FindSQLFiles(dmlDir).Return([]string{f1}, nil)
-			fs.EXPECT().ReadFile(f1).Return(nil, errors.New("read failed"))
+			fs.EXPECT().ReadFile(f1).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
@@ -130,7 +130,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			f1 := filepath.Join(dmlDir, "001.sql")
 			fs.EXPECT().FindSQLFiles(dmlDir).Return([]string{f1}, nil)
 			fs.EXPECT().ReadFile(f1).Return([]byte("SELECT 1;"), nil)
-			fs.EXPECT().WriteFile(dstPath, gomock.Any(), os.FileMode(genFilePerm)).Return(errors.New("write failed"))
+			fs.EXPECT().WriteFile(dstPath, gomock.Any(), os.FileMode(genFilePerm)).Return(xerrors.New("write failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
@@ -142,7 +142,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
 			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, nil)
-			fs.EXPECT().Remove(dstPath).Return(errors.New("remove failed"))
+			fs.EXPECT().Remove(dstPath).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
@@ -201,7 +201,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
-			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("read failed"))
+			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
@@ -213,7 +213,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
 			fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"old_repository.gen.sql"}, nil)
-			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(errors.New("remove failed"))
+			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
@@ -378,7 +378,7 @@ func TestRunMerge(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
-			fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, errors.New("read dir failed"))
+			fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, xerrors.New("read dir failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))
@@ -390,7 +390,7 @@ func TestRunMerge(t *testing.T) {
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
 			fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, nil)
-			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
+			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("list failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))
@@ -403,7 +403,7 @@ func TestRunMerge(t *testing.T) {
 
 			userDir := filepath.Join(testWorkDir, "database/dml/", targetType, "user")
 			fs.EXPECT().ListSubDirNames(typeRoot).Return([]string{"user"}, nil)
-			fs.EXPECT().FindSQLFiles(userDir).Return(nil, errors.New("walk failed"))
+			fs.EXPECT().FindSQLFiles(userDir).Return(nil, xerrors.New("walk failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))
@@ -438,7 +438,7 @@ func TestRunMerge(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(userDir).Return([]string{userSQL}, nil)
 			fs.EXPECT().ReadFile(userSQL).Return([]byte("SELECT 1;"), nil)
 			fs.EXPECT().WriteFile(dst, gomock.Any(), os.FileMode(genFilePerm)).Return(nil)
-			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
+			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("list failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))

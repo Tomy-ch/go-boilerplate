@@ -2,7 +2,6 @@ package tx_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -100,7 +99,7 @@ func TestDoWithResult(t *testing.T) {
 			expected := 0
 
 			actual, err := tx.DoWithResult(ctx, m, func(_ context.Context) (int, error) {
-				return expected, errors.New("fn failed")
+				return expected, xerrors.New("fn failed")
 			})
 
 			require.Error(t, err)
@@ -109,7 +108,7 @@ func TestDoWithResult(t *testing.T) {
 
 		t.Run("fnは成功したがManager側でエラー（例: コミット失敗）", func(t *testing.T) {
 			t.Parallel()
-			m := afterErrManager(t, errors.New("commit failed"))
+			m := afterErrManager(t, xerrors.New("commit failed"))
 			ctx := context.Background()
 
 			actual, err := tx.DoWithResult(ctx, m, func(_ context.Context) (string, error) {

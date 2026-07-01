@@ -1,11 +1,11 @@
 package errorhandler
 
 import (
-	"errors"
 	"net/http"
 	"testing"
 
 	"go-boilerplate/internal/controller/error/response"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +21,7 @@ func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 		t.Run("EchoHTTPErrorでステータス範囲内の場合、NewHTTPErrorFromStatusベースのレスポンスが返る", func(t *testing.T) {
 			t.Parallel()
 
-			inner := errors.New("inner failure")
+			inner := xerrors.New("inner failure")
 			ehe := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
 
 			actual := normalizeEchoHTTPError(ehe)
@@ -40,7 +40,7 @@ func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 		t.Run("detailsを渡した場合、Detailsにセットされる", func(t *testing.T) {
 			t.Parallel()
 
-			inner := errors.New("inner2")
+			inner := xerrors.New("inner2")
 			ehe := &echo.HTTPError{Code: http.StatusConflict, Internal: inner}
 
 			actual := normalizeEchoHTTPError(ehe, "d1", "d2")
@@ -62,7 +62,7 @@ func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 
 		t.Run("非EchoHTTPErrorの場合、nilが返る", func(t *testing.T) {
 			t.Parallel()
-			assert.Nil(t, normalizeEchoHTTPError(errors.New("just an error")))
+			assert.Nil(t, normalizeEchoHTTPError(xerrors.New("just an error")))
 		})
 
 		t.Run("EchoHTTPErrorだがステータス範囲外の場合、nilが返る", func(t *testing.T) {

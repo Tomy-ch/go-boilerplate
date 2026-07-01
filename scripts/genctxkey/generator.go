@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"go/format"
 	"go/token"
@@ -42,7 +41,7 @@ type Param struct {
 
 func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string) error {
 	if name == "" || typ == "" {
-		return errors.New("name and type are required")
+		return xerrors.New("name and type are required")
 	}
 
 	if outDir == "" {

@@ -2,7 +2,6 @@ package recovery
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -55,7 +55,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := errors.New("boom")
+			inErr := xerrors.New("boom")
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack"))
 			require.ErrorIs(t, err, inErr)
@@ -72,7 +72,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := errors.New("boom2")
+			inErr := xerrors.New("boom2")
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack2"))
 			require.ErrorIs(t, err, inErr)

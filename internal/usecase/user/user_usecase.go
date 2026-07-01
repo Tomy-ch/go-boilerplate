@@ -5,7 +5,6 @@ package user
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go-boilerplate/internal/apperror"
@@ -298,7 +297,7 @@ func (u *usecase) GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID
 
 	pftDomain, err := u.pftRepo.FindByID(ctx, userEntity.PrefectureID())
 	if err != nil {
-		if errors.Is(err, apperror.ErrNotFound) {
+		if xerrors.Is(err, apperror.ErrNotFound) {
 			return UserView{}, errOrphanPrefecture
 		}
 		return UserView{}, err
@@ -538,7 +537,7 @@ func (u *usecase) resolvePatchPrefecture(ctx context.Context, name *string, curr
 		return u.pftRepo.FindByName(ctx, *name)
 	}
 	pftDomain, err := u.pftRepo.FindByID(ctx, currentID)
-	if errors.Is(err, apperror.ErrNotFound) {
+	if xerrors.Is(err, apperror.ErrNotFound) {
 		return nil, errOrphanPrefecture
 	}
 	if err != nil {

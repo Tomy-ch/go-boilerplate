@@ -2,7 +2,6 @@ package observability_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,10 +12,11 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // errMeter は、failingMeter が Int64Counter 生成で返す注入エラーです。
-var errMeter = errors.New("int64 counter creation failed")
+var errMeter = xerrors.New("int64 counter creation failed")
 
 // failingMeterProvider は、Int64Counter 生成に失敗する Meter を返す MeterProvider スタブです。
 type failingMeterProvider struct{ embedded.MeterProvider }

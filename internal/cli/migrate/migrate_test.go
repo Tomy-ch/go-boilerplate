@@ -1,12 +1,12 @@
 package migrate
 
 import (
-	"errors"
 	"math"
 	"testing"
 
 	mock_migrate "go-boilerplate/internal/cli/migrate/mock"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ import (
 )
 
 // errBoom は、テスト用の任意の失敗を表すセンチネルエラーです。
-var errBoom = errors.New("boom")
+var errBoom = xerrors.New("boom")
 
 // factoryReturning は、常に与えた Migrator を返す MigratorFactory を生成します。
 func factoryReturning(m Migrator) MigratorFactory {

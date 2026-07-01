@@ -4,7 +4,8 @@ package observability
 
 import (
 	"context"
-	"errors"
+
+	"go-boilerplate/pkg/xerrors"
 
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -31,5 +32,5 @@ func NewProviderShutdowner(
 }
 
 func (s providerShutdowner) Shutdown(ctx context.Context) error {
-	return errors.Join(s.tp.Shutdown(ctx), s.mp.Shutdown(ctx), s.lp.Shutdown(ctx))
+	return xerrors.Join(s.tp.Shutdown(ctx), s.mp.Shutdown(ctx), s.lp.Shutdown(ctx))
 }

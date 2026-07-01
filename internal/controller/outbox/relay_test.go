@@ -2,7 +2,6 @@ package outbox_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 	mock_relay "go-boilerplate/internal/usecase/outbox/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,7 +108,7 @@ func TestEngine_Run(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
-				outboxuc.RelayResult{}, errors.New("batch failed"))
+				outboxuc.RelayResult{}, xerrors.New("batch failed"))
 			sleeper.EXPECT().Sleep(gomock.Any(), testErrorBackoff).Return(context.Canceled)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -121,7 +121,7 @@ func TestEngine_Run(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil).AnyTimes()
-			uc.EXPECT().RecordLag(gomock.Any()).Return(errors.New("lag failed")).AnyTimes()
+			uc.EXPECT().RecordLag(gomock.Any()).Return(xerrors.New("lag failed")).AnyTimes()
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -150,7 +150,7 @@ func TestEngine_Run(t *testing.T) {
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).DoAndReturn(
 				func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
 					cancel()
-					return outboxuc.RelayResult{}, errors.New("batch failed")
+					return outboxuc.RelayResult{}, xerrors.New("batch failed")
 				})
 
 			// ctx 完了済みのため Sleep は呼ばれない。
@@ -191,7 +191,7 @@ func TestEngine_Run(t *testing.T) {
 				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).DoAndReturn(
 					func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
 						cancel()
-						return outboxuc.RelayResult{}, errors.New("batch failed")
+						return outboxuc.RelayResult{}, xerrors.New("batch failed")
 					}),
 			)
 
