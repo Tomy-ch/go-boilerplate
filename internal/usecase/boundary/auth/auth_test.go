@@ -67,7 +67,7 @@ func TestNew(t *testing.T) {
 			claims := map[string]any{}
 
 			authn, err := New(subject, provider, scopes, claims)
-			require.Nil(t, authn)
+			assert.Nil(t, authn)
 			require.ErrorIs(t, err, ErrUnauthenticatedSubjectMissing)
 		})
 	})

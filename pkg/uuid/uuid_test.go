@@ -11,7 +11,7 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
-	require.NotEmpty(t, uuid.String())
+	assert.NotEmpty(t, uuid.String())
 }
 
 func TestNewTestFromSalt(t *testing.T) {
@@ -20,6 +20,7 @@ func TestNewTestFromSalt(t *testing.T) {
 	uuid1 := NewTestFromSalt(t, salt)
 	uuid2 := NewTestFromSalt(t, salt)
 	assert.Equal(t, uuid1, uuid2)
+	assert.NotEqual(t, uuid1, NewTestFromSalt(t, "other-salt"))
 }
 
 func TestBytes(t *testing.T) {
@@ -61,7 +62,7 @@ func TestString(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
-	require.NotEmpty(t, uuid.String())
+	assert.NotEmpty(t, uuid.String())
 }
 
 func TestEqual(t *testing.T) {
@@ -70,13 +71,17 @@ func TestEqual(t *testing.T) {
 	require.NoError(t, err)
 	uuid2 := uuid1
 	assert.True(t, uuid1.Equal(uuid2))
+
+	uuid3, err := New()
+	require.NoError(t, err)
+	assert.False(t, uuid1.Equal(uuid3))
 }
 
 func TestToPtr(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
-	require.NotNil(t, uuid.ToPtr())
+	assert.NotNil(t, uuid.ToPtr())
 }
 
 func TestEqualPtr(t *testing.T) {
@@ -85,6 +90,11 @@ func TestEqualPtr(t *testing.T) {
 	require.NoError(t, err)
 	uuid2 := uuid1.ToPtr()
 	assert.True(t, uuid1.EqualPtr(uuid2))
+	assert.False(t, uuid1.EqualPtr(nil))
+
+	uuid3, err := New()
+	require.NoError(t, err)
+	assert.False(t, uuid1.EqualPtr(uuid3.ToPtr()))
 }
 
 func TestParse(t *testing.T) {
@@ -102,7 +112,7 @@ func TestParse(t *testing.T) {
 	t.Run("異常系/無効な文字列を解析するとエラーが返る", func(t *testing.T) {
 		t.Parallel()
 		actual, err := Parse("invalid-uuid")
-		require.Empty(t, actual)
+		assert.Empty(t, actual)
 		require.Error(t, err)
 	})
 }

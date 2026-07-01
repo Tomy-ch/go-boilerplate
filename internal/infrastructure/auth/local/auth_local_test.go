@@ -45,7 +45,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		require.NoError(t, err)
 
 		authn, err := authenticator.Authenticate(ctx, cred)
-		require.Nil(t, authn)
+		assert.Nil(t, authn)
 		require.ErrorIs(t, err, ErrLocalMockAuthenticatorInvalidToken)
 	})
 
@@ -55,7 +55,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		authenticator := New()
 
 		authn, err := authenticator.Authenticate(ctx, nil)
-		require.Nil(t, authn)
+		assert.Nil(t, authn)
 		require.ErrorIs(t, err, ErrLocalMockAuthenticatorInvalidToken)
 	})
 }

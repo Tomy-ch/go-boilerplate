@@ -125,6 +125,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 			assert.NotContains(t, got, "\\connect")
 			assert.NotContains(t, got, "Dumped from database version")
 			assert.NotContains(t, got, "Dumped by pg_dump version")
+			assert.NotContains(t, got, "\n\n")
 		})
 	})
 

@@ -40,5 +40,10 @@ func TestIsAppError(t *testing.T) {
 			t.Parallel()
 			assert.False(t, apperror.IsAppError(nil))
 		})
+
+		t.Run("worker センチネル(ErrRetryable)は appErrors 対象外で false", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, apperror.IsAppError(apperror.ErrRetryable))
+		})
 	})
 }

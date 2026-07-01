@@ -38,4 +38,10 @@ func TestEscapeForLike(t *testing.T) {
 		got := EscapeForLike(input, "#")
 		assert.Equal(t, expected, got)
 	})
+
+	t.Run("デフォルトエスケープ文字(バックスラッシュ)で%と_がエスケープされる", func(t *testing.T) {
+		t.Parallel()
+		got := EscapeForLike("a%_b", DefaultLikeEscapeChar)
+		assert.Equal(t, "a\\%\\_b", got)
+	})
 }

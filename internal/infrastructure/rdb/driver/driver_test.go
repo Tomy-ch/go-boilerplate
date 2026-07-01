@@ -44,6 +44,7 @@ func TestNewDB(t *testing.T) {
 			for rows.Next() {
 			}
 			rows.Close()
+			require.NoError(t, rows.Err())
 
 			row := db.QueryRow(ctx, "SELECT 1")
 			var n int
