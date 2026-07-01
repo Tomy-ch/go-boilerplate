@@ -3,15 +3,40 @@ package uuid
 import (
 	"testing"
 
+	googleuuid "github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
+// failingReader は、常に読み取り失敗する乱数源です（NewV7 の失敗分岐検証用）。
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, xerrors.New("rand source failure") }
+
+// グローバルな SetRand を差し替えるため直列実行する（他テストの New 呼び出しとの競合回避）。
+//
+//nolint:paralleltest // SetRand はプロセス共有のグローバル状態のため並列化不可
 func TestNew(t *testing.T) {
-	t.Parallel()
-	uuid, err := New()
-	require.NoError(t, err)
-	assert.NotEmpty(t, uuid.String())
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("UUIDv7を生成し文字列表現が空でない", func(t *testing.T) {
+			u, err := New()
+			require.NoError(t, err)
+			assert.NotEmpty(t, u.String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("乱数源が失敗するとエラーを返す", func(t *testing.T) {
+			googleuuid.SetRand(failingReader{})
+			t.Cleanup(func() { googleuuid.SetRand(nil) })
+
+			u, err := New()
+			require.Error(t, err)
+			assert.True(t, u.IsNil())
+		})
+	})
 }
 
 func TestNewTestFromSalt(t *testing.T) {
