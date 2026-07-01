@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/v1/users/feed"
 	"go-boilerplate/internal/controller/handler/v1/users/feed/gen"
 	"go-boilerplate/internal/observability"
@@ -38,21 +39,8 @@ func TestV1UsersFeed_Integration(t *testing.T) {
 
 			feed.BindHandler(e, tf, mockApp)
 
-			expected := gen.UsersFeedResponse{
-				Users: []gen.UserResponse{
-					{
-						FirstName: expectedDTO.FirstName,
-						LastName:  expectedDTO.LastName,
-						Email:     "feed1@example.com",
-						Phone:     expectedDTO.Phone,
-					},
-				},
-				NextCursor: &nextCursor,
-				HasNext:    true,
-			}
-
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed", nil, nil)
-			AssertJSONResponse(t, expected, actual)
+			AssertJSONResponseType[gen.UsersFeedResponse](t, actual)
 		})
 
 		t.Run("GET /v1/users/feedにfirstを指定でき、afterを省略した先頭ページが取得できる", func(t *testing.T) {
@@ -72,6 +60,29 @@ func TestV1UsersFeed_Integration(t *testing.T) {
 			// first クエリパラメータがハンドラまで届き、200 が返ることを確認する。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed?first=10", nil, nil)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("GET /v1/users/feedがErrInvalidArgumentで400を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ListUsersFeed(gomock.Any(), gomock.Any()).
+				Return(nil, apperror.ErrInvalidArgument)
+
+			feed.BindHandler(e, tf, mockApp)
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed", nil, nil)
+			AssertErrorResponse(t, actual, http.StatusBadRequest)
 		})
 	})
 }

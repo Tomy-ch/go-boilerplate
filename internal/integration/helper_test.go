@@ -10,7 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
+	responsegen "go-boilerplate/internal/controller/error/response/gen"
+	"go-boilerplate/internal/controller/httpstack/errorhandler"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/pkg/uuid"
 
@@ -113,10 +117,13 @@ func (s *Server) DoJSON(
 	return s.Do(method, path, r, "application/json", headers)
 }
 
-// AssertJSONResponse は、JSONレスポンスの内容を検証するユーティリティ。
-// TODO(test-review R2-9): expected を実際に値比較する（現状は型デコード確認のみ）。
-// 各 caller の期待値（動的な RegisteredAt 等を含む）を整備したうえで assert.Equal を有効化する。
-func AssertJSONResponse[T any](t *testing.T, _ T, actualResponse *http.Response) {
+// AssertJSONResponseType は、200 / JSON Content-Type を確認したうえで、
+// レスポンスボディが型 T にデコード可能であることを検証する到達確認ユーティリティ。
+//
+// integration テストは HTTP 境界（router → middleware → handler → シリアライズ）の到達と
+// レスポンスの型整合のみを検証する。フィールド値の正しさは controller のユニットテストが
+// 独立オラクルで担保するため、ここでは値比較を行わない。
+func AssertJSONResponseType[T any](t *testing.T, actualResponse *http.Response) {
 	t.Helper()
 
 	resBody, err := io.ReadAll(actualResponse.Body)
@@ -126,5 +133,37 @@ func AssertJSONResponse[T any](t *testing.T, _ T, actualResponse *http.Response)
 	assert.Contains(t, actualResponse.Header.Get(echo.HeaderContentType), "application/json")
 
 	var actualObj T
-	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。第二引数が期待される型であることを確認してください。")
+	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。型引数に期待される型を指定してください。")
+}
+
+// UseAppErrorHandler は、本番相当の HTTPErrorHandler を Echo に登録する。
+//
+// 既定の echo.New() は標準のエラーハンドラを持つため、異常系で apperror → HTTP ステータスの
+// マッピングを実経路で検証するには、production と同じハンドラを配線する必要がある。
+func UseAppErrorHandler(t *testing.T, e *echo.Echo) {
+	t.Helper()
+
+	cfg := config.MockConfigForTest(t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewTestLogFieldBuilder(t)
+	errorhandler.New(e, logging.NewTestLogger(t), lf, obsCfg)
+}
+
+// AssertErrorResponse は、異常系レスポンスの HTTP ステータスが wantStatus と一致し、
+// ボディが JSON のエラーレスポンス（ErrorResponse）としてシリアライズされていることを検証する。
+//
+// integration テストは HTTP 境界の関心事である「apperror → ステータスコードのマッピング」と
+// エラーボディの形のみを検証する。Code/Message の値の正しさは controller のユニットテストが担う。
+func AssertErrorResponse(t *testing.T, actualResponse *http.Response, wantStatus int) {
+	t.Helper()
+
+	resBody, err := io.ReadAll(actualResponse.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, wantStatus, actualResponse.StatusCode)
+	assert.Contains(t, actualResponse.Header.Get(echo.HeaderContentType), "application/json")
+
+	var errResp responsegen.ErrorResponse
+	require.NoError(t, json.Unmarshal(resBody, &errResp), "エラーレスポンスが ErrorResponse 形式でシリアライズされていません。")
+	assert.NotEmpty(t, errResp.Code)
 }
