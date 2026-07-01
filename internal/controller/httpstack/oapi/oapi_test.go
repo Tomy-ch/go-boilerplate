@@ -16,27 +16,37 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
-	spec := &openapi3.T{}
-	mw := Middleware(spec, nil, nil)
+	t.Parallel()
 
-	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	e := echo.New()
-	c := e.NewContext(req, rec)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	handler := mw(func(_ echo.Context) error {
-		return nil
+		t.Run("Authnスロットが仕込まれている", func(t *testing.T) {
+			t.Parallel()
+
+			spec := &openapi3.T{}
+			mw := Middleware(spec, nil, nil)
+
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e := echo.New()
+			c := e.NewContext(req, rec)
+
+			handler := mw(func(_ echo.Context) error {
+				return nil
+			})
+
+			_ = handler(c)
+
+			// ミドルウェアが Authn スロットを仕込んでいることを確認（Set が成功し Get で読める）。
+			a, err := authbd.New("u1", authbd.ProviderMock, nil, nil)
+			require.NoError(t, err)
+			require.True(t, ctxhelper.SetAuthn(c.Request().Context(), *a))
+
+			got, ok := ctxhelper.GetAuthn(c.Request().Context())
+			assert.True(t, ok)
+			assert.Equal(t, a.Subject(), got.Subject())
+		})
 	})
-
-	_ = handler(c)
-
-	// ミドルウェアが Authn スロットを仕込んでいることを確認（Set が成功し Get で読める）。
-	a, err := authbd.New("u1", authbd.ProviderMock, nil, nil)
-	require.NoError(t, err)
-	require.True(t, ctxhelper.SetAuthn(c.Request().Context(), *a))
-
-	got, ok := ctxhelper.GetAuthn(c.Request().Context())
-	assert.True(t, ok)
-	assert.Equal(t, a.Subject(), got.Subject())
 }

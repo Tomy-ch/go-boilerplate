@@ -2,14 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-Loads the embedded OpenAPI specification and provides request validation middleware.
-
-## Public API
-
-|Function|Description|
-|---|---|
-|`GetValidator()`|Load and return `*openapi3.T` from the embedded OpenAPI spec|
-|`Middleware(validator)`|Return Echo middleware that validates requests against the OpenAPI schema|
+Loads the embedded OpenAPI specification and provides the parsed schema that `oapi.Middleware()` consumes for request validation.
 
 ## How It Works
 
@@ -17,12 +10,12 @@ Loads the embedded OpenAPI specification and provides request validation middlew
 flowchart LR
     Spec["openapi.gen.yaml"] -->|"oapi-codegen --generate=spec"| GenGo["gen/validate.gen.go (embedded)"]
     GenGo -->|"GetValidator()"| Schema["*openapi3.T"]
-    Schema -->|"Middleware()"| MW["Echo Middleware"]
+    Schema -->|"oapi.Middleware()"| MW["Echo Middleware"]
 ```
 
 1. `oapi-codegen` generates `gen/validate.gen.go` containing a base64-encoded, gzipped OpenAPI spec
 2. `GetValidator()` calls `gen.GetSwagger()` to decode and return the parsed schema
-3. `Middleware()` wraps the oapi-codegen request validator
+3. `oapi.Middleware()` (parent package) wraps the oapi-codegen request validator with this schema
 
 ## Validation Coverage
 

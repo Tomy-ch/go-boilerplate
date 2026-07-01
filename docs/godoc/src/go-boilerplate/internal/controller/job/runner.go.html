@@ -79,7 +79,7 @@
 <span id="L22" class="ln">    22  </span>	registry map[string]job.Job
 <span id="L23" class="ln">    23  </span>}
 <span id="L24" class="ln">    24  </span>
-<span id="L25" class="ln">    25  </span><span class="comment">// NewRunner は、Runnerを生成します。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// NewRunner は、Runner を生成します。jobs に同名のエントリが含まれる場合は ErrDuplicateJob を返します。</span>
 <span id="L26" class="ln">    26  </span>func NewRunner(jobs []job.Job) (job.Runner, error) {
 <span id="L27" class="ln">    27  </span>	m := make(map[string]job.Job, len(jobs))
 <span id="L28" class="ln">    28  </span>	for _, j := range jobs {
@@ -92,7 +92,7 @@
 <span id="L35" class="ln">    35  </span>	return &amp;runner{registry: m}, nil
 <span id="L36" class="ln">    36  </span>}
 <span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span><span class="comment">// Run は、指定されたジョブを実行します。</span>
+<span id="L38" class="ln">    38  </span><span class="comment">// Run は、指定されたジョブを実行します。jobName が未登録の場合は ErrUnknownJob（利用可能名一覧付き）を返します。</span>
 <span id="L39" class="ln">    39  </span>func (r *runner) Run(ctx context.Context, jobName string, args []string) error {
 <span id="L40" class="ln">    40  </span>	j, ok := r.registry[jobName]
 <span id="L41" class="ln">    41  </span>	if !ok {

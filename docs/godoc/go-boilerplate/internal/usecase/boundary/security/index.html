@@ -138,7 +138,7 @@
 		
 			
 			
-			<h2 id="Hasher">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/security/encrypt_hasher.go.html?s=411:775#L1">Hasher</a>
+			<h2 id="Hasher">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/security/encrypt_hasher.go.html?s=404:887#L1">Hasher</a>
 				<a class="permalink" href="#Hasher">¶</a>
 				
 				
@@ -148,7 +148,7 @@
 			</p><pre>type Hasher interface {
     <span class="comment">// Hash は、パスワードをハッシュ化します。ハッシュ化に失敗した場合はエラーを返します。</span>
     Hash(password <a href="../../../../../builtin/#string">string</a>) (<a href="../../../../../builtin/#string">string</a>, <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// Compare は、ハッシュとパスワードを比較します。比較に失敗した場合はエラーを返します。</span>
+    <span class="comment">// Compare は、hash とパスワードが一致するかを検証します。一致すれば (true, nil)、不一致なら (false, nil) を返します。ハッシュ形式が不正など系レベルの失敗時のみ error を返します。</span>
     Compare(hash, password <a href="../../../../../builtin/#string">string</a>) (<a href="../../../../../builtin/#bool">bool</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 

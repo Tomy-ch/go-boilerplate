@@ -1,0 +1,151 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>sqs - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue">queue</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs">sqs</a>/<span class="text-muted">stats.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/infrastructure/queue/sqs">go-boilerplate/internal/infrastructure/queue/sqs</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package sqs
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;strconv&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;github.com/aws/aws-sdk-go-v2/aws&#34;
+<span id="L8" class="ln">     8  </span>	&#34;github.com/aws/aws-sdk-go-v2/service/sqs&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/aws/aws-sdk-go-v2/service/sqs/types&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/worker&#34;
+<span id="L13" class="ln">    13  </span>)
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// 実装漏れをコンパイル時に検出します。</span>
+<span id="L16" class="ln">    16  </span>var _ worker.QueueStatsProvider = (*statsProvider)(nil)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">// statsProvider は、worker.QueueStatsProvider の SQS 実装です。</span>
+<span id="L19" class="ln">    19  </span><span class="comment">// Consumer とは lifecycle を分離し、stats 収集のみを担います（API client / Config は共有）。</span>
+<span id="L20" class="ln">    20  </span>type statsProvider struct {
+<span id="L21" class="ln">    21  </span>	api    API
+<span id="L22" class="ln">    22  </span>	cfg    Config
+<span id="L23" class="ln">    23  </span>	tracer observability.LayerTracer
+<span id="L24" class="ln">    24  </span>}
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span><span class="comment">// NewQueueStatsProvider は、SQS の滞留量を取得する QueueStatsProvider を生成します。</span>
+<span id="L27" class="ln">    27  </span><span class="comment">// NewConsumer とは別 capability として provide し、既存の Consumer interface 返しを変更しません。</span>
+<span id="L28" class="ln">    28  </span>func NewQueueStatsProvider(api API, cfg Config, tf observability.TracerFactory) worker.QueueStatsProvider {
+<span id="L29" class="ln">    29  </span>	return &amp;statsProvider{api: api, cfg: cfg, tracer: tf.Infra()}
+<span id="L30" class="ln">    30  </span>}
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span><span class="comment">// QueueStats は、source queue と（DLQURL があれば）DLQ の滞留量を取得します。</span>
+<span id="L33" class="ln">    33  </span><span class="comment">// DLQURL が空の場合は DLQ の取得をスキップし、DLQ は nil のままにします。</span>
+<span id="L34" class="ln">    34  </span>func (p *statsProvider) QueueStats(ctx context.Context) (worker.QueueStats, error) {
+<span id="L35" class="ln">    35  </span>	ctx, endSpan := p.tracer.Start(ctx)
+<span id="L36" class="ln">    36  </span>	defer endSpan()
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>	source, err := p.queueDepth(ctx, p.cfg.QueueURL)
+<span id="L39" class="ln">    39  </span>	if err != nil {
+<span id="L40" class="ln">    40  </span>		return worker.QueueStats{}, err
+<span id="L41" class="ln">    41  </span>	}
+<span id="L42" class="ln">    42  </span>	stats := worker.QueueStats{Source: source}
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>	if p.cfg.DLQURL != &#34;&#34; {
+<span id="L45" class="ln">    45  </span>		dlq, err := p.queueDepth(ctx, p.cfg.DLQURL)
+<span id="L46" class="ln">    46  </span>		if err != nil {
+<span id="L47" class="ln">    47  </span>			return worker.QueueStats{}, err
+<span id="L48" class="ln">    48  </span>		}
+<span id="L49" class="ln">    49  </span>		stats.DLQ = &amp;dlq
+<span id="L50" class="ln">    50  </span>	}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>	return stats, nil
+<span id="L53" class="ln">    53  </span>}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span><span class="comment">// queueDepth は、GetQueueAttributes で approximate な滞留量を取得し QueueDepth へ正規化します。</span>
+<span id="L56" class="ln">    56  </span>func (p *statsProvider) queueDepth(ctx context.Context, queueURL string) (worker.QueueDepth, error) {
+<span id="L57" class="ln">    57  </span>	out, err := p.api.GetQueueAttributes(ctx, &amp;sqs.GetQueueAttributesInput{
+<span id="L58" class="ln">    58  </span>		QueueUrl: aws.String(queueURL),
+<span id="L59" class="ln">    59  </span>		AttributeNames: []types.QueueAttributeName{
+<span id="L60" class="ln">    60  </span>			types.QueueAttributeNameApproximateNumberOfMessages,
+<span id="L61" class="ln">    61  </span>			types.QueueAttributeNameApproximateNumberOfMessagesNotVisible,
+<span id="L62" class="ln">    62  </span>			types.QueueAttributeNameApproximateNumberOfMessagesDelayed,
+<span id="L63" class="ln">    63  </span>		},
+<span id="L64" class="ln">    64  </span>	})
+<span id="L65" class="ln">    65  </span>	if err != nil {
+<span id="L66" class="ln">    66  </span>		return worker.QueueDepth{}, normalizeError(err)
+<span id="L67" class="ln">    67  </span>	}
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>	return worker.QueueDepth{
+<span id="L70" class="ln">    70  </span>		Visible:  parseApproxCount(out.Attributes[string(types.QueueAttributeNameApproximateNumberOfMessages)]),
+<span id="L71" class="ln">    71  </span>		InFlight: parseApproxCount(out.Attributes[string(types.QueueAttributeNameApproximateNumberOfMessagesNotVisible)]),
+<span id="L72" class="ln">    72  </span>		Delayed:  parseApproxCount(out.Attributes[string(types.QueueAttributeNameApproximateNumberOfMessagesDelayed)]),
+<span id="L73" class="ln">    73  </span>	}, nil
+<span id="L74" class="ln">    74  </span>}
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span><span class="comment">// parseApproxCount は、SQS の attribute 値を int64 へ変換します。</span>
+<span id="L77" class="ln">    77  </span><span class="comment">// attribute 欠落（空文字）や parse 不能は、滞留傾向の gauge として 0 件扱いにします。</span>
+<span id="L78" class="ln">    78  </span>func parseApproxCount(s string) int64 {
+<span id="L79" class="ln">    79  </span>	n, err := strconv.ParseInt(s, 10, 64)
+<span id="L80" class="ln">    80  </span>	if err != nil {
+<span id="L81" class="ln">    81  </span>		return 0
+<span id="L82" class="ln">    82  </span>	}
+<span id="L83" class="ln">    83  </span>	return n
+<span id="L84" class="ln">    84  </span>}
+<span id="L85" class="ln">    85  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/stats.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

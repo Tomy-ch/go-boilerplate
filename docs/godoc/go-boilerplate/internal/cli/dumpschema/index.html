@@ -141,18 +141,14 @@
 		
 			
 			
-			<h2 id="RunDump">func <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=1663:1758#L60">RunDump</a>
+			<h2 id="RunDump">func <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=1625:1720#L57">RunDump</a>
 				<a class="permalink" href="#RunDump">¶</a>
 				
 				
 			</h2>
 			<pre>func RunDump(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, gen *<a href="#Generator">Generator</a>, loadDSN func() (<a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#error">error</a>)) <a href="../../../../builtin/#error">error</a></pre>
-			<p>RunDump は、DSN 解決・スキーマダンプ・整形のオーケストレーションを行います。
-</p><p>手順:
-</p><ol>
-<li>ダンプコマンドを実行してスキーマをダンプ
-</li><li>スキーマファイル内のメタコマンド行を除去
-</li></ol>
+			<p>RunDump は、DSN 解決・スキーマダンプ・整形を行い、schema.gen.sql を sqlc が読み込める形で書き出します。
+loadDSN は (パスワード非含有 DSN, パスワード) を返します。
 
 			
 			
@@ -161,7 +157,7 @@
 		
 			
 			
-			<h2 id="Generator">type <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=688:918#L25">Generator</a>
+			</p><h2 id="Generator">type <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=688:918#L25">Generator</a>
 				<a class="permalink" href="#Generator">¶</a>
 				
 				

@@ -1,0 +1,280 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>retry - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package retry
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/retry&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package retry は、失敗分類を消費する有限リトライの行動層です。
+</p><p>classify → bounded attempts → backoff + full jitter → deadline-aware という
+共通ループを 1 度だけ実装し、tx リトライや外部 HTTP の retry が共有します。
+バックオフの待機時間は呼び出し側が <a href="#Policy.Backoff">Policy.Backoff</a>（attempt → 基本待機時間）で
+与え、本パッケージはそこへ full jitter（<a href="#Full">Full</a>）を重畳します。乱数（math/rand/v2）
+依存を本パッケージ側へ閉じることで、待機時間算出を担う純粋な pkg/backoff の
+「現在時刻や乱数に依存しない」純粋性を保ちます。
+</p><p>pkg は相互独立（pkg→pkg import 禁止）のため、Backoff は pkg/backoff の型ではなく
+関数値として受け取ります。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#Do">func Do(ctx context.Context, sleeper Sleeper, policy Policy, isRetryable func(error) bool, fn func(context.Context) error) error</a></dd>
+			
+				
+				<dd><a href="#Full">func Full(d time.Duration) time.Duration</a></dd>
+			
+			
+				
+				<dd><a href="#Policy">type Policy</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Sleeper">type Sleeper</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/pkg/retry/jitter.go.html">jitter.go</a>
+			
+				<a href="../../../src/go-boilerplate/pkg/retry/retry.go.html">retry.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="Do">func <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=2928:3064#L40">Do</a>
+				<a class="permalink" href="#Do">¶</a>
+				
+				
+			</h2>
+			<pre>func Do(
+    ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>,
+    sleeper <a href="#Sleeper">Sleeper</a>,
+    policy <a href="#Policy">Policy</a>,
+    isRetryable func(<a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#bool">bool</a>,
+    fn func(<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>) <a href="../../../builtin/#error">error</a>,
+) <a href="../../../builtin/#error">error</a></pre>
+			<p>Do は、fn を有限リトライで実行します。
+</p><p>fn の返した error が isRetryable を満たす限り、policy.MaxAttempts まで再試行し、
+試行間は policy.Backoff（+ full jitter）だけ sleeper で待機します。最後に観測した
+error（成功時は nil）を返します。
+</p><ul>
+<li>fn が nil を返した、isRetryable が false、または最終試行に達した場合は即座に返します。
+</li><li>sleeper.Sleep が error を返した（ctx 打ち切り）場合は、sleep の error ではなく
+直前の fn の error を返します（リトライ対象だった元の失敗を呼び出し側へ伝えるため）。
+</li></ul>
+<p>isRetryable は fn が返した非 nil error に対してのみ呼ばれます。isRetryable 自体が nil の
+場合は全ての error をリトライ不可として扱い、最初の error で即座に返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="Full">func <a href="../../../src/go-boilerplate/pkg/retry/jitter.go.html?s=475:515#L4">Full</a>
+				<a class="permalink" href="#Full">¶</a>
+				
+				
+			</h2>
+			<pre>func Full(d <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a></pre>
+			<p>Full は、[0, d] の一様乱数を返します（full jitter）。
+バックオフに重畳して thundering herd を避けます。d が 0 以下なら 0 を返します。
+</p><p>ただし d == math.MaxInt64（バックオフ上限到達時に起こり得る）のときは、閉区間化のための
+加算が int64 をオーバーフローするため、上限 d を除いた [0, d) を返します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Policy">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1508:2015#L19">Policy</a>
+				<a class="permalink" href="#Policy">¶</a>
+				
+				
+			</h2>
+			<p>Policy は、有限リトライの設定です。
+
+			</p><pre>type Policy struct {
+<span id="Policy.MaxAttempts"></span>    <span class="comment">// MaxAttempts は、fn の最大試行回数です。1 未満は 1 として扱います（最低 1 回試行）。</span>
+    MaxAttempts <a href="../../../builtin/#int">int</a>
+<span id="Policy.Backoff"></span>    <span class="comment">// Backoff は、attempt（0 起算）に対する jitter 適用前の基本待機時間を返します。</span>
+    <span class="comment">// nil の場合は待機 0（即時リトライ）。実待機は本値に [Full] を重畳したものです。</span>
+    <span class="comment">// 呼び出し側は backoff.Exponential.Duration 等をそのまま渡せます。</span>
+    Backoff func(attempt <a href="../../../builtin/#int">int</a>) <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Sleeper">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1280:1453#L13">Sleeper</a>
+				<a class="permalink" href="#Sleeper">¶</a>
+				
+				
+			</h2>
+			<p>Sleeper は、リトライ間の待機を抽象化するインターフェースです。
+ctx のキャンセル / deadline を尊重し、待機が打ち切られた場合は error を返します。
+</p><p>本パッケージは internal 非依存のため独自に定義します。Sleep(ctx context.Context, d time.Duration) error を持つ任意の型を注入できます。
+
+			</p><pre>type Sleeper interface {
+    <span class="comment">// Sleep は、d 経過まで待機します。ctx 打ち切り時は error を返します。</span>
+    Sleep(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, d <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) <a href="../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

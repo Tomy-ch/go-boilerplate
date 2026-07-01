@@ -20,14 +20,6 @@ flowchart TB
 
 Usecase 層の `security.Hasher` インターフェース（`internal/usecase/boundary/security`）を Infrastructure 層で実装します。Usecase / Domain は bcrypt の実装詳細に依存しません。
 
-## 公開 API
-
-|関数 / メソッド|説明|
-|---|---|
-|`NewBcryptHasher(secCfg)`|`config.SecurityConfig` の `BcryptCost` を使用して `security.Hasher` を生成|
-|`Hash(password)`|パスワードを bcrypt でハッシュ化|
-|`Compare(hash, password)`|ハッシュと平文パスワードを比較（不一致は `false, nil` を返す）|
-
 ## 設計方針
 
 - bcrypt コストは `config.SecurityConfig.BcryptCost()` で外部化
@@ -36,7 +28,7 @@ Usecase 層の `security.Hasher` インターフェース（`internal/usecase/bo
 
 ## DI 登録
 
-`internal/di/module/infrastructure.go` の `security` モジュールに登録します。
+`internal/di/module/security.go` の `securityModule()` で登録します（`InfrastructureModule()` に集約）。
 
 ```go
 fx.Provide(security.NewBcryptHasher)

@@ -1,0 +1,173 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>idempotency - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack">httpstack</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency">idempotency</a>/<span class="text-muted">idempotency.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/controller/httpstack/idempotency">go-boilerplate/internal/controller/httpstack/idempotency</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package idempotency は、冪等性の入り口 middleware（oapi-codegen StrictMiddleware スロット用）を提供します。</span>
+<span id="L2" class="ln">     2  </span>package idempotency
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span>import (
+<span id="L5" class="ln">     5  </span>	&#34;crypto/sha256&#34;
+<span id="L6" class="ln">     6  </span>	&#34;encoding/json&#34;
+<span id="L7" class="ln">     7  </span>	&#34;strings&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/controller/ctxhelper&#34;
+<span id="L11" class="ln">    11  </span>	idempotencyuc &#34;go-boilerplate/internal/usecase/idempotency&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L15" class="ln">    15  </span>)
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span><span class="comment">// headerName は、冪等性キーのリクエストヘッダ名です。</span>
+<span id="L18" class="ln">    18  </span>const headerName = &#34;Idempotency-Key&#34;
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// maxKeyLength は、Idempotency-Key ヘッダの最大バイト長です。</span>
+<span id="L21" class="ln">    21  </span>const maxKeyLength = 255
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// NextFunc は、StrictHandlerFunc と構造的に同一の handler 呼び出しシグネチャです。</span>
+<span id="L24" class="ln">    24  </span>type NextFunc func(ctx echo.Context, request any) (any, error)
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span><span class="comment">// Middleware は、冪等性入り口を StrictMiddleware の構造的シグネチャで返します。</span>
+<span id="L27" class="ln">    27  </span>func Middleware() func(next NextFunc, operationID string) NextFunc {
+<span id="L28" class="ln">    28  </span>	return func(next NextFunc, operationID string) NextFunc {
+<span id="L29" class="ln">    29  </span>		return func(ec echo.Context, request any) (any, error) {
+<span id="L30" class="ln">    30  </span>			return handle(ec, request, operationID, next)
+<span id="L31" class="ln">    31  </span>		}
+<span id="L32" class="ln">    32  </span>	}
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// StrictMiddleware は、Middleware() を oapi-codegen のパッケージ固有 StrictMiddlewareFunc 形へ</span>
+<span id="L36" class="ln">    36  </span><span class="comment">// 適合させたアダプタを返します。</span>
+<span id="L37" class="ln">    37  </span>func StrictMiddleware[H ~func(ec echo.Context, request any) (any, error)]() func(f H, operationID string) H {
+<span id="L38" class="ln">    38  </span>	core := Middleware()
+<span id="L39" class="ln">    39  </span>	return func(f H, operationID string) H {
+<span id="L40" class="ln">    40  </span>		return H(core(NextFunc(f), operationID))
+<span id="L41" class="ln">    41  </span>	}
+<span id="L42" class="ln">    42  </span>}
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>func handle(ec echo.Context, request any, operationID string, next NextFunc) (any, error) {
+<span id="L45" class="ln">    45  </span>	r := ec.Request()
+<span id="L46" class="ln">    46  </span>	key := strings.TrimSpace(r.Header.Get(headerName))
+<span id="L47" class="ln">    47  </span>	if key == &#34;&#34; {
+<span id="L48" class="ln">    48  </span>		<span class="comment">// ヘッダ無し = 非冪等（既存挙動のまま素通し）。</span>
+<span id="L49" class="ln">    49  </span>		return next(ec, request)
+<span id="L50" class="ln">    50  </span>	}
+<span id="L51" class="ln">    51  </span>	if err := validateKey(key); err != nil {
+<span id="L52" class="ln">    52  </span>		return nil, err
+<span id="L53" class="ln">    53  </span>	}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>	<span class="comment">// 認証プリンシパルが取れなければ冪等性は発動しない（スコープキーに Subject を使うため、認証済みリクエストのみ対象とする）。</span>
+<span id="L56" class="ln">    56  </span>	authn, ok := ctxhelper.GetAuthn(r.Context())
+<span id="L57" class="ln">    57  </span>	if !ok {
+<span id="L58" class="ln">    58  </span>		return next(ec, request)
+<span id="L59" class="ln">    59  </span>	}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>	fp, err := fingerprint(r.Method, r.URL.Path, request)
+<span id="L62" class="ln">    62  </span>	if err != nil {
+<span id="L63" class="ln">    63  </span>		return nil, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, &#34;failed to fingerprint idempotent request&#34;))
+<span id="L64" class="ln">    64  </span>	}
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>	reqCtx := idempotencyuc.WithRequest(r.Context(), idempotencyuc.Request{
+<span id="L67" class="ln">    67  </span>		Scope:       authn.Subject(),
+<span id="L68" class="ln">    68  </span>		Key:         key,
+<span id="L69" class="ln">    69  </span>		Fingerprint: fp,
+<span id="L70" class="ln">    70  </span>		Method:      r.Method,
+<span id="L71" class="ln">    71  </span>		Path:        r.URL.Path,
+<span id="L72" class="ln">    72  </span>		OperationID: operationID,
+<span id="L73" class="ln">    73  </span>	})
+<span id="L74" class="ln">    74  </span>	ec.SetRequest(r.WithContext(reqCtx))
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>	return next(ec, request)
+<span id="L77" class="ln">    77  </span>}
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span><span class="comment">// validateKey は、Idempotency-Key の健全性を検証します（非空 / ≤255 / 印字可能 ASCII）。違反は 400。</span>
+<span id="L80" class="ln">    80  </span>func validateKey(key string) error {
+<span id="L81" class="ln">    81  </span>	if len(key) &gt; maxKeyLength {
+<span id="L82" class="ln">    82  </span>		return xerrors.Wrap(apperror.ErrInvalidArgument, &#34;Idempotency-Key must be 255 characters or fewer&#34;)
+<span id="L83" class="ln">    83  </span>	}
+<span id="L84" class="ln">    84  </span>	for _, c := range []byte(key) {
+<span id="L85" class="ln">    85  </span>		if c &lt; 0x21 || c &gt; 0x7E {
+<span id="L86" class="ln">    86  </span>			return xerrors.Wrap(apperror.ErrInvalidArgument, &#34;Idempotency-Key must contain only printable ASCII characters&#34;)
+<span id="L87" class="ln">    87  </span>		}
+<span id="L88" class="ln">    88  </span>	}
+<span id="L89" class="ln">    89  </span>	return nil
+<span id="L90" class="ln">    90  </span>}
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span><span class="comment">// fingerprint は、method + path + typed request の決定的 marshal を SHA-256 した指紋を返します。</span>
+<span id="L93" class="ln">    93  </span><span class="comment">// request の marshal に失敗した場合は弱い指紋を作らずエラーを返します（fail-closed）。</span>
+<span id="L94" class="ln">    94  </span>func fingerprint(method, path string, request any) ([]byte, error) {
+<span id="L95" class="ln">    95  </span>	b, err := json.Marshal(request)
+<span id="L96" class="ln">    96  </span>	if err != nil {
+<span id="L97" class="ln">    97  </span>		return nil, err
+<span id="L98" class="ln">    98  </span>	}
+<span id="L99" class="ln">    99  </span>	h := sha256.New()
+<span id="L100" class="ln">   100  </span>	h.Write([]byte(method))
+<span id="L101" class="ln">   101  </span>	h.Write([]byte{&#39;\n&#39;})
+<span id="L102" class="ln">   102  </span>	h.Write([]byte(path))
+<span id="L103" class="ln">   103  </span>	h.Write([]byte{&#39;\n&#39;})
+<span id="L104" class="ln">   104  </span>	h.Write(b)
+<span id="L105" class="ln">   105  </span>	return h.Sum(nil), nil
+<span id="L106" class="ln">   106  </span>}
+<span id="L107" class="ln">   107  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

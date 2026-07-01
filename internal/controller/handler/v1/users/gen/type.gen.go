@@ -25,7 +25,7 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 
 	// RequestId リクエストID
-	RequestId string `json:"request_id"`
+	RequestId string `json:"requestId"`
 }
 
 // PaginationMetadataResponse defines model for PaginationMetadataResponse.
@@ -54,10 +54,10 @@ type UserBaseInputRequest struct {
 	// Email メールアドレス
 	Email *openapi_types.Email `json:"email,omitempty"`
 
-	// FirstName 苗字
+	// FirstName 名前
 	FirstName *string `json:"firstName,omitempty"`
 
-	// LastName 名前
+	// LastName 苗字
 	LastName *string `json:"lastName,omitempty"`
 
 	// Phone 電話番号
@@ -87,10 +87,10 @@ type UserResponse struct {
 	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
 
-	// FirstName 苗字
+	// FirstName 名前
 	FirstName string `json:"firstName"`
 
-	// LastName 名前
+	// LastName 苗字
 	LastName string `json:"lastName"`
 
 	// Phone 電話番号
@@ -117,10 +117,10 @@ type UsersPostRequest struct {
 	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
 
-	// FirstName 苗字
+	// FirstName 名前
 	FirstName string `json:"firstName"`
 
-	// LastName 名前
+	// LastName 苗字
 	LastName string `json:"lastName"`
 
 	// Password ユーザーのパスワード
@@ -160,6 +160,27 @@ type PageParam = int
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// BadRequest400 エラーレスポンスの共通スキーマ
+type BadRequest400 = ErrorResponse
+
+// Conflict409 エラーレスポンスの共通スキーマ
+type Conflict409 = ErrorResponse
+
+// Forbidden403 エラーレスポンスの共通スキーマ
+type Forbidden403 = ErrorResponse
+
+// InternalServerError500 エラーレスポンスの共通スキーマ
+type InternalServerError500 = ErrorResponse
+
+// ServiceUnavailable503 エラーレスポンスの共通スキーマ
+type ServiceUnavailable503 = ErrorResponse
+
+// Unauthorized401 エラーレスポンスの共通スキーマ
+type Unauthorized401 = ErrorResponse
+
+// UnprocessableEntity422 エラーレスポンスの共通スキーマ
+type UnprocessableEntity422 = ErrorResponse
 
 // basicAuthContextKey is the context key for BasicAuth security scheme
 type basicAuthContextKey string

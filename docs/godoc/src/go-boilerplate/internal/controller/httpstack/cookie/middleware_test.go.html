@@ -73,56 +73,72 @@
 <span id="L16" class="ln">    16  </span>func TestMiddleware(t *testing.T) {
 <span id="L17" class="ln">    17  </span>	t.Parallel()
 <span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>	require.NotNil(t, Middleware(&amp;SecurityCookie{}))
-<span id="L20" class="ln">    20  </span>}
+<span id="L19" class="ln">    19  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L20" class="ln">    20  </span>		t.Parallel()
 <span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>func Test_secureCookieMiddleware_RewritesSetCookie(t *testing.T) {
-<span id="L23" class="ln">    23  </span>	t.Parallel()
-<span id="L24" class="ln">    24  </span>
-<span id="L25" class="ln">    25  </span>	cfg := config.MockConfigForTest(t)
-<span id="L26" class="ln">    26  </span>	secCfg := config.NewSecureCookieConfig(cfg)
-<span id="L27" class="ln">    27  </span>	secCookie := NewSecurityCookie(secCfg)
+<span id="L22" class="ln">    22  </span>		t.Run(&#34;非nilのミドルウェアを返す&#34;, func(t *testing.T) {
+<span id="L23" class="ln">    23  </span>			t.Parallel()
+<span id="L24" class="ln">    24  </span>			assert.NotNil(t, Middleware(&amp;SecurityCookie{}))
+<span id="L25" class="ln">    25  </span>		})
+<span id="L26" class="ln">    26  </span>	})
+<span id="L27" class="ln">    27  </span>}
 <span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span>	e := echo.New()
-<span id="L30" class="ln">    30  </span>	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
-<span id="L31" class="ln">    31  </span>	rec := httptest.NewRecorder()
-<span id="L32" class="ln">    32  </span>	c := e.NewContext(req, rec)
-<span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span>	next := func(c echo.Context) error {
-<span id="L35" class="ln">    35  </span>		<span class="comment">// 書き換え対象となる Set-Cookie を付与する</span>
-<span id="L36" class="ln">    36  </span>		c.Response().Header().Add(&#34;Set-Cookie&#34;, &#34;sessionid=abc; Path=/; HttpOnly&#34;)
-<span id="L37" class="ln">    37  </span>		return c.String(http.StatusOK, &#34;ok&#34;)
-<span id="L38" class="ln">    38  </span>	}
-<span id="L39" class="ln">    39  </span>
-<span id="L40" class="ln">    40  </span>	handler := secureCookieMiddleware(secCookie)(next)
-<span id="L41" class="ln">    41  </span>	require.NoError(t, handler(c))
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>	cookies := rec.Header().Values(&#34;Set-Cookie&#34;)
-<span id="L44" class="ln">    44  </span>	require.Len(t, cookies, 1)
-<span id="L45" class="ln">    45  </span>	<span class="comment">// mock config 由来の値（SameSite=Strict / Domain=localhost / Secure）が反映される</span>
-<span id="L46" class="ln">    46  </span>	assert.Contains(t, cookies[0], &#34;SameSite=Strict&#34;)
-<span id="L47" class="ln">    47  </span>	assert.Contains(t, cookies[0], &#34;Domain=localhost&#34;)
-<span id="L48" class="ln">    48  </span>	assert.Contains(t, cookies[0], &#34;Secure&#34;)
-<span id="L49" class="ln">    49  </span>}
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span>func Test_secureCookieMiddleware_KeepsWrapperOnError(t *testing.T) {
-<span id="L52" class="ln">    52  </span>	t.Parallel()
-<span id="L53" class="ln">    53  </span>
-<span id="L54" class="ln">    54  </span>	e := echo.New()
-<span id="L55" class="ln">    55  </span>	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
-<span id="L56" class="ln">    56  </span>	rec := httptest.NewRecorder()
-<span id="L57" class="ln">    57  </span>	c := e.NewContext(req, rec)
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>	handler := secureCookieMiddleware(&amp;SecurityCookie{applyToAll: true})(func(_ echo.Context) error {
-<span id="L60" class="ln">    60  </span>		return echo.NewHTTPError(http.StatusInternalServerError)
+<span id="L29" class="ln">    29  </span>func Test_secureCookieMiddleware(t *testing.T) {
+<span id="L30" class="ln">    30  </span>	t.Parallel()
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L33" class="ln">    33  </span>		t.Parallel()
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>		t.Run(&#34;Set-Cookieにセキュリティ属性が付与される&#34;, func(t *testing.T) {
+<span id="L36" class="ln">    36  </span>			t.Parallel()
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>			cfg := config.MockConfigForTest(t)
+<span id="L39" class="ln">    39  </span>			secCfg := config.NewSecureCookieConfig(cfg)
+<span id="L40" class="ln">    40  </span>			secCookie := NewSecurityCookie(secCfg)
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>			e := echo.New()
+<span id="L43" class="ln">    43  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L44" class="ln">    44  </span>			rec := httptest.NewRecorder()
+<span id="L45" class="ln">    45  </span>			c := e.NewContext(req, rec)
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>			next := func(c echo.Context) error {
+<span id="L48" class="ln">    48  </span>				c.Response().Header().Add(&#34;Set-Cookie&#34;, &#34;sessionid=abc; Path=/; HttpOnly&#34;)
+<span id="L49" class="ln">    49  </span>				return c.String(http.StatusOK, &#34;ok&#34;)
+<span id="L50" class="ln">    50  </span>			}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>			handler := secureCookieMiddleware(secCookie)(next)
+<span id="L53" class="ln">    53  </span>			require.NoError(t, handler(c))
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>			cookies := rec.Header().Values(&#34;Set-Cookie&#34;)
+<span id="L56" class="ln">    56  </span>			require.Len(t, cookies, 1)
+<span id="L57" class="ln">    57  </span>			assert.Contains(t, cookies[0], &#34;SameSite=Strict&#34;)
+<span id="L58" class="ln">    58  </span>			assert.Contains(t, cookies[0], &#34;Domain=localhost&#34;)
+<span id="L59" class="ln">    59  </span>			assert.Contains(t, cookies[0], &#34;Secure&#34;)
+<span id="L60" class="ln">    60  </span>		})
 <span id="L61" class="ln">    61  </span>	})
-<span id="L62" class="ln">    62  </span>	require.Error(t, handler(c))
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span>	<span class="comment">// next がエラーでも Writer は復元されない（エラー経路の Set-Cookie も書き換え対象にするため）</span>
-<span id="L65" class="ln">    65  </span>	_, ok := c.Response().Writer.(*cookieRewriteWriter)
-<span id="L66" class="ln">    66  </span>	assert.True(t, ok)
-<span id="L67" class="ln">    67  </span>}
+<span id="L62" class="ln">    62  </span>
+<span id="L63" class="ln">    63  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L64" class="ln">    64  </span>		t.Parallel()
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>		t.Run(&#34;nextがエラーを返してもWriterは復元されない&#34;, func(t *testing.T) {
+<span id="L67" class="ln">    67  </span>			t.Parallel()
 <span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>			e := echo.New()
+<span id="L70" class="ln">    70  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L71" class="ln">    71  </span>			rec := httptest.NewRecorder()
+<span id="L72" class="ln">    72  </span>			c := e.NewContext(req, rec)
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>			handler := secureCookieMiddleware(&amp;SecurityCookie{applyToAll: true})(func(_ echo.Context) error {
+<span id="L75" class="ln">    75  </span>				return echo.NewHTTPError(http.StatusInternalServerError)
+<span id="L76" class="ln">    76  </span>			})
+<span id="L77" class="ln">    77  </span>			require.Error(t, handler(c))
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>			_, ok := c.Response().Writer.(*cookieRewriteWriter)
+<span id="L80" class="ln">    80  </span>			assert.True(t, ok)
+<span id="L81" class="ln">    81  </span>		})
+<span id="L82" class="ln">    82  </span>	})
+<span id="L83" class="ln">    83  </span>}
+<span id="L84" class="ln">    84  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/middleware_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -1,4 +1,4 @@
-// pin-actions は GitHub Actions の `uses:` 参照を不変の commit SHA へ固定するツール。
+// Package main は GitHub Actions の `uses:` 参照を不変の commit SHA へ固定するツール。
 //
 //	resolve: .github/workflows/** と .github/actions/** の外部アクション参照を走査し、
 //	         tag/version を git ls-remote で SHA へ解決して lockfile (.github/actions-pin.toml) へ書き出す。
@@ -25,6 +25,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -109,7 +111,7 @@ func targetFiles(root string) ([]string, error) {
 	} {
 		m, err := filepath.Glob(filepath.Join(root, pat))
 		if err != nil {
-			return nil, fmt.Errorf("glob %s: %w", pat, err)
+			return nil, xerrors.Wrap(err, "glob "+pat)
 		}
 		files = append(files, m...)
 	}
@@ -188,6 +190,7 @@ func quarantine(ctx context.Context, repo, tag, key, candidate string, minAgeDay
 // 無ければ commit の committer date をフォールバックに使う。
 func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 	var rel struct {
+		//nolint:tagliatelle // GitHub API のレスポンスフィールド名(published_at)に合わせる必要があるため
 		PublishedAt time.Time `json:"published_at"`
 	}
 	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+tag, &rel)
@@ -198,7 +201,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return daysSince(rel.PublishedAt), nil
 	}
 	if st != http.StatusOK && st != http.StatusNotFound {
-		return 0, fmt.Errorf("releases/tags/%s: %d", tag, st)
+		return 0, xerrors.New(fmt.Sprintf("releases/tags/%s: %d", tag, st))
 	}
 
 	var commit struct {
@@ -213,7 +216,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return 0, err
 	}
 	if st != http.StatusOK {
-		return 0, fmt.Errorf("commits/%s: %d", sha, st)
+		return 0, xerrors.New(fmt.Sprintf("commits/%s: %d", sha, st))
 	}
 	return daysSince(commit.Commit.Committer.Date), nil
 }
@@ -326,10 +329,10 @@ func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 	url := "https://github.com/" + repo
 	out, err := exec.CommandContext(cctx, "git", "ls-remote", url, tag, tag+"^{}").Output() //nolint:gosec // 参照名は workflow 由来
 	if err != nil {
-		return "", fmt.Errorf("git ls-remote: %w", err)
+		return "", xerrors.Wrap(err, "git ls-remote")
 	}
 	var tagSHA, derefSHA, headSHA string
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) != lsRemoteCols {
 			continue
@@ -352,7 +355,7 @@ func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 	case headSHA != "":
 		return headSHA, nil
 	default:
-		return "", fmt.Errorf("ref %q が見つかりません", tag)
+		return "", xerrors.New(fmt.Sprintf("ref %q が見つかりません", tag))
 	}
 }
 

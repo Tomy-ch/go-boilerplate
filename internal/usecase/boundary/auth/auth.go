@@ -23,6 +23,7 @@ type Authn struct {
 	claims   map[string]any // 任意（監査・UI制御等）
 }
 
+// New は、認証主体や付随情報から認証結果 Authn を生成して返します。
 func New(
 	subject string,
 	provider string,
@@ -41,7 +42,6 @@ func New(
 		claims:   maps.Clone(claims),
 	}
 
-	// subject が UUID なら id を埋める（変換できない場合は nil のまま）
 	if id, err := uuid.Parse(trimmedSubject); err == nil {
 		a.id = &id
 	}

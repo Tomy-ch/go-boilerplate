@@ -22,19 +22,19 @@
 
 ```json
 {
-  "Code": "INTERNAL_ERROR",
-  "Details": ["具体的なエラーの説明"],
-  "Message": "サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。",
-  "RequestID": "123e4567-e89b-12d3-a456-426614174000"
+  "code": "INTERNAL_ERROR",
+  "message": "サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。",
+  "details": ["具体的なエラーの説明"],
+  "requestId": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
 |フィールド|説明|
 |---|---|
-|`Code`|アプリケーションレベルのエラー識別子|
-|`Details`|デバッグ用の追加情報（公開可能なもののみ）|
-|`Message`|エンドユーザー向けのメッセージ|
-|`RequestID`|リクエスト追跡用のユニークID|
+|`code`|アプリケーションレベルのエラー識別子|
+|`message`|エンドユーザー向けのメッセージ|
+|`details`|デバッグ用の追加情報（公開可能なもののみ）|
+|`requestId`|リクエスト追跡用のユニークID|
 
 HTTPステータスコードはレスポンスヘッダで返し、スタックトレース等の内部情報はログにのみ出力します。
 
@@ -42,9 +42,8 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 
 |関数|説明|
 |---|---|
-|`NewHTTPErrorFromAppError`|`apperror` から対応するHTTPエラーレスポンスを生成|
-|`NewHTTPErrorFromStatus`|HTTPステータスコードから対応するエラーレスポンスを生成|
-|`NewInternalErrorResponse`|500 Internal Server Error のレスポンスを生成|
+|`NewHTTPErrorFromAppError`|`apperror` から対応するHTTPエラーレスポンスを生成（未知のエラーは 500 にフォールバック）|
+|`NewHTTPErrorFromStatus`|HTTPステータスコードから対応するエラーレスポンスを生成（未知のステータスは 500 にフォールバック）|
 
 ## エラーコードとHTTPステータスの対応
 
@@ -59,8 +58,9 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 |`ErrConflict`|409 Conflict|`RESOURCE_CONFLICT`|
 |`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
 |`ErrTooManyRequests`|429 Too Many Requests|`TOO_MANY_REQUESTS`|
-|`ErrUnimplemented`|501 Not Implemented|`NOT_AVAILABLE`|
-|`ErrUnavailable`|503 Service Unavailable|`NOT_AVAILABLE`|
+|`ErrCanceled`|499 Client Closed Request|`CLIENT_CLOSED_REQUEST`|
+|`ErrUnimplemented`|501 Not Implemented|`NOT_IMPLEMENTED`|
+|`ErrUnavailable`|503 Service Unavailable|`SERVICE_UNAVAILABLE`|
 |その他|500 Internal Server Error|`INTERNAL_ERROR`|
 
 ### エラーコード一覧
@@ -74,8 +74,10 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 |`RESOURCE_CONFLICT`|既に同じ情報が登録されています。|
 |`VALIDATION_FAILED`|入力内容の検証に失敗しました。修正して再度お試しください。|
 |`TOO_MANY_REQUESTS`|リクエストが多すぎます。しばらくしてから再度お試しください。|
+|`CLIENT_CLOSED_REQUEST`|リクエストがキャンセルされました。|
 |`INTERNAL_ERROR`|サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。|
-|`NOT_AVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
+|`NOT_IMPLEMENTED`|この機能は提供されていません。|
+|`SERVICE_UNAVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
 
 ## 設定変更方法
 

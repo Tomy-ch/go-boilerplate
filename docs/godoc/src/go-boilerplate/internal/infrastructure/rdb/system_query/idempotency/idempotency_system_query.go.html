@@ -1,0 +1,201 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>idempotency - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb">rdb</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query">system_query</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query/idempotency">idempotency</a>/<span class="text-muted">idempotency_system_query.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../go-boilerplate/internal/infrastructure/rdb/system_query/idempotency">go-boilerplate/internal/infrastructure/rdb/system_query/idempotency</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package idempotency は、冪等性キーの永続化（boundary idempotency.Store）の RDB 実装を提供します。</span>
+<span id="L2" class="ln">     2  </span>package idempotency
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span>import (
+<span id="L5" class="ln">     5  </span>	&#34;context&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L13" class="ln">    13  </span>	idempotencybndry &#34;go-boilerplate/internal/usecase/boundary/idempotency&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>	&#34;github.com/jackc/pgx/v5&#34;
+<span id="L17" class="ln">    17  </span>)
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span><span class="comment">// claimLockTimeout は、claim 時に並行リクエストを待つロックタイムアウト上限です。</span>
+<span id="L20" class="ln">    20  </span>const claimLockTimeout = &#34;3s&#34;
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>type store struct {
+<span id="L23" class="ln">    23  </span>	db     driver.DatabaseDriver
+<span id="L24" class="ln">    24  </span>	tracer observability.LayerTracer
+<span id="L25" class="ln">    25  </span>}
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// New は、idempotency.Store の RDB 実装を生成して返します。</span>
+<span id="L28" class="ln">    28  </span>func New(
+<span id="L29" class="ln">    29  </span>	provider driver.DatabaseDriver,
+<span id="L30" class="ln">    30  </span>	tf observability.TracerFactory,
+<span id="L31" class="ln">    31  </span>) idempotencybndry.Store {
+<span id="L32" class="ln">    32  </span>	return &amp;store{
+<span id="L33" class="ln">    33  </span>		db:     provider,
+<span id="L34" class="ln">    34  </span>		tracer: tf.Infra(),
+<span id="L35" class="ln">    35  </span>	}
+<span id="L36" class="ln">    36  </span>}
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// Claim は、claimed 行を作ります。新規に作れたら true、同一 (scope, key) の既存行があれば</span>
+<span id="L39" class="ln">    39  </span><span class="comment">// false を返します。ロック競合タイムアウト時は ErrLockTimeout を返します。</span>
+<span id="L40" class="ln">    40  </span><span class="comment">// 業務 tx 内から呼ぶこと（SET LOCAL lock_timeout がセッションに有効になる）。</span>
+<span id="L41" class="ln">    41  </span>func (s *store) Claim(ctx context.Context, p idempotencybndry.ClaimParams) (bool, error) {
+<span id="L42" class="ln">    42  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L43" class="ln">    43  </span>	defer endSpan()
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>	ldb := driver.New(ctx, s.db)
+<span id="L46" class="ln">    46  </span>	if _, err := ldb.Exec(ctx, &#34;SET LOCAL lock_timeout = &#39;&#34;+claimLockTimeout+&#34;&#39;&#34;); err != nil {
+<span id="L47" class="ln">    47  </span>		return false, pgerror.NormalizeError(err)
+<span id="L48" class="ln">    48  </span>	}
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>	db := gen.New(ldb)
+<span id="L51" class="ln">    51  </span>	_, err := db.ClaimIdempotencyKey(ctx, &amp;gen.ClaimIdempotencyKeyParams{
+<span id="L52" class="ln">    52  </span>		Scope:              p.Scope,
+<span id="L53" class="ln">    53  </span>		IdempotencyKey:     p.Key,
+<span id="L54" class="ln">    54  </span>		RequestMethod:      p.Method,
+<span id="L55" class="ln">    55  </span>		RequestPath:        p.Path,
+<span id="L56" class="ln">    56  </span>		RequestFingerprint: p.Fingerprint,
+<span id="L57" class="ln">    57  </span>		ExpiresAt:          p.ExpiresAt,
+<span id="L58" class="ln">    58  </span>	})
+<span id="L59" class="ln">    59  </span>	switch {
+<span id="L60" class="ln">    60  </span>	case err == nil:
+<span id="L61" class="ln">    61  </span>		return true, nil
+<span id="L62" class="ln">    62  </span>	case xerrors.Is(err, pgx.ErrNoRows):
+<span id="L63" class="ln">    63  </span>		<span class="comment">// ON CONFLICT DO NOTHING で 0 行 = 既存キーあり。</span>
+<span id="L64" class="ln">    64  </span>		return false, nil
+<span id="L65" class="ln">    65  </span>	case pgerror.IsLockNotAvailable(err):
+<span id="L66" class="ln">    66  </span>		return false, idempotencybndry.ErrLockTimeout
+<span id="L67" class="ln">    67  </span>	default:
+<span id="L68" class="ln">    68  </span>		return false, pgerror.NormalizeError(err)
+<span id="L69" class="ln">    69  </span>	}
+<span id="L70" class="ln">    70  </span>}
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span><span class="comment">// Get は、(scope, key) の保存済み状態を取得します。存在しなければ nil, nil。</span>
+<span id="L73" class="ln">    73  </span>func (s *store) Get(ctx context.Context, scope, key string) (*idempotencybndry.Record, error) {
+<span id="L74" class="ln">    74  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L75" class="ln">    75  </span>	defer endSpan()
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>	db := gen.New(driver.New(ctx, s.db))
+<span id="L78" class="ln">    78  </span>	row, err := db.GetIdempotencyKey(ctx, &amp;gen.GetIdempotencyKeyParams{
+<span id="L79" class="ln">    79  </span>		Scope:          scope,
+<span id="L80" class="ln">    80  </span>		IdempotencyKey: key,
+<span id="L81" class="ln">    81  </span>	})
+<span id="L82" class="ln">    82  </span>	if err != nil {
+<span id="L83" class="ln">    83  </span>		if xerrors.Is(err, pgx.ErrNoRows) {
+<span id="L84" class="ln">    84  </span>			return nil, nil <span class="comment">//nolint:nilnil // 「存在しない」を nil, nil で表す（呼び出し側が分岐）</span>
+<span id="L85" class="ln">    85  </span>		}
+<span id="L86" class="ln">    86  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L87" class="ln">    87  </span>	}
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>	return &amp;idempotencybndry.Record{
+<span id="L90" class="ln">    90  </span>		Status:          idempotencybndry.Status(row.Status),
+<span id="L91" class="ln">    91  </span>		ResponseStatus:  row.ResponseStatus,
+<span id="L92" class="ln">    92  </span>		ResponsePayload: row.ResponsePayload,
+<span id="L93" class="ln">    93  </span>		Fingerprint:     row.RequestFingerprint,
+<span id="L94" class="ln">    94  </span>	}, nil
+<span id="L95" class="ln">    95  </span>}
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span><span class="comment">// Complete は、claimed → completed へ遷移し結果を保存します。</span>
+<span id="L98" class="ln">    98  </span>func (s *store) Complete(ctx context.Context, p idempotencybndry.CompleteParams) error {
+<span id="L99" class="ln">    99  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L100" class="ln">   100  </span>	defer endSpan()
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>	db := gen.New(driver.New(ctx, s.db))
+<span id="L103" class="ln">   103  </span>	status := p.ResponseStatus
+<span id="L104" class="ln">   104  </span>	affected, err := db.CompleteIdempotencyKey(ctx, &amp;gen.CompleteIdempotencyKeyParams{
+<span id="L105" class="ln">   105  </span>		Scope:           p.Scope,
+<span id="L106" class="ln">   106  </span>		IdempotencyKey:  p.Key,
+<span id="L107" class="ln">   107  </span>		ResponseStatus:  &amp;status,
+<span id="L108" class="ln">   108  </span>		ResponsePayload: p.ResponsePayload,
+<span id="L109" class="ln">   109  </span>	})
+<span id="L110" class="ln">   110  </span>	if err != nil {
+<span id="L111" class="ln">   111  </span>		return pgerror.NormalizeError(err)
+<span id="L112" class="ln">   112  </span>	}
+<span id="L113" class="ln">   113  </span>	if affected == 0 {
+<span id="L114" class="ln">   114  </span>		<span class="comment">// 同一 tx で claim 済みの行が complete 対象にならない＝前提崩壊（404 ではなく内部エラー）。</span>
+<span id="L115" class="ln">   115  </span>		return xerrors.Wrap(apperror.ErrInternal, &#34;complete: claimed row not found in the same transaction&#34;)
+<span id="L116" class="ln">   116  </span>	}
+<span id="L117" class="ln">   117  </span>	return nil
+<span id="L118" class="ln">   118  </span>}
+<span id="L119" class="ln">   119  </span>
+<span id="L120" class="ln">   120  </span><span class="comment">// DeleteExpired は、cutoff より古い行を limit 件まで削除し、削除件数を返します（GC）。</span>
+<span id="L121" class="ln">   121  </span>func (s *store) DeleteExpired(ctx context.Context, cutoff time.Time, limit int32) (int64, error) {
+<span id="L122" class="ln">   122  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L123" class="ln">   123  </span>	defer endSpan()
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>	db := gen.New(driver.New(ctx, s.db))
+<span id="L126" class="ln">   126  </span>	affected, err := db.DeleteExpiredIdempotencyKeys(ctx, &amp;gen.DeleteExpiredIdempotencyKeysParams{
+<span id="L127" class="ln">   127  </span>		ExpiresAt: cutoff,
+<span id="L128" class="ln">   128  </span>		Limit:     limit,
+<span id="L129" class="ln">   129  </span>	})
+<span id="L130" class="ln">   130  </span>	if err != nil {
+<span id="L131" class="ln">   131  </span>		return 0, pgerror.NormalizeError(err)
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>	return affected, nil
+<span id="L134" class="ln">   134  </span>}
+<span id="L135" class="ln">   135  </span>
+</pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query/idempotency/idempotency_system_query.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

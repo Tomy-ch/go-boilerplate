@@ -1,6 +1,7 @@
 package main
 
 import (
+	root "go-boilerplate"
 	climigrate "go-boilerplate/internal/cli/migrate"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -11,12 +12,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+
 	// postgres driver for golang-migrate (required for runtime registration)
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// migrateFilePlace は、マイグレーションファイルの場所を定義します。
+// migrateFilePlace は、埋め込み FS 内のマイグレーションディレクトリのパスです。
 const migrateFilePlace = "database/migrations"
 
 // newMigrateUpCommand は、DBのマイグレーションを上げるためのコマンドを生成します。
@@ -35,10 +37,7 @@ func newMigrateUpCommand() *cobra.Command {
 --steps に正の整数を指定すると、現在位置からその段数だけ Up します。
 --database フラグを指定すると、対象のデータベース（例: local, test）に対して Up を行います。`,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			logger, err := logging.NewProductionLogger()
-			if err != nil {
-				return err
-			}
+			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 			return climigrate.MigrateUpRun(steps, database, logger, buildMigrateInstance)
 		},
 	}
@@ -65,10 +64,7 @@ func newMigrateDownCommand() *cobra.Command {
 --steps に正の整数を指定すると、現在位置からその段数だけ Down します。
 --database フラグを指定すると、対象のデータベース（例: local, test）に対して Down を行います。`,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			logger, err := logging.NewProductionLogger()
-			if err != nil {
-				return err
-			}
+			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 			return climigrate.MigrateDownRun(steps, database, logger, buildMigrateInstance)
 		},
 	}
@@ -98,7 +94,12 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
 
-	m, err := migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
+	src, err := iofs.New(root.FS, migrateFilePlace)
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to create migration source")
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", src, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to create migrate instance")
 	}

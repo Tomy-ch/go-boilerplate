@@ -55,17 +55,17 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_tracer_factory.gen.go -package=mock_$GOPACKAGE</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>package observability
 <span id="L4" class="ln">     4  </span>
 <span id="L5" class="ln">     5  </span>import (
-<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/pkg/fnmeta&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;go.opentelemetry.io/otel/trace&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/fnmeta&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go.opentelemetry.io/otel/trace&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span><span class="comment">// TracerFactory は、レイヤー別の LayerTracer を生成するファクトリです。</span>
 <span id="L12" class="ln">    12  </span>type TracerFactory interface {
 <span id="L13" class="ln">    13  </span>	<span class="comment">// Controller は、コントローラー層用のトレーサーを返します。</span>
 <span id="L14" class="ln">    14  </span>	Controller() LayerTracer
@@ -76,58 +76,52 @@
 <span id="L19" class="ln">    19  </span>}
 <span id="L20" class="ln">    20  </span>
 <span id="L21" class="ln">    21  </span>type tracerFactory struct {
-<span id="L22" class="ln">    22  </span>	tp  trace.TracerProvider
-<span id="L23" class="ln">    23  </span>	log logging.Logger
-<span id="L24" class="ln">    24  </span>	lf  logging.LogFieldBuilder
-<span id="L25" class="ln">    25  </span>}
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span><span class="comment">// NewTracerFactory は、TracerFactory を初期化して返します。</span>
-<span id="L28" class="ln">    28  </span>func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory {
-<span id="L29" class="ln">    29  </span>	return &amp;tracerFactory{
-<span id="L30" class="ln">    30  </span>		tp:  tp,
-<span id="L31" class="ln">    31  </span>		log: log,
-<span id="L32" class="ln">    32  </span>		lf:  lf,
-<span id="L33" class="ln">    33  </span>	}
-<span id="L34" class="ln">    34  </span>}
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span><span class="comment">// Controller/Usecase/Infra は本体をインライン重複させている。getCallerFullName のスキップ段数(2)が</span>
-<span id="L37" class="ln">    37  </span><span class="comment">// 呼び出し階層に依存するため、共通ヘルパへ括り出すと pkg 解決が 1 段ずれて壊れる。</span>
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span><span class="comment">// Controller は Controller 層用のトレーサーを返します。</span>
-<span id="L40" class="ln">    40  </span>func (t *tracerFactory) Controller() LayerTracer {
-<span id="L41" class="ln">    41  </span>	full := getCallerFullName()
-<span id="L42" class="ln">    42  </span>	pkg := fnmeta.ExtractPackageName(full)
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	return t.newLayerTracer(Controller, pkg)
-<span id="L45" class="ln">    45  </span>}
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span><span class="comment">// Usecase は Usecase 層用のトレーサーを返します。</span>
-<span id="L48" class="ln">    48  </span>func (t *tracerFactory) Usecase() LayerTracer {
-<span id="L49" class="ln">    49  </span>	full := getCallerFullName()
-<span id="L50" class="ln">    50  </span>	pkg := fnmeta.ExtractPackageName(full)
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>	return t.newLayerTracer(Usecase, pkg)
-<span id="L53" class="ln">    53  </span>}
-<span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span><span class="comment">// Infra は Infrastructure 層用のトレーサーを返します。</span>
-<span id="L56" class="ln">    56  </span>func (t *tracerFactory) Infra() LayerTracer {
-<span id="L57" class="ln">    57  </span>	full := getCallerFullName()
-<span id="L58" class="ln">    58  </span>	pkg := fnmeta.ExtractPackageName(full)
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>	return t.newLayerTracer(Infra, pkg)
-<span id="L61" class="ln">    61  </span>}
-<span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span><span class="comment">// newLayerTracer は LayerTracer を初期化して返します。</span>
-<span id="L64" class="ln">    64  </span>func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer {
-<span id="L65" class="ln">    65  </span>	return LayerTracer{
-<span id="L66" class="ln">    66  </span>		log:     t.log,
-<span id="L67" class="ln">    67  </span>		lf:      t.lf,
-<span id="L68" class="ln">    68  </span>		tracer:  t.tp.Tracer(string(layer) + delimiter + pkgName),
-<span id="L69" class="ln">    69  </span>		layer:   layer,
-<span id="L70" class="ln">    70  </span>		pkgName: pkgName,
-<span id="L71" class="ln">    71  </span>	}
-<span id="L72" class="ln">    72  </span>}
-<span id="L73" class="ln">    73  </span>
+<span id="L22" class="ln">    22  </span>	tp trace.TracerProvider
+<span id="L23" class="ln">    23  </span>}
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// NewTracerFactory は、TracerFactory を初期化して返します。</span>
+<span id="L26" class="ln">    26  </span>func NewTracerFactory(tp trace.TracerProvider) TracerFactory {
+<span id="L27" class="ln">    27  </span>	return &amp;tracerFactory{
+<span id="L28" class="ln">    28  </span>		tp: tp,
+<span id="L29" class="ln">    29  </span>	}
+<span id="L30" class="ln">    30  </span>}
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span><span class="comment">// Controller/Usecase/Infra は本体をインライン重複させている。getCallerFullName のスキップ段数(2)が</span>
+<span id="L33" class="ln">    33  </span><span class="comment">// 呼び出し階層に依存するため、共通ヘルパへ括り出すと pkg 解決が 1 段ずれて壊れる。</span>
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// Controller は Controller 層用のトレーサーを返します。</span>
+<span id="L36" class="ln">    36  </span>func (t *tracerFactory) Controller() LayerTracer {
+<span id="L37" class="ln">    37  </span>	full := getCallerFullName()
+<span id="L38" class="ln">    38  </span>	pkg := fnmeta.ExtractPackageName(full)
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>	return t.newLayerTracer(Controller, pkg)
+<span id="L41" class="ln">    41  </span>}
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span><span class="comment">// Usecase は Usecase 層用のトレーサーを返します。</span>
+<span id="L44" class="ln">    44  </span>func (t *tracerFactory) Usecase() LayerTracer {
+<span id="L45" class="ln">    45  </span>	full := getCallerFullName()
+<span id="L46" class="ln">    46  </span>	pkg := fnmeta.ExtractPackageName(full)
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>	return t.newLayerTracer(Usecase, pkg)
+<span id="L49" class="ln">    49  </span>}
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span><span class="comment">// Infra は Infrastructure 層用のトレーサーを返します。</span>
+<span id="L52" class="ln">    52  </span>func (t *tracerFactory) Infra() LayerTracer {
+<span id="L53" class="ln">    53  </span>	full := getCallerFullName()
+<span id="L54" class="ln">    54  </span>	pkg := fnmeta.ExtractPackageName(full)
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>	return t.newLayerTracer(Infra, pkg)
+<span id="L57" class="ln">    57  </span>}
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span><span class="comment">// newLayerTracer は LayerTracer を初期化して返します。</span>
+<span id="L60" class="ln">    60  </span>func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer {
+<span id="L61" class="ln">    61  </span>	return LayerTracer{
+<span id="L62" class="ln">    62  </span>		tracer:  t.tp.Tracer(string(layer) + delimiter + pkgName),
+<span id="L63" class="ln">    63  </span>		layer:   layer,
+<span id="L64" class="ln">    64  </span>		pkgName: pkgName,
+<span id="L65" class="ln">    65  </span>	}
+<span id="L66" class="ln">    66  </span>}
+<span id="L67" class="ln">    67  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

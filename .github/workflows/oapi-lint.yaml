@@ -1,0 +1,27 @@
+name: OpenAPI Lint
+
+on:
+  pull_request:
+    paths:
+      - 'openapi/**'
+      - 'redocly.yaml'
+      - '.makefiles/openapi/**'
+      - '.github/workflows/oapi-lint.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  oapi-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Run redocly lint
+        run: make lint-oapi

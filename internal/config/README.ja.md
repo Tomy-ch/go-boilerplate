@@ -16,78 +16,6 @@
 - 必須値の欠落は `validateConfig()` で検出し、起動失敗（明示的なエラー返却）させることで不正な状態で稼働しないようにしています。
 - テスト用のヘルパーやモック（`config_testing_mock.go`, `config_testing_setter.go`）を用意しており、テスト環境で環境変数を差し替えて `New()` の挙動を検証できます。
 
-## 公開 API
-
-### 初期化
-
-|関数|説明|
-|---|---|
-|`SetUpConfig()`|`.env` ファイルの読み込みと `Config` の初期化を一括で行う|
-|`New()`|環境変数から `Config` を生成（`Load()` 済みの前提）|
-|`Load()`|`.env` ファイルを読み込み、環境変数をセット|
-
-### SubConfig 一覧
-
-`Config` から各コンポーネント向けに分割された SubConfig を生成します。すべて `New*Config(cfg *Config)` のシグネチャです。
-
-|型|コンストラクタ|説明|
-|---|---|---|
-|`OperatingSystemConfig`|`NewOperatingSystemConfig`|タイムゾーン|
-|`ApplicationConfig`|`NewApplicationConfig`|実行モード、環境識別子、アプリ名|
-|`ServerConfig`|`NewServerConfig`|ホスト、ポート、タイムアウト|
-|`MetricsConfig`|`NewMetricsConfig`|メトリクスエンドポイント認証|
-|`ObservabilityConfig`|`NewObservabilityConfig`|トレース有効化、DBクエリマスク|
-|`DatabaseConfig`|`NewDatabaseConfig`|DB接続情報|
-|`DBConnectionConfig`|`NewDBConnectionConfig`|コネクションプール設定|
-|`SecurityConfig`|`NewSecurityConfig`|CORS、HSTS、CIDR|
-|`SecureCookieConfig`|`NewSecureCookieConfig`|Cookie セキュリティ属性|
-|`AuthConfig`|`NewAuthConfig`|認証ヘッダー / Cookie 名|
-
-### ユーティリティ
-
-|関数|説明|
-|---|---|
-|`NewTimeLocation(osCfg)`|`OperatingSystemConfig` のタイムゾーンから `*time.Location` を生成|
-
-### 環境 / モード定数
-
-|定数|値|説明|
-|---|---|---|
-|`EnvLocal`|`local`|ローカル開発環境|
-|`EnvCI`|`ci`|CI 環境|
-|`EnvTest`|`test`|テスト環境|
-|`EnvDevelopment`|`development`|開発環境|
-|`EnvStaging`|`staging`|ステージング環境|
-|`EnvProduction`|`production`|本番環境|
-|`DevelopmentMode`|`development`|開発モード|
-|`ProductionMode`|`production`|本番モード|
-|`MinPort`|`1`|許可される最小ポート番号|
-|`MaxPort`|`65535`|許可される最大ポート番号|
-
-### バリデーションエラー
-
-`validateConfig()` で検出されるエラーです。すべて `apperror.ErrInvalidArgument` をラップしています。
-
-|エラー|説明|
-|---|---|
-|`ErrInvalidAppMode`|無効なアプリケーションモード|
-|`ErrInvalidPortRange`|ポート番号が範囲外|
-|`ErrEmptyAllowedOrigins`|許可オリジンが空|
-|`ErrInvalidBcryptCost`|bcrypt コストが範囲外|
-|`ErrHTTPOnlyAllowedForLocalhost`|HTTP のみの場合 localhost 以外は不可|
-|`ErrFailedToParseConfig`|環境変数のパース失敗|
-|`ErrInvalidReadHeaderTimeout`|ReadHeaderTimeout が不正|
-|`ErrInvalidReadTimeout`|ReadTimeout が不正|
-|`ErrInvalidWriteTimeout`|WriteTimeout が不正|
-|`ErrInvalidIdleTimeout`|IdleTimeout が不正|
-|`ErrReadHeaderTimeoutExceedsReadTimeout`|ReadHeaderTimeout が ReadTimeout を超過|
-|`ErrInvalidDBPortRange`|DB ポート番号が範囲外|
-|`ErrInvalidDBPingTimeout`|DB Ping タイムアウトが不正|
-|`ErrInvalidSlowQueryWarnThreshold`|スロークエリ閾値が不正|
-|`ErrInvalidExceedMaxConns`|最小接続数が最大接続数を超過|
-|`ErrFailedToParseCIDR`|CIDR のパース失敗|
-|`ErrAuthConfigMissing`|認証設定（Cookie名 or ヘッダー名）が未設定|
-
 ## Config Loading フロー
 
 アプリケーション起動時の設定読み込みの流れは次の通りです。
@@ -108,7 +36,7 @@ flowchart TB
 ### 各ステップの役割
 
 - **Load()**
-  - `env/.env` および `env/.env.<ENV>` を読み込み、環境変数をセットします。
+  - 埋め込み（`go:embed` の `root.FS`）の `env/.env` を godotenv で読み込み、まだ設定されていない変数のみをセットします（実行時に注入済みの環境変数を優先）。`env/.env.<ENV>` は読み込みません。
 
 - **env.ParseAs[Loader]**
   - `envspec.go` に定義された `Loader` 構造体へ環境変数をマッピングします。
@@ -342,14 +270,46 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |---|---|
 |`SetApplicationMode`|`ApplicationConfig`|
 |`SetApplicationEnv`|`ApplicationConfig`|
+|`SetApplicationLogLevel`|`ApplicationConfig`|
 |`SetServerPort`|`ServerConfig`|
 |`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetObservabilityTracesExporter`|`ObservabilityConfig`|
+|`SetObservabilityMetricsExporter`|`ObservabilityConfig`|
+|`SetObservabilityLogsExporter`|`ObservabilityConfig`|
+|`SetObservabilityOTLPProtocol`|`ObservabilityConfig`|
+|`SetObservabilityOTLPEndpoint`|`ObservabilityConfig`|
 |`SetDatabaseHost`|`DatabaseConfig`|
 |`SetDatabaseName`|`DatabaseConfig`|
+|`SetMetricsPort`|`MetricsConfig`|
+|`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
+|`SetOutboxBatchSize`|`OutboxConfig`|
+|`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetSameSite`|`SecureCookieConfig`|
+|`SetDomain`|`SecureCookieConfig`|
+
+### テスト例外（ユニットで完全被覆を求めないファイル）
+
+本パッケージの大半（SubConfig の getter・`New()` のバインド・テストセッター）はユニットで
+ほぼ 100% 被覆を維持する想定です。以下は**意図的な例外**で、未被覆部分は読み込み /
+composition 境界のエラー分岐であり、失敗注入なしには通せません。実経路は boot-check CI
+（`app-di-startup-check` / `worker-boot-check` / `job-boot-check`。実バイナリを `SetUpConfig`
+経由で起動）で E2E 検証済みです。
+
+|ファイル|関数|ユニット非対象の理由|
+|---|---|---|
+|`loader.go`|`Load`|残る分岐は**埋め込み** env ファイルの I/O 失敗（`root.FS.ReadFile` / `godotenv.Parse` / `os.Setenv`）。実行時にはまず失敗せず、被覆には失敗する FS / env の注入が必要。|
+|`setup.go`|`SetUpConfig`|`cmd/`（それ自体カバレッジゲート対象外）から呼ばれる composition-root の glue。未被覆は `Load()` 失敗時の early-return のみで、起動は boot-check CI が担保。|
+
+> これらの行を塗るためだけの不自然な失敗注入テストは**追加しない**こと。これらの関数が
+> （I/O エラー配線ではない）実際の分岐ロジックを持つようになった場合は、他と同様に
+> ユニットテストで担保すること。
+>
+> **ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の
+> **適切な承認者の承認を得た場合に限り**本節へ記録する。
 
 ## 注意点
 

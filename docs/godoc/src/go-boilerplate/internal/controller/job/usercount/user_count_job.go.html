@@ -60,80 +60,79 @@
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
-<span id="L6" class="ln">     6  </span>	&#34;fmt&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/usecase/boundary/job&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/user&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/ptr&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L14" class="ln">    14  </span>)
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/usecase/boundary/job&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/usecase/user&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>const jobName = &#34;user-count&#34;
 <span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>const jobName = &#34;user-count&#34;
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>type jobImpl struct {
-<span id="L19" class="ln">    19  </span>	logging logging.Logger
-<span id="L20" class="ln">    20  </span>	tracer  observability.LayerTracer
-<span id="L21" class="ln">    21  </span>	usecase user.Usecase
-<span id="L22" class="ln">    22  </span>}
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span><span class="comment">// New は、ユーザの件数をカウントするジョブを初期化します。</span>
-<span id="L25" class="ln">    25  </span>func New(
-<span id="L26" class="ln">    26  </span>	logging logging.Logger,
-<span id="L27" class="ln">    27  </span>	tf observability.TracerFactory,
-<span id="L28" class="ln">    28  </span>	usecase user.Usecase,
-<span id="L29" class="ln">    29  </span>) job.Job {
-<span id="L30" class="ln">    30  </span>	return &amp;jobImpl{
-<span id="L31" class="ln">    31  </span>		logging: logging,
-<span id="L32" class="ln">    32  </span>		tracer:  tf.Controller(),
-<span id="L33" class="ln">    33  </span>		usecase: usecase,
-<span id="L34" class="ln">    34  </span>	}
-<span id="L35" class="ln">    35  </span>}
-<span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span><span class="comment">// Name は、このジョブの名前を返します。</span>
-<span id="L38" class="ln">    38  </span>func (u *jobImpl) Name() string {
-<span id="L39" class="ln">    39  </span>	return jobName
-<span id="L40" class="ln">    40  </span>}
-<span id="L41" class="ln">    41  </span>
-<span id="L42" class="ln">    42  </span><span class="comment">// Execute は、ジョブを実行します。</span>
-<span id="L43" class="ln">    43  </span>func (u *jobImpl) Execute(ctx context.Context, args []string) error {
-<span id="L44" class="ln">    44  </span>	ctx, endSpan := u.tracer.Start(ctx)
-<span id="L45" class="ln">    45  </span>	defer endSpan()
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span>	var active *bool
-<span id="L48" class="ln">    48  </span>	filter := &#34;all&#34;
-<span id="L49" class="ln">    49  </span>	for _, a := range args {
-<span id="L50" class="ln">    50  </span>		<span class="comment">// 相反・重複するフィルタ指定は、後勝ちで黙殺せずエラーにする。</span>
-<span id="L51" class="ln">    51  </span>		switch a {
-<span id="L52" class="ln">    52  </span>		case &#34;--active-only&#34;:
-<span id="L53" class="ln">    53  </span>			if active != nil {
-<span id="L54" class="ln">    54  </span>				return xerrors.New(fmt.Sprintf(&#34;conflicting filter flag: %s&#34;, a))
-<span id="L55" class="ln">    55  </span>			}
-<span id="L56" class="ln">    56  </span>			active = ptr.To(true)
-<span id="L57" class="ln">    57  </span>			filter = &#34;active&#34;
-<span id="L58" class="ln">    58  </span>		case &#34;--inactive-only&#34;:
-<span id="L59" class="ln">    59  </span>			if active != nil {
-<span id="L60" class="ln">    60  </span>				return xerrors.New(fmt.Sprintf(&#34;conflicting filter flag: %s&#34;, a))
-<span id="L61" class="ln">    61  </span>			}
-<span id="L62" class="ln">    62  </span>			active = ptr.To(false)
-<span id="L63" class="ln">    63  </span>			filter = &#34;inactive&#34;
-<span id="L64" class="ln">    64  </span>		default:
-<span id="L65" class="ln">    65  </span>			return xerrors.New(fmt.Sprintf(&#34;unknown flag: %s&#34;, a))
-<span id="L66" class="ln">    66  </span>		}
-<span id="L67" class="ln">    67  </span>	}
-<span id="L68" class="ln">    68  </span>	count, err := u.usecase.CountUsers(ctx, active)
-<span id="L69" class="ln">    69  </span>	if err != nil {
-<span id="L70" class="ln">    70  </span>		return err
-<span id="L71" class="ln">    71  </span>	}
-<span id="L72" class="ln">    72  </span>	u.logging.Named(jobName).Info(
-<span id="L73" class="ln">    73  </span>		&#34;Result: total user count&#34;,
-<span id="L74" class="ln">    74  </span>		logging.Int64(logging.JobResultKey, count),
-<span id="L75" class="ln">    75  </span>		logging.String(logging.FilterKey, filter),
-<span id="L76" class="ln">    76  </span>	)
-<span id="L77" class="ln">    77  </span>	return nil
-<span id="L78" class="ln">    78  </span>}
-<span id="L79" class="ln">    79  </span>
+<span id="L16" class="ln">    16  </span>type jobImpl struct {
+<span id="L17" class="ln">    17  </span>	logging logging.Logger
+<span id="L18" class="ln">    18  </span>	tracer  observability.LayerTracer
+<span id="L19" class="ln">    19  </span>	usecase user.Usecase
+<span id="L20" class="ln">    20  </span>}
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// New は、ユーザの件数をカウントするジョブを初期化します。</span>
+<span id="L23" class="ln">    23  </span>func New(
+<span id="L24" class="ln">    24  </span>	logging logging.Logger,
+<span id="L25" class="ln">    25  </span>	tf observability.TracerFactory,
+<span id="L26" class="ln">    26  </span>	usecase user.Usecase,
+<span id="L27" class="ln">    27  </span>) job.Job {
+<span id="L28" class="ln">    28  </span>	return &amp;jobImpl{
+<span id="L29" class="ln">    29  </span>		logging: logging,
+<span id="L30" class="ln">    30  </span>		tracer:  tf.Controller(),
+<span id="L31" class="ln">    31  </span>		usecase: usecase,
+<span id="L32" class="ln">    32  </span>	}
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// Name は、このジョブの名前を返します。</span>
+<span id="L36" class="ln">    36  </span>func (u *jobImpl) Name() string {
+<span id="L37" class="ln">    37  </span>	return jobName
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// Execute は、ユーザ件数を集計してログに出力します。</span>
+<span id="L41" class="ln">    41  </span><span class="comment">// --active-only / --inactive-only でカウント対象を絞り込めます。両フラグの併用はエラーです。</span>
+<span id="L42" class="ln">    42  </span>func (u *jobImpl) Execute(ctx context.Context, args []string) error {
+<span id="L43" class="ln">    43  </span>	ctx, endSpan := u.tracer.Start(ctx)
+<span id="L44" class="ln">    44  </span>	defer endSpan()
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>	var active *bool
+<span id="L47" class="ln">    47  </span>	filter := &#34;all&#34;
+<span id="L48" class="ln">    48  </span>	for _, a := range args {
+<span id="L49" class="ln">    49  </span>		<span class="comment">// 相反・重複するフィルタ指定は、後勝ちで黙殺せずエラーにする。</span>
+<span id="L50" class="ln">    50  </span>		switch a {
+<span id="L51" class="ln">    51  </span>		case &#34;--active-only&#34;:
+<span id="L52" class="ln">    52  </span>			if active != nil {
+<span id="L53" class="ln">    53  </span>				return xerrors.New(&#34;conflicting filter flag: &#34; + a)
+<span id="L54" class="ln">    54  </span>			}
+<span id="L55" class="ln">    55  </span>			active = new(true)
+<span id="L56" class="ln">    56  </span>			filter = &#34;active&#34;
+<span id="L57" class="ln">    57  </span>		case &#34;--inactive-only&#34;:
+<span id="L58" class="ln">    58  </span>			if active != nil {
+<span id="L59" class="ln">    59  </span>				return xerrors.New(&#34;conflicting filter flag: &#34; + a)
+<span id="L60" class="ln">    60  </span>			}
+<span id="L61" class="ln">    61  </span>			active = new(false)
+<span id="L62" class="ln">    62  </span>			filter = &#34;inactive&#34;
+<span id="L63" class="ln">    63  </span>		default:
+<span id="L64" class="ln">    64  </span>			return xerrors.New(&#34;unknown flag: &#34; + a)
+<span id="L65" class="ln">    65  </span>		}
+<span id="L66" class="ln">    66  </span>	}
+<span id="L67" class="ln">    67  </span>	count, err := u.usecase.CountUsers(ctx, active)
+<span id="L68" class="ln">    68  </span>	if err != nil {
+<span id="L69" class="ln">    69  </span>		return err
+<span id="L70" class="ln">    70  </span>	}
+<span id="L71" class="ln">    71  </span>	u.logging.Named(jobName).Info(
+<span id="L72" class="ln">    72  </span>		&#34;Result: total user count&#34;,
+<span id="L73" class="ln">    73  </span>		logging.Int64(logging.JobResultKey, count),
+<span id="L74" class="ln">    74  </span>		logging.String(logging.FilterKey, filter),
+<span id="L75" class="ln">    75  </span>	)
+<span id="L76" class="ln">    76  </span>	return nil
+<span id="L77" class="ln">    77  </span>}
+<span id="L78" class="ln">    78  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/job/usercount/user_count_job.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

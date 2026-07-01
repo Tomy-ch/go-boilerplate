@@ -6,11 +6,15 @@ package users
 
 import (
 	"context"
+	"net/http"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
+	idempotencymw "go-boilerplate/internal/controller/httpstack/idempotency"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
 	"go-boilerplate/pkg/xerrors"
@@ -19,18 +23,22 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
+// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
 var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
 	uc     user.Usecase
+	idem   idempotency.Deps
 }
 
-func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
+// BindHandler は、ユーザー一覧のハンドラを Echo に登録します。
+func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase, idem idempotency.Deps) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
 		uc:     uc,
-	}, nil))
+		idem:   idem,
+	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
 }
 
 // GetUsers は、ユーザー一覧を取得します。
@@ -39,7 +47,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 	defer endSpan()
 
 	// WARN: 本来はここで認可を行うべきですが、今回は省略します。
-	page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +92,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		UpdateProfileParams: user.UpdateProfileParams{
 			FirstName:      request.Body.FirstName,
 			LastName:       request.Body.LastName,
-			Email:          string(request.Body.Email),
+			Email:          conv.Email(request.Body.Email),
 			Phone:          request.Body.Phone,
 			PostalCode:     request.Body.PostalCode,
 			PrefectureName: request.Body.Prefecture,
@@ -94,7 +102,9 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		},
 	}
 
-	dto, err := s.uc.CreateUser(ctx, createParams)
+	dto, _, err := idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx context.Context) (user.UserView, error) {
+		return s.uc.CreateUser(ctx, createParams)
+	})
 	if err != nil {
 		return nil, err
 	}

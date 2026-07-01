@@ -1,9 +1,9 @@
 // Package migrate は、データベースマイグレーションのコアロジック（適用段数の分岐・無変更許容・dirty 復旧）を提供します。
 package migrate
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_common.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Migrator は、golang-migrate の操作を抽象化し、テストでモック差し替え可能にします。
+// Migrator は、golang-migrate のマイグレーション操作（Up / Down / Steps / Version / Force）を抽象化します。
 type Migrator interface {
 	Up() error
 	Down() error

@@ -75,56 +75,53 @@
 <span id="L18" class="ln">    18  </span>		return unknown, &#34;&#34;
 <span id="L19" class="ln">    19  </span>	}
 <span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span>	<span class="comment">// パス部分を除去: internal/usecase/user.(*UserUsecase).GetUser</span>
-<span id="L22" class="ln">    22  </span>	if idx := strings.LastIndex(full, &#34;/&#34;); idx &gt;= 0 {
-<span id="L23" class="ln">    23  </span>		full = full[idx+1:]
-<span id="L24" class="ln">    24  </span>	}
-<span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span>	<span class="comment">// 最後の &#34;.&#34; で分割: lhs = &#34;user.(*UserUsecase)&#34;, rhs = &#34;GetUser&#34;</span>
-<span id="L27" class="ln">    27  </span>	if idx := strings.LastIndex(full, &#34;.&#34;); idx &gt;= 0 {
-<span id="L28" class="ln">    28  </span>		return full[:idx], full[idx+1:]
-<span id="L29" class="ln">    29  </span>	}
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span>	<span class="comment">// &#34;.&#34; が見つからない場合は全部を lhs とみなす</span>
-<span id="L32" class="ln">    32  </span>	return full, &#34;&#34;
-<span id="L33" class="ln">    33  </span>}
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span><span class="comment">// ExtractFunctionName は、runtime.Func のフルネームから span 名として使いやすい</span>
-<span id="L36" class="ln">    36  </span><span class="comment">// メソッド名のみを抽出します。</span>
-<span id="L37" class="ln">    37  </span><span class="comment">// 例:</span>
-<span id="L38" class="ln">    38  </span><span class="comment">//</span>
-<span id="L39" class="ln">    39  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34;</span>
-<span id="L40" class="ln">    40  </span><span class="comment">//	  → &#34;GetUser&#34;</span>
-<span id="L41" class="ln">    41  </span>func ExtractFunctionName(full string) string {
-<span id="L42" class="ln">    42  </span>	_, fn := splitFuncName(full)
-<span id="L43" class="ln">    43  </span>	if fn == &#34;&#34; {
-<span id="L44" class="ln">    44  </span>		return unknown
-<span id="L45" class="ln">    45  </span>	}
-<span id="L46" class="ln">    46  </span>	return fn
-<span id="L47" class="ln">    47  </span>}
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span><span class="comment">// ExtractPackageName は、runtime.Func のフルネームからパッケージ名を抽出します。</span>
-<span id="L50" class="ln">    50  </span><span class="comment">// パッケージ名は lhs の先頭セグメント（最初の &#34;.&#34; より前）なので、ポインタ／値</span>
-<span id="L51" class="ln">    51  </span><span class="comment">// レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。</span>
-<span id="L52" class="ln">    52  </span><span class="comment">// 例:</span>
-<span id="L53" class="ln">    53  </span><span class="comment">//</span>
-<span id="L54" class="ln">    54  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34; → &#34;user&#34;</span>
-<span id="L55" class="ln">    55  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.UserUsecase.GetUser&#34;    → &#34;user&#34;</span>
-<span id="L56" class="ln">    56  </span>func ExtractPackageName(full string) string {
-<span id="L57" class="ln">    57  </span>	lhs, fn := splitFuncName(full)
-<span id="L58" class="ln">    58  </span>	<span class="comment">// 分割できない（&#34;.&#34; が無い）入力は抽出不能として ExtractFunctionName と</span>
-<span id="L59" class="ln">    59  </span>	<span class="comment">// 同様に unknown へ正規化する。</span>
-<span id="L60" class="ln">    60  </span>	if lhs == unknown || fn == &#34;&#34; {
-<span id="L61" class="ln">    61  </span>		return unknown
-<span id="L62" class="ln">    62  </span>	}
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span>	if idx := strings.Index(lhs, &#34;.&#34;); idx &gt;= 0 {
-<span id="L65" class="ln">    65  </span>		return lhs[:idx]
-<span id="L66" class="ln">    66  </span>	}
+<span id="L21" class="ln">    21  </span>	if idx := strings.LastIndex(full, &#34;/&#34;); idx &gt;= 0 {
+<span id="L22" class="ln">    22  </span>		full = full[idx+1:]
+<span id="L23" class="ln">    23  </span>	}
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	if idx := strings.LastIndex(full, &#34;.&#34;); idx &gt;= 0 {
+<span id="L26" class="ln">    26  </span>		return full[:idx], full[idx+1:]
+<span id="L27" class="ln">    27  </span>	}
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>	return full, &#34;&#34;
+<span id="L30" class="ln">    30  </span>}
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span><span class="comment">// ExtractFunctionName は、runtime.Func のフルネームから span 名として使いやすい</span>
+<span id="L33" class="ln">    33  </span><span class="comment">// メソッド名のみを抽出します。</span>
+<span id="L34" class="ln">    34  </span><span class="comment">// 例:</span>
+<span id="L35" class="ln">    35  </span><span class="comment">//</span>
+<span id="L36" class="ln">    36  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34;</span>
+<span id="L37" class="ln">    37  </span><span class="comment">//	  → &#34;GetUser&#34;</span>
+<span id="L38" class="ln">    38  </span>func ExtractFunctionName(full string) string {
+<span id="L39" class="ln">    39  </span>	_, fn := splitFuncName(full)
+<span id="L40" class="ln">    40  </span>	if fn == &#34;&#34; {
+<span id="L41" class="ln">    41  </span>		return unknown
+<span id="L42" class="ln">    42  </span>	}
+<span id="L43" class="ln">    43  </span>	return fn
+<span id="L44" class="ln">    44  </span>}
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span><span class="comment">// ExtractPackageName は、runtime.Func のフルネームからパッケージ名を抽出します。</span>
+<span id="L47" class="ln">    47  </span><span class="comment">// パッケージ名は lhs の先頭セグメント（最初の &#34;.&#34; より前）なので、ポインタ／値</span>
+<span id="L48" class="ln">    48  </span><span class="comment">// レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。</span>
+<span id="L49" class="ln">    49  </span><span class="comment">// 例:</span>
+<span id="L50" class="ln">    50  </span><span class="comment">//</span>
+<span id="L51" class="ln">    51  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34; → &#34;user&#34;</span>
+<span id="L52" class="ln">    52  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.UserUsecase.GetUser&#34;    → &#34;user&#34;</span>
+<span id="L53" class="ln">    53  </span>func ExtractPackageName(full string) string {
+<span id="L54" class="ln">    54  </span>	lhs, fn := splitFuncName(full)
+<span id="L55" class="ln">    55  </span>	<span class="comment">// 分割できない（&#34;.&#34; が無い）入力は抽出不能として ExtractFunctionName と</span>
+<span id="L56" class="ln">    56  </span>	<span class="comment">// 同様に unknown へ正規化する。</span>
+<span id="L57" class="ln">    57  </span>	if lhs == unknown || fn == &#34;&#34; {
+<span id="L58" class="ln">    58  </span>		return unknown
+<span id="L59" class="ln">    59  </span>	}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>	if before, _, ok := strings.Cut(lhs, &#34;.&#34;); ok {
+<span id="L62" class="ln">    62  </span>		return before
+<span id="L63" class="ln">    63  </span>	}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>	return lhs
+<span id="L66" class="ln">    66  </span>}
 <span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span>	return lhs
-<span id="L69" class="ln">    69  </span>}
-<span id="L70" class="ln">    70  </span>
 </pre><p><a href="../../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

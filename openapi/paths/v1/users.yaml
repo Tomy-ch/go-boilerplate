@@ -15,24 +15,16 @@ get:
         application/json:
           schema:
             $ref: '../../components/responses/users/UsersResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
     '401':
-      description: ユーザー一覧の取得には認証が必要です。
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
     '403':
-      description: ユーザー一覧の取得には権限が必要です。
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../components/schemas/errors/Forbidden403.yaml'
     '500':
-      description: サーバーエラーが発生しました。
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
 post:
   operationId: PostUsers
   tags:
@@ -55,26 +47,16 @@ post:
           schema:
             $ref: '../../components/schemas/UserResponse.yaml'
     '400':
-      description: リクエストが不正です。必要な情報が不足している場合に返されます。
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
     '401':
-      description: ユーザーの作成には認証が必要です。
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
     '403':
-      description: ユーザーの作成には権限が必要です。
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../components/schemas/errors/Forbidden403.yaml'
+    '409':
+      $ref: '../../components/schemas/errors/Conflict409.yaml'
+    '422':
+      $ref: '../../components/schemas/errors/UnprocessableEntity422.yaml'
     '500':
-      description: サーバーエラーが発生しました。
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'

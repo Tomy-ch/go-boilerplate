@@ -3,14 +3,16 @@ package config
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:paralleltest // SetUpConfig は os.Setenv でグローバル環境を変更するため並列化不可
 func TestSetUpConfig_Succeeds(t *testing.T) {
+	restoreEnvAfterTest(t)
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("正常に設定が読み込まれることを確認する", func(t *testing.T) {
-			EnsureRepoRootAndEnv(t, TestingEnvValue)
-
 			cfg, err := SetUpConfig()
 			require.NoError(t, err)
 			require.NotNil(t, cfg)
@@ -18,14 +20,12 @@ func TestSetUpConfig_Succeeds(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("設定の読み込みに失敗した場合、エラーが返されることを確認する", func(t *testing.T) {
-			tmp := t.TempDir()
-			t.Chdir(tmp)
-			t.Setenv(envKey, "")
+		t.Run("設定値が不正な場合、エラーが返されることを確認する", func(t *testing.T) {
+			t.Setenv("APP_MODE", "invalid-mode")
 
 			cfg, err := SetUpConfig()
 			require.Error(t, err)
-			require.Nil(t, cfg)
+			assert.Nil(t, cfg)
 		})
 	})
 }

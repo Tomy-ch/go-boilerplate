@@ -76,6 +76,12 @@ func TestInRange(t *testing.T) {
 			actual := InRange(input, minBound, maxBound)
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("文字列の長さが最小値未満の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			actual := InRange("a", 3, 5)
+			assert.False(t, actual)
+		})
 	})
 }
 
@@ -164,6 +170,12 @@ func TestStrictInRange(t *testing.T) {
 
 			actual := StrictInRange(input, minBound, maxBound)
 			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("文字列の長さが最小値ちょうどの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			actual := StrictInRange("hello", 5, 8)
+			assert.False(t, actual)
 		})
 	})
 }

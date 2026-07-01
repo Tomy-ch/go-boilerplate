@@ -28,6 +28,7 @@ type server struct {
 	tracer    observability.LayerTracer
 }
 
+// BindHandler は、バージョン情報を返すハンドラを Echo に登録します。
 func BindHandler(
 	e *echo.Echo,
 	tf observability.TracerFactory,
@@ -50,7 +51,7 @@ func (s *server) GetVersion(ctx context.Context, _ gen.GetVersionRequestObject) 
 
 	buildDate, err := datetime.ParseRFC3339UTCToLocation(s.buildInfo.BuildDate(), s.loc)
 	if err != nil {
-		return nil, xerrors.Wrap(errInvalidBuildDate, err.Error())
+		return nil, xerrors.Join(errInvalidBuildDate, err)
 	}
 
 	return gen.GetVersion200JSONResponse(gen.VersionResponse{

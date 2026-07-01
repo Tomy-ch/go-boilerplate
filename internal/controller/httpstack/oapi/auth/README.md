@@ -2,13 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-OpenAPI authentication function that extracts tokens from cookies or headers, validates them via boundary `Authenticator`, and stores the result in Echo context.
-
-## Public API
-
-|Function|Description|
-|---|---|
-|`NewAuthenticator(authCfg, authenticator)`|Return `openapi3filter.AuthenticationFunc` for OpenAPI security validation|
+OpenAPI authentication function that extracts tokens from cookies or headers, validates them via boundary `Authenticator`, and stores the result in the request context (an authn slot).
 
 ## Token Extraction Flow
 
@@ -25,7 +19,7 @@ flowchart TB
     NoToken["Token empty"]
     Credential["NewCredential(token)"]
     Authenticate["authenticator.Authenticate(ctx, credential)"]
-    StoreAuthn["ctxhelper.SetAuthnToEcho(ec, authn)"]
+    StoreAuthn["ctxhelper.SetAuthn(req.Context(), authn)"]
 
     Start --> Cookie
     Cookie -- yes --> CookieVal --> HasValue
@@ -51,7 +45,7 @@ flowchart TB
 1. Extract token from Cookie or Header (priority above)
 2. Create `boundary/auth.Credential` from the token
 3. Call `authenticator.Authenticate(ctx, credential)` to obtain `Authn`
-4. Store `Authn` in Echo context via `ctxhelper.SetAuthnToEcho()`
+4. Store `Authn` into the request context via `ctxhelper.SetAuthn()` (the slot is seeded upstream by `ctxhelper.WithAuthn` in `oapi.Middleware`); returns `ErrAuthnSlotNotFound` if the slot is missing
 
 Handler code can then retrieve `Authn` using `ctxhelper.GetAuthn()`.
 
@@ -59,21 +53,22 @@ Handler code can then retrieve `Authn` using `ctxhelper.GetAuthn()`.
 
 |Error|Base Error|Description|
 |---|---|---|
-|`ErrUnauthorizedEchoContextNotFound`|`ErrConflict`|Echo context not found in request context (internal wiring error)|
 |`ErrUnauthorizedInvalidToken`|`ErrUnauthenticated`|Token validation failed by `Authenticator`|
 |`ErrUnauthorizedTokenNotProvided`|`ErrUnauthenticated`|No token found in cookie or header|
 |`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|Authorization token is missing|
+|`ErrAuthnSlotNotFound`|`ErrUnauthenticated`|Authn slot not found in the request context (slot not seeded by `oapi.Middleware`)|
 |`ErrInvalidAuthDefaultMode`|`ErrInternal`|Default auth policy not found|
 
-## Echo Context Integration
+## Authn Slot Integration
 
-This function operates within the OpenAPI validation pipeline where only `context.Context` is available (not `echo.Context`). The parent `oapi.Middleware` solves this by injecting Echo context into `request.Context()` before validation runs.
+This function runs inside the OpenAPI validation pipeline, where only `context.Context` is available (not `echo.Context`). The parent `oapi.Middleware` seeds an **authn slot** into `request.Context()` (via `ctxhelper.WithAuthn`) before validation runs, so the authFunc — invoked by the validator — can write the authenticated `Authn` back into that slot with `ctxhelper.SetAuthn`. The handler later reads it with `ctxhelper.GetAuthn`.
 
 ```mermaid
 flowchart LR
-    OapiMW["oapi.Middleware"] -->|"SetEchoContext"| ReqCtx["request.Context()"]
-    ReqCtx -->|"GetEchoContext"| AuthFunc["auth.NewAuthenticator"]
-    AuthFunc -->|"SetAuthnToEcho"| EchoCtx["echo.Context"]
+    OapiMW["oapi.Middleware"] -->|"WithAuthn (seed slot)"| ReqCtx["request.Context()"]
+    ReqCtx --> Validator["oapi validator → authFunc"]
+    Validator -->|"SetAuthn"| ReqCtx
+    Handler["handler"] -->|"GetAuthn"| ReqCtx
 ```
 
 ## Notes

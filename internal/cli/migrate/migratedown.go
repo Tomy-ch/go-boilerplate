@@ -1,20 +1,21 @@
 package migrate
 
 import (
-	"errors"
 	"fmt"
 
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/safecast"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/golang-migrate/migrate/v4"
 )
 
-// MigrateDownRun は、マイグレーションをダウングレードするための実行関数です。
+// MigrateDownRun は、データベースマイグレーションを Down 方向に適用します。
+// steps=0 なら全マイグレーションをロールバックし、正数なら段数分だけ戻します。steps が負の場合はエラーを返します。dirty 状態の DB は Force で整合を取ってから Down します。
 func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
 	if steps < 0 {
 		// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。
-		err := fmt.Errorf("steps must be zero or positive, got %d", steps)
+		err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))
 		logger.Named("migrateDownRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
 		return err
 	}
@@ -52,7 +53,7 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
 // executeMigrateDownSteps は、現在位置から steps 段だけ Down します。無変更（ErrNoChange）は成功扱いです。
 func executeMigrateDownSteps(m Migrator, steps int) error {
 	// golang-migrate の Steps は負数を渡すとその段数だけ Down するため、検証済みの正値を反転します。
-	if err := m.Steps(-steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err := m.Steps(-steps); err != nil && !xerrors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 	return nil
@@ -62,7 +63,7 @@ func executeMigrateDownSteps(m Migrator, steps int) error {
 func executeMigrateFullDown(m Migrator) error {
 	// dirty 状態のままでは Down できないため、現在バージョンで整合を取り直してから巻き戻します。
 	v, dirty, err := m.Version()
-	if err != nil && !errors.Is(err, migrate.ErrNilVersion) {
+	if err != nil && !xerrors.Is(err, migrate.ErrNilVersion) {
 		return err
 	}
 	if dirty {
@@ -74,7 +75,7 @@ func executeMigrateFullDown(m Migrator) error {
 			return err
 		}
 	}
-	if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err := m.Down(); err != nil && !xerrors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 	return nil

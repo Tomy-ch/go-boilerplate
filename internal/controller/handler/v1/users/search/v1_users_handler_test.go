@@ -14,7 +14,6 @@ import (
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_query "go-boilerplate/internal/usecase/user/search/mock"
 	"go-boilerplate/internal/usecase/user/search/query"
-	"go-boilerplate/pkg/ptr"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -70,19 +69,19 @@ func Test_server_GetUsersSearch(t *testing.T) {
 	t1 := time.Now().UTC()
 	t2 := t1.Add(time.Hour)
 
-	mockPaging, err := paging.NewPagingFrom1Based(ptr.To(expectedPage), ptr.To(expectedPerPage))
+	mockPage, err := paging.NewPageFrom1Based(new(expectedPage), new(expectedPerPage))
 	require.NoError(t, err)
 
 	// Keyword/Active を設定し、ハンドラの filter 詰め替えを検証可能にする。
 	mockParams := gen.GetUsersSearchRequestObject{
 		Params: gen.GetUsersSearchParams{
-			Page:    ptr.To(expectedPage),
-			PerPage: ptr.To(expectedPerPage),
-			Keyword: ptr.To("alice"),
-			Active:  ptr.To(true),
+			Page:    new(expectedPage),
+			PerPage: new(expectedPerPage),
+			Keyword: new("alice"),
+			Active:  new(true),
 		},
 	}
-	wantFilter := &usecase_search.SearchParams{Keyword: ptr.To("alice"), Active: ptr.To(true)}
+	wantFilter := &usecase_search.SearchParams{Keyword: new("alice"), Active: new(true)}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -96,15 +95,15 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			}
 			expectedResponse := gen.UsersSearchResponse{
 				Users:  wantUsers,
-				Limit:  mockPaging.Limit(),
-				Offset: mockPaging.Offset(),
+				Limit:  mockPage.Limit(),
+				Offset: mockPage.Offset(),
 				Total:  total,
 			}
 
 			var gotFilter *usecase_search.SearchParams
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
-				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (*usecase_search.UserSearchListView, error) {
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
+				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
 					gotFilter = f
 					return &usecase_search.UserSearchListView{Items: dtos, Total: total}, nil
 				})
@@ -125,7 +124,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 				&query.UserSearchResult{
 					FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "090-0000-0001",
 					PostalCode: "123-0001", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1",
-					Building: ptr.To("B1"), RegisteredAt: t1,
+					Building: new("B1"), RegisteredAt: t1,
 				},
 				&query.UserSearchResult{
 					FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "090-0000-0002",
@@ -140,6 +139,34 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			t.Parallel()
 			exec(t, query.UserSearchResults{}, 0)
 		})
+
+		t.Run("Keyword/Activeが未指定の場合、空のSearchParamsで呼び出される", func(t *testing.T) {
+			t.Parallel()
+
+			noFilterParams := gen.GetUsersSearchRequestObject{
+				Params: gen.GetUsersSearchParams{
+					Page:    new(expectedPage),
+					PerPage: new(expectedPerPage),
+				},
+			}
+
+			var gotFilter *usecase_search.SearchParams
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
+				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
+					gotFilter = f
+					return &usecase_search.UserSearchListView{Items: query.UserSearchResults{}, Total: 0}, nil
+				})
+
+			resp, err := s.GetUsersSearch(context.Background(), noFilterParams)
+			require.NoError(t, err)
+
+			// フィルタ未指定でも nil ではなく Keyword/Active が共に nil の空 SearchParams が渡る。
+			assert.Equal(t, &usecase_search.SearchParams{}, gotFilter)
+
+			_, ok := resp.(gen.GetUsersSearch200JSONResponse)
+			require.True(t, ok)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -150,8 +177,8 @@ func Test_server_GetUsersSearch(t *testing.T) {
 
 			invalidParams := gen.GetUsersSearchRequestObject{
 				Params: gen.GetUsersSearchParams{
-					Page:    ptr.To(1_000_000), // paging.maxPage 超過
-					PerPage: ptr.To(expectedPerPage),
+					Page:    new(1_000_000), // paging.maxPage 超過
+					PerPage: new(expectedPerPage),
 				},
 			}
 
@@ -165,7 +192,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			t.Parallel()
 
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
 				Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetUsersSearch(context.Background(), mockParams)

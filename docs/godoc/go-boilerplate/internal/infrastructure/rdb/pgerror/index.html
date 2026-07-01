@@ -84,7 +84,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package pgerror は、PostgreSQL固有の処理を提供します。
+				<p>Package pgerror は、PostgreSQL エラー（SQLSTATE・接続断・context タイムアウト）をアプリケーションエラー（apperror）へ正規化する関数群と、retryable / lock-timeout / unavailable 判定述語を提供します。
 
 				
 			</p></div>
@@ -102,6 +102,12 @@
 			<dl>
 			
 			
+			
+				
+				<dd><a href="#IsLockNotAvailable">func IsLockNotAvailable(err error) bool</a></dd>
+			
+				
+				<dd><a href="#IsRetryableTxError">func IsRetryableTxError(err error) bool</a></dd>
 			
 				
 				<dd><a href="#IsUnavailable">func IsUnavailable(err error) bool</a></dd>
@@ -139,13 +145,13 @@
 		
 			
 			
-			<h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2493:2527#L70">IsUnavailable</a>
-				<a class="permalink" href="#IsUnavailable">¶</a>
+			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3132:3171#L94">IsLockNotAvailable</a>
+				<a class="permalink" href="#IsLockNotAvailable">¶</a>
 				
 				
 			</h2>
-			<pre>func IsUnavailable(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
-			<p>IsUnavailable は、与えられたエラーがデータベースの接続不可エラーであるかを判定します。
+			<pre>func IsLockNotAvailable(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
+			<p>IsLockNotAvailable は、lock_timeout 失効によるエラーであるかを判定します。
 
 			
 			
@@ -153,14 +159,44 @@
 		
 			
 			
-			</p><h2 id="NormalizeError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=1160:1196#L25">NormalizeError</a>
+			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3638:3677#L103">IsRetryableTxError</a>
+				<a class="permalink" href="#IsRetryableTxError">¶</a>
+				
+				
+			</h2>
+			<pre>func IsRetryableTxError(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
+			<p>IsRetryableTxError は、リトライで解消しうる tx エラーかを判定します。
+40001 = serialization_failure, 40P01 = deadlock_detected。
+写像後の sentinel（両者は ErrUnavailable へ写像される）ではなく生 SQLSTATE で判定し、
+接続断など他の ErrUnavailable をリトライ対象に巻き込まないようにします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2511:2545#L67">IsUnavailable</a>
+				<a class="permalink" href="#IsUnavailable">¶</a>
+				
+				
+			</h2>
+			<pre>func IsUnavailable(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
+			<p>IsUnavailable は、DB が利用不可能な状態を示すエラーかを判定します。context.DeadlineExceeded・net.Error・PostgreSQL 接続例外クラス(08xxx) を対象とします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NormalizeError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=1155:1191#L22">NormalizeError</a>
 				<a class="permalink" href="#NormalizeError">¶</a>
 				
 				
 			</h2>
 			<pre>func NormalizeError(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
 			<p>NormalizeError は、PostgreSQLのエラーをアプリケーション固有のエラーに変換します。
-Infrastructure層から返されるPostgreSQLエラーを一貫した形で処理するために使用します。
 既に正規化済みの apperror はそのまま返します。
 
 			
@@ -169,13 +205,13 @@ Infrastructure層から返されるPostgreSQLエラーを一貫した形で処�
 		
 			
 			
-			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2156:2213#L59">NormalizeExecResult</a>
+			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2101:2158#L56">NormalizeExecResult</a>
 				<a class="permalink" href="#NormalizeExecResult">¶</a>
 				
 				
 			</h2>
 			<pre>func NormalizeExecResult(affected <a href="../../../../../builtin/#int64">int64</a>, err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
-			<p>NormalizeExecResult は、影響行数を返す書き込み系（sqlc `:execrows`）の結果を正規化します。
+			<p>NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。
 エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
 対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。
 

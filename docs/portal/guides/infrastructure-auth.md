@@ -79,7 +79,7 @@ In this case
 
 ```txt
 subject = user123
-provider = <env>
+provider = mock
 ```
 
 Authn is generated.

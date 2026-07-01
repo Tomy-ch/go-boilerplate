@@ -18,6 +18,7 @@ type poolStatsMetric struct {
 	value     func(stats *pgxpool.Stat) float64
 }
 
+// PoolStatsCollector は、DB コネクションプールの統計情報を Prometheus メトリクスとして公開する収集器です。
 type PoolStatsCollector struct {
 	db      driver.DatabaseDriver
 	metrics []poolStatsMetric

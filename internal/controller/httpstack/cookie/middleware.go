@@ -4,7 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Middleware は Echo 用 middleware です。
+// Middleware は、SecurityCookie 設定に従い Set-Cookie ヘッダのセキュリティ属性（Secure / HttpOnly / SameSite / Path / Domain など）を上書きする Echo ミドルウェアを返します。
 func Middleware(cfg *SecurityCookie) echo.MiddlewareFunc {
 	return secureCookieMiddleware(cfg)
 }

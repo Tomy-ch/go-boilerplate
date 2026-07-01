@@ -78,7 +78,9 @@ Infrastructure 層では以下の可観測性を提供します。
 - OpenTelemetry によるトレース
 - 実行時間計測（slow query）
 
-主に loggingdb などの wrapper で実現します。
+主に driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span、ログ出力はクエリ失敗とスロークエリのみ）で実現します。
+
+driver 層のトレーサーに加え、各 I/O コンポーネント（Repository / QueryService / SystemQuery / 外部 gateway / queue / publisher）は public メソッドごとにアプリケーション層の span を発行します。具体的には `observability.LayerTracer` フィールドをコンストラクタで `tf.Infra()` から初期化し、各メソッド先頭で `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()` を書きます。実 I/O を持たない純粋なメモリ内コンポーネント（例: パスワードハッシュ化）は対象外です。
 
 ## 禁止事項
 
@@ -94,7 +96,7 @@ Infrastructure 層では以下を行ってはいけません。
 
 - SQL 実行は sqlc を使用する
 - Repository に検索ロジックを書かない（QueryServiceへ）
-- driver を直接使わず loggingdb 経由で利用する
+- DBTX は `driver.New(ctx, db)` で取得する（ログ / トレースは driver の接続層で付与される）
 - context を必ず伝搬する
 - 外部エラーは必ず正規化する
 
@@ -104,14 +106,24 @@ Infrastructure 層では以下を行ってはいけません。
 flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
+    Authz["authz/"]
+    HTTP["httpclient/"]
+    Pub["publisher/"]
+    Queue["queue/"]
     RDB["rdb/"]
     Sec["security/"]
     Sys["system/"]
+    Web["webapi/"]
 
     Root --> Auth
+    Root --> Authz
+    Root --> HTTP
+    Root --> Pub
+    Root --> Queue
     Root --> RDB
     Root --> Sec
     Root --> Sys
+    Root --> Web
 ```
 
 ## サブディレクトリ
@@ -119,9 +131,14 @@ flowchart TB
 |ディレクトリ|説明|interface 配置|詳細|
 |---|---|---|---|
 |`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
+|`authz/`|認可基盤（Authorizer 実装。本番以外はデフォルトの `allowall`）|Usecase boundary|[README](authz/README.ja.md)|
+|`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|—|
+|`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|—|
+|`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
 |`security/`|パスワードハッシュ化（bcrypt）|Usecase boundary|[README](security/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
+|`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|—|
 
 ## テスト戦略
 

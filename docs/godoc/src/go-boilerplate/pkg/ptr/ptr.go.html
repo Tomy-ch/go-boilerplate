@@ -59,7 +59,7 @@
 <span id="L2" class="ln">     2  </span>package ptr
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span><span class="comment">// To は、引数として渡された値のポインタを返します。</span>
-<span id="L5" class="ln">     5  </span>func To[T any](v T) *T { return &amp;v }
+<span id="L5" class="ln">     5  </span>func To[T any](v T) *T { return new(v) }
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span><span class="comment">// Copy は、ポインタの指す値をシャローコピーした新しいポインタを返します（nil 入力時は nil）。</span>
 <span id="L8" class="ln">     8  </span><span class="comment">// T が参照型フィールド（スライス・マップ・ポインタ等）を含む場合、その参照先は複製元と共有されます。</span>

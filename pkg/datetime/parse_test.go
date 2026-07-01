@@ -22,7 +22,7 @@ func TestParseRFC3339(t *testing.T) {
 			got, err := ParseRFC3339(input)
 			require.NoError(t, err)
 
-			assert.True(t, got.Equal(want))
+			assert.Equal(t, want, got)
 		})
 	})
 
@@ -52,7 +52,7 @@ func TestParseRFC3339UTC(t *testing.T) {
 			got, err := ParseRFC3339UTC(input)
 			require.NoError(t, err)
 
-			assert.True(t, got.Equal(want))
+			assert.Equal(t, want, got)
 		})
 	})
 
@@ -82,14 +82,14 @@ func TestParseRFC3339Nano(t *testing.T) {
 			got, err := ParseRFC3339Nano(input)
 			require.NoError(t, err)
 
-			assert.True(t, got.Equal(want))
+			assert.Equal(t, want, got)
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("ナノ秒なしはエラーを返す", func(t *testing.T) {
+		t.Run("タイムゾーン指定なしはエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			empty, err := ParseRFC3339Nano("2025-12-05T09:30:00")
 			require.Error(t, err)
@@ -112,7 +112,7 @@ func TestParseISO8601(t *testing.T) {
 			got, err := ParseISO8601(input)
 			require.NoError(t, err)
 
-			assert.True(t, got.Equal(want))
+			assert.Equal(t, want, got)
 		})
 	})
 
@@ -142,7 +142,7 @@ func TestParseDateTime(t *testing.T) {
 			got, err := ParseDateTime(input)
 			require.NoError(t, err)
 
-			assert.True(t, got.Equal(want))
+			assert.Equal(t, want, got)
 		})
 	})
 
@@ -172,7 +172,7 @@ func TestParseDateOnly(t *testing.T) {
 			got, err := ParseDateOnly(input)
 			require.NoError(t, err)
 
-			assert.True(t, got.Equal(want))
+			assert.Equal(t, want, got)
 		})
 	})
 
@@ -204,7 +204,7 @@ func TestParseCustomLayout(t *testing.T) {
 			got, err := ParseCustomLayout(layout, input)
 			require.NoError(t, err)
 
-			assert.True(t, got.Equal(want))
+			assert.Equal(t, want, got)
 		})
 	})
 

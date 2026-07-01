@@ -37,11 +37,16 @@ flowchart TB
 
 ## DB Initialization
 
-`NewDB()` initializes the DB connection.
+Two constructors initialize the DB connection:
 
 ```go
-func NewDB(...) (DatabaseDriver, error)
+func NewDB(...) (DatabaseDriver, error)                         // no query tracer
+func NewTracedDB(..., tracer pgx.QueryTracer) (DatabaseDriver, error) // with query tracer
 ```
+
+`NewTracedDB` is used by the application (DI) and wires the pgx query tracer at
+`poolCfg.ConnConfig.Tracer`. `NewDB` (no tracer) is kept for tooling paths that do not need
+query instrumentation (e.g. migration / seed).
 
 Processing details:
 
@@ -51,7 +56,8 @@ Processing details:
     - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
-3. Verify DB connectivity using `Ping`
+3. Attach the query tracer to `ConnConfig.Tracer` (only when provided)
+4. Verify DB connectivity using `Ping`
 
 If Ping fails, it returns an error at startup (**fail fast** design).
 
@@ -209,29 +215,61 @@ Utilities for building DB connection DSNs.
 |`DSN(dbCfg)`|Build base connection URL|
 |`DSNWithTimeZone(dbCfg, osCfg)`|Build connection URL with timezone|
 |`DSNString(dbCfg)`|String version of `DSN`|
+|`DSNStringWithoutPassword(dbCfg)`|String version of `DSN` without the password (pass it via `PGPASSWORD` etc. instead)|
 |`DSNWithTimeZoneString(dbCfg, osCfg)`|String version of `DSNWithTimeZone`|
 
 ## NewTransactionManager
 
 ```go
-func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager
+func NewTransactionManager(db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper) tx.Manager
 ```
 
 Constructor that implements `tx.Manager` (`internal/usecase/boundary/tx`) for the Usecase layer.
+`Do` retries the whole transaction a bounded number of times on `serialization_failure` (40001) /
+`deadlock_detected` (40P01), using `sleeper` for exponential backoff + full jitter (`pkg/retry`). The
+retry bound and backoff come from config (`DB_TX_MAX_RETRIES` / `DB_TX_RETRY_BASE_BACKOFF` /
+`DB_TX_RETRY_MAX_BACKOFF`); non-positive values fall back to built-in defaults. See the `tx` boundary
+README for the `fn`-idempotency contract.
 
-## loggingdb Subdirectory
+## Query Tracer (query_tracer.go)
 
-`loggingdb/` is a **decorator that adds logging + tracing to SQL execution**.
+`NewQueryTracer` builds the `pgx.QueryTracer` that is wired at `ConnConfig.Tracer`. It embeds
+`otelpgx` for OpenTelemetry spans and adds query logs: success at Info (with latency), slow
+queries at Warn, and failures at Error.
 
 |Type / Function|Description|
 |---|---|
-|`DBProvider`|Interface for creating logged DBTX|
-|`NewLoggingDBProvider`|Create `DBProvider` (receives DB / Config / Logger / Tracer)|
-|`NewLoggingDB(ctx)`|Wrap `DBTX` to add logging and spans to Exec / Query / QueryRow|
+|`NewQueryTracer`|Build a `pgx.QueryTracer` (receives DB / Observability config, otelpgx tracer, `QueryRecorder`, Logger, LogFieldBuilder)|
+|`queryTracer`|Embeds `*otelpgx.Tracer`; overrides `TraceQueryStart` / `TraceQueryEnd` to add logging and query metrics|
 
 Features:
 
-- Structured logging for SQL start / end
-- Slow query detection (Warn level when `SlowQueryWarnThreshold` is exceeded)
-- Query argument masking via `ObservabilityConfig.MaskedDBQueryArgs()`
-- OpenTelemetry span attached to each query
+- OpenTelemetry span per query via `otelpgx` (with semconv DB attributes; batch / copy covered too)
+- **Info log** on successful completion (with latency)
+- **Error log** on query failure (in addition to `span.RecordError`)
+- **Slow query Warn log** when `DB_SLOW_QUERY_WARN_THRESHOLD` is exceeded
+- Query argument masking via `OBS_MASKED_DB_QUERY_ARGS`
+- **Query metrics** recorded on every `TraceQueryEnd` via an injected `QueryRecorder` (implemented in the `metrics` package)
+
+## Query Metrics (query_metric.go)
+
+`TraceQueryEnd` records DB query duration / errors through a `QueryRecorder`. The interface and
+its `QueryAttrs` value live in this package (the consumer) so the `metrics` package can implement
+it without an import cycle (`metrics` already imports `driver`).
+
+|Type / Function|Description|
+|---|---|
+|`QueryRecorder`|Interface called once per query end with the assembled `QueryAttrs`|
+|`QueryAttrs`|Low-cardinality observation attrs (query name / operation / status / error class / duration) — never SQL text, bind values, or PII|
+|`WithQueryName(ctx, name)`|Attach a stable `query_name` (e.g. `"user.find_by_id"`) for the metric label|
+
+How the attrs are derived:
+
+- `query_name`: from `WithQueryName`; unset / empty → `unknown`
+- `operation`: from the SQL leading token only → `select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other` (leading comments and `WITH` clauses fold to `select` / `other`)
+- `status`: `success` / `error`; `pgx.ErrNoRows` is treated as `success` and is not counted as an error
+- `error_class`: derived via `pgerror` → `constraint` / `timeout` / `retryable` / `connection` / `unknown` (`retryable` = `serialization_failure` (40001) / `deadlock_detected` (40P01), i.e. retryable transaction conflicts). `pgx.ErrNoRows` is `success`, so it never appears here.
+
+The Prometheus metric definitions (`rdb_query_duration_seconds`, `rdb_query_errors_total`) live in
+`internal/infrastructure/rdb/metrics`. Repository / QueryService set the query name with
+`driver.WithQueryName(ctx, "...")`; everything else is transparent.

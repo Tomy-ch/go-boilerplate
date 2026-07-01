@@ -4,10 +4,8 @@ English | [日本語](README.ja.md)
 
 Identifies operational/infrastructure endpoints.
 
-## Public API
+Used by the logging, OpenAPI-validation, and metrics middleware to skip ops endpoints.
 
-|Function|Description|
-|---|---|
-|`IsOpsPath(path)`|Return true if path is `/metrics`, `/health`, `/healthz`, `/ready`, or `/version`|
+## Role
 
-Used by logging middleware to skip ops endpoints.
+Several middlewares need to treat operational/infrastructure endpoints (health, metrics, etc.) differently from business endpoints — skipping logging, OpenAPI validation, and metrics collection for them. Centralizing the definition of "what counts as an ops endpoint" here gives every consumer one source of truth, so the classification cannot drift between the places that rely on it.

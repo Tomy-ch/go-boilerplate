@@ -17,6 +17,14 @@ var (
 		errInvalidConfig,
 		fmt.Sprintf("invalid app mode, must be one of %s or %s", DevelopmentMode, ProductionMode),
 	)
+	// ErrInvalidLogLevel は、無効なログレベルに関するエラーを表します。
+	ErrInvalidLogLevel = xerrors.Wrap(
+		errInvalidConfig,
+		fmt.Sprintf(
+			"invalid log level, must be one of %s, %s, %s or %s",
+			LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError,
+		),
+	)
 	// ErrInvalidPortRange は、無効なポート範囲に関するエラーを表します。
 	ErrInvalidPortRange = xerrors.Wrap(
 		errInvalidConfig,
@@ -29,22 +37,12 @@ var (
 		errInvalidConfig,
 		fmt.Sprintf("invalid bcrypt cost, must be between %d and %d", bcrypt.MinCost, bcrypt.MaxCost),
 	)
-	// ErrHTTPOnlyAllowedForLocalhost は、HTTPのみのローカルホストにアクセス可能にするためのエラーを表します。
+	// ErrHTTPOnlyAllowedForLocalhost は、HTTP スキームが localhost（127.0.0.1 含む）以外のオリジンに使用されたことを示す検証エラーです。
 	ErrHTTPOnlyAllowedForLocalhost = xerrors.Wrap(
 		errInvalidConfig,
 		"http only localhost is allowed",
 	)
-	// ErrEnvNotResolved は、env/.env 読み込み後も ENV が解決できなかったことを示すエラーです。
-	ErrEnvNotResolved = xerrors.Wrap(
-		errInvalidConfig,
-		"ENV is not set after loading env/.env",
-	)
-	// ErrFailedToLoadDefaultEnvFile は、デフォルトの env/.env 読み込みに失敗したことを示すエラーです。
-	ErrFailedToLoadDefaultEnvFile = xerrors.Wrap(
-		errInvalidConfig,
-		"failed to load default env file",
-	)
-	// ErrFailedToLoadEnvFile は、ENV に対応する env/.env.<env> 読み込みに失敗したことを示すエラーです。
+	// ErrFailedToLoadEnvFile は、埋め込み env ファイルの読み込みに失敗したことを示すエラーです。
 	ErrFailedToLoadEnvFile = xerrors.Wrap(
 		errInvalidConfig,
 		"failed to load env file",
@@ -79,6 +77,13 @@ var (
 		errInvalidConfig,
 		"read header timeout exceeds read timeout",
 	)
+	// ErrWriteTimeoutBelowRequestTimeout は、WriteTimeout が RequestTimeout（per-request deadline budget）未満であることを示すエラーです。
+	// net/http の WriteTimeout が RequestTimeout より短いと、deadline budget が発火する前に WriteTimeout が先に切断するため、
+	// budget による制御が実質無効化されます。WriteTimeout は必ず RequestTimeout を超える値を設定してください。
+	ErrWriteTimeoutBelowRequestTimeout = xerrors.Wrap(
+		errInvalidConfig,
+		"write timeout must be greater than or equal to request timeout",
+	)
 	// ErrInvalidDBPortRange は、データベースの無効なポート範囲に関するエラーを表します。
 	ErrInvalidDBPortRange = xerrors.Wrap(
 		errInvalidConfig,
@@ -94,7 +99,7 @@ var (
 		errInvalidConfig,
 		"invalid slow query warn threshold, must be greater than or equal to 0",
 	)
-	// ErrInvalidExceedMaxConns は、データベースの最大接続数が過剰であることに関するエラーを表します。
+	// ErrInvalidExceedMaxConns は、MinConns が MaxConns を超えていることを示すエラーです。コネクションプールの最小接続数は最大接続数以下でなければなりません。
 	ErrInvalidExceedMaxConns = xerrors.Wrap(
 		errInvalidConfig,
 		"invalid database max connections, min connections must be less than or equal to max connections",

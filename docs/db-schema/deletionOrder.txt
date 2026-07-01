@@ -1,4 +1,6 @@
 schema_migrations
+outbox
+idempotency_keys
 purchase_details
 purchases
 products

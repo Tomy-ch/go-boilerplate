@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_user_search_usecase.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package search は、ユーザー検索に関するユースケースを提供します。
 package search
@@ -32,14 +32,14 @@ type usecase struct {
 	userQS query.UserSearchQueryService
 }
 
-// Usecase は、ユーザーに関するユースケースを定義します。
+// Usecase は、キーワード検索によるユーザー検索ユースケースを定義します。
 type Usecase interface {
 	// ListUsersByKeyword は、キーワードに基づいてユーザー一覧を取得します。
-	ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error)
+	ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error)
 	// CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返します。
 	CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error)
 	// ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。
-	ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error)
+	ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Page) (*UserSearchListView, error)
 }
 
 // New は、ユーザーに関するユースケースを初期化します。
@@ -53,8 +53,8 @@ func New(
 	}
 }
 
-// ListUsersByKeyword は、ユーザー一覧を取得するユースケースです。
-func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error) {
+// ListUsersByKeyword は、キーワードに基づいてユーザー一覧を取得します。
+func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error) {
 	if filter == nil || page == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "filter and page must not be nil")
 	}
@@ -77,8 +77,8 @@ func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams)
 	return u.userQS.CountByFilter(ctx, u.toFilter(filter))
 }
 
-// ListUsersByKeywordWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
-func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error) {
+// ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。
+func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Page) (*UserSearchListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 

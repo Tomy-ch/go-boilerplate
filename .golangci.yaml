@@ -70,6 +70,7 @@ linters:
     # - mirror # 文字列とバイトスライスの変換を最適化するパターンを検出します
     - misspell # スペルミスを検出します
     # - mnd # マジックナンバーの使用を検出します
+    - modernize # モダンなGo言語・標準ライブラリ機能への簡素化を提案します
     # - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
     # - nakedret # 名前付き戻り値を持つ関数で、naked return文が使用されていないかを検出します
     # - nestif # ネストされたif文の深さを制限します
@@ -135,6 +136,9 @@ linters:
             - pkg: github.com/cockroachdb/errors
               desc: "スタックトレース用として導入したライブラリです。
                 代わりに pkg/xerrors を使用してください。"
+            - pkg: errors
+              desc: "標準の errors パッケージは直接使用しないでください。
+                pkg/xerrors の New / Wrap / Join / Is / As を使用してください。"
         only_the_original_uuid_is_permitted:
           files:
             - "**/*.go"
@@ -231,6 +235,9 @@ linters:
       require-specific: true
     revive:
       rules:
+        - name: exported # exported な宣言にはドキュメントコメントを必須とする
+          arguments:
+            - "disableStutteringCheck" # 命名の stutter 検査は行わない
         - name: var-naming
           arguments:
             - []
@@ -238,8 +245,6 @@ linters:
             - [{ skipPackageNameChecks: true }] # 変数名の命名規則をチェックしますが、パッケージ名のチェックはスキップします。これにより、パッケージ名が変数名と同じ場合でもエラーにならなくなります。
 
   exclusions:
-    presets:
-      - comments
     paths:
       - vendor
     rules:

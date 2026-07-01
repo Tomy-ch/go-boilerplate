@@ -6,13 +6,6 @@
 
 主に `internal/observability` の span 名生成で使用されます。
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`ExtractFunctionName(full)`|フル関数名からメソッド名を抽出|
-|`ExtractPackageName(full)`|フル関数名からパッケージ名を抽出|
-
 ## ラップ対象
 
-標準ライブラリ `runtime` パッケージ
+標準ライブラリ `strings` パッケージ。`runtime` が生成するフル関数名文字列（例: `runtime.FuncForPC(...).Name()`）を解析しますが、`runtime` 自体は import しません（フル関数名は呼び出し側が取得します）。

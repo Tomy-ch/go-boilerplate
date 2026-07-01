@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +32,7 @@ func TestResolveMetricsStop(t *testing.T) {
 			}
 
 			stop := ResolveMetricsStop(appCfg, newMetrics)
-			require.NotNil(t, stop, "非本番では停止関数が返ること")
+			assert.NotNil(t, stop, "非本番では停止関数が返ること")
 			assert.True(t, started, "メトリクスサーバーが起動されること")
 		})
 
@@ -84,6 +84,7 @@ func TestRunServer(t *testing.T) {
 			)
 			stopMetrics := func(c context.Context) {
 				stopMetricsCalled = true
+				//nolint:fatcontext // テストで渡されたcontextを捕捉して検証するため意図的
 				stopMetricsCtx = c
 			}
 
@@ -94,6 +95,7 @@ func TestRunServer(t *testing.T) {
 			)
 			//nolint:unparam // RunServer のシグネチャ func(context.Context) error に合わせる必要がある
 			stop := func(c context.Context) error {
+				//nolint:fatcontext // テストで渡されたcontextを捕捉して検証するため意図的
 				stopCtx = c
 				stopDeadline, stopHasDeadline = c.Deadline()
 				return nil
@@ -142,7 +144,7 @@ func TestRunServer(t *testing.T) {
 		t.Run("起動失敗時は停止処理を行わずエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			startErr := errors.New("start failed")
+			startErr := xerrors.New("start failed")
 			start := func(context.Context) error { return startErr }
 
 			var stopCalled bool
@@ -163,7 +165,7 @@ func TestRunServer(t *testing.T) {
 			cancel() // 即時にシグナル受信相当にする
 
 			start := func(context.Context) error { return nil }
-			stopErr := errors.New("stop failed")
+			stopErr := xerrors.New("stop failed")
 			stop := func(context.Context) error { return stopErr }
 
 			err := RunServer(ctx, shutdownTimeout, start, stop, nil)

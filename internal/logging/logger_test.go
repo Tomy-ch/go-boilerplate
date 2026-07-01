@@ -2,13 +2,129 @@ package logging
 
 import (
 	"bytes"
-	"errors"
+	"encoding/json"
 	"testing"
 
+	"go-boilerplate/pkg/xerrors"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+func TestWithCore(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("coreがnilなら元のLoggerをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			base := NewConsoleLogger(LevelDebug(), LevelError())
+			got := WithCore(base, nil)
+			assert.Same(t, base, got)
+		})
+
+		t.Run("coreを渡すと別のLoggerを返し追加coreへTeeされる", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+
+			base := NewConsoleLogger(LevelDebug(), LevelError())
+			got := WithCore(base, extra)
+
+			assert.NotSame(t, base, got)
+			got.Info("tee-test")
+			assert.Contains(t, buf.String(), "tee-test")
+		})
+
+		t.Run("追加coreは元Loggerの最小レベルでゲートされる", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			// 追加 core 自体は Debug まで通すが、元 Logger は Info のため Debug はゲートされる。
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+
+			base := NewConsoleLogger(LevelInfo(), LevelError())
+			got := WithCore(base, extra)
+
+			got.Debug("gated-out")
+			assert.NotContains(t, buf.String(), "gated-out")
+
+			got.Info("passed")
+			assert.Contains(t, buf.String(), "passed")
+		})
+
+		t.Run("追加core自身のレベル未満のログはゲートされ書き込まれない", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			// 元 Logger は Debug のため tee は Info でも呼ばれるが、追加 core は Error 以上のみ有効。
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.ErrorLevel)
+
+			base := NewConsoleLogger(LevelDebug(), LevelError())
+			got := WithCore(base, extra)
+
+			got.Info("gated-info")
+			assert.NotContains(t, buf.String(), "gated-info")
+
+			got.Error("passed-error")
+			assert.Contains(t, buf.String(), "passed-error")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("logger以外のLogger実装はゲートできず受け取った値をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			// *logger 以外（ここでは nil interface）は core を内包しないため、
+			// ゲートせず受け取った Logger をそのまま返す。
+			var other Logger
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&bytes.Buffer{}), zapcore.DebugLevel)
+
+			got := WithCore(other, extra)
+			assert.Nil(t, got)
+		})
+	})
+}
+
+func Test_levelGatedCore_With(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("minを保持しつつ内側coreへフィールドを伝播した新coreを返す", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			inner := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+			gated := levelGatedCore{Core: inner, min: zapcore.WarnLevel}
+
+			got := gated.With([]zapcore.Field{zap.String("svc", "demo")})
+
+			gc, ok := got.(levelGatedCore)
+			require.True(t, ok)
+			assert.Equal(t, zapcore.WarnLevel, gc.min)
+			assert.False(t, gc.Enabled(zapcore.InfoLevel))
+			assert.True(t, gc.Enabled(zapcore.WarnLevel))
+
+			require.NoError(t, gc.Write(zapcore.Entry{Level: zapcore.WarnLevel, Message: "hi"}, nil))
+			var m map[string]any
+			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), "\n"), &m))
+			assert.Equal(t, "demo", m["svc"])
+		})
+	})
+}
 
 func Test_logger_CallerSkip(t *testing.T) {
 	t.Parallel()
@@ -72,7 +188,7 @@ func Test_logger_convertFields(t *testing.T) {
 			expectedInt64 := int64(100)
 			expectedFloat64 := 3.14
 			expectedBool := true
-			expectedError := errors.New("boom")
+			expectedError := xerrors.New("boom")
 			expectedAny := "value7"
 
 			fields := []*Field{
@@ -95,6 +211,21 @@ func Test_logger_convertFields(t *testing.T) {
 				zap.Bool("key5", expectedBool),
 				zap.NamedError("key6", expectedError),
 				zap.Any("key7", expectedAny),
+			}
+			actual := l.convertFields(fields)
+			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("未知のkindはdefault分岐でzap.Anyへ変換される", func(t *testing.T) {
+			t.Parallel()
+
+			log := zap.NewNop()
+			l := &logger{log: log}
+
+			fields := []*Field{{key: "unknown", kind: fieldUnknown}}
+
+			expected := []zap.Field{
+				zap.Any("unknown", nil),
 			}
 			actual := l.convertFields(fields)
 			assert.Equal(t, expected, actual)

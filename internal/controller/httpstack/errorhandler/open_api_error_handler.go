@@ -1,10 +1,10 @@
 package errorhandler
 
 import (
-	"errors"
 	"net/http"
 
 	"go-boilerplate/internal/controller/error/response"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 )
@@ -20,11 +20,11 @@ func normalizeOpenAPIError(err error, details ...string) *response.HTTPErrorResp
 	)
 
 	switch {
-	case errors.As(err, &reqErr):
+	case xerrors.As(err, &reqErr):
 		resErr = response.NewHTTPErrorFromStatus(http.StatusBadRequest, err, details...)
-	case errors.As(err, &secErr):
+	case xerrors.As(err, &secErr):
 		resErr = response.NewHTTPErrorFromStatus(http.StatusUnauthorized, err, details...)
-	case errors.As(err, &respErr):
+	case xerrors.As(err, &respErr):
 		resErr = response.NewHTTPErrorFromStatus(http.StatusInternalServerError, err, details...)
 	default:
 		return nil

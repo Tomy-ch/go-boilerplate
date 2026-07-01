@@ -16,9 +16,9 @@ func TestNewBuildInfo(t *testing.T) {
 			t.Parallel()
 
 			expected := &buildInfo{
-				version:   "dev",
-				revision:  "none",
-				buildDate: "2024-12-31T21:00:00Z",
+				version:   Version,
+				revision:  Revision,
+				buildDate: BuildDate,
 			}
 
 			assert.Equal(t, expected, NewBuildInfo())

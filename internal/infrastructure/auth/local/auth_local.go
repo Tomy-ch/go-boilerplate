@@ -14,6 +14,7 @@ const (
 	localPrefix = "debug:"
 )
 
+// ErrLocalMockAuthenticatorInvalidToken は、ローカルモック認証でトークンが不正な場合のエラーです。
 var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, "local mock authenticator: invalid token")
 
 // authenticator は local 開発用の Authenticator です。
@@ -48,8 +49,8 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 
 // resolveSubject は token から localPrefix を除いた Subject を抽出します。
 func (a *authenticator) resolveSubject(token string) string {
-	if strings.HasPrefix(token, localPrefix) {
-		sub := strings.TrimSpace(strings.TrimPrefix(token, localPrefix))
+	if after, ok := strings.CutPrefix(token, localPrefix); ok {
+		sub := strings.TrimSpace(after)
 		if sub != "" {
 			return sub
 		}

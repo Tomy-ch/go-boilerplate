@@ -61,55 +61,68 @@
 <span id="L4" class="ln">     4  </span>import &#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L5" class="ln">     5  </span>
 <span id="L6" class="ln">     6  </span>var (
-<span id="L7" class="ln">     7  </span>	<span class="comment">// 引数が無効な場合に使用します。</span>
+<span id="L7" class="ln">     7  </span>	<span class="comment">// ErrInvalidArgument は引数が無効な場合に使用します。</span>
 <span id="L8" class="ln">     8  </span>	ErrInvalidArgument = xerrors.New(&#34;invalid argument&#34;)
-<span id="L9" class="ln">     9  </span>	<span class="comment">// 認証に失敗した場合に使用します。</span>
+<span id="L9" class="ln">     9  </span>	<span class="comment">// ErrUnauthenticated は認証に失敗した場合に使用します。</span>
 <span id="L10" class="ln">    10  </span>	ErrUnauthenticated = xerrors.New(&#34;unauthenticated&#34;)
-<span id="L11" class="ln">    11  </span>	<span class="comment">// 権限がない場合に使用します。</span>
+<span id="L11" class="ln">    11  </span>	<span class="comment">// ErrPermissionDenied は権限がない場合に使用します。</span>
 <span id="L12" class="ln">    12  </span>	ErrPermissionDenied = xerrors.New(&#34;permission denied&#34;)
-<span id="L13" class="ln">    13  </span>	<span class="comment">// 対象が見つからない場合に使用します。</span>
+<span id="L13" class="ln">    13  </span>	<span class="comment">// ErrNotFound は対象が見つからない場合に使用します。</span>
 <span id="L14" class="ln">    14  </span>	ErrNotFound = xerrors.New(&#34;not found&#34;)
-<span id="L15" class="ln">    15  </span>	<span class="comment">// 競合が発生した場合に使用します。</span>
+<span id="L15" class="ln">    15  </span>	<span class="comment">// ErrConflict は競合が発生した場合に使用します。</span>
 <span id="L16" class="ln">    16  </span>	ErrConflict = xerrors.New(&#34;conflict&#34;)
-<span id="L17" class="ln">    17  </span>	<span class="comment">// 検証が失敗した場合に使用します。</span>
+<span id="L17" class="ln">    17  </span>	<span class="comment">// ErrValidation は検証が失敗した場合に使用します。</span>
 <span id="L18" class="ln">    18  </span>	ErrValidation = xerrors.New(&#34;validation error&#34;)
-<span id="L19" class="ln">    19  </span>	<span class="comment">// リクエストが多すぎる場合に使用します。</span>
+<span id="L19" class="ln">    19  </span>	<span class="comment">// ErrTooManyRequests はリクエストが多すぎる場合に使用します。</span>
 <span id="L20" class="ln">    20  </span>	ErrTooManyRequests = xerrors.New(&#34;too many requests&#34;)
-<span id="L21" class="ln">    21  </span>	<span class="comment">// クライアントがリクエストをキャンセル/切断した場合に使用します。</span>
+<span id="L21" class="ln">    21  </span>	<span class="comment">// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。</span>
 <span id="L22" class="ln">    22  </span>	ErrCanceled = xerrors.New(&#34;request canceled&#34;)
-<span id="L23" class="ln">    23  </span>	<span class="comment">// サーバ内部で予期しないエラーが発生した場合に使用します。</span>
+<span id="L23" class="ln">    23  </span>	<span class="comment">// ErrInternal はサーバ内部で予期しないエラーが発生した場合に使用します。</span>
 <span id="L24" class="ln">    24  </span>	ErrInternal = xerrors.New(&#34;internal error&#34;)
-<span id="L25" class="ln">    25  </span>	<span class="comment">// 実装されていない操作が呼び出された場合に使用します。</span>
+<span id="L25" class="ln">    25  </span>	<span class="comment">// ErrUnimplemented は実装されていない操作が呼び出された場合に使用します。</span>
 <span id="L26" class="ln">    26  </span>	ErrUnimplemented = xerrors.New(&#34;unimplemented&#34;)
-<span id="L27" class="ln">    27  </span>	<span class="comment">// 一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。</span>
+<span id="L27" class="ln">    27  </span>	<span class="comment">// ErrUnavailable は一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。</span>
 <span id="L28" class="ln">    28  </span>	ErrUnavailable = xerrors.New(&#34;service unavailable&#34;)
 <span id="L29" class="ln">    29  </span>)
 <span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span><span class="comment">// appErrors は、定義済みの全 apperror センチネルです。</span>
-<span id="L32" class="ln">    32  </span>var appErrors = []error{
-<span id="L33" class="ln">    33  </span>	ErrInvalidArgument,
-<span id="L34" class="ln">    34  </span>	ErrUnauthenticated,
-<span id="L35" class="ln">    35  </span>	ErrPermissionDenied,
-<span id="L36" class="ln">    36  </span>	ErrNotFound,
-<span id="L37" class="ln">    37  </span>	ErrConflict,
-<span id="L38" class="ln">    38  </span>	ErrValidation,
-<span id="L39" class="ln">    39  </span>	ErrTooManyRequests,
-<span id="L40" class="ln">    40  </span>	ErrCanceled,
-<span id="L41" class="ln">    41  </span>	ErrInternal,
-<span id="L42" class="ln">    42  </span>	ErrUnimplemented,
-<span id="L43" class="ln">    43  </span>	ErrUnavailable,
-<span id="L44" class="ln">    44  </span>}
-<span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span><span class="comment">// IsAppError は、err がいずれかの apperror センチネルに該当するかを返します。</span>
-<span id="L47" class="ln">    47  </span>func IsAppError(err error) bool {
-<span id="L48" class="ln">    48  </span>	for _, sentinel := range appErrors {
-<span id="L49" class="ln">    49  </span>		if xerrors.Is(err, sentinel) {
-<span id="L50" class="ln">    50  </span>			return true
-<span id="L51" class="ln">    51  </span>		}
-<span id="L52" class="ln">    52  </span>	}
-<span id="L53" class="ln">    53  </span>	return false
-<span id="L54" class="ln">    54  </span>}
-<span id="L55" class="ln">    55  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// worker のメッセージ処理分類センチネル。</span>
+<span id="L32" class="ln">    32  </span><span class="comment">// engine が Handler の返すエラーを分類して挙動を変えるために使用します</span>
+<span id="L33" class="ln">    33  </span><span class="comment">// （Retryable=Nack で再配送 / Permanent=FailureHandler へ退避して Ack / Fatal=engine 停止）。</span>
+<span id="L34" class="ln">    34  </span><span class="comment">// これらは HTTP エラー taxonomy ではないため、appErrors（IsAppError 判定対象）には含めません。</span>
+<span id="L35" class="ln">    35  </span>var (
+<span id="L36" class="ln">    36  </span>	<span class="comment">// ErrRetryable は一時障害を示します。engine は Nack で再配送します。</span>
+<span id="L37" class="ln">    37  </span>	ErrRetryable = xerrors.New(&#34;retryable&#34;)
+<span id="L38" class="ln">    38  </span>	<span class="comment">// ErrPermanent は永久失敗を示します。engine は FailureHandler へ退避してから Ack します。</span>
+<span id="L39" class="ln">    39  </span>	ErrPermanent = xerrors.New(&#34;permanent&#34;)
+<span id="L40" class="ln">    40  </span>	<span class="comment">// ErrFatal はプロセス継続不能を示します。engine は drain して停止します。</span>
+<span id="L41" class="ln">    41  </span>	ErrFatal = xerrors.New(&#34;fatal&#34;)
+<span id="L42" class="ln">    42  </span>)
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span><span class="comment">// appErrors は、定義済みの全 apperror センチネルです。</span>
+<span id="L45" class="ln">    45  </span>var appErrors = []error{
+<span id="L46" class="ln">    46  </span>	ErrInvalidArgument,
+<span id="L47" class="ln">    47  </span>	ErrUnauthenticated,
+<span id="L48" class="ln">    48  </span>	ErrPermissionDenied,
+<span id="L49" class="ln">    49  </span>	ErrNotFound,
+<span id="L50" class="ln">    50  </span>	ErrConflict,
+<span id="L51" class="ln">    51  </span>	ErrValidation,
+<span id="L52" class="ln">    52  </span>	ErrTooManyRequests,
+<span id="L53" class="ln">    53  </span>	ErrCanceled,
+<span id="L54" class="ln">    54  </span>	ErrInternal,
+<span id="L55" class="ln">    55  </span>	ErrUnimplemented,
+<span id="L56" class="ln">    56  </span>	ErrUnavailable,
+<span id="L57" class="ln">    57  </span>}
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span><span class="comment">// IsAppError は、err がいずれかの apperror センチネルに該当するかを返します。</span>
+<span id="L60" class="ln">    60  </span>func IsAppError(err error) bool {
+<span id="L61" class="ln">    61  </span>	for _, sentinel := range appErrors {
+<span id="L62" class="ln">    62  </span>		if xerrors.Is(err, sentinel) {
+<span id="L63" class="ln">    63  </span>			return true
+<span id="L64" class="ln">    64  </span>		}
+<span id="L65" class="ln">    65  </span>	}
+<span id="L66" class="ln">    66  </span>	return false
+<span id="L67" class="ln">    67  </span>}
+<span id="L68" class="ln">    68  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/apperror/apperror.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

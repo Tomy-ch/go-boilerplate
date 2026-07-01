@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Config は、アプリケーション全体の設定をサブ設定ごとに束ねたルート設定です。
 type Config struct {
 	os            OperatingSystemConfig
 	app           ApplicationConfig
@@ -16,19 +17,25 @@ type Config struct {
 	security      SecurityConfig
 	secureCookie  SecureCookieConfig
 	auth          AuthConfig
+	worker        WorkerConfig
+	outbox        OutboxConfig
 }
 
+// OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
 type OperatingSystemConfig struct {
 	timezone string
 }
 
+// ApplicationConfig は、アプリの識別情報・動作モード・シャットダウン制御の設定を保持します。
 type ApplicationConfig struct {
 	env             string
 	name            string
 	mode            string
+	logLevel        string
 	shutdownTimeout time.Duration
 }
 
+// ServerConfig は、HTTP サーバーの待ち受けアドレスと各種タイムアウトを保持します。
 type ServerConfig struct {
 	host              string
 	port              int
@@ -36,8 +43,11 @@ type ServerConfig struct {
 	readTimeout       time.Duration
 	writeTimeout      time.Duration
 	idleTimeout       time.Duration
+	bodyLimitMB       int
+	requestTimeout    time.Duration
 }
 
+// MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。
 type MetricsConfig struct {
 	host     string
 	port     int
@@ -45,12 +55,19 @@ type MetricsConfig struct {
 	password string
 }
 
+// ObservabilityConfig は、OTLP exporter 設定（trace/metric/log の送出先種別・エンドポイント・プロトコル）と、
+// DB クエリ引数マスク・監視対象ステータスコードの設定を保持します。
 type ObservabilityConfig struct {
-	enabled             bool
+	tracesExporter      string
+	metricsExporter     string
+	logsExporter        string
+	otlpEndpoint        string
+	otlpProtocol        string
 	maskedDBQueryArgs   bool
 	targetStatusCodeSet map[int]bool
 }
 
+// DatabaseConfig は、データベースの接続情報とタイムアウト閾値を保持します。
 type DatabaseConfig struct {
 	driver                 string
 	host                   string
@@ -61,8 +78,14 @@ type DatabaseConfig struct {
 	sslMode                string
 	pingTimeout            time.Duration
 	slowQueryWarnThreshold time.Duration
+	statementTimeout       time.Duration
+	lockTimeout            time.Duration
+	txMaxRetries           int
+	txRetryBaseBackoff     time.Duration
+	txRetryMaxBackoff      time.Duration
 }
 
+// DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。
 type DBConnectionConfig struct {
 	maxConns    int32
 	minConns    int32
@@ -70,6 +93,7 @@ type DBConnectionConfig struct {
 	maxIdleTime time.Duration
 }
 
+// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー・bcrypt コスト等のセキュリティ設定を保持します。
 type SecurityConfig struct {
 	allowedOrigins        []string
 	cidr                  *net.IPNet
@@ -82,16 +106,44 @@ type SecurityConfig struct {
 	bcryptCost            int
 }
 
+// SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。
 type SecureCookieConfig struct {
 	secure   *bool
 	sameSite string
 	domain   string
 }
 
+// AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。
 type AuthConfig struct {
 	cookieName          string
 	headerName          string
 	allowedHeaderBearer bool
+}
+
+// WorkerConfig は、worker engine の engine-core 設定（broker 非依存）を保持します。
+type WorkerConfig struct {
+	concurrency               int
+	maxInFlight               int
+	batchSize                 int
+	extendInterval            time.Duration
+	drainTimeout              time.Duration
+	receiveCountWarnThreshold int
+	circuitFailureThreshold   int
+	circuitOpenBackoffInitial time.Duration
+	circuitOpenBackoffMax     time.Duration
+	circuitHalfOpenProbe      int
+	healthListenAddr          string
+	progressStaleAfter        time.Duration
+	nackBackoffInitial        time.Duration
+	nackBackoffMax            time.Duration
+}
+
+// OutboxConfig は、transactional outbox relay の設定を保持します。
+type OutboxConfig struct {
+	endpoint     string
+	pollInterval time.Duration
+	errorBackoff time.Duration
+	batchSize    int
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -108,6 +160,9 @@ func (a *ApplicationConfig) Env() string { return a.env }
 
 // Mode は、アプリの動作モードを返します（"development" / "production" のみ。挙動切替に使用。Env とは別軸）。
 func (a *ApplicationConfig) Mode() string { return a.mode }
+
+// LogLevel は、ログ出力レベル（"debug" / "info" / "warn" / "error"）を返します。
+func (a *ApplicationConfig) LogLevel() string { return a.logLevel }
 
 // Name は、アプリケーションの名前を返します。
 func (a *ApplicationConfig) Name() string { return a.name }
@@ -146,6 +201,12 @@ func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
 // IdleTimeout は、サーバーのアイドルタイムアウトを返します。
 func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
 
+// BodyLimitMB は、リクエストボディのサイズ上限を MB（10進, 1MB=1,000,000 byte）で返します。
+func (s *ServerConfig) BodyLimitMB() int { return s.bodyLimitMB }
+
+// RequestTimeout は、REST リクエスト全体の deadline budget を返します（入口で1点設定し ctx で全層伝播）。
+func (s *ServerConfig) RequestTimeout() time.Duration { return s.requestTimeout }
+
 // NewMetricsConfig は、メトリクスの設定を返します。
 func NewMetricsConfig(cfg *Config) *MetricsConfig { return &cfg.metrics }
 
@@ -164,8 +225,25 @@ func (m *MetricsConfig) Password() string { return m.password }
 // NewObservabilityConfig は、可観測の設定を返します。
 func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &cfg.observability }
 
-// Enabled は、可観測モードが有効かどうかを返します。
-func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
+// Enabled は、可観測が有効かどうかを返します。
+func (o *ObservabilityConfig) Enabled() bool {
+	return o.TracesEnabled() || o.MetricsEnabled() || o.LogsEnabled()
+}
+
+// TracesEnabled は、trace exporter が有効値かどうかを返します。
+func (o *ObservabilityConfig) TracesEnabled() bool { return isActiveExporter(o.tracesExporter) }
+
+// MetricsEnabled は、metric exporter が有効値かどうかを返します。
+func (o *ObservabilityConfig) MetricsEnabled() bool { return isActiveExporter(o.metricsExporter) }
+
+// LogsEnabled は、log exporter が有効値かどうかを返します。
+func (o *ObservabilityConfig) LogsEnabled() bool { return isActiveExporter(o.logsExporter) }
+
+// OTLPEndpoint は、OTLP exporter の送出先エンドポイントを返します。
+func (o *ObservabilityConfig) OTLPEndpoint() string { return o.otlpEndpoint }
+
+// OTLPProtocol は、OTLP exporter のプロトコル（"http/protobuf" / "grpc"）を返します。
+func (o *ObservabilityConfig) OTLPProtocol() string { return o.otlpProtocol }
 
 // MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
 func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }
@@ -206,6 +284,26 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // この値より長く実行されたクエリは警告レベルでログ出力されます。
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
+
+// StatementTimeout は、SQL 文の実行時間上限を返します（0 以下で無効）。ctx を無視する runaway query の backstop。
+func (d *DatabaseConfig) StatementTimeout() time.Duration { return d.statementTimeout }
+
+// LockTimeout は、ロック獲得待ちの上限を返します（0 以下で無効）。長時間ロック待ちの backstop。
+func (d *DatabaseConfig) LockTimeout() time.Duration { return d.lockTimeout }
+
+// TxMaxRetries は、トランザクションのリトライ最大試行回数を返します。
+//
+// serialization failure / deadlock 検出時の有限リトライ上限です。
+// 0 以下の場合は実装側の既定値（3回）にフォールバックします。
+func (d *DatabaseConfig) TxMaxRetries() int { return d.txMaxRetries }
+
+// TxRetryBaseBackoff は、トランザクションリトライ backoff の初期値（指数 backoff の基準値）を返します。
+// 0 以下の場合は実装側の既定値にフォールバックします。
+func (d *DatabaseConfig) TxRetryBaseBackoff() time.Duration { return d.txRetryBaseBackoff }
+
+// TxRetryMaxBackoff は、トランザクションリトライ backoff の上限値（1試行あたりの最大待機時間）を返します。
+// 0 以下の場合は実装側の既定値にフォールバックします。
+func (d *DatabaseConfig) TxRetryMaxBackoff() time.Duration { return d.txRetryMaxBackoff }
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
@@ -291,3 +389,63 @@ func (a *AuthConfig) HeaderName() string { return a.headerName }
 
 // AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
 func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
+
+// NewWorkerConfig は、worker engine の設定を返します。
+func NewWorkerConfig(cfg *Config) *WorkerConfig { return &cfg.worker }
+
+// Concurrency は、同時に Handle を実行する最大数を返します。
+func (w *WorkerConfig) Concurrency() int { return w.concurrency }
+
+// MaxInFlight は、受信済み・未確定の最大メッセージ数を返します。
+func (w *WorkerConfig) MaxInFlight() int { return w.maxInFlight }
+
+// BatchSize は、1 回の Receive で取得する最大件数を返します。
+func (w *WorkerConfig) BatchSize() int { return w.batchSize }
+
+// ExtendInterval は、Extend を呼ぶ周期を返します（0 以下で無効）。
+func (w *WorkerConfig) ExtendInterval() time.Duration { return w.extendInterval }
+
+// DrainTimeout は、停止時に in-flight の完了を待つ上限を返します。
+func (w *WorkerConfig) DrainTimeout() time.Duration { return w.drainTimeout }
+
+// ReceiveCountWarnThreshold は、再配送回数の警告閾値を返します（0 以下で無効）。
+func (w *WorkerConfig) ReceiveCountWarnThreshold() int { return w.receiveCountWarnThreshold }
+
+// CircuitFailureThreshold は、サーキットを Open にする連続失敗数を返します（0 以下で無効）。
+func (w *WorkerConfig) CircuitFailureThreshold() int { return w.circuitFailureThreshold }
+
+// CircuitOpenBackoffInitial は、Open の初回 cooldown を返します。
+func (w *WorkerConfig) CircuitOpenBackoffInitial() time.Duration { return w.circuitOpenBackoffInitial }
+
+// CircuitOpenBackoffMax は、Open の cooldown 上限を返します。
+func (w *WorkerConfig) CircuitOpenBackoffMax() time.Duration { return w.circuitOpenBackoffMax }
+
+// CircuitHalfOpenProbe は、Half-open 時に試行する最大件数を返します。
+func (w *WorkerConfig) CircuitHalfOpenProbe() int { return w.circuitHalfOpenProbe }
+
+// HealthListenAddr は、liveness/readiness を公開する health listener の待ち受けアドレスを返します。
+func (w *WorkerConfig) HealthListenAddr() string { return w.healthListenAddr }
+
+// ProgressStaleAfter は、readiness 判定で「進捗なし」とみなすまでの時間を返します。
+func (w *WorkerConfig) ProgressStaleAfter() time.Duration { return w.progressStaleAfter }
+
+// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機を返します。
+func (w *WorkerConfig) NackBackoffInitial() time.Duration { return w.nackBackoffInitial }
+
+// NackBackoffMax は、per-message 再配送 backoff の上限を返します。
+func (w *WorkerConfig) NackBackoffMax() time.Duration { return w.nackBackoffMax }
+
+// NewOutboxConfig は、outbox relay の設定を返します。
+func NewOutboxConfig(cfg *Config) *OutboxConfig { return &cfg.outbox }
+
+// Endpoint は、メッセージの送信先エンドポイント URL を返します。
+func (o *OutboxConfig) Endpoint() string { return o.endpoint }
+
+// PollInterval は、pending を捌き切った後に次 poll まで待機する時間を返します。
+func (o *OutboxConfig) PollInterval() time.Duration { return o.pollInterval }
+
+// ErrorBackoff は、relay バッチがエラーを返した後に待機する時間を返します。
+func (o *OutboxConfig) ErrorBackoff() time.Duration { return o.errorBackoff }
+
+// BatchSize は、1 回の poll で claim する pending 行数を返します。
+func (o *OutboxConfig) BatchSize() int { return o.batchSize }

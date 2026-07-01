@@ -7,7 +7,6 @@
 主に次の用途で利用します。
 
 - テスト用の `DatabaseDriver` を簡単に生成する
-- LoggingDBProvider を含めた Infrastructure 初期化を行う
 - トランザクション内でテストを実行し、必ずロールバックする
 
 このパッケージは **Repository や Infrastructure のテストを簡単に書くための補助ツール**です。
@@ -23,7 +22,6 @@ RDB を利用するテストでは次の問題が発生します。
 `testkit` はこれらを解決するために次の機能を提供します。
 
 - テスト用 DB 初期化
-- LoggingDBProvider の生成
 - 自動ロールバックトランザクション
 
 ## アーキテクチャ上の位置
@@ -32,7 +30,7 @@ RDB を利用するテストでは次の問題が発生します。
 flowchart TD
     A[Repository Test]
     B[testkit]
-    C[driver / loggingdb]
+    C[driver]
     D[(PostgreSQL)]
 
     A --> B --> C --> D
@@ -48,32 +46,8 @@ flowchart TD
 func NewTestDB(t *testing.T) driver.DatabaseDriver
 ```
 
-テスト用の `DatabaseDriver` を生成します。
-
-### NewTestLoggingProvider
-
-```go
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider
-```
-
-LoggingDBProvider を生成します。
-
-主な用途:
-
-- Repository テスト
-- QueryService テスト
-
-内部では次の処理を行います。
-
-```mermaid
-flowchart TD
-    A[MockConfigForTest]
-    B[DatabaseConfig]
-    C[Logging / Tracer 初期化]
-    D[loggingdb.NewLoggingDBProvider]
-
-    A --> B --> C --> D
-```
+テスト用の `DatabaseDriver`（共有シングルトン）を生成します。Repository / QueryService の
+コンストラクタへ直接渡してください。SQL のログ / トレースは driver の接続層で付与されます。
 
 ### NewTestTransactionRunner
 
@@ -108,7 +82,7 @@ type TransactionRunner interface {
 ### WithinTx
 
 ```go
-func (t *testTxManager) WithinTx(fn func(ctx context.Context))
+func (t *testTxRunner) WithinTx(fn func(ctx context.Context))
 ```
 
 指定された関数を **トランザクション内で実行**します。
@@ -118,8 +92,8 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context))
 ```mermaid
 flowchart TD
     A[Transaction Begin]
-    B[fn(ctx) 実行]
-    C[rollbackForTestError を返す]
+    B["fn(ctx) 実行"]
+    C[errRollbackForTest を返す]
     D[Rollback]
 
     A --> B --> C --> D
@@ -129,7 +103,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Do(fn)]
+    A["Do(fn)"]
     B[error を返すことで rollback]
 
     A --> B
@@ -142,7 +116,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[fn 実行]
-    B[rollbackForTestError を返す]
+    B[errRollbackForTest を返す]
     C[tx.Manager が rollback]
 
     A --> B --> C
@@ -151,7 +125,7 @@ flowchart TD
 この特殊エラーは
 
 ```go
-var rollbackForTestError = xerrors.New("rollback for test")
+var errRollbackForTest = xerrors.New("rollback for test")
 ```
 
 として定義されています。
@@ -221,9 +195,9 @@ txm.WithinTx(func(ctx context.Context) {
 ### Repository テスト
 
 ```go
-provider := testkit.NewTestLoggingProvider(t)
+db := testkit.NewTestDB(t)
 
-repo := repository.NewRepository(provider)
+repo := repository.NewRepository(db)
 ```
 
 ## テスト設計ポリシー
@@ -270,7 +244,7 @@ flowchart TD
 
 ```go
 fn(ctx)
-return rollbackForTestError
+return errRollbackForTest
 ```
 
 そのためテスト内の検証は

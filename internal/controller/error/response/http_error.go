@@ -134,6 +134,7 @@ func lookupErrorMetaByHTTPStatus(status int) httpErrorMeta {
 }
 
 // lookupErrorMetaByAppError は、アプリケーションエラーに対応するエラーメタデータを取得します。
+// 既知のエラー型に一致しない場合は 500 Internal Server Error のメタを返します。
 func lookupErrorMetaByAppError(err error) httpErrorMeta {
 	switch {
 	case xerrors.Is(err, apperror.ErrInvalidArgument): // 400

@@ -71,50 +71,51 @@
 <span id="L14" class="ln">    14  </span>	localPrefix = &#34;debug:&#34;
 <span id="L15" class="ln">    15  </span>)
 <span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, &#34;local mock authenticator: invalid token&#34;)
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span><span class="comment">// authenticator は local 開発用の Authenticator です。</span>
-<span id="L20" class="ln">    20  </span><span class="comment">// - verify はしません（ローカル専用）。</span>
-<span id="L21" class="ln">    21  </span><span class="comment">// - token の文字列から Subject を決め、Authn を返します。</span>
-<span id="L22" class="ln">    22  </span>type authenticator struct{}
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span><span class="comment">// New は local 用 Authenticator のコンストラクタです。</span>
-<span id="L25" class="ln">    25  </span>func New() authbd.Authenticator {
-<span id="L26" class="ln">    26  </span>	return &amp;authenticator{}
-<span id="L27" class="ln">    27  </span>}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span><span class="comment">// Authenticate は与えられた認証情報を基に認証を行い、認証結果を返します。</span>
-<span id="L30" class="ln">    30  </span><span class="comment">// cred が nil の場合は無効トークンとして扱います。</span>
-<span id="L31" class="ln">    31  </span>func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential) (*authbd.Authn, error) {
-<span id="L32" class="ln">    32  </span>	if cred == nil {
-<span id="L33" class="ln">    33  </span>		return nil, ErrLocalMockAuthenticatorInvalidToken
-<span id="L34" class="ln">    34  </span>	}
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>	sub := a.resolveSubject(cred.AccessToken())
-<span id="L37" class="ln">    37  </span>	if sub == &#34;&#34; {
-<span id="L38" class="ln">    38  </span>		return nil, ErrLocalMockAuthenticatorInvalidToken
-<span id="L39" class="ln">    39  </span>	}
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	return authbd.New(
-<span id="L42" class="ln">    42  </span>		sub,
-<span id="L43" class="ln">    43  </span>		authbd.ProviderMock,
-<span id="L44" class="ln">    44  </span>		nil,
+<span id="L17" class="ln">    17  </span><span class="comment">// ErrLocalMockAuthenticatorInvalidToken は、ローカルモック認証でトークンが不正な場合のエラーです。</span>
+<span id="L18" class="ln">    18  </span>var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, &#34;local mock authenticator: invalid token&#34;)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// authenticator は local 開発用の Authenticator です。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">// - verify はしません（ローカル専用）。</span>
+<span id="L22" class="ln">    22  </span><span class="comment">// - token の文字列から Subject を決め、Authn を返します。</span>
+<span id="L23" class="ln">    23  </span>type authenticator struct{}
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// New は local 用 Authenticator のコンストラクタです。</span>
+<span id="L26" class="ln">    26  </span>func New() authbd.Authenticator {
+<span id="L27" class="ln">    27  </span>	return &amp;authenticator{}
+<span id="L28" class="ln">    28  </span>}
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// Authenticate は与えられた認証情報を基に認証を行い、認証結果を返します。</span>
+<span id="L31" class="ln">    31  </span><span class="comment">// cred が nil の場合は無効トークンとして扱います。</span>
+<span id="L32" class="ln">    32  </span>func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential) (*authbd.Authn, error) {
+<span id="L33" class="ln">    33  </span>	if cred == nil {
+<span id="L34" class="ln">    34  </span>		return nil, ErrLocalMockAuthenticatorInvalidToken
+<span id="L35" class="ln">    35  </span>	}
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>	sub := a.resolveSubject(cred.AccessToken())
+<span id="L38" class="ln">    38  </span>	if sub == &#34;&#34; {
+<span id="L39" class="ln">    39  </span>		return nil, ErrLocalMockAuthenticatorInvalidToken
+<span id="L40" class="ln">    40  </span>	}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>	return authbd.New(
+<span id="L43" class="ln">    43  </span>		sub,
+<span id="L44" class="ln">    44  </span>		authbd.ProviderMock,
 <span id="L45" class="ln">    45  </span>		nil,
-<span id="L46" class="ln">    46  </span>	)
-<span id="L47" class="ln">    47  </span>}
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span><span class="comment">// resolveSubject は token から localPrefix を除いた Subject を抽出します。</span>
-<span id="L50" class="ln">    50  </span>func (a *authenticator) resolveSubject(token string) string {
-<span id="L51" class="ln">    51  </span>	if strings.HasPrefix(token, localPrefix) {
-<span id="L52" class="ln">    52  </span>		sub := strings.TrimSpace(strings.TrimPrefix(token, localPrefix))
-<span id="L53" class="ln">    53  </span>		if sub != &#34;&#34; {
-<span id="L54" class="ln">    54  </span>			return sub
-<span id="L55" class="ln">    55  </span>		}
-<span id="L56" class="ln">    56  </span>	}
-<span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>	return &#34;&#34;
-<span id="L59" class="ln">    59  </span>}
-<span id="L60" class="ln">    60  </span>
+<span id="L46" class="ln">    46  </span>		nil,
+<span id="L47" class="ln">    47  </span>	)
+<span id="L48" class="ln">    48  </span>}
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span><span class="comment">// resolveSubject は token から localPrefix を除いた Subject を抽出します。</span>
+<span id="L51" class="ln">    51  </span>func (a *authenticator) resolveSubject(token string) string {
+<span id="L52" class="ln">    52  </span>	if after, ok := strings.CutPrefix(token, localPrefix); ok {
+<span id="L53" class="ln">    53  </span>		sub := strings.TrimSpace(after)
+<span id="L54" class="ln">    54  </span>		if sub != &#34;&#34; {
+<span id="L55" class="ln">    55  </span>			return sub
+<span id="L56" class="ln">    56  </span>		}
+<span id="L57" class="ln">    57  </span>	}
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>	return &#34;&#34;
+<span id="L60" class="ln">    60  </span>}
+<span id="L61" class="ln">    61  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/auth/local/auth_local.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

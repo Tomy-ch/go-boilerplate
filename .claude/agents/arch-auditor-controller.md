@@ -30,12 +30,14 @@ You are **read-only**. Never edit, write, or mutate anything. You do **not** ins
 
 ## Lean A Conventions (enforce)
 
+Agent 固有の heuristic（README には無い）:
+
 | Convention | Severity basis |
 | --- | --- |
 | handler method 名 = OpenAPI operationId (camelCase 一致) | mismatch → `violation` |
-| handler body = pure template (Bind → usecase 呼び出し → response 変換) | ambiguous → `suggestion` |
 | 関数長 ~30 行以内（heuristic） | over → `suggestion` |
-| Repository / infra package import 禁止 | → `violation` |
+
+加えて `handler/README.md` の "Handler Design / Thin Controller Principle" と "Dependency Policy" を毎回読み、その逸脱を判定する（README が canonical。handler body = pure template の曖昧さ → `suggestion`、Repository / infra package import → `violation`）。
 
 Apply the pure-template heuristic uniformly; introduce **no** arch-specific annotations into code. Ambiguous bodies stay `suggestion`, leaving the human to judge.
 

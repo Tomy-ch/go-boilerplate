@@ -1,10 +1,8 @@
-> このファイルは `README.md` の日本語訳です。直接編集せず、`README.md` 側を編集してから同期してください。
-
-# `testauth` パッケージ
+# testauth
 
 [English](README.md) | 日本語
 
-`testauth` パッケージは、通常 MW で設定される認証情報をテストコード内で簡単に設定するためのユーティリティを提供します。
+通常 MW で設定される認証情報を、テストコード内で設定するためのユーティリティを提供します。
 
 ## 使い方
 
@@ -12,8 +10,8 @@
 
 ```go
   ctx := context.Background()
-  ctx = testauth.MakeAvailableAuthn(t, ctx, userID.String()) // ここで認証情報を設定
+  ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String()) // ここで認証情報を設定
   ctrl := gomock.NewController(t)
 ```
 
-この関数は、指定されたユーザーIDを持つ認証情報をコンテキストに追加し、コントローラーで認証情報を利用できるようにします。
+この関数は、指定されたユーザーIDを持つ認証情報をコンテキストに追加し、テスト対象のコントローラーで利用できるようにします。

@@ -74,100 +74,105 @@
 <span id="L17" class="ln">    17  </span>		errInvalidConfig,
 <span id="L18" class="ln">    18  </span>		fmt.Sprintf(&#34;invalid app mode, must be one of %s or %s&#34;, DevelopmentMode, ProductionMode),
 <span id="L19" class="ln">    19  </span>	)
-<span id="L20" class="ln">    20  </span>	<span class="comment">// ErrInvalidPortRange は、無効なポート範囲に関するエラーを表します。</span>
-<span id="L21" class="ln">    21  </span>	ErrInvalidPortRange = xerrors.Wrap(
+<span id="L20" class="ln">    20  </span>	<span class="comment">// ErrInvalidLogLevel は、無効なログレベルに関するエラーを表します。</span>
+<span id="L21" class="ln">    21  </span>	ErrInvalidLogLevel = xerrors.Wrap(
 <span id="L22" class="ln">    22  </span>		errInvalidConfig,
-<span id="L23" class="ln">    23  </span>		fmt.Sprintf(&#34;invalid port range, must be between %d and %d&#34;, MinPort, MaxPort),
-<span id="L24" class="ln">    24  </span>	)
-<span id="L25" class="ln">    25  </span>	<span class="comment">// ErrEmptyAllowedOrigins は、許可されたオリジンが空であってはならないことを示すエラーです。</span>
-<span id="L26" class="ln">    26  </span>	ErrEmptyAllowedOrigins = xerrors.Wrap(errInvalidConfig, &#34;allowed origins must not be empty&#34;)
-<span id="L27" class="ln">    27  </span>	<span class="comment">// ErrInvalidBcryptCost は、無効な bcrypt コストに関するエラーを表します。</span>
-<span id="L28" class="ln">    28  </span>	ErrInvalidBcryptCost = xerrors.Wrap(
-<span id="L29" class="ln">    29  </span>		errInvalidConfig,
-<span id="L30" class="ln">    30  </span>		fmt.Sprintf(&#34;invalid bcrypt cost, must be between %d and %d&#34;, bcrypt.MinCost, bcrypt.MaxCost),
-<span id="L31" class="ln">    31  </span>	)
-<span id="L32" class="ln">    32  </span>	<span class="comment">// ErrHTTPOnlyAllowedForLocalhost は、HTTPのみのローカルホストにアクセス可能にするためのエラーを表します。</span>
-<span id="L33" class="ln">    33  </span>	ErrHTTPOnlyAllowedForLocalhost = xerrors.Wrap(
-<span id="L34" class="ln">    34  </span>		errInvalidConfig,
-<span id="L35" class="ln">    35  </span>		&#34;http only localhost is allowed&#34;,
-<span id="L36" class="ln">    36  </span>	)
-<span id="L37" class="ln">    37  </span>	<span class="comment">// ErrEnvNotResolved は、env/.env 読み込み後も ENV が解決できなかったことを示すエラーです。</span>
-<span id="L38" class="ln">    38  </span>	ErrEnvNotResolved = xerrors.Wrap(
-<span id="L39" class="ln">    39  </span>		errInvalidConfig,
-<span id="L40" class="ln">    40  </span>		&#34;ENV is not set after loading env/.env&#34;,
-<span id="L41" class="ln">    41  </span>	)
-<span id="L42" class="ln">    42  </span>	<span class="comment">// ErrFailedToLoadDefaultEnvFile は、デフォルトの env/.env 読み込みに失敗したことを示すエラーです。</span>
-<span id="L43" class="ln">    43  </span>	ErrFailedToLoadDefaultEnvFile = xerrors.Wrap(
-<span id="L44" class="ln">    44  </span>		errInvalidConfig,
-<span id="L45" class="ln">    45  </span>		&#34;failed to load default env file&#34;,
-<span id="L46" class="ln">    46  </span>	)
-<span id="L47" class="ln">    47  </span>	<span class="comment">// ErrFailedToLoadEnvFile は、ENV に対応する env/.env.&lt;env&gt; 読み込みに失敗したことを示すエラーです。</span>
-<span id="L48" class="ln">    48  </span>	ErrFailedToLoadEnvFile = xerrors.Wrap(
-<span id="L49" class="ln">    49  </span>		errInvalidConfig,
-<span id="L50" class="ln">    50  </span>		&#34;failed to load env file&#34;,
-<span id="L51" class="ln">    51  </span>	)
-<span id="L52" class="ln">    52  </span>	<span class="comment">// ErrFailedToParseConfig は、環境変数のパースに失敗したことを示すエラーです。</span>
-<span id="L53" class="ln">    53  </span>	ErrFailedToParseConfig = xerrors.Wrap(
-<span id="L54" class="ln">    54  </span>		errInvalidConfig,
-<span id="L55" class="ln">    55  </span>		&#34;failed to parse environment variables&#34;,
-<span id="L56" class="ln">    56  </span>	)
-<span id="L57" class="ln">    57  </span>	<span class="comment">// ErrInvalidReadHeaderTimeout は、ReadHeaderTimeoutが0以下であることを示すエラーです。</span>
-<span id="L58" class="ln">    58  </span>	ErrInvalidReadHeaderTimeout = xerrors.Wrap(
-<span id="L59" class="ln">    59  </span>		errInvalidConfig,
-<span id="L60" class="ln">    60  </span>		&#34;invalid read header timeout, must be greater than 0&#34;,
-<span id="L61" class="ln">    61  </span>	)
-<span id="L62" class="ln">    62  </span>	<span class="comment">// ErrInvalidReadTimeout は、ReadTimeoutが0以下であることを示すエラーです。</span>
-<span id="L63" class="ln">    63  </span>	ErrInvalidReadTimeout = xerrors.Wrap(
-<span id="L64" class="ln">    64  </span>		errInvalidConfig,
-<span id="L65" class="ln">    65  </span>		&#34;invalid read timeout, must be greater than 0&#34;,
-<span id="L66" class="ln">    66  </span>	)
-<span id="L67" class="ln">    67  </span>	<span class="comment">// ErrInvalidWriteTimeout は、WriteTimeoutが0以下であることを示すエラーです。</span>
-<span id="L68" class="ln">    68  </span>	ErrInvalidWriteTimeout = xerrors.Wrap(
-<span id="L69" class="ln">    69  </span>		errInvalidConfig,
-<span id="L70" class="ln">    70  </span>		&#34;invalid write timeout, must be greater than 0&#34;,
-<span id="L71" class="ln">    71  </span>	)
-<span id="L72" class="ln">    72  </span>	<span class="comment">// ErrInvalidIdleTimeout は、IdleTimeoutが0以下であることを示すエラーです。</span>
-<span id="L73" class="ln">    73  </span>	ErrInvalidIdleTimeout = xerrors.Wrap(
-<span id="L74" class="ln">    74  </span>		errInvalidConfig,
-<span id="L75" class="ln">    75  </span>		&#34;invalid idle timeout, must be greater than 0&#34;,
-<span id="L76" class="ln">    76  </span>	)
-<span id="L77" class="ln">    77  </span>	<span class="comment">// ErrReadHeaderTimeoutExceedsReadTimeout は、ReadHeaderTimeoutがReadTimeoutを超えていることを示すエラーです。</span>
-<span id="L78" class="ln">    78  </span>	ErrReadHeaderTimeoutExceedsReadTimeout = xerrors.Wrap(
-<span id="L79" class="ln">    79  </span>		errInvalidConfig,
-<span id="L80" class="ln">    80  </span>		&#34;read header timeout exceeds read timeout&#34;,
-<span id="L81" class="ln">    81  </span>	)
-<span id="L82" class="ln">    82  </span>	<span class="comment">// ErrInvalidDBPortRange は、データベースの無効なポート範囲に関するエラーを表します。</span>
-<span id="L83" class="ln">    83  </span>	ErrInvalidDBPortRange = xerrors.Wrap(
+<span id="L23" class="ln">    23  </span>		fmt.Sprintf(
+<span id="L24" class="ln">    24  </span>			&#34;invalid log level, must be one of %s, %s, %s or %s&#34;,
+<span id="L25" class="ln">    25  </span>			LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError,
+<span id="L26" class="ln">    26  </span>		),
+<span id="L27" class="ln">    27  </span>	)
+<span id="L28" class="ln">    28  </span>	<span class="comment">// ErrInvalidPortRange は、無効なポート範囲に関するエラーを表します。</span>
+<span id="L29" class="ln">    29  </span>	ErrInvalidPortRange = xerrors.Wrap(
+<span id="L30" class="ln">    30  </span>		errInvalidConfig,
+<span id="L31" class="ln">    31  </span>		fmt.Sprintf(&#34;invalid port range, must be between %d and %d&#34;, MinPort, MaxPort),
+<span id="L32" class="ln">    32  </span>	)
+<span id="L33" class="ln">    33  </span>	<span class="comment">// ErrEmptyAllowedOrigins は、許可されたオリジンが空であってはならないことを示すエラーです。</span>
+<span id="L34" class="ln">    34  </span>	ErrEmptyAllowedOrigins = xerrors.Wrap(errInvalidConfig, &#34;allowed origins must not be empty&#34;)
+<span id="L35" class="ln">    35  </span>	<span class="comment">// ErrInvalidBcryptCost は、無効な bcrypt コストに関するエラーを表します。</span>
+<span id="L36" class="ln">    36  </span>	ErrInvalidBcryptCost = xerrors.Wrap(
+<span id="L37" class="ln">    37  </span>		errInvalidConfig,
+<span id="L38" class="ln">    38  </span>		fmt.Sprintf(&#34;invalid bcrypt cost, must be between %d and %d&#34;, bcrypt.MinCost, bcrypt.MaxCost),
+<span id="L39" class="ln">    39  </span>	)
+<span id="L40" class="ln">    40  </span>	<span class="comment">// ErrHTTPOnlyAllowedForLocalhost は、HTTP スキームが localhost（127.0.0.1 含む）以外のオリジンに使用されたことを示す検証エラーです。</span>
+<span id="L41" class="ln">    41  </span>	ErrHTTPOnlyAllowedForLocalhost = xerrors.Wrap(
+<span id="L42" class="ln">    42  </span>		errInvalidConfig,
+<span id="L43" class="ln">    43  </span>		&#34;http only localhost is allowed&#34;,
+<span id="L44" class="ln">    44  </span>	)
+<span id="L45" class="ln">    45  </span>	<span class="comment">// ErrFailedToLoadEnvFile は、埋め込み env ファイルの読み込みに失敗したことを示すエラーです。</span>
+<span id="L46" class="ln">    46  </span>	ErrFailedToLoadEnvFile = xerrors.Wrap(
+<span id="L47" class="ln">    47  </span>		errInvalidConfig,
+<span id="L48" class="ln">    48  </span>		&#34;failed to load env file&#34;,
+<span id="L49" class="ln">    49  </span>	)
+<span id="L50" class="ln">    50  </span>	<span class="comment">// ErrFailedToParseConfig は、環境変数のパースに失敗したことを示すエラーです。</span>
+<span id="L51" class="ln">    51  </span>	ErrFailedToParseConfig = xerrors.Wrap(
+<span id="L52" class="ln">    52  </span>		errInvalidConfig,
+<span id="L53" class="ln">    53  </span>		&#34;failed to parse environment variables&#34;,
+<span id="L54" class="ln">    54  </span>	)
+<span id="L55" class="ln">    55  </span>	<span class="comment">// ErrInvalidReadHeaderTimeout は、ReadHeaderTimeoutが0以下であることを示すエラーです。</span>
+<span id="L56" class="ln">    56  </span>	ErrInvalidReadHeaderTimeout = xerrors.Wrap(
+<span id="L57" class="ln">    57  </span>		errInvalidConfig,
+<span id="L58" class="ln">    58  </span>		&#34;invalid read header timeout, must be greater than 0&#34;,
+<span id="L59" class="ln">    59  </span>	)
+<span id="L60" class="ln">    60  </span>	<span class="comment">// ErrInvalidReadTimeout は、ReadTimeoutが0以下であることを示すエラーです。</span>
+<span id="L61" class="ln">    61  </span>	ErrInvalidReadTimeout = xerrors.Wrap(
+<span id="L62" class="ln">    62  </span>		errInvalidConfig,
+<span id="L63" class="ln">    63  </span>		&#34;invalid read timeout, must be greater than 0&#34;,
+<span id="L64" class="ln">    64  </span>	)
+<span id="L65" class="ln">    65  </span>	<span class="comment">// ErrInvalidWriteTimeout は、WriteTimeoutが0以下であることを示すエラーです。</span>
+<span id="L66" class="ln">    66  </span>	ErrInvalidWriteTimeout = xerrors.Wrap(
+<span id="L67" class="ln">    67  </span>		errInvalidConfig,
+<span id="L68" class="ln">    68  </span>		&#34;invalid write timeout, must be greater than 0&#34;,
+<span id="L69" class="ln">    69  </span>	)
+<span id="L70" class="ln">    70  </span>	<span class="comment">// ErrInvalidIdleTimeout は、IdleTimeoutが0以下であることを示すエラーです。</span>
+<span id="L71" class="ln">    71  </span>	ErrInvalidIdleTimeout = xerrors.Wrap(
+<span id="L72" class="ln">    72  </span>		errInvalidConfig,
+<span id="L73" class="ln">    73  </span>		&#34;invalid idle timeout, must be greater than 0&#34;,
+<span id="L74" class="ln">    74  </span>	)
+<span id="L75" class="ln">    75  </span>	<span class="comment">// ErrReadHeaderTimeoutExceedsReadTimeout は、ReadHeaderTimeoutがReadTimeoutを超えていることを示すエラーです。</span>
+<span id="L76" class="ln">    76  </span>	ErrReadHeaderTimeoutExceedsReadTimeout = xerrors.Wrap(
+<span id="L77" class="ln">    77  </span>		errInvalidConfig,
+<span id="L78" class="ln">    78  </span>		&#34;read header timeout exceeds read timeout&#34;,
+<span id="L79" class="ln">    79  </span>	)
+<span id="L80" class="ln">    80  </span>	<span class="comment">// ErrWriteTimeoutBelowRequestTimeout は、WriteTimeout が RequestTimeout（per-request deadline budget）未満であることを示すエラーです。</span>
+<span id="L81" class="ln">    81  </span>	<span class="comment">// net/http の WriteTimeout が RequestTimeout より短いと、deadline budget が発火する前に WriteTimeout が先に切断するため、</span>
+<span id="L82" class="ln">    82  </span>	<span class="comment">// budget による制御が実質無効化されます。WriteTimeout は必ず RequestTimeout を超える値を設定してください。</span>
+<span id="L83" class="ln">    83  </span>	ErrWriteTimeoutBelowRequestTimeout = xerrors.Wrap(
 <span id="L84" class="ln">    84  </span>		errInvalidConfig,
-<span id="L85" class="ln">    85  </span>		fmt.Sprintf(&#34;invalid database port range, must be between %d and %d&#34;, MinPort, MaxPort),
+<span id="L85" class="ln">    85  </span>		&#34;write timeout must be greater than or equal to request timeout&#34;,
 <span id="L86" class="ln">    86  </span>	)
-<span id="L87" class="ln">    87  </span>	<span class="comment">// ErrInvalidDBPingTimeout は、データベースの無効なPingタイムアウトに関するエラーを表します。</span>
-<span id="L88" class="ln">    88  </span>	ErrInvalidDBPingTimeout = xerrors.Wrap(
+<span id="L87" class="ln">    87  </span>	<span class="comment">// ErrInvalidDBPortRange は、データベースの無効なポート範囲に関するエラーを表します。</span>
+<span id="L88" class="ln">    88  </span>	ErrInvalidDBPortRange = xerrors.Wrap(
 <span id="L89" class="ln">    89  </span>		errInvalidConfig,
-<span id="L90" class="ln">    90  </span>		&#34;invalid database ping timeout, must be greater than 0&#34;,
+<span id="L90" class="ln">    90  </span>		fmt.Sprintf(&#34;invalid database port range, must be between %d and %d&#34;, MinPort, MaxPort),
 <span id="L91" class="ln">    91  </span>	)
-<span id="L92" class="ln">    92  </span>	<span class="comment">// ErrInvalidSlowQueryWarnThreshold は、無効なスロークエリ警告閾値に関するエラーを表します。</span>
-<span id="L93" class="ln">    93  </span>	ErrInvalidSlowQueryWarnThreshold = xerrors.Wrap(
+<span id="L92" class="ln">    92  </span>	<span class="comment">// ErrInvalidDBPingTimeout は、データベースの無効なPingタイムアウトに関するエラーを表します。</span>
+<span id="L93" class="ln">    93  </span>	ErrInvalidDBPingTimeout = xerrors.Wrap(
 <span id="L94" class="ln">    94  </span>		errInvalidConfig,
-<span id="L95" class="ln">    95  </span>		&#34;invalid slow query warn threshold, must be greater than or equal to 0&#34;,
+<span id="L95" class="ln">    95  </span>		&#34;invalid database ping timeout, must be greater than 0&#34;,
 <span id="L96" class="ln">    96  </span>	)
-<span id="L97" class="ln">    97  </span>	<span class="comment">// ErrInvalidExceedMaxConns は、データベースの最大接続数が過剰であることに関するエラーを表します。</span>
-<span id="L98" class="ln">    98  </span>	ErrInvalidExceedMaxConns = xerrors.Wrap(
+<span id="L97" class="ln">    97  </span>	<span class="comment">// ErrInvalidSlowQueryWarnThreshold は、無効なスロークエリ警告閾値に関するエラーを表します。</span>
+<span id="L98" class="ln">    98  </span>	ErrInvalidSlowQueryWarnThreshold = xerrors.Wrap(
 <span id="L99" class="ln">    99  </span>		errInvalidConfig,
-<span id="L100" class="ln">   100  </span>		&#34;invalid database max connections, min connections must be less than or equal to max connections&#34;,
+<span id="L100" class="ln">   100  </span>		&#34;invalid slow query warn threshold, must be greater than or equal to 0&#34;,
 <span id="L101" class="ln">   101  </span>	)
-<span id="L102" class="ln">   102  </span>	<span class="comment">// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。</span>
-<span id="L103" class="ln">   103  </span>	ErrFailedToParseCIDR = xerrors.Wrap(
+<span id="L102" class="ln">   102  </span>	<span class="comment">// ErrInvalidExceedMaxConns は、MinConns が MaxConns を超えていることを示すエラーです。コネクションプールの最小接続数は最大接続数以下でなければなりません。</span>
+<span id="L103" class="ln">   103  </span>	ErrInvalidExceedMaxConns = xerrors.Wrap(
 <span id="L104" class="ln">   104  </span>		errInvalidConfig,
-<span id="L105" class="ln">   105  </span>		&#34;failed to parse CIDR&#34;,
+<span id="L105" class="ln">   105  </span>		&#34;invalid database max connections, min connections must be less than or equal to max connections&#34;,
 <span id="L106" class="ln">   106  </span>	)
-<span id="L107" class="ln">   107  </span>	<span class="comment">// ErrAuthConfigMissing は、認証設定が不足していることに関するエラーを表します。</span>
-<span id="L108" class="ln">   108  </span>	ErrAuthConfigMissing = xerrors.Wrap(
+<span id="L107" class="ln">   107  </span>	<span class="comment">// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。</span>
+<span id="L108" class="ln">   108  </span>	ErrFailedToParseCIDR = xerrors.Wrap(
 <span id="L109" class="ln">   109  </span>		errInvalidConfig,
-<span id="L110" class="ln">   110  </span>		&#34;invalid auth config, either cookie name or header name must be provided&#34;,
+<span id="L110" class="ln">   110  </span>		&#34;failed to parse CIDR&#34;,
 <span id="L111" class="ln">   111  </span>	)
-<span id="L112" class="ln">   112  </span>)
-<span id="L113" class="ln">   113  </span>
+<span id="L112" class="ln">   112  </span>	<span class="comment">// ErrAuthConfigMissing は、認証設定が不足していることに関するエラーを表します。</span>
+<span id="L113" class="ln">   113  </span>	ErrAuthConfigMissing = xerrors.Wrap(
+<span id="L114" class="ln">   114  </span>		errInvalidConfig,
+<span id="L115" class="ln">   115  </span>		&#34;invalid auth config, either cookie name or header name must be provided&#34;,
+<span id="L116" class="ln">   116  </span>	)
+<span id="L117" class="ln">   117  </span>)
+<span id="L118" class="ln">   118  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/error.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

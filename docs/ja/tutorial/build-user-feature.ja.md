@@ -161,10 +161,10 @@ spec の Entity フィールド表は SQL マイグレーションに対して�
 
 **ファイル:**
 
-- `database/migrations/000002_create_users.up.sql` / `.down.sql` —— `users` テーブル
+- `database/migrations/000004_create_users.up.sql` / `.down.sql` —— `users` テーブル
   （`id` UUID PK、`email` UNIQUE、`prefecture_id` FK、住所カラム、論理削除用の `created_at` /
   `updated_at` / `deleted_at`）。
-- `database/migrations/000009_users_table_search_text_column.up.sql` / `.down.sql` ——
+- `database/migrations/000011_users_table_search_text_column.up.sql` / `.down.sql` ——
   `GENERATED ALWAYS` の `search_text` カラム + キーワード検索用の GIN トライグラム索引。
 - `database/dml/repository/user/*.sql` —— 集約の CRUD クエリ
   （`insert_user`、`select_user_by_id`、`select_users`、`update_user`、`count_user`）。
@@ -293,7 +293,7 @@ repository メソッドの形 —— span、sqlc 呼び出し、正規化、変�
 func (r *repository) Create(ctx context.Context, u *user.User) error {
  ctx, endSpan := r.tracer.Start(ctx)
  defer endSpan()
- db := gen.New(r.db.NewLoggingDB(ctx))
+ db := gen.New(driver.New(ctx, r.db))
  if err := db.CreateUser(ctx, toCreateParams(u)); err != nil {
   return pgerror.NormalizeError(err)
  }
@@ -389,7 +389,7 @@ go test ./internal/usecase/user/...
 // 形のみ —— 実本体は v1_users_handler.go を参照
 func (s *server) GetUsers(ctx context.Context, req gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
  ctx, endSpan := s.tracer.Start(ctx); defer endSpan()
- page, err := paging.NewPagingFrom1Based(req.Params.Page, req.Params.PerPage)
+ page, err := paging.NewPageFrom1Based(req.Params.Page, req.Params.PerPage)
  // … list, err := s.uc.<ListMethod>(ctx, …) …
  return gen.GetUsers200JSONResponse(/* マップした DTO */), nil
 }

@@ -84,7 +84,8 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package logging は、Echoフレームワークのミドルウェアとしてリクエストのログの出力を提供します。
+				<p>Package logging は、HTTPリクエストログに関する定数を提供します。
+</p><p>Package logging は、Echoフレームワークのミドルウェアとしてリクエストのログの出力を提供します。
 
 				
 			</p></div>
@@ -137,6 +138,7 @@
 			
 				
 				<pre>const (
+    <span class="comment">// MinStatusError は、エラーとして扱うHTTPステータスコードの最小値です。</span>
     <span id="MinStatusError">MinStatusError</span> = 500
 )</pre>
 			
@@ -145,13 +147,14 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/logging/logging.go.html?s=677:763#L13">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/logging/logging.go.html?s=787:873#L14">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
 			</h2>
 			<pre>func Middleware(logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
 			<p>Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
+ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップします。
 
 			
 			

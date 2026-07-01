@@ -2,13 +2,7 @@
 
 [English](README.md) | 日本語
 
-Cookie またはヘッダーからトークンを抽出し、boundary の `Authenticator` で検証し、結果を Echo コンテキストに格納する OpenAPI 認証関数です。
-
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`NewAuthenticator(authCfg, authenticator)`|OpenAPI セキュリティバリデーション用の `openapi3filter.AuthenticationFunc` を返す|
+Cookie またはヘッダーからトークンを抽出し、boundary の `Authenticator` で検証し、結果をリクエストコンテキスト（authn スロット）に格納する OpenAPI 認証関数です。
 
 ## トークン抽出フロー
 
@@ -25,7 +19,7 @@ flowchart TB
     NoToken["トークンなし"]
     Credential["NewCredential(token)"]
     Authenticate["authenticator.Authenticate(ctx, credential)"]
-    StoreAuthn["ctxhelper.SetAuthnToEcho(ec, authn)"]
+    StoreAuthn["ctxhelper.SetAuthn(req.Context(), authn)"]
 
     Start --> Cookie
     Cookie -- yes --> CookieVal --> HasValue
@@ -51,7 +45,7 @@ flowchart TB
 1. Cookie またはヘッダーからトークンを抽出（上記の優先順位に従う）
 2. トークンから `boundary/auth.Credential` を生成
 3. `authenticator.Authenticate(ctx, credential)` を呼び出して `Authn` を取得
-4. `ctxhelper.SetAuthnToEcho()` で Echo コンテキストに `Authn` を格納
+4. `ctxhelper.SetAuthn()` でリクエストコンテキストに `Authn` を格納（スロットは上流の `oapi.Middleware` が `ctxhelper.WithAuthn` で仕込む）。スロットが無ければ `ErrAuthnSlotNotFound` を返す
 
 ハンドラコードでは `ctxhelper.GetAuthn()` で `Authn` を取得できます。
 
@@ -59,21 +53,22 @@ flowchart TB
 
 |エラー|ベースエラー|説明|
 |---|---|---|
-|`ErrUnauthorizedEchoContextNotFound`|`ErrConflict`|リクエストコンテキストに Echo コンテキストが見つからない（内部配線エラー）|
 |`ErrUnauthorizedInvalidToken`|`ErrUnauthenticated`|`Authenticator` によるトークン検証失敗|
 |`ErrUnauthorizedTokenNotProvided`|`ErrUnauthenticated`|Cookie / ヘッダーにトークンが見つからない|
 |`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|認証トークンが欠落|
+|`ErrAuthnSlotNotFound`|`ErrUnauthenticated`|リクエストコンテキストに authn スロットが無い（`oapi.Middleware` が未注入）|
 |`ErrInvalidAuthDefaultMode`|`ErrInternal`|デフォルト認証ポリシーが見つからない|
 
-## Echo コンテキスト統合
+## authn スロット統合
 
-この関数は OpenAPI バリデーションパイプライン内で動作するため、`echo.Context` ではなく `context.Context` のみが利用可能です。親の `oapi.Middleware` がバリデーション実行前に `request.Context()` に Echo コンテキストを注入することで解決しています。
+この関数は OpenAPI バリデーションパイプライン内で動作するため、`echo.Context` ではなく `context.Context` のみが利用可能です。親の `oapi.Middleware` がバリデーション実行前に `request.Context()` へ **authn スロット**（`ctxhelper.WithAuthn`）を仕込むことで、バリデータから呼ばれる authFunc がそのスロットへ認証結果 `Authn` を `ctxhelper.SetAuthn` で書き戻せます。ハンドラは後段で `ctxhelper.GetAuthn` により取得します。
 
 ```mermaid
 flowchart LR
-    OapiMW["oapi.Middleware"] -->|"SetEchoContext"| ReqCtx["request.Context()"]
-    ReqCtx -->|"GetEchoContext"| AuthFunc["auth.NewAuthenticator"]
-    AuthFunc -->|"SetAuthnToEcho"| EchoCtx["echo.Context"]
+    OapiMW["oapi.Middleware"] -->|"WithAuthn (seed slot)"| ReqCtx["request.Context()"]
+    ReqCtx --> Validator["oapi validator → authFunc"]
+    Validator -->|"SetAuthn"| ReqCtx
+    Handler["handler"] -->|"GetAuthn"| ReqCtx
 ```
 
 ## 注意点

@@ -86,7 +86,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package lifecycle は、アプリケーションのライフサイクル管理に関する機能を提供します。
+				<p>Package lifecycle は、fx.Lifecycle を抽象化するテスト可能な Registrar インターフェースと、バックグラウンドランナーを fx ライフサイクルへ結線する SupervisedRunner プリミティブを提供します。
 
 				
 			</p></div>
@@ -117,6 +117,14 @@
 				
 				
 			
+				
+				<dd><a href="#SupervisedRunner">type SupervisedRunner</a></dd>
+				
+				
+					
+					<dd>    <a href="#SupervisedRunner.Register">func (s SupervisedRunner) Register(reg Registrar)</a></dd>
+				
+			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -131,6 +139,8 @@
 				<a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html">lifecycle.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle_di.go.html">lifecycle_di.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html">supervisor.go</a>
 			
 			</span>
 			</p>
@@ -160,7 +170,7 @@
 		
 			
 			
-			</p><h2 id="Registrar">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=405:765#L3">Registrar</a>
+			</p><h2 id="Registrar">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=536:896#L3">Registrar</a>
 				<a class="permalink" href="#Registrar">¶</a>
 				
 				
@@ -184,7 +194,7 @@
 
 			
 				
-				<h3 id="NewLifecycleRegistrar">func <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=1049:1102#L16">NewLifecycleRegistrar</a>
+				<h3 id="NewLifecycleRegistrar">func <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=1180:1233#L16">NewLifecycleRegistrar</a>
 					<a class="permalink" href="#NewLifecycleRegistrar">¶</a>
 					
 					
@@ -196,6 +206,64 @@
 				
 			
 
+			
+		
+			
+			
+			</p><h2 id="SupervisedRunner">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=1013:1605#L8">SupervisedRunner</a>
+				<a class="permalink" href="#SupervisedRunner">¶</a>
+				
+				
+			</h2>
+			<p>SupervisedRunner は、detached goroutine で常駐する background runner を fx ライフサイクルへ
+結線する共通プリミティブです。job / worker / outbox relay の各 hook が共有します。
+</p><ul>
+<li>OnStart: <a href="#SupervisedRunner.OnStartAux">SupervisedRunner.OnStartAux</a>（任意）を同期実行した後、<a href="#SupervisedRunner.Body">SupervisedRunner.Body</a> を
+goroutine で起動する（OnStart はブロックしない）。
+</li><li>OnStop:  実行 context をキャンセルし、Body の完了を stopCtx（grace）の範囲で待ち、
+その後 <a href="#SupervisedRunner.OnStopAux">SupervisedRunner.OnStopAux</a>（任意）を実行する。
+</li></ul>
+<p>Body に渡される実行 context は startCtx とは独立しており、OnStop でのみキャンセルされます。これにより
+</p><ul>
+<li>OnStart 完了後に fx が startCtx をキャンセルしても Body は巻き込まれず（detached）、
+</li><li>OnStop の cancel でのみ Body の context が切れて中断できる（停止時キャンセル）。
+</li></ul>
+
+			<pre>type SupervisedRunner struct {
+<span id="SupervisedRunner.Body"></span>    <span class="comment">// Body は、background ループ本体です。渡される context は OnStop でキャンセルされます。</span>
+    <span class="comment">// nil の場合は何も起動しません。</span>
+    Body func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>)
+<span id="SupervisedRunner.OnStartAux"></span>    <span class="comment">// OnStartAux は、Body 起動前に OnStart 内で同期実行される任意の処理です（例: health listener 起動）。</span>
+    OnStartAux func()
+<span id="SupervisedRunner.OnStopAux"></span>    <span class="comment">// OnStopAux は、drain 完了後に実行される任意の処理です（例: health listener 停止）。</span>
+    <span class="comment">// 引数の stopCtx は OnStop の grace context です。</span>
+    OnStopAux func(stopCtx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>)
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="SupervisedRunner.Register">func (SupervisedRunner) <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=1696:1745#L20">Register</a>
+					<a class="permalink" href="#SupervisedRunner.Register">¶</a>
+					
+					
+				</h3>
+				<pre>func (s <a href="#SupervisedRunner">SupervisedRunner</a>) Register(reg <a href="#Registrar">Registrar</a>)</pre>
+				<p>Register は、SupervisedRunner を reg のライフサイクルへ登録します。
+
+				
+				
+				
 			
 		
 	

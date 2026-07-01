@@ -1,0 +1,718 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_idempotency
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/idempotency/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_idempotency is a generated GoMock package.
+</p><p>Package mock_idempotency is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockGCMetrics">type MockGCMetrics</a></dd>
+				
+					
+					<dd>    <a href="#NewMockGCMetrics">func NewMockGCMetrics(ctrl *gomock.Controller) *MockGCMetrics</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockGCMetrics.EXPECT">func (m *MockGCMetrics) EXPECT() *MockGCMetricsMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockGCMetrics.IncExpiredCleanup">func (m *MockGCMetrics) IncExpiredCleanup(ctx context.Context, count int64)</a></dd>
+				
+					
+					<dd>    <a href="#MockGCMetrics.IncExpiredCleanupFailure">func (m *MockGCMetrics) IncExpiredCleanupFailure(ctx context.Context)</a></dd>
+				
+			
+				
+				<dd><a href="#MockGCMetricsMockRecorder">type MockGCMetricsMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockGCMetricsMockRecorder.IncExpiredCleanup">func (mr *MockGCMetricsMockRecorder) IncExpiredCleanup(ctx, count any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockGCMetricsMockRecorder.IncExpiredCleanupFailure">func (mr *MockGCMetricsMockRecorder) IncExpiredCleanupFailure(ctx any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockGCUsecase">type MockGCUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockGCUsecase">func NewMockGCUsecase(ctrl *gomock.Controller) *MockGCUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockGCUsecase.EXPECT">func (m *MockGCUsecase) EXPECT() *MockGCUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockGCUsecase.SweepExpired">func (m *MockGCUsecase) SweepExpired(ctx context.Context, batchSize int32) (int64, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockGCUsecaseMockRecorder">type MockGCUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockGCUsecaseMockRecorder.SweepExpired">func (mr *MockGCUsecaseMockRecorder) SweepExpired(ctx, batchSize any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockMetrics">type MockMetrics</a></dd>
+				
+					
+					<dd>    <a href="#NewMockMetrics">func NewMockMetrics(ctrl *gomock.Controller) *MockMetrics</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockMetrics.EXPECT">func (m *MockMetrics) EXPECT() *MockMetricsMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.IncClaimFailure">func (m *MockMetrics) IncClaimFailure(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.IncCompleteFailure">func (m *MockMetrics) IncCompleteFailure(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.IncConflict">func (m *MockMetrics) IncConflict(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.IncFingerprintMismatch">func (m *MockMetrics) IncFingerprintMismatch(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.IncHit">func (m *MockMetrics) IncHit(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.IncMiss">func (m *MockMetrics) IncMiss(ctx context.Context, operationID string)</a></dd>
+				
+			
+				
+				<dd><a href="#MockMetricsMockRecorder">type MockMetricsMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.IncClaimFailure">func (mr *MockMetricsMockRecorder) IncClaimFailure(ctx, operationID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.IncCompleteFailure">func (mr *MockMetricsMockRecorder) IncCompleteFailure(ctx, operationID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.IncConflict">func (mr *MockMetricsMockRecorder) IncConflict(ctx, operationID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.IncFingerprintMismatch">func (mr *MockMetricsMockRecorder) IncFingerprintMismatch(ctx, operationID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.IncHit">func (mr *MockMetricsMockRecorder) IncHit(ctx, operationID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.IncMiss">func (mr *MockMetricsMockRecorder) IncMiss(ctx, operationID any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html">mock_gc.go.gen.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html">mock_run.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockGCMetrics">type <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=408:522#L10">MockGCMetrics</a>
+				<a class="permalink" href="#MockGCMetrics">¶</a>
+				
+				
+			</h2>
+			<p>MockGCMetrics is a mock of GCMetrics interface.
+
+			</p><pre>type MockGCMetrics struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockGCMetrics">func <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=706:767#L22">NewMockGCMetrics</a>
+					<a class="permalink" href="#NewMockGCMetrics">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockGCMetrics(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockGCMetrics">MockGCMetrics</a></pre>
+				<p>NewMockGCMetrics creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockGCMetrics.EXPECT">func (*MockGCMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=949:1008#L29">EXPECT</a>
+					<a class="permalink" href="#MockGCMetrics.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockGCMetrics">MockGCMetrics</a>) EXPECT() *<a href="#MockGCMetricsMockRecorder">MockGCMetricsMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockGCMetrics.IncExpiredCleanup">func (*MockGCMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=1073:1148#L34">IncExpiredCleanup</a>
+					<a class="permalink" href="#MockGCMetrics.IncExpiredCleanup">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockGCMetrics">MockGCMetrics</a>) IncExpiredCleanup(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, count <a href="../../../../../builtin/#int64">int64</a>)</pre>
+				<p>IncExpiredCleanup mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockGCMetrics.IncExpiredCleanupFailure">func (*MockGCMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=1598:1667#L46">IncExpiredCleanupFailure</a>
+					<a class="permalink" href="#MockGCMetrics.IncExpiredCleanupFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockGCMetrics">MockGCMetrics</a>) IncExpiredCleanupFailure(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>)</pre>
+				<p>IncExpiredCleanupFailure mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockGCMetricsMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=593:655#L17">MockGCMetricsMockRecorder</a>
+				<a class="permalink" href="#MockGCMetricsMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockGCMetricsMockRecorder is the mock recorder for MockGCMetrics.
+
+			</p><pre>type MockGCMetricsMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockGCMetricsMockRecorder.IncExpiredCleanup">func (*MockGCMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=1292:1375#L40">IncExpiredCleanup</a>
+					<a class="permalink" href="#MockGCMetricsMockRecorder.IncExpiredCleanup">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockGCMetricsMockRecorder">MockGCMetricsMockRecorder</a>) IncExpiredCleanup(ctx, count <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncExpiredCleanup indicates an expected call of IncExpiredCleanup.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockGCMetricsMockRecorder.IncExpiredCleanupFailure">func (*MockGCMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=1825:1908#L52">IncExpiredCleanupFailure</a>
+					<a class="permalink" href="#MockGCMetricsMockRecorder.IncExpiredCleanupFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockGCMetricsMockRecorder">MockGCMetricsMockRecorder</a>) IncExpiredCleanupFailure(ctx <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncExpiredCleanupFailure indicates an expected call of IncExpiredCleanupFailure.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockGCUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=2142:2256#L58">MockGCUsecase</a>
+				<a class="permalink" href="#MockGCUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockGCUsecase is a mock of GCUsecase interface.
+
+			</p><pre>type MockGCUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockGCUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=2440:2501#L70">NewMockGCUsecase</a>
+					<a class="permalink" href="#NewMockGCUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockGCUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockGCUsecase">MockGCUsecase</a></pre>
+				<p>NewMockGCUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockGCUsecase.EXPECT">func (*MockGCUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=2683:2742#L77">EXPECT</a>
+					<a class="permalink" href="#MockGCUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockGCUsecase">MockGCUsecase</a>) EXPECT() *<a href="#MockGCUsecaseMockRecorder">MockGCUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockGCUsecase.SweepExpired">func (*MockGCUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=2802:2891#L82">SweepExpired</a>
+					<a class="permalink" href="#MockGCUsecase.SweepExpired">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockGCUsecase">MockGCUsecase</a>) SweepExpired(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, batchSize <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>SweepExpired mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockGCUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=2327:2389#L65">MockGCUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockGCUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockGCUsecaseMockRecorder is the mock recorder for MockGCUsecase.
+
+			</p><pre>type MockGCUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockGCUsecaseMockRecorder.SweepExpired">func (*MockGCUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_gc.go.gen.go.html?s=3104:3186#L91">SweepExpired</a>
+					<a class="permalink" href="#MockGCUsecaseMockRecorder.SweepExpired">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockGCUsecaseMockRecorder">MockGCUsecaseMockRecorder</a>) SweepExpired(ctx, batchSize <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SweepExpired indicates an expected call of SweepExpired.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockMetrics">type <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=407:517#L10">MockMetrics</a>
+				<a class="permalink" href="#MockMetrics">¶</a>
+				
+				
+			</h2>
+			<p>MockMetrics is a mock of Metrics interface.
+
+			</p><pre>type MockMetrics struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockMetrics">func <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=691:748#L22">NewMockMetrics</a>
+					<a class="permalink" href="#NewMockMetrics">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockMetrics(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockMetrics">MockMetrics</a></pre>
+				<p>NewMockMetrics creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockMetrics.EXPECT">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=926:981#L29">EXPECT</a>
+					<a class="permalink" href="#MockMetrics.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) EXPECT() *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.IncClaimFailure">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=1044:1122#L34">IncClaimFailure</a>
+					<a class="permalink" href="#MockMetrics.IncClaimFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) IncClaimFailure(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, operationID <a href="../../../../../builtin/#string">string</a>)</pre>
+				<p>IncClaimFailure mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.IncCompleteFailure">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=1568:1649#L46">IncCompleteFailure</a>
+					<a class="permalink" href="#MockMetrics.IncCompleteFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) IncCompleteFailure(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, operationID <a href="../../../../../builtin/#string">string</a>)</pre>
+				<p>IncCompleteFailure mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.IncConflict">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=2106:2180#L58">IncConflict</a>
+					<a class="permalink" href="#MockMetrics.IncConflict">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) IncConflict(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, operationID <a href="../../../../../builtin/#string">string</a>)</pre>
+				<p>IncConflict mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.IncFingerprintMismatch">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=2606:2691#L70">IncFingerprintMismatch</a>
+					<a class="permalink" href="#MockMetrics.IncFingerprintMismatch">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) IncFingerprintMismatch(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, operationID <a href="../../../../../builtin/#string">string</a>)</pre>
+				<p>IncFingerprintMismatch mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.IncHit">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=3167:3236#L82">IncHit</a>
+					<a class="permalink" href="#MockMetrics.IncHit">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) IncHit(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, operationID <a href="../../../../../builtin/#string">string</a>)</pre>
+				<p>IncHit mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.IncMiss">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=3617:3687#L94">IncMiss</a>
+					<a class="permalink" href="#MockMetrics.IncMiss">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) IncMiss(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, operationID <a href="../../../../../builtin/#string">string</a>)</pre>
+				<p>IncMiss mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockMetricsMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=584:642#L17">MockMetricsMockRecorder</a>
+				<a class="permalink" href="#MockMetricsMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockMetricsMockRecorder is the mock recorder for MockMetrics.
+
+			</p><pre>type MockMetricsMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockMetricsMockRecorder.IncClaimFailure">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=1266:1351#L40">IncClaimFailure</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.IncClaimFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) IncClaimFailure(ctx, operationID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncClaimFailure indicates an expected call of IncClaimFailure.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetricsMockRecorder.IncCompleteFailure">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=1802:1890#L52">IncCompleteFailure</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.IncCompleteFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) IncCompleteFailure(ctx, operationID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncCompleteFailure indicates an expected call of IncCompleteFailure.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetricsMockRecorder.IncConflict">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=2312:2393#L64">IncConflict</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.IncConflict">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) IncConflict(ctx, operationID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncConflict indicates an expected call of IncConflict.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetricsMockRecorder.IncFingerprintMismatch">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=2856:2948#L76">IncFingerprintMismatch</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.IncFingerprintMismatch">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) IncFingerprintMismatch(ctx, operationID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncFingerprintMismatch indicates an expected call of IncFingerprintMismatch.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetricsMockRecorder.IncHit">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=3353:3429#L88">IncHit</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.IncHit">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) IncHit(ctx, operationID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncHit indicates an expected call of IncHit.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetricsMockRecorder.IncMiss">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/mock/mock_run.go.gen.go.html?s=3807:3884#L100">IncMiss</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.IncMiss">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) IncMiss(ctx, operationID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncMiss indicates an expected call of IncMiss.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

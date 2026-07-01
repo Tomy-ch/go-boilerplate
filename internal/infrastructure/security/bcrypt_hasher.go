@@ -1,4 +1,4 @@
-// Package security は、セキュリティ関連のインフラストラクチャを提供します。
+// Package security は、パスワードの bcrypt ハッシュ化および照合を行う Hasher の実装を提供します。
 package security
 
 import (
@@ -23,19 +23,19 @@ func NewBcryptHasher(secCfg *config.SecurityConfig) security.Hasher {
 func (b *bcrypter) Hash(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), b.cost)
 	if err != nil {
-		return "", xerrors.Wrap(apperror.ErrInternal, "bcrypt hash failed: "+err.Error())
+		return "", xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "bcrypt hash failed"))
 	}
 	return string(hash), nil
 }
 
-// Compare は、ハッシュとパスワードを比較します。比較に失敗した場合はエラーを返します。
+// Compare は、ハッシュとパスワードを照合します。一致すれば (true, nil)、不一致であれば (false, nil) を返します。ハッシュ形式不正などの技術的エラー時のみ (false, error) を返します。
 func (b *bcrypter) Compare(hash, password string) (bool, error) {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
 		if xerrors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return false, nil
 		}
-		return false, xerrors.Wrap(apperror.ErrInternal, "bcrypt compare failed: "+err.Error())
+		return false, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "bcrypt compare failed"))
 	}
 	return true, nil
 }

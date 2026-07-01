@@ -10,10 +10,14 @@ English | [日本語](README.ja.md)
 scripts/
 ├── gen-docs-json.mjs           # Generate docs.json for portal navigation
 ├── gen-portal-docs.mjs         # Copy docs to portal based on manifest.yaml
+├── build-portal.mjs            # Bundle the portal frontend (src/main.jsx) with esbuild
 ├── semver.mjs                  # Semantic versioning helper (patch/minor/major)
+├── stamp-openapi-version.mjs   # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
 ├── make_help.mjs                # Generate Make target help output
+├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
 ├── genctxkey/                  # Context key code generator (Go)
+├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)
 └── setup/                     # Initial project setup scripts
     ├── replace-module.mjs
     ├── replace-app-metadata.mjs
@@ -31,12 +35,20 @@ scripts/
 |---|---|---|
 |`gen-portal-docs.mjs`|Copy source docs to portal `guides/` based on `manifest.yaml`|`make gen-docs`|
 |`gen-docs-json.mjs`|Generate `docs.json` navigation for the portal app|`make gen-docs`|
+|`build-portal.mjs`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`bundle.js` / `bundle.css` + lazy chunks) with esbuild, and copy `mermaid.min.js` there too. Replaces the former CDN + in-browser Babel setup.|`make gen-portal-build`|
+
+### Linting
+
+|Script|Description|Invoked By|
+|---|---|---|
+|`mermaid-lint.mjs`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
 
 ### Versioning
 
 |Script|Description|Invoked By|
 |---|---|---|
 |`semver.mjs`|Bump semantic version (patch/minor/major)|Release workflow|
+|`stamp-openapi-version.mjs`|Derive `X.Y.Z` from a `release/vX.Y.Z` branch name and write it into `openapi.yaml` `info.version` (first `version:` line only; idempotent; no-op for non-release refs). Contract version only — no SHA / build metadata (commit-level traceability is the runtime `/version`'s job). Dependency-free ESM; runs on the bare runner `node`.|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go-based sync utility. Parses `mise.toml` `[tools]` (table-scoped, no external deps) and propagates `go` / `node` / `python` versions to `go.mod` (`go` directive) + `docker/*/Dockerfile` `FROM golang:` / `FROM node:` / `FROM python:` lines. Pre-validates all rules (version present, file exists, expected match count) and writes per file atomically, so failures never leave a partial state.|`make sync-versions`|
 
 All other tool versions are managed by [`mise.toml`](../mise.toml) as the single source of truth. Each environment (host / docker / CI) installs only what it needs via `mise install <tool>` — no sync script required for those.
@@ -51,9 +63,15 @@ All other tool versions are managed by [`mise.toml`](../mise.toml) as the single
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`genctxkey/`|Generate Echo context key helpers (Go code generator)|`make gen-ctxkey`|
+|`genctxkey/`|Generate Echo context key helpers (Go code generator). Driven by the `//go:generate` directives in `internal/controller/ctxhelper/generate.go`, run via `go generate ./...`.|`make gen-go-code`|
 
 See [genctxkey/README.md](genctxkey/README.md) for details.
+
+### CI / Supply Chain
+
+|Script|Description|Invoked By|
+|---|---|---|
+|`pin-actions/`|Pin every external GitHub Actions `uses:` in `.github/workflows/**` and `.github/actions/**` to an immutable commit SHA. `resolve` walks the references and resolves each tag/branch to a SHA via `git ls-remote`, writing the lockfile `.github/actions-pin.toml` (SSOT) — with a supply-chain quarantine that refuses commits younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14, keeping the existing pin instead). `apply` rewrites each `uses:` to `@<sha> # <tag>` from the lockfile. `check` runs the same comparison without writing and exits non-zero on any unpinned/stale/unregistered reference (for CI / hooks). Idempotent: an already-pinned line re-resolves off its trailing `# <tag>` comment.|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
 
 ### Initial Setup (`setup/`)
 

@@ -15,7 +15,7 @@ You are **read-only**. Never edit, write, or mutate anything. Use `Bash` only fo
 
 The orchestrator gives you:
 
-- **Lens** — the single review dimension you own (one of: `correctness`, `security`, `architecture`, `runtime-gap`). Stay in your lane; another reviewer owns the other lenses.
+- **Lens** — the single review dimension you own (one of: `correctness`, `security`, `architecture`, `runtime-gap`). Stay in your lane; another reviewer owns the other lenses. (Comment quality is a separate concern owned by the dedicated `comment-reviewer` agent — not a lens here.)
 - **Scope** — the base ref / changed file list / diff to review.
 - Repo context pointers (`CLAUDE.md`, relevant `README.md`, OpenAPI spec, migrations) as needed.
 
@@ -25,6 +25,8 @@ The orchestrator gives you:
 - **security** — missing `security:` declaration (endpoint reachable without auth), IDOR (acting on a resource id that is not the authenticated subject — e.g. `/users/{id}` vs `/users/me`), authorization bypass, mass-assignment / over-binding (DTO accepts fields it must not), secret / hash / PII leakage in responses or logs, injection, unsafe input trust.
 - **architecture** — Onion / layer violations per `CLAUDE.md`: infra called from handler, business logic in handler, domain depending on infra, usecase returning domain entities, layer bypass, edits to generated files, new patterns introduced without instruction. (For exhaustive layer compliance, `arch-check` is the heavier tool — here you flag the obvious, high-signal violations.)
 - **runtime-gap** — defects that **mocked tests cannot catch**: DI wiring mismatch (`BindHandler` unregistered / mis-provided), shared OpenAPI schema edits that break *sibling* endpoints (a `components/*` referenced by more than one operation), real-DB SQL behavior differing from the mock (filters, null handling, ordering, uniqueness), OpenAPI validation-middleware effects, `allOf` / `additionalProperties: false` ripple. State explicitly what runtime check would expose each one.
+
+(Comment quality — comments that narrate internal processing / rationale / restate code instead of describing behavior — is **not** a lens here. It is owned by the dedicated `comment-reviewer` agent, which `local-review` fans out alongside these lenses and whose findings it auto-fixes.)
 
 ## How to review
 

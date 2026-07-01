@@ -17,6 +17,7 @@ type server struct {
 	tracer observability.LayerTracer
 }
 
+// BindHandler は、ヘルスチェック（health）ハンドラを Echo に登録します。
 func BindHandler(
 	e *echo.Echo, tf observability.TracerFactory,
 ) {

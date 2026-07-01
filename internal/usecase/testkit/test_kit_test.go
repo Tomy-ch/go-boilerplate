@@ -13,8 +13,15 @@ import (
 func TestExpectedDBError(t *testing.T) {
 	t.Parallel()
 
-	actual := ExpectedDBError()
-	require.Error(t, actual)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilのエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			actual := ExpectedDBError()
+			require.Error(t, actual)
+		})
+	})
 }
 
 func TestMockTransactionManager(t *testing.T) {

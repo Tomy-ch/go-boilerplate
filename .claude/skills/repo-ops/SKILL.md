@@ -62,21 +62,23 @@ docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/
 # verify only .env.stg was baked in
 ```
 
-Build `--target migration` for the migration image (it inherits the same base).
+There is no separate migration image: `env/` and `database/migrations` are embedded in the
+binary, so migrations run from the same `runtime` image via a command override
+(`./server migrate-up`).
 
 ## 5. commit-msg hook / commitlint errors
 
-The lefthook **commit-msg** hook runs `commitlint`, which lives as a `mise` npm tool, not on `PATH`. A bare `commitlint` invocation fails with `commitlint: not found` (exit 127). It must run through `mise exec` with the tool named explicitly (a bare `mise exec` tries to resolve every tool in `mise.toml` and fails on ones not installed locally):
+The lefthook **commit-msg** hook runs `make commitlint COMMIT_MSG_FILE={1}`, which executes `commitlint` inside the `node_tool_runner` container — tools are resolved in the containerized runners, never on the host (the same reproducibility rule as every other lint / codegen target; see `docs/rules.md`). If the `node_tool_runner` image is missing or out of date, the hook fails with `commitlint: not found`; rebuild it once with `make tool-runners-build` (or `docker compose build node_tool_runner`).
 
 ```text
-mise exec npm:@commitlint/cli -- commitlint --edit {1}
+make commitlint COMMIT_MSG_FILE={1}
 ```
 
 `commitlint.config.js` intentionally disables `type-case` (the repo prefixes are Cap-first `Feat`/`Fix`/… but CI uses all-caps, so a single case can't be enforced) and pins `type-enum` to the project prefixes. `Merge` / `Revert` commits are auto-ignored by commitlint defaults.
 
 ## 6. Generated mocks — never hand-write, regenerate via Docker
 
-Mocks are generated, never authored by hand. Each source declares `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE`, and `make gen-go-code` runs them in `go_tool_runner` with the **pinned** mockgen (`v0.6.0`). Regenerated mock directories may come back root-owned (see §2).
+Mocks are generated, never authored by hand. Each source declares `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` (the `$GOFILE`-based destination is uniform across the repo, so the same line copies into any interface file), and `make gen-go-code` runs them in `go_tool_runner` with the **pinned** mockgen (`v0.6.0`). Regenerated mock directories may come back root-owned (see §2).
 
 After changing an interface (signature, new method), regenerate rather than editing `*_mock.go`:
 

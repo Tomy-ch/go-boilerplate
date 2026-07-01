@@ -6,7 +6,6 @@ import (
 	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLoggingMiddleware(t *testing.T) {
@@ -16,5 +15,5 @@ func TestLoggingMiddleware(t *testing.T) {
 
 	out := LoggingMiddleware(logging.NewTestLogger(t), lf)
 	assert.Equal(t, loggingPriority, out.Middleware.Priority)
-	require.NotNil(t, out.Middleware.Middleware)
+	assert.NotNil(t, out.Middleware.Middleware)
 }

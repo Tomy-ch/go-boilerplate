@@ -1,0 +1,11 @@
+description: ユーザーフィード（cursor ページネーション）のレスポンススキーマ
+allOf:
+- type: object
+  required:
+    - users
+  properties:
+    users:
+      type: array
+      items:
+        $ref: '../../schemas/UserResponse.yaml'
+- $ref: '../../schemas/CursorPaginationMetadataResponse.yaml'

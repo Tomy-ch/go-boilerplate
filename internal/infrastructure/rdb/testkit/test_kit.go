@@ -8,27 +8,26 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 )
 
-var rollbackForTestError = xerrors.New("rollback for test")
+var errRollbackForTest = xerrors.New("rollback for test")
 
 var (
 	testDB  driver.DatabaseDriver
-	initErr error
+	errInit error
 	dbOnce  sync.Once
 	// txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。
 	// これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。
-	// テスト数が増加し、ボトルネックとなる場合はテスト用のDocker一時コンテナを用意するライブラリの導入を検討してください。
 	txLock sync.Mutex
 )
 
+// TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。
 type TransactionRunner interface {
 	WithinTx(fn func(ctx context.Context))
 }
@@ -45,27 +44,13 @@ func NewTestDB(t *testing.T) driver.DatabaseDriver {
 	return getTestDB(t)
 }
 
-// NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
-	t.Helper()
-
-	cfg := config.MockConfigForTest(t)
-	dbCfg := config.NewDatabaseConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	tracer := observability.NewNoopTracerFactory(t)
-
-	mockLogger := logging.NewTestLogger(t)
-	lf := logging.NewTestLogFieldBuilder(t)
-
-	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
-}
-
 // NewTestTransactionRunner は、テスト用のトランザクションランナーを生成します。
 func NewTestTransactionRunner(t *testing.T) TransactionRunner {
 	t.Helper()
 	testLogger := logging.NewTestLogger(t)
 
-	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger)
+	dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+	innerTxm := driver.NewTransactionManager(getTestDB(t), dbCfg, testLogger, system.NewSleeper())
 
 	runner := &testTxRunner{
 		inner: innerTxm,
@@ -92,10 +77,10 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
 		fn(txCtx)
-		return rollbackForTestError
+		return errRollbackForTest
 	})
 
-	if xerrors.Is(err, rollbackForTestError) {
+	if xerrors.Is(err, errRollbackForTest) {
 		return
 	}
 	require.NoError(t.t, err)
@@ -111,10 +96,10 @@ func getTestDB(t *testing.T) driver.DatabaseDriver {
 		osCfg := config.NewOperatingSystemConfig(cfg)
 		dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-		testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)
+		testDB, errInit = driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	})
 
-	require.NoError(t, initErr)
+	require.NoError(t, errInit)
 	require.NotNil(t, testDB)
 
 	return testDB

@@ -22,9 +22,13 @@ ARG REVISION=none
 # version handler が RFC3339 として厳格 parse し不正値は /version を 500 にするため、有効な RFC3339 を維持すること。
 ARG BUILD_DATE=2024-12-31T21:00:00Z
 
+# デプロイ対象環境（prd/stg/dev/ci）。当該 env を埋め込み対象 env/.env へ焼き直す。
+ARG APP_ENV=prd
+
 COPY . .
 
-RUN go build -mod=vendor -trimpath \
+RUN cp "env/.env.${APP_ENV}" env/.env \
+  && go build -mod=vendor -trimpath \
   -ldflags="-s -w \
     -X 'go-boilerplate/internal/system.Version=${VERSION}' \
     -X 'go-boilerplate/internal/system.Revision=${REVISION}' \
@@ -37,33 +41,20 @@ RUN go build -mod=vendor -trimpath \
 # NOTE: 本番利用時にはダイジェストを指定することを推奨
 FROM alpine:3.23 AS runtime
 
-# デプロイ対象環境（prd/stg/dev）。当該 env ファイルのみ焼き込み、ENV として固定する。
-ARG APP_ENV=prd
-
 RUN apk upgrade --no-cache \
     && apk add --no-cache ca-certificates tzdata \
     && addgroup -S app \
     && adduser -S app -G app
 USER app
 
+# env / migrations はバイナリへ埋め込み済みのため、追加コピーは不要。
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/env/.env.${APP_ENV} /app/env/.env.${APP_ENV}
 
 WORKDIR /app
 
-ENV ENV=${APP_ENV}
-
+# 既定はサーバ常駐。マイグレーションは同一イメージを command override で実行する
+# （例: 起動コマンドを ["/app/server", "migrate-up"] に差し替えてジョブ実行）。
 CMD ["/app/server", "serve"]
-
-# ------------------------------
-# マイグレーション用コンテナ: デプロイ前に1回だけ実行されるジョブ用途
-# サーバとして常駐させてはいけない
-# ------------------------------
-FROM runtime AS migration
-
-COPY --from=builder --chown=app:app /app/database/migrations /app/database/migrations
-
-CMD ["/app/server", "migrate-up"]
 
 # ------------------------------
 # 開発用ツールビルダー：mise.toml のバージョン pin で開発用 Go ツール一式を install し、

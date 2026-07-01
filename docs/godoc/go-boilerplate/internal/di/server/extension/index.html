@@ -184,7 +184,7 @@
 		
 			
 			
-			<h2 id="ApplyConfigurators">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=5931:6006#L168">ApplyConfigurators</a>
+			<h2 id="ApplyConfigurators">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=6926:7001#L181">ApplyConfigurators</a>
 				<a class="permalink" href="#ApplyConfigurators">¶</a>
 				
 				
@@ -198,13 +198,14 @@
 		
 			
 			
-			</p><h2 id="ApplyPreMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3182:3270#L83">ApplyPreMiddlewares</a>
+			</p><h2 id="ApplyPreMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=4006:4094#L95">ApplyPreMiddlewares</a>
 				<a class="permalink" href="#ApplyPreMiddlewares">¶</a>
 				
 				
 			</h2>
 			<pre>func ApplyPreMiddlewares(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, mws []<a href="#PreMiddleware">PreMiddleware</a>) <a href="../../../../../builtin/#error">error</a></pre>
 			<p>ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
+ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
 
 			
 			
@@ -212,13 +213,14 @@
 		
 			
 			
-			</p><h2 id="ApplyUseMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3594:3682#L92">ApplyUseMiddlewares</a>
+			</p><h2 id="ApplyUseMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=4589:4677#L105">ApplyUseMiddlewares</a>
 				<a class="permalink" href="#ApplyUseMiddlewares">¶</a>
 				
 				
 			</h2>
 			<pre>func ApplyUseMiddlewares(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, mws []<a href="#UseMiddleware">UseMiddleware</a>) <a href="../../../../../builtin/#error">error</a></pre>
 			<p>ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
+ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
 
 			
 			
@@ -227,7 +229,7 @@
 		
 			
 			
-			</p><h2 id="AppliedServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=971:1005#L20">AppliedServerExtends</a>
+			</p><h2 id="AppliedServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1179:1213#L22">AppliedServerExtends</a>
 				<a class="permalink" href="#AppliedServerExtends">¶</a>
 				
 				
@@ -247,13 +249,14 @@
 
 			
 				
-				<h3 id="ApplyExtends">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2704:2812#L71">ApplyExtends</a>
+				<h3 id="ApplyExtends">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3357:3465#L82">ApplyExtends</a>
 					<a class="permalink" href="#ApplyExtends">¶</a>
 					
 					
 				</h3>
 				<pre>func ApplyExtends(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, extends <a href="#ServerExtends">ServerExtends</a>) (*<a href="#AppliedServerExtends">AppliedServerExtends</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>ApplyExtends は、サーバー拡張を適用します。
+ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数を Priority 昇順に Echo へ適用する。同一 kind 内で Priority が重複するミドルウェアが存在する場合はエラーを返す。
 
 				
 				
@@ -263,7 +266,7 @@
 		
 			
 			
-			</p><h2 id="PreMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1358:1696#L32">PreMiddleware</a>
+			</p><h2 id="PreMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1773:2111#L40">PreMiddleware</a>
 				<a class="permalink" href="#PreMiddleware">¶</a>
 				
 				
@@ -294,7 +297,7 @@
 		
 			
 			
-			<h2 id="PreMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2196:2288#L52">PreMiddlewareOut</a>
+			<h2 id="PreMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2611:2704#L60">PreMiddlewareOut</a>
 				<a class="permalink" href="#PreMiddlewareOut">¶</a>
 				
 				
@@ -303,6 +306,7 @@
 
 			</p><pre>type PreMiddlewareOut struct {
     <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#Out">Out</a>
+
 <span id="PreMiddlewareOut.Middleware"></span>    Middleware <a href="#PreMiddleware">PreMiddleware</a> `group:&#34;middlewares.pre&#34;`
 }
 </pre>
@@ -321,7 +325,7 @@
 		
 			
 			
-			<h2 id="ServeCfgOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1190:1271#L26">ServeCfgOut</a>
+			<h2 id="ServeCfgOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1604:1686#L33">ServeCfgOut</a>
 				<a class="permalink" href="#ServeCfgOut">¶</a>
 				
 				
@@ -330,6 +334,7 @@
 
 			</p><pre>type ServeCfgOut struct {
     <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#Out">Out</a>
+
 <span id="ServeCfgOut.SrvCfg"></span>    SrvCfg <a href="#SrvCfg">SrvCfg</a> `group:&#34;server.configurators&#34;`
 }
 </pre>
@@ -348,7 +353,7 @@
 		
 			
 			
-			<h2 id="ServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=379:866#L9">ServerExtends</a>
+			<h2 id="ServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=586:1074#L10">ServerExtends</a>
 				<a class="permalink" href="#ServerExtends">¶</a>
 				
 				
@@ -357,6 +362,7 @@
 
 			</p><pre>type ServerExtends struct {
     <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#In">In</a>
+
 <span id="ServerExtends.PreList"></span>    <span class="comment">// PreList は、Preミドルウェアとして適用されるミドルウェアのリストです。</span>
     PreList []<a href="#PreMiddleware">PreMiddleware</a> `group:&#34;middlewares.pre&#34;`
 <span id="ServerExtends.UseList"></span>    <span class="comment">// UseList は、Useミドルウェアとして適用されるミドルウェアのリストです。</span>
@@ -380,14 +386,20 @@
 		
 			
 			
-			<h2 id="SrvCfg">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1069:1097#L23">SrvCfg</a>
+			<h2 id="SrvCfg">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1313:1511#L25">SrvCfg</a>
 				<a class="permalink" href="#SrvCfg">¶</a>
 				
 				
 			</h2>
-			<p>SrvCfg は、サーバーの設定関数を表します。
+			<p>SrvCfg は、サーバーの設定関数とその名前（ログ出力用）を表します。
 
-			</p><pre>type SrvCfg func(*echo.<a href="#Echo">Echo</a>)</pre>
+			</p><pre>type SrvCfg struct {
+<span id="SrvCfg.Name"></span>    <span class="comment">// Name は、設定関数の名前です（ログ出力用）</span>
+    Name <a href="../../../../../builtin/#string">string</a>
+<span id="SrvCfg.Config"></span>    <span class="comment">// Config は、Echo に副作用で適用される設定関数です。</span>
+    Config func(*echo.<a href="#Echo">Echo</a>)
+}
+</pre>
 
 			
 
@@ -403,7 +415,7 @@
 		
 			
 			
-			<h2 id="UseMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1783:2121#L42">UseMiddleware</a>
+			<h2 id="UseMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2198:2536#L50">UseMiddleware</a>
 				<a class="permalink" href="#UseMiddleware">¶</a>
 				
 				
@@ -434,7 +446,7 @@
 		
 			
 			
-			<h2 id="UseMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2363:2455#L58">UseMiddlewareOut</a>
+			<h2 id="UseMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2779:2872#L67">UseMiddlewareOut</a>
 				<a class="permalink" href="#UseMiddlewareOut">¶</a>
 				
 				
@@ -443,6 +455,7 @@
 
 			</p><pre>type UseMiddlewareOut struct {
     <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#Out">Out</a>
+
 <span id="UseMiddlewareOut.Middleware"></span>    Middleware <a href="#UseMiddleware">UseMiddleware</a> `group:&#34;middlewares.use&#34;`
 }
 </pre>

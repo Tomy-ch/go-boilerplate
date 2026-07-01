@@ -73,6 +73,18 @@ func TestConstructor(t *testing.T) {
 			authCfg := NewAuthConfig(cfg)
 			assert.Same(t, &cfg.auth, authCfg)
 		})
+
+		t.Run("worker設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
+			t.Parallel()
+			workerCfg := NewWorkerConfig(cfg)
+			assert.Same(t, &cfg.worker, workerCfg)
+		})
+
+		t.Run("outbox設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
+			t.Parallel()
+			outboxCfg := NewOutboxConfig(cfg)
+			assert.Same(t, &cfg.outbox, outboxCfg)
+		})
 	})
 }
 
@@ -124,6 +136,16 @@ func TestGetterMethods(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
 			})
+
+			t.Run("ボディ上限MBを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedServerBodyLimitMB, server.BodyLimitMB())
+			})
+
+			t.Run("リクエストタイムアウトを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedServerRequestTimeout, server.RequestTimeout())
+			})
 		})
 
 		t.Run("メトリクス設定", func(t *testing.T) {
@@ -155,9 +177,34 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			observability := cfg.observability
 
-			t.Run("有効フラグを取得できる", func(t *testing.T) {
+			t.Run("trace exporter が有効値なら有効を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.True(t, observability.TracesEnabled())
+			})
+
+			t.Run("metric exporter が有効値なら有効を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.True(t, observability.MetricsEnabled())
+			})
+
+			t.Run("log exporter が有効値なら有効を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.True(t, observability.LogsEnabled())
+			})
+
+			t.Run("いずれかの exporter が有効値なら全体有効を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.True(t, observability.Enabled())
+			})
+
+			t.Run("OTLPエンドポイントを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedObservabilityOTLPEndpoint, observability.OTLPEndpoint())
+			})
+
+			t.Run("OTLPプロトコルを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedObservabilityOTLPProtocol, observability.OTLPProtocol())
 			})
 
 			t.Run("DBクエリ引数マスク設定を取得できる", func(t *testing.T) {
@@ -189,13 +236,18 @@ func TestGetterMethods(t *testing.T) {
 				assert.Equal(t, expectedApplicationMode, app.Mode())
 			})
 
+			t.Run("ログレベルを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedApplicationLogLevel, app.LogLevel())
+			})
+
 			t.Run("シャットダウンタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
 			})
 		})
 
-		t.Run("データベース設定", func(t *testing.T) {
+		t.Run("データベース設定", func(t *testing.T) { //nolint:dupl // 逐次t.Runが規約(table-driven禁止)。getter群が他設定ブロックと同型でも重複を許容
 			t.Parallel()
 			database := cfg.database
 			t.Run("ドライバーを取得できる", func(t *testing.T) {
@@ -241,6 +293,31 @@ func TestGetterMethods(t *testing.T) {
 			t.Run("スロークエリ警告閾値を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
+			})
+
+			t.Run("statement_timeout を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBStatementTimeout, database.StatementTimeout())
+			})
+
+			t.Run("lock_timeout を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBLockTimeout, database.LockTimeout())
+			})
+
+			t.Run("トランザクションリトライ最大試行回数を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxMaxRetries, database.TxMaxRetries())
+			})
+
+			t.Run("トランザクションリトライbackoff初期値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxRetryBaseBackoff, database.TxRetryBaseBackoff())
+			})
+
+			t.Run("トランザクションリトライbackoff上限値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxRetryMaxBackoff, database.TxRetryMaxBackoff())
 			})
 		})
 
@@ -360,6 +437,106 @@ func TestGetterMethods(t *testing.T) {
 				assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
 			})
 		})
+
+		t.Run("worker設定", func(t *testing.T) { //nolint:dupl // 逐次t.Runが規約(table-driven禁止)。getter群が他設定ブロックと同型でも重複を許容
+			t.Parallel()
+			worker := cfg.worker
+
+			t.Run("並行実行数を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerConcurrency, worker.Concurrency())
+			})
+
+			t.Run("最大インフライト数を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerMaxInFlight, worker.MaxInFlight())
+			})
+
+			t.Run("バッチサイズを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerBatchSize, worker.BatchSize())
+			})
+
+			t.Run("Extend周期を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerExtendInterval, worker.ExtendInterval())
+			})
+
+			t.Run("ドレインタイムアウトを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerDrainTimeout, worker.DrainTimeout())
+			})
+
+			t.Run("再配送回数の警告閾値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerReceiveCountWarnThreshold, worker.ReceiveCountWarnThreshold())
+			})
+
+			t.Run("サーキット失敗閾値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerCircuitFailureThreshold, worker.CircuitFailureThreshold())
+			})
+
+			t.Run("サーキットOpen初回backoffを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerCircuitOpenBackoffInitial, worker.CircuitOpenBackoffInitial())
+			})
+
+			t.Run("サーキットOpen backoff上限を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerCircuitOpenBackoffMax, worker.CircuitOpenBackoffMax())
+			})
+
+			t.Run("Half-open試行数を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerCircuitHalfOpenProbe, worker.CircuitHalfOpenProbe())
+			})
+
+			t.Run("health listener待ち受けアドレスを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerHealthListenAddr, worker.HealthListenAddr())
+			})
+
+			t.Run("進捗停滞判定時間を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerProgressStaleAfter, worker.ProgressStaleAfter())
+			})
+
+			t.Run("Nack初回backoffを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerNackBackoffInitial, worker.NackBackoffInitial())
+			})
+
+			t.Run("Nack backoff上限を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedWorkerNackBackoffMax, worker.NackBackoffMax())
+			})
+		})
+
+		t.Run("outbox設定", func(t *testing.T) {
+			t.Parallel()
+			outbox := cfg.outbox
+
+			t.Run("エンドポイントを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxEndpoint, outbox.Endpoint())
+			})
+
+			t.Run("ポーリング間隔を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxPollInterval, outbox.PollInterval())
+			})
+
+			t.Run("エラーbackoffを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxErrorBackoff, outbox.ErrorBackoff())
+			})
+
+			t.Run("バッチサイズを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxBatchSize, outbox.BatchSize())
+			})
+		})
 	})
 }
 
@@ -423,6 +600,77 @@ func TestSecureCookieConfig_Secure(t *testing.T) {
 			t.Parallel()
 			s := &SecureCookieConfig{}
 			assert.Nil(t, s.Secure())
+		})
+	})
+}
+
+func TestObservabilityConfig_Enabled(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全部otlpなら全て有効", func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: "otlp", metricsExporter: "otlp", logsExporter: "otlp"}
+			assert.True(t, o.TracesEnabled())
+			assert.True(t, o.MetricsEnabled())
+			assert.True(t, o.LogsEnabled())
+			assert.True(t, o.Enabled())
+		})
+
+		t.Run("traceのみ有効", func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: "otlp", metricsExporter: "", logsExporter: ""}
+			assert.True(t, o.TracesEnabled())
+			assert.False(t, o.MetricsEnabled())
+			assert.False(t, o.LogsEnabled())
+			assert.True(t, o.Enabled())
+		})
+
+		t.Run("metricのみ有効", func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: "", metricsExporter: "otlp", logsExporter: ""}
+			assert.False(t, o.TracesEnabled())
+			assert.True(t, o.MetricsEnabled())
+			assert.False(t, o.LogsEnabled())
+			assert.True(t, o.Enabled())
+		})
+
+		t.Run("logのみ有効", func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: "", metricsExporter: "", logsExporter: "otlp"}
+			assert.False(t, o.TracesEnabled())
+			assert.False(t, o.MetricsEnabled())
+			assert.True(t, o.LogsEnabled())
+			assert.True(t, o.Enabled())
+		})
+
+		t.Run("全部空なら無効", func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: "", metricsExporter: "", logsExporter: ""}
+			assert.False(t, o.TracesEnabled())
+			assert.False(t, o.MetricsEnabled())
+			assert.False(t, o.LogsEnabled())
+			assert.False(t, o.Enabled())
+		})
+
+		t.Run("noneは無効として扱う", func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: "none", metricsExporter: "none", logsExporter: "none"}
+			assert.False(t, o.TracesEnabled())
+			assert.False(t, o.MetricsEnabled())
+			assert.False(t, o.LogsEnabled())
+			assert.False(t, o.Enabled())
+		})
+
+		t.Run("大文字NONEも無効として扱う", func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: "NONE", metricsExporter: "None", logsExporter: "nOnE"}
+			assert.False(t, o.TracesEnabled())
+			assert.False(t, o.MetricsEnabled())
+			assert.False(t, o.LogsEnabled())
+			assert.False(t, o.Enabled())
 		})
 	})
 }

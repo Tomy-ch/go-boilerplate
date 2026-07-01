@@ -2,7 +2,6 @@ package recovery
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -55,7 +55,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := fmt.Errorf("boom")
+			inErr := xerrors.New("boom")
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack"))
 			require.ErrorIs(t, err, inErr)
@@ -72,7 +72,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := fmt.Errorf("boom2")
+			inErr := xerrors.New("boom2")
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack2"))
 			require.ErrorIs(t, err, inErr)
@@ -155,6 +155,37 @@ func TestMiddleware_panicReturns500WithSingleLog(t *testing.T) {
 			assert.Equal(t, 1, observed.Len())
 			assert.Equal(t, 1, observed.FilterMessage("panic recovered").Len())
 			assert.Equal(t, 0, observed.FilterMessage("errorhandler.server_error").Len())
+		})
+	})
+}
+
+func TestMiddleware_abortHandlerIsRepanicked(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("http.ErrAbortHandlerのパニックはリカバーせず再パニックしログも残さない", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			lf := logging.NewTestLogFieldBuilder(t)
+			obsLogger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			e.Use(Middleware(obsLogger, lf, appCfg))
+			e.GET("/abort", func(_ echo.Context) error { panic(http.ErrAbortHandler) })
+
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/abort", nil)
+
+			// echo の recover は http.ErrAbortHandler を握り潰さず再パニックする。
+			assert.PanicsWithValue(t, http.ErrAbortHandler, func() {
+				e.ServeHTTP(rec, req)
+			})
+			// 再パニックされるため LogErrorFunc は呼ばれず "panic recovered" ログは出力されない。
+			assert.Equal(t, 0, observed.FilterMessage("panic recovered").Len())
 		})
 	})
 }

@@ -2,7 +2,6 @@ package mergedml
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	mock_mergedml "go-boilerplate/internal/cli/mergedml/mock"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,7 +103,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
-			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, errors.New("walk failed"))
+			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, xerrors.New("walk failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
@@ -116,7 +116,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 
 			f1 := filepath.Join(dmlDir, "001.sql")
 			fs.EXPECT().FindSQLFiles(dmlDir).Return([]string{f1}, nil)
-			fs.EXPECT().ReadFile(f1).Return(nil, errors.New("read failed"))
+			fs.EXPECT().ReadFile(f1).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
@@ -130,7 +130,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			f1 := filepath.Join(dmlDir, "001.sql")
 			fs.EXPECT().FindSQLFiles(dmlDir).Return([]string{f1}, nil)
 			fs.EXPECT().ReadFile(f1).Return([]byte("SELECT 1;"), nil)
-			fs.EXPECT().WriteFile(dstPath, gomock.Any(), os.FileMode(genFilePerm)).Return(errors.New("write failed"))
+			fs.EXPECT().WriteFile(dstPath, gomock.Any(), os.FileMode(genFilePerm)).Return(xerrors.New("write failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
@@ -142,10 +142,38 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
 			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, nil)
-			fs.EXPECT().Remove(dstPath).Return(errors.New("remove failed"))
+			fs.EXPECT().Remove(dstPath).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+		})
+
+		t.Run("SQLが空でも生成先がgenRootDir外ならensureUnderDirで弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			// カテゴリ名に相対上昇を含めると生成先が genRootDir の外へ抜け、Remove 前に弾かれる。
+			escCategory := "../../../../etc"
+			escDmlDir := filepath.Join(testWorkDir, "database/dml/", "repository", escCategory)
+			fs.EXPECT().FindSQLFiles(escDmlDir).Return(nil, nil)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
+		})
+
+		t.Run("SQLがあっても生成先がgenRootDir外なら連結前にensureUnderDirで弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			// 生成先が genRootDir の外を指すため、ReadFile/WriteFile へ進む前に弾かれる。
+			escCategory := "../../../../etc"
+			escDmlDir := filepath.Join(testWorkDir, "database/dml/", "repository", escCategory)
+			fs.EXPECT().FindSQLFiles(escDmlDir).Return([]string{filepath.Join(escDmlDir, "001.sql")}, nil)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
 		})
 	})
 }
@@ -201,7 +229,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
-			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("read failed"))
+			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
@@ -213,10 +241,22 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
 			fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"old_repository.gen.sql"}, nil)
-			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(errors.New("remove failed"))
+			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+		})
+
+		t.Run("削除対象がgenRootDir外を指すとensureUnderDirで弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			// suffix 一致かつ keep 外だが、相対上昇で genRootDir の外へ抜けるため Remove 前に弾かれる。
+			fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"../../../../etc_repository.gen.sql"}, nil)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, g.cleanupStaleGeneratedFiles(nil, "repository"))
 		})
 	})
 }
@@ -378,7 +418,7 @@ func TestRunMerge(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
-			fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, errors.New("read dir failed"))
+			fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, xerrors.New("read dir failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))
@@ -390,7 +430,7 @@ func TestRunMerge(t *testing.T) {
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
 			fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, nil)
-			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
+			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("list failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))
@@ -403,7 +443,7 @@ func TestRunMerge(t *testing.T) {
 
 			userDir := filepath.Join(testWorkDir, "database/dml/", targetType, "user")
 			fs.EXPECT().ListSubDirNames(typeRoot).Return([]string{"user"}, nil)
-			fs.EXPECT().FindSQLFiles(userDir).Return(nil, errors.New("walk failed"))
+			fs.EXPECT().FindSQLFiles(userDir).Return(nil, xerrors.New("walk failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))
@@ -438,7 +478,7 @@ func TestRunMerge(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(userDir).Return([]string{userSQL}, nil)
 			fs.EXPECT().ReadFile(userSQL).Return([]byte("SELECT 1;"), nil)
 			fs.EXPECT().WriteFile(dst, gomock.Any(), os.FileMode(genFilePerm)).Return(nil)
-			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
+			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("list failed"))
 
 			g := newTestGenerator(t, fs)
 			require.Error(t, RunMerge(context.Background(), g, targetType))
@@ -446,95 +486,189 @@ func TestRunMerge(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem(t *testing.T) {
+func TestOSFileSystem_ListSubDirNames(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
 
-	t.Run("ListSubDirNames_サブディレクトリ名を昇順で返しファイルは除外する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		base := t.TempDir()
-		require.NoError(t, os.Mkdir(filepath.Join(base, "b"), 0o750))
-		require.NoError(t, os.Mkdir(filepath.Join(base, "a"), 0o750))
-		require.NoError(t, os.WriteFile(filepath.Join(base, "file.txt"), []byte("x"), 0o600))
 
-		dirs, err := sut.ListSubDirNames(base)
-		require.NoError(t, err)
-		assert.Equal(t, []string{"a", "b"}, dirs)
+		t.Run("サブディレクトリ名を昇順で返しファイルは除外する", func(t *testing.T) {
+			t.Parallel()
+			base := t.TempDir()
+			require.NoError(t, os.Mkdir(filepath.Join(base, "b"), 0o750))
+			require.NoError(t, os.Mkdir(filepath.Join(base, "a"), 0o750))
+			require.NoError(t, os.WriteFile(filepath.Join(base, "file.txt"), []byte("x"), 0o600))
+
+			dirs, err := sut.ListSubDirNames(base)
+			require.NoError(t, err)
+			assert.Equal(t, []string{"a", "b"}, dirs)
+		})
 	})
 
-	t.Run("ListSubDirNames_存在しないディレクトリはエラー", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		_, err := sut.ListSubDirNames(filepath.Join(t.TempDir(), "missing"))
-		require.Error(t, err)
+
+		t.Run("存在しないディレクトリはエラー", func(t *testing.T) {
+			t.Parallel()
+			_, err := sut.ListSubDirNames(filepath.Join(t.TempDir(), "missing"))
+			require.Error(t, err)
+		})
+	})
+}
+
+func TestOSFileSystem_ListGenFileNames(t *testing.T) {
+	t.Parallel()
+
+	var sut osFileSystem
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ファイル名のみ返しディレクトリは除外する", func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "a.sql"), []byte("x"), 0o600))
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "sub"), 0o750))
+
+			names, err := sut.ListGenFileNames(dir)
+			require.NoError(t, err)
+			assert.Equal(t, []string{"a.sql"}, names)
+		})
 	})
 
-	t.Run("ListGenFileNames_ファイル名のみ返しディレクトリは除外する", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		dir := t.TempDir()
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "a.sql"), []byte("x"), 0o600))
-		require.NoError(t, os.Mkdir(filepath.Join(dir, "sub"), 0o750))
 
-		names, err := sut.ListGenFileNames(dir)
-		require.NoError(t, err)
-		assert.Equal(t, []string{"a.sql"}, names)
+		t.Run("存在しないディレクトリはエラー", func(t *testing.T) {
+			t.Parallel()
+			_, err := sut.ListGenFileNames(filepath.Join(t.TempDir(), "missing"))
+			require.Error(t, err)
+		})
+	})
+}
+
+func TestOSFileSystem_FindSQLFiles(t *testing.T) {
+	t.Parallel()
+
+	var sut osFileSystem
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("配下のsqlのみ昇順で返す", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			sub := filepath.Join(root, "sub")
+			require.NoError(t, os.Mkdir(sub, 0o750))
+			require.NoError(t, os.WriteFile(filepath.Join(root, "b.sql"), []byte("x"), 0o600))
+			require.NoError(t, os.WriteFile(filepath.Join(sub, "a.sql"), []byte("x"), 0o600))
+			require.NoError(t, os.WriteFile(filepath.Join(root, "note.txt"), []byte("x"), 0o600))
+
+			files, err := sut.FindSQLFiles(root)
+			require.NoError(t, err)
+			// フルパス文字列の昇順（"…/b.sql" < "…/sub/a.sql"）で返ること。
+			assert.Equal(t, []string{filepath.Join(root, "b.sql"), filepath.Join(sub, "a.sql")}, files)
+		})
 	})
 
-	t.Run("ListGenFileNames_存在しないディレクトリはエラー", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		_, err := sut.ListGenFileNames(filepath.Join(t.TempDir(), "missing"))
-		require.Error(t, err)
+
+		t.Run("存在しないルートはエラー", func(t *testing.T) {
+			t.Parallel()
+			_, err := sut.FindSQLFiles(filepath.Join(t.TempDir(), "missing"))
+			require.Error(t, err)
+		})
+	})
+}
+
+func TestOSFileSystem_ReadFile(t *testing.T) {
+	t.Parallel()
+
+	var sut osFileSystem
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("WriteFileで書き込んだ内容を読み戻せる", func(t *testing.T) {
+			t.Parallel()
+			p := filepath.Join(t.TempDir(), "x.sql")
+			require.NoError(t, sut.WriteFile(p, []byte("SELECT 1;"), 0o600))
+
+			b, err := sut.ReadFile(p)
+			require.NoError(t, err)
+			assert.Equal(t, "SELECT 1;", string(b))
+		})
 	})
 
-	t.Run("FindSQLFiles_配下のsqlのみ昇順で返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		root := t.TempDir()
-		sub := filepath.Join(root, "sub")
-		require.NoError(t, os.Mkdir(sub, 0o750))
-		require.NoError(t, os.WriteFile(filepath.Join(root, "b.sql"), []byte("x"), 0o600))
-		require.NoError(t, os.WriteFile(filepath.Join(sub, "a.sql"), []byte("x"), 0o600))
-		require.NoError(t, os.WriteFile(filepath.Join(root, "note.txt"), []byte("x"), 0o600))
 
-		files, err := sut.FindSQLFiles(root)
-		require.NoError(t, err)
-		// フルパス文字列の昇順（"…/b.sql" < "…/sub/a.sql"）で返ること。
-		assert.Equal(t, []string{filepath.Join(root, "b.sql"), filepath.Join(sub, "a.sql")}, files)
+		t.Run("存在しないファイルはエラー", func(t *testing.T) {
+			t.Parallel()
+			_, err := sut.ReadFile(filepath.Join(t.TempDir(), "missing.sql"))
+			require.Error(t, err)
+		})
+	})
+}
+
+func TestOSFileSystem_WriteFile(t *testing.T) {
+	t.Parallel()
+
+	var sut osFileSystem
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定パスへ内容を書き込む", func(t *testing.T) {
+			t.Parallel()
+			p := filepath.Join(t.TempDir(), "x.sql")
+			require.NoError(t, sut.WriteFile(p, []byte("SELECT 1;"), 0o600))
+
+			b, err := os.ReadFile(p) //nolint:gosec // テスト内で生成したパスのみ読み込む
+			require.NoError(t, err)
+			assert.Equal(t, "SELECT 1;", string(b))
+		})
 	})
 
-	t.Run("FindSQLFiles_存在しないルートはエラー", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		_, err := sut.FindSQLFiles(filepath.Join(t.TempDir(), "missing"))
-		require.Error(t, err)
+
+		t.Run("存在しない親ディレクトリへの書き込みはエラー", func(t *testing.T) {
+			t.Parallel()
+			p := filepath.Join(t.TempDir(), "missing", "x.sql")
+			require.Error(t, sut.WriteFile(p, []byte("x"), 0o600))
+		})
+	})
+}
+
+func TestOSFileSystem_Remove(t *testing.T) {
+	t.Parallel()
+
+	var sut osFileSystem
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ファイルを削除できる", func(t *testing.T) {
+			t.Parallel()
+			p := filepath.Join(t.TempDir(), "x.sql")
+			require.NoError(t, os.WriteFile(p, []byte("x"), 0o600))
+			require.NoError(t, sut.Remove(p))
+
+			_, err := os.Stat(p)
+			require.Error(t, err)
+		})
 	})
 
-	t.Run("ReadFile_WriteFile_往復で同じ内容を読み書きできる", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		p := filepath.Join(t.TempDir(), "x.sql")
-		require.NoError(t, sut.WriteFile(p, []byte("SELECT 1;"), 0o600))
 
-		b, err := sut.ReadFile(p)
-		require.NoError(t, err)
-		assert.Equal(t, "SELECT 1;", string(b))
-	})
-
-	t.Run("ReadFile_存在しないファイルはエラー", func(t *testing.T) {
-		t.Parallel()
-		_, err := sut.ReadFile(filepath.Join(t.TempDir(), "missing.sql"))
-		require.Error(t, err)
-	})
-
-	t.Run("Remove_ファイルを削除できる", func(t *testing.T) {
-		t.Parallel()
-		p := filepath.Join(t.TempDir(), "x.sql")
-		require.NoError(t, os.WriteFile(p, []byte("x"), 0o600))
-		require.NoError(t, sut.Remove(p))
-
-		_, err := os.Stat(p)
-		require.Error(t, err)
-	})
-
-	t.Run("Remove_存在しないファイルはエラー", func(t *testing.T) {
-		t.Parallel()
-		require.Error(t, sut.Remove(filepath.Join(t.TempDir(), "missing.sql")))
+		t.Run("存在しないファイルはエラー", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, sut.Remove(filepath.Join(t.TempDir(), "missing.sql")))
+		})
 	})
 }

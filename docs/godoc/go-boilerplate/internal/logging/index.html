@@ -87,7 +87,6 @@
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package logging は、アプリケーションのロギング機能を提供します。
-</p><p>Package logging は、アプリケーションのロギング機能を提供します。
 
 				
 			</p></div>
@@ -161,6 +160,31 @@
 				
 			
 				
+				<dd><a href="#Level">type Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelDebug">func LevelDebug() Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelError">func LevelError() Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelInfo">func LevelInfo() Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelWarn">func LevelWarn() Level</a></dd>
+				
+					
+					<dd>    <a href="#ParseLevel">func ParseLevel(s string) (Level, error)</a></dd>
+				
+				
+			
+				
+				<dd><a href="#LogCore">type LogCore</a></dd>
+				
+				
+			
+				
 				<dd><a href="#LogFieldBuilder">type LogFieldBuilder</a></dd>
 				
 					
@@ -175,10 +199,10 @@
 				<dd><a href="#Logger">type Logger</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(appCfg *config.ApplicationConfig) (Logger, error)</a></dd>
+					<dd>    <a href="#NewConsoleLogger">func NewConsoleLogger(level, stacktraceLevel Level) Logger</a></dd>
 				
 					
-					<dd>    <a href="#NewDevelopmentLogger">func NewDevelopmentLogger() (Logger, error)</a></dd>
+					<dd>    <a href="#NewJSONLogger">func NewJSONLogger(level, stacktraceLevel Level) Logger</a></dd>
 				
 					
 					<dd>    <a href="#NewObservedTestLogger">func NewObservedTestLogger(t *testing.T) (Logger, *observer.ObservedLogs)</a></dd>
@@ -187,25 +211,15 @@
 					<dd>    <a href="#NewObservedTestLoggerWithCaller">func NewObservedTestLoggerWithCaller(t *testing.T) (Logger, *observer.ObservedLogs)</a></dd>
 				
 					
-					<dd>    <a href="#NewProductionLogger">func NewProductionLogger() (Logger, error)</a></dd>
-				
-					
 					<dd>    <a href="#NewTestLogger">func NewTestLogger(t *testing.T) Logger</a></dd>
 				
-				
-			
-				
-				<dd><a href="#ObservabilityFieldsInput">type ObservabilityFieldsInput</a></dd>
+					
+					<dd>    <a href="#WithCore">func WithCore(l Logger, core LogCore) Logger</a></dd>
 				
 				
 			
 				
 				<dd><a href="#SQLFieldsEndInput">type SQLFieldsEndInput</a></dd>
-				
-				
-			
-				
-				<dd><a href="#SQLFieldsStartInput">type SQLFieldsStartInput</a></dd>
 				
 				
 			
@@ -225,6 +239,8 @@
 				<a href="../../../src/go-boilerplate/internal/logging/field.go.html">field.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html">field_builder.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/level.go.html">level.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/logging/logger.go.html">logger.go</a>
 			
@@ -330,6 +346,15 @@
     <span class="comment">// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。</span>
     <span id="FilterKey">FilterKey</span> = &#34;filter&#34;
 
+    <span class="comment">// WorkerNameKey は、worker 名を表すログフィールドのキーです。</span>
+    <span id="WorkerNameKey">WorkerNameKey</span> = &#34;worker_name&#34;
+    <span class="comment">// MessageIDKey は、メッセージ ID を表すログフィールドのキーです。</span>
+    <span id="MessageIDKey">MessageIDKey</span> = &#34;message_id&#34;
+    <span class="comment">// ReceiveCountKey は、メッセージの再配送回数を表すログフィールドのキーです。</span>
+    <span id="ReceiveCountKey">ReceiveCountKey</span> = &#34;receive_count&#34;
+    <span class="comment">// PanicKey は、recover した panic 値を表すログフィールドのキーです。</span>
+    <span id="PanicKey">PanicKey</span> = &#34;panic&#34;
+
     <span class="comment">// TraceIDKey は、トレースIDを表すログフィールドのキーです。</span>
     <span id="TraceIDKey">TraceIDKey</span> = &#34;trace_id&#34;
     <span class="comment">// SpanIDKey は、スパンIDを表すログフィールドのキーです。</span>
@@ -351,7 +376,7 @@
 		
 			
 			
-			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3386:3425#L127">SplitStackLines</a>
+			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3598:3637#L129">SplitStackLines</a>
 				<a class="permalink" href="#SplitStackLines">¶</a>
 				
 				
@@ -359,7 +384,9 @@
 			<pre>func SplitStackLines(s <a href="../../../builtin/#string">string</a>) []<a href="../../../builtin/#string">string</a></pre>
 			<p>SplitStackLines は、スタックトレース文字列を改行で分割し行配列に変換します。
 末尾の空行は除去し、空文字列または改行のみの入力では nil を返します。
-配列化により行境界が構造として表現されるため、`\t&lt;file&gt;:&lt;line&gt;` の先頭タブは除去します。
+配列化により行境界とネスト深さが構造として表現されるため、cockroachdb/errors の
+`%+v` が各行頭に付与するガター（`  | ` の空白・パイプや `\t&lt;file&gt;:&lt;line&gt;` の先頭タブ）は
+冗長になる。各行頭の空白・`|`・タブをまとめて除去し、内容だけを残す。
 
 			
 			
@@ -390,7 +417,7 @@
 
 			
 				
-				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3705:3741#L140">Any</a>
+				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3919:3955#L142">Any</a>
 					<a class="permalink" href="#Any">¶</a>
 					
 					
@@ -528,7 +555,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=738:1185#L15">HTTPRequestLogInput</a>
+			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=746:1193#L14">HTTPRequestLogInput</a>
 				<a class="permalink" href="#HTTPRequestLogInput">¶</a>
 				
 				
@@ -574,7 +601,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1303:1495#L40">HTTPResponseLogInput</a>
+			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1311:1503#L39">HTTPResponseLogInput</a>
 				<a class="permalink" href="#HTTPResponseLogInput">¶</a>
 				
 				
@@ -611,18 +638,127 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=190:514#L1">LogFieldBuilder</a>
+			<h2 id="Level">type <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=217:256#L3">Level</a>
+				<a class="permalink" href="#Level">¶</a>
+				
+				
+			</h2>
+			<p>Level は、ログ出力レベルを表す型です（ゼロ値は Info 相当）。
+
+			</p><pre>type Level struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="LevelDebug">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=310:333#L8">LevelDebug</a>
+					<a class="permalink" href="#LevelDebug">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelDebug() <a href="#Level">Level</a></pre>
+				<p>LevelDebug は Debug レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="LevelError">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=644:667#L17">LevelError</a>
+					<a class="permalink" href="#LevelError">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelError() <a href="#Level">Level</a></pre>
+				<p>LevelError は Error レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="LevelInfo">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=422:444#L11">LevelInfo</a>
+					<a class="permalink" href="#LevelInfo">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelInfo() <a href="#Level">Level</a></pre>
+				<p>LevelInfo は Info レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="LevelWarn">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=532:554#L14">LevelWarn</a>
+					<a class="permalink" href="#LevelWarn">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelWarn() <a href="#Level">Level</a></pre>
+				<p>LevelWarn は Warn レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="ParseLevel">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=872:912#L21">ParseLevel</a>
+					<a class="permalink" href="#ParseLevel">¶</a>
+					
+					
+				</h3>
+				<pre>func ParseLevel(s <a href="../../../builtin/#string">string</a>) (<a href="#Level">Level</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>ParseLevel は、APP_LOG_LEVEL が受理するレベル文字列を Level に変換します。
+受理しない文字列の場合はエラーを返します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=347:374#L2">LogCore</a>
+				<a class="permalink" href="#LogCore">¶</a>
+				
+				
+			</h2>
+			<p>LogCore は、Logger に追加で Tee できるログ core の型です。
+
+			</p><pre>type LogCore = <a href="../../../go.uber.org/zap/zapcore/">zapcore</a>.<a href="../../../go.uber.org/zap/zapcore/#Core">Core</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=318:522#L2">LogFieldBuilder</a>
 				<a class="permalink" href="#LogFieldBuilder">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type LogFieldBuilder interface {
+			<p>LogFieldBuilder は、各種ログ入力から構造化ログのフィールド列を構築するインターフェースです。
+
+			</p><pre>type LogFieldBuilder interface {
     BuildHTTPRequestFields(req <a href="#HTTPRequestLogInput">HTTPRequestLogInput</a>) []*<a href="#Field">Field</a>
     BuildHTTPResponseFields(resp <a href="#HTTPResponseLogInput">HTTPResponseLogInput</a>) []*<a href="#Field">Field</a>
-    BuildSQLStartFields(sql <a href="#SQLFieldsStartInput">SQLFieldsStartInput</a>) []*<a href="#Field">Field</a>
     BuildSQLEndFields(sql <a href="#SQLFieldsEndInput">SQLFieldsEndInput</a>) []*<a href="#Field">Field</a>
-    BuildObservabilityFields(obs <a href="#ObservabilityFieldsInput">ObservabilityFieldsInput</a>) []*<a href="#Field">Field</a>
 }</pre>
 
 			
@@ -635,7 +771,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2615:2726#L107">NewLogFields</a>
+				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1956:2067#L75">NewLogFields</a>
 					<a class="permalink" href="#NewLogFields">¶</a>
 					
 					
@@ -666,7 +802,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=327:949#L1">Logger</a>
+			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=462:1084#L5">Logger</a>
 				<a class="permalink" href="#Logger">¶</a>
 				
 				
@@ -698,25 +834,27 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="New">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=3050:3108#L79">New</a>
-					<a class="permalink" href="#New">¶</a>
+				<h3 id="NewConsoleLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=2047:2105#L45">NewConsoleLogger</a>
+					<a class="permalink" href="#NewConsoleLogger">¶</a>
 					
 					
 				</h3>
-				<pre>func New(appCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>) (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				<p>New は、指定された設定に基づいて新しいZapロガーを生成します。
+				<pre>func NewConsoleLogger(level, stacktraceLevel <a href="#Level">Level</a>) <a href="#Logger">Logger</a></pre>
+				<p>NewConsoleLogger は人間可読な console ロガーを生成します。
+level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
 
 				
 				
 			
 				
-				</p><h3 id="NewDevelopmentLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=1036:1079#L28">NewDevelopmentLogger</a>
-					<a class="permalink" href="#NewDevelopmentLogger">¶</a>
+				</p><h3 id="NewJSONLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=1655:1710#L38">NewJSONLogger</a>
+					<a class="permalink" href="#NewJSONLogger">¶</a>
 					
 					
 				</h3>
-				<pre>func NewDevelopmentLogger() (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				<p>NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
+				<pre>func NewJSONLogger(level, stacktraceLevel <a href="#Level">Level</a>) <a href="#Logger">Logger</a></pre>
+				<p>NewJSONLogger は JSON 構造化ロガーを生成します。
+level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
 
 				
 				
@@ -748,18 +886,6 @@ caller（発生源）を検証したいテストで使用します。
 				
 			
 				
-				</p><h3 id="NewProductionLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=291:333#L4">NewProductionLogger</a>
-					<a class="permalink" href="#NewProductionLogger">¶</a>
-					
-					
-				</h3>
-				<pre>func NewProductionLogger() (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				<p>NewProductionLogger は、本番環境用のZapロガーを生成します。
-
-				
-				
-			
-				
 				</p><h3 id="NewTestLogger">func <a href="../../../src/go-boilerplate/internal/logging/test_kit.go.html?s=269:308#L5">NewTestLogger</a>
 					<a class="permalink" href="#NewTestLogger">¶</a>
 					
@@ -771,50 +897,25 @@ caller（発生源）を検証したいテストで使用します。
 				
 				
 			
+				
+				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1546:1590#L33">WithCore</a>
+					<a class="permalink" href="#WithCore">¶</a>
+					
+					
+				</h3>
+				<pre>func WithCore(l <a href="#Logger">Logger</a>, core <a href="#LogCore">LogCore</a>) <a href="#Logger">Logger</a></pre>
+				<p>WithCore は、既存 Logger に追加のログ core を、元 Logger と同じ最小レベルでゲートして
+Tee した新しい Logger を返します。core が nil の場合は、元の Logger をそのまま返します。
 
-			
-		
-			
-			
-			</p><h2 id="ObservabilityFieldsInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2273:2509#L90">ObservabilityFieldsInput</a>
-				<a class="permalink" href="#ObservabilityFieldsInput">¶</a>
 				
 				
-			</h2>
-			<p>ObservabilityFieldsInput は、オブザーバビリティ用のログフィールド生成の入力情報をまとめた構造体です。
-
-			</p><pre>type ObservabilityFieldsInput struct {
-<span id="ObservabilityFieldsInput.Layer"></span>    Layer    <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.PkgName"></span>    PkgName  <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.FuncName"></span>    FuncName <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.SpanName"></span>    SpanName <a href="../../../builtin/#string">string</a>
-
-<span id="ObservabilityFieldsInput.EventType"></span>    EventType <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.EventAt"></span>    EventAt   <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
-
-<span id="ObservabilityFieldsInput.Latency"></span>    Latency <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>
-
-<span id="ObservabilityFieldsInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
 			
 
 			
 		
 			
 			
-			<h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1878:2128#L70">SQLFieldsEndInput</a>
+			</p><h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1600:1850#L55">SQLFieldsEndInput</a>
 				<a class="permalink" href="#SQLFieldsEndInput">¶</a>
 				
 				
@@ -838,41 +939,6 @@ caller（発生源）を検証したいテストで使用します。
 <span id="SQLFieldsEndInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
 <span id="SQLFieldsEndInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
 <span id="SQLFieldsEndInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="SQLFieldsStartInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1594:1781#L56">SQLFieldsStartInput</a>
-				<a class="permalink" href="#SQLFieldsStartInput">¶</a>
-				
-				
-			</h2>
-			<p>SQLFieldsStartInput は、SQL ログ出力用の入力情報をまとめた構造体です。
-
-			</p><pre>type SQLFieldsStartInput struct {
-<span id="SQLFieldsStartInput.Layer"></span>    Layer    <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.PkgName"></span>    PkgName  <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.FuncName"></span>    FuncName <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.SpanName"></span>    SpanName <a href="../../../builtin/#string">string</a>
-
-<span id="SQLFieldsStartInput.EventAt"></span>    EventAt <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
-
-<span id="SQLFieldsStartInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
 }
 </pre>
 

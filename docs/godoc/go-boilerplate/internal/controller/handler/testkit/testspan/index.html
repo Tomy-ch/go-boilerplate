@@ -133,7 +133,7 @@
 		
 			
 			
-			<h2 id="StartTestSpanForEcho">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testspan/test_span.go.html?s=383:466#L4">StartTestSpanForEcho</a>
+			<h2 id="StartTestSpanForEcho">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testspan/test_span.go.html?s=367:450#L3">StartTestSpanForEcho</a>
 				<a class="permalink" href="#StartTestSpanForEcho">¶</a>
 				
 				
@@ -142,8 +142,7 @@
     t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>,
     c echo.<a href="#Context">Context</a>,
 ) (echo.<a href="#Context">Context</a>, func())</pre>
-			<p>StartTestSpanForEcho は、echo.Context の Request に tracer.Start で開始した
-context を埋め込み、終了用の endSpan 関数を返します。
+			<p>StartTestSpanForEcho は、テスト用のスタブトレーススパンを echo.Context に設定し、スパン終了関数を返します。
 
 			
 			
