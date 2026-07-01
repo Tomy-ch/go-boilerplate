@@ -45,8 +45,8 @@ type Policy struct {
 //   - sleeper.Sleep が error を返した（ctx 打ち切り）場合は、sleep の error ではなく
 //     直前の fn の error を返します（リトライ対象だった元の失敗を呼び出し側へ伝えるため）。
 //
-// isRetryable は fn の返した非 nil error に対してのみ呼ばれます。
-// isRetryable が nil の場合は「リトライ対象なし」として扱い、最初の error で即座に返します。
+// isRetryable は fn が返した非 nil error に対してのみ呼ばれます。isRetryable 自体が nil の
+// 場合は全ての error をリトライ不可として扱い、最初の error で即座に返します。
 func Do(
 	ctx context.Context,
 	sleeper Sleeper,
