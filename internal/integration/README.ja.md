@@ -164,7 +164,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponse()"]
+    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponseType()"]
 ```
 
 ## integration_test.go で定義されている関数
@@ -224,20 +224,54 @@ JSON 用のショートカット関数です。
 actual := srv.DoJSON(http.MethodGet, "/health", nil, nil)
 ```
 
-### `AssertJSONResponse[T any]`
+### `AssertJSONResponseType[T any]`
 
-JSON レスポンスの内容を検証するユーティリティです。
+HTTP 境界の到達確認アサーションです。レスポンスが HTTP 経路を通り、期待した型へ
+シリアライズされることを検証します。**個々のフィールド値の正しさは検証しません。**
 
 検証内容
 
 - HTTP Status Code = 200
 - Content-Type = application/json
-- JSON が型 `T` に Unmarshal 可能
+- レスポンスボディが型 `T` に Unmarshal 可能
+
+このヘルパーは意図的に値比較を行いません。上記のテストピラミッドのとおり、レスポンス値の
+正しさ（Presenter のフィールドマッピング）は **Controller Unit Test** が独立したオラクルで
+検証する責務です。ここで値比較を重複させると integration テストが Presenter の詳細に結合し
+壊れやすくなります。build info や `RegisteredAt` などの動的な値を含むレスポンスでは、
+そもそも型のみが検証可能です。
 
 使用例
 
 ```go
-AssertJSONResponse(t, gen.ResponseHealth{}, actual)
+AssertJSONResponseType[gen.HealthResponse](t, actual)
+```
+
+### `UseAppErrorHandler(t, e)`
+
+本番相当の `HTTPErrorHandler` を Echo に登録します。素の `echo.New()` は Echo 標準の
+エラーハンドラしか持たないため、`apperror` → HTTP ステータスの実マッピングを観測する異常系
+テストでは、先に本番ハンドラを配線する必要があります。
+
+各エンドポイントが返し得るエラーレスポンスは **OpenAPI の契約**（各オペレーションの
+`responses`）で定義されます。異常系テストは、そのオペレーションが契約上宣言している
+ステータスコードのみを対象とし、恣意的なコードは対象にしません。
+
+### `AssertErrorResponse(t, actual, wantStatus)`
+
+異常系レスポンスが `wantStatus` を返し、ボディが JSON のエラー形式（`ErrorResponse`）へ
+デシリアライズ可能であることを検証します。`AssertJSONResponseType` と同様に、検証するのは
+境界の関心事（`apperror` → ステータスのマッピングとエラーボディの形）のみで、`code` /
+`message` の値の正しさはユニットテストの責務のままです。
+
+使用例
+
+```go
+e := echo.New()
+UseAppErrorHandler(t, e)
+// ... usecase モックが apperror.ErrNotFound を返すよう設定し、handler を bind ...
+actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
+AssertErrorResponse(t, actual, http.StatusNotFound)
 ```
 
 ## Auth テストヘルパー
