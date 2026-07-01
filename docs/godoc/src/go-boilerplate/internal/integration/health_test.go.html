@@ -83,7 +83,7 @@
 <span id="L26" class="ln">    26  </span>			health.BindHandler(e, tf)
 <span id="L27" class="ln">    27  </span>
 <span id="L28" class="ln">    28  </span>			actual := StartServer(t, e).DoJSON(http.MethodGet, &#34;/health&#34;, nil, nil)
-<span id="L29" class="ln">    29  </span>			AssertJSONResponse(t, gen.HealthResponse{}, actual)
+<span id="L29" class="ln">    29  </span>			AssertJSONResponseType[gen.HealthResponse](t, actual)
 <span id="L30" class="ln">    30  </span>		})
 <span id="L31" class="ln">    31  </span>	})
 <span id="L32" class="ln">    32  </span>}

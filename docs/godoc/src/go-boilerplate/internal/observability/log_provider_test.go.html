@@ -143,57 +143,95 @@
 <span id="L86" class="ln">    86  </span>	})
 <span id="L87" class="ln">    87  </span>}
 <span id="L88" class="ln">    88  </span>
-<span id="L89" class="ln">    89  </span>func Test_ensureOTLPPath(t *testing.T) {
+<span id="L89" class="ln">    89  </span>func Test_newLogExporter(t *testing.T) {
 <span id="L90" class="ln">    90  </span>	t.Parallel()
 <span id="L91" class="ln">    91  </span>
-<span id="L92" class="ln">    92  </span>	cases := []struct {
-<span id="L93" class="ln">    93  </span>		name string
-<span id="L94" class="ln">    94  </span>		in   string
-<span id="L95" class="ln">    95  </span>		want string
-<span id="L96" class="ln">    96  </span>	}{
-<span id="L97" class="ln">    97  </span>		{&#34;正常系_path無しなら補う&#34;, &#34;http://observability:4318&#34;, &#34;http://observability:4318/v1/logs&#34;},
-<span id="L98" class="ln">    98  </span>		{&#34;正常系_末尾スラッシュも補う&#34;, &#34;http://observability:4318/&#34;, &#34;http://observability:4318/v1/logs&#34;},
-<span id="L99" class="ln">    99  </span>		{&#34;正常系_path有りならそのまま&#34;, &#34;http://observability:4318/custom&#34;, &#34;http://observability:4318/custom&#34;},
-<span id="L100" class="ln">   100  </span>		{&#34;正常系_パース不能ならそのまま&#34;, &#34;://bad&#34;, &#34;://bad&#34;},
-<span id="L101" class="ln">   101  </span>	}
-<span id="L102" class="ln">   102  </span>
-<span id="L103" class="ln">   103  </span>	for _, tc := range cases {
-<span id="L104" class="ln">   104  </span>		t.Run(tc.name, func(t *testing.T) {
-<span id="L105" class="ln">   105  </span>			t.Parallel()
-<span id="L106" class="ln">   106  </span>			assert.Equal(t, tc.want, ensureOTLPPath(tc.in, otlpLogsPath))
+<span id="L92" class="ln">    92  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L93" class="ln">    93  </span>		t.Parallel()
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span>		t.Run(&#34;endpoint未設定(http)でも既定値で exporter を構築する&#34;, func(t *testing.T) {
+<span id="L96" class="ln">    96  </span>			t.Parallel()
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>			obsCfg := newTestObsCfg(t)
+<span id="L99" class="ln">    99  </span>			obsCfg.SetObservabilityOTLPProtocol(t, protocolHTTP)
+<span id="L100" class="ln">   100  </span>			obsCfg.SetObservabilityOTLPEndpoint(t, &#34;&#34;)
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>			exp, err := newLogExporter(context.Background(), obsCfg)
+<span id="L103" class="ln">   103  </span>
+<span id="L104" class="ln">   104  </span>			require.NoError(t, err)
+<span id="L105" class="ln">   105  </span>			require.NotNil(t, exp)
+<span id="L106" class="ln">   106  </span>			require.NoError(t, exp.Shutdown(context.Background()))
 <span id="L107" class="ln">   107  </span>		})
-<span id="L108" class="ln">   108  </span>	}
-<span id="L109" class="ln">   109  </span>}
-<span id="L110" class="ln">   110  </span>
-<span id="L111" class="ln">   111  </span>func Test_NewLogCore(t *testing.T) {
-<span id="L112" class="ln">   112  </span>	t.Parallel()
-<span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L115" class="ln">   115  </span>		t.Parallel()
-<span id="L116" class="ln">   116  </span>
-<span id="L117" class="ln">   117  </span>		t.Run(&#34;log有効なら otelzap core を返す&#34;, func(t *testing.T) {
-<span id="L118" class="ln">   118  </span>			t.Parallel()
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>			lp := sdklog.NewLoggerProvider()
-<span id="L121" class="ln">   121  </span>			core := NewLogCore(newTestObsCfg(t), newTestAppCfg(t), lp)
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span>			assert.NotNil(t, core)
-<span id="L124" class="ln">   124  </span>		})
-<span id="L125" class="ln">   125  </span>
-<span id="L126" class="ln">   126  </span>		t.Run(&#34;log無効なら nil を返す&#34;, func(t *testing.T) {
-<span id="L127" class="ln">   127  </span>			t.Parallel()
-<span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span>			obsCfg := newTestObsCfg(t)
-<span id="L130" class="ln">   130  </span>			obsCfg.SetObservabilityLogsExporter(t, &#34;&#34;)
-<span id="L131" class="ln">   131  </span>			lp := sdklog.NewLoggerProvider()
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span>		t.Run(&#34;endpoint未設定(grpc)でも既定値で exporter を構築する&#34;, func(t *testing.T) {
+<span id="L110" class="ln">   110  </span>			t.Parallel()
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>			obsCfg := newTestObsCfg(t)
+<span id="L113" class="ln">   113  </span>			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
+<span id="L114" class="ln">   114  </span>			obsCfg.SetObservabilityOTLPEndpoint(t, &#34;&#34;)
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span>			exp, err := newLogExporter(context.Background(), obsCfg)
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span>			require.NoError(t, err)
+<span id="L119" class="ln">   119  </span>			require.NotNil(t, exp)
+<span id="L120" class="ln">   120  </span>			require.NoError(t, exp.Shutdown(context.Background()))
+<span id="L121" class="ln">   121  </span>		})
+<span id="L122" class="ln">   122  </span>	})
+<span id="L123" class="ln">   123  </span>}
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>func Test_ensureOTLPPath(t *testing.T) {
+<span id="L126" class="ln">   126  </span>	t.Parallel()
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>	t.Run(&#34;正常系_path無しなら補う&#34;, func(t *testing.T) {
+<span id="L129" class="ln">   129  </span>		t.Parallel()
+<span id="L130" class="ln">   130  </span>		assert.Equal(t, &#34;http://observability:4318/v1/logs&#34;, ensureOTLPPath(&#34;http://observability:4318&#34;, otlpLogsPath))
+<span id="L131" class="ln">   131  </span>	})
 <span id="L132" class="ln">   132  </span>
-<span id="L133" class="ln">   133  </span>			core := NewLogCore(obsCfg, newTestAppCfg(t), lp)
-<span id="L134" class="ln">   134  </span>
-<span id="L135" class="ln">   135  </span>			assert.Nil(t, core)
-<span id="L136" class="ln">   136  </span>		})
-<span id="L137" class="ln">   137  </span>	})
-<span id="L138" class="ln">   138  </span>}
-<span id="L139" class="ln">   139  </span>
+<span id="L133" class="ln">   133  </span>	t.Run(&#34;正常系_末尾スラッシュも補う&#34;, func(t *testing.T) {
+<span id="L134" class="ln">   134  </span>		t.Parallel()
+<span id="L135" class="ln">   135  </span>		assert.Equal(t, &#34;http://observability:4318/v1/logs&#34;, ensureOTLPPath(&#34;http://observability:4318/&#34;, otlpLogsPath))
+<span id="L136" class="ln">   136  </span>	})
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>	t.Run(&#34;正常系_path有りならそのまま&#34;, func(t *testing.T) {
+<span id="L139" class="ln">   139  </span>		t.Parallel()
+<span id="L140" class="ln">   140  </span>		assert.Equal(t, &#34;http://observability:4318/custom&#34;, ensureOTLPPath(&#34;http://observability:4318/custom&#34;, otlpLogsPath))
+<span id="L141" class="ln">   141  </span>	})
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span>	t.Run(&#34;正常系_パース不能ならそのまま&#34;, func(t *testing.T) {
+<span id="L144" class="ln">   144  </span>		t.Parallel()
+<span id="L145" class="ln">   145  </span>		assert.Equal(t, &#34;://bad&#34;, ensureOTLPPath(&#34;://bad&#34;, otlpLogsPath))
+<span id="L146" class="ln">   146  </span>	})
+<span id="L147" class="ln">   147  </span>}
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>func Test_NewLogCore(t *testing.T) {
+<span id="L150" class="ln">   150  </span>	t.Parallel()
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L153" class="ln">   153  </span>		t.Parallel()
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>		t.Run(&#34;log有効なら otelzap core を返す&#34;, func(t *testing.T) {
+<span id="L156" class="ln">   156  </span>			t.Parallel()
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>			lp := sdklog.NewLoggerProvider()
+<span id="L159" class="ln">   159  </span>			core := NewLogCore(newTestObsCfg(t), newTestAppCfg(t), lp)
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>			assert.NotNil(t, core)
+<span id="L162" class="ln">   162  </span>		})
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span>		t.Run(&#34;log無効なら nil を返す&#34;, func(t *testing.T) {
+<span id="L165" class="ln">   165  </span>			t.Parallel()
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>			obsCfg := newTestObsCfg(t)
+<span id="L168" class="ln">   168  </span>			obsCfg.SetObservabilityLogsExporter(t, &#34;&#34;)
+<span id="L169" class="ln">   169  </span>			lp := sdklog.NewLoggerProvider()
+<span id="L170" class="ln">   170  </span>
+<span id="L171" class="ln">   171  </span>			core := NewLogCore(obsCfg, newTestAppCfg(t), lp)
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>			assert.Nil(t, core)
+<span id="L174" class="ln">   174  </span>		})
+<span id="L175" class="ln">   175  </span>	})
+<span id="L176" class="ln">   176  </span>}
+<span id="L177" class="ln">   177  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/log_provider_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

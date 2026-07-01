@@ -80,7 +80,7 @@ type TransactionRunner interface {
 ### WithinTx
 
 ```go
-func (t *testTxManager) WithinTx(fn func(ctx context.Context))
+func (t *testTxRunner) WithinTx(fn func(ctx context.Context))
 ```
 
 Executes the specified function **inside a transaction**.
@@ -91,7 +91,7 @@ Processing flow:
 flowchart TD
     A[Transaction Begin]
     B["Execute fn(ctx)"]
-    C[Return rollbackForTestError]
+    C[Return errRollbackForTest]
     D[Rollback]
 
     A --> B --> C --> D
@@ -114,7 +114,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Execute fn]
-    B[Return rollbackForTestError]
+    B[Return errRollbackForTest]
     C[tx.Manager performs rollback]
 
     A --> B --> C
@@ -123,7 +123,7 @@ flowchart TD
 This special error is defined as:
 
 ```go
-var rollbackForTestError = xerrors.New("rollback for test")
+var errRollbackForTest = xerrors.New("rollback for test")
 ```
 
 This error is treated as **success in tests**.
@@ -236,7 +236,7 @@ Therefore, you must configure:
 
 ```go
 fn(ctx)
-return rollbackForTestError
+return errRollbackForTest
 ```
 
 Therefore, assertions in tests should use:

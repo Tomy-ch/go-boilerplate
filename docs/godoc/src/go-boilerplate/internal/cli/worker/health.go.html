@@ -59,11 +59,11 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;errors&#34;
-<span id="L6" class="ln">     6  </span>	&#34;net/http&#34;
-<span id="L7" class="ln">     7  </span>	&#34;time&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L5" class="ln">     5  </span>	&#34;net/http&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L10" class="ln">    10  </span>)
 <span id="L11" class="ln">    11  </span>
 <span id="L12" class="ln">    12  </span>const (
@@ -88,7 +88,7 @@
 <span id="L31" class="ln">    31  </span>
 <span id="L32" class="ln">    32  </span>	start := func() {
 <span id="L33" class="ln">    33  </span>		go func() {
-<span id="L34" class="ln">    34  </span>			if err := srv.ListenAndServe(); err != nil &amp;&amp; !errors.Is(err, http.ErrServerClosed) {
+<span id="L34" class="ln">    34  </span>			if err := srv.ListenAndServe(); err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) {
 <span id="L35" class="ln">    35  </span>				logger.Named(&#34;worker.health&#34;).Error(&#34;health server error&#34;, logging.Error(logging.ErrorKey, err))
 <span id="L36" class="ln">    36  </span>			}
 <span id="L37" class="ln">    37  </span>		}()

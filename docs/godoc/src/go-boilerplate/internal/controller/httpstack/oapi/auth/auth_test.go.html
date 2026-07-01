@@ -59,15 +59,15 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;errors&#34;
-<span id="L6" class="ln">     6  </span>	&#34;net/http&#34;
-<span id="L7" class="ln">     7  </span>	&#34;net/http/httptest&#34;
-<span id="L8" class="ln">     8  </span>	&#34;testing&#34;
-<span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/controller/ctxhelper&#34;
-<span id="L12" class="ln">    12  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
-<span id="L13" class="ln">    13  </span>	mock_auth &#34;go-boilerplate/internal/usecase/boundary/auth/mock&#34;
+<span id="L5" class="ln">     5  </span>	&#34;net/http&#34;
+<span id="L6" class="ln">     6  </span>	&#34;net/http/httptest&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/controller/ctxhelper&#34;
+<span id="L11" class="ln">    11  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L12" class="ln">    12  </span>	mock_auth &#34;go-boilerplate/internal/usecase/boundary/auth/mock&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L14" class="ln">    14  </span>
 <span id="L15" class="ln">    15  </span>	&#34;github.com/getkin/kin-openapi/openapi3filter&#34;
 <span id="L16" class="ln">    16  </span>	&#34;github.com/stretchr/testify/assert&#34;
@@ -140,7 +140,7 @@
 <span id="L83" class="ln">    83  </span>
 <span id="L84" class="ln">    84  </span>			ctrl := gomock.NewController(t)
 <span id="L85" class="ln">    85  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
-<span id="L86" class="ln">    86  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, errors.New(&#34;bad&#34;))
+<span id="L86" class="ln">    86  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New(&#34;bad&#34;))
 <span id="L87" class="ln">    87  </span>
 <span id="L88" class="ln">    88  </span>			fn := NewAuthenticator(ac, m)
 <span id="L89" class="ln">    89  </span>
@@ -240,7 +240,7 @@
 <span id="L183" class="ln">   183  </span>
 <span id="L184" class="ln">   184  </span>			ctrl := gomock.NewController(t)
 <span id="L185" class="ln">   185  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
-<span id="L186" class="ln">   186  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, errors.New(&#34;bad&#34;))
+<span id="L186" class="ln">   186  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New(&#34;bad&#34;))
 <span id="L187" class="ln">   187  </span>			ctx := context.Background()
 <span id="L188" class="ln">   188  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
 <span id="L189" class="ln">   189  </span>			<span class="comment">//nolint:gosec // G124: テスト用のリクエストクッキー</span>
@@ -277,78 +277,90 @@
 <span id="L220" class="ln">   220  </span>			assert.Equal(t, &#34;cookieTok&#34;, tok)
 <span id="L221" class="ln">   221  </span>		})
 <span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>		t.Run(&#34;Bearer形式のヘッダの場合、トークン部分が抽出される&#34;, func(t *testing.T) {
+<span id="L223" class="ln">   223  </span>		t.Run(&#34;CookieとHeaderが両方ある場合_Cookieが優先されHeaderは無視される&#34;, func(t *testing.T) {
 <span id="L224" class="ln">   224  </span>			t.Parallel()
 <span id="L225" class="ln">   225  </span>			ac := newAuthConfig(t)
 <span id="L226" class="ln">   226  </span>			ctx := context.Background()
 <span id="L227" class="ln">   227  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L228" class="ln">   228  </span>			req.Header.Set(ac.HeaderName(), &#34;Bearer abcdef&#34;)
-<span id="L229" class="ln">   229  </span>			tok := extractToken(req, ac)
-<span id="L230" class="ln">   230  </span>			assert.Equal(t, &#34;abcdef&#34;, tok)
-<span id="L231" class="ln">   231  </span>		})
-<span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span>		t.Run(&#34;AllowedHeaderBearer=falseの場合はヘッダ値をそのまま返す&#34;, func(t *testing.T) {
-<span id="L234" class="ln">   234  </span>			t.Parallel()
-<span id="L235" class="ln">   235  </span>			ac := newAuthConfig(t)
-<span id="L236" class="ln">   236  </span>			ac.SetHeaderName(t, &#34;X-API-KEY&#34;)
-<span id="L237" class="ln">   237  </span>			ac.SetAllowedHeaderBearer(t, false)
-<span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span>			ctx := context.Background()
-<span id="L240" class="ln">   240  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L241" class="ln">   241  </span>			req.Header.Set(&#34;X-Api-Key&#34;, &#34;apikey-123&#34;)
-<span id="L242" class="ln">   242  </span>			tok := extractToken(req, ac)
-<span id="L243" class="ln">   243  </span>			assert.Equal(t, &#34;apikey-123&#34;, tok)
-<span id="L244" class="ln">   244  </span>		})
-<span id="L245" class="ln">   245  </span>
-<span id="L246" class="ln">   246  </span>		t.Run(&#34;AuthorizationヘッダかつAllowedHeaderBearer=falseの場合はrawを返す&#34;, func(t *testing.T) {
-<span id="L247" class="ln">   247  </span>			t.Parallel()
-<span id="L248" class="ln">   248  </span>			ac := newAuthConfig(t)
+<span id="L228" class="ln">   228  </span>			<span class="comment">//nolint:gosec // G124: テスト用のリクエストクッキー</span>
+<span id="L229" class="ln">   229  </span>			req.AddCookie(&amp;http.Cookie{Name: ac.CookieName(), Value: &#34;cookieTok&#34;})
+<span id="L230" class="ln">   230  </span>			req.Header.Set(ac.HeaderName(), &#34;Bearer headerTok&#34;)
+<span id="L231" class="ln">   231  </span>			tok := extractToken(req, ac)
+<span id="L232" class="ln">   232  </span>			assert.Equal(t, &#34;cookieTok&#34;, tok)
+<span id="L233" class="ln">   233  </span>		})
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>		t.Run(&#34;Bearer形式のヘッダの場合、トークン部分が抽出される&#34;, func(t *testing.T) {
+<span id="L236" class="ln">   236  </span>			t.Parallel()
+<span id="L237" class="ln">   237  </span>			ac := newAuthConfig(t)
+<span id="L238" class="ln">   238  </span>			ctx := context.Background()
+<span id="L239" class="ln">   239  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
+<span id="L240" class="ln">   240  </span>			req.Header.Set(ac.HeaderName(), &#34;Bearer abcdef&#34;)
+<span id="L241" class="ln">   241  </span>			tok := extractToken(req, ac)
+<span id="L242" class="ln">   242  </span>			assert.Equal(t, &#34;abcdef&#34;, tok)
+<span id="L243" class="ln">   243  </span>		})
+<span id="L244" class="ln">   244  </span>
+<span id="L245" class="ln">   245  </span>		t.Run(&#34;AllowedHeaderBearer=falseの場合はヘッダ値をそのまま返す&#34;, func(t *testing.T) {
+<span id="L246" class="ln">   246  </span>			t.Parallel()
+<span id="L247" class="ln">   247  </span>			ac := newAuthConfig(t)
+<span id="L248" class="ln">   248  </span>			ac.SetHeaderName(t, &#34;X-API-KEY&#34;)
 <span id="L249" class="ln">   249  </span>			ac.SetAllowedHeaderBearer(t, false)
 <span id="L250" class="ln">   250  </span>
 <span id="L251" class="ln">   251  </span>			ctx := context.Background()
 <span id="L252" class="ln">   252  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L253" class="ln">   253  </span>			req.Header.Set(ac.HeaderName(), &#34;Bearer secret&#34;)
+<span id="L253" class="ln">   253  </span>			req.Header.Set(&#34;X-Api-Key&#34;, &#34;apikey-123&#34;)
 <span id="L254" class="ln">   254  </span>			tok := extractToken(req, ac)
-<span id="L255" class="ln">   255  </span>			assert.Equal(t, &#34;Bearer secret&#34;, tok)
+<span id="L255" class="ln">   255  </span>			assert.Equal(t, &#34;apikey-123&#34;, tok)
 <span id="L256" class="ln">   256  </span>		})
-<span id="L257" class="ln">   257  </span>	})
-<span id="L258" class="ln">   258  </span>
-<span id="L259" class="ln">   259  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L260" class="ln">   260  </span>		t.Parallel()
-<span id="L261" class="ln">   261  </span>
-<span id="L262" class="ln">   262  </span>		t.Run(&#34;CookieNameはあるがHeaderNameが空文字列の場合は空を返す&#34;, func(t *testing.T) {
-<span id="L263" class="ln">   263  </span>			t.Parallel()
-<span id="L264" class="ln">   264  </span>			ac := newAuthConfig(t)
-<span id="L265" class="ln">   265  </span>			ac.SetHeaderName(t, &#34;&#34;)
-<span id="L266" class="ln">   266  </span>
-<span id="L267" class="ln">   267  </span>			ctx := context.Background()
-<span id="L268" class="ln">   268  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L269" class="ln">   269  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer smallcase&#34;)
-<span id="L270" class="ln">   270  </span>			tok := extractToken(req, ac)
-<span id="L271" class="ln">   271  </span>			assert.Empty(t, tok)
-<span id="L272" class="ln">   272  </span>		})
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>		t.Run(&#34;AuthorizationヘッダかつAllowedHeaderBearer=falseの場合はrawを返す&#34;, func(t *testing.T) {
+<span id="L259" class="ln">   259  </span>			t.Parallel()
+<span id="L260" class="ln">   260  </span>			ac := newAuthConfig(t)
+<span id="L261" class="ln">   261  </span>			ac.SetAllowedHeaderBearer(t, false)
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>			ctx := context.Background()
+<span id="L264" class="ln">   264  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
+<span id="L265" class="ln">   265  </span>			req.Header.Set(ac.HeaderName(), &#34;Bearer secret&#34;)
+<span id="L266" class="ln">   266  </span>			tok := extractToken(req, ac)
+<span id="L267" class="ln">   267  </span>			assert.Equal(t, &#34;Bearer secret&#34;, tok)
+<span id="L268" class="ln">   268  </span>		})
+<span id="L269" class="ln">   269  </span>	})
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L272" class="ln">   272  </span>		t.Parallel()
 <span id="L273" class="ln">   273  </span>
-<span id="L274" class="ln">   274  </span>		t.Run(&#34;Bearer期待時にprefixがなければ空を返す&#34;, func(t *testing.T) {
+<span id="L274" class="ln">   274  </span>		t.Run(&#34;HeaderNameが空文字列の場合_ヘッダ値があっても空を返す&#34;, func(t *testing.T) {
 <span id="L275" class="ln">   275  </span>			t.Parallel()
 <span id="L276" class="ln">   276  </span>			ac := newAuthConfig(t)
-<span id="L277" class="ln">   277  </span>			ctx := context.Background()
-<span id="L278" class="ln">   278  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L279" class="ln">   279  </span>			req.Header.Set(ac.HeaderName(), &#34;Token abcdef&#34;)
-<span id="L280" class="ln">   280  </span>			tok := extractToken(req, ac)
-<span id="L281" class="ln">   281  </span>			assert.Empty(t, tok)
-<span id="L282" class="ln">   282  </span>		})
-<span id="L283" class="ln">   283  </span>
-<span id="L284" class="ln">   284  </span>		t.Run(&#34;Headerが未設定なら空を返す&#34;, func(t *testing.T) {
-<span id="L285" class="ln">   285  </span>			t.Parallel()
-<span id="L286" class="ln">   286  </span>			ac := newAuthConfig(t)
-<span id="L287" class="ln">   287  </span>			ctx := context.Background()
-<span id="L288" class="ln">   288  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L289" class="ln">   289  </span>			tok := extractToken(req, ac)
-<span id="L290" class="ln">   290  </span>			assert.Empty(t, tok)
-<span id="L291" class="ln">   291  </span>		})
-<span id="L292" class="ln">   292  </span>	})
-<span id="L293" class="ln">   293  </span>}
-<span id="L294" class="ln">   294  </span>
+<span id="L277" class="ln">   277  </span>			ac.SetHeaderName(t, &#34;&#34;)
+<span id="L278" class="ln">   278  </span>
+<span id="L279" class="ln">   279  </span>			ctx := context.Background()
+<span id="L280" class="ln">   280  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
+<span id="L281" class="ln">   281  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer smallcase&#34;)
+<span id="L282" class="ln">   282  </span>			tok := extractToken(req, ac)
+<span id="L283" class="ln">   283  </span>			assert.Empty(t, tok)
+<span id="L284" class="ln">   284  </span>		})
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>		t.Run(&#34;Bearer期待時にprefixがなければ空を返す&#34;, func(t *testing.T) {
+<span id="L287" class="ln">   287  </span>			t.Parallel()
+<span id="L288" class="ln">   288  </span>			ac := newAuthConfig(t)
+<span id="L289" class="ln">   289  </span>			ctx := context.Background()
+<span id="L290" class="ln">   290  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
+<span id="L291" class="ln">   291  </span>			req.Header.Set(ac.HeaderName(), &#34;Token abcdef&#34;)
+<span id="L292" class="ln">   292  </span>			tok := extractToken(req, ac)
+<span id="L293" class="ln">   293  </span>			assert.Empty(t, tok)
+<span id="L294" class="ln">   294  </span>		})
+<span id="L295" class="ln">   295  </span>
+<span id="L296" class="ln">   296  </span>		t.Run(&#34;Headerが未設定なら空を返す&#34;, func(t *testing.T) {
+<span id="L297" class="ln">   297  </span>			t.Parallel()
+<span id="L298" class="ln">   298  </span>			ac := newAuthConfig(t)
+<span id="L299" class="ln">   299  </span>			ctx := context.Background()
+<span id="L300" class="ln">   300  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
+<span id="L301" class="ln">   301  </span>			tok := extractToken(req, ac)
+<span id="L302" class="ln">   302  </span>			assert.Empty(t, tok)
+<span id="L303" class="ln">   303  </span>		})
+<span id="L304" class="ln">   304  </span>	})
+<span id="L305" class="ln">   305  </span>}
+<span id="L306" class="ln">   306  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

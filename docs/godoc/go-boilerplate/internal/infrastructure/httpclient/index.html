@@ -121,7 +121,7 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 				<dd><a href="#Client">type Client</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(transport *observability.HTTPClientTransport, sleeper clock.Sleeper, registry Registry, metrics *observability.HTTPClientMetrics) Client</a></dd>
+					<dd>    <a href="#New">func New(transport *observability.HTTPClientTransport, sleeper clock.Sleeper, clk clock.Clock, registry Registry, metrics *observability.HTTPClientMetrics) Client</a></dd>
 				
 				
 			
@@ -332,7 +332,7 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/client.go.html?s=1175:1327#L27">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/client.go.html?s=1199:1369#L28">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -340,6 +340,7 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 				<pre>func New(
     transport *<a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#HTTPClientTransport">HTTPClientTransport</a>,
     sleeper <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Sleeper">Sleeper</a>,
+    clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
     registry <a href="#Registry">Registry</a>,
     metrics *<a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#HTTPClientMetrics">HTTPClientMetrics</a>,
 ) <a href="#Client">Client</a></pre>

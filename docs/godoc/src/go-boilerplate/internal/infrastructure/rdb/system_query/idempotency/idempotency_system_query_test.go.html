@@ -59,214 +59,301 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
-<span id="L6" class="ln">     6  </span>	&#34;time&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L10" class="ln">    10  </span>	idempotencybndry &#34;go-boilerplate/internal/usecase/boundary/idempotency&#34;
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L13" class="ln">    13  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L14" class="ln">    14  </span>)
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>func newFingerprint(b byte) []byte {
-<span id="L17" class="ln">    17  </span>	fp := make([]byte, 32)
-<span id="L18" class="ln">    18  </span>	for i := range fp {
-<span id="L19" class="ln">    19  </span>		fp[i] = b
-<span id="L20" class="ln">    20  </span>	}
-<span id="L21" class="ln">    21  </span>	return fp
-<span id="L22" class="ln">    22  </span>}
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>func TestNew(t *testing.T) {
-<span id="L25" class="ln">    25  </span>	t.Parallel()
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span>	testDB := testkit.NewTestDB(t)
-<span id="L28" class="ln">    28  </span>	tf := observability.NewNoopTracerFactory(t)
-<span id="L29" class="ln">    29  </span>	expected := &amp;store{
-<span id="L30" class="ln">    30  </span>		tracer: tf.Infra(),
-<span id="L31" class="ln">    31  </span>		db:     testDB,
-<span id="L32" class="ln">    32  </span>	}
+<span id="L5" class="ln">     5  </span>	&#34;sync&#34;
+<span id="L6" class="ln">     6  </span>	&#34;testing&#34;
+<span id="L7" class="ln">     7  </span>	&#34;time&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/infrastructure/system&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L16" class="ln">    16  </span>	idempotencybndry &#34;go-boilerplate/internal/usecase/boundary/idempotency&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L20" class="ln">    20  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L21" class="ln">    21  </span>)
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// errHolderRollback は、ロック競合テストで保持側 tx を最後にロールバックさせるための sentinel です。</span>
+<span id="L24" class="ln">    24  </span>var errHolderRollback = xerrors.New(&#34;rollback holder tx for test&#34;)
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>func newFingerprint(b byte) []byte {
+<span id="L27" class="ln">    27  </span>	fp := make([]byte, 32)
+<span id="L28" class="ln">    28  </span>	for i := range fp {
+<span id="L29" class="ln">    29  </span>		fp[i] = b
+<span id="L30" class="ln">    30  </span>	}
+<span id="L31" class="ln">    31  </span>	return fp
+<span id="L32" class="ln">    32  </span>}
 <span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span>	assert.Equal(t, expected, New(testDB, tf))
-<span id="L35" class="ln">    35  </span>}
+<span id="L34" class="ln">    34  </span>func TestNew(t *testing.T) {
+<span id="L35" class="ln">    35  </span>	t.Parallel()
 <span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span>func Test_store_lifecycle(t *testing.T) {
-<span id="L38" class="ln">    38  </span>	t.Parallel()
-<span id="L39" class="ln">    39  </span>
-<span id="L40" class="ln">    40  </span>	testDB := testkit.NewTestDB(t)
-<span id="L41" class="ln">    41  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L42" class="ln">    42  </span>	txm := testkit.NewTestTransactionRunner(t)
-<span id="L43" class="ln">    43  </span>	s := &amp;store{tracer: lt, db: testDB}
-<span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L46" class="ln">    46  </span>		t.Parallel()
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span>		t.Run(&#34;claim→get(claimed)→complete→get(completed) の一連が成立する&#34;, func(t *testing.T) {
-<span id="L49" class="ln">    49  </span>			t.Parallel()
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L52" class="ln">    52  </span>				const scope, key = &#34;test-scope-lifecycle&#34;, &#34;key-1&#34;
-<span id="L53" class="ln">    53  </span>				fp := newFingerprint(0xAB)
+<span id="L37" class="ln">    37  </span>	testDB := testkit.NewTestDB(t)
+<span id="L38" class="ln">    38  </span>	tf := observability.NewNoopTracerFactory(t)
+<span id="L39" class="ln">    39  </span>	expected := &amp;store{
+<span id="L40" class="ln">    40  </span>		tracer: tf.Infra(),
+<span id="L41" class="ln">    41  </span>		db:     testDB,
+<span id="L42" class="ln">    42  </span>	}
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>	assert.Equal(t, expected, New(testDB, tf))
+<span id="L45" class="ln">    45  </span>}
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>func Test_store_lifecycle(t *testing.T) {
+<span id="L48" class="ln">    48  </span>	t.Parallel()
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>	testDB := testkit.NewTestDB(t)
+<span id="L51" class="ln">    51  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L52" class="ln">    52  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L53" class="ln">    53  </span>	s := &amp;store{tracer: lt, db: testDB}
 <span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>				<span class="comment">// 未claimは nil, nil。</span>
-<span id="L56" class="ln">    56  </span>				before, err := s.Get(ctx, scope, key)
-<span id="L57" class="ln">    57  </span>				require.NoError(t, err)
-<span id="L58" class="ln">    58  </span>				assert.Nil(t, before)
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>				<span class="comment">// 新規claim → true。</span>
-<span id="L61" class="ln">    61  </span>				claimed, err := s.Claim(ctx, idempotencybndry.ClaimParams{
-<span id="L62" class="ln">    62  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
-<span id="L63" class="ln">    63  </span>					Fingerprint: fp, ExpiresAt: time.Now().Add(24 * time.Hour),
-<span id="L64" class="ln">    64  </span>				})
-<span id="L65" class="ln">    65  </span>				require.NoError(t, err)
-<span id="L66" class="ln">    66  </span>				assert.True(t, claimed)
-<span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span>				<span class="comment">// claim直後は claimed 状態・結果未保存。</span>
-<span id="L69" class="ln">    69  </span>				rec, err := s.Get(ctx, scope, key)
-<span id="L70" class="ln">    70  </span>				require.NoError(t, err)
-<span id="L71" class="ln">    71  </span>				require.NotNil(t, rec)
-<span id="L72" class="ln">    72  </span>				assert.Equal(t, idempotencybndry.StatusClaimed, rec.Status)
-<span id="L73" class="ln">    73  </span>				assert.Nil(t, rec.ResponseStatus)
-<span id="L74" class="ln">    74  </span>				assert.Equal(t, fp, rec.Fingerprint)
-<span id="L75" class="ln">    75  </span>
-<span id="L76" class="ln">    76  </span>				<span class="comment">// 同一(scope,key)の再claimは false(一意制約で衝突)。</span>
-<span id="L77" class="ln">    77  </span>				again, err := s.Claim(ctx, idempotencybndry.ClaimParams{
-<span id="L78" class="ln">    78  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
-<span id="L79" class="ln">    79  </span>					Fingerprint: fp, ExpiresAt: time.Now().Add(24 * time.Hour),
-<span id="L80" class="ln">    80  </span>				})
-<span id="L81" class="ln">    81  </span>				require.NoError(t, err)
-<span id="L82" class="ln">    82  </span>				assert.False(t, again)
-<span id="L83" class="ln">    83  </span>
-<span id="L84" class="ln">    84  </span>				<span class="comment">// complete で結果保存。</span>
-<span id="L85" class="ln">    85  </span>				payload := []byte(`{&#34;v&#34;:1}`)
-<span id="L86" class="ln">    86  </span>				require.NoError(t, s.Complete(ctx, idempotencybndry.CompleteParams{
-<span id="L87" class="ln">    87  </span>					Scope: scope, Key: key, ResponseStatus: 201, ResponsePayload: payload,
-<span id="L88" class="ln">    88  </span>				}))
-<span id="L89" class="ln">    89  </span>
-<span id="L90" class="ln">    90  </span>				<span class="comment">// completed 状態・結果が読める。</span>
-<span id="L91" class="ln">    91  </span>				done, err := s.Get(ctx, scope, key)
-<span id="L92" class="ln">    92  </span>				require.NoError(t, err)
-<span id="L93" class="ln">    93  </span>				require.NotNil(t, done)
-<span id="L94" class="ln">    94  </span>				assert.Equal(t, idempotencybndry.StatusCompleted, done.Status)
-<span id="L95" class="ln">    95  </span>				require.NotNil(t, done.ResponseStatus)
-<span id="L96" class="ln">    96  </span>				assert.Equal(t, int32(201), *done.ResponseStatus)
-<span id="L97" class="ln">    97  </span>				assert.Equal(t, payload, done.ResponsePayload)
-<span id="L98" class="ln">    98  </span>			})
-<span id="L99" class="ln">    99  </span>		})
-<span id="L100" class="ln">   100  </span>	})
-<span id="L101" class="ln">   101  </span>}
-<span id="L102" class="ln">   102  </span>
-<span id="L103" class="ln">   103  </span>func Test_store_DeleteExpired(t *testing.T) {
-<span id="L104" class="ln">   104  </span>	t.Parallel()
-<span id="L105" class="ln">   105  </span>
-<span id="L106" class="ln">   106  </span>	testDB := testkit.NewTestDB(t)
-<span id="L107" class="ln">   107  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L108" class="ln">   108  </span>	txm := testkit.NewTestTransactionRunner(t)
-<span id="L109" class="ln">   109  </span>	s := &amp;store{tracer: lt, db: testDB}
-<span id="L110" class="ln">   110  </span>
-<span id="L111" class="ln">   111  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L112" class="ln">   112  </span>		t.Parallel()
-<span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span>		t.Run(&#34;cutoffより古い失効行を削除する&#34;, func(t *testing.T) {
-<span id="L115" class="ln">   115  </span>			t.Parallel()
-<span id="L116" class="ln">   116  </span>
-<span id="L117" class="ln">   117  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L118" class="ln">   118  </span>				const scope, key = &#34;test-scope-gc&#34;, &#34;key-1&#34;
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>				<span class="comment">// expires_at を過去にして claim（= 失効済み）。</span>
-<span id="L121" class="ln">   121  </span>				claimed, err := s.Claim(ctx, idempotencybndry.ClaimParams{
-<span id="L122" class="ln">   122  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
-<span id="L123" class="ln">   123  </span>					Fingerprint: newFingerprint(0x01), ExpiresAt: time.Now().Add(-1 * time.Hour),
-<span id="L124" class="ln">   124  </span>				})
-<span id="L125" class="ln">   125  </span>				require.NoError(t, err)
-<span id="L126" class="ln">   126  </span>				require.True(t, claimed)
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>				<span class="comment">// cutoff=now で失効行が削除される。</span>
-<span id="L129" class="ln">   129  </span>				deleted, err := s.DeleteExpired(ctx, time.Now(), 100)
-<span id="L130" class="ln">   130  </span>				require.NoError(t, err)
-<span id="L131" class="ln">   131  </span>				assert.GreaterOrEqual(t, deleted, int64(1))
-<span id="L132" class="ln">   132  </span>
-<span id="L133" class="ln">   133  </span>				<span class="comment">// 削除後は取得できない。</span>
-<span id="L134" class="ln">   134  </span>				rec, err := s.Get(ctx, scope, key)
+<span id="L55" class="ln">    55  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L56" class="ln">    56  </span>		t.Parallel()
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>		t.Run(&#34;claim→get(claimed)→complete→get(completed) の一連が成立する&#34;, func(t *testing.T) {
+<span id="L59" class="ln">    59  </span>			t.Parallel()
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L62" class="ln">    62  </span>				const scope, key = &#34;test-scope-lifecycle&#34;, &#34;key-1&#34;
+<span id="L63" class="ln">    63  </span>				fp := newFingerprint(0xAB)
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>				<span class="comment">// 未claimは nil, nil。</span>
+<span id="L66" class="ln">    66  </span>				before, err := s.Get(ctx, scope, key)
+<span id="L67" class="ln">    67  </span>				require.NoError(t, err)
+<span id="L68" class="ln">    68  </span>				assert.Nil(t, before)
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>				<span class="comment">// 新規claim → true。</span>
+<span id="L71" class="ln">    71  </span>				claimed, err := s.Claim(ctx, idempotencybndry.ClaimParams{
+<span id="L72" class="ln">    72  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
+<span id="L73" class="ln">    73  </span>					Fingerprint: fp, ExpiresAt: time.Now().Add(24 * time.Hour),
+<span id="L74" class="ln">    74  </span>				})
+<span id="L75" class="ln">    75  </span>				require.NoError(t, err)
+<span id="L76" class="ln">    76  </span>				assert.True(t, claimed)
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>				<span class="comment">// claim直後は claimed 状態・結果未保存。</span>
+<span id="L79" class="ln">    79  </span>				rec, err := s.Get(ctx, scope, key)
+<span id="L80" class="ln">    80  </span>				require.NoError(t, err)
+<span id="L81" class="ln">    81  </span>				require.NotNil(t, rec)
+<span id="L82" class="ln">    82  </span>				assert.Equal(t, idempotencybndry.StatusClaimed, rec.Status)
+<span id="L83" class="ln">    83  </span>				assert.Nil(t, rec.ResponseStatus)
+<span id="L84" class="ln">    84  </span>				assert.Equal(t, fp, rec.Fingerprint)
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>				<span class="comment">// 同一(scope,key)の再claimは false(一意制約で衝突)。</span>
+<span id="L87" class="ln">    87  </span>				again, err := s.Claim(ctx, idempotencybndry.ClaimParams{
+<span id="L88" class="ln">    88  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
+<span id="L89" class="ln">    89  </span>					Fingerprint: fp, ExpiresAt: time.Now().Add(24 * time.Hour),
+<span id="L90" class="ln">    90  </span>				})
+<span id="L91" class="ln">    91  </span>				require.NoError(t, err)
+<span id="L92" class="ln">    92  </span>				assert.False(t, again)
+<span id="L93" class="ln">    93  </span>
+<span id="L94" class="ln">    94  </span>				<span class="comment">// complete で結果保存。</span>
+<span id="L95" class="ln">    95  </span>				payload := []byte(`{&#34;v&#34;:1}`)
+<span id="L96" class="ln">    96  </span>				require.NoError(t, s.Complete(ctx, idempotencybndry.CompleteParams{
+<span id="L97" class="ln">    97  </span>					Scope: scope, Key: key, ResponseStatus: 201, ResponsePayload: payload,
+<span id="L98" class="ln">    98  </span>				}))
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>				<span class="comment">// completed 状態・結果が読める。</span>
+<span id="L101" class="ln">   101  </span>				done, err := s.Get(ctx, scope, key)
+<span id="L102" class="ln">   102  </span>				require.NoError(t, err)
+<span id="L103" class="ln">   103  </span>				require.NotNil(t, done)
+<span id="L104" class="ln">   104  </span>				assert.Equal(t, idempotencybndry.StatusCompleted, done.Status)
+<span id="L105" class="ln">   105  </span>				require.NotNil(t, done.ResponseStatus)
+<span id="L106" class="ln">   106  </span>				assert.Equal(t, int32(201), *done.ResponseStatus)
+<span id="L107" class="ln">   107  </span>				assert.Equal(t, payload, done.ResponsePayload)
+<span id="L108" class="ln">   108  </span>			})
+<span id="L109" class="ln">   109  </span>		})
+<span id="L110" class="ln">   110  </span>	})
+<span id="L111" class="ln">   111  </span>}
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>func Test_store_DeleteExpired(t *testing.T) {
+<span id="L114" class="ln">   114  </span>	t.Parallel()
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span>	testDB := testkit.NewTestDB(t)
+<span id="L117" class="ln">   117  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L118" class="ln">   118  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L119" class="ln">   119  </span>	s := &amp;store{tracer: lt, db: testDB}
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L122" class="ln">   122  </span>		t.Parallel()
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>		t.Run(&#34;cutoffより古い失効行を削除する&#34;, func(t *testing.T) {
+<span id="L125" class="ln">   125  </span>			t.Parallel()
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L128" class="ln">   128  </span>				const scope, key = &#34;test-scope-gc&#34;, &#34;key-1&#34;
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span>				<span class="comment">// expires_at を過去にして claim（= 失効済み）。</span>
+<span id="L131" class="ln">   131  </span>				claimed, err := s.Claim(ctx, idempotencybndry.ClaimParams{
+<span id="L132" class="ln">   132  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
+<span id="L133" class="ln">   133  </span>					Fingerprint: newFingerprint(0x01), ExpiresAt: time.Now().Add(-1 * time.Hour),
+<span id="L134" class="ln">   134  </span>				})
 <span id="L135" class="ln">   135  </span>				require.NoError(t, err)
-<span id="L136" class="ln">   136  </span>				assert.Nil(t, rec)
-<span id="L137" class="ln">   137  </span>			})
-<span id="L138" class="ln">   138  </span>		})
-<span id="L139" class="ln">   139  </span>
-<span id="L140" class="ln">   140  </span>		t.Run(&#34;失効行が無ければ0件&#34;, func(t *testing.T) {
-<span id="L141" class="ln">   141  </span>			t.Parallel()
-<span id="L142" class="ln">   142  </span>
-<span id="L143" class="ln">   143  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L144" class="ln">   144  </span>				const scope, key = &#34;test-scope-gc-fresh&#34;, &#34;key-1&#34;
+<span id="L136" class="ln">   136  </span>				require.True(t, claimed)
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>				<span class="comment">// cutoff=now で失効行が削除される。</span>
+<span id="L139" class="ln">   139  </span>				deleted, err := s.DeleteExpired(ctx, time.Now(), 100)
+<span id="L140" class="ln">   140  </span>				require.NoError(t, err)
+<span id="L141" class="ln">   141  </span>				<span class="comment">// DeleteExpired は scope 非限定でテーブル全体を対象とするため、共有DB上では他の失効行も</span>
+<span id="L142" class="ln">   142  </span>				<span class="comment">// 含まれ得る。厳密件数に依存せず「1件以上削除された」ことのみ検証し、対象行の削除は</span>
+<span id="L143" class="ln">   143  </span>				<span class="comment">// 後続の Get==nil で担保する。</span>
+<span id="L144" class="ln">   144  </span>				assert.GreaterOrEqual(t, deleted, int64(1))
 <span id="L145" class="ln">   145  </span>
-<span id="L146" class="ln">   146  </span>				<span class="comment">// 未失効(将来失効)で claim。</span>
-<span id="L147" class="ln">   147  </span>				claimed, err := s.Claim(ctx, idempotencybndry.ClaimParams{
-<span id="L148" class="ln">   148  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
-<span id="L149" class="ln">   149  </span>					Fingerprint: newFingerprint(0x02), ExpiresAt: time.Now().Add(24 * time.Hour),
-<span id="L150" class="ln">   150  </span>				})
-<span id="L151" class="ln">   151  </span>				require.NoError(t, err)
-<span id="L152" class="ln">   152  </span>				require.True(t, claimed)
-<span id="L153" class="ln">   153  </span>
-<span id="L154" class="ln">   154  </span>				<span class="comment">// cutoff を過去に置けば、この行は対象外。</span>
-<span id="L155" class="ln">   155  </span>				deleted, err := s.DeleteExpired(ctx, time.Now().Add(-48*time.Hour), 100)
-<span id="L156" class="ln">   156  </span>				require.NoError(t, err)
-<span id="L157" class="ln">   157  </span>				assert.Equal(t, int64(0), deleted)
-<span id="L158" class="ln">   158  </span>			})
-<span id="L159" class="ln">   159  </span>		})
-<span id="L160" class="ln">   160  </span>	})
-<span id="L161" class="ln">   161  </span>}
-<span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span>func Test_store_errors(t *testing.T) {
-<span id="L164" class="ln">   164  </span>	t.Parallel()
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span>	testDB := testkit.NewTestDB(t)
-<span id="L167" class="ln">   167  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L168" class="ln">   168  </span>	txm := testkit.NewTestTransactionRunner(t)
-<span id="L169" class="ln">   169  </span>	s := &amp;store{tracer: lt, db: testDB}
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L172" class="ln">   172  </span>		t.Parallel()
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span>		t.Run(&#34;存在しないキーへのcompleteはエラーになる&#34;, func(t *testing.T) {
-<span id="L175" class="ln">   175  </span>			t.Parallel()
-<span id="L176" class="ln">   176  </span>
-<span id="L177" class="ln">   177  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L178" class="ln">   178  </span>				err := s.Complete(ctx, idempotencybndry.CompleteParams{
-<span id="L179" class="ln">   179  </span>					Scope: &#34;missing-scope&#34;, Key: &#34;missing-key&#34;,
-<span id="L180" class="ln">   180  </span>					ResponseStatus: 201, ResponsePayload: []byte(`{}`),
-<span id="L181" class="ln">   181  </span>				})
-<span id="L182" class="ln">   182  </span>				require.Error(t, err)
-<span id="L183" class="ln">   183  </span>			})
-<span id="L184" class="ln">   184  </span>		})
-<span id="L185" class="ln">   185  </span>
-<span id="L186" class="ln">   186  </span>		t.Run(&#34;キャンセル済みコンテキストでは各操作がエラーを返す&#34;, func(t *testing.T) {
-<span id="L187" class="ln">   187  </span>			t.Parallel()
-<span id="L188" class="ln">   188  </span>
-<span id="L189" class="ln">   189  </span>			ctx, cancel := context.WithCancel(context.Background())
-<span id="L190" class="ln">   190  </span>			cancel()
-<span id="L191" class="ln">   191  </span>
-<span id="L192" class="ln">   192  </span>			params := idempotencybndry.ClaimParams{
-<span id="L193" class="ln">   193  </span>				Scope: &#34;ctx-cancel&#34;, Key: &#34;key-1&#34;, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
-<span id="L194" class="ln">   194  </span>				Fingerprint: newFingerprint(0x03), ExpiresAt: time.Now().Add(time.Hour),
-<span id="L195" class="ln">   195  </span>			}
-<span id="L196" class="ln">   196  </span>			_, claimErr := s.Claim(ctx, params)
-<span id="L197" class="ln">   197  </span>			require.Error(t, claimErr)
+<span id="L146" class="ln">   146  </span>				<span class="comment">// 削除後は取得できない。</span>
+<span id="L147" class="ln">   147  </span>				rec, err := s.Get(ctx, scope, key)
+<span id="L148" class="ln">   148  </span>				require.NoError(t, err)
+<span id="L149" class="ln">   149  </span>				assert.Nil(t, rec)
+<span id="L150" class="ln">   150  </span>			})
+<span id="L151" class="ln">   151  </span>		})
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>		t.Run(&#34;失効行が無ければ0件&#34;, func(t *testing.T) {
+<span id="L154" class="ln">   154  </span>			t.Parallel()
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L157" class="ln">   157  </span>				const scope, key = &#34;test-scope-gc-fresh&#34;, &#34;key-1&#34;
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>				<span class="comment">// 未失効(将来失効)で claim。</span>
+<span id="L160" class="ln">   160  </span>				claimed, err := s.Claim(ctx, idempotencybndry.ClaimParams{
+<span id="L161" class="ln">   161  </span>					Scope: scope, Key: key, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
+<span id="L162" class="ln">   162  </span>					Fingerprint: newFingerprint(0x02), ExpiresAt: time.Now().Add(24 * time.Hour),
+<span id="L163" class="ln">   163  </span>				})
+<span id="L164" class="ln">   164  </span>				require.NoError(t, err)
+<span id="L165" class="ln">   165  </span>				require.True(t, claimed)
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>				<span class="comment">// cutoff を過去に置けば、この行は対象外。</span>
+<span id="L168" class="ln">   168  </span>				deleted, err := s.DeleteExpired(ctx, time.Now().Add(-48*time.Hour), 100)
+<span id="L169" class="ln">   169  </span>				require.NoError(t, err)
+<span id="L170" class="ln">   170  </span>				assert.Equal(t, int64(0), deleted)
+<span id="L171" class="ln">   171  </span>			})
+<span id="L172" class="ln">   172  </span>		})
+<span id="L173" class="ln">   173  </span>	})
+<span id="L174" class="ln">   174  </span>}
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>func Test_store_errors(t *testing.T) {
+<span id="L177" class="ln">   177  </span>	t.Parallel()
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>	testDB := testkit.NewTestDB(t)
+<span id="L180" class="ln">   180  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L181" class="ln">   181  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L182" class="ln">   182  </span>	s := &amp;store{tracer: lt, db: testDB}
+<span id="L183" class="ln">   183  </span>
+<span id="L184" class="ln">   184  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L185" class="ln">   185  </span>		t.Parallel()
+<span id="L186" class="ln">   186  </span>
+<span id="L187" class="ln">   187  </span>		t.Run(&#34;存在しないキーへのcompleteはエラーになる&#34;, func(t *testing.T) {
+<span id="L188" class="ln">   188  </span>			t.Parallel()
+<span id="L189" class="ln">   189  </span>
+<span id="L190" class="ln">   190  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L191" class="ln">   191  </span>				err := s.Complete(ctx, idempotencybndry.CompleteParams{
+<span id="L192" class="ln">   192  </span>					Scope: &#34;missing-scope&#34;, Key: &#34;missing-key&#34;,
+<span id="L193" class="ln">   193  </span>					ResponseStatus: 201, ResponsePayload: []byte(`{}`),
+<span id="L194" class="ln">   194  </span>				})
+<span id="L195" class="ln">   195  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L196" class="ln">   196  </span>			})
+<span id="L197" class="ln">   197  </span>		})
 <span id="L198" class="ln">   198  </span>
-<span id="L199" class="ln">   199  </span>			_, getErr := s.Get(ctx, &#34;ctx-cancel&#34;, &#34;key-1&#34;)
-<span id="L200" class="ln">   200  </span>			require.Error(t, getErr)
+<span id="L199" class="ln">   199  </span>		t.Run(&#34;ロック競合タイムアウト時はErrLockTimeoutを返す&#34;, func(t *testing.T) {
+<span id="L200" class="ln">   200  </span>			t.Parallel()
 <span id="L201" class="ln">   201  </span>
-<span id="L202" class="ln">   202  </span>			completeErr := s.Complete(ctx, idempotencybndry.CompleteParams{
-<span id="L203" class="ln">   203  </span>				Scope: &#34;ctx-cancel&#34;, Key: &#34;key-1&#34;, ResponseStatus: 201, ResponsePayload: []byte(`{}`),
-<span id="L204" class="ln">   204  </span>			})
-<span id="L205" class="ln">   205  </span>			require.Error(t, completeErr)
-<span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>			_, delErr := s.DeleteExpired(ctx, time.Now(), 100)
-<span id="L208" class="ln">   208  </span>			require.Error(t, delErr)
-<span id="L209" class="ln">   209  </span>		})
-<span id="L210" class="ln">   210  </span>	})
-<span id="L211" class="ln">   211  </span>}
-<span id="L212" class="ln">   212  </span>
+<span id="L202" class="ln">   202  </span>			<span class="comment">// Claim の 55P03(lock_not_available) 分岐は、同一 (scope,key) を SET LOCAL</span>
+<span id="L203" class="ln">   203  </span>			<span class="comment">// lock_timeout 付きで claim する 2 本の業務 tx が並行に競合して初めて発生する。</span>
+<span id="L204" class="ln">   204  </span>			<span class="comment">// testkit の WithinTx は txLock で直列化するため再現できないので、ここでは</span>
+<span id="L205" class="ln">   205  </span>			<span class="comment">// TransactionManager を 2 本（= 2 コネクション）並行で走らせて再現する。</span>
+<span id="L206" class="ln">   206  </span>			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+<span id="L207" class="ln">   207  </span>			txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
+<span id="L208" class="ln">   208  </span>
+<span id="L209" class="ln">   209  </span>			params := idempotencybndry.ClaimParams{
+<span id="L210" class="ln">   210  </span>				Scope: &#34;lock-timeout-scope&#34;, Key: &#34;key-1&#34;, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
+<span id="L211" class="ln">   211  </span>				Fingerprint: newFingerprint(0x04), ExpiresAt: time.Now().Add(time.Hour),
+<span id="L212" class="ln">   212  </span>			}
+<span id="L213" class="ln">   213  </span>
+<span id="L214" class="ln">   214  </span>			holderClaimed := make(chan struct{})
+<span id="L215" class="ln">   215  </span>			releaseHolder := make(chan struct{})
+<span id="L216" class="ln">   216  </span>			holderDone := make(chan error, 1)
+<span id="L217" class="ln">   217  </span>
+<span id="L218" class="ln">   218  </span>			var releaseOnce sync.Once
+<span id="L219" class="ln">   219  </span>			release := func() { releaseOnce.Do(func() { close(releaseHolder) }) }
+<span id="L220" class="ln">   220  </span>			t.Cleanup(release) <span class="comment">// 失敗時も保持側 goroutine をリークさせない</span>
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>			<span class="comment">// 保持側 tx: 同一キーを claim し、競合側がタイムアウトするまで未コミットで保持する。</span>
+<span id="L223" class="ln">   223  </span>			go func() {
+<span id="L224" class="ln">   224  </span>				holderDone &lt;- txm.Do(context.Background(), func(ctx context.Context) error {
+<span id="L225" class="ln">   225  </span>					claimed, err := s.Claim(ctx, params)
+<span id="L226" class="ln">   226  </span>					if err != nil {
+<span id="L227" class="ln">   227  </span>						return err
+<span id="L228" class="ln">   228  </span>					}
+<span id="L229" class="ln">   229  </span>					if !claimed {
+<span id="L230" class="ln">   230  </span>						return xerrors.New(&#34;holder: expected fresh claim to succeed&#34;)
+<span id="L231" class="ln">   231  </span>					}
+<span id="L232" class="ln">   232  </span>					close(holderClaimed)
+<span id="L233" class="ln">   233  </span>					&lt;-releaseHolder
+<span id="L234" class="ln">   234  </span>					<span class="comment">// 行を残さないようエラー返却で rollback させる。</span>
+<span id="L235" class="ln">   235  </span>					return errHolderRollback
+<span id="L236" class="ln">   236  </span>				})
+<span id="L237" class="ln">   237  </span>			}()
+<span id="L238" class="ln">   238  </span>
+<span id="L239" class="ln">   239  </span>			<span class="comment">// 保持側が claim 済み（行ロック確立）になるまで待つ。失敗時は holderDone で検知。</span>
+<span id="L240" class="ln">   240  </span>			select {
+<span id="L241" class="ln">   241  </span>			case &lt;-holderClaimed:
+<span id="L242" class="ln">   242  </span>			case err := &lt;-holderDone:
+<span id="L243" class="ln">   243  </span>				require.NoError(t, err, &#34;保持側 tx が claim 前に失敗した&#34;)
+<span id="L244" class="ln">   244  </span>				return
+<span id="L245" class="ln">   245  </span>			}
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>			<span class="comment">// 競合側 tx: 同一キーの claim はロック待ち→ lock_timeout で 55P03 → ErrLockTimeout。</span>
+<span id="L248" class="ln">   248  </span>			contenderErr := txm.Do(context.Background(), func(ctx context.Context) error {
+<span id="L249" class="ln">   249  </span>				_, err := s.Claim(ctx, params)
+<span id="L250" class="ln">   250  </span>				return err
+<span id="L251" class="ln">   251  </span>			})
+<span id="L252" class="ln">   252  </span>			require.ErrorIs(t, contenderErr, idempotencybndry.ErrLockTimeout)
+<span id="L253" class="ln">   253  </span>
+<span id="L254" class="ln">   254  </span>			release()
+<span id="L255" class="ln">   255  </span>			require.ErrorIs(t, &lt;-holderDone, errHolderRollback)
+<span id="L256" class="ln">   256  </span>		})
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>		t.Run(&#34;claim挿入が汎用DBエラーで失敗した場合はErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L259" class="ln">   259  </span>			t.Parallel()
+<span id="L260" class="ln">   260  </span>
+<span id="L261" class="ln">   261  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L262" class="ln">   262  </span>				<span class="comment">// NUL バイトを含む scope は PostgreSQL の TEXT に格納できず、ロック競合でも既存行でもない</span>
+<span id="L263" class="ln">   263  </span>				<span class="comment">// 汎用エラーとなるため、Claim の default 分岐（ErrInternal 正規化）へ落ちる。</span>
+<span id="L264" class="ln">   264  </span>				params := idempotencybndry.ClaimParams{
+<span id="L265" class="ln">   265  </span>					Scope: &#34;bad\x00scope&#34;, Key: &#34;key-1&#34;, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
+<span id="L266" class="ln">   266  </span>					Fingerprint: newFingerprint(0x05), ExpiresAt: time.Now().Add(time.Hour),
+<span id="L267" class="ln">   267  </span>				}
+<span id="L268" class="ln">   268  </span>				_, err := s.Claim(ctx, params)
+<span id="L269" class="ln">   269  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L270" class="ln">   270  </span>			})
+<span id="L271" class="ln">   271  </span>		})
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>		t.Run(&#34;キャンセル済みコンテキストでは各操作がErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
+<span id="L274" class="ln">   274  </span>			t.Parallel()
+<span id="L275" class="ln">   275  </span>
+<span id="L276" class="ln">   276  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L277" class="ln">   277  </span>			cancel()
+<span id="L278" class="ln">   278  </span>
+<span id="L279" class="ln">   279  </span>			params := idempotencybndry.ClaimParams{
+<span id="L280" class="ln">   280  </span>				Scope: &#34;ctx-cancel&#34;, Key: &#34;key-1&#34;, Method: &#34;POST&#34;, Path: &#34;/v1/users&#34;,
+<span id="L281" class="ln">   281  </span>				Fingerprint: newFingerprint(0x03), ExpiresAt: time.Now().Add(time.Hour),
+<span id="L282" class="ln">   282  </span>			}
+<span id="L283" class="ln">   283  </span>			_, claimErr := s.Claim(ctx, params)
+<span id="L284" class="ln">   284  </span>			require.ErrorIs(t, claimErr, apperror.ErrCanceled)
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>			_, getErr := s.Get(ctx, &#34;ctx-cancel&#34;, &#34;key-1&#34;)
+<span id="L287" class="ln">   287  </span>			require.ErrorIs(t, getErr, apperror.ErrCanceled)
+<span id="L288" class="ln">   288  </span>
+<span id="L289" class="ln">   289  </span>			completeErr := s.Complete(ctx, idempotencybndry.CompleteParams{
+<span id="L290" class="ln">   290  </span>				Scope: &#34;ctx-cancel&#34;, Key: &#34;key-1&#34;, ResponseStatus: 201, ResponsePayload: []byte(`{}`),
+<span id="L291" class="ln">   291  </span>			})
+<span id="L292" class="ln">   292  </span>			require.ErrorIs(t, completeErr, apperror.ErrCanceled)
+<span id="L293" class="ln">   293  </span>
+<span id="L294" class="ln">   294  </span>			_, delErr := s.DeleteExpired(ctx, time.Now(), 100)
+<span id="L295" class="ln">   295  </span>			require.ErrorIs(t, delErr, apperror.ErrCanceled)
+<span id="L296" class="ln">   296  </span>		})
+<span id="L297" class="ln">   297  </span>	})
+<span id="L298" class="ln">   298  </span>}
+<span id="L299" class="ln">   299  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query/idempotency/idempotency_system_query_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

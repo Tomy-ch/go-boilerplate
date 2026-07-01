@@ -156,7 +156,7 @@
 		
 			
 			
-			<h2 id="Do">func <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=2788:2924#L39">Do</a>
+			<h2 id="Do">func <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=2928:3064#L40">Do</a>
 				<a class="permalink" href="#Do">¶</a>
 				
 				
@@ -177,7 +177,8 @@ error（成功時は nil）を返します。
 </li><li>sleeper.Sleep が error を返した（ctx 打ち切り）場合は、sleep の error ではなく
 直前の fn の error を返します（リトライ対象だった元の失敗を呼び出し側へ伝えるため）。
 </li></ul>
-<p>isRetryable は fn の返した非 nil error に対してのみ呼ばれます。
+<p>isRetryable は fn が返した非 nil error に対してのみ呼ばれます。isRetryable 自体が nil の
+場合は全ての error をリトライ不可として扱い、最初の error で即座に返します。
 
 			
 			
@@ -185,7 +186,7 @@ error（成功時は nil）を返します。
 		
 			
 			
-			</p><h2 id="Full">func <a href="../../../src/go-boilerplate/pkg/retry/jitter.go.html?s=233:273#L1">Full</a>
+			</p><h2 id="Full">func <a href="../../../src/go-boilerplate/pkg/retry/jitter.go.html?s=475:515#L4">Full</a>
 				<a class="permalink" href="#Full">¶</a>
 				
 				
@@ -193,6 +194,8 @@ error（成功時は nil）を返します。
 			<pre>func Full(d <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a></pre>
 			<p>Full は、[0, d] の一様乱数を返します（full jitter）。
 バックオフに重畳して thundering herd を避けます。d が 0 以下なら 0 を返します。
+</p><p>ただし d == math.MaxInt64（バックオフ上限到達時に起こり得る）のときは、閉区間化のための
+加算が int64 をオーバーフローするため、上限 d を除いた [0, d) を返します。
 
 			
 			

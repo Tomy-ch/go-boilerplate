@@ -179,225 +179,248 @@
 <span id="L122" class="ln">   122  </span>			assert.Equal(t, http.StatusOK, orig.wroteCode)
 <span id="L123" class="ln">   123  </span>			assert.Equal(t, &#34;hello&#34;, orig.body.String())
 <span id="L124" class="ln">   124  </span>		})
-<span id="L125" class="ln">   125  </span>	})
-<span id="L126" class="ln">   126  </span>}
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>func Test_cookieRewriteWriter_Flush(t *testing.T) {
-<span id="L129" class="ln">   129  </span>	t.Parallel()
-<span id="L130" class="ln">   130  </span>
-<span id="L131" class="ln">   131  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L132" class="ln">   132  </span>		t.Parallel()
-<span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>		t.Run(&#34;Flusherへの委譲時にWriteHeaderを経由する&#34;, func(t *testing.T) {
-<span id="L135" class="ln">   135  </span>			t.Parallel()
-<span id="L136" class="ln">   136  </span>			orig := newFakeOrig()
-<span id="L137" class="ln">   137  </span>			cfg := &amp;SecurityCookie{}
-<span id="L138" class="ln">   138  </span>			w := newCookieRewriteWriter(orig, cfg)
-<span id="L139" class="ln">   139  </span>
-<span id="L140" class="ln">   140  </span>			w.Flush()
-<span id="L141" class="ln">   141  </span>			assert.True(t, orig.flushed)
-<span id="L142" class="ln">   142  </span>			assert.Equal(t, http.StatusOK, orig.wroteCode)
-<span id="L143" class="ln">   143  </span>		})
-<span id="L144" class="ln">   144  </span>	})
-<span id="L145" class="ln">   145  </span>}
-<span id="L146" class="ln">   146  </span>
-<span id="L147" class="ln">   147  </span>func Test_cookieRewriteWriter_Hijack(t *testing.T) {
-<span id="L148" class="ln">   148  </span>	t.Parallel()
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L151" class="ln">   151  </span>		t.Parallel()
-<span id="L152" class="ln">   152  </span>
-<span id="L153" class="ln">   153  </span>		t.Run(&#34;origがHijackerを実装している場合は書き換えて透過する&#34;, func(t *testing.T) {
-<span id="L154" class="ln">   154  </span>			t.Parallel()
-<span id="L155" class="ln">   155  </span>			orig := newFakeOrig()
-<span id="L156" class="ln">   156  </span>			b := true
-<span id="L157" class="ln">   157  </span>			cfg := &amp;SecurityCookie{applyToAll: true, forceHTTPOnly: &amp;b}
-<span id="L158" class="ln">   158  </span>			w := newCookieRewriteWriter(orig, cfg)
-<span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;id=1&#34;)
-<span id="L161" class="ln">   161  </span>			conn, rw, err := w.Hijack()
-<span id="L162" class="ln">   162  </span>			require.NoError(t, err)
-<span id="L163" class="ln">   163  </span>			require.NotNil(t, conn)
-<span id="L164" class="ln">   164  </span>			require.NotNil(t, rw)
-<span id="L165" class="ln">   165  </span>			assert.True(t, w.wroteHdr)
-<span id="L166" class="ln">   166  </span>			sc := w.hdr.Values(&#34;Set-Cookie&#34;)
-<span id="L167" class="ln">   167  </span>			require.Len(t, sc, 1)
-<span id="L168" class="ln">   168  </span>			assert.Contains(t, sc[0], &#34;HttpOnly&#34;)
-<span id="L169" class="ln">   169  </span>			require.NoError(t, conn.Close())
-<span id="L170" class="ln">   170  </span>		})
-<span id="L171" class="ln">   171  </span>
-<span id="L172" class="ln">   172  </span>		t.Run(&#34;既にwroteHdrがtrueの場合はrewriteをスキップする&#34;, func(t *testing.T) {
-<span id="L173" class="ln">   173  </span>			t.Parallel()
-<span id="L174" class="ln">   174  </span>			orig := newFakeOrig()
-<span id="L175" class="ln">   175  </span>			b := true
-<span id="L176" class="ln">   176  </span>			cfg := &amp;SecurityCookie{applyToAll: true, forceHTTPOnly: &amp;b}
-<span id="L177" class="ln">   177  </span>			w := newCookieRewriteWriter(orig, cfg)
-<span id="L178" class="ln">   178  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;id=1&#34;)
-<span id="L179" class="ln">   179  </span>			w.wroteHdr = true
-<span id="L180" class="ln">   180  </span>			conn, rw, err := w.Hijack()
-<span id="L181" class="ln">   181  </span>			require.NoError(t, err)
-<span id="L182" class="ln">   182  </span>			require.NotNil(t, conn)
-<span id="L183" class="ln">   183  </span>			require.NotNil(t, rw)
-<span id="L184" class="ln">   184  </span>			<span class="comment">// rewrite がスキップされ HttpOnly は付与されない</span>
-<span id="L185" class="ln">   185  </span>			assert.Equal(t, []string{&#34;id=1&#34;}, w.hdr.Values(&#34;Set-Cookie&#34;))
-<span id="L186" class="ln">   186  </span>			require.NoError(t, conn.Close())
-<span id="L187" class="ln">   187  </span>		})
-<span id="L188" class="ln">   188  </span>
-<span id="L189" class="ln">   189  </span>		t.Run(&#34;Rewriteが失敗したら元のrawをhdrに残す&#34;, func(t *testing.T) {
-<span id="L190" class="ln">   190  </span>			t.Parallel()
-<span id="L191" class="ln">   191  </span>			orig := newFakeOrig()
-<span id="L192" class="ln">   192  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
-<span id="L193" class="ln">   193  </span>			w := newCookieRewriteWriter(orig, cfg)
-<span id="L194" class="ln">   194  </span>			<span class="comment">// 不正な Cookie（&#39;=&#39; 無し）なので RewriteSetCookie は &#34;&#34; を返す</span>
-<span id="L195" class="ln">   195  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;NoEquals&#34;)
-<span id="L196" class="ln">   196  </span>
-<span id="L197" class="ln">   197  </span>			conn, rw, err := w.Hijack()
-<span id="L198" class="ln">   198  </span>			require.NoError(t, err)
-<span id="L199" class="ln">   199  </span>			require.NotNil(t, conn)
-<span id="L200" class="ln">   200  </span>			require.NotNil(t, rw)
-<span id="L201" class="ln">   201  </span>			assert.Equal(t, []string{&#34;NoEquals&#34;}, w.hdr.Values(&#34;Set-Cookie&#34;))
-<span id="L202" class="ln">   202  </span>			require.NoError(t, conn.Close())
-<span id="L203" class="ln">   203  </span>		})
-<span id="L204" class="ln">   204  </span>	})
-<span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L207" class="ln">   207  </span>		t.Parallel()
-<span id="L208" class="ln">   208  </span>
-<span id="L209" class="ln">   209  </span>		t.Run(&#34;origがHijackerを実装していない場合はErrNotSupportedを返す&#34;, func(t *testing.T) {
-<span id="L210" class="ln">   210  </span>			t.Parallel()
-<span id="L211" class="ln">   211  </span>			wrapper := &amp;minimalResponseWriter{rw: newFakeOrig()}
-<span id="L212" class="ln">   212  </span>			var orig http.ResponseWriter = wrapper
-<span id="L213" class="ln">   213  </span>			w := newCookieRewriteWriter(orig, &amp;SecurityCookie{})
-<span id="L214" class="ln">   214  </span>			_, _, err := w.Hijack()
-<span id="L215" class="ln">   215  </span>			require.ErrorIs(t, err, http.ErrNotSupported)
-<span id="L216" class="ln">   216  </span>		})
-<span id="L217" class="ln">   217  </span>	})
-<span id="L218" class="ln">   218  </span>}
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>		t.Run(&#34;ヘッダ書き込み済みならWriteHeaderを再実行しない&#34;, func(t *testing.T) {
+<span id="L127" class="ln">   127  </span>			t.Parallel()
+<span id="L128" class="ln">   128  </span>			orig := newFakeOrig()
+<span id="L129" class="ln">   129  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
+<span id="L130" class="ln">   130  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L131" class="ln">   131  </span>			w.wroteHdr = true
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span>			n, err := w.Write([]byte(&#34;hi&#34;))
+<span id="L134" class="ln">   134  </span>			require.NoError(t, err)
+<span id="L135" class="ln">   135  </span>			assert.Equal(t, 2, n)
+<span id="L136" class="ln">   136  </span>			assert.Equal(t, 0, orig.wroteCode)
+<span id="L137" class="ln">   137  </span>			assert.Equal(t, &#34;hi&#34;, orig.body.String())
+<span id="L138" class="ln">   138  </span>		})
+<span id="L139" class="ln">   139  </span>	})
+<span id="L140" class="ln">   140  </span>}
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span>func Test_cookieRewriteWriter_Flush(t *testing.T) {
+<span id="L143" class="ln">   143  </span>	t.Parallel()
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L146" class="ln">   146  </span>		t.Parallel()
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>		t.Run(&#34;Flusherへの委譲時にWriteHeaderを経由する&#34;, func(t *testing.T) {
+<span id="L149" class="ln">   149  </span>			t.Parallel()
+<span id="L150" class="ln">   150  </span>			orig := newFakeOrig()
+<span id="L151" class="ln">   151  </span>			cfg := &amp;SecurityCookie{}
+<span id="L152" class="ln">   152  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span>			w.Flush()
+<span id="L155" class="ln">   155  </span>			assert.True(t, orig.flushed)
+<span id="L156" class="ln">   156  </span>			assert.Equal(t, http.StatusOK, orig.wroteCode)
+<span id="L157" class="ln">   157  </span>		})
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>		t.Run(&#34;origがFlusherを実装しない場合はno-op&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>			t.Parallel()
+<span id="L161" class="ln">   161  </span>			orig := newFakeOrig()
+<span id="L162" class="ln">   162  </span>			w := newCookieRewriteWriter(&amp;minimalResponseWriter{rw: orig}, &amp;SecurityCookie{})
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span>			w.Flush()
+<span id="L165" class="ln">   165  </span>			assert.False(t, orig.flushed)
+<span id="L166" class="ln">   166  </span>			assert.Equal(t, 0, orig.wroteCode)
+<span id="L167" class="ln">   167  </span>		})
+<span id="L168" class="ln">   168  </span>	})
+<span id="L169" class="ln">   169  </span>}
+<span id="L170" class="ln">   170  </span>
+<span id="L171" class="ln">   171  </span>func Test_cookieRewriteWriter_Hijack(t *testing.T) {
+<span id="L172" class="ln">   172  </span>	t.Parallel()
+<span id="L173" class="ln">   173  </span>
+<span id="L174" class="ln">   174  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L175" class="ln">   175  </span>		t.Parallel()
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>		t.Run(&#34;origがHijackerを実装している場合は書き換えて透過する&#34;, func(t *testing.T) {
+<span id="L178" class="ln">   178  </span>			t.Parallel()
+<span id="L179" class="ln">   179  </span>			orig := newFakeOrig()
+<span id="L180" class="ln">   180  </span>			b := true
+<span id="L181" class="ln">   181  </span>			cfg := &amp;SecurityCookie{applyToAll: true, forceHTTPOnly: &amp;b}
+<span id="L182" class="ln">   182  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L183" class="ln">   183  </span>
+<span id="L184" class="ln">   184  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;id=1&#34;)
+<span id="L185" class="ln">   185  </span>			conn, rw, err := w.Hijack()
+<span id="L186" class="ln">   186  </span>			require.NoError(t, err)
+<span id="L187" class="ln">   187  </span>			require.NotNil(t, conn)
+<span id="L188" class="ln">   188  </span>			require.NotNil(t, rw)
+<span id="L189" class="ln">   189  </span>			assert.True(t, w.wroteHdr)
+<span id="L190" class="ln">   190  </span>			sc := w.hdr.Values(&#34;Set-Cookie&#34;)
+<span id="L191" class="ln">   191  </span>			require.Len(t, sc, 1)
+<span id="L192" class="ln">   192  </span>			assert.Contains(t, sc[0], &#34;HttpOnly&#34;)
+<span id="L193" class="ln">   193  </span>			require.NoError(t, conn.Close())
+<span id="L194" class="ln">   194  </span>		})
+<span id="L195" class="ln">   195  </span>
+<span id="L196" class="ln">   196  </span>		t.Run(&#34;既にwroteHdrがtrueの場合はrewriteをスキップする&#34;, func(t *testing.T) {
+<span id="L197" class="ln">   197  </span>			t.Parallel()
+<span id="L198" class="ln">   198  </span>			orig := newFakeOrig()
+<span id="L199" class="ln">   199  </span>			b := true
+<span id="L200" class="ln">   200  </span>			cfg := &amp;SecurityCookie{applyToAll: true, forceHTTPOnly: &amp;b}
+<span id="L201" class="ln">   201  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L202" class="ln">   202  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;id=1&#34;)
+<span id="L203" class="ln">   203  </span>			w.wroteHdr = true
+<span id="L204" class="ln">   204  </span>			conn, rw, err := w.Hijack()
+<span id="L205" class="ln">   205  </span>			require.NoError(t, err)
+<span id="L206" class="ln">   206  </span>			require.NotNil(t, conn)
+<span id="L207" class="ln">   207  </span>			require.NotNil(t, rw)
+<span id="L208" class="ln">   208  </span>			assert.Equal(t, []string{&#34;id=1&#34;}, w.hdr.Values(&#34;Set-Cookie&#34;))
+<span id="L209" class="ln">   209  </span>			require.NoError(t, conn.Close())
+<span id="L210" class="ln">   210  </span>		})
+<span id="L211" class="ln">   211  </span>
+<span id="L212" class="ln">   212  </span>		t.Run(&#34;Rewriteが失敗したら元のrawをhdrに残す&#34;, func(t *testing.T) {
+<span id="L213" class="ln">   213  </span>			t.Parallel()
+<span id="L214" class="ln">   214  </span>			orig := newFakeOrig()
+<span id="L215" class="ln">   215  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
+<span id="L216" class="ln">   216  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L217" class="ln">   217  </span>			<span class="comment">// 不正な Cookie（&#39;=&#39; 無し）なので RewriteSetCookie は &#34;&#34; を返す</span>
+<span id="L218" class="ln">   218  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;NoEquals&#34;)
 <span id="L219" class="ln">   219  </span>
-<span id="L220" class="ln">   220  </span>func Test_cookieRewriteWriter_Push(t *testing.T) {
-<span id="L221" class="ln">   221  </span>	t.Parallel()
-<span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L224" class="ln">   224  </span>		t.Parallel()
-<span id="L225" class="ln">   225  </span>
-<span id="L226" class="ln">   226  </span>		t.Run(&#34;origがPusherを実装している場合は透過する&#34;, func(t *testing.T) {
-<span id="L227" class="ln">   227  </span>			t.Parallel()
-<span id="L228" class="ln">   228  </span>			orig := newFakeOrig()
-<span id="L229" class="ln">   229  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
-<span id="L230" class="ln">   230  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L220" class="ln">   220  </span>			conn, rw, err := w.Hijack()
+<span id="L221" class="ln">   221  </span>			require.NoError(t, err)
+<span id="L222" class="ln">   222  </span>			require.NotNil(t, conn)
+<span id="L223" class="ln">   223  </span>			require.NotNil(t, rw)
+<span id="L224" class="ln">   224  </span>			assert.Equal(t, []string{&#34;NoEquals&#34;}, w.hdr.Values(&#34;Set-Cookie&#34;))
+<span id="L225" class="ln">   225  </span>			require.NoError(t, conn.Close())
+<span id="L226" class="ln">   226  </span>		})
+<span id="L227" class="ln">   227  </span>	})
+<span id="L228" class="ln">   228  </span>
+<span id="L229" class="ln">   229  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L230" class="ln">   230  </span>		t.Parallel()
 <span id="L231" class="ln">   231  </span>
-<span id="L232" class="ln">   232  </span>			err := w.Push(&#34;/a&#34;, &amp;http.PushOptions{})
-<span id="L233" class="ln">   233  </span>			require.NoError(t, err)
-<span id="L234" class="ln">   234  </span>			assert.True(t, orig.pushed)
-<span id="L235" class="ln">   235  </span>		})
-<span id="L236" class="ln">   236  </span>	})
-<span id="L237" class="ln">   237  </span>
-<span id="L238" class="ln">   238  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L239" class="ln">   239  </span>		t.Parallel()
-<span id="L240" class="ln">   240  </span>
-<span id="L241" class="ln">   241  </span>		t.Run(&#34;origがPusherを実装していない場合はErrNotSupportedを返す&#34;, func(t *testing.T) {
-<span id="L242" class="ln">   242  </span>			t.Parallel()
-<span id="L243" class="ln">   243  </span>			wrapper := &amp;minimalResponseWriter{rw: newFakeOrig()}
-<span id="L244" class="ln">   244  </span>			var orig http.ResponseWriter = wrapper
-<span id="L245" class="ln">   245  </span>			w := newCookieRewriteWriter(orig, &amp;SecurityCookie{})
-<span id="L246" class="ln">   246  </span>			err := w.Push(&#34;/p&#34;, &amp;http.PushOptions{})
-<span id="L247" class="ln">   247  </span>			require.ErrorIs(t, err, http.ErrNotSupported)
-<span id="L248" class="ln">   248  </span>		})
-<span id="L249" class="ln">   249  </span>	})
-<span id="L250" class="ln">   250  </span>}
-<span id="L251" class="ln">   251  </span>
-<span id="L252" class="ln">   252  </span>func Test_cookieRewriteWriter_ReadFrom(t *testing.T) {
-<span id="L253" class="ln">   253  </span>	t.Parallel()
+<span id="L232" class="ln">   232  </span>		t.Run(&#34;origがHijackerを実装していない場合はErrNotSupportedを返す&#34;, func(t *testing.T) {
+<span id="L233" class="ln">   233  </span>			t.Parallel()
+<span id="L234" class="ln">   234  </span>			wrapper := &amp;minimalResponseWriter{rw: newFakeOrig()}
+<span id="L235" class="ln">   235  </span>			var orig http.ResponseWriter = wrapper
+<span id="L236" class="ln">   236  </span>			w := newCookieRewriteWriter(orig, &amp;SecurityCookie{})
+<span id="L237" class="ln">   237  </span>			_, _, err := w.Hijack()
+<span id="L238" class="ln">   238  </span>			require.ErrorIs(t, err, http.ErrNotSupported)
+<span id="L239" class="ln">   239  </span>		})
+<span id="L240" class="ln">   240  </span>	})
+<span id="L241" class="ln">   241  </span>}
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span>func Test_cookieRewriteWriter_Push(t *testing.T) {
+<span id="L244" class="ln">   244  </span>	t.Parallel()
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L247" class="ln">   247  </span>		t.Parallel()
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>		t.Run(&#34;origがPusherを実装している場合は透過する&#34;, func(t *testing.T) {
+<span id="L250" class="ln">   250  </span>			t.Parallel()
+<span id="L251" class="ln">   251  </span>			orig := newFakeOrig()
+<span id="L252" class="ln">   252  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
+<span id="L253" class="ln">   253  </span>			w := newCookieRewriteWriter(orig, cfg)
 <span id="L254" class="ln">   254  </span>
-<span id="L255" class="ln">   255  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L256" class="ln">   256  </span>		t.Parallel()
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>		t.Run(&#34;origがReaderFromを実装している場合は透過して読み取る&#34;, func(t *testing.T) {
-<span id="L259" class="ln">   259  </span>			t.Parallel()
-<span id="L260" class="ln">   260  </span>			orig := newFakeOrig()
-<span id="L261" class="ln">   261  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
-<span id="L262" class="ln">   262  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L255" class="ln">   255  </span>			err := w.Push(&#34;/a&#34;, &amp;http.PushOptions{})
+<span id="L256" class="ln">   256  </span>			require.NoError(t, err)
+<span id="L257" class="ln">   257  </span>			assert.True(t, orig.pushed)
+<span id="L258" class="ln">   258  </span>		})
+<span id="L259" class="ln">   259  </span>	})
+<span id="L260" class="ln">   260  </span>
+<span id="L261" class="ln">   261  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L262" class="ln">   262  </span>		t.Parallel()
 <span id="L263" class="ln">   263  </span>
-<span id="L264" class="ln">   264  </span>			r := strings.NewReader(&#34;payload&#34;)
-<span id="L265" class="ln">   265  </span>			n, err := w.ReadFrom(r)
-<span id="L266" class="ln">   266  </span>			require.NoError(t, err)
-<span id="L267" class="ln">   267  </span>			assert.Equal(t, int64(7), n)
-<span id="L268" class="ln">   268  </span>			assert.Equal(t, &#34;payload&#34;, orig.body.String())
-<span id="L269" class="ln">   269  </span>		})
-<span id="L270" class="ln">   270  </span>
-<span id="L271" class="ln">   271  </span>		t.Run(&#34;origがReaderFromを実装していない場合はio.Copy経由で書き込まれる&#34;, func(t *testing.T) {
-<span id="L272" class="ln">   272  </span>			t.Parallel()
-<span id="L273" class="ln">   273  </span>			wrapper := &amp;minimalResponseWriter{rw: newFakeOrig()}
-<span id="L274" class="ln">   274  </span>			var orig http.ResponseWriter = wrapper
-<span id="L275" class="ln">   275  </span>			w := newCookieRewriteWriter(orig, &amp;SecurityCookie{applyToAll: true})
-<span id="L276" class="ln">   276  </span>
-<span id="L277" class="ln">   277  </span>			r := strings.NewReader(&#34;xyz&#34;)
-<span id="L278" class="ln">   278  </span>			n, err := w.ReadFrom(r)
-<span id="L279" class="ln">   279  </span>			require.NoError(t, err)
-<span id="L280" class="ln">   280  </span>			assert.Positive(t, n)
-<span id="L281" class="ln">   281  </span>			f, ok := wrapper.rw.(*fakeOrig)
-<span id="L282" class="ln">   282  </span>			require.True(t, ok)
-<span id="L283" class="ln">   283  </span>			assert.Equal(t, &#34;xyz&#34;, f.body.String())
-<span id="L284" class="ln">   284  </span>		})
-<span id="L285" class="ln">   285  </span>	})
-<span id="L286" class="ln">   286  </span>}
-<span id="L287" class="ln">   287  </span>
-<span id="L288" class="ln">   288  </span>func Test_cookieRewriteWriter_Unwrap(t *testing.T) {
-<span id="L289" class="ln">   289  </span>	t.Parallel()
-<span id="L290" class="ln">   290  </span>
-<span id="L291" class="ln">   291  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L292" class="ln">   292  </span>		t.Parallel()
+<span id="L264" class="ln">   264  </span>		t.Run(&#34;origがPusherを実装していない場合はErrNotSupportedを返す&#34;, func(t *testing.T) {
+<span id="L265" class="ln">   265  </span>			t.Parallel()
+<span id="L266" class="ln">   266  </span>			wrapper := &amp;minimalResponseWriter{rw: newFakeOrig()}
+<span id="L267" class="ln">   267  </span>			var orig http.ResponseWriter = wrapper
+<span id="L268" class="ln">   268  </span>			w := newCookieRewriteWriter(orig, &amp;SecurityCookie{})
+<span id="L269" class="ln">   269  </span>			err := w.Push(&#34;/p&#34;, &amp;http.PushOptions{})
+<span id="L270" class="ln">   270  </span>			require.ErrorIs(t, err, http.ErrNotSupported)
+<span id="L271" class="ln">   271  </span>		})
+<span id="L272" class="ln">   272  </span>	})
+<span id="L273" class="ln">   273  </span>}
+<span id="L274" class="ln">   274  </span>
+<span id="L275" class="ln">   275  </span>func Test_cookieRewriteWriter_ReadFrom(t *testing.T) {
+<span id="L276" class="ln">   276  </span>	t.Parallel()
+<span id="L277" class="ln">   277  </span>
+<span id="L278" class="ln">   278  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L279" class="ln">   279  </span>		t.Parallel()
+<span id="L280" class="ln">   280  </span>
+<span id="L281" class="ln">   281  </span>		t.Run(&#34;origがReaderFromを実装している場合は透過して読み取る&#34;, func(t *testing.T) {
+<span id="L282" class="ln">   282  </span>			t.Parallel()
+<span id="L283" class="ln">   283  </span>			orig := newFakeOrig()
+<span id="L284" class="ln">   284  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
+<span id="L285" class="ln">   285  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L286" class="ln">   286  </span>
+<span id="L287" class="ln">   287  </span>			r := strings.NewReader(&#34;payload&#34;)
+<span id="L288" class="ln">   288  </span>			n, err := w.ReadFrom(r)
+<span id="L289" class="ln">   289  </span>			require.NoError(t, err)
+<span id="L290" class="ln">   290  </span>			assert.Equal(t, int64(7), n)
+<span id="L291" class="ln">   291  </span>			assert.Equal(t, &#34;payload&#34;, orig.body.String())
+<span id="L292" class="ln">   292  </span>		})
 <span id="L293" class="ln">   293  </span>
-<span id="L294" class="ln">   294  </span>		t.Run(&#34;内側のResponseWriterを返す&#34;, func(t *testing.T) {
+<span id="L294" class="ln">   294  </span>		t.Run(&#34;origがReaderFromを実装していない場合はio.Copy経由で書き込まれる&#34;, func(t *testing.T) {
 <span id="L295" class="ln">   295  </span>			t.Parallel()
-<span id="L296" class="ln">   296  </span>			orig := newFakeOrig()
-<span id="L297" class="ln">   297  </span>			cfg := &amp;SecurityCookie{}
-<span id="L298" class="ln">   298  </span>			w := newCookieRewriteWriter(orig, cfg)
-<span id="L299" class="ln">   299  </span>			assert.Equal(t, orig, w.Unwrap())
-<span id="L300" class="ln">   300  </span>		})
-<span id="L301" class="ln">   301  </span>	})
-<span id="L302" class="ln">   302  </span>}
-<span id="L303" class="ln">   303  </span>
-<span id="L304" class="ln">   304  </span>func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
-<span id="L305" class="ln">   305  </span>	t.Parallel()
-<span id="L306" class="ln">   306  </span>
-<span id="L307" class="ln">   307  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L308" class="ln">   308  </span>		t.Parallel()
-<span id="L309" class="ln">   309  </span>
-<span id="L310" class="ln">   310  </span>		t.Run(&#34;Set-Cookieを書き換えて元ヘッダを転送する&#34;, func(t *testing.T) {
-<span id="L311" class="ln">   311  </span>			t.Parallel()
-<span id="L312" class="ln">   312  </span>			orig := newFakeOrig()
-<span id="L313" class="ln">   313  </span>			b := true
-<span id="L314" class="ln">   314  </span>			cfg := &amp;SecurityCookie{applyToAll: true, forceSecure: &amp;b}
-<span id="L315" class="ln">   315  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L296" class="ln">   296  </span>			wrapper := &amp;minimalResponseWriter{rw: newFakeOrig()}
+<span id="L297" class="ln">   297  </span>			var orig http.ResponseWriter = wrapper
+<span id="L298" class="ln">   298  </span>			w := newCookieRewriteWriter(orig, &amp;SecurityCookie{applyToAll: true})
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>			r := strings.NewReader(&#34;xyz&#34;)
+<span id="L301" class="ln">   301  </span>			n, err := w.ReadFrom(r)
+<span id="L302" class="ln">   302  </span>			require.NoError(t, err)
+<span id="L303" class="ln">   303  </span>			assert.Positive(t, n)
+<span id="L304" class="ln">   304  </span>			f, ok := wrapper.rw.(*fakeOrig)
+<span id="L305" class="ln">   305  </span>			require.True(t, ok)
+<span id="L306" class="ln">   306  </span>			assert.Equal(t, &#34;xyz&#34;, f.body.String())
+<span id="L307" class="ln">   307  </span>		})
+<span id="L308" class="ln">   308  </span>	})
+<span id="L309" class="ln">   309  </span>}
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>func Test_cookieRewriteWriter_Unwrap(t *testing.T) {
+<span id="L312" class="ln">   312  </span>	t.Parallel()
+<span id="L313" class="ln">   313  </span>
+<span id="L314" class="ln">   314  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L315" class="ln">   315  </span>		t.Parallel()
 <span id="L316" class="ln">   316  </span>
-<span id="L317" class="ln">   317  </span>			w.hdr.Add(&#34;X-Test&#34;, &#34;v&#34;)
-<span id="L318" class="ln">   318  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;id=1; Path=/&#34;)
-<span id="L319" class="ln">   319  </span>
-<span id="L320" class="ln">   320  </span>			w.flushHeadersWithRewrite()
-<span id="L321" class="ln">   321  </span>
-<span id="L322" class="ln">   322  </span>			assert.Equal(t, &#34;v&#34;, orig.Header().Get(&#34;X-Test&#34;))
-<span id="L323" class="ln">   323  </span>			sc := orig.Header()[&#34;Set-Cookie&#34;]
-<span id="L324" class="ln">   324  </span>			assert.Len(t, sc, 1)
-<span id="L325" class="ln">   325  </span>			assert.Contains(t, sc[0], &#34;Secure&#34;)
-<span id="L326" class="ln">   326  </span>		})
-<span id="L327" class="ln">   327  </span>
-<span id="L328" class="ln">   328  </span>		t.Run(&#34;Rewriteに失敗したら元のrawを使う&#34;, func(t *testing.T) {
-<span id="L329" class="ln">   329  </span>			t.Parallel()
-<span id="L330" class="ln">   330  </span>			orig := newFakeOrig()
-<span id="L331" class="ln">   331  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
-<span id="L332" class="ln">   332  </span>			w := newCookieRewriteWriter(orig, cfg)
-<span id="L333" class="ln">   333  </span>
-<span id="L334" class="ln">   334  </span>			<span class="comment">// 不正な Cookie（&#39;=&#39; 無し）なので RewriteSetCookie は &#34;&#34; を返す</span>
-<span id="L335" class="ln">   335  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;NoEquals&#34;)
-<span id="L336" class="ln">   336  </span>			w.flushHeadersWithRewrite()
-<span id="L337" class="ln">   337  </span>
-<span id="L338" class="ln">   338  </span>			sc := orig.Header()[&#34;Set-Cookie&#34;]
-<span id="L339" class="ln">   339  </span>			assert.Equal(t, []string{&#34;NoEquals&#34;}, sc)
-<span id="L340" class="ln">   340  </span>		})
-<span id="L341" class="ln">   341  </span>	})
-<span id="L342" class="ln">   342  </span>}
-<span id="L343" class="ln">   343  </span>
+<span id="L317" class="ln">   317  </span>		t.Run(&#34;内側のResponseWriterを返す&#34;, func(t *testing.T) {
+<span id="L318" class="ln">   318  </span>			t.Parallel()
+<span id="L319" class="ln">   319  </span>			orig := newFakeOrig()
+<span id="L320" class="ln">   320  </span>			cfg := &amp;SecurityCookie{}
+<span id="L321" class="ln">   321  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L322" class="ln">   322  </span>			assert.Equal(t, orig, w.Unwrap())
+<span id="L323" class="ln">   323  </span>		})
+<span id="L324" class="ln">   324  </span>	})
+<span id="L325" class="ln">   325  </span>}
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
+<span id="L328" class="ln">   328  </span>	t.Parallel()
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L331" class="ln">   331  </span>		t.Parallel()
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span>		t.Run(&#34;Set-Cookieを書き換えて元ヘッダを転送する&#34;, func(t *testing.T) {
+<span id="L334" class="ln">   334  </span>			t.Parallel()
+<span id="L335" class="ln">   335  </span>			orig := newFakeOrig()
+<span id="L336" class="ln">   336  </span>			b := true
+<span id="L337" class="ln">   337  </span>			cfg := &amp;SecurityCookie{applyToAll: true, forceSecure: &amp;b}
+<span id="L338" class="ln">   338  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L339" class="ln">   339  </span>
+<span id="L340" class="ln">   340  </span>			w.hdr.Add(&#34;X-Test&#34;, &#34;v&#34;)
+<span id="L341" class="ln">   341  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;id=1; Path=/&#34;)
+<span id="L342" class="ln">   342  </span>
+<span id="L343" class="ln">   343  </span>			w.flushHeadersWithRewrite()
+<span id="L344" class="ln">   344  </span>
+<span id="L345" class="ln">   345  </span>			assert.Equal(t, &#34;v&#34;, orig.Header().Get(&#34;X-Test&#34;))
+<span id="L346" class="ln">   346  </span>			sc := orig.Header()[&#34;Set-Cookie&#34;]
+<span id="L347" class="ln">   347  </span>			assert.Len(t, sc, 1)
+<span id="L348" class="ln">   348  </span>			assert.Contains(t, sc[0], &#34;Secure&#34;)
+<span id="L349" class="ln">   349  </span>		})
+<span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>		t.Run(&#34;Rewriteに失敗したら元のrawを使う&#34;, func(t *testing.T) {
+<span id="L352" class="ln">   352  </span>			t.Parallel()
+<span id="L353" class="ln">   353  </span>			orig := newFakeOrig()
+<span id="L354" class="ln">   354  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
+<span id="L355" class="ln">   355  </span>			w := newCookieRewriteWriter(orig, cfg)
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>			<span class="comment">// 不正な Cookie（&#39;=&#39; 無し）なので RewriteSetCookie は &#34;&#34; を返す</span>
+<span id="L358" class="ln">   358  </span>			w.hdr.Add(&#34;Set-Cookie&#34;, &#34;NoEquals&#34;)
+<span id="L359" class="ln">   359  </span>			w.flushHeadersWithRewrite()
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span>			sc := orig.Header()[&#34;Set-Cookie&#34;]
+<span id="L362" class="ln">   362  </span>			assert.Equal(t, []string{&#34;NoEquals&#34;}, sc)
+<span id="L363" class="ln">   363  </span>		})
+<span id="L364" class="ln">   364  </span>	})
+<span id="L365" class="ln">   365  </span>}
+<span id="L366" class="ln">   366  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/cookie_writer_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

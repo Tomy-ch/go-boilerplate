@@ -58,11 +58,11 @@
 <pre><span id="L1" class="ln">     1  </span>package errorhandler
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;errors&#34;
-<span id="L5" class="ln">     5  </span>	&#34;net/http&#34;
-<span id="L6" class="ln">     6  </span>	&#34;testing&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/controller/error/response&#34;
+<span id="L4" class="ln">     4  </span>	&#34;net/http&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/controller/error/response&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L9" class="ln">     9  </span>
 <span id="L10" class="ln">    10  </span>	&#34;github.com/labstack/echo/v4&#34;
 <span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/assert&#34;
@@ -78,7 +78,7 @@
 <span id="L21" class="ln">    21  </span>		t.Run(&#34;EchoHTTPErrorでステータス範囲内の場合、NewHTTPErrorFromStatusベースのレスポンスが返る&#34;, func(t *testing.T) {
 <span id="L22" class="ln">    22  </span>			t.Parallel()
 <span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>			inner := errors.New(&#34;inner failure&#34;)
+<span id="L24" class="ln">    24  </span>			inner := xerrors.New(&#34;inner failure&#34;)
 <span id="L25" class="ln">    25  </span>			ehe := &amp;echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
 <span id="L26" class="ln">    26  </span>
 <span id="L27" class="ln">    27  </span>			actual := normalizeEchoHTTPError(ehe)
@@ -97,7 +97,7 @@
 <span id="L40" class="ln">    40  </span>		t.Run(&#34;detailsを渡した場合、Detailsにセットされる&#34;, func(t *testing.T) {
 <span id="L41" class="ln">    41  </span>			t.Parallel()
 <span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>			inner := errors.New(&#34;inner2&#34;)
+<span id="L43" class="ln">    43  </span>			inner := xerrors.New(&#34;inner2&#34;)
 <span id="L44" class="ln">    44  </span>			ehe := &amp;echo.HTTPError{Code: http.StatusConflict, Internal: inner}
 <span id="L45" class="ln">    45  </span>
 <span id="L46" class="ln">    46  </span>			actual := normalizeEchoHTTPError(ehe, &#34;d1&#34;, &#34;d2&#34;)
@@ -119,7 +119,7 @@
 <span id="L62" class="ln">    62  </span>
 <span id="L63" class="ln">    63  </span>		t.Run(&#34;非EchoHTTPErrorの場合、nilが返る&#34;, func(t *testing.T) {
 <span id="L64" class="ln">    64  </span>			t.Parallel()
-<span id="L65" class="ln">    65  </span>			assert.Nil(t, normalizeEchoHTTPError(errors.New(&#34;just an error&#34;)))
+<span id="L65" class="ln">    65  </span>			assert.Nil(t, normalizeEchoHTTPError(xerrors.New(&#34;just an error&#34;)))
 <span id="L66" class="ln">    66  </span>		})
 <span id="L67" class="ln">    67  </span>
 <span id="L68" class="ln">    68  </span>		t.Run(&#34;EchoHTTPErrorだがステータス範囲外の場合、nilが返る&#34;, func(t *testing.T) {

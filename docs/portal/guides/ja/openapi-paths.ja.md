@@ -77,7 +77,7 @@ paths/
 |ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/users/me/password` → `v1/users/me/password.yaml`|
 |leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`users.yaml` ＋ `users/`|
 |パスパラメータ|snake_case ファイル名（波括弧なし）|`{user_id}` → `user_id.yaml`|
-|operationId|`{HTTPメソッド}{リソース名}`|`getUsers`, `postUsers`|
+|operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`GetUsers`, `PostUsers`|
 |tags|パスベースのグルーピング|`v1/users`, `health`|
 
 ## パスとハンドラの対応

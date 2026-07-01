@@ -58,67 +58,68 @@
 <pre><span id="L1" class="ln">     1  </span>package datetime
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;errors&#34;
-<span id="L5" class="ln">     5  </span>	&#34;time&#34;
-<span id="L6" class="ln">     6  </span>)
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span><span class="comment">// toLocation は、parse で得た時刻を loc のタイムゾーンへ変換して返す共通ヘルパです。</span>
-<span id="L9" class="ln">     9  </span><span class="comment">// loc が nil の場合、time.Time.In の panic を避けてエラーを返します。</span>
-<span id="L10" class="ln">    10  </span>func toLocation(loc *time.Location, parse func() (time.Time, error)) (time.Time, error) {
-<span id="L11" class="ln">    11  </span>	if loc == nil {
-<span id="L12" class="ln">    12  </span>		return time.Time{}, errors.New(&#34;datetime: loc must not be nil&#34;)
-<span id="L13" class="ln">    13  </span>	}
-<span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>	t, err := parse()
-<span id="L16" class="ln">    16  </span>	if err != nil {
-<span id="L17" class="ln">    17  </span>		return time.Time{}, err
-<span id="L18" class="ln">    18  </span>	}
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>	return t.In(loc), nil
-<span id="L21" class="ln">    21  </span>}
-<span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span><span class="comment">// ParseRFC3339ToLocation は、RFC3339形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
-<span id="L24" class="ln">    24  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
-<span id="L25" class="ln">    25  </span>func ParseRFC3339ToLocation(s string, loc *time.Location) (time.Time, error) {
-<span id="L26" class="ln">    26  </span>	return toLocation(loc, func() (time.Time, error) { return ParseRFC3339(s) })
-<span id="L27" class="ln">    27  </span>}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span><span class="comment">// ParseRFC3339UTCToLocation は、RFC3339UTC形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
-<span id="L30" class="ln">    30  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
-<span id="L31" class="ln">    31  </span>func ParseRFC3339UTCToLocation(s string, loc *time.Location) (time.Time, error) {
-<span id="L32" class="ln">    32  </span>	return toLocation(loc, func() (time.Time, error) { return ParseRFC3339UTC(s) })
-<span id="L33" class="ln">    33  </span>}
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span><span class="comment">// ParseRFC3339NanoToLocation は、RFC3339Nano形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
-<span id="L36" class="ln">    36  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
-<span id="L37" class="ln">    37  </span>func ParseRFC3339NanoToLocation(s string, loc *time.Location) (time.Time, error) {
-<span id="L38" class="ln">    38  </span>	return toLocation(loc, func() (time.Time, error) { return ParseRFC3339Nano(s) })
-<span id="L39" class="ln">    39  </span>}
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span><span class="comment">// ParseISO8601ToLocation は、ISO8601形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
-<span id="L42" class="ln">    42  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
-<span id="L43" class="ln">    43  </span>func ParseISO8601ToLocation(s string, loc *time.Location) (time.Time, error) {
-<span id="L44" class="ln">    44  </span>	return toLocation(loc, func() (time.Time, error) { return ParseISO8601(s) })
-<span id="L45" class="ln">    45  </span>}
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span><span class="comment">// ParseDateTimeToLocation は、日付と時刻の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
-<span id="L48" class="ln">    48  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
-<span id="L49" class="ln">    49  </span>func ParseDateTimeToLocation(s string, loc *time.Location) (time.Time, error) {
-<span id="L50" class="ln">    50  </span>	return toLocation(loc, func() (time.Time, error) { return ParseDateTime(s) })
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span><span class="comment">// ParseDateOnlyToLocation は、日付のみの日時文字列を解析し loc のタイムゾーンへ変換します。</span>
-<span id="L54" class="ln">    54  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
-<span id="L55" class="ln">    55  </span>func ParseDateOnlyToLocation(s string, loc *time.Location) (time.Time, error) {
-<span id="L56" class="ln">    56  </span>	return toLocation(loc, func() (time.Time, error) { return ParseDateOnly(s) })
-<span id="L57" class="ln">    57  </span>}
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span><span class="comment">// ParseCustomLayoutToLocation は、カスタムレイアウトの日時文字列を解析し loc のタイムゾーンへ変換します。</span>
-<span id="L60" class="ln">    60  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
-<span id="L61" class="ln">    61  </span>func ParseCustomLayoutToLocation(layout, s string, loc *time.Location) (time.Time, error) {
-<span id="L62" class="ln">    62  </span>	return toLocation(loc, func() (time.Time, error) { return ParseCustomLayout(layout, s) })
-<span id="L63" class="ln">    63  </span>}
-<span id="L64" class="ln">    64  </span>
+<span id="L4" class="ln">     4  </span>	&#34;time&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L7" class="ln">     7  </span>)
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span><span class="comment">// toLocation は、parse で得た時刻を loc のタイムゾーンへ変換して返す共通ヘルパです。</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// loc が nil の場合、time.Time.In の panic を避けてエラーを返します。</span>
+<span id="L11" class="ln">    11  </span>func toLocation(loc *time.Location, parse func() (time.Time, error)) (time.Time, error) {
+<span id="L12" class="ln">    12  </span>	if loc == nil {
+<span id="L13" class="ln">    13  </span>		return time.Time{}, xerrors.New(&#34;datetime: loc must not be nil&#34;)
+<span id="L14" class="ln">    14  </span>	}
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>	t, err := parse()
+<span id="L17" class="ln">    17  </span>	if err != nil {
+<span id="L18" class="ln">    18  </span>		return time.Time{}, err
+<span id="L19" class="ln">    19  </span>	}
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>	return t.In(loc), nil
+<span id="L22" class="ln">    22  </span>}
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span><span class="comment">// ParseRFC3339ToLocation は、RFC3339形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
+<span id="L26" class="ln">    26  </span>func ParseRFC3339ToLocation(s string, loc *time.Location) (time.Time, error) {
+<span id="L27" class="ln">    27  </span>	return toLocation(loc, func() (time.Time, error) { return ParseRFC3339(s) })
+<span id="L28" class="ln">    28  </span>}
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// ParseRFC3339UTCToLocation は、RFC3339UTC形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
+<span id="L31" class="ln">    31  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
+<span id="L32" class="ln">    32  </span>func ParseRFC3339UTCToLocation(s string, loc *time.Location) (time.Time, error) {
+<span id="L33" class="ln">    33  </span>	return toLocation(loc, func() (time.Time, error) { return ParseRFC3339UTC(s) })
+<span id="L34" class="ln">    34  </span>}
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span><span class="comment">// ParseRFC3339NanoToLocation は、RFC3339Nano形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
+<span id="L37" class="ln">    37  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
+<span id="L38" class="ln">    38  </span>func ParseRFC3339NanoToLocation(s string, loc *time.Location) (time.Time, error) {
+<span id="L39" class="ln">    39  </span>	return toLocation(loc, func() (time.Time, error) { return ParseRFC3339Nano(s) })
+<span id="L40" class="ln">    40  </span>}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span><span class="comment">// ParseISO8601ToLocation は、ISO8601形式の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
+<span id="L43" class="ln">    43  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
+<span id="L44" class="ln">    44  </span>func ParseISO8601ToLocation(s string, loc *time.Location) (time.Time, error) {
+<span id="L45" class="ln">    45  </span>	return toLocation(loc, func() (time.Time, error) { return ParseISO8601(s) })
+<span id="L46" class="ln">    46  </span>}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span><span class="comment">// ParseDateTimeToLocation は、日付と時刻の日時文字列を解析し loc のタイムゾーンへ変換します。</span>
+<span id="L49" class="ln">    49  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
+<span id="L50" class="ln">    50  </span>func ParseDateTimeToLocation(s string, loc *time.Location) (time.Time, error) {
+<span id="L51" class="ln">    51  </span>	return toLocation(loc, func() (time.Time, error) { return ParseDateTime(s) })
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// ParseDateOnlyToLocation は、日付のみの日時文字列を解析し loc のタイムゾーンへ変換します。</span>
+<span id="L55" class="ln">    55  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
+<span id="L56" class="ln">    56  </span>func ParseDateOnlyToLocation(s string, loc *time.Location) (time.Time, error) {
+<span id="L57" class="ln">    57  </span>	return toLocation(loc, func() (time.Time, error) { return ParseDateOnly(s) })
+<span id="L58" class="ln">    58  </span>}
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span><span class="comment">// ParseCustomLayoutToLocation は、カスタムレイアウトの日時文字列を解析し loc のタイムゾーンへ変換します。</span>
+<span id="L61" class="ln">    61  </span><span class="comment">// loc が nil の場合はエラーを返します。</span>
+<span id="L62" class="ln">    62  </span>func ParseCustomLayoutToLocation(layout, s string, loc *time.Location) (time.Time, error) {
+<span id="L63" class="ln">    63  </span>	return toLocation(loc, func() (time.Time, error) { return ParseCustomLayout(layout, s) })
+<span id="L64" class="ln">    64  </span>}
+<span id="L65" class="ln">    65  </span>
 </pre><p><a href="../../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

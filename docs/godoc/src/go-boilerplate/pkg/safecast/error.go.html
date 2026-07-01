@@ -57,10 +57,10 @@
 
 <pre><span id="L1" class="ln">     1  </span>package safecast
 <span id="L2" class="ln">     2  </span>
-<span id="L3" class="ln">     3  </span>import &#34;errors&#34;
+<span id="L3" class="ln">     3  </span>import &#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L4" class="ln">     4  </span>
 <span id="L5" class="ln">     5  </span><span class="comment">// ErrOverflow は、型変換時にオーバーフローが発生したことを示すエラーです。</span>
-<span id="L6" class="ln">     6  </span>var ErrOverflow = errors.New(&#34;overflow&#34;)
+<span id="L6" class="ln">     6  </span>var ErrOverflow = xerrors.New(&#34;overflow&#34;)
 <span id="L7" class="ln">     7  </span>
 </pre><p><a href="../../../../src/go-boilerplate/pkg/safecast/error.go.html?m=text">View as plain text</a></p>
 

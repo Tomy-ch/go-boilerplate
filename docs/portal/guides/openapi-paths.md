@@ -77,7 +77,7 @@ When introducing breaking changes, create a new `v2/` directory alongside `v1/`.
 |Directory layout|Mirror the URL path (one file per path item)|`/v1/users/me/password` → `v1/users/me/password.yaml`|
 |Leaf vs. parent|Leaf = flat `<segment>.yaml`; endpoint-with-children = `<segment>.yaml` beside `<segment>/`|`users.yaml` + `users/`|
 |Path parameter|snake_case file name (no braces)|`{user_id}` → `user_id.yaml`|
-|operationId|`{HTTPMethod}{Resource}`|`getUsers`, `postUsers`|
+|operationId|`{HTTPMethod}{Resource}` (PascalCase, verb-first)|`GetUsers`, `PostUsers`|
 |tags|Path-based grouping|`v1/users`, `health`|
 
 ## Path-to-Handler Mapping

@@ -59,124 +59,192 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;net/http&#34;
-<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
-<span id="L6" class="ln">     6  </span>	&#34;time&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span>	&#34;github.com/prometheus/client_golang/prometheus&#34;
-<span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L13" class="ln">    13  </span>)
-<span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>func collectMetrics(t *testing.T, c prometheus.Collector) []prometheus.Metric {
-<span id="L16" class="ln">    16  </span>	t.Helper()
+<span id="L5" class="ln">     5  </span>	&#34;strings&#34;
+<span id="L6" class="ln">     6  </span>	&#34;testing&#34;
+<span id="L7" class="ln">     7  </span>	&#34;time&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;github.com/prometheus/client_golang/prometheus&#34;
+<span id="L12" class="ln">    12  </span>	&#34;github.com/prometheus/client_golang/prometheus/testutil&#34;
+<span id="L13" class="ln">    13  </span>	dto &#34;github.com/prometheus/client_model/go&#34;
+<span id="L14" class="ln">    14  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L15" class="ln">    15  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L16" class="ln">    16  </span>)
 <span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>	ch := make(chan prometheus.Metric, 20)
-<span id="L19" class="ln">    19  </span>	c.Collect(ch)
-<span id="L20" class="ln">    20  </span>	close(ch)
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>	var metrics []prometheus.Metric
-<span id="L23" class="ln">    23  </span>	for m := range ch {
-<span id="L24" class="ln">    24  </span>		metrics = append(metrics, m)
-<span id="L25" class="ln">    25  </span>	}
-<span id="L26" class="ln">    26  </span>	return metrics
-<span id="L27" class="ln">    27  </span>}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span>func TestPrometheusRecorder_Describe(t *testing.T) {
-<span id="L30" class="ln">    30  </span>	t.Parallel()
+<span id="L18" class="ln">    18  </span>func collectMetrics(t *testing.T, c prometheus.Collector) []prometheus.Metric {
+<span id="L19" class="ln">    19  </span>	t.Helper()
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>	ch := make(chan prometheus.Metric, 20)
+<span id="L22" class="ln">    22  </span>	c.Collect(ch)
+<span id="L23" class="ln">    23  </span>	close(ch)
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	var metrics []prometheus.Metric
+<span id="L26" class="ln">    26  </span>	for m := range ch {
+<span id="L27" class="ln">    27  </span>		metrics = append(metrics, m)
+<span id="L28" class="ln">    28  </span>	}
+<span id="L29" class="ln">    29  </span>	return metrics
+<span id="L30" class="ln">    30  </span>}
 <span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span>	rec := NewPrometheusRecorder()
-<span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span>	ch := make(chan *prometheus.Desc, 20)
-<span id="L35" class="ln">    35  </span>	rec.Describe(ch)
-<span id="L36" class="ln">    36  </span>	close(ch)
+<span id="L32" class="ln">    32  </span>func TestNewPrometheusRecorder(t *testing.T) {
+<span id="L33" class="ln">    33  </span>	t.Parallel()
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L36" class="ln">    36  </span>		t.Parallel()
 <span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>	var descs []*prometheus.Desc
-<span id="L39" class="ln">    39  </span>	for d := range ch {
-<span id="L40" class="ln">    40  </span>		descs = append(descs, d)
-<span id="L41" class="ln">    41  </span>	}
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>	<span class="comment">// requests(Counter) と duration(Histogram) の 2 つの Desc が生成されることを確認します。</span>
-<span id="L44" class="ln">    44  </span>	assert.Len(t, descs, 2)
-<span id="L45" class="ln">    45  </span>}
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span>func TestPrometheusRecorder_Observe(t *testing.T) {
-<span id="L48" class="ln">    48  </span>	t.Parallel()
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L51" class="ln">    51  </span>		t.Parallel()
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>		t.Run(&#34;Observe前はメトリクスが生成されない&#34;, func(t *testing.T) {
-<span id="L54" class="ln">    54  </span>			t.Parallel()
-<span id="L55" class="ln">    55  </span>
-<span id="L56" class="ln">    56  </span>			rec := NewPrometheusRecorder()
-<span id="L57" class="ln">    57  </span>			assert.Empty(t, collectMetrics(t, rec))
-<span id="L58" class="ln">    58  </span>		})
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>		t.Run(&#34;Observe後はrequestとdurationの2件が生成される&#34;, func(t *testing.T) {
-<span id="L61" class="ln">    61  </span>			t.Parallel()
+<span id="L38" class="ln">    38  </span>		t.Run(&#34;非nilなPrometheusRecorderを構築しCollectorとして登録できる&#34;, func(t *testing.T) {
+<span id="L39" class="ln">    39  </span>			t.Parallel()
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span>			rec := NewPrometheusRecorder()
+<span id="L42" class="ln">    42  </span>			require.NotNil(t, rec)
+<span id="L43" class="ln">    43  </span>			<span class="comment">// prometheus.Collector を満たし registry へ登録できる。</span>
+<span id="L44" class="ln">    44  </span>			require.NoError(t, prometheus.NewRegistry().Register(rec))
+<span id="L45" class="ln">    45  </span>		})
+<span id="L46" class="ln">    46  </span>	})
+<span id="L47" class="ln">    47  </span>}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>func TestPrometheusRecorder_Describe(t *testing.T) {
+<span id="L50" class="ln">    50  </span>	t.Parallel()
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>	rec := NewPrometheusRecorder()
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>	ch := make(chan *prometheus.Desc, 20)
+<span id="L55" class="ln">    55  </span>	rec.Describe(ch)
+<span id="L56" class="ln">    56  </span>	close(ch)
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>	var descs []*prometheus.Desc
+<span id="L59" class="ln">    59  </span>	for d := range ch {
+<span id="L60" class="ln">    60  </span>		descs = append(descs, d)
+<span id="L61" class="ln">    61  </span>	}
 <span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span>			rec := NewPrometheusRecorder()
-<span id="L64" class="ln">    64  </span>			rec.Observe(http.MethodGet, &#34;/users/:id&#34;, 200, &#34;2xx&#34;, 5*time.Millisecond)
-<span id="L65" class="ln">    65  </span>
-<span id="L66" class="ln">    66  </span>			<span class="comment">// 同一 label の counter 1 件と histogram 1 件が生成されることを確認します。</span>
-<span id="L67" class="ln">    67  </span>			assert.Len(t, collectMetrics(t, rec), 2)
-<span id="L68" class="ln">    68  </span>		})
-<span id="L69" class="ln">    69  </span>	})
-<span id="L70" class="ln">    70  </span>}
+<span id="L63" class="ln">    63  </span>	<span class="comment">// requests(Counter) と duration(Histogram) の 2 つの Desc が生成されることを確認します。</span>
+<span id="L64" class="ln">    64  </span>	require.Len(t, descs, 2)
+<span id="L65" class="ln">    65  </span>	assert.Contains(t, descs[0].String(), &#34;http_server_requests_total&#34;)
+<span id="L66" class="ln">    66  </span>	assert.Contains(t, descs[1].String(), &#34;http_server_request_duration_seconds&#34;)
+<span id="L67" class="ln">    67  </span>}
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>func TestPrometheusRecorder_Observe(t *testing.T) {
+<span id="L70" class="ln">    70  </span>	t.Parallel()
 <span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>func TestRegisterRecorder(t *testing.T) {
-<span id="L73" class="ln">    73  </span>	t.Parallel()
+<span id="L72" class="ln">    72  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L73" class="ln">    73  </span>		t.Parallel()
 <span id="L74" class="ln">    74  </span>
-<span id="L75" class="ln">    75  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L76" class="ln">    76  </span>		t.Parallel()
+<span id="L75" class="ln">    75  </span>		t.Run(&#34;Observe前はメトリクスが生成されない&#34;, func(t *testing.T) {
+<span id="L76" class="ln">    76  </span>			t.Parallel()
 <span id="L77" class="ln">    77  </span>
-<span id="L78" class="ln">    78  </span>		t.Run(&#34;初回登録は成功する&#34;, func(t *testing.T) {
-<span id="L79" class="ln">    79  </span>			t.Parallel()
-<span id="L80" class="ln">    80  </span>
-<span id="L81" class="ln">    81  </span>			reg := prometheus.NewRegistry()
-<span id="L82" class="ln">    82  </span>			require.NoError(t, RegisterRecorder(reg, NewPrometheusRecorder()))
-<span id="L83" class="ln">    83  </span>		})
+<span id="L78" class="ln">    78  </span>			rec := NewPrometheusRecorder()
+<span id="L79" class="ln">    79  </span>			assert.Empty(t, collectMetrics(t, rec))
+<span id="L80" class="ln">    80  </span>		})
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span>		t.Run(&#34;Observe後はrequestとdurationの2件が生成される&#34;, func(t *testing.T) {
+<span id="L83" class="ln">    83  </span>			t.Parallel()
 <span id="L84" class="ln">    84  </span>
-<span id="L85" class="ln">    85  </span>		t.Run(&#34;重複登録の場合はエラーを返さず無視する&#34;, func(t *testing.T) {
-<span id="L86" class="ln">    86  </span>			t.Parallel()
+<span id="L85" class="ln">    85  </span>			rec := NewPrometheusRecorder()
+<span id="L86" class="ln">    86  </span>			rec.Observe(http.MethodGet, &#34;/users/:id&#34;, 200, &#34;2xx&#34;, 5*time.Millisecond)
 <span id="L87" class="ln">    87  </span>
-<span id="L88" class="ln">    88  </span>			reg := prometheus.NewRegistry()
-<span id="L89" class="ln">    89  </span>			require.NoError(t, RegisterRecorder(reg, NewPrometheusRecorder()))
-<span id="L90" class="ln">    90  </span>			require.NoError(t, RegisterRecorder(reg, NewPrometheusRecorder()))
-<span id="L91" class="ln">    91  </span>		})
-<span id="L92" class="ln">    92  </span>	})
-<span id="L93" class="ln">    93  </span>}
+<span id="L88" class="ln">    88  </span>			<span class="comment">// 同一 label の counter 1 件と histogram 1 件が生成されることを確認します。</span>
+<span id="L89" class="ln">    89  </span>			assert.Len(t, collectMetrics(t, rec), 2)
+<span id="L90" class="ln">    90  </span>		})
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>		t.Run(&#34;counterの値が1でmethod_route_status_code_status_classラベルが付与される&#34;, func(t *testing.T) {
+<span id="L93" class="ln">    93  </span>			t.Parallel()
 <span id="L94" class="ln">    94  </span>
-<span id="L95" class="ln">    95  </span>func TestIgnoreAlreadyRegistered(t *testing.T) {
-<span id="L96" class="ln">    96  </span>	t.Parallel()
+<span id="L95" class="ln">    95  </span>			rec := NewPrometheusRecorder()
+<span id="L96" class="ln">    96  </span>			rec.Observe(http.MethodGet, &#34;/users/:id&#34;, 200, &#34;2xx&#34;, 5*time.Millisecond)
 <span id="L97" class="ln">    97  </span>
-<span id="L98" class="ln">    98  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L99" class="ln">    99  </span>		t.Parallel()
-<span id="L100" class="ln">   100  </span>
-<span id="L101" class="ln">   101  </span>		t.Run(&#34;nilはnilを返す&#34;, func(t *testing.T) {
-<span id="L102" class="ln">   102  </span>			t.Parallel()
-<span id="L103" class="ln">   103  </span>			require.NoError(t, ignoreAlreadyRegistered(nil))
+<span id="L98" class="ln">    98  </span>			const expected = `
+<span id="L99" class="ln">    99  </span># HELP http_server_requests_total Total number of HTTP server requests.
+<span id="L100" class="ln">   100  </span># TYPE http_server_requests_total counter
+<span id="L101" class="ln">   101  </span>http_server_requests_total{method=&#34;GET&#34;,route=&#34;/users/:id&#34;,status_class=&#34;2xx&#34;,status_code=&#34;200&#34;} 1
+<span id="L102" class="ln">   102  </span>`
+<span id="L103" class="ln">   103  </span>			require.NoError(t, testutil.CollectAndCompare(rec.requests, strings.NewReader(expected), &#34;http_server_requests_total&#34;))
 <span id="L104" class="ln">   104  </span>		})
 <span id="L105" class="ln">   105  </span>
-<span id="L106" class="ln">   106  </span>		t.Run(&#34;AlreadyRegisteredErrorはnilに丸める&#34;, func(t *testing.T) {
+<span id="L106" class="ln">   106  </span>		t.Run(&#34;histogramのsample_countが1でmethod_route_status_code_status_classラベルが付与される&#34;, func(t *testing.T) {
 <span id="L107" class="ln">   107  </span>			t.Parallel()
-<span id="L108" class="ln">   108  </span>			require.NoError(t, ignoreAlreadyRegistered(prometheus.AlreadyRegisteredError{}))
-<span id="L109" class="ln">   109  </span>		})
-<span id="L110" class="ln">   110  </span>	})
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span>			rec := NewPrometheusRecorder()
+<span id="L110" class="ln">   110  </span>			rec.Observe(http.MethodGet, &#34;/users/:id&#34;, 200, &#34;2xx&#34;, 5*time.Millisecond)
 <span id="L111" class="ln">   111  </span>
-<span id="L112" class="ln">   112  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L113" class="ln">   113  </span>		t.Parallel()
-<span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>		t.Run(&#34;その他のエラーはそのまま返す&#34;, func(t *testing.T) {
-<span id="L116" class="ln">   116  </span>			t.Parallel()
-<span id="L117" class="ln">   117  </span>			want := xerrors.New(&#34;boom&#34;)
-<span id="L118" class="ln">   118  </span>			require.ErrorIs(t, ignoreAlreadyRegistered(want), want)
-<span id="L119" class="ln">   119  </span>		})
-<span id="L120" class="ln">   120  </span>	})
-<span id="L121" class="ln">   121  </span>}
-<span id="L122" class="ln">   122  </span>
+<span id="L112" class="ln">   112  </span>			labels := prometheus.Labels{
+<span id="L113" class="ln">   113  </span>				&#34;method&#34;:       http.MethodGet,
+<span id="L114" class="ln">   114  </span>				&#34;route&#34;:        &#34;/users/:id&#34;,
+<span id="L115" class="ln">   115  </span>				&#34;status_code&#34;:  &#34;200&#34;,
+<span id="L116" class="ln">   116  </span>				&#34;status_class&#34;: &#34;2xx&#34;,
+<span id="L117" class="ln">   117  </span>			}
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>			var m dto.Metric
+<span id="L120" class="ln">   120  </span>			metric, ok := rec.duration.With(labels).(prometheus.Metric)
+<span id="L121" class="ln">   121  </span>			require.True(t, ok)
+<span id="L122" class="ln">   122  </span>			require.NoError(t, metric.Write(&amp;m))
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>			assert.Equal(t, uint64(1), m.GetHistogram().GetSampleCount())
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>			got := map[string]string{}
+<span id="L127" class="ln">   127  </span>			for _, lp := range m.GetLabel() {
+<span id="L128" class="ln">   128  </span>				got[lp.GetName()] = lp.GetValue()
+<span id="L129" class="ln">   129  </span>			}
+<span id="L130" class="ln">   130  </span>			assert.Equal(t, map[string]string{
+<span id="L131" class="ln">   131  </span>				&#34;method&#34;:       http.MethodGet,
+<span id="L132" class="ln">   132  </span>				&#34;route&#34;:        &#34;/users/:id&#34;,
+<span id="L133" class="ln">   133  </span>				&#34;status_code&#34;:  &#34;200&#34;,
+<span id="L134" class="ln">   134  </span>				&#34;status_class&#34;: &#34;2xx&#34;,
+<span id="L135" class="ln">   135  </span>			}, got)
+<span id="L136" class="ln">   136  </span>		})
+<span id="L137" class="ln">   137  </span>	})
+<span id="L138" class="ln">   138  </span>}
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>func TestRegisterRecorder(t *testing.T) {
+<span id="L141" class="ln">   141  </span>	t.Parallel()
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L144" class="ln">   144  </span>		t.Parallel()
+<span id="L145" class="ln">   145  </span>
+<span id="L146" class="ln">   146  </span>		t.Run(&#34;初回登録は成功する&#34;, func(t *testing.T) {
+<span id="L147" class="ln">   147  </span>			t.Parallel()
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>			reg := prometheus.NewRegistry()
+<span id="L150" class="ln">   150  </span>			require.NoError(t, RegisterRecorder(reg, NewPrometheusRecorder()))
+<span id="L151" class="ln">   151  </span>		})
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>		t.Run(&#34;重複登録の場合はエラーを返さず無視する&#34;, func(t *testing.T) {
+<span id="L154" class="ln">   154  </span>			t.Parallel()
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>			reg := prometheus.NewRegistry()
+<span id="L157" class="ln">   157  </span>			require.NoError(t, RegisterRecorder(reg, NewPrometheusRecorder()))
+<span id="L158" class="ln">   158  </span>			require.NoError(t, RegisterRecorder(reg, NewPrometheusRecorder()))
+<span id="L159" class="ln">   159  </span>		})
+<span id="L160" class="ln">   160  </span>	})
+<span id="L161" class="ln">   161  </span>}
+<span id="L162" class="ln">   162  </span>
+<span id="L163" class="ln">   163  </span>func TestIgnoreAlreadyRegistered(t *testing.T) {
+<span id="L164" class="ln">   164  </span>	t.Parallel()
+<span id="L165" class="ln">   165  </span>
+<span id="L166" class="ln">   166  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L167" class="ln">   167  </span>		t.Parallel()
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span>		t.Run(&#34;nilはnilを返す&#34;, func(t *testing.T) {
+<span id="L170" class="ln">   170  </span>			t.Parallel()
+<span id="L171" class="ln">   171  </span>			require.NoError(t, ignoreAlreadyRegistered(nil))
+<span id="L172" class="ln">   172  </span>		})
+<span id="L173" class="ln">   173  </span>
+<span id="L174" class="ln">   174  </span>		t.Run(&#34;AlreadyRegisteredErrorはnilに丸める&#34;, func(t *testing.T) {
+<span id="L175" class="ln">   175  </span>			t.Parallel()
+<span id="L176" class="ln">   176  </span>			require.NoError(t, ignoreAlreadyRegistered(prometheus.AlreadyRegisteredError{}))
+<span id="L177" class="ln">   177  </span>		})
+<span id="L178" class="ln">   178  </span>	})
+<span id="L179" class="ln">   179  </span>
+<span id="L180" class="ln">   180  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L181" class="ln">   181  </span>		t.Parallel()
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>		t.Run(&#34;その他のエラーはそのまま返す&#34;, func(t *testing.T) {
+<span id="L184" class="ln">   184  </span>			t.Parallel()
+<span id="L185" class="ln">   185  </span>			want := xerrors.New(&#34;boom&#34;)
+<span id="L186" class="ln">   186  </span>			require.ErrorIs(t, ignoreAlreadyRegistered(want), want)
+<span id="L187" class="ln">   187  </span>		})
+<span id="L188" class="ln">   188  </span>	})
+<span id="L189" class="ln">   189  </span>}
+<span id="L190" class="ln">   190  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

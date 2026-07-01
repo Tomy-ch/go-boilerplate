@@ -59,11 +59,11 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;errors&#34;
-<span id="L6" class="ln">     6  </span>	&#34;testing&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	mock_lifecycle &#34;go-boilerplate/internal/di/lifecycle/mock&#34;
-<span id="L9" class="ln">     9  </span>	mock_observability &#34;go-boilerplate/internal/observability/mock&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	mock_lifecycle &#34;go-boilerplate/internal/di/lifecycle/mock&#34;
+<span id="L8" class="ln">     8  </span>	mock_observability &#34;go-boilerplate/internal/observability/mock&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L10" class="ln">    10  </span>
 <span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L12" class="ln">    12  </span>	&#34;go.uber.org/mock/gomock&#34;
@@ -122,7 +122,7 @@
 <span id="L65" class="ln">    65  </span>			RegisterObservabilityShutdownHooks(reg, shutdowner)
 <span id="L66" class="ln">    66  </span>
 <span id="L67" class="ln">    67  </span>			require.NotNil(t, stopFn)
-<span id="L68" class="ln">    68  </span>			wantErr := errors.New(&#34;shutdown failed&#34;)
+<span id="L68" class="ln">    68  </span>			wantErr := xerrors.New(&#34;shutdown failed&#34;)
 <span id="L69" class="ln">    69  </span>			shutdowner.EXPECT().Shutdown(gomock.Any()).Return(wantErr).Times(1)
 <span id="L70" class="ln">    70  </span>			require.ErrorIs(t, stopFn(context.Background()), wantErr)
 <span id="L71" class="ln">    71  </span>		})

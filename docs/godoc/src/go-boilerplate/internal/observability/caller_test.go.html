@@ -60,7 +60,7 @@
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;testing&#34;
 <span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L7" class="ln">     7  </span>)
 <span id="L8" class="ln">     8  </span>
 <span id="L9" class="ln">     9  </span>func Test_getCallerFullName(t *testing.T) {
@@ -72,7 +72,7 @@
 <span id="L15" class="ln">    15  </span>		t.Run(&#34;呼び出し元の完全修飾関数名を非空文字列で返す&#34;, func(t *testing.T) {
 <span id="L16" class="ln">    16  </span>			t.Parallel()
 <span id="L17" class="ln">    17  </span>			got := getCallerFullName()
-<span id="L18" class="ln">    18  </span>			require.NotEmpty(t, got)
+<span id="L18" class="ln">    18  </span>			assert.NotEmpty(t, got)
 <span id="L19" class="ln">    19  </span>		})
 <span id="L20" class="ln">    20  </span>	})
 <span id="L21" class="ln">    21  </span>}

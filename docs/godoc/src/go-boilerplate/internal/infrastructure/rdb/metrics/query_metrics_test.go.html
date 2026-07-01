@@ -177,42 +177,68 @@
 <span id="L120" class="ln">   120  </span>			assert.Equal(t, &#34;constraint&#34;, labelValue(m, &#34;error_class&#34;))
 <span id="L121" class="ln">   121  </span>			assert.Equal(t, &#34;insert&#34;, labelValue(m, &#34;operation&#34;))
 <span id="L122" class="ln">   122  </span>			assert.Equal(t, &#34;user.create&#34;, labelValue(m, &#34;query_name&#34;))
-<span id="L123" class="ln">   123  </span>		})
-<span id="L124" class="ln">   124  </span>	})
-<span id="L125" class="ln">   125  </span>}
-<span id="L126" class="ln">   126  </span>
-<span id="L127" class="ln">   127  </span>func TestRegisterOrExisting(t *testing.T) {
-<span id="L128" class="ln">   128  </span>	t.Parallel()
-<span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L131" class="ln">   131  </span>		t.Parallel()
-<span id="L132" class="ln">   132  </span>
-<span id="L133" class="ln">   133  </span>		t.Run(&#34;同一レジストリに二重生成しても同じメトリクスへ記録できる&#34;, func(t *testing.T) {
-<span id="L134" class="ln">   134  </span>			t.Parallel()
-<span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>			reg := prometheus.NewRegistry()
-<span id="L137" class="ln">   137  </span>			first := NewQueryRecorder(reg)
-<span id="L138" class="ln">   138  </span>			<span class="comment">// 二度目の生成でも AlreadyRegistered を吸収し、既存コレクタを再利用する。</span>
-<span id="L139" class="ln">   139  </span>			second := NewQueryRecorder(reg)
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>			<span class="comment">// エラー時でも duration は status=error 付きで 1 件記録される。</span>
+<span id="L125" class="ln">   125  </span>			duration := findMetricFamily(t, reg, &#34;rdb_query_duration_seconds&#34;)
+<span id="L126" class="ln">   126  </span>			require.NotNil(t, duration)
+<span id="L127" class="ln">   127  </span>			require.Len(t, duration.GetMetric(), 1)
+<span id="L128" class="ln">   128  </span>			dm := duration.GetMetric()[0]
+<span id="L129" class="ln">   129  </span>			assert.Equal(t, uint64(1), dm.GetHistogram().GetSampleCount())
+<span id="L130" class="ln">   130  </span>			assert.Equal(t, &#34;error&#34;, labelValue(dm, &#34;status&#34;))
+<span id="L131" class="ln">   131  </span>		})
+<span id="L132" class="ln">   132  </span>	})
+<span id="L133" class="ln">   133  </span>}
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>func TestRegisterOrExisting(t *testing.T) {
+<span id="L136" class="ln">   136  </span>	t.Parallel()
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L139" class="ln">   139  </span>		t.Parallel()
 <span id="L140" class="ln">   140  </span>
-<span id="L141" class="ln">   141  </span>			attrs := driver.QueryAttrs{
-<span id="L142" class="ln">   142  </span>				QueryName: &#34;user.find_by_id&#34;,
-<span id="L143" class="ln">   143  </span>				Operation: &#34;select&#34;,
-<span id="L144" class="ln">   144  </span>				Status:    &#34;success&#34;,
-<span id="L145" class="ln">   145  </span>				Duration:  time.Millisecond,
-<span id="L146" class="ln">   146  </span>			}
-<span id="L147" class="ln">   147  </span>			first.Observe(context.Background(), attrs)
-<span id="L148" class="ln">   148  </span>			second.Observe(context.Background(), attrs)
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>			duration := findMetricFamily(t, reg, &#34;rdb_query_duration_seconds&#34;)
-<span id="L151" class="ln">   151  </span>			require.NotNil(t, duration)
-<span id="L152" class="ln">   152  </span>			require.Len(t, duration.GetMetric(), 1)
-<span id="L153" class="ln">   153  </span>			<span class="comment">// 別インスタンス経由でも同一メトリクスに 2 回記録される。</span>
-<span id="L154" class="ln">   154  </span>			assert.Equal(t, uint64(2), duration.GetMetric()[0].GetHistogram().GetSampleCount())
-<span id="L155" class="ln">   155  </span>		})
-<span id="L156" class="ln">   156  </span>	})
-<span id="L157" class="ln">   157  </span>}
-<span id="L158" class="ln">   158  </span>
+<span id="L141" class="ln">   141  </span>		t.Run(&#34;同一レジストリに二重生成しても同じメトリクスへ記録できる&#34;, func(t *testing.T) {
+<span id="L142" class="ln">   142  </span>			t.Parallel()
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>			reg := prometheus.NewRegistry()
+<span id="L145" class="ln">   145  </span>			first := NewQueryRecorder(reg)
+<span id="L146" class="ln">   146  </span>			<span class="comment">// 二度目の生成でも AlreadyRegistered を吸収し、既存コレクタを再利用する。</span>
+<span id="L147" class="ln">   147  </span>			second := NewQueryRecorder(reg)
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>			attrs := driver.QueryAttrs{
+<span id="L150" class="ln">   150  </span>				QueryName: &#34;user.find_by_id&#34;,
+<span id="L151" class="ln">   151  </span>				Operation: &#34;select&#34;,
+<span id="L152" class="ln">   152  </span>				Status:    &#34;success&#34;,
+<span id="L153" class="ln">   153  </span>				Duration:  time.Millisecond,
+<span id="L154" class="ln">   154  </span>			}
+<span id="L155" class="ln">   155  </span>			first.Observe(context.Background(), attrs)
+<span id="L156" class="ln">   156  </span>			second.Observe(context.Background(), attrs)
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>			duration := findMetricFamily(t, reg, &#34;rdb_query_duration_seconds&#34;)
+<span id="L159" class="ln">   159  </span>			require.NotNil(t, duration)
+<span id="L160" class="ln">   160  </span>			require.Len(t, duration.GetMetric(), 1)
+<span id="L161" class="ln">   161  </span>			<span class="comment">// 別インスタンス経由でも同一メトリクスに 2 回記録される。</span>
+<span id="L162" class="ln">   162  </span>			assert.Equal(t, uint64(2), duration.GetMetric()[0].GetHistogram().GetSampleCount())
+<span id="L163" class="ln">   163  </span>		})
+<span id="L164" class="ln">   164  </span>	})
+<span id="L165" class="ln">   165  </span>
+<span id="L166" class="ln">   166  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L167" class="ln">   167  </span>		t.Parallel()
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span>		t.Run(&#34;既存コレクタが異なる型なら新規生成したコレクタを返す&#34;, func(t *testing.T) {
+<span id="L170" class="ln">   170  </span>			t.Parallel()
+<span id="L171" class="ln">   171  </span>
+<span id="L172" class="ln">   172  </span>			reg := prometheus.NewRegistry()
+<span id="L173" class="ln">   173  </span>			const name = &#34;register_or_existing_type_mismatch&#34;
+<span id="L174" class="ln">   174  </span>
+<span id="L175" class="ln">   175  </span>			counter := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: &#34;h&#34;}, []string{&#34;l&#34;})
+<span id="L176" class="ln">   176  </span>			require.NoError(t, reg.Register(counter))
+<span id="L177" class="ln">   177  </span>
+<span id="L178" class="ln">   178  </span>			hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: name, Help: &#34;h&#34;}, []string{&#34;l&#34;})
+<span id="L179" class="ln">   179  </span>			got := registerOrExisting(reg, hist)
+<span id="L180" class="ln">   180  </span>			assert.Same(t, hist, got)
+<span id="L181" class="ln">   181  </span>		})
+<span id="L182" class="ln">   182  </span>	})
+<span id="L183" class="ln">   183  </span>}
+<span id="L184" class="ln">   184  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/query_metrics_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

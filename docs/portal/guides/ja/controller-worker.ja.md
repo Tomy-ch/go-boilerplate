@@ -32,7 +32,7 @@
 
 ## 不変条件（受け入れ基準）
 
-engine は **in-memory fake**（`internal/usecase/boundary/worker/fake`）に対して完成し、実 broker 無しで全テストが green。テスト名は不変条件 ID A1–A7 / B1–B4 / C1（engine）＋ D1–D3（O11Y）にマップ。主なもの：
+engine は **in-memory fake**（`internal/usecase/boundary/worker/testkit` の `Fake` テストダブル）に対して完成し、実 broker 無しで全テストが green。テスト名は不変条件 ID A1–A7 / B1–B4 / C1（engine）＋ D1–D3（O11Y）にマップ。主なもの：
 
 - A1/A2：成功時のみ `Ack`、Retryable で `NackWithBackoff`（per-message 指数 + jitter）。
 - A5：Permanent → `FailureHandler` → `Ack`、Fatal → 停止。
@@ -45,7 +45,7 @@ engine は **in-memory fake**（`internal/usecase/boundary/worker/fake`）に対
 ## ファイル
 
 - `runner.go`（`Engine`：registry / `Run` / `Healthy`）、`run.go`（1 Run 単位の poll loop / dispatch / drain）。
-- `circuit.go`（3 状態ブレーカ、cooldown は `pkg/backoff`）、`classify.go`（error→分類）、`settings.go`（engine-core `Settings`）、`dispatch.go`（`PartitionKey` 直列化）、`state.go`（`worker.State` 実装）、`errors.go`（registry sentinel）、`metrics.go` / `telemetry.go`（O11Y）。
+- `circuit.go`（3 状態ブレーカ、cooldown は `pkg/backoff`）、`classify.go`（error→分類）、`settings.go`（engine-core `Settings`）、`dispatch.go`（`PartitionKey` 直列化）、`state.go`（`worker.State` 実装）、`errors.go`（registry sentinel）、`telemetry.go`（O11Y。traceparent 継続／構造化ログのフィールド生成。engine 所有の metric 実体は `observability.WorkerMetrics`）。
 
 SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は **default では配線せず**、`aws-sdk-go-v2` を出荷バイナリに載せない。
 

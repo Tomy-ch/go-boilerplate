@@ -127,9 +127,9 @@
 <span id="L70" class="ln">    70  </span><span class="comment">// retryWait は、次の retry までの待機時間を決定します。</span>
 <span id="L71" class="ln">    71  </span><span class="comment">// レスポンスに Retry-After があればそれを優先し、無ければ指数バックオフ + full jitter を用います。</span>
 <span id="L72" class="ln">    72  </span><span class="comment">// Retry-After が過大でも overall deadline 規律（canRetryWithin）が別途打ち切るため、ここでは上限を設けません。</span>
-<span id="L73" class="ln">    73  </span>func retryWait(attempt int, profile Profile, resp *Response) time.Duration {
+<span id="L73" class="ln">    73  </span>func retryWait(attempt int, profile Profile, resp *Response, now time.Time) time.Duration {
 <span id="L74" class="ln">    74  </span>	if resp != nil {
-<span id="L75" class="ln">    75  </span>		if d, ok := retryAfter(resp.Header, time.Now()); ok {
+<span id="L75" class="ln">    75  </span>		if d, ok := retryAfter(resp.Header, now); ok {
 <span id="L76" class="ln">    76  </span>			return d
 <span id="L77" class="ln">    77  </span>		}
 <span id="L78" class="ln">    78  </span>	}

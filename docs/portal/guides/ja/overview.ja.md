@@ -5,76 +5,89 @@
 
 日本語 | [English](README.md)
 
-**Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture** をベースに構築されたバックエンド用のベースプロジェクトです。
+**Golang × Echo × OpenAPI × PostgreSQL × オニオンアーキテクチャ** で構築したバックエンド基盤プロジェクトです。
 
-このプロジェクトは以下を統合しています。
+広く使われる OSS — `uber/fx`（DI）・`sqlc`（型安全 SQL）・`golang-migrate`（マイグレーション）・
+`oapi-codegen`（OpenAPI コード生成）・OpenTelemetry — を統合し、**契約駆動・型安全・レイヤード**な
+バックエンドに、本番運用で必要となる関心事（バックグラウンド処理・信頼性・可観測性）をあらかじめ配線しています。
 
-- `uber/fx`（Dependency Injection）
-- `sqlc`（型安全な SQL）
-- `golang-migrate`（スキーママイグレーション）
-- `oapi-codegen`（OpenAPI コード生成）
+> この README は意図的に最小限に留めています。各トピックは、それを所有する README / 設計ドキュメントへ
+> リンクで飛ばします（[ドキュメントマップ](#ドキュメントマップ)を参照）。真の出所はそれらのドキュメントで、
+> このページは入口に過ぎません。
 
-これにより、**スキーマ駆動（schema-driven）かつ型安全なレイヤードバックエンドアーキテクチャ**を提供します。
+## 主な機能（Capabilities）
+
+いずれも拡張用の薄い seam です。設計とルールはリンク先を参照してください。
+
+- **オニオンアーキテクチャ + OpenAPI ファースト** — [docs/architecture.md](docs/architecture.md) / [docs/development-flow.md](docs/development-flow.md)
+- **バックグラウンド worker**（pull-ack・graceful drain） — [docs/design/worker.md](docs/design/worker.md)
+- **Transactional Outbox**（relay / replay / GC） — [docs/design/outbox.md](docs/design/outbox.md)
+- **冪等なリクエスト処理** — [docs/design/idempotency.md](docs/design/idempotency.md)
+- **アプリケーションジョブ** — [docs/design/job.md](docs/design/job.md)
+- **REST の信頼性**（タイムアウト / ボディ上限 / deadline budget / tx リトライ） — [docs/design/rest.md](docs/design/rest.md)
+- **可観測性**（OpenTelemetry の traces / metrics / logs・config 駆動） — [docs/design/observability.md](docs/design/observability.md)
+- **自己完結の単一バイナリ**（env とマイグレーションを埋め込み → 単一イメージ） — [docker/README.md](docker/README.md)
 
 ## 前提条件
 
-本プロジェクトを実行するには、以下のツールを事前にインストールしておく必要があります。
+実行前に以下のツールが必要です。
 
-- Visual Studio Code（推奨）
-- Docker Desktop
-- Make
-- GitHub CLI（gh）
+- [mise](https://mise.jdx.dev) — ツール / ランタイムのバージョン管理（**必須**。シェルで有効化すること）
+- Docker Desktop — PostgreSQL などを Docker Compose で起動
+- Make — 開発コマンドの入口
+- GitHub CLI（`gh`） — GitHub 自動化（任意・推奨）
+- Visual Studio Code（推奨） — Go / OpenAPI 拡張と併用
 
-### 前提条件の補足
+### 対応プラットフォーム
 
-- Docker Desktop は、Docker Compose を用いて PostgreSQL などのサービスを起動するために必要です。
-- Make は、ビルド・テスト・コード生成などの開発コマンドを簡略化するために使用します。
-- GitHub CLI は、GitHub Actions や各種自動化との連携に使用します（任意ですが推奨）。
-- Visual Studio Code は、Go や OpenAPI 関連の拡張機能と組み合わせることで、効率的な開発が可能です。
+本プロジェクトは **Unix ライクな開発環境**を前提とします（`make`・`mise`・`lefthook`・Docker の
+bind-mount 性能はいずれも POSIX シェルと Linux パスに依存します）。
 
-### サポート対象プラットフォーム
+- **macOS / Linux** — 主対象・サポート対象。
+- **Windows** — **WSL2 + Remote-WSL VSCode 拡張**を使用してください。Windows ネイティブ実行は
+  **非対応**です。WSL2 内では Linux と同一に動作します。
 
-本プロジェクトは **Unix 系の開発環境** を前提としています。ツールチェイン（`make` / `mise` / `lefthook` / Docker のバインドマウント性能など）は POSIX シェルおよび Linux のファイルパス形式に依存しています。
+## クイックスタート
 
-- **macOS / Linux** — 主な開発環境としてサポートします。
-- **Windows** — **WSL2 + VSCode の Remote-WSL 拡張** を利用してください。Windows ネイティブでの動作は**サポート対象外**です。`make` / `mise` の shim 配置 / `lefthook` の POSIX フックがいずれも Unix シェルを前提としており、Docker の I/O 性能も WSL2 のファイルシステムを使わないと大きく低下します。
-
-WSL2 上であれば挙動は Linux と同一で、`.vscode/settings.json` が参照する `~/.local/share/mise/shims/` などのパスもそのまま機能します。
-
-## Quick Start
-
-以下のコマンドでローカル起動できます。
+まっさらな環境（mise 未導入）からの手順です。
 
 ```bash
-git clone <https://github.com/Tomy-ch/go-boilerplate.git>
+git clone https://github.com/Tomy-ch/go-boilerplate.git
 cd go-boilerplate
 
+# 1. mise を導入し（https://mise.jdx.dev/getting-started.html）、シェルで有効化する。
+#    Make ターゲットは mise の shim 経由でツールを解決するため必須です。
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc   # bash は ~/.bashrc に `mise activate bash` を追記
+# 新しいターミナルを開く（またはシェルを再読み込みする）と mise の shim が PATH に載る
+
+# 2. 固定バージョンの Go ランタイム + 開発ツールを導入し、git hook を設定する。
+make go-update
 make install-tools
 make activate-tools
-make tidy-lib
+
+# 3. ローカル起動（API + PostgreSQL + otel-lgtm）と DB 初期化。
 make serve
 make tools
-```
-
-データベース初期化：
-
-```bash
 make db-init
 ```
 
-API サーバーがローカルで起動します。
+`make serve` は API を <http://localhost:8080>、Grafana を <http://localhost:3000> で起動します。
+モジュール名の一括置換などを含む完全なセットアップは
+[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) を参照してください。
+全ターゲットは [.makefiles/README.md](.makefiles/README.md) にあります。worker / relay / job の
+起動口はそれぞれ `make worker`・`make outbox-relay`・`make job` です。
 
-その他のコマンドは、[Makeターゲット一覧](.makefiles/README.ja.md)を参照してください。
+> **`mise` がツール & ランタイムのバージョンの単一の真実源（SSOT）です。** すべてのバージョン
+> （Go・`golangci-lint`・`sqlc`・`oapi-codegen`・`mockgen`・`lefthook` …）は [`mise.toml`](mise.toml)
+> に固定され、Dockerfile・ローカルインストーラ・CI はいずれも同じファイルから `mise install <tool>`
+> で導入します。そのためローカルと CI が一致します。`make sync-versions` がこれを `go.mod` と
+> Dockerfile の `FROM` 行へ反映します。
 
-## Example API
-
-例：
+## API の例
 
 ```bash
-curl <http://localhost:8080/health>
+curl http://localhost:8080/health
 ```
-
-レスポンス例：
 
 ```json
 {
@@ -82,60 +95,26 @@ curl <http://localhost:8080/health>
 }
 ```
 
-## Getting Started
+## はじめに
 
-開発を開始する前に、必ず以下のセットアップ手順を実行してください。
-
-[セットアップ手順はこちら](./docs/ja/get-started/setup-repository.ja.md)
-
-## この Boilerplate の目的
-
-バックエンド開発では、プロジェクトごとに以下を毎回設計することが多くあります。
-
-- アーキテクチャ
-- ライブラリ選定
-- ディレクトリ構成
-- 開発ワークフロー
-
-その結果、多くのプロジェクトで  
-同じ設計議論や試行錯誤が繰り返されがちです。
-
-この boilerplate は**初期設計コストを削減し、安全かつ迅速に開発を開始するためのベースアーキテクチャ**を提供します。
-
-主な特徴：
-
-- Onion Architecture
-- OpenAPI-first 開発
-- sqlc による型安全な SQL
-- Dependency Injection
-- CI による構造チェック
-
-これらを組み合わせ、**スキーマ駆動かつ型安全なレイヤードアーキテクチャ**を提供します。
-
-この boilerplate の価値は特定のライブラリではなく、**広く利用されている OSS を一貫したアーキテクチャとして統合している点**にあります。
+開発の前にセットアップ手順を実施してください: [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md)。
 
 ## アーキテクチャ概要
 
-このプロジェクトは **Onion Architecture** を採用しています。
+本プロジェクトは**オニオンアーキテクチャ**を採用します。依存は常に内側を向き、ドメインは純粋で副作用を
+持たず、インフラがドメインインターフェースを実装し、コントローラはビジネスロジックを持ちません。
 
 ```txt
 controller → usecase → domain ← infrastructure
 ```
 
-基本原則：
-
-- 依存関係は常に内側へ向かう
-- Domain 層は純粋で副作用を持たない
-- Infrastructure は Domain Interface を実装する
-- Controller にビジネスロジックは置かない
-
 ```mermaid
 flowchart TB
 
 Client --> Controller
-
 Controller --> Usecase
 Job --> Usecase
+Worker --> Usecase
 
 Usecase --> Domain
 Usecase --> Repository
@@ -144,9 +123,6 @@ Usecase --> QueryService
 Repository --> Domain
 QueryService --> Domain
 
-Repository --> DB
-QueryService --> DB
-
 Repository --> Infra
 QueryService --> Infra
 
@@ -154,246 +130,124 @@ Infra --> Domain
 Infra --> External["External Systems"]
 ```
 
-詳細は[docs/architecture.md](docs/architecture.md)を参照してください。
+レイヤ境界は CI（`golangci-lint` depguard）で強制されており、ドキュメント上の約束事に留まりません。
+詳細: [docs/architecture.md](docs/architecture.md) / [docs/rules.md](docs/rules.md)。
 
-## アーキテクチャガバナンス
+## ドキュメントマップ
 
-本プロジェクトでは、アーキテクチャの一貫性を維持するために以下の方針を採用しています。
+真の出所はコードの近くにあります。ここを起点に、トピックを所有するリンクへ辿ってください。
 
-### 基本方針
+### コア
 
-- レイヤー境界は厳密に守る
-- Domain の純粋性を維持する
-- Infrastructure の詳細を上位層に漏らさない
+- [docs/index.md](docs/index.md) — ドキュメント索引
+- [docs/architecture.md](docs/architecture.md) — システム構造とレイヤ責務
+- [docs/rules.md](docs/rules.md) — 非交渉ルール（レイヤ依存・生成コード・DTO・tx・エラー）
+- [docs/development-flow.md](docs/development-flow.md) — 変更の進め方（API / DB / ロジック）
+- [docs/decisions.md](docs/decisions.md) — 技術選定の根拠（ADR）
+- [docs/testing-conventions.md](docs/testing-conventions.md) — テスト規約
+- [docs/project/versioning.md](docs/project/versioning.md) — バージョニング方針
 
-### 例外の扱い
+### サブシステム設計
 
-例外的な実装が必要な場合：
+- [docs/design/README.md](docs/design/README.md) — 索引
+- [rest](docs/design/rest.md) · [worker](docs/design/worker.md) · [job](docs/design/job.md) · [outbox](docs/design/outbox.md) · [idempotency](docs/design/idempotency.md) · [observability](docs/design/observability.md)
 
-- 理由を明文化する（コメント or ADR）
-- 一時的な回避か恒久対応かを明確にする
-- レビューで必ず合意を取る
+### レイヤ README（`internal/`・`pkg/`）
 
-### レビュー観点
+- [domain](internal/domain/README.md) · [usecase](internal/usecase/README.md) · [controller](internal/controller/README.md) · [infrastructure](internal/infrastructure/README.md) · [di](internal/di/README.md)
+- [pkg](pkg/README.md) — フレームワーク非依存の共有ユーティリティ
 
-- レイヤー違反がないか
-- Domain にビジネスロジックが閉じているか
-- Infrastructure 依存が漏れていないか
+### 契約・データ・ツール
 
-### AI利用時の注意
-
-- 生成コードがアーキテクチャを破っていないか確認する
-- ルールに従わないコードは修正する
-
-## API 開発ポリシー（OpenAPI First）
-
-このプロジェクトは **OpenAPI-first** ワークフローを採用しています。
-
-API を変更する場合は以下の順序で行います。
-
-1. OpenAPI 定義(`openapi/`)を変更する
-2. コードを生成する
-
-    ```sh
-    make gen-api
-    ```
-
-3. handler / usecase を実装する
-
-生成されたコードは **手動編集してはいけません**。
-
-## ブランチ戦略
-
-このプロジェクトでは **release 中心のブランチモデル** を採用しています。
-
-ルール：
-
-- Feature ブランチは `release/*` から作成
-- `develop`, `staging`, `production` には release ブランチ経由でのみ変更可能
-- 保護ブランチへの直接コミットは禁止
-- すべての変更は Pull Request を経由
-
-メリット：
-
-- バージョン整合性の確保
-- 安全なリリースフロー
-- AI支援開発時のリスク低減
+- [openapi/README.md](openapi/README.md) — API 契約（OpenAPI ファースト）
+- [database/README.md](database/README.md) — マイグレーション & SQL（sqlc）
+- [env/README.md](env/README.md) — 環境変数（環境別にバイナリ埋め込み）
+- [.makefiles/README.md](.makefiles/README.md) — すべての `make` ターゲット
+- [docker/README.md](docker/README.md) — イメージ・compose プロファイル・単一コンテナ運用
 
 ## ディレクトリ構成
 
 ```txt
 .
-├── cmd/            # アプリケーションエントリポイント
-├── internal/       # アプリケーションコード（Onion Architecture）
+├── cmd/            # アプリケーションのエントリポイント（Cobra サブコマンド）
+├── internal/       # アプリケーションコード（オニオンアーキテクチャ）
 │   ├── domain/
 │   ├── usecase/
 │   ├── infrastructure/
 │   ├── controller/
+│   ├── observability/
 │   └── di/
+├── pkg/            # フレームワーク非依存の共有ユーティリティ
+├── openapi/        # API 契約
 ├── database/       # マイグレーション & SQL（sqlc）
-├── openapi/        # API契約
-├── pkg/            # 共通ユーティリティ
+├── env/            # 環境別の環境変数（バイナリへ埋め込み）
 ├── docker/
 ├── docs/
+├── .makefiles/     # make ターゲットレジストリ
 └── makefile
 ```
 
 ## 技術スタック
 
-|カテゴリ|技術|
-|---|---|
-|言語|Go|
-|Web Framework|Echo|
-|Dependency Injection|uber/fx|
-|API定義|OpenAPI + oapi-codegen|
-|Database|PostgreSQL|
-|Query|sqlc|
-|Migration|golang-migrate|
-|Logging|zap|
-|Testing|testify|
-|CLI|cobra|
-|Dev Tools|Docker / docker-compose / air|
+| カテゴリ | 技術 |
+| --- | --- |
+| 言語 | Go |
+| Web フレームワーク | Echo |
+| 依存性注入 | uber/fx |
+| API 定義 | OpenAPI + oapi-codegen |
+| データベース | PostgreSQL |
+| クエリ | sqlc |
+| マイグレーション | golang-migrate |
+| ロギング | zap（otelzap 経由で OpenTelemetry へ） |
+| 可観測性 | OpenTelemetry（OTLP）/ Prometheus |
+| テスト | testify |
+| CLI | cobra |
+| 開発ツール | Docker / docker-compose / air |
 
-## AI フレンドリーな設計
+## ブランチ戦略
 
-この boilerplate は **AI支援開発を前提に設計**されています。
+本リポジトリは**リリース中心のブランチモデル**を採用します。フィーチャーブランチは `release/*` から
+切り、保護ブランチ（`develop` / `staging` / `production`）へはリリースブランチ経由でのみ反映し、
+すべての変更は Pull Request を通します。ルール: [docs/rules.md](docs/rules.md)。
 
-意図しないアーキテクチャ崩壊を防ぐため、  
-いくつかの制約を設けています。
+## 設計思想
 
-主な仕組み：
+### なぜ存在するのか
 
-- 厳格なレイヤー構造
-- 生成コードの分離
-- release ベースのブランチ戦略
-- OpenAPI-first API設計
-- Domain 層の純粋性
+バックエンド開発では、アーキテクチャ・ライブラリ選定・ディレクトリ構成・開発ワークフローを毎回
+一から議論しがちです。本ボイラープレートは**初期設計コストを下げるベースライン**を提供し、チームが
+安全かつ迅速に着手できるようにします。その価値は特定ライブラリではなく、**広く使われる OSS を
+一貫した・置換可能なアーキテクチャへ統合した点**にあります。
 
-これにより、AI エージェントでも  
-**安全なコード生成が可能**になります。
+### AI 支援開発
 
-## ドキュメント
+制約（レイヤの強制・生成コードの分離・リリースベースのブランチ・OpenAPI ファースト・ドメイン純粋性）は
+意図的なものです。AI 支援による変更のアーキテクチャドリフトを抑えつつ、AI ツール**なしでも**完全に
+保守できます。参照: [docs/rules.md](docs/rules.md)。
 
-詳細なドキュメントは `docs/` にあります。
+### 想定するシステム種別
 
-- [Architecture](docs/ja/architecture.ja.md)  
-- [Development Workflow](docs/ja/development-flow.ja.md)  
-- [Architectural Rules](docs/ja/rules.ja.md)  
-- [Design Decisions](docs/ja/decisions.ja.md)  
-- [Versioning Policy](docs/ja/project/versioning.ja.md)  
+新規バックエンドプロダクト、PoC 〜 初期スケール期、厳格なレイヤードのチーム開発、強いドメインルールを
+持つシステムに向け、**モジュラモノリス**として設計しています。単一ファイルのマイクロ API・アーキテクチャの
+無いプロトタイプ・超低レイテンシシステム・強いマイクロサービス分割にはあまり向きません。
 
-## 想定システム
+### ベンダー中立性と拡張性
 
-この boilerplate は以下の用途を想定しています。
+可観測性・ツールは OSS ファーストでベンダー中立です。`internal/` 配下は疎結合で、DI によりインフラ・
+実装・ミドルウェアを実行環境ごとに差し替えられます。
 
-- 新規バックエンド開発
-- PoC → 初期スケールフェーズ
-- レイヤード開発を行うチーム
-- ドメインルールが強いシステム
-- 長期保守を前提としたバックエンド
+## メンテナ方針 / 免責事項
 
-以下の用途には向いていません。
+本リポジトリは**著者が個人で維持**しており、いかなる組織にも属しません。善意で提供していますが、
+**セキュリティ・安定性・特定用途への適合性について保証はありません**。利用前に、依存の脆弱性・
+セキュリティ設定・運用互換性をご自身で検証してください。
 
-- 単一ファイルの小規模 API
-- アーキテクチャを考えない高速プロトタイプ
-- 超低レイテンシシステム
-- 強いマイクロサービス分割
+ライブラリは、活発なメンテナンス・コミュニティ採用・置換可能性・強いフレームワークロックインの回避を
+基準に選定しています。メンテナは依存更新・セキュリティ修正・アーキテクチャ改善を提供する場合が
+ありますが、Issue 応答期限・バグ修正の保証・長期メンテナンスの確約は**保証しません**。
 
-このテンプレートは**モジュラーモノリス構成**を前提としています。
+今後のリリース予定: フロントエンド / インフラ / 可観測性の各ボイラープレート。
 
-## SaaS / Vendor 中立性
+## ライセンス
 
-このプロジェクトは特定の SaaS への依存を避けています。
-
-Observability やツール設計は以下を前提にしています。
-
-- OSS ベース
-- Vendor 中立アーキテクチャ
-
-## 拡張性
-
-`internal/` 配下のコンポーネントは疎結合です。
-
-Dependency Injection により
-
-- Infrastructure
-- Implementation
-- Middleware
-
-などを環境に応じて差し替えることが可能です。
-
-## メンテナーポリシー / 免責
-
-このプロジェクトは **作者個人によって管理されています**。
-
-特定の組織とは関係ありません。
-
-善意で公開されていますが、以下は保証されません。
-
-- セキュリティ
-- 安定性
-- 特定用途への適合性
-
-利用者は使用前に以下を確認してください。
-
-- 依存関係の脆弱性
-- セキュリティ設定
-- 運用環境との互換性
-
-## ライブラリ選定ポリシー
-
-ライブラリは以下の基準で選定しています。
-
-- 継続的なメンテナンス
-- コミュニティ採用
-- 交換可能性
-- 強いフレームワーク依存を避ける
-
-このアーキテクチャは**コンポーネントの置き換え可能性**を前提としています。
-
-## メンテナンスポリシー
-
-メンテナーは以下を行う可能性があります。
-
-- 依存関係の更新
-- セキュリティ修正
-- アーキテクチャ改善
-
-ただし以下は保証されません。
-
-- Issue への対応期限
-- バグ修正保証
-- 長期メンテナンス
-
-## 将来の Boilerplate
-
-今後予定しているもの：
-
-- Frontend Boilerplate
-- Infrastructure Boilerplate
-- Observability Boilerplate
-
-## AI エージェント向けドキュメント
-
-このプロジェクトには、AI エージェント向けのドキュメントも含まれています。
-
-ただし、このプロジェクトは**AIツールなしでも完全に保守可能**な設計になっています。
-
-## License
-
-MIT License
-
-```txt
-LICENSE
-```
-
-## 参考
-
-- [versioning.md](docs/project/ja/versioning.ja.md)
-- [architecture-index.md](docs/ja/index.ja.md)
-  - [architecture.md](docs/ja/architecture.ja.md)
-  - [development-flow.md](docs/ja/development-flow.ja.md)
-  - [decisions.md](docs/ja/decisions.ja.md)
-  - [rules.md](docs/ja/rules.ja.md)
-- [go-upgrade.md](docs/maintenance/ja/go-upgrade.ja.md)
-- [Make Commands](.makefiles/README.ja.md)
+MIT License — [LICENSE](LICENSE) を参照してください。

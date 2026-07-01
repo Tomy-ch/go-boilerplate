@@ -34,17 +34,20 @@ flowchart TB
 
 |モジュール|種別|説明|
 |---|---|---|
+|`URIModule()`|Pre|末尾スラッシュ除去|
+|`TimeoutModule()`|Pre|リクエスト deadline budget（`SERVER_REQUEST_TIMEOUT`）|
+|`BodyLimitModule()`|Pre|リクエストボディ上限（`SERVER_BODY_LIMIT_MB`）|
 |`IPExtractorModule()`|Configurator|クライアント IP 抽出|
 |`OpenAPIModule()`|Use|OpenAPI バリデーション|
-|`URIModule()`|Pre|末尾スラッシュ除去|
 
 ### instrumentation（計装）
 
 |モジュール|種別|説明|
 |---|---|---|
 |`RequestIDModule()`|Use|X-Request-ID 生成|
-|`LoggingModule()`|Use|HTTP リクエスト / レスポンスログ|
 |`ObservabilityModule()`|Use|OpenTelemetry トレーシング|
+|`HTTPRedMetricsModule()`|Use|HTTP RED（Rate / Errors / Duration）メトリクス|
+|`LoggingModule()`|Use|HTTP リクエスト / レスポンスログ|
 
 ### outbound（レスポンス出力）
 

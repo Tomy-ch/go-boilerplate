@@ -148,7 +148,7 @@ and not validation of application logic.
 
 Example
 
-- `mock_user.NewMockUsecase`
+- `mock_<feature>.NewMockUsecase`
 - `mock_healthcheck.NewMockUsecase`
 
 ## Test Flow
@@ -164,10 +164,14 @@ Concrete example
 
 ```mermaid
 flowchart TB
-    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponse()"]
+    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponseType()"]
 ```
 
-## Functions defined in integration_test.go
+## Functions defined in helper_test.go
+
+Every handler's `BindHandler` takes a tracer factory; in these tests it is a
+no-op one obtained from `observability.NewNoopTracerFactory(t)`. Feature
+handlers additionally take a **mocked usecase** (see "Why Usecase is mocked").
 
 ### `StartServer(t *testing.T, e *echo.Echo) *Server`
 
@@ -183,7 +187,8 @@ Usage example:
 
 ```go
 e := echo.New()
-handler.BindHandler(e)
+tf := observability.NewNoopTracerFactory(t)
+<feature>.BindHandler(e, tf, mockUsecase)
 
 srv := StartServer(t, e)
 ```
@@ -224,20 +229,59 @@ Example:
 actual := srv.DoJSON(http.MethodGet, "/health", nil, nil)
 ```
 
-### `AssertJSONResponse[T any]`
+### `AssertJSONResponseType[T any]`
 
-Utility to verify the contents of JSON response.
+A reachability assertion for the HTTP boundary. It confirms that the response
+travels the full HTTP path and is serialized into the expected shape — **not**
+that individual field values are correct.
 
 Verification contents:
 
 - HTTP Status Code = 200
 - Content-Type = application/json
-- JSON can be unmarshaled into type `T`
+- The response body can be unmarshaled into type `T`
+
+This helper intentionally does **not** compare field values. Per the test
+pyramid above, response value correctness (the presenter's field mapping) is the
+responsibility of the **Controller Unit Test**, which verifies it against an
+independent oracle. Duplicating value assertions here would couple the
+integration test to presenter details and make it brittle; for responses that
+carry dynamic values (e.g. build info, `RegisteredAt`) only the type is
+checkable anyway.
 
 Usage example:
 
 ```go
-AssertJSONResponse(t, gen.ResponseHealth{}, actual)
+AssertJSONResponseType[gen.HealthResponse](t, actual)
+```
+
+### `UseAppErrorHandler(t, e)`
+
+Installs the production `HTTPErrorHandler` on the Echo instance. The bare
+`echo.New()` only carries Echo's default error handler, so error-path tests
+that need to observe the real `apperror` → HTTP status mapping must wire the
+production handler first.
+
+The set of error responses an endpoint is expected to produce is defined by the
+**OpenAPI contract** (each operation's `responses`); error-path tests target the
+status codes the contract declares for that operation, not arbitrary ones.
+
+### `AssertErrorResponse(t, actual, wantStatus)`
+
+Asserts that an error response carries `wantStatus` and that its body
+deserializes into the JSON error shape (`ErrorResponse`). As with
+`AssertJSONResponseType`, only the boundary concern is checked — the
+`apperror` → status mapping and the error body's shape — while the correctness
+of the `code` / `message` values stays the responsibility of the unit tests.
+
+Usage example:
+
+```go
+e := echo.New()
+UseAppErrorHandler(t, e)
+// ... mock the usecase to return apperror.ErrNotFound, bind the handler ...
+actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
+AssertErrorResponse(t, actual, http.StatusNotFound)
 ```
 
 ## Auth Test Helper
@@ -246,14 +290,16 @@ AssertJSONResponse(t, gen.ResponseHealth{}, actual)
 
 A helper that **simulates an authenticated user** in integration tests.
 
-Internally adds Echo Middleware and  
-sets authentication information using `ctxhelper.SetAuthnToEcho`.
+Internally it adds an Echo Middleware that builds an authenticated principal
+with `auth.New` and injects it into the request context via `ctxhelper.WithAuthn`
+/ `ctxhelper.SetAuthn`, then returns an `Authorization: Bearer debug:<id>` header
+to attach to the request.
 
 Usage example:
 
 ```go
 headers := MakeAvailableUserID(t, e, userID)
-srv.DoJSON(http.MethodPost, "/v1/users", body, headers)
+srv.DoJSON(http.MethodPost, "/v1/<resource>", body, headers)
 ```
 
 ## Test Design Policy
@@ -284,6 +330,6 @@ Do not call handler directly, but use `httptest.Server`.
 
 Responses are verified using **OpenAPI types**.
 
-- `gen.ResponseV1Users`
-- `gen.ResponseHealth`
-- `gen.ResponseVersion`
+- `gen.HealthResponse`
+- `gen.VersionResponse`
+- a feature handler's response type from its `gen` package — `gen.<Xxx>Response` (aliased, e.g. `detailgen.<Xxx>Response`, when one test file imports several handler `gen` packages)

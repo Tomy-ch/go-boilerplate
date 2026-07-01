@@ -242,6 +242,7 @@ DB 接続用の DSN を組み立てるユーティリティです。
 |`DSN(dbCfg)`|基本の接続 URL を生成|
 |`DSNWithTimeZone(dbCfg, osCfg)`|タイムゾーン付き接続 URL を生成|
 |`DSNString(dbCfg)`|`DSN` の文字列版|
+|`DSNStringWithoutPassword(dbCfg)`|パスワードを含まない `DSN` の文字列版（パスワードは `PGPASSWORD` などで別途渡す）|
 |`DSNWithTimeZoneString(dbCfg, osCfg)`|`DSNWithTimeZone` の文字列版|
 
 ## NewTransactionManager

@@ -209,7 +209,7 @@ The following naming policy is stable.
 
 - **Controller → Usecase only** (plus generated code `gen`, DTO/Presenter, `apperror`/`errorresponse`)
 - **Do not call Infra / Domain directly**
-- In DI (`fx`), `handler` receives `usecase.Service`
+- In DI (`fx`), each job receives the specific Usecase interface it needs (e.g., `user.Usecase`)
 
 ## Do's and Don'ts (Summary)
 
@@ -377,7 +377,10 @@ flowchart TB
 func JobModule() fx.Option {
     return fx.Module("job",
         provideJobs(
-            usercount.New,
+            // Add job constructors here.
+            idempotencygc.New,
+            outboxgc.New,
+            usercount.New, // sample (removed by setup-remove-sample-api)
         ),
         fx.Provide(
             dijob.ProvideRunner,
@@ -401,14 +404,14 @@ Jobs should **receive Usecase / Logger / Tracer via DI**.
 
 ```go
 func New(
+    logging logging.Logger,
     tf observability.TracerFactory,
     usecase user.Usecase,
-    logging logging.Logger,
 ) job.Job {
     return &jobImpl{
+        logging: logging,
         tracer:  tf.Controller(),
         usecase: usecase,
-        logging: logging,
     }
 }
 ```
@@ -460,24 +463,24 @@ Controllers receive observability.LayerTracer as a dependency as follows.
 
 ```go
 type jobImpl struct {
-    tracer  observability.LayerTracer // Tracer for observability
     logging logging.Logger // For result log output
-    usecase hoge.Usecase // Usecase used by each job
+    tracer  observability.LayerTracer // Tracer for observability
+    usecase user.Usecase // Usecase used by each job
 }
 ```
 
-On the BindHandler side, a Controller-specific tracer is generated with `observability.NewControllerTracer`.
+In the `New` constructor, the Controller-layer tracer is obtained via `tf.Controller()` (a `TracerFactory` method). Jobs have no `BindHandler`; the tracer is wired here.
 
 ```go
 func New(
+    logging logging.Logger,
     tf observability.TracerFactory,
     usecase user.Usecase,
-    logging logging.Logger,
 ) job.Job {
     return &jobImpl{
+        logging: logging,
         tracer:  tf.Controller(),
         usecase: usecase,
-        logging: logging,
     }
 }
 ```
@@ -501,21 +504,21 @@ import (
 const jobName = "user-count"
 
 type jobImpl struct {
+    logging logging.Logger // For result log output
     tracer  observability.LayerTracer // Tracer for observability
     usecase user.Usecase // Usecase called from controller
-    logging logging.Logger // For result log output
 }
 
 // Register this function in internal/di/module/job.go as [<package>.New,]
 func New(
+    logging logging.Logger,
     tf observability.TracerFactory,
     usecase user.Usecase,
-    logging logging.Logger,
 ) job.Job {
     return &jobImpl{
+        logging: logging,
         tracer:  tf.Controller(),
         usecase: usecase,
-        logging: logging,
     }
 }
 

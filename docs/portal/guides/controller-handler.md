@@ -35,7 +35,7 @@ A handler delegates to a **single Usecase operation** per action and only shapes
 
 Presenter is the conversion process from `Usecase DTO → OpenAPI response type`.
 
-When the same conversion is reused across handler methods, define it as a private `toXxxResponse(dto …) gen.XxxResponse` helper inside the handler package (e.g. `toUserResponse`). One-off conversions may stay inline in the handler body.
+When the same conversion is reused across handler methods, define it as a private `toXxxResponse(dto …) gen.XxxResponse` helper inside the handler package (e.g. `toItemResponse`). One-off conversions may stay inline in the handler body.
 
 ## Architecture
 
@@ -229,13 +229,13 @@ Generated code is output under `gen/`.
 1. Create API definition in OpenAPI
    - Refer to [OpenAPI guideline for generation](../../../openapi/README.md)
 2. Reproduce URI structure under `internal/controller/handler/`
-   - Example1: `/v1/users` → `internal/controller/handler/v1/users/`
-   - Example2: `/v1/users/{id}` → `internal/controller/handler/v1/users/detail/`
+   - Example1: `/v1/<resource>` → `internal/controller/handler/v1/<resource>/`
+   - Example2: `/v1/<resource>/{id}` → `internal/controller/handler/v1/<resource>/detail/`
 3. Add generation comments at the top of the file
 
 ```go
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 ```
 
 1. Bundle/validate OpenAPI with swagger-cli and generate with oapi-codegen
@@ -249,11 +249,11 @@ Generated code is output under `gen/`.
 
 ### Path Parameter Type Conversion (UUID)
 
-A path/query parameter typed as `uuid` arrives as the oapi-codegen `openapi_types.UUID` (e.g. the generated `UserIdParam`). Convert it to the domain-side `pkg/uuid.UUID` **through the controller-only boundary helper `internal/controller/conv`** — never pass the generated UUID type into the usecase/domain:
+A path/query parameter typed as `uuid` arrives as the oapi-codegen `openapi_types.UUID` (e.g. a generated `<Resource>IdParam`). Convert it to the domain-side `pkg/uuid.UUID` **through the controller-only boundary helper `internal/controller/conv`** — never pass the generated UUID type into the usecase/domain:
 
 ```go
-id := conv.UUID(request.UserId)
-dto, err := s.uc.GetUser(ctx, id)
+id := conv.UUID(request.ItemId)
+dto, err := s.uc.GetItem(ctx, id)
 ```
 
 Why `conv`, not a `pkg/uuid` converter:
@@ -331,7 +331,7 @@ Controller receives `observability.LayerTracer` as dependency:
 ```go
 type server struct {
     tracer observability.LayerTracer
-    uc      user.Usecase
+    uc      item.Usecase
 }
 ```
 
@@ -339,7 +339,7 @@ In BindHandler, a controller-specific tracer is generated:
 
 ```go
 func BindHandler(
-  e *echo.Echo, tf observability.TracerFactory, uc user.Usecase
+  e *echo.Echo, tf observability.TracerFactory, uc item.Usecase
 ) {
     gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
         tracer: tf.Controller(),
@@ -379,7 +379,7 @@ func ControllerModule() fx.Option {
     return fx.Module("controller",
         fx.Invoke(
             health.BindHandler,
-            users.BindHandler,
+            items.BindHandler,
         ),
     )
 }
@@ -395,7 +395,7 @@ func ControllerModule() fx.Option {
 func BindHandler(
     e *echo.Echo,
     tf observability.TracerFactory,
-    uc user.Service,
+    uc item.Usecase,
 ) {
     gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
         tracer: tf.Controller(),
@@ -415,7 +415,7 @@ Points:
 ```go
 type server struct {
     tracer observability.LayerTracer
-    uc     user.Service
+    uc     item.Usecase
 }
 ```
 
@@ -549,19 +549,19 @@ testassert.AssertEchoRouterMethods(t, expectedMethods, e.Routes())
 ### Handler Test
 
 ```go
-mockApp := mock_user.NewMockUsecase(ctrl)
+mockApp := mock_item.NewMockUsecase(ctrl)
 mockApp.EXPECT().
-    ListUsersByKeyword(gomock.Any(), expectedParams, mockPage).
+    ListItems(gomock.Any(), expectedParams, mockPage).
     Return(mockDTO, nil)
 ```
 
 ### Response Verification
 
 ```go
-actual, ok := resp.(gen.GetUsers200JSONResponse)
+actual, ok := resp.(gen.ListItems200JSONResponse)
 require.True(t, ok)
 
-require.Equal(t, expectedResponse, gen.UsersResponse(actual))
+require.Equal(t, expectedResponse, gen.ItemsResponse(actual))
 ```
 
 ### Error Test
@@ -620,6 +620,7 @@ tf := observability.NewNoopTracerFactory(t)
 |`testauth`|Set authentication information in test context|
 |`testecho`|Builder client for Echo tests (request construction and execution)|
 |`testspan`|Embed test span into Echo context|
+|`testuuid`|Generate a UUID path/query parameter value for tests|
 
 ### testassert
 
@@ -642,14 +643,15 @@ Build test HTTP requests using a builder pattern.
 ```go
 rec := testecho.NewEchoTestClient(t, e).
     Method(http.MethodGet).
-    RequestURL("/v1/users?page=1&per_page=10").
+    RequestURL("/v1/items?page=1&per_page=10").
     AuthBearer("test-token").
     Serve()
 ```
 
 |Method|Description|
 |---|---|
-|`NewEchoTestClient`|Create test client (auto-configures error handler)|
+|`NewEchoTestClient`|Create test client|
+|`WithAppErrorHandler`|Install the production-equivalent error handler on Echo (overrides its `HTTPErrorHandler`)|
 |`Method`|Set HTTP method|
 |`RoutePattern`|Set route pattern (e.g., `/users/:id`)|
 |`RequestURL`|Set actual request URL|
@@ -668,15 +670,21 @@ rec := testecho.NewEchoTestClient(t, e).
 |---|---|
 |`StartTestSpanForEcho`|Embed test span into echo.Context and return end function|
 
+### testuuid
+
+|Function|Description|
+|---|---|
+|`RequestUUID`|Generate a valid `openapi_types.UUID` for use as a path/query parameter in tests|
+
 ## Example
 
 ## Reference Snippet
 
 ```go
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-package users
+package items
 
 import (
     "context"
@@ -689,12 +697,12 @@ import (
 
 type server struct {
     tracer observability.LayerTracer
-    uc      user.Service
+    uc      item.Usecase
 }
 
-// Register this in di/handler.go
+// Register this in di/module/controller.go
 func BindHandler(
-  e *echo.Echo, tf observability.TracerFactory, uc user.Service,
+  e *echo.Echo, tf observability.TracerFactory, uc item.Usecase,
 ) {
     gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
         tracer: tf.Controller(),
@@ -703,7 +711,7 @@ func BindHandler(
 }
 
 // handler
-func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
+func (s *server) ListItems(ctx context.Context, request gen.ListItemsRequestObject) (gen.ListItemsResponseObject, error) {
     // Start and end span
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
@@ -713,31 +721,31 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
         return nil, err
     }
 
-    params := &user.GetParamsDTO{
+    params := &item.ListParamsDTO{
         Keyword: request.Params.Keyword,
         Active:  request.Params.Active,
     }
 
-    dtos, err := s.uc.ListUsersByKeyword(ctx, params, page)
+    dtos, err := s.uc.ListItems(ctx, params, page)
     if err != nil {
         return nil, err
     }
 
-    users := make([]gen.UserResponse, len(dtos))
+    items := make([]gen.ItemResponse, len(dtos))
     for i, dto := range dtos {
-      users[i] = gen.UserResponse{
+      items[i] = gen.ItemResponse{
         Name:  dto.Name,
         Email: types.Email(dto.Email),
         Phone: ptr.To(dto.Phone),
       }
     }
 
-    res := gen.UsersResponse{
-      Users:  users,
+    res := gen.ItemsResponse{
+      Items:  items,
       Limit:  page.Limit(),
       Offset: page.Offset(),
     }
 
-    return gen.GetUsers200JSONResponse(res), nil
+    return gen.ListItems200JSONResponse(res), nil
 }
 ```

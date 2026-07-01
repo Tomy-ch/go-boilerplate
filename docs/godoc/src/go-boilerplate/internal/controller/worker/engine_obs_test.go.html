@@ -71,7 +71,7 @@
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>)
 <span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>func Test_Engine_D3_StructuredLog(t *testing.T) {
+<span id="L17" class="ln">    17  </span>func Test_Engine_StructuredLog(t *testing.T) {
 <span id="L18" class="ln">    18  </span>	t.Parallel()
 <span id="L19" class="ln">    19  </span>
 <span id="L20" class="ln">    20  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -97,7 +97,7 @@
 <span id="L40" class="ln">    40  </span>			entry := observed.FilterMessage(&#34;retryable failure, nacked&#34;).All()[0]
 <span id="L41" class="ln">    41  </span>			ctxMap := entry.ContextMap()
 <span id="L42" class="ln">    42  </span>			assert.Equal(t, &#34;a&#34;, ctxMap[logging.MessageIDKey])
-<span id="L43" class="ln">    43  </span>			assert.Contains(t, ctxMap, logging.ReceiveCountKey)
+<span id="L43" class="ln">    43  </span>			assert.Equal(t, int64(1), ctxMap[logging.ReceiveCountKey])
 <span id="L44" class="ln">    44  </span>		})
 <span id="L45" class="ln">    45  </span>	})
 <span id="L46" class="ln">    46  </span>}

@@ -68,8 +68,9 @@ pushed out to `cmd/`. The package boundary equals the test boundary.
   **tests never touch the real filesystem, run external binaries (`pg_dump` / `psql`), or open a DB**.
 - **The thin `cmd/` shells are excluded** from the coverage gate (`gen|cmd|mock|apperror|scripts`).
   Their runtime correctness is covered by CI boot checks: `app-di-startup-check` (serve → `/ready`),
-  `job-boot-check` (job dispatch), `migration-check` (up/down round-trip), `gen-*-artifacts-check`
-  (codegen dogfooding) — all against a real Postgres service. DB access behaviour is covered by
+  `job-boot-check` (job dispatch), `worker-boot-check` (worker dispatch), `migration-check`
+  (up/down round-trip), `gen-*-artifacts-check` (codegen dogfooding) — all against a real Postgres
+  service. DB access behaviour is covered by
   repository tests against a real Postgres (`internal/infrastructure/rdb/testkit`).
 
 ### When adding a command

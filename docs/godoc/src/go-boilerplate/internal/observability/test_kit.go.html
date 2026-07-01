@@ -61,113 +61,109 @@
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
 <span id="L5" class="ln">     5  </span>	&#34;testing&#34;
 <span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go.opentelemetry.io/otel&#34;
-<span id="L8" class="ln">     8  </span>	metricnoop &#34;go.opentelemetry.io/otel/metric/noop&#34;
-<span id="L9" class="ln">     9  </span>	sdktrace &#34;go.opentelemetry.io/otel/sdk/trace&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go.opentelemetry.io/otel/trace/noop&#34;
-<span id="L11" class="ln">    11  </span>)
-<span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span>const (
-<span id="L14" class="ln">    14  </span>	tracer           = &#34;noop-tracer&#34;
-<span id="L15" class="ln">    15  </span>	layer  layerName = &#34;noop-layer&#34;
-<span id="L16" class="ln">    16  </span>	pkg              = &#34;noop-pkg&#34;
-<span id="L17" class="ln">    17  </span>	span             = &#34;noop-span&#34;
-<span id="L18" class="ln">    18  </span>)
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span><span class="comment">// NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。</span>
-<span id="L21" class="ln">    21  </span>func NewNoopTracerFactory(t *testing.T) TracerFactory {
-<span id="L22" class="ln">    22  </span>	t.Helper()
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>	tp := noop.NewTracerProvider()
-<span id="L25" class="ln">    25  </span>	return NewTracerFactory(tp)
-<span id="L26" class="ln">    26  </span>}
-<span id="L27" class="ln">    27  </span>
-<span id="L28" class="ln">    28  </span><span class="comment">// NewMockControllerLayerTracer は、テスト用のコントローラーレイヤートレーサーを生成します。</span>
-<span id="L29" class="ln">    29  </span>func NewMockControllerLayerTracer(t *testing.T) LayerTracer {
-<span id="L30" class="ln">    30  </span>	t.Helper()
-<span id="L31" class="ln">    31  </span>	tf := NewNoopTracerFactory(t)
-<span id="L32" class="ln">    32  </span>	return tf.Controller()
-<span id="L33" class="ln">    33  </span>}
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span><span class="comment">// NewMockUsecaseLayerTracer は、テスト用のユースケースレイヤートレーサーを生成します。</span>
-<span id="L36" class="ln">    36  </span>func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer {
-<span id="L37" class="ln">    37  </span>	t.Helper()
-<span id="L38" class="ln">    38  </span>	tf := NewNoopTracerFactory(t)
-<span id="L39" class="ln">    39  </span>	return tf.Usecase()
-<span id="L40" class="ln">    40  </span>}
-<span id="L41" class="ln">    41  </span>
-<span id="L42" class="ln">    42  </span><span class="comment">// NewMockInfraLayerTracer は、テスト用のインフラレイヤートレーサーを生成します。</span>
-<span id="L43" class="ln">    43  </span>func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
-<span id="L44" class="ln">    44  </span>	t.Helper()
-<span id="L45" class="ln">    45  </span>	tf := NewNoopTracerFactory(t)
-<span id="L46" class="ln">    46  </span>	return tf.Infra()
-<span id="L47" class="ln">    47  </span>}
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span><span class="comment">// NewNoopLayerTracer は、テスト用に LayerTracer を無効化して返します。</span>
-<span id="L50" class="ln">    50  </span>func NewNoopLayerTracer(t *testing.T) LayerTracer {
-<span id="L51" class="ln">    51  </span>	t.Helper()
-<span id="L52" class="ln">    52  </span>	return LayerTracer{
-<span id="L53" class="ln">    53  </span>		tracer:  noop.NewTracerProvider().Tracer(tracer),
-<span id="L54" class="ln">    54  </span>		layer:   layer,
-<span id="L55" class="ln">    55  </span>		pkgName: pkg,
-<span id="L56" class="ln">    56  </span>	}
-<span id="L57" class="ln">    57  </span>}
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span><span class="comment">// NewNoopWorkerMetrics は、テスト用に no-op の MeterProvider から WorkerMetrics を生成します。</span>
-<span id="L60" class="ln">    60  </span>func NewNoopWorkerMetrics(t *testing.T) *WorkerMetrics {
-<span id="L61" class="ln">    61  </span>	t.Helper()
-<span id="L62" class="ln">    62  </span>	wm, err := NewWorkerMetrics(metricnoop.NewMeterProvider())
-<span id="L63" class="ln">    63  </span>	if err != nil {
-<span id="L64" class="ln">    64  </span>		t.Fatalf(&#34;failed to build noop worker metrics: %v&#34;, err)
-<span id="L65" class="ln">    65  </span>	}
-<span id="L66" class="ln">    66  </span>	return wm
-<span id="L67" class="ln">    67  </span>}
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span><span class="comment">// NewNoopHTTPClientMetrics は、テスト用に no-op の MeterProvider から HTTPClientMetrics を生成します。</span>
-<span id="L70" class="ln">    70  </span>func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
-<span id="L71" class="ln">    71  </span>	t.Helper()
-<span id="L72" class="ln">    72  </span>	hm, err := NewHTTPClientMetrics(metricnoop.NewMeterProvider())
-<span id="L73" class="ln">    73  </span>	if err != nil {
-<span id="L74" class="ln">    74  </span>		t.Fatalf(&#34;failed to build noop http client metrics: %v&#34;, err)
-<span id="L75" class="ln">    75  </span>	}
-<span id="L76" class="ln">    76  </span>	return hm
-<span id="L77" class="ln">    77  </span>}
-<span id="L78" class="ln">    78  </span>
-<span id="L79" class="ln">    79  </span><span class="comment">// NewNoopOutboxMetrics は、テスト用に no-op の MeterProvider から OutboxMetrics を生成します。</span>
-<span id="L80" class="ln">    80  </span>func NewNoopOutboxMetrics(t *testing.T) *OutboxMetrics {
-<span id="L81" class="ln">    81  </span>	t.Helper()
-<span id="L82" class="ln">    82  </span>	om, err := NewOutboxMetrics(metricnoop.NewMeterProvider())
-<span id="L83" class="ln">    83  </span>	if err != nil {
-<span id="L84" class="ln">    84  </span>		t.Fatalf(&#34;failed to build noop outbox metrics: %v&#34;, err)
-<span id="L85" class="ln">    85  </span>	}
-<span id="L86" class="ln">    86  </span>	return om
-<span id="L87" class="ln">    87  </span>}
-<span id="L88" class="ln">    88  </span>
-<span id="L89" class="ln">    89  </span><span class="comment">// NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を</span>
-<span id="L90" class="ln">    90  </span><span class="comment">// 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。</span>
-<span id="L91" class="ln">    91  </span>func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
-<span id="L92" class="ln">    92  </span>	t.Helper()
-<span id="L93" class="ln">    93  </span>	return newHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator(), permissiveDialControl)
-<span id="L94" class="ln">    94  </span>}
-<span id="L95" class="ln">    95  </span>
-<span id="L96" class="ln">    96  </span><span class="comment">// NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。</span>
-<span id="L97" class="ln">    97  </span>func NewStubSpanContext(t *testing.T) (context.Context, func()) {
-<span id="L98" class="ln">    98  </span>	t.Helper()
-<span id="L99" class="ln">    99  </span>
-<span id="L100" class="ln">   100  </span>	prev := otel.GetTracerProvider()
+<span id="L7" class="ln">     7  </span>	metricnoop &#34;go.opentelemetry.io/otel/metric/noop&#34;
+<span id="L8" class="ln">     8  </span>	sdktrace &#34;go.opentelemetry.io/otel/sdk/trace&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go.opentelemetry.io/otel/trace/noop&#34;
+<span id="L10" class="ln">    10  </span>)
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>const (
+<span id="L13" class="ln">    13  </span>	tracer           = &#34;noop-tracer&#34;
+<span id="L14" class="ln">    14  </span>	layer  layerName = &#34;noop-layer&#34;
+<span id="L15" class="ln">    15  </span>	pkg              = &#34;noop-pkg&#34;
+<span id="L16" class="ln">    16  </span>	span             = &#34;noop-span&#34;
+<span id="L17" class="ln">    17  </span>)
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span><span class="comment">// NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。</span>
+<span id="L20" class="ln">    20  </span>func NewNoopTracerFactory(t *testing.T) TracerFactory {
+<span id="L21" class="ln">    21  </span>	t.Helper()
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span>	tp := noop.NewTracerProvider()
+<span id="L24" class="ln">    24  </span>	return NewTracerFactory(tp)
+<span id="L25" class="ln">    25  </span>}
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// NewMockControllerLayerTracer は、テスト用のコントローラーレイヤートレーサーを生成します。</span>
+<span id="L28" class="ln">    28  </span>func NewMockControllerLayerTracer(t *testing.T) LayerTracer {
+<span id="L29" class="ln">    29  </span>	t.Helper()
+<span id="L30" class="ln">    30  </span>	tf := NewNoopTracerFactory(t)
+<span id="L31" class="ln">    31  </span>	return tf.Controller()
+<span id="L32" class="ln">    32  </span>}
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span><span class="comment">// NewMockUsecaseLayerTracer は、テスト用のユースケースレイヤートレーサーを生成します。</span>
+<span id="L35" class="ln">    35  </span>func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer {
+<span id="L36" class="ln">    36  </span>	t.Helper()
+<span id="L37" class="ln">    37  </span>	tf := NewNoopTracerFactory(t)
+<span id="L38" class="ln">    38  </span>	return tf.Usecase()
+<span id="L39" class="ln">    39  </span>}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span><span class="comment">// NewMockInfraLayerTracer は、テスト用のインフラレイヤートレーサーを生成します。</span>
+<span id="L42" class="ln">    42  </span>func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
+<span id="L43" class="ln">    43  </span>	t.Helper()
+<span id="L44" class="ln">    44  </span>	tf := NewNoopTracerFactory(t)
+<span id="L45" class="ln">    45  </span>	return tf.Infra()
+<span id="L46" class="ln">    46  </span>}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span><span class="comment">// NewNoopLayerTracer は、テスト用に LayerTracer を無効化して返します。</span>
+<span id="L49" class="ln">    49  </span>func NewNoopLayerTracer(t *testing.T) LayerTracer {
+<span id="L50" class="ln">    50  </span>	t.Helper()
+<span id="L51" class="ln">    51  </span>	return LayerTracer{
+<span id="L52" class="ln">    52  </span>		tracer:  noop.NewTracerProvider().Tracer(tracer),
+<span id="L53" class="ln">    53  </span>		layer:   layer,
+<span id="L54" class="ln">    54  </span>		pkgName: pkg,
+<span id="L55" class="ln">    55  </span>	}
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span><span class="comment">// NewNoopWorkerMetrics は、テスト用に no-op の MeterProvider から WorkerMetrics を生成します。</span>
+<span id="L59" class="ln">    59  </span>func NewNoopWorkerMetrics(t *testing.T) *WorkerMetrics {
+<span id="L60" class="ln">    60  </span>	t.Helper()
+<span id="L61" class="ln">    61  </span>	wm, err := NewWorkerMetrics(metricnoop.NewMeterProvider())
+<span id="L62" class="ln">    62  </span>	if err != nil {
+<span id="L63" class="ln">    63  </span>		t.Fatalf(&#34;failed to build noop worker metrics: %v&#34;, err)
+<span id="L64" class="ln">    64  </span>	}
+<span id="L65" class="ln">    65  </span>	return wm
+<span id="L66" class="ln">    66  </span>}
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span><span class="comment">// NewNoopHTTPClientMetrics は、テスト用に no-op の MeterProvider から HTTPClientMetrics を生成します。</span>
+<span id="L69" class="ln">    69  </span>func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
+<span id="L70" class="ln">    70  </span>	t.Helper()
+<span id="L71" class="ln">    71  </span>	hm, err := NewHTTPClientMetrics(metricnoop.NewMeterProvider())
+<span id="L72" class="ln">    72  </span>	if err != nil {
+<span id="L73" class="ln">    73  </span>		t.Fatalf(&#34;failed to build noop http client metrics: %v&#34;, err)
+<span id="L74" class="ln">    74  </span>	}
+<span id="L75" class="ln">    75  </span>	return hm
+<span id="L76" class="ln">    76  </span>}
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span><span class="comment">// NewNoopOutboxMetrics は、テスト用に no-op の MeterProvider から OutboxMetrics を生成します。</span>
+<span id="L79" class="ln">    79  </span>func NewNoopOutboxMetrics(t *testing.T) *OutboxMetrics {
+<span id="L80" class="ln">    80  </span>	t.Helper()
+<span id="L81" class="ln">    81  </span>	om, err := NewOutboxMetrics(metricnoop.NewMeterProvider())
+<span id="L82" class="ln">    82  </span>	if err != nil {
+<span id="L83" class="ln">    83  </span>		t.Fatalf(&#34;failed to build noop outbox metrics: %v&#34;, err)
+<span id="L84" class="ln">    84  </span>	}
+<span id="L85" class="ln">    85  </span>	return om
+<span id="L86" class="ln">    86  </span>}
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span><span class="comment">// NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を</span>
+<span id="L89" class="ln">    89  </span><span class="comment">// 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。</span>
+<span id="L90" class="ln">    90  </span>func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
+<span id="L91" class="ln">    91  </span>	t.Helper()
+<span id="L92" class="ln">    92  </span>	return newHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator(), permissiveDialControl)
+<span id="L93" class="ln">    93  </span>}
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span><span class="comment">// NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。</span>
+<span id="L96" class="ln">    96  </span>func NewStubSpanContext(t *testing.T) (context.Context, func()) {
+<span id="L97" class="ln">    97  </span>	t.Helper()
+<span id="L98" class="ln">    98  </span>
+<span id="L99" class="ln">    99  </span>	tp := sdktrace.NewTracerProvider()
+<span id="L100" class="ln">   100  </span>	tr := tp.Tracer(tracer)
 <span id="L101" class="ln">   101  </span>
-<span id="L102" class="ln">   102  </span>	tp := sdktrace.NewTracerProvider()
-<span id="L103" class="ln">   103  </span>	tr := tp.Tracer(tracer)
-<span id="L104" class="ln">   104  </span>
-<span id="L105" class="ln">   105  </span>	ctx, span := tr.Start(context.Background(), span)
-<span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span>	return ctx, func() {
-<span id="L108" class="ln">   108  </span>		span.End()
-<span id="L109" class="ln">   109  </span>		_ = tp.Shutdown(context.Background())
-<span id="L110" class="ln">   110  </span>		otel.SetTracerProvider(prev)
-<span id="L111" class="ln">   111  </span>	}
-<span id="L112" class="ln">   112  </span>}
-<span id="L113" class="ln">   113  </span>
+<span id="L102" class="ln">   102  </span>	ctx, span := tr.Start(context.Background(), span)
+<span id="L103" class="ln">   103  </span>
+<span id="L104" class="ln">   104  </span>	return ctx, func() {
+<span id="L105" class="ln">   105  </span>		span.End()
+<span id="L106" class="ln">   106  </span>		_ = tp.Shutdown(context.Background())
+<span id="L107" class="ln">   107  </span>	}
+<span id="L108" class="ln">   108  </span>}
+<span id="L109" class="ln">   109  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/test_kit.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

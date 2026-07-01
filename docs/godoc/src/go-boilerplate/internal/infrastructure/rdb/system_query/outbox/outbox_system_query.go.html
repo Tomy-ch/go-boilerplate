@@ -60,15 +60,15 @@
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
-<span id="L6" class="ln">     6  </span>	&#34;errors&#34;
-<span id="L7" class="ln">     7  </span>	&#34;time&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L13" class="ln">    13  </span>	outboxbndry &#34;go-boilerplate/internal/usecase/boundary/outbox&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L12" class="ln">    12  </span>	outboxbndry &#34;go-boilerplate/internal/usecase/boundary/outbox&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>
 <span id="L16" class="ln">    16  </span>	&#34;github.com/jackc/pgx/v5&#34;
 <span id="L17" class="ln">    17  </span>)
@@ -162,7 +162,7 @@
 <span id="L105" class="ln">   105  </span>		LastError: &amp;lastErr,
 <span id="L106" class="ln">   106  </span>	})
 <span id="L107" class="ln">   107  </span>	if err != nil {
-<span id="L108" class="ln">   108  </span>		if errors.Is(err, pgx.ErrNoRows) {
+<span id="L108" class="ln">   108  </span>		if xerrors.Is(err, pgx.ErrNoRows) {
 <span id="L109" class="ln">   109  </span>			return 0, nil
 <span id="L110" class="ln">   110  </span>		}
 <span id="L111" class="ln">   111  </span>		return 0, pgerror.NormalizeError(err)
@@ -219,7 +219,7 @@
 <span id="L162" class="ln">   162  </span>	db := gen.New(driver.New(ctx, s.db))
 <span id="L163" class="ln">   163  </span>	createdAt, err := db.OldestPendingOutbox(ctx)
 <span id="L164" class="ln">   164  </span>	if err != nil {
-<span id="L165" class="ln">   165  </span>		if errors.Is(err, pgx.ErrNoRows) {
+<span id="L165" class="ln">   165  </span>		if xerrors.Is(err, pgx.ErrNoRows) {
 <span id="L166" class="ln">   166  </span>			return time.Time{}, false, nil
 <span id="L167" class="ln">   167  </span>		}
 <span id="L168" class="ln">   168  </span>		return time.Time{}, false, pgerror.NormalizeError(err)

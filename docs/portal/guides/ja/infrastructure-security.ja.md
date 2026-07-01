@@ -28,7 +28,7 @@ Usecase 層の `security.Hasher` インターフェース（`internal/usecase/bo
 
 ## DI 登録
 
-`internal/di/module/infrastructure.go` の `security` モジュールに登録します。
+`internal/di/module/security.go` の `securityModule()` で登録します（`InfrastructureModule()` に集約）。
 
 ```go
 fx.Provide(security.NewBcryptHasher)

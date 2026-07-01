@@ -93,7 +93,7 @@
 <span id="L36" class="ln">    36  </span>
 <span id="L37" class="ln">    37  </span>			loc, err := NewTimeLocation(osCfg)
 <span id="L38" class="ln">    38  </span>			require.Error(t, err)
-<span id="L39" class="ln">    39  </span>			require.Nil(t, loc)
+<span id="L39" class="ln">    39  </span>			assert.Nil(t, loc)
 <span id="L40" class="ln">    40  </span>		})
 <span id="L41" class="ln">    41  </span>	})
 <span id="L42" class="ln">    42  </span>}

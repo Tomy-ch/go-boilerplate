@@ -367,6 +367,9 @@
 					<dd>    <a href="#ObservabilityConfig.SetObservabilityMetricsExporter">func (o *ObservabilityConfig) SetObservabilityMetricsExporter(tb testing.TB, val string)</a></dd>
 				
 					
+					<dd>    <a href="#ObservabilityConfig.SetObservabilityOTLPEndpoint">func (o *ObservabilityConfig) SetObservabilityOTLPEndpoint(tb testing.TB, val string)</a></dd>
+				
+					
 					<dd>    <a href="#ObservabilityConfig.SetObservabilityOTLPProtocol">func (o *ObservabilityConfig) SetObservabilityOTLPProtocol(tb testing.TB, val string)</a></dd>
 				
 					
@@ -422,6 +425,9 @@
 					
 					<dd>    <a href="#OutboxConfig.SetOutboxBatchSize">func (o *OutboxConfig) SetOutboxBatchSize(tb testing.TB, batchSize int)</a></dd>
 				
+					
+					<dd>    <a href="#OutboxConfig.SetOutboxEndpoint">func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string)</a></dd>
+				
 			
 				
 				<dd><a href="#SecureCookie">type SecureCookie</a></dd>
@@ -443,6 +449,12 @@
 				
 					
 					<dd>    <a href="#SecureCookieConfig.Secure">func (s *SecureCookieConfig) Secure() *bool</a></dd>
+				
+					
+					<dd>    <a href="#SecureCookieConfig.SetDomain">func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string)</a></dd>
+				
+					
+					<dd>    <a href="#SecureCookieConfig.SetSameSite">func (s *SecureCookieConfig) SetSameSite(tb testing.TB, sameSite string)</a></dd>
 				
 			
 				
@@ -581,6 +593,9 @@
 				
 					
 					<dd>    <a href="#WorkerConfig.ReceiveCountWarnThreshold">func (w *WorkerConfig) ReceiveCountWarnThreshold() int</a></dd>
+				
+					
+					<dd>    <a href="#WorkerConfig.SetHealthListenAddr">func (w *WorkerConfig) SetHealthListenAddr(tb testing.TB, addr string)</a></dd>
 				
 			
 			
@@ -1159,7 +1174,7 @@ env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（l
 				
 			
 				
-				</p><h3 id="AuthConfig.SetAllowedHeaderBearer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=5985:6057#L153">SetAllowedHeaderBearer</a>
+				</p><h3 id="AuthConfig.SetAllowedHeaderBearer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7050:7122#L175">SetAllowedHeaderBearer</a>
 					<a class="permalink" href="#AuthConfig.SetAllowedHeaderBearer">¶</a>
 					
 					
@@ -1173,7 +1188,7 @@ env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（l
 				
 			
 				
-				</p><h3 id="AuthConfig.SetHeaderName">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=5591:5659#L143">SetHeaderName</a>
+				</p><h3 id="AuthConfig.SetHeaderName">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=6656:6724#L165">SetHeaderName</a>
 					<a class="permalink" href="#AuthConfig.SetHeaderName">¶</a>
 					
 					
@@ -1368,7 +1383,7 @@ env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（l
 				
 			
 				
-				</p><h3 id="DBConnectionConfig.SetMaxConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4900:4971#L123">SetMaxConns</a>
+				</p><h3 id="DBConnectionConfig.SetMaxConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=5965:6036#L145">SetMaxConns</a>
 					<a class="permalink" href="#DBConnectionConfig.SetMaxConns">¶</a>
 					
 					
@@ -1564,7 +1579,7 @@ env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（l
 				
 			
 				
-				</p><h3 id="DatabaseConfig.SetDatabaseHost">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=3850:3918#L93">SetDatabaseHost</a>
+				</p><h3 id="DatabaseConfig.SetDatabaseHost">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4254:4322#L103">SetDatabaseHost</a>
 					<a class="permalink" href="#DatabaseConfig.SetDatabaseHost">¶</a>
 					
 					
@@ -1578,7 +1593,7 @@ env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（l
 				
 			
 				
-				</p><h3 id="DatabaseConfig.SetDatabaseName">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4197:4265#L103">SetDatabaseName</a>
+				</p><h3 id="DatabaseConfig.SetDatabaseName">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4601:4669#L113">SetDatabaseName</a>
 					<a class="permalink" href="#DatabaseConfig.SetDatabaseName">¶</a>
 					
 					
@@ -1819,7 +1834,7 @@ env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（l
 				
 			
 				
-				</p><h3 id="MetricsConfig.SetMetricsPort">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4557:4620#L113">SetMetricsPort</a>
+				</p><h3 id="MetricsConfig.SetMetricsPort">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4961:5024#L123">SetMetricsPort</a>
 					<a class="permalink" href="#MetricsConfig.SetMetricsPort">¶</a>
 					
 					
@@ -2031,6 +2046,20 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				</h3>
 				<pre>func (o *<a href="#ObservabilityConfig">ObservabilityConfig</a>) SetObservabilityMetricsExporter(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, val <a href="../../../builtin/#string">string</a>)</pre>
 				<p>SetObservabilityMetricsExporter は、テスト用に metric exporter 指定を設定します。
+</p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="ObservabilityConfig.SetObservabilityOTLPEndpoint">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=3863:3948#L93">SetObservabilityOTLPEndpoint</a>
+					<a class="permalink" href="#ObservabilityConfig.SetObservabilityOTLPEndpoint">¶</a>
+					
+					
+				</h3>
+				<pre>func (o *<a href="#ObservabilityConfig">ObservabilityConfig</a>) SetObservabilityOTLPEndpoint(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, val <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetObservabilityOTLPEndpoint は、テスト用に OTLP エンドポイント指定を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
 				
@@ -2289,13 +2318,27 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.SetOutboxBatchSize">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=6387:6458#L163">SetOutboxBatchSize</a>
+				</p><h3 id="OutboxConfig.SetOutboxBatchSize">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7452:7523#L185">SetOutboxBatchSize</a>
 					<a class="permalink" href="#OutboxConfig.SetOutboxBatchSize">¶</a>
 					
 					
 				</h3>
 				<pre>func (o *<a href="#OutboxConfig">OutboxConfig</a>) SetOutboxBatchSize(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, batchSize <a href="../../../builtin/#int">int</a>)</pre>
 				<p>SetOutboxBatchSize は、テスト用に outbox relay の batch size を設定します。
+</p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="OutboxConfig.SetOutboxEndpoint">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7842:7914#L195">SetOutboxEndpoint</a>
+					<a class="permalink" href="#OutboxConfig.SetOutboxEndpoint">¶</a>
+					
+					
+				</h3>
+				<pre>func (o *<a href="#OutboxConfig">OutboxConfig</a>) SetOutboxEndpoint(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, endpoint <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetOutboxEndpoint は、テスト用に outbox relay の送信先エンドポイントを設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
 				
@@ -2402,6 +2445,34 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				</h3>
 				<pre>func (s *<a href="#SecureCookieConfig">SecureCookieConfig</a>) Secure() *<a href="../../../builtin/#bool">bool</a></pre>
 				<p>Secure は、Secure属性の強制設定を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="SecureCookieConfig.SetDomain">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=8598:8666#L215">SetDomain</a>
+					<a class="permalink" href="#SecureCookieConfig.SetDomain">¶</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SecureCookieConfig">SecureCookieConfig</a>) SetDomain(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, domain <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetDomain は、テスト用にセキュアクッキーの Domain 強制値を設定します。
+</p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="SecureCookieConfig.SetSameSite">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=8222:8294#L205">SetSameSite</a>
+					<a class="permalink" href="#SecureCookieConfig.SetSameSite">¶</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SecureCookieConfig">SecureCookieConfig</a>) SetSameSite(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, sameSite <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。
+</p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
 				
 				
@@ -2585,7 +2656,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.SetCIDR">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=5256:5320#L133">SetCIDR</a>
+				</p><h3 id="SecurityConfig.SetCIDR">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=6321:6385#L155">SetCIDR</a>
 					<a class="permalink" href="#SecurityConfig.SetCIDR">¶</a>
 					
 					
@@ -3054,6 +3125,22 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				</h3>
 				<pre>func (w *<a href="#WorkerConfig">WorkerConfig</a>) ReceiveCountWarnThreshold() <a href="../../../builtin/#int">int</a></pre>
 				<p>ReceiveCountWarnThreshold は、再配送回数の警告閾値を返します（0 以下で無効）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="WorkerConfig.SetHealthListenAddr">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=5579:5649#L135">SetHealthListenAddr</a>
+					<a class="permalink" href="#WorkerConfig.SetHealthListenAddr">¶</a>
+					
+					
+				</h3>
+				<pre>func (w *<a href="#WorkerConfig">WorkerConfig</a>) SetHealthListenAddr(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, addr <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetHealthListenAddr は、テスト用に worker health listener の待ち受けアドレスを設定します。
+</p><p>並列サブテストでは固定ポート（既定 :8081）が衝突するため &#34;127.0.0.1:0&#34; を渡して
+OS 割り当ての空きポートを使わせる用途を想定します。t.Setenv と異なり t.Parallel と併用可能です。
+実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
 				
 				

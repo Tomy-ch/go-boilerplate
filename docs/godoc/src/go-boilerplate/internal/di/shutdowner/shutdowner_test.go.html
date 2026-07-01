@@ -58,60 +58,68 @@
 <pre><span id="L1" class="ln">     1  </span>package shutdowner
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;errors&#34;
-<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
-<span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go.uber.org/fx&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>type mockShutdowner struct {
-<span id="L13" class="ln">    13  </span>	shutdownFunc func(opts ...fx.ShutdownOption) error
-<span id="L14" class="ln">    14  </span>}
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>func (m *mockShutdowner) Shutdown(opts ...fx.ShutdownOption) error {
-<span id="L17" class="ln">    17  </span>	return m.shutdownFunc(opts...)
-<span id="L18" class="ln">    18  </span>}
+<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	mock_shutdowner &#34;go-boilerplate/internal/di/shutdowner/mock&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L11" class="ln">    11  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>func TestNewShutdowner(t *testing.T) {
+<span id="L15" class="ln">    15  </span>	t.Parallel()
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L18" class="ln">    18  </span>		t.Parallel()
 <span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>func Test_Shutdowner_Shutdown(t *testing.T) {
-<span id="L21" class="ln">    21  </span>	t.Parallel()
+<span id="L20" class="ln">    20  </span>		t.Run(&#34;fx.Shutdownerを渡すと非nilなShutdownerを返す&#34;, func(t *testing.T) {
+<span id="L21" class="ln">    21  </span>			t.Parallel()
 <span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span>	t.Run(&#34;Shutdownがfx.ShutdownerのShutdownを呼び出す&#34;, func(t *testing.T) {
-<span id="L24" class="ln">    24  </span>		t.Parallel()
+<span id="L23" class="ln">    23  </span>			ctrl := gomock.NewController(t)
+<span id="L24" class="ln">    24  </span>			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
 <span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span>		called := false
-<span id="L27" class="ln">    27  </span>		mockShutdowner := &amp;mockShutdowner{
-<span id="L28" class="ln">    28  </span>			shutdownFunc: func(_ ...fx.ShutdownOption) error {
-<span id="L29" class="ln">    29  </span>				called = true
-<span id="L30" class="ln">    30  </span>				return nil
-<span id="L31" class="ln">    31  </span>			},
-<span id="L32" class="ln">    32  </span>		}
+<span id="L26" class="ln">    26  </span>			assert.NotNil(t, NewShutdowner(fxSD))
+<span id="L27" class="ln">    27  </span>		})
+<span id="L28" class="ln">    28  </span>	})
+<span id="L29" class="ln">    29  </span>}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>func Test_Shutdowner_Shutdown(t *testing.T) {
+<span id="L32" class="ln">    32  </span>	t.Parallel()
 <span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span>		shutdowner := NewShutdowner(mockShutdowner)
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>		err := shutdowner.Shutdown()
-<span id="L37" class="ln">    37  </span>		require.NoError(t, err)
-<span id="L38" class="ln">    38  </span>		assert.True(t, called)
-<span id="L39" class="ln">    39  </span>	})
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	t.Run(&#34;Shutdownがfx.ShutdownerのShutdownのエラーを返す&#34;, func(t *testing.T) {
-<span id="L42" class="ln">    42  </span>		t.Parallel()
+<span id="L34" class="ln">    34  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L35" class="ln">    35  </span>		t.Parallel()
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>		t.Run(&#34;fx.ShutdownerのShutdownを呼び出しnilを返す&#34;, func(t *testing.T) {
+<span id="L38" class="ln">    38  </span>			t.Parallel()
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>			ctrl := gomock.NewController(t)
+<span id="L41" class="ln">    41  </span>			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
+<span id="L42" class="ln">    42  </span>			fxSD.EXPECT().Shutdown().Return(nil)
 <span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>		expectedErr := errors.New(&#34;shutdown error&#34;)
-<span id="L45" class="ln">    45  </span>		mockShutdowner := &amp;mockShutdowner{
-<span id="L46" class="ln">    46  </span>			shutdownFunc: func(_ ...fx.ShutdownOption) error {
-<span id="L47" class="ln">    47  </span>				return expectedErr
-<span id="L48" class="ln">    48  </span>			},
-<span id="L49" class="ln">    49  </span>		}
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span>		shutdowner := NewShutdowner(mockShutdowner)
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>		err := shutdowner.Shutdown()
-<span id="L54" class="ln">    54  </span>		require.ErrorIs(t, err, expectedErr)
-<span id="L55" class="ln">    55  </span>	})
-<span id="L56" class="ln">    56  </span>}
-<span id="L57" class="ln">    57  </span>
+<span id="L44" class="ln">    44  </span>			err := NewShutdowner(fxSD).Shutdown()
+<span id="L45" class="ln">    45  </span>			require.NoError(t, err)
+<span id="L46" class="ln">    46  </span>		})
+<span id="L47" class="ln">    47  </span>	})
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L50" class="ln">    50  </span>		t.Parallel()
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>		t.Run(&#34;fx.ShutdownerのShutdownのエラーをそのまま返す&#34;, func(t *testing.T) {
+<span id="L53" class="ln">    53  </span>			t.Parallel()
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>			expectedErr := xerrors.New(&#34;shutdown error&#34;)
+<span id="L56" class="ln">    56  </span>			ctrl := gomock.NewController(t)
+<span id="L57" class="ln">    57  </span>			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
+<span id="L58" class="ln">    58  </span>			fxSD.EXPECT().Shutdown().Return(expectedErr)
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>			err := NewShutdowner(fxSD).Shutdown()
+<span id="L61" class="ln">    61  </span>			require.ErrorIs(t, err, expectedErr)
+<span id="L62" class="ln">    62  </span>		})
+<span id="L63" class="ln">    63  </span>	})
+<span id="L64" class="ln">    64  </span>}
+<span id="L65" class="ln">    65  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/shutdowner/shutdowner_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

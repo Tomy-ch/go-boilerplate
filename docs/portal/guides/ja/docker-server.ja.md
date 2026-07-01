@@ -36,6 +36,7 @@
 |`golines`|行長制限付き整形|
 |`gofumpt`|gofmt 強化版|
 |`golangci-lint`|Go リンター|
+|`lefthook`|Git フックランナー|
 
 OS レベルパッケージ: `build-base`, `binutils-gold`, `bash`, `curl`, `git`, `upx`, `libc6-compat`, `gcompat`, `tzdata`, `make`
 
@@ -53,5 +54,5 @@ api_server:
 ## 注意点
 
 - 本番イメージはベースイメージのダイジェストを固定して再現性を確保すること
-- `tooling` ターゲットは開発初期の利便性のため `@latest` を使用 — CI 環境ではバージョンを固定すること
+- `tooling` ターゲットはツールを `mise.toml`（バージョンの SSOT）で pin されたバージョンで install し、ローカルと CI のバージョンを揃える
 - すべてのターゲットで作業ディレクトリは `/app`
