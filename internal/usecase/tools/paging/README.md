@@ -64,3 +64,14 @@ next := paging.EncodeCursor(last.CreatedAt.Format(time.RFC3339Nano), last.ID.Str
 ```
 
 > Sort keys must be **unique and totally ordered** as a tuple (append a tie-breaker like the primary key), otherwise rows can be skipped or duplicated across pages.
+
+## Test coverage exception
+
+The following uncovered branch is exempt from the near-100% expectation as an **infallible
+defensive branch**; no contrived test or extra implementation is added to reach it:
+
+- `cursor.go` `EncodeCursor` — the `json.Marshal(keys)` error return. `keys` is a
+  `[]string`, which the encoder can always marshal, so the error path is unreachable.
+
+**Governance:** coverage exceptions are **not added at will** — a new entry requires an
+appropriate approver's (e.g. architect) sign-off.

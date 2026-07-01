@@ -29,3 +29,15 @@ A bounded-retry behavior layer that *consumes* a failure classification: `classi
 ## Wraps
 
 Standard library `context`, `time`, and `math/rand/v2`. No other package dependencies.
+
+## Test coverage exception
+
+The following uncovered branch is exempt from the near-100% expectation as **structurally
+unreachable**; no contrived test or extra implementation is added to reach it:
+
+- `retry.go` `Do` — the trailing `return err` after the attempt loop. The final attempt
+  always returns inside the loop (`attempt == attempts`), so the trailing return exists
+  only to satisfy the compiler and is never executed.
+
+**Governance:** coverage exceptions are **not added at will** — a new entry requires an
+appropriate approver's (e.g. architect) sign-off.

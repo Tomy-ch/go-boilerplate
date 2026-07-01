@@ -279,6 +279,26 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
 
+### テスト例外（ユニットで完全被覆を求めないファイル）
+
+本パッケージの大半（SubConfig の getter・`New()` のバインド・テストセッター）はユニットで
+ほぼ 100% 被覆を維持する想定です。以下は**意図的な例外**で、未被覆部分は読み込み /
+composition 境界のエラー分岐であり、失敗注入なしには通せません。実経路は boot-check CI
+（`app-di-startup-check` / `worker-boot-check` / `job-boot-check`。実バイナリを `SetUpConfig`
+経由で起動）で E2E 検証済みです。
+
+|ファイル|関数|ユニット非対象の理由|
+|---|---|---|
+|`loader.go`|`Load`|残る分岐は**埋め込み** env ファイルの I/O 失敗（`root.FS.ReadFile` / `godotenv.Parse` / `os.Setenv`）。実行時にはまず失敗せず、被覆には失敗する FS / env の注入が必要。|
+|`setup.go`|`SetUpConfig`|`cmd/`（それ自体カバレッジゲート対象外）から呼ばれる composition-root の glue。未被覆は `Load()` 失敗時の early-return のみで、起動は boot-check CI が担保。|
+
+> これらの行を塗るためだけの不自然な失敗注入テストは**追加しない**こと。これらの関数が
+> （I/O エラー配線ではない）実際の分岐ロジックを持つようになった場合は、他と同様に
+> ユニットテストで担保すること。
+>
+> **ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の
+> **適切な承認者の承認を得た場合に限り**本節へ記録する。
+
 ## 注意点
 
 - セキュリティ上の理由から、機密情報（例: APIキーやパスワード）は環境変数で管理し、コード内にハードコーディングしないでください。
