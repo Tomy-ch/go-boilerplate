@@ -30,6 +30,15 @@ func TestProvideRunner(t *testing.T) {
 		assert.Equal(t, []string{"job1"}, r.Names())
 	})
 
+	t.Run("正常系: ジョブが0件の場合、空のランナーが返る", func(t *testing.T) {
+		t.Parallel()
+
+		r, err := ProvideRunner(RunnerIn{Jobs: []usecasejob.Job{}})
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		assert.Empty(t, r.Names())
+	})
+
 	t.Run("異常系: 同一名ジョブがあるとエラー", func(t *testing.T) {
 		t.Parallel()
 

@@ -6,25 +6,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestWrapLikePatterns(t *testing.T) {
+func TestWrapPrefixLikePattern(t *testing.T) {
 	t.Parallel()
 
-	t.Run("前方一致のLIKEパターンに変換する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		got := WrapPrefixLikePattern("hoge")
-		assert.Equal(t, "hoge%", got)
-	})
 
-	t.Run("後方一致のLIKEパターンに変換する", func(t *testing.T) {
-		t.Parallel()
-		got := WrapSuffixLikePattern("hoge")
-		assert.Equal(t, "%hoge", got)
+		t.Run("末尾にワイルドカードを付与し前方一致パターンに変換する", func(t *testing.T) {
+			t.Parallel()
+			got := WrapPrefixLikePattern("hoge")
+			assert.Equal(t, "hoge%", got)
+		})
 	})
+}
 
-	t.Run("部分一致のLIKEパターンに変換する", func(t *testing.T) {
+func TestWrapSuffixLikePattern(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		got := WrapContainsLikePattern("hoge")
-		assert.Equal(t, "%hoge%", got)
+
+		t.Run("先頭にワイルドカードを付与し後方一致パターンに変換する", func(t *testing.T) {
+			t.Parallel()
+			got := WrapSuffixLikePattern("hoge")
+			assert.Equal(t, "%hoge", got)
+		})
+	})
+}
+
+func TestWrapContainsLikePattern(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("前後にワイルドカードを付与し部分一致パターンに変換する", func(t *testing.T) {
+			t.Parallel()
+			got := WrapContainsLikePattern("hoge")
+			assert.Equal(t, "%hoge%", got)
+		})
 	})
 }
 

@@ -70,6 +70,13 @@ func TestNew(t *testing.T) {
 			assert.Nil(t, authn)
 			require.ErrorIs(t, err, ErrUnauthenticatedSubjectMissing)
 		})
+
+		t.Run("subjectが空白のみの場合、エラーになる", func(t *testing.T) {
+			t.Parallel()
+			authn, err := New("   ", ProviderMock, []string{}, map[string]any{})
+			assert.Nil(t, authn)
+			require.ErrorIs(t, err, ErrUnauthenticatedSubjectMissing)
+		})
 	})
 }
 

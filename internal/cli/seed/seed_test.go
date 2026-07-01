@@ -223,5 +223,22 @@ func TestRunDBSeed(t *testing.T) {
 			err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
 			require.Error(t, err)
 		})
+
+		t.Run("seed投入自体が失敗するとrunSeedsのエラーが伝播する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			fsys := mock_fs.NewMockFS(ctrl)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+
+			execErr := &pgconn.PgError{Code: "23505"} // unique_violation
+			fsys.EXPECT().Glob(seedFilePlace+"/*.sql").Return([]string{"a.sql"}, nil)
+			fsys.EXPECT().ReadFile("a.sql").Return([]byte("INSERT ..."), nil)
+			db.EXPECT().Exec(gomock.Any(), "INSERT ...").Return(pgconn.CommandTag{}, execErr)
+			db.EXPECT().Close().Return(nil)
+
+			openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
+			err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+			require.ErrorIs(t, err, execErr)
+		})
 	})
 }

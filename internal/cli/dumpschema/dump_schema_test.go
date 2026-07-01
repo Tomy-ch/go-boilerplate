@@ -48,7 +48,11 @@ func TestGenerator_dumpSchema(t *testing.T) {
 			runner := mock_exec.NewMockRunner(ctrl)
 
 			out := []byte("CREATE TABLE users (id int);\n")
-			runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(out, nil)
+			// DSN を先頭に dumpSubArgs を連結した引数と、PGPASSWORD を含む env が
+			// そのまま runner へ渡ることを具体値で検証する。
+			wantEnv := []string{"PGPASSWORD=pw"}
+			wantArgs := []string{"postgres://dsn", "--schema-only", "--no-owner", "--no-privileges", "--format=plain"}
+			runner.EXPECT().Output(gomock.Any(), testWorkDir, wantEnv, "pg_dump", wantArgs).Return(out, nil)
 			fs.EXPECT().WriteFile(schemaAbs, out, os.FileMode(schemaFilePerm)).Return(nil)
 
 			g := newTestGenerator(t, fs, runner)

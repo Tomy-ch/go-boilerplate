@@ -77,6 +77,18 @@ func Test_authenticator_resolveSubject(t *testing.T) {
 		token := "invalid-token"
 
 		subject := authenticator.resolveSubject(token)
-		require.Empty(t, subject)
+		assert.Empty(t, subject)
+	})
+
+	t.Run("prefixのみでsubjectが空の場合、空文字が返される", func(t *testing.T) {
+		t.Parallel()
+		authenticator := &authenticator{}
+		assert.Empty(t, authenticator.resolveSubject("debug:"))
+	})
+
+	t.Run("prefixありでsubjectが空白のみの場合、空文字が返される", func(t *testing.T) {
+		t.Parallel()
+		authenticator := &authenticator{}
+		assert.Empty(t, authenticator.resolveSubject("debug:   "))
 	})
 }

@@ -14,6 +14,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// orderTagMiddleware は X-Order ヘッダへ tag を追記するミドルウェアを返します（適用順序の検証用）。
+func orderTagMiddleware(tag string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Response().Header().Add("X-Order", tag)
+			return next(c)
+		}
+	}
+}
+
+// serveRootAndOrder は / へ1回リクエストし、積まれた X-Order ヘッダの並びを返します。
+func serveRootAndOrder(t *testing.T, e *echo.Echo) []string {
+	t.Helper()
+	e.GET("/", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec.Header()["X-Order"]
+}
+
+// noopMiddleware は素通しのミドルウェアです（Priority 重複検証などで中身が不要な場合に使用）。
+func noopMiddleware(next echo.HandlerFunc) echo.HandlerFunc { return next }
+
 func TestApplyPreMiddlewares(t *testing.T) {
 	t.Parallel()
 
@@ -24,42 +47,14 @@ func TestApplyPreMiddlewares(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-
-			mwA := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					c.Response().Header().Add("X-Order", "A")
-					return next(c)
-				}
-			}
-			mwB := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					c.Response().Header().Add("X-Order", "B")
-					return next(c)
-				}
-			}
-
-			// Priority はあえてバラバラにして、ソートされることを確認
+			// Priority を逆順で渡し、昇順ソートされて A → B の順で適用されることを確認する。
 			mws := []PreMiddleware{
-				{Name: "B", Priority: 2, Middleware: mwB},
-				{Name: "A", Priority: 1, Middleware: mwA},
+				{Name: "B", Priority: 2, Middleware: orderTagMiddleware("B")},
+				{Name: "A", Priority: 1, Middleware: orderTagMiddleware("A")},
 			}
 
-			err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
-			require.NoError(t, err)
-
-			// 適当なハンドラを登録して 1 回リクエスト
-			e.GET("/", func(c echo.Context) error {
-				return c.String(http.StatusOK, "ok")
-			})
-
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			rec := httptest.NewRecorder()
-			e.ServeHTTP(rec, req)
-
-			// Pre ミドルウェアで積まれたヘッダの順序を確認
-			vals := rec.Header()["X-Order"]
-			assert.Equal(t, []string{"A", "B"}, vals)
+			require.NoError(t, ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws))
+			assert.Equal(t, []string{"A", "B"}, serveRootAndOrder(t, e))
 		})
 	})
 
@@ -69,74 +64,63 @@ func TestApplyPreMiddlewares(t *testing.T) {
 		t.Run("優先度が重複する場合はエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			e := echo.New()
-
 			mws := []PreMiddleware{
-				{
-					Name:       "pre1",
-					Priority:   1,
-					Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
-				},
-				{
-					Name:       "pre2",
-					Priority:   1, // ★ 敢えて同じ Priority
-					Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
-				},
+				{Name: "pre1", Priority: 1, Middleware: noopMiddleware},
+				{Name: "pre2", Priority: 1, Middleware: noopMiddleware},
 			}
 
-			err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
+			err := ApplyPreMiddlewares(echo.New(), logging.NewTestLogger(t), mws)
 			require.Error(t, err)
-			// エラーメッセージの一部まで見ておきたい場合
 			assert.Contains(t, err.Error(), "priority")
 		})
 	})
 }
 
-func TestServerExtends(t *testing.T) {
+func TestApplyUseMiddlewares(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("PriorityOrderが昇順で適用されること", func(t *testing.T) {
+
+		t.Run("優先度順にUseミドルウェアが適用される", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-
-			mwA := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					c.Response().Header().Add("X-Order", "A")
-					return next(c)
-				}
-			}
-			mwB := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
-					c.Response().Header().Add("X-Order", "B")
-					return next(c)
-				}
-			}
-
-			// provide out-of-order priorities to ensure sorting happens
 			mws := []UseMiddleware{
-				{Name: "B", Priority: 2, Middleware: mwB},
-				{Name: "A", Priority: 1, Middleware: mwA},
+				{Name: "B", Priority: 2, Middleware: orderTagMiddleware("B")},
+				{Name: "A", Priority: 1, Middleware: orderTagMiddleware("A")},
 			}
 
-			err := ApplyUseMiddlewares(e, logging.NewTestLogger(t), mws)
-			require.NoError(t, err)
-
-			e.GET("/", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
-
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			rec := httptest.NewRecorder()
-			e.ServeHTTP(rec, req)
-
-			vals := rec.Header()["X-Order"]
-			// expect sorted by Priority ascending: A then B
-			assert.Equal(t, []string{"A", "B"}, vals)
+			require.NoError(t, ApplyUseMiddlewares(e, logging.NewTestLogger(t), mws))
+			assert.Equal(t, []string{"A", "B"}, serveRootAndOrder(t, e))
 		})
+	})
 
-		t.Run("拡張機能が適用されること", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("優先度が重複する場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			dup := []UseMiddleware{
+				{Name: "A", Priority: 1, Middleware: noopMiddleware},
+				{Name: "B", Priority: 1, Middleware: noopMiddleware},
+			}
+
+			err := ApplyUseMiddlewares(echo.New(), logging.NewTestLogger(t), dup)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "priority")
+		})
+	})
+}
+
+func TestApplyConfigurators(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Configuratorが適用されルートが登録される", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -158,8 +142,16 @@ func TestServerExtends(t *testing.T) {
 			assert.Equal(t, http.StatusNoContent, rec.Code)
 			assert.Equal(t, "yes", rec.Header().Get("X-Cfg"))
 		})
+	})
+}
 
-		t.Run("拡張機能が統合的に適用されること", func(t *testing.T) {
+func TestApplyExtends(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Pre/Use/Cfgが統合的に適用される", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -170,9 +162,9 @@ func TestServerExtends(t *testing.T) {
 					return next(c)
 				}
 			}
-			mw := func(next echo.HandlerFunc) echo.HandlerFunc {
+			use := func(next echo.HandlerFunc) echo.HandlerFunc {
 				return func(c echo.Context) error {
-					c.Response().Header().Add("X-Order", "1")
+					c.Response().Header().Add("X-Use", "1")
 					return next(c)
 				}
 			}
@@ -183,13 +175,14 @@ func TestServerExtends(t *testing.T) {
 			}
 
 			extends := ServerExtends{
-				PreList: []PreMiddleware{{Priority: 0, Middleware: pre}},
-				UseList: []UseMiddleware{{Priority: 0, Middleware: mw}},
+				PreList: []PreMiddleware{{Name: "pre1", Priority: 0, Middleware: pre}},
+				UseList: []UseMiddleware{{Name: "use1", Priority: 0, Middleware: use}},
 				CfgList: []SrvCfg{cfg},
 			}
 
-			_, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
+			applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
 			require.NoError(t, err)
+			assert.NotNil(t, applied)
 
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ext", nil)
@@ -198,29 +191,31 @@ func TestServerExtends(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.Equal(t, "ok", rec.Header().Get("X-Pre"))
-			assert.Equal(t, "1", rec.Header().Get("X-Order"))
+			assert.Equal(t, "1", rec.Header().Get("X-Use"))
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("UseMiddlewareに、Priorityの重複があるとエラーになること", func(t *testing.T) {
+		t.Run("UseMiddlewareのPriority重複はエラーになりappliedがnil", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
 
-			dup := []UseMiddleware{
-				{Name: "A", Priority: 1, Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next }},
-				{Name: "B", Priority: 1, Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next }},
+			extends := ServerExtends{
+				UseList: []UseMiddleware{
+					{Name: "mw1", Priority: 1, Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next }},
+					{Name: "mw2", Priority: 1, Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next }},
+				},
 			}
 
-			err := ApplyUseMiddlewares(e, logging.NewTestLogger(t), dup)
+			applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "priority")
+			assert.Nil(t, applied)
 		})
 
-		t.Run("PreMiddlewareに、Priorityの重複があるとエラーになること", func(t *testing.T) {
+		t.Run("PreMiddlewareのPriority重複はエラーになりappliedがnil", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -233,98 +228,9 @@ func TestServerExtends(t *testing.T) {
 			}
 
 			applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
-
 			require.Error(t, err)
-			require.Nil(t, applied)
+			assert.Nil(t, applied)
 		})
-	})
-}
-
-func TestApplyExtends(t *testing.T) {
-	t.Parallel()
-
-	t.Run("拡張機能が適用されること", func(t *testing.T) {
-		t.Parallel()
-
-		e := echo.New()
-
-		pre := func(next echo.HandlerFunc) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				c.Response().Header().Set("X-Pre", "ok")
-				return next(c)
-			}
-		}
-
-		use := func(next echo.HandlerFunc) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				c.Response().Header().Add("X-Use", "1")
-				return next(c)
-			}
-		}
-
-		cfg := func(e *echo.Echo) {
-			e.GET("/ext", func(c echo.Context) error {
-				return c.String(http.StatusOK, "done")
-			})
-		}
-
-		extends := ServerExtends{
-			PreList: []PreMiddleware{
-				{
-					Name:       "pre1",
-					Priority:   0,
-					Middleware: pre,
-				},
-			},
-			UseList: []UseMiddleware{
-				{
-					Name:       "use1",
-					Priority:   0,
-					Middleware: use,
-				},
-			},
-			CfgList: []SrvCfg{cfg},
-		}
-
-		applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
-		require.NoError(t, err)
-		require.NotNil(t, applied)
-
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ext", nil)
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
-
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "ok", rec.Header().Get("X-Pre"))
-		assert.Equal(t, "1", rec.Header().Get("X-Use"))
-	})
-
-	t.Run("Priorityの重複があるとエラーになること", func(t *testing.T) {
-		t.Parallel()
-
-		e := echo.New()
-
-		// Priority 重複でエラーを誘発
-		extends := ServerExtends{
-			UseList: []UseMiddleware{
-				{
-					Name:       "mw1",
-					Priority:   1,
-					Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
-				},
-				{
-					Name:       "mw2",
-					Priority:   1, // 衝突
-					Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
-				},
-			},
-		}
-
-		applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
-
-		require.Error(t, err)
-		require.Nil(t, applied)
 	})
 }
 

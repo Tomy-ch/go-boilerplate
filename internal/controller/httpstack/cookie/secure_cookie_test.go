@@ -39,6 +39,32 @@ func TestNewSecurityCookie(t *testing.T) {
 			assertKV(t, attrs, "samesite", "Strict")
 			assertKV(t, attrs, "domain", "localhost")
 		})
+
+		t.Run("SameSiteが非許容値の場合はSameSite上書きを行わない", func(t *testing.T) {
+			t.Parallel()
+			cfg := config.MockConfigForTest(t)
+			scfg := config.NewSecureCookieConfig(cfg)
+			scfg.SetSameSite(t, "bogus")
+			sec := NewSecurityCookie(scfg)
+
+			_, _, attrs, ok := parseSetCookie(sec.RewriteSetCookie("a=1"))
+			require.True(t, ok)
+			require.NotNil(t, attrs)
+			assertNoAttr(t, attrs, "samesite")
+		})
+
+		t.Run("Domainが空の場合はDomain上書きを行わない", func(t *testing.T) {
+			t.Parallel()
+			cfg := config.MockConfigForTest(t)
+			scfg := config.NewSecureCookieConfig(cfg)
+			scfg.SetDomain(t, "  ")
+			sec := NewSecurityCookie(scfg)
+
+			_, _, attrs, ok := parseSetCookie(sec.RewriteSetCookie("a=1"))
+			require.True(t, ok)
+			require.NotNil(t, attrs)
+			assertNoAttr(t, attrs, "domain")
+		})
 	})
 }
 

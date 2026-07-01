@@ -196,3 +196,23 @@ func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string) {
 	o.endpoint = endpoint
 	tb.Cleanup(func() { o.endpoint = prev })
 }
+
+// SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (s *SecureCookieConfig) SetSameSite(tb testing.TB, sameSite string) {
+	tb.Helper()
+	prev := s.sameSite
+	s.sameSite = sameSite
+	tb.Cleanup(func() { s.sameSite = prev })
+}
+
+// SetDomain は、テスト用にセキュアクッキーの Domain 強制値を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
+	tb.Helper()
+	prev := s.domain
+	s.domain = domain
+	tb.Cleanup(func() { s.domain = prev })
+}
