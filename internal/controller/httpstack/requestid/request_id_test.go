@@ -8,7 +8,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_getRequestID(t *testing.T) {
@@ -53,7 +52,7 @@ func TestMiddleware(t *testing.T) {
 
 		t.Run("非nilのミドルウェアを返す", func(t *testing.T) {
 			t.Parallel()
-			require.NotNil(t, Middleware())
+			assert.NotNil(t, Middleware())
 		})
 	})
 }

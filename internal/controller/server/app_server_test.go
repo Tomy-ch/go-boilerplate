@@ -12,15 +12,24 @@ import (
 func TestNewAppServer(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	srvCfg := config.NewServerConfig(cfg)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	actual := NewAppServer(srvCfg)
-	assert.Equal(t, srvCfg.ReadHeaderTimeout(), actual.Server.ReadHeaderTimeout)
-	assert.Equal(t, srvCfg.ReadTimeout(), actual.Server.ReadTimeout)
-	assert.Equal(t, srvCfg.WriteTimeout(), actual.Server.WriteTimeout)
-	assert.Equal(t, srvCfg.IdleTimeout(), actual.Server.IdleTimeout)
-	assert.True(t, actual.HideBanner)
-	assert.True(t, actual.HidePort)
-	require.NotNil(t, actual)
+		t.Run("設定値を反映した http.Server を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			srvCfg := config.NewServerConfig(cfg)
+
+			actual := NewAppServer(srvCfg)
+			require.NotNil(t, actual)
+
+			assert.Equal(t, srvCfg.ReadHeaderTimeout(), actual.Server.ReadHeaderTimeout)
+			assert.Equal(t, srvCfg.ReadTimeout(), actual.Server.ReadTimeout)
+			assert.Equal(t, srvCfg.WriteTimeout(), actual.Server.WriteTimeout)
+			assert.Equal(t, srvCfg.IdleTimeout(), actual.Server.IdleTimeout)
+			assert.True(t, actual.HideBanner)
+			assert.True(t, actual.HidePort)
+		})
+	})
 }

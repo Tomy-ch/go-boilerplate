@@ -1,10 +1,10 @@
 package job
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestState(t *testing.T) {
@@ -16,7 +16,7 @@ func TestState(t *testing.T) {
 		t.Run("NewStateは非nilを返す", func(t *testing.T) {
 			t.Parallel()
 			s := NewState()
-			require.NotNil(t, s)
+			assert.NotNil(t, s)
 		})
 
 		t.Run("SetとSnapshotは値を保存して返す", func(t *testing.T) {
@@ -40,6 +40,41 @@ func TestState(t *testing.T) {
 			default:
 				t.Fatalf("gotDone channel not usable")
 			}
+		})
+
+		t.Run("Setを複数回呼ぶとSnapshotは最後の値を返す", func(t *testing.T) {
+			t.Parallel()
+			s := NewState()
+
+			s.Set("first", []string{"1"}, nil)
+			s.Set("second", []string{"2"}, nil)
+
+			gotName, gotArgs, _ := s.Snapshot()
+			assert.Equal(t, "second", gotName)
+			assert.Equal(t, []string{"2"}, gotArgs)
+		})
+
+		t.Run("Set前のSnapshotはゼロ値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			gotName, gotArgs, gotDone := NewState().Snapshot()
+			assert.Empty(t, gotName)
+			assert.Nil(t, gotArgs)
+			assert.Nil(t, gotDone)
+		})
+
+		t.Run("SetとSnapshotを並行に呼んでもデータ競合しない", func(t *testing.T) {
+			t.Parallel()
+			s := NewState()
+
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() { defer wg.Done(); s.Set("job", []string{"a"}, make(chan error, 1)) }()
+			go func() { defer wg.Done(); _, _, _ = s.Snapshot() }()
+			wg.Wait()
+
+			gotName, _, _ := s.Snapshot()
+			assert.Equal(t, "job", gotName)
 		})
 	})
 }

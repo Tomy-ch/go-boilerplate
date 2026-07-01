@@ -101,6 +101,16 @@ func TestSecurityCookie_RewriteSetCookie(t *testing.T) {
 			assertFlag(t, attrs, "httponly")
 		})
 
+		t.Run("forceHTTPOnly=falseで既存のHttpOnlyが削除される", func(t *testing.T) {
+			t.Parallel()
+			v := false
+			sec := &SecurityCookie{applyToAll: true, forceHTTPOnly: &v}
+			_, _, attrs, ok := parseSetCookie(sec.RewriteSetCookie("y=1; HttpOnly"))
+			require.True(t, ok)
+			require.NotNil(t, attrs)
+			assertNoAttr(t, attrs, "httponly")
+		})
+
 		t.Run("forceSameSite=NoneでSecureが付与される", func(t *testing.T) {
 			t.Parallel()
 			sec := &SecurityCookie{applyToAll: true, forceSameSite: "None", enforceSecureWhenSameSiteNone: true}

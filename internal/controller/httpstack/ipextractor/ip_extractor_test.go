@@ -1,7 +1,10 @@
 package ipextractor
 
 import (
+	"context"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"go-boilerplate/internal/config"
@@ -25,7 +28,7 @@ func TestNew(t *testing.T) {
 			secCfg := config.NewSecurityConfig(cfg)
 
 			New(e, appCfg, secCfg)
-			require.NotNil(t, e.IPExtractor)
+			assert.NotNil(t, e.IPExtractor)
 		})
 	})
 }
@@ -40,7 +43,7 @@ func TestNewIPExtractor(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("本番モードの場合、非nilのextractorを返す", func(t *testing.T) {
+		t.Run("本番モードでは信頼プロキシ経由のXFFヘッダからIPを抽出する", func(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.MockConfigForTest(t)
@@ -50,13 +53,17 @@ func TestNewIPExtractor(t *testing.T) {
 			secCfg := config.NewSecurityConfig(cfg)
 			secCfg.SetCIDR(t, parsedCIDR)
 
-			assert.Equal(t, config.ProductionMode, appCfg.Mode())
-			assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
 			actual := NewIPExtractor(appCfg, secCfg)
 			require.NotNil(t, actual)
+
+			// 接続元(RemoteAddr)を信頼 CIDR(192.168.0.0/16)内に置くと、XFF のクライアント IP が採用される。
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.RemoteAddr = "192.168.1.1:1234"
+			req.Header.Set(echo.HeaderXForwardedFor, "203.0.113.5")
+			assert.Equal(t, "203.0.113.5", actual(req))
 		})
 
-		t.Run("開発モードの場合、非nilのextractorを返す", func(t *testing.T) {
+		t.Run("開発モードでは接続元IPを直接抽出しXFFを無視する", func(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.MockConfigForTest(t)
@@ -66,16 +73,20 @@ func TestNewIPExtractor(t *testing.T) {
 			secCfg := config.NewSecurityConfig(cfg)
 			secCfg.SetCIDR(t, parsedCIDR)
 
-			assert.Equal(t, config.DevelopmentMode, appCfg.Mode())
-			assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
 			actual := NewIPExtractor(appCfg, secCfg)
 			require.NotNil(t, actual)
+
+			// direct 抽出は RemoteAddr をそのまま採用し、XFF は無視する。
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.RemoteAddr = "192.168.1.1:1234"
+			req.Header.Set(echo.HeaderXForwardedFor, "203.0.113.5")
+			assert.Equal(t, "192.168.1.1", actual(req))
 		})
 
 		t.Run("モード未設定でも非nilのextractorを返す", func(t *testing.T) {
 			t.Parallel()
 			extractor := NewIPExtractor(&config.ApplicationConfig{}, &config.SecurityConfig{})
-			require.NotNil(t, extractor)
+			assert.NotNil(t, extractor)
 		})
 	})
 }
