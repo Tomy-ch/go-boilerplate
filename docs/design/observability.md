@@ -45,7 +45,7 @@ stateDiagram-v2
     Exporting --> Registered: attach exporter (BatchProcessor / PeriodicReader) + otel.Set*
     NoOp --> Registered: resource-only provider, no processor, no goroutine
     Registered --> ShuttingDown: DI OnStop → ProviderShutdowner.Shutdown
-    ShuttingDown --> [*]: flush + close (no-op provider: nothing to flush)
+    ShuttingDown --> [*]: flush + close (no-op provider has nothing to flush)
 
     note right of Exporting
       Metrics path additionally starts Go runtime metrics.
