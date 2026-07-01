@@ -39,8 +39,7 @@ pre-commit:
 commit-msg:
   commands:
     commitlint:
-      # mise 管理の commitlint を解決して実行する
-      run: mise exec npm:@commitlint/cli -- commitlint --edit {1}
+      run: make commitlint COMMIT_MSG_FILE={1}
 
 pre-push:
   parallel: true
