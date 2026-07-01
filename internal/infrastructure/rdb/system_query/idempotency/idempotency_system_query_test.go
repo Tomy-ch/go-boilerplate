@@ -138,8 +138,10 @@ func Test_store_DeleteExpired(t *testing.T) {
 				// cutoff=now で失効行が削除される。
 				deleted, err := s.DeleteExpired(ctx, time.Now(), 100)
 				require.NoError(t, err)
-				// WithinTx は txLock で直列化され tx 単位で隔離されるため、削除対象は本ケースで claim した1件のみ。
-				assert.Equal(t, int64(1), deleted)
+				// DeleteExpired は scope 非限定でテーブル全体を対象とするため、共有DB上では他の失効行も
+				// 含まれ得る。厳密件数に依存せず「1件以上削除された」ことのみ検証し、対象行の削除は
+				// 後続の Get==nil で担保する。
+				assert.GreaterOrEqual(t, deleted, int64(1))
 
 				// 削除後は取得できない。
 				rec, err := s.Get(ctx, scope, key)

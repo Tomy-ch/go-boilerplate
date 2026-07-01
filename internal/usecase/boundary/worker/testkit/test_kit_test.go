@@ -61,19 +61,28 @@ func Test_Fake_Receive(t *testing.T) {
 				msgs []worker.Message
 				err  error
 			}
+			// Receive がバグで起床しなくても CI を無期限ハングさせないよう、待機側に
+			// タイムアウト付き context を渡し、結果受信も select でタイムアウト失敗にする。
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
 			done := make(chan result, 1)
 			go func() {
-				msgs, err := f.Receive(context.Background(), 1)
+				msgs, err := f.Receive(ctx, 1)
 				done <- result{msgs: msgs, err: err}
 			}()
 
 			f.Enqueue(worker.Message{ID: "a"})
 
-			got := <-done
-			require.NoError(t, got.err)
-			assert.Len(t, got.msgs, 1)
-			assert.Equal(t, "a", got.msgs[0].ID)
-			assert.Equal(t, 1, got.msgs[0].ReceiveCount)
+			select {
+			case got := <-done:
+				require.NoError(t, got.err)
+				assert.Len(t, got.msgs, 1)
+				assert.Equal(t, "a", got.msgs[0].ID)
+				assert.Equal(t, 1, got.msgs[0].ReceiveCount)
+			case <-time.After(2 * time.Second):
+				t.Fatal("Enqueue の起床で待機中の Receive が返らなかった")
+			}
 		})
 	})
 

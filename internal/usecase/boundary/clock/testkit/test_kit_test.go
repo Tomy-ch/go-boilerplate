@@ -58,6 +58,8 @@ func TestNewMockClockOnce(t *testing.T) {
 		now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 		rec := &fatalRecorder{}
 		ctrl := gomock.NewController(rec)
+		// rec は *testing.T ではなく自動 Cleanup が走らないため、期待検証を明示的に締める。
+		defer ctrl.Finish()
 		clk := mock_clock.NewMockClock(ctrl)
 		clk.EXPECT().Now().Return(now).Times(1)
 
