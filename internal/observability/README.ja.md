@@ -9,36 +9,44 @@
 
 主な目的：
 
-- OpenTelemetry の初期化と管理（トレーシング + メトリクス）
+- OpenTelemetry の初期化と管理（トレーシング / メトリクス / ログ）
 - レイヤー単位の span 生成
 - trace / span 情報のログ出力
+- `zap` ログを橋渡し（otelzap）した OTLP ログ送出
 - Domain / Usecase / Controller の観測統一
 - テスト時の軽量トレーサ提供
 
-## 設定境界（env 駆動・ベンダー非依存）
+## 設定境界（typed config・ベンダー非依存 OTLP）
 
-このパッケージが配線するのは **ベンダー非依存な OpenTelemetry の土台のみ**です。送出先は
-**typed config には一切モデル化せず**、SDK が標準の `OTEL_*` 環境変数から読み取ります。
+このパッケージが配線するのは **ベンダー非依存な OTLP の土台のみ**です。シグナルの有効化と
+送出先は typed な `config.ObservabilityConfig` にモデル化され、`OBS_` 接頭辞の環境変数から
+読み込まれます。
 
-- `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER`（`otlp` / `console` / `none`）
-- `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_EXPORTER_OTLP_PROTOCOL`
-- `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`
+| Env | 用途 |
+| --- | --- |
+| `OBS_TRACES_EXPORTER` | trace 送出の有効化（`otlp` で有効／空・`none` で無効） |
+| `OBS_METRICS_EXPORTER` | metric 送出の有効化（同上） |
+| `OBS_LOGS_EXPORTER` | otelzap 経由の log 送出の有効化（同上） |
+| `OBS_OTLP_ENDPOINT` | OTLP エンドポイント URL（Collector / Agent サイドカー）。シグナル有効時のみ使用 |
+| `OBS_OTLP_PROTOCOL` | `http/protobuf`（既定）または `grpc` |
 
-送出は **エクスポータ種別の選択**（`OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` に `otlp` /
-`console`）で有効になります。いずれも未設定なら no-op フォールバックとなり、送出も接続試行も
-常駐 goroutine も発生しません。そのためローカル開発では設定も DI 差し替えも不要です。
+各シグナルは **独立にゲート**されます。`TracesEnabled()` / `MetricsEnabled()` /
+`LogsEnabled()` は、対応する exporter 値が空でも `none` でもないとき（`isActiveExporter`）
+のみ真になります。無効なシグナルは **no-op フォールバック**となり、送出も接続試行も
+常駐 goroutine（batch processor / periodic reader / ランタイムメトリクス収集）も発生しません。
+そのためローカル開発では設定も DI 差し替えも不要です。
 
-> **重要:** `OTEL_EXPORTER_OTLP_ENDPOINT` **だけでは送出は有効になりません**。SDK は OTLP
-> エクスポータが選択されて初めてエンドポイントを読むため、staging / prod では endpoint を
-> Collector / Agent サイドカーに向けることに加えて **`OTEL_TRACES_EXPORTER=otlp` /
-> `OTEL_METRICS_EXPORTER=otlp`** の設定が必須です。ローカルで span を stdout に出すには
-> `OTEL_TRACES_EXPORTER=console` を使います。
+> **重要:** 送出トランスポートは **OTLP のみ**です（console exporter はありません）。単一の
+> `OBS_OTLP_ENDPOINT` を 3 シグナルで共用し、HTTP ではシグナル別パス（`/v1/traces` /
+> `/v1/metrics` / `/v1/logs`）を URL に path が無いとき自動補完します。エンドポイント
+> **だけでは送出は有効になりません** — staging / prod では対応する `OBS_*_EXPORTER=otlp`
+> の設定も必須です。
 
 ベンダー固有（Grafana / Datadog / New Relic）はその Collector 側に置き、ここには持ち込みません。
 
 サービス識別情報（`service.name` / `deployment.environment` / `service.version` /
 `service.revision` / `service.build_date`）は既存のアプリ設定とビルド時注入（ldflags）の
-`internal/system` に由来し、OTel 固有のキーは typed config に漏れません。
+`internal/system` に由来し（`NewResource`）、OTLP 固有のキーは typed config に漏れません。
 
 ## アーキテクチャ
 
@@ -65,8 +73,11 @@ LayerTracer --> ApplicationCode
 |`NewResource`|アプリ設定 + ビルド情報から OTel リソース（サービス識別情報）を構築|
 |`NewTracerProvider`|OpenTelemetry のトレーサープロバイダ + コンテキスト伝播器|
 |`NewMeterProvider`|OpenTelemetry のメータープロバイダ + Go ランタイムメトリクス|
+|`NewLoggerProvider` / `NewLogCore`|OTLP ログプロバイダ + `zap` ログを橋渡しする otelzap core（`log_provider.go` 内）|
 |`shutdown.go`|`ProviderShutdowner`（otel 非依存の後始末ハンドル）+ `NewProviderShutdowner`。di の shutdown hook が利用|
-|`ProvideTracerProvider`|具象 `*sdktrace.TracerProvider` を `trace.TracerProvider` IF として公開するアダプタ（`provider.go` 内）|
+|`ProvideTracerProvider` / `ProvideMeterProvider`|具象プロバイダを `trace.TracerProvider` / `metric.MeterProvider` IF として公開するアダプタ（`provider.go` 内）|
+|`NewPgxTracer`|接続情報を抑止した `otelpgx` トレーサ（DB span + metric、`pgx_tracer.go` 内）|
+|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|計装済み外向き HTTP トランスポート + その RED メトリクス|
 |`TracerFactory`|レイヤー別トレーサ生成|
 |`LayerTracer`|span生成 + observabilityログ|
 |`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -80,7 +91,7 @@ LayerTracer --> ApplicationCode
 OpenTelemetry のトレーサープロバイダを初期化します。
 
 ```go
-func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
+func NewTracerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdktrace.TracerProvider, error)
 ```
 
 特徴
@@ -89,8 +100,8 @@ func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 - `otel.SetTracerProvider` に登録
 - W3C `TraceContext` + `Baggage` 伝播器を `otel.SetTextMapPropagator` で登録
   （サービス跨ぎのトレース継続に必須）
-- `SpanExporter` を標準 `OTEL_*` env から構築（エクスポータ未選択時は no-op となり BatchSpanProcessor を配線しない＝goroutine 無し）
-- サンプリングは `OTEL_TRACES_SAMPLER` に従う（既定は親準拠の常時採取）
+- OTLP `SpanExporter`（batch processor）は `TracesEnabled()` のときのみ構築（無効時は no-op となり BatchSpanProcessor を配線しない＝goroutine 無し）
+- サンプラは SDK 既定（`ParentBased(AlwaysSample)`）。サンプリングは現状 env で設定不可
 - ライフサイクル非依存：`Shutdown` を公開する具象 `*sdktrace.TracerProvider` を返し、
   シャットダウン登録は di 層（`hook.RegisterObservabilityShutdownHooks`）が担う。これにより
   `observability` パッケージは `di/lifecycle` への依存を持たない。
@@ -101,18 +112,32 @@ func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 
 ```go
 func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
-func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error)
+func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error)
 ```
 
 - `NewResource` は `service.name` / `deployment.environment` / `service.version` /
   `service.revision` / `service.build_date` をアプリ設定 + ビルド情報から付与した共有 OTel
   リソースを構築します。
 - `NewMeterProvider` は `NewTracerProvider` と対称で、`otel.SetMeterProvider` への登録・
-  標準 `OTEL_*` env からの `MetricReader` 構築を行います。Go **ランタイムメトリクス**
-  計装は実エクスポータが選択されたときのみ開始します（no-op フォールバック時はスキップ）。これも
+  periodic な `MetricReader` 構築を `MetricsEnabled()` のときのみ行います。Go **ランタイム
+  メトリクス**計装もそのときのみ開始します（no-op フォールバック時はスキップ）。これも
   ライフサイクル非依存で、具象 `*sdkmetric.MeterProvider` を返し `Shutdown` 登録は di の hook が担う。
   シャットダウン hook が具象プロバイダに依存するため、DI モジュール側に別途の force-start invoke は
-  不要で、hook を構築することで両プロバイダが構築される。
+  不要で、hook を構築することでプロバイダが構築される。
+
+### 1.2 NewLoggerProvider / NewLogCore（OTLP ログ）
+
+```go
+func NewLoggerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdklog.LoggerProvider, error)
+func NewLogCore(obsCfg *config.ObservabilityConfig, appCfg *config.ApplicationConfig, lp *sdklog.LoggerProvider) logging.LogCore
+```
+
+- `NewLoggerProvider` は OTLP ログエクスポータ（batch processor）を `LogsEnabled()` のとき
+  のみ構築します（無効時は processor 無しのリソースのみプロバイダ＝goroutine 無し）。
+- `NewLogCore` は、アプリの `zap` ログを LoggerProvider へ橋渡しして OTLP 送出する `otelzap`
+  core を返します。`LogsEnabled()` が偽なら `nil` を返し、`zap` は stdout 出力のみを続けます。
+  これは trace / metric に並ぶ第 3 のシグナルで、アプリケーションコードは変わらず exporter の
+  トグルだけが変わります。
 
 ### 2. TracerFactory
 
@@ -423,13 +448,51 @@ layer span は controller / usecase / infra の全層で `LayerTracer.Start` に
 
 ## メトリクス
 
-トレーシングに加えて、本パッケージはプロセスレベルのメトリクスを公開します。
+トレーシングに加えて、本パッケージは **OTel meter instruments**（`MetricsEnabled()` のとき
+OTLP 送出）と **Prometheus collector**（プロセスから scrape）の双方を公開します。
 
-### ビルド情報 (`app_build_info`)
+### OTel meter instruments
 
-`internal/observability/metrics/buildinfo` サブパッケージは、アプリケーションのビルド・バージョン・ランタイム情報を Prometheus の info gauge (`app_build_info`、値は常に `1`) として公開します。`/version` エンドポイントと同一の source of truth (`system.BuildInfo`) を用い、全ラベル値を DI 結線時に一度だけ解決します。
+各サブシステムが meter と instrument を所有し、注入された `MeterProvider` から構築します。
+ラベルは低カーディナリティで、秘匿値 / PII を載せません。
+
+|Meter (`go-boilerplate/...`)|Instruments|所有|
+|---|---|---|
+|`/outbox`|`outbox.lag_seconds`（gauge）, `outbox.dead`（counter）|outbox relay|
+|`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll・extend errors（counter）, latency（histogram）, in-flight（up-down）|worker engine（broker 非依存）|
+|`/idempotency`|`requests` / `failures` / `expiredCleanup`（counter）。ラベルは `operation_id` / `result` / `phase` / `job` に限定|冪等性サブシステム|
+|`/httpclient`|RED（`requests` / `errors`, latency histogram）+ `retries`, in-flight, `breakerState` gauge|外向き HTTP client substrate|
+
+DB span / metric は `NewPgxTracer`（`otelpgx`）が追加で送出し、Go **ランタイムメトリクス**は
+`MetricsEnabled()` のとき収集されます。
+
+### Prometheus collector
+
+|Collector|メトリクス|source|
+|---|---|---|
+|`metrics/buildinfo`|`app_build_info` info gauge（値は常に `1`）|`system.BuildInfo`（`/version` と同一 source）。ラベルは DI 結線時に一度だけ解決|
+|`metrics/queue`|`worker_queue_depth` gauge（state 別・DLQ 含む）+ `worker_queue_stats_collection_failures_total`|broker adapter の `worker.QueueStatsProvider` から scrape 毎に pull（SQS では approximate）|
 
 詳細は `internal/observability/metrics/buildinfo/README.ja.md` を参照してください。
+
+## テストカバレッジ例外（超法規的措置）
+
+本パッケージは **write-once なインフラ**で、一度実装するとほぼ触りません。**超法規的措置**
+として、以下の防御的 / 構造上到達不能な分岐は「ほぼ 100%」のユニット被覆期待から除外します。
+下記の方針どおり、**これらを塗るための追加実装や contrived テストは行いません**。あくまで
+現状のまま到達可能な分岐のみをテスト対象とし、以下はいずれも到達不能です。
+
+|ファイル|関数|未被覆分岐|除外理由|
+|---|---|---|---|
+|`caller.go`|`getCallerFullName`|`runtime.Caller` `!ok` / `runtime.FuncForPC` `nil` ガード|runtime スタックを操作しない限り決定的に発火させられない|
+|`provider.go`|`NewResource`|`resource.Merge` エラー|入力が固定（default + schemaless）でスキーマ衝突が起こり得ない|
+|`provider.go`|`NewMeterProvider`|`runtime.Start` エラー|instrument 登録失敗時のみ。壊れた provider 無しには到達不能|
+|`test_kit.go`|`NewNoop{Worker,HTTPClient,Outbox}Metrics`|`t.Fatalf` ガード|テスト補助 helper。no-op provider は失敗せず、`*testing.T` は署名変更なしに fake 化できない|
+
+> **ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の
+> **適切な承認者の承認を得た場合に限り**本節へ記録する。「行を塗るためだけの contrived
+> テスト / 追加実装はしない」原則は維持し、本節はそのトレードオフが明示的に承認された
+> 数少ない分岐の、監査可能な一覧である。
 
 ## セキュリティ注意点
 
