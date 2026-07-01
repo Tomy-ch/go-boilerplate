@@ -146,7 +146,6 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 
 			ctxMap := entries[0].ContextMap()
 			assert.NotEmpty(t, ctxMap)
-			// エラー内容と所要時間が終了ログのフィールドとして記録される。
 			assert.Contains(t, ctxMap, logging.InternalErrorKey)
 			assert.Contains(t, ctxMap, logging.LatencyKey)
 		})

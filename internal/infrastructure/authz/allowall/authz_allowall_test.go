@@ -38,39 +38,31 @@ func TestAuthorizer_Authorize(t *testing.T) {
 
 	ownerID := uuid.NewTestFromSalt(t, "owner")
 
-	cases := map[string]struct {
-		action   authzbd.Action
-		resource *authzbd.Resource
-	}{
-		"取得操作_所有者ありリソース": {
-			action:   authzbd.ActionUserGet,
-			resource: authzbd.NewResource("user", &ownerID),
-		},
-		"更新操作_所有者ありリソース": {
-			action:   authzbd.ActionUserUpdate,
-			resource: authzbd.NewResource("user", &ownerID),
-		},
-		"削除操作_所有者ありリソース": {
-			action:   authzbd.ActionUserDelete,
-			resource: authzbd.NewResource("user", &ownerID),
-		},
-		"resourceがnilでも許可する": {
-			action:   authzbd.ActionUserDelete,
-			resource: nil,
-		},
-	}
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		for name, tc := range cases {
-			t.Run("action_resourceによらず常に許可してnilを返す_"+name, func(t *testing.T) {
-				t.Parallel()
+		t.Run("取得操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
+			t.Parallel()
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserGet, authzbd.NewResource("user", &ownerID))
+			require.NoError(t, err)
+		})
 
-				err := New().Authorize(context.Background(), newAuthn(t), tc.action, tc.resource)
+		t.Run("更新操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
+			t.Parallel()
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserUpdate, authzbd.NewResource("user", &ownerID))
+			require.NoError(t, err)
+		})
 
-				require.NoError(t, err)
-			})
-		}
+		t.Run("削除操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
+			t.Parallel()
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, authzbd.NewResource("user", &ownerID))
+			require.NoError(t, err)
+		})
+
+		t.Run("resourceがnilでも許可してnilを返す", func(t *testing.T) {
+			t.Parallel()
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, nil)
+			require.NoError(t, err)
+		})
 	})
 }

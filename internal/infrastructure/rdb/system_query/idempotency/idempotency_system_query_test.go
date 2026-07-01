@@ -263,7 +263,6 @@ func Test_store_errors(t *testing.T) {
 				Scope: "ctx-cancel", Key: "key-1", Method: "POST", Path: "/v1/users",
 				Fingerprint: newFingerprint(0x03), ExpiresAt: time.Now().Add(time.Hour),
 			}
-			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
 			_, claimErr := s.Claim(ctx, params)
 			require.ErrorIs(t, claimErr, apperror.ErrCanceled)
 

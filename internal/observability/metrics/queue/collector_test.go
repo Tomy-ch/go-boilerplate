@@ -95,8 +95,7 @@ worker_queue_depth{adapter="sqs",queue="dlq",state="delayed",worker="w"} 0
 				{WorkerName: "w", Adapter: "sqs", Provider: provider},
 			})
 
-			// source の 3 系列だけが出力され、dlq の系列は 1 つも無いことを
-			// source の値・ラベルまで含めて検証する。
+			// source の3系列のみ出力され dlq 系列が無いことを値・ラベルまで検証する。
 			expected := `
 # HELP worker_queue_depth Approximate number of messages in the queue by state. SQS values are approximate.
 # TYPE worker_queue_depth gauge

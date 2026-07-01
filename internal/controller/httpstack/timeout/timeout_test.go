@@ -64,8 +64,6 @@ func TestMiddleware(t *testing.T) {
 		t.Run("期限超過前に非タイムアウトエラーを返した場合は元のエラーを保持する", func(t *testing.T) {
 			t.Parallel()
 
-			// ハンドラはタイムアウト発火前に apperror.ErrNotFound を返す。ErrorHandler は
-			// DeadlineExceeded 以外を素通しするため、ErrUnavailable へは変換されない。
 			_, err := exec(t, time.Second, func(echo.Context) error {
 				return apperror.ErrNotFound
 			})

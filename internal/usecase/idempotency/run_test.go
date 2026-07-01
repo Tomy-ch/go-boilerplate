@@ -48,8 +48,8 @@ func newDeps(t *testing.T, store idempotencybndry.Store) idempotency.Deps {
 	}
 }
 
-// newDepsNoTx は、素通し経路（Idempotency-Key 無し / Scope 空）で Txm.Do が
-// 一切呼ばれないことを保証する Deps を返します（Txm.Do は Times(0)）。
+// newDepsNoTx は、Txm.Do が一度も呼ばれないこと（Times(0)）を検証するための Deps を返します。
+// 素通し経路（Idempotency-Key 無し / Scope 空）で tx が使われないことの確認に用います。
 func newDepsNoTx(t *testing.T, store idempotencybndry.Store) idempotency.Deps {
 	t.Helper()
 	txm := mock_tx.NewMockManager(gomock.NewController(t))

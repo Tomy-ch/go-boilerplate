@@ -146,9 +146,8 @@ func Test_injectToCarrier_D1(t *testing.T) {
 		t.Run("公開関数は trace context を inject しつつ baggage は転送しない", func(t *testing.T) {
 			t.Parallel()
 
-			// アクティブ span（traceparent 元）と baggage の両方を載せた ctx を作る。
-			// span が無いと traceparent も書かれず NotContains が常に真になる疑似陽性となるため、
-			// traceparent が実際に書かれた上で baggage だけが落ちることを検証する。
+			// span が無いと traceparent も書かれず NotContains が疑似陽性になるため、
+			// span 有りで traceparent が書かれた上で baggage だけが落ちることを検証する。
 			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
 			require.NoError(t, err)
 			spanID, err := trace.SpanIDFromHex("0123456789abcdef")

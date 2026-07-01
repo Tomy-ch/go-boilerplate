@@ -174,7 +174,7 @@ func Test_store_lifecycle(t *testing.T) {
 				require.Len(t, msgs, 1)
 				require.NoError(t, s.MarkPublished(ctx, msgs[0].ID))
 
-				// cutoff を過去に置けば、たった今 published にした行は対象外。
+				// cutoff(1時間前)より後に published にした行は削除対象外なので 0 件。
 				deleted, err := s.DeletePublished(ctx, time.Now().Add(-time.Hour), 100)
 				require.NoError(t, err)
 				assert.Equal(t, int64(0), deleted)
@@ -220,7 +220,6 @@ func Test_store_lifecycle(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
 			_, insertErr := s.Insert(ctx, emitParams())
 			require.ErrorIs(t, insertErr, apperror.ErrCanceled)
 

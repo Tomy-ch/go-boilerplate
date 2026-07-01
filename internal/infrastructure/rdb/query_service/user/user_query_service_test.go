@@ -199,7 +199,6 @@ func Test_service_FindByFilter(t *testing.T) {
 			deleted := false
 			keywords := []string{"x"}
 
-			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
 			_, allErr := repo.FindByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: nil}, 10, 0)
 			require.ErrorIs(t, allErr, apperror.ErrCanceled)
 
@@ -310,7 +309,6 @@ func Test_service_CountByFilter(t *testing.T) {
 			deleted := false
 			keywords := []string{"x"}
 
-			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
 			_, allErr := repo.CountByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: nil})
 			require.ErrorIs(t, allErr, apperror.ErrCanceled)
 

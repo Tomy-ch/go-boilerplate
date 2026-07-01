@@ -126,7 +126,6 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
-			// エラー時は observeLag に到達しないため lag を記録しない（呼べば未期待呼び出しで失敗する）。
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -145,7 +144,6 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
-			// バッチ成功後に ctx 完了済みのため lag は記録しない（呼べば未期待呼び出しで失敗する）。
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())

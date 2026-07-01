@@ -44,7 +44,7 @@ func TestPoolStatsCollector_Collect(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("合計13個のメトリクスを出力する", func(t *testing.T) {
+		t.Run("定義済みメトリクスを全て出力する", func(t *testing.T) {
 			t.Parallel()
 
 			db := testkit.NewTestDB(t)
@@ -59,8 +59,7 @@ func TestPoolStatsCollector_Collect(t *testing.T) {
 				metrics = append(metrics, m)
 			}
 
-			// Gaugeのメトリクスが5つ、Counterのメトリクスが8つ、合計13個のMetricが生成されることを確認します。
-			assert.Len(t, metrics, 13)
+			assert.Len(t, metrics, len(collector.metrics))
 		})
 
 		t.Run("max_connsをゲージ値・型付きで出力する", func(t *testing.T) {

@@ -47,8 +47,7 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 			wm, err := observability.NewWorkerMetrics(provider)
 			require.NoError(t, err)
 
-			// 各計装に測定値を入れる（manual reader は測定のある計装のみ出力するため）。
-			// 値検証のため、メソッドごとに区別できる測定値を与える。
+			// メソッドごとに区別できる測定値を与える（manual reader は測定のある計装のみ出力）。
 			wm.Received(ctx, 5)
 			wm.Processed(ctx)
 			wm.Failed(ctx)

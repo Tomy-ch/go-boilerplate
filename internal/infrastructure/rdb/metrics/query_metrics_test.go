@@ -176,8 +176,7 @@ func TestRegisterOrExisting(t *testing.T) {
 			counter := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h"}, []string{"l"})
 			require.NoError(t, reg.Register(counter))
 
-			// 同名・同ラベル・同 Help だが型が異なる HistogramVec を登録すると AlreadyRegistered になり、
-			// ExistingCollector(CounterVec) への型アサーションが失敗するため新規生成した方を返す。
+			// 既存(CounterVec)と型が異なる HistogramVec 登録は型アサーションが失敗し、新規生成側を返す。
 			hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: name, Help: "h"}, []string{"l"})
 			got := registerOrExisting(reg, hist)
 			assert.Same(t, hist, got)
