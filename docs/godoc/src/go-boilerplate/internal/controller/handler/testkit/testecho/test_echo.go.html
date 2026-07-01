@@ -62,23 +62,23 @@
 <span id="L5" class="ln">     5  </span>	&#34;bytes&#34;
 <span id="L6" class="ln">     6  </span>	&#34;context&#34;
 <span id="L7" class="ln">     7  </span>	&#34;encoding/json&#34;
-<span id="L8" class="ln">     8  </span>	&#34;errors&#34;
-<span id="L9" class="ln">     9  </span>	&#34;io&#34;
-<span id="L10" class="ln">    10  </span>	&#34;net/http&#34;
-<span id="L11" class="ln">    11  </span>	&#34;net/http/httptest&#34;
-<span id="L12" class="ln">    12  </span>	&#34;testing&#34;
-<span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/controller/httpstack/errorhandler&#34;
-<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L8" class="ln">     8  </span>	&#34;io&#34;
+<span id="L9" class="ln">     9  </span>	&#34;net/http&#34;
+<span id="L10" class="ln">    10  </span>	&#34;net/http/httptest&#34;
+<span id="L11" class="ln">    11  </span>	&#34;testing&#34;
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/controller/httpstack/errorhandler&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>	&#34;github.com/labstack/echo/v4&#34;
 <span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L20" class="ln">    20  </span>)
 <span id="L21" class="ln">    21  </span>
 <span id="L22" class="ln">    22  </span>var (
-<span id="L23" class="ln">    23  </span>	errTargetUnset  = errors.New(&#34;RequestURL か RoutePattern のいずれかを設定してください&#34;)
-<span id="L24" class="ln">    24  </span>	errModeConflict = errors.New(&#34;RequestURL は RoutePattern/PathParams と併用できません&#34;)
+<span id="L23" class="ln">    23  </span>	errTargetUnset  = xerrors.New(&#34;RequestURL か RoutePattern のいずれかを設定してください&#34;)
+<span id="L24" class="ln">    24  </span>	errModeConflict = xerrors.New(&#34;RequestURL は RoutePattern/PathParams と併用できません&#34;)
 <span id="L25" class="ln">    25  </span>)
 <span id="L26" class="ln">    26  </span>
 <span id="L27" class="ln">    27  </span><span class="comment">// EchoTestParam は、テストリクエストに付与するクエリ/パスパラメータの名前と値を表します。</span>

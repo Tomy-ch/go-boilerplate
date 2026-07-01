@@ -155,73 +155,60 @@
 <span id="L98" class="ln">    98  </span>	})
 <span id="L99" class="ln">    99  </span>}
 <span id="L100" class="ln">   100  </span>
-<span id="L101" class="ln">   101  </span>func TestMiddleware(t *testing.T) {
-<span id="L102" class="ln">   102  </span>	t.Parallel()
-<span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L105" class="ln">   105  </span>		t.Parallel()
+<span id="L101" class="ln">   101  </span><span class="comment">// TestMiddleware は、実 HTTP 経路（commit 済みレスポンス）でも Content-Type が</span>
+<span id="L102" class="ln">   102  </span><span class="comment">// 上書きされることを検証する。recorder の生ヘッダマップでは commit 後の挙動を検出できないため</span>
+<span id="L103" class="ln">   103  </span><span class="comment">// httptest.NewServer を用いてワイヤ上の最終ヘッダを確認する。</span>
+<span id="L104" class="ln">   104  </span>func TestMiddleware(t *testing.T) {
+<span id="L105" class="ln">   105  </span>	t.Parallel()
 <span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span>		t.Run(&#34;非nilのミドルウェアを返す&#34;, func(t *testing.T) {
-<span id="L108" class="ln">   108  </span>			t.Parallel()
-<span id="L109" class="ln">   109  </span>			require.NotNil(t, Middleware())
-<span id="L110" class="ln">   110  </span>		})
-<span id="L111" class="ln">   111  </span>	})
-<span id="L112" class="ln">   112  </span>}
-<span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span><span class="comment">// TestMiddleware_overWire は、実 HTTP 経路（commit 済みレスポンス）でも Content-Type が</span>
-<span id="L115" class="ln">   115  </span><span class="comment">// 上書きされることを検証する。recorder の生ヘッダマップでは commit 後の挙動を検出できないため</span>
-<span id="L116" class="ln">   116  </span><span class="comment">// httptest.NewServer を用いてワイヤ上の最終ヘッダを確認する。</span>
-<span id="L117" class="ln">   117  </span>func TestMiddleware_overWire(t *testing.T) {
-<span id="L118" class="ln">   118  </span>	t.Parallel()
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>	exec := func(t *testing.T, handler echo.HandlerFunc) string {
-<span id="L121" class="ln">   121  </span>		t.Helper()
-<span id="L122" class="ln">   122  </span>		e := echo.New()
-<span id="L123" class="ln">   123  </span>		e.Use(Middleware())
-<span id="L124" class="ln">   124  </span>		e.GET(&#34;/t&#34;, handler)
+<span id="L107" class="ln">   107  </span>	exec := func(t *testing.T, handler echo.HandlerFunc) string {
+<span id="L108" class="ln">   108  </span>		t.Helper()
+<span id="L109" class="ln">   109  </span>		e := echo.New()
+<span id="L110" class="ln">   110  </span>		e.Use(Middleware())
+<span id="L111" class="ln">   111  </span>		e.GET(&#34;/t&#34;, handler)
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>		srv := httptest.NewServer(e)
+<span id="L114" class="ln">   114  </span>		t.Cleanup(srv.Close)
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span>		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+&#34;/t&#34;, nil)
+<span id="L117" class="ln">   117  </span>		require.NoError(t, err)
+<span id="L118" class="ln">   118  </span>		resp, err := http.DefaultClient.Do(req)
+<span id="L119" class="ln">   119  </span>		require.NoError(t, err)
+<span id="L120" class="ln">   120  </span>		t.Cleanup(func() { _ = resp.Body.Close() })
+<span id="L121" class="ln">   121  </span>		_, err = io.ReadAll(resp.Body)
+<span id="L122" class="ln">   122  </span>		require.NoError(t, err)
+<span id="L123" class="ln">   123  </span>		return resp.Header.Get(echo.HeaderContentType)
+<span id="L124" class="ln">   124  </span>	}
 <span id="L125" class="ln">   125  </span>
-<span id="L126" class="ln">   126  </span>		srv := httptest.NewServer(e)
-<span id="L127" class="ln">   127  </span>		t.Cleanup(srv.Close)
+<span id="L126" class="ln">   126  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L127" class="ln">   127  </span>		t.Parallel()
 <span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span>		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+&#34;/t&#34;, nil)
-<span id="L130" class="ln">   130  </span>		require.NoError(t, err)
-<span id="L131" class="ln">   131  </span>		resp, err := http.DefaultClient.Do(req)
-<span id="L132" class="ln">   132  </span>		require.NoError(t, err)
-<span id="L133" class="ln">   133  </span>		t.Cleanup(func() { _ = resp.Body.Close() })
-<span id="L134" class="ln">   134  </span>		_, err = io.ReadAll(resp.Body)
-<span id="L135" class="ln">   135  </span>		require.NoError(t, err)
-<span id="L136" class="ln">   136  </span>		return resp.Header.Get(echo.HeaderContentType)
-<span id="L137" class="ln">   137  </span>	}
-<span id="L138" class="ln">   138  </span>
-<span id="L139" class="ln">   139  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L140" class="ln">   140  </span>		t.Parallel()
-<span id="L141" class="ln">   141  </span>
-<span id="L142" class="ln">   142  </span>		t.Run(&#34;HTMLボディはapplication/jsonへ上書きされる&#34;, func(t *testing.T) {
-<span id="L143" class="ln">   143  </span>			t.Parallel()
-<span id="L144" class="ln">   144  </span>			got := exec(t, func(c echo.Context) error { return c.HTML(http.StatusOK, &#34;&lt;p&gt;hi&lt;/p&gt;&#34;) })
-<span id="L145" class="ln">   145  </span>			assert.Equal(t, echo.MIMEApplicationJSON, got)
-<span id="L146" class="ln">   146  </span>		})
-<span id="L147" class="ln">   147  </span>
-<span id="L148" class="ln">   148  </span>		t.Run(&#34;Content-Type未設定のボディもapplication/jsonへ上書きされる&#34;, func(t *testing.T) {
-<span id="L149" class="ln">   149  </span>			t.Parallel()
-<span id="L150" class="ln">   150  </span>			got := exec(t, func(c echo.Context) error { return c.Blob(http.StatusOK, &#34;&#34;, []byte(&#34;x&#34;)) })
-<span id="L151" class="ln">   151  </span>			assert.Equal(t, echo.MIMEApplicationJSON, got)
-<span id="L152" class="ln">   152  </span>		})
-<span id="L153" class="ln">   153  </span>
-<span id="L154" class="ln">   154  </span>		t.Run(&#34;application/jsonは変更されない&#34;, func(t *testing.T) {
-<span id="L155" class="ln">   155  </span>			t.Parallel()
-<span id="L156" class="ln">   156  </span>			got := exec(t, func(c echo.Context) error { return c.JSON(http.StatusOK, map[string]string{&#34;k&#34;: &#34;v&#34;}) })
-<span id="L157" class="ln">   157  </span>			assert.Equal(t, echo.MIMEApplicationJSON, got)
-<span id="L158" class="ln">   158  </span>		})
-<span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>		t.Run(&#34;text/plainは変更されない&#34;, func(t *testing.T) {
-<span id="L161" class="ln">   161  </span>			t.Parallel()
-<span id="L162" class="ln">   162  </span>			got := exec(t, func(c echo.Context) error { return c.String(http.StatusOK, &#34;plain&#34;) })
-<span id="L163" class="ln">   163  </span>			assert.Equal(t, echo.MIMETextPlainCharsetUTF8, got)
-<span id="L164" class="ln">   164  </span>		})
-<span id="L165" class="ln">   165  </span>	})
-<span id="L166" class="ln">   166  </span>}
-<span id="L167" class="ln">   167  </span>
+<span id="L129" class="ln">   129  </span>		t.Run(&#34;HTMLボディはapplication/jsonへ上書きされる&#34;, func(t *testing.T) {
+<span id="L130" class="ln">   130  </span>			t.Parallel()
+<span id="L131" class="ln">   131  </span>			got := exec(t, func(c echo.Context) error { return c.HTML(http.StatusOK, &#34;&lt;p&gt;hi&lt;/p&gt;&#34;) })
+<span id="L132" class="ln">   132  </span>			assert.Equal(t, echo.MIMEApplicationJSON, got)
+<span id="L133" class="ln">   133  </span>		})
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>		t.Run(&#34;Content-Type未設定のボディもapplication/jsonへ上書きされる&#34;, func(t *testing.T) {
+<span id="L136" class="ln">   136  </span>			t.Parallel()
+<span id="L137" class="ln">   137  </span>			got := exec(t, func(c echo.Context) error { return c.Blob(http.StatusOK, &#34;&#34;, []byte(&#34;x&#34;)) })
+<span id="L138" class="ln">   138  </span>			assert.Equal(t, echo.MIMEApplicationJSON, got)
+<span id="L139" class="ln">   139  </span>		})
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span>		t.Run(&#34;application/jsonは変更されない&#34;, func(t *testing.T) {
+<span id="L142" class="ln">   142  </span>			t.Parallel()
+<span id="L143" class="ln">   143  </span>			got := exec(t, func(c echo.Context) error { return c.JSON(http.StatusOK, map[string]string{&#34;k&#34;: &#34;v&#34;}) })
+<span id="L144" class="ln">   144  </span>			assert.Equal(t, echo.MIMEApplicationJSON, got)
+<span id="L145" class="ln">   145  </span>		})
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>		t.Run(&#34;text/plainは変更されない&#34;, func(t *testing.T) {
+<span id="L148" class="ln">   148  </span>			t.Parallel()
+<span id="L149" class="ln">   149  </span>			got := exec(t, func(c echo.Context) error { return c.String(http.StatusOK, &#34;plain&#34;) })
+<span id="L150" class="ln">   150  </span>			assert.Equal(t, echo.MIMETextPlainCharsetUTF8, got)
+<span id="L151" class="ln">   151  </span>		})
+<span id="L152" class="ln">   152  </span>	})
+<span id="L153" class="ln">   153  </span>}
+<span id="L154" class="ln">   154  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/forcejson/forcejson_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

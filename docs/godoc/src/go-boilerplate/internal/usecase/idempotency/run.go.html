@@ -62,171 +62,170 @@
 <span id="L5" class="ln">     5  </span>	&#34;bytes&#34;
 <span id="L6" class="ln">     6  </span>	&#34;context&#34;
 <span id="L7" class="ln">     7  </span>	&#34;encoding/json&#34;
-<span id="L8" class="ln">     8  </span>	&#34;errors&#34;
-<span id="L9" class="ln">     9  </span>	&#34;time&#34;
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/apperror&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
-<span id="L13" class="ln">    13  </span>	idempotencybndry &#34;go-boilerplate/internal/usecase/boundary/idempotency&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/tx&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L16" class="ln">    16  </span>)
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span><span class="comment">// ttl は、冪等性キーの保持期間（= リトライ許容窓）です。</span>
-<span id="L19" class="ln">    19  </span>const ttl = 24 * time.Hour
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span><span class="comment">// Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。</span>
-<span id="L22" class="ln">    22  </span><span class="comment">// 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。</span>
-<span id="L23" class="ln">    23  </span>type Metrics interface {
-<span id="L24" class="ln">    24  </span>	<span class="comment">// IncHit は、completed 行の再送（replay）を計上します。</span>
-<span id="L25" class="ln">    25  </span>	IncHit(ctx context.Context, operationID string)
-<span id="L26" class="ln">    26  </span>	<span class="comment">// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。</span>
-<span id="L27" class="ln">    27  </span>	IncMiss(ctx context.Context, operationID string)
-<span id="L28" class="ln">    28  </span>	<span class="comment">// IncConflict は、処理中キーへの並行再送（409）を計上します。</span>
-<span id="L29" class="ln">    29  </span>	IncConflict(ctx context.Context, operationID string)
-<span id="L30" class="ln">    30  </span>	<span class="comment">// IncFingerprintMismatch は、同一キー別ボディの再利用（422）を計上します。</span>
-<span id="L31" class="ln">    31  </span>	IncFingerprintMismatch(ctx context.Context, operationID string)
-<span id="L32" class="ln">    32  </span>	<span class="comment">// IncClaimFailure は、ErrLockTimeout 以外の Claim 失敗を計上します。</span>
-<span id="L33" class="ln">    33  </span>	IncClaimFailure(ctx context.Context, operationID string)
-<span id="L34" class="ln">    34  </span>	<span class="comment">// IncCompleteFailure は、Complete 失敗（結果保存失敗）を計上します。</span>
-<span id="L35" class="ln">    35  </span>	IncCompleteFailure(ctx context.Context, operationID string)
-<span id="L36" class="ln">    36  </span>}
-<span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span><span class="comment">// Deps は、Run が必要とする依存です。</span>
-<span id="L39" class="ln">    39  </span>type Deps struct {
-<span id="L40" class="ln">    40  </span>	Txm   tx.Manager
-<span id="L41" class="ln">    41  </span>	Store idempotencybndry.Store
-<span id="L42" class="ln">    42  </span>	Clock clock.Clock
-<span id="L43" class="ln">    43  </span>	<span class="comment">// Metrics は任意。nil の場合はすべてのカウンタ操作が no-op になります。</span>
-<span id="L44" class="ln">    44  </span>	Metrics Metrics
-<span id="L45" class="ln">    45  </span>}
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span>type nopMetrics struct{}
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span><span class="comment">// Run は、ctx に Idempotency-Key が無ければ businessFn を素通し実行し、ある場合は業務 tx 内で</span>
-<span id="L50" class="ln">    50  </span><span class="comment">// claim → businessFn → complete を 1 tx で行います。再送は replay、並行 claim は 409、指紋不一致は 422。</span>
-<span id="L51" class="ln">    51  </span><span class="comment">// successStatus は completed 行へ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。</span>
-<span id="L52" class="ln">    52  </span><span class="comment">//</span>
-<span id="L53" class="ln">    53  </span><span class="comment">// 前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。</span>
-<span id="L54" class="ln">    54  </span><span class="comment">// replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。</span>
-<span id="L55" class="ln">    55  </span>func Run[T any](
-<span id="L56" class="ln">    56  </span>	ctx context.Context,
-<span id="L57" class="ln">    57  </span>	deps Deps,
-<span id="L58" class="ln">    58  </span>	successStatus int,
-<span id="L59" class="ln">    59  </span>	businessFn func(ctx context.Context) (T, error),
-<span id="L60" class="ln">    60  </span>) (T, bool, error) {
-<span id="L61" class="ln">    61  </span>	req, ok := requestFromContext(ctx)
-<span id="L62" class="ln">    62  </span>	if !ok || req.Scope == &#34;&#34; {
-<span id="L63" class="ln">    63  </span>		res, err := businessFn(ctx)
-<span id="L64" class="ln">    64  </span>		return res, false, err
-<span id="L65" class="ln">    65  </span>	}
-<span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>	var result T
-<span id="L68" class="ln">    68  </span>	var replayed bool
-<span id="L69" class="ln">    69  </span>	err := deps.Txm.Do(ctx, func(ctx context.Context) error {
-<span id="L70" class="ln">    70  </span>		claimed, err := deps.Store.Claim(ctx, idempotencybndry.ClaimParams{
-<span id="L71" class="ln">    71  </span>			Scope:       req.Scope,
-<span id="L72" class="ln">    72  </span>			Key:         req.Key,
-<span id="L73" class="ln">    73  </span>			Method:      req.Method,
-<span id="L74" class="ln">    74  </span>			Path:        req.Path,
-<span id="L75" class="ln">    75  </span>			Fingerprint: req.Fingerprint,
-<span id="L76" class="ln">    76  </span>			ExpiresAt:   deps.Clock.Now().Add(ttl),
-<span id="L77" class="ln">    77  </span>		})
-<span id="L78" class="ln">    78  </span>		if err != nil {
-<span id="L79" class="ln">    79  </span>			if errors.Is(err, idempotencybndry.ErrLockTimeout) {
-<span id="L80" class="ln">    80  </span>				deps.metrics().IncConflict(ctx, req.OperationID)
-<span id="L81" class="ln">    81  </span>				return xerrors.Wrap(apperror.ErrConflict, &#34;idempotency key is being processed, retry later&#34;)
-<span id="L82" class="ln">    82  </span>			}
-<span id="L83" class="ln">    83  </span>			deps.metrics().IncClaimFailure(ctx, req.OperationID)
-<span id="L84" class="ln">    84  </span>			return err
-<span id="L85" class="ln">    85  </span>		}
-<span id="L86" class="ln">    86  </span>
-<span id="L87" class="ln">    87  </span>		if !claimed {
-<span id="L88" class="ln">    88  </span>			res, replay, derr := decideExisting[T](ctx, deps, req)
-<span id="L89" class="ln">    89  </span>			if derr != nil {
-<span id="L90" class="ln">    90  </span>				return derr
-<span id="L91" class="ln">    91  </span>			}
-<span id="L92" class="ln">    92  </span>			result, replayed = res, replay
-<span id="L93" class="ln">    93  </span>			return nil
-<span id="L94" class="ln">    94  </span>		}
-<span id="L95" class="ln">    95  </span>
-<span id="L96" class="ln">    96  </span>		<span class="comment">// 新規 claim 成立。業務処理を同一 tx で実行する（失敗は tx ロールバックで claim ごと解放）。</span>
-<span id="L97" class="ln">    97  </span>		deps.metrics().IncMiss(ctx, req.OperationID)
-<span id="L98" class="ln">    98  </span>		res, err := businessFn(ctx)
-<span id="L99" class="ln">    99  </span>		if err != nil {
-<span id="L100" class="ln">   100  </span>			return err
-<span id="L101" class="ln">   101  </span>		}
-<span id="L102" class="ln">   102  </span>		payload, err := json.Marshal(res)
-<span id="L103" class="ln">   103  </span>		if err != nil {
-<span id="L104" class="ln">   104  </span>			return xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, &#34;failed to encode idempotent response&#34;))
-<span id="L105" class="ln">   105  </span>		}
-<span id="L106" class="ln">   106  </span>		if err := deps.Store.Complete(ctx, idempotencybndry.CompleteParams{
-<span id="L107" class="ln">   107  </span>			Scope:           req.Scope,
-<span id="L108" class="ln">   108  </span>			Key:             req.Key,
-<span id="L109" class="ln">   109  </span>			ResponseStatus:  int32(successStatus), <span class="comment">//nolint:gosec // HTTP ステータスコードは int32 に収まる</span>
-<span id="L110" class="ln">   110  </span>			ResponsePayload: payload,
-<span id="L111" class="ln">   111  </span>		}); err != nil {
-<span id="L112" class="ln">   112  </span>			deps.metrics().IncCompleteFailure(ctx, req.OperationID)
-<span id="L113" class="ln">   113  </span>			return err
-<span id="L114" class="ln">   114  </span>		}
-<span id="L115" class="ln">   115  </span>		result = res
-<span id="L116" class="ln">   116  </span>		return nil
-<span id="L117" class="ln">   117  </span>	})
-<span id="L118" class="ln">   118  </span>	if err != nil {
-<span id="L119" class="ln">   119  </span>		var zero T
-<span id="L120" class="ln">   120  </span>		return zero, false, err
-<span id="L121" class="ln">   121  </span>	}
-<span id="L122" class="ln">   122  </span>	return result, replayed, nil
-<span id="L123" class="ln">   123  </span>}
-<span id="L124" class="ln">   124  </span>
-<span id="L125" class="ln">   125  </span><span class="comment">// decideExisting は、既存キー（claim 衝突）に対して replay / 409 / 422 を判定します。</span>
-<span id="L126" class="ln">   126  </span>func decideExisting[T any](
-<span id="L127" class="ln">   127  </span>	ctx context.Context, deps Deps, req Request,
-<span id="L128" class="ln">   128  </span>) (T, bool, error) {
-<span id="L129" class="ln">   129  </span>	var zero T
-<span id="L130" class="ln">   130  </span>	rec, err := deps.Store.Get(ctx, req.Scope, req.Key)
-<span id="L131" class="ln">   131  </span>	if err != nil {
-<span id="L132" class="ln">   132  </span>		return zero, false, err
-<span id="L133" class="ln">   133  </span>	}
-<span id="L134" class="ln">   134  </span>	if rec == nil {
-<span id="L135" class="ln">   135  </span>		<span class="comment">// claim 衝突直後に行が消えた稀なレース。後で再試行させる。</span>
-<span id="L136" class="ln">   136  </span>		deps.metrics().IncConflict(ctx, req.OperationID)
-<span id="L137" class="ln">   137  </span>		return zero, false, xerrors.Wrap(apperror.ErrConflict, &#34;idempotency key state unavailable, retry later&#34;)
-<span id="L138" class="ln">   138  </span>	}
-<span id="L139" class="ln">   139  </span>
-<span id="L140" class="ln">   140  </span>	if !bytes.Equal(rec.Fingerprint, req.Fingerprint) {
-<span id="L141" class="ln">   141  </span>		deps.metrics().IncFingerprintMismatch(ctx, req.OperationID)
-<span id="L142" class="ln">   142  </span>		return zero, false, xerrors.Wrap(apperror.ErrValidation, &#34;idempotency key reused with a different request&#34;)
-<span id="L143" class="ln">   143  </span>	}
-<span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>	if rec.Status != idempotencybndry.StatusCompleted {
-<span id="L146" class="ln">   146  </span>		deps.metrics().IncConflict(ctx, req.OperationID)
-<span id="L147" class="ln">   147  </span>		return zero, false, xerrors.Wrap(apperror.ErrConflict, &#34;idempotency key is being processed, retry later&#34;)
-<span id="L148" class="ln">   148  </span>	}
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>	<span class="comment">// completed → 保存済み DTO を復元して replay。</span>
-<span id="L151" class="ln">   151  </span>	var result T
-<span id="L152" class="ln">   152  </span>	if err := json.Unmarshal(rec.ResponsePayload, &amp;result); err != nil {
-<span id="L153" class="ln">   153  </span>		return zero, false, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, &#34;failed to decode stored idempotent response&#34;))
-<span id="L154" class="ln">   154  </span>	}
-<span id="L155" class="ln">   155  </span>	deps.metrics().IncHit(ctx, req.OperationID)
-<span id="L156" class="ln">   156  </span>	return result, true, nil
-<span id="L157" class="ln">   157  </span>}
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>func (d Deps) metrics() Metrics {
-<span id="L160" class="ln">   160  </span>	if d.Metrics == nil {
-<span id="L161" class="ln">   161  </span>		return nopMetrics{}
-<span id="L162" class="ln">   162  </span>	}
-<span id="L163" class="ln">   163  </span>	return d.Metrics
-<span id="L164" class="ln">   164  </span>}
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span>func (nopMetrics) IncHit(context.Context, string)                 {}
-<span id="L167" class="ln">   167  </span>func (nopMetrics) IncMiss(context.Context, string)                {}
-<span id="L168" class="ln">   168  </span>func (nopMetrics) IncConflict(context.Context, string)            {}
-<span id="L169" class="ln">   169  </span>func (nopMetrics) IncFingerprintMismatch(context.Context, string) {}
-<span id="L170" class="ln">   170  </span>func (nopMetrics) IncClaimFailure(context.Context, string)        {}
-<span id="L171" class="ln">   171  </span>func (nopMetrics) IncCompleteFailure(context.Context, string)     {}
-<span id="L172" class="ln">   172  </span>
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L12" class="ln">    12  </span>	idempotencybndry &#34;go-boilerplate/internal/usecase/boundary/idempotency&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/boundary/tx&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L15" class="ln">    15  </span>)
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span><span class="comment">// ttl は、冪等性キーの保持期間（= リトライ許容窓）です。</span>
+<span id="L18" class="ln">    18  </span>const ttl = 24 * time.Hour
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">// 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。</span>
+<span id="L22" class="ln">    22  </span>type Metrics interface {
+<span id="L23" class="ln">    23  </span>	<span class="comment">// IncHit は、completed 行の再送（replay）を計上します。</span>
+<span id="L24" class="ln">    24  </span>	IncHit(ctx context.Context, operationID string)
+<span id="L25" class="ln">    25  </span>	<span class="comment">// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。</span>
+<span id="L26" class="ln">    26  </span>	IncMiss(ctx context.Context, operationID string)
+<span id="L27" class="ln">    27  </span>	<span class="comment">// IncConflict は、処理中キーへの並行再送（409）を計上します。</span>
+<span id="L28" class="ln">    28  </span>	IncConflict(ctx context.Context, operationID string)
+<span id="L29" class="ln">    29  </span>	<span class="comment">// IncFingerprintMismatch は、同一キー別ボディの再利用（422）を計上します。</span>
+<span id="L30" class="ln">    30  </span>	IncFingerprintMismatch(ctx context.Context, operationID string)
+<span id="L31" class="ln">    31  </span>	<span class="comment">// IncClaimFailure は、ErrLockTimeout 以外の Claim 失敗を計上します。</span>
+<span id="L32" class="ln">    32  </span>	IncClaimFailure(ctx context.Context, operationID string)
+<span id="L33" class="ln">    33  </span>	<span class="comment">// IncCompleteFailure は、Complete 失敗（結果保存失敗）を計上します。</span>
+<span id="L34" class="ln">    34  </span>	IncCompleteFailure(ctx context.Context, operationID string)
+<span id="L35" class="ln">    35  </span>}
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span><span class="comment">// Deps は、Run が必要とする依存です。</span>
+<span id="L38" class="ln">    38  </span>type Deps struct {
+<span id="L39" class="ln">    39  </span>	Txm   tx.Manager
+<span id="L40" class="ln">    40  </span>	Store idempotencybndry.Store
+<span id="L41" class="ln">    41  </span>	Clock clock.Clock
+<span id="L42" class="ln">    42  </span>	<span class="comment">// Metrics は任意。nil の場合はすべてのカウンタ操作が no-op になります。</span>
+<span id="L43" class="ln">    43  </span>	Metrics Metrics
+<span id="L44" class="ln">    44  </span>}
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>type nopMetrics struct{}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span><span class="comment">// Run は、ctx に Idempotency-Key が無ければ businessFn を素通し実行し、ある場合は業務 tx 内で</span>
+<span id="L49" class="ln">    49  </span><span class="comment">// claim → businessFn → complete を 1 tx で行います。再送は replay、並行 claim は 409、指紋不一致は 422。</span>
+<span id="L50" class="ln">    50  </span><span class="comment">// successStatus は completed 行へ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。</span>
+<span id="L51" class="ln">    51  </span><span class="comment">//</span>
+<span id="L52" class="ln">    52  </span><span class="comment">// 前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。</span>
+<span id="L53" class="ln">    53  </span><span class="comment">// replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。</span>
+<span id="L54" class="ln">    54  </span>func Run[T any](
+<span id="L55" class="ln">    55  </span>	ctx context.Context,
+<span id="L56" class="ln">    56  </span>	deps Deps,
+<span id="L57" class="ln">    57  </span>	successStatus int,
+<span id="L58" class="ln">    58  </span>	businessFn func(ctx context.Context) (T, error),
+<span id="L59" class="ln">    59  </span>) (T, bool, error) {
+<span id="L60" class="ln">    60  </span>	req, ok := requestFromContext(ctx)
+<span id="L61" class="ln">    61  </span>	if !ok || req.Scope == &#34;&#34; {
+<span id="L62" class="ln">    62  </span>		res, err := businessFn(ctx)
+<span id="L63" class="ln">    63  </span>		return res, false, err
+<span id="L64" class="ln">    64  </span>	}
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>	var result T
+<span id="L67" class="ln">    67  </span>	var replayed bool
+<span id="L68" class="ln">    68  </span>	err := deps.Txm.Do(ctx, func(ctx context.Context) error {
+<span id="L69" class="ln">    69  </span>		claimed, err := deps.Store.Claim(ctx, idempotencybndry.ClaimParams{
+<span id="L70" class="ln">    70  </span>			Scope:       req.Scope,
+<span id="L71" class="ln">    71  </span>			Key:         req.Key,
+<span id="L72" class="ln">    72  </span>			Method:      req.Method,
+<span id="L73" class="ln">    73  </span>			Path:        req.Path,
+<span id="L74" class="ln">    74  </span>			Fingerprint: req.Fingerprint,
+<span id="L75" class="ln">    75  </span>			ExpiresAt:   deps.Clock.Now().Add(ttl),
+<span id="L76" class="ln">    76  </span>		})
+<span id="L77" class="ln">    77  </span>		if err != nil {
+<span id="L78" class="ln">    78  </span>			if xerrors.Is(err, idempotencybndry.ErrLockTimeout) {
+<span id="L79" class="ln">    79  </span>				deps.metrics().IncConflict(ctx, req.OperationID)
+<span id="L80" class="ln">    80  </span>				return xerrors.Wrap(apperror.ErrConflict, &#34;idempotency key is being processed, retry later&#34;)
+<span id="L81" class="ln">    81  </span>			}
+<span id="L82" class="ln">    82  </span>			deps.metrics().IncClaimFailure(ctx, req.OperationID)
+<span id="L83" class="ln">    83  </span>			return err
+<span id="L84" class="ln">    84  </span>		}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>		if !claimed {
+<span id="L87" class="ln">    87  </span>			res, replay, derr := decideExisting[T](ctx, deps, req)
+<span id="L88" class="ln">    88  </span>			if derr != nil {
+<span id="L89" class="ln">    89  </span>				return derr
+<span id="L90" class="ln">    90  </span>			}
+<span id="L91" class="ln">    91  </span>			result, replayed = res, replay
+<span id="L92" class="ln">    92  </span>			return nil
+<span id="L93" class="ln">    93  </span>		}
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span>		<span class="comment">// 新規 claim 成立。業務処理を同一 tx で実行する（失敗は tx ロールバックで claim ごと解放）。</span>
+<span id="L96" class="ln">    96  </span>		deps.metrics().IncMiss(ctx, req.OperationID)
+<span id="L97" class="ln">    97  </span>		res, err := businessFn(ctx)
+<span id="L98" class="ln">    98  </span>		if err != nil {
+<span id="L99" class="ln">    99  </span>			return err
+<span id="L100" class="ln">   100  </span>		}
+<span id="L101" class="ln">   101  </span>		payload, err := json.Marshal(res)
+<span id="L102" class="ln">   102  </span>		if err != nil {
+<span id="L103" class="ln">   103  </span>			return xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, &#34;failed to encode idempotent response&#34;))
+<span id="L104" class="ln">   104  </span>		}
+<span id="L105" class="ln">   105  </span>		if err := deps.Store.Complete(ctx, idempotencybndry.CompleteParams{
+<span id="L106" class="ln">   106  </span>			Scope:           req.Scope,
+<span id="L107" class="ln">   107  </span>			Key:             req.Key,
+<span id="L108" class="ln">   108  </span>			ResponseStatus:  int32(successStatus), <span class="comment">//nolint:gosec // HTTP ステータスコードは int32 に収まる</span>
+<span id="L109" class="ln">   109  </span>			ResponsePayload: payload,
+<span id="L110" class="ln">   110  </span>		}); err != nil {
+<span id="L111" class="ln">   111  </span>			deps.metrics().IncCompleteFailure(ctx, req.OperationID)
+<span id="L112" class="ln">   112  </span>			return err
+<span id="L113" class="ln">   113  </span>		}
+<span id="L114" class="ln">   114  </span>		result = res
+<span id="L115" class="ln">   115  </span>		return nil
+<span id="L116" class="ln">   116  </span>	})
+<span id="L117" class="ln">   117  </span>	if err != nil {
+<span id="L118" class="ln">   118  </span>		var zero T
+<span id="L119" class="ln">   119  </span>		return zero, false, err
+<span id="L120" class="ln">   120  </span>	}
+<span id="L121" class="ln">   121  </span>	return result, replayed, nil
+<span id="L122" class="ln">   122  </span>}
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span><span class="comment">// decideExisting は、既存キー（claim 衝突）に対して replay / 409 / 422 を判定します。</span>
+<span id="L125" class="ln">   125  </span>func decideExisting[T any](
+<span id="L126" class="ln">   126  </span>	ctx context.Context, deps Deps, req Request,
+<span id="L127" class="ln">   127  </span>) (T, bool, error) {
+<span id="L128" class="ln">   128  </span>	var zero T
+<span id="L129" class="ln">   129  </span>	rec, err := deps.Store.Get(ctx, req.Scope, req.Key)
+<span id="L130" class="ln">   130  </span>	if err != nil {
+<span id="L131" class="ln">   131  </span>		return zero, false, err
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>	if rec == nil {
+<span id="L134" class="ln">   134  </span>		<span class="comment">// claim 衝突直後に行が消えた稀なレース。後で再試行させる。</span>
+<span id="L135" class="ln">   135  </span>		deps.metrics().IncConflict(ctx, req.OperationID)
+<span id="L136" class="ln">   136  </span>		return zero, false, xerrors.Wrap(apperror.ErrConflict, &#34;idempotency key state unavailable, retry later&#34;)
+<span id="L137" class="ln">   137  </span>	}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>	if !bytes.Equal(rec.Fingerprint, req.Fingerprint) {
+<span id="L140" class="ln">   140  </span>		deps.metrics().IncFingerprintMismatch(ctx, req.OperationID)
+<span id="L141" class="ln">   141  </span>		return zero, false, xerrors.Wrap(apperror.ErrValidation, &#34;idempotency key reused with a different request&#34;)
+<span id="L142" class="ln">   142  </span>	}
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>	if rec.Status != idempotencybndry.StatusCompleted {
+<span id="L145" class="ln">   145  </span>		deps.metrics().IncConflict(ctx, req.OperationID)
+<span id="L146" class="ln">   146  </span>		return zero, false, xerrors.Wrap(apperror.ErrConflict, &#34;idempotency key is being processed, retry later&#34;)
+<span id="L147" class="ln">   147  </span>	}
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>	<span class="comment">// completed → 保存済み DTO を復元して replay。</span>
+<span id="L150" class="ln">   150  </span>	var result T
+<span id="L151" class="ln">   151  </span>	if err := json.Unmarshal(rec.ResponsePayload, &amp;result); err != nil {
+<span id="L152" class="ln">   152  </span>		return zero, false, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, &#34;failed to decode stored idempotent response&#34;))
+<span id="L153" class="ln">   153  </span>	}
+<span id="L154" class="ln">   154  </span>	deps.metrics().IncHit(ctx, req.OperationID)
+<span id="L155" class="ln">   155  </span>	return result, true, nil
+<span id="L156" class="ln">   156  </span>}
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>func (d Deps) metrics() Metrics {
+<span id="L159" class="ln">   159  </span>	if d.Metrics == nil {
+<span id="L160" class="ln">   160  </span>		return nopMetrics{}
+<span id="L161" class="ln">   161  </span>	}
+<span id="L162" class="ln">   162  </span>	return d.Metrics
+<span id="L163" class="ln">   163  </span>}
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>func (nopMetrics) IncHit(context.Context, string)                 {}
+<span id="L166" class="ln">   166  </span>func (nopMetrics) IncMiss(context.Context, string)                {}
+<span id="L167" class="ln">   167  </span>func (nopMetrics) IncConflict(context.Context, string)            {}
+<span id="L168" class="ln">   168  </span>func (nopMetrics) IncFingerprintMismatch(context.Context, string) {}
+<span id="L169" class="ln">   169  </span>func (nopMetrics) IncClaimFailure(context.Context, string)        {}
+<span id="L170" class="ln">   170  </span>func (nopMetrics) IncCompleteFailure(context.Context, string)     {}
+<span id="L171" class="ln">   171  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

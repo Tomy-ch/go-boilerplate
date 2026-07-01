@@ -79,7 +79,7 @@ Authorization: Bearer debug:user123
 
 ```txt
 subject = user123
-provider = <env>
+provider = mock
 ```
 
 の Authn が生成されます。

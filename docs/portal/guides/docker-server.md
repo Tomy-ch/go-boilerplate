@@ -36,6 +36,7 @@ Pre-installed tools:
 |`golines`|Line-length-limited formatting|
 |`gofumpt`|Enhanced gofmt|
 |`golangci-lint`|Go linter|
+|`lefthook`|Git hooks runner|
 
 OS-level packages: `build-base`, `binutils-gold`, `bash`, `curl`, `git`, `upx`, `libc6-compat`, `gcompat`, `tzdata`, `make`
 
@@ -53,5 +54,5 @@ api_server:
 ## Notes
 
 - Production images should pin base image digests for reproducibility
-- `tooling` target uses `@latest` for tools during initial development — pin versions for CI parity
+- `tooling` target installs tools at the versions pinned in `mise.toml` (the version SSOT), keeping local and CI parity
 - Working directory is `/app` for all targets

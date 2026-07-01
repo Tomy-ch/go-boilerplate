@@ -113,6 +113,20 @@
 				<dd><a href="#NewNoopSleeper">func NewNoopSleeper(t *testing.T) clock.Sleeper</a></dd>
 			
 			
+				
+				<dd><a href="#StepClock">type StepClock</a></dd>
+				
+					
+					<dd>    <a href="#NewStepClock">func NewStepClock(start time.Time, step time.Duration) *StepClock</a></dd>
+				
+				
+					
+					<dd>    <a href="#StepClock.Now">func (c *StepClock) Now() time.Time</a></dd>
+				
+					
+					<dd>    <a href="#StepClock.Sleep">func (c *StepClock) Sleep(ctx context.Context, _ time.Duration) error</a></dd>
+				
+			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -123,6 +137,8 @@
 			<h3>Package files</h3>
 			<p>
 			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/step_clock.go.html">step_clock.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/test_kit.go.html">test_kit.go</a>
 			
@@ -179,6 +195,74 @@
 			
 
 		
+		
+			
+			
+			</p><h2 id="StepClock">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/step_clock.go.html?s=645:723#L10">StepClock</a>
+				<a class="permalink" href="#StepClock">¶</a>
+				
+				
+			</h2>
+			<p>StepClock は、Sleep のたびに固定 step だけ現在時刻を進める、決定的なテスト用の
+clock.Clock 兼 clock.Sleeper です。retry / deadline 規律を実時間や backoff の乱数
+(jitter) に依存させず決定的に検証するために用います。Sleep は要求された待機時間 d では
+なく固定 step だけ時刻を進めるため、jitter で d がばらついても時刻の進みは一定です。
+
+			</p><pre>type StepClock struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewStepClock">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/step_clock.go.html?s=839:904#L17">NewStepClock</a>
+					<a class="permalink" href="#NewStepClock">¶</a>
+					
+					
+				</h3>
+				<pre>func NewStepClock(start <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>, step <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a>) *<a href="#StepClock">StepClock</a></pre>
+				<p>NewStepClock は、開始時刻 start から Sleep ごとに step だけ進む StepClock を生成します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="StepClock.Now">func (*StepClock) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/step_clock.go.html?s=1010:1045#L22">Now</a>
+					<a class="permalink" href="#StepClock.Now">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#StepClock">StepClock</a>) Now() <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a></pre>
+				<p>Now は、現在の（fake）時刻を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="StepClock.Sleep">func (*StepClock) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/step_clock.go.html?s=1349:1418#L30">Sleep</a>
+					<a class="permalink" href="#StepClock.Sleep">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#StepClock">StepClock</a>) Sleep(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, _ <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Sleep は、実際には待機しません。呼び出し時点で ctx が既にキャンセル / 期限切れの場合は
+現在時刻を前進させずその error を返し、そうでなければ step だけ進めて nil を返します。
+
+				
+				
+				
+			
 		
 	
 

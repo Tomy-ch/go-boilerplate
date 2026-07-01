@@ -43,11 +43,14 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`auth`|`Authenticator`|トークンから認証情報（`Authn`）を取得|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|認証主体がリソースに対し操作を実行してよいか判定|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|現在時刻の取得|`internal/infrastructure/system/`|
+|`exchangerate`|`Gateway`|外部為替レート取得サービスへの意味的 gateway（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/exchangerate/`|
+|`idempotency`|`Store`|冪等性キーの永続化境界（claim / replay / 競合判定）|`internal/infrastructure/rdb/system_query/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_query/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
-|`security`|`Encrypter`|パスワードのハッシュ化・比較|`internal/infrastructure/security/`|
+|`security`|`Hasher`|パスワードのハッシュ化・比較|`internal/infrastructure/security/`|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
+|`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|broker 非依存の worker seam（pull-ack）|`internal/infrastructure/queue/sqs/`|
 
 ## 各パッケージの詳細
 
@@ -59,17 +62,17 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |---|---|
 |`Authenticator`|`Credential` から `Authn` を生成するインターフェース|
 |`Authn`|認証結果（subject / id / provider / scopes / claims）|
-|`New(subject, provider, scopes, claims)`|`Authn` を生成（subject 空は `ErrUnauthorizedSubjectMissing`）|
+|`New(subject, provider, scopes, claims)`|`Authn` を生成（subject 空は `ErrUnauthenticatedSubjectMissing`）|
 |`Credential`|アクセストークンを保持する値オブジェクト|
-|`NewCredential(accessToken)`|`Credential` を生成（空トークンは `ErrArgumentTokenMissing`）|
+|`NewCredential(accessToken)`|`Credential` を生成（空トークンは `ErrTokenMissing`）|
 
 エラー：
 
 |エラー|説明|
 |---|---|
-|`ErrUnauthorizedSubjectMissing`|subject が空|
-|`ErrInvalidIDMissing`|subject が UUID として解釈できない|
-|`ErrArgumentTokenMissing`|アクセストークンが空|
+|`ErrUnauthenticatedSubjectMissing`|subject が空|
+|`ErrSubjectNotUUID`|subject が UUID として解釈できない|
+|`ErrTokenMissing`|アクセストークンが空|
 
 ### authz
 
@@ -99,6 +102,29 @@ type Clock interface {
 ```
 
 Domain / Usecase が `time.Now()` に直接依存しないための抽象。テスト時にモック差し替え可能。
+
+### exchangerate
+
+サンプルの Gateway 境界。外部為替レート取得サービスへの意味的 port（`<service>.Gateway` パターン）。Usecase が `net/http` やベンダー SDK ではなく意味的 port に依存するようにし、境界でトランスポート失敗を `apperror` sentinel へ変換します。
+
+|型 / 関数|説明|
+|---|---|
+|`Gateway`|`GetRate(ctx, base, quote)` で換算レートを取得|
+|`Rate`|出力 DTO（`Base` / `Quote` / `Value`）|
+
+### idempotency
+
+冪等性キーの永続化境界。すべてのメソッドは `scope` 必須です（id 単独 lookup を持たない＝越境防止）。
+
+|型 / 関数|説明|
+|---|---|
+|`Store`|冪等性キーの永続化境界インターフェース|
+|`Claim(ctx, p)`|claimed 行を作成。新規なら `claimed=true`、既存キーがあれば `false` を返す（ロック待ちタイムアウト時は `ErrLockTimeout`）|
+|`Get(ctx, scope, key)`|`(scope, key)` の保存済み状態を返す（無ければ nil）|
+|`Complete(ctx, p)`|`claimed` → `completed` へ遷移し結果を保存|
+|`DeleteExpired(ctx, cutoff, limit)`|`cutoff` より古い行を `limit` 件まで削除（GC）。削除件数を返す|
+
+入出力の値オブジェクト：`ClaimParams` / `CompleteParams`（入力）、`Record`（保存済み状態）。sentinel: `ErrLockTimeout`（usecase 側で 409 へマップ）。
 
 ### job
 
@@ -139,7 +165,7 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 ### security
 
 ```go
-type Encrypter interface {
+type Hasher interface {
     Hash(password string) (string, error)
     Compare(hash, password string) (bool, error)
 }
@@ -153,6 +179,17 @@ type Encrypter interface {
 |---|---|
 |`Manager`|`Do(ctx, fn)` でトランザクション境界を管理|
 |`DoWithResult[T](ctx, m, fn)`|トランザクション内で値を返すジェネリクスヘルパー|
+
+### worker
+
+|型 / 関数|説明|
+|---|---|
+|`Consumer`|broker 非依存のメッセージ受信 — `Receive` / `Ack` / `Nack` / `NackWithBackoff` / `Extend`（broker adapter が実装）|
+|`Handler`|メッセージ単位の業務処理（冪等であること）|
+|`FailureHandler`|恒久失敗の dead-letter シンク|
+|`Worker`|Name / Consumer / Handler / FailureHandler を束ねる|
+|`State`|engine と共有する選択済み worker の状態|
+|`QueueStatsProvider`|メトリクス用の queue depth / DLQ 統計ソース（任意）|
 
 ## 設計方針
 

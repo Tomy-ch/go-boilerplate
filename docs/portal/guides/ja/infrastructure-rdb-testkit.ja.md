@@ -82,7 +82,7 @@ type TransactionRunner interface {
 ### WithinTx
 
 ```go
-func (t *testTxManager) WithinTx(fn func(ctx context.Context))
+func (t *testTxRunner) WithinTx(fn func(ctx context.Context))
 ```
 
 指定された関数を **トランザクション内で実行**します。
@@ -93,7 +93,7 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context))
 flowchart TD
     A[Transaction Begin]
     B["fn(ctx) 実行"]
-    C[rollbackForTestError を返す]
+    C[errRollbackForTest を返す]
     D[Rollback]
 
     A --> B --> C --> D
@@ -116,7 +116,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[fn 実行]
-    B[rollbackForTestError を返す]
+    B[errRollbackForTest を返す]
     C[tx.Manager が rollback]
 
     A --> B --> C
@@ -125,7 +125,7 @@ flowchart TD
 この特殊エラーは
 
 ```go
-var rollbackForTestError = xerrors.New("rollback for test")
+var errRollbackForTest = xerrors.New("rollback for test")
 ```
 
 として定義されています。
@@ -244,7 +244,7 @@ flowchart TD
 
 ```go
 fn(ctx)
-return rollbackForTestError
+return errRollbackForTest
 ```
 
 そのためテスト内の検証は

@@ -42,10 +42,10 @@ These are used as **Infrastructure-layer utilities**.
 ```text
 internal/infrastructure/rdb/sqlc/
 ├── like.go         # LIKE search helpers
-└── gen/            # sqlc auto-generated code (do not edit)
-    ├── desc.go     # Package description
-    ├── *.sql.go    # Query execution code (auto-generated)
-    └── *.gen.go    # Type definitions (auto-generated)
+└── gen/               # sqlc auto-generated code (do not edit)
+    ├── desc.go         # Package description
+    ├── *.gen.sql.go    # Query execution code (auto-generated)
+    └── *.gen.go        # Type definitions / DBTX wiring (auto-generated: models.gen.go, db.gen.go)
 ```
 
 ## LIKE Search Helpers

@@ -8,11 +8,12 @@ English | [日本語](README.ja.md)
 
 Make targets are mainly organized into the following units.
 
-- `.makefiles/app` : Application startup / Job execution / Embedded env materialization
+- `.makefiles/app` : Application startup / Long-running process (worker / outbox-relay) / Job execution / Embedded env materialization
 - `.makefiles/database` : DB initialization / Migration / Seed / DML / Schema
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/security` : Trivy dependency vulnerability scan
+- `.makefiles/docker` : Dockerfile lint (hadolint)
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/docs` : Portal / Tool information documentation generation
@@ -61,6 +62,33 @@ Example:
 ```sh
 make job NAME=sample-job
 make job NAME=batch-import ARGS="--target=local --dry-run"
+```
+
+### Long-running process (worker / outbox-relay) related
+
+Both are long-running daemons that reside until `SIGTERM` / `Ctrl-C`, run inside the
+`development` profile network (same mechanism as `make job`, via `go run ./cmd/`).
+
+#### `make worker NAME=<worker_name> ARGS="<arguments>"`
+
+Starts a pull-ack worker. `NAME` is the worker name (required); `ARGS` is optional.
+
+> The scaffold registers no worker by default (`WorkerModule()` is an empty seam), so
+> this fails with `unknown worker` until you wire a real worker. It is kept as the
+> entry point for local verification once a worker is added.
+
+```sh
+make worker NAME=sampleworker
+```
+
+#### `make outbox-relay ARGS="<arguments>"`
+
+Starts the outbox relay (periodically polls the outbox table and publishes pending
+messages). `ARGS` is optional and also reaches the `replay` subcommand.
+
+```sh
+make outbox-relay
+make outbox-relay ARGS="replay --message-id=<id>"
 ```
 
 ### Embedded env materialization related
@@ -232,8 +260,10 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
 | --- | --- | --- |
 | `make gen-bundle-oapi` | Bundles split OpenAPI definitions into a single file. | Generates `openapi/openapi.gen.yaml` from `openapi/openapi.yaml`. |
 | `make gen-api-docs` | Generates API documentation from OpenAPI definition. | None |
+| `make lint-oapi` | Validates the OpenAPI definition with `redocly lint`. | Invokes `make lint-oapi-ci` inside the `node_tool_runner` container. |
 | `make gen-bundle-oapi-ci` | Generates `openapi/openapi.gen.yaml` via `redocly bundle`. | CI target |
 | `make gen-api-docs-ci` | Generates `docs/openapi/index.html` via `redocly build-docs`. | CI target |
+| `make lint-oapi-ci` | Runs `redocly lint openapi/openapi.yaml` directly. | CI target |
 
 ## `.makefiles/go` group
 
@@ -263,6 +293,7 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make test` | Executes tests for CI. | Runs `go test` on packages excluding `gen` / `cmd` / `mock` / `apperror` / `scripts` (the `internal/cli` core is now included). |
+| `make test-cached` | Executes tests locally with the test cache enabled. | For pre-commit local runs. Same excluded packages as `test`, but omits `-count=1` so cached results are reused. |
 | `make gen-test-repo` | Executes tests and generates HTML coverage report. | Output is `docs/coverage/index.html`. |
 | `make test-cover-ci` | Executes tests with coverage. | CI target, outputs `coverage.out`. |
 | `make cover-gate` | Fails if total coverage is below the threshold. | CI gate. `COVERAGE_THRESHOLD` (default 90). Requires `coverage.out` (run `test-cover-ci` first). |
@@ -274,6 +305,7 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
 | `make go-update` | Installs the Go runtime pinned in `mise.toml` via mise. See `docs/maintenance/go-upgrade.md`. | mise required |
 | `make install-tools` | Installs host development Go tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`. |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
+| `make sync-versions` | Propagates the `mise.toml` go / node / python versions into `go.mod` and the Dockerfile `FROM` lines. | Referenced by the `docs/maintenance/go-upgrade.md` procedure. Runs `scripts/sync-versions`. |
 
 ## `.makefiles/docs` group
 
@@ -312,6 +344,13 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
 | `make pin-actions-resolve` | Resolves each `uses:` tag to its commit SHA and updates the `.github/actions-pin.toml` lockfile. | Quarantines refs younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14; 0 disables). |
 | `make pin-actions-apply` | Pins `uses:` to `@<sha> # <tag>` from the lockfile. | None |
 | `make pin-actions-check` | Verifies `uses:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
+
+### Commit message lint related
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make commitlint COMMIT_MSG_FILE=<file>` | Lints a commit message with commitlint. | Invokes `make commitlint-ci` inside the `node_tool_runner` container. Wired to the `commit-msg` hook; `COMMIT_MSG_FILE` defaults to `.git/COMMIT_EDITMSG`. |
+| `make commitlint-ci COMMIT_MSG_FILE=<file>` | Runs `commitlint --edit <file>` directly. | CI target. |
 
 ### GitHub configuration related
 

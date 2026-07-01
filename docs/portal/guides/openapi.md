@@ -140,3 +140,5 @@ Breaking changes → create `/v2/` alongside `/v1/`
 - [paths/README.md](paths/README.md) — Endpoint definitions and versioning
 - [components/schemas/README.md](components/schemas/README.md) — Schema design policy
 - [components/parameters/README.md](components/parameters/README.md) — Parameter conventions
+- [components/requests/README.md](components/requests/README.md) — Request body semantics (content / required)
+- [components/responses/README.md](components/responses/README.md) — Response semantics (status / description)

@@ -59,16 +59,16 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;errors&#34;
-<span id="L6" class="ln">     6  </span>	&#34;time&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go.uber.org/fx&#34;
-<span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/di/lifecycle&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/di/module&#34;
-<span id="L13" class="ln">    13  </span>	outboxuc &#34;go-boilerplate/internal/usecase/outbox&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L5" class="ln">     5  </span>	&#34;time&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go.uber.org/fx&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/di/lifecycle&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/di/module&#34;
+<span id="L12" class="ln">    12  </span>	outboxuc &#34;go-boilerplate/internal/usecase/outbox&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>)
 <span id="L16" class="ln">    16  </span>
 <span id="L17" class="ln">    17  </span><span class="comment">// outboxRelayCommonOptions は、relay / replay が共有する共通モジュール群を返します。</span>
@@ -122,7 +122,7 @@
 <span id="L65" class="ln">    65  </span>	stopErr := app.Stop(stopCtx) <span class="comment">//nolint:contextcheck // 停止用 context は意図的に ctx を継承しない</span>
 <span id="L66" class="ln">    66  </span>
 <span id="L67" class="ln">    67  </span>	<span class="comment">// replay 失敗と OnStop 失敗（DB プール Close 等）の双方をオペレータへ可視化する。</span>
-<span id="L68" class="ln">    68  </span>	return result, errors.Join(runErr, stopErr)
+<span id="L68" class="ln">    68  </span>	return result, xerrors.Join(runErr, stopErr)
 <span id="L69" class="ln">    69  </span>}
 <span id="L70" class="ln">    70  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/di/outboxrelay.go.html?m=text">View as plain text</a></p>

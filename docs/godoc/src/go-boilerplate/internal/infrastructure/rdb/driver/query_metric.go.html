@@ -60,11 +60,11 @@
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
-<span id="L6" class="ln">     6  </span>	&#34;errors&#34;
-<span id="L7" class="ln">     7  </span>	&#34;strings&#34;
-<span id="L8" class="ln">     8  </span>	&#34;time&#34;
-<span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L6" class="ln">     6  </span>	&#34;strings&#34;
+<span id="L7" class="ln">     7  </span>	&#34;time&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L11" class="ln">    11  </span>
 <span id="L12" class="ln">    12  </span>	&#34;github.com/jackc/pgx/v5&#34;
 <span id="L13" class="ln">    13  </span>	&#34;github.com/jackc/pgx/v5/pgconn&#34;
@@ -134,7 +134,7 @@
 <span id="L77" class="ln">    77  </span>func buildQueryAttrs(ctx context.Context, sql string, duration time.Duration, err error) QueryAttrs {
 <span id="L78" class="ln">    78  </span>	status := statusSuccess
 <span id="L79" class="ln">    79  </span>	errorClass := &#34;&#34;
-<span id="L80" class="ln">    80  </span>	if err != nil &amp;&amp; !errors.Is(err, pgx.ErrNoRows) {
+<span id="L80" class="ln">    80  </span>	if err != nil &amp;&amp; !xerrors.Is(err, pgx.ErrNoRows) {
 <span id="L81" class="ln">    81  </span>		status = statusError
 <span id="L82" class="ln">    82  </span>		errorClass = classifyErrorClass(err)
 <span id="L83" class="ln">    83  </span>	}
@@ -239,13 +239,13 @@
 <span id="L182" class="ln">   182  </span><span class="comment">// isConstraintViolation は、整合性制約違反(SQLSTATE 23xxx)であるかを判定します。</span>
 <span id="L183" class="ln">   183  </span>func isConstraintViolation(err error) bool {
 <span id="L184" class="ln">   184  </span>	var pgErr *pgconn.PgError
-<span id="L185" class="ln">   185  </span>	return errors.As(err, &amp;pgErr) &amp;&amp; strings.HasPrefix(pgErr.Code, &#34;23&#34;)
+<span id="L185" class="ln">   185  </span>	return xerrors.As(err, &amp;pgErr) &amp;&amp; strings.HasPrefix(pgErr.Code, &#34;23&#34;)
 <span id="L186" class="ln">   186  </span>}
 <span id="L187" class="ln">   187  </span>
 <span id="L188" class="ln">   188  </span><span class="comment">// isTimeout は、タイムアウト系のエラー（context 期限切れ / lock_timeout 失効 / statement_timeout）であるかを判定します。</span>
 <span id="L189" class="ln">   189  </span><span class="comment">// SQLSTATE 57014(query_canceled) は statement_timeout 失効でも発生するため timeout に分類します。</span>
 <span id="L190" class="ln">   190  </span>func isTimeout(err error) bool {
-<span id="L191" class="ln">   191  </span>	return errors.Is(err, context.DeadlineExceeded) ||
+<span id="L191" class="ln">   191  </span>	return xerrors.Is(err, context.DeadlineExceeded) ||
 <span id="L192" class="ln">   192  </span>		pgerror.IsLockNotAvailable(err) ||
 <span id="L193" class="ln">   193  </span>		isStatementTimeout(err)
 <span id="L194" class="ln">   194  </span>}
@@ -253,7 +253,7 @@
 <span id="L196" class="ln">   196  </span><span class="comment">// isStatementTimeout は、statement_timeout 失効(SQLSTATE 57014 query_canceled)であるかを判定します。</span>
 <span id="L197" class="ln">   197  </span>func isStatementTimeout(err error) bool {
 <span id="L198" class="ln">   198  </span>	var pgErr *pgconn.PgError
-<span id="L199" class="ln">   199  </span>	return errors.As(err, &amp;pgErr) &amp;&amp; pgErr.Code == &#34;57014&#34;
+<span id="L199" class="ln">   199  </span>	return xerrors.As(err, &amp;pgErr) &amp;&amp; pgErr.Code == &#34;57014&#34;
 <span id="L200" class="ln">   200  </span>}
 <span id="L201" class="ln">   201  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html?m=text">View as plain text</a></p>

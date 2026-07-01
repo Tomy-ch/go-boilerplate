@@ -59,57 +59,94 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
-<span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L5" class="ln">     5  </span>	&#34;io&#34;
+<span id="L6" class="ln">     6  </span>	&#34;net/http&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L11" class="ln">    11  </span>)
-<span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span><span class="comment">// TestClientDo_AllowRetryWithoutKey_Guard は、WithRetry(&#34;&#34;) や非公開フィールド直構築で到達し得る</span>
-<span id="L14" class="ln">    14  </span><span class="comment">// 「allowRetry あり・idempotencyKey なし」という不正状態に対する Do の防御的ガードを検証します。</span>
-<span id="L15" class="ln">    15  </span><span class="comment">//</span>
-<span id="L16" class="ln">    16  </span><span class="comment">// 型では空 key を排除できないため、Do 実行時のガードで担保します。</span>
-<span id="L17" class="ln">    17  </span>func TestClientDo_AllowRetryWithoutKey_Guard(t *testing.T) {
-<span id="L18" class="ln">    18  </span>	t.Parallel()
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>	<span class="comment">// ガードは Do の最初の文で、ネットワーク・registry 等に触れる前に返るため、ゼロ値 client で足りる。</span>
-<span id="L21" class="ln">    21  </span>	c := &amp;client{}
-<span id="L22" class="ln">    22  </span>	req := &amp;Request{
-<span id="L23" class="ln">    23  </span>		downstream: &#34;retry&#34;,
-<span id="L24" class="ln">    24  </span>		method:     MethodPost(),
-<span id="L25" class="ln">    25  </span>		url:        &#34;http://example.com&#34;,
-<span id="L26" class="ln">    26  </span>		allowRetry: true,
-<span id="L27" class="ln">    27  </span>	}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span>	resp, err := c.Do(context.Background(), req)
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span>	require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-<span id="L32" class="ln">    32  </span>	assert.Nil(t, resp)
-<span id="L33" class="ln">    33  </span>}
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span><span class="comment">// TestClientDo_EmptyMethod_Guard は、ゼロ値 Method{}（buildRequest が空文字を net/http へ渡すと</span>
-<span id="L36" class="ln">    36  </span><span class="comment">// 暗黙に GET 昇格し isRetrySafe と不整合になる）に対する Do の防御的ガードを検証します。</span>
-<span id="L37" class="ln">    37  </span><span class="comment">//</span>
-<span id="L38" class="ln">    38  </span><span class="comment">// 型ではゼロ値 Method{} を排除できないため、Do 実行時のガードで担保します。</span>
-<span id="L39" class="ln">    39  </span>func TestClientDo_EmptyMethod_Guard(t *testing.T) {
-<span id="L40" class="ln">    40  </span>	t.Parallel()
-<span id="L41" class="ln">    41  </span>
-<span id="L42" class="ln">    42  </span>	<span class="comment">// ガードは Do の最初の文で、ネットワーク・registry 等に触れる前に返るため、ゼロ値 client で足りる。</span>
-<span id="L43" class="ln">    43  </span>	c := &amp;client{}
-<span id="L44" class="ln">    44  </span>	req := &amp;Request{
-<span id="L45" class="ln">    45  </span>		downstream: &#34;empty-method&#34;,
-<span id="L46" class="ln">    46  </span>		method:     Method{}, <span class="comment">// ゼロ値（MethodGet() 等の定義済み値ではない）</span>
-<span id="L47" class="ln">    47  </span>		url:        &#34;http://example.com&#34;,
-<span id="L48" class="ln">    48  </span>	}
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L13" class="ln">    13  </span>)
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// TestBuildRequest は、自前型 Request から net/http のリクエストが正しく組み立つことを検証します。</span>
+<span id="L16" class="ln">    16  </span>func TestBuildRequest(t *testing.T) {
+<span id="L17" class="ln">    17  </span>	t.Parallel()
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L20" class="ln">    20  </span>		t.Parallel()
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>		t.Run(&#34;method_url_header_body_冪等性キーを反映したhttpRequestを組み立てる&#34;, func(t *testing.T) {
+<span id="L23" class="ln">    23  </span>			t.Parallel()
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>			req := &amp;Request{
+<span id="L26" class="ln">    26  </span>				downstream:     &#34;sample&#34;,
+<span id="L27" class="ln">    27  </span>				method:         MethodPost(),
+<span id="L28" class="ln">    28  </span>				url:            &#34;http://example.com/charge&#34;,
+<span id="L29" class="ln">    29  </span>				header:         Header{&#34;Content-Type&#34;: {&#34;application/json&#34;}},
+<span id="L30" class="ln">    30  </span>				body:           []byte(`{&#34;v&#34;:1}`),
+<span id="L31" class="ln">    31  </span>				idempotencyKey: &#34;key-123&#34;,
+<span id="L32" class="ln">    32  </span>			}
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span>			httpReq, err := buildRequest(context.Background(), req)
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>			require.NoError(t, err)
+<span id="L37" class="ln">    37  </span>			require.NotNil(t, httpReq)
+<span id="L38" class="ln">    38  </span>			assert.Equal(t, http.MethodPost, httpReq.Method)
+<span id="L39" class="ln">    39  </span>			assert.Equal(t, &#34;http://example.com/charge&#34;, httpReq.URL.String())
+<span id="L40" class="ln">    40  </span>			assert.Equal(t, &#34;application/json&#34;, httpReq.Header.Get(&#34;Content-Type&#34;))
+<span id="L41" class="ln">    41  </span>			assert.Equal(t, &#34;key-123&#34;, httpReq.Header.Get(&#34;Idempotency-Key&#34;))
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>			body, err := io.ReadAll(httpReq.Body)
+<span id="L44" class="ln">    44  </span>			require.NoError(t, err)
+<span id="L45" class="ln">    45  </span>			assert.Equal(t, []byte(`{&#34;v&#34;:1}`), body)
+<span id="L46" class="ln">    46  </span>		})
+<span id="L47" class="ln">    47  </span>	})
+<span id="L48" class="ln">    48  </span>}
 <span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	resp, err := c.Do(context.Background(), req)
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>	require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-<span id="L53" class="ln">    53  </span>	assert.Nil(t, resp)
-<span id="L54" class="ln">    54  </span>}
-<span id="L55" class="ln">    55  </span>
+<span id="L50" class="ln">    50  </span><span class="comment">// TestClientDo_AllowRetryWithoutKey_Guard は、WithRetry(&#34;&#34;) や非公開フィールド直構築で到達し得る</span>
+<span id="L51" class="ln">    51  </span><span class="comment">// 「allowRetry あり・idempotencyKey なし」という不正状態に対する Do の防御的ガードを検証します。</span>
+<span id="L52" class="ln">    52  </span><span class="comment">//</span>
+<span id="L53" class="ln">    53  </span><span class="comment">// 型では空 key を排除できないため、Do 実行時のガードで担保します。</span>
+<span id="L54" class="ln">    54  </span>func TestClientDo_AllowRetryWithoutKey_Guard(t *testing.T) {
+<span id="L55" class="ln">    55  </span>	t.Parallel()
+<span id="L56" class="ln">    56  </span>
+<span id="L57" class="ln">    57  </span>	<span class="comment">// ガードは Do の最初の文で、ネットワーク・registry 等に触れる前に返るため、ゼロ値 client で足りる。</span>
+<span id="L58" class="ln">    58  </span>	c := &amp;client{}
+<span id="L59" class="ln">    59  </span>	req := &amp;Request{
+<span id="L60" class="ln">    60  </span>		downstream: &#34;retry&#34;,
+<span id="L61" class="ln">    61  </span>		method:     MethodPost(),
+<span id="L62" class="ln">    62  </span>		url:        &#34;http://example.com&#34;,
+<span id="L63" class="ln">    63  </span>		allowRetry: true,
+<span id="L64" class="ln">    64  </span>	}
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>	resp, err := c.Do(context.Background(), req)
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>	require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L69" class="ln">    69  </span>	assert.Nil(t, resp)
+<span id="L70" class="ln">    70  </span>}
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span><span class="comment">// TestClientDo_EmptyMethod_Guard は、ゼロ値 Method{}（buildRequest が空文字を net/http へ渡すと</span>
+<span id="L73" class="ln">    73  </span><span class="comment">// 暗黙に GET 昇格し isRetrySafe と不整合になる）に対する Do の防御的ガードを検証します。</span>
+<span id="L74" class="ln">    74  </span><span class="comment">//</span>
+<span id="L75" class="ln">    75  </span><span class="comment">// 型ではゼロ値 Method{} を排除できないため、Do 実行時のガードで担保します。</span>
+<span id="L76" class="ln">    76  </span>func TestClientDo_EmptyMethod_Guard(t *testing.T) {
+<span id="L77" class="ln">    77  </span>	t.Parallel()
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>	<span class="comment">// ガードは Do の最初の文で、ネットワーク・registry 等に触れる前に返るため、ゼロ値 client で足りる。</span>
+<span id="L80" class="ln">    80  </span>	c := &amp;client{}
+<span id="L81" class="ln">    81  </span>	req := &amp;Request{
+<span id="L82" class="ln">    82  </span>		downstream: &#34;empty-method&#34;,
+<span id="L83" class="ln">    83  </span>		method:     Method{}, <span class="comment">// ゼロ値（MethodGet() 等の定義済み値ではない）</span>
+<span id="L84" class="ln">    84  </span>		url:        &#34;http://example.com&#34;,
+<span id="L85" class="ln">    85  </span>	}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>	resp, err := c.Do(context.Background(), req)
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>	require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L90" class="ln">    90  </span>	assert.Nil(t, resp)
+<span id="L91" class="ln">    91  </span>}
+<span id="L92" class="ln">    92  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/infrastructure/httpclient/request_guard_internal_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -59,14 +59,14 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;errors&#34;
-<span id="L6" class="ln">     6  </span>	&#34;net/http&#34;
-<span id="L7" class="ln">     7  </span>	_ &#34;net/http/pprof&#34; <span class="comment">//nolint:gosec // G108: 非本番環境でのプロファイリング用にインポート</span>
-<span id="L8" class="ln">     8  </span>	&#34;strconv&#34;
-<span id="L9" class="ln">     9  </span>	&#34;time&#34;
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L5" class="ln">     5  </span>	&#34;net/http&#34;
+<span id="L6" class="ln">     6  </span>	_ &#34;net/http/pprof&#34; <span class="comment">//nolint:gosec // G108: 非本番環境でのプロファイリング用にインポート</span>
+<span id="L7" class="ln">     7  </span>	&#34;strconv&#34;
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
 <span id="L15" class="ln">    15  </span>const (
@@ -110,7 +110,7 @@
 <span id="L53" class="ln">    53  </span><span class="comment">// logListenError は、補助サーバーの ListenAndServe 戻り値を判定し、正常停止(ErrServerClosed)以外の</span>
 <span id="L54" class="ln">    54  </span><span class="comment">// エラーのみをログ記録します。bind 失敗等でアプリ本体を巻き込まないよう、panic せずログに留めます。</span>
 <span id="L55" class="ln">    55  </span>func logListenError(logger logging.Logger, err error) {
-<span id="L56" class="ln">    56  </span>	if err != nil &amp;&amp; !errors.Is(err, http.ErrServerClosed) {
+<span id="L56" class="ln">    56  </span>	if err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) {
 <span id="L57" class="ln">    57  </span>		logger.Named(&#34;metrics.ListenAndServe&#34;).Error(&#34;metrics server error&#34;, logging.Error(logging.ErrorKey, err))
 <span id="L58" class="ln">    58  </span>	}
 <span id="L59" class="ln">    59  </span>}

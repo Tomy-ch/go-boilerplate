@@ -1,0 +1,115 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>testkit - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase/boundary">boundary</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase/boundary/clock">clock</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit">testkit</a>/<span class="text-muted">step_clock.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../go-boilerplate/internal/usecase/boundary/clock/testkit">go-boilerplate/internal/usecase/boundary/clock/testkit</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package testkit
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;sync&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>var (
+<span id="L12" class="ln">    12  </span>	_ clock.Clock   = (*StepClock)(nil)
+<span id="L13" class="ln">    13  </span>	_ clock.Sleeper = (*StepClock)(nil)
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span><span class="comment">// StepClock は、Sleep のたびに固定 step だけ現在時刻を進める、決定的なテスト用の</span>
+<span id="L17" class="ln">    17  </span><span class="comment">// clock.Clock 兼 clock.Sleeper です。retry / deadline 規律を実時間や backoff の乱数</span>
+<span id="L18" class="ln">    18  </span><span class="comment">// (jitter) に依存させず決定的に検証するために用います。Sleep は要求された待機時間 d では</span>
+<span id="L19" class="ln">    19  </span><span class="comment">// なく固定 step だけ時刻を進めるため、jitter で d がばらついても時刻の進みは一定です。</span>
+<span id="L20" class="ln">    20  </span>type StepClock struct {
+<span id="L21" class="ln">    21  </span>	mu   sync.Mutex
+<span id="L22" class="ln">    22  </span>	now  time.Time
+<span id="L23" class="ln">    23  </span>	step time.Duration
+<span id="L24" class="ln">    24  </span>}
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span><span class="comment">// NewStepClock は、開始時刻 start から Sleep ごとに step だけ進む StepClock を生成します。</span>
+<span id="L27" class="ln">    27  </span>func NewStepClock(start time.Time, step time.Duration) *StepClock {
+<span id="L28" class="ln">    28  </span>	return &amp;StepClock{now: start, step: step}
+<span id="L29" class="ln">    29  </span>}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// Now は、現在の（fake）時刻を返します。</span>
+<span id="L32" class="ln">    32  </span>func (c *StepClock) Now() time.Time {
+<span id="L33" class="ln">    33  </span>	c.mu.Lock()
+<span id="L34" class="ln">    34  </span>	defer c.mu.Unlock()
+<span id="L35" class="ln">    35  </span>	return c.now
+<span id="L36" class="ln">    36  </span>}
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// Sleep は、実際には待機しません。呼び出し時点で ctx が既にキャンセル / 期限切れの場合は</span>
+<span id="L39" class="ln">    39  </span><span class="comment">// 現在時刻を前進させずその error を返し、そうでなければ step だけ進めて nil を返します。</span>
+<span id="L40" class="ln">    40  </span>func (c *StepClock) Sleep(ctx context.Context, _ time.Duration) error {
+<span id="L41" class="ln">    41  </span>	if err := ctx.Err(); err != nil {
+<span id="L42" class="ln">    42  </span>		return err
+<span id="L43" class="ln">    43  </span>	}
+<span id="L44" class="ln">    44  </span>	c.mu.Lock()
+<span id="L45" class="ln">    45  </span>	c.now = c.now.Add(c.step)
+<span id="L46" class="ln">    46  </span>	c.mu.Unlock()
+<span id="L47" class="ln">    47  </span>	return nil
+<span id="L48" class="ln">    48  </span>}
+<span id="L49" class="ln">    49  </span>
+</pre><p><a href="../../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/step_clock.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

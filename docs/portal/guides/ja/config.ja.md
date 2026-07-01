@@ -36,7 +36,7 @@ flowchart TB
 ### 各ステップの役割
 
 - **Load()**
-  - `env/.env` および `env/.env.<ENV>` を読み込み、環境変数をセットします。
+  - 埋め込み（`go:embed` の `root.FS`）の `env/.env` を godotenv で読み込み、まだ設定されていない変数のみをセットします（実行時に注入済みの環境変数を優先）。`env/.env.<ENV>` は読み込みません。
 
 - **env.ParseAs[Loader]**
   - `envspec.go` に定義された `Loader` 構造体へ環境変数をマッピングします。
@@ -270,14 +270,46 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |---|---|
 |`SetApplicationMode`|`ApplicationConfig`|
 |`SetApplicationEnv`|`ApplicationConfig`|
+|`SetApplicationLogLevel`|`ApplicationConfig`|
 |`SetServerPort`|`ServerConfig`|
 |`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetObservabilityTracesExporter`|`ObservabilityConfig`|
+|`SetObservabilityMetricsExporter`|`ObservabilityConfig`|
+|`SetObservabilityLogsExporter`|`ObservabilityConfig`|
+|`SetObservabilityOTLPProtocol`|`ObservabilityConfig`|
+|`SetObservabilityOTLPEndpoint`|`ObservabilityConfig`|
 |`SetDatabaseHost`|`DatabaseConfig`|
 |`SetDatabaseName`|`DatabaseConfig`|
+|`SetMetricsPort`|`MetricsConfig`|
+|`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
+|`SetOutboxBatchSize`|`OutboxConfig`|
+|`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetSameSite`|`SecureCookieConfig`|
+|`SetDomain`|`SecureCookieConfig`|
+
+### テスト例外（ユニットで完全被覆を求めないファイル）
+
+本パッケージの大半（SubConfig の getter・`New()` のバインド・テストセッター）はユニットで
+ほぼ 100% 被覆を維持する想定です。以下は**意図的な例外**で、未被覆部分は読み込み /
+composition 境界のエラー分岐であり、失敗注入なしには通せません。実経路は boot-check CI
+（`app-di-startup-check` / `worker-boot-check` / `job-boot-check`。実バイナリを `SetUpConfig`
+経由で起動）で E2E 検証済みです。
+
+|ファイル|関数|ユニット非対象の理由|
+|---|---|---|
+|`loader.go`|`Load`|残る分岐は**埋め込み** env ファイルの I/O 失敗（`root.FS.ReadFile` / `godotenv.Parse` / `os.Setenv`）。実行時にはまず失敗せず、被覆には失敗する FS / env の注入が必要。|
+|`setup.go`|`SetUpConfig`|`cmd/`（それ自体カバレッジゲート対象外）から呼ばれる composition-root の glue。未被覆は `Load()` 失敗時の early-return のみで、起動は boot-check CI が担保。|
+
+> これらの行を塗るためだけの不自然な失敗注入テストは**追加しない**こと。これらの関数が
+> （I/O エラー配線ではない）実際の分岐ロジックを持つようになった場合は、他と同様に
+> ユニットテストで担保すること。
+>
+> **ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の
+> **適切な承認者の承認を得た場合に限り**本節へ記録する。
 
 ## 注意点
 

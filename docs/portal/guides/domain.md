@@ -8,7 +8,7 @@
 
 ## Role in this project
 
-- Place **Entity / ValueObject / DomainService / Repository (IF)** under `internal/domain/<bounded-context>/<aggregate>/`.
+- Place **Entity / ValueObject / DomainService / Repository (IF)** under `internal/domain/<aggregate>/`.
 
 Example: `internal/domain/user/`
 
@@ -237,7 +237,7 @@ Usecase / Repository
 In this project, **Aggregate is the design unit**.
 
 ```text
-internal/domain/<bounded-context>/<aggregate>/
+internal/domain/<aggregate>/
 ```
 
 ### Aggregate Root
@@ -354,7 +354,7 @@ type Repository interface {
 Implementation:
 
 ```text
-internal/infrastructure/persistence/postgres/
+internal/infrastructure/rdb/repository/<aggregate>/
 ```
 
 Mapping to Domain is done by `sqlc`.

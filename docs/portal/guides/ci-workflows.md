@@ -32,6 +32,9 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
 |App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
+|Worker Boot Check|`worker-boot-check.yaml`|Verify the worker entrypoint boots (DI / DB) and rejects an unknown worker|
+|Dockerfile Lint|`docker-lint.yaml`|Run hadolint on Dockerfiles (via go_tool_runner)|
+|Pin Actions Check|`pin-actions-check.yaml`|Verify GitHub Actions are pinned to a SHA (supply-chain hardening)|
 
 ### Security
 
@@ -42,12 +45,13 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
 |Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
+|Secret Scan|`secret-scan.yaml`|gitleaks scan for committed secrets (via go_tool_runner)|
 
 ### Deployment (Push)
 
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
-|Deploy App|`deploy-app.yaml`|push to production/staging/develop|Build and push Docker images, run migration and deploy|
+|Deploy App|`deploy-app.yaml`|push to production/staging/develop|Build and push Docker images (image signing via cosign + provenance / SBOM attestation), run migration and deploy|
 |Deploy Docs|`deploy-docs.yaml`|push to production (docs changes)|Deploy documentation portal to GitHub Pages|
 
 ### Documentation (Push)
@@ -67,7 +71,7 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
 
 ## Notes
 
-- `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>-<run-id>`; the workflow skips itself on that branch to avoid recursion.
+- `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>` (one branch per release base, reused across runs with `delete-branch: true`); the workflow skips itself on that branch to avoid recursion.
 - All deployment workflows require their target branch (`production` / `staging` / `develop`) to be branch-protected; merges must flow through PR review.
 - Security scans run on every PR (Trivy FS / image and CodeQL also run weekly via `schedule` to catch newly disclosed CVEs / queries; CodeQL additionally runs on push to `release/*` and the deploy branches to keep a code-scanning baseline); if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.
 - The `Detect changes` step in `auto-generate-docs.yaml` excludes coverage HTML and SchemaSpy timestamp churn so cosmetic regenerations do not open noise PRs.

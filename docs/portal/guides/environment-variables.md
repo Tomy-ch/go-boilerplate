@@ -134,6 +134,38 @@ This directory is the canonical reference for every environment variable read by
 |AUTH_HEADER_NAME|Header name|string|Authorization||
 |AUTH_ALLOWED_HEADER_BEARER|Allow Bearer|bool|true||
 
+### Worker
+
+Engine-core settings for the worker engine (broker-agnostic).
+
+|Variable Name|Description|Type|Example|Notes|
+|---|---|---|---|---|
+|WORKER_CONCURRENCY|Max number of Handle executions running concurrently|int|4|Code default `4`|
+|WORKER_MAX_IN_FLIGHT|Max received-but-unsettled messages|int|8|Code default `8`|
+|WORKER_BATCH_SIZE|Max messages fetched per Receive|int|4|Code default `4`|
+|WORKER_EXTEND_INTERVAL|Interval for calling Extend (`<= 0` disables)|duration|0s|Code default `0s`|
+|WORKER_DRAIN_TIMEOUT|Upper bound for waiting on in-flight completion at shutdown|duration|30s|Code default `30s`|
+|WORKER_RECEIVE_COUNT_WARN_THRESHOLD|Redelivery-count warning threshold (`<= 0` disables)|int|5|Code default `5`|
+|WORKER_CIRCUIT_FAILURE_THRESHOLD|Consecutive failures that open the circuit (`<= 0` disables)|int|10|Code default `10`|
+|WORKER_CIRCUIT_OPEN_BACKOFF_INITIAL|Initial cooldown while the circuit is Open|duration|1s|Code default `1s`|
+|WORKER_CIRCUIT_OPEN_BACKOFF_MAX|Max cooldown while the circuit is Open|duration|30s|Code default `30s`|
+|WORKER_CIRCUIT_HALF_OPEN_PROBE|Max probes attempted in Half-open|int|1|Code default `1`|
+|WORKER_HEALTH_LISTEN_ADDR|Listen address for the liveness/readiness health listener|string|:8081|Code default `:8081`|
+|WORKER_PROGRESS_STALE_AFTER|Time after which readiness treats progress as stale|duration|60s|Code default `60s`|
+|WORKER_NACK_BACKOFF_INITIAL|Initial per-message redelivery backoff on retryable failure|duration|1s|Code default `1s`|
+|WORKER_NACK_BACKOFF_MAX|Upper bound for per-message redelivery backoff|duration|30s|Code default `30s`|
+
+### Outbox
+
+Settings for the transactional outbox relay.
+
+|Variable Name|Description|Type|Example|Notes|
+|---|---|---|---|---|
+|OUTBOX_ENDPOINT|Destination endpoint URL for relayed messages|string||Code default empty. Set per project when the relay has a fixed target|
+|OUTBOX_POLL_INTERVAL|Wait before the next poll after draining pending rows|duration|1s|Code default `1s`|
+|OUTBOX_ERROR_BACKOFF|Wait after a relay batch returns an error|duration|5s|Code default `5s`|
+|OUTBOX_BATCH_SIZE|Pending rows claimed per poll|int|100|Code default `100`|
+
 ## Notes
 
 - The Example column shows values appropriate for local development. Production values typically differ for any Secret / CIDR / Cookie-domain / origin entries.

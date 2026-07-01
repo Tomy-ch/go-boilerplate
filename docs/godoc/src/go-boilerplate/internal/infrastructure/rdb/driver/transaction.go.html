@@ -59,16 +59,16 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;errors&#34;
-<span id="L6" class="ln">     6  </span>	&#34;time&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/tx&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/backoff&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/retry&#34;
+<span id="L5" class="ln">     5  </span>	&#34;time&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/boundary/tx&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/backoff&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/retry&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>
 <span id="L16" class="ln">    16  </span>	&#34;github.com/jackc/pgx/v5&#34;
 <span id="L17" class="ln">    17  </span>	&#34;github.com/jackc/pgx/v5/pgconn&#34;
@@ -158,10 +158,10 @@
 <span id="L101" class="ln">   101  </span>		return nil
 <span id="L102" class="ln">   102  </span>	}
 <span id="L103" class="ln">   103  </span>	var pgErr *pgconn.PgError
-<span id="L104" class="ln">   104  </span>	if errors.As(err, &amp;pgErr) || pgerror.IsUnavailable(err) {
+<span id="L104" class="ln">   104  </span>	if xerrors.As(err, &amp;pgErr) || pgerror.IsUnavailable(err) {
 <span id="L105" class="ln">   105  </span>		return pgerror.NormalizeError(err)
 <span id="L106" class="ln">   106  </span>	}
-<span id="L107" class="ln">   107  </span>	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+<span id="L107" class="ln">   107  </span>	if xerrors.Is(err, context.Canceled) || xerrors.Is(err, context.DeadlineExceeded) {
 <span id="L108" class="ln">   108  </span>		return pgerror.NormalizeError(err)
 <span id="L109" class="ln">   109  </span>	}
 <span id="L110" class="ln">   110  </span>	return err

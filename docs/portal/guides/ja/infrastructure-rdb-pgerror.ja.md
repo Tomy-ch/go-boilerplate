@@ -119,16 +119,29 @@ func IsUnavailable(err error) bool
 
 などの復旧処理に利用できます。
 
+## リトライ / ロック判定述語
+
+`pgerror` は正規化に加えて、driver のリトライ / メトリクス経路で使う判定述語を提供します。これらは正規化後の sentinel ではなく **生の** `pgconn.PgError` の SQLSTATE で判定するため、無関係な `Unavailable` エラー（接続断など）をリトライ対象に巻き込みません。
+
+```go
+func IsRetryableTxError(err error) bool // 40001 serialization_failure / 40P01 deadlock_detected
+func IsLockNotAvailable(err error) bool // 55P03 lock_not_available（lock_timeout 失効）
+```
+
+`IsRetryableTxError` は `driver.NewTransactionManager` がトランザクション全体を再試行するか判断する際に利用します。
+
 ## エラーラッピング
 
-pgerror は元の DB エラーを保持したまま、`apperror` + `original error message`の形で `xerrors.Wrap` によりラップします。
+`NormalizeError` は `apperror` の sentinel と元の DB エラーを `xerrors.Join` で結合し、元のエラーを chain に保持します。
 
-これにより
+これにより `xerrors.Is` は
 
-- アプリケーションエラー種別
-- 元の DB エラー
+- アプリケーションエラー種別（例: `apperror.ErrConflict`）
+- 元の DB エラー（例: 下層の `pgconn.PgError` / `pgx.ErrNoRows`）
 
-の両方を保持できます。
+の両方に一致します。
+
+（`NormalizeExecResult` の 0 件ケースは例外で、結合すべき下層の DB エラーが無いため `xerrors.Wrap(apperror.ErrNotFound, ...)` を使います。）
 
 ## 必要度
 

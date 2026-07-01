@@ -127,7 +127,7 @@ QueryService は検索用途に特化します。
 
 詳細は以下を参照してください。
 
-[driver ディレクトリの README](driver/README.md)
+[driver ディレクトリの README](driver/README.ja.md)
 
 ## SQL ログ / トレース（pgx クエリトレーサー）
 
@@ -215,7 +215,7 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 
 詳細は以下を参照してください。
 
-[testkit ディレクトリの README](testkit/README.md)
+[testkit ディレクトリの README](testkit/README.ja.md)
 
 ## 設計方針
 
@@ -264,3 +264,11 @@ Repository / QueryService テストは
 で実行します。
 
 `testkit`を利用して安全に実現します。
+
+各 Repository / QueryService テストが検証する観点:
+
+- SQL 実行経路 — メソッドが dispatch する各クエリ / 分岐
+- 全 sqlc 戻り値への `pgerror.NormalizeError` 適用（生 `pg` / 接続エラー → `apperror`）
+- row → entity 変換（カラム → フィールド対応、NULL 処理）
+
+並行 / ロック競合は既定の `testkit` ヘルパでは再現できません: `WithinTx` はトランザクションを直列化します（最後に rollback する単一 tx）。真に並行なコネクションでしか発火しない分岐 — 例: `Claim` の `lock_timeout` `55P03`（lock_not_available）— は、独立した `TransactionManager.Do` を 2 本（2 コネクション / トランザクション）走らせ、片方が行ロックを保持しもう片方をタイムアウトさせる専用の統合テストが要ります。

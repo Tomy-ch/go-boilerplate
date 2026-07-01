@@ -9,39 +9,46 @@ This package provides a **tracing mechanism based on OpenTelemetry**, and
 
 Primary purposes:
 
-- Initialization and management of OpenTelemetry (tracing + metrics)
+- Initialization and management of OpenTelemetry (tracing / metrics / logs)
 - Span generation per layer
 - Logging of trace / span information
+- OTLP log export by bridging `zap` logs (otelzap)
 - Unified observability across Domain / Usecase / Controller
 - Lightweight tracer for testing
 
-## Configuration boundary (env-driven, vendor-neutral)
+## Configuration boundary (typed config, vendor-neutral OTLP)
 
-This package wires only the **vendor-neutral OpenTelemetry plumbing**. The export
-**destination is never modeled in the typed config**; it is read from the standard
-`OTEL_*` environment variables by the SDK:
+This package wires only the **vendor-neutral OTLP plumbing**. The signal toggles and the
+export destination are modeled in the typed `config.ObservabilityConfig`, populated from
+`OBS_`-prefixed environment variables:
 
-- `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` (`otlp` / `console` / `none`)
-- `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_EXPORTER_OTLP_PROTOCOL`
-- `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`
+| Env | Purpose |
+| --- | --- |
+| `OBS_TRACES_EXPORTER` | Enable trace export (`otlp` to enable; empty / `none` to disable) |
+| `OBS_METRICS_EXPORTER` | Enable metric export (same convention) |
+| `OBS_LOGS_EXPORTER` | Enable log export via the otelzap bridge (same convention) |
+| `OBS_OTLP_ENDPOINT` | OTLP endpoint URL (Collector / Agent sidecar); used only when a signal is enabled |
+| `OBS_OTLP_PROTOCOL` | `http/protobuf` (default) or `grpc` |
 
-Export is activated by **selecting an exporter** via `OTEL_TRACES_EXPORTER` /
-`OTEL_METRICS_EXPORTER` (`otlp` / `console`). When neither is set, a no-op fallback is
-used — nothing is sent, no connection is attempted, and no background goroutine runs — so
-local development needs no configuration and no DI swapping.
+Each signal is gated **independently**: `TracesEnabled()` / `MetricsEnabled()` /
+`LogsEnabled()` return true only when the matching exporter value is non-empty and not
+`none` (`isActiveExporter`). When a signal is disabled, a **no-op fallback** is used —
+nothing is sent, no connection is attempted, and no background goroutine (batch processor /
+periodic reader / runtime-metrics collector) runs — so local development needs no
+configuration and no DI swapping.
 
-> **Important:** setting `OTEL_EXPORTER_OTLP_ENDPOINT` **alone does not enable export**.
-> The SDK only reads the endpoint once an OTLP exporter is selected, so staging / prod must
-> set **`OTEL_TRACES_EXPORTER=otlp` / `OTEL_METRICS_EXPORTER=otlp`** in addition to the
-> endpoint pointing at a Collector / Agent sidecar. `OTEL_TRACES_EXPORTER=console` prints
-> spans to stdout locally.
+> **Important:** the export transport is **OTLP only** (there is no console exporter). The
+> single `OBS_OTLP_ENDPOINT` is reused for all three signals; for HTTP the per-signal path
+> (`/v1/traces` / `/v1/metrics` / `/v1/logs`) is appended automatically when the URL has no
+> path. Setting the endpoint **alone does not enable export** — staging / prod must also set
+> the matching `OBS_*_EXPORTER=otlp`.
 
 Vendor specifics (Grafana / Datadog / New Relic) live in that Collector, not here.
 
 Service identity (`service.name` / `deployment.environment` / `service.version` /
 `service.revision` / `service.build_date`) comes from the existing app config and the
-build-time `internal/system` build info (ldflags), so no OTel-specific keys leak into
-the typed config.
+build-time `internal/system` build info (ldflags) via `NewResource`, so no OTLP-specific
+keys leak into the typed config.
 
 ## Architecture
 
@@ -68,10 +75,14 @@ Roles of each component:
 |`NewResource`|Build the OTel resource (service identity) from app config + build info|
 |`NewTracerProvider`|OpenTelemetry tracer provider + context propagator|
 |`NewMeterProvider`|OpenTelemetry meter provider + Go runtime metrics|
+|`NewLoggerProvider` / `NewLogCore`|OTLP log provider + otelzap core bridging `zap` logs (in `log_provider.go`)|
 |`shutdown.go`|`ProviderShutdowner` (otel-agnostic shutdown handle) + `NewProviderShutdowner`, consumed by the DI shutdown hook|
-|`ProvideTracerProvider`|Adapter exposing the concrete `*sdktrace.TracerProvider` as the `trace.TracerProvider` interface (in `provider.go`)|
+|`ProvideTracerProvider` / `ProvideMeterProvider`|Adapters exposing the concrete providers as the `trace.TracerProvider` / `metric.MeterProvider` interfaces (in `provider.go`)|
+|`NewPgxTracer`|`otelpgx` tracer for DB spans + metrics, with connection details suppressed (in `pgx_tracer.go`)|
+|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF-guarded, instrumented outbound HTTP transport + its RED metrics (in `http_client_transport.go` / `http_client_metrics.go`)|
+|`propagation.go`|Cross-service / cross-carrier trace propagation (`ExtractFromCarrier` / `InjectTraceContextToCarrier`) + `NewTextMapPropagator`|
 |`TracerFactory`|Generate tracers per layer|
-|`LayerTracer`|Span generation + observability logging|
+|`LayerTracer`|Per-layer span emission (spans only — it does not write log lines itself)|
 |`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|
 |`caller.go`|Retrieve caller function name|
 |`test_kit.go`|Tracer for testing|
@@ -83,7 +94,7 @@ Roles of each component:
 Initializes the OpenTelemetry tracer provider.
 
 ```go
-func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
+func NewTracerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdktrace.TracerProvider, error)
 ```
 
 Characteristics
@@ -92,8 +103,8 @@ Characteristics
 - Registers it with `otel.SetTracerProvider`
 - Registers the W3C `TraceContext` + `Baggage` propagator via `otel.SetTextMapPropagator`
   (required for cross-service trace continuity)
-- Builds the `SpanExporter` from standard `OTEL_*` env; when no exporter is selected it falls back to no-op and skips the batch processor (no goroutine)
-- Honors `OTEL_TRACES_SAMPLER` for sampling (parent-based always-on by default)
+- Builds the OTLP `SpanExporter` (batch processor) only when `TracesEnabled()`; otherwise falls back to no-op and skips the batch processor (no goroutine)
+- Uses the SDK default sampler (`ParentBased(AlwaysSample)`); sampling is not currently env-configurable
 - Lifecycle-agnostic: returns the concrete `*sdktrace.TracerProvider` (which exposes `Shutdown`)
   so the DI layer (`hook.RegisterObservabilityShutdownHooks`) owns the shutdown registration.
   This keeps the `observability` package free of any `di/lifecycle` dependency.
@@ -104,19 +115,33 @@ Used during application DI initialization.
 
 ```go
 func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
-func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error)
+func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error)
 ```
 
 - `NewResource` builds the shared OTel resource carrying `service.name` /
   `deployment.environment` / `service.version` / `service.revision` / `service.build_date`
   from app config + build info.
 - `NewMeterProvider` mirrors `NewTracerProvider`: it registers the meter provider via
-  `otel.SetMeterProvider` and builds its `MetricReader` from the standard `OTEL_*` env. Go
-  **runtime metrics** instrumentation starts only when a real exporter is selected (the no-op
-  fallback skips it). It is likewise lifecycle-agnostic — it returns the concrete
-  `*sdkmetric.MeterProvider` and the DI hook registers its `Shutdown`. Because the shutdown
-  hook depends on the concrete provider, the DI module no longer needs a separate
-  force-start invoke; constructing the hook forces both providers to be built.
+  `otel.SetMeterProvider` and builds its periodic `MetricReader` only when `MetricsEnabled()`.
+  Go **runtime metrics** instrumentation starts only in that case (the no-op fallback skips
+  it). It is likewise lifecycle-agnostic — it returns the concrete `*sdkmetric.MeterProvider`
+  and the DI hook registers its `Shutdown`. Because the shutdown hook depends on the concrete
+  provider, the DI module no longer needs a separate force-start invoke; constructing the
+  hook forces the providers to be built.
+
+### 1.2 NewLoggerProvider / NewLogCore (OTLP logs)
+
+```go
+func NewLoggerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdklog.LoggerProvider, error)
+func NewLogCore(obsCfg *config.ObservabilityConfig, appCfg *config.ApplicationConfig, lp *sdklog.LoggerProvider) logging.LogCore
+```
+
+- `NewLoggerProvider` builds an OTLP log exporter (batch processor) only when `LogsEnabled()`;
+  otherwise it returns a resource-only provider with no processor (no goroutine).
+- `NewLogCore` returns an `otelzap` core that bridges the application's `zap` logs to the
+  LoggerProvider so they are exported over OTLP. When `LogsEnabled()` is false it returns
+  `nil`, and `zap` keeps writing to stdout only. This is the third signal alongside traces
+  and metrics — application code does not change; only the exporter toggle does.
 
 ### 2. TracerFactory
 
@@ -141,7 +166,7 @@ can have **separated span namespaces**.
 Example
 
 ```go
-tf := observability.NewTracerFactory(tp, logger, logFieldBuilder)
+tf := observability.NewTracerFactory(tp)
 
 controllerTracer := tf.Controller()
 usecaseTracer := tf.Usecase()
@@ -155,8 +180,7 @@ infraTracer := tf.Infra()
 Main features
 
 - Span generation
-- Span start / end logging
-- traceID / spanID logging output
+- traceID / spanID exposed via the span context (see `TraceContext`)
 - Automatic span name generation
 
 #### Start
@@ -209,8 +233,7 @@ ctx, result, err := observability.RunWithSpan(
 By using this function, the following are handled automatically:
 
 - span start
-- span end
-- observability logging output
+- span end (via `defer`)
 
 ### 5. ShouldLogWithSpan
 
@@ -233,38 +256,15 @@ name := observability.BuildSpanName("usecase", "user", "CreateUser")
 // => "usecase.user.CreateUser"
 ```
 
-### 7. Span Event Constants
+## Span / Log Correlation
 
-Constants representing span lifecycle events.
+`LayerTracer` emits **spans only** — it does not write log lines itself. Each span carries
+its `trace_id` / `span_id` / `parent_span_id` (retrievable via `TraceContext`), and the span
+name encodes `layer.package.function`.
 
-```go
-const (
-    SpanEventStart = "start"
-    SpanEventEnd   = "end"
-)
-```
-
-Used for the `event_type` field in log output.
-
-## Span Logging
-
-At span start / end, **structured logging** is output.
-
-Start
-
-- `event_type=start`
-- `span_name=usecase.user.CreateUser`
-- `trace_id=...`
-- `span_id=...`
-
-End
-
-- `event_type=end`
-- `latency=12ms`
-- `trace_id=...`
-- `span_id=...`
-
-Log output uses `LogFieldBuilder` from `internal/logging`.
+Log ↔ trace correlation is provided by the `otelzap` `LogCore` (§1.2): when `LogsEnabled()`,
+the application's `zap` logs are exported over OTLP with the active trace context attached, so
+logs and spans line up in the backend under the same `trace_id`.
 
 ## TraceContext
 
@@ -365,6 +365,18 @@ defer cleanup()
 
 Uses an actual `sdktrace.TracerProvider` to generate a valid span, making it suitable for testing `ShouldLogWithSpan` and similar functions.
 
+### Metrics / transport test helpers
+
+For code that depends on the metrics sets or the HTTP transport, no-op constructions built on
+a no-op `MeterProvider` / `TracerProvider` are provided.
+
+|Function|Description|
+|---|---|
+|`NewNoopWorkerMetrics`|`WorkerMetrics` on a no-op meter|
+|`NewNoopHTTPClientMetrics`|`HTTPClientMetrics` on a no-op meter|
+|`NewNoopOutboxMetrics`|`OutboxMetrics` on a no-op meter|
+|`NewNoopHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard disabled (allows loopback / httptest targets)|
+
 ## Design Policy
 
 This package is based on the following design policies.
@@ -380,14 +392,13 @@ Reason
 
 ### 2 Integration with logging
 
-Span events are output through the logging package.
+Log ↔ trace correlation is provided by the `otelzap` `LogCore` (§1.2): application logs are
+exported over OTLP with the active trace context, so logs and spans share the same identifiers
+in the backend. The span context exposes:
 
 - `trace_id`
 - `span_id`
 - `parent_span_id`
-- `layer`
-- `pkg`
-- `function`
 
 ### 3 Application code does not depend on OTel
 
@@ -427,15 +438,89 @@ the first candidate** to drop, while the **usecase / infra spans are worth retai
 > about **relative value / the rationale behind the design judgment**, not a statement
 > that the controller span has been removed.
 
+## Trace Context Propagation
+
+`propagation.go` carries the W3C trace context across service and carrier boundaries so a
+producer → relay → consumer chain forms a single trace.
+
+- `NewTextMapPropagator` — the composite W3C `TraceContext` + `Baggage` propagator that
+  `NewTracerProvider` registers globally via `otel.SetTextMapPropagator`.
+- `ExtractFromCarrier(ctx, attrs)` — continues a trace from a `map[string]string` carrier
+  (e.g. message attributes / headers) using the **global** propagator. Returns `ctx`
+  unchanged when the carrier is empty.
+- `InjectTraceContextToCarrier(ctx, attrs)` — writes only the current context's
+  **`traceparent` / `tracestate`** into the carrier (a `TraceContext`-only propagator, **not**
+  the global one). Used when emitting outbox rows so the relay → receiver stays on the origin
+  trace, while deliberately **not** forwarding arbitrary inbound baggage to external
+  endpoints.
+
+## Outbound HTTP Client Transport
+
+`http_client_transport.go` provides the instrumented, SSRF-guarded transport used by the
+outbound HTTP client substrate.
+
+- `NewHTTPClientTransport(tp, propagator)` — wraps a base `http.Transport` with an `otelhttp`
+  layer (automatic client spans) plus a dial-time SSRF guard. `RoundTripper()` exposes the
+  underlying `http.RoundTripper`.
+- **SSRF guard** — validates the *resolved* destination IP at dial time (so DNS-rebinding is
+  also caught): link-local / metadata, unspecified, and reserved / bogon ranges are **always**
+  blocked; loopback / private / CGNAT (`100.64.0.0/10`) are blocked **unless** explicitly
+  allowed.
+- `ContextWithTracePropagation(ctx, enabled)` — per-call toggle for whether
+  `traceparent` / `baggage` are injected into the outgoing request (suppress propagation to
+  untrusted downstreams with `false`).
+- `ContextWithAllowPrivateNetwork(ctx, allowed)` — per-call toggle allowing private / loopback
+  destinations (default is deny).
+
 ## Metrics
 
-In addition to tracing, this package exposes process-level metrics.
+In addition to tracing, this package exposes both **OTel meter instruments** (exported over
+OTLP when `MetricsEnabled()`) and **Prometheus collectors** (scraped from the process).
 
-### Build Info (`app_build_info`)
+### OTel meter instruments
 
-The `internal/observability/metrics/buildinfo` subpackage exposes the application's build / version / runtime information as a Prometheus info gauge (`app_build_info`, value always `1`). It shares the same source of truth (`system.BuildInfo`) as the `/version` endpoint, and resolves all label values once at DI wiring time.
+Each subsystem owns its meter and instruments, constructed from the injected
+`MeterProvider`. Labels are kept low-cardinality and free of secrets / PII.
+
+|Meter (`go-boilerplate/...`)|Instruments|Owner|
+|---|---|---|
+|`/outbox`|`outbox.lag_seconds` (gauge), `outbox.dead` (counter)|outbox relay|
+|`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll & extend errors (counters), latency (histogram), in-flight (up-down)|worker engine (broker-agnostic)|
+|`/idempotency`|`requests` / `failures` / `expiredCleanup` (counters); labels limited to `operation_id` / `result` / `phase` / `job`|idempotency subsystem|
+|`/httpclient`|RED (`requests` / `errors`, latency histogram) + `retries`, in-flight, `breakerState` gauge|outbound HTTP client substrate|
+
+DB spans and metrics are additionally emitted by `NewPgxTracer` (`otelpgx`), and Go
+**runtime metrics** are collected when `MetricsEnabled()`.
+
+### Prometheus collectors
+
+|Collector|Metric|Source|
+|---|---|---|
+|`metrics/buildinfo`|`app_build_info` info gauge (value always `1`)|`system.BuildInfo` (same source as `/version`); labels resolved once at DI wiring time|
+|`metrics/queue`|`worker_queue_depth` gauge (by state, incl. DLQ) + `worker_queue_stats_collection_failures_total`|pulled per-scrape from the broker adapter's `worker.QueueStatsProvider` (approximate on SQS)|
 
 See `internal/observability/metrics/buildinfo/README.md` for details.
+
+## Test coverage exception (extraordinary measure)
+
+This package is **write-once infrastructure**: once implemented it is rarely touched. As an
+**extraordinary measure** (超法規的措置), the following defensive / structurally-unreachable
+branches are exempt from the near-100% unit-coverage expectation. Per the rule below, **no
+extra production code is added and no contrived test is written** solely to reach them —
+only branches reachable as-is would be tested, and none of these are.
+
+|File|Function|Uncovered branch|Why exempt|
+|---|---|---|---|
+|`caller.go`|`getCallerFullName`|`runtime.Caller` `!ok` / `runtime.FuncForPC` `nil` guards|Cannot be triggered deterministically without manipulating the runtime stack|
+|`provider.go`|`NewResource`|`resource.Merge` error|Inputs are fixed (default + schemaless) → no schema conflict is possible|
+|`provider.go`|`NewMeterProvider`|`runtime.Start` error|Only fails on instrument-registration failure; not reachable without a faulty provider|
+|`test_kit.go`|`NewNoop{Worker,HTTPClient,Outbox}Metrics`|`t.Fatalf` guards|Test-support helpers; the no-op provider never errors, and `*testing.T` cannot be faked without a signature change|
+
+> **Governance:** coverage exceptions are **not added at will**. A new entry may be recorded
+> in this section **only with an appropriate approver's (e.g. architect) sign-off**. The
+> "no contrived tests / no extra implementation just to color lines" rule still holds; this
+> section is the sanctioned, auditable list of the few branches where that trade-off was
+> explicitly approved.
 
 ## Security Considerations
 

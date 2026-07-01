@@ -40,6 +40,7 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 |`timeout`|`Middleware`|per-request deadline budget（deadline 伝播の入口）|
 |`observability`|`Middleware`|OpenTelemetry トレーシング統合|
 |`redmetrics`|`Middleware`|HTTP RED メトリクス（request count / duration / status）。label は method / route / status_code / status_class のみ|
+|`idempotency`|`Middleware` / `StrictMiddleware`|`Idempotency-Key` によるリクエスト冪等化の入口（oapi-codegen StrictMiddleware スロット。`e.Use` 登録ではない）|
 
 ### エラーハンドリング
 
@@ -54,7 +55,7 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 |`oapi`|`Middleware`|OpenAPI リクエストバリデーション|
 |`oapi/auth`|`NewAuthenticator`|Cookie / Header からのトークン認証|
 |`oapi/skipper`|`New`|ops エンドポイントのバリデーションスキップ|
-|`oapi/validator`|`Middleware`, `GetValidator`|OpenAPI スキーマの読み込みとバリデーション|
+|`oapi/validator`|`GetValidator`|OpenAPI スキーマ（spec）の読み込みと提供。バリデーション自体は `oapi` が担当|
 
 ### インフラ / ユーティリティ
 

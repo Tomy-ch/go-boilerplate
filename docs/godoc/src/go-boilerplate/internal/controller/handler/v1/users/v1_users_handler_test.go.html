@@ -198,215 +198,224 @@
 <span id="L141" class="ln">   141  </span>			t.Parallel()
 <span id="L142" class="ln">   142  </span>			exec(t, []user.UserView{expectedDTO1}, 1)
 <span id="L143" class="ln">   143  </span>		})
-<span id="L144" class="ln">   144  </span>	})
-<span id="L145" class="ln">   145  </span>
-<span id="L146" class="ln">   146  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L147" class="ln">   147  </span>		t.Parallel()
-<span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span>		t.Run(&#34;ページング処理が失敗した場合、エラーが返る&#34;, func(t *testing.T) {
-<span id="L150" class="ln">   150  </span>			t.Parallel()
-<span id="L151" class="ln">   151  </span>			ctx := context.Background()
-<span id="L152" class="ln">   152  </span>			ctrl := gomock.NewController(t)
-<span id="L153" class="ln">   153  </span>			lt := observability.NewMockControllerLayerTracer(t)
-<span id="L154" class="ln">   154  </span>
-<span id="L155" class="ln">   155  </span>			invalidPage := 1_000_000
-<span id="L156" class="ln">   156  </span>			invalidParams := gen.GetUsersRequestObject{
-<span id="L157" class="ln">   157  </span>				Params: gen.GetUsersParams{
-<span id="L158" class="ln">   158  </span>					Page:    new(invalidPage),
-<span id="L159" class="ln">   159  </span>					PerPage: mockParams.Params.PerPage,
-<span id="L160" class="ln">   160  </span>				},
-<span id="L161" class="ln">   161  </span>			}
-<span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
-<span id="L164" class="ln">   164  </span>
-<span id="L165" class="ln">   165  </span>			s := &amp;server{tracer: lt, uc: mockApp}
-<span id="L166" class="ln">   166  </span>			resp, err := s.GetUsers(ctx, invalidParams)
-<span id="L167" class="ln">   167  </span>			require.Nil(t, resp)
-<span id="L168" class="ln">   168  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-<span id="L169" class="ln">   169  </span>		})
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>		t.Run(&#34;Usecaseがエラーを返した場合、エラーが返る&#34;, func(t *testing.T) {
-<span id="L172" class="ln">   172  </span>			t.Parallel()
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span>			ctx := context.Background()
-<span id="L175" class="ln">   175  </span>			ctrl := gomock.NewController(t)
-<span id="L176" class="ln">   176  </span>			lt := observability.NewMockControllerLayerTracer(t)
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>			expectedError := apperror.ErrInternal
-<span id="L179" class="ln">   179  </span>
-<span id="L180" class="ln">   180  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
-<span id="L181" class="ln">   181  </span>			mockApp.EXPECT().
-<span id="L182" class="ln">   182  </span>				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
-<span id="L183" class="ln">   183  </span>				Return(nil, expectedError)
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span>		t.Run(&#34;ユーザーが0件の場合、空リストと200が返る&#34;, func(t *testing.T) {
+<span id="L146" class="ln">   146  </span>			t.Parallel()
+<span id="L147" class="ln">   147  </span>			exec(t, []user.UserView{}, 0)
+<span id="L148" class="ln">   148  </span>		})
+<span id="L149" class="ln">   149  </span>	})
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L152" class="ln">   152  </span>		t.Parallel()
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span>		t.Run(&#34;ページング処理が失敗した場合、エラーが返る&#34;, func(t *testing.T) {
+<span id="L155" class="ln">   155  </span>			t.Parallel()
+<span id="L156" class="ln">   156  </span>			ctx := context.Background()
+<span id="L157" class="ln">   157  </span>			ctrl := gomock.NewController(t)
+<span id="L158" class="ln">   158  </span>			lt := observability.NewMockControllerLayerTracer(t)
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span>			invalidPage := 1_000_000
+<span id="L161" class="ln">   161  </span>			invalidParams := gen.GetUsersRequestObject{
+<span id="L162" class="ln">   162  </span>				Params: gen.GetUsersParams{
+<span id="L163" class="ln">   163  </span>					Page:    new(invalidPage),
+<span id="L164" class="ln">   164  </span>					PerPage: mockParams.Params.PerPage,
+<span id="L165" class="ln">   165  </span>				},
+<span id="L166" class="ln">   166  </span>			}
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>			s := &amp;server{tracer: lt, uc: mockApp}
+<span id="L171" class="ln">   171  </span>			resp, err := s.GetUsers(ctx, invalidParams)
+<span id="L172" class="ln">   172  </span>			require.Nil(t, resp)
+<span id="L173" class="ln">   173  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L174" class="ln">   174  </span>		})
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>		t.Run(&#34;Usecaseがエラーを返した場合、エラーが返る&#34;, func(t *testing.T) {
+<span id="L177" class="ln">   177  </span>			t.Parallel()
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>			ctx := context.Background()
+<span id="L180" class="ln">   180  </span>			ctrl := gomock.NewController(t)
+<span id="L181" class="ln">   181  </span>			lt := observability.NewMockControllerLayerTracer(t)
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>			expectedError := apperror.ErrInternal
 <span id="L184" class="ln">   184  </span>
-<span id="L185" class="ln">   185  </span>			s := &amp;server{tracer: lt, uc: mockApp}
-<span id="L186" class="ln">   186  </span>			resp, err := s.GetUsers(ctx, mockParams)
-<span id="L187" class="ln">   187  </span>			require.Nil(t, resp)
-<span id="L188" class="ln">   188  </span>			require.ErrorIs(t, err, expectedError)
-<span id="L189" class="ln">   189  </span>		})
-<span id="L190" class="ln">   190  </span>	})
-<span id="L191" class="ln">   191  </span>}
-<span id="L192" class="ln">   192  </span>
-<span id="L193" class="ln">   193  </span>func Test_server_PostUsers(t *testing.T) {
-<span id="L194" class="ln">   194  </span>	t.Parallel()
-<span id="L195" class="ln">   195  </span>
-<span id="L196" class="ln">   196  </span>	userID, err := uuid.New()
-<span id="L197" class="ln">   197  </span>	require.NoError(t, err)
-<span id="L198" class="ln">   198  </span>
-<span id="L199" class="ln">   199  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L200" class="ln">   200  </span>		t.Parallel()
-<span id="L201" class="ln">   201  </span>
-<span id="L202" class="ln">   202  </span>		ctx := context.Background()
-<span id="L203" class="ln">   203  </span>		ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
-<span id="L204" class="ln">   204  </span>		ctrl := gomock.NewController(t)
-<span id="L205" class="ln">   205  </span>		lt := observability.NewMockControllerLayerTracer(t)
+<span id="L185" class="ln">   185  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
+<span id="L186" class="ln">   186  </span>			mockApp.EXPECT().
+<span id="L187" class="ln">   187  </span>				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
+<span id="L188" class="ln">   188  </span>				Return(nil, expectedError)
+<span id="L189" class="ln">   189  </span>
+<span id="L190" class="ln">   190  </span>			s := &amp;server{tracer: lt, uc: mockApp}
+<span id="L191" class="ln">   191  </span>			resp, err := s.GetUsers(ctx, mockParams)
+<span id="L192" class="ln">   192  </span>			require.Nil(t, resp)
+<span id="L193" class="ln">   193  </span>			require.ErrorIs(t, err, expectedError)
+<span id="L194" class="ln">   194  </span>		})
+<span id="L195" class="ln">   195  </span>	})
+<span id="L196" class="ln">   196  </span>}
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span>func Test_server_PostUsers(t *testing.T) {
+<span id="L199" class="ln">   199  </span>	t.Parallel()
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span>	userID, err := uuid.New()
+<span id="L202" class="ln">   202  </span>	require.NoError(t, err)
+<span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L205" class="ln">   205  </span>		t.Parallel()
 <span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>		req := gen.PostUsersRequestObject{
-<span id="L208" class="ln">   208  </span>			Body: &amp;gen.PostUsersJSONRequestBody{
-<span id="L209" class="ln">   209  </span>				FirstName:  &#34;First&#34;,
-<span id="L210" class="ln">   210  </span>				LastName:   &#34;Last&#34;,
-<span id="L211" class="ln">   211  </span>				Email:      types.Email(&#34;new@example.com&#34;),
-<span id="L212" class="ln">   212  </span>				Phone:      &#34;09000000000&#34;,
-<span id="L213" class="ln">   213  </span>				PostalCode: &#34;123-4567&#34;,
-<span id="L214" class="ln">   214  </span>				Prefecture: &#34;Tokyo&#34;,
-<span id="L215" class="ln">   215  </span>				City:       &#34;Shibuya&#34;,
-<span id="L216" class="ln">   216  </span>				Street:     &#34;1-1-1&#34;,
-<span id="L217" class="ln">   217  </span>				Building:   new(&#34;Building&#34;),
-<span id="L218" class="ln">   218  </span>				Password:   &#34;secret&#34;,
-<span id="L219" class="ln">   219  </span>			},
-<span id="L220" class="ln">   220  </span>		}
-<span id="L221" class="ln">   221  </span>
-<span id="L222" class="ln">   222  </span>		wantParams := user.UpdateProfileParams{
-<span id="L223" class="ln">   223  </span>			FirstName:      req.Body.FirstName,
-<span id="L224" class="ln">   224  </span>			LastName:       req.Body.LastName,
-<span id="L225" class="ln">   225  </span>			Email:          string(req.Body.Email),
-<span id="L226" class="ln">   226  </span>			Phone:          req.Body.Phone,
-<span id="L227" class="ln">   227  </span>			PostalCode:     req.Body.PostalCode,
-<span id="L228" class="ln">   228  </span>			PrefectureName: req.Body.Prefecture,
-<span id="L229" class="ln">   229  </span>			City:           req.Body.City,
-<span id="L230" class="ln">   230  </span>			Street:         req.Body.Street,
-<span id="L231" class="ln">   231  </span>			Building:       req.Body.Building,
-<span id="L232" class="ln">   232  </span>		}
-<span id="L233" class="ln">   233  </span>		wantView := user.UserView{
-<span id="L234" class="ln">   234  </span>			FirstName:      req.Body.FirstName,
-<span id="L235" class="ln">   235  </span>			LastName:       req.Body.LastName,
-<span id="L236" class="ln">   236  </span>			Email:          string(req.Body.Email),
-<span id="L237" class="ln">   237  </span>			Phone:          req.Body.Phone,
-<span id="L238" class="ln">   238  </span>			PostalCode:     req.Body.PostalCode,
-<span id="L239" class="ln">   239  </span>			PrefectureName: req.Body.Prefecture,
-<span id="L240" class="ln">   240  </span>			City:           req.Body.City,
-<span id="L241" class="ln">   241  </span>			Street:         req.Body.Street,
-<span id="L242" class="ln">   242  </span>			Building:       req.Body.Building,
-<span id="L243" class="ln">   243  </span>		}
-<span id="L244" class="ln">   244  </span>
-<span id="L245" class="ln">   245  </span>		<span class="comment">// 認証 subject 由来の UserID 注入とリクエスト→DTO 詰め替えを引数捕捉で検証する。</span>
-<span id="L246" class="ln">   246  </span>		var gotParams *user.CreateParamsDTO
-<span id="L247" class="ln">   247  </span>		mockApp := mock_user.NewMockUsecase(ctrl)
-<span id="L248" class="ln">   248  </span>		mockApp.EXPECT().CreateUser(gomock.Any(), gomock.Any()).
-<span id="L249" class="ln">   249  </span>			DoAndReturn(func(_ context.Context, p *user.CreateParamsDTO) (user.UserView, error) {
-<span id="L250" class="ln">   250  </span>				gotParams = p
-<span id="L251" class="ln">   251  </span>				return wantView, nil
-<span id="L252" class="ln">   252  </span>			})
-<span id="L253" class="ln">   253  </span>
-<span id="L254" class="ln">   254  </span>		s := &amp;server{tracer: lt, uc: mockApp}
-<span id="L255" class="ln">   255  </span>		resp, err := s.PostUsers(ctx, req)
-<span id="L256" class="ln">   256  </span>		require.NoError(t, err)
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>		expectedParams := &amp;user.CreateParamsDTO{
-<span id="L259" class="ln">   259  </span>			UserID:              userID,
-<span id="L260" class="ln">   260  </span>			RawPassword:         req.Body.Password,
-<span id="L261" class="ln">   261  </span>			UpdateProfileParams: wantParams,
-<span id="L262" class="ln">   262  </span>		}
-<span id="L263" class="ln">   263  </span>		assert.Equal(t, expectedParams, gotParams)
-<span id="L264" class="ln">   264  </span>
-<span id="L265" class="ln">   265  </span>		actual, ok := resp.(gen.PostUsers201JSONResponse)
-<span id="L266" class="ln">   266  </span>		require.True(t, ok)
-<span id="L267" class="ln">   267  </span>
-<span id="L268" class="ln">   268  </span>		assert.Equal(t, wantUserResponse(wantView), gen.UserResponse(actual))
-<span id="L269" class="ln">   269  </span>	})
-<span id="L270" class="ln">   270  </span>
-<span id="L271" class="ln">   271  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L272" class="ln">   272  </span>		t.Parallel()
-<span id="L273" class="ln">   273  </span>
-<span id="L274" class="ln">   274  </span>		t.Run(&#34;認証情報が存在しない場合、ErrUnauthenticatedUserが返る&#34;, func(t *testing.T) {
-<span id="L275" class="ln">   275  </span>			t.Parallel()
-<span id="L276" class="ln">   276  </span>
-<span id="L277" class="ln">   277  </span>			ctx := context.Background()
-<span id="L278" class="ln">   278  </span>			ctrl := gomock.NewController(t)
-<span id="L279" class="ln">   279  </span>			lt := observability.NewMockControllerLayerTracer(t)
-<span id="L280" class="ln">   280  </span>			req := gen.PostUsersRequestObject{
-<span id="L281" class="ln">   281  </span>				Body: &amp;gen.PostUsersJSONRequestBody{
-<span id="L282" class="ln">   282  </span>					FirstName: &#34;A&#34;,
-<span id="L283" class="ln">   283  </span>					LastName:  &#34;B&#34;,
-<span id="L284" class="ln">   284  </span>					Email:     types.Email(&#34;err@example.com&#34;),
-<span id="L285" class="ln">   285  </span>					Password:  &#34;pw&#34;,
-<span id="L286" class="ln">   286  </span>				},
-<span id="L287" class="ln">   287  </span>			}
-<span id="L288" class="ln">   288  </span>
-<span id="L289" class="ln">   289  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
-<span id="L290" class="ln">   290  </span>
-<span id="L291" class="ln">   291  </span>			s := &amp;server{tracer: lt, uc: mockApp}
-<span id="L292" class="ln">   292  </span>			resp, err := s.PostUsers(ctx, req)
-<span id="L293" class="ln">   293  </span>
-<span id="L294" class="ln">   294  </span>			require.Nil(t, resp)
-<span id="L295" class="ln">   295  </span>			require.ErrorIs(t, err, ErrUnauthenticatedUser)
-<span id="L296" class="ln">   296  </span>		})
+<span id="L207" class="ln">   207  </span>		t.Run(&#34;認証済みユーザーが登録した場合_201とUserViewが返る&#34;, func(t *testing.T) {
+<span id="L208" class="ln">   208  </span>			t.Parallel()
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>			ctx := context.Background()
+<span id="L211" class="ln">   211  </span>			ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
+<span id="L212" class="ln">   212  </span>			ctrl := gomock.NewController(t)
+<span id="L213" class="ln">   213  </span>			lt := observability.NewMockControllerLayerTracer(t)
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>			req := gen.PostUsersRequestObject{
+<span id="L216" class="ln">   216  </span>				Body: &amp;gen.PostUsersJSONRequestBody{
+<span id="L217" class="ln">   217  </span>					FirstName:  &#34;First&#34;,
+<span id="L218" class="ln">   218  </span>					LastName:   &#34;Last&#34;,
+<span id="L219" class="ln">   219  </span>					Email:      types.Email(&#34;new@example.com&#34;),
+<span id="L220" class="ln">   220  </span>					Phone:      &#34;09000000000&#34;,
+<span id="L221" class="ln">   221  </span>					PostalCode: &#34;123-4567&#34;,
+<span id="L222" class="ln">   222  </span>					Prefecture: &#34;Tokyo&#34;,
+<span id="L223" class="ln">   223  </span>					City:       &#34;Shibuya&#34;,
+<span id="L224" class="ln">   224  </span>					Street:     &#34;1-1-1&#34;,
+<span id="L225" class="ln">   225  </span>					Building:   new(&#34;Building&#34;),
+<span id="L226" class="ln">   226  </span>					Password:   &#34;secret&#34;,
+<span id="L227" class="ln">   227  </span>				},
+<span id="L228" class="ln">   228  </span>			}
+<span id="L229" class="ln">   229  </span>
+<span id="L230" class="ln">   230  </span>			wantParams := user.UpdateProfileParams{
+<span id="L231" class="ln">   231  </span>				FirstName:      req.Body.FirstName,
+<span id="L232" class="ln">   232  </span>				LastName:       req.Body.LastName,
+<span id="L233" class="ln">   233  </span>				Email:          string(req.Body.Email),
+<span id="L234" class="ln">   234  </span>				Phone:          req.Body.Phone,
+<span id="L235" class="ln">   235  </span>				PostalCode:     req.Body.PostalCode,
+<span id="L236" class="ln">   236  </span>				PrefectureName: req.Body.Prefecture,
+<span id="L237" class="ln">   237  </span>				City:           req.Body.City,
+<span id="L238" class="ln">   238  </span>				Street:         req.Body.Street,
+<span id="L239" class="ln">   239  </span>				Building:       req.Body.Building,
+<span id="L240" class="ln">   240  </span>			}
+<span id="L241" class="ln">   241  </span>			wantView := user.UserView{
+<span id="L242" class="ln">   242  </span>				FirstName:      req.Body.FirstName,
+<span id="L243" class="ln">   243  </span>				LastName:       req.Body.LastName,
+<span id="L244" class="ln">   244  </span>				Email:          string(req.Body.Email),
+<span id="L245" class="ln">   245  </span>				Phone:          req.Body.Phone,
+<span id="L246" class="ln">   246  </span>				PostalCode:     req.Body.PostalCode,
+<span id="L247" class="ln">   247  </span>				PrefectureName: req.Body.Prefecture,
+<span id="L248" class="ln">   248  </span>				City:           req.Body.City,
+<span id="L249" class="ln">   249  </span>				Street:         req.Body.Street,
+<span id="L250" class="ln">   250  </span>				Building:       req.Body.Building,
+<span id="L251" class="ln">   251  </span>			}
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>			<span class="comment">// 認証 subject 由来の UserID 注入とリクエスト→DTO 詰め替えを引数捕捉で検証する。</span>
+<span id="L254" class="ln">   254  </span>			var gotParams *user.CreateParamsDTO
+<span id="L255" class="ln">   255  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
+<span id="L256" class="ln">   256  </span>			mockApp.EXPECT().CreateUser(gomock.Any(), gomock.Any()).
+<span id="L257" class="ln">   257  </span>				DoAndReturn(func(_ context.Context, p *user.CreateParamsDTO) (user.UserView, error) {
+<span id="L258" class="ln">   258  </span>					gotParams = p
+<span id="L259" class="ln">   259  </span>					return wantView, nil
+<span id="L260" class="ln">   260  </span>				})
+<span id="L261" class="ln">   261  </span>
+<span id="L262" class="ln">   262  </span>			s := &amp;server{tracer: lt, uc: mockApp}
+<span id="L263" class="ln">   263  </span>			resp, err := s.PostUsers(ctx, req)
+<span id="L264" class="ln">   264  </span>			require.NoError(t, err)
+<span id="L265" class="ln">   265  </span>
+<span id="L266" class="ln">   266  </span>			expectedParams := &amp;user.CreateParamsDTO{
+<span id="L267" class="ln">   267  </span>				UserID:              userID,
+<span id="L268" class="ln">   268  </span>				RawPassword:         req.Body.Password,
+<span id="L269" class="ln">   269  </span>				UpdateProfileParams: wantParams,
+<span id="L270" class="ln">   270  </span>			}
+<span id="L271" class="ln">   271  </span>			assert.Equal(t, expectedParams, gotParams)
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>			actual, ok := resp.(gen.PostUsers201JSONResponse)
+<span id="L274" class="ln">   274  </span>			require.True(t, ok)
+<span id="L275" class="ln">   275  </span>
+<span id="L276" class="ln">   276  </span>			assert.Equal(t, wantUserResponse(wantView), gen.UserResponse(actual))
+<span id="L277" class="ln">   277  </span>		})
+<span id="L278" class="ln">   278  </span>	})
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L281" class="ln">   281  </span>		t.Parallel()
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span>		t.Run(&#34;認証情報が存在しない場合、ErrUnauthenticatedUserが返る&#34;, func(t *testing.T) {
+<span id="L284" class="ln">   284  </span>			t.Parallel()
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>			ctx := context.Background()
+<span id="L287" class="ln">   287  </span>			ctrl := gomock.NewController(t)
+<span id="L288" class="ln">   288  </span>			lt := observability.NewMockControllerLayerTracer(t)
+<span id="L289" class="ln">   289  </span>			req := gen.PostUsersRequestObject{
+<span id="L290" class="ln">   290  </span>				Body: &amp;gen.PostUsersJSONRequestBody{
+<span id="L291" class="ln">   291  </span>					FirstName: &#34;A&#34;,
+<span id="L292" class="ln">   292  </span>					LastName:  &#34;B&#34;,
+<span id="L293" class="ln">   293  </span>					Email:     types.Email(&#34;err@example.com&#34;),
+<span id="L294" class="ln">   294  </span>					Password:  &#34;pw&#34;,
+<span id="L295" class="ln">   295  </span>				},
+<span id="L296" class="ln">   296  </span>			}
 <span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>		t.Run(&#34;認証データのsubjectにuuidが含まれない場合、エラーが返る&#34;, func(t *testing.T) {
-<span id="L299" class="ln">   299  </span>			t.Parallel()
-<span id="L300" class="ln">   300  </span>
-<span id="L301" class="ln">   301  </span>			ctx := context.Background()
-<span id="L302" class="ln">   302  </span>			ctx = testauth.MakeAvailableAuthn(ctx, t, &#34;invalid-subject&#34;)
-<span id="L303" class="ln">   303  </span>
-<span id="L304" class="ln">   304  </span>			ctrl := gomock.NewController(t)
-<span id="L305" class="ln">   305  </span>			lt := observability.NewMockControllerLayerTracer(t)
-<span id="L306" class="ln">   306  </span>			req := gen.PostUsersRequestObject{
-<span id="L307" class="ln">   307  </span>				Body: &amp;gen.PostUsersJSONRequestBody{
-<span id="L308" class="ln">   308  </span>					FirstName: &#34;A&#34;,
-<span id="L309" class="ln">   309  </span>					LastName:  &#34;B&#34;,
-<span id="L310" class="ln">   310  </span>					Email:     types.Email(&#34;err@example.com&#34;),
-<span id="L311" class="ln">   311  </span>					Password:  &#34;pw&#34;,
-<span id="L312" class="ln">   312  </span>				},
-<span id="L313" class="ln">   313  </span>			}
-<span id="L314" class="ln">   314  </span>
-<span id="L315" class="ln">   315  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
-<span id="L316" class="ln">   316  </span>
-<span id="L317" class="ln">   317  </span>			s := &amp;server{tracer: lt, uc: mockApp}
-<span id="L318" class="ln">   318  </span>			resp, err := s.PostUsers(ctx, req)
-<span id="L319" class="ln">   319  </span>
-<span id="L320" class="ln">   320  </span>			require.Nil(t, resp)
-<span id="L321" class="ln">   321  </span>			require.ErrorContains(t, err, &#34;failed to get user ID from authenticator&#34;)
-<span id="L322" class="ln">   322  </span>		})
+<span id="L298" class="ln">   298  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>			s := &amp;server{tracer: lt, uc: mockApp}
+<span id="L301" class="ln">   301  </span>			resp, err := s.PostUsers(ctx, req)
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>			require.Nil(t, resp)
+<span id="L304" class="ln">   304  </span>			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+<span id="L305" class="ln">   305  </span>		})
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span>		t.Run(&#34;認証データのsubjectにuuidが含まれない場合、エラーが返る&#34;, func(t *testing.T) {
+<span id="L308" class="ln">   308  </span>			t.Parallel()
+<span id="L309" class="ln">   309  </span>
+<span id="L310" class="ln">   310  </span>			ctx := context.Background()
+<span id="L311" class="ln">   311  </span>			ctx = testauth.MakeAvailableAuthn(ctx, t, &#34;invalid-subject&#34;)
+<span id="L312" class="ln">   312  </span>
+<span id="L313" class="ln">   313  </span>			ctrl := gomock.NewController(t)
+<span id="L314" class="ln">   314  </span>			lt := observability.NewMockControllerLayerTracer(t)
+<span id="L315" class="ln">   315  </span>			req := gen.PostUsersRequestObject{
+<span id="L316" class="ln">   316  </span>				Body: &amp;gen.PostUsersJSONRequestBody{
+<span id="L317" class="ln">   317  </span>					FirstName: &#34;A&#34;,
+<span id="L318" class="ln">   318  </span>					LastName:  &#34;B&#34;,
+<span id="L319" class="ln">   319  </span>					Email:     types.Email(&#34;err@example.com&#34;),
+<span id="L320" class="ln">   320  </span>					Password:  &#34;pw&#34;,
+<span id="L321" class="ln">   321  </span>				},
+<span id="L322" class="ln">   322  </span>			}
 <span id="L323" class="ln">   323  </span>
-<span id="L324" class="ln">   324  </span>		t.Run(&#34;Usecaseがエラーを返す&#34;, func(t *testing.T) {
-<span id="L325" class="ln">   325  </span>			t.Parallel()
-<span id="L326" class="ln">   326  </span>
-<span id="L327" class="ln">   327  </span>			ctx := context.Background()
-<span id="L328" class="ln">   328  </span>			ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
-<span id="L329" class="ln">   329  </span>			ctrl := gomock.NewController(t)
-<span id="L330" class="ln">   330  </span>			lt := observability.NewMockControllerLayerTracer(t)
-<span id="L331" class="ln">   331  </span>
-<span id="L332" class="ln">   332  </span>			req := gen.PostUsersRequestObject{
-<span id="L333" class="ln">   333  </span>				Body: &amp;gen.PostUsersJSONRequestBody{
-<span id="L334" class="ln">   334  </span>					FirstName: &#34;A&#34;,
-<span id="L335" class="ln">   335  </span>					LastName:  &#34;B&#34;,
-<span id="L336" class="ln">   336  </span>					Email:     types.Email(&#34;err@example.com&#34;),
-<span id="L337" class="ln">   337  </span>					Password:  &#34;pw&#34;,
-<span id="L338" class="ln">   338  </span>				},
-<span id="L339" class="ln">   339  </span>			}
+<span id="L324" class="ln">   324  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
+<span id="L325" class="ln">   325  </span>
+<span id="L326" class="ln">   326  </span>			s := &amp;server{tracer: lt, uc: mockApp}
+<span id="L327" class="ln">   327  </span>			resp, err := s.PostUsers(ctx, req)
+<span id="L328" class="ln">   328  </span>
+<span id="L329" class="ln">   329  </span>			require.Nil(t, resp)
+<span id="L330" class="ln">   330  </span>			require.ErrorContains(t, err, &#34;failed to get user ID from authenticator&#34;)
+<span id="L331" class="ln">   331  </span>		})
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span>		t.Run(&#34;Usecaseがエラーを返す&#34;, func(t *testing.T) {
+<span id="L334" class="ln">   334  </span>			t.Parallel()
+<span id="L335" class="ln">   335  </span>
+<span id="L336" class="ln">   336  </span>			ctx := context.Background()
+<span id="L337" class="ln">   337  </span>			ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
+<span id="L338" class="ln">   338  </span>			ctrl := gomock.NewController(t)
+<span id="L339" class="ln">   339  </span>			lt := observability.NewMockControllerLayerTracer(t)
 <span id="L340" class="ln">   340  </span>
-<span id="L341" class="ln">   341  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
-<span id="L342" class="ln">   342  </span>			expectedErr := apperror.ErrInternal
-<span id="L343" class="ln">   343  </span>			mockApp.EXPECT().CreateUser(gomock.Any(), gomock.AssignableToTypeOf(&amp;user.CreateParamsDTO{})).Return(user.UserView{}, expectedErr)
-<span id="L344" class="ln">   344  </span>
-<span id="L345" class="ln">   345  </span>			s := &amp;server{tracer: lt, uc: mockApp}
-<span id="L346" class="ln">   346  </span>			resp, err := s.PostUsers(ctx, req)
-<span id="L347" class="ln">   347  </span>			require.Nil(t, resp)
-<span id="L348" class="ln">   348  </span>			require.ErrorIs(t, err, expectedErr)
-<span id="L349" class="ln">   349  </span>		})
-<span id="L350" class="ln">   350  </span>	})
-<span id="L351" class="ln">   351  </span>}
-<span id="L352" class="ln">   352  </span>
+<span id="L341" class="ln">   341  </span>			req := gen.PostUsersRequestObject{
+<span id="L342" class="ln">   342  </span>				Body: &amp;gen.PostUsersJSONRequestBody{
+<span id="L343" class="ln">   343  </span>					FirstName: &#34;A&#34;,
+<span id="L344" class="ln">   344  </span>					LastName:  &#34;B&#34;,
+<span id="L345" class="ln">   345  </span>					Email:     types.Email(&#34;err@example.com&#34;),
+<span id="L346" class="ln">   346  </span>					Password:  &#34;pw&#34;,
+<span id="L347" class="ln">   347  </span>				},
+<span id="L348" class="ln">   348  </span>			}
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>			mockApp := mock_user.NewMockUsecase(ctrl)
+<span id="L351" class="ln">   351  </span>			expectedErr := apperror.ErrInternal
+<span id="L352" class="ln">   352  </span>			mockApp.EXPECT().CreateUser(gomock.Any(), gomock.AssignableToTypeOf(&amp;user.CreateParamsDTO{})).Return(user.UserView{}, expectedErr)
+<span id="L353" class="ln">   353  </span>
+<span id="L354" class="ln">   354  </span>			s := &amp;server{tracer: lt, uc: mockApp}
+<span id="L355" class="ln">   355  </span>			resp, err := s.PostUsers(ctx, req)
+<span id="L356" class="ln">   356  </span>			require.Nil(t, resp)
+<span id="L357" class="ln">   357  </span>			require.ErrorIs(t, err, expectedErr)
+<span id="L358" class="ln">   358  </span>		})
+<span id="L359" class="ln">   359  </span>	})
+<span id="L360" class="ln">   360  </span>}
+<span id="L361" class="ln">   361  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/v1_users_handler_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -91,7 +91,7 @@
 <span id="L34" class="ln">    34  </span>
 <span id="L35" class="ln">    35  </span>		t.Run(&#34;サンプル既定のEndpointを返す&#34;, func(t *testing.T) {
 <span id="L36" class="ln">    36  </span>			t.Parallel()
-<span id="L37" class="ln">    37  </span>			assert.NotEmpty(t, exchangerate.NewEndpoint())
+<span id="L37" class="ln">    37  </span>			assert.Equal(t, exchangerate.Endpoint(&#34;https://api.exchangerate.example.com&#34;), exchangerate.NewEndpoint())
 <span id="L38" class="ln">    38  </span>		})
 <span id="L39" class="ln">    39  </span>	})
 <span id="L40" class="ln">    40  </span>}

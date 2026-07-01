@@ -61,274 +61,355 @@
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
 <span id="L5" class="ln">     5  </span>	&#34;testing&#34;
 <span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/usecase/user/search/query&#34;
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L13" class="ln">    13  </span>)
-<span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>func TestNew(t *testing.T) {
-<span id="L16" class="ln">    16  </span>	t.Parallel()
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>	testDB := testkit.NewTestDB(t)
-<span id="L19" class="ln">    19  </span>	tf := observability.NewNoopTracerFactory(t)
-<span id="L20" class="ln">    20  </span>	expected := &amp;service{
-<span id="L21" class="ln">    21  </span>		tracer: tf.Infra(),
-<span id="L22" class="ln">    22  </span>		db:     testDB,
-<span id="L23" class="ln">    23  </span>	}
-<span id="L24" class="ln">    24  </span>	actual := New(testDB, tf)
-<span id="L25" class="ln">    25  </span>	assert.Equal(t, expected, actual)
-<span id="L26" class="ln">    26  </span>}
-<span id="L27" class="ln">    27  </span>
-<span id="L28" class="ln">    28  </span>func Test_service_FindByFilter(t *testing.T) {
-<span id="L29" class="ln">    29  </span>	t.Parallel()
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span>	testDB := testkit.NewTestDB(t)
-<span id="L32" class="ln">    32  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span>	repo := &amp;service{
-<span id="L35" class="ln">    35  </span>		tracer: lt,
-<span id="L36" class="ln">    36  </span>		db:     testDB,
-<span id="L37" class="ln">    37  </span>	}
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L40" class="ln">    40  </span>		t.Parallel()
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/usecase/user/search/query&#34;
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L13" class="ln">    13  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>func TestNew(t *testing.T) {
+<span id="L17" class="ln">    17  </span>	t.Parallel()
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	testDB := testkit.NewTestDB(t)
+<span id="L20" class="ln">    20  </span>	tf := observability.NewNoopTracerFactory(t)
+<span id="L21" class="ln">    21  </span>	expected := &amp;service{
+<span id="L22" class="ln">    22  </span>		tracer: tf.Infra(),
+<span id="L23" class="ln">    23  </span>		db:     testDB,
+<span id="L24" class="ln">    24  </span>	}
+<span id="L25" class="ln">    25  </span>	actual := New(testDB, tf)
+<span id="L26" class="ln">    26  </span>	assert.Equal(t, expected, actual)
+<span id="L27" class="ln">    27  </span>}
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>func TestBuildLikeTokens(t *testing.T) {
+<span id="L30" class="ln">    30  </span>	t.Parallel()
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L33" class="ln">    33  </span>		t.Parallel()
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>		t.Run(&#34;キーワードが空の場合、全件マッチのトークンを返す&#34;, func(t *testing.T) {
+<span id="L36" class="ln">    36  </span>			t.Parallel()
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>			actual := buildLikeTokens(nil)
+<span id="L39" class="ln">    39  </span>			assert.Equal(t, []string{&#34;%&#34;}, actual)
+<span id="L40" class="ln">    40  </span>		})
 <span id="L41" class="ln">    41  </span>
-<span id="L42" class="ln">    42  </span>		t.Run(&#34;キーワードにマッチするユーザーが取得できる&#34;, func(t *testing.T) {
+<span id="L42" class="ln">    42  </span>		t.Run(&#34;キーワードを部分一致のLIKEパターンへ変換する&#34;, func(t *testing.T) {
 <span id="L43" class="ln">    43  </span>			t.Parallel()
 <span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>			t.Run(&#34;activeがnilの場合、全てのユーザーが対象になる&#34;, func(t *testing.T) {
-<span id="L46" class="ln">    46  </span>				t.Parallel()
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span>				ctx := context.Background()
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>				firstName1 := &#34;Grace&#34;
-<span id="L51" class="ln">    51  </span>				lastName1 := &#34;Lee&#34;
-<span id="L52" class="ln">    52  </span>				firstName2 := &#34;Charlie&#34;
-<span id="L53" class="ln">    53  </span>				lastName2 := &#34;Davis&#34;
-<span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>				keywords := []string{firstName1, firstName2}
-<span id="L56" class="ln">    56  </span>				limit := int32(10)
-<span id="L57" class="ln">    57  </span>				offset := int32(0)
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>				expectedLength := 2
+<span id="L45" class="ln">    45  </span>			actual := buildLikeTokens([]string{&#34;Grace&#34;, &#34;Lee&#34;})
+<span id="L46" class="ln">    46  </span>			require.Len(t, actual, 2)
+<span id="L47" class="ln">    47  </span>			assert.Equal(t, &#34;%Grace%&#34;, actual[0])
+<span id="L48" class="ln">    48  </span>			assert.Equal(t, &#34;%Lee%&#34;, actual[1])
+<span id="L49" class="ln">    49  </span>		})
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>		t.Run(&#34;LIKEワイルドカードを含むキーワードはエスケープされる&#34;, func(t *testing.T) {
+<span id="L52" class="ln">    52  </span>			t.Parallel()
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>			actual := buildLikeTokens([]string{&#34;50%_off&#34;})
+<span id="L55" class="ln">    55  </span>			require.Len(t, actual, 1)
+<span id="L56" class="ln">    56  </span>			assert.Equal(t, `%50\%\_off%`, actual[0])
+<span id="L57" class="ln">    57  </span>		})
+<span id="L58" class="ln">    58  </span>	})
+<span id="L59" class="ln">    59  </span>}
 <span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span>				actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L62" class="ln">    62  </span>					Keywords: keywords,
-<span id="L63" class="ln">    63  </span>					Active:   nil,
-<span id="L64" class="ln">    64  </span>				}, limit, offset)
-<span id="L65" class="ln">    65  </span>				require.NoError(t, err)
+<span id="L61" class="ln">    61  </span>func Test_service_FindByFilter(t *testing.T) {
+<span id="L62" class="ln">    62  </span>	t.Parallel()
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	testDB := testkit.NewTestDB(t)
+<span id="L65" class="ln">    65  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>				assert.Len(t, actual, expectedLength)
-<span id="L68" class="ln">    68  </span>				assert.Equal(t, firstName1, actual[0].FirstName)
-<span id="L69" class="ln">    69  </span>				assert.Equal(t, lastName1, actual[0].LastName)
-<span id="L70" class="ln">    70  </span>				assert.Equal(t, firstName2, actual[1].FirstName)
-<span id="L71" class="ln">    71  </span>				assert.Equal(t, lastName2, actual[1].LastName)
-<span id="L72" class="ln">    72  </span>			})
-<span id="L73" class="ln">    73  </span>
-<span id="L74" class="ln">    74  </span>			t.Run(&#34;activeがtrueの場合、アクティブなユーザーが対象になる&#34;, func(t *testing.T) {
-<span id="L75" class="ln">    75  </span>				t.Parallel()
-<span id="L76" class="ln">    76  </span>
-<span id="L77" class="ln">    77  </span>				ctx := context.Background()
-<span id="L78" class="ln">    78  </span>
-<span id="L79" class="ln">    79  </span>				firstName := &#34;Grace&#34;
-<span id="L80" class="ln">    80  </span>				lastName := &#34;Lee&#34;
-<span id="L81" class="ln">    81  </span>
-<span id="L82" class="ln">    82  </span>				keywords := []string{firstName}
-<span id="L83" class="ln">    83  </span>				limit := int32(10)
-<span id="L84" class="ln">    84  </span>				offset := int32(0)
-<span id="L85" class="ln">    85  </span>
-<span id="L86" class="ln">    86  </span>				expectedLength := 1
+<span id="L67" class="ln">    67  </span>	repo := &amp;service{
+<span id="L68" class="ln">    68  </span>		tracer: lt,
+<span id="L69" class="ln">    69  </span>		db:     testDB,
+<span id="L70" class="ln">    70  </span>	}
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L73" class="ln">    73  </span>		t.Parallel()
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>		t.Run(&#34;キーワードにマッチするユーザーが取得できる&#34;, func(t *testing.T) {
+<span id="L76" class="ln">    76  </span>			t.Parallel()
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>			t.Run(&#34;activeがnilの場合、全てのユーザーが対象になる&#34;, func(t *testing.T) {
+<span id="L79" class="ln">    79  </span>				t.Parallel()
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>				ctx := context.Background()
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>				firstName1 := &#34;Grace&#34;
+<span id="L84" class="ln">    84  </span>				lastName1 := &#34;Lee&#34;
+<span id="L85" class="ln">    85  </span>				firstName2 := &#34;Charlie&#34;
+<span id="L86" class="ln">    86  </span>				lastName2 := &#34;Davis&#34;
 <span id="L87" class="ln">    87  </span>
-<span id="L88" class="ln">    88  </span>				actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L89" class="ln">    89  </span>					Keywords: keywords,
-<span id="L90" class="ln">    90  </span>					Active:   new(true),
-<span id="L91" class="ln">    91  </span>				}, limit, offset)
-<span id="L92" class="ln">    92  </span>				require.NoError(t, err)
+<span id="L88" class="ln">    88  </span>				keywords := []string{firstName1, firstName2}
+<span id="L89" class="ln">    89  </span>				limit := int32(10)
+<span id="L90" class="ln">    90  </span>				offset := int32(0)
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>				expectedLength := 2
 <span id="L93" class="ln">    93  </span>
-<span id="L94" class="ln">    94  </span>				assert.Len(t, actual, expectedLength)
-<span id="L95" class="ln">    95  </span>				assert.Equal(t, firstName, actual[0].FirstName)
-<span id="L96" class="ln">    96  </span>				assert.Equal(t, lastName, actual[0].LastName)
-<span id="L97" class="ln">    97  </span>			})
-<span id="L98" class="ln">    98  </span>
-<span id="L99" class="ln">    99  </span>			t.Run(&#34;activeがfalseの場合、削除されたユーザーが対象になる&#34;, func(t *testing.T) {
-<span id="L100" class="ln">   100  </span>				t.Parallel()
-<span id="L101" class="ln">   101  </span>
-<span id="L102" class="ln">   102  </span>				ctx := context.Background()
-<span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>				firstName := &#34;Charlie&#34;
-<span id="L105" class="ln">   105  </span>				lastName := &#34;Davis&#34;
+<span id="L94" class="ln">    94  </span>				actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L95" class="ln">    95  </span>					Keywords: keywords,
+<span id="L96" class="ln">    96  </span>					Active:   nil,
+<span id="L97" class="ln">    97  </span>				}, limit, offset)
+<span id="L98" class="ln">    98  </span>				require.NoError(t, err)
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>				assert.Len(t, actual, expectedLength)
+<span id="L101" class="ln">   101  </span>				assert.Equal(t, firstName1, actual[0].FirstName)
+<span id="L102" class="ln">   102  </span>				assert.Equal(t, lastName1, actual[0].LastName)
+<span id="L103" class="ln">   103  </span>				assert.Equal(t, firstName2, actual[1].FirstName)
+<span id="L104" class="ln">   104  </span>				assert.Equal(t, lastName2, actual[1].LastName)
+<span id="L105" class="ln">   105  </span>			})
 <span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span>				keywords := []string{firstName}
-<span id="L108" class="ln">   108  </span>				limit := int32(10)
-<span id="L109" class="ln">   109  </span>				offset := int32(0)
-<span id="L110" class="ln">   110  </span>
-<span id="L111" class="ln">   111  </span>				expectedLength := 1
-<span id="L112" class="ln">   112  </span>
-<span id="L113" class="ln">   113  </span>				actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L114" class="ln">   114  </span>					Keywords: keywords,
-<span id="L115" class="ln">   115  </span>					Active:   new(false),
-<span id="L116" class="ln">   116  </span>				}, limit, offset)
-<span id="L117" class="ln">   117  </span>				require.NoError(t, err)
+<span id="L107" class="ln">   107  </span>			t.Run(&#34;activeがtrueの場合、アクティブなユーザーが対象になる&#34;, func(t *testing.T) {
+<span id="L108" class="ln">   108  </span>				t.Parallel()
+<span id="L109" class="ln">   109  </span>
+<span id="L110" class="ln">   110  </span>				ctx := context.Background()
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>				firstName := &#34;Grace&#34;
+<span id="L113" class="ln">   113  </span>				lastName := &#34;Lee&#34;
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span>				keywords := []string{firstName}
+<span id="L116" class="ln">   116  </span>				limit := int32(10)
+<span id="L117" class="ln">   117  </span>				offset := int32(0)
 <span id="L118" class="ln">   118  </span>
-<span id="L119" class="ln">   119  </span>				assert.Len(t, actual, expectedLength)
-<span id="L120" class="ln">   120  </span>				assert.Equal(t, firstName, actual[0].FirstName)
-<span id="L121" class="ln">   121  </span>				assert.Equal(t, lastName, actual[0].LastName)
-<span id="L122" class="ln">   122  </span>			})
-<span id="L123" class="ln">   123  </span>		})
-<span id="L124" class="ln">   124  </span>
-<span id="L125" class="ln">   125  </span>		t.Run(&#34;keywordsが空の場合、全件取得できる&#34;, func(t *testing.T) {
-<span id="L126" class="ln">   126  </span>			t.Parallel()
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>			ctx := context.Background()
-<span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span>			keywords := []string{}
-<span id="L131" class="ln">   131  </span>			limit := int32(20)
-<span id="L132" class="ln">   132  </span>			offset := int32(0)
-<span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>			expectedLength := 10
-<span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>			actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L137" class="ln">   137  </span>				Keywords: keywords,
-<span id="L138" class="ln">   138  </span>				Active:   nil,
-<span id="L139" class="ln">   139  </span>			}, limit, offset)
-<span id="L140" class="ln">   140  </span>			require.NoError(t, err)
-<span id="L141" class="ln">   141  </span>
-<span id="L142" class="ln">   142  </span>			assert.Len(t, actual, expectedLength)
-<span id="L143" class="ln">   143  </span>		})
-<span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>		t.Run(&#34;keywordsが空かつactive=trueの場合、アクティブのみ取得できる&#34;, func(t *testing.T) {
-<span id="L146" class="ln">   146  </span>			t.Parallel()
-<span id="L147" class="ln">   147  </span>
-<span id="L148" class="ln">   148  </span>			ctx := context.Background()
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>			keywords := []string{}
-<span id="L151" class="ln">   151  </span>			limit := int32(20)
-<span id="L152" class="ln">   152  </span>			offset := int32(0)
-<span id="L153" class="ln">   153  </span>			active := true
-<span id="L154" class="ln">   154  </span>
-<span id="L155" class="ln">   155  </span>			expectedLength := 8
-<span id="L156" class="ln">   156  </span>
-<span id="L157" class="ln">   157  </span>			actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L158" class="ln">   158  </span>				Keywords: keywords,
-<span id="L159" class="ln">   159  </span>				Active:   &amp;active,
-<span id="L160" class="ln">   160  </span>			}, limit, offset)
-<span id="L161" class="ln">   161  </span>			require.NoError(t, err)
+<span id="L119" class="ln">   119  </span>				expectedLength := 1
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>				actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L122" class="ln">   122  </span>					Keywords: keywords,
+<span id="L123" class="ln">   123  </span>					Active:   new(true),
+<span id="L124" class="ln">   124  </span>				}, limit, offset)
+<span id="L125" class="ln">   125  </span>				require.NoError(t, err)
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>				assert.Len(t, actual, expectedLength)
+<span id="L128" class="ln">   128  </span>				assert.Equal(t, firstName, actual[0].FirstName)
+<span id="L129" class="ln">   129  </span>				assert.Equal(t, lastName, actual[0].LastName)
+<span id="L130" class="ln">   130  </span>			})
+<span id="L131" class="ln">   131  </span>
+<span id="L132" class="ln">   132  </span>			t.Run(&#34;activeがfalseの場合、削除されたユーザーが対象になる&#34;, func(t *testing.T) {
+<span id="L133" class="ln">   133  </span>				t.Parallel()
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>				ctx := context.Background()
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>				firstName := &#34;Charlie&#34;
+<span id="L138" class="ln">   138  </span>				lastName := &#34;Davis&#34;
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>				keywords := []string{firstName}
+<span id="L141" class="ln">   141  </span>				limit := int32(10)
+<span id="L142" class="ln">   142  </span>				offset := int32(0)
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>				expectedLength := 1
+<span id="L145" class="ln">   145  </span>
+<span id="L146" class="ln">   146  </span>				actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L147" class="ln">   147  </span>					Keywords: keywords,
+<span id="L148" class="ln">   148  </span>					Active:   new(false),
+<span id="L149" class="ln">   149  </span>				}, limit, offset)
+<span id="L150" class="ln">   150  </span>				require.NoError(t, err)
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>				assert.Len(t, actual, expectedLength)
+<span id="L153" class="ln">   153  </span>				assert.Equal(t, firstName, actual[0].FirstName)
+<span id="L154" class="ln">   154  </span>				assert.Equal(t, lastName, actual[0].LastName)
+<span id="L155" class="ln">   155  </span>			})
+<span id="L156" class="ln">   156  </span>		})
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>		t.Run(&#34;keywordsが空の場合、全件取得できる&#34;, func(t *testing.T) {
+<span id="L159" class="ln">   159  </span>			t.Parallel()
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>			ctx := context.Background()
 <span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span>			assert.Len(t, actual, expectedLength)
-<span id="L164" class="ln">   164  </span>		})
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span>		t.Run(&#34;keywordsが空かつactive=falseの場合、削除済みのみ取得できる&#34;, func(t *testing.T) {
-<span id="L167" class="ln">   167  </span>			t.Parallel()
+<span id="L163" class="ln">   163  </span>			keywords := []string{}
+<span id="L164" class="ln">   164  </span>			limit := int32(20)
+<span id="L165" class="ln">   165  </span>			offset := int32(0)
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>			expectedLength := 10
 <span id="L168" class="ln">   168  </span>
-<span id="L169" class="ln">   169  </span>			ctx := context.Background()
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>			keywords := []string{}
-<span id="L172" class="ln">   172  </span>			limit := int32(20)
-<span id="L173" class="ln">   173  </span>			offset := int32(0)
-<span id="L174" class="ln">   174  </span>			active := false
-<span id="L175" class="ln">   175  </span>
-<span id="L176" class="ln">   176  </span>			expectedLength := 2
+<span id="L169" class="ln">   169  </span>			actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L170" class="ln">   170  </span>				Keywords: keywords,
+<span id="L171" class="ln">   171  </span>				Active:   nil,
+<span id="L172" class="ln">   172  </span>			}, limit, offset)
+<span id="L173" class="ln">   173  </span>			require.NoError(t, err)
+<span id="L174" class="ln">   174  </span>
+<span id="L175" class="ln">   175  </span>			assert.Len(t, actual, expectedLength)
+<span id="L176" class="ln">   176  </span>		})
 <span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>			actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L179" class="ln">   179  </span>				Keywords: keywords,
-<span id="L180" class="ln">   180  </span>				Active:   &amp;active,
-<span id="L181" class="ln">   181  </span>			}, limit, offset)
-<span id="L182" class="ln">   182  </span>			require.NoError(t, err)
-<span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span>			assert.Len(t, actual, expectedLength)
-<span id="L185" class="ln">   185  </span>		})
-<span id="L186" class="ln">   186  </span>	})
-<span id="L187" class="ln">   187  </span>}
-<span id="L188" class="ln">   188  </span>
-<span id="L189" class="ln">   189  </span>func Test_service_CountByFilter(t *testing.T) {
-<span id="L190" class="ln">   190  </span>	t.Parallel()
-<span id="L191" class="ln">   191  </span>
-<span id="L192" class="ln">   192  </span>	testDB := testkit.NewTestDB(t)
-<span id="L193" class="ln">   193  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L194" class="ln">   194  </span>
-<span id="L195" class="ln">   195  </span>	repo := &amp;service{
-<span id="L196" class="ln">   196  </span>		tracer: lt,
-<span id="L197" class="ln">   197  </span>		db:     testDB,
-<span id="L198" class="ln">   198  </span>	}
-<span id="L199" class="ln">   199  </span>
-<span id="L200" class="ln">   200  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L201" class="ln">   201  </span>		t.Parallel()
-<span id="L202" class="ln">   202  </span>
-<span id="L203" class="ln">   203  </span>		t.Run(&#34;activeがnilかつ、keywordsが空の場合、全ユーザーが対象になる&#34;, func(t *testing.T) {
-<span id="L204" class="ln">   204  </span>			t.Parallel()
-<span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span>			ctx := context.Background()
-<span id="L207" class="ln">   207  </span>
-<span id="L208" class="ln">   208  </span>			keywords := []string{}
-<span id="L209" class="ln">   209  </span>
-<span id="L210" class="ln">   210  </span>			expectedCount := int64(10)
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L213" class="ln">   213  </span>				Keywords: keywords,
-<span id="L214" class="ln">   214  </span>				Active:   nil,
-<span id="L215" class="ln">   215  </span>			})
-<span id="L216" class="ln">   216  </span>			require.NoError(t, err)
-<span id="L217" class="ln">   217  </span>			assert.Equal(t, expectedCount, actual)
+<span id="L178" class="ln">   178  </span>		t.Run(&#34;keywordsが空かつactive=trueの場合、アクティブのみ取得できる&#34;, func(t *testing.T) {
+<span id="L179" class="ln">   179  </span>			t.Parallel()
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span>			ctx := context.Background()
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>			keywords := []string{}
+<span id="L184" class="ln">   184  </span>			limit := int32(20)
+<span id="L185" class="ln">   185  </span>			offset := int32(0)
+<span id="L186" class="ln">   186  </span>			active := true
+<span id="L187" class="ln">   187  </span>
+<span id="L188" class="ln">   188  </span>			expectedLength := 8
+<span id="L189" class="ln">   189  </span>
+<span id="L190" class="ln">   190  </span>			actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L191" class="ln">   191  </span>				Keywords: keywords,
+<span id="L192" class="ln">   192  </span>				Active:   &amp;active,
+<span id="L193" class="ln">   193  </span>			}, limit, offset)
+<span id="L194" class="ln">   194  </span>			require.NoError(t, err)
+<span id="L195" class="ln">   195  </span>
+<span id="L196" class="ln">   196  </span>			assert.Len(t, actual, expectedLength)
+<span id="L197" class="ln">   197  </span>		})
+<span id="L198" class="ln">   198  </span>
+<span id="L199" class="ln">   199  </span>		t.Run(&#34;keywordsが空かつactive=falseの場合、削除済みのみ取得できる&#34;, func(t *testing.T) {
+<span id="L200" class="ln">   200  </span>			t.Parallel()
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>			ctx := context.Background()
+<span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span>			keywords := []string{}
+<span id="L205" class="ln">   205  </span>			limit := int32(20)
+<span id="L206" class="ln">   206  </span>			offset := int32(0)
+<span id="L207" class="ln">   207  </span>			active := false
+<span id="L208" class="ln">   208  </span>
+<span id="L209" class="ln">   209  </span>			expectedLength := 2
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>			actual, err := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L212" class="ln">   212  </span>				Keywords: keywords,
+<span id="L213" class="ln">   213  </span>				Active:   &amp;active,
+<span id="L214" class="ln">   214  </span>			}, limit, offset)
+<span id="L215" class="ln">   215  </span>			require.NoError(t, err)
+<span id="L216" class="ln">   216  </span>
+<span id="L217" class="ln">   217  </span>			assert.Len(t, actual, expectedLength)
 <span id="L218" class="ln">   218  </span>		})
-<span id="L219" class="ln">   219  </span>
-<span id="L220" class="ln">   220  </span>		t.Run(&#34;activeがtrueかつ、keywordsが空の場合、アクティブなユーザーが対象になる&#34;, func(t *testing.T) {
-<span id="L221" class="ln">   221  </span>			t.Parallel()
-<span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>			ctx := context.Background()
-<span id="L224" class="ln">   224  </span>
-<span id="L225" class="ln">   225  </span>			keywords := []string{}
-<span id="L226" class="ln">   226  </span>			active := true
-<span id="L227" class="ln">   227  </span>
-<span id="L228" class="ln">   228  </span>			expectedCount := int64(8)
+<span id="L219" class="ln">   219  </span>	})
+<span id="L220" class="ln">   220  </span>
+<span id="L221" class="ln">   221  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L222" class="ln">   222  </span>		t.Parallel()
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>		t.Run(&#34;キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
+<span id="L225" class="ln">   225  </span>			t.Parallel()
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L228" class="ln">   228  </span>			cancel()
 <span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L231" class="ln">   231  </span>				Keywords: keywords,
-<span id="L232" class="ln">   232  </span>				Active:   &amp;active,
-<span id="L233" class="ln">   233  </span>			})
-<span id="L234" class="ln">   234  </span>			require.NoError(t, err)
-<span id="L235" class="ln">   235  </span>			assert.Equal(t, expectedCount, actual)
-<span id="L236" class="ln">   236  </span>		})
-<span id="L237" class="ln">   237  </span>
-<span id="L238" class="ln">   238  </span>		t.Run(&#34;activeがfalseかつ、keywordsが空の場合、削除されたユーザーが対象になる&#34;, func(t *testing.T) {
-<span id="L239" class="ln">   239  </span>			t.Parallel()
-<span id="L240" class="ln">   240  </span>
-<span id="L241" class="ln">   241  </span>			ctx := context.Background()
-<span id="L242" class="ln">   242  </span>
-<span id="L243" class="ln">   243  </span>			keywords := []string{}
-<span id="L244" class="ln">   244  </span>			active := false
+<span id="L230" class="ln">   230  </span>			active := true
+<span id="L231" class="ln">   231  </span>			deleted := false
+<span id="L232" class="ln">   232  </span>			keywords := []string{&#34;x&#34;}
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>			_, allErr := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{Keywords: keywords, Active: nil}, 10, 0)
+<span id="L235" class="ln">   235  </span>			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>			_, activeErr := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{Keywords: keywords, Active: &amp;active}, 10, 0)
+<span id="L238" class="ln">   238  </span>			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>			_, deletedErr := repo.FindByFilter(ctx, &amp;query.UserSearchFilter{Keywords: keywords, Active: &amp;deleted}, 10, 0)
+<span id="L241" class="ln">   241  </span>			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
+<span id="L242" class="ln">   242  </span>		})
+<span id="L243" class="ln">   243  </span>	})
+<span id="L244" class="ln">   244  </span>}
 <span id="L245" class="ln">   245  </span>
-<span id="L246" class="ln">   246  </span>			expectedCount := int64(2)
-<span id="L247" class="ln">   247  </span>
-<span id="L248" class="ln">   248  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L249" class="ln">   249  </span>				Keywords: keywords,
-<span id="L250" class="ln">   250  </span>				Active:   &amp;active,
-<span id="L251" class="ln">   251  </span>			})
-<span id="L252" class="ln">   252  </span>			require.NoError(t, err)
-<span id="L253" class="ln">   253  </span>			assert.Equal(t, expectedCount, actual)
-<span id="L254" class="ln">   254  </span>		})
-<span id="L255" class="ln">   255  </span>
-<span id="L256" class="ln">   256  </span>		t.Run(&#34;Keywordsにマッチするユーザーの総件数が取得できる&#34;, func(t *testing.T) {
-<span id="L257" class="ln">   257  </span>			t.Parallel()
-<span id="L258" class="ln">   258  </span>
-<span id="L259" class="ln">   259  </span>			ctx := context.Background()
-<span id="L260" class="ln">   260  </span>
-<span id="L261" class="ln">   261  </span>			keywords := []string{&#34;Grace&#34;}
+<span id="L246" class="ln">   246  </span>func Test_service_CountByFilter(t *testing.T) {
+<span id="L247" class="ln">   247  </span>	t.Parallel()
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>	testDB := testkit.NewTestDB(t)
+<span id="L250" class="ln">   250  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	repo := &amp;service{
+<span id="L253" class="ln">   253  </span>		tracer: lt,
+<span id="L254" class="ln">   254  </span>		db:     testDB,
+<span id="L255" class="ln">   255  </span>	}
+<span id="L256" class="ln">   256  </span>
+<span id="L257" class="ln">   257  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L258" class="ln">   258  </span>		t.Parallel()
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>		t.Run(&#34;activeがnilかつ、keywordsが空の場合、全ユーザーが対象になる&#34;, func(t *testing.T) {
+<span id="L261" class="ln">   261  </span>			t.Parallel()
 <span id="L262" class="ln">   262  </span>
-<span id="L263" class="ln">   263  </span>			expectedCount := int64(1)
+<span id="L263" class="ln">   263  </span>			ctx := context.Background()
 <span id="L264" class="ln">   264  </span>
-<span id="L265" class="ln">   265  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
-<span id="L266" class="ln">   266  </span>				Keywords: keywords,
-<span id="L267" class="ln">   267  </span>				Active:   nil,
-<span id="L268" class="ln">   268  </span>			})
-<span id="L269" class="ln">   269  </span>			require.NoError(t, err)
-<span id="L270" class="ln">   270  </span>			assert.Equal(t, expectedCount, actual)
-<span id="L271" class="ln">   271  </span>		})
-<span id="L272" class="ln">   272  </span>	})
-<span id="L273" class="ln">   273  </span>}
-<span id="L274" class="ln">   274  </span>
+<span id="L265" class="ln">   265  </span>			keywords := []string{}
+<span id="L266" class="ln">   266  </span>
+<span id="L267" class="ln">   267  </span>			expectedCount := int64(10)
+<span id="L268" class="ln">   268  </span>
+<span id="L269" class="ln">   269  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L270" class="ln">   270  </span>				Keywords: keywords,
+<span id="L271" class="ln">   271  </span>				Active:   nil,
+<span id="L272" class="ln">   272  </span>			})
+<span id="L273" class="ln">   273  </span>			require.NoError(t, err)
+<span id="L274" class="ln">   274  </span>			assert.Equal(t, expectedCount, actual)
+<span id="L275" class="ln">   275  </span>		})
+<span id="L276" class="ln">   276  </span>
+<span id="L277" class="ln">   277  </span>		t.Run(&#34;activeがtrueかつ、keywordsが空の場合、アクティブなユーザーが対象になる&#34;, func(t *testing.T) {
+<span id="L278" class="ln">   278  </span>			t.Parallel()
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span>			ctx := context.Background()
+<span id="L281" class="ln">   281  </span>
+<span id="L282" class="ln">   282  </span>			keywords := []string{}
+<span id="L283" class="ln">   283  </span>			active := true
+<span id="L284" class="ln">   284  </span>
+<span id="L285" class="ln">   285  </span>			expectedCount := int64(8)
+<span id="L286" class="ln">   286  </span>
+<span id="L287" class="ln">   287  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L288" class="ln">   288  </span>				Keywords: keywords,
+<span id="L289" class="ln">   289  </span>				Active:   &amp;active,
+<span id="L290" class="ln">   290  </span>			})
+<span id="L291" class="ln">   291  </span>			require.NoError(t, err)
+<span id="L292" class="ln">   292  </span>			assert.Equal(t, expectedCount, actual)
+<span id="L293" class="ln">   293  </span>		})
+<span id="L294" class="ln">   294  </span>
+<span id="L295" class="ln">   295  </span>		t.Run(&#34;activeがfalseかつ、keywordsが空の場合、削除されたユーザーが対象になる&#34;, func(t *testing.T) {
+<span id="L296" class="ln">   296  </span>			t.Parallel()
+<span id="L297" class="ln">   297  </span>
+<span id="L298" class="ln">   298  </span>			ctx := context.Background()
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>			keywords := []string{}
+<span id="L301" class="ln">   301  </span>			active := false
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>			expectedCount := int64(2)
+<span id="L304" class="ln">   304  </span>
+<span id="L305" class="ln">   305  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L306" class="ln">   306  </span>				Keywords: keywords,
+<span id="L307" class="ln">   307  </span>				Active:   &amp;active,
+<span id="L308" class="ln">   308  </span>			})
+<span id="L309" class="ln">   309  </span>			require.NoError(t, err)
+<span id="L310" class="ln">   310  </span>			assert.Equal(t, expectedCount, actual)
+<span id="L311" class="ln">   311  </span>		})
+<span id="L312" class="ln">   312  </span>
+<span id="L313" class="ln">   313  </span>		t.Run(&#34;Keywordsにマッチするユーザーの総件数が取得できる&#34;, func(t *testing.T) {
+<span id="L314" class="ln">   314  </span>			t.Parallel()
+<span id="L315" class="ln">   315  </span>
+<span id="L316" class="ln">   316  </span>			ctx := context.Background()
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>			keywords := []string{&#34;Grace&#34;}
+<span id="L319" class="ln">   319  </span>
+<span id="L320" class="ln">   320  </span>			expectedCount := int64(1)
+<span id="L321" class="ln">   321  </span>
+<span id="L322" class="ln">   322  </span>			actual, err := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{
+<span id="L323" class="ln">   323  </span>				Keywords: keywords,
+<span id="L324" class="ln">   324  </span>				Active:   nil,
+<span id="L325" class="ln">   325  </span>			})
+<span id="L326" class="ln">   326  </span>			require.NoError(t, err)
+<span id="L327" class="ln">   327  </span>			assert.Equal(t, expectedCount, actual)
+<span id="L328" class="ln">   328  </span>		})
+<span id="L329" class="ln">   329  </span>	})
+<span id="L330" class="ln">   330  </span>
+<span id="L331" class="ln">   331  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L332" class="ln">   332  </span>		t.Parallel()
+<span id="L333" class="ln">   333  </span>
+<span id="L334" class="ln">   334  </span>		t.Run(&#34;キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
+<span id="L335" class="ln">   335  </span>			t.Parallel()
+<span id="L336" class="ln">   336  </span>
+<span id="L337" class="ln">   337  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L338" class="ln">   338  </span>			cancel()
+<span id="L339" class="ln">   339  </span>
+<span id="L340" class="ln">   340  </span>			active := true
+<span id="L341" class="ln">   341  </span>			deleted := false
+<span id="L342" class="ln">   342  </span>			keywords := []string{&#34;x&#34;}
+<span id="L343" class="ln">   343  </span>
+<span id="L344" class="ln">   344  </span>			_, allErr := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{Keywords: keywords, Active: nil})
+<span id="L345" class="ln">   345  </span>			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+<span id="L346" class="ln">   346  </span>
+<span id="L347" class="ln">   347  </span>			_, activeErr := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{Keywords: keywords, Active: &amp;active})
+<span id="L348" class="ln">   348  </span>			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>			_, deletedErr := repo.CountByFilter(ctx, &amp;query.UserSearchFilter{Keywords: keywords, Active: &amp;deleted})
+<span id="L351" class="ln">   351  </span>			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
+<span id="L352" class="ln">   352  </span>		})
+<span id="L353" class="ln">   353  </span>	})
+<span id="L354" class="ln">   354  </span>}
+<span id="L355" class="ln">   355  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service/user/user_query_service_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
