@@ -33,6 +33,8 @@ flowchart LR
 
 This rule prevents the domain model from depending on frameworks or infrastructure.
 
+These boundaries are **enforced in CI by `golangci-lint` depguard**, not by documentation alone — a forbidden cross-layer import (e.g. `domain` importing `infrastructure`, or `pkg/` importing `internal/`) fails the build.
+
 ## Usecase Dependency Rules
 
 Usecase must not directly depend on Infrastructure.

@@ -33,6 +33,8 @@ flowchart LR
 
 このルールにより、ドメインモデルがフレームワークやインフラストラクチャに依存することを防ぎます。
 
+これらの境界はドキュメント上の取り決めに留まらず、**CI の `golangci-lint` depguard で強制**されます。禁止された cross-layer import（例: `domain` が `infrastructure` を import、`pkg/` が `internal/` を import）はビルドを失敗させます。
+
 ## Usecase 依存ルール
 
 Usecase は Infrastructure に直接依存してはなりません。
