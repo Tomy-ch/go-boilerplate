@@ -172,11 +172,9 @@ func TestRegisterOrExisting(t *testing.T) {
 			reg := prometheus.NewRegistry()
 			const name = "register_or_existing_type_mismatch"
 
-			// 先に CounterVec を登録しておく。
 			counter := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h"}, []string{"l"})
 			require.NoError(t, reg.Register(counter))
 
-			// 既存(CounterVec)と型が異なる HistogramVec 登録は型アサーションが失敗し、新規生成側を返す。
 			hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: name, Help: "h"}, []string{"l"})
 			got := registerOrExisting(reg, hist)
 			assert.Same(t, hist, got)

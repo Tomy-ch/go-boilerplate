@@ -234,8 +234,7 @@ func TestTxManager_Do(t *testing.T) {
 		t.Run("fnが成功してもcommitが失敗するとそのエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// fn 内でトランザクションをアボート（0除算）させた上でエラーを握り潰し nil を返すと、
-			// commit がロールバックへ倒れ ErrTxCommitRollback が doOnce から返る。
+			// fn がエラーを返さなくても commit 側がロールバックへ倒れた場合に ErrTxCommitRollback が返ること。
 			ctx := context.Background()
 			err := manager.Do(ctx, func(txCtx context.Context) error {
 				_, _ = driver.New(txCtx, db).Exec(txCtx, "SELECT 1/0")
@@ -247,8 +246,7 @@ func TestTxManager_Do(t *testing.T) {
 		t.Run("rollback失敗時はエラーログを出力し元のエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// fn 内で先に tx をクローズしておくと、doOnce の後始末 rollback が ErrTxClosed で失敗し、
-			// 「Failed to rollback transaction」ログが出力される。
+			// rollback が失敗するとエラーログが出力されることを検証する（fn が tx を先に閉じてロールバック不能にした状態を使う）。
 			observedLogger, logs := logging.NewObservedTestLogger(t)
 			m := driver.NewTransactionManager(db, dbCfg, observedLogger, system.NewSleeper())
 

@@ -96,7 +96,6 @@ func TestNewTextMapPropagator(t *testing.T) {
 			prop := NewTextMapPropagator()
 			require.NotNil(t, prop)
 
-			// 複合伝播器は traceparent(TraceContext) と baggage(Baggage) 両方の field を持つ。
 			fields := prop.Fields()
 			assert.Contains(t, fields, "traceparent")
 			assert.Contains(t, fields, "baggage")

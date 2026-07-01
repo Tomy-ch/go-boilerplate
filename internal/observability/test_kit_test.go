@@ -102,7 +102,6 @@ func TestNewNoopWorkerMetrics(t *testing.T) {
 
 			wm := NewNoopWorkerMetrics(t)
 			require.NotNil(t, wm)
-			// no-op でも記録呼び出しが panic しないこと。
 			assert.NotPanics(t, func() { wm.Processed(context.Background()) })
 		})
 	})

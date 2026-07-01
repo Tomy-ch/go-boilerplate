@@ -526,8 +526,7 @@ func TestClientDoDeadline(t *testing.T) {
 			// circuit-open / sleeper error 経路なら resp==nil になるため、非nil であることが弁別になる。
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-			// fakeNow が 0→20→40→60ms と進み、4 回試行した後(fakeNow=60ms=deadline)に打ち切られる。
-			// 実時間・jitter に依存せず hits は決定的に 4（MaxAttempts=20 には達しない）。
+			// 20ms/step × 3 backoff で fakeNow がちょうど deadline(60ms)に達し、hits は決定的に 4（実時間・jitter 非依存）。
 			assert.Equal(t, int32(4), hits.Load())
 		})
 	})

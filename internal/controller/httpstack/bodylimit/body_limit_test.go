@@ -87,7 +87,7 @@ func TestMiddleware(t *testing.T) {
 			t.Parallel()
 
 			// io.NopCloser で包むと Content-Length が確定せず、BodyLimit は ContentLength の
-			// 早期判定ではなく実読み取り経路（limitedReader.Read）で上限を適用する。
+			// 早期判定を通過し、実読み取り中の上限チェックで 413 を返す。
 			e := echo.New()
 			body := io.NopCloser(bytes.NewReader(bytes.Repeat([]byte("a"), 2_000_000)))
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", body)
@@ -96,7 +96,7 @@ func TestMiddleware(t *testing.T) {
 
 			handled := false
 			handler := func(c echo.Context) error {
-				_, err := io.ReadAll(c.Request().Body) // limitedReader.Read が上限超過で 413 を返す
+				_, err := io.ReadAll(c.Request().Body) // 実読み取りで上限超過し 413 を返す
 				handled = true
 				return err
 			}

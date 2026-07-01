@@ -36,7 +36,6 @@ func TestNewStatsCollector(t *testing.T) {
 
 			c := queuemetrics.NewStatsCollector(nil)
 			require.NotNil(t, c)
-			// prometheus.Collector を満たし registry へ登録できる。
 			require.NoError(t, prometheus.NewRegistry().Register(c))
 		})
 	})

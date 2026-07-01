@@ -51,7 +51,6 @@ func Test_provideAuthorizer(t *testing.T) {
 			authorizer, err := provideAuthorizer(appCfg, logger)
 			require.NoError(t, err)
 			assert.Equal(t, allowall.New(), authorizer)
-			// 全許可スタブ配線時に WARN で注意喚起されること。
 			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 
@@ -66,7 +65,6 @@ func Test_provideAuthorizer(t *testing.T) {
 			authorizer, err := provideAuthorizer(appCfg, logger)
 			require.NoError(t, err)
 			assert.Equal(t, allowall.New(), authorizer)
-			// 全許可スタブ配線時に WARN で注意喚起されること。
 			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 	})

@@ -88,10 +88,8 @@ func TestBuildLogger(t *testing.T) {
 			l.Error("simulated server error")
 
 			out := buf.String()
-			// console エンコーダ標準の改行+インデント形式が保たれる（一行 JSON 配列化していない）。
 			require.Contains(t, out, "\n", "console output must keep newlines")
 			require.NotContains(t, out, `"stacktrace":[`, "console output must not contain JSON array form of stack")
-			// 少なくとも複数行に渡るスタックが出力されていること。
 			assert.GreaterOrEqual(t, strings.Count(out, "\n"), 2)
 		})
 	})

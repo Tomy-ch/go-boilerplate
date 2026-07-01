@@ -160,7 +160,7 @@ func Test_Engine_Run(t *testing.T) {
 		t.Run("Receive が一時的に失敗しても poll を継続し後続メッセージを処理する", func(t *testing.T) {
 			t.Parallel()
 
-			// Receive エラー（ctx 起因でない）は onPollError で握られ、loop は continue して回り続ける。
+			// Receive エラー（ctx 起因でない）はエラーとして記録・CB に計上され、loop は次 poll へ続く。
 			f := testkit.NewFake()
 			f.FailReceiveOnce(xerrors.New("broker unreachable"))
 			f.Enqueue(bw.Message{ID: "a"})
@@ -212,7 +212,7 @@ func Test_Engine_AckNackDiscipline(t *testing.T) {
 
 			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 1 }, eventually, tick)
 			assert.Empty(t, f.AckedIDs())
-			// retryable は per-message backoff つきで再配送される（NackWithBackoff 経由）。
+			// retryable は per-message backoff つきで再配送される。
 			assert.True(t, f.NackBackoffApplied("a"), "NackWithBackoff で再配送されること")
 		})
 
@@ -460,7 +460,7 @@ func Test_Engine_PanicIsolation(t *testing.T) {
 
 			require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), "good") }, eventually, tick)
 			require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), "bad") }, eventually, tick)
-			// panic は Retryable に変換され、per-message backoff つき（NackWithBackoff 経由）で再配送される。
+			// panic は Retryable に変換され、per-message backoff つきで再配送される。
 			assert.True(t, f.NackBackoffApplied("bad"), "NackWithBackoff で再配送されること")
 		})
 	})

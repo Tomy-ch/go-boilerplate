@@ -169,7 +169,6 @@ func TestDo(t *testing.T) {
 			sleeper := &fakeSleeper{}
 			calls := 0
 			// isRetryable が nil でも「リトライ対象なし」へ正規化されるため、
-			// fn の非 nil error はリトライされず最初の error で即座に返る。
 			err := Do(context.Background(), sleeper, policy, nil, func(context.Context) error {
 				calls++
 				return errFatal

@@ -19,7 +19,6 @@ func TestNewLifecycleRegistrar(t *testing.T) {
 			t.Parallel()
 
 			var got Registrar
-			// Invoke は fx.New 時に実行され、注入された fx.Lifecycle で構築する。
 			app := fx.New(
 				fx.Invoke(func(lc fx.Lifecycle) { got = NewLifecycleRegistrar(lc) }),
 				fx.NopLogger,

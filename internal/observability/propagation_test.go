@@ -190,7 +190,6 @@ func Test_injectToCarrier_D1(t *testing.T) {
 			attrs := map[string]string{}
 			InjectTraceContextToCarrier(ctx, attrs)
 
-			// traceparent は伝搬され、baggage は TraceContext 限定の公開関数によって転送されない。
 			assert.Contains(t, attrs, "traceparent")
 			assert.NotContains(t, attrs, "baggage")
 		})
