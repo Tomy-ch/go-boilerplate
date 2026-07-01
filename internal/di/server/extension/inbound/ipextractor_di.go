@@ -23,8 +23,11 @@ func provideIPExtractorServeConfig(
 	appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig,
 ) extension.ServeCfgOut {
 	return extension.ServeCfgOut{
-		SrvCfg: func(e *echo.Echo) {
-			ipextractor.New(e, appCfg, secCfg)
+		SrvCfg: extension.SrvCfg{
+			Name: "ipextractor",
+			Config: func(e *echo.Echo) {
+				ipextractor.New(e, appCfg, secCfg)
+			},
 		},
 	}
 }

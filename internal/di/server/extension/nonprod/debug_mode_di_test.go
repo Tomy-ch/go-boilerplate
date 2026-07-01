@@ -23,10 +23,11 @@ func Test_provideServeConfig(t *testing.T) {
 			appCfg.SetApplicationMode(t, config.DevelopmentMode)
 
 			out := provideDebugModeServeConfig(appCfg)
-			require.NotNil(t, out.SrvCfg)
+			require.NotNil(t, out.SrvCfg.Config)
+			assert.Equal(t, "debugmode", out.SrvCfg.Name)
 
 			e := &echo.Echo{}
-			out.SrvCfg(e)
+			out.SrvCfg.Config(e)
 			assert.True(t, e.Debug)
 		})
 
@@ -37,10 +38,11 @@ func Test_provideServeConfig(t *testing.T) {
 			appCfg.SetApplicationMode(t, config.ProductionMode)
 
 			out := provideDebugModeServeConfig(appCfg)
-			require.NotNil(t, out.SrvCfg)
+			require.NotNil(t, out.SrvCfg.Config)
+			assert.Equal(t, "debugmode", out.SrvCfg.Name)
 
 			e := &echo.Echo{}
-			out.SrvCfg(e)
+			out.SrvCfg.Config(e)
 			assert.False(t, e.Debug)
 		})
 	})

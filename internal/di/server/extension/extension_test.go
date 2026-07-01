@@ -132,7 +132,7 @@ func TestApplyConfigurators(t *testing.T) {
 				})
 			}
 
-			ApplyConfigurators(e, logging.NewTestLogger(t), []SrvCfg{cfg})
+			ApplyConfigurators(e, logging.NewTestLogger(t), []SrvCfg{{Name: "cfg", Config: cfg}})
 
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/cfg", nil)
@@ -177,7 +177,7 @@ func TestApplyExtends(t *testing.T) {
 			extends := ServerExtends{
 				PreList: []PreMiddleware{{Name: "pre1", Priority: 0, Middleware: pre}},
 				UseList: []UseMiddleware{{Name: "use1", Priority: 0, Middleware: use}},
-				CfgList: []SrvCfg{cfg},
+				CfgList: []SrvCfg{{Name: "cfg", Config: cfg}},
 			}
 
 			applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
