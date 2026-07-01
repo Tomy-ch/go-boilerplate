@@ -9,24 +9,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClockNow(t *testing.T) {
+// systemClock は非公開で Now/Sleep は NewClock/NewSleeper が返すインターフェース経由でのみ
+// 到達するため、各コンストラクタの TestXxx 内でそのメソッド挙動まで検証する。
+
+func TestNewClock(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		now := NewClock().Now()
-		require.WithinDuration(t, time.Now(), now, time.Second)
+		t.Run("現在時刻を返すClockを生成する", func(t *testing.T) {
+			t.Parallel()
+
+			now := NewClock().Now()
+			require.WithinDuration(t, time.Now(), now, time.Second)
+		})
 	})
 }
 
-func TestClockSleep(t *testing.T) {
+func TestNewSleeper(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("指定時間経過まで待機して_nilを返す", func(t *testing.T) {
+		t.Run("指定時間経過まで待機して_nilを返すSleeperを生成する", func(t *testing.T) {
 			t.Parallel()
 
 			start := time.Now()
