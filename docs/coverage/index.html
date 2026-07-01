@@ -7874,76 +7874,76 @@ type fxEventLogger struct {
 
 // NewFxEventLogger は、fx.WithLogger に渡す fxevent.Logger を生成します。
 func NewFxEventLogger(logger logging.Logger) fxevent.Logger <span class="cov8" title="1">{
-        return &amp;fxEventLogger{logger: logger.Named("fx")}
+        return &amp;fxEventLogger{logger: logger.Named("Fx").CallerSkip(callSkip)}
 }</span>
 
 func (f *fxEventLogger) LogEvent(event fxevent.Event) <span class="cov8" title="1">{
         switch e := event.(type) </span>{
         case *fxevent.OnStartExecuted:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx OnStart hook failed",
+                        "OnStart hook failed",
                         []*logging.Field{logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName)},
-                        f.logger.Debug, "fx OnStart hook executed",
+                        f.logger.Debug, "OnStart hook executed",
                         logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName),
                         logging.DurationMs("runtime_ms", e.Runtime))</span>
         case *fxevent.OnStopExecuted:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx OnStop hook failed",
+                        "OnStop hook failed",
                         []*logging.Field{logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName)},
-                        f.logger.Debug, "fx OnStop hook executed",
+                        f.logger.Debug, "OnStop hook executed",
                         logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName),
                         logging.DurationMs("runtime_ms", e.Runtime))</span>
         case *fxevent.Supplied:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx supply failed",
+                        "Supply failed",
                         []*logging.Field{logging.String("type", e.TypeName), logging.String("module", e.ModuleName)},
-                        f.logger.Debug, "fx supplied",
+                        f.logger.Debug, "Supplied",
                         logging.String("type", e.TypeName), logging.String("module", e.ModuleName))</span>
         case *fxevent.Provided:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx provide failed",
+                        "Provide failed",
                         []*logging.Field{logging.String("constructor", e.ConstructorName), logging.String("module", e.ModuleName)},
-                        f.logger.Debug, "fx provided",
+                        f.logger.Debug, "Provided",
                         logging.String("constructor", e.ConstructorName), logging.String("module", e.ModuleName),
                         logging.Strings("output_types", e.OutputTypeNames))</span>
         case *fxevent.Invoked:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx invoke failed",
+                        "Invoke failed",
                         []*logging.Field{logging.String("function", e.FunctionName), logging.String("module", e.ModuleName)},
-                        f.logger.Debug, "fx invoked",
+                        f.logger.Debug, "Invoked",
                         logging.String("function", e.FunctionName), logging.String("module", e.ModuleName))</span>
         case *fxevent.Replaced:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx replace failed",
+                        "Replace failed",
                         []*logging.Field{logging.String("module", e.ModuleName)},
-                        f.logger.Debug, "fx replaced",
+                        f.logger.Debug, "Replaced",
                         logging.Strings("output_types", e.OutputTypeNames), logging.String("module", e.ModuleName))</span>
         case *fxevent.Decorated:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx decorate failed",
+                        "Decorate failed",
                         []*logging.Field{logging.String("decorator", e.DecoratorName), logging.String("module", e.ModuleName)},
-                        f.logger.Debug, "fx decorated",
+                        f.logger.Debug, "Decorated",
                         logging.String("decorator", e.DecoratorName), logging.String("module", e.ModuleName),
                         logging.Strings("output_types", e.OutputTypeNames))</span>
         case *fxevent.LoggerInitialized:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx logger initialization failed", nil,
-                        f.logger.Debug, "fx custom logger initialized",
+                        "Logger initialization failed", nil,
+                        f.logger.Debug, "Custom logger initialized",
                         logging.String("constructor", e.ConstructorName))</span>
         case *fxevent.Started:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx application failed to start", nil,
-                        f.logger.Info, "fx application started")</span>
+                        "Application failed to start", nil,
+                        f.logger.Info, "Application started")</span>
         case *fxevent.Stopped:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx application failed to stop", nil,
-                        f.logger.Info, "fx application stopped")</span>
+                        "Application failed to stop", nil,
+                        f.logger.Info, "Application stopped")</span>
         case *fxevent.RollingBack:<span class="cov8" title="1">
-                f.logger.Error("fx start failed, rolling back", logging.Error(logging.ErrorKey, e.StartErr))</span>
+                f.logger.Error("start failed, rolling back", logging.Error(logging.ErrorKey, e.StartErr))</span>
         case *fxevent.RolledBack:<span class="cov8" title="1">
                 f.record(e.Err,
-                        "fx rollback failed", nil,
-                        f.logger.Debug, "fx rolled back")</span>
+                        "Rollback failed", nil,
+                        f.logger.Debug, "Application rolled back")</span>
         }
 }
 
@@ -8935,6 +8935,8 @@ func securityModule() fx.Option <span class="cov8" title="1">{
 		<pre class="file" id="file115" style="display: none">package module
 
 import (
+        "go-boilerplate/internal/config"
+        "go-boilerplate/internal/logging"
         "go-boilerplate/internal/system"
 
         "go.uber.org/fx"
@@ -8946,6 +8948,20 @@ func SystemModule() fx.Option <span class="cov8" title="1">{
                 fx.Provide(
                         system.NewBuildInfo,
                 ),
+                fx.Invoke(
+                        logBuildInfo,
+                ),
+        )
+}</span>
+
+// logBuildInfo は、起動時にアプリのビルド情報を1行ログへ出力します。
+func logBuildInfo(logger logging.Logger, bi system.BuildInfo, appCfg *config.ApplicationConfig) <span class="cov8" title="1">{
+        logger.Named("system.buildinfo").CallerSkip(callerSkipCount).Info(
+                "application build info",
+                logging.String("version", bi.Version()),
+                logging.String("revision", bi.Revision()),
+                logging.String("build_date", bi.BuildDate()),
+                logging.String("mode", appCfg.Mode()),
         )
 }</span>
 </pre>
@@ -9283,8 +9299,13 @@ type ServerExtends struct {
 // AppliedServerExtends は、サーバー拡張が適用されたことを示すトークンです。
 type AppliedServerExtends struct{}
 
-// SrvCfg は、サーバーの設定関数を表します。
-type SrvCfg func(*echo.Echo)
+// SrvCfg は、サーバーの設定関数とその名前（ログ出力用）を表します。
+type SrvCfg struct {
+        // Name は、設定関数の名前です（ログ出力用）
+        Name string
+        // Config は、Echo に副作用で適用される設定関数です。
+        Config func(*echo.Echo)
+}
 
 // ServeCfgOut は、サーバーの設定の出力時に使用される構造体です。
 type ServeCfgOut struct {
@@ -9436,12 +9457,17 @@ func extractPriorityConflicts(byPriority map[int][]string) []string <span class=
 
 // ApplyConfigurators は、Echoに対して設定関数を適用します。
 func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) <span class="cov8" title="1">{
-        logger.Named("ApplyConfigurators").CallerSkip(callerSkip).Info(
+        log := logger.Named("ApplyConfigurators").CallerSkip(callerSkip)
+        log.Info(
                 "Applying server configurator",
                 logging.Int("count", len(cfgs)),
         )
         for _, cfg := range cfgs </span><span class="cov8" title="1">{
-                cfg(e)
+                log.Info(
+                        "Applying server configurator",
+                        logging.String("configurator", cfg.Name),
+                )
+                cfg.Config(e)
         }</span>
 }
 </pre>
@@ -9509,9 +9535,12 @@ func provideIPExtractorServeConfig(
         appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig,
 ) extension.ServeCfgOut <span class="cov8" title="1">{
         return extension.ServeCfgOut{
-                SrvCfg: func(e *echo.Echo) </span><span class="cov8" title="1">{
-                        ipextractor.New(e, appCfg, secCfg)
-                }</span>,
+                SrvCfg: extension.SrvCfg{
+                        Name: "ipextractor",
+                        Config: func(e *echo.Echo) </span><span class="cov8" title="1">{
+                                ipextractor.New(e, appCfg, secCfg)
+                        }</span>,
+                },
         }
 }
 </pre>
@@ -9806,9 +9835,12 @@ func DebugModeModule() fx.Option <span class="cov8" title="1">{
 // provideDebugModeServeConfig は、デバッグモードのサーバー設定を提供します。
 func provideDebugModeServeConfig(appCfg *config.ApplicationConfig) extension.ServeCfgOut <span class="cov8" title="1">{
         return extension.ServeCfgOut{
-                SrvCfg: func(e *echo.Echo) </span><span class="cov8" title="1">{
-                        debugmode.New(e, appCfg)
-                }</span>,
+                SrvCfg: extension.SrvCfg{
+                        Name: "debugmode",
+                        Config: func(e *echo.Echo) </span><span class="cov8" title="1">{
+                                debugmode.New(e, appCfg)
+                        }</span>,
+                },
         }
 }
 </pre>
@@ -9840,9 +9872,12 @@ func provideErrorHandlerServeConfig(
         log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig,
 ) extension.ServeCfgOut <span class="cov8" title="1">{
         return extension.ServeCfgOut{
-                SrvCfg: func(e *echo.Echo) </span><span class="cov8" title="1">{
-                        errorhandler.New(e, log, lf, obsCfg)
-                }</span>,
+                SrvCfg: extension.SrvCfg{
+                        Name: "errorhandler",
+                        Config: func(e *echo.Echo) </span><span class="cov8" title="1">{
+                                errorhandler.New(e, log, lf, obsCfg)
+                        }</span>,
+                },
         }
 }
 </pre>
