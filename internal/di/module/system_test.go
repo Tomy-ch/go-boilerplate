@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/mock/gomock"
 
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/system"
 	mock_system "go-boilerplate/internal/system/mock"
@@ -27,8 +28,9 @@ func TestSystemModule_ProvidesBuildInfo(t *testing.T) {
 
 			app := fx.New(
 				SystemModule(),
-				// logBuildInfo の Invoke が logging.Logger を要求するため供給する。
+				// logBuildInfo の Invoke が logging.Logger と ApplicationConfig を要求するため供給する。
 				fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
+				fx.Provide(func() *config.ApplicationConfig { return config.NewApplicationConfig(config.MockConfigForTest(t)) }),
 				fx.Populate(&bi),
 				fx.NopLogger,
 			)
@@ -50,7 +52,7 @@ func TestLogBuildInfo(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("version / revision / build_date を付与して出力する", func(t *testing.T) {
+		t.Run("version / revision / build_date / mode を付与して出力する", func(t *testing.T) {
 			t.Parallel()
 
 			logger, observed := logging.NewObservedTestLogger(t)
@@ -59,8 +61,9 @@ func TestLogBuildInfo(t *testing.T) {
 			bi.EXPECT().Version().Return("v1.2.3")
 			bi.EXPECT().Revision().Return("abc1234")
 			bi.EXPECT().BuildDate().Return("2026-07-01T00:00:00Z")
+			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 
-			logBuildInfo(logger, bi)
+			logBuildInfo(logger, bi, appCfg)
 
 			logs := observed.All()
 			require.Len(t, logs, 1)
@@ -73,6 +76,7 @@ func TestLogBuildInfo(t *testing.T) {
 			assert.Equal(t, "v1.2.3", fields["version"])
 			assert.Equal(t, "abc1234", fields["revision"])
 			assert.Equal(t, "2026-07-01T00:00:00Z", fields["build_date"])
+			assert.Equal(t, config.DevelopmentMode, fields["mode"])
 		})
 	})
 }
