@@ -113,6 +113,9 @@ linters:
             - pkg: github.com/cockroachdb/errors
               desc: "スタックトレース用として導入したライブラリです。
                 代わりに pkg/xerrors を使用してください。"
+            - pkg: errors
+              desc: "標準の errors パッケージは直接使用しないでください。
+                pkg/xerrors の New / Wrap / Join / Is / As を使用してください。"
         only_the_original_uuid_is_permitted:
           files:
             - "**/*.go"
