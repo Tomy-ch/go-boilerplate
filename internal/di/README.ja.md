@@ -11,7 +11,7 @@
 代わりに以下の責務を担います。
 
 - 各レイヤの **依存関係の構築**
-- アプリケーション **実行モードの切り替え**
+- アプリケーション **実行プロファイルの切り替え**（server / job / worker / outbox-relay）
 - ライフサイクル管理
 - ミドルウェア / 拡張機能の構成
 - Infrastructure / Usecase / Controller の接続
@@ -102,30 +102,46 @@ fx.New(
 
 などがすべて接続されます。
 
-## 2. 実行モードの切り替え
+## 2. 実行プロファイルの切り替え
 
-このプロジェクトでは **2種類の実行モード**があります。
+このプロジェクトは **4種類の実行プロファイル**で動作します。各プロファイルは独立した
+トップレベル entrypoint（それぞれ別の `cmd/*` サブコマンド）であり、共有された
+`module.*` の部品群から自前の `fx` オブジェクトグラフを組み立てます。
 
-### HTTP Server
+|プロファイル|コマンド|Entrypoint|中心関数|用途|
+|---|---|---|---|---|
+|Server|`serve`|`internal/di/server.go`|`NewApplicationCore()` + `NewApplicationServer(app)`|HTTP / Web API（常駐）|
+|Job|`job`|`internal/di/job.go`|`NewJobCore()` / `RunJob(grace)`|CLI / バッチ（ワンショット）|
+|Worker|`worker`|`internal/di/worker.go`|`NewWorkerCore()` / `RunWorker(grace)`|キュー consumer engine（常駐）|
+|Outbox Relay|`outbox-relay`|`internal/di/outboxrelay.go`|`NewOutboxRelayApp(grace)` + `NewApplicationServer(app)`／ワンショット replay は `RunOutboxReplay()`|transactional outbox の relay（常駐）＋ dead 行の replay|
 
-```txt
-internal/di/server.go
-```
+4つはすべて **同じアーキテクチャ**・同じ内側レイヤ（domain / usecase /
+infrastructure）を共有し、異なるのは DI グラフがどの外側モジュールを結線するかと、
+プロセスの駆動方式（常駐かワンショットか）だけです。
 
-### Job Runner
+### 各プロファイルが結線するもの
 
-```txt
-internal/di/job.go
-```
+- **Server**（`NewApplicationCore`）— HTTP スタック全体:
+  `lifecycle` → `config` → コア HTTP モジュール（`validator` / `security_cookie` /
+  `authn` / `basicauth` / `skipper`）→ `logging` / `observability` / `db` /
+  `system` → `infrastructure` / `usecase` / `controller` → server
+  （`MiddlewareModule` / `Module` / `HookModule`）。`fx.WithLogger` により
+  fx イベントを構造化ロガー（`NewFxEventLogger`）へ流します。
+- **Job**（`NewJobCore`）— `shutdowner` + `lifecycle` + 共通基盤
+  （`config` / `logging` / `observability` / `db` / `system`）+
+  `infrastructure` + `usecase` + `JobModule`。`RunJob` は `job.State` を populate し、
+  アプリを起動して（hook 経由で選択されたジョブを実行し）停止します。
+- **Worker**（`NewWorkerCore`）— 同じ共通基盤 + `infrastructure` +
+  `usecase` + `WorkerModule`。`RunWorker` は `worker.State` を populate し、
+  worker engine を detached background runner として実行します。
+- **Outbox Relay**（`NewOutboxRelayCore`）— 共通基盤 +
+  `infrastructure` + `usecase` + `OutboxRelayModule`（これが追加で
+  outbox `publisher` と relay engine を結線します）。`RunOutboxReplay` は
+  同じ共通基盤を再利用し、「dead 行を pending へ戻す」ワンショット実行を行います。
 
-これにより
-
-|実行モード|用途|
-|---|---|
-|Server|Web API|
-|Job|CLI / Batch|
-
-が **同じアーキテクチャ上で実行できます。**
+server 以外の3プロファイルは `APP_SHUTDOWN_TIMEOUT` を `fx.StopTimeout(grace)` に
+設定して停止軸を一本化し、fx 既定の 15s teardown が graceful shutdown / drain を
+先に打ち切らないようにします。
 
 ## 3. 環境ごとの依存関係切り替え
 
@@ -153,16 +169,77 @@ case config.EnvLocal:
 
 ```txt
 internal/di
-
-server.go
-job.go
-
-lifecycle/
-module/
-server/
-shutdowner/
-job/
+├── server.go            # Server プロファイルの entrypoint（NewApplicationCore）
+├── job.go               # Job プロファイルの entrypoint（NewJobCore / RunJob）
+├── worker.go            # Worker プロファイルの entrypoint（NewWorkerCore / RunWorker）
+├── outboxrelay.go       # Outbox-relay の entrypoint（NewOutboxRelayApp / RunOutboxReplay）
+├── fx_event_logger.go   # fxevent.Logger → 構造化ロガー の橋渡し（NewFxEventLogger）
+│
+├── module/              # レイヤ別の fx.Module 部品群（module/README.md 参照）
+│   └── core/            # HTTP スタック共通コンポーネント（authn / basicauth / validator / …）
+├── server/              # Echo サーバーモジュール（Module / MiddlewareModule / HookModule）
+│   ├── extension/       # ミドルウェア & configurator の DI（inbound / outbound / security /
+│   │                    #   instrumentation / nonprod / testkit）
+│   └── hook/            # サーバーのライフサイクルフック（HTTP 起動/停止・DB close・o11y shutdown）
+├── lifecycle/           # Registrar（fx.Lifecycle の抽象化）+ SupervisedRunner
+├── shutdowner/          # fx.Shutdowner のラッパー（ワンショット系の自己停止）
+├── job/                 # Job Runner provider + job/hook（ライフサイクル結線）
+├── worker/              # Worker Engine provider + ValidateShutdownGrace + worker/hook
+└── outboxrelay/
+    └── hook/            # Relay engine のライフサイクルフック
 ```
+
+## Core / Optional / Adapter モジュール
+
+`module.*` の部品群は、グラフへの入り方によって次の3層に分類されます。
+
+### Core — 常に結線される（共有基盤）
+
+すべての（またはほぼすべての）プロファイルに含まれます。全プロファイルが依存する
+内側レイヤの基盤です。
+
+|モジュール|役割|
+|---|---|
+|`lifecycle.Module()`|Start/Stop の registrar（全プロファイル）|
+|`module.ConfigModule()`|Config providers + `*time.Location`（全プロファイル）|
+|`module.LoggingModule()`|Logger + log-field builder（全プロファイル）|
+|`module.ObservabilityModule()`|Tracer / meter / logger providers + shutdown hook（全プロファイル）|
+|`module.DatabaseModule()`|`*pgxpool.Pool`・tracer・tx manager・pool metrics + DB-close hook（全プロファイル）|
+|`module.SystemModule()`|ビルド情報（全プロファイル）|
+|`module.InfrastructureModule()`|`persistence` / `clock` / `httpclient` / `webapi` / `security` / `authz` を集約（全プロファイル）|
+|`module.UsecaseModule()`|`idempotency` / `outbox` を含む usecase 実装（全プロファイル）|
+|`module.ControllerModule()` + `core.*` + `server.*`|HTTP スタック全体 — **Server プロファイルのみ**|
+
+### Optional — プロファイルごとに seam へ差し込む
+
+必要とするプロファイルにのみ結線されます。各プロファイルを特徴づける外側モジュールで、
+いくつかはコンストラクタ追加用の明示的な seam を公開します。
+
+|モジュール|結線先|補足|
+|---|---|---|
+|`module.JobModule()`|Job|`group:"jobs"` 登録 + Runner + State + hook|
+|`module.WorkerModule()`|Worker|Engine + State + queue-stats collector。**既定では worker を1つも登録しない**（`provideWorkers` / `provideQueueStatsTargets` が seam）。`ValidateShutdownGrace` は `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` なら起動を失敗させる|
+|`module.OutboxRelayModule()`|Outbox Relay|Relay usecase + engine + hook。`outboxPublisherModule()` も取り込む|
+|`shutdowner.Module()`|Job, Worker|ワンショット / シグナル駆動の自己停止用（Server / Relay では不要）|
+
+`outboxPublisherModule()` はあえて共有の `InfrastructureModule()` に **含めません**。
+非標準の httpclient profile（例: `MaxAttempts=1`）を `httpclient_profiles` value group
+へ寄与するため、他プロファイルへ漏れないよう `OutboxRelayModule()` に閉じ込めています。
+
+### Adapter — 明示的に結線したときだけ（既定グラフには強制しない）
+
+既定グラフが **結線しない** 具象の外部連携です。上記 Optional の seam を通じて
+オプトインします。
+
+- **キュー broker adapter**（`internal/infrastructure/queue/sqs`）— SQS
+  consumer + `QueueStatsProvider`。実際の worker コンストラクタを `provideWorkers`
+  で登録したときにのみ結線され、depth/DLQ メトリクスは `queuemetrics.Target` を
+  `provideQueueStatsTargets` で登録したときのみ出力されます。既定の worker グラフは
+  adapter なしで動作します。
+- **環境ゲート付きのスタブ** — `authzModule` は allow-all の `authz` authorizer を
+  local / CI / test のときだけ結線し、本番相当の環境では **fail closed**（エラーを返す）
+  として、実際の RBAC / ポリシー adapter への差し替えを強制します。`core.AuthnModule`
+  も同じ fail-closed パターンに従います。
 
 ## Do / Don't
 
@@ -204,8 +281,10 @@ reg.RegisterStop(stopFunc)
 
 例
 
-- HTTP Server 起動
-- Job Runner
+- HTTP Server 起動 / graceful shutdown
+- Job Runner（ワンショット）
+- Worker engine の drain
+- Outbox relay の poll ループ
 
 ### 外部フレームワークの隔離
 
@@ -354,6 +433,51 @@ JobUsecase --> Infrastructure
 Runner --> Shutdown
 ```
 
+## Worker 実行フロー
+
+```mermaid
+flowchart TD
+
+CLI --> RunWorker
+RunWorker --> fx.New
+fx.New --> WorkerModules
+
+WorkerModules --> InfrastructureModule
+WorkerModules --> UsecaseModule
+WorkerModules --> WorkerModule
+
+WorkerModule --> Engine
+WorkerModule --> ValidateShutdownGrace
+
+Engine --> SupervisedRunner
+SupervisedRunner --> Drain
+```
+
+## Outbox Relay 実行フロー
+
+```mermaid
+flowchart TD
+
+CLI --> NewOutboxRelayApp
+NewOutboxRelayApp --> fx.New
+fx.New --> RelayModules
+
+RelayModules --> InfrastructureModule
+RelayModules --> UsecaseModule
+RelayModules --> OutboxRelayModule
+
+OutboxRelayModule --> OutboxPublisher
+OutboxRelayModule --> RelayEngine
+
+RelayEngine --> SupervisedRunner
+SupervisedRunner --> PollLoop
+```
+
+`worker` / `outbox-relay` の hook（および `job` の hook）はすべて
+`lifecycle.SupervisedRunner` を土台にしています。これは `OnStart` で
+バックグラウンドループを goroutine として起動し、`OnStop` で（grace の範囲内で）
+キャンセル・完了待ちを行う共有プリミティブです。
+
 ## Lifecycle 管理
 
 ```mermaid
@@ -365,7 +489,11 @@ lifecycleRegistrar --> RegisterStart
 lifecycleRegistrar --> RegisterStop
 
 RegisterStart --> HTTPServerStart
-RegisterStart --> JobRunnerStart
+RegisterStart --> BackgroundRunner
+
+BackgroundRunner --> JobRunner
+BackgroundRunner --> WorkerEngine
+BackgroundRunner --> RelayEngine
 
 RegisterStop --> HTTPServerStop
 RegisterStop --> CleanupTasks

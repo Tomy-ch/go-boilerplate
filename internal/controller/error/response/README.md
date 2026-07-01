@@ -42,9 +42,8 @@ HTTP status codes are returned in the response header, and internal information 
 
 |Function|Description|
 |---|---|
-|`NewHTTPErrorFromAppError`|Generate HTTP error response from `apperror`|
-|`NewHTTPErrorFromStatus`|Generate error response from HTTP status code|
-|`NewInternalErrorResponse`|Generate 500 Internal Server Error response|
+|`NewHTTPErrorFromAppError`|Generate HTTP error response from `apperror` (unknown errors fall back to 500)|
+|`NewHTTPErrorFromStatus`|Generate error response from HTTP status code (unknown status falls back to 500)|
 
 ## Error Code and HTTP Status Mapping
 
@@ -60,8 +59,8 @@ HTTP status codes are returned in the response header, and internal information 
 |`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
 |`ErrTooManyRequests`|429 Too Many Requests|`TOO_MANY_REQUESTS`|
 |`ErrCanceled`|499 Client Closed Request|`CLIENT_CLOSED_REQUEST`|
-|`ErrUnimplemented`|501 Not Implemented|`NOT_AVAILABLE`|
-|`ErrUnavailable`|503 Service Unavailable|`NOT_AVAILABLE`|
+|`ErrUnimplemented`|501 Not Implemented|`NOT_IMPLEMENTED`|
+|`ErrUnavailable`|503 Service Unavailable|`SERVICE_UNAVAILABLE`|
 |Other|500 Internal Server Error|`INTERNAL_ERROR`|
 
 ### Error Code List
@@ -75,8 +74,10 @@ HTTP status codes are returned in the response header, and internal information 
 |`RESOURCE_CONFLICT`|既に同じ情報が登録されています。|
 |`VALIDATION_FAILED`|入力内容の検証に失敗しました。修正して再度お試しください。|
 |`TOO_MANY_REQUESTS`|リクエストが多すぎます。しばらくしてから再度お試しください。|
+|`CLIENT_CLOSED_REQUEST`|リクエストがキャンセルされました。|
 |`INTERNAL_ERROR`|サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。|
-|`NOT_AVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
+|`NOT_IMPLEMENTED`|この機能は提供されていません。|
+|`SERVICE_UNAVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
 
 ## Configuration Changes
 

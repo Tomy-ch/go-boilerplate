@@ -127,7 +127,7 @@ QueryService は検索用途に特化します。
 
 詳細は以下を参照してください。
 
-[driver ディレクトリの README](driver/README.md)
+[driver ディレクトリの README](driver/README.ja.md)
 
 ## SQL ログ / トレース（pgx クエリトレーサー）
 
@@ -215,7 +215,7 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 
 詳細は以下を参照してください。
 
-[testkit ディレクトリの README](testkit/README.md)
+[testkit ディレクトリの README](testkit/README.ja.md)
 
 ## 設計方針
 

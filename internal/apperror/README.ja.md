@@ -191,3 +191,34 @@ flowchart TB
 | `ErrInternal` | 想定外の内部エラー | 500 Internal Server Error |
 | `ErrUnimplemented` | 未実装 / 非サポート機能 | 501 Not Implemented |
 | `ErrUnavailable` | 一時的な利用不可（外部依存障害など） | 503 Service Unavailable |
+
+## 分類ヘルパー（`IsAppError`）
+
+`IsAppError(err error) bool` は、`err` が上記の対応表に載る HTTP taxonomy センチネルのいずれかに該当するかを返します。
+
+- 判定には `xerrors.Is` を使うため、ラップされたエラー（`xerrors.Wrap(apperror.ErrConflict, ...)`）も検出されます。
+- worker 分類センチネル（`ErrRetryable` / `ErrPermanent` / `ErrFatal`、後述）は意図的に `IsAppError` の対象外です。
+- `nil` は `false` を返します。
+
+```go
+// true: センチネルそのもの、またはそれをラップしたエラー
+apperror.IsAppError(apperror.ErrNotFound)                        // true
+apperror.IsAppError(xerrors.Wrap(apperror.ErrConflict, "dup"))   // true
+
+// false: app error でない / nil / worker センチネル
+apperror.IsAppError(xerrors.New("generic"))                      // false
+apperror.IsAppError(nil)                                         // false
+apperror.IsAppError(apperror.ErrRetryable)                       // false
+```
+
+## worker 分類センチネル
+
+上記の HTTP taxonomy とは別に、メッセージ処理 worker の `engine` が `Handler` の返すエラーを分類して挙動を変えるために使用する3つのセンチネルを定義しています。
+
+| センチネル | 意味 | engine の挙動 |
+| ---------- | ---- | ------------- |
+| `ErrRetryable` | 一時障害 | Nack で再配送 |
+| `ErrPermanent` | 永久失敗 | `FailureHandler` へ退避してから Ack |
+| `ErrFatal` | プロセス継続不能 | drain して engine を停止 |
+
+これらは HTTP エラー taxonomy には **含まれません**。HTTP ステータス対応を持たず、`IsAppError` の対象外です。

@@ -39,8 +39,7 @@ pre-commit:
 commit-msg:
   commands:
     commitlint:
-      # mise 管理の commitlint を解決して実行する
-      run: mise exec npm:@commitlint/cli -- commitlint --edit {1}
+      run: make commitlint COMMIT_MSG_FILE={1}
 
 pre-push:
   parallel: true
@@ -48,6 +47,7 @@ pre-push:
     secret-scan:
       run: make secret-scan
     test:
+      glob: "*.go"
       run: make test
     gen-go-check:
       run: make gen-bundle-oapi gen-go-code && git diff --exit-code -- '*.gen.go' '*/mock/mock_*.go' '*_mock.go' openapi/openapi.gen.yaml

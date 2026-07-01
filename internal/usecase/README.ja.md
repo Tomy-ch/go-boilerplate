@@ -704,6 +704,12 @@ observability層がtracerの生成ルール（レイヤー名やパッケージ�
 
 ## 実装例
 
+> 以下の例は、恒久的なパターン（tracer による span の開始/終了、`clock.Now()` による時刻取得、
+> `txm.Do` によるトランザクション境界、Domain → DTO 変換）**を示すためだけに**、サンプルの
+> `<aggregate>`（`user` と関連する `prefecture`）を用いています。これらのサンプル集約は
+> `make setup-remove-sample-api` で削除されるため、`user` / `prefecture` は各自の集約の
+> 代替として読み替えてください。要点は具体名ではなくパターンです。
+
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 // 唯一性のある名称

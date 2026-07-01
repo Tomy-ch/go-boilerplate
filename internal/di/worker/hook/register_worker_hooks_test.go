@@ -71,6 +71,8 @@ func TestRegisterWorkerHooks(t *testing.T) {
 			state.Set("missing-worker", nil, done)
 
 			wc := config.NewWorkerConfig(config.MockConfigForTest(t))
+			// 並列サブテスト間で health listener の既定ポート(:8081)が衝突するため空きポートを使う。
+			wc.SetHealthListenAddr(t, "127.0.0.1:0")
 			start, stop := captureWorkerHooks(t, engine, state, wc, log)
 
 			require.NoError(t, start(context.Background()))
@@ -92,6 +94,8 @@ func TestRegisterWorkerHooks(t *testing.T) {
 			state := workerengine.NewState() // Set しない = done は nil
 
 			wc := config.NewWorkerConfig(config.MockConfigForTest(t))
+			// 並列サブテスト間で health listener の既定ポート(:8081)が衝突するため空きポートを使う。
+			wc.SetHealthListenAddr(t, "127.0.0.1:0")
 			start, stop := captureWorkerHooks(t, engine, state, wc, log)
 
 			require.NoError(t, start(context.Background()))

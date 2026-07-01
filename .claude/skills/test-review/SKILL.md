@@ -1,6 +1,6 @@
 ---
 name: test-review
-description: Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `CLAUDE.md` Testing Instructions + the target layer's README `Test Strategy` / `Testing strategy` section + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out four `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap / branch × meaning completeness** (reads the subject source itself and builds a per-function two-axis matrix — Axis A 分岐網羅: every branch has a covering case; Axis B 意味網羅: each covered branch's case asserts that branch's distinctive outcome, not just that it executed — surfacing uncovered branches and covered-but-vacuously-asserted branches separately). Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable; designed to slot into a PR review flow alongside `code-review` / `local-review` / `arch-check`.
+description: Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `docs/testing-conventions.md` + the target layer's README `Test Strategy` / `Testing strategy` section + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out four `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap / branch × meaning completeness** (reads the subject source itself and builds a per-function two-axis matrix — Axis A 分岐網羅: every branch has a covering case; Axis B 意味網羅: each covered branch's case asserts that branch's distinctive outcome, not just that it executed — surfacing uncovered branches and covered-but-vacuously-asserted branches separately). Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable; designed to slot into a PR review flow alongside `code-review` / `local-review` / `arch-check`.
 ---
 
 # Test Review
@@ -26,7 +26,7 @@ Do NOT use this skill for:
 
 **Reads (always)**:
 
-- `CLAUDE.md` — the project-wide Testing Instructions section.
+- `docs/testing-conventions.md` — the project-wide testing conventions.
 - `.claude/skills/scaffold-test/SKILL.md` — the canonical generation rules (parallel mandate, `t.Run` per subcase, 正常系 / 異常系 grouping, Japanese naming, require vs assert, mock policy, `for`-loop policy, one-`TestXxx`-per-subject policy). This skill reviews against those same rules — no duplication.
 - The nearest layer README, walked up from each target test file:
   - `internal/domain/README.md` (Testing strategy)
@@ -72,7 +72,7 @@ For every target test file:
 
 1. Detect the layer from the file path (the band lookup matches `scaffold-test/SKILL.md`).
 2. Read the layer README's `Test Strategy` / `Testing strategy` section (full text including every sub-section heading).
-3. Read `CLAUDE.md` Testing Instructions once.
+3. Read `docs/testing-conventions.md` once.
 4. Read `.claude/skills/scaffold-test/SKILL.md` once — the canonical generation rules.
 5. Read the subject source file (paired with the test file).
 6. Read sibling `*_test.go` files in the same package for established conventions (helper signatures, fixture style, mock wiring).
@@ -83,7 +83,7 @@ If any layer README has no Test Strategy section in a place where one is expecte
 
 Spawn four `adversarial-reviewer` subagents (`subagent_type: adversarial-reviewer`) **in parallel**, each on `sonnet` by default (so reviewer ≠ an Opus implementer; the orchestrator may override the model to keep reviewer ≠ implementer).
 
-Each subagent receives the same Step 1 context bundle (layer README, `CLAUDE.md`, `scaffold-test/SKILL.md`, target test file, subject source file, sibling tests) but a different lens prompt:
+Each subagent receives the same Step 1 context bundle (layer README, `docs/testing-conventions.md`, `scaffold-test/SKILL.md`, target test file, subject source file, sibling tests) but a different lens prompt:
 
 ### Lens 1: Structural Compliance
 
@@ -100,7 +100,7 @@ Audits mechanical rule adherence — these are the hard rules surfaced by `scaff
   - *forward*: each `TestXxx` covers exactly one subject function / method — a `TestXxx` bundling multiple subjects needs the one-line rationale comment required by `scaffold-test/SKILL.md`.
   - *reverse*: each subject function / method maps to exactly one `TestXxx`. A subject split across multiple `TestXxx` (e.g. `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`, or a `Test_foo` / `TestFoo_foo` naming-variant pair) is a finding → consolidate into a single `TestXxx` whose `正常系` / `異常系` groups absorb the variants (Rule 7). A public subject function with NO `TestXxx` at all is a coverage gap (its branches also surface in Lens 4 Axis A).
 - Mocks come from `<package>/mock/*_mock.go` — no hand-written mocks.
-- No imports of `internal/` from `pkg/**` test files; no infrastructure imports from `internal/domain/**` test files; etc. (architectural rules in `CLAUDE.md`).
+- No imports of `internal/` from `pkg/**` test files; no infrastructure imports from `internal/domain/**` test files; etc. (architectural rules in `docs/testing-conventions.md`).
 
 Output: a structured finding list with `file:line` references and the violated rule.
 
@@ -221,7 +221,7 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
 
 Severity mapping:
 
-- **修正必須** (Structural Compliance lens): rule violations against `CLAUDE.md` / `scaffold-test/SKILL.md` — these are hard rules. CONFIRMED → 修正必須; PLAUSIBLE → 確認推奨.
+- **修正必須** (Structural Compliance lens): rule violations against `docs/testing-conventions.md` / `scaffold-test/SKILL.md` — these are hard rules. CONFIRMED → 修正必須; PLAUSIBLE → 確認推奨.
 - **補完推奨** (Viewpoint Coverage lens): README declares a viewpoint that is not exercised. CONFIRMED → 補完推奨; PLAUSIBLE → 確認推奨.
 - **再考** (Semantic Quality lens + Viewpoint Gap Axis B): the test compiles and passes but reveals little — a weak assertion, or a branch that is covered yet does not distinctly assert its outcome. CONFIRMED → 再考; PLAUSIBLE → 補強候補.
 - **追加検討** (Viewpoint Gap Axis A): proactive suggestion for an uncovered branch found by subject inspection. CONFIRMED → 追加検討; PLAUSIBLE → 提案.
@@ -250,7 +250,7 @@ When chained from such an orchestrator in the future, the parent passes a contex
 - ❌ Running `make test` (this skill reviews tests, not runs them; coverage / pass-status is `make test`'s job, run separately).
 - ❌ Trusting finder output without verification (the verifier stage is mandatory unless the parent passes `skip_verifier: true`).
 - ❌ Hardcoding viewpoint lists (the SSOT is the layer README's Test Strategy section; `pkg/` is the documented exception).
-- ❌ Duplicating rules already in `CLAUDE.md` or `scaffold-test/SKILL.md` (the skill reads them at runtime).
+- ❌ Duplicating rules already in `docs/testing-conventions.md` or `scaffold-test/SKILL.md` (the skill reads them at runtime).
 - ✅ Default to skepticism in the verifier (PLAUSIBLE > CONFIRMED when ambiguous).
 - ✅ Default reviewer model is `sonnet` (different from Opus implementers); orchestrator may override to keep reviewer ≠ implementer.
 - ✅ Default scope is changed files; alternative scopes selectable.
@@ -263,7 +263,7 @@ Before reporting completion, confirm:
 
 - [ ] Scope was resolved (changed files / base diff / explicit paths).
 - [ ] Each target `*_test.go` has its subject source file located.
-- [ ] Layer README + `CLAUDE.md` + `scaffold-test/SKILL.md` + sibling tests were read in Step 1.
+- [ ] Layer README + `docs/testing-conventions.md` + `scaffold-test/SKILL.md` + sibling tests were read in Step 1.
 - [ ] All four lenses ran (in parallel).
 - [ ] Lens 4 ran both axes per subject — Axis A 分岐網羅 (uncovered branches → 追加検討) and Axis B 意味網羅 (covered-but-vacuously-asserted branches → 再考).
 - [ ] Every finding from every lens went through `review-verifier` (unless `skip_verifier: true`).

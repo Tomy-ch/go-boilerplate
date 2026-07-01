@@ -11,6 +11,7 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 ## Notes
 
 - All errors created via this package carry stack traces
+- `StackTrace(err)` returns the `%+v` representation, including the attached stack when present (`""` for a `nil` error)
 - Use `Is` / `As` instead of direct `errors.Is` / `errors.As` for consistency
 - Use `New` / `Wrap` / `Join` instead of `fmt.Errorf` for error creation and wrapping
   (`Join` combines multiple errors). When a value must be embedded in the message, compose it with

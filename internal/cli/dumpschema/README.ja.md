@@ -28,5 +28,5 @@ dump-schema [flags]
 
 - 出力先は `database/gen/schema.gen.sql` です。
 - `pg_dump` が `PATH` 上に存在し、アプリケーションの DSN でデータベースに接続できる必要があります。
-- `\` で始まる行（psql メタコマンド）は出力から自動的に除去されます。
+- 次の行は出力から自動的に除去されます: `\` で始まる行（psql メタコマンド）、`-- Dumped from database version` / `-- Dumped by pg_dump version` のバージョンコメント行、およびすべての空行（空白のみ・空の行）。
 - デフォルトの `pg_dump` フラグ: `--schema-only --no-owner --no-privileges --format=plain`。

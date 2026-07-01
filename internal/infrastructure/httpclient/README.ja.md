@@ -9,11 +9,11 @@
 ```mermaid
 flowchart TB
     subgraph "Usecase 層"
-        GW["exchangerate.Gateway interface"]
+        GW["&lt;service&gt;.Gateway interface"]
         PUB["publisher.Publisher interface"]
     end
     subgraph "Infrastructure 層"
-        GWImpl["webapi/exchangerate 実装"]
+        GWImpl["webapi/&lt;service&gt; 実装"]
         PUBImpl["publisher 実装"]
         Sub["httpclient.Client substrate"]
     end
@@ -51,3 +51,15 @@ fx.Module("httpclient",
     ),
 )
 ```
+
+## テストカバレッジ例外
+
+以下の未被覆分岐は**構造上到達不能**として、ほぼ 100% の被覆期待の対象外とする。これを塗る
+ための contrived テストや追加実装は行わない:
+
+- `client.go` `doWithRetry` — retry ループ後の末尾 `return resp, err`。各反復はループ内で
+  return し（最終試行は `attempt == maxAttempts` に到達）、末尾 return はコンパイラ充足のため
+  だけに存在し実行されない。
+
+**ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の適切な
+承認者の承認を要する。

@@ -10,5 +10,5 @@ OpenAPI-generated types (`github.com/oapi-codegen/runtime/types`) must not leak 
 
 ## Notes
 
-- `UUID` does **not** return an error. The value is already format-validated by echo's binding, so conversion always succeeds. If it somehow cannot be parsed, that is an unreachable invariant violation (a bug), so it **panics** rather than returning an error — keeping handlers free of dead error branches.
-- Do not add a bypass constructor to `pkg/uuid` just to skip this conversion; the panic-on-invalid assertion is intentional and is exercised in tests via the string-input helper.
+- `UUID` does **not** return an error. `openapi_types.UUID` is a value type (an already-validated 16-byte array), so converting it to the domain `pkg/uuid.UUID` via `uuid.FromPrimitive` is unconditional and cannot fail — no error branch, no panic. This keeps handlers free of dead error branches.
+- `Email` returns a plain `string`; `EmailPtr` returns a `*string` and maps `nil` input to `nil`.

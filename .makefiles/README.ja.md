@@ -8,11 +8,12 @@
 
 Make ターゲットは主に以下の単位で整理されています。
 
-- `.makefiles/app` : アプリケーション起動・Job 実行・埋め込み env 材料化
+- `.makefiles/app` : アプリケーション起動・常駐プロセス(worker / outbox-relay)・Job 実行・埋め込み env 材料化
 - `.makefiles/database` : DB 初期化 / マイグレーション / シード / DML / スキーマ
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/security` : Trivy 依存脆弱性スキャン
+- `.makefiles/docker` : Dockerfile Lint（hadolint）
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
@@ -61,6 +62,33 @@ Make ターゲットは主に以下の単位で整理されています。
 ```sh
 make job NAME=sample-job
 make job NAME=batch-import ARGS="--target=local --dry-run"
+```
+
+### 常駐プロセス(worker / outbox-relay)関連
+
+いずれも `SIGTERM` / `Ctrl-C` まで常駐するデーモンで、`development` プロファイルの
+ネットワーク内（`make job` と同じ `go run ./cmd/` 方式）で実行します。
+
+#### `make worker NAME=<worker名> ARGS="<引数>"`
+
+pull-ack worker を起動します。`NAME` は worker 名（必須）、`ARGS` は任意です。
+
+> スキャフォールドは既定で worker を1つも登録しません（`WorkerModule()` は空の seam）。
+> そのため実 worker を配線するまでは `unknown worker` で失敗します。worker 追加後の
+> ローカル動作確認用の起動口として置いています。
+
+```sh
+make worker NAME=sampleworker
+```
+
+#### `make outbox-relay ARGS="<引数>"`
+
+outbox relay を起動します（outbox テーブルを周期 poll して未 publish メッセージを送出）。
+`ARGS` は任意で、`replay` サブコマンドにも渡ります。
+
+```sh
+make outbox-relay
+make outbox-relay ARGS="replay --message-id=<id>"
 ```
 
 ### 埋め込み env 材料化関連
@@ -232,8 +260,10 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | --- | --- | --- |
 | `make gen-bundle-oapi` | 分割された OpenAPI 定義をバンドルし、単一の OpenAPI ファイルを生成します。 | `openapi/openapi.yaml` をもとに `openapi/openapi.gen.yaml` を生成します。 |
 | `make gen-api-docs` | OpenAPI 定義をもとに API ドキュメントを生成します。 | なし |
+| `make lint-oapi` | OpenAPI 定義を `redocly lint` で検証します。 | `node_tool_runner` コンテナ内で `make lint-oapi-ci` を呼び出します。 |
 | `make gen-bundle-oapi-ci` | `redocly bundle` により `openapi/openapi.gen.yaml` を生成します。 | CI 用ターゲットです。 |
 | `make gen-api-docs-ci` | `redocly build-docs` により `docs/openapi/index.html` を生成します。 | CI 用ターゲットです。 |
+| `make lint-oapi-ci` | `redocly lint openapi/openapi.yaml` を直接実行します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/go` 系
 
@@ -263,6 +293,7 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make test` | CI 用のテストを実行します。 | `gen` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します（`internal/cli` コアは計測対象に含まれます）。 |
+| `make test-cached` | ローカル用にテストキャッシュを有効にしてテストを実行します。 | pre-commit のローカル実行向け。除外パッケージは `test` と同じですが、`-count=1` を付けずキャッシュ結果を再利用します。 |
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
 | `make cover-gate` | 総カバレッジが閾値を下回ると fail します。 | CI ゲート。`COVERAGE_THRESHOLD`（既定 90）。`coverage.out` が必要（先に `test-cover-ci`）。 |
@@ -274,6 +305,7 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make go-update` | `mise.toml` に記載された Go ランタイムを mise でインストールします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | mise が必須 |
 | `make install-tools` | host 開発用の Go ツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint` を導入します。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
+| `make sync-versions` | `mise.toml` の go / node / python バージョンを `go.mod` と Dockerfile の `FROM` に反映します。 | `docs/maintenance/go-upgrade.md` の手順で参照されます。`scripts/sync-versions` を実行します。 |
 
 ## `.makefiles/docs` 系
 
@@ -312,6 +344,13 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make pin-actions-resolve` | 各 `uses:` のタグを commit SHA に解決し `.github/actions-pin.toml` lockfile を更新します。 | `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14・0 で無効）より新しい解決先を quarantine。 |
 | `make pin-actions-apply` | lockfile を元に `uses:` を `@<sha> # <tag>` へ固定します。 | なし |
 | `make pin-actions-check` | `uses:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
+
+### コミットメッセージ Lint 関連
+
+| コマンド | 説明 | 備考 |
+| --- | --- | --- |
+| `make commitlint COMMIT_MSG_FILE=<file>` | コミットメッセージを commitlint で検証します。 | `node_tool_runner` コンテナ内で `make commitlint-ci` を呼び出します。`commit-msg` フックに配線。`COMMIT_MSG_FILE` 既定は `.git/COMMIT_EDITMSG`。 |
+| `make commitlint-ci COMMIT_MSG_FILE=<file>` | `commitlint --edit <file>` を直接実行します。 | CI 用ターゲット。 |
 
 ### GitHub 設定関連
 

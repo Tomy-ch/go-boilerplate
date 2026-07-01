@@ -11,7 +11,7 @@ meta:
     - title: Application Layers
       sections: [domain, usecase, controller, infrastructure]
     - title: Design
-      sections: [worker-design]
+      sections: [rest-design, worker-design, job-design, outbox-design, idempotency-design, observability-design]
     - title: Wiring & Helpers
       sections: [di, context-helper, cli, pkg]
     - title: Cross-Cutting
@@ -210,6 +210,14 @@ outbox-design:
   # Japanese
   - src: docs/ja/design/outbox.ja.md
     dst: docs/portal/guides/ja/outbox-design.ja.md
+
+observability-design:
+  # English
+  - src: docs/design/observability.md
+    dst: docs/portal/guides/observability-design.md
+  # Japanese
+  - src: docs/ja/design/observability.ja.md
+    dst: docs/portal/guides/ja/observability-design.ja.md
 
 domain:
   # English

@@ -6,7 +6,7 @@ Overview: This package provides helpers to support testing in the Usecase layer.
 
 ## Main Features Provided
 
-- `ExpectedDBError(t *testing.T) error`
+- `ExpectedDBError() error`
   - A helper to easily generate a "fixed error representing a DB error" in tests. It is used as an expected value in tests.
 
 - `NewMockTransactionManager(t *testing.T) tx.Manager`
@@ -18,7 +18,7 @@ Overview: This package provides helpers to support testing in the Usecase layer.
 
     ```go
     func Test_SomeUsecase_DBError(t *testing.T) {
-      expected := testkit.ExpectedDBError(t)
+      expected := testkit.ExpectedDBError()
       // Use expected as the return value of mocks or for expected error assertions
     }
     ```

@@ -10,7 +10,7 @@ Use the `MakeAvailableAuthn` function to attach authentication context to a test
 
 ```go
   ctx := context.Background()
-  ctx = testauth.MakeAvailableAuthn(t, ctx, userID.String()) // set auth context here
+  ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String()) // set auth context here
   ctrl := gomock.NewController(t)
 ```
 

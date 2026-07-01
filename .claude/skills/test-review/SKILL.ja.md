@@ -21,7 +21,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 **常に読む**:
 
-- `CLAUDE.md` の Testing Instructions。
+- `docs/testing-conventions.md`。
 - `.claude/skills/scaffold-test/SKILL.md` — 生成側 canonical ルール（parallel 必須 / `t.Run` per subcase / 正常系・異常系 グルーピング / 日本語命名 / require vs assert / mock 方針 / for-loop 方針 / 1 関数 = 1 `TestXxx`）。本スキルはこれらに対してレビューする（重複定義しない）。
 - 対象ファイルから walk up で解決した層 README:
   - `internal/domain/README.md`（Testing strategy）
@@ -67,7 +67,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 1. ファイルパスから層検出（band lookup は `scaffold-test/SKILL.md` と同じ）。
 2. 該当層 README の `Test Strategy` / `Testing strategy` 節（全文、サブセクション見出し含む）。
-3. `CLAUDE.md` Testing Instructions（1 回）。
+3. `docs/testing-conventions.md`（1 回）。
 4. `.claude/skills/scaffold-test/SKILL.md`（1 回、canonical ルール）。
 5. subject ソース。
 6. 同パッケージの sibling test（helper シグネチャ / fixture スタイル / mock 配線 等の確立 convention）。
@@ -78,7 +78,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 `adversarial-reviewer` subagent を 4 つ、**並列**起動 (`subagent_type: adversarial-reviewer`)。 既定で `sonnet`（Opus 実装者 ≠ reviewer を保つ。orchestrator がモデルを上書きして reviewer ≠ implementer を維持してもよい）。
 
-各 subagent は Step 1 の context bundle（層 README / `CLAUDE.md` / `scaffold-test/SKILL.md` / 対象 test / subject / sibling tests）を共通で受け取り、レンズだけ違う prompt を受ける。
+各 subagent は Step 1 の context bundle（層 README / `docs/testing-conventions.md` / `scaffold-test/SKILL.md` / 対象 test / subject / sibling tests）を共通で受け取り、レンズだけ違う prompt を受ける。
 
 ### Lens 1: 構造準拠
 
@@ -95,7 +95,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
   - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数束ねる `TestXxx` は `scaffold-test/SKILL.md` 通り 1 行 rationale コメント必須。
   - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は網羅ギャップ（その分岐は Lens 4 軸A でも surface する）。
 - mock は `<package>/mock/*_mock.go` から（手書き mock 禁止）。
-- 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`CLAUDE.md` ルール）。
+- 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`docs/testing-conventions.md` ルール）。
 
 Output: `file:line` 付きの違反 finding リスト + 違反したルール。
 
@@ -216,7 +216,7 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
 
 severity マッピング:
 
-- **修正必須** （構造準拠）: `CLAUDE.md` / `scaffold-test/SKILL.md` のハードルール違反。 CONFIRMED → 修正必須 / PLAUSIBLE → 確認推奨。
+- **修正必須** （構造準拠）: `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のハードルール違反。 CONFIRMED → 修正必須 / PLAUSIBLE → 確認推奨。
 - **補完推奨** （観点カバレッジ）: README で宣言されているのに exercise されていない観点。 CONFIRMED → 補完推奨 / PLAUSIBLE → 確認推奨。
 - **再考** （意味的品質 + 観点ギャップ 軸B）: pass はするが意味が薄い — 弱アサーション、または分岐はカバーされているが固有 outcome を区別 assert していない。 CONFIRMED → 再考 / PLAUSIBLE → 補強候補。
 - **追加検討** （観点ギャップ 軸A）: subject 検査から派生する未カバー分岐の proactive 提案。 CONFIRMED → 追加検討 / PLAUSIBLE → 提案。
@@ -245,7 +245,7 @@ PR レビューフローで `code-review` / `local-review` / `arch-check` と並
 - ❌ `make test` 実行（本スキルはレビュー、実行は `make test` 別途）。
 - ❌ verifier を通さず finder 出力をそのまま信頼（`skip_verifier: true` 親指定以外、verifier は必須）。
 - ❌ 観点リストのハードコード（SSOT は層 README の Test Strategy 節、`pkg/` は明文化された例外）。
-- ❌ `CLAUDE.md` / `scaffold-test/SKILL.md` のルール重複定義（runtime 読み込み）。
+- ❌ `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のルール重複定義（runtime 読み込み）。
 - ✅ verifier は skeptical 既定（曖昧時は PLAUSIBLE 寄り）。
 - ✅ reviewer 既定モデル `sonnet`（Opus 実装者と異なる）。 必要なら orchestrator が上書きして reviewer ≠ implementer を維持。
 - ✅ スコープ既定: 変更ファイル。 他選択肢あり。
@@ -258,7 +258,7 @@ PR レビューフローで `code-review` / `local-review` / `arch-check` と並
 
 - [ ] スコープ解決済み（変更ファイル / base diff / 明示パス）。
 - [ ] 各対象 `*_test.go` に対し subject ソースが解決済み。
-- [ ] Step 1 で 層 README + `CLAUDE.md` + `scaffold-test/SKILL.md` + sibling tests を読んだ。
+- [ ] Step 1 で 層 README + `docs/testing-conventions.md` + `scaffold-test/SKILL.md` + sibling tests を読んだ。
 - [ ] 4 レンズが（並列で）走った。
 - [ ] Lens 4 は subject ごとに両軸を走らせた — 軸A 分岐網羅（未カバー分岐 → 追加検討）/ 軸B 意味網羅（カバー済みだが意味未検証 → 再考）。
 - [ ] 各 finding が `review-verifier` を通過した（`skip_verifier: true` 親指定以外）。

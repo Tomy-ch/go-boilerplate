@@ -49,7 +49,7 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 |`datetime`|Date/time parsing|Standard library `time`|
 |`envutil`|Environment variable override (test helper)|Standard library `os`|
 |`exec`|External command execution (interface + mock)|Standard library `os/exec`|
-|`fnmeta`|Function / package name extraction|Standard library `runtime`|
+|`fnmeta`|Function / package name extraction|None|
 |`fs`|Filesystem operations (interface + mock)|Standard library `os`|
 |`ptr`|Pointer operations|None|
 |`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|

@@ -33,6 +33,8 @@ flowchart LR
 
 このルールにより、ドメインモデルがフレームワークやインフラストラクチャに依存することを防ぎます。
 
+これらの境界はドキュメント上の取り決めに留まらず、**CI の `golangci-lint` depguard で強制**されます。禁止された cross-layer import（例: `domain` が `infrastructure` を import、`pkg/` が `internal/` を import）はビルドを失敗させます。
+
 ## Usecase 依存ルール
 
 Usecase は Infrastructure に直接依存してはなりません。
@@ -250,6 +252,8 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 
 ## テストと完了の定義（Definition of Done）
 
+> テストの具体的な *どう書くか*（構造・`正常系`/`異常系` の命名・`t.Parallel()`・`require` vs `assert`・table-driven `for` ループ禁止・mock 方針・カバレッジ例外のガバナンス）は [`testing-conventions.ja.md`](testing-conventions.ja.md) にある。本節は非交渉の *完了の定義* のみを定める。
+
 - テストは**各層の実装と同居**させ、層ごとに検証する — その層のテストを書き、次へ進む前に `make test`（カバレッジ付き）を回す。テストを最終ステップにまとめないこと。先送りはカバレッジ不足を終盤まで隠す。
 - 変更が「完了」とは、コンパイルが通ることではなく、**テスト済みでカバレッジ基準を満たす**こと（新規/変更パッケージ > 90%、handler はおおむね 100%）。`go build` の成功は完了の signal では**ない**。
 - 「コンパイル可 ≠ 完了」は配線にも適用する: DI グラフの正しさは **runtime**（アプリが起動し `[Fx] RUNNING` に到達する）で検証する。ビルドや unit テストだけでは不十分。
@@ -273,6 +277,21 @@ AI エージェントは以下を守る必要があります。
 
 - `architecture.ja.md`
 - `development-flow.ja.md`
+
+## ツールチェイン実行ルール
+
+ツールのバージョンは `mise.toml`（単一の真実源）に固定され、コンテナ化された tool-runner 内で
+実行することで、マシン間の再現性を保ちます。
+
+- ツール実行（lint / format / codegen / doc 生成 / commit-message lint 等）は、tool-runner
+  （`go_tool_runner` / `node_tool_runner` / `python_tool_runner`）内で走る `make` ターゲット経由で
+  行います。
+- 自動化（lefthook フック・CI・skill）は、これらのツールを必ず `make` ターゲット経由で実行し、
+  ホスト上でツールを直接実行（例: `mise exec <tool> -- …` や素のツール binary）してコンテナを
+  バイパスしてはなりません。再現性を壊し、ホスト固有のツール状態に依存するためです。
+- `-ci` ターゲットが bare-metal 実行の正規経路です（CI ランナーやコンテナ内でツールを直接実行）。
+  ホストの `mise` はバージョン供給（`make install-tools`・Quick Start）専用です。単発の人手による
+  診断（バージョン確認等）はツール実行ではないため対象外です。
 
 ## Summary
 

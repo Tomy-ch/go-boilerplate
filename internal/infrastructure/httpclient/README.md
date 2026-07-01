@@ -9,11 +9,11 @@ English | [日本語](README.ja.md)
 ```mermaid
 flowchart TB
     subgraph "Usecase Layer"
-        GW["exchangerate.Gateway interface"]
+        GW["&lt;service&gt;.Gateway interface"]
         PUB["publisher.Publisher interface"]
     end
     subgraph "Infrastructure Layer"
-        GWImpl["webapi/exchangerate impl"]
+        GWImpl["webapi/&lt;service&gt; gateway"]
         PUBImpl["publisher impl"]
         Sub["httpclient.Client substrate"]
     end
@@ -51,3 +51,15 @@ fx.Module("httpclient",
     ),
 )
 ```
+
+## Test coverage exception
+
+The following uncovered branch is exempt from the near-100% expectation as **structurally
+unreachable**; no contrived test or extra implementation is added to reach it:
+
+- `client.go` `doWithRetry` — the trailing `return resp, err` after the retry loop. Every
+  iteration returns inside the loop (the final attempt hits `attempt == maxAttempts`), so
+  the trailing return exists only to satisfy the compiler and is never executed.
+
+**Governance:** coverage exceptions are **not added at will** — a new entry requires an
+appropriate approver's (e.g. architect) sign-off.

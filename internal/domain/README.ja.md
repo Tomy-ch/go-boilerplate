@@ -8,7 +8,7 @@
 
 ## このプロジェクトでの役割
 
-- `internal/domain/<bounded-context>/<aggregate>/` 配下に **Entity / ValueObject / DomainService / Repository(IF)** を配置する。
+- `internal/domain/<aggregate>/` 配下に **Entity / ValueObject / DomainService / Repository(IF)** を配置する。
 
 例）`internal/domain/user/`
 
@@ -237,7 +237,7 @@ Usecase / Repository は
 このプロジェクトでは **Aggregate を設計単位**とする。
 
 ```text
-internal/domain/<bounded-context>/<aggregate>/
+internal/domain/<aggregate>/
 ```
 
 ### Aggregate Root
@@ -356,7 +356,7 @@ type Repository interface {
 実装：
 
 ```text
-internal/infrastructure/persistence/postgres/
+internal/infrastructure/rdb/repository/<aggregate>/
 ```
 
 `sqlc` でドメインへマッピング。

@@ -215,6 +215,7 @@ Utilities for building DB connection DSNs.
 |`DSN(dbCfg)`|Build base connection URL|
 |`DSNWithTimeZone(dbCfg, osCfg)`|Build connection URL with timezone|
 |`DSNString(dbCfg)`|String version of `DSN`|
+|`DSNStringWithoutPassword(dbCfg)`|String version of `DSN` without the password (pass it via `PGPASSWORD` etc. instead)|
 |`DSNWithTimeZoneString(dbCfg, osCfg)`|String version of `DSNWithTimeZone`|
 
 ## NewTransactionManager

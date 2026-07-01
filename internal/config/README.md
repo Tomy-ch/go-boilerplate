@@ -36,7 +36,7 @@ flowchart TB
 ### Responsibilities of Each Step
 
 - **Load()**
-  - Loads `env/.env` and `env/.env.<ENV>` and sets environment variables.
+  - Reads the embedded `env/.env` (via the `go:embed` `root.FS`), parses it with godotenv, and sets each variable only if it is not already set (runtime-injected environment variables take precedence). No `env/.env.<ENV>` file is read.
 
 - **env.ParseAs[Loader]**
   - Maps environment variables into the `Loader` struct defined in `envspec.go`.
@@ -269,14 +269,47 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |---|---|
 |`SetApplicationMode`|`ApplicationConfig`|
 |`SetApplicationEnv`|`ApplicationConfig`|
+|`SetApplicationLogLevel`|`ApplicationConfig`|
 |`SetServerPort`|`ServerConfig`|
 |`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetObservabilityTracesExporter`|`ObservabilityConfig`|
+|`SetObservabilityMetricsExporter`|`ObservabilityConfig`|
+|`SetObservabilityLogsExporter`|`ObservabilityConfig`|
+|`SetObservabilityOTLPProtocol`|`ObservabilityConfig`|
+|`SetObservabilityOTLPEndpoint`|`ObservabilityConfig`|
 |`SetDatabaseHost`|`DatabaseConfig`|
 |`SetDatabaseName`|`DatabaseConfig`|
+|`SetMetricsPort`|`MetricsConfig`|
+|`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
+|`SetOutboxBatchSize`|`OutboxConfig`|
+|`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetSameSite`|`SecureCookieConfig`|
+|`SetDomain`|`SecureCookieConfig`|
+
+### Test exceptions (files not required to reach full unit coverage)
+
+Most of this package (SubConfig getters, `New()` binding, the test setters) is expected to
+stay near 100% unit coverage. The following are the **intentional exceptions**: their
+uncovered parts are error branches on the loading / composition boundary that cannot be
+exercised without failure injection, and the real path is already verified end-to-end by
+the boot-check CI (`app-di-startup-check` / `worker-boot-check` / `job-boot-check`, which
+run the actual binary through `SetUpConfig`).
+
+|File|Function|Why not unit-tested|
+|---|---|---|
+|`loader.go`|`Load`|The remaining branches are I/O failures on the **embedded** env file (`root.FS.ReadFile` / `godotenv.Parse` / `os.Setenv`). These effectively never fail at runtime and would need an injected failing FS / env to hit.|
+|`setup.go`|`SetUpConfig`|Composition-root glue called from `cmd/` (itself excluded from the coverage gate). Only the `Load()` error early-return is uncovered; startup is exercised by the boot-check CI.|
+
+> Do **not** add contrived failure-injection tests just to color these lines. If one of
+> these functions gains real branching logic (not I/O error plumbing), that logic must be
+> unit-tested like everything else.
+>
+> **Governance:** coverage exceptions are **not added at will**. A new entry may be recorded
+> in this section **only with an appropriate approver's (e.g. architect) sign-off**.
 
 ## Notes
 

@@ -17,6 +17,7 @@ scripts/
 ├── make_help.mjs                # Make ターゲットのヘルプ出力生成
 ├── mermaid-lint.mjs            # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
+├── pin-actions/                # GitHub Actions の `uses:` 参照を commit SHA へ固定（Go）
 └── setup/                     # プロジェクト初期設定スクリプト
     ├── replace-module.mjs
     ├── replace-app-metadata.mjs
@@ -62,9 +63,15 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`genctxkey/`|Echo コンテキストキーヘルパーの生成（Go コードジェネレータ）|`make gen-ctxkey`|
+|`genctxkey/`|Echo コンテキストキーヘルパーの生成（Go コードジェネレータ）。`internal/controller/ctxhelper/generate.go` の `//go:generate` ディレクティブから `go generate ./...` 経由で実行される。|`make gen-go-code`|
 
 詳細は [genctxkey/README.ja.md](genctxkey/README.ja.md) を参照。
+
+### CI / サプライチェーン
+
+|スクリプト|説明|実行元|
+|---|---|---|
+|`pin-actions/`|`.github/workflows/**` と `.github/actions/**` の外部 GitHub Actions `uses:` を不変の commit SHA へ固定する。`resolve` は参照を走査し各 tag/branch を `git ls-remote` で SHA へ解決して lockfile `.github/actions-pin.toml`（SSOT）へ書き出す。`PIN_ACTIONS_MIN_AGE_DAYS`（既定 14）日未満の新しすぎるコミットは採用せず既存ピンを維持する supply-chain quarantine 付き。`apply` は lockfile を元に各 `uses:` を `@<sha> # <tag>` へ書き換える。`check` は書き換えずに同じ判定を行い、未固定/古い/未登録があれば非 0 で終了する（CI / hook 用）。既に固定済みの行はコメント末尾の `# <tag>` を版として再解決するため冪等。|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
 
 ### 初期設定（`setup/`）
 

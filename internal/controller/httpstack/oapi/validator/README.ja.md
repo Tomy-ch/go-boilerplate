@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-埋め込まれた OpenAPI 仕様を読み込み、リクエストバリデーションミドルウェアを提供します。
+埋め込まれた OpenAPI 仕様を読み込み、`oapi.Middleware()` がリクエストバリデーションに利用するパース済みスキーマを提供します。
 
 ## 仕組み
 
@@ -10,12 +10,12 @@
 flowchart LR
     Spec["openapi.gen.yaml"] -->|"oapi-codegen --generate=spec"| GenGo["gen/validate.gen.go (埋め込み)"]
     GenGo -->|"GetValidator()"| Schema["*openapi3.T"]
-    Schema -->|"Middleware()"| MW["Echo ミドルウェア"]
+    Schema -->|"oapi.Middleware()"| MW["Echo ミドルウェア"]
 ```
 
 1. `oapi-codegen` が `gen/validate.gen.go` を生成（base64 エンコード + gzip 圧縮された OpenAPI 仕様を含む）
 2. `GetValidator()` が `gen.GetSwagger()` を呼び出し、デコードしたスキーマを返す
-3. `Middleware()` が oapi-codegen のリクエストバリデータをラップ
+3. `oapi.Middleware()`（親パッケージ）がこのスキーマで oapi-codegen のリクエストバリデータをラップ
 
 ## バリデーション対象
 

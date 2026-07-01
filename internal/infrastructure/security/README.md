@@ -28,7 +28,7 @@ Implements the `security.Hasher` interface (`internal/usecase/boundary/security`
 
 ## DI Registration
 
-Register in the `security` module of `internal/di/module/infrastructure.go`.
+Registered via `securityModule()` in `internal/di/module/security.go` (aggregated by `InfrastructureModule()`).
 
 ```go
 fx.Provide(security.NewBcryptHasher)

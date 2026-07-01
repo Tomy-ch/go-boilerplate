@@ -14,6 +14,19 @@ Simple value keys are created through code generation. For details on the genera
 
 The `Authn` helpers (`authn.go`) are hand-written: since the OpenAPI `AuthenticationFunc` cannot propagate context forward, `Authn` is carried through a mutable slot installed by the middleware before authentication.
 
+## Provided helpers
+
+Hand-written (`authn.go`) — the `Authn` slot:
+
+- `WithAuthn(ctx) context.Context` — install an empty `Authn` slot (call before authentication)
+- `SetAuthn(ctx, authn) bool` — write into the slot; returns `false` when no slot is present
+- `GetAuthn(ctx) (auth.Authn, bool)` — read from the slot; `ok=false` when unset
+
+Generated (`genctxkey`, defined in `generate.go`) — boolean request-scoped flags. Each name exposes a `context.Context` pair plus an `echo.Context` pair:
+
+- `ErrorHandled` — `SetErrorHandled` / `GetErrorHandled`, `SetErrorHandledToEcho` / `GetErrorHandledFromEcho`
+- `Recovered` — `SetRecovered` / `GetRecovered`, `SetRecoveredToEcho` / `GetRecoveredFromEcho`
+
 ## Usage
 
 When adding a ctxkey, add a definition to `generate.go` as follows.
@@ -25,8 +38,10 @@ When adding a ctxkey, add a definition to `generate.go` as follows.
 When using external types:
 
 ```go
-//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import go-boilerplate/internal/usecase/boundary/auth --out .
+//go:generate go run ../../../scripts/genctxkey --name Actor --type "auth.Authn" --import go-boilerplate/internal/usecase/boundary/auth --out .
 ```
+
+The example above only illustrates the external-type syntax. The real `Authn` slot in this package is hand-written (`authn.go`) and is **not** produced by this command.
 
 Then execute the following.
 

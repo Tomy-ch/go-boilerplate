@@ -24,8 +24,9 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 | --- | --- |
 | `Receive(ctx, max)` | `ReceiveMessage`（long-poll）。`ApproximateReceiveCount` → `ReceiveCount`、`MessageGroupId` → `PartitionKey`、`MessageAttributes`（`traceparent` を含む）→ `Attributes`、`ReceiptHandle` → 予約キー `_receipt_handle` |
 | `Ack` | `DeleteMessage`（予約キーの receipt handle を使用） |
-| `Nack` | `ChangeMessageVisibility(0)`（即時再配信、best-effort。遅延はポートの保証ではない） |
-| `Extend` | `ChangeMessageVisibility(d)` |
+| `Nack` | `ChangeMessageVisibility(0)`（即時再配信、遅延なし） |
+| `NackWithBackoff(ctx, m, d)` | `ChangeMessageVisibility(d)`（最低 `d` だけ遅延させてから再配信。サブ秒の `d` は `visibilitySeconds` で切り上げ + 1 秒下限のため、正の `d` が即時再配信へ潰れない。`d<=0` は `Nack` と等価） |
+| `Extend` | `ChangeMessageVisibility(d)`（同じ `visibilitySeconds` 丸め） |
 | `FailureHandler.Fail` | `failure_reason="permanent"` 属性を付けて DLQ へ `SendMessage`。`cause` の詳細は意図的に**含めない**（PII / 内部詳細の漏洩ガード）。代わりに engine 側でログ出力する。 |
 | `QueueStatsProvider.QueueStats` | source キュー（および `DLQURL` 設定時は DLQ）に対する `GetQueueAttributes`。`ApproximateNumberOfMessages` → `Visible`、`ApproximateNumberOfMessagesNotVisible` → `InFlight`、`ApproximateNumberOfMessagesDelayed` → `Delayed`。属性の欠落 / parse 不能は `0` 扱い。 |
 

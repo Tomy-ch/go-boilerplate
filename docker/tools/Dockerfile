@@ -103,6 +103,7 @@ RUN mise trust mise.toml
 
 RUN mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
+    && mise install npm:@commitlint/cli \
     && rm -rf /root/.cache /root/.npm
 
 # scripts の依存を in-tree（/app/scripts/node_modules）へ install する

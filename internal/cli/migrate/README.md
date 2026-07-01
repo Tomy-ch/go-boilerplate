@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-Manages database schema migrations. `migrate-up` applies pending migrations; `migrate-down` rolls back the last migration.
+Manages database schema migrations. `migrate-up` applies pending migrations; `migrate-down` rolls back applied migrations (all by default, or a given number of steps).
 
 ## Commands
 
@@ -44,3 +44,5 @@ migrate-down
 - Migration files are located in `database/migrations`.
 - **Use `migrate-down` with caution in production** -- it can cause data loss. Always back up the database first.
 - Never modify existing migration files; always create a new one.
+- A full `migrate-down` (no `--steps`) automatically reconciles a `dirty` database at its current version before rolling back, so a previously failed migration does not block the rollback.
+- `ErrNoChange` (already at the target position) is treated as success.

@@ -45,4 +45,6 @@ adapter 種別で十分です。
   扱ってください。
 - scrape のたびに broker API を直接呼びます（cache なし）。将来 API rate / cost を抑えるための TTL cache を
   追加しうる設計です。
+- 1 回の scrape は全 target をまとめて 5 秒タイムアウト（`collectTimeout`）で上限を設けます。これが無いと
+  応答不能な broker のせいで scrape goroutine が蓄積し、リソースを枯渇させ得ます。
 - `prometheus.AlreadyRegisteredError` を無視して二重登録を安全にスキップします。

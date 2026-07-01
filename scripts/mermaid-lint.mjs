@@ -8,22 +8,43 @@ import fs from "node:fs"
 import path from "node:path"
 import { createRequire } from "node:module"
 
-// import 順の都合で mermaid より先に DOM を globalThis へ載せる必要があるため require で先行ロードする。
-const require = createRequire(import.meta.url)
-const { parseHTML } = require("linkedom")
+// 依存ロード（環境セットアップ）。mermaid / linkedom は node_tool_runner コンテナ内の
+// scripts/node_modules に入る前提。ここで失敗した場合は mermaid 図の文法問題ではなく
+// 「環境未整備」なので、生の ERR_MODULE_NOT_FOUND スタックトレースではなく、原因と対処を
+// 明示して exit 2（lint 失敗の exit 1 と区別）で落とす。
+let mermaid
+try {
+  // import 順の都合で mermaid より先に DOM を globalThis へ載せる必要があるため require で先行ロードする。
+  const require = createRequire(import.meta.url)
+  const { parseHTML } = require("linkedom")
 
-const { window, document } = parseHTML("<!doctype html><html><head></head><body></body></html>")
-globalThis.window = window
-globalThis.document = document
-Object.defineProperty(globalThis, "navigator", { value: window.navigator, configurable: true })
-globalThis.location = window.location
-globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0)
-globalThis.MutationObserver = window.MutationObserver
+  const { window, document } = parseHTML("<!doctype html><html><head></head><body></body></html>")
+  globalThis.window = window
+  globalThis.document = document
+  Object.defineProperty(globalThis, "navigator", { value: window.navigator, configurable: true })
+  globalThis.location = window.location
+  globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0)
+  globalThis.MutationObserver = window.MutationObserver
 
-const mermaidModule = await import("mermaid")
-const mermaid = mermaidModule.default ?? mermaidModule
-// logLevel:5(fatal) でパース失敗時の冗長な内部ログを抑止し、本スクリプトの整形済み出力に一本化する。
-mermaid.initialize({ startOnLoad: false, securityLevel: "loose", logLevel: 5 })
+  const mermaidModule = await import("mermaid")
+  mermaid = mermaidModule.default ?? mermaidModule
+  // logLevel:5(fatal) でパース失敗時の冗長な内部ログを抑止し、本スクリプトの整形済み出力に一本化する。
+  mermaid.initialize({ startOnLoad: false, securityLevel: "loose", logLevel: 5 })
+} catch (e) {
+  const detail = (e && e.message ? e.message : String(e)).trim()
+  const depMissing = Boolean(e) && (e.code === "ERR_MODULE_NOT_FOUND" || /cannot find (package|module)/i.test(detail))
+  console.error("✘ mermaid-lint: セットアップエラー（mermaid 図の文法問題ではありません）")
+  if (depMissing) {
+    console.error("    原因: mermaid / linkedom を解決できません（scripts/node_modules が未整備）。")
+    console.error("    対処: この lint は node_tool_runner コンテナ内で動く前提です。")
+    console.error("          - 通常は `make md-lint`（コンテナ経由）で実行する（host での直接実行は不可）。")
+    console.error("          - イメージが古い場合は `make tool-runners-build`（または `-clean`）で再ビルドする。")
+  } else {
+    console.error("    原因: 依存ロード中に想定外のエラーが発生しました。")
+  }
+  console.error(`    詳細: ${detail}`)
+  process.exit(2)
+}
 
 // markdownlint-cli2 の MD_GLOBS と対象範囲を揃える（生成物・vendor・AGENTS.md を除外）。
 const EXCLUDE_DIRS = new Set(["vendor", "node_modules", ".git"])

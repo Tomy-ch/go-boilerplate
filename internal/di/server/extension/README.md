@@ -34,17 +34,20 @@ flowchart TB
 
 |Module|Type|Description|
 |---|---|---|
+|`URIModule()`|Pre|Remove trailing slashes|
+|`TimeoutModule()`|Pre|Request deadline budget (`SERVER_REQUEST_TIMEOUT`)|
+|`BodyLimitModule()`|Pre|Request body size limit (`SERVER_BODY_LIMIT_MB`)|
 |`IPExtractorModule()`|Configurator|Client IP extraction|
 |`OpenAPIModule()`|Use|OpenAPI validation|
-|`URIModule()`|Pre|Remove trailing slashes|
 
 ### instrumentation (Instrumentation)
 
 |Module|Type|Description|
 |---|---|---|
 |`RequestIDModule()`|Use|X-Request-ID generation|
-|`LoggingModule()`|Use|HTTP request / response logging|
 |`ObservabilityModule()`|Use|OpenTelemetry tracing|
+|`HTTPRedMetricsModule()`|Use|HTTP RED (Rate / Errors / Duration) metrics|
+|`LoggingModule()`|Use|HTTP request / response logging|
 
 ### outbound (Response Output)
 

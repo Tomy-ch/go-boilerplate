@@ -9,10 +9,10 @@ English | [日本語](README.ja.md)
 ```mermaid
 flowchart TB
     subgraph "Usecase Layer (boundary)"
-        IF["exchangerate.Gateway interface"]
+        IF["&lt;service&gt;.Gateway interface"]
     end
     subgraph "Infrastructure Layer"
-        Impl["webapi/exchangerate gateway"]
+        Impl["webapi/&lt;service&gt; gateway"]
         Sub["httpclient.Client substrate"]
     end
 
@@ -28,7 +28,7 @@ Each leaf under `webapi/` implements a semantic gateway interface defined in `in
 - Each leaf wraps the `httpclient` substrate and registers a `DownstreamProfile` (a logical `Downstream` key drives the profile / breaker / metrics / budget)
 - External-service profiles disable trace propagation (`PropagateTrace = false`) and reject private/loopback access (`AllowPrivateNetwork = false`) to prevent internal correlation-ID leakage and SSRF to internal hosts
 - Errors are returned as `apperror` sentinels already mapped by the substrate; JSON decode / domain-shape validation failures are wrapped as `apperror.ErrUnavailable`
-- The endpoint base URL is injected via DI (the sample uses a fixed default); each leaf opens a span via `observability.LayerTracer` (`tf.Infra()`)
+- The endpoint base URL is resolved at construction and injected via DI (a `NewEndpoint` per leaf); each leaf opens a span via `observability.LayerTracer` (`tf.Infra()`)
 
 ## DI Registration
 
@@ -37,11 +37,11 @@ Registered by the `webapi` module in `internal/di/module/webapi.go`. Each leaf p
 ```go
 fx.Module("webapi",
     fx.Provide(
-        exchangerateext.NewEndpoint,
-        exchangerateext.New,
+        <service>.NewEndpoint,
+        <service>.New,
     ),
     provideHTTPClientProfiles(
-        exchangerateext.NewDownstreamProfile,
+        <service>.NewDownstreamProfile,
     ),
 )
 ```

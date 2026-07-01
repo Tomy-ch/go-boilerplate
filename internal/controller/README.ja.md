@@ -17,9 +17,12 @@
 internal/controller/
 ├── handler/        # HTTP ハンドラ（サーバーのエントリポイント）
 ├── job/            # ジョブコントローラ（CLI のエントリポイント）
+├── worker/         # ワーカーエンジン（メッセージキューのエントリポイント）
+├── outbox/         # outbox リレーエンジン（outbox テーブルを poll して publish）
 ├── server/         # Echo インスタンス生成・サーバー起動
 ├── httpstack/      # HTTP ミドルウェア群
 ├── error/response/ # エラーレスポンス生成
+├── conv/           # OpenAPI 生成型 → ドメイン型への境界ヘルパー
 └── ctxhelper/      # Echo コンテキストヘルパー
 ```
 
@@ -29,9 +32,12 @@ internal/controller/
 |---|---|---|
 |`handler/`|HTTP リクエストを受け取り Usecase へ委譲するハンドラ|[README](handler/README.ja.md)|
 |`job/`|CLI から起動されるジョブのコントローラ|[README](job/README.ja.md)|
+|`worker/`|pull-ack メッセージキューを消費し Usecase へディスパッチするワーカーエンジン|[README](worker/README.ja.md)|
+|`outbox/`|outbox テーブルを周期的に poll し未 publish メッセージを送るリレーエンジン|—|
 |`server/`|Echo インスタンスの初期化と DI ライフサイクルへの統合|[README](server/README.ja.md)|
 |`httpstack/`|ミドルウェア群（CORS, セキュリティ, ログ, 認証等）|[README](httpstack/README.ja.md)|
 |`error/response/`|統一的な HTTP エラーレスポンスの生成と apperror マッピング|[README](error/response/README.ja.md)|
+|`conv/`|OpenAPI 生成型をドメイン型へ変換する境界ヘルパー|[README](conv/README.ja.md)|
 |`ctxhelper/`|Echo コンテキストへの値の設定・取得ヘルパー|[README](ctxhelper/README.ja.md)|
 
 ## 依存関係ルール
