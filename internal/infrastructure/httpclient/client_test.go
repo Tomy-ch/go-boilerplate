@@ -48,6 +48,7 @@ func newClient(t *testing.T, registry httpclient.Registry) httpclient.Client {
 	return httpclient.New(
 		observability.NewNoopHTTPClientTransport(t),
 		clocktestkit.NewNoopSleeper(t),
+		system.NewClock(),
 		registry,
 		observability.NewNoopHTTPClientMetrics(t),
 	)
@@ -361,7 +362,13 @@ func TestClientDoRetry(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(context.Canceled).AnyTimes()
 
-			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, retryProfile(), observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				sleeper,
+				system.NewClock(),
+				retryProfile(),
+				observability.NewNoopHTTPClientMetrics(t),
+			)
 
 			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
@@ -397,7 +404,13 @@ func TestClientDoBackoff(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
-			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				sleeper,
+				system.NewClock(),
+				registry,
+				observability.NewNoopHTTPClientMetrics(t),
+			)
 			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -424,23 +437,37 @@ func TestClientDoDeadline(t *testing.T) {
 
 			profile := httpclient.DefaultProfile()
 			profile.MaxAttempts = 20
-			profile.BaseBackoff = 20 * time.Millisecond
-			profile.MaxBackoff = 20 * time.Millisecond
+			// backoff は極小にして jitter の振れ幅を打ち切り判定に対して無視できるようにし、
+			// 打ち切りは fake clock の固定 step（20ms/サイクル）と overall deadline(60ms) の関係のみで決まる。
+			profile.BaseBackoff = time.Millisecond
+			profile.MaxBackoff = time.Millisecond
 			profile.OverallTimeout = 60 * time.Millisecond
+			// retry budget が deadline より先に打ち切らないよう十分なトークンを与え、
+			// 打ち切り要因を overall deadline に限定する。
+			profile.RetryBudgetRatio = 10
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
-			// 実時間を消費する sleeper を使い、overall デッドラインで打ち切られることを検証する。
+			// Sleep で fake 時刻を 20ms/サイクル進める clock を注入し、deadline 到達での打ち切りを検証する。
+			// 開始時刻を遠未来にすることで、context.WithDeadline が用いる実時刻ベースの overall deadline は
+			// テスト実行中に発火せず、打ち切りは fake clock 由来の canRetryWithin のみが担う（実時間非依存）。
+			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Millisecond)
 			client := httpclient.New(
 				observability.NewNoopHTTPClientTransport(t),
-				system.NewSleeper(),
+				fakeClock,
+				fakeClock,
 				registry,
 				observability.NewNoopHTTPClientMetrics(t),
 			)
-			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			assert.Less(t, hits.Load(), int32(20))
-			assert.GreaterOrEqual(t, hits.Load(), int32(1))
+			// 打ち切りが canRetryWithin（deadline 到達）由来であることを last attempt の resp で区別する。
+			// circuit-open / sleeper error 経路なら resp==nil になるため、非nil であることが弁別になる。
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			// fakeNow が 0→20→40→60ms と進み、4 回試行した後(fakeNow=60ms=deadline)に打ち切られる。
+			// 実時間・jitter に依存せず hits は決定的に 4（MaxAttempts=20 には達しない）。
+			assert.Equal(t, int32(4), hits.Load())
 		})
 	})
 }
@@ -589,7 +616,13 @@ func TestClientDoRetryAfter(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
-			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				sleeper,
+				system.NewClock(),
+				registry,
+				observability.NewNoopHTTPClientMetrics(t),
+			)
 			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "ra", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -608,22 +641,32 @@ func TestClientDoTimeout(t *testing.T) {
 		t.Run("per-attemptタイムアウト超過はErrUnavailableを返す", func(t *testing.T) {
 			t.Parallel()
 
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				time.Sleep(200 * time.Millisecond)
-				w.WriteHeader(http.StatusOK)
+			// per-attempt タイムアウトでリクエスト context がキャンセルされるまでブロックするサーバ。
+			var hits atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				hits.Add(1)
+				<-r.Context().Done()
 			}))
 			t.Cleanup(srv.Close)
 
 			profile := httpclient.DefaultProfile()
 			profile.PerAttemptTimeout = 20 * time.Millisecond
-			profile.OverallTimeout = 50 * time.Millisecond
+			// overall とリトライを打ち切り要因から外し、per-attempt タイムアウト単独の打ち切りを分離検証する
+			// （overall で打ち切られる構成だと per-attempt を外しても同じ ErrUnavailable が返り区別できない）。
+			profile.OverallTimeout = 2 * time.Second
+			profile.MaxAttempts = 1
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"slow": profile})
 
 			client := newClient(t, registry)
+			start := time.Now()
 			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "slow", srv.URL))
+			elapsed := time.Since(start)
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
+			assert.Equal(t, int32(1), hits.Load())
+			// per-attempt(20ms) が打ち切り要因であることを、overall(2s) より大幅に短い経過時間で確認する。
+			assert.Less(t, elapsed, 500*time.Millisecond)
 		})
 	})
 }

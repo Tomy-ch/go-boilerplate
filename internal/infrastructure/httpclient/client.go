@@ -26,6 +26,7 @@ var errCircuitOpen = xerrors.Wrap(apperror.ErrUnavailable, "circuit open")
 type client struct {
 	httpClient *http.Client
 	sleeper    clock.Sleeper
+	clk        clock.Clock
 	registry   Registry
 	metrics    *observability.HTTPClientMetrics
 	budget     *retryBudget
@@ -37,6 +38,7 @@ type client struct {
 func New(
 	transport *observability.HTTPClientTransport,
 	sleeper clock.Sleeper,
+	clk clock.Clock,
 	registry Registry,
 	metrics *observability.HTTPClientMetrics,
 ) Client {
@@ -46,6 +48,7 @@ func New(
 			CheckRedirect: noFollowRedirect,
 		},
 		sleeper:  sleeper,
+		clk:      clk,
 		registry: registry,
 		metrics:  metrics,
 		budget:   newRetryBudget(),
@@ -71,16 +74,17 @@ func (c *client) Do(ctx context.Context, req *Request) (*Response, error) {
 	profile := c.registry.Profile(req.downstream)
 	ds := string(req.downstream)
 
-	ctx, cancel := context.WithTimeout(ctx, profile.OverallTimeout)
+	// overall deadline は注入 clock 基準で算出する（実 clock では WithTimeout と等価）。
+	ctx, cancel := context.WithDeadline(ctx, c.clk.Now().Add(profile.OverallTimeout))
 	defer cancel()
 
 	c.metrics.InFlightAdd(ctx, ds, 1)
 	defer c.metrics.InFlightAdd(ctx, ds, -1)
 	c.budget.refill(req.downstream, profile.RetryBudgetRatio)
 
-	start := time.Now()
+	start := c.clk.Now()
 	resp, err := c.doWithRetry(ctx, req, profile, ds)
-	c.metrics.RecordLatencyMs(ctx, ds, float64(time.Since(start).Milliseconds()))
+	c.metrics.RecordLatencyMs(ctx, ds, float64(c.clk.Now().Sub(start).Milliseconds()))
 
 	c.recordOutcome(ctx, ds, resp, err)
 	return resp, err
@@ -100,7 +104,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 	var resp *Response
 	var err error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		allowed, generation := br.allow(time.Now())
+		allowed, generation := br.allow(c.clk.Now())
 		if !allowed {
 			if resp == nil {
 				return nil, xerrors.Wrap(errCircuitOpen, ds)
@@ -110,7 +114,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 
 		resp, err = c.attempt(ctx, req, profile)
 		serverFault := isRetryableOutcome(resp, err)
-		br.record(!serverFault, time.Now(), generation)
+		br.record(!serverFault, c.clk.Now(), generation)
 
 		if !retrySafe || !serverFault {
 			return resp, err
@@ -122,7 +126,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 			return resp, err
 		}
 
-		wait := retryWait(attempt, profile, resp, time.Now())
+		wait := retryWait(attempt, profile, resp, c.clk.Now())
 		if !c.canRetryWithin(ctx, wait) {
 			return resp, err
 		}
@@ -141,7 +145,7 @@ func (c *client) canRetryWithin(ctx context.Context, backoff time.Duration) bool
 	if !ok {
 		return true
 	}
-	return time.Now().Add(backoff).Before(deadline)
+	return c.clk.Now().Add(backoff).Before(deadline)
 }
 
 // attempt は、1 回の HTTP 試行を行います。
