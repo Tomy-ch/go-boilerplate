@@ -124,6 +124,24 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			assert.Equal(t, expected, cfg.outbox.Endpoint())
 		})
 
+		t.Run("worker health listener アドレスを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := "127.0.0.1:0"
+			cfg.worker.SetHealthListenAddr(t, expected)
+			assert.Equal(t, expected, cfg.worker.HealthListenAddr())
+		})
+
+		t.Run("セキュアクッキーの SameSite を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := "Lax"
+			cfg.secureCookie.SetSameSite(t, expected)
+			assert.Equal(t, expected, cfg.secureCookie.SameSite())
+		})
+
+		t.Run("セキュアクッキーの Domain を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := "example.test"
+			cfg.secureCookie.SetDomain(t, expected)
+			assert.Equal(t, expected, cfg.secureCookie.Domain())
+		})
+
 		t.Run("クリーンアップ後に元の値へ復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
 			t.Run("サーバーポートが復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
 				original := cfg.server.Port()

@@ -137,6 +137,18 @@ func (m *MetricsConfig) SetMetricsPort(tb testing.TB, port int) {
 	tb.Cleanup(func() { m.port = prev })
 }
 
+// SetHealthListenAddr は、テスト用に worker health listener の待ち受けアドレスを設定します。
+//
+// 並列サブテストでは固定ポート（既定 :8081）が衝突するため "127.0.0.1:0" を渡して
+// OS 割り当ての空きポートを使わせる用途を想定します。t.Setenv と異なり t.Parallel と併用可能です。
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (w *WorkerConfig) SetHealthListenAddr(tb testing.TB, addr string) {
+	tb.Helper()
+	prev := w.HealthListenAddr()
+	w.healthListenAddr = addr
+	tb.Cleanup(func() { w.healthListenAddr = prev })
+}
+
 // SetMaxConns は、テスト用にDB接続の最大オープン数を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
