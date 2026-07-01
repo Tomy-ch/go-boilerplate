@@ -22,7 +22,7 @@ func TestRegisterJobHooks(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("startフックが登録されgoroutineがジョブを実行する", func(t *testing.T) {
+		t.Run("start_stopフックが登録されstartでジョブが実行される", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -35,8 +35,12 @@ func TestRegisterJobHooks(t *testing.T) {
 
 			dummy := func(context.Context) error { return nil }
 			reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-				startFn = args[0].(func(context.Context) error)
+				fn, ok := args[0].(func(context.Context) error)
+				require.True(t, ok)
+				startFn = fn
 			}).Times(1)
+			// SupervisedRunner 化により OnStop（停止時キャンセル）も登録される。
+			reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Times(1)
 
 			doneCh := make(chan error, 1)
 			state := mock_job.NewMockState(ctrl)
@@ -76,7 +80,7 @@ func TestRunJobAndShutdown(t *testing.T) {
 			state := mock_job.NewMockState(ctrl)
 			state.EXPECT().Snapshot().Return("", []string{}, nil).Times(1)
 			logger.EXPECT().Named("job.Hooks").Return(named).Times(1)
-			named.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			named.EXPECT().Info("No job to run", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 			sd.EXPECT().Shutdown().Return(nil).Times(1)
 			runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
@@ -104,38 +108,6 @@ func TestRunJobAndShutdown(t *testing.T) {
 			require.NoError(t, <-doneCh)
 			_, ok := <-doneCh
 			require.False(t, ok)
-		})
-
-		t.Run("起動contextがキャンセル済みでもジョブのcontextは中断されず実行される", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			sd := mock_shutdowner.NewMockShutdowner(ctrl)
-			runner := mock_job.NewMockRunner(ctrl)
-			logger := mock_logging.NewMockLogger(ctrl)
-
-			doneCh := make(chan error, 1)
-			state := mock_job.NewMockState(ctrl)
-			state.EXPECT().Snapshot().Return("job-x", []string{}, doneCh).Times(1)
-
-			// runner が受け取る context が起動 ctx のキャンセルに巻き込まれていないこと（Err() == nil）を確認する。
-			// context.WithoutCancel が無い回帰が起きると、ここで context.Canceled になる。
-			var jobCtxErr error
-			runner.EXPECT().Run(gomock.Any(), "job-x", gomock.Any()).DoAndReturn(
-				func(ctx context.Context, _ string, _ []string) error {
-					jobCtxErr = ctx.Err()
-					return nil
-				}).Times(1)
-			sd.EXPECT().Shutdown().Return(nil).Times(1)
-
-			osCfg := config.NewOperatingSystemConfig(config.MockConfigForTest(t))
-
-			startCtx, cancel := context.WithCancel(context.Background())
-			cancel()
-			runJobAndShutdown(startCtx, sd, runner, logger, osCfg, state)
-
-			require.NoError(t, <-doneCh)
-			require.NoError(t, jobCtxErr)
 		})
 	})
 }

@@ -105,12 +105,47 @@
 			
 			
 				
+				<dd><a href="#ClaimIdempotencyKeyParams">type ClaimIdempotencyKeyParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ClaimPendingOutboxRow">type ClaimPendingOutboxRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CompleteIdempotencyKeyParams">type CompleteIdempotencyKeyParams</a></dd>
+				
+				
+			
+				
 				<dd><a href="#CreateUserParams">type CreateUserParams</a></dd>
 				
 				
 			
 				
 				<dd><a href="#DBTX">type DBTX</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DeleteExpiredIdempotencyKeysParams">type DeleteExpiredIdempotencyKeysParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DeletePublishedOutboxParams">type DeletePublishedOutboxParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GetIdempotencyKeyParams">type GetIdempotencyKeyParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GetIdempotencyKeyRow">type GetIdempotencyKeyRow</a></dd>
 				
 				
 			
@@ -135,6 +170,21 @@
 				
 			
 				
+				<dd><a href="#IdempotencyKeys">type IdempotencyKeys</a></dd>
+				
+				
+			
+				
+				<dd><a href="#InsertOutboxParams">type InsertOutboxParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#InsertOutboxRow">type InsertOutboxRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#ListActiveUsersParams">type ListActiveUsersParams</a></dd>
 				
 				
@@ -155,12 +205,37 @@
 				
 			
 				
+				<dd><a href="#ListUsersFeedAfterParams">type ListUsersFeedAfterParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListUsersFeedAfterRow">type ListUsersFeedAfterRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListUsersFeedFirstRow">type ListUsersFeedFirstRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#ListUsersParams">type ListUsersParams</a></dd>
 				
 				
 			
 				
 				<dd><a href="#ListUsersRow">type ListUsersRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MarkOutboxFailedParams">type MarkOutboxFailedParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Outbox">type Outbox</a></dd>
 				
 				
 			
@@ -207,6 +282,15 @@
 				
 				
 					
+					<dd>    <a href="#Queries.ClaimIdempotencyKey">func (q *Queries) ClaimIdempotencyKey(ctx context.Context, arg *ClaimIdempotencyKeyParams) (uuid.UUID, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ClaimPendingOutbox">func (q *Queries) ClaimPendingOutbox(ctx context.Context, limit int32) ([]*ClaimPendingOutboxRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.CompleteIdempotencyKey">func (q *Queries) CompleteIdempotencyKey(ctx context.Context, arg *CompleteIdempotencyKeyParams) (int64, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.CountActiveUsers">func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error)</a></dd>
 				
 					
@@ -228,7 +312,16 @@
 					<dd>    <a href="#Queries.CreateUser">func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error</a></dd>
 				
 					
+					<dd>    <a href="#Queries.DeleteExpiredIdempotencyKeys">func (q *Queries) DeleteExpiredIdempotencyKeys(ctx context.Context, arg *DeleteExpiredIdempotencyKeysParams) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.DeletePublishedOutbox">func (q *Queries) DeletePublishedOutbox(ctx context.Context, arg *DeletePublishedOutboxParams) (int64, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.GetDBHealthCheck">func (q *Queries) GetDBHealthCheck(ctx context.Context) (int32, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.GetIdempotencyKey">func (q *Queries) GetIdempotencyKey(ctx context.Context, arg *GetIdempotencyKeyParams) (*GetIdempotencyKeyRow, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.GetPrefectureDomainByID">func (q *Queries) GetPrefectureDomainByID(ctx context.Context, idParam uuid.UUID) (*GetPrefectureDomainByIDRow, error)</a></dd>
@@ -243,6 +336,9 @@
 					<dd>    <a href="#Queries.GetUserByID">func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetUserByIDRow, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.InsertOutbox">func (q *Queries) InsertOutbox(ctx context.Context, arg *InsertOutboxParams) (*InsertOutboxRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.ListActiveUsers">func (q *Queries) ListActiveUsers(ctx context.Context, arg *ListActiveUsersParams) ([]*ListActiveUsersRow, error)</a></dd>
 				
 					
@@ -250,6 +346,27 @@
 				
 					
 					<dd>    <a href="#Queries.ListUsers">func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListUsersRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListUsersFeedAfter">func (q *Queries) ListUsersFeedAfter(ctx context.Context, arg *ListUsersFeedAfterParams) ([]*ListUsersFeedAfterRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListUsersFeedFirst">func (q *Queries) ListUsersFeedFirst(ctx context.Context, limitParam int32) ([]*ListUsersFeedFirstRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.MarkOutboxDead">func (q *Queries) MarkOutboxDead(ctx context.Context, id int64) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.MarkOutboxFailed">func (q *Queries) MarkOutboxFailed(ctx context.Context, arg *MarkOutboxFailedParams) (int32, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.MarkOutboxPublished">func (q *Queries) MarkOutboxPublished(ctx context.Context, id int64) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.OldestPendingOutbox">func (q *Queries) OldestPendingOutbox(ctx context.Context) (time.Time, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ReplayDeadOutbox">func (q *Queries) ReplayDeadOutbox(ctx context.Context, messageID *uuid.UUID) (int64, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.SearchActiveUsers">func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersParams) ([]*SearchActiveUsersRow, error)</a></dd>
@@ -329,7 +446,11 @@
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/health_check_system_query.gen.sql.go.html">health_check_system_query.gen.sql.go</a>
 			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html">idempotency_system_query.gen.sql.go</a>
+			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html">models.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html">outbox_system_query.gen.sql.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html">prefecture_repository.gen.sql.go</a>
 			
@@ -348,6 +469,96 @@
 		
 		
 		
+		
+			
+			
+			<h2 id="ClaimIdempotencyKeyParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=547:753#L21">ClaimIdempotencyKeyParams</a>
+				<a class="permalink" href="#ClaimIdempotencyKeyParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ClaimIdempotencyKeyParams struct {
+<span id="ClaimIdempotencyKeyParams.Scope"></span>    Scope              <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.IdempotencyKey"></span>    IdempotencyKey     <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.RequestMethod"></span>    RequestMethod      <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.RequestPath"></span>    RequestPath        <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.RequestFingerprint"></span>    RequestFingerprint []<a href="../../../../../../builtin/#byte">byte</a>
+<span id="ClaimIdempotencyKeyParams.ExpiresAt"></span>    ExpiresAt          <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ClaimPendingOutboxRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=458:672#L22">ClaimPendingOutboxRow</a>
+				<a class="permalink" href="#ClaimPendingOutboxRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ClaimPendingOutboxRow struct {
+<span id="ClaimPendingOutboxRow.ID"></span>    ID            <a href="../../../../../../builtin/#int64">int64</a>
+<span id="ClaimPendingOutboxRow.MessageID"></span>    MessageID     <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ClaimPendingOutboxRow.AggregateType"></span>    AggregateType <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimPendingOutboxRow.AggregateID"></span>    AggregateID   <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimPendingOutboxRow.EventType"></span>    EventType     <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimPendingOutboxRow.Payload"></span>    Payload       []<a href="../../../../../../builtin/#byte">byte</a>
+<span id="ClaimPendingOutboxRow.Headers"></span>    Headers       []<a href="../../../../../../builtin/#byte">byte</a>
+<span id="ClaimPendingOutboxRow.Attempts"></span>    Attempts      <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CompleteIdempotencyKeyParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=1883:2023#L72">CompleteIdempotencyKeyParams</a>
+				<a class="permalink" href="#CompleteIdempotencyKeyParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type CompleteIdempotencyKeyParams struct {
+<span id="CompleteIdempotencyKeyParams.Scope"></span>    Scope           <a href="../../../../../../builtin/#string">string</a>
+<span id="CompleteIdempotencyKeyParams.IdempotencyKey"></span>    IdempotencyKey  <a href="../../../../../../builtin/#string">string</a>
+<span id="CompleteIdempotencyKeyParams.ResponseStatus"></span>    ResponseStatus  *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="CompleteIdempotencyKeyParams.ResponsePayload"></span>    ResponsePayload []<a href="../../../../../../builtin/#byte">byte</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
 		
 			
 			
@@ -399,6 +610,112 @@
     Query(<a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, <a href="../../../../../../builtin/#string">string</a>, ...interface{}) (pgx.<a href="#Rows">Rows</a>, <a href="../../../../../../builtin/#error">error</a>)
     QueryRow(<a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, <a href="../../../../../../builtin/#string">string</a>, ...interface{}) pgx.<a href="#Row">Row</a>
 }</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DeleteExpiredIdempotencyKeysParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=3098:3186#L115">DeleteExpiredIdempotencyKeysParams</a>
+				<a class="permalink" href="#DeleteExpiredIdempotencyKeysParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type DeleteExpiredIdempotencyKeysParams struct {
+<span id="DeleteExpiredIdempotencyKeysParams.ExpiresAt"></span>    ExpiresAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="DeleteExpiredIdempotencyKeysParams.Limit"></span>    Limit     <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DeletePublishedOutboxParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=2144:2230#L92">DeletePublishedOutboxParams</a>
+				<a class="permalink" href="#DeletePublishedOutboxParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type DeletePublishedOutboxParams struct {
+<span id="DeletePublishedOutboxParams.PublishedAt"></span>    PublishedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="DeletePublishedOutboxParams.Limit"></span>    Limit       <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetIdempotencyKeyParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=4067:4152#L150">GetIdempotencyKeyParams</a>
+				<a class="permalink" href="#GetIdempotencyKeyParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetIdempotencyKeyParams struct {
+<span id="GetIdempotencyKeyParams.Scope"></span>    Scope          <a href="../../../../../../builtin/#string">string</a>
+<span id="GetIdempotencyKeyParams.IdempotencyKey"></span>    IdempotencyKey <a href="../../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetIdempotencyKeyRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=4154:4298#L155">GetIdempotencyKeyRow</a>
+				<a class="permalink" href="#GetIdempotencyKeyRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetIdempotencyKeyRow struct {
+<span id="GetIdempotencyKeyRow.Status"></span>    Status             <a href="../../../../../../builtin/#string">string</a>
+<span id="GetIdempotencyKeyRow.ResponseStatus"></span>    ResponseStatus     *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="GetIdempotencyKeyRow.ResponsePayload"></span>    ResponsePayload    []<a href="../../../../../../builtin/#byte">byte</a>
+<span id="GetIdempotencyKeyRow.RequestFingerprint"></span>    RequestFingerprint []<a href="../../../../../../builtin/#byte">byte</a>
+}
+</pre>
 
 			
 
@@ -520,6 +837,110 @@
 		
 			
 			
+			<h2 id="IdempotencyKeys">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=157:896#L4">IdempotencyKeys</a>
+				<a class="permalink" href="#IdempotencyKeys">¶</a>
+				
+				
+			</h2>
+			<p>冪等性キー
+
+			</p><pre>type IdempotencyKeys struct {
+<span id="IdempotencyKeys.ID"></span>    <span class="comment">// ID</span>
+    ID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// スコープ（認証プリンシパルID）</span>
+<span id="IdempotencyKeys.Scope"></span>    Scope <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 冪等性キー（クライアント供給）</span>
+<span id="IdempotencyKeys.IdempotencyKey"></span>    IdempotencyKey <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// リクエストメソッド</span>
+<span id="IdempotencyKeys.RequestMethod"></span>    RequestMethod <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// リクエストパス</span>
+<span id="IdempotencyKeys.RequestPath"></span>    RequestPath <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// リクエスト指紋（SHA-256）</span>
+<span id="IdempotencyKeys.RequestFingerprint"></span>    RequestFingerprint []<a href="../../../../../../builtin/#byte">byte</a>
+    <span class="comment">// 状態（claimed / completed）</span>
+<span id="IdempotencyKeys.Status"></span>    Status <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// レスポンスHTTPステータス（completedまでNULL）</span>
+<span id="IdempotencyKeys.ResponseStatus"></span>    ResponseStatus *<a href="../../../../../../builtin/#int32">int32</a>
+    <span class="comment">// レスポンスペイロード（結果DTOのJSONシリアライズ、completedまでNULL）</span>
+<span id="IdempotencyKeys.ResponsePayload"></span>    ResponsePayload []<a href="../../../../../../builtin/#byte">byte</a>
+    <span class="comment">// 作成日時</span>
+<span id="IdempotencyKeys.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 完了日時</span>
+<span id="IdempotencyKeys.CompletedAt"></span>    CompletedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 有効期限（TTL）</span>
+<span id="IdempotencyKeys.ExpiresAt"></span>    ExpiresAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="InsertOutboxParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=3215:3359#L131">InsertOutboxParams</a>
+				<a class="permalink" href="#InsertOutboxParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type InsertOutboxParams struct {
+<span id="InsertOutboxParams.AggregateType"></span>    AggregateType <a href="../../../../../../builtin/#string">string</a>
+<span id="InsertOutboxParams.AggregateID"></span>    AggregateID   <a href="../../../../../../builtin/#string">string</a>
+<span id="InsertOutboxParams.EventType"></span>    EventType     <a href="../../../../../../builtin/#string">string</a>
+<span id="InsertOutboxParams.Payload"></span>    Payload       []<a href="../../../../../../builtin/#byte">byte</a>
+<span id="InsertOutboxParams.Headers"></span>    Headers       []<a href="../../../../../../builtin/#byte">byte</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="InsertOutboxRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=3361:3430#L139">InsertOutboxRow</a>
+				<a class="permalink" href="#InsertOutboxRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type InsertOutboxRow struct {
+<span id="InsertOutboxRow.ID"></span>    ID        <a href="../../../../../../builtin/#int64">int64</a>
+<span id="InsertOutboxRow.MessageID"></span>    MessageID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
 			<h2 id="ListActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4395:4470#L205">ListActiveUsersParams</a>
 				<a class="permalink" href="#ListActiveUsersParams">¶</a>
 				
@@ -622,6 +1043,83 @@
 		
 			
 			
+			<h2 id="ListUsersFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9300:9414#L387">ListUsersFeedAfterParams</a>
+				<a class="permalink" href="#ListUsersFeedAfterParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListUsersFeedAfterParams struct {
+<span id="ListUsersFeedAfterParams.AfterCreatedAt"></span>    AfterCreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListUsersFeedAfterParams.AfterID"></span>    AfterID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListUsersFeedAfterParams.LimitParam"></span>    LimitParam     <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListUsersFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9416:9466#L393">ListUsersFeedAfterRow</a>
+				<a class="permalink" href="#ListUsersFeedAfterRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListUsersFeedAfterRow struct {
+<span id="ListUsersFeedAfterRow.Users"></span>    Users <a href="#Users">Users</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListUsersFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11187:11237#L452">ListUsersFeedFirstRow</a>
+				<a class="permalink" href="#ListUsersFeedFirstRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListUsersFeedFirstRow struct {
+<span id="ListUsersFeedFirstRow.Users"></span>    Users <a href="#Users">Users</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
 			<h2 id="ListUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7617:7686#L324">ListUsersParams</a>
 				<a class="permalink" href="#ListUsersParams">¶</a>
 				
@@ -673,7 +1171,82 @@
 		
 			
 			
-			<h2 id="Prefectures">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=154:349#L4">Prefectures</a>
+			<h2 id="MarkOutboxFailedParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=4959:5033#L202">MarkOutboxFailedParams</a>
+				<a class="permalink" href="#MarkOutboxFailedParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type MarkOutboxFailedParams struct {
+<span id="MarkOutboxFailedParams.ID"></span>    ID        <a href="../../../../../../builtin/#int64">int64</a>
+<span id="MarkOutboxFailedParams.LastError"></span>    LastError *<a href="../../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Outbox">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=983:1795#L32">Outbox</a>
+				<a class="permalink" href="#Outbox">¶</a>
+				
+				
+			</h2>
+			<p>トランザクショナル outbox（ドメインイベントの信頼 publish）
+
+			</p><pre>type Outbox struct {
+<span id="Outbox.ID"></span>    <span class="comment">// ID</span>
+    ID <a href="../../../../../../builtin/#int64">int64</a>
+    <span class="comment">// dedup の安定キー（INSERT 時採番、Idempotency-Key へ伝搬）</span>
+<span id="Outbox.MessageID"></span>    MessageID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 集約種別（観測・調査用。順序キーではない）</span>
+<span id="Outbox.AggregateType"></span>    AggregateType <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 集約ID（観測・調査用。順序キーではない）</span>
+<span id="Outbox.AggregateID"></span>    AggregateID <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// イベント種別 + version</span>
+<span id="Outbox.EventType"></span>    EventType <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// ペイロード（snapshot + version の収束可能な自己完結ペイロード）</span>
+<span id="Outbox.Payload"></span>    Payload []<a href="../../../../../../builtin/#byte">byte</a>
+    <span class="comment">// publish 時に伝搬するヘッダ（traceparent 等）</span>
+<span id="Outbox.Headers"></span>    Headers []<a href="../../../../../../builtin/#byte">byte</a>
+    <span class="comment">// 状態（pending / published / dead）</span>
+<span id="Outbox.Status"></span>    Status <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// publish 試行回数</span>
+<span id="Outbox.Attempts"></span>    Attempts <a href="../../../../../../builtin/#int32">int32</a>
+    <span class="comment">// 直近の publish 失敗理由</span>
+<span id="Outbox.LastError"></span>    LastError *<a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 作成日時</span>
+<span id="Outbox.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// publish 完了日時（published 遷移時刻）</span>
+<span id="Outbox.PublishedAt"></span>    PublishedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Prefectures">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1813:2008#L60">Prefectures</a>
 				<a class="permalink" href="#Prefectures">¶</a>
 				
 				
@@ -708,7 +1281,7 @@
 		
 			
 			
-			<h2 id="ProductCategories">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=373:579#L18">ProductCategories</a>
+			<h2 id="ProductCategories">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2032:2238#L74">ProductCategories</a>
 				<a class="permalink" href="#ProductCategories">¶</a>
 				
 				
@@ -745,7 +1318,7 @@
 		
 			
 			
-			<h2 id="ProductStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=606:810#L34">ProductStatuses</a>
+			<h2 id="ProductStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2265:2469#L90">ProductStatuses</a>
 				<a class="permalink" href="#ProductStatuses">¶</a>
 				
 				
@@ -782,7 +1355,7 @@
 		
 			
 			
-			<h2 id="Products">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=822:1242#L50">Products</a>
+			<h2 id="Products">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2481:2901#L106">Products</a>
 				<a class="permalink" href="#Products">¶</a>
 				
 				
@@ -829,7 +1402,7 @@
 		
 			
 			
-			<h2 id="PurchaseDetails">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1260:1512#L76">PurchaseDetails</a>
+			<h2 id="PurchaseDetails">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2919:3171#L132">PurchaseDetails</a>
 				<a class="permalink" href="#PurchaseDetails">¶</a>
 				
 				
@@ -868,7 +1441,7 @@
 		
 			
 			
-			<h2 id="PurchaseStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1539:1744#L94">PurchaseStatuses</a>
+			<h2 id="PurchaseStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=3198:3403#L150">PurchaseStatuses</a>
 				<a class="permalink" href="#PurchaseStatuses">¶</a>
 				
 				
@@ -905,7 +1478,7 @@
 		
 			
 			
-			<h2 id="Purchases">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1756:2329#L110">Purchases</a>
+			<h2 id="Purchases">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=3415:3988#L166">Purchases</a>
 				<a class="permalink" href="#Purchases">¶</a>
 				
 				
@@ -992,6 +1565,88 @@
 				
 			
 
+			
+				
+				<h3 id="Queries.ClaimIdempotencyKey">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=1261:1370#L46">ClaimIdempotencyKey</a>
+					<a class="permalink" href="#Queries.ClaimIdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ClaimIdempotencyKey(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ClaimIdempotencyKeyParams">ClaimIdempotencyKeyParams</a>) (<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/claim_idempotency_key.sql ===
+業務 tx 内でキーを claim する。既存キーがある場合は 0 行を返す。
+</p><pre>INSERT INTO idempotency_keys (
+    scope,
+    idempotency_key,
+    request_method,
+    request_path,
+    request_fingerprint,
+    status,
+    expires_at
+) VALUES (
+    $1, $2, $3, $4, $5, &#39;claimed&#39;, $6
+)
+ON CONFLICT ON CONSTRAINT idempotency_keys_scope_key_unique DO NOTHING
+RETURNING id
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ClaimPendingOutbox">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=1252:1356#L51">ClaimPendingOutbox</a>
+					<a class="permalink" href="#Queries.ClaimPendingOutbox">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ClaimPendingOutbox(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, limit <a href="../../../../../../builtin/#int32">int32</a>) ([]*<a href="#ClaimPendingOutboxRow">ClaimPendingOutboxRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/claim_pending_outbox.sql ===
+pending 行を最大 $1 件 claim する。SKIP LOCKED により多インスタンスでも同一行を二重取得しない。
+順序保証は捨てているため id 昇順で十分。呼び出し側 tx の保持中だけロックされる。
+</p><pre>SELECT
+    id,
+    message_id,
+    aggregate_type,
+    aggregate_id,
+    event_type,
+    payload,
+    headers,
+    attempts
+FROM outbox
+WHERE status = &#39;pending&#39;
+ORDER BY id
+LIMIT $1
+FOR UPDATE SKIP LOCKED
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.CompleteIdempotencyKey">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=2496:2607#L91">CompleteIdempotencyKey</a>
+					<a class="permalink" href="#Queries.CompleteIdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) CompleteIdempotencyKey(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#CompleteIdempotencyKeyParams">CompleteIdempotencyKeyParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/complete_idempotency_key.sql ===
+同一 tx 内で claimed → completed へ遷移し、結果 DTO(JSON) と HTTP ステータスを保存する。scope 必須（越境防止）。
+</p><pre>UPDATE idempotency_keys
+SET
+    status = &#39;completed&#39;,
+    response_status = $3,
+    response_payload = $4,
+    completed_at = NOW()
+WHERE scope = $1
+    AND idempotency_key = $2
+    AND status = &#39;claimed&#39;
+</pre>
+
+				
+				
+				
 			
 				
 				<h3 id="Queries.CountActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=394:464#L16">CountActiveUsers</a>
@@ -1141,6 +1796,54 @@ FROM users
 				
 			
 				
+				<h3 id="Queries.DeleteExpiredIdempotencyKeys">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=3564:3687#L131">DeleteExpiredIdempotencyKeys</a>
+					<a class="permalink" href="#Queries.DeleteExpiredIdempotencyKeys">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) DeleteExpiredIdempotencyKeys(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#DeleteExpiredIdempotencyKeysParams">DeleteExpiredIdempotencyKeysParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/delete_expired_idempotency_keys.sql ===
+TTL 失効行を最大 $2 件削除し、削除件数を返す。
+</p><pre>DELETE FROM idempotency_keys
+WHERE id IN (
+        SELECT ik.id
+        FROM idempotency_keys AS ik
+        WHERE ik.expires_at &lt; $1
+        ORDER BY ik.expires_at
+        LIMIT $2
+    )
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.DeletePublishedOutbox">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=2734:2843#L110">DeletePublishedOutbox</a>
+					<a class="permalink" href="#Queries.DeletePublishedOutbox">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) DeletePublishedOutbox(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#DeletePublishedOutboxParams">DeletePublishedOutboxParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/delete_published_outbox.sql ===
+retention 用 GC。published_at が cutoff より古い行を最大 $2 件削除し、削除件数を返す。
+長時間稼働で outbox が単調増加しないようにする。
+</p><pre>DELETE FROM outbox
+WHERE id IN (
+        SELECT o.id
+        FROM outbox AS o
+        WHERE o.status = &#39;published&#39;
+            AND o.published_at &lt; $1
+        ORDER BY o.published_at
+        LIMIT $2
+    )
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.GetDBHealthCheck">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/health_check_system_query.gen.sql.go.html?s=352:422#L9">GetDBHealthCheck</a>
 					<a class="permalink" href="#Queries.GetDBHealthCheck">¶</a>
 					
@@ -1149,6 +1852,29 @@ FROM users
 				<pre>func (q *<a href="#Queries">Queries</a>) GetDBHealthCheck(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../builtin/#int32">int32</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>=== source: database/dml/system_query/health_check/select_system_health.sql ===
 </p><pre>SELECT 1 AS health_check
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.GetIdempotencyKey">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=4655:4772#L173">GetIdempotencyKey</a>
+					<a class="permalink" href="#Queries.GetIdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) GetIdempotencyKey(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#GetIdempotencyKeyParams">GetIdempotencyKeyParams</a>) (*<a href="#GetIdempotencyKeyRow">GetIdempotencyKeyRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/get_idempotency_key.sql ===
+scope 必須（越境防止）。scope と idempotency_key で一致する行を返す。
+</p><pre>SELECT
+    status,
+    response_status,
+    response_payload,
+    request_fingerprint
+FROM idempotency_keys
+WHERE scope = $1
+    AND idempotency_key = $2
 </pre>
 
 				
@@ -1235,6 +1961,31 @@ WHERE u.id = $1
 				
 			
 				
+				<h3 id="Queries.InsertOutbox">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=3802:3904#L157">InsertOutbox</a>
+					<a class="permalink" href="#Queries.InsertOutbox">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) InsertOutbox(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#InsertOutboxParams">InsertOutboxParams</a>) (*<a href="#InsertOutboxRow">InsertOutboxRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/insert_outbox.sql ===
+業務 tx 内で outbox 行を 1 行 INSERT する（emit）。message_id は DB が採番し返す。
+</p><pre>INSERT INTO outbox (
+    aggregate_type,
+    aggregate_id,
+    event_type,
+    payload,
+    headers
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+RETURNING id, message_id
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.ListActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4840:4953#L221">ListActiveUsers</a>
 					<a class="permalink" href="#Queries.ListActiveUsers">¶</a>
 					
@@ -1284,6 +2035,154 @@ LIMIT $2 OFFSET $1
 FROM users AS u
 ORDER BY u.created_at DESC
 LIMIT $2 OFFSET $1
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListUsersFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9970:10092#L408">ListUsersFeedAfter</a>
+					<a class="permalink" href="#Queries.ListUsersFeedAfter">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListUsersFeedAfter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListUsersFeedAfterParams">ListUsersFeedAfterParams</a>) ([]*<a href="#ListUsersFeedAfterRow">ListUsersFeedAfterRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>(created_at DESC, id DESC) の keyset 境界より過去の未削除ユーザーを返します。
+</p><pre>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NULL
+    AND (
+        u.created_at &lt; $1
+        OR (u.created_at = $1 AND u.id &lt; $2)
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $3
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListUsersFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11610:11719#L463">ListUsersFeedFirst</a>
+					<a class="permalink" href="#Queries.ListUsersFeedFirst">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListUsersFeedFirst(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, limitParam <a href="../../../../../../builtin/#int32">int32</a>) ([]*<a href="#ListUsersFeedFirstRow">ListUsersFeedFirstRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/user/select_users_feed.sql ===
+</p><pre>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NULL
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $1
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.MarkOutboxDead">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=4566:4644#L184">MarkOutboxDead</a>
+					<a class="permalink" href="#Queries.MarkOutboxDead">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) MarkOutboxDead(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, id <a href="../../../../../../builtin/#int64">int64</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/mark_outbox_dead.sql ===
+attempts が max に達した恒久失敗行を dead へ遷移する。無限リトライを止め、手動 replay 対象として残置する。
+</p><pre>UPDATE outbox
+SET status = &#39;dead&#39;
+WHERE id = $1
+    AND status = &#39;pending&#39;
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.MarkOutboxFailed">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=5478:5577#L218">MarkOutboxFailed</a>
+					<a class="permalink" href="#Queries.MarkOutboxFailed">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) MarkOutboxFailed(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#MarkOutboxFailedParams">MarkOutboxFailedParams</a>) (<a href="../../../../../../builtin/#int32">int32</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/mark_outbox_failed.sql ===
+publish 失敗時に attempts を加算し last_error を記録する。加算後の attempts を返し、
+呼び出し側が max 到達判定（dead 化）に用いる。次 poll で自然に再送される。
+</p><pre>UPDATE outbox
+SET
+    attempts = attempts + 1,
+    last_error = $2
+WHERE id = $1
+    AND status = &#39;pending&#39;
+RETURNING attempts
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.MarkOutboxPublished">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=6210:6293#L243">MarkOutboxPublished</a>
+					<a class="permalink" href="#Queries.MarkOutboxPublished">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) MarkOutboxPublished(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, id <a href="../../../../../../builtin/#int64">int64</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/mark_outbox_published.sql ===
+publish 成功行を published へ遷移する。published_at に遷移時刻を記録する。
+</p><pre>UPDATE outbox
+SET
+    status = &#39;published&#39;,
+    published_at = NOW()
+WHERE id = $1
+    AND status = &#39;pending&#39;
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.OldestPendingOutbox">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=6859:6936#L267">OldestPendingOutbox</a>
+					<a class="permalink" href="#Queries.OldestPendingOutbox">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) OldestPendingOutbox(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/oldest_pending_outbox.sql ===
+SLI(outbox lag) 算出用。最古 pending 行の created_at を返す。pending 行が無ければ 0 行を返す。
+</p><pre>SELECT created_at
+FROM outbox
+WHERE status = &#39;pending&#39;
+ORDER BY id
+LIMIT 1
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ReplayDeadOutbox">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/outbox_system_query.gen.sql.go.html?s=7781:7873#L295">ReplayDeadOutbox</a>
+					<a class="permalink" href="#Queries.ReplayDeadOutbox">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ReplayDeadOutbox(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, messageID *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/outbox/replay_dead_outbox.sql ===
+dead 行を pending へ戻し再 publish 対象に復帰させる（運用 replay）。attempts/last_error をリセットする。
+$1 が NULL の場合は全 dead 行、指定時は当該 message_id のみを対象とする。
+</p><pre>UPDATE outbox
+SET
+    status = &#39;pending&#39;,
+    attempts = 0,
+    last_error = NULL
+WHERE status = &#39;dead&#39;
+    AND ($1::UUID IS NULL OR message_id = $1::UUID)
 </pre>
 
 				
@@ -1359,7 +2258,7 @@ LIMIT $3 OFFSET $2
 				
 			
 				
-				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9948:10035#L428">UpdateUser</a>
+				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=13512:13599#L552">UpdateUser</a>
 					<a class="permalink" href="#Queries.UpdateUser">¶</a>
 					
 					
@@ -1403,7 +2302,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2331:2392#L143">SchemaMigrations</a>
+			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=3990:4051#L199">SchemaMigrations</a>
 				<a class="permalink" href="#SchemaMigrations">¶</a>
 				
 				
@@ -1588,7 +2487,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9215:9534#L394">UpdateUserParams</a>
+			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12779:13098#L518">UpdateUserParams</a>
 				<a class="permalink" href="#UpdateUserParams">¶</a>
 				
 				
@@ -1625,7 +2524,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2407:2964#L149">Users</a>
+			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4066:4623#L205">Users</a>
 				<a class="permalink" href="#Users">¶</a>
 				
 				

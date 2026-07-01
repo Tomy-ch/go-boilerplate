@@ -55,14 +55,14 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package prefecture は、都道府県関連のドメインを提供します。</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package prefecture は、都道府県リポジトリ（prefecture.Repository）の RDB 実装を提供します。</span>
 <span id="L2" class="ln">     2  </span>package prefecture
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/domain/prefecture&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver/loggingdb&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
 <span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
 <span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
@@ -70,83 +70,84 @@
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
 <span id="L15" class="ln">    15  </span>type repository struct {
-<span id="L16" class="ln">    16  </span>	db     loggingdb.DBProvider
+<span id="L16" class="ln">    16  </span>	db     driver.DatabaseDriver
 <span id="L17" class="ln">    17  </span>	tracer observability.LayerTracer
 <span id="L18" class="ln">    18  </span>}
 <span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>func New(
-<span id="L21" class="ln">    21  </span>	db loggingdb.DBProvider,
-<span id="L22" class="ln">    22  </span>	tf observability.TracerFactory,
-<span id="L23" class="ln">    23  </span>) prefecture.Repository {
-<span id="L24" class="ln">    24  </span>	return &amp;repository{
-<span id="L25" class="ln">    25  </span>		db:     db,
-<span id="L26" class="ln">    26  </span>		tracer: tf.Infra(),
-<span id="L27" class="ln">    27  </span>	}
-<span id="L28" class="ln">    28  </span>}
-<span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span><span class="comment">// FindByID は、IDから都道府県エンティティを取得します。</span>
-<span id="L31" class="ln">    31  </span>func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Prefecture, error) {
-<span id="L32" class="ln">    32  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L33" class="ln">    33  </span>	defer endSpan()
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
-<span id="L36" class="ln">    36  </span>	row, err := db.GetPrefectureDomainByID(ctx, id)
-<span id="L37" class="ln">    37  </span>	if err != nil {
-<span id="L38" class="ln">    38  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L39" class="ln">    39  </span>	}
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	return prefecture.New(
-<span id="L42" class="ln">    42  </span>		row.ID,
-<span id="L43" class="ln">    43  </span>		row.Name,
-<span id="L44" class="ln">    44  </span>		int(row.Code),
-<span id="L45" class="ln">    45  </span>	)
-<span id="L46" class="ln">    46  </span>}
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span><span class="comment">// FindByIDs は、複数IDから都道府県エンティティ一覧を取得します。</span>
-<span id="L49" class="ln">    49  </span>func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Prefectures, error) {
-<span id="L50" class="ln">    50  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L51" class="ln">    51  </span>	defer endSpan()
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
-<span id="L54" class="ln">    54  </span>	rows, err := db.GetPrefectureDomainByIDs(ctx, ids)
-<span id="L55" class="ln">    55  </span>	if err != nil {
-<span id="L56" class="ln">    56  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L57" class="ln">    57  </span>	}
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>	prefectures := make(prefecture.Prefectures, len(rows))
-<span id="L60" class="ln">    60  </span>	for i, row := range rows {
-<span id="L61" class="ln">    61  </span>		prefectureEntity, err := prefecture.New(
-<span id="L62" class="ln">    62  </span>			row.ID,
-<span id="L63" class="ln">    63  </span>			row.Name,
-<span id="L64" class="ln">    64  </span>			int(row.Code),
-<span id="L65" class="ln">    65  </span>		)
-<span id="L66" class="ln">    66  </span>		if err != nil {
-<span id="L67" class="ln">    67  </span>			return nil, err
-<span id="L68" class="ln">    68  </span>		}
-<span id="L69" class="ln">    69  </span>		prefectures[i] = prefectureEntity
-<span id="L70" class="ln">    70  </span>	}
-<span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>	return prefectures, nil
-<span id="L73" class="ln">    73  </span>}
-<span id="L74" class="ln">    74  </span>
-<span id="L75" class="ln">    75  </span><span class="comment">// FindByName は、都道府県名から都道府県エンティティを取得します。</span>
-<span id="L76" class="ln">    76  </span>func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.Prefecture, error) {
-<span id="L77" class="ln">    77  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L78" class="ln">    78  </span>	defer endSpan()
-<span id="L79" class="ln">    79  </span>
-<span id="L80" class="ln">    80  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
-<span id="L81" class="ln">    81  </span>	row, err := db.GetPrefectureDomainByName(ctx, name)
-<span id="L82" class="ln">    82  </span>	if err != nil {
-<span id="L83" class="ln">    83  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L84" class="ln">    84  </span>	}
-<span id="L85" class="ln">    85  </span>
-<span id="L86" class="ln">    86  </span>	return prefecture.New(
-<span id="L87" class="ln">    87  </span>		row.ID,
-<span id="L88" class="ln">    88  </span>		row.Name,
-<span id="L89" class="ln">    89  </span>		int(row.Code),
-<span id="L90" class="ln">    90  </span>	)
-<span id="L91" class="ln">    91  </span>}
-<span id="L92" class="ln">    92  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// New は、prefecture.Repository の RDB 実装を生成して返します。</span>
+<span id="L21" class="ln">    21  </span>func New(
+<span id="L22" class="ln">    22  </span>	db driver.DatabaseDriver,
+<span id="L23" class="ln">    23  </span>	tf observability.TracerFactory,
+<span id="L24" class="ln">    24  </span>) prefecture.Repository {
+<span id="L25" class="ln">    25  </span>	return &amp;repository{
+<span id="L26" class="ln">    26  </span>		db:     db,
+<span id="L27" class="ln">    27  </span>		tracer: tf.Infra(),
+<span id="L28" class="ln">    28  </span>	}
+<span id="L29" class="ln">    29  </span>}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// FindByID は、IDから都道府県エンティティを取得します。</span>
+<span id="L32" class="ln">    32  </span>func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Prefecture, error) {
+<span id="L33" class="ln">    33  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L34" class="ln">    34  </span>	defer endSpan()
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L37" class="ln">    37  </span>	row, err := db.GetPrefectureDomainByID(ctx, id)
+<span id="L38" class="ln">    38  </span>	if err != nil {
+<span id="L39" class="ln">    39  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L40" class="ln">    40  </span>	}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>	return prefecture.New(
+<span id="L43" class="ln">    43  </span>		row.ID,
+<span id="L44" class="ln">    44  </span>		row.Name,
+<span id="L45" class="ln">    45  </span>		int(row.Code),
+<span id="L46" class="ln">    46  </span>	)
+<span id="L47" class="ln">    47  </span>}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span><span class="comment">// FindByIDs は、複数IDから都道府県エンティティ一覧を取得します。</span>
+<span id="L50" class="ln">    50  </span>func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Prefectures, error) {
+<span id="L51" class="ln">    51  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L52" class="ln">    52  </span>	defer endSpan()
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L55" class="ln">    55  </span>	rows, err := db.GetPrefectureDomainByIDs(ctx, ids)
+<span id="L56" class="ln">    56  </span>	if err != nil {
+<span id="L57" class="ln">    57  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L58" class="ln">    58  </span>	}
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>	prefectures := make(prefecture.Prefectures, len(rows))
+<span id="L61" class="ln">    61  </span>	for i, row := range rows {
+<span id="L62" class="ln">    62  </span>		prefectureEntity, err := prefecture.New(
+<span id="L63" class="ln">    63  </span>			row.ID,
+<span id="L64" class="ln">    64  </span>			row.Name,
+<span id="L65" class="ln">    65  </span>			int(row.Code),
+<span id="L66" class="ln">    66  </span>		)
+<span id="L67" class="ln">    67  </span>		if err != nil {
+<span id="L68" class="ln">    68  </span>			return nil, err
+<span id="L69" class="ln">    69  </span>		}
+<span id="L70" class="ln">    70  </span>		prefectures[i] = prefectureEntity
+<span id="L71" class="ln">    71  </span>	}
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>	return prefectures, nil
+<span id="L74" class="ln">    74  </span>}
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span><span class="comment">// FindByName は、都道府県名から都道府県エンティティを取得します。</span>
+<span id="L77" class="ln">    77  </span>func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.Prefecture, error) {
+<span id="L78" class="ln">    78  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L79" class="ln">    79  </span>	defer endSpan()
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L82" class="ln">    82  </span>	row, err := db.GetPrefectureDomainByName(ctx, name)
+<span id="L83" class="ln">    83  </span>	if err != nil {
+<span id="L84" class="ln">    84  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L85" class="ln">    85  </span>	}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>	return prefecture.New(
+<span id="L88" class="ln">    88  </span>		row.ID,
+<span id="L89" class="ln">    89  </span>		row.Name,
+<span id="L90" class="ln">    90  </span>		int(row.Code),
+<span id="L91" class="ln">    91  </span>	)
+<span id="L92" class="ln">    92  </span>}
+<span id="L93" class="ln">    93  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/prefecture/prefecture_repository.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

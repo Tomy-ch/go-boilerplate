@@ -1,7 +1,7 @@
 // サンプルAPI削除の対象を宣言する manifest と、マーカー除去ロジック。
 // 拡張時は該当ドメインの paths にパスを追記し、共有ファイルの混在行を
 // sample-api マーカーで囲めば、同じコマンドの削除対象に含まれる。
-// 基盤データ prefecture は Sample ではないため対象外。
+// core 基盤の idempotency_keys（migration 000001）と outbox（migration 000002）はこのマニフェストの削除対象に含まれない。
 
 export const SAMPLE_DOMAINS = {
   user: {
@@ -16,6 +16,7 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_users_test.go",
       "internal/integration/v1_users_detail_test.go",
       "internal/integration/v1_users_search_test.go",
+      "internal/integration/v1_users_feed_test.go",
 
       // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go",
@@ -34,10 +35,10 @@ export const SAMPLE_DOMAINS = {
 
       "database/dml/repository/user",
       "database/dml/query_service/user",
-      "database/migrations/000002_create_users.up.sql",
-      "database/migrations/000002_create_users.down.sql",
-      "database/migrations/000009_users_table_search_text_column.up.sql",
-      "database/migrations/000009_users_table_search_text_column.down.sql",
+      "database/migrations/000004_create_users.up.sql",
+      "database/migrations/000004_create_users.down.sql",
+      "database/migrations/000011_users_table_search_text_column.up.sql",
+      "database/migrations/000011_users_table_search_text_column.down.sql",
       "database/seed/000001_users.sql",
 
       "docs/spec/user",
@@ -45,15 +46,31 @@ export const SAMPLE_DOMAINS = {
     ],
   },
 
+  prefecture: {
+    description: "サンプル 都道府県マスタ（user サンプルが住所で参照する依存ドメイン。日本固有データ）",
+    paths: [
+      "internal/domain/prefecture",
+      "internal/infrastructure/rdb/repository/prefecture",
+      "database/dml/repository/prefecture",
+
+      // サンプル専用の生成物は再生成で復活しないため明示削除する
+      "internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go",
+      "database/gen/prefecture_repository.gen.sql",
+
+      "database/migrations/000003_create_prefectures.up.sql",
+      "database/migrations/000003_create_prefectures.down.sql",
+    ],
+  },
+
   product: {
     description: "サンプル 商品ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
     paths: [
-      "database/migrations/000003_create_product_statuses.up.sql",
-      "database/migrations/000003_create_product_statuses.down.sql",
-      "database/migrations/000004_create_product_categories.up.sql",
-      "database/migrations/000004_create_product_categories.down.sql",
-      "database/migrations/000005_create_products.up.sql",
-      "database/migrations/000005_create_products.down.sql",
+      "database/migrations/000005_create_product_statuses.up.sql",
+      "database/migrations/000005_create_product_statuses.down.sql",
+      "database/migrations/000006_create_product_categories.up.sql",
+      "database/migrations/000006_create_product_categories.down.sql",
+      "database/migrations/000007_create_products.up.sql",
+      "database/migrations/000007_create_products.down.sql",
       "database/seed/000002_products_electronic_equipment.sql",
       "database/seed/000003_products_books.sql",
       "database/seed/000004_products_clothing.sql",
@@ -66,12 +83,12 @@ export const SAMPLE_DOMAINS = {
   order: {
     description: "サンプル 注文ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
     paths: [
-      "database/migrations/000006_create_purchase_statuses.up.sql",
-      "database/migrations/000006_create_purchase_statuses.down.sql",
-      "database/migrations/000007_create_purchases.up.sql",
-      "database/migrations/000007_create_purchases.down.sql",
-      "database/migrations/000008_create_purchase_details.up.sql",
-      "database/migrations/000008_create_purchase_details.down.sql",
+      "database/migrations/000008_create_purchase_statuses.up.sql",
+      "database/migrations/000008_create_purchase_statuses.down.sql",
+      "database/migrations/000009_create_purchases.up.sql",
+      "database/migrations/000009_create_purchases.down.sql",
+      "database/migrations/000010_create_purchase_details.up.sql",
+      "database/migrations/000010_create_purchase_details.down.sql",
     ],
   },
 }

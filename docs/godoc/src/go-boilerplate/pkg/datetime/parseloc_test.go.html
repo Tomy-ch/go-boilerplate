@@ -152,7 +152,7 @@
 <span id="L95" class="ln">    95  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
 <span id="L96" class="ln">    96  </span>		t.Parallel()
 <span id="L97" class="ln">    97  </span>
-<span id="L98" class="ln">    98  </span>		t.Run(&#34;ナノ秒なしはエラーを返す&#34;, func(t *testing.T) {
+<span id="L98" class="ln">    98  </span>		t.Run(&#34;タイムゾーン指定なしはエラーを返す&#34;, func(t *testing.T) {
 <span id="L99" class="ln">    99  </span>			t.Parallel()
 <span id="L100" class="ln">   100  </span>			empty, err := ParseRFC3339NanoToLocation(&#34;2025-12-05T09:30:00&#34;, loc)
 <span id="L101" class="ln">   101  </span>			require.Error(t, err)

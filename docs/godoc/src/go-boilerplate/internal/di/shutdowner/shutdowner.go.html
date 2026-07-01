@@ -55,15 +55,15 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_shutdowner.gen.go -package=mock_$GOPACKAGE</span>
-<span id="L2" class="ln">     2  </span>
-<span id="L3" class="ln">     3  </span><span class="comment">// Package shutdowner は、fx.Shutdowner を抽象化し、上位層を fx 依存から切り離すための薄いラッパを提供します。</span>
-<span id="L4" class="ln">     4  </span><span class="comment">//</span>
-<span id="L5" class="ln">     5  </span><span class="comment">// このパッケージは、uber.org/fx ライブラリをラップし、テストやモックの作成を容易にします。</span>
-<span id="L6" class="ln">     6  </span>package shutdowner
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>import &#34;go.uber.org/fx&#34;
-<span id="L9" class="ln">     9  </span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//go:generate mockgen -destination=mock/mock_fx.gen.go -package=mock_shutdowner -mock_names=Shutdowner=MockFxShutdowner go.uber.org/fx Shutdowner</span>
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span><span class="comment">// Package shutdowner は、fx.Shutdowner を抽象化し、上位層を fx 依存から切り離すための薄いラッパを提供します。</span>
+<span id="L5" class="ln">     5  </span>package shutdowner
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>import &#34;go.uber.org/fx&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span><span class="comment">// Shutdowner は、アプリケーションのシャットダウンを要求するインターフェースです。</span>
 <span id="L10" class="ln">    10  </span>type Shutdowner interface {
 <span id="L11" class="ln">    11  </span>	Shutdown() error
 <span id="L12" class="ln">    12  </span>}

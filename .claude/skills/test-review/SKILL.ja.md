@@ -21,7 +21,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 **常に読む**:
 
-- `CLAUDE.md` の Testing Instructions。
+- `docs/testing-conventions.md`。
 - `.claude/skills/scaffold-test/SKILL.md` — 生成側 canonical ルール（parallel 必須 / `t.Run` per subcase / 正常系・異常系 グルーピング / 日本語命名 / require vs assert / mock 方針 / for-loop 方針 / 1 関数 = 1 `TestXxx`）。本スキルはこれらに対してレビューする（重複定義しない）。
 - 対象ファイルから walk up で解決した層 README:
   - `internal/domain/README.md`（Testing strategy）
@@ -67,7 +67,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 1. ファイルパスから層検出（band lookup は `scaffold-test/SKILL.md` と同じ）。
 2. 該当層 README の `Test Strategy` / `Testing strategy` 節（全文、サブセクション見出し含む）。
-3. `CLAUDE.md` Testing Instructions（1 回）。
+3. `docs/testing-conventions.md`（1 回）。
 4. `.claude/skills/scaffold-test/SKILL.md`（1 回、canonical ルール）。
 5. subject ソース。
 6. 同パッケージの sibling test（helper シグネチャ / fixture スタイル / mock 配線 等の確立 convention）。
@@ -78,7 +78,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 `adversarial-reviewer` subagent を 4 つ、**並列**起動 (`subagent_type: adversarial-reviewer`)。 既定で `sonnet`（Opus 実装者 ≠ reviewer を保つ。orchestrator がモデルを上書きして reviewer ≠ implementer を維持してもよい）。
 
-各 subagent は Step 1 の context bundle（層 README / `CLAUDE.md` / `scaffold-test/SKILL.md` / 対象 test / subject / sibling tests）を共通で受け取り、レンズだけ違う prompt を受ける。
+各 subagent は Step 1 の context bundle（層 README / `docs/testing-conventions.md` / `scaffold-test/SKILL.md` / 対象 test / subject / sibling tests）を共通で受け取り、レンズだけ違う prompt を受ける。
 
 ### Lens 1: 構造準拠
 
@@ -88,11 +88,14 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 - 全サブケースが `t.Run`（裸のアサーション禁止）。
 - `TestXxx` 最外殻 `t.Run` group の name は literal `正常系` / `異常系` （各 `TestXxx` に最大 1 個ずつ、 さらに細分するならその **内側に** ネストする）。 最外殻に `t.Run("正常系_xxx", ...)` 形式を使っているのは違反 → finding として出す。 内側のサブケース名にも `正常系_` / `異常系_` プレフィックスは禁止（外殻 group で既に区別済みのため二重ラベル）。
 - ケース名は日本語。
-- エラーは `require.*`（testifylint `require-error`）、終端値は `assert.*`。
-- `for` ループ / table-driven が出てくる場合は明確な可読性理由が見える、それ以外は逐次 `t.Run` 前提。
-- 各 `TestXxx` は 1 subject（関数 / メソッド）対応 — 例外的に複数束ねている場合は `scaffold-test/SKILL.md` 通り 1 行 rationale コメント必須。
+- エラーは `require.*`（testifylint `require-error`）、終端値は `assert.*`。`require.NotNil` / `require.True` 等は、**後続コードをガードする**場合（そのまま使うと panic / 無意味になる。例: `require.NotNil(fn); fn(...)` や `require.NotNil(rec); _ = rec.Field`）のみ正しい。値を以降で使わないなら終端なので `assert.*` にすべき — 終端の `require.NotNil` / `require.True` / `require.Equal` は違反として指摘。
+- 生成 mock を駆動するサブテストは mock controller 経由で assert している扱い: `EXPECT()`（メソッドが呼ばれないことを示す意図的な *no-EXPECT* や `.Times(0)` を含む）がアサーション。`assert.*` / `require.*` 行が無いというだけで「アサーション無し」と指摘しない。
+- **table-driven `for` ループは違反**（`scaffold-test/SKILL.md` Rule 5）。`(input, expected)` 構造体スライスを `for _, tc := range cases { t.Run(...) }` で回すブロックは、可読性や `dupl` 回避を理由にしても指摘する。正しい形はケース毎の逐次 `t.Run` sibling（重複は許容）。長いゲッター/境界リストでも同様。
+- **subject 関数 ↔ `TestXxx` の 1:1 対応。** ここでの *subject* はペアになる本番ソース — バイナリにビルドされる非テスト・非生成の `.go` ファイル。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外（手書き `TestXxx` を期待しない）。両方向を確認:
+  - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数束ねる `TestXxx` は `scaffold-test/SKILL.md` 通り 1 行 rationale コメント必須。
+  - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は網羅ギャップ（その分岐は Lens 4 軸A でも surface する）。
 - mock は `<package>/mock/*_mock.go` から（手書き mock 禁止）。
-- 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`CLAUDE.md` ルール）。
+- 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`docs/testing-conventions.md` ルール）。
 
 Output: `file:line` 付きの違反 finding リスト + 違反したルール。
 
@@ -101,12 +104,8 @@ Output: `file:line` 付きの違反 finding リスト + 違反したルール。
 層 README の Test Strategy サブセクションと実 test を突き合わせ:
 
 - README の各サブセクション見出し（`### Getter contract test` / `### Immutable guarantee test` / `### Invariant preservation test` 等）に対応する `TestXxx → t.Run(case)` が 1 件以上あるか。
-- README にサブセクションがない場合（`pkg/**`）は sibling test パターンを比較基準にする。
-- 現状 READMEs から派生する具体例（記述的、ハードコードではない — README が変われば reviewer も追従）:
-  - domain: ポインタ不変性 test（`Immutable guarantee test` と `TestImmutableAccessors` 参考）、状態遷移における不変条件保存、VO 境界。
-  - usecase: orchestration の mock 呼び出し順序、トランザクション境界の適用、boundary 呼び出し。
-  - controller: HTTP I/O 変換、validation、apperror → status、middleware が乗せる context（auth principal / request id）。
-  - infra: SQL 実行経路、`pgerror.NormalizeError` 適用、row → entity 変換。
+- 層 README の Test Strategy 節がその層の観点リストの SSOT（Step 1 で読む）。 per-layer 観点リストを本スキルにハードコードしない — README と drift する。 その層の README が宣言するサブセクションをそのまま適用し、reviewer が期待する観点が README に欠けていれば、それ自体を doc ギャップ finding（補遺で surface）として出す。ここに観点を書き戻さない。
+- 層 README に Test Strategy 節が無い場合（`pkg/**`）は sibling test パターンを比較基準にする。
 
 Output: README が宣言しているが test が exercise していない観点リスト（`file:section` で README 該当節を引用）。
 
@@ -115,6 +114,7 @@ Output: README が宣言しているが test が exercise していない観点�
 アサーションが本当に意味を持っているかを監査:
 
 - **弱いアサーション**: 複雑な戻り値に対する唯一の確認が `assert.NotNil(t, x)`、`assert.NoError` 後に state 確認なし、`assert.Equal(t, len(actual), 1)` のように要素自体を assert していない 等。
+- **ケース名がアサートを過剰約束**: `t.Run` ケース名が本体で検証していない性質を名乗る — 例: 本体は `NotNil` だけなのに `"…を保持した収集器を返す"`。保持値が unexported フィールドにある / 別ユニットの責務、という場合に起きる。固有の性質を assert するか、検証している内容にケース名を合わせる。系: **分岐なしの pass-through / 配線関数**（入力をコンストラクタへ素通しするだけの DI provider 等）は honest な 1 ケースで十分 — 入力を変えて同じ `NotNil` を再実行するケースは分岐で区別されず網羅を増やさないので畳む。
 - **内部結合の脆さ**: public API で済むのに unexported フィールドを読みに行く、`errors.Is` を使わず error メッセージ文字列で assert する。
 - **過剰モック**: pure 実装で済む collaborator まで全て mock 化、call count の粒度が実装にロックインしている。
 - **時刻リテラル漏れ**: `time.Now()` を assert 内で呼ぶ（固定 `baseTime` でなく）、system clock 依存比較。
@@ -124,18 +124,32 @@ Output: README が宣言しているが test が exercise していない観点�
 
 Output: `file:line` + 「なぜ弱い / 脆いか」の 1 文説明 finding リスト。
 
-### Lens 4: 観点ギャップ (subject 駆動)
+### Lens 4: 観点ギャップ — 分岐 × 意味 網羅 (subject 駆動)
 
-subject ソースを直接読み、 既存 test がカバーしていない case を提案:
+subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の網羅マトリクスを構築する。 カバレッジ ≠ 意味のあるカバレッジ: ある分岐が「その分岐固有の何か」を一切 assert しないケースで実行されているだけのことがあり、その穴を切り分けるのが本 lens の目的。 各 subject で両軸を走らせる — 分岐は「到達済み (軸A)」かつ「固有に assert 済み (軸B)」で初めて完了。
 
-- subject の各条件分岐に対して、ポジ / ネガ少なくとも 1 件のカバーケースがあるか。
-- subject 内で宣言 / 返却されている error sentinel (`ErrInvalid*` / `apperror.*`) が `require.ErrorIs` で少なくとも 1 件 assert されているか。
-- subject が境界制約を持つフィールドについて、min-1 / min / max / max+1 の境界値 test があるか。
-- domain で `ptr.Copy` を使ったポインタ返却 getter に不変性 test があるか。
-- 状態 mutate メソッドに「mutate 後の不変条件 hold」確認があるか。
-- 防御している場合、constructor / factory に「zero 値 / nil 入力 reject」 test があるか。
+**軸A — 分岐網羅**: subject の各論理分岐が最低 1 件のケースで到達されているか。
 
-Output: 既存 test に追加すべき `t.Run` ケース提案リスト（提案ケース名 + カバーする分岐 / sentinel + rationale）。
+- 各条件分岐（ポジ / ネガ）に最低 1 件の `t.Run` ケースがあるか。
+- 宣言 / 返却される error sentinel (`ErrInvalid*` / `apperror.*`) が最低 1 件のケースで到達されているか。
+- 境界制約を持つフィールドについて min-1 / min / max / max+1 の境界値が exercise されているか。
+- zero 値 / nil 入力を防御している constructor / factory に reject ケースがあるか。
+- テストの harness が**実行しない** constructor / provider / factory 本体を通ってしか到達できない分岐は未カバー扱い — 依存グラフを構築するだけでコンストラクタを実行しないグラフ / 配線検証 harness はそれらの本体をカバーしないので、直接の単体テスト（関数を実際に呼ぶ）が要る。 適用される harness は層 README の Test Strategy が明示する。
+- 「再現できない」と理由付けされた `t.Skip` は受け入れず軸A のギャップとして疑う: 層 README の Test Strategy に到達できる統合スタイルの harness が無いか確認する（例: 真の並行 / ロック競合は、直列化するテスト用 tx ヘルパでは表現できず独立コネクションが要る）。skip 分岐を具体的な再現経路つきで 追加検討 として surface する。
+
+カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。
+
+**軸B — 意味網羅**: カバー済みの各分岐のケースが、単に実行されたことではなく*その分岐固有*の outcome を assert しているか。
+
+- error 分岐は `require.Error` 止まりでなく `require.ErrorIs` で固有 sentinel を assert。
+- 成功分岐は `require.NoError` / `assert.NotNil` 止まりでなく、他分岐と区別される結果値 / state を assert。
+- state mutate メソッドのケースは「呼べた」止まりでなく mutate 後の不変条件 / 変化フィールドを assert。
+- 層 README が immutable と明示するポインタ / 参照返却 getter は、値等価だけでなく不変性を assert（返り値を変更しても entity に影響しないこと）。
+- 境界ケースは accept 側だけでなく境界の両側（accept vs reject）で異なる outcome を assert。
+
+カバーは**されているが**固有 outcome を区別 assert していない分岐は **分岐カバー済み・意味未検証** finding → severity **再考**（pass して coverage は上がるが何も明らかにしない）。 finding は当該 subject 分岐 + それを名目上カバーしている test ケースに紐付ける。
+
+Output: subject ごとに、(1) 未カバー分岐 + 提案 `t.Run` ケース名（軸A → 追加検討）、(2) カバー済みだが意味未検証の分岐 + 不足している区別アサーション（軸B → 再考）。 各々 subject 分岐の `file:line` とカバーしている test ケースを引用。
 
 ## Step 3. 各 finding を検証
 
@@ -183,9 +197,16 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
   - 詳細: <one-sentence why>
   - verifier: CONFIRMED / PLAUSIBLE
 
-## 観点ギャップ（追加検討）
+## 観点ギャップ: 分岐網羅（追加検討）
 - <file> に対して subject <subject path> から導出:
+  - 分岐未カバー: <subject file:line の分岐>
   - 提案: t.Run("<case name>", ...) — カバーする分岐 / sentinel: <reason>
+  - verifier: CONFIRMED / PLAUSIBLE
+
+## 観点ギャップ: 意味網羅（再考）
+- <file> に対して subject <subject path> から導出:
+  - 分岐カバー済み・意味未検証: <subject file:line の分岐> を <test file:line のケース> がカバーするが固有 outcome 未 assert
+  - 不足アサーション: <あるべき distinctive assertion>
   - verifier: CONFIRMED / PLAUSIBLE
 
 ## 補遺
@@ -195,10 +216,10 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
 
 severity マッピング:
 
-- **修正必須** （構造準拠）: `CLAUDE.md` / `scaffold-test/SKILL.md` のハードルール違反。 CONFIRMED → 修正必須 / PLAUSIBLE → 確認推奨。
+- **修正必須** （構造準拠）: `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のハードルール違反。 CONFIRMED → 修正必須 / PLAUSIBLE → 確認推奨。
 - **補完推奨** （観点カバレッジ）: README で宣言されているのに exercise されていない観点。 CONFIRMED → 補完推奨 / PLAUSIBLE → 確認推奨。
-- **再考** （意味的品質）: pass はするが意味が薄い。 CONFIRMED → 再考 / PLAUSIBLE → 補強候補。
-- **追加検討** （観点ギャップ）: subject 検査から派生する proactive 提案。 CONFIRMED → 追加検討 / PLAUSIBLE → 提案。
+- **再考** （意味的品質 + 観点ギャップ 軸B）: pass はするが意味が薄い — 弱アサーション、または分岐はカバーされているが固有 outcome を区別 assert していない。 CONFIRMED → 再考 / PLAUSIBLE → 補強候補。
+- **追加検討** （観点ギャップ 軸A）: subject 検査から派生する未カバー分岐の proactive 提案。 CONFIRMED → 追加検討 / PLAUSIBLE → 提案。
 
 ## Step 5. 次アクション提案
 
@@ -224,7 +245,7 @@ PR レビューフローで `code-review` / `local-review` / `arch-check` と並
 - ❌ `make test` 実行（本スキルはレビュー、実行は `make test` 別途）。
 - ❌ verifier を通さず finder 出力をそのまま信頼（`skip_verifier: true` 親指定以外、verifier は必須）。
 - ❌ 観点リストのハードコード（SSOT は層 README の Test Strategy 節、`pkg/` は明文化された例外）。
-- ❌ `CLAUDE.md` / `scaffold-test/SKILL.md` のルール重複定義（runtime 読み込み）。
+- ❌ `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のルール重複定義（runtime 読み込み）。
 - ✅ verifier は skeptical 既定（曖昧時は PLAUSIBLE 寄り）。
 - ✅ reviewer 既定モデル `sonnet`（Opus 実装者と異なる）。 必要なら orchestrator が上書きして reviewer ≠ implementer を維持。
 - ✅ スコープ既定: 変更ファイル。 他選択肢あり。
@@ -237,8 +258,9 @@ PR レビューフローで `code-review` / `local-review` / `arch-check` と並
 
 - [ ] スコープ解決済み（変更ファイル / base diff / 明示パス）。
 - [ ] 各対象 `*_test.go` に対し subject ソースが解決済み。
-- [ ] Step 1 で 層 README + `CLAUDE.md` + `scaffold-test/SKILL.md` + sibling tests を読んだ。
+- [ ] Step 1 で 層 README + `docs/testing-conventions.md` + `scaffold-test/SKILL.md` + sibling tests を読んだ。
 - [ ] 4 レンズが（並列で）走った。
+- [ ] Lens 4 は subject ごとに両軸を走らせた — 軸A 分岐網羅（未カバー分岐 → 追加検討）/ 軸B 意味網羅（カバー済みだが意味未検証 → 再考）。
 - [ ] 各 finding が `review-verifier` を通過した（`skip_verifier: true` 親指定以外）。
 - [ ] REFUTED は落とし、 CONFIRMED / PLAUSIBLE のみ残した。
 - [ ] 最終レポートが日本語、 lens 別、 severity tag 付き。

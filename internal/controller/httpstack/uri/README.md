@@ -4,8 +4,6 @@ English | [日本語](README.ja.md)
 
 Removes trailing slashes from request URIs.
 
-## Public API
+## Role
 
-|Function|Description|
-|---|---|
-|`Middleware()`|Return Echo middleware that strips trailing slashes|
+Treating `/path` and `/path/` as the same route avoids duplicate-path bugs and inconsistent client behaviour. Normalizing the trailing slash in one middleware before routing means every handler sees a single canonical path form, so route matching and handler logic never have to account for the variant.

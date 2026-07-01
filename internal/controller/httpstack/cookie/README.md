@@ -4,11 +4,6 @@ English | [日本語](README.ja.md)
 
 Middleware to enforce secure Cookie policies (Secure / HttpOnly / SameSite / Path / Domain / Max-Age).
 
-## Public API
+## Role
 
-|Function / Type|Description|
-|---|---|
-|`NewSecurityCookie(p)`|Create `SecurityCookie` config from `SecureCookieConfig`|
-|`Middleware(cfg)`|Return Echo middleware that rewrites Set-Cookie headers|
-|`RewriteSetCookie(raw)`|Rewrite a raw Set-Cookie header string based on security policy|
-|`SecurityCookie`|Configuration struct for cookie attribute enforcement|
+Cookie security attributes are easy for individual handlers to forget or set inconsistently. By rewriting outgoing `Set-Cookie` headers in a single middleware, this package guarantees a uniform cookie security policy across every response, so handlers can set cookies without restating the hardening flags each time and the policy stays defined in one place.

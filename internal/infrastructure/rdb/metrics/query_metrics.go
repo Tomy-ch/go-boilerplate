@@ -1,0 +1,76 @@
+package metrics
+
+import (
+	"context"
+
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/pkg/xerrors"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
+
+const (
+	queryNamespace = "rdb"
+	querySubsystem = "query"
+)
+
+// queryMetrics は、DB クエリの duration / error を Prometheus メトリクスとして記録する driver.QueryRecorder 実装です。
+type queryMetrics struct {
+	duration    *prometheus.HistogramVec
+	errorsTotal *prometheus.CounterVec
+}
+
+// NewQueryRecorder は、DB クエリメトリクス(rdb_query_duration_seconds / rdb_query_errors_total)を
+// 指定レジストリに登録し、recorder を返します。既に登録済みの場合は既存のコレクタを再利用します。
+func NewQueryRecorder(reg prometheus.Registerer) driver.QueryRecorder {
+	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: queryNamespace,
+		Subsystem: querySubsystem,
+		Name:      "duration_seconds",
+		Help:      "Duration of DB queries in seconds, partitioned by query name, operation and status.",
+		Buckets:   prometheus.DefBuckets,
+	}, []string{"query_name", "operation", "status"})
+
+	errorsTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: queryNamespace,
+		Subsystem: querySubsystem,
+		Name:      "errors_total",
+		Help:      "Total number of failed DB queries, partitioned by query name, operation and error class.",
+	}, []string{"query_name", "operation", "error_class"})
+
+	return &queryMetrics{
+		duration:    registerOrExisting(reg, duration),
+		errorsTotal: registerOrExisting(reg, errorsTotal),
+	}
+}
+
+// Observe は、1 クエリの duration を記録し、エラー時のみ error counter を増分します。
+// QueryAttrs には SQL 本文・bind 値・テーブル名などの高カーディナリティ／秘匿情報が含まれないため、
+// ラベルへ秘匿情報が漏れることはありません。
+func (m *queryMetrics) Observe(_ context.Context, attrs driver.QueryAttrs) {
+	m.duration.
+		WithLabelValues(attrs.QueryName, attrs.Operation, attrs.Status).
+		Observe(attrs.Duration.Seconds())
+
+	// ErrorClass が非空のときのみエラー（pgx.ErrNoRows を除く失敗）として計上します。
+	if attrs.ErrorClass != "" {
+		m.errorsTotal.WithLabelValues(attrs.QueryName, attrs.Operation, attrs.ErrorClass).Inc()
+	}
+}
+
+// registerOrExisting は、コレクタを登録します。既に同一コレクタが登録済みの場合は、
+// 新規生成したものではなく登録済みのコレクタを返し、複数回初期化されても同じメトリクスへ記録できるようにします。
+func registerOrExisting[T prometheus.Collector](reg prometheus.Registerer, c T) T {
+	err := reg.Register(c)
+	if err == nil {
+		return c
+	}
+
+	var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+	if xerrors.As(err, &alreadyRegisteredErr) {
+		if existing, ok := alreadyRegisteredErr.ExistingCollector.(T); ok {
+			return existing
+		}
+	}
+	return c
+}

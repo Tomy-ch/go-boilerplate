@@ -1,0 +1,261 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>outbox - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package outbox
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/controller/outbox&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package outbox は、outbox テーブルを周期 poll して未 publish メッセージを送る relay engine を提供します。
+engine 自体は loop と待機制御だけを担い、claim → publish → mark の業務は usecase に委譲します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#Engine">type Engine</a></dd>
+				
+					
+					<dd>    <a href="#NewEngine">func NewEngine(uc outboxuc.RelayUsecase, sleeper clock.Sleeper, log logging.Logger, tf observability.TracerFactory, set Settings) *Engine</a></dd>
+				
+				
+					
+					<dd>    <a href="#Engine.Run">func (e *Engine) Run(ctx context.Context) error</a></dd>
+				
+			
+				
+				<dd><a href="#Settings">type Settings</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html">relay.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="Engine">type <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=1076:1229#L18">Engine</a>
+				<a class="permalink" href="#Engine">¶</a>
+				
+				
+			</h2>
+			<p>Engine は、pending 行を周期 poll して publish する常駐 engine です。
+
+			</p><pre>type Engine struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewEngine">func <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=1285:1430#L27">NewEngine</a>
+					<a class="permalink" href="#NewEngine">¶</a>
+					
+					
+				</h3>
+				<pre>func NewEngine(
+    uc <a href="../../../../go-boilerplate/internal/usecase/outbox/">outboxuc</a>.<a href="../../../../go-boilerplate/internal/usecase/outbox/#RelayUsecase">RelayUsecase</a>,
+    sleeper <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Sleeper">Sleeper</a>,
+    log <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Logger">Logger</a>,
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+    set <a href="#Settings">Settings</a>,
+) *<a href="#Engine">Engine</a></pre>
+				<p>NewEngine は、relay engine を生成します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Engine.Run">func (*Engine) <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=2318:2365#L50">Run</a>
+					<a class="permalink" href="#Engine.Run">¶</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Engine">Engine</a>) Run(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>Run は、poll ループ本体です。ctx 完了まで常駐し、完了時に nil を返します。
+</p><ul>
+<li>満杯（claim 件数 == BatchSize）かつ publish 進捗あり（published &gt; 0）の間は、まだ pending が
+残る可能性が高いため待機せず連続して捌きます。
+</li><li>空振り・部分消化・「満杯だが全件 publish 失敗」なら PollInterval、エラー時は ErrorBackoff 待機します。
+全件 publish 失敗の満杯バッチを待機ゼロで再 claim すると、下流停止時にホットループして即時 dead 化
+するため、進捗が無い満杯バッチは必ず待機へ落とします。
+</li><li>待機は clock.Sleeper 経由で行い、ctx 完了で即座に抜けます。
+</li></ul>
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Settings">type <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=594:987#L8">Settings</a>
+				<a class="permalink" href="#Settings">¶</a>
+				
+				
+			</h2>
+			<p>Settings は、relay engine のチューニング値です。
+
+			</p><pre>type Settings struct {
+<span id="Settings.BatchSize"></span>    <span class="comment">// BatchSize は、1 回の poll で claim する pending 行数です。</span>
+    BatchSize <a href="../../../../builtin/#int32">int32</a>
+<span id="Settings.PollInterval"></span>    <span class="comment">// PollInterval は、pending を捌き切った（空振り or 部分消化）後に次 poll まで待機する時間です。</span>
+    PollInterval <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
+<span id="Settings.ErrorBackoff"></span>    <span class="comment">// ErrorBackoff は、RelayBatch がエラーを返した後に待機する時間です。</span>
+    ErrorBackoff <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

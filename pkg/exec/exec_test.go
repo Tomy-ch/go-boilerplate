@@ -20,6 +20,13 @@ func TestOS_Output(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "hello\n", string(out))
 		})
+
+		t.Run("追加の環境変数がコマンドへ渡る", func(t *testing.T) {
+			t.Parallel()
+			out, err := OS{}.Output(context.Background(), "", []string{"FOO=bar"}, "sh", []string{"-c", `printf %s "$FOO"`})
+			require.NoError(t, err)
+			assert.Equal(t, "bar", string(out))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

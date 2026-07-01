@@ -1,7 +1,6 @@
 package response
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -9,7 +8,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/error/response/gen"
-	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/xerrors"
 )
 
 func TestNewHTTPErrorFromAppError(t *testing.T) {
@@ -21,14 +20,14 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 		t.Run("detailsがある場合、detailsが表示されるエラー構造体が返る", func(t *testing.T) {
 			t.Parallel()
 
-			err := fmt.Errorf("bad request error: %w", apperror.ErrInvalidArgument)
+			err := xerrors.Wrap(apperror.ErrInvalidArgument, "bad request error")
 			details := []string{"invalid input", "missing field"}
 
 			expected := &HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{
 					Code:    codeBadRequest,
 					Message: errorMessageBadRequest,
-					Details: ptr.To(details),
+					Details: new(details),
 				},
 				HTTPStatus: http.StatusBadRequest,
 				Internal:   err,
@@ -40,7 +39,7 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 		t.Run("detailsがない場合、detailsは表示されないエラー構造体が返る", func(t *testing.T) {
 			t.Parallel()
 
-			err := fmt.Errorf("internal server error: %w", apperror.ErrInternal)
+			err := xerrors.Wrap(apperror.ErrInternal, "internal server error")
 
 			expected := &HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{
@@ -51,6 +50,21 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 				Internal:   err,
 			}
 
+			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未知のエラーの場合、500のエラー構造体にフォールバックする", func(t *testing.T) {
+			t.Parallel()
+			err := xerrors.New("unknown error")
+			expected := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeInternalError, Message: errorMessageInternalError},
+				HTTPStatus:    http.StatusInternalServerError,
+				Internal:      err,
+			}
 			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
 		})
 	})
@@ -77,7 +91,7 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 				ErrorResponse: gen.ErrorResponse{
 					Code:    codeResourceConflict,
 					Message: errorMessageResourceConflict,
-					Details: ptr.To([]string{"conflict-1"}),
+					Details: new([]string{"conflict-1"}),
 				},
 				HTTPStatus: http.StatusConflict,
 			}
@@ -86,7 +100,7 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 
 		t.Run("errを渡した場合、Internalに格納される", func(t *testing.T) {
 			t.Parallel()
-			internalErr := fmt.Errorf("boom")
+			internalErr := xerrors.New("boom")
 			want := &HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{Code: codeBadRequest, Message: errorMessageBadRequest},
 				HTTPStatus:    http.StatusBadRequest,
@@ -122,14 +136,14 @@ func TestHTTPErrorResponse_Error(t *testing.T) {
 				},
 			}
 
-			expected := fmt.Sprintf("HTTP %d: %s (%s)", http.StatusBadRequest, codeBadRequest, errorMessageBadRequest)
+			expected := "HTTP 400: BAD_REQUEST (入力内容に誤りがあります。再度ご確認ください。)"
 
 			assert.Equal(t, expected, httpError.Error())
 		})
 
 		t.Run("Internalがある場合、内部エラーの内容が表示される", func(t *testing.T) {
 			t.Parallel()
-			internalErr := fmt.Errorf("some internal error")
+			internalErr := xerrors.New("some internal error")
 			httpError := &HTTPErrorResponse{
 				HTTPStatus: http.StatusInternalServerError,
 				ErrorResponse: gen.ErrorResponse{
@@ -162,7 +176,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 		t.Run("詳細が1つある場合、Detailsにその値が入る", func(t *testing.T) {
 			t.Parallel()
 			want := &HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{Code: "E002", Message: "one detail", Details: ptr.To([]string{"detail1"})},
+				ErrorResponse: gen.ErrorResponse{Code: "E002", Message: "one detail", Details: new([]string{"detail1"})},
 				HTTPStatus:    422,
 			}
 			assert.Equal(t, want, newHTTPErrorFromMeta(httpErrorMeta{Code: "E002", Message: "one detail", Status: 422}, "detail1"))
@@ -171,7 +185,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 		t.Run("詳細が複数ある場合、Detailsに全て入る", func(t *testing.T) {
 			t.Parallel()
 			want := &HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{Code: "E003", Message: "many details", Details: ptr.To([]string{"d1", "d2", "d3"})},
+				ErrorResponse: gen.ErrorResponse{Code: "E003", Message: "many details", Details: new([]string{"d1", "d2", "d3"})},
 				HTTPStatus:    500,
 			}
 			assert.Equal(t, want, newHTTPErrorFromMeta(httpErrorMeta{Code: "E003", Message: "many details", Status: 500}, "d1", "d2", "d3"))
@@ -189,7 +203,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 		t.Run("詳細に空文字を渡した場合、Detailsポインタが生成され空文字を含む", func(t *testing.T) {
 			t.Parallel()
 			want := &HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{Code: "E004", Message: "empty detail", Details: ptr.To([]string{""})},
+				ErrorResponse: gen.ErrorResponse{Code: "E004", Message: "empty detail", Details: new([]string{""})},
 				HTTPStatus:    409,
 			}
 			assert.Equal(t, want, newHTTPErrorFromMeta(httpErrorMeta{Code: "E004", Message: "empty detail", Status: 409}, ""))

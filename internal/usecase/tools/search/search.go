@@ -13,7 +13,10 @@ const (
 	MaxKeywordLength = 1024
 )
 
-// ParseSearchTokens は、キーワード文字列をトークンに分割し、重複排除、上限設定を行います。
+// ParseSearchTokens は、キーワード文字列をスペースまたはアンダースコアで分割し、
+// 重複排除・上限（maxTokens 件）適用後のトークン列を返します。
+// keyword が nil または空文字の場合は空スライスを返します。
+// maxTokens が 0 以下の場合は DefaultMaxTokens を使用します。
 func ParseSearchTokens(keyword *string, maxTokens int) []string {
 	if keyword == nil || *keyword == "" {
 		return []string{}

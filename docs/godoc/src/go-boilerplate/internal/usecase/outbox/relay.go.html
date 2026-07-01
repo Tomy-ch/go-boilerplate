@@ -1,0 +1,246 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>outbox - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../src/go-boilerplate/internal/usecase/outbox">outbox</a>/<span class="text-muted">relay.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/usecase/outbox">go-boilerplate/internal/usecase/outbox</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>package outbox
+<span id="L4" class="ln">     4  </span>
+<span id="L5" class="ln">     5  </span>import (
+<span id="L6" class="ln">     6  </span>	&#34;context&#34;
+<span id="L7" class="ln">     7  </span>	&#34;encoding/json&#34;
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L13" class="ln">    13  </span>	outboxbndry &#34;go-boilerplate/internal/usecase/boundary/outbox&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/publisher&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/usecase/boundary/tx&#34;
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>const (
+<span id="L19" class="ln">    19  </span>	<span class="comment">// DefaultBatchSize は、1 回の relay で claim する pending 行数の既定値です。</span>
+<span id="L20" class="ln">    20  </span>	DefaultBatchSize int32 = 100
+<span id="L21" class="ln">    21  </span>	<span class="comment">// DefaultMaxAttempts は、dead 化までの publish 試行回数の既定値です。</span>
+<span id="L22" class="ln">    22  </span>	DefaultMaxAttempts int32 = 10
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span>	relayLoggerName = &#34;outbox-relay&#34;
+<span id="L25" class="ln">    25  </span>)
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// Metrics は、relay engine が記録する outbox 固有の o11y シンクです。</span>
+<span id="L28" class="ln">    28  </span>type Metrics interface {
+<span id="L29" class="ln">    29  </span>	<span class="comment">// SetLagSeconds は、最古 pending 行の経過秒数（SLI=outbox lag）を記録します。</span>
+<span id="L30" class="ln">    30  </span>	SetLagSeconds(ctx context.Context, seconds int64)
+<span id="L31" class="ln">    31  </span>	<span class="comment">// IncDead は、dead 化したメッセージ数を計上します。</span>
+<span id="L32" class="ln">    32  </span>	IncDead(ctx context.Context)
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// RelayResult は、1 回の RelayBatch の結果です。</span>
+<span id="L36" class="ln">    36  </span>type RelayResult struct {
+<span id="L37" class="ln">    37  </span>	<span class="comment">// Claimed は、claim した pending 行数です（0 なら pending 無し）。</span>
+<span id="L38" class="ln">    38  </span>	Claimed int
+<span id="L39" class="ln">    39  </span>	<span class="comment">// Published は、claim 行のうち publish に成功した行数です。</span>
+<span id="L40" class="ln">    40  </span>	Published int
+<span id="L41" class="ln">    41  </span>}
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span><span class="comment">// RelayUsecase は、pending 行を claim して publish するユースケースです。relay engine が周期的に呼びます。</span>
+<span id="L44" class="ln">    44  </span>type RelayUsecase interface {
+<span id="L45" class="ln">    45  </span>	<span class="comment">// RelayBatch は、最大 batchSize 件の pending 行を 1 tx で claim → publish → mark し、結果を返します。</span>
+<span id="L46" class="ln">    46  </span>	<span class="comment">// 個々の publish 失敗は tx を巻き戻さず（failed/dead をマークして）次 poll で再送します。</span>
+<span id="L47" class="ln">    47  </span>	<span class="comment">// DB アクセス自体の失敗のみ tx を巻き戻すエラーとして返します。</span>
+<span id="L48" class="ln">    48  </span>	RelayBatch(ctx context.Context, batchSize int32) (RelayResult, error)
+<span id="L49" class="ln">    49  </span>	<span class="comment">// RecordLag は、最古 pending 行の経過時間（outbox lag）を SLI メトリクスへ記録します。</span>
+<span id="L50" class="ln">    50  </span>	RecordLag(ctx context.Context) error
+<span id="L51" class="ln">    51  </span>}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>type relayUsecase struct {
+<span id="L54" class="ln">    54  </span>	txm         tx.Manager
+<span id="L55" class="ln">    55  </span>	store       outboxbndry.Store
+<span id="L56" class="ln">    56  </span>	publisher   publisher.Publisher
+<span id="L57" class="ln">    57  </span>	metrics     Metrics
+<span id="L58" class="ln">    58  </span>	clock       clock.Clock
+<span id="L59" class="ln">    59  </span>	logging     logging.Logger
+<span id="L60" class="ln">    60  </span>	tracer      observability.LayerTracer
+<span id="L61" class="ln">    61  </span>	maxAttempts int32
+<span id="L62" class="ln">    62  </span>}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span><span class="comment">// NewRelay は、RelayUsecase を生成します。</span>
+<span id="L65" class="ln">    65  </span>func NewRelay(
+<span id="L66" class="ln">    66  </span>	txm tx.Manager,
+<span id="L67" class="ln">    67  </span>	store outboxbndry.Store,
+<span id="L68" class="ln">    68  </span>	pub publisher.Publisher,
+<span id="L69" class="ln">    69  </span>	metrics Metrics,
+<span id="L70" class="ln">    70  </span>	clk clock.Clock,
+<span id="L71" class="ln">    71  </span>	log logging.Logger,
+<span id="L72" class="ln">    72  </span>	tf observability.TracerFactory,
+<span id="L73" class="ln">    73  </span>) RelayUsecase {
+<span id="L74" class="ln">    74  </span>	return &amp;relayUsecase{
+<span id="L75" class="ln">    75  </span>		txm:         txm,
+<span id="L76" class="ln">    76  </span>		store:       store,
+<span id="L77" class="ln">    77  </span>		publisher:   pub,
+<span id="L78" class="ln">    78  </span>		metrics:     metrics,
+<span id="L79" class="ln">    79  </span>		clock:       clk,
+<span id="L80" class="ln">    80  </span>		logging:     log,
+<span id="L81" class="ln">    81  </span>		tracer:      tf.Usecase(),
+<span id="L82" class="ln">    82  </span>		maxAttempts: DefaultMaxAttempts,
+<span id="L83" class="ln">    83  </span>	}
+<span id="L84" class="ln">    84  </span>}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span><span class="comment">// RecordLag は、最古 pending 行の経過時間（outbox lag）を SLI メトリクスへ記録します。</span>
+<span id="L87" class="ln">    87  </span><span class="comment">// pending 行が無ければ 0 を記録します。</span>
+<span id="L88" class="ln">    88  </span>func (u *relayUsecase) RecordLag(ctx context.Context) error {
+<span id="L89" class="ln">    89  </span>	ctx, endSpan := u.tracer.Start(ctx)
+<span id="L90" class="ln">    90  </span>	defer endSpan()
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>	createdAt, ok, err := u.store.OldestPendingCreatedAt(ctx)
+<span id="L93" class="ln">    93  </span>	if err != nil {
+<span id="L94" class="ln">    94  </span>		return err
+<span id="L95" class="ln">    95  </span>	}
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>	var lag time.Duration
+<span id="L98" class="ln">    98  </span>	if ok {
+<span id="L99" class="ln">    99  </span>		if lag = u.clock.Now().Sub(createdAt); lag &lt; 0 {
+<span id="L100" class="ln">   100  </span>			lag = 0
+<span id="L101" class="ln">   101  </span>		}
+<span id="L102" class="ln">   102  </span>	}
+<span id="L103" class="ln">   103  </span>	u.metrics.SetLagSeconds(ctx, int64(lag.Seconds()))
+<span id="L104" class="ln">   104  </span>	return nil
+<span id="L105" class="ln">   105  </span>}
+<span id="L106" class="ln">   106  </span>
+<span id="L107" class="ln">   107  </span><span class="comment">// RelayBatch は、最大 batchSize 件の pending 行を 1 tx で claim → publish → mark し、結果を返します。</span>
+<span id="L108" class="ln">   108  </span>func (u *relayUsecase) RelayBatch(ctx context.Context, batchSize int32) (RelayResult, error) {
+<span id="L109" class="ln">   109  </span>	ctx, endSpan := u.tracer.Start(ctx)
+<span id="L110" class="ln">   110  </span>	defer endSpan()
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>	if batchSize &lt;= 0 {
+<span id="L113" class="ln">   113  </span>		batchSize = DefaultBatchSize
+<span id="L114" class="ln">   114  </span>	}
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span>	<span class="comment">// claim〜mark を同一 tx 内で完結させることで、多インスタンス間での二重 publish を防ぐ。</span>
+<span id="L117" class="ln">   117  </span>	return tx.DoWithResult(ctx, u.txm, func(ctx context.Context) (RelayResult, error) {
+<span id="L118" class="ln">   118  </span>		msgs, err := u.store.ClaimPending(ctx, batchSize)
+<span id="L119" class="ln">   119  </span>		if err != nil {
+<span id="L120" class="ln">   120  </span>			return RelayResult{}, err
+<span id="L121" class="ln">   121  </span>		}
+<span id="L122" class="ln">   122  </span>		res := RelayResult{Claimed: len(msgs)}
+<span id="L123" class="ln">   123  </span>		for i := range msgs {
+<span id="L124" class="ln">   124  </span>			published, derr := u.deliver(ctx, msgs[i])
+<span id="L125" class="ln">   125  </span>			if derr != nil {
+<span id="L126" class="ln">   126  </span>				return RelayResult{}, derr
+<span id="L127" class="ln">   127  </span>			}
+<span id="L128" class="ln">   128  </span>			if published {
+<span id="L129" class="ln">   129  </span>				res.Published++
+<span id="L130" class="ln">   130  </span>			}
+<span id="L131" class="ln">   131  </span>		}
+<span id="L132" class="ln">   132  </span>		return res, nil
+<span id="L133" class="ln">   133  </span>	})
+<span id="L134" class="ln">   134  </span>}
+<span id="L135" class="ln">   135  </span>
+<span id="L136" class="ln">   136  </span><span class="comment">// deliver は、1 件を publish し、結果に応じて published / failed / dead をマークします。</span>
+<span id="L137" class="ln">   137  </span><span class="comment">// publish 成功なら published=true を返します。publish 失敗は tx を巻き戻さず（次 poll の再送に委ねる）</span>
+<span id="L138" class="ln">   138  </span><span class="comment">// published=false・error=nil を返し、DB マークの失敗のみエラーを返します。</span>
+<span id="L139" class="ln">   139  </span>func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage) (bool, error) {
+<span id="L140" class="ln">   140  </span>	perr := u.publisher.Publish(ctx, publisher.Message{
+<span id="L141" class="ln">   141  </span>		MessageID: m.MessageID,
+<span id="L142" class="ln">   142  </span>		EventType: m.EventType,
+<span id="L143" class="ln">   143  </span>		Payload:   m.Payload,
+<span id="L144" class="ln">   144  </span>		Headers:   decodeHeaders(m.Headers),
+<span id="L145" class="ln">   145  </span>	})
+<span id="L146" class="ln">   146  </span>	if perr == nil {
+<span id="L147" class="ln">   147  </span>		return true, u.store.MarkPublished(ctx, m.ID)
+<span id="L148" class="ln">   148  </span>	}
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span>	attempts, ferr := u.store.MarkFailed(ctx, m.ID, perr.Error())
+<span id="L151" class="ln">   151  </span>	if ferr != nil {
+<span id="L152" class="ln">   152  </span>		return false, ferr
+<span id="L153" class="ln">   153  </span>	}
+<span id="L154" class="ln">   154  </span>	if attempts &gt;= u.maxAttempts {
+<span id="L155" class="ln">   155  </span>		if derr := u.store.MarkDead(ctx, m.ID); derr != nil {
+<span id="L156" class="ln">   156  </span>			return false, derr
+<span id="L157" class="ln">   157  </span>		}
+<span id="L158" class="ln">   158  </span>		u.metrics.IncDead(ctx)
+<span id="L159" class="ln">   159  </span>		u.logging.Named(relayLoggerName).Warn(
+<span id="L160" class="ln">   160  </span>			&#34;outbox message marked dead after reaching max attempts&#34;,
+<span id="L161" class="ln">   161  </span>			logging.String(logging.MessageIDKey, m.MessageID.String()),
+<span id="L162" class="ln">   162  </span>			logging.String(logging.EventTypeKey, m.EventType),
+<span id="L163" class="ln">   163  </span>			logging.Error(logging.JobErrorKey, perr),
+<span id="L164" class="ln">   164  </span>		)
+<span id="L165" class="ln">   165  </span>	}
+<span id="L166" class="ln">   166  </span>	return false, nil
+<span id="L167" class="ln">   167  </span>}
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span><span class="comment">// decodeHeaders は、保存済みヘッダ JSON を map へ復元します。壊れていても publish は継続するため nil を返します。</span>
+<span id="L170" class="ln">   170  </span>func decodeHeaders(b []byte) map[string]string {
+<span id="L171" class="ln">   171  </span>	if len(b) == 0 {
+<span id="L172" class="ln">   172  </span>		return nil
+<span id="L173" class="ln">   173  </span>	}
+<span id="L174" class="ln">   174  </span>	var h map[string]string
+<span id="L175" class="ln">   175  </span>	if err := json.Unmarshal(b, &amp;h); err != nil {
+<span id="L176" class="ln">   176  </span>		return nil
+<span id="L177" class="ln">   177  </span>	}
+<span id="L178" class="ln">   178  </span>	return h
+<span id="L179" class="ln">   179  </span>}
+<span id="L180" class="ln">   180  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/outbox/relay.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

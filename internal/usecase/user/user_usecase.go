@@ -1,17 +1,18 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_user_usecase.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package user は、ユーザーに関するユースケースを提供します。
 package user
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/security"
 	"go-boilerplate/internal/usecase/boundary/tx"
@@ -44,6 +45,14 @@ type UserListView struct {
 	Total int64
 }
 
+// UserFeedView は、ユーザーフィード（cursor ページネーション）の取得結果を表します。
+type UserFeedView struct {
+	// Items は、現在ページのユーザー一覧です。
+	Items []UserView
+	// NextCursor は、次ページ取得用の不透明カーソルです。最終ページの場合は nil です。
+	NextCursor *string
+}
+
 // UpdateProfileParams は、ユーザープロフィール更新の入力（可変フィールド）を表します。
 type UpdateProfileParams struct {
 	FirstName      string
@@ -59,10 +68,10 @@ type UpdateProfileParams struct {
 
 // CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
 type CreateParamsDTO struct {
+	UpdateProfileParams
+
 	UserID      uuid.UUID
 	RawPassword string
-
-	UpdateProfileParams
 }
 
 // PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
@@ -80,34 +89,41 @@ type PatchParamsDTO struct {
 
 // usecase は、ユーザーに関するユースケースを提供します。
 type usecase struct {
-	tracer    observability.LayerTracer
-	txm       tx.Manager
-	clock     clock.Clock
-	encrypter security.Hasher
-	userRepo  user.Repository
-	pftRepo   prefecture.Repository
+	tracer     observability.LayerTracer
+	txm        tx.Manager
+	clock      clock.Clock
+	encrypter  security.Hasher
+	authorizer authz.Authorizer
+	userRepo   user.Repository
+	pftRepo    prefecture.Repository
 }
 
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
 	// ListUsers は、ユーザー一覧を取得します。
-	ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
+	ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error)
 	// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
-	ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error)
+	ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error)
+	// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
+	ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error)
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
 	// CountUsers は、ユーザーの総件数を返します。
 	CountUsers(ctx context.Context, active *bool) (int64, error)
-	// GetUser は、IDから単一ユーザーを取得します。
-	GetUser(ctx context.Context, id uuid.UUID) (UserView, error)
-	// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
-	UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
-	// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
-	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
+	// GetUser は、認可を確認したうえで ID から単一ユーザーを取得します。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
+	GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) (UserView, error)
+	// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します（パスワードは含みません）。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
+	UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
+	// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します（パスワードは更新しません）。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
+	UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
 	// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。
 	ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error
-	// DeleteUser は、ユーザーを論理削除します。
-	DeleteUser(ctx context.Context, id uuid.UUID) error
+	// DeleteUser は、認可を確認したうえでユーザーを論理削除します。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
+	DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error
 }
 
 // New は、ユーザーに関するユースケースを初期化します。
@@ -116,20 +132,22 @@ func New(
 	txm tx.Manager,
 	clock clock.Clock,
 	encrypter security.Hasher,
+	authorizer authz.Authorizer,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
 ) Usecase {
 	return &usecase{
-		tracer:    tf.Usecase(),
-		txm:       txm,
-		clock:     clock,
-		encrypter: encrypter,
-		userRepo:  userRepo,
-		pftRepo:   prefectureRepo,
+		tracer:     tf.Usecase(),
+		txm:        txm,
+		clock:      clock,
+		encrypter:  encrypter,
+		authorizer: authorizer,
+		userRepo:   userRepo,
+		pftRepo:    prefectureRepo,
 	}
 }
 
-func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error) {
+func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error) {
 	if page == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "page must not be nil")
 	}
@@ -142,39 +160,7 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
 		return nil, err
 	}
 
-	_, prefectureMap, err := observability.RunWithSpan(
-		ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
-			pids := make([]uuid.UUID, len(us))
-			for i, ue := range us {
-				pids[i] = ue.PrefectureID()
-			}
-
-			ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
-			if pftErr != nil {
-				return nil, pftErr
-			}
-
-			prefectureMap := make(map[uuid.UUID]*prefecture.Prefecture, len(ps))
-			for _, p := range ps {
-				prefectureMap[p.ID()] = p
-			}
-
-			return prefectureMap, nil
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	dtos := make([]UserView, len(us))
-	for i, ue := range us {
-		p, ok := prefectureMap[ue.PrefectureID()]
-		if !ok {
-			return nil, errOrphanPrefecture
-		}
-		dtos[i] = toUserView(ue, p.Name())
-	}
-
-	return dtos, nil
+	return u.toUserViews(ctx, us)
 }
 
 // CreateUser は、ユーザーを作成するユースケースです。
@@ -240,8 +226,8 @@ func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 	return u.userRepo.CountByActive(ctx, active)
 }
 
-// ListUsersWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
-func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error) {
+// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
+func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
@@ -256,10 +242,53 @@ func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *pa
 	return &UserListView{Items: items, Total: total}, nil
 }
 
-// GetUser は、IDから単一ユーザーを取得するユースケースです。
-func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
+// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
+func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error) {
+	if cursor == nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
+	}
+
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	after, err := decodeFeedCursor(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	us, err := u.userRepo.FindFeed(ctx, after, cursor.Limit32()+1)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := cursor.Limit()
+	hasNext := len(us) > limit
+	if hasNext {
+		us = us[:limit]
+	}
+
+	items, err := u.toUserViews(ctx, us)
+	if err != nil {
+		return nil, err
+	}
+
+	var nextCursor *string
+	if hasNext && len(us) > 0 {
+		encoded := encodeFeedCursor(us[len(us)-1])
+		nextCursor = &encoded
+	}
+
+	return &UserFeedView{Items: items, NextCursor: nextCursor}, nil
+}
+
+// GetUser は、IDから単一ユーザーを取得するユースケースです。
+func (u *usecase) GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) (UserView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserGet, id); err != nil {
+		return UserView{}, err
+	}
 
 	userEntity, err := u.userRepo.FindByID(ctx, id)
 	if err != nil {
@@ -268,7 +297,7 @@ func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
 
 	pftDomain, err := u.pftRepo.FindByID(ctx, userEntity.PrefectureID())
 	if err != nil {
-		if errors.Is(err, apperror.ErrNotFound) {
+		if xerrors.Is(err, apperror.ErrNotFound) {
 			return UserView{}, errOrphanPrefecture
 		}
 		return UserView{}, err
@@ -277,10 +306,14 @@ func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
 	return toUserView(userEntity, pftDomain.Name()), nil
 }
 
-// UpdateUser は、ユーザーのプロフィールを全更新するユースケースです（PUT、パスワードは含みません）。
-func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
+// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
+func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserUpdate, id); err != nil {
+		return UserView{}, err
+	}
 
 	now := u.clock.Now()
 
@@ -367,11 +400,15 @@ func (u *usecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassw
 	})
 }
 
-// UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH）。
-// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは PUT を使う）。password は更新しない。
-func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
+// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
+// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは全更新用の UpdateUser を使う）。password は更新しない。
+func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserUpdate, id); err != nil {
+		return UserView{}, err
+	}
 
 	now := u.clock.Now()
 
@@ -423,10 +460,14 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *Pa
 	return toUserView(userEntity, pftName), nil
 }
 
-// DeleteUser は、ユーザーを論理削除するユースケースです（DELETE）。
-func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+// DeleteUser は、ユーザーを論理削除します。
+func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserDelete, id); err != nil {
+		return err
+	}
 
 	now := u.clock.Now()
 	return u.txm.Do(ctx, func(ctx context.Context) error {
@@ -441,14 +482,62 @@ func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-// resolvePatchPrefecture は、PATCH の都道府県を解決します。
+// authorizeUserAccess は、認証主体 authn が対象ユーザー（所有者 = id）への action を実行してよいか判定します。
+// リソースの所有者を対象ユーザー（id）とすることで、所有権モデルでは呼出元が自分自身のみを操作できます。
+// authn が nil の場合は、認可判定以前に呼出元を特定できないため apperror.ErrUnauthenticated を返します。
+func (u *usecase) authorizeUserAccess(ctx context.Context, authn *authbd.Authn, action authz.Action, id uuid.UUID) error {
+	if authn == nil {
+		return apperror.ErrUnauthenticated
+	}
+	return u.authorizer.Authorize(ctx, authn, action, authz.NewResource("user", &id))
+}
+
+// toUserViews は、ユーザーエンティティ列を UserView の DTO 列へ変換します。
+// いずれかのユーザーが参照する都道府県を解決できない場合は参照整合性破れ（errOrphanPrefecture）を返します。
+func (u *usecase) toUserViews(ctx context.Context, us user.Users) ([]UserView, error) {
+	_, prefectureMap, err := observability.RunWithSpan(
+		ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
+			pids := make([]uuid.UUID, len(us))
+			for i, ue := range us {
+				pids[i] = ue.PrefectureID()
+			}
+
+			ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
+			if pftErr != nil {
+				return nil, pftErr
+			}
+
+			prefectureMap := make(map[uuid.UUID]*prefecture.Prefecture, len(ps))
+			for _, p := range ps {
+				prefectureMap[p.ID()] = p
+			}
+
+			return prefectureMap, nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]UserView, len(us))
+	for i, ue := range us {
+		p, ok := prefectureMap[ue.PrefectureID()]
+		if !ok {
+			return nil, errOrphanPrefecture
+		}
+		dtos[i] = toUserView(ue, p.Name())
+	}
+
+	return dtos, nil
+}
+
+// resolvePatchPrefecture は、部分更新時の都道府県を解決します。
 // 名前指定があれば名前で解決（入力エラーは伝播）、なければ既存 ID で解決します（未解決は参照整合性破れ）。
 func (u *usecase) resolvePatchPrefecture(ctx context.Context, name *string, currentID uuid.UUID) (*prefecture.Prefecture, error) {
 	if name != nil {
 		return u.pftRepo.FindByName(ctx, *name)
 	}
 	pftDomain, err := u.pftRepo.FindByID(ctx, currentID)
-	if errors.Is(err, apperror.ErrNotFound) {
+	if xerrors.Is(err, apperror.ErrNotFound) {
 		return nil, errOrphanPrefecture
 	}
 	if err != nil {

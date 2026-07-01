@@ -11,7 +11,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -21,20 +20,20 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &repository{
 		tracer: tf.Infra(),
-		db:     loggingDB,
+		db:     testDB,
 	}
-	actual := New(loggingDB, tf)
+	actual := New(testDB, tf)
 	assert.Equal(t, expected, actual)
 }
 
 func Test_repository_FindByActive(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
@@ -42,7 +41,7 @@ func Test_repository_FindByActive(t *testing.T) {
 
 	repo := &repository{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	firstUserID, err := uuid.Parse("eaabee3e-3b7a-4f61-8fa9-030944625e92")
@@ -131,7 +130,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					limit := int32(100)
 					offset := int32(0)
 
-					actual, err := repo.FindByActive(ctx, ptr.To(true), limit, offset)
+					actual, err := repo.FindByActive(ctx, new(true), limit, offset)
 					require.NoError(t, err)
 
 					actualFirst := actual[0]
@@ -159,7 +158,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					lastUserID, err := uuid.Parse("e99b0380-522c-4636-a2b6-452acdd7c4ff")
 					require.NoError(t, err)
 
-					actual, err := repo.FindByActive(ctx, ptr.To(false), limit, offset)
+					actual, err := repo.FindByActive(ctx, new(false), limit, offset)
 					require.NoError(t, err)
 
 					actualFirst := actual[0]
@@ -175,23 +174,45 @@ func Test_repository_FindByActive(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("limitが負数の場合、エラーになる", func(t *testing.T) {
+		t.Run("limitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				// 負数 LIMIT は PostgreSQL の 2201W（map 未定義）となり ErrInternal へ写像される。
 				actual, err := repo.FindByActive(ctx, nil, -1, 0)
 				require.Nil(t, actual)
-				require.Error(t, err)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 
-		t.Run("offsetが負数の場合、エラーになる", func(t *testing.T) {
+		t.Run("offsetが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				// 負数 OFFSET は PostgreSQL の 2201X（map 未定義）となり ErrInternal へ写像される。
 				actual, err := repo.FindByActive(ctx, nil, 10, -1)
 				require.Nil(t, actual)
-				require.Error(t, err)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
+		t.Run("activeがtrueでlimitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByActive(ctx, new(true), -1, 0)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
+		t.Run("activeがfalseでlimitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByActive(ctx, new(false), -1, 0)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 
@@ -248,7 +269,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					)
 					require.NoError(t, execErr)
 
-					res, actualErr := repo.FindByActive(ctx, ptr.To(true), 100, 0)
+					res, actualErr := repo.FindByActive(ctx, new(true), 100, 0)
 					require.Nil(t, res)
 					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
 				})
@@ -277,7 +298,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					)
 					require.NoError(t, execErr)
 
-					res, actualErr := repo.FindByActive(ctx, ptr.To(false), 100, 0)
+					res, actualErr := repo.FindByActive(ctx, new(false), 100, 0)
 					require.Nil(t, res)
 					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
 				})
@@ -289,14 +310,14 @@ func Test_repository_FindByActive(t *testing.T) {
 func Test_repository_CreateUser(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -323,7 +344,7 @@ func Test_repository_CreateUser(t *testing.T) {
 					prefectureID,
 					"新宿区",
 					"5-5-5",
-					ptr.To("Building X"),
+					new("Building X"),
 					"160-0022",
 					now,
 					now,
@@ -364,7 +385,7 @@ func Test_repository_CreateUser(t *testing.T) {
 					prefectureID,
 					"新宿区",
 					"5-5-5",
-					ptr.To("Building X"),
+					new("Building X"),
 					"160-0022",
 					now,
 					now,
@@ -382,14 +403,14 @@ func Test_repository_CreateUser(t *testing.T) {
 func Test_repository_CountByActive(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -397,7 +418,7 @@ func Test_repository_CountByActive(t *testing.T) {
 		t.Run("active=trueの場合、アクティブなユーザーの件数が取得できる", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.CountByActive(ctx, ptr.To(true))
+				got, err := repo.CountByActive(ctx, new(true))
 				require.NoError(t, err)
 				assert.Equal(t, int64(8), got)
 			})
@@ -405,7 +426,7 @@ func Test_repository_CountByActive(t *testing.T) {
 		t.Run("active=falseの場合、非アクティブなユーザーの件数が取得できる", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.CountByActive(ctx, ptr.To(false))
+				got, err := repo.CountByActive(ctx, new(false))
 				require.NoError(t, err)
 				assert.Equal(t, int64(2), got)
 			})
@@ -417,6 +438,21 @@ func Test_repository_CountByActive(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, int64(10), got)
 			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := repo.CountByActive(ctx, new(true))
+			assert.Zero(t, got)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
 }

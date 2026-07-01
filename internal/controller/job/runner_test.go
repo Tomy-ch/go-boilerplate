@@ -52,7 +52,7 @@ func Test_NewRunner(t *testing.T) {
 
 			res, err := NewRunner([]job.Job{job1, job1})
 
-			require.Nil(t, res)
+			assert.Nil(t, res)
 			require.ErrorIs(t, err, ErrDuplicateJob)
 		})
 	})
@@ -141,6 +141,20 @@ func Test_runner_Names(t *testing.T) {
 
 			names := runner.Names()
 			assert.ElementsMatch(t, []string{jobName}, names)
+		})
+
+		t.Run("複数ジョブ名は登録順によらずソートして返される", func(t *testing.T) {
+			t.Parallel()
+
+			jobB := mock_job.NewMockJob(ctrl)
+			jobB.EXPECT().Name().Return("job-b").AnyTimes()
+			jobA := mock_job.NewMockJob(ctrl)
+			jobA.EXPECT().Name().Return("job-a").AnyTimes()
+
+			runner, err := NewRunner([]job.Job{jobB, jobA})
+			require.NoError(t, err)
+
+			assert.Equal(t, []string{"job-a", "job-b"}, runner.Names())
 		})
 	})
 }

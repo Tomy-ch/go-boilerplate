@@ -10,19 +10,23 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetErrorHandled(t *testing.T) {
 	t.Parallel()
 
-	// SetErrorHandled が private な errorhandledKey で値を書き込むことを直接検証する
-	// （GetErrorHandled には依存しない / Set/Get のテストを独立にする）。
-	ctx := SetErrorHandled(context.Background(), true)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("privateキーへ値を書き込む", func(t *testing.T) {
+			t.Parallel()
+			ctx := SetErrorHandled(context.Background(), true)
 
-	val := ctx.Value(errorhandledKey)
-	v, ok := val.(bool)
-	assert.True(t, ok)
-	assert.Equal(t, true, v)
+			v, ok := ctx.Value(errorhandledKey).(bool)
+			require.True(t, ok)
+			assert.Equal(t, true, v)
+		})
+	})
 }
 
 func TestGetErrorHandled(t *testing.T) {
@@ -38,6 +42,15 @@ func TestGetErrorHandled(t *testing.T) {
 			val, ok := GetErrorHandled(ctx)
 			assert.True(t, ok)
 			assert.Equal(t, true, val)
+		})
+
+		t.Run("ゼロ値を設定した場合も未設定と区別してokがtrueになる", func(t *testing.T) {
+			t.Parallel()
+			ctx := SetErrorHandled(context.Background(), false)
+
+			val, ok := GetErrorHandled(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, false, val)
 		})
 	})
 

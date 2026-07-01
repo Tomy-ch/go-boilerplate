@@ -2,17 +2,24 @@
 
 [English](README.md) | 日本語
 
-`internal/infrastructure/system` は、時刻取得などの **システム依存処理の Infrastructure 実装**を提供するパッケージです。
+`internal/infrastructure/system` は、時刻取得やコンテキスト対応の待機などの **システム依存処理の Infrastructure 実装**を提供するパッケージです。
+
+`internal/usecase/boundary/clock` の 2 つのインターフェースを実装します。
+
+- `clock.Clock`（`NewClock`）— `Now()` は現在時刻を返す
+- `clock.Sleeper`（`NewSleeper`）— `Sleep(ctx, d)` は `d` 経過まで待機し、先に context がキャンセルされた場合は `ctx.Err()` を返す（`d` が非正の場合は即座に `ctx.Err()` を返す）
+
+いずれも同一の非公開型 `systemClock` が実体です。
 
 ## アーキテクチャ上の位置づけ
 
 ```mermaid
 flowchart TB
     subgraph "Usecase 層"
-        IF["clock.Clock interface"]
+        IF["clock.Clock / clock.Sleeper interface"]
     end
     subgraph "Infrastructure 層"
-        Impl["system.Clock 実装"]
+        Impl["systemClock 実装 (Clock + Sleeper)"]
     end
     subgraph "Domain 層"
         Domain["Domain Entity"]
@@ -24,13 +31,6 @@ flowchart TB
 
 Domain / Usecase が `time.Now()` を直接呼ぶと、テストで時刻を制御できなくなります。`clock.Clock` インターフェース（`internal/usecase/boundary/clock`）を介することで、テスト時にモック差し替えが可能になります。
 
-## 公開 API
-
-|関数 / メソッド|説明|
-|---|---|
-|`NewClock()`|`clock.Clock` を実装した実体を生成（内部で `time.Now()` を呼ぶ）|
-|`Now()`|現在の時刻を返す|
-
 ## なぜ抽象化するのか
 
 - Domain / Usecase の **決定論性（determinism）** を守る — テストで時刻を固定できる
@@ -39,10 +39,13 @@ Domain / Usecase が `time.Now()` を直接呼ぶと、テストで時刻を制�
 
 ## DI 登録
 
-`internal/di/module/infrastructure.go` の `system` モジュールに登録します。
+`internal/di/module/clock.go` の `clockModule()` で登録します（`InfrastructureModule()` に集約）。`Clock` と `Sleeper` の両実装をここで提供します。
 
 ```go
-fx.Provide(system.NewClock)
+fx.Provide(
+    system.NewClock,
+    system.NewSleeper,
+)
 ```
 
 ## 拡張する場合

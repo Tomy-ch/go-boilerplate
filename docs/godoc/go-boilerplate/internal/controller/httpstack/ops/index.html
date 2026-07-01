@@ -84,7 +84,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package ops は、OpenAPIのパス定義に関連する操作を提供します。
+				<p>Package ops は、運用系エンドポイント（/health, /metrics, /healthz, /ready, /version）を識別するためのユーティリティを提供します。
 
 				
 			</p></div>
@@ -133,13 +133,13 @@
 		
 			
 			
-			<h2 id="IsOpsPath">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/ops/paths.go.html?s=216:248#L1">IsOpsPath</a>
+			<h2 id="IsOpsPath">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/ops/paths.go.html?s=399:431#L1">IsOpsPath</a>
 				<a class="permalink" href="#IsOpsPath">¶</a>
 				
 				
 			</h2>
 			<pre>func IsOpsPath(path <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
-			<p>IsOpsPath は運用系エンドポイント（ops endpoints）かどうかを判定します。
+			<p>IsOpsPath は /metrics, /health, /healthz, /ready, /version のいずれかを運用系エンドポイントとして判定し true を返します。末尾スラッシュは無視されます。
 
 			
 			

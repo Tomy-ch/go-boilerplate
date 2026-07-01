@@ -30,6 +30,21 @@ func TestOS_WriteFileAndReadFile(t *testing.T) {
 	})
 }
 
+func TestOS_WriteFile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("親ディレクトリが存在しないパスへの書き込みはエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join(t.TempDir(), "no-such-dir", "file.txt")
+			err := OS{}.WriteFile(path, []byte("x"), 0o600)
+			require.Error(t, err)
+		})
+	})
+}
+
 func TestOS_ReadFile_NotExist(t *testing.T) {
 	t.Parallel()
 

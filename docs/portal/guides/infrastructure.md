@@ -78,7 +78,9 @@ The Infrastructure layer provides the following observability.
 - Tracing using OpenTelemetry
 - Execution time measurement (slow query)
 
-Mainly implemented using wrappers such as loggingdb.
+Mainly implemented by a pgx query tracer wired at the driver connection level (`otelpgx` spans, with log output limited to query failures and slow queries).
+
+In addition to the driver-level tracer, every I/O component (Repository / QueryService / SystemQuery / external gateways / queue / publisher) opens an application-level span per public method: it holds an `observability.LayerTracer` field initialized from `tf.Infra()` in its constructor, and each method begins with `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()`. Pure in-memory components with no real I/O (e.g. password hashing) are exempt.
 
 ## Prohibited Practices
 
@@ -94,7 +96,7 @@ The following must not be done in the Infrastructure layer.
 
 - Use sqlc for SQL execution
 - Do not write search logic in Repository (use QueryService)
-- Do not use driver directly; use it via loggingdb
+- Acquire the DBTX via `driver.New(ctx, db)` (logging / tracing is applied at the driver connection level)
 - Always propagate context
 - Always normalize external errors
 
@@ -104,14 +106,24 @@ The following must not be done in the Infrastructure layer.
 flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
+    Authz["authz/"]
+    HTTP["httpclient/"]
+    Pub["publisher/"]
+    Queue["queue/"]
     RDB["rdb/"]
     Sec["security/"]
     Sys["system/"]
+    Web["webapi/"]
 
     Root --> Auth
+    Root --> Authz
+    Root --> HTTP
+    Root --> Pub
+    Root --> Queue
     Root --> RDB
     Root --> Sec
     Root --> Sys
+    Root --> Web
 ```
 
 ## Subdirectories
@@ -119,9 +131,14 @@ flowchart TB
 |Directory|Description|Interface Placement|Details|
 |---|---|---|---|
 |`auth/`|Authentication infrastructure (environment-specific Authenticator impl)|Usecase boundary|[README](auth/README.md)|
+|`authz/`|Authorization infrastructure (Authorizer impl; default `allowall` for non-production)|Usecase boundary|[README](authz/README.md)|
+|`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|—|
+|`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|—|
+|`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
 |`security/`|Password hashing (bcrypt)|Usecase boundary|[README](security/README.md)|
 |`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
+|`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|—|
 
 ## Test Strategy
 

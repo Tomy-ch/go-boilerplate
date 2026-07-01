@@ -23,7 +23,7 @@ func newServeCommand() *cobra.Command {
 	}
 }
 
-// serveRun は、設定読込・シグナル・DI アプリ生成を結線し、server.RunServer へ委譲する薄い殻です。
+// serveRun は server.RunServer への薄い委譲殻です。
 func serveRun(_ *cobra.Command, _ []string) error {
 	cfg, err := config.SetUpConfig()
 	if err != nil {
@@ -32,10 +32,11 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	appCfg := config.NewApplicationConfig(cfg)
 	mtcCfg := config.NewMetricsConfig(cfg)
 
-	logger, err := logging.NewProductionLogger()
+	level, err := logging.ParseLevel(appCfg.LogLevel())
 	if err != nil {
 		return err
 	}
+	logger := logging.NewJSONLogger(level, logging.LevelError())
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),

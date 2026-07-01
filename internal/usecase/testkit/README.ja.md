@@ -6,7 +6,7 @@
 
 ## 提供する主な機能
 
-- `ExpectedDBError(t *testing.T) error`
+- `ExpectedDBError() error`
   - テストで「DBエラーを表す固定のエラー」を簡単に生成するためのヘルパーです。テストの期待値として使います。
 
 - `NewMockTransactionManager(t *testing.T) tx.Manager`
@@ -18,7 +18,7 @@
 
     ```go
     func Test_SomeUsecase_DBError(t *testing.T) {
-      expected := testkit.ExpectedDBError(t)
+      expected := testkit.ExpectedDBError()
       // expected をモックの返却値や期待エラー判定に利用
     }
     ```

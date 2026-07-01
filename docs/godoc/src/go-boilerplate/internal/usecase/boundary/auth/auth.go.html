@@ -80,25 +80,25 @@
 <span id="L23" class="ln">    23  </span>	claims   map[string]any <span class="comment">// 任意（監査・UI制御等）</span>
 <span id="L24" class="ln">    24  </span>}
 <span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span>func New(
-<span id="L27" class="ln">    27  </span>	subject string,
-<span id="L28" class="ln">    28  </span>	provider string,
-<span id="L29" class="ln">    29  </span>	scopes []string,
-<span id="L30" class="ln">    30  </span>	claims map[string]any,
-<span id="L31" class="ln">    31  </span>) (*Authn, error) {
-<span id="L32" class="ln">    32  </span>	trimmedSubject := strings.TrimSpace(subject)
-<span id="L33" class="ln">    33  </span>	if trimmedSubject == &#34;&#34; {
-<span id="L34" class="ln">    34  </span>		return nil, ErrUnauthenticatedSubjectMissing
-<span id="L35" class="ln">    35  </span>	}
-<span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span>	a := &amp;Authn{
-<span id="L38" class="ln">    38  </span>		subject:  trimmedSubject,
-<span id="L39" class="ln">    39  </span>		provider: provider,
-<span id="L40" class="ln">    40  </span>		scopes:   slices.Clone(scopes),
-<span id="L41" class="ln">    41  </span>		claims:   maps.Clone(claims),
-<span id="L42" class="ln">    42  </span>	}
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	<span class="comment">// subject が UUID なら id を埋める（変換できない場合は nil のまま）</span>
+<span id="L26" class="ln">    26  </span><span class="comment">// New は、認証主体や付随情報から認証結果 Authn を生成して返します。</span>
+<span id="L27" class="ln">    27  </span>func New(
+<span id="L28" class="ln">    28  </span>	subject string,
+<span id="L29" class="ln">    29  </span>	provider string,
+<span id="L30" class="ln">    30  </span>	scopes []string,
+<span id="L31" class="ln">    31  </span>	claims map[string]any,
+<span id="L32" class="ln">    32  </span>) (*Authn, error) {
+<span id="L33" class="ln">    33  </span>	trimmedSubject := strings.TrimSpace(subject)
+<span id="L34" class="ln">    34  </span>	if trimmedSubject == &#34;&#34; {
+<span id="L35" class="ln">    35  </span>		return nil, ErrUnauthenticatedSubjectMissing
+<span id="L36" class="ln">    36  </span>	}
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>	a := &amp;Authn{
+<span id="L39" class="ln">    39  </span>		subject:  trimmedSubject,
+<span id="L40" class="ln">    40  </span>		provider: provider,
+<span id="L41" class="ln">    41  </span>		scopes:   slices.Clone(scopes),
+<span id="L42" class="ln">    42  </span>		claims:   maps.Clone(claims),
+<span id="L43" class="ln">    43  </span>	}
+<span id="L44" class="ln">    44  </span>
 <span id="L45" class="ln">    45  </span>	if id, err := uuid.Parse(trimmedSubject); err == nil {
 <span id="L46" class="ln">    46  </span>		a.id = &amp;id
 <span id="L47" class="ln">    47  </span>	}

@@ -27,6 +27,7 @@ type server struct {
 	uc     user.Usecase
 }
 
+// BindHandler は、ユーザー詳細のハンドラを Echo に登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
@@ -39,10 +40,14 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
 	id := conv.UUID(request.UserId)
 
-	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
-	dto, err := s.uc.GetUser(ctx, id)
+	dto, err := s.uc.GetUser(ctx, &authn, id)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +59,11 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailRequestObject) (gen.PutUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
+
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
 
 	id := conv.UUID(request.UserId)
 
@@ -69,8 +79,7 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 		Building:       request.Body.Building,
 	}
 
-	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
-	res, err := s.uc.UpdateUser(ctx, id, dto)
+	res, err := s.uc.UpdateUser(ctx, &authn, id, dto)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +91,11 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDetailRequestObject) (gen.PatchUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
+
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
 
 	id := conv.UUID(request.UserId)
 
@@ -97,8 +111,7 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 		Building:       request.Body.Building,
 	}
 
-	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
-	res, err := s.uc.UpdateUserPartially(ctx, id, dto)
+	res, err := s.uc.UpdateUserPartially(ctx, &authn, id, dto)
 	if err != nil {
 		return nil, err
 	}
@@ -132,10 +145,14 @@ func (s *server) DeleteUsersDetail(ctx context.Context, request gen.DeleteUsersD
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
 	id := conv.UUID(request.UserId)
 
-	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
-	if err := s.uc.DeleteUser(ctx, id); err != nil {
+	if err := s.uc.DeleteUser(ctx, &authn, id); err != nil {
 		return nil, err
 	}
 

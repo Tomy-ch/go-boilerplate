@@ -324,6 +324,7 @@ flowchart TB
 
 - Usecaseは原則 標準ライブラリのみ（context, time, errors, fmt など）。
 - ORM・SQL実行・HTTPクライアント・EchoなどI/O系は一切持ち込まない。
+- 横断的例外: `internal/logging.Logger` は `internal/apperror` と同様、専用 boundary を介さずコンストラクタ DI で直接注入してよい。純粋な mock 可能インターフェースであり、失敗ログが必要なバックグラウンドワーカー（例: outbox relay の dead-message 警告）に限って使用する。それ以外は `metrics`/boundary を優先する。
 - 型定義やDTOもプロジェクト内型で閉じる。sqlc生成型/driver型やOpenAPI生成型は上位/下位の層に隔離。
 - テストも`testify`/`mock`程度に留め、モックはinterfaceベースで注入。
 - どうしても必要な場合は、[pkg/](../../pkg/)で薄いラッパーを作成する。
@@ -477,7 +478,7 @@ flowchart TB
 
 ### ページング
 
-- NewPagingFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
+- NewPageFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
 - ページ番号が許容最大を超えたら `apperror.ErrInvalidArgument` を返す（offset は int32 変換時にクランプ）。
 
 ## 呼び出せる層 / 呼び出せない層
@@ -703,8 +704,14 @@ observability層がtracerの生成ルール（レイヤー名やパッケージ�
 
 ## 実装例
 
+> 以下の例は、恒久的なパターン（tracer による span の開始/終了、`clock.Now()` による時刻取得、
+> `txm.Do` によるトランザクション境界、Domain → DTO 変換）**を示すためだけに**、サンプルの
+> `<aggregate>`（`user` と関連する `prefecture`）を用いています。これらのサンプル集約は
+> `make setup-remove-sample-api` で削除されるため、`user` / `prefecture` は各自の集約の
+> 代替として読み替えてください。要点は具体名ではなくパターンです。
+
 ```go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 // 唯一性のある名称
 package user
 
@@ -751,7 +758,7 @@ type usecase struct {
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
     // ListUsersByKeyword は、ユーザー一覧を取得します。
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
     // CreateUser は、ユーザーを作成します。
     CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
     // CountUsers は、ユーザーの総件数を返します。
@@ -779,7 +786,7 @@ func New(
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()

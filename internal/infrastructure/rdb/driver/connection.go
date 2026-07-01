@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_connection.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 package driver
 
 import (
@@ -11,7 +11,7 @@ import (
 // txKey は、実行中のトランザクション（pgx.Tx）を context に保持・識別するためのキーです。
 type txKey struct{}
 
-// DBTX は sqlc が要求する最小インターフェースです。
+// DBTX は、トランザクション・コネクションプールの双方に対して SQL を実行できる最小インターフェースです。
 type DBTX interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)

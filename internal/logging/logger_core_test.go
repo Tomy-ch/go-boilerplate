@@ -1,46 +1,34 @@
 package logging
 
 import (
+	"bytes"
+	"encoding/json"
+	"strings"
 	"testing"
 
-	"go-boilerplate/internal/config"
-
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-func TestNew(t *testing.T) {
-	// 各サブテストは config.SetApplicationMode でモック内部状態を書き換えるため Parallel 不可。
+func Test_mustOpenSink(t *testing.T) {
+	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
-		t.Run("本番モードの場合、Loggerを返す", func(t *testing.T) {
-			appCfg := config.NewApplicationConfig(&config.Config{})
-			appCfg.SetApplicationMode(t, "production")
+		t.Parallel()
 
-			logger, err := New(appCfg)
-			require.NoError(t, err)
-			require.NotNil(t, logger)
-		})
-
-		t.Run("開発モードの場合、Loggerを返す", func(t *testing.T) {
-			appCfg := config.NewApplicationConfig(&config.Config{})
-			appCfg.SetApplicationMode(t, "development")
-
-			logger, err := New(appCfg)
-			require.NoError(t, err)
-			require.NotNil(t, logger)
+		t.Run("解決可能なsinkはWriteSyncerを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.NotNil(t, mustOpenSink("stdout"))
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("未知のモードの場合、エラーを返す", func(t *testing.T) {
-			appCfg := config.NewApplicationConfig(&config.Config{})
-			appCfg.SetApplicationMode(t, "unknown")
+		t.Parallel()
 
-			logger, err := New(appCfg)
-			require.Error(t, err)
-			require.Nil(t, logger)
+		t.Run("未登録スキームのsinkはpanicする", func(t *testing.T) {
+			t.Parallel()
+			assert.Panics(t, func() { _ = mustOpenSink("bogus-scheme://x") })
 		})
 	})
 }
@@ -51,69 +39,85 @@ func TestBuildLogger(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("設定が妥当な場合はLoggerを返す", func(t *testing.T) {
+		t.Run("指定レベル以上のログを出力先へ書き込む", func(t *testing.T) {
 			t.Parallel()
 
-			cfg := zap.Config{
-				Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
-				Encoding:      "json",
-				OutputPaths:   []string{"stdout"},
-				EncoderConfig: zapcore.EncoderConfig{MessageKey: "msg"},
-			}
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
 
-			logger, err := buildLogger(cfg, zapcore.ErrorLevel)
-			require.NoError(t, err)
-			require.NotNil(t, logger)
+			l.Info("hello")
+			assert.Contains(t, buf.String(), "hello")
 		})
-	})
 
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("Build失敗時はLoggerを返さずエラーのみ返す", func(t *testing.T) {
+		t.Run("指定レベル未満のログは書き込まれない", func(t *testing.T) {
 			t.Parallel()
 
-			// 未登録スキームの出力先で zap.Config.Build を失敗させる。
-			// 修正前は中身 nil の Logger を返しており、初回ログ出力で panic していた。
-			cfg := zap.Config{
-				Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
-				Encoding:      "json",
-				OutputPaths:   []string{"invalid-scheme://nowhere"},
-				EncoderConfig: zapcore.EncoderConfig{MessageKey: "msg"},
-			}
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
 
-			logger, err := buildLogger(cfg, zapcore.ErrorLevel)
-			require.Error(t, err)
-			require.Nil(t, logger)
+			l.Debug("should not appear")
+			assert.Empty(t, buf.String())
+		})
+
+		t.Run("json設定でErrorログのstacktraceが配列で出力される", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
+			l.Error("simulated server error")
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), "\n"), &got))
+
+			st, ok := got["stacktrace"]
+			require.True(t, ok, "stacktrace key must exist")
+			arr, ok := st.([]any)
+			require.True(t, ok, "stacktrace must be JSON array, got %T", st)
+			require.NotEmpty(t, arr)
+		})
+
+		t.Run("console設定ではstacktraceが改行付きの単一文字列として出力される", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.DebugLevel, zapcore.ErrorLevel, false)
+			l.Error("simulated server error")
+
+			out := buf.String()
+			require.Contains(t, out, "\n", "console output must keep newlines")
+			require.NotContains(t, out, `"stacktrace":[`, "console output must not contain JSON array form of stack")
+			assert.GreaterOrEqual(t, strings.Count(out, "\n"), 2)
 		})
 	})
 }
 
-func TestNewProductionLogger(t *testing.T) {
+func TestNewJSONLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("本番用Loggerを返す", func(t *testing.T) {
+		t.Run("JSON用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger, err := NewProductionLogger()
-			require.NoError(t, err)
+			logger := NewJSONLogger(LevelInfo(), LevelError())
 			require.NotNil(t, logger)
 		})
 	})
 }
 
-func TestNewDevelopmentLogger(t *testing.T) {
+func TestNewConsoleLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("開発用Loggerを返す", func(t *testing.T) {
+		t.Run("console用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger, err := NewDevelopmentLogger()
-			require.NoError(t, err)
+			logger := NewConsoleLogger(LevelDebug(), LevelWarn())
 			require.NotNil(t, logger)
 		})
 	})

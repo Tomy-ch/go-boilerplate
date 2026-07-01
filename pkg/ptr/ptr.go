@@ -2,7 +2,7 @@
 package ptr
 
 // To は、引数として渡された値のポインタを返します。
-func To[T any](v T) *T { return &v }
+func To[T any](v T) *T { return new(v) }
 
 // Copy は、ポインタの指す値をシャローコピーした新しいポインタを返します（nil 入力時は nil）。
 // T が参照型フィールド（スライス・マップ・ポインタ等）を含む場合、その参照先は複製元と共有されます。

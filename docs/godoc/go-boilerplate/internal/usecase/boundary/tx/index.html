@@ -140,7 +140,7 @@
 		
 			
 			
-			<h2 id="DoWithResult">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/tx/tx_manager.go.html?s=510:622#L6">DoWithResult</a>
+			<h2 id="DoWithResult">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/tx/tx_manager.go.html?s=1007:1119#L10">DoWithResult</a>
 				<a class="permalink" href="#DoWithResult">¶</a>
 				
 				
@@ -157,14 +157,18 @@
 		
 			
 			
-			</p><h2 id="Manager">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/tx/tx_manager.go.html?s=308:401#L1">Manager</a>
+			</p><h2 id="Manager">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/tx/tx_manager.go.html?s=311:898#L1">Manager</a>
 				<a class="permalink" href="#Manager">¶</a>
 				
 				
 			</h2>
-			<p>Manager は、トランザクションの管理を行うインターフェースです。
+			<p>Manager は、トランザクション境界の制御を担うインターフェースです。
 
 			</p><pre>type Manager interface {
+    <span class="comment">// Do は serialization failure / deadlock 検出時に fn を最大 N 回再実行しうります。</span>
+    <span class="comment">// よって fn は DB 副作用以外について冪等であること（呼出側責務）。外部副作用（イベント発行・</span>
+    <span class="comment">// メール送信等）は、同一 tx 内で outbox 行として書き込めば rollback と共に巻き戻り retry-safe に</span>
+    <span class="comment">// なります。nested（既存 tx を再利用する）経路はリトライ対象外で 1 回のみ実行されます。</span>
     Do(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, fn func(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a>
 }</pre>
 

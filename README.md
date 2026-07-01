@@ -7,74 +7,88 @@ English | [日本語](README.ja.md)
 
 A backend base project built with **Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture**.
 
-This boilerplate integrates:
+It integrates widely used OSS — `uber/fx` (DI), `sqlc` (type-safe SQL), `golang-migrate`
+(migrations), `oapi-codegen` (OpenAPI codegen) and OpenTelemetry — into a **contract-driven,
+type-safe, layered backend** with production-grade concerns (background processing,
+reliability, observability) already wired.
 
-- `uber/fx` (Dependency Injection)
-- `sqlc` (Type-safe SQL)
-- `golang-migrate` (Schema migrations)
-- `oapi-codegen` (OpenAPI code generation)
+> This README is intentionally minimal. Each topic links out to the README / design doc that
+> owns it — see the [Documentation Map](#documentation-map). Those documents are the source of
+> truth; this page is only the entry point.
 
-to provide a **contract-driven, type-safe, layered backend architecture**.
+## Capabilities
+
+Each item is a thin seam you extend; follow the link for the design and rules.
+
+- **Onion Architecture + OpenAPI-first** — [docs/architecture.md](docs/architecture.md) / [docs/development-flow.md](docs/development-flow.md)
+- **Background workers** (pull-ack, graceful drain) — [docs/design/worker.md](docs/design/worker.md)
+- **Transactional Outbox** (relay / replay / GC) — [docs/design/outbox.md](docs/design/outbox.md)
+- **Idempotent request handling** — [docs/design/idempotency.md](docs/design/idempotency.md)
+- **Application jobs** — [docs/design/job.md](docs/design/job.md)
+- **REST reliability** (timeouts / body limit / deadline budget / tx retry) — [docs/design/rest.md](docs/design/rest.md)
+- **Observability** (OpenTelemetry traces / metrics / logs, config-driven) — [docs/design/observability.md](docs/design/observability.md)
+- **Single self-contained binary** (env + migrations embedded → one image) — [docker/README.md](docker/README.md)
 
 ## Prerequisites
 
-This project requires the following tools to be installed before running:
+The following tools must be installed before running:
 
-- Visual Studio Code (recommended)
-- Docker Desktop
-- Make
-- GitHub CLI (gh)
-
-### Prerequisites Notes
-
-- Docker Desktop is required to run PostgreSQL and other services via Docker Compose.
-- Make is used to simplify development commands (e.g. build, test, generate).
-- GitHub CLI is used for interacting with GitHub workflows and automation (optional but recommended).
-- Visual Studio Code is recommended for development, especially with Go and OpenAPI extensions.
+- [mise](https://mise.jdx.dev) — tool / runtime version manager (**required**; must be activated in your shell)
+- Docker Desktop — runs PostgreSQL and other services via Docker Compose
+- Make — development command entry point
+- GitHub CLI (`gh`) — GitHub automation (optional but recommended)
+- Visual Studio Code (recommended) — with Go / OpenAPI extensions
 
 ### Supported Platforms
 
-This project assumes a **Unix-like development environment**. The tooling (`make`, `mise`, `lefthook`, Docker bind-mount performance, etc.) depends on POSIX shells and Linux file paths.
+This project assumes a **Unix-like development environment** (`make`, `mise`, `lefthook`,
+Docker bind-mount performance all depend on POSIX shells and Linux paths).
 
-- **macOS / Linux** — supported as primary development environments.
-- **Windows** — please use **WSL2 + the Remote-WSL VSCode extension**. Running natively on Windows is **not supported**: `make`, the `mise` shim layout, and `lefthook`'s POSIX hooks all assume a Unix shell, and Docker I/O is significantly slower without the WSL2 filesystem.
-
-Inside WSL2 the project behaves identically to Linux, including the `.vscode/settings.json` paths that reference `~/.local/share/mise/shims/`.
+- **macOS / Linux** — primary, supported.
+- **Windows** — use **WSL2 + the Remote-WSL VSCode extension**. Native Windows is **not
+  supported**. Inside WSL2 the project behaves identically to Linux.
 
 ## Quick Start
 
-Run the project locally in a few commands.
+Starting from a clean machine (mise not yet installed):
 
 ```bash
 git clone https://github.com/Tomy-ch/go-boilerplate.git
 cd go-boilerplate
 
+# 1. Install mise (https://mise.jdx.dev/getting-started.html), then activate it in your
+#    shell — mandatory, the Make targets resolve tools through mise shims.
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc   # bash: append `mise activate bash` to ~/.bashrc
+# then open a new terminal (or reload your shell) so the mise shims are on PATH
+
+# 2. Install the pinned Go runtime + dev tools, and wire git hooks.
+make go-update
 make install-tools
 make activate-tools
-make tidy-lib
+
+# 3. Start locally (API + PostgreSQL + otel-lgtm) and initialize the DBs.
 make serve
 make tools
-```
-
-Initialize database:
-
-```bash
 make db-init
 ```
 
-Other commands are available, see [Make Target List](.makefiles/README.md).
+`make serve` starts the API on <http://localhost:8080> and Grafana on <http://localhost:3000>.
+Full setup (incl. module localization) is in
+[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md); every target is in
+[.makefiles/README.md](.makefiles/README.md). Worker / relay / job entry points are
+`make worker`, `make outbox-relay`, `make job`.
 
-The API server will start locally.
+> **`mise` is the single source of truth for tool & runtime versions.** Every version (Go,
+> `golangci-lint`, `sqlc`, `oapi-codegen`, `mockgen`, `lefthook`, …) is pinned in
+> [`mise.toml`](mise.toml); the Dockerfiles, the local installer, and CI all install from that
+> same file via `mise install <tool>`, so local and CI stay identical. `make sync-versions`
+> propagates it to `go.mod` and the Dockerfile `FROM` lines.
 
 ## Example API
-
-Example request:
 
 ```bash
 curl http://localhost:8080/health
 ```
-
-Example response:
 
 ```json
 {
@@ -84,57 +98,25 @@ Example response:
 
 ## Getting Started
 
-Before starting development, make sure to follow the setup steps.
-
-[See Setup Instructions](./docs/get-started/setup-repository.md)
-
-## Why This Boilerplate Exists
-
-In backend development, each project often requires designing from scratch:
-
-- Architecture
-- Library selection
-- Directory structure
-- Development workflow
-
-As a result, the same design discussions and trial-and-error processes tend to be repeated across projects.
-
-This boilerplate provides a **baseline architecture that reduces initial design cost and enables teams to start development safely and quickly**.
-
-It combines:
-
-- Onion Architecture
-- OpenAPI-first development
-- Type-safe SQL with sqlc
-- Dependency Injection
-- Structural checks via CI
-
-to provide a **contract-driven, type-safe, layered backend architecture**.
-
-The value of this boilerplate is not tied to any specific library, but to **the integration of widely used OSS tools into a coherent architecture**.
+Before development, follow the setup steps: [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md).
 
 ## Architecture Overview
 
-This project adopts **Onion Architecture**.
+This project adopts **Onion Architecture**: dependencies always point inward, the domain stays
+pure and side-effect free, infrastructure implements domain interfaces, and controllers hold no
+business logic.
 
 ```txt
 controller → usecase → domain ← infrastructure
 ```
 
-Principles:
-
-- Dependencies always point inward
-- Domain remains pure and side-effect free
-- Infrastructure implements domain interfaces
-- Controllers do not contain business logic
-
 ```mermaid
 flowchart TB
 
 Client --> Controller
-
 Controller --> Usecase
 Job --> Usecase
+Worker --> Usecase
 
 Usecase --> Domain
 Usecase --> Repository
@@ -143,9 +125,6 @@ Usecase --> QueryService
 Repository --> Domain
 QueryService --> Domain
 
-Repository --> DB
-QueryService --> DB
-
 Repository --> Infra
 QueryService --> Infra
 
@@ -153,219 +132,137 @@ Infra --> Domain
 Infra --> External["External Systems"]
 ```
 
-See [docs/architecture.md](docs/architecture.md) for detailed documentation.
+Boundaries are enforced in CI (`golangci-lint` depguard), not just documented. Full detail:
+[docs/architecture.md](docs/architecture.md) and [docs/rules.md](docs/rules.md).
 
-## API Development Policy (OpenAPI First)
+## Documentation Map
 
-This project follows an **OpenAPI-first** workflow.
+The source of truth lives close to the code. Start here and follow the link that owns your topic.
 
-API changes must follow this sequence:
+### Core
 
-1. Modify OpenAPI definition (`openapi/`)
-2. Generate code
+- [docs/index.md](docs/index.md) — documentation index
+- [docs/architecture.md](docs/architecture.md) — system structure & layer responsibilities
+- [docs/rules.md](docs/rules.md) — non-negotiable rules (layer deps, generated code, DTO, tx, errors)
+- [docs/development-flow.md](docs/development-flow.md) — how to perform a change (API / DB / logic)
+- [docs/decisions.md](docs/decisions.md) — technology rationale (ADR)
+- [docs/testing-conventions.md](docs/testing-conventions.md) — testing conventions
+- [docs/project/versioning.md](docs/project/versioning.md) — versioning policy
 
-    ```sh
-    make gen-api
-    ```
+### Subsystem design
 
-3. Implement handler / usecase
+- [docs/design/README.md](docs/design/README.md) — index
+- [rest](docs/design/rest.md) · [worker](docs/design/worker.md) · [job](docs/design/job.md) · [outbox](docs/design/outbox.md) · [idempotency](docs/design/idempotency.md) · [observability](docs/design/observability.md)
 
-Generated files **must never be edited manually**.
+### Layer READMEs (`internal/`, `pkg/`)
 
-## Branch Strategy
+- [domain](internal/domain/README.md) · [usecase](internal/usecase/README.md) · [controller](internal/controller/README.md) · [infrastructure](internal/infrastructure/README.md) · [di](internal/di/README.md)
+- [pkg](pkg/README.md) — shared, framework-agnostic utilities
 
-This repository uses a **release-centric branching model**.
+### Contracts, data & tooling
 
-Rules:
-
-- Feature branches must be created from `release/*`
-- `develop`, `staging`, `production` accept changes only via release branches
-- Direct commits to protected branches are prohibited
-- All changes must go through Pull Requests
-
-Benefits:
-
-- Version consistency
-- Safer release workflows
-- Reduced risk when using AI-assisted development
+- [openapi/README.md](openapi/README.md) — API contracts (OpenAPI-first)
+- [database/README.md](database/README.md) — migrations & SQL (sqlc)
+- [env/README.md](env/README.md) — environment variables (embedded per-environment)
+- [.makefiles/README.md](.makefiles/README.md) — every `make` target
+- [docker/README.md](docker/README.md) — images, compose profiles, single-container operation
 
 ## Directory Structure
 
 ```txt
 .
-├── cmd/            # Application entrypoint
+├── cmd/            # Application entrypoint (Cobra subcommands)
 ├── internal/       # Application code (Onion Architecture)
 │   ├── domain/
 │   ├── usecase/
 │   ├── infrastructure/
 │   ├── controller/
+│   ├── observability/
 │   └── di/
-├── database/       # Migrations & SQL (sqlc)
+├── pkg/            # Shared, framework-agnostic utilities
 ├── openapi/        # API contracts
-├── pkg/            # Shared utilities
+├── database/       # Migrations & SQL (sqlc)
+├── env/            # Per-environment variables (embedded into the binary)
 ├── docker/
 ├── docs/
+├── .makefiles/     # make target registry
 └── makefile
 ```
 
 ## Stack
 
-|Category|Technology|
-|----------|------------|
-|Language|Go|
-|Web Framework|Echo|
-|Dependency Injection|uber/fx|
-|API Definition|OpenAPI + oapi-codegen|
-|Database|PostgreSQL|
-|Query|sqlc|
-|Migration|golang-migrate|
-|Logging|zap|
-|Testing|testify|
-|CLI|cobra|
-|Dev Tools|Docker / docker-compose / air|
+| Category | Technology |
+| --- | --- |
+| Language | Go |
+| Web Framework | Echo |
+| Dependency Injection | uber/fx |
+| API Definition | OpenAPI + oapi-codegen |
+| Database | PostgreSQL |
+| Query | sqlc |
+| Migration | golang-migrate |
+| Logging | zap (+ OpenTelemetry via otelzap) |
+| Observability | OpenTelemetry (OTLP) / Prometheus |
+| Testing | testify |
+| CLI | cobra |
+| Dev Tools | Docker / docker-compose / air |
 
-## AI-Safe Design
+## Branch Strategy
 
-This boilerplate is designed for **AI-assisted development**.
+This repository uses a **release-centric branching model**: feature branches are cut from
+`release/*`, protected branches (`develop` / `staging` / `production`) accept changes only via
+release branches, and all changes go through Pull Requests. Rules: [docs/rules.md](docs/rules.md).
 
-Constraints are intentionally introduced to prevent unintended architectural drift.
+## Design Intent
 
-Key mechanisms:
+### Why it exists
 
-- Enforced layering
-- Generated code separation
-- Release-based branching
-- OpenAPI-first API design
-- Domain layer purity
+Backend projects tend to re-litigate architecture, library choice, directory layout and
+workflow every time. This boilerplate provides a **baseline that reduces initial design cost**
+so teams start safely and quickly. Its value is not any single library but **the integration of
+widely used OSS into a coherent, replaceable architecture**.
 
-These constraints help AI agents generate safer code.
+### AI-assisted development
 
-## Documentation
+Constraints (enforced layering, generated-code separation, release-based branching,
+OpenAPI-first, domain purity) are intentional: they keep architectural drift from AI-assisted
+changes in check while remaining fully maintainable **without** AI tools. See [docs/rules.md](docs/rules.md).
 
-Detailed documentation is available in `docs/`.
+### Intended system types
 
-- [Architecture](docs/architecture.md)  
-- [Development Workflow](docs/development-flow.md)  
-- [Architectural Rules](docs/rules.md)  
-- [Design Decisions](docs/decisions.md)  
-- [Versioning Policy](docs/project/versioning.md)  
+Designed for new backend products, PoC → early-scale phases, strict layered team development,
+and systems with strong domain rules — as a **modular monolith**. Less suited to single-file
+micro APIs, architecture-less prototypes, ultra-low-latency systems, or strong microservice
+decomposition.
 
-```txt
-docs/
-```
+### Vendor neutrality & extensibility
 
-## Intended System Types
-
-Designed for:
-
-- New backend products
-- PoC → early scale phase
-- Strict layered team development
-- Systems with strong domain rules
-- Long-term maintainable backends
-
-Not ideal for:
-
-- Single-file micro APIs
-- Rapid prototypes without architecture
-- Ultra-low latency systems
-- Strong microservice decomposition
-
-This template assumes a **modular monolith architecture**.
-
-## SaaS / Vendor Neutrality
-
-This project intentionally avoids lock-in to specific SaaS vendors.
-
-Observability and tooling are designed to support:
-
-- OSS-first tooling
-- Vendor-neutral architecture
-
-## Extensibility
-
-Components under `internal/` are loosely coupled.
-
-Dependency Injection enables replacement of:
-
-- Infrastructure
-- Implementations
-- Middleware
-
-depending on runtime environments.
+Observability and tooling are OSS-first and vendor-neutral. Components under `internal/` are
+loosely coupled, so DI allows infrastructure, implementations and middleware to be replaced per
+runtime environment.
 
 ## Maintainer Policy / Disclaimer
 
-This repository is **independently maintained by the author**.
+This repository is **independently maintained by the author** and is not affiliated with any
+organization. It is provided in good faith, but **no guarantees are made regarding security,
+stability, or suitability**. Before use, verify dependency vulnerabilities, security
+configuration and operational compatibility yourself.
 
-It is not affiliated with any organization.
+Libraries are selected for active maintenance, community adoption, replaceability and avoidance
+of strong framework lock-in. The maintainer may provide dependency updates, security fixes and
+architectural improvements, but issue-response deadlines, guaranteed bug fixes and long-term
+maintenance commitments are **not guaranteed**.
 
-While provided in good faith, **no guarantees are made regarding security, stability, or suitability for specific use cases**.
-
-Users are responsible for verifying:
-
-- Dependency vulnerabilities
-- Security configuration
-- Operational compatibility
-
-before using this template.
-
-## Library Selection Policy
-
-Libraries are selected based on:
-
-- Active maintenance
-- Community adoption
-- Replaceability
-- Avoiding strong framework lock-in
-
-The architecture assumes **replaceable components**.
-
-## Maintenance Policy
-
-The maintainer may provide:
-
-- Dependency updates
-- Security fixes
-- Architectural improvements
-
-However, the following are **not guaranteed**:
-
-- Issue response deadlines
-- Guaranteed bug fixes
-- Long-term maintenance commitments
-
-## Future Boilerplates
-
-Planned future releases:
-
-- Frontend Boilerplate
-- Infrastructure Boilerplate
-- Observability Boilerplate
-
-## AI-Agent Documentation
-
-This repository includes documentation designed for AI agents.
-
-However, the project remains fully maintainable **without AI tools**.
+Planned future releases: Frontend / Infrastructure / Observability boilerplates.
 
 ## License
 
-MIT License
+This project's own source code is released under the **MIT License** — see [LICENSE](LICENSE).
 
-See:
-
-```txt
-LICENSE
-```
-
-## Reference
-
-- [versioning.md](docs/project/versioning.md)
-- [architecture-index.md](docs/index.md)
-  - [architecture.md](docs/architecture.md)
-  - [development-flow.md](docs/development-flow.md)
-  - [decisions.md](docs/decisions.md)
-  - [rules.md](docs/rules.md)
-- [go-upgrade.md](docs/maintenance/go-upgrade.md)
-- [Make Commands](.makefiles/README.md)
+The container images the project ships bundle third-party OS packages from their base images —
+for example the production `runtime` image is built on `alpine:3.23`, whose base packages
+(`busybox`, `apk-tools`, `alpine-baselayout`, `ssl_client`, …) are licensed under
+**GPL-2.0-only**. These are included as *mere aggregation*: they run as independent programs and
+are **not** linked into the Go binary, so their copyleft terms do not extend to this project's
+code and do **not** restrict commercial use. The only obligation is the ordinary one for
+redistributing any Linux base image — make the corresponding package sources available, which
+upstream Alpine already does. Image details: [docker/README.md](docker/README.md).

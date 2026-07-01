@@ -4,21 +4,6 @@ English | [日本語](README.ja.md)
 
 Wraps `github.com/cockroachdb/errors` to provide error operations with stack traces.
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`New(msg)`|Create a new error with stack trace|
-|`Wrap(err, msg)`|Wrap an existing error with message and stack trace|
-|`Is(err, target)`|Check error identity (supports wrapped chains)|
-|`As(err, target)`|Type-assert an error (supports wrapped chains)|
-|`StackTrace(err)`|Get formatted stack trace string|
-|`NewErrors()`|Return an `Errors` implementation (for DI / mocking)|
-
-The package-level functions above are also exposed through the `Errors` interface
-(`New` / `Wrap` / `Is` / `As` / `StackTrace`), which confines the dependency on
-`cockroachdb/errors` to a single contract and makes it injectable / mockable.
-
 ## Wraps
 
 `github.com/cockroachdb/errors`
@@ -26,4 +11,21 @@ The package-level functions above are also exposed through the `Errors` interfac
 ## Notes
 
 - All errors created via this package carry stack traces
+- `StackTrace(err)` returns the `%+v` representation, including the attached stack when present (`""` for a `nil` error)
 - Use `Is` / `As` instead of direct `errors.Is` / `errors.As` for consistency
+- Use `New` / `Wrap` / `Join` instead of `fmt.Errorf` for error creation and wrapping
+  (`Join` combines multiple errors). When a value must be embedded in the message, compose it with
+  `fmt.Sprintf` and pass it to `New` / `Wrap`. `fmt.Errorf` is forbidden by `forbidigo`.
+- When attaching an apperror sentinel to an underlying error, prefer `Join(sentinel, err)`
+  (or `Join(sentinel, Wrap(err, "context"))` when context is needed) so the original error stays
+  in the chain for `Is` / `As`. Do not flatten it with `Wrap(sentinel, err.Error())`, which drops
+  the original error's type and stack.
+  - Exception: if the underlying error may carry sensitive data (e.g. a URL with query / userinfo),
+    do not `Join` it — redact the message first and `Wrap(sentinel, <redacted string>)` so the raw
+    error never propagates.
+  - Caveat (load-bearing flatten): `Wrap(sentinel, err.Error())` deliberately drops the underlying
+    type from the chain, so a downstream `Is` / `As` can no longer reach it. Before converting an
+    existing normalizer from `Wrap` to `Join`, check every predicate that inspects the result — if one
+    relies on NOT matching the underlying type, `Join` re-exposes it and silently changes behavior
+    (e.g. a tx retry predicate matching `*pgconn.PgError` SQLSTATE). Keep `Wrap` when the flattening is
+    intentional.

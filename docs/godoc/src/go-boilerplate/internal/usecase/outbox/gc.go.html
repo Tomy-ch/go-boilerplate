@@ -1,0 +1,123 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>outbox - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../src/go-boilerplate/internal/usecase/outbox">outbox</a>/<span class="text-muted">gc.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/usecase/outbox">go-boilerplate/internal/usecase/outbox</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>package outbox
+<span id="L4" class="ln">     4  </span>
+<span id="L5" class="ln">     5  </span>import (
+<span id="L6" class="ln">     6  </span>	&#34;context&#34;
+<span id="L7" class="ln">     7  </span>	&#34;time&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L10" class="ln">    10  </span>	outboxbndry &#34;go-boilerplate/internal/usecase/boundary/outbox&#34;
+<span id="L11" class="ln">    11  </span>)
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>const (
+<span id="L14" class="ln">    14  </span>	<span class="comment">// DefaultGCBatchSize は、GC の 1 バッチあたり削除件数の既定値です。</span>
+<span id="L15" class="ln">    15  </span>	DefaultGCBatchSize int32 = 10_000
+<span id="L16" class="ln">    16  </span>	<span class="comment">// DefaultRetention は、published 行を保持する既定期間です。これより古い行が GC 対象になります。</span>
+<span id="L17" class="ln">    17  </span>	DefaultRetention = 7 * 24 * time.Hour
+<span id="L18" class="ln">    18  </span>)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// GCUsecase は、published 済みの outbox 行を刈り取るユースケースです。</span>
+<span id="L21" class="ln">    21  </span>type GCUsecase interface {
+<span id="L22" class="ln">    22  </span>	<span class="comment">// SweepPublished は、retention より古い published 行を batchSize 件ずつ削除し、合計削除件数を返します。</span>
+<span id="L23" class="ln">    23  </span>	SweepPublished(ctx context.Context, batchSize int32) (int64, error)
+<span id="L24" class="ln">    24  </span>}
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>type gcUsecase struct {
+<span id="L27" class="ln">    27  </span>	store     outboxbndry.Store
+<span id="L28" class="ln">    28  </span>	clock     clock.Clock
+<span id="L29" class="ln">    29  </span>	retention time.Duration
+<span id="L30" class="ln">    30  </span>}
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span><span class="comment">// NewGC は、GCUsecase を生成します。</span>
+<span id="L33" class="ln">    33  </span>func NewGC(store outboxbndry.Store, clk clock.Clock) GCUsecase {
+<span id="L34" class="ln">    34  </span>	return &amp;gcUsecase{store: store, clock: clk, retention: DefaultRetention}
+<span id="L35" class="ln">    35  </span>}
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span><span class="comment">// SweepPublished は、retention より古い published 行を batchSize 件ずつ削除し、合計削除件数を返します。</span>
+<span id="L38" class="ln">    38  </span>func (g *gcUsecase) SweepPublished(ctx context.Context, batchSize int32) (int64, error) {
+<span id="L39" class="ln">    39  </span>	if batchSize &lt;= 0 {
+<span id="L40" class="ln">    40  </span>		batchSize = DefaultGCBatchSize
+<span id="L41" class="ln">    41  </span>	}
+<span id="L42" class="ln">    42  </span>	cutoff := g.clock.Now().Add(-g.retention)
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>	var total int64
+<span id="L45" class="ln">    45  </span>	for {
+<span id="L46" class="ln">    46  </span>		deleted, err := g.store.DeletePublished(ctx, cutoff, batchSize)
+<span id="L47" class="ln">    47  </span>		if err != nil {
+<span id="L48" class="ln">    48  </span>			return total, err
+<span id="L49" class="ln">    49  </span>		}
+<span id="L50" class="ln">    50  </span>		total += deleted
+<span id="L51" class="ln">    51  </span>		<span class="comment">// バッチが満たなかった = もう対象行は無い。</span>
+<span id="L52" class="ln">    52  </span>		if deleted &lt; int64(batchSize) {
+<span id="L53" class="ln">    53  </span>			return total, nil
+<span id="L54" class="ln">    54  </span>		}
+<span id="L55" class="ln">    55  </span>	}
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/outbox/gc.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -10,19 +10,23 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetRecovered(t *testing.T) {
 	t.Parallel()
 
-	// SetRecovered が private な recoveredKey で値を書き込むことを直接検証する
-	// （GetRecovered には依存しない / Set/Get のテストを独立にする）。
-	ctx := SetRecovered(context.Background(), true)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("privateキーへ値を書き込む", func(t *testing.T) {
+			t.Parallel()
+			ctx := SetRecovered(context.Background(), true)
 
-	val := ctx.Value(recoveredKey)
-	v, ok := val.(bool)
-	assert.True(t, ok)
-	assert.Equal(t, true, v)
+			v, ok := ctx.Value(recoveredKey).(bool)
+			require.True(t, ok)
+			assert.Equal(t, true, v)
+		})
+	})
 }
 
 func TestGetRecovered(t *testing.T) {
@@ -38,6 +42,15 @@ func TestGetRecovered(t *testing.T) {
 			val, ok := GetRecovered(ctx)
 			assert.True(t, ok)
 			assert.Equal(t, true, val)
+		})
+
+		t.Run("ゼロ値を設定した場合も未設定と区別してokがtrueになる", func(t *testing.T) {
+			t.Parallel()
+			ctx := SetRecovered(context.Background(), false)
+
+			val, ok := GetRecovered(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, false, val)
 		})
 	})
 

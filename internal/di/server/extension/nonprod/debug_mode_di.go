@@ -22,8 +22,11 @@ func DebugModeModule() fx.Option {
 // provideDebugModeServeConfig は、デバッグモードのサーバー設定を提供します。
 func provideDebugModeServeConfig(appCfg *config.ApplicationConfig) extension.ServeCfgOut {
 	return extension.ServeCfgOut{
-		SrvCfg: func(e *echo.Echo) {
-			debugmode.New(e, appCfg)
+		SrvCfg: extension.SrvCfg{
+			Name: "debugmode",
+			Config: func(e *echo.Echo) {
+				debugmode.New(e, appCfg)
+			},
 		},
 	}
 }

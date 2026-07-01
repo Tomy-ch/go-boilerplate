@@ -118,7 +118,22 @@
 				<dd><a href="#NewJobCore">func NewJobCore() fx.Option</a></dd>
 			
 				
-				<dd><a href="#RunJob">func RunJob() (StartFunc, StopFunc)</a></dd>
+				<dd><a href="#NewOutboxRelayApp">func NewOutboxRelayApp(grace time.Duration) *fx.App</a></dd>
+			
+				
+				<dd><a href="#NewOutboxRelayCore">func NewOutboxRelayCore() fx.Option</a></dd>
+			
+				
+				<dd><a href="#NewWorkerCore">func NewWorkerCore() fx.Option</a></dd>
+			
+				
+				<dd><a href="#RunJob">func RunJob(grace time.Duration) (StartFunc, StopFunc)</a></dd>
+			
+				
+				<dd><a href="#RunOutboxReplay">func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error)</a></dd>
+			
+				
+				<dd><a href="#RunWorker">func RunWorker(grace time.Duration) (StartFunc, StopFunc)</a></dd>
 			
 			
 				
@@ -146,7 +161,11 @@
 			
 				<a href="../../../src/go-boilerplate/internal/di/job.go.html">job.go</a>
 			
+				<a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html">outboxrelay.go</a>
+			
 				<a href="../../../src/go-boilerplate/internal/di/server.go.html">server.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/di/worker.go.html">worker.go</a>
 			
 			</span>
 			</p>
@@ -190,7 +209,7 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
-			</p><h2 id="NewFxEventLogger">func <a href="../../../src/go-boilerplate/internal/di/fx_event_logger.go.html?s=422:481#L6">NewFxEventLogger</a>
+			</p><h2 id="NewFxEventLogger">func <a href="../../../src/go-boilerplate/internal/di/fx_event_logger.go.html?s=319:378#L5">NewFxEventLogger</a>
 				<a class="permalink" href="#NewFxEventLogger">¶</a>
 				
 				
@@ -204,13 +223,13 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
-			</p><h2 id="NewJobCore">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=665:692#L17">NewJobCore</a>
+			</p><h2 id="NewJobCore">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1118:1145#L18">NewJobCore</a>
 				<a class="permalink" href="#NewJobCore">¶</a>
 				
 				
 			</h2>
 			<pre>func NewJobCore() <a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#Option">Option</a></pre>
-			<p>NewJobCore は、ジョブの fx.App インスタンスを作成します。
+			<p>NewJobCore は、ジョブ実行用の fx.App を構成する fx.Option を返します。
 
 			
 			
@@ -218,13 +237,91 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
-			</p><h2 id="RunJob">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1259:1294#L38">RunJob</a>
+			</p><h2 id="NewOutboxRelayApp">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1210:1261#L29">NewOutboxRelayApp</a>
+				<a class="permalink" href="#NewOutboxRelayApp">¶</a>
+				
+				
+			</h2>
+			<pre>func NewOutboxRelayApp(grace <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) *<a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#App">App</a></pre>
+			<p>NewOutboxRelayApp は、relay 常駐プロセス用の fx.App を生成します。
+grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、fx 既定（15s）が停止猶予より
+先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewOutboxRelayCore">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=789:824#L22">NewOutboxRelayCore</a>
+				<a class="permalink" href="#NewOutboxRelayCore">¶</a>
+				
+				
+			</h2>
+			<pre>func NewOutboxRelayCore() <a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>NewOutboxRelayCore は、relay 常駐プロセス用の fx.App を構成する fx.Option を返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewWorkerCore">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=377:407#L7">NewWorkerCore</a>
+				<a class="permalink" href="#NewWorkerCore">¶</a>
+				
+				
+			</h2>
+			<pre>func NewWorkerCore() <a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>NewWorkerCore は、worker 実行用の fx.App を構成する fx.Option を返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RunJob">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1932:1986#L41">RunJob</a>
 				<a class="permalink" href="#RunJob">¶</a>
 				
 				
 			</h2>
-			<pre>func RunJob() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
+			<pre>func RunJob(grace <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
 			<p>RunJob は、ジョブ実行用の開始関数・停止関数を生成して返します。context／タイムアウトの制御は返した関数の呼出側が担います。
+grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
+停止猶予より先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RunOutboxReplay">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1686:1764#L36">RunOutboxReplay</a>
+				<a class="permalink" href="#RunOutboxReplay">¶</a>
+				
+				
+			</h2>
+			<pre>func RunOutboxReplay(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, messageID *<a href="../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../builtin/#int64">int64</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>RunOutboxReplay は、dead 状態の outbox 行を pending へ戻すワンショット実行を行い、
+書き換えた行数と発生したエラーを返します。messageID が nil の場合は全 dead 行を対象とします。
+停止処理のエラーは runErr と errors.Join で結合して返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RunWorker">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=977:1034#L25">RunWorker</a>
+				<a class="permalink" href="#RunWorker">¶</a>
+				
+				
+			</h2>
+			<pre>func RunWorker(grace <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
+			<p>RunWorker は、worker 実行用の開始関数・停止関数を生成して返します。
+grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
+DrainTimeout より先に drain を打ち切らないようにします。
 
 			
 			
@@ -233,12 +330,12 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
-			</p><h2 id="StartFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=395:471#L11">StartFunc</a>
+			</p><h2 id="StartFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=834:910#L12">StartFunc</a>
 				<a class="permalink" href="#StartFunc">¶</a>
 				
 				
 			</h2>
-			<p>StartFunc は、ジョブの開始関数の型を表します。
+			<p>StartFunc は、ジョブを起動して完了通知チャネルを返す関数の型です。返却チャネルはジョブ終了時に error（成功時 nil）を送信した後クローズされます。起動失敗時は専用の閉じ済みチャネルで直接エラーを返します。
 
 			</p><pre>type StartFunc func(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, name <a href="../../../builtin/#string">string</a>, args []<a href="../../../builtin/#string">string</a>) &lt;-chan <a href="../../../builtin/#error">error</a></pre>
 
@@ -256,7 +353,7 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
-			<h2 id="StopFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=541:581#L13">StopFunc</a>
+			<h2 id="StopFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=980:1020#L14">StopFunc</a>
 				<a class="permalink" href="#StopFunc">¶</a>
 				
 				

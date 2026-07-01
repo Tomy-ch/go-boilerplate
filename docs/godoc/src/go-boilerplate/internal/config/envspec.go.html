@@ -59,95 +59,149 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import &#34;time&#34;
 <span id="L4" class="ln">     4  </span>
-<span id="L5" class="ln">     5  </span>type Loader struct {
-<span id="L6" class="ln">     6  </span>	OS            OperatingSystem `envPrefix:&#34;OS_&#34;`
-<span id="L7" class="ln">     7  </span>	App           Application     `envPrefix:&#34;APP_&#34;`
-<span id="L8" class="ln">     8  </span>	Server        Server          `envPrefix:&#34;SERVER_&#34;`
-<span id="L9" class="ln">     9  </span>	Observability Observability   `envPrefix:&#34;OBSERVABILITY_&#34;`
-<span id="L10" class="ln">    10  </span>	Metrics       Metrics         `envPrefix:&#34;METRICS_&#34;`
-<span id="L11" class="ln">    11  </span>	Database      Database        `envPrefix:&#34;DB_&#34;`
-<span id="L12" class="ln">    12  </span>	DBConnection  DBConnection    `envPrefix:&#34;DBCONN_&#34;`
-<span id="L13" class="ln">    13  </span>	Security      Security        `envPrefix:&#34;SECURITY_&#34;`
-<span id="L14" class="ln">    14  </span>	SecureCookie  SecureCookie    `envPrefix:&#34;SECURE_COOKIE_&#34;`
-<span id="L15" class="ln">    15  </span>	Auth          Auth            `envPrefix:&#34;AUTH_&#34;`
-<span id="L16" class="ln">    16  </span>}
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>type OperatingSystem struct {
-<span id="L19" class="ln">    19  </span>	Timezone string `env:&#34;TZ&#34; default:&#34;Asia/Tokyo&#34;`
-<span id="L20" class="ln">    20  </span>}
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>type Application struct {
-<span id="L23" class="ln">    23  </span>	Env             string        `env:&#34;ENV,required&#34;`
-<span id="L24" class="ln">    24  </span>	Name            string        `env:&#34;NAME,required&#34;`
-<span id="L25" class="ln">    25  </span>	Mode            string        `env:&#34;MODE,required&#34;`
-<span id="L26" class="ln">    26  </span>	ShutdownTimeout time.Duration `env:&#34;SHUTDOWN_TIMEOUT,required&#34;`
+<span id="L5" class="ln">     5  </span><span class="comment">// Loader はアプリケーション全体の設定を環境変数から読み込むルートコンテナ。</span>
+<span id="L6" class="ln">     6  </span>type Loader struct {
+<span id="L7" class="ln">     7  </span>	OS            OperatingSystem `envPrefix:&#34;OS_&#34;`
+<span id="L8" class="ln">     8  </span>	App           Application     `envPrefix:&#34;APP_&#34;`
+<span id="L9" class="ln">     9  </span>	Server        Server          `envPrefix:&#34;SERVER_&#34;`
+<span id="L10" class="ln">    10  </span>	Observability Observability   `envPrefix:&#34;OBS_&#34;`
+<span id="L11" class="ln">    11  </span>	Metrics       Metrics         `envPrefix:&#34;METRICS_&#34;`
+<span id="L12" class="ln">    12  </span>	Database      Database        `envPrefix:&#34;DB_&#34;`
+<span id="L13" class="ln">    13  </span>	DBConnection  DBConnection    `envPrefix:&#34;DBCONN_&#34;`
+<span id="L14" class="ln">    14  </span>	Security      Security        `envPrefix:&#34;SECURITY_&#34;`
+<span id="L15" class="ln">    15  </span>	SecureCookie  SecureCookie    `envPrefix:&#34;SECURE_COOKIE_&#34;`
+<span id="L16" class="ln">    16  </span>	Auth          Auth            `envPrefix:&#34;AUTH_&#34;`
+<span id="L17" class="ln">    17  </span>	Worker        Worker          `envPrefix:&#34;WORKER_&#34;`
+<span id="L18" class="ln">    18  </span>	Outbox        Outbox          `envPrefix:&#34;OUTBOX_&#34;`
+<span id="L19" class="ln">    19  </span>}
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// Outbox は transactional outbox relay の設定を保持する。</span>
+<span id="L22" class="ln">    22  </span>type Outbox struct {
+<span id="L23" class="ln">    23  </span>	Endpoint     string        `env:&#34;ENDPOINT&#34;      envDefault:&#34;&#34;`
+<span id="L24" class="ln">    24  </span>	PollInterval time.Duration `env:&#34;POLL_INTERVAL&#34; envDefault:&#34;1s&#34;`
+<span id="L25" class="ln">    25  </span>	ErrorBackoff time.Duration `env:&#34;ERROR_BACKOFF&#34; envDefault:&#34;5s&#34;`
+<span id="L26" class="ln">    26  </span>	BatchSize    int           `env:&#34;BATCH_SIZE&#34;    envDefault:&#34;100&#34;`
 <span id="L27" class="ln">    27  </span>}
 <span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span>type Server struct {
-<span id="L30" class="ln">    30  </span>	Host              string        `env:&#34;HOST,required&#34;`
-<span id="L31" class="ln">    31  </span>	Port              int           `env:&#34;PORT,required&#34;`
-<span id="L32" class="ln">    32  </span>	ReadHeaderTimeout time.Duration `env:&#34;READ_HEADER_TIMEOUT,required&#34;`
-<span id="L33" class="ln">    33  </span>	ReadTimeout       time.Duration `env:&#34;READ_TIMEOUT,required&#34;`
-<span id="L34" class="ln">    34  </span>	WriteTimeout      time.Duration `env:&#34;WRITE_TIMEOUT,required&#34;`
-<span id="L35" class="ln">    35  </span>	IdleTimeout       time.Duration `env:&#34;IDLE_TIMEOUT,required&#34;`
-<span id="L36" class="ln">    36  </span>}
-<span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>type Metrics struct {
-<span id="L39" class="ln">    39  </span>	Host     string `env:&#34;HOST,required&#34;`
-<span id="L40" class="ln">    40  </span>	Port     int    `env:&#34;PORT,required&#34;`
-<span id="L41" class="ln">    41  </span>	UserName string `env:&#34;USERNAME,required&#34;`
-<span id="L42" class="ln">    42  </span>	Password string `env:&#34;PASSWORD,required&#34;`
-<span id="L43" class="ln">    43  </span>}
-<span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>type Observability struct {
-<span id="L46" class="ln">    46  </span>	Enabled           bool  `env:&#34;ENABLED,required&#34;`
-<span id="L47" class="ln">    47  </span>	MaskedDBQueryArgs bool  `env:&#34;MASKED_DB_QUERY_ARGS,required&#34;`
-<span id="L48" class="ln">    48  </span>	TargetStatusCodes []int `env:&#34;TARGET_STATUS_CODES,required&#34;  envSeparator:&#34;,&#34;`
-<span id="L49" class="ln">    49  </span>}
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span>type Database struct {
-<span id="L52" class="ln">    52  </span>	Driver                 string        `env:&#34;DRIVER,required&#34;`
-<span id="L53" class="ln">    53  </span>	Host                   string        `env:&#34;HOST,required&#34;`
-<span id="L54" class="ln">    54  </span>	Port                   int           `env:&#34;PORT,required&#34;`
-<span id="L55" class="ln">    55  </span>	User                   string        `env:&#34;USER,required&#34;`
-<span id="L56" class="ln">    56  </span>	Password               string        `env:&#34;PASSWORD,required&#34;`
-<span id="L57" class="ln">    57  </span>	Name                   string        `env:&#34;NAME,required&#34;`
-<span id="L58" class="ln">    58  </span>	SSLMode                string        `env:&#34;SSL_MODE,required&#34;`
-<span id="L59" class="ln">    59  </span>	PingTimeout            time.Duration `env:&#34;PING_TIMEOUT,required&#34;`
-<span id="L60" class="ln">    60  </span>	SlowQueryWarnThreshold time.Duration `env:&#34;SLOW_QUERY_WARN_THRESHOLD,required&#34;`
-<span id="L61" class="ln">    61  </span>}
-<span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span>type DBConnection struct {
-<span id="L64" class="ln">    64  </span>	MaxConns    int32         `env:&#34;MAX_CONNS,required&#34;`
-<span id="L65" class="ln">    65  </span>	MinConns    int32         `env:&#34;MIN_CONNS,required&#34;`
-<span id="L66" class="ln">    66  </span>	MaxLifetime time.Duration `env:&#34;MAX_LIFETIME,required&#34;`
-<span id="L67" class="ln">    67  </span>	MaxIdleTime time.Duration `env:&#34;MAX_IDLE_TIME,required&#34;`
-<span id="L68" class="ln">    68  </span>}
-<span id="L69" class="ln">    69  </span>
-<span id="L70" class="ln">    70  </span>type Security struct {
-<span id="L71" class="ln">    71  </span>	AllowedOrigins        []string      `env:&#34;ALLOWED_ORIGINS,required&#34;         envSeparator:&#34;,&#34;`
-<span id="L72" class="ln">    72  </span>	CIDR                  string        `env:&#34;CIDR,required&#34;`
-<span id="L73" class="ln">    73  </span>	ContentTypeNosniff    string        `env:&#34;CONTENT_TYPE_NOSNIFF,required&#34;`
-<span id="L74" class="ln">    74  </span>	XFrameOptions         string        `env:&#34;X_FRAME_OPTIONS,required&#34;`
-<span id="L75" class="ln">    75  </span>	HSTSMaxAge            time.Duration `env:&#34;HSTS_MAX_AGE,required&#34;`
-<span id="L76" class="ln">    76  </span>	HSTSExcludeSubdomains bool          `env:&#34;HSTS_EXCLUDE_SUBDOMAINS,required&#34;`
-<span id="L77" class="ln">    77  </span>	HSTSPreloadEnabled    bool          `env:&#34;HSTS_PRELOAD_ENABLED,required&#34;`
-<span id="L78" class="ln">    78  </span>	ReferrerPolicy        string        `env:&#34;REFERRER_POLICY,required&#34;`
-<span id="L79" class="ln">    79  </span>	BcryptCost            int           `env:&#34;BCRYPT_COST,required&#34;`
-<span id="L80" class="ln">    80  </span>}
-<span id="L81" class="ln">    81  </span>
-<span id="L82" class="ln">    82  </span>type SecureCookie struct {
-<span id="L83" class="ln">    83  </span>	Secure   *bool  `env:&#34;SECURE&#34;`
-<span id="L84" class="ln">    84  </span>	SameSite string `env:&#34;SAME_SITE&#34;`
-<span id="L85" class="ln">    85  </span>	Domain   string `env:&#34;DOMAIN&#34;`
-<span id="L86" class="ln">    86  </span>}
-<span id="L87" class="ln">    87  </span>
-<span id="L88" class="ln">    88  </span>type Auth struct {
-<span id="L89" class="ln">    89  </span>	CookieName          string `env:&#34;COOKIE_NAME,required&#34;`
-<span id="L90" class="ln">    90  </span>	HeaderName          string `env:&#34;HEADER_NAME,required&#34;`
-<span id="L91" class="ln">    91  </span>	AllowedHeaderBearer bool   `env:&#34;ALLOWED_HEADER_BEARER,required&#34;`
-<span id="L92" class="ln">    92  </span>}
-<span id="L93" class="ln">    93  </span>
+<span id="L29" class="ln">    29  </span><span class="comment">// Worker は worker engine の engine-core 設定（broker 非依存）を保持する。</span>
+<span id="L30" class="ln">    30  </span>type Worker struct {
+<span id="L31" class="ln">    31  </span>	Concurrency               int           `env:&#34;CONCURRENCY&#34;                  envDefault:&#34;4&#34;`
+<span id="L32" class="ln">    32  </span>	MaxInFlight               int           `env:&#34;MAX_IN_FLIGHT&#34;                envDefault:&#34;8&#34;`
+<span id="L33" class="ln">    33  </span>	BatchSize                 int           `env:&#34;BATCH_SIZE&#34;                   envDefault:&#34;4&#34;`
+<span id="L34" class="ln">    34  </span>	ExtendInterval            time.Duration `env:&#34;EXTEND_INTERVAL&#34;              envDefault:&#34;0s&#34;`
+<span id="L35" class="ln">    35  </span>	DrainTimeout              time.Duration `env:&#34;DRAIN_TIMEOUT&#34;                envDefault:&#34;30s&#34;`
+<span id="L36" class="ln">    36  </span>	ReceiveCountWarnThreshold int           `env:&#34;RECEIVE_COUNT_WARN_THRESHOLD&#34; envDefault:&#34;5&#34;`
+<span id="L37" class="ln">    37  </span>	CircuitFailureThreshold   int           `env:&#34;CIRCUIT_FAILURE_THRESHOLD&#34;    envDefault:&#34;10&#34;`
+<span id="L38" class="ln">    38  </span>	CircuitOpenBackoffInitial time.Duration `env:&#34;CIRCUIT_OPEN_BACKOFF_INITIAL&#34; envDefault:&#34;1s&#34;`
+<span id="L39" class="ln">    39  </span>	CircuitOpenBackoffMax     time.Duration `env:&#34;CIRCUIT_OPEN_BACKOFF_MAX&#34;     envDefault:&#34;30s&#34;`
+<span id="L40" class="ln">    40  </span>	CircuitHalfOpenProbe      int           `env:&#34;CIRCUIT_HALF_OPEN_PROBE&#34;      envDefault:&#34;1&#34;`
+<span id="L41" class="ln">    41  </span>	HealthListenAddr          string        `env:&#34;HEALTH_LISTEN_ADDR&#34;           envDefault:&#34;:8081&#34;`
+<span id="L42" class="ln">    42  </span>	ProgressStaleAfter        time.Duration `env:&#34;PROGRESS_STALE_AFTER&#34;         envDefault:&#34;60s&#34;`
+<span id="L43" class="ln">    43  </span>	NackBackoffInitial        time.Duration `env:&#34;NACK_BACKOFF_INITIAL&#34;         envDefault:&#34;1s&#34;`
+<span id="L44" class="ln">    44  </span>	NackBackoffMax            time.Duration `env:&#34;NACK_BACKOFF_MAX&#34;             envDefault:&#34;30s&#34;`
+<span id="L45" class="ln">    45  </span>}
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span><span class="comment">// OperatingSystem は OS レベルの設定を保持する。</span>
+<span id="L48" class="ln">    48  </span>type OperatingSystem struct {
+<span id="L49" class="ln">    49  </span>	Timezone string `env:&#34;TZ&#34; envDefault:&#34;Asia/Tokyo&#34;`
+<span id="L50" class="ln">    50  </span>}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span><span class="comment">// Application はアプリケーション識別・動作モードおよびシャットダウン制御に関する設定を保持する。</span>
+<span id="L53" class="ln">    53  </span>type Application struct {
+<span id="L54" class="ln">    54  </span>	Env             string        `env:&#34;ENV,required&#34;`
+<span id="L55" class="ln">    55  </span>	Name            string        `env:&#34;NAME,required&#34;`
+<span id="L56" class="ln">    56  </span>	Mode            string        `env:&#34;MODE,required&#34;`
+<span id="L57" class="ln">    57  </span>	LogLevel        string        `env:&#34;LOG_LEVEL,required&#34;`
+<span id="L58" class="ln">    58  </span>	ShutdownTimeout time.Duration `env:&#34;SHUTDOWN_TIMEOUT&#34;   envDefault:&#34;45s&#34;`
+<span id="L59" class="ln">    59  </span>}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span><span class="comment">// Server は HTTP サーバーのバインドアドレスおよび各種タイムアウトに関する設定を保持する。</span>
+<span id="L62" class="ln">    62  </span>type Server struct {
+<span id="L63" class="ln">    63  </span>	Host              string        `env:&#34;HOST,required&#34;`
+<span id="L64" class="ln">    64  </span>	Port              int           `env:&#34;PORT,required&#34;`
+<span id="L65" class="ln">    65  </span>	ReadHeaderTimeout time.Duration `env:&#34;READ_HEADER_TIMEOUT&#34; envDefault:&#34;5s&#34;`
+<span id="L66" class="ln">    66  </span>	ReadTimeout       time.Duration `env:&#34;READ_TIMEOUT&#34;        envDefault:&#34;10s&#34;`
+<span id="L67" class="ln">    67  </span>	WriteTimeout      time.Duration `env:&#34;WRITE_TIMEOUT&#34;       envDefault:&#34;65s&#34;`
+<span id="L68" class="ln">    68  </span>	IdleTimeout       time.Duration `env:&#34;IDLE_TIMEOUT&#34;        envDefault:&#34;60s&#34;`
+<span id="L69" class="ln">    69  </span>	BodyLimitMB       int           `env:&#34;BODY_LIMIT_MB&#34;       envDefault:&#34;5&#34;`
+<span id="L70" class="ln">    70  </span>	RequestTimeout    time.Duration `env:&#34;REQUEST_TIMEOUT&#34;     envDefault:&#34;60s&#34;`
+<span id="L71" class="ln">    71  </span>}
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span><span class="comment">// Metrics はメトリクスエンドポイント（Prometheus 等）への接続情報と認証情報を保持する。</span>
+<span id="L74" class="ln">    74  </span>type Metrics struct {
+<span id="L75" class="ln">    75  </span>	Host     string `env:&#34;HOST,required&#34;`
+<span id="L76" class="ln">    76  </span>	Port     int    `env:&#34;PORT,required&#34;`
+<span id="L77" class="ln">    77  </span>	UserName string `env:&#34;USERNAME,required&#34;`
+<span id="L78" class="ln">    78  </span>	Password string `env:&#34;PASSWORD,required&#34;`
+<span id="L79" class="ln">    79  </span>}
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span><span class="comment">// Observability は OTLP exporter 設定（trace/metric/log の送出先種別・エンドポイント・プロトコル）、</span>
+<span id="L82" class="ln">    82  </span><span class="comment">// DBクエリ引数マスク設定、およびトレース対象とする HTTP ステータスコード一覧を保持する。</span>
+<span id="L83" class="ln">    83  </span>type Observability struct {
+<span id="L84" class="ln">    84  </span>	TracesExporter    string `env:&#34;TRACES_EXPORTER&#34;`
+<span id="L85" class="ln">    85  </span>	MetricsExporter   string `env:&#34;METRICS_EXPORTER&#34;`
+<span id="L86" class="ln">    86  </span>	LogsExporter      string `env:&#34;LOGS_EXPORTER&#34;`
+<span id="L87" class="ln">    87  </span>	OTLPEndpoint      string `env:&#34;OTLP_ENDPOINT&#34;`
+<span id="L88" class="ln">    88  </span>	OTLPProtocol      string `env:&#34;OTLP_PROTOCOL&#34;                 envDefault:&#34;http/protobuf&#34;`
+<span id="L89" class="ln">    89  </span>	MaskedDBQueryArgs bool   `env:&#34;MASKED_DB_QUERY_ARGS,required&#34;`
+<span id="L90" class="ln">    90  </span>	TargetStatusCodes []int  `env:&#34;TARGET_STATUS_CODES,required&#34;                             envSeparator:&#34;,&#34;`
+<span id="L91" class="ln">    91  </span>}
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span><span class="comment">// Database はデータベースへの接続先情報（ドライバ・ホスト・認証情報・SSL）および</span>
+<span id="L94" class="ln">    94  </span><span class="comment">// 接続確認タイムアウトやスロークエリ警告閾値を保持する。</span>
+<span id="L95" class="ln">    95  </span>type Database struct {
+<span id="L96" class="ln">    96  </span>	Driver                 string        `env:&#34;DRIVER&#34;                    envDefault:&#34;pgx&#34;`
+<span id="L97" class="ln">    97  </span>	Host                   string        `env:&#34;HOST,required&#34;`
+<span id="L98" class="ln">    98  </span>	Port                   int           `env:&#34;PORT,required&#34;`
+<span id="L99" class="ln">    99  </span>	User                   string        `env:&#34;USER,required&#34;`
+<span id="L100" class="ln">   100  </span>	Password               string        `env:&#34;PASSWORD,required&#34;`
+<span id="L101" class="ln">   101  </span>	Name                   string        `env:&#34;NAME,required&#34;`
+<span id="L102" class="ln">   102  </span>	SSLMode                string        `env:&#34;SSL_MODE,required&#34;`
+<span id="L103" class="ln">   103  </span>	PingTimeout            time.Duration `env:&#34;PING_TIMEOUT,required&#34;`
+<span id="L104" class="ln">   104  </span>	SlowQueryWarnThreshold time.Duration `env:&#34;SLOW_QUERY_WARN_THRESHOLD&#34; envDefault:&#34;500ms&#34;`
+<span id="L105" class="ln">   105  </span>	StatementTimeout       time.Duration `env:&#34;STATEMENT_TIMEOUT&#34;         envDefault:&#34;30s&#34;`
+<span id="L106" class="ln">   106  </span>	LockTimeout            time.Duration `env:&#34;LOCK_TIMEOUT&#34;              envDefault:&#34;10s&#34;`
+<span id="L107" class="ln">   107  </span>	TxMaxRetries           int           `env:&#34;TX_MAX_RETRIES&#34;            envDefault:&#34;3&#34;`
+<span id="L108" class="ln">   108  </span>	TxRetryBaseBackoff     time.Duration `env:&#34;TX_RETRY_BASE_BACKOFF&#34;     envDefault:&#34;5ms&#34;`
+<span id="L109" class="ln">   109  </span>	TxRetryMaxBackoff      time.Duration `env:&#34;TX_RETRY_MAX_BACKOFF&#34;      envDefault:&#34;100ms&#34;`
+<span id="L110" class="ln">   110  </span>}
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span><span class="comment">// DBConnection はコネクションプールの上限・下限数とコネクションの最大生存時間・最大アイドル時間を保持する。</span>
+<span id="L113" class="ln">   113  </span>type DBConnection struct {
+<span id="L114" class="ln">   114  </span>	MaxConns    int32         `env:&#34;MAX_CONNS&#34;     envDefault:&#34;10&#34;`
+<span id="L115" class="ln">   115  </span>	MinConns    int32         `env:&#34;MIN_CONNS&#34;     envDefault:&#34;5&#34;`
+<span id="L116" class="ln">   116  </span>	MaxLifetime time.Duration `env:&#34;MAX_LIFETIME&#34;  envDefault:&#34;30m&#34;`
+<span id="L117" class="ln">   117  </span>	MaxIdleTime time.Duration `env:&#34;MAX_IDLE_TIME&#34; envDefault:&#34;10m&#34;`
+<span id="L118" class="ln">   118  </span>}
+<span id="L119" class="ln">   119  </span>
+<span id="L120" class="ln">   120  </span><span class="comment">// Security は CORS 許可オリジン・CIDR 制限・セキュリティヘッダー（HSTS・X-Frame-Options 等）・</span>
+<span id="L121" class="ln">   121  </span><span class="comment">// Referrer Policy および bcrypt コストパラメータを保持する。</span>
+<span id="L122" class="ln">   122  </span>type Security struct {
+<span id="L123" class="ln">   123  </span>	AllowedOrigins        []string      `env:&#34;ALLOWED_ORIGINS,required&#34;         envSeparator:&#34;,&#34;`
+<span id="L124" class="ln">   124  </span>	CIDR                  string        `env:&#34;CIDR,required&#34;`
+<span id="L125" class="ln">   125  </span>	ContentTypeNosniff    string        `env:&#34;CONTENT_TYPE_NOSNIFF,required&#34;`
+<span id="L126" class="ln">   126  </span>	XFrameOptions         string        `env:&#34;X_FRAME_OPTIONS,required&#34;`
+<span id="L127" class="ln">   127  </span>	HSTSMaxAge            time.Duration `env:&#34;HSTS_MAX_AGE,required&#34;`
+<span id="L128" class="ln">   128  </span>	HSTSExcludeSubdomains bool          `env:&#34;HSTS_EXCLUDE_SUBDOMAINS,required&#34;`
+<span id="L129" class="ln">   129  </span>	HSTSPreloadEnabled    bool          `env:&#34;HSTS_PRELOAD_ENABLED,required&#34;`
+<span id="L130" class="ln">   130  </span>	ReferrerPolicy        string        `env:&#34;REFERRER_POLICY,required&#34;`
+<span id="L131" class="ln">   131  </span>	BcryptCost            int           `env:&#34;BCRYPT_COST,required&#34;`
+<span id="L132" class="ln">   132  </span>}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span><span class="comment">// SecureCookie はセキュアクッキーの属性（Secure / SameSite / Domain）の上書き設定を保持する。</span>
+<span id="L135" class="ln">   135  </span>type SecureCookie struct {
+<span id="L136" class="ln">   136  </span>	Secure   *bool  `env:&#34;SECURE&#34;`
+<span id="L137" class="ln">   137  </span>	SameSite string `env:&#34;SAME_SITE&#34;`
+<span id="L138" class="ln">   138  </span>	Domain   string `env:&#34;DOMAIN&#34;`
+<span id="L139" class="ln">   139  </span>}
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span><span class="comment">// Auth は認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持する。</span>
+<span id="L142" class="ln">   142  </span>type Auth struct {
+<span id="L143" class="ln">   143  </span>	CookieName          string `env:&#34;COOKIE_NAME,required&#34;`
+<span id="L144" class="ln">   144  </span>	HeaderName          string `env:&#34;HEADER_NAME,required&#34;`
+<span id="L145" class="ln">   145  </span>	AllowedHeaderBearer bool   `env:&#34;ALLOWED_HEADER_BEARER,required&#34;`
+<span id="L146" class="ln">   146  </span>}
+<span id="L147" class="ln">   147  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/envspec.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

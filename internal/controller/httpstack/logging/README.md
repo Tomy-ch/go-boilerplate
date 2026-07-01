@@ -4,11 +4,8 @@ English | [日本語](README.ja.md)
 
 HTTP request/response structured logging middleware with trace context.
 
-## Public API
-
-|Function / Constant|Description|
-|---|---|
-|`Middleware(logger, lf)`|Return Echo middleware that logs requests and responses with trace IDs, latency, and params|
-|`MinStatusError`|Minimum HTTP status code treated as error (500)|
-
 Skips ops endpoints (`/health`, `/metrics`, etc.).
+
+## Role
+
+Per-request access logging is a cross-cutting concern that every endpoint shares, so embedding it in handlers would scatter and duplicate it. Isolating it as a middleware produces one consistent structured log line per request — correlated with the trace context — while letting handlers stay focused on business logic. High-volume ops endpoints are skipped to keep the logs signal-rich.

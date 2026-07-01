@@ -21,8 +21,8 @@ make new-migrate-create_orders
 これにより、連番付きの up / down ペアが自動生成されます。
 
 ```text
-000010_create_orders.up.sql
-000010_create_orders.down.sql
+000011_create_orders.up.sql
+000011_create_orders.down.sql
 ```
 
 ## ファイル命名規則

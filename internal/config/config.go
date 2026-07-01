@@ -2,20 +2,24 @@
 package config
 
 import (
-	"fmt"
 	"net"
 	"net/url"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
 	"golang.org/x/crypto/bcrypt"
+
+	"go-boilerplate/pkg/xerrors"
 )
+
+// exporterNone は、送出を明示的に無効化する exporter 値。
+const exporterNone = "none"
 
 // New は、アプリケーションの設定を初期化します。
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[Loader]()
 	if err != nil {
-		return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
+		return nil, xerrors.Join(ErrFailedToParseConfig, err)
 	}
 
 	if err := validateConfig(cfg); err != nil {
@@ -37,6 +41,7 @@ func New() (*Config, error) {
 			env:             cfg.App.Env,
 			name:            cfg.App.Name,
 			mode:            cfg.App.Mode,
+			logLevel:        cfg.App.LogLevel,
 			shutdownTimeout: cfg.App.ShutdownTimeout,
 		},
 		server: ServerConfig{
@@ -46,6 +51,8 @@ func New() (*Config, error) {
 			readTimeout:       cfg.Server.ReadTimeout,
 			writeTimeout:      cfg.Server.WriteTimeout,
 			idleTimeout:       cfg.Server.IdleTimeout,
+			bodyLimitMB:       cfg.Server.BodyLimitMB,
+			requestTimeout:    cfg.Server.RequestTimeout,
 		},
 		metrics: MetricsConfig{
 			host:     cfg.Metrics.Host,
@@ -54,7 +61,11 @@ func New() (*Config, error) {
 			password: cfg.Metrics.Password,
 		},
 		observability: ObservabilityConfig{
-			enabled:             cfg.Observability.Enabled,
+			tracesExporter:      cfg.Observability.TracesExporter,
+			metricsExporter:     cfg.Observability.MetricsExporter,
+			logsExporter:        cfg.Observability.LogsExporter,
+			otlpEndpoint:        cfg.Observability.OTLPEndpoint,
+			otlpProtocol:        cfg.Observability.OTLPProtocol,
 			maskedDBQueryArgs:   cfg.Observability.MaskedDBQueryArgs,
 			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
 		},
@@ -68,6 +79,11 @@ func New() (*Config, error) {
 			sslMode:                cfg.Database.SSLMode,
 			pingTimeout:            cfg.Database.PingTimeout,
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
+			statementTimeout:       cfg.Database.StatementTimeout,
+			lockTimeout:            cfg.Database.LockTimeout,
+			txMaxRetries:           cfg.Database.TxMaxRetries,
+			txRetryBaseBackoff:     cfg.Database.TxRetryBaseBackoff,
+			txRetryMaxBackoff:      cfg.Database.TxRetryMaxBackoff,
 		},
 		dbconnection: DBConnectionConfig{
 			maxConns:    cfg.DBConnection.MaxConns,
@@ -95,6 +111,28 @@ func New() (*Config, error) {
 			cookieName:          cfg.Auth.CookieName,
 			headerName:          cfg.Auth.HeaderName,
 			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
+		},
+		worker: WorkerConfig{
+			concurrency:               cfg.Worker.Concurrency,
+			maxInFlight:               cfg.Worker.MaxInFlight,
+			batchSize:                 cfg.Worker.BatchSize,
+			extendInterval:            cfg.Worker.ExtendInterval,
+			drainTimeout:              cfg.Worker.DrainTimeout,
+			receiveCountWarnThreshold: cfg.Worker.ReceiveCountWarnThreshold,
+			circuitFailureThreshold:   cfg.Worker.CircuitFailureThreshold,
+			circuitOpenBackoffInitial: cfg.Worker.CircuitOpenBackoffInitial,
+			circuitOpenBackoffMax:     cfg.Worker.CircuitOpenBackoffMax,
+			circuitHalfOpenProbe:      cfg.Worker.CircuitHalfOpenProbe,
+			healthListenAddr:          cfg.Worker.HealthListenAddr,
+			progressStaleAfter:        cfg.Worker.ProgressStaleAfter,
+			nackBackoffInitial:        cfg.Worker.NackBackoffInitial,
+			nackBackoffMax:            cfg.Worker.NackBackoffMax,
+		},
+		outbox: OutboxConfig{
+			endpoint:     cfg.Outbox.Endpoint,
+			pollInterval: cfg.Outbox.PollInterval,
+			errorBackoff: cfg.Outbox.ErrorBackoff,
+			batchSize:    cfg.Outbox.BatchSize,
 		},
 	}, nil
 }
@@ -133,6 +171,11 @@ func validateApplicationConfig(appCfg Application) error {
 	if appCfg.Mode != DevelopmentMode && appCfg.Mode != ProductionMode {
 		return ErrInvalidAppMode
 	}
+	switch appCfg.LogLevel {
+	case LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError:
+	default:
+		return ErrInvalidLogLevel
+	}
 	return nil
 }
 
@@ -168,6 +211,10 @@ func validateServerConfig(srvCfg Server) error {
 
 	if srvCfg.ReadHeaderTimeout > srvCfg.ReadTimeout {
 		return ErrReadHeaderTimeoutExceedsReadTimeout
+	}
+
+	if srvCfg.WriteTimeout < srvCfg.RequestTimeout {
+		return ErrWriteTimeoutBelowRequestTimeout
 	}
 	return nil
 }
@@ -224,7 +271,7 @@ func validateSecurityConfig(secCfg Security) error {
 func parseCIDR(s string) (*net.IPNet, error) {
 	_, cidr, err := net.ParseCIDR(s)
 	if err != nil {
-		return nil, fmt.Errorf("%w : %w", ErrFailedToParseCIDR, err)
+		return nil, xerrors.Join(ErrFailedToParseCIDR, err)
 	}
 	return cidr, nil
 }
@@ -244,4 +291,10 @@ func buildStatusCodeSet(codes []int) map[int]bool {
 		m[code] = true
 	}
 	return m
+}
+
+// isActiveExporter は、exporter 指定が送出を行う有効値かどうかを返します。
+// 空文字（未設定）と "none" は無効（送出しない）とみなします。
+func isActiveExporter(v string) bool {
+	return v != "" && !strings.EqualFold(v, exporterNone)
 }

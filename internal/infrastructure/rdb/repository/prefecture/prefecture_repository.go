@@ -1,11 +1,11 @@
-// Package prefecture は、都道府県関連のドメインを提供します。
+// Package prefecture は、都道府県リポジトリ（prefecture.Repository）の RDB 実装を提供します。
 package prefecture
 
 import (
 	"context"
 
 	"go-boilerplate/internal/domain/prefecture"
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
@@ -13,12 +13,13 @@ import (
 )
 
 type repository struct {
-	db     loggingdb.DBProvider
+	db     driver.DatabaseDriver
 	tracer observability.LayerTracer
 }
 
+// New は、prefecture.Repository の RDB 実装を生成して返します。
 func New(
-	db loggingdb.DBProvider,
+	db driver.DatabaseDriver,
 	tf observability.TracerFactory,
 ) prefecture.Repository {
 	return &repository{
@@ -32,7 +33,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Pr
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 	row, err := db.GetPrefectureDomainByID(ctx, id)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
@@ -50,7 +51,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 	rows, err := db.GetPrefectureDomainByIDs(ctx, ids)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
@@ -77,7 +78,7 @@ func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.P
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 	row, err := db.GetPrefectureDomainByName(ctx, name)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)

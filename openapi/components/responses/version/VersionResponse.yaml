@@ -10,16 +10,21 @@ properties:
   version:
     type: string
     description: アプリケーションのバージョン
+    example: "1.5.0"
   revision:
     type: string
     description: アプリケーションのリビジョン
+    example: "a1b2c3d"
   buildDate:
     type: string
     format: date-time
     description: アプリケーションのビルド日時
+    example: "2026-01-01T00:00:00Z"
   environment:
     type: string
     description: 実行環境
+    example: "production"
   service:
     type: string
     description: サービス名
+    example: "go-boilerplate"

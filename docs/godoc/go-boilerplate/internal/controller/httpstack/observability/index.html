@@ -106,6 +106,9 @@
 				
 				<dd><a href="#Middleware">func Middleware(serviceName string) echo.MiddlewareFunc</a></dd>
 			
+				
+				<dd><a href="#PassthroughMiddleware">func PassthroughMiddleware() echo.MiddlewareFunc</a></dd>
+			
 			
 			
 			</dl>
@@ -140,6 +143,20 @@
 			</h2>
 			<pre>func Middleware(serviceName <a href="../../../../../builtin/#string">string</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
 			<p>Middleware は、指定したサービス名で Echo 用の OTel ミドルウェアを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="PassthroughMiddleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/observability/observability.go.html?s=586:634#L5">PassthroughMiddleware</a>
+				<a class="permalink" href="#PassthroughMiddleware">¶</a>
+				
+				
+			</h2>
+			<pre>func PassthroughMiddleware() echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
+			<p>PassthroughMiddleware は、リクエストを次のハンドラへそのまま渡す素通しミドルウェアを返します。
 
 			
 			

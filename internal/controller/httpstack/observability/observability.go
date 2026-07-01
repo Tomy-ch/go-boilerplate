@@ -10,3 +10,10 @@ import (
 func Middleware(serviceName string) echo.MiddlewareFunc {
 	return otelecho.Middleware(serviceName)
 }
+
+// PassthroughMiddleware は、リクエストを次のハンドラへそのまま渡す素通しミドルウェアを返します。
+func PassthroughMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return next
+	}
+}

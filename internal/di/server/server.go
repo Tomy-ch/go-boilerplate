@@ -38,6 +38,8 @@ func MiddlewareModule() fx.Option {
 		// Middleware Modules
 		inbound.IPExtractorModule(),
 		inbound.URIModule(),
+		inbound.TimeoutModule(),
+		inbound.BodyLimitModule(),
 		inbound.OpenAPIModule(),
 		outbound.ErrorHandlerModule(),
 		outbound.ForceJSONModule(),
@@ -48,6 +50,7 @@ func MiddlewareModule() fx.Option {
 		instrumentation.RequestIDModule(),
 		instrumentation.LoggingModule(),
 		instrumentation.ObservabilityModule(),
+		instrumentation.HTTPRedMetricsModule(),
 		nonprod.DebugModeModule(),
 		fx.Provide(
 			extension.ApplyExtends,

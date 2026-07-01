@@ -63,18 +63,18 @@
 <span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/config&#34;
 <span id="L7" class="ln">     7  </span>
 <span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>func TestMiddleware(t *testing.T) {
-<span id="L13" class="ln">    13  </span>	t.Parallel()
-<span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>	cfg := config.MockConfigForTest(t)
-<span id="L16" class="ln">    16  </span>	secCfg := config.NewSecurityConfig(cfg)
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>	mw := Middleware(secCfg)
-<span id="L19" class="ln">    19  </span>	assert.Equal(t, securityPriority, mw.Middleware.Priority)
-<span id="L20" class="ln">    20  </span>	require.NotNil(t, mw.Middleware.Middleware)
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>func TestMiddleware(t *testing.T) {
+<span id="L12" class="ln">    12  </span>	t.Parallel()
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>	cfg := config.MockConfigForTest(t)
+<span id="L15" class="ln">    15  </span>	secCfg := config.NewSecurityConfig(cfg)
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>	mw := Middleware(secCfg)
+<span id="L18" class="ln">    18  </span>	assert.Equal(t, securityPriority, mw.Middleware.Priority)
+<span id="L19" class="ln">    19  </span>	assert.NotNil(t, mw.Middleware.Middleware)
+<span id="L20" class="ln">    20  </span>	assert.Equal(t, &#34;security&#34;, mw.Middleware.Name)
 <span id="L21" class="ln">    21  </span>}
 <span id="L22" class="ln">    22  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/di/server/extension/security/security_di_test.go.html?m=text">View as plain text</a></p>

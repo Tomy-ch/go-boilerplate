@@ -78,7 +78,7 @@
 <span id="L21" class="ln">    21  </span>	errorLevelBoundHTTPStatus = 500
 <span id="L22" class="ln">    22  </span>)
 <span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span><span class="comment">// New は、Echo に HTTP エラーハンドラを登録します（DI 配線用エントリ・戻り値なし）。</span>
+<span id="L24" class="ln">    24  </span><span class="comment">// New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。</span>
 <span id="L25" class="ln">    25  </span>func New(e *echo.Echo, log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) {
 <span id="L26" class="ln">    26  </span>	e.HTTPErrorHandler = NewHTTPErrorHandler(log, lf, obsCfg)
 <span id="L27" class="ln">    27  </span>}

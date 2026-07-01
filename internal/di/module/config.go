@@ -24,6 +24,8 @@ func ConfigModule() fx.Option {
 			config.NewSecurityConfig,
 			config.NewSecureCookieConfig,
 			config.NewAuthConfig,
+			config.NewWorkerConfig,
+			config.NewOutboxConfig,
 		),
 		fx.Provide(
 			config.NewTimeLocation,

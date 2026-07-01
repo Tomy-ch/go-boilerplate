@@ -20,6 +20,8 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 |`fix-collation`|`fixcollation/`|`cmd/fix_collation.go`|PostgreSQL の照合順序バージョン不一致を修正|
 |`dump-schema`|`dumpschema/`|`cmd/dump_schema.go`|DB スキーマをダンプして整形|
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|DML ディレクトリの SQL ファイルを種別ごとにマージ|
+|`worker`|`worker/`|`cmd/worker.go`|登録済み worker を起動（`worker <worker-name> [args...]`）|
+|`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|outbox relay を起動。`replay` サブコマンドは dead 行を pending へ戻す|
 
 ## 構造
 
@@ -37,7 +39,9 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
 ├── job/                 # RunJobWith
 ├── fixcollation/        # RunFix
 ├── dumpschema/          # RunDump / NewGenerator
-└── mergedml/            # RunMerge / NewGenerator
+├── mergedml/            # RunMerge / NewGenerator
+├── worker/              # RunWorkerWith / NewHealthServer
+└── outbox/              # RunRelay / RunReplayWith
 ```
 
 `cmd/commands.go` の `registerCommands` で全サブコマンドを Cobra のルートコマンドに登録します。
@@ -63,7 +67,8 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
   外部バイナリ（`pg_dump` / `psql`）を実行せず、DB も開かない**。
 - **薄い `cmd/` 殻はカバレッジゲートから除外**（`gen|cmd|mock|apperror|scripts`）。その実行時の正しさは
   CI boot チェックで担保: `app-di-startup-check`（serve → `/ready`）、`job-boot-check`（job dispatch）、
-  `migration-check`（up/down 往復）、`gen-*-artifacts-check`（codegen の dogfooding）——いずれも実 Postgres。
+  `worker-boot-check`（worker dispatch）、`migration-check`（up/down 往復）、`gen-*-artifacts-check`
+  （codegen の dogfooding）——いずれも実 Postgres。
   DB アクセス挙動は実 Postgres に当てた repository テスト（`internal/infrastructure/rdb/testkit`）で担保。
 
 ### コマンドを追加するとき

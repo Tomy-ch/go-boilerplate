@@ -2,10 +2,8 @@
 
 English | [日本語](README.ja.md)
 
-Forces response Content-Type to `application/json`.
+Forces the response Content-Type to `application/json` when it is unset or `text/html`.
 
-## Public API
+## Role
 
-|Function|Description|
-|---|---|
-|`Middleware()`|Return Echo middleware that overrides Content-Type when response is HTML or has no Content-Type|
+This API contract speaks JSON exclusively, but individual handlers and error paths can leave the response Content-Type unset or defaulted to `text/html`. A single middleware normalizes those cases to `application/json` (an already-explicit Content-Type such as `text/csv` is left untouched), so JSON responses advertise a uniform content type without each handler having to set it.

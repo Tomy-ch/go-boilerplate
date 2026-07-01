@@ -1,0 +1,116 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>redmetrics - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack">httpstack</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics">redmetrics</a>/<span class="text-muted">status.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/controller/httpstack/redmetrics">go-boilerplate/internal/controller/httpstack/redmetrics</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package redmetrics
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;net/http&#34;
+<span id="L5" class="ln">     5  </span>	&#34;strconv&#34;
+<span id="L6" class="ln">     6  </span>)
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span><span class="comment">// statusClassUnknown は、分類できない status code に対する status_class label の値です。</span>
+<span id="L9" class="ln">     9  </span>const statusClassUnknown = &#34;unknown&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span><span class="comment">// statusCodeUnknown は、確定できない status code に対する status_code label の値です。</span>
+<span id="L12" class="ln">    12  </span>const statusCodeUnknown = &#34;unknown&#34;
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span><span class="comment">// normalizeStatus は、未確定（0）の status code を 500 に補正します。</span>
+<span id="L15" class="ln">    15  </span><span class="comment">// error handler / recovery 後でも status が確定しないケースのフォールバックです。</span>
+<span id="L16" class="ln">    16  </span>func normalizeStatus(code int) int {
+<span id="L17" class="ln">    17  </span>	if code == 0 {
+<span id="L18" class="ln">    18  </span>		return http.StatusInternalServerError
+<span id="L19" class="ln">    19  </span>	}
+<span id="L20" class="ln">    20  </span>	return code
+<span id="L21" class="ln">    21  </span>}
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// statusClass は、status code を 1xx〜5xx の固定 enum に分類します。</span>
+<span id="L24" class="ln">    24  </span><span class="comment">// 範囲外の値は unknown に丸めます。</span>
+<span id="L25" class="ln">    25  </span>func statusClass(code int) string {
+<span id="L26" class="ln">    26  </span>	switch {
+<span id="L27" class="ln">    27  </span>	case code &gt;= 100 &amp;&amp; code &lt; 200:
+<span id="L28" class="ln">    28  </span>		return &#34;1xx&#34;
+<span id="L29" class="ln">    29  </span>	case code &gt;= 200 &amp;&amp; code &lt; 300:
+<span id="L30" class="ln">    30  </span>		return &#34;2xx&#34;
+<span id="L31" class="ln">    31  </span>	case code &gt;= 300 &amp;&amp; code &lt; 400:
+<span id="L32" class="ln">    32  </span>		return &#34;3xx&#34;
+<span id="L33" class="ln">    33  </span>	case code &gt;= 400 &amp;&amp; code &lt; 500:
+<span id="L34" class="ln">    34  </span>		return &#34;4xx&#34;
+<span id="L35" class="ln">    35  </span>	case code &gt;= 500 &amp;&amp; code &lt; 600:
+<span id="L36" class="ln">    36  </span>		return &#34;5xx&#34;
+<span id="L37" class="ln">    37  </span>	default:
+<span id="L38" class="ln">    38  </span>		return statusClassUnknown
+<span id="L39" class="ln">    39  </span>	}
+<span id="L40" class="ln">    40  </span>}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span><span class="comment">// statusCodeLabel は、status code を label 用の文字列に変換します。</span>
+<span id="L43" class="ln">    43  </span><span class="comment">// 0 以下は unknown に丸めます。</span>
+<span id="L44" class="ln">    44  </span>func statusCodeLabel(code int) string {
+<span id="L45" class="ln">    45  </span>	if code &lt;= 0 {
+<span id="L46" class="ln">    46  </span>		return statusCodeUnknown
+<span id="L47" class="ln">    47  </span>	}
+<span id="L48" class="ln">    48  </span>	return strconv.Itoa(code)
+<span id="L49" class="ln">    49  </span>}
+<span id="L50" class="ln">    50  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/status.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

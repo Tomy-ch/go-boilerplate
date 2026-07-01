@@ -11,6 +11,7 @@ import (
 // RunnerIn は、Runnerの入力パラメータを表します。
 type RunnerIn struct {
 	fx.In
+
 	Jobs []job.Job `group:"jobs"`
 }
 

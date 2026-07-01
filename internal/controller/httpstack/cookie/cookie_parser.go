@@ -2,8 +2,6 @@ package cookie
 
 import (
 	"strings"
-
-	"go-boilerplate/pkg/ptr"
 )
 
 const keyValueAttrSep = "="
@@ -35,7 +33,7 @@ func parseSetCookie(raw string) (string, string, *cookieAttrs, bool) {
 		}
 		k, v, isKV := splitAttr(p)
 		if isKV {
-			upsertAttr(attrs, k, ptr.To(v))
+			upsertAttr(attrs, k, new(v))
 		} else {
 			upsertAttr(attrs, k, nil)
 		}
@@ -45,11 +43,11 @@ func parseSetCookie(raw string) (string, string, *cookieAttrs, bool) {
 
 // splitAttr は 属性文字列を key/value に分割します（`=` 前後の空白は除去）。
 func splitAttr(s string) (string, string, bool) {
-	eq := strings.Index(s, keyValueAttrSep)
-	if eq < 0 {
+	before, after, ok := strings.Cut(s, keyValueAttrSep)
+	if !ok {
 		return strings.TrimSpace(s), "", false
 	}
-	return strings.TrimSpace(s[:eq]), strings.TrimSpace(s[eq+1:]), true
+	return strings.TrimSpace(before), strings.TrimSpace(after), true
 }
 
 // upsertAttr は 属性を追加/更新します（order と kv のキー集合を一致させる単一経路）。
@@ -72,7 +70,7 @@ func setBoolAttr(attrs *cookieAttrs, key string, on bool) {
 
 // setKVAttr は key/value 属性を設定します。
 func setKVAttr(attrs *cookieAttrs, key, val string) {
-	upsertAttr(attrs, key, ptr.To(val))
+	upsertAttr(attrs, key, new(val))
 }
 
 // delAttr は 属性を削除します。

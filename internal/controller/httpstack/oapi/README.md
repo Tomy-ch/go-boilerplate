@@ -14,7 +14,7 @@ flowchart TB
     Skipper{"Skipper"}
     Validate["OpenAPI Schema Validation"]
     Auth["Authentication (auth/)"]
-    Authn["Authn → Echo Context"]
+    Authn["Authn → Request Context slot"]
     Handler["Handler"]
 
     Request --> Skipper
@@ -26,18 +26,8 @@ flowchart TB
 
 1. **Skipper** checks if the request is an ops endpoint — if so, validation is bypassed
 2. **Validator** validates the request against the OpenAPI spec (path, params, body, content-type)
-3. **Auth** extracts the token, authenticates via boundary `Authenticator`, and stores `Authn` in Echo context
+3. **Auth** extracts the token, authenticates via boundary `Authenticator`, and writes `Authn` into the request-context slot
 4. Handler receives a validated, authenticated request
-
-## Public API
-
-|Function|Description|
-|---|---|
-|`Middleware(spec, skipper, authFunc)`|Return Echo middleware combining validation + authentication|
-
-### Key Implementation Detail
-
-Before delegating to the oapi-codegen validator, the middleware injects the Echo context into `request.Context()` via `ctxhelper.SetEchoContext`. This allows the authentication function (which receives a plain `context.Context`) to access the Echo context and store `Authn`.
 
 ## Subpackages
 
@@ -54,7 +44,7 @@ Before delegating to the oapi-codegen validator, the middleware injects the Echo
 |`kin-openapi/openapi3`|OpenAPI 3.x schema model|
 |`kin-openapi/openapi3filter`|Request validation and auth filter|
 |`oapi-codegen/echo-middleware`|Echo adapter for OpenAPI validation|
-|`ctxhelper`|Echo context injection/extraction|
+|`ctxhelper`|Authn slot injection & get/set on the request context|
 |`boundary/auth`|Authentication interface and `Authn` value object|
 
 ## Notes
@@ -62,4 +52,5 @@ Before delegating to the oapi-codegen validator, the middleware injects the Echo
 - OpenAPI validation covers path parameters, query parameters, request body, and content-type
 - Authentication is only triggered for endpoints with `security` defined in the OpenAPI spec
 - The `Skipper` ensures ops endpoints are never validated or authenticated
+- Before delegating to the oapi-codegen validator, the middleware injects an empty `Authn` slot into `request.Context()` via `ctxhelper.WithAuthn`, so the authentication function (which receives only a plain `context.Context`) can write the authenticated `Authn` into that slot via `ctxhelper.SetAuthn`; downstream handlers read it via `ctxhelper.GetAuthn`
 - All errors from this layer are caught by `errorhandler` and converted to appropriate HTTP responses

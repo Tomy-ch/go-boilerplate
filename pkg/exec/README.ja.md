@@ -4,14 +4,6 @@
 
 外部プロセス実行の薄いラッパーを提供し、利用側が `os/exec` に直接依存せずインターフェース経由で扱えるようにします。
 
-## 公開 API
-
-|型 / メソッド|説明|
-|---|---|
-|`Runner`|コマンド実行を抽象化するインターフェース|
-|`OS`|`os/exec` を用いた `Runner` 実装|
-|`Runner.Output(ctx, dir, env, name, args) ([]byte, error)`|`dir` をカレントにコマンドを実行し標準出力を返す（標準エラーは `os.Stderr` へ）|
-
 ## ラップ対象
 
 - `os/exec.CommandContext`

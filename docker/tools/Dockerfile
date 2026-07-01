@@ -76,8 +76,7 @@ CMD []
 # Node ツールボックス：redocly / markdownlint-cli2 を mise.toml のバージョンで提供
 # Node ランタイムは公式 node:X.Y-alpine（musl 対応のプリビルド）を使用。
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
-# 補助スクリプト (gen-portal-docs.cjs / gen-docs-json.cjs) が参照する js-yaml は
-# ローカル node_modules にインストールしておく
+# 補助スクリプトが依存する npm パッケージをローカル node_modules にインストールしておく
 # ------------------------------
 FROM node:24.14-alpine AS node_tools
 
@@ -104,6 +103,7 @@ RUN mise trust mise.toml
 
 RUN mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
+    && mise install npm:@commitlint/cli \
     && rm -rf /root/.cache /root/.npm
 
 # scripts の依存を in-tree（/app/scripts/node_modules）へ install する

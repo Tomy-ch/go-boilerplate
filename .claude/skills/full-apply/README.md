@@ -1,52 +1,60 @@
 # full-apply
 
-`full-verify`（read-only の全体検証）の**対になる「適用」スキル**。
-`full-verify` が `tmp/reviews/` に出した指摘を、重大度順に上から実際のコードへ反映していく。
+The **"apply" skill that is the counterpart** to `full-verify` (read-only whole-repository
+verification). It reflects the findings `full-verify` emitted into `tmp/reviews/` onto the actual
+code, top-down by severity.
 
 ```txt
-full-verify  ──生成──▶  tmp/reviews/mod_*.md / architecture.md / _index.md
+full-verify  ──generates──▶  tmp/reviews/mod_*.md / architecture.md / _index.md
                                    │
                                    ▼
-full-apply   ──適用──▶  コード修正 + コミット
-                          ├─ tmp/reviews/working.md          （台帳: 完了/保留と commit ハッシュ）
-                          └─ tmp/reviews/mod_*.md 冒頭コメント （各指摘の対応状況 + commit ハッシュ）
+full-apply   ──applies──────▶  code fixes + commits
+                          ├─ tmp/reviews/working.md          (ledger: done/deferred and commit hash)
+                          └─ tmp/reviews/mod_*.md top comment (per-finding status + commit hash)
 ```
 
-## 役割
+See [README.ja.md](README.ja.md) for the Japanese version.
 
-- 指摘を 1 件ずつ「実コードを読む → 設計判断が不要か怪しいかを判定 → 直す/保留 →
-  検証(build/test) → コミット → 台帳と mod へ記録」のループで処理する。
-- **怪しい（設計判断・方針選択・公開 API 破壊・影響範囲不明）指摘はスキップ（保留）**し、
-  理由を残す。直すのは「設計判断が不要な、明確かつ局所的」なものに限る。
-- 中断・`/clear` に強い: `working.md` 台帳と各 `mod_*.md` の対応状況コメントから
-  未処理分を再構成して再開できる。
+## Role
 
-## 使い方
+- Processes findings one at a time in the loop "read the actual code → judge whether it needs no
+  design decision or is suspicious → fix/defer → verify (build/test) → commit → record into the
+  ledger and mod."
+- **Skips (defers) suspicious findings** (design decision / policy choice / public-API break / unknown
+  impact) and leaves a reason. It only fixes the "clear and local, no-design-decision" ones.
+- Robust to interruption / `/clear`: the unprocessed part can be reconstructed and resumed from the
+  `working.md` ledger and each `mod_*.md`'s status comment.
+
+## Usage
 
 ```text
-/full-apply                          # tmp/reviews/ を対象、Low まで全件、ディレクトリ単位で停止
+/full-apply                          # target tmp/reviews/, all up to Low, stop per directory
 /full-apply --reviews-dir tmp/reviews-config
-/full-apply --severity high          # High までで止める
-/full-apply --pace all               # しきい値まで連続実行
-/full-apply --dry-run                # 判定だけ（直さない）
+/full-apply --severity high          # stop at up to High
+/full-apply --pace all               # run continuously up to the threshold
+/full-apply --dry-run                # judgment only (no fixing)
 ```
 
-起動時に、対象ディレクトリ・重大度しきい値・停止粒度を一度だけ確認する。
+At launch, confirm target directories, severity threshold, and stop granularity once.
 
-## 設計上のルール（要点）
+## Design Rules (Key Points)
 
-- 処理順は **Critical → High → Medium → Low**、各帯はパス順。`_index.md` は途中で
-  切れていることがあるため、優先順は `mod_*.md` の `重大度` から都度再構成する。
-- **衝突は先勝**（先に処理した修正を優先、後発は再評価して保留 or 解消扱い）。
-- **同一 md 内の連動指摘**は公開 API 非破壊の範囲でまとめて 1 コミット。
-- **保護対象は変更しない**: 生成物（`*.gen.go` / `*.sql.go` / `*_mock.go` /
-  `openapi.gen.yaml` / `docs/` 生成物）・`AGENTS.md`・deny 配下。生成物指摘は生成元修正か保留。
-- スコープ既定は CLAUDE.md の AI 改変範囲（`internal/` `pkg/` `database/` `openapi/`）。
-  `cmd/` `scripts/` `internal/cli/` `internal/system/` を含めるにはユーザーの明示同意が要る。
-- コミットは日本語＋ `Co-Authored-By`、push はしない、保護ブランチ直コミットしない。
+- Processing order is **Critical → High → Medium → Low**, each band by path order. Because `_index.md`
+  may be cut off midway, the priority is reconstructed each time from the `重大度` (severity) in
+  `mod_*.md`.
+- **Conflicts are first-come-first-served** (prefer the earlier fix; re-evaluate the later one and
+  treat it as deferred or resolved).
+- **Linked findings within the same md** are fixed together in one commit within the bounds of not
+  breaking the public API.
+- **Do not change protected targets**: generated artifacts (`*.gen.go` / `*.sql.go` / `*_mock.go` /
+  `openapi.gen.yaml` / `docs/` generated content), `AGENTS.md`, under deny. For a generated-artifact
+  finding, fix the source or defer.
+- The default scope is CLAUDE.md's AI modification range (`internal/` `pkg/` `database/` `openapi/`).
+  Including `cmd/` `scripts/` `internal/cli/` `internal/system/` requires the user's explicit consent.
+- Commits are in Japanese + `Co-Authored-By`, no push, no direct commit to a protected branch.
 
-## go ツールチェーンの注意
+## Note on the go Toolchain
 
-このリポジトリは mise 管理。環境によっては goenv の shim が `go` を先取りしたり、
-`mise.toml` のピンとインストール済みバージョンがずれて `go`/`make` が失敗することがある。
-その場合は mise 管理下の go を明示利用する（SKILL.md 手順 0 参照）。
+This repository is mise-managed. Depending on the environment, a goenv shim may preempt `go`, or the
+pin in `mise.toml` may diverge from the installed version and make `go`/`make` fail. In that case, use
+the mise-managed go explicitly (see SKILL.md step 0).

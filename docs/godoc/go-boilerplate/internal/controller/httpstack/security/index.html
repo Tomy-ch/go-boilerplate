@@ -133,13 +133,13 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/security/security.go.html?s=312:378#L2">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/security/security.go.html?s=443:509#L2">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
 			</h2>
 			<pre>func Middleware(secCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#SecurityConfig">SecurityConfig</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
-			<p>Middleware は、セキュリティミドルウェアを構築します。
+			<p>Middleware は、Content-Type-Options / Referrer-Policy / X-Frame-Options / HSTS を設定する Echo セキュリティミドルウェアを返します。各値は SecurityConfig から取得します。
 
 			
 			

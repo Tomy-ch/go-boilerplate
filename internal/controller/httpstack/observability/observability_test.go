@@ -6,52 +6,68 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
-	"go-boilerplate/internal/observability"
-
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	mw := Middleware("test-service")
-	require.NotNil(t, mw)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ミドルウェアが生成される", func(t *testing.T) {
+			t.Parallel()
+
+			mw := Middleware("test-service")
+			assert.NotNil(t, mw)
+		})
+	})
+}
+
+func TestPassthroughMiddleware(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("後段ハンドラへ素通しし200を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			e.Use(PassthroughMiddleware())
+			e.GET("/", func(c echo.Context) error {
+				return c.NoContent(http.StatusOK)
+			})
+
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+		})
+	})
 }
 
 func TestMiddleware_Integration(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
-	e.Use(Middleware("test-service"))
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+		t.Run("未登録ルートは404を返す", func(t *testing.T) {
+			t.Parallel()
 
-	require.NotNil(t, rec)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
+			e := echo.New()
+			e.Use(Middleware("test-service"))
 
-func TestTracerProvider(t *testing.T) {
-	t.Parallel()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
 
-	ctrl := gomock.NewController(t)
-
-	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
-	var shutdownFunc func(context.Context) error
-	dummy := func(context.Context) error { return nil }
-	mockReg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		shutdownFunc = args[0].(func(context.Context) error)
-	}).Times(1)
-
-	tp := observability.TracerProvider(mockReg)
-	require.NotNil(t, tp)
-	require.NotNil(t, shutdownFunc)
-
-	require.NoError(t, shutdownFunc(context.Background()))
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+		})
+	})
 }

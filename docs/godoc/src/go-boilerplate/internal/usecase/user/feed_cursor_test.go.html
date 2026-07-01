@@ -1,0 +1,185 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>user - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../src/go-boilerplate/internal/usecase/user">user</a>/<span class="text-muted">feed_cursor_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/usecase/user">go-boilerplate/internal/usecase/user</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package user
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
+<span id="L5" class="ln">     5  </span>	&#34;time&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/domain/user&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/usecase/tools/paging&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L13" class="ln">    13  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>func TestDecodeFeedCursor(t *testing.T) {
+<span id="L17" class="ln">    17  </span>	t.Parallel()
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	validID := uuid.NewTestFromSalt(t, &#34;feed_cursor_id&#34;)
+<span id="L20" class="ln">    20  </span>	validTime := time.Date(2025, time.January, 2, 3, 4, 5, 600000000, time.UTC)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L23" class="ln">    23  </span>		t.Parallel()
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>		t.Run(&#34;有効な2キーのカーソルはFeedCursorへ復号される&#34;, func(t *testing.T) {
+<span id="L26" class="ln">    26  </span>			t.Parallel()
+<span id="L27" class="ln">    27  </span>			encoded := paging.EncodeCursor(validTime.Format(time.RFC3339Nano), validID.String())
+<span id="L28" class="ln">    28  </span>			cursor, err := paging.NewCursor(&amp;encoded, nil)
+<span id="L29" class="ln">    29  </span>			require.NoError(t, err)
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>			actual, decErr := decodeFeedCursor(cursor)
+<span id="L32" class="ln">    32  </span>			require.NoError(t, decErr)
+<span id="L33" class="ln">    33  </span>			require.NotNil(t, actual)
+<span id="L34" class="ln">    34  </span>			assert.Equal(t, validTime, actual.CreatedAt())
+<span id="L35" class="ln">    35  </span>			assert.Equal(t, validID, actual.ID())
+<span id="L36" class="ln">    36  </span>		})
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>		t.Run(&#34;先頭ページ(カーソル無し)の場合はnilを返す&#34;, func(t *testing.T) {
+<span id="L39" class="ln">    39  </span>			t.Parallel()
+<span id="L40" class="ln">    40  </span>			cursor, err := paging.NewCursor(nil, nil)
+<span id="L41" class="ln">    41  </span>			require.NoError(t, err)
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>			actual, decErr := decodeFeedCursor(cursor)
+<span id="L44" class="ln">    44  </span>			require.NoError(t, decErr)
+<span id="L45" class="ln">    45  </span>			assert.Nil(t, actual)
+<span id="L46" class="ln">    46  </span>		})
+<span id="L47" class="ln">    47  </span>	})
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L50" class="ln">    50  </span>		t.Parallel()
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>		t.Run(&#34;キー数が2でない場合はErrInvalidArgumentを返す&#34;, func(t *testing.T) {
+<span id="L53" class="ln">    53  </span>			t.Parallel()
+<span id="L54" class="ln">    54  </span>			encoded := paging.EncodeCursor(&#34;only-one-key&#34;)
+<span id="L55" class="ln">    55  </span>			cursor, err := paging.NewCursor(&amp;encoded, nil)
+<span id="L56" class="ln">    56  </span>			require.NoError(t, err)
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>			actual, decErr := decodeFeedCursor(cursor)
+<span id="L59" class="ln">    59  </span>			require.ErrorIs(t, decErr, apperror.ErrInvalidArgument)
+<span id="L60" class="ln">    60  </span>			require.Nil(t, actual)
+<span id="L61" class="ln">    61  </span>		})
+<span id="L62" class="ln">    62  </span>
+<span id="L63" class="ln">    63  </span>		t.Run(&#34;created_atがRFC3339Nanoでない場合はErrInvalidArgumentを返す&#34;, func(t *testing.T) {
+<span id="L64" class="ln">    64  </span>			t.Parallel()
+<span id="L65" class="ln">    65  </span>			encoded := paging.EncodeCursor(&#34;not-a-time&#34;, validID.String())
+<span id="L66" class="ln">    66  </span>			cursor, err := paging.NewCursor(&amp;encoded, nil)
+<span id="L67" class="ln">    67  </span>			require.NoError(t, err)
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>			actual, decErr := decodeFeedCursor(cursor)
+<span id="L70" class="ln">    70  </span>			require.ErrorIs(t, decErr, apperror.ErrInvalidArgument)
+<span id="L71" class="ln">    71  </span>			require.Nil(t, actual)
+<span id="L72" class="ln">    72  </span>		})
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>		t.Run(&#34;idがUUIDでない場合はErrInvalidArgumentを返す&#34;, func(t *testing.T) {
+<span id="L75" class="ln">    75  </span>			t.Parallel()
+<span id="L76" class="ln">    76  </span>			encoded := paging.EncodeCursor(validTime.Format(time.RFC3339Nano), &#34;not-a-uuid&#34;)
+<span id="L77" class="ln">    77  </span>			cursor, err := paging.NewCursor(&amp;encoded, nil)
+<span id="L78" class="ln">    78  </span>			require.NoError(t, err)
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>			actual, decErr := decodeFeedCursor(cursor)
+<span id="L81" class="ln">    81  </span>			require.ErrorIs(t, decErr, apperror.ErrInvalidArgument)
+<span id="L82" class="ln">    82  </span>			require.Nil(t, actual)
+<span id="L83" class="ln">    83  </span>		})
+<span id="L84" class="ln">    84  </span>	})
+<span id="L85" class="ln">    85  </span>}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>func TestEncodeFeedCursor(t *testing.T) {
+<span id="L88" class="ln">    88  </span>	t.Parallel()
+<span id="L89" class="ln">    89  </span>
+<span id="L90" class="ln">    90  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L91" class="ln">    91  </span>		t.Parallel()
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>		t.Run(&#34;末尾行のソートキーから生成したカーソルは同じcreated_at/idへ復号できる&#34;, func(t *testing.T) {
+<span id="L94" class="ln">    94  </span>			t.Parallel()
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>			id := uuid.NewTestFromSalt(t, &#34;encode_feed_cursor_id&#34;)
+<span id="L97" class="ln">    97  </span>			createdAt := time.Date(2025, time.March, 4, 5, 6, 7, 800000000, time.UTC)
+<span id="L98" class="ln">    98  </span>			last, err := user.New(
+<span id="L99" class="ln">    99  </span>				id,
+<span id="L100" class="ln">   100  </span>				&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
+<span id="L101" class="ln">   101  </span>				uuid.NewTestFromSalt(t, &#34;encode_feed_cursor_pref&#34;), &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, createdAt, createdAt, nil,
+<span id="L102" class="ln">   102  </span>			)
+<span id="L103" class="ln">   103  </span>			require.NoError(t, err)
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>			encoded := encodeFeedCursor(last)
+<span id="L106" class="ln">   106  </span>			require.NotEmpty(t, encoded)
+<span id="L107" class="ln">   107  </span>
+<span id="L108" class="ln">   108  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, nil)
+<span id="L109" class="ln">   109  </span>			require.NoError(t, cErr)
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>			decoded, decErr := decodeFeedCursor(cursor)
+<span id="L112" class="ln">   112  </span>			require.NoError(t, decErr)
+<span id="L113" class="ln">   113  </span>			require.NotNil(t, decoded)
+<span id="L114" class="ln">   114  </span>			assert.Equal(t, createdAt, decoded.CreatedAt())
+<span id="L115" class="ln">   115  </span>			assert.Equal(t, id, decoded.ID())
+<span id="L116" class="ln">   116  </span>		})
+<span id="L117" class="ln">   117  </span>	})
+<span id="L118" class="ln">   118  </span>}
+<span id="L119" class="ln">   119  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/user/feed_cursor_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

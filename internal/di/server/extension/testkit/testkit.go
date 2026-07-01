@@ -10,7 +10,6 @@ import (
 )
 
 // RequireProvidesOne は、与えたモジュール群が指定 group に要素をちょうど1件 provide することを検証する。
-// fx.NopLogger は構成時のログ出力を抑えるだけで、検証結果には影響しない。
 func RequireProvidesOne[T any](t *testing.T, group string, opts ...fx.Option) {
 	t.Helper()
 

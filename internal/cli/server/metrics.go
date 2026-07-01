@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	_ "net/http/pprof" //nolint:gosec // G108: 非本番環境でのプロファイリング用にインポート
 	"strconv"
@@ -10,6 +9,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -53,7 +53,7 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
 // logListenError は、補助サーバーの ListenAndServe 戻り値を判定し、正常停止(ErrServerClosed)以外の
 // エラーのみをログ記録します。bind 失敗等でアプリ本体を巻き込まないよう、panic せずログに留めます。
 func logListenError(logger logging.Logger, err error) {
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err != nil && !xerrors.Is(err, http.ErrServerClosed) {
 		logger.Named("metrics.ListenAndServe").Error("metrics server error", logging.Error(logging.ErrorKey, err))
 	}
 }

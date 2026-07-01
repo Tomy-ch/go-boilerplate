@@ -18,12 +18,11 @@ import (
 func Test_repository_FindByID(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
-	_ = testkit.NewTestDB(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 
-	repo := &repository{tracer: lt, db: loggingDB}
+	repo := &repository{tracer: lt, db: testDB}
 
 	seededID, err := uuid.Parse("eaabee3e-3b7a-4f61-8fa9-030944625e92")
 	require.NoError(t, err)
@@ -53,15 +52,16 @@ func Test_repository_FindByID(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest,tparallel // 同一行のロック競合回避のためサブテストを直列実行する
 func Test_repository_Update(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	_ = testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 
-	repo := &repository{tracer: lt, db: loggingDB}
+	repo := &repository{tracer: lt, db: testDB}
 
 	firstID, err := uuid.Parse("eaabee3e-3b7a-4f61-8fa9-030944625e92")
 	require.NoError(t, err)

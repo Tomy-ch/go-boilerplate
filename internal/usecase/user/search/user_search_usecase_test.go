@@ -12,8 +12,6 @@ import (
 	"go-boilerplate/internal/usecase/user/search/query"
 	mock_query "go-boilerplate/internal/usecase/user/search/query/mock"
 
-	"go-boilerplate/pkg/ptr"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -22,17 +20,21 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
-	tf := observability.NewNoopTracerFactory(t)
-	userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	expected := &usecase{
-		tracer: tf.Usecase(),
-		userQS: userQS,
-	}
-	actual := New(tf, userQS)
+		ctrl := gomock.NewController(t)
+		tf := observability.NewNoopTracerFactory(t)
+		userQS := mock_query.NewMockUserSearchQueryService(ctrl)
 
-	assert.Equal(t, expected, actual)
+		expected := &usecase{
+			tracer: tf.Usecase(),
+			userQS: userQS,
+		}
+		actual := New(tf, userQS)
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func Test_usecase_ListUsersByKeyword(t *testing.T) {
@@ -48,7 +50,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			expected := query.UserSearchResults{
@@ -63,7 +65,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 			}
 
 			keyword := "Grace Lee"
-			active := ptr.To(true)
+			active := new(true)
 
 			keywords := strings.Split(keyword, " ")
 
@@ -82,7 +84,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 			}
 
 			filter := &SearchParams{
-				Keyword: ptr.To(keyword),
+				Keyword: new(keyword),
 				Active:  active,
 			}
 
@@ -101,11 +103,11 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			keyword := "Grace Lee"
-			active := ptr.To(true)
+			active := new(true)
 
 			keywords := strings.Split(keyword, " ")
 
@@ -124,7 +126,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 			}
 
 			filter := &SearchParams{
-				Keyword: ptr.To(keyword),
+				Keyword: new(keyword),
 				Active:  active,
 			}
 
@@ -138,7 +140,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
@@ -179,7 +181,7 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 
 			expectedCount := int64(10)
 
-			active := ptr.To(true)
+			active := new(true)
 			keyword := "Grace Lee"
 			keywords := strings.Split(keyword, " ")
 
@@ -194,7 +196,7 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 
 			filter := &SearchParams{
 				Active:  active,
-				Keyword: ptr.To(keyword),
+				Keyword: new(keyword),
 			}
 
 			actualCount, err := u.CountUsersByKeyword(ctx, filter)
@@ -221,7 +223,7 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 
 			expectedErr := testkit.ExpectedDBError()
 
-			active := ptr.To(true)
+			active := new(true)
 			keyword := "Grace Lee"
 			keywords := strings.Split(keyword, " ")
 
@@ -236,7 +238,7 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 
 			filter := &SearchParams{
 				Active:  active,
-				Keyword: ptr.To(keyword),
+				Keyword: new(keyword),
 			}
 
 			actualCount, err := u.CountUsersByKeyword(ctx, filter)
@@ -261,14 +263,14 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 	ctx := context.Background()
 	page := 1
 	perPage := 100
-	p, err := paging.NewPagingFrom1Based(&page, &perPage)
+	p, err := paging.NewPageFrom1Based(&page, &perPage)
 	require.NoError(t, err)
 
-	active := ptr.To(true)
+	active := new(true)
 	keyword := "Grace Lee"
 	keywords := strings.Split(keyword, " ")
 	searchFilter := &query.UserSearchFilter{Active: active, Keywords: keywords}
-	filter := &SearchParams{Keyword: ptr.To(keyword), Active: active}
+	filter := &SearchParams{Keyword: new(keyword), Active: active}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()

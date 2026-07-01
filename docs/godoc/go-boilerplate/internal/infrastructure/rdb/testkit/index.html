@@ -106,9 +106,6 @@
 				
 				<dd><a href="#NewTestDB">func NewTestDB(t *testing.T) driver.DatabaseDriver</a></dd>
 			
-				
-				<dd><a href="#NewTestLoggingProvider">func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider</a></dd>
-			
 			
 				
 				<dd><a href="#TransactionRunner">type TransactionRunner</a></dd>
@@ -144,7 +141,7 @@
 		
 			
 			
-			<h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1439:1489#L33">NewTestDB</a>
+			<h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1333:1383#L32">NewTestDB</a>
 				<a class="permalink" href="#NewTestDB">¶</a>
 				
 				
@@ -156,30 +153,17 @@
 			
 
 		
-			
-			
-			</p><h2 id="NewTestLoggingProvider">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1629:1691#L39">NewTestLoggingProvider</a>
-				<a class="permalink" href="#NewTestLoggingProvider">¶</a>
-				
-				
-			</h2>
-			<pre>func NewTestLoggingProvider(t *<a href="../../../../../testing/">testing</a>.<a href="../../../../../testing/#T">T</a>) <a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/loggingdb/">loggingdb</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/loggingdb/#DBProvider">DBProvider</a></pre>
-			<p>NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
-
-			
-			
-
-		
 		
 			
 			
-			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1087:1163#L22">TransactionRunner</a>
+			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=981:1057#L21">TransactionRunner</a>
 				<a class="permalink" href="#TransactionRunner">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type TransactionRunner interface {
+			<p>TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。
+
+			</p><pre>type TransactionRunner interface {
     WithinTx(fn func(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>))
 }</pre>
 
@@ -193,7 +177,7 @@
 
 			
 				
-				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=2163:2224#L54">NewTestTransactionRunner</a>
+				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1529:1590#L38">NewTestTransactionRunner</a>
 					<a class="permalink" href="#NewTestTransactionRunner">¶</a>
 					
 					

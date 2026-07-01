@@ -2,7 +2,6 @@ package dumpschema
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"go-boilerplate/internal/logging"
 	mock_exec "go-boilerplate/pkg/exec/mock"
 	mock_fs "go-boilerplate/pkg/fs/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +48,11 @@ func TestGenerator_dumpSchema(t *testing.T) {
 			runner := mock_exec.NewMockRunner(ctrl)
 
 			out := []byte("CREATE TABLE users (id int);\n")
-			runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(out, nil)
+			// DSN を先頭に dumpSubArgs を連結した引数と、PGPASSWORD を含む env が
+			// そのまま runner へ渡ることを具体値で検証する。
+			wantEnv := []string{"PGPASSWORD=pw"}
+			wantArgs := []string{"postgres://dsn", "--schema-only", "--no-owner", "--no-privileges", "--format=plain"}
+			runner.EXPECT().Output(gomock.Any(), testWorkDir, wantEnv, "pg_dump", wantArgs).Return(out, nil)
 			fs.EXPECT().WriteFile(schemaAbs, out, os.FileMode(schemaFilePerm)).Return(nil)
 
 			g := newTestGenerator(t, fs, runner)
@@ -65,7 +69,7 @@ func TestGenerator_dumpSchema(t *testing.T) {
 			fs := mock_fs.NewMockFS(ctrl)
 			runner := mock_exec.NewMockRunner(ctrl)
 
-			runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("pg_dump failed"))
+			runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, xerrors.New("pg_dump failed"))
 
 			g := newTestGenerator(t, fs, runner)
 			require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn", "pw"))
@@ -78,7 +82,7 @@ func TestGenerator_dumpSchema(t *testing.T) {
 			runner := mock_exec.NewMockRunner(ctrl)
 
 			runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("x"), nil)
-			fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("write failed"))
+			fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New("write failed"))
 
 			g := newTestGenerator(t, fs, runner)
 			require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn", "pw"))
@@ -125,6 +129,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 			assert.NotContains(t, got, "\\connect")
 			assert.NotContains(t, got, "Dumped from database version")
 			assert.NotContains(t, got, "Dumped by pg_dump version")
+			assert.NotContains(t, got, "\n\n")
 		})
 	})
 
@@ -136,7 +141,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_fs.NewMockFS(ctrl)
 
-			fs.EXPECT().ReadFile(gomock.Any()).Return(nil, errors.New("read failed"))
+			fs.EXPECT().ReadFile(gomock.Any()).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
 			require.Error(t, g.sanitizeSchemaInPlace())
@@ -148,7 +153,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 			fs := mock_fs.NewMockFS(ctrl)
 
 			fs.EXPECT().ReadFile(gomock.Any()).Return([]byte("CREATE TABLE x (id int);\n"), nil)
-			fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("write failed"))
+			fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New("write failed"))
 
 			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
 			require.Error(t, g.sanitizeSchemaInPlace())
@@ -214,7 +219,7 @@ func TestRunDump(t *testing.T) {
 			runner := mock_exec.NewMockRunner(ctrl)
 
 			g := newTestGenerator(t, fs, runner)
-			loadDSN := func() (string, string, error) { return "", "", errors.New("config failed") }
+			loadDSN := func() (string, string, error) { return "", "", xerrors.New("config failed") }
 			require.Error(t, RunDump(context.Background(), g, loadDSN))
 		})
 
@@ -224,7 +229,7 @@ func TestRunDump(t *testing.T) {
 			fs := mock_fs.NewMockFS(ctrl)
 			runner := mock_exec.NewMockRunner(ctrl)
 
-			runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(nil, errors.New("pg_dump failed"))
+			runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(nil, xerrors.New("pg_dump failed"))
 
 			g := newTestGenerator(t, fs, runner)
 			loadDSN := func() (string, string, error) { return "postgres://dsn", "pw", nil }
@@ -241,7 +246,7 @@ func TestRunDump(t *testing.T) {
 			runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(dumped, nil)
 			fs.EXPECT().WriteFile(schemaAbs, dumped, os.FileMode(schemaFilePerm)).Return(nil)
 			// sanitize の ReadFile が失敗 → RunDump レベルでエラー伝播することを検証。
-			fs.EXPECT().ReadFile(schemaAbs).Return(nil, errors.New("read failed"))
+			fs.EXPECT().ReadFile(schemaAbs).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs, runner)
 			loadDSN := func() (string, string, error) { return "postgres://dsn", "pw", nil }

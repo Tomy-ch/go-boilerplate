@@ -12,6 +12,8 @@ const (
 	maxBuildingLength     = 255
 	maxPostalCodeLength   = 8
 
+	// MaxRawPasswordLength は、平文パスワードの最大文字数です。
 	MaxRawPasswordLength = 64
+	// MinRawPasswordLength は、平文パスワードの最小文字数です。
 	MinRawPasswordLength = 8
 )

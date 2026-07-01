@@ -22,9 +22,11 @@ func TestLoggingModule_ProvidesUseMiddleware(t *testing.T) {
 
 func TestObservabilityModule_ProvidesUseMiddleware(t *testing.T) {
 	t.Parallel()
+	cfg := config.MockConfigForTest(t)
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		ObservabilityModule(),
-		fx.Supply(config.NewApplicationConfig(config.MockConfigForTest(t))),
+		fx.Supply(config.NewApplicationConfig(cfg)),
+		fx.Supply(config.NewObservabilityConfig(cfg)),
 	)
 }
 

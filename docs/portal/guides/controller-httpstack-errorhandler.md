@@ -34,13 +34,6 @@ flowchart TB
     AddReqID --> Write --> Log
 ```
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`New(e, log, lf, obsCfg)`|Set unified error handler on Echo instance (`e.HTTPErrorHandler`)|
-|`NewHTTPErrorHandler(logger, lf, obsCfg)`|Return `echo.HTTPErrorHandler` that normalizes all error types|
-
 ## Error Normalization
 
 The handler processes errors in the following priority:
@@ -74,14 +67,14 @@ All errors are returned as JSON using `response.HTTPErrorResponse`:
 
 ```json
 {
-  "Code": "BAD_REQUEST",
-  "Message": "...",
-  "Details": ["..."],
-  "RequestID": "..."
+  "code": "BAD_REQUEST",
+  "message": "...",
+  "details": ["..."],
+  "requestId": "..."
 }
 ```
 
-- `RequestID` is always attached (extracted via `requestid.GetRequestIDFromResponse`)
+- `requestId` is always attached (extracted via `requestid.GetRequestIDFromResponse`)
 - `Details` and `Internal` error are included when available
 - `Internal` error and stack trace are logged but **not returned to the client**
 

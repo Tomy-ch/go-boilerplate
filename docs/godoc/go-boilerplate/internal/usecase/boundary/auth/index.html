@@ -194,9 +194,12 @@
 			
 				
 				<pre>var (
+    <span class="comment">// ErrUnauthenticatedSubjectMissing は、JWT 等のトークンに subject クレームが存在しない場合に返す認証エラーです。</span>
     <span id="ErrUnauthenticatedSubjectMissing">ErrUnauthenticatedSubjectMissing</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;unauthenticated: subject missing&#34;)
-    <span id="ErrSubjectNotUUID">ErrSubjectNotUUID</span>                = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrValidation">ErrValidation</a>, &#34;id unavailable: subject is not a uuid&#34;)
-    <span id="ErrTokenMissing">ErrTokenMissing</span>                  = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;token missing&#34;)
+    <span class="comment">// ErrSubjectNotUUID は、subject を UUID として解釈できない場合に返す検証エラーです。</span>
+    <span id="ErrSubjectNotUUID">ErrSubjectNotUUID</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrValidation">ErrValidation</a>, &#34;id unavailable: subject is not a uuid&#34;)
+    <span class="comment">// ErrTokenMissing は、トークンが指定されていない場合に返すエラーです。</span>
+    <span id="ErrTokenMissing">ErrTokenMissing</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;token missing&#34;)
 )</pre>
 			
 		
@@ -204,7 +207,7 @@
 		
 			
 			
-			<h2 id="Authenticator">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/authenticator.go.html?s=222:428#L1">Authenticator</a>
+			<h2 id="Authenticator">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/authenticator.go.html?s=216:422#L1">Authenticator</a>
 				<a class="permalink" href="#Authenticator">¶</a>
 				
 				
@@ -252,7 +255,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=659:763#L16">New</a>
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=755:859#L17">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -263,14 +266,15 @@
     scopes []<a href="../../../../../builtin/#string">string</a>,
     claims map[<a href="../../../../../builtin/#string">string</a>]<a href="../../../../../builtin/#any">any</a>,
 ) (*<a href="#Authn">Authn</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				
+				<p>New は、認証主体や付随情報から認証結果 Authn を生成して返します。
+
 				
 				
 			
 
 			
 				
-				<h3 id="Authn.Claims">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1947:1986#L72">Claims</a>
+				</p><h3 id="Authn.Claims">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1952:1991#L72">Claims</a>
 					<a class="permalink" href="#Authn.Claims">¶</a>
 					
 					
@@ -283,7 +287,7 @@
 				
 			
 				
-				</p><h3 id="Authn.HasID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1373:1401#L48">HasID</a>
+				</p><h3 id="Authn.HasID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1378:1406#L48">HasID</a>
 					<a class="permalink" href="#Authn.HasID">¶</a>
 					
 					
@@ -296,7 +300,7 @@
 				
 			
 				
-				</p><h3 id="Authn.ID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1539:1578#L54">ID</a>
+				</p><h3 id="Authn.ID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1544:1583#L54">ID</a>
 					<a class="permalink" href="#Authn.ID">¶</a>
 					
 					
@@ -310,7 +314,7 @@ UUID として解釈できなかった場合はエラーを返します。
 				
 			
 				
-				</p><h3 id="Authn.Provider">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1719:1752#L62">Provider</a>
+				</p><h3 id="Authn.Provider">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1724:1757#L62">Provider</a>
 					<a class="permalink" href="#Authn.Provider">¶</a>
 					
 					
@@ -323,7 +327,7 @@ UUID として解釈できなかった場合はエラーを返します。
 				
 			
 				
-				</p><h3 id="Authn.Scopes">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1827:1860#L67">Scopes</a>
+				</p><h3 id="Authn.Scopes">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1832:1865#L67">Scopes</a>
 					<a class="permalink" href="#Authn.Scopes">¶</a>
 					
 					
@@ -336,7 +340,7 @@ UUID として解釈できなかった場合はエラーを返します。
 				
 			
 				
-				</p><h3 id="Authn.Subject">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1254:1286#L43">Subject</a>
+				</p><h3 id="Authn.Subject">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1259:1291#L43">Subject</a>
 					<a class="permalink" href="#Authn.Subject">¶</a>
 					
 					
@@ -351,13 +355,12 @@ UUID として解釈できなかった場合はエラーを返します。
 		
 			
 			
-			</p><h2 id="Credential">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=198:272#L1">Credential</a>
+			</p><h2 id="Credential">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=98:172#L1">Credential</a>
 				<a class="permalink" href="#Credential">¶</a>
 				
 				
 			</h2>
 			<p>Credential は認証情報（トークン）を表します。
-今回は access token のみ。将来 mTLS/DPoP 等が増えてもここを拡張すればOK。
 
 			</p><pre>type Credential struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -374,7 +377,7 @@ UUID として解釈できなかった場合はエラーを返します。
 
 			
 				
-				<h3 id="NewCredential">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=274:337#L1">NewCredential</a>
+				<h3 id="NewCredential">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=396:459#L2">NewCredential</a>
 					<a class="permalink" href="#NewCredential">¶</a>
 					
 					
@@ -382,14 +385,16 @@ UUID として解釈できなかった場合はエラーを返します。
 				<pre>func NewCredential(
     accessToken <a href="../../../../../builtin/#string">string</a>,
 ) (*<a href="#Credential">Credential</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				
+				<p>NewCredential は、アクセストークンを検証して Credential を生成して返します。
+トークンが空文字列またはホワイトスペースのみの場合は ErrTokenMissing を返します。
+
 				
 				
 			
 
 			
 				
-				<h3 id="Credential.AccessToken">func (*Credential) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=569:610#L15">AccessToken</a>
+				</p><h3 id="Credential.AccessToken">func (*Credential) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=691:732#L16">AccessToken</a>
 					<a class="permalink" href="#Credential.AccessToken">¶</a>
 					
 					

@@ -8,7 +8,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/exec"
-	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 )
@@ -32,12 +31,9 @@ func newFixCollationCommand() *cobra.Command {
 	return cmd
 }
 
-// runFixCollation は、ロガーと設定読込を結線し、fixcollation.RunFix へ委譲する薄い殻です。
+// runFixCollation は fixcollation.RunFix への薄い委譲殻です。
 func runFixCollation(ctx context.Context, database string) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		return xerrors.Wrap(err, "failed to init logger")
-	}
+	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 
 	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()

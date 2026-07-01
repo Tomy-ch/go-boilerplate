@@ -60,20 +60,20 @@
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/di/server/hook&#34;
 <span id="L5" class="ln">     5  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
-<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver/loggingdb&#34;
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/metrics&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;go.uber.org/fx&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span><span class="comment">// DatabaseModule は、データベース関連の依存関係を提供するfx.Moduleです。</span>
-<span id="L13" class="ln">    13  </span>func DatabaseModule() fx.Option {
-<span id="L14" class="ln">    14  </span>	return fx.Module(&#34;db&#34;,
-<span id="L15" class="ln">    15  </span>		fx.Provide(
-<span id="L16" class="ln">    16  </span>			driver.NewDB,
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/metrics&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go.uber.org/fx&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span><span class="comment">// DatabaseModule は、データベース関連の依存関係を提供するfx.Moduleです。</span>
+<span id="L12" class="ln">    12  </span>func DatabaseModule() fx.Option {
+<span id="L13" class="ln">    13  </span>	return fx.Module(&#34;db&#34;,
+<span id="L14" class="ln">    14  </span>		fx.Provide(
+<span id="L15" class="ln">    15  </span>			driver.NewQueryTracer,
+<span id="L16" class="ln">    16  </span>			driver.NewTracedDB,
 <span id="L17" class="ln">    17  </span>			driver.NewTransactionManager,
-<span id="L18" class="ln">    18  </span>			loggingdb.NewLoggingDBProvider,
-<span id="L19" class="ln">    19  </span>			metrics.NewRegisterer,
+<span id="L18" class="ln">    18  </span>			metrics.NewRegisterer,
+<span id="L19" class="ln">    19  </span>			metrics.NewQueryRecorder,
 <span id="L20" class="ln">    20  </span>			metrics.New,
 <span id="L21" class="ln">    21  </span>		),
 <span id="L22" class="ln">    22  </span>		fx.Invoke(

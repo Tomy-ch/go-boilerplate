@@ -1,8 +1,10 @@
 ## ドキュメント関連のコマンド群
 .PHONY: gen-portal-docs ## Portal用のドキュメントを生成する
 .PHONY: gen-docs-json ## Portal用のドキュメントリンクのJSONを生成する
+.PHONY: gen-portal-build ## Portalフロントエンド(JSX)をesbuildでバンドルする
 .PHONY: gen-portal-docs-ci ## Portal用のドキュメントを生成する（CI用）
 .PHONY: gen-docs-json-ci ## Portal用のドキュメントリンクのJSONを生成する（CI用）
+.PHONY: gen-portal-build-ci ## Portalフロントエンドをesbuildでバンドルする（CI用）
 .PHONY: gen-godoc ## godoc の静的HTMLを docs/godoc/ に生成する
 .PHONY: gen-godoc-ci ## godoc の静的HTMLを docs/godoc/ に生成する（CI用）
 
@@ -20,11 +22,19 @@ gen-portal-docs:
 	docker compose run --rm node_tool_runner make gen-portal-docs-ci
 	@echo "✅ Portal用のドキュメントの生成が完了しました。"
 
+gen-portal-build:
+	@echo "🔍 Portalフロントエンドのバンドルを開始します..."
+	docker compose run --rm node_tool_runner make gen-portal-build-ci
+	@echo "✅ Portalフロントエンドのバンドルが完了しました。"
+
 gen-docs-json-ci:
 	node scripts/gen-docs-json.mjs
 
 gen-portal-docs-ci:
 	node scripts/gen-portal-docs.mjs
+
+gen-portal-build-ci:
+	node scripts/build-portal.mjs
 
 gen-godoc:
 	@echo "🔍 godoc の静的HTMLの生成を開始します..."

@@ -1,0 +1,117 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>httpclient - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../src/go-boilerplate/internal/infrastructure/httpclient">httpclient</a>/<span class="text-muted">budget.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient">go-boilerplate/internal/infrastructure/httpclient</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package httpclient
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import &#34;sync&#34;
+<span id="L4" class="ln">     4  </span>
+<span id="L5" class="ln">     5  </span>const (
+<span id="L6" class="ln">     6  </span>	<span class="comment">// retryBudgetMaxTokens は、per-downstream のトークン上限（バースト許容量）です。</span>
+<span id="L7" class="ln">     7  </span>	retryBudgetMaxTokens = 10.0
+<span id="L8" class="ln">     8  </span>	<span class="comment">// retryBudgetInitialTokens は、未知 Downstream の初期トークン残量です。</span>
+<span id="L9" class="ln">     9  </span>	<span class="comment">// 初回満タンにすると ratio による retry 抑制が初期バーストを素通ししてしまうため、</span>
+<span id="L10" class="ln">    10  </span>	<span class="comment">// 小さく始めてリクエストごとの refill で上限まで「獲得」させます。</span>
+<span id="L11" class="ln">    11  </span>	retryBudgetInitialTokens = 2.0
+<span id="L12" class="ln">    12  </span>	<span class="comment">// retryBudgetRetryCost は、retry 1 回あたりのトークン消費量です。</span>
+<span id="L13" class="ln">    13  </span>	retryBudgetRetryCost = 1.0
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span><span class="comment">// retryBudget は、Downstream ごとの retry トークンバケットです。</span>
+<span id="L17" class="ln">    17  </span><span class="comment">// リクエストごとに ratio 分を補充し、retry ごとに 1 消費します。トークン枯渇時は retry を止めます。</span>
+<span id="L18" class="ln">    18  </span>type retryBudget struct {
+<span id="L19" class="ln">    19  </span>	mu     sync.Mutex
+<span id="L20" class="ln">    20  </span>	tokens map[Downstream]float64
+<span id="L21" class="ln">    21  </span>}
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// newRetryBudget は、retryBudget を生成します。</span>
+<span id="L24" class="ln">    24  </span>func newRetryBudget() *retryBudget {
+<span id="L25" class="ln">    25  </span>	return &amp;retryBudget{tokens: make(map[Downstream]float64)}
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// refill は、リクエスト開始時に ratio 分のトークンを補充します（上限 retryBudgetMaxTokens）。</span>
+<span id="L29" class="ln">    29  </span>func (b *retryBudget) refill(d Downstream, ratio float64) {
+<span id="L30" class="ln">    30  </span>	b.mu.Lock()
+<span id="L31" class="ln">    31  </span>	defer b.mu.Unlock()
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>	current, ok := b.tokens[d]
+<span id="L34" class="ln">    34  </span>	if !ok {
+<span id="L35" class="ln">    35  </span>		current = retryBudgetInitialTokens <span class="comment">// 初回は小さく始め、refill で上限まで獲得させる</span>
+<span id="L36" class="ln">    36  </span>	}
+<span id="L37" class="ln">    37  </span>	b.tokens[d] = min(retryBudgetMaxTokens, current+ratio)
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// tryConsume は、retry 1 回分のトークンを消費できれば true を返します。</span>
+<span id="L41" class="ln">    41  </span>func (b *retryBudget) tryConsume(d Downstream) bool {
+<span id="L42" class="ln">    42  </span>	b.mu.Lock()
+<span id="L43" class="ln">    43  </span>	defer b.mu.Unlock()
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>	if b.tokens[d] &gt;= retryBudgetRetryCost {
+<span id="L46" class="ln">    46  </span>		b.tokens[d] -= retryBudgetRetryCost
+<span id="L47" class="ln">    47  </span>		return true
+<span id="L48" class="ln">    48  </span>	}
+<span id="L49" class="ln">    49  </span>	return false
+<span id="L50" class="ln">    50  </span>}
+<span id="L51" class="ln">    51  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/infrastructure/httpclient/budget.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

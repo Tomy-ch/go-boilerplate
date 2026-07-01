@@ -10,6 +10,10 @@
 1. **sqlc によって生成されたコードの配置**
 2. **生成コードを実用的に扱うための補助関数の提供**
 
+## 役割
+
+本プロジェクトの DB アクセスは、手書きの SQL 文字列ではなく sqlc が生成した型安全なクエリコードを経由します。これにより、スキーマと形が合わなくなったクエリは実行時ではなく生成・コンパイル時に失敗します。本パッケージは、その生成コード（`gen/`）と、DB 固有の SQL の癖（特に LIKE / ILIKE のメタ文字エスケープとパターン生成）を吸収する薄い実行ヘルパーをまとめて配置する唯一の置き場です。両者をここに閉じ込めることで、生の SQL 仕様やエスケープ規則が domain / usecase 層へ漏れず（上位層は型付きクエリ関数だけを見る）、SQL やスキーマ変更時の再生成ポイントを一本化できます。
+
 ## 生成コードについて
 
 - `gen/` ディレクトリ以下には、sqlc によって生成された Go コードが含まれます。
@@ -38,21 +42,11 @@
 ```text
 internal/infrastructure/rdb/sqlc/
 ├── like.go         # LIKE 検索ヘルパー
-└── gen/            # sqlc 自動生成コード（編集禁止）
-    ├── desc.go     # パッケージ記述
-    ├── *.sql.go    # クエリ実行コード（自動生成）
-    └── *.gen.go    # 型定義（自動生成）
+└── gen/               # sqlc 自動生成コード（編集禁止）
+    ├── desc.go         # パッケージ記述
+    ├── *.gen.sql.go    # クエリ実行コード（自動生成）
+    └── *.gen.go        # 型定義 / DBTX 配線（自動生成: models.gen.go, db.gen.go）
 ```
-
-## 公開 API
-
-|関数 / 定数|ファイル|説明|
-|---|---|---|
-|`DefaultLikeEscapeChar`|`like.go`|デフォルトのエスケープ文字（`\\`）|
-|`EscapeForLike(s, esc)`|`like.go`|LIKE の特殊文字（`%`, `_`, エスケープ文字）をエスケープ|
-|`WrapPrefixLikePattern(token)`|`like.go`|前方一致パターン生成（`token%`）|
-|`WrapSuffixLikePattern(token)`|`like.go`|後方一致パターン生成（`%token`）|
-|`WrapContainsLikePattern(escaped)`|`like.go`|部分一致パターン生成（`%escaped%`）|
 
 ## LIKE 検索ヘルパー
 

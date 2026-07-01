@@ -25,6 +25,7 @@ func TestMockConfigForTest(t *testing.T) {
 					env:             expectedApplicationEnv,
 					name:            expectedApplicationName,
 					mode:            expectedApplicationMode,
+					logLevel:        expectedApplicationLogLevel,
 					shutdownTimeout: expectedAppShutdownTimeout,
 				},
 				server: ServerConfig{
@@ -34,6 +35,8 @@ func TestMockConfigForTest(t *testing.T) {
 					readTimeout:       expectedServerReadTimeout,
 					writeTimeout:      expectedServerWriteTimeout,
 					idleTimeout:       expectedServerIdleTimeout,
+					bodyLimitMB:       expectedServerBodyLimitMB,
+					requestTimeout:    expectedServerRequestTimeout,
 				},
 				metrics: MetricsConfig{
 					host:     expectedMetricsHost,
@@ -42,7 +45,11 @@ func TestMockConfigForTest(t *testing.T) {
 					password: expectedMetricsPassword,
 				},
 				observability: ObservabilityConfig{
-					enabled:             expectedObservabilityEnabled,
+					tracesExporter:      expectedObservabilityTracesExporter,
+					metricsExporter:     expectedObservabilityMetricsExporter,
+					logsExporter:        expectedObservabilityLogsExporter,
+					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
+					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 				},
@@ -56,6 +63,11 @@ func TestMockConfigForTest(t *testing.T) {
 					sslMode:                expectedDBSSLMode,
 					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					statementTimeout:       expectedDBStatementTimeout,
+					lockTimeout:            expectedDBLockTimeout,
+					txMaxRetries:           expectedDBTxMaxRetries,
+					txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				dbconnection: DBConnectionConfig{
 					maxConns:    expectedDBMaxConnsInt32,
@@ -84,6 +96,28 @@ func TestMockConfigForTest(t *testing.T) {
 					headerName:          expectedAuthHeaderName,
 					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
+				worker: WorkerConfig{
+					concurrency:               expectedWorkerConcurrency,
+					maxInFlight:               expectedWorkerMaxInFlight,
+					batchSize:                 expectedWorkerBatchSize,
+					extendInterval:            expectedWorkerExtendInterval,
+					drainTimeout:              expectedWorkerDrainTimeout,
+					receiveCountWarnThreshold: expectedWorkerReceiveCountWarnThreshold,
+					circuitFailureThreshold:   expectedWorkerCircuitFailureThreshold,
+					circuitOpenBackoffInitial: expectedWorkerCircuitOpenBackoffInitial,
+					circuitOpenBackoffMax:     expectedWorkerCircuitOpenBackoffMax,
+					circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
+					healthListenAddr:          expectedWorkerHealthListenAddr,
+					progressStaleAfter:        expectedWorkerProgressStaleAfter,
+					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
+					nackBackoffMax:            expectedWorkerNackBackoffMax,
+				},
+				outbox: OutboxConfig{
+					endpoint:     expectedOutboxEndpoint,
+					pollInterval: expectedOutboxPollInterval,
+					errorBackoff: expectedOutboxErrorBackoff,
+					batchSize:    expectedOutboxBatchSize,
+				},
 			}
 
 			actual := MockConfigForTest(t)
@@ -109,6 +143,7 @@ func Test_mockLoader(t *testing.T) {
 					Env:             expectedApplicationEnv,
 					Name:            expectedApplicationName,
 					Mode:            expectedApplicationMode,
+					LogLevel:        expectedApplicationLogLevel,
 					ShutdownTimeout: expectedAppShutdownTimeout,
 				},
 				Server: Server{
@@ -118,6 +153,8 @@ func Test_mockLoader(t *testing.T) {
 					ReadTimeout:       expectedServerReadTimeout,
 					WriteTimeout:      expectedServerWriteTimeout,
 					IdleTimeout:       expectedServerIdleTimeout,
+					BodyLimitMB:       expectedServerBodyLimitMB,
+					RequestTimeout:    expectedServerRequestTimeout,
 				},
 				Metrics: Metrics{
 					Host:     expectedMetricsHost,
@@ -126,7 +163,11 @@ func Test_mockLoader(t *testing.T) {
 					Password: expectedMetricsPassword,
 				},
 				Observability: Observability{
-					Enabled:           expectedObservabilityEnabled,
+					TracesExporter:    expectedObservabilityTracesExporter,
+					MetricsExporter:   expectedObservabilityMetricsExporter,
+					LogsExporter:      expectedObservabilityLogsExporter,
+					OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
+					OTLPProtocol:      expectedObservabilityOTLPProtocol,
 					MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 					TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 				},
@@ -139,6 +180,11 @@ func Test_mockLoader(t *testing.T) {
 					SSLMode:                expectedDBSSLMode,
 					PingTimeout:            expectedDBPingTimeout,
 					SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					StatementTimeout:       expectedDBStatementTimeout,
+					LockTimeout:            expectedDBLockTimeout,
+					TxMaxRetries:           expectedDBTxMaxRetries,
+					TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				DBConnection: DBConnection{
 					MaxConns:    expectedDBMaxConnsInt32,
@@ -176,9 +222,9 @@ func Test_mockLoader(t *testing.T) {
 	})
 }
 
-func Test_setEnv(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) {
-		t.Run("setEnvVarsForTesting の環境変数設定は、テスト内で正しく反映される", func(t *testing.T) {
+func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+		t.Run("setEnvVarsForTesting の環境変数設定は、テスト内で正しく反映される", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			// setEnvVarsForTesting が t.Setenv を使うため、本テストは t.Parallel() を付けられない。
 			setEnvVarsForTesting(t)
 			// OS
@@ -187,6 +233,7 @@ func Test_setEnv(t *testing.T) {
 			assert.Equal(t, expectedApplicationEnv, os.Getenv("APP_ENV"))
 			assert.Equal(t, expectedApplicationName, os.Getenv("APP_NAME"))
 			assert.Equal(t, expectedApplicationMode, os.Getenv("APP_MODE"))
+			assert.Equal(t, expectedApplicationLogLevel, os.Getenv("APP_LOG_LEVEL"))
 			assert.Equal(t, expectedAppShutdownTimeoutStr, os.Getenv("APP_SHUTDOWN_TIMEOUT"))
 			// Server
 			assert.Equal(t, expectedServerHost, os.Getenv("SERVER_HOST"))
@@ -201,9 +248,13 @@ func Test_setEnv(t *testing.T) {
 			assert.Equal(t, expectedMetricsUserName, os.Getenv("METRICS_USERNAME"))
 			assert.Equal(t, expectedMetricsPassword, os.Getenv("METRICS_PASSWORD"))
 			// Observability
-			assert.Equal(t, strconv.FormatBool(expectedObservabilityEnabled), os.Getenv("OBSERVABILITY_ENABLED"))
-			assert.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS"))
-			assert.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBSERVABILITY_TARGET_STATUS_CODES"))
+			assert.Equal(t, expectedObservabilityTracesExporter, os.Getenv("OBS_TRACES_EXPORTER"))
+			assert.Equal(t, expectedObservabilityMetricsExporter, os.Getenv("OBS_METRICS_EXPORTER"))
+			assert.Equal(t, expectedObservabilityLogsExporter, os.Getenv("OBS_LOGS_EXPORTER"))
+			assert.Equal(t, expectedObservabilityOTLPEndpoint, os.Getenv("OBS_OTLP_ENDPOINT"))
+			assert.Equal(t, expectedObservabilityOTLPProtocol, os.Getenv("OBS_OTLP_PROTOCOL"))
+			assert.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBS_MASKED_DB_QUERY_ARGS"))
+			assert.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBS_TARGET_STATUS_CODES"))
 			// Database
 			assert.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
 			assert.Equal(t, expectedDBHost, os.Getenv("DB_HOST"))

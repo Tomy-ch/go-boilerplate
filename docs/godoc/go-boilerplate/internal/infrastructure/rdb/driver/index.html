@@ -121,7 +121,13 @@
 				<dd><a href="#DSNWithTimeZoneString">func DSNWithTimeZoneString(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) string</a></dd>
 			
 				
-				<dd><a href="#NewTransactionManager">func NewTransactionManager(db DatabaseDriver, logger logging.Logger) tx.Manager</a></dd>
+				<dd><a href="#NewQueryTracer">func NewQueryTracer(dbCfg *config.DatabaseConfig, obsCfg *config.ObservabilityConfig, tracer *otelpgx.Tracer, recorder QueryRecorder, logger logging.Logger, lf logging.LogFieldBuilder) pgx.QueryTracer</a></dd>
+			
+				
+				<dd><a href="#NewTransactionManager">func NewTransactionManager(db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper) tx.Manager</a></dd>
+			
+				
+				<dd><a href="#WithQueryName">func WithQueryName(ctx context.Context, name string) context.Context</a></dd>
 			
 			
 				
@@ -137,6 +143,19 @@
 				
 					
 					<dd>    <a href="#NewDB">func NewDB(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig) (DatabaseDriver, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewTracedDB">func NewTracedDB(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig, tracer pgx.QueryTracer) (DatabaseDriver, error)</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QueryAttrs">type QueryAttrs</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QueryRecorder">type QueryRecorder</a></dd>
 				
 				
 			
@@ -156,6 +175,10 @@
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html">connection.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html">driver.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html">query_metric.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_tracer.go.html">query_tracer.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html">transaction.go</a>
 			
@@ -243,13 +266,54 @@
 		
 			
 			
-			</p><h2 id="NewTransactionManager">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html?s=518:597#L16">NewTransactionManager</a>
+			</p><h2 id="NewQueryTracer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_tracer.go.html?s=1152:1361#L34">NewQueryTracer</a>
+				<a class="permalink" href="#NewQueryTracer">¶</a>
+				
+				
+			</h2>
+			<pre>func NewQueryTracer(
+    dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>,
+    obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>,
+    tracer *<a href="../../../../../github.com/exaring/otelpgx/">otelpgx</a>.<a href="../../../../../github.com/exaring/otelpgx/#Tracer">Tracer</a>,
+    recorder <a href="#QueryRecorder">QueryRecorder</a>,
+    logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>,
+    lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>,
+) pgx.<a href="#QueryTracer">QueryTracer</a></pre>
+			<p>NewQueryTracer は、span(otelpgx)・クエリログ(終了/スロー/エラー)・クエリメトリクス記録を行う pgx.QueryTracer を生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewTransactionManager">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html?s=1531:1667#L37">NewTransactionManager</a>
 				<a class="permalink" href="#NewTransactionManager">¶</a>
 				
 				
 			</h2>
-			<pre>func NewTransactionManager(db <a href="#DatabaseDriver">DatabaseDriver</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a></pre>
+			<pre>func NewTransactionManager(
+    db <a href="#DatabaseDriver">DatabaseDriver</a>, dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, sleeper <a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/#Sleeper">Sleeper</a>,
+) <a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a></pre>
 			<p>NewTransactionManager は、トランザクションマネージャを初期化します。
+</p><p>serialization failure / deadlock 検出時に fn を有限回まで再試行します。
+リトライ上限・backoff は config（DB_TX_MAX_RETRIES / DB_TX_RETRY_BASE_BACKOFF /
+DB_TX_RETRY_MAX_BACKOFF）から取得します。0 以下の場合は既定値にフォールバックします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="WithQueryName">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html?s=1875:1943#L51">WithQueryName</a>
+				<a class="permalink" href="#WithQueryName">¶</a>
+				
+				
+			</h2>
+			<pre>func WithQueryName(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, name <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a></pre>
+			<p>WithQueryName は、メトリクスの query_name ラベルに使う安定名を context に付与します。
+Repository / QueryService 側で操作名（例: &#34;user.find_by_id&#34;）を明示します。
 
 			
 			
@@ -258,12 +322,12 @@
 		
 			
 			
-			</p><h2 id="DBTX">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html?s=422:659#L5">DBTX</a>
+			</p><h2 id="DBTX">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html?s=499:736#L5">DBTX</a>
 				<a class="permalink" href="#DBTX">¶</a>
 				
 				
 			</h2>
-			<p>DBTX は sqlc が要求する最小インターフェースです。
+			<p>DBTX は、トランザクション・コネクションプールの双方に対して SQL を実行できる最小インターフェースです。
 
 			</p><pre>type DBTX interface {
     Exec(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, sql <a href="../../../../../builtin/#string">string</a>, args ...<a href="../../../../../builtin/#any">any</a>) (<a href="../../../../../github.com/jackc/pgx/v5/pgconn/">pgconn</a>.<a href="../../../../../github.com/jackc/pgx/v5/pgconn/#CommandTag">CommandTag</a>, <a href="../../../../../builtin/#error">error</a>)
@@ -281,7 +345,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html?s=833:886#L12">New</a>
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html?s=910:963#L12">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -297,13 +361,15 @@
 		
 			
 			
-			</p><h2 id="DatabaseDriver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=367:522#L7">DatabaseDriver</a>
+			</p><h2 id="DatabaseDriver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=603:758#L11">DatabaseDriver</a>
 				<a class="permalink" href="#DatabaseDriver">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type DatabaseDriver interface {
+			<p>DatabaseDriver は、PostgreSQL 接続プールに対するトランザクション開始・疎通確認・統計取得を含む
+DB アクセスの最上位インタフェースです。
+
+			</p><pre>type DatabaseDriver interface {
     <a href="#DBTX">DBTX</a>
 
     Begin(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (pgx.<a href="#Tx">Tx</a>, <a href="../../../../../builtin/#error">error</a>)
@@ -322,7 +388,7 @@
 
 			
 				
-				<h3 id="NewDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=698:841#L20">NewDB</a>
+				<h3 id="NewDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=970:1113#L24">NewDB</a>
 					<a class="permalink" href="#NewDB">¶</a>
 					
 					
@@ -330,10 +396,84 @@
 				<pre>func NewDB(
     dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>, dbConnCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DBConnectionConfig">DBConnectionConfig</a>,
 ) (<a href="#DatabaseDriver">DatabaseDriver</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				<p>NewDB は Postgres のDB接続を初期化して返します。
+				<p>NewDB は Postgres のDB接続を初期化して返します（クエリトレーサーなし）。
 
 				
 				
+			
+				
+				</p><h3 id="NewTracedDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=1282:1458#L31">NewTracedDB</a>
+					<a class="permalink" href="#NewTracedDB">¶</a>
+					
+					
+				</h3>
+				<pre>func NewTracedDB(
+    dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>,
+    osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>,
+    dbConnCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DBConnectionConfig">DBConnectionConfig</a>,
+    tracer pgx.<a href="#QueryTracer">QueryTracer</a>,
+) (<a href="#DatabaseDriver">DatabaseDriver</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>NewTracedDB は、pgx クエリトレーサーを結線した Postgres のDB接続を初期化して返します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="QueryAttrs">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html?s=1131:1259#L32">QueryAttrs</a>
+				<a class="permalink" href="#QueryAttrs">¶</a>
+				
+				
+			</h2>
+			<p>QueryAttrs は、1 クエリの観測属性です。
+SQL 本文・bind 値・テーブル名・制約名・PII などの高カーディナリティ／秘匿情報は持ちません。
+
+			</p><pre>type QueryAttrs struct {
+<span id="QueryAttrs.QueryName"></span>    QueryName  <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.Operation"></span>    Operation  <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.Status"></span>    Status     <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.ErrorClass"></span>    ErrorClass <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.Duration"></span>    Duration   <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QueryRecorder">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html?s=1472:1552#L42">QueryRecorder</a>
+				<a class="permalink" href="#QueryRecorder">¶</a>
+				
+				
+			</h2>
+			<p>QueryRecorder は、1 クエリの実行結果をメトリクスとして記録します。
+（interface を消費側の driver に置くことで metrics → driver の循環 import を避けます）。
+
+			</p><pre>type QueryRecorder interface {
+    Observe(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, attrs <a href="#QueryAttrs">QueryAttrs</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
 			
 
 			
@@ -348,7 +488,7 @@
 
 	
 	
-		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
 	
 	<div class="pkg-dir">
 		<table>

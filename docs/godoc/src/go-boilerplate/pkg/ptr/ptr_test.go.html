@@ -99,7 +99,7 @@
 <span id="L42" class="ln">    42  </span>			v := 3.14
 <span id="L43" class="ln">    43  </span>			actual := To(v)
 <span id="L44" class="ln">    44  </span>			require.NotNil(t, actual)
-<span id="L45" class="ln">    45  </span>			require.InDelta(t, v, *actual, 0)
+<span id="L45" class="ln">    45  </span>			assert.InDelta(t, v, *actual, 0)
 <span id="L46" class="ln">    46  </span>		})
 <span id="L47" class="ln">    47  </span>
 <span id="L48" class="ln">    48  </span>		t.Run(&#34;array型の値からポインタを生成する&#34;, func(t *testing.T) {
@@ -171,7 +171,7 @@
 <span id="L114" class="ln">   114  </span>			assert.Equal(t, *v, *actual)
 <span id="L115" class="ln">   115  </span>
 <span id="L116" class="ln">   116  </span>			<span class="comment">// ポインタが異なることを確認</span>
-<span id="L117" class="ln">   117  </span>			require.NotSame(t, v, actual)
+<span id="L117" class="ln">   117  </span>			assert.NotSame(t, v, actual)
 <span id="L118" class="ln">   118  </span>		})
 <span id="L119" class="ln">   119  </span>
 <span id="L120" class="ln">   120  </span>		t.Run(&#34;nilポインタの場合、nilを返す&#34;, func(t *testing.T) {

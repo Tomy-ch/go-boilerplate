@@ -27,6 +27,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 |---|---|---|---|
 |`api_server`|`docker/server/Dockerfile` (target: `tooling`)|8080, 2345, 6060|開発用APIサーバ（air によるホットリロード）|
 |`database`|`postgres:18.3-bookworm`|5432|PostgreSQL データベース|
+|`observability`|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
 
 ### 補助サービス（profile: `tools`）
 
@@ -39,7 +40,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 
 |サービス|Dockerfile / Image|説明|
 |---|---|---|
-|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
 |`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|redocly-cli|
 |`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|sqlfluff|
 |`er_diagram_generator`|`schemaspy/schemaspy`|ER図生成（SchemaSpy）|
@@ -52,7 +53,6 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 |---|---|---|
 |`builder`|Goバイナリのビルド|`golang:1.26.4-alpine`|
 |`runtime`|本番実行用コンテナ|`alpine:3.23`|
-|`migration`|マイグレーション実行用コンテナ|`runtime` を継承|
 |`tooling`|ローカル開発環境|`golang:1.26.4-alpine`|
 
 ### runtime
@@ -60,6 +60,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 - 非rootユーザー（`app`）で実行
 - `ldflags` でバージョン / リビジョン / ビルド日時を埋め込み
 - `vendor` モードでビルド（`GOPROXY=off`）
+- マイグレーションは同一イメージの command override で実行（`./server migrate-up`）。専用イメージは持たない
 
 ### tooling
 
@@ -79,7 +80,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 
 |ステージ|ベース|含まれるツール|
 |---|---|---|
-|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
 |`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 

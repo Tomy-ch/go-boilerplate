@@ -21,7 +21,8 @@ openapi/
 │   ├── requests/             # Request semantics (content / required)
 │   └── responses/            # Response semantics (status / description)
 ├── parameter-guide.md        # Parameter definition reference
-└── secure-uuid.md            # UUID exposure security evaluation
+├── secure-uuid.md            # UUID exposure security evaluation
+└── boundary-ownership.md     # Who owns min/max/length constraints (wire contract vs domain rule)
 ```
 
 ## File Responsibilities
@@ -94,6 +95,18 @@ Reason: compatibility with Redocly bundling.
 - CRUD via HTTP methods: `GET`, `POST`, `PATCH`, `DELETE`
 - Non-CRUD actions: `POST /users/{id}:deactivate`
 
+### Naming / Casing
+
+A deliberate, per-location convention (enforced by `redocly lint`):
+
+|Location|Casing|Example|
+|---|---|---|
+|Request / response **body fields**|`camelCase`|`firstName`, `postalCode`, `nextCursor`, `hasNext`, `requestId`|
+|**Query / path parameters**|`snake_case`|`per_page`, `user_id`|
+|`operationId`|`PascalCase`, verb-first|`GetUsers`, `PostUsers`|
+
+Body fields and parameters intentionally use different casing (body = camelCase to match JSON / TS clients; params = snake_case as is common in URLs). Keep each location internally consistent.
+
 ### Versioning
 
 URL path versioning: `/v1/users`
@@ -106,6 +119,7 @@ Breaking changes → create `/v2/` alongside `/v1/`
 - Resource ownership validated via `sub` claim in Usecase/Middleware
 - UUID as public identifiers — see `secure-uuid.md` for security evaluation
 - IDOR protection required
+- For OpenAPI-routed endpoints the `security:` declaration **is** the enforcement source of truth: the `oapi` middleware's `AuthenticationFunc` only fires for operations that declare it. **Exception:** `/metrics` is an ops path skipped from the OpenAPI validation pipeline, so its declared `BasicAuth` is documentation-only — the actual auth is a separate Echo `BasicAuth` middleware on that route.
 
 ## Prohibited Practices
 
@@ -115,8 +129,16 @@ Breaking changes → create `/v2/` alongside `/v1/`
 - Do not expose DB column structures in API schemas
 - Do not pass OpenAPI generated types to Usecase — convert to DTO
 
+## Guides
+
+- [parameter-guide.md](parameter-guide.md) — Parameter definition quick reference
+- [secure-uuid.md](secure-uuid.md) — UUID exposure security evaluation
+- [boundary-ownership.md](boundary-ownership.md) — Ownership of `min` / `max` / length constraints: an OpenAPI constraint is the **wire contract**, not the domain's business rule (the two may legitimately differ)
+
 ## Subdirectory Documentation
 
 - [paths/README.md](paths/README.md) — Endpoint definitions and versioning
 - [components/schemas/README.md](components/schemas/README.md) — Schema design policy
 - [components/parameters/README.md](components/parameters/README.md) — Parameter conventions
+- [components/requests/README.md](components/requests/README.md) — Request body semantics (content / required)
+- [components/responses/README.md](components/responses/README.md) — Response semantics (status / description)

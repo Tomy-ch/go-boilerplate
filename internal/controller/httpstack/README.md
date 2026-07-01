@@ -36,7 +36,11 @@ Each sub-package is split into small responsibilities and combined during applic
 |`cookie`|`Middleware`|Enforce security attributes on Set-Cookie headers|
 |`forcejson`|`Middleware`|Force response Content-Type to JSON|
 |`uri`|`Middleware`|Remove trailing slashes|
+|`bodylimit`|`Middleware`|Per-request body size limit (MB), 413 on exceed|
+|`timeout`|`Middleware`|Per-request deadline budget (entry point of deadline propagation)|
 |`observability`|`Middleware`|OpenTelemetry tracing integration|
+|`redmetrics`|`Middleware`|HTTP RED metrics (request count / duration / status); labels limited to method / route / status_code / status_class|
+|`idempotency`|`Middleware` / `StrictMiddleware`|`Idempotency-Key`-based request dedup entry point (oapi-codegen StrictMiddleware slot, not `e.Use`)|
 
 ### Error Handling
 
@@ -51,7 +55,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`oapi`|`Middleware`|OpenAPI request validation|
 |`oapi/auth`|`NewAuthenticator`|Token authentication from Cookie / Header|
 |`oapi/skipper`|`New`|Skip validation for ops endpoints|
-|`oapi/validator`|`Middleware`, `GetValidator`|Load OpenAPI schema and validate|
+|`oapi/validator`|`GetValidator`|Load and provide the OpenAPI schema (spec); validation itself is done by `oapi`|
 
 ### Infrastructure / Utilities
 

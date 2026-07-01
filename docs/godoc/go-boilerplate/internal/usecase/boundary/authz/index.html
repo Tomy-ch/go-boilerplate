@@ -1,0 +1,354 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>authz - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package authz
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/authz&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package authz は認可（authorization）を行うためのインターフェースを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+				
+				<dd><a href="#Action">type Action</a></dd>
+				
+				
+					
+					<dd>    <a href="#Action.String">func (a Action) String() string</a></dd>
+				
+			
+				
+				<dd><a href="#Authorizer">type Authorizer</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Resource">type Resource</a></dd>
+				
+					
+					<dd>    <a href="#NewResource">func NewResource(kind string, ownerID *uuid.UUID) *Resource</a></dd>
+				
+				
+					
+					<dd>    <a href="#Resource.Kind">func (r *Resource) Kind() string</a></dd>
+				
+					
+					<dd>    <a href="#Resource.OwnerID">func (r *Resource) OwnerID() *uuid.UUID</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html">action.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/authorizer.go.html">authorizer.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/error.go.html">error.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html">resource.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrForbidden は、認可が拒否された場合に返すエラーです（HTTP 403 Forbidden）。
+
+				</p><pre>var <span id="ErrForbidden">ErrForbidden</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrPermissionDenied">ErrPermissionDenied</a>, &#34;forbidden&#34;)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=481:499#L3">Action</a>
+				<a class="permalink" href="#Action">¶</a>
+				
+				
+			</h2>
+			<p>Action は、認可対象の操作を表す値オブジェクトです（例: &#34;user:delete&#34;）。
+
+			</p><pre>type Action <a href="../../../../../builtin/#string">string</a></pre>
+
+			
+				
+				<pre>const (
+    <span class="comment">// ActionUserGet は、ユーザー取得操作を表します。</span>
+    <span id="ActionUserGet">ActionUserGet</span> <a href="#Action">Action</a> = &#34;user:get&#34;
+    <span class="comment">// ActionUserUpdate は、ユーザー更新操作（全更新・部分更新）を表します。</span>
+    <span id="ActionUserUpdate">ActionUserUpdate</span> <a href="#Action">Action</a> = &#34;user:update&#34;
+    <span class="comment">// ActionUserDelete は、ユーザー削除操作を表します。</span>
+    <span id="ActionUserDelete">ActionUserDelete</span> <a href="#Action">Action</a> = &#34;user:delete&#34;
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=561:592#L6">String</a>
+					<a class="permalink" href="#Action.String">¶</a>
+					
+					
+				</h3>
+				<pre>func (a <a href="#Action">Action</a>) String() <a href="../../../../../builtin/#string">string</a></pre>
+				<p>String は、Action の文字列表現を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Authorizer">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/authorizer.go.html?s=380:770#L3">Authorizer</a>
+				<a class="permalink" href="#Authorizer">¶</a>
+				
+				
+			</h2>
+			<p>Authorizer は認可判断を行うためのインターフェースです。
+
+			</p><pre>type Authorizer interface {
+    <span class="comment">// Authorize は、認証主体 authn が resource に対して action を実行してよいかを判定します。</span>
+    <span class="comment">// 許可する場合は nil を、拒否する場合は apperror.ErrPermissionDenied でラップしたエラー（ErrForbidden）を返します。</span>
+    Authorize(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, action <a href="#Action">Action</a>, resource *<a href="#Resource">Resource</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Resource">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=245:422#L1">Resource</a>
+				<a class="permalink" href="#Resource">¶</a>
+				
+				
+			</h2>
+			<p>Resource は、認可対象のリソースを表します。
+所有権ベースの判定（呼出元 == 所有者）に必要な最小情報を持ちます。
+
+			</p><pre>type Resource struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewResource">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=727:786#L8">NewResource</a>
+					<a class="permalink" href="#NewResource">¶</a>
+					
+					
+				</h3>
+				<pre>func NewResource(kind <a href="../../../../../builtin/#string">string</a>, ownerID *<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) *<a href="#Resource">Resource</a></pre>
+				<p>NewResource は、種別と所有者 ID から Resource を生成します。
+ownerID は防御的にコピーして保持するため、呼出元が渡したポインタの後続変更や
+スタック寿命に Resource は影響されません（Authorize が非同期実装でも安全）。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Resource.Kind">func (*Resource) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=901:933#L13">Kind</a>
+					<a class="permalink" href="#Resource.Kind">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Resource">Resource</a>) Kind() <a href="../../../../../builtin/#string">string</a></pre>
+				<p>Kind は、リソース種別を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Resource.OwnerID">func (*Resource) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=1124:1163#L17">OwnerID</a>
+					<a class="permalink" href="#Resource.OwnerID">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Resource">Resource</a>) OwnerID() *<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>OwnerID は、リソース所有者の ID を返します（nil の場合は所有者概念なし）。
+内部状態を保護するためコピーを返します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -42,7 +42,7 @@ func TestTo(t *testing.T) {
 			v := 3.14
 			actual := To(v)
 			require.NotNil(t, actual)
-			require.InDelta(t, v, *actual, 0)
+			assert.InDelta(t, v, *actual, 0)
 		})
 
 		t.Run("array型の値からポインタを生成する", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestCopy(t *testing.T) {
 			assert.Equal(t, *v, *actual)
 
 			// ポインタが異なることを確認
-			require.NotSame(t, v, actual)
+			assert.NotSame(t, v, actual)
 		})
 
 		t.Run("nilポインタの場合、nilを返す", func(t *testing.T) {

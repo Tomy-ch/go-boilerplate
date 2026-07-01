@@ -59,21 +59,21 @@ docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/
 # .env.stg のみが焼き込まれたか検証
 ```
 
-migration イメージは `--target migration`（同 base 継承）。
+migration 専用イメージは無い。`env/` と `database/migrations` はバイナリに埋め込まれるため、マイグレーションは同じ `runtime` イメージの command override（`./server migrate-up`）で実行する。
 
 ## 5. commit-msg フック / commitlint エラー
 
-lefthook の **commit-msg** フックは `commitlint` を実行するが、これは `mise` の npm ツールで `PATH` に無い。素の `commitlint` は `commitlint: not found`（exit 127）。`mise exec` でツールを明示して実行する（素の `mise exec` は `mise.toml` 全ツール解決を要求しローカル未導入で失敗する）:
+lefthook の **commit-msg** フックは `make commitlint COMMIT_MSG_FILE={1}` を実行し、`commitlint` を `node_tool_runner` コンテナ内で走らせる（ツールはホストではなくコンテナ化ランナーで解決する。他の lint / 生成ターゲットと同じ再現性ルール。`docs/rules.md` 参照）。`node_tool_runner` イメージが未ビルド／古いと `commitlint: not found` で失敗するので、`make tool-runners-build`（または `docker compose build node_tool_runner`）で一度再ビルドする:
 
 ```text
-mise exec npm:@commitlint/cli -- commitlint --edit {1}
+make commitlint COMMIT_MSG_FILE={1}
 ```
 
 `commitlint.config.js` は意図的に `type-case` を無効化（prefix は Cap-first `Feat`/`Fix`/… だが CI は全大文字＝単一 case を強制できない）し、`type-enum` をプロジェクト prefix に固定。`Merge`/`Revert` は commitlint 既定で自動無視。
 
 ## 6. 生成モック — 手書きせず Docker で再生成
 
-モックは生成物・手書き禁止。各ソースに `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE` を宣言し、`make gen-go-code` が `go_tool_runner` 内で**ピン版** mockgen（`v0.6.0`）で実行。再生成された mock ディレクトリは root 所有で返ることがある（§2）。
+モックは生成物・手書き禁止。各ソースに `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` を宣言し（`$GOFILE` ベースの destination はリポジトリ全体で統一されており、どの interface ファイルにも同じ行をコピペできる）、`make gen-go-code` が `go_tool_runner` 内で**ピン版** mockgen（`v0.6.0`）で実行。再生成された mock ディレクトリは root 所有で返ることがある（§2）。
 
 インターフェース変更（シグネチャ・新メソッド）後は `*_mock.go` を編集せず再生成:
 

@@ -62,11 +62,8 @@ func NewGenerator(logger logging.Logger, workDir string) *Generator {
 	}
 }
 
-// RunDump は、DSN 解決・スキーマダンプ・整形のオーケストレーションを行います。
-//
-// 手順:
-//  1. ダンプコマンドを実行してスキーマをダンプ
-//  2. スキーマファイル内のメタコマンド行を除去
+// RunDump は、DSN 解決・スキーマダンプ・整形を行い、schema.gen.sql を sqlc が読み込める形で書き出します。
+// loadDSN は (パスワード非含有 DSN, パスワード) を返します。
 func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string, error)) error {
 	dbURL, password, err := loadDSN()
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewSkipper(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
 
 	sk := New()

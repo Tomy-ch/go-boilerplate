@@ -20,14 +20,6 @@ flowchart TB
 
 Implements the `security.Hasher` interface (`internal/usecase/boundary/security`) in the Infrastructure layer. Usecase / Domain do not depend on bcrypt implementation details.
 
-## Public API
-
-|Function / Method|Description|
-|---|---|
-|`NewBcryptHasher(secCfg)`|Create `security.Hasher` using `BcryptCost` from `config.SecurityConfig`|
-|`Hash(password)`|Hash a password with bcrypt|
-|`Compare(hash, password)`|Compare hash with plaintext password (mismatch returns `false, nil`)|
-
 ## Design Policy
 
 - bcrypt cost is externalized via `config.SecurityConfig.BcryptCost()`
@@ -36,7 +28,7 @@ Implements the `security.Hasher` interface (`internal/usecase/boundary/security`
 
 ## DI Registration
 
-Register in the `security` module of `internal/di/module/infrastructure.go`.
+Registered via `securityModule()` in `internal/di/module/security.go` (aggregated by `InfrastructureModule()`).
 
 ```go
 fx.Provide(security.NewBcryptHasher)

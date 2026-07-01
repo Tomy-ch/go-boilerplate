@@ -7,7 +7,6 @@ Overview: **A package that provides utilities for tests using RDB.**
 It is mainly used for the following purposes.
 
 - Easily create a test `DatabaseDriver`
-- Initialize Infrastructure including LoggingDBProvider
 - Execute tests within a transaction and always roll back
 
 This package is a **support tool to make writing Repository and Infrastructure tests easier**.
@@ -23,7 +22,6 @@ The following problems occur in tests that use RDB.
 `testkit` provides the following features to solve these.
 
 - Test DB initialization
-- Creation of LoggingDBProvider
 - Automatic rollback transactions
 
 ## Architectural Position
@@ -32,7 +30,7 @@ The following problems occur in tests that use RDB.
 flowchart TD
     A[Repository Test]
     B[testkit]
-    C[driver / loggingdb]
+    C[driver]
     D[(PostgreSQL)]
 
     A --> B --> C --> D
@@ -48,32 +46,8 @@ flowchart TD
 func NewTestDB(t *testing.T) driver.DatabaseDriver
 ```
 
-Creates a test `DatabaseDriver`.
-
-### NewTestLoggingProvider
-
-```go
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider
-```
-
-Creates a LoggingDBProvider.
-
-Main use cases:
-
-- Repository tests
-- QueryService tests
-
-Internally, it performs the following processing.
-
-```mermaid
-flowchart TD
-    A[MockConfigForTest]
-    B[DatabaseConfig]
-    C[Logging / Tracer initialization]
-    D[loggingdb.NewLoggingDBProvider]
-
-    A --> B --> C --> D
-```
+Creates a test `DatabaseDriver` (shared singleton). Pass it directly to Repository / QueryService
+constructors; SQL logging / tracing is applied at the driver connection level.
 
 ### NewTestTransactionRunner
 
@@ -106,7 +80,7 @@ type TransactionRunner interface {
 ### WithinTx
 
 ```go
-func (t *testTxManager) WithinTx(fn func(ctx context.Context))
+func (t *testTxRunner) WithinTx(fn func(ctx context.Context))
 ```
 
 Executes the specified function **inside a transaction**.
@@ -116,8 +90,8 @@ Processing flow:
 ```mermaid
 flowchart TD
     A[Transaction Begin]
-    B[Execute fn(ctx)]
-    C[Return rollbackForTestError]
+    B["Execute fn(ctx)"]
+    C[Return errRollbackForTest]
     D[Rollback]
 
     A --> B --> C --> D
@@ -127,7 +101,7 @@ Internally, it uses `tx.Manager.Do`.
 
 ```mermaid
 flowchart TD
-    A[Do(fn)]
+    A["Do(fn)"]
     B[Return error to trigger rollback]
 
     A --> B
@@ -140,7 +114,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Execute fn]
-    B[Return rollbackForTestError]
+    B[Return errRollbackForTest]
     C[tx.Manager performs rollback]
 
     A --> B --> C
@@ -149,7 +123,7 @@ flowchart TD
 This special error is defined as:
 
 ```go
-var rollbackForTestError = xerrors.New("rollback for test")
+var errRollbackForTest = xerrors.New("rollback for test")
 ```
 
 This error is treated as **success in tests**.
@@ -215,9 +189,9 @@ txm.WithinTx(func(ctx context.Context) {
 ### Repository Test
 
 ```go
-provider := testkit.NewTestLoggingProvider(t)
+db := testkit.NewTestDB(t)
 
-repo := repository.NewRepository(provider)
+repo := repository.NewRepository(db)
 ```
 
 ## Test Design Policy
@@ -262,7 +236,7 @@ Therefore, you must configure:
 
 ```go
 fn(ctx)
-return rollbackForTestError
+return errRollbackForTest
 ```
 
 Therefore, assertions in tests should use:

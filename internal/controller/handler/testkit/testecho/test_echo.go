@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,21 +13,24 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	errTargetUnset  = errors.New("RequestURL か RoutePattern のいずれかを設定してください")
-	errModeConflict = errors.New("RequestURL は RoutePattern/PathParams と併用できません")
+	errTargetUnset  = xerrors.New("RequestURL か RoutePattern のいずれかを設定してください")
+	errModeConflict = xerrors.New("RequestURL は RoutePattern/PathParams と併用できません")
 )
 
+// EchoTestParam は、テストリクエストに付与するクエリ/パスパラメータの名前と値を表します。
 type EchoTestParam struct {
 	Name  string
 	Value string
 }
 
+// EchoTestClient は、Echo ハンドラをテストから駆動するためのリクエストビルダ兼クライアントです。
 type EchoTestClient struct {
 	t            *testing.T
 	e            *echo.Echo

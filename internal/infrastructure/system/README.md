@@ -2,17 +2,24 @@
 
 English | [日本語](README.ja.md)
 
-`internal/infrastructure/system` provides **Infrastructure implementations for system-dependent operations** such as time retrieval.
+`internal/infrastructure/system` provides **Infrastructure implementations for system-dependent operations** such as time retrieval and context-aware waiting.
+
+It implements two interfaces from `internal/usecase/boundary/clock`:
+
+- `clock.Clock` (`NewClock`) — `Now()` returns the current time
+- `clock.Sleeper` (`NewSleeper`) — `Sleep(ctx, d)` waits until `d` elapses, returning `ctx.Err()` if the context is canceled first (a non-positive `d` returns immediately with `ctx.Err()`)
+
+Both are backed by the same unexported `systemClock` type.
 
 ## Architectural Position
 
 ```mermaid
 flowchart TB
     subgraph "Usecase Layer"
-        IF["clock.Clock interface"]
+        IF["clock.Clock / clock.Sleeper interface"]
     end
     subgraph "Infrastructure Layer"
-        Impl["system.Clock impl"]
+        Impl["systemClock impl (Clock + Sleeper)"]
     end
     subgraph "Domain Layer"
         Domain["Domain Entity"]
@@ -24,13 +31,6 @@ flowchart TB
 
 If Domain / Usecase call `time.Now()` directly, time cannot be controlled in tests. By going through the `clock.Clock` interface (`internal/usecase/boundary/clock`), mock substitution becomes possible during testing.
 
-## Public API
-
-|Function / Method|Description|
-|---|---|
-|`NewClock()`|Create an implementation of `clock.Clock` (internally calls `time.Now()`)|
-|`Now()`|Return the current time|
-
 ## Why Abstract?
 
 - Preserve **determinism** in Domain / Usecase — time can be fixed in tests
@@ -39,10 +39,13 @@ If Domain / Usecase call `time.Now()` directly, time cannot be controlled in tes
 
 ## DI Registration
 
-Register in the `system` module of `internal/di/module/infrastructure.go`.
+Registered via `clockModule()` in `internal/di/module/clock.go` (aggregated by `InfrastructureModule()`). Both the `Clock` and `Sleeper` implementations are provided here.
 
 ```go
-fx.Provide(system.NewClock)
+fx.Provide(
+    system.NewClock,
+    system.NewSleeper,
+)
 ```
 
 ## Extending

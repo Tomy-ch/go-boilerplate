@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
@@ -16,27 +18,27 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &repository{
 		tracer: tf.Infra(),
-		db:     loggingDB,
+		db:     testDB,
 	}
-	actual := New(loggingDB, tf)
+	actual := New(testDB, tf)
 	assert.Equal(t, expected, actual)
 }
 
 func TestFindByName(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -65,19 +67,33 @@ func TestFindByName(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しない都道府県名の場合、ErrNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByName(ctx, "存在しない県")
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+				assert.Nil(t, actual)
+			})
+		})
+	})
 }
 
 func TestFindByID(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -100,10 +116,26 @@ func TestFindByID(t *testing.T) {
 				)
 				require.NoError(t, err)
 
-				require.NoError(t, err)
 				actual, err := repo.FindByID(ctx, expectedID)
 				require.NoError(t, err)
 				assert.Equal(t, expected, actual)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しない都道府県IDの場合、ErrNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			notExistID, err := uuid.Parse("00000000-0000-0000-0000-000000000000")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByID(ctx, notExistID)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+				assert.Nil(t, actual)
 			})
 		})
 	})
@@ -112,14 +144,14 @@ func TestFindByID(t *testing.T) {
 func TestFindByIDs(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -164,6 +196,44 @@ func TestFindByIDs(t *testing.T) {
 				actual, err := repo.FindByIDs(ctx, ids)
 				require.NoError(t, err)
 				assert.Equal(t, expected, actual)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.Parse("101caa1e-84e7-4ceb-9108-50d40b6be1a3")
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			actual, err := repo.FindByIDs(ctx, []uuid.UUID{id})
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("取得行のドメイン化に失敗した場合、そのエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				invalidID, err := uuid.Parse("00000000-0000-0000-0000-0000000000ff")
+				require.NoError(t, err)
+
+				// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化で ErrInvalidCode となる。
+				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+					"INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)",
+					invalidID, "テスト無効県", 99,
+				)
+				require.NoError(t, execErr)
+
+				actual, err := repo.FindByIDs(ctx, []uuid.UUID{invalidID})
+				assert.Nil(t, actual)
+				require.ErrorIs(t, err, prefecture.ErrInvalidCode)
 			})
 		})
 	})

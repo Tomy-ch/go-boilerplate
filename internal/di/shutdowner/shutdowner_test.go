@@ -1,56 +1,64 @@
 package shutdowner
 
 import (
-	"errors"
 	"testing"
+
+	mock_shutdowner "go-boilerplate/internal/di/shutdowner/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/fx"
+	gomock "go.uber.org/mock/gomock"
 )
 
-type mockShutdowner struct {
-	shutdownFunc func(opts ...fx.ShutdownOption) error
-}
+func TestNewShutdowner(t *testing.T) {
+	t.Parallel()
 
-func (m *mockShutdowner) Shutdown(opts ...fx.ShutdownOption) error {
-	return m.shutdownFunc(opts...)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("fx.Shutdownerを渡すと非nilなShutdownerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
+
+			assert.NotNil(t, NewShutdowner(fxSD))
+		})
+	})
 }
 
 func Test_Shutdowner_Shutdown(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Shutdownがfx.ShutdownerのShutdownを呼び出す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		called := false
-		mockShutdowner := &mockShutdowner{
-			shutdownFunc: func(_ ...fx.ShutdownOption) error {
-				called = true
-				return nil
-			},
-		}
+		t.Run("fx.ShutdownerのShutdownを呼び出しnilを返す", func(t *testing.T) {
+			t.Parallel()
 
-		shutdowner := NewShutdowner(mockShutdowner)
+			ctrl := gomock.NewController(t)
+			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
+			fxSD.EXPECT().Shutdown().Return(nil)
 
-		err := shutdowner.Shutdown()
-		require.NoError(t, err)
-		assert.True(t, called)
+			err := NewShutdowner(fxSD).Shutdown()
+			require.NoError(t, err)
+		})
 	})
 
-	t.Run("Shutdownがfx.ShutdownerのShutdownのエラーを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		expectedErr := errors.New("shutdown error")
-		mockShutdowner := &mockShutdowner{
-			shutdownFunc: func(_ ...fx.ShutdownOption) error {
-				return expectedErr
-			},
-		}
+		t.Run("fx.ShutdownerのShutdownのエラーをそのまま返す", func(t *testing.T) {
+			t.Parallel()
 
-		shutdowner := NewShutdowner(mockShutdowner)
+			expectedErr := xerrors.New("shutdown error")
+			ctrl := gomock.NewController(t)
+			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
+			fxSD.EXPECT().Shutdown().Return(expectedErr)
 
-		err := shutdowner.Shutdown()
-		require.ErrorIs(t, err, expectedErr)
+			err := NewShutdowner(fxSD).Shutdown()
+			require.ErrorIs(t, err, expectedErr)
+		})
 	})
 }

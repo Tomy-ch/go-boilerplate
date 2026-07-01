@@ -21,7 +21,8 @@ openapi/
 │   ├── requests/             # リクエストのセマンティクス（content / required）
 │   └── responses/            # レスポンスのセマンティクス（status / description）
 ├── parameter-guide.md        # パラメータ定義リファレンス
-└── secure-uuid.md            # UUID 公開のセキュリティ評価
+├── secure-uuid.md            # UUID 公開のセキュリティ評価
+└── boundary-ownership.md     # min/max/長さ制約のオーナーシップ（ワイヤー契約 vs domain ルール）
 ```
 
 ## ファイルの役割
@@ -94,6 +95,18 @@ $ref: '#/components/schemas/UserResponse'
 - CRUD は HTTP メソッドで表現: `GET`, `POST`, `PATCH`, `DELETE`
 - 非 CRUD アクション: `POST /users/{id}:deactivate`
 
+### 命名 / casing
+
+ロケーション別の意図的な規約（`redocly lint` で強制）：
+
+|ロケーション|casing|例|
+|---|---|---|
+|リクエスト／レスポンスの**ボディフィールド**|`camelCase`|`firstName`, `postalCode`, `nextCursor`, `hasNext`, `requestId`|
+|**クエリ／パスパラメータ**|`snake_case`|`per_page`, `user_id`|
+|`operationId`|`PascalCase`・動詞始まり|`GetUsers`, `PostUsers`|
+
+ボディフィールドとパラメータは意図的に casing を分けています（ボディ＝JSON/TS クライアントに合わせ camelCase、パラメータ＝URL で一般的な snake_case）。各ロケーション内では統一します。
+
 ### バージョニング
 
 URL パスバージョニング: `/v1/users`
@@ -106,6 +119,7 @@ URL パスバージョニング: `/v1/users`
 - リソース所有権は Usecase / Middleware で `sub` クレームにより検証
 - UUID を公開識別子として使用 — セキュリティ評価は `secure-uuid.md` を参照
 - IDOR 対策必須
+- OpenAPI 経由のエンドポイントでは `security:` 宣言が**強制の source of truth**：`oapi` ミドルウェアの `AuthenticationFunc` は宣言のある操作だけ発火する。**例外：** `/metrics` は ops パスとして OpenAPI 検証パイプラインから skip されるため、宣言された `BasicAuth` はドキュメント上のみで、実際の認証はそのルートに付与した別の Echo `BasicAuth` ミドルウェアが担う。
 
 ## 禁止事項
 
@@ -115,8 +129,16 @@ URL パスバージョニング: `/v1/users`
 - DB カラム構造を API スキーマに露出しない
 - OpenAPI 生成型を Usecase に渡さない — DTO に変換する
 
+## ガイド
+
+- [parameter-guide.ja.md](parameter-guide.ja.md) — パラメータ定義のクイックリファレンス
+- [secure-uuid.ja.md](secure-uuid.ja.md) — UUID 公開のセキュリティ評価
+- [boundary-ownership.ja.md](boundary-ownership.ja.md) — `min` / `max` / 長さ制約のオーナーシップ：OpenAPI の制約は **ワイヤー契約**であり domain の業務ルールではない（両者は正当に食い違える）
+
 ## サブディレクトリのドキュメント
 
 - [paths/README.ja.md](paths/README.ja.md) — エンドポイント定義とバージョニング
 - [components/schemas/README.ja.md](components/schemas/README.ja.md) — スキーマ設計ポリシー
 - [components/parameters/README.ja.md](components/parameters/README.ja.md) — パラメータ規約
+- [components/requests/README.ja.md](components/requests/README.ja.md) — リクエストボディのセマンティクス（content / required）
+- [components/responses/README.ja.md](components/responses/README.ja.md) — レスポンスのセマンティクス（status / description）

@@ -85,8 +85,8 @@ Example
 
 ```txt
 query_service/
- └ user/
-     └ user_query_service.go
+ └ <aggregate>/
+     └ <aggregate>_query_service.go
 ```
 
 QueryService interfaces are placed in the **Usecase layer**.
@@ -96,7 +96,7 @@ QueryService interfaces are placed in the **Usecase layer**.
 Example
 
 ```txt
-internal/usecase/user/query/user_query_service.go
+internal/usecase/<aggregate>/query/<aggregate>_query_service.go
 ```
 
 Infrastructure **only implements this interface**.
@@ -122,7 +122,7 @@ QueryService does not perform the following:
 QueryService uses **sqlc generated queries**.
 
 ```go
-rows, err := db.SearchUsers(ctx, &gen.SearchUsersParams{...})
+rows, err := db.Search<Entities>(ctx, &gen.Search<Entities>Params{...})
 ```
 
 ## SQL Splitting Design
@@ -131,9 +131,9 @@ Search conditions (active / deleted / all) are not branched within SQL, but impl
 
 Example:
 
-- SearchUsers
-- SearchActiveUsers
-- SearchDeletedUsers
+- Search<Entities>
+- SearchActive<Entities>
+- SearchDeleted<Entities>
 
 Reasons:
 
@@ -192,10 +192,10 @@ However, in this project, type conversions are applied at generation time using 
 Therefore, QueryService can pass generated types directly to Domain constructors or DTOs with minimal additional conversion.
 
 ```go
-u, err := user.New(
+u, err := <aggregate>.New(
     row.ID,
-    row.FirstName,
-    row.LastName,
+    row.Field1,
+    row.Field2,
     ...
 )
 ```
@@ -212,7 +212,7 @@ In this project, sqlc override aligns UUID in DB and `pkg/uuid` used in Domain.
 Therefore, explicit UUID conversion in QueryService is generally unnecessary.
 
 ```go
-row.Users.ID // usable as-is
+row.<Entity>.ID // usable as-is
 ```
 
 Use the `pkg/uuid` wrapper for UUID generation, comparison, and helper operations.
@@ -224,25 +224,26 @@ Nullable values are handled as pointer types via sqlc override.
 Therefore, additional conversion in QueryService is unnecessary.
 
 ```go
-row.Users.Building   // *string
-row.Users.DeletedAt  //*time.Time
+row.<Entity>.OptionalText  // *string
+row.<Entity>.DeletedAt     // *time.Time
 ```
 
-## LoggingDBProvider
+## DB Access (driver)
 
-QueryService typically uses `loggingdb.DBProvider` to access the DB.
+QueryService accesses the DB through `driver.DatabaseDriver`.
 
 ```go
-db := gen.New(s.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, s.db))
 ```
 
-`loggingdb.DBProvider` provides:
+`driver.New(ctx, db)` provides:
 
-- SQL logging
-- Transparent switching between DB / Tx
+- Transparent switching between DB / Tx (picks the tx in context if present)
 - Context-based connection retrieval
 
-QueryService is designed to **not be aware of DB connection state**.
+SQL logging / tracing is applied transparently by the pgx query tracer wired at the driver
+connection level (see `driver/README.md`), so QueryService is designed to **not be aware of DB
+connection state**.
 
 ## Error Normalization
 
@@ -300,21 +301,24 @@ Query Service is registered via `fx.Provide` and injected into Usecase.
 ```mermaid
 flowchart TB
     Module["InfrastructureModule"]
-    Provide["fx.Provide(userqs.New)"]
-    IF["query.UserQueryService (interface)"]
+    Provide["fx.Provide(<aggregate>qs.New)"]
+    IF["query.<Aggregate>QueryService (interface)"]
     Usecase["Usecase"]
 
     Module --> Provide --> IF --> Usecase
 ```
 
-### Role of internal/di/module/infrastructure.go
+### Role of internal/di/module/persistence.go
+
+Persistence providers (repository / query_service / system_query) are registered in
+`persistenceModule`, which `InfrastructureModule()` composes.
 
 ```go
-func InfrastructureModule() fx.Option {
-    return fx.Module("infrastructure",
+func persistenceModule() fx.Option {
+    return fx.Module("persistence",
         fx.Module("query_service",
             fx.Provide(
-                userqs.New,
+                <aggregate>qs.New,
             ),
         ),
     )
@@ -324,15 +328,15 @@ func InfrastructureModule() fx.Option {
 - `fx.Provide`
   - Registers the Query Service constructor
 - Return value is the **interface defined in the Usecase layer**
-  - Example: `query.UserQueryService`
+  - Example: `query.<Aggregate>QueryService`
 
 ### Query Service Constructor Design
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) query.UserQueryService {
+) query.<Aggregate>QueryService {
     return &service{
         db:     db,
         tracer: tf.Infra(),
@@ -350,8 +354,8 @@ Key points:
 
 ```mermaid
 flowchart TB
-    Provide["fx.Provide(userqs.New)"]
-    IF["query.UserQueryService"]
+    Provide["fx.Provide(<aggregate>qs.New)"]
+    IF["query.<Aggregate>QueryService"]
     Usecase["Usecase (dependency)"]
 
     Provide --> IF --> Usecase
@@ -361,7 +365,7 @@ On the Usecase side:
 
 ```go
 type service struct {
-    qs query.UserQueryService
+    qs query.<Aggregate>QueryService
 }
 ```
 
@@ -386,7 +390,7 @@ is used to receive via interface.
 - Query Service constructor must always be defined as `New`
 - Return value must be the Usecase interface
 - Do not new dependencies inside Query Service
-- Register DI in `internal/di/module/infrastructure.go`
+- Register DI in `internal/di/module/persistence.go` (`persistenceModule`)
 
 ## QueryService Structure
 
@@ -394,7 +398,7 @@ QueryService has the following dependencies.
 
 ```go
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -403,9 +407,9 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) query.UserQueryService {
+) query.<Aggregate>QueryService {
     return &service{
         db:     db,
         tracer: tf.Infra(),
@@ -445,7 +449,7 @@ QueryService is **data retrieval only**.
 NG
 
 ```go
-if user.IsPremium() {
+if entity.IsPremium() {
 }
 ```
 
@@ -465,92 +469,89 @@ Always convert to Domain.
 // service is the implementation of QueryService.
 // It is responsible for DB access and tracing.
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New is the constructor for QueryService.
 // All dependencies are injected externally; no new is performed internally.
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
-) query.UserQueryService {
+) query.<Aggregate>QueryService {
     return &service{
         db:     db,
         tracer: tf.Infra(),
     }
 }
 
-// FindByFilter searches users based on keywords and deleted state.
-// - Keywords are converted to LIKE patterns
-// - Deleted state is branched in Go
-// - SQL uses dedicated queries
-func (s *service) FindByFilter(ctx context.Context, filter*query.UserSearchFilter, limit, offset int32) (query.UserSearchResults, error) {
-    ctx, endSpan := s.tracer.Start(ctx)
-    defer endSpan()
-
-    // Convert keywords to LIKE search patterns
-    tokens := make([]string, len(filter.Keywords))
-    for i, kw := range filter.Keywords {
+// buildLikeTokens converts keywords into LIKE patterns. Returns ["%"] (match-all) when empty.
+func buildLikeTokens(keywords []string) []string {
+    if len(keywords) == 0 {
+        return []string{"%"}
+    }
+    tokens := make([]string, len(keywords))
+    for i, kw := range keywords {
         escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
         tokens[i] = sqlc.WrapContainsLikePattern(escaped)
     }
+    return tokens
+}
 
-    // Acquire DB connection using loggingDB
-    db := gen.New(s.db.NewLoggingDB(ctx))
+// FindByFilter searches based on keywords and deleted state.
+// - Keywords are converted to LIKE patterns
+// - Deleted state is branched in Go
+// - SQL uses dedicated queries
+func (s *service) FindByFilter(ctx context.Context, filter *query.<Aggregate>SearchFilter, limit, offset int32) (query.<Aggregate>SearchResults, error) {
+    ctx, endSpan := s.tracer.Start(ctx)
+    defer endSpan()
+
+    tokens := buildLikeTokens(filter.Keywords)
+    db := gen.New(driver.New(ctx, s.db))
 
     // Switch queries based on deleted state
     switch {
     case filter.Active == nil:
-        return fetchSearchAll(ctx, db, &gen.SearchUsersParams{
+        return fetchSearchAll(ctx, db, &gen.Search<Entities>Params{
             PatternsParam: tokens,
             LimitParam:    limit,
             OffsetParam:   offset,
         })
     case *filter.Active:
-        return fetchSearchActive(ctx, db, &gen.SearchActiveUsersParams{
-            PatternsParam: tokens,
-            LimitParam:    limit,
-            OffsetParam:   offset,
-        })
-    case !*filter.Active:
-        return fetchSearchDeleted(ctx, db, &gen.SearchDeletedUsersParams{
+        return fetchSearchActive(ctx, db, &gen.SearchActive<Entities>Params{
             PatternsParam: tokens,
             LimitParam:    limit,
             OffsetParam:   offset,
         })
     default:
-        panic("unreachable: invalid active")
+        return fetchSearchDeleted(ctx, db, &gen.SearchDeleted<Entities>Params{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
     }
 }
 
-// fetchSearchAll is a helper function to search all users.
-// It separates logic from QueryService and clarifies responsibilities.
+// fetchSearchAll is a helper function to search all rows.
+// It separates logic from the service method and clarifies responsibilities.
 func fetchSearchAll(
     ctx context.Context,
     db *gen.Queries,
-    params*gen.SearchUsersParams,
-) (query.UserSearchResults, error) {
-    rows, err := db.SearchUsers(ctx, params)
+    params *gen.Search<Entities>Params,
+) (query.<Aggregate>SearchResults, error) {
+    rows, err := db.Search<Entities>(ctx, params)
     if err != nil {
         return nil, pgerror.NormalizeError(err)
     }
 
     // Row → DTO conversion
-    results := make(query.UserSearchResults, len(rows))
+    // sqlc override already maps nullable → pointer and UUID → pkg/uuid,
+    // so each column is copied into the DTO with minimal additional conversion.
+    results := make(query.<Aggregate>SearchResults, len(rows))
     for i, row := range rows {
-        results[i] = &query.UserSearchResult{
-            FirstName:      row.FirstName,
-            LastName:       row.LastName,
-            Email:          row.Email,
-            Phone:          row.Phone,
-            PostalCode:     row.PostalCode,
-            PrefectureName: row.PrefectureName,
-            City:           row.City,
-            Street:         row.Street,
-            Building:       row.Building,
-            RegisteredAt:   row.CreatedAt,
-            DeletedAt:      row.DeletedAt,
+        results[i] = &query.<Aggregate>SearchResult{
+            // Field: row.Field,
+            // ...
         }
     }
 

@@ -8,15 +8,7 @@ OpenAPI 生成型をドメイン型へ変換する境界ヘルパー。**control
 
 OpenAPI 生成型（`github.com/oapi-codegen/runtime/types`）を controller より下層へ漏らさないため、変換を本パッケージへ集約します。これにより生成型の import が境界に限定され、`usecase` / `domain` は生成型に依存しません。
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`UUID(p openapi_types.UUID) uuid.UUID`|生成 UUID（path / query パラメータ）をドメイン `uuid.UUID` へ変換|
-|`Email(e openapi_types.Email) string`|生成 Email を `string` へ変換|
-|`EmailPtr(e *openapi_types.Email) *string`|任意の生成 Email を `*string` へ変換（nil は nil のまま）|
-
 ## 注意点
 
-- `UUID` は**エラーを返しません**。値は echo のバインド時に UUID 形式が検証済みのため必ず変換できます。万一変換できない場合は到達してはならない不変条件違反（バグ）なので、エラーを返さず **panic** します（ハンドラに死んだエラー分岐を作らないため）。
-- この変換を省くために `pkg/uuid` へ検証バイパスのコンストラクタを足さないこと。invalid 時 panic のアサーションは意図的で、テストでは文字列入力ヘルパー経由で網羅しています。
+- `UUID` は**エラーを返しません**。`openapi_types.UUID` は検証済みの 16 バイト配列という値型のため、`uuid.FromPrimitive` によるドメイン `pkg/uuid.UUID` への変換は無条件に成功し失敗しません（エラー分岐も panic もありません）。これによりハンドラに死んだエラー分岐を作りません。
+- `Email` は `string` を、`EmailPtr` は `*string` を返します（`nil` 入力は `nil` を返す）。

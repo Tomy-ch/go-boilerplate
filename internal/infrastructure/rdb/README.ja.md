@@ -23,7 +23,7 @@ Domain / Usecase は **RDB の実装詳細を意識せずにデータ永続化�
 
 ```mermaid
 flowchart TB
-    Usecase --> Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
+    Usecase --> Repo["Repository / QueryService"] --> Driver["driver (+ pgx query tracer)"] --> DB["PostgreSQL"]
 ```
 
 各レイヤーの責務は次の通りです。
@@ -32,8 +32,7 @@ flowchart TB
 |---|---|
 |Repository|Aggregate 永続化（Domain Repository Interface の実装）|
 |QueryService|検索専用クエリーの提供（Usecase Interface の実装）|
-|loggingdb|SQL ログ / トレース付与（Observability wrapper）|
-|driver|DB 接続管理 / トランザクション管理|
+|driver|DB 接続 / トランザクション管理、および pgx クエリトレーサーによる SQL ログ / トレース|
 |PostgreSQL|実際の DB|
 
 補助コンポーネントとして以下が存在します。
@@ -53,8 +52,7 @@ internal/infrastructure/rdb
  ├ repository/        Repository 実装
  ├ query_service/     QueryService 実装
  ├ system_query/      システム運用クエリ（ヘルスチェック等）
- ├ driver/            DB 接続 / トランザクション
- │   └ loggingdb/     SQL logging / tracing wrapper
+ ├ driver/            DB 接続 / トランザクション + pgx クエリトレーサー（ログ / トレース）
  ├ sqlc/              sqlc 生成コード + SQL helper
  ├ pgerror/           PostgreSQL エラー正規化
  ├ metrics/           コネクションプール Prometheus メトリクス
@@ -123,35 +121,35 @@ QueryService は検索用途に特化します。
 - DB 接続プール管理
 - トランザクション管理（tx.Manager）
 - sqlc 用 DBTX インターフェース
+- pgx クエリトレーサーによる SQL ログ / トレース（後述）
 
 重要: **トランザクション境界は Usecase 層が管理する**
 
 詳細は以下を参照してください。
 
-[driver ディレクトリの README](driver/README.md)
+[driver ディレクトリの README](driver/README.ja.md)
 
-## loggingdb
+## SQL ログ / トレース（pgx クエリトレーサー）
 
-`loggingdb` は **SQL 実行ログとトレースを付与する Observability wrapper** です。
+SQL のログとトレースは、専用のラッパー層ではなく **pgx の接続レベル**（`ConnConfig.Tracer`）で
+`driver.NewQueryTracer` により結線します。Repository / QueryService は `driver.New(ctx, db)` で
+driver を直接利用し、計装は透過的で、トランザクション内のクエリも対象になります。
 
 ```mermaid
 flowchart TB
-    Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"]
+    Repo["Repository / QueryService"] --> Driver["driver (ConnConfig.Tracer)"] --> DB["PostgreSQL"]
 ```
+
+クエリトレーサーは OpenTelemetry span（semconv の DB 属性付き）のために `otelpgx` を埋め込み、
+クエリログを出力します：**正常終了は Info（latency 付き）、スローは Warn、失敗は Error**。
 
 主な機能
 
-- SQL ログ出力
-- OpenTelemetry span
-- クエリ実行時間計測
-- slow query 判定
-
-重要:  
-**loggingdb は DB 実行を行わない（pure wrapper）**
-
-詳細は以下を参照してください。
-
-[loggingdb ディレクトリの README](driver/loggingdb/README.md)
+- クエリごとの OpenTelemetry span（`otelpgx` 経由、batch / copy も対象）
+- 正常終了時の Info ログ（latency 付き）
+- クエリ失敗時のエラーログ（`span.RecordError` に加えて）
+- スロークエリ警告ログ（しきい値: `DB_SLOW_QUERY_WARN_THRESHOLD`）
+- クエリ引数のマスク（`OBS_MASKED_DB_QUERY_ARGS`）
 
 ## PostgreSQL エラー正規化
 
@@ -206,7 +204,7 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 主な機能
 
 - テスト用 DB 初期化
-- LoggingDBProvider 生成
+- 共有テスト DB ドライバの提供
 - トランザクション内テスト（自動 rollback）
 
 テスト特性
@@ -217,7 +215,7 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 
 詳細は以下を参照してください。
 
-[testkit ディレクトリの README](testkit/README.md)
+[testkit ディレクトリの README](testkit/README.ja.md)
 
 ## 設計方針
 
@@ -250,9 +248,12 @@ PostgreSQL 固有エラーは`pgerror`でアプリケーション共通エラー
 
 SQL 実行はすべて`sqlc`を通して行います。
 
+例外: `sqlc` で表現できない PostgreSQL のセッション設定コマンド（例: 行ロッククエリ前に発行する `SET LOCAL lock_timeout`）は直接 `Exec` で実行してよい。これらは `system_query` に限定し、エラーは引き続き `pgerror.NormalizeError` を経由させます。
+
 ### 6. 可観測性
 
-SQL 実行ログとトレースは`loggingdb`が提供します。
+SQL 実行トレースは driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span）が提供し、
+ログは正常終了（Info・latency 付き）・スロー（Warn）・失敗（Error）で出力します。
 
 ### 7. テスト戦略（Integration 前提）
 
@@ -263,3 +264,11 @@ Repository / QueryService テストは
 で実行します。
 
 `testkit`を利用して安全に実現します。
+
+各 Repository / QueryService テストが検証する観点:
+
+- SQL 実行経路 — メソッドが dispatch する各クエリ / 分岐
+- 全 sqlc 戻り値への `pgerror.NormalizeError` 適用（生 `pg` / 接続エラー → `apperror`）
+- row → entity 変換（カラム → フィールド対応、NULL 処理）
+
+並行 / ロック競合は既定の `testkit` ヘルパでは再現できません: `WithinTx` はトランザクションを直列化します（最後に rollback する単一 tx）。真に並行なコネクションでしか発火しない分岐 — 例: `Claim` の `lock_timeout` `55P03`（lock_not_available）— は、独立した `TransactionManager.Do` を 2 本（2 コネクション / トランザクション）走らせ、片方が行ロックを保持しもう片方をタイムアウトさせる専用の統合テストが要ります。

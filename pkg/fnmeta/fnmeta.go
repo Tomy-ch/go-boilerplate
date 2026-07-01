@@ -18,17 +18,14 @@ func splitFuncName(full string) (string, string) {
 		return unknown, ""
 	}
 
-	// パス部分を除去: internal/usecase/user.(*UserUsecase).GetUser
 	if idx := strings.LastIndex(full, "/"); idx >= 0 {
 		full = full[idx+1:]
 	}
 
-	// 最後の "." で分割: lhs = "user.(*UserUsecase)", rhs = "GetUser"
 	if idx := strings.LastIndex(full, "."); idx >= 0 {
 		return full[:idx], full[idx+1:]
 	}
 
-	// "." が見つからない場合は全部を lhs とみなす
 	return full, ""
 }
 
@@ -61,8 +58,8 @@ func ExtractPackageName(full string) string {
 		return unknown
 	}
 
-	if idx := strings.Index(lhs, "."); idx >= 0 {
-		return lhs[:idx]
+	if before, _, ok := strings.Cut(lhs, "."); ok {
+		return before
 	}
 
 	return lhs

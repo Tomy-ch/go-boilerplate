@@ -182,3 +182,34 @@ When adding, document the following in README:
 | `ErrInternal` | Unexpected internal error | 500 Internal Server Error |
 | `ErrUnimplemented` | Not implemented / unsupported feature | 501 Not Implemented |
 | `ErrUnavailable` | Temporary unavailability (external dependency failure, etc.) | 503 Service Unavailable |
+
+## Classification Helper (`IsAppError`)
+
+`IsAppError(err error) bool` reports whether `err` matches any of the HTTP-taxonomy sentinels listed in the mapping table above.
+
+- Matching uses `xerrors.Is`, so wrapped errors (`xerrors.Wrap(apperror.ErrConflict, ...)`) are detected as well.
+- The worker classification sentinels (`ErrRetryable` / `ErrPermanent` / `ErrFatal`, see below) are intentionally **not** covered by `IsAppError`.
+- `nil` returns `false`.
+
+```go
+// True: sentinel itself or an error wrapping it
+apperror.IsAppError(apperror.ErrNotFound)                        // true
+apperror.IsAppError(xerrors.Wrap(apperror.ErrConflict, "dup"))   // true
+
+// False: non-app error, nil, or a worker sentinel
+apperror.IsAppError(xerrors.New("generic"))                      // false
+apperror.IsAppError(nil)                                         // false
+apperror.IsAppError(apperror.ErrRetryable)                       // false
+```
+
+## Worker Classification Sentinels
+
+Separately from the HTTP taxonomy above, the package defines three sentinels used by the message-processing worker `engine` to classify the errors returned by a `Handler` and change its behavior accordingly.
+
+| Sentinel | Meaning | engine behavior |
+| -------- | ------- | --------------- |
+| `ErrRetryable` | Transient failure | Nack and redeliver |
+| `ErrPermanent` | Permanent failure | Move to `FailureHandler`, then Ack |
+| `ErrFatal` | Process cannot continue | Drain and stop the engine |
+
+These are **not** part of the HTTP error taxonomy: they have no HTTP status mapping and are excluded from `IsAppError`.

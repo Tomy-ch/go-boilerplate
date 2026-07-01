@@ -8,6 +8,8 @@ import (
 	echomw "github.com/labstack/echo/v4/middleware"
 )
 
+// BindHandler は、Prometheusメトリクスエンドポイント（/metrics）をEchoに登録します。
+// Basic認証バリデータを受け取り、エンドポイントへのアクセスを保護します。
 func BindHandler(e *echo.Echo, bav echomw.BasicAuthValidator) {
 	e.GET("/metrics",
 		echo.WrapHandler(promhttp.Handler()),

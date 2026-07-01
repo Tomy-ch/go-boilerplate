@@ -4,16 +4,6 @@
 
 認証に関するインターフェースと値オブジェクトを提供します。
 
-## 公開 API
-
-|型 / 関数|説明|
-|---|---|
-|`Authenticator`|`Credential` から `Authn` を生成するインターフェース|
-|`Authn`|認証結果（subject / id / provider / scopes / claims）|
-|`New(subject, provider, scopes, claims)`|`Authn` を生成（subject 空は `ErrUnauthorizedSubjectMissing`）|
-|`Credential`|アクセストークンを保持する値オブジェクト|
-|`NewCredential(accessToken)`|`Credential` を生成（空トークンは `ErrArgumentTokenMissing`）|
-
 ## Authn の詳細
 
 - `Subject()` — 認証主体（例: userID）を返す
@@ -27,9 +17,9 @@
 
 |エラー|説明|
 |---|---|
-|`ErrUnauthorizedSubjectMissing`|subject が空（`apperror.ErrUnauthenticated` をラップ）|
-|`ErrInvalidIDMissing`|subject が UUID として解釈不可（`apperror.ErrValidation` をラップ）|
-|`ErrArgumentTokenMissing`|アクセストークンが空（`apperror.ErrInvalidArgument` をラップ）|
+|`ErrUnauthenticatedSubjectMissing`|subject が空（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrSubjectNotUUID`|subject が UUID として解釈不可（`apperror.ErrValidation` をラップ）|
+|`ErrTokenMissing`|アクセストークンが空（`apperror.ErrInvalidArgument` をラップ）|
 
 ## 設計意図
 
@@ -39,4 +29,4 @@
 
 ## 実装
 
-`internal/infrastructure/auth/` に環境別の具体実装が配置されています。
+`internal/infrastructure/auth/` に、`Credential` から `Authn` を生成する `Authenticator` インターフェースの環境別の具体実装が配置されています。

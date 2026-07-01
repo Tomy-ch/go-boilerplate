@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
@@ -13,12 +13,13 @@ import (
 )
 
 type systemQuery struct {
-	db     loggingdb.DBProvider
+	db     driver.DatabaseDriver
 	tracer observability.LayerTracer
 }
 
+// New は、DB ヘルスチェック用のシステムクエリ実装を生成して返します。
 func New(
-	provider loggingdb.DBProvider,
+	provider driver.DatabaseDriver,
 	tf observability.TracerFactory,
 ) query.DBSystemQuery {
 	return &systemQuery{
@@ -33,7 +34,7 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 	defer endSpan()
 
 	start := time.Now()
-	db := gen.New(s.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, s.db))
 	_, err := db.GetDBHealthCheck(ctx)
 	if err != nil {
 		return query.DBHealth{}, pgerror.NormalizeError(err)
