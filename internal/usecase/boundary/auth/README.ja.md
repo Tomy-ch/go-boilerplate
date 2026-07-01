@@ -17,9 +17,9 @@
 
 |エラー|説明|
 |---|---|
-|`ErrUnauthorizedSubjectMissing`|subject が空（`apperror.ErrUnauthenticated` をラップ）|
-|`ErrInvalidIDMissing`|subject が UUID として解釈不可（`apperror.ErrValidation` をラップ）|
-|`ErrArgumentTokenMissing`|アクセストークンが空（`apperror.ErrInvalidArgument` をラップ）|
+|`ErrUnauthenticatedSubjectMissing`|subject が空（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrSubjectNotUUID`|subject が UUID として解釈不可（`apperror.ErrValidation` をラップ）|
+|`ErrTokenMissing`|アクセストークンが空（`apperror.ErrInvalidArgument` をラップ）|
 
 ## 設計意図
 

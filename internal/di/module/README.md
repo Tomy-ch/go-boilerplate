@@ -17,8 +17,10 @@ Each file exposes a function returning `fx.Option` to register the necessary com
 |`JobModule()`|`job.go`|Job registration (`group:"jobs"`) + Runner + State + Hook|
 |`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
 |`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|
+|`OutboxRelayModule()`|`outboxrelay.go`|Outbox relay engine + `provideRelaySettings` + `NewRelay` usecase + `OutboxMetrics` + Hook (`RegisterRelayHooks`); bundles `outboxPublisherModule()`. Relay-dedicated process only (`cmd outbox-relay`)|
 |`SystemModule()`|`system.go`|BuildInfo (version / revision / build date)|
 |`UsecaseModule()`|`usecase.go`|Usecase implementation registration|
+|`WorkerModule()`|`worker.go`|Worker registration (`group:"workers"`) + Engine (`ProvideEngine`) + State + `WorkerMetrics` + queue-stats collector (`provideQueueStatsCollector`) + shutdown-grace validation (`ValidateShutdownGrace`) + Hook (`RegisterWorkerHooks`). No worker is registered by default|
 
 ### Subdirectories
 
@@ -45,7 +47,7 @@ flowchart TB
 
 ## Design Policy
 
-- Each module corresponds to a layer boundary (config / logging / db / infra / usecase / controller / job)
+- Each module corresponds to a layer boundary (config / logging / db / infra / usecase / controller / job / worker / outbox-relay)
 - Inter-module dependencies are automatically resolved by fx
 - Adding a module is as simple as creating a new file and adding it to the app's root module
 - `InfrastructureModule()` is purely an **aggregation point**: it only composes per-concern submodules so the fx dependency graph stays readable per component group. Each concern lives in its own file — `persistence.go` (`persistenceModule()`), `clock.go` (`clockModule()`), `httpclient.go` (`httpClientModule()`), `webapi.go` (`webapiModule()`), `outboxpublisher.go` (`outboxPublisherModule()`), `security.go` (`securityModule()`), `authz.go` (`authzModule()`) — and `infrastructure.go` simply binds them under the `infrastructure` module. Each concern file has a sibling `*_test.go` with its own `Test<Concern>Module_GraphIsValid`, while `infrastructure_test.go` validates the aggregated whole.

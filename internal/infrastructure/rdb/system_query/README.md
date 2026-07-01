@@ -113,4 +113,4 @@ To add a new system query:
 
 1. Define the interface in `internal/usecase/<concern>/query/`
 2. Place the implementation in `internal/infrastructure/rdb/system_query/<concern>/`
-3. Add DI registration in `internal/di/module/infrastructure.go`
+3. Add DI registration in `internal/di/module/persistence.go` (`persistenceModule`'s `system_query` submodule)

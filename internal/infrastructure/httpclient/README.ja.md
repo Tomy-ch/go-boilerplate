@@ -9,11 +9,11 @@
 ```mermaid
 flowchart TB
     subgraph "Usecase 層"
-        GW["exchangerate.Gateway interface"]
+        GW["&lt;service&gt;.Gateway interface"]
         PUB["publisher.Publisher interface"]
     end
     subgraph "Infrastructure 層"
-        GWImpl["webapi/exchangerate 実装"]
+        GWImpl["webapi/&lt;service&gt; 実装"]
         PUBImpl["publisher 実装"]
         Sub["httpclient.Client substrate"]
     end

@@ -148,7 +148,7 @@ integration テストの目的は **HTTP boundary の検証**であり
 
 例
 
-- `mock_user.NewMockUsecase`
+- `mock_<feature>.NewMockUsecase`
 - `mock_healthcheck.NewMockUsecase`
 
 ## テストの流れ
@@ -167,7 +167,11 @@ flowchart TB
     New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponseType()"]
 ```
 
-## integration_test.go で定義されている関数
+## helper_test.go で定義されている関数
+
+各ハンドラの `BindHandler` は tracer factory を受け取ります。これらのテストでは
+`observability.NewNoopTracerFactory(t)` から得た no-op のものを渡します。feature
+ハンドラは加えて **mock 化した usecase** を受け取ります（「なぜ Usecase を mock するのか」参照）。
 
 ### `StartServer(t *testing.T, e *echo.Echo) *Server`
 
@@ -183,7 +187,8 @@ Echo を `httptest.NewServer` で立ち上げ、結合テスト用の簡易サ�
 
 ```go
 e := echo.New()
-handler.BindHandler(e)
+tf := observability.NewNoopTracerFactory(t)
+<feature>.BindHandler(e, tf, mockUsecase)
 
 srv := StartServer(t, e)
 ```
@@ -280,14 +285,15 @@ AssertErrorResponse(t, actual, http.StatusNotFound)
 
 integration テストで **認証済みユーザーを模擬するヘルパー**です。
 
-内部では Echo Middleware を追加し  
-`ctxhelper.SetAuthnToEcho` を使って認証情報を設定します。
+内部では `auth.New` で認証済みプリンシパルを生成し、それを `ctxhelper.WithAuthn` /
+`ctxhelper.SetAuthn` でリクエストコンテキストに注入する Echo Middleware を追加したうえで、
+リクエストに付与する `Authorization: Bearer debug:<id>` ヘッダーを返します。
 
 使用例
 
 ```go
 headers := MakeAvailableUserID(t, e, userID)
-srv.DoJSON(http.MethodPost, "/v1/users", body, headers)
+srv.DoJSON(http.MethodPost, "/v1/<resource>", body, headers)
 ```
 
 ## テスト設計ポリシー
@@ -318,6 +324,6 @@ handler を直接呼ぶのではなく `httptest.Server` を利用します。
 
 レスポンスは **OpenAPI 型**で検証します。
 
-- `gen.ResponseV1Users`
-- `gen.ResponseHealth`
-- `gen.ResponseVersion`
+- `gen.HealthResponse`
+- `gen.VersionResponse`
+- feature ハンドラの `gen` パッケージが公開するレスポンス型 — `gen.<Xxx>Response`（1 テストファイルで複数 handler の `gen` を import する場合は `detailgen.<Xxx>Response` のようにエイリアス）

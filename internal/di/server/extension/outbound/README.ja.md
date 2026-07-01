@@ -15,7 +15,7 @@
 |モジュール|種別|説明|
 |---|---|---|
 |`RecoveryModule()`|Use|panic をキャッチし、ログ出力して 500 を返す|
-|`ErrorHandlerModule()`|Configurator|アプリケーションエラーを HTTP レスポンスへ統一マッピング|
+|`ErrorHandlerModule()`|Configurator|アプリケーションエラーを HTTP レスポンスへ統一マッピング（ログ出力付き）|
 |`ForceJSONModule()`|Use|レスポンスの Content-Type を JSON に強制|
 
 ## 注意点

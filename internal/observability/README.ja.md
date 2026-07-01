@@ -77,9 +77,10 @@ LayerTracer --> ApplicationCode
 |`shutdown.go`|`ProviderShutdowner`（otel 非依存の後始末ハンドル）+ `NewProviderShutdowner`。di の shutdown hook が利用|
 |`ProvideTracerProvider` / `ProvideMeterProvider`|具象プロバイダを `trace.TracerProvider` / `metric.MeterProvider` IF として公開するアダプタ（`provider.go` 内）|
 |`NewPgxTracer`|接続情報を抑止した `otelpgx` トレーサ（DB span + metric、`pgx_tracer.go` 内）|
-|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|計装済み外向き HTTP トランスポート + その RED メトリクス|
+|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF ガード付き・計装済み外向き HTTP トランスポート + その RED メトリクス（`http_client_transport.go` / `http_client_metrics.go` 内）|
+|`propagation.go`|サービス跨ぎ / キャリア跨ぎのトレース伝播（`ExtractFromCarrier` / `InjectTraceContextToCarrier`）+ `NewTextMapPropagator`|
 |`TracerFactory`|レイヤー別トレーサ生成|
-|`LayerTracer`|span生成 + observabilityログ|
+|`LayerTracer`|レイヤー別 span 生成（span のみ。ログ行自体は出力しない）|
 |`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
 |`caller.go`|呼び出し元関数名取得|
 |`test_kit.go`|テスト用 tracer|
@@ -162,7 +163,7 @@ type TracerFactory interface {
 生成例
 
 ```go
-tf := observability.NewTracerFactory(tp, logger, logFieldBuilder)
+tf := observability.NewTracerFactory(tp)
 
 controllerTracer := tf.Controller()
 usecaseTracer := tf.Usecase()
@@ -176,8 +177,7 @@ infraTracer := tf.Infra()
 主な機能
 
 - span生成
-- span開始 / 終了ログ
-- traceID / spanID ログ出力
+- traceID / spanID を span context 経由で公開（`TraceContext` 参照）
 - span名の自動生成
 
 #### Start
@@ -230,8 +230,7 @@ ctx, result, err := observability.RunWithSpan(
 この関数を使うことで、以下を自動で処理します。
 
 - span開始
-- span終了
-- observabilityログ出力
+- span終了（`defer` による）
 
 ### 5. ShouldLogWithSpan
 
@@ -254,38 +253,15 @@ name := observability.BuildSpanName("usecase", "user", "CreateUser")
 // => "usecase.user.CreateUser"
 ```
 
-### 7. Span Event 定数
+## Span / ログ相関
 
-span のライフサイクルイベントを表す定数です。
+`LayerTracer` は **span のみを生成**し、ログ行自体は出力しません。各 span は
+`trace_id` / `span_id` / `parent_span_id`（`TraceContext` から取得可能）を保持し、span 名は
+`layer.package.function` を表します。
 
-```go
-const (
-    SpanEventStart = "start"
-    SpanEventEnd   = "end"
-)
-```
-
-ログ出力時の `event_type` フィールドに使用されます。
-
-## Span Logging
-
-span開始 / 終了時には **structured logging** が出力されます。
-
-Start
-
-- `event_type=start`
-- `span_name=usecase.user.CreateUser`
-- `trace_id=...`
-- `span_id=...`
-
-End
-
-- `event_type=end`
-- `latency=12ms`
-- `trace_id=...`
-- `span_id=...`
-
-ログ出力は `internal/logging` の `LogFieldBuilder` を使用します。
+ログ ↔ トレース相関は `otelzap` の `LogCore`（§1.2）が担います。`LogsEnabled()` のとき、
+アプリの `zap` ログはアクティブな trace context を付与して OTLP 送出されるため、バックエンド
+では同一 `trace_id` でログと span が揃います。
 
 ## TraceContext
 
@@ -388,6 +364,18 @@ defer cleanup()
 
 実際の `sdktrace.TracerProvider` を使用して有効な span を生成するため、`ShouldLogWithSpan` のテスト等で利用できます。
 
+### メトリクス / トランスポートのテストヘルパ
+
+メトリクスセットや HTTP トランスポートに依存するコード向けに、no-op の `MeterProvider` /
+`TracerProvider` を用いた no-op 構築を提供します。
+
+|関数|説明|
+|---|---|
+|`NewNoopWorkerMetrics`|no-op meter 上の `WorkerMetrics`|
+|`NewNoopHTTPClientMetrics`|no-op meter 上の `HTTPClientMetrics`|
+|`NewNoopOutboxMetrics`|no-op meter 上の `OutboxMetrics`|
+|`NewNoopHTTPClientTransport`|SSRF ガードを無効化した `HTTPClientTransport`（loopback / httptest 宛てを許可）|
+
 ## 設計ポリシー
 
 このパッケージは次の設計ポリシーに基づいています。
@@ -403,14 +391,13 @@ span名は必ず `layer.package.function` 形式になります。
 
 ### 2 logging と統合
 
-spanイベントは logging パッケージを通じて出力します。
+ログ ↔ トレース相関は `otelzap` の `LogCore`（§1.2）が担います。アプリのログはアクティブな
+trace context を付与して OTLP 送出されるため、バックエンドではログと span が同一の識別子を
+共有します。span context が公開するのは以下です。
 
 - `trace_id`
 - `span_id`
 - `parent_span_id`
-- `layer`
-- `pkg`
-- `function`
 
 ### 3 アプリケーションコードはOTelに依存しない
 
@@ -445,6 +432,37 @@ layer span は controller / usecase / infra の全層で `LayerTracer.Start` に
 > **注意:** 現状のコードは層の一貫性のため **controller 層の span も意図的に残しています**
 > （各層で `LayerTracer.Start` を呼ぶ）。ここでの記述は **相対的な価値・設計判断の根拠**についてであり、
 > 「controller の span を削除した」という意味ではありません。
+
+## トレースコンテキスト伝播
+
+`propagation.go` は W3C トレースコンテキストをサービス跨ぎ・キャリア跨ぎで運び、
+producer → relay → consumer の連鎖を 1 つの trace にまとめます。
+
+- `NewTextMapPropagator` — `NewTracerProvider` が `otel.SetTextMapPropagator` でグローバル
+  登録する、W3C `TraceContext` + `Baggage` の複合 propagator。
+- `ExtractFromCarrier(ctx, attrs)` — `map[string]string` キャリア（メッセージ属性 / ヘッダ等）
+  から **グローバル** propagator で trace を継続します。キャリアが空なら `ctx` をそのまま返します。
+- `InjectTraceContextToCarrier(ctx, attrs)` — 現在の ctx の **`traceparent` / `tracestate`**
+  のみをキャリアへ書き込みます（グローバルではなく `TraceContext` 限定 propagator）。outbox 行の
+  emit 時に用い、relay → 受信側を起点 trace に繋ぎつつ、インバウンド由来の任意 baggage を外部
+  エンドポイントへ **転送しない**ようにします。
+
+## 外向き HTTP client トランスポート
+
+`http_client_transport.go` は、外向き HTTP client substrate が使う計装済み・SSRF ガード付き
+トランスポートを提供します。
+
+- `NewHTTPClientTransport(tp, propagator)` — base `http.Transport` を `otelhttp`（自動 client
+  span）と dial 時の SSRF ガードで包みます。`RoundTripper()` が内側の `http.RoundTripper` を
+  公開します。
+- **SSRF ガード** — dial 時に *名前解決後の* 宛先 IP を検査します（DNS rebinding も捕捉）。
+  link-local / メタデータ、unspecified、reserved / bogon 帯は **常時ブロック**。loopback /
+  private / CGNAT（`100.64.0.0/10`）は明示的に許可されない限りブロックします。
+- `ContextWithTracePropagation(ctx, enabled)` — この呼び出しで `traceparent` / `baggage` を
+  outgoing リクエストへ注入するかの呼び出し単位トグル（`false` で信頼できない downstream への
+  伝搬を抑止）。
+- `ContextWithAllowPrivateNetwork(ctx, allowed)` — private / loopback 宛てを許可する呼び出し
+  単位トグル（既定は拒否）。
 
 ## メトリクス
 

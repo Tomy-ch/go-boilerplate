@@ -29,6 +29,7 @@ merge-dml --type <type> [flags]
 
 ## Notes
 
-- SQL files within each category are sorted by path before merging to produce stable output.
+- Categories are merged in parallel. The concurrency level is `runtime.NumCPU()` clamped to the range `[2, 4]` (lower bound `2` avoids serializing I/O-bound work; upper cap `4` prevents monopolizing the CPU inside Docker/CI).
+- SQL files within each category are sorted by path before merging to produce stable output. A `-- === source: <path> ===` header comment is inserted before each source file's contents so the origin stays traceable.
 - Stale generated files are automatically cleaned up when their source category no longer contains SQL files.
 - Output paths are validated to stay within `database/gen/` to prevent accidental writes elsewhere.

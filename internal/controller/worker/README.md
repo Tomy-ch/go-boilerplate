@@ -32,7 +32,7 @@ These are easy to conflate. The circuit breaker is applied to the **intake side*
 
 ## Invariants (acceptance criteria)
 
-The engine is **completed against the in-memory fake** (`internal/usecase/boundary/worker/fake`); all engine tests are green without a real broker. Test names map to invariant IDs A1–A7 / B1–B4 / C1 (engine) plus D1–D3 (O11Y). Key ones:
+The engine is **completed against the in-memory fake** (`internal/usecase/boundary/worker/testkit`, the `Fake` test double); all engine tests are green without a real broker. Test names map to invariant IDs A1–A7 / B1–B4 / C1 (engine) plus D1–D3 (O11Y). Key ones:
 
 - A1/A2: `Ack` only after success; `NackWithBackoff` (per-message exponential + jitter) on Retryable.
 - A5: Permanent → `FailureHandler` → `Ack`; Fatal → stop.
@@ -45,7 +45,7 @@ The engine is **completed against the in-memory fake** (`internal/usecase/bounda
 ## Files
 
 - `runner.go` — `Engine` (registry, `Run`, `Healthy`), `run.go` — per-run poll loop / dispatch / drain.
-- `circuit.go` — 3-state breaker (cooldown via `pkg/backoff`). `classify.go` — error → category. `settings.go` — engine-core `Settings`. `dispatch.go` — `PartitionKey` keyed serialization. `state.go` — `worker.State` impl. `errors.go` — registry sentinels. `metrics.go` / `telemetry.go` — O11Y.
+- `circuit.go` — 3-state breaker (cooldown via `pkg/backoff`). `classify.go` — error → category. `settings.go` — engine-core `Settings`. `dispatch.go` — `PartitionKey` keyed serialization. `state.go` — `worker.State` impl. `errors.go` — registry sentinels. `telemetry.go` — O11Y (traceparent continuation / structured-log fields; the engine-owned metrics themselves live in `observability.WorkerMetrics`).
 
 The SQS reference adapter (`internal/infrastructure/queue/sqs`) is **not wired by default** so `aws-sdk-go-v2` stays out of the shipped binary.
 

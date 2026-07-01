@@ -36,7 +36,7 @@ flowchart TB
 ### 各ステップの役割
 
 - **Load()**
-  - `env/.env` および `env/.env.<ENV>` を読み込み、環境変数をセットします。
+  - 埋め込み（`go:embed` の `root.FS`）の `env/.env` を godotenv で読み込み、まだ設定されていない変数のみをセットします（実行時に注入済みの環境変数を優先）。`env/.env.<ENV>` は読み込みません。
 
 - **env.ParseAs[Loader]**
   - `envspec.go` に定義された `Loader` 構造体へ環境変数をマッピングします。
@@ -270,14 +270,26 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |---|---|
 |`SetApplicationMode`|`ApplicationConfig`|
 |`SetApplicationEnv`|`ApplicationConfig`|
+|`SetApplicationLogLevel`|`ApplicationConfig`|
 |`SetServerPort`|`ServerConfig`|
 |`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetObservabilityTracesExporter`|`ObservabilityConfig`|
+|`SetObservabilityMetricsExporter`|`ObservabilityConfig`|
+|`SetObservabilityLogsExporter`|`ObservabilityConfig`|
+|`SetObservabilityOTLPProtocol`|`ObservabilityConfig`|
+|`SetObservabilityOTLPEndpoint`|`ObservabilityConfig`|
 |`SetDatabaseHost`|`DatabaseConfig`|
 |`SetDatabaseName`|`DatabaseConfig`|
+|`SetMetricsPort`|`MetricsConfig`|
+|`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
+|`SetOutboxBatchSize`|`OutboxConfig`|
+|`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetSameSite`|`SecureCookieConfig`|
+|`SetDomain`|`SecureCookieConfig`|
 
 ### テスト例外（ユニットで完全被覆を求めないファイル）
 

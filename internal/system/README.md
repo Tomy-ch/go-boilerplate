@@ -93,9 +93,9 @@ Example:
 
 ```bash
 go build \
-  -ldflags "-X 'internal/system.Version=1.2.3' \
-            -X 'internal/system.Revision=abcdef1' \
-            -X 'internal/system.BuildDate=2025-01-01T00:00:00Z'"
+  -ldflags "-X 'go-boilerplate/internal/system.Version=1.2.3' \
+            -X 'go-boilerplate/internal/system.Revision=abcdef1' \
+            -X 'go-boilerplate/internal/system.BuildDate=2025-01-01T00:00:00Z'"
 ```
 
 In Dockerfile, it is used as follows.
@@ -106,21 +106,21 @@ ARG REVISION
 ARG BUILD_DATE
 
 RUN go build \
-  -ldflags "-X 'internal/system.Version=$VERSION' \
-            -X 'internal/system.Revision=$REVISION' \
-            -X 'internal/system.BuildDate=$BUILD_DATE'"
+  -ldflags "-X 'go-boilerplate/internal/system.Version=$VERSION' \
+            -X 'go-boilerplate/internal/system.Revision=$REVISION' \
+            -X 'go-boilerplate/internal/system.BuildDate=$BUILD_DATE'"
 ```
 
 ## Usage
 
 BuildInfo is used for the following purposes.
 
-- `--version` command
-- `/version` API
-- `/health` endpoint
+- `--version` command (via cobra `Version` in `cmd/main.go`)
+- `/version` API (`internal/controller/handler/version`)
 - `app_build_info` Prometheus metric (see `internal/observability/metrics/buildinfo`)
-- log output
 - diagnostic information
+
+The `BuildInfo` provider is wired via DI in `internal/di/module` (`SystemModule`).
 
 Example: `service version=1.2.3 revision=abc123 build=2025-01-01`
 

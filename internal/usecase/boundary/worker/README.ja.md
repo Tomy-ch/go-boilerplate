@@ -19,6 +19,7 @@ type Consumer interface {
     Receive(ctx context.Context, limit int) ([]Message, error)
     Ack(ctx context.Context, m Message) error
     Nack(ctx context.Context, m Message) error
+    NackWithBackoff(ctx context.Context, m Message, d time.Duration) error
     Extend(ctx context.Context, m Message, d time.Duration) error
 }
 

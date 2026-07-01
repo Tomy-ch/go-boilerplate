@@ -17,9 +17,9 @@ Provides interfaces and value objects for authentication.
 
 |Error|Description|
 |---|---|
-|`ErrUnauthorizedSubjectMissing`|Subject is empty (wraps `apperror.ErrUnauthenticated`)|
-|`ErrInvalidIDMissing`|Subject cannot be parsed as UUID (wraps `apperror.ErrValidation`)|
-|`ErrArgumentTokenMissing`|Access token is empty (wraps `apperror.ErrInvalidArgument`)|
+|`ErrUnauthenticatedSubjectMissing`|Subject is empty (wraps `apperror.ErrUnauthenticated`)|
+|`ErrSubjectNotUUID`|Subject cannot be parsed as UUID (wraps `apperror.ErrValidation`)|
+|`ErrTokenMissing`|Access token is empty (wraps `apperror.ErrInvalidArgument`)|
 
 ## Design Intent
 

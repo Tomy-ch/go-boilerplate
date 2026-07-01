@@ -113,4 +113,4 @@ internal/infrastructure/rdb/system_query/
 
 1. `internal/usecase/<concern>/query/` に interface を定義
 2. `internal/infrastructure/rdb/system_query/<concern>/` に実装を配置
-3. `internal/di/module/infrastructure.go` に DI 登録を追加
+3. `internal/di/module/persistence.go`（`persistenceModule` の `system_query` サブモジュール）に DI 登録を追加

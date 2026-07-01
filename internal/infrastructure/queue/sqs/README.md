@@ -24,8 +24,9 @@ Verify isolation: `go version -m <binary>` for a binary built from `./cmd/` must
 | --- | --- |
 | `Receive(ctx, max)` | `ReceiveMessage` (long-poll). `ApproximateReceiveCount` → `ReceiveCount`, `MessageGroupId` → `PartitionKey`, `MessageAttributes` (incl. `traceparent`) → `Attributes`, `ReceiptHandle` → reserved key `_receipt_handle` |
 | `Ack` | `DeleteMessage` (reserved-key receipt handle) |
-| `Nack` | `ChangeMessageVisibility(0)` (immediate redelivery, best-effort; delay is not a port guarantee) |
-| `Extend` | `ChangeMessageVisibility(d)` |
+| `Nack` | `ChangeMessageVisibility(0)` (immediate redelivery, no delay) |
+| `NackWithBackoff(ctx, m, d)` | `ChangeMessageVisibility(d)` (redelivery after at least `d`; sub-second `d` is rounded up with a 1s floor via `visibilitySeconds`, so a positive `d` never collapses to immediate. `d<=0` is equivalent to `Nack`) |
+| `Extend` | `ChangeMessageVisibility(d)` (same `visibilitySeconds` rounding) |
 | `FailureHandler.Fail` | `SendMessage` to the DLQ with a `failure_reason="permanent"` attribute. The `cause` detail is intentionally **not** included (PII/internal-detail leak guard); it is logged engine-side instead. |
 | `QueueStatsProvider.QueueStats` | `GetQueueAttributes` for the source queue (and the DLQ when `DLQURL` is set). `ApproximateNumberOfMessages` → `Visible`, `ApproximateNumberOfMessagesNotVisible` → `InFlight`, `ApproximateNumberOfMessagesDelayed` → `Delayed`. Missing / unparseable attributes are treated as `0`. |
 

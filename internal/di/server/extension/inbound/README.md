@@ -4,7 +4,7 @@ English | [日本語](README.ja.md)
 
 `inbound` is a layer that provides **middleware and server configuration for HTTP request (input) preprocessing** via DI.
 
-It centrally manages Binder / Validator / URI normalization / IP extraction executed at request reception, ensuring quality, safety, and consistency at the API entry point.
+It centrally manages OpenAPI validation / URI normalization / request timeout / body-size limits / IP extraction executed at request reception, ensuring quality, safety, and consistency at the API entry point.
 
 ## Modules
 
@@ -21,5 +21,5 @@ It centrally manages Binder / Validator / URI normalization / IP extraction exec
 - **Validator (OpenAPI) is UseMiddleware, URI is PreMiddleware** — designed to execute in correct order via Priority
 - **Timeout is a Pre middleware (priority 2)** — since lower priority executes first, `timeout`(=2) runs immediately after `uri`(=1), so the per-request deadline budget covers all `Use` middleware, OpenAPI validation, the handler, and DB queries. The deadline propagates via `ctx`; downstream layers (pgx, `httpclient`) honour it. The entry point of the deadline budget; independent timeouts at each boundary are avoided in favour of this single budget
 - IP Extractor depends on SecurityConfig / ApplicationConfig — **behavior may differ between production and local**
-- Binder / Validator affect handlers — **must not leak logic into controller/domain layers**
+- Validator (OpenAPI) affects handlers — **must not leak logic into controller/domain layers**
 - When adding new inbound features, classify them as either **ServeCfg (Echo config) or Pre/UseMiddleware**

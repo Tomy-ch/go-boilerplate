@@ -79,9 +79,10 @@ Roles of each component:
 |`shutdown.go`|`ProviderShutdowner` (otel-agnostic shutdown handle) + `NewProviderShutdowner`, consumed by the DI shutdown hook|
 |`ProvideTracerProvider` / `ProvideMeterProvider`|Adapters exposing the concrete providers as the `trace.TracerProvider` / `metric.MeterProvider` interfaces (in `provider.go`)|
 |`NewPgxTracer`|`otelpgx` tracer for DB spans + metrics, with connection details suppressed (in `pgx_tracer.go`)|
-|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|Instrumented outbound HTTP transport + its RED metrics|
+|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF-guarded, instrumented outbound HTTP transport + its RED metrics (in `http_client_transport.go` / `http_client_metrics.go`)|
+|`propagation.go`|Cross-service / cross-carrier trace propagation (`ExtractFromCarrier` / `InjectTraceContextToCarrier`) + `NewTextMapPropagator`|
 |`TracerFactory`|Generate tracers per layer|
-|`LayerTracer`|Span generation + observability logging|
+|`LayerTracer`|Per-layer span emission (spans only — it does not write log lines itself)|
 |`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|
 |`caller.go`|Retrieve caller function name|
 |`test_kit.go`|Tracer for testing|
@@ -165,7 +166,7 @@ can have **separated span namespaces**.
 Example
 
 ```go
-tf := observability.NewTracerFactory(tp, logger, logFieldBuilder)
+tf := observability.NewTracerFactory(tp)
 
 controllerTracer := tf.Controller()
 usecaseTracer := tf.Usecase()
@@ -179,8 +180,7 @@ infraTracer := tf.Infra()
 Main features
 
 - Span generation
-- Span start / end logging
-- traceID / spanID logging output
+- traceID / spanID exposed via the span context (see `TraceContext`)
 - Automatic span name generation
 
 #### Start
@@ -233,8 +233,7 @@ ctx, result, err := observability.RunWithSpan(
 By using this function, the following are handled automatically:
 
 - span start
-- span end
-- observability logging output
+- span end (via `defer`)
 
 ### 5. ShouldLogWithSpan
 
@@ -257,38 +256,15 @@ name := observability.BuildSpanName("usecase", "user", "CreateUser")
 // => "usecase.user.CreateUser"
 ```
 
-### 7. Span Event Constants
+## Span / Log Correlation
 
-Constants representing span lifecycle events.
+`LayerTracer` emits **spans only** — it does not write log lines itself. Each span carries
+its `trace_id` / `span_id` / `parent_span_id` (retrievable via `TraceContext`), and the span
+name encodes `layer.package.function`.
 
-```go
-const (
-    SpanEventStart = "start"
-    SpanEventEnd   = "end"
-)
-```
-
-Used for the `event_type` field in log output.
-
-## Span Logging
-
-At span start / end, **structured logging** is output.
-
-Start
-
-- `event_type=start`
-- `span_name=usecase.user.CreateUser`
-- `trace_id=...`
-- `span_id=...`
-
-End
-
-- `event_type=end`
-- `latency=12ms`
-- `trace_id=...`
-- `span_id=...`
-
-Log output uses `LogFieldBuilder` from `internal/logging`.
+Log ↔ trace correlation is provided by the `otelzap` `LogCore` (§1.2): when `LogsEnabled()`,
+the application's `zap` logs are exported over OTLP with the active trace context attached, so
+logs and spans line up in the backend under the same `trace_id`.
 
 ## TraceContext
 
@@ -389,6 +365,18 @@ defer cleanup()
 
 Uses an actual `sdktrace.TracerProvider` to generate a valid span, making it suitable for testing `ShouldLogWithSpan` and similar functions.
 
+### Metrics / transport test helpers
+
+For code that depends on the metrics sets or the HTTP transport, no-op constructions built on
+a no-op `MeterProvider` / `TracerProvider` are provided.
+
+|Function|Description|
+|---|---|
+|`NewNoopWorkerMetrics`|`WorkerMetrics` on a no-op meter|
+|`NewNoopHTTPClientMetrics`|`HTTPClientMetrics` on a no-op meter|
+|`NewNoopOutboxMetrics`|`OutboxMetrics` on a no-op meter|
+|`NewNoopHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard disabled (allows loopback / httptest targets)|
+
 ## Design Policy
 
 This package is based on the following design policies.
@@ -404,14 +392,13 @@ Reason
 
 ### 2 Integration with logging
 
-Span events are output through the logging package.
+Log ↔ trace correlation is provided by the `otelzap` `LogCore` (§1.2): application logs are
+exported over OTLP with the active trace context, so logs and spans share the same identifiers
+in the backend. The span context exposes:
 
 - `trace_id`
 - `span_id`
 - `parent_span_id`
-- `layer`
-- `pkg`
-- `function`
 
 ### 3 Application code does not depend on OTel
 
@@ -450,6 +437,40 @@ the first candidate** to drop, while the **usecase / infra spans are worth retai
 > (every layer calls `LayerTracer.Start`) for layer consistency. The point above is
 > about **relative value / the rationale behind the design judgment**, not a statement
 > that the controller span has been removed.
+
+## Trace Context Propagation
+
+`propagation.go` carries the W3C trace context across service and carrier boundaries so a
+producer → relay → consumer chain forms a single trace.
+
+- `NewTextMapPropagator` — the composite W3C `TraceContext` + `Baggage` propagator that
+  `NewTracerProvider` registers globally via `otel.SetTextMapPropagator`.
+- `ExtractFromCarrier(ctx, attrs)` — continues a trace from a `map[string]string` carrier
+  (e.g. message attributes / headers) using the **global** propagator. Returns `ctx`
+  unchanged when the carrier is empty.
+- `InjectTraceContextToCarrier(ctx, attrs)` — writes only the current context's
+  **`traceparent` / `tracestate`** into the carrier (a `TraceContext`-only propagator, **not**
+  the global one). Used when emitting outbox rows so the relay → receiver stays on the origin
+  trace, while deliberately **not** forwarding arbitrary inbound baggage to external
+  endpoints.
+
+## Outbound HTTP Client Transport
+
+`http_client_transport.go` provides the instrumented, SSRF-guarded transport used by the
+outbound HTTP client substrate.
+
+- `NewHTTPClientTransport(tp, propagator)` — wraps a base `http.Transport` with an `otelhttp`
+  layer (automatic client spans) plus a dial-time SSRF guard. `RoundTripper()` exposes the
+  underlying `http.RoundTripper`.
+- **SSRF guard** — validates the *resolved* destination IP at dial time (so DNS-rebinding is
+  also caught): link-local / metadata, unspecified, and reserved / bogon ranges are **always**
+  blocked; loopback / private / CGNAT (`100.64.0.0/10`) are blocked **unless** explicitly
+  allowed.
+- `ContextWithTracePropagation(ctx, enabled)` — per-call toggle for whether
+  `traceparent` / `baggage` are injected into the outgoing request (suppress propagation to
+  untrusted downstreams with `false`).
+- `ContextWithAllowPrivateNetwork(ctx, allowed)` — per-call toggle allowing private / loopback
+  destinations (default is deny).
 
 ## Metrics
 

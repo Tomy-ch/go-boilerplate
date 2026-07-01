@@ -148,7 +148,7 @@ and not validation of application logic.
 
 Example
 
-- `mock_user.NewMockUsecase`
+- `mock_<feature>.NewMockUsecase`
 - `mock_healthcheck.NewMockUsecase`
 
 ## Test Flow
@@ -167,7 +167,11 @@ flowchart TB
     New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponseType()"]
 ```
 
-## Functions defined in integration_test.go
+## Functions defined in helper_test.go
+
+Every handler's `BindHandler` takes a tracer factory; in these tests it is a
+no-op one obtained from `observability.NewNoopTracerFactory(t)`. Feature
+handlers additionally take a **mocked usecase** (see "Why Usecase is mocked").
 
 ### `StartServer(t *testing.T, e *echo.Echo) *Server`
 
@@ -183,7 +187,8 @@ Usage example:
 
 ```go
 e := echo.New()
-handler.BindHandler(e)
+tf := observability.NewNoopTracerFactory(t)
+<feature>.BindHandler(e, tf, mockUsecase)
 
 srv := StartServer(t, e)
 ```
@@ -285,14 +290,16 @@ AssertErrorResponse(t, actual, http.StatusNotFound)
 
 A helper that **simulates an authenticated user** in integration tests.
 
-Internally adds Echo Middleware and  
-sets authentication information using `ctxhelper.SetAuthnToEcho`.
+Internally it adds an Echo Middleware that builds an authenticated principal
+with `auth.New` and injects it into the request context via `ctxhelper.WithAuthn`
+/ `ctxhelper.SetAuthn`, then returns an `Authorization: Bearer debug:<id>` header
+to attach to the request.
 
 Usage example:
 
 ```go
 headers := MakeAvailableUserID(t, e, userID)
-srv.DoJSON(http.MethodPost, "/v1/users", body, headers)
+srv.DoJSON(http.MethodPost, "/v1/<resource>", body, headers)
 ```
 
 ## Test Design Policy
@@ -323,6 +330,6 @@ Do not call handler directly, but use `httptest.Server`.
 
 Responses are verified using **OpenAPI types**.
 
-- `gen.ResponseV1Users`
-- `gen.ResponseHealth`
-- `gen.ResponseVersion`
+- `gen.HealthResponse`
+- `gen.VersionResponse`
+- a feature handler's response type from its `gen` package — `gen.<Xxx>Response` (aliased, e.g. `detailgen.<Xxx>Response`, when one test file imports several handler `gen` packages)

@@ -28,7 +28,7 @@ fix-collation [flags]
 
 ## Notes
 
-- **Intended for local and test databases only.** Exercise caution if running in production; schedule during maintenance windows.
+- **Intended for local and test databases only.** Only `--database local` and `--database test` are accepted; any other value is rejected with an error before any SQL runs.
 - Requires `psql` to be available on `PATH` and the executing user to have `REINDEX` and `ALTER DATABASE` privileges.
 - Database connection information is read from the application configuration (`DSN`).
 - SQL execution stops immediately on error (`ON_ERROR_STOP=1`).

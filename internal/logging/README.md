@@ -32,11 +32,12 @@ The role of each file is as follows.
 
 |File|Role|
 |---|---|
-|`logger.go`|Logger interface used by application|
-|`logger_core.go`|Implementation of zap.Logger|
+|`logger.go`|`Logger` interface, its `*logger` implementation, and `WithCore` (Tee an additional `LogCore`)|
+|`logger_core.go`|zap-based Logger construction (`NewJSONLogger` / `NewConsoleLogger`, encoder config)|
+|`level.go`|`Level` type and `LevelDebug/Info/Warn/Error` / `ParseLevel`|
 |`stacktrace_core.go`|zapcore.Core wrapper that converts the auto-attached `Entry.Stack` into a line array for JSON output|
-|`field.go`|Type of log fields|
-|`field_builder.go`|Generation of HTTP / SQL / Observability log fields|
+|`field.go`|Type of log fields and field constructors|
+|`field_builder.go`|Generation of HTTP / SQL log fields|
 |`const.go`|Log key definitions|
 |`test_kit.go`|Logger / FieldBuilder for testing|
 
@@ -53,11 +54,10 @@ type Logger interface {
 
     Named(name string) Logger
     CallerSkip(skip int) Logger
-    ConvertFields(fields []*Field) []zap.Field
 }
 ```
 
-`ConvertFields` converts a `*Field` slice to a `zap.Field` slice. Primarily used for framework integration where `zap.Field` is required internally.
+`Named` returns a child logger with the given name appended, and `CallerSkip` returns a logger whose caller reporting skips the given number of stack frames (useful when logging through a wrapper). Conversion of `*Field` to `zap.Field` is done internally by the unexported `convertFields` and is not part of the public interface.
 
 This design provides:
 
@@ -71,10 +71,12 @@ Loggers are created by output format. Pass a `Level` (output level) and the leve
 
 ```go
 // JSON logger (machine-readable; production-style output)
-logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
+logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 // Console logger (human-readable; development-style output)
-logger := logging.NewConsoleLogger(logging.LevelDebug, logging.LevelWarn)
+logger := logging.NewConsoleLogger(logging.LevelDebug(), logging.LevelWarn())
 ```
+
+`LevelDebug` / `LevelInfo` / `LevelWarn` / `LevelError` are functions that return the corresponding `Level` value.
 
 `Level` wraps the zap level so callers never depend on `zapcore` directly. Parse a level string (`debug` / `info` / `warn` / `error`) with `ParseLevel`:
 
@@ -88,6 +90,24 @@ Which output format and level a running process uses is decided at the DI compos
 |---|---|---|
 |production|JSON logger|Error and above|
 |development|console logger|Warn and above|
+
+### Attaching an Additional Core (Observability)
+
+`LogCore` is a type alias for `zapcore.Core`. `WithCore` Tees an extra core onto an
+existing `Logger`, gated to the base logger's minimum level, so the same log entries are
+also emitted through that core:
+
+```go
+logger = logging.WithCore(logger, extraCore)
+```
+
+If `core` is `nil`, the original `Logger` is returned unchanged; if the passed `Logger`
+is not this package's concrete `*logger` (e.g. a test fake), it is returned as-is.
+
+This is the connection point for OpenTelemetry log export: `internal/observability`
+provides `NewLogCore`, which returns an `otelzap` core bridging zap logs to OTLP when
+log export is enabled (and `nil` otherwise). `provideLogger` in
+`internal/di/module/logging.go` wires the two together via `WithCore`.
 
 ## Field
 
@@ -117,6 +137,11 @@ Supported types
 |Stacktrace|error (converted to stack trace lines as []string)|
 |Any|any|
 
+`Stacktrace` stores the stack as a `[]string` (one element per line) so JSON viewers such
+as Grafana / Loki render line breaks readably. The helper `SplitStackLines(s string) []string`
+that performs this splitting is exported and reused elsewhere (e.g. the recovery middleware
+splits a raw runtime stack for the `internal_stacktrace` field).
+
 Purpose of this design
 
 - Prevent direct usage of zap.Field
@@ -131,11 +156,12 @@ A component that consolidates log field generation for HTTP / SQL / Observabilit
 type LogFieldBuilder interface {
     BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field
     BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field
-    BuildSQLStartFields(sql SQLFieldsStartInput) []*Field
     BuildSQLEndFields(sql SQLFieldsEndInput) []*Field
-    BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field
 }
 ```
+
+Trace / span fields are not built by a dedicated method; each `Build*` method appends
+them to its own output when observability is enabled (see below).
 
 Creation
 
@@ -159,13 +185,12 @@ Each Build method receives a dedicated input struct.
 
 |Struct|Use|Key Fields|
 |---|---|---|
-|`HTTPRequestLogInput`|HTTP request log|Method, Path, URI, RemoteIP, Host, Scheme, Proto, UserAgent, ContentType, ContentLength, PathParams, QueryParams|
+|`HTTPRequestLogInput`|HTTP request log|EventType, Method, Path, URI, RemoteIP, Host, Scheme, Proto, UserAgent, ContentType, ContentLength, PathParams, QueryParams|
 |`HTTPResponseLogInput`|HTTP response log|Method, Path, URI, Status, Latency, RequestID|
-|`SQLFieldsStartInput`|SQL start log|Layer, PkgName, FuncName, SpanName|
 |`SQLFieldsEndInput`|SQL end log|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
-|`ObservabilityFieldsInput`|Observability log|Layer, PkgName, FuncName, SpanName, EventType, Latency|
 
-All input structs share `EventAt` (event timestamp) and `TraceID` / `SpanID` / `ParentSpanID` (trace information) as common fields.
+All input structs carry `EventAt` (event timestamp) and `TraceID` / `SpanID` (trace
+information). `ParentSpanID` exists only on `SQLFieldsEndInput`.
 
 ## HTTP Logging
 
@@ -190,38 +215,37 @@ Example (Response)
 
 ## SQL Logging
 
-SQL logs are output as two events: **start / end**.
-
-### SQL Start
-
-- `event_type=start`
-- `layer=repository`
-- `span_name=FindUser`
+SQL logs are emitted at the **end** of a query via `BuildSQLEndFields`.
 
 ### SQL End
 
 - `event_type=end`
+- `layer=repository`
+- `package=...`
+- `function=...`
+- `span_name=FindUser`
 - `latency_ms=4`
-- `query=SELECT ...`
-- `args=[...]`
+- `raw_query=SELECT ...`
+- `query_compact=SELECT ...`
+- `args_count=2` (only when arguments are present)
+- `internal_error=...` (only when the query failed)
 
-Queries are output in two formats.
+Queries are output in two formats: `raw_query` (as-is) and `query_compact` (newlines /
+tabs / repeated spaces collapsed to a single-line form).
 
-- `raw_query`
-- `query_compact`
+## Observability Fields
 
-## Observability Logging
-
-Observability logs include trace/span information.
+There is no standalone observability builder. Trace / span fields are appended to the
+HTTP and SQL log output when observability is enabled and both `TraceID` and `SpanID`
+are present:
 
 - `trace_id`
 - `span_id`
-- `parent_span_id`
-- `layer`
-- `package`
-- `function`
+- `parent_span_id` (SQL only, and only when a parent span ID is present)
 
-If observability is disabled, these are not output.
+If observability is disabled (or the trace / span IDs are empty), these fields are not
+output. The `layer` / `package` / `function` fields are part of the SQL log output
+(from `SQLFieldsEndInput`), not the trace attachment.
 
 ## Test Kit
 
@@ -236,6 +260,14 @@ Features
 - `zaptest.NewLogger`
 - Outputs test logs to `testing.T`
 - No side effects
+
+To assert on emitted logs (level / presence / caller), use the observed variants, which
+return an `*observer.ObservedLogs` alongside the `Logger`:
+
+```go
+logger, observed := logging.NewObservedTestLogger(t)
+loggerWithCaller, observed := logging.NewObservedTestLoggerWithCaller(t)
+```
 
 Test instance for LogFieldBuilder
 
@@ -283,6 +315,8 @@ Log keys defined in `const.go`.
 |`EventTypeKey`|`event_type`|
 |`EventTypeStart`|`start`|
 |`EventTypeEnd`|`end`|
+|`EventTypeError`|`error`|
+|`EventTypePanic`|`panic`|
 |`EventAtKey`|`event_at`|
 |`EventTzKey`|`event_tz`|
 |`StatusKey`|`status`|
@@ -305,9 +339,11 @@ Log keys defined in `const.go`.
 
 |Constant|Key|
 |---|---|
+|`ErrorKey`|`error`|
+|`OriginalErrorKey`|`original_error`|
 |`ErrorCodeKey`|`error_code`|
 |`ErrorMessageKey`|`error_message`|
-|`ErrorDetails`|`error_details`|
+|`ErrorDetailsKey`|`error_details`|
 |`InternalErrorKey`|`internal_error`|
 |`InternalStackTraceKey`|`internal_stacktrace`|
 
@@ -327,6 +363,16 @@ Log keys defined in `const.go`.
 |`JobArgsKey`|`job_args`|
 |`JobErrorKey`|`job_error`|
 |`JobResultKey`|`job_result`|
+|`FilterKey`|`filter`|
+
+### Worker
+
+|Constant|Key|
+|---|---|
+|`WorkerNameKey`|`worker_name`|
+|`MessageIDKey`|`message_id`|
+|`ReceiveCountKey`|`receive_count`|
+|`PanicKey`|`panic`|
 
 ### Observability
 

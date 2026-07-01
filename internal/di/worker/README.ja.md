@@ -45,9 +45,14 @@ fx.Provide(
     observability.NewWorkerMetrics,
     worker.ProvideEngine,
     workercontroller.NewState,
+    provideQueueStatsCollector,           // queue depth / DLQ メトリクス収集器
 )
+fx.Invoke(worker.ValidateShutdownGrace)   // 起動時ガード: DrainTimeout < 停止猶予
 fx.Invoke(hook.RegisterWorkerHooks)
+fx.Invoke(queuemetrics.RegisterStatsCollector)
 ```
+
+`internal/di/module/worker.go` の `WorkerModule()` は、任意の queue stats 対象を `provideQueueStatsTargets(...)`（`group:"worker.queue_stats_targets"` グループ）でも登録する。
 
 ## worker 実行フロー
 
@@ -63,4 +68,6 @@ fx.Invoke(hook.RegisterWorkerHooks)
 - `done` が `nil` の場合、worker はスキップされる（engine は起動しない）
 - engine は detached goroutine で動作し、その context は `OnStop` でのみキャンセルされる
 - drain タイムアウトを超えた未完了処理は Ack されず再配送される
+- `ValidateShutdownGrace` は `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` のときアプリ起動を失敗させる（drain は停止猶予が尽きる前に完了する必要がある）
+- queue stats 収集器は queue depth / DLQ メトリクスを出力する。対象が 1 つも登録されていなければ何も出力しない
 - worker の追加は `internal/di/module/worker.go` の `provideWorkers(...)` にコンストラクタを追加する（各 worker は `usecase/boundary/worker.Worker` を実装する必要がある）

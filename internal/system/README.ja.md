@@ -95,9 +95,9 @@ CI / Docker / Makefile では通常次のように値を注入します。
 
 ```bash
 go build \
-  -ldflags "-X 'internal/system.Version=1.2.3' \
-            -X 'internal/system.Revision=abcdef1' \
-            -X 'internal/system.BuildDate=2025-01-01T00:00:00Z'"
+  -ldflags "-X 'go-boilerplate/internal/system.Version=1.2.3' \
+            -X 'go-boilerplate/internal/system.Revision=abcdef1' \
+            -X 'go-boilerplate/internal/system.BuildDate=2025-01-01T00:00:00Z'"
 ```
 
 Dockerfile では次のように利用されます。
@@ -108,21 +108,21 @@ ARG REVISION
 ARG BUILD_DATE
 
 RUN go build \
-  -ldflags "-X 'internal/system.Version=$VERSION' \
-            -X 'internal/system.Revision=$REVISION' \
-            -X 'internal/system.BuildDate=$BUILD_DATE'"
+  -ldflags "-X 'go-boilerplate/internal/system.Version=$VERSION' \
+            -X 'go-boilerplate/internal/system.Revision=$REVISION' \
+            -X 'go-boilerplate/internal/system.BuildDate=$BUILD_DATE'"
 ```
 
 ## 利用用途
 
 BuildInfo は次の用途で使用されます。
 
-- `--version` コマンド
-- `/version` API
-- `/health` エンドポイント
+- `--version` コマンド（`cmd/main.go` の cobra `Version` 経由）
+- `/version` API（`internal/controller/handler/version`）
 - `app_build_info` Prometheus メトリクス（`internal/observability/metrics/buildinfo` を参照）
-- ログ出力
 - 診断情報
+
+`BuildInfo` プロバイダは `internal/di/module`（`SystemModule`）で DI 配線されます。
 
 例：`service version=1.2.3 revision=abc123 build=2025-01-01`
 

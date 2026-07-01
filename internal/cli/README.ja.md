@@ -67,7 +67,8 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
   外部バイナリ（`pg_dump` / `psql`）を実行せず、DB も開かない**。
 - **薄い `cmd/` 殻はカバレッジゲートから除外**（`gen|cmd|mock|apperror|scripts`）。その実行時の正しさは
   CI boot チェックで担保: `app-di-startup-check`（serve → `/ready`）、`job-boot-check`（job dispatch）、
-  `migration-check`（up/down 往復）、`gen-*-artifacts-check`（codegen の dogfooding）——いずれも実 Postgres。
+  `worker-boot-check`（worker dispatch）、`migration-check`（up/down 往復）、`gen-*-artifacts-check`
+  （codegen の dogfooding）——いずれも実 Postgres。
   DB アクセス挙動は実 Postgres に当てた repository テスト（`internal/infrastructure/rdb/testkit`）で担保。
 
 ### コマンドを追加するとき

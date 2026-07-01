@@ -43,9 +43,14 @@ fx.Provide(
     observability.NewWorkerMetrics,
     worker.ProvideEngine,
     workercontroller.NewState,
+    provideQueueStatsCollector,           // queue depth / DLQ metrics collector
 )
+fx.Invoke(worker.ValidateShutdownGrace)   // startup guard: DrainTimeout < shutdown grace
 fx.Invoke(hook.RegisterWorkerHooks)
+fx.Invoke(queuemetrics.RegisterStatsCollector)
 ```
+
+`WorkerModule()` in `internal/di/module/worker.go` also registers optional queue-stats targets via `provideQueueStatsTargets(...)` (the `group:"worker.queue_stats_targets"` group).
 
 ## Worker Execution Flow
 
@@ -61,4 +66,6 @@ fx.Invoke(hook.RegisterWorkerHooks)
 - If `done` is `nil`, the worker is skipped (engine is not started)
 - The engine runs in a detached goroutine; its context is cancelled only on `OnStop`
 - Unfinished work past the drain timeout is not Acked and is redelivered
+- `ValidateShutdownGrace` fails app startup when `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` (drain must finish before the stop grace expires)
+- The queue-stats collector reports queue depth / DLQ metrics; with no target registered it emits nothing
 - To add workers, add their constructors to `provideWorkers(...)` in `internal/di/module/worker.go` (each must implement `usecase/boundary/worker.Worker`)

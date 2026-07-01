@@ -36,7 +36,7 @@ flowchart TB
 ### Responsibilities of Each Step
 
 - **Load()**
-  - Loads `env/.env` and `env/.env.<ENV>` and sets environment variables.
+  - Reads the embedded `env/.env` (via the `go:embed` `root.FS`), parses it with godotenv, and sets each variable only if it is not already set (runtime-injected environment variables take precedence). No `env/.env.<ENV>` file is read.
 
 - **env.ParseAs[Loader]**
   - Maps environment variables into the `Loader` struct defined in `envspec.go`.
@@ -269,14 +269,26 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |---|---|
 |`SetApplicationMode`|`ApplicationConfig`|
 |`SetApplicationEnv`|`ApplicationConfig`|
+|`SetApplicationLogLevel`|`ApplicationConfig`|
 |`SetServerPort`|`ServerConfig`|
 |`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetObservabilityTracesExporter`|`ObservabilityConfig`|
+|`SetObservabilityMetricsExporter`|`ObservabilityConfig`|
+|`SetObservabilityLogsExporter`|`ObservabilityConfig`|
+|`SetObservabilityOTLPProtocol`|`ObservabilityConfig`|
+|`SetObservabilityOTLPEndpoint`|`ObservabilityConfig`|
 |`SetDatabaseHost`|`DatabaseConfig`|
 |`SetDatabaseName`|`DatabaseConfig`|
+|`SetMetricsPort`|`MetricsConfig`|
+|`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
+|`SetOutboxBatchSize`|`OutboxConfig`|
+|`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetSameSite`|`SecureCookieConfig`|
+|`SetDomain`|`SecureCookieConfig`|
 
 ### Test exceptions (files not required to reach full unit coverage)
 
