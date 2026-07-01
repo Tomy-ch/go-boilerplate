@@ -18,6 +18,25 @@ import (
 
 const testEndpoint exchangerate.Endpoint = "https://api.exchangerate.example.com"
 
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Endpoint_Client_TracerFactory から Gateway を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+
+			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, gw)
+		})
+	})
+}
+
 func TestGatewayGetRate(t *testing.T) {
 	t.Parallel()
 

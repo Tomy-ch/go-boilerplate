@@ -6,9 +6,37 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/exaring/otelpgx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewTracedDB(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クエリトレーサーを結線したDB接続が生成される", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbCfg.SetDatabaseHost(t, "localhost")
+			osCfg := config.NewOperatingSystemConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+			db, err := NewTracedDB(dbCfg, osCfg, dbConnCfg, otelpgx.NewTracer())
+			require.NoError(t, err)
+			require.NotNil(t, db)
+			t.Cleanup(func() {
+				require.NoError(t, db.Close())
+			})
+
+			require.NoError(t, db.Ping(context.Background()))
+		})
+	})
+}
 
 func TestNewDB(t *testing.T) {
 	t.Parallel()

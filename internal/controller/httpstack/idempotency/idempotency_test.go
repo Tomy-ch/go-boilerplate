@@ -252,19 +252,30 @@ func Test_validateKey(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]string{
-			"長すぎ":        strings.Repeat("x", 256),
-			"空白(0x20)":   "a b",
-			"制御文字(0x1f)": "a\x1fb",
-			"DEL(0x7f)":  "a\x7fb",
-			"マルチバイト":     "あ",
-		}
-		for name, key := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				require.ErrorIs(t, validateKey(key), apperror.ErrInvalidArgument)
-			})
-		}
+		t.Run("長すぎ", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey(strings.Repeat("x", 256)), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("空白(0x20)", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("a b"), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("制御文字(0x1f)", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("a\x1fb"), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("DEL(0x7f)", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("a\x7fb"), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("マルチバイト", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("あ"), apperror.ErrInvalidArgument)
+		})
 	})
 }
 

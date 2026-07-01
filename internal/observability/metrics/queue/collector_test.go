@@ -25,6 +25,23 @@ type conflictingCollector struct {
 func (c conflictingCollector) Describe(ch chan<- *prometheus.Desc) { ch <- c.desc }
 func (c conflictingCollector) Collect(_ chan<- prometheus.Metric)  {}
 
+func TestNewStatsCollector(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilなStatsCollectorを構築しCollectorとして登録できる", func(t *testing.T) {
+			t.Parallel()
+
+			c := queuemetrics.NewStatsCollector(nil)
+			require.NotNil(t, c)
+			// prometheus.Collector を満たし registry へ登録できる。
+			require.NoError(t, prometheus.NewRegistry().Register(c))
+		})
+	})
+}
+
 func Test_StatsCollector_Collect(t *testing.T) {
 	t.Parallel()
 

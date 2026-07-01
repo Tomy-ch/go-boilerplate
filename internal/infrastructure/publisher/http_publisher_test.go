@@ -19,6 +19,25 @@ import (
 
 const testEndpoint = "https://receiver.example.com/events"
 
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Endpoint_Client_TracerFactory から Publisher を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+
+			p := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, p)
+		})
+	})
+}
+
 func Test_httpPublisher_Publish(t *testing.T) {
 	t.Parallel()
 

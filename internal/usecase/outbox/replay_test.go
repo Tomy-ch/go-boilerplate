@@ -15,6 +15,24 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func TestNewReplay(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("依存を渡すと非nilのReplayUsecaseを生成する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+
+			got := outbox.NewReplay(store, observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, got)
+		})
+	})
+}
+
 func TestReplayUsecase_ReplayDead(t *testing.T) {
 	t.Parallel()
 

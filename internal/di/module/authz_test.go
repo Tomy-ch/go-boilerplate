@@ -75,24 +75,31 @@ func Test_provideAuthorizer(t *testing.T) {
 		t.Parallel()
 
 		// local / ci / test 以外（本番相当）はすべて fail-closed でエラーを返すこと。
-		envs := map[string]string{
-			"development環境": config.EnvDevelopment,
-			"staging環境":     config.EnvStaging,
-			"production環境":  config.EnvProduction,
-		}
-		for name, env := range envs {
-			t.Run(name+"では全許可を配線せずエラーを返す", func(t *testing.T) {
-				t.Parallel()
+		assertFailClosed := func(t *testing.T, env string) {
+			t.Helper()
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			appCfg.SetApplicationEnv(t, env)
+			logger := logging.NewTestLogger(t)
 
-				cfg := config.MockConfigForTest(t)
-				appCfg := config.NewApplicationConfig(cfg)
-				appCfg.SetApplicationEnv(t, env)
-				logger := logging.NewTestLogger(t)
-
-				authorizer, err := provideAuthorizer(appCfg, logger)
-				require.Error(t, err)
-				assert.Nil(t, authorizer)
-			})
+			authorizer, err := provideAuthorizer(appCfg, logger)
+			require.Error(t, err)
+			assert.Nil(t, authorizer)
 		}
+
+		t.Run("development環境では全許可を配線せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			assertFailClosed(t, config.EnvDevelopment)
+		})
+
+		t.Run("staging環境では全許可を配線せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			assertFailClosed(t, config.EnvStaging)
+		})
+
+		t.Run("production環境では全許可を配線せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			assertFailClosed(t, config.EnvProduction)
+		})
 	})
 }

@@ -33,6 +33,25 @@ func attrs(visible, notVisible, delayed string) *awssqs.GetQueueAttributesOutput
 	}
 }
 
+func TestNewQueueStatsProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("API_Config_TracerFactory から QueueStatsProvider を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+
+			p := NewQueueStatsProvider(api, Config{QueueURL: "q"}, observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, p)
+		})
+	})
+}
+
 func Test_StatsProvider_QueueStats(t *testing.T) {
 	t.Parallel()
 

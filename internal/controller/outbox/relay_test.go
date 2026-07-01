@@ -30,6 +30,24 @@ func newEngine(t *testing.T, uc *mock_relay.MockRelayUsecase, sleeper *mock_cloc
 		outboxctrl.Settings{BatchSize: testBatchSize, PollInterval: testPollInterval, ErrorBackoff: testErrorBackoff})
 }
 
+func TestNewEngine(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("依存を渡すと非nilなEngineを構築する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+
+			assert.NotNil(t, newEngine(t, uc, sleeper))
+		})
+	})
+}
+
 func TestEngine_Run(t *testing.T) {
 	t.Parallel()
 

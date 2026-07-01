@@ -14,24 +14,35 @@ func TestMethod(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]struct {
-			method httpclient.Method
-			want   string
-		}{
-			"GETは文字列GETを表す":       {method: httpclient.MethodGet(), want: "GET"},
-			"POSTは文字列POSTを表す":     {method: httpclient.MethodPost(), want: "POST"},
-			"PUTは文字列PUTを表す":       {method: httpclient.MethodPut(), want: "PUT"},
-			"PATCHは文字列PATCHを表す":   {method: httpclient.MethodPatch(), want: "PATCH"},
-			"DELETEは文字列DELETEを表す": {method: httpclient.MethodDelete(), want: "DELETE"},
-			"ゼロ値は空文字を表す":          {method: httpclient.Method{}, want: ""},
-		}
+		t.Run("GETは文字列GETを表す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "GET", httpclient.MethodGet().String())
+		})
 
-		for name, tc := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, tc.want, tc.method.String())
-			})
-		}
+		t.Run("POSTは文字列POSTを表す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "POST", httpclient.MethodPost().String())
+		})
+
+		t.Run("PUTは文字列PUTを表す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "PUT", httpclient.MethodPut().String())
+		})
+
+		t.Run("PATCHは文字列PATCHを表す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "PATCH", httpclient.MethodPatch().String())
+		})
+
+		t.Run("DELETEは文字列DELETEを表す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "DELETE", httpclient.MethodDelete().String())
+		})
+
+		t.Run("ゼロ値は空文字を表す", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, httpclient.Method{}.String())
+		})
 	})
 }
 

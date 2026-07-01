@@ -18,26 +18,45 @@ func TestIsRetrySafe(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]struct {
-			req  *Request
-			want bool
-		}{
-			"GETは常に安全":               {req: &Request{method: MethodGet()}, want: true},
-			"PUTは常に安全":               {req: &Request{method: MethodPut()}, want: true},
-			"DELETEは常に安全":            {req: &Request{method: MethodDelete()}, want: true},
-			"POSTはAllowRetryなしで非安全":  {req: &Request{method: MethodPost()}, want: false},
-			"POSTはAllowRetryありで安全":   {req: &Request{method: MethodPost(), allowRetry: true}, want: true},
-			"PATCHはAllowRetryなしで非安全": {req: &Request{method: MethodPatch()}, want: false},
-			"PATCHはAllowRetryありで安全":  {req: &Request{method: MethodPatch(), allowRetry: true}, want: true},
-			"ゼロ値(未設定)メソッドは非安全":       {req: &Request{method: Method{}}, want: false},
-		}
+		t.Run("GETは常に安全", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetrySafe(&Request{method: MethodGet()}))
+		})
 
-		for name, tc := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, tc.want, isRetrySafe(tc.req))
-			})
-		}
+		t.Run("PUTは常に安全", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetrySafe(&Request{method: MethodPut()}))
+		})
+
+		t.Run("DELETEは常に安全", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetrySafe(&Request{method: MethodDelete()}))
+		})
+
+		t.Run("POSTはAllowRetryなしで非安全", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetrySafe(&Request{method: MethodPost()}))
+		})
+
+		t.Run("POSTはAllowRetryありで安全", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetrySafe(&Request{method: MethodPost(), allowRetry: true}))
+		})
+
+		t.Run("PATCHはAllowRetryなしで非安全", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetrySafe(&Request{method: MethodPatch()}))
+		})
+
+		t.Run("PATCHはAllowRetryありで安全", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetrySafe(&Request{method: MethodPatch(), allowRetry: true}))
+		})
+
+		t.Run("ゼロ値(未設定)メソッドは非安全", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetrySafe(&Request{method: Method{}}))
+		})
 	})
 }
 
@@ -47,29 +66,55 @@ func TestIsRetryableOutcome(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]struct {
-			resp *Response
-			err  error
-			want bool
-		}{
-			"成功は対象外":       {resp: &Response{StatusCode: 200}, err: nil, want: false},
-			"ctxキャンセルは対象外": {resp: nil, err: apperror.ErrCanceled, want: false},
-			"500は対象":       {resp: &Response{StatusCode: 500}, err: apperror.ErrUnavailable, want: true},
-			"503は対象":       {resp: &Response{StatusCode: 503}, err: apperror.ErrUnavailable, want: true},
-			"429は対象":       {resp: &Response{StatusCode: 429}, err: apperror.ErrTooManyRequests, want: true},
-			"404は対象外":      {resp: &Response{StatusCode: 404}, err: apperror.ErrNotFound, want: false},
-			"400は対象外":      {resp: &Response{StatusCode: 400}, err: apperror.ErrInvalidArgument, want: false},
-			"応答未取得のtransport失敗(ErrUnavailable)は対象":    {resp: nil, err: xerrors.Wrap(apperror.ErrUnavailable, "dial error"), want: true},
-			"応答未取得でもErrInvalidArgument(不正URL等)は対象外":   {resp: nil, err: xerrors.Wrap(apperror.ErrInvalidArgument, "bad url"), want: false},
-			"応答未取得のcircuit_open(ErrUnavailable内包)は対象": {resp: nil, err: errCircuitOpen, want: true},
-		}
+		t.Run("成功は対象外", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetryableOutcome(&Response{StatusCode: 200}, nil))
+		})
 
-		for name, tc := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, tc.want, isRetryableOutcome(tc.resp, tc.err))
-			})
-		}
+		t.Run("ctxキャンセルは対象外", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetryableOutcome(nil, apperror.ErrCanceled))
+		})
+
+		t.Run("500は対象", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetryableOutcome(&Response{StatusCode: 500}, apperror.ErrUnavailable))
+		})
+
+		t.Run("503は対象", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetryableOutcome(&Response{StatusCode: 503}, apperror.ErrUnavailable))
+		})
+
+		t.Run("429は対象", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetryableOutcome(&Response{StatusCode: 429}, apperror.ErrTooManyRequests))
+		})
+
+		t.Run("404は対象外", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetryableOutcome(&Response{StatusCode: 404}, apperror.ErrNotFound))
+		})
+
+		t.Run("400は対象外", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetryableOutcome(&Response{StatusCode: 400}, apperror.ErrInvalidArgument))
+		})
+
+		t.Run("応答未取得のtransport失敗(ErrUnavailable)は対象", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetryableOutcome(nil, xerrors.Wrap(apperror.ErrUnavailable, "dial error")))
+		})
+
+		t.Run("応答未取得でもErrInvalidArgument(不正URL等)は対象外", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetryableOutcome(nil, xerrors.Wrap(apperror.ErrInvalidArgument, "bad url")))
+		})
+
+		t.Run("応答未取得のcircuit_open(ErrUnavailable内包)は対象", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isRetryableOutcome(nil, errCircuitOpen))
+		})
 	})
 }
 
@@ -204,20 +249,34 @@ func TestRetryAfter(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]Header{
-			"ヘッダ不在":    nil,
-			"キー無し":     {"X-Other": {"1"}},
-			"空文字":      {retryAfterHeader: {""}},
-			"負の秒数":     {retryAfterHeader: {"-1"}},
-			"解釈不能な文字列": {retryAfterHeader: {"soon"}},
-		}
+		t.Run("ヘッダ不在_はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			_, ok := retryAfter(nil, now)
+			assert.False(t, ok)
+		})
 
-		for name, header := range cases {
-			t.Run(name+"_はfalseを返す", func(t *testing.T) {
-				t.Parallel()
-				_, ok := retryAfter(header, now)
-				assert.False(t, ok)
-			})
-		}
+		t.Run("キー無し_はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			_, ok := retryAfter(Header{"X-Other": {"1"}}, now)
+			assert.False(t, ok)
+		})
+
+		t.Run("空文字_はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			_, ok := retryAfter(Header{retryAfterHeader: {""}}, now)
+			assert.False(t, ok)
+		})
+
+		t.Run("負の秒数_はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			_, ok := retryAfter(Header{retryAfterHeader: {"-1"}}, now)
+			assert.False(t, ok)
+		})
+
+		t.Run("解釈不能な文字列_はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			_, ok := retryAfter(Header{retryAfterHeader: {"soon"}}, now)
+			assert.False(t, ok)
+		})
 	})
 }

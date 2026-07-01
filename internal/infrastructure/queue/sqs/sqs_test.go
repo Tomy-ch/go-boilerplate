@@ -29,6 +29,44 @@ func newConsumerWithConfig(t *testing.T, api API, cfg Config) worker.Consumer {
 	return NewConsumer(api, cfg, observability.NewNoopTracerFactory(t))
 }
 
+func TestNewConsumer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("API_Config_TracerFactory から Consumer を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+
+			c := NewConsumer(api, Config{QueueURL: "q"}, observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, c)
+		})
+	})
+}
+
+func TestNewDeadLetter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("API_DLQURL_TracerFactory から FailureHandler を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+
+			dl := NewDeadLetter(api, "dlq", observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, dl)
+		})
+	})
+}
+
 func Test_Consumer_Receive(t *testing.T) {
 	t.Parallel()
 

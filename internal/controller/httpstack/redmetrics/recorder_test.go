@@ -29,6 +29,23 @@ func collectMetrics(t *testing.T, c prometheus.Collector) []prometheus.Metric {
 	return metrics
 }
 
+func TestNewPrometheusRecorder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilなPrometheusRecorderを構築しCollectorとして登録できる", func(t *testing.T) {
+			t.Parallel()
+
+			rec := NewPrometheusRecorder()
+			require.NotNil(t, rec)
+			// prometheus.Collector を満たし registry へ登録できる。
+			require.NoError(t, prometheus.NewRegistry().Register(rec))
+		})
+	})
+}
+
 func TestPrometheusRecorder_Describe(t *testing.T) {
 	t.Parallel()
 

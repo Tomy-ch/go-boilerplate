@@ -11,6 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewBcryptHasher(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("設定を渡すと非nilのHasherを返す", func(t *testing.T) {
+			t.Parallel()
+
+			hasher := NewBcryptHasher(config.NewSecurityConfig(config.MockConfigForTest(t)))
+
+			assert.NotNil(t, hasher)
+		})
+	})
+}
+
 func TestBcryptHasher_Hash(t *testing.T) {
 	t.Parallel()
 

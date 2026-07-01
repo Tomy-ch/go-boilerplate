@@ -16,6 +16,24 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("依存を渡すと非nilのUsecaseを生成する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			gw := mock_exchangerate.NewMockGateway(ctrl)
+
+			got := exchangerate.New(gw, observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, got)
+		})
+	})
+}
+
 func TestUsecaseConvert(t *testing.T) {
 	t.Parallel()
 

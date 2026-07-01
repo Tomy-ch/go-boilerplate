@@ -6,9 +6,27 @@ import (
 
 	mock_shutdowner "go-boilerplate/internal/di/shutdowner/mock"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 )
+
+func TestNewShutdowner(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("fx.Shutdownerを渡すと非nilなShutdownerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			fxSD := mock_shutdowner.NewMockFxShutdowner(ctrl)
+
+			assert.NotNil(t, NewShutdowner(fxSD))
+		})
+	})
+}
 
 func Test_Shutdowner_Shutdown(t *testing.T) {
 	t.Parallel()

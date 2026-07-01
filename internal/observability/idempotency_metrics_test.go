@@ -97,86 +97,135 @@ func TestNewIdempotencyMetrics(t *testing.T) {
 		t.Run("判定系メソッドは result ラベルへ対応する値を emit する", func(t *testing.T) {
 			t.Parallel()
 
-			cases := []struct {
-				name       string
-				record     func(im *observability.IdempotencyMetrics, ctx context.Context)
-				wantResult string
-			}{
-				{"IncHit は result=hit", func(im *observability.IdempotencyMetrics, ctx context.Context) { im.IncHit(ctx, "PostResources") }, "hit"},
-				{
-					"IncMiss は result=miss",
-					func(im *observability.IdempotencyMetrics, ctx context.Context) { im.IncMiss(ctx, "PostResources") },
-					"miss",
-				},
-				{
-					"IncConflict は result=conflict",
-					func(im *observability.IdempotencyMetrics, ctx context.Context) { im.IncConflict(ctx, "PostResources") },
-					"conflict",
-				},
-				{"IncFingerprintMismatch は result=fingerprint_mismatch", func(im *observability.IdempotencyMetrics, ctx context.Context) {
-					im.IncFingerprintMismatch(ctx, "PostResources")
-				}, "fingerprint_mismatch"},
-			}
-			for _, tc := range cases {
-				t.Run(tc.name, func(t *testing.T) {
-					t.Parallel()
+			t.Run("IncHit は result=hit", func(t *testing.T) {
+				t.Parallel()
 
-					ctx := context.Background()
-					reader := sdkmetric.NewManualReader()
-					provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+				ctx := context.Background()
+				reader := sdkmetric.NewManualReader()
+				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 
-					im, err := observability.NewIdempotencyMetrics(provider)
-					require.NoError(t, err)
+				im, err := observability.NewIdempotencyMetrics(provider)
+				require.NoError(t, err)
 
-					tc.record(im, ctx)
+				im.IncHit(ctx, "PostResources")
 
-					var rm metricdata.ResourceMetrics
-					require.NoError(t, reader.Collect(ctx, &rm))
+				var rm metricdata.ResourceMetrics
+				require.NoError(t, reader.Collect(ctx, &rm))
 
-					assert.Equal(t, tc.wantResult, attributeOf(t, rm, "idempotency.requests", "result"))
-				})
-			}
+				assert.Equal(t, "hit", attributeOf(t, rm, "idempotency.requests", "result"))
+			})
+
+			t.Run("IncMiss は result=miss", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+				reader := sdkmetric.NewManualReader()
+				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+				im, err := observability.NewIdempotencyMetrics(provider)
+				require.NoError(t, err)
+
+				im.IncMiss(ctx, "PostResources")
+
+				var rm metricdata.ResourceMetrics
+				require.NoError(t, reader.Collect(ctx, &rm))
+
+				assert.Equal(t, "miss", attributeOf(t, rm, "idempotency.requests", "result"))
+			})
+
+			t.Run("IncConflict は result=conflict", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+				reader := sdkmetric.NewManualReader()
+				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+				im, err := observability.NewIdempotencyMetrics(provider)
+				require.NoError(t, err)
+
+				im.IncConflict(ctx, "PostResources")
+
+				var rm metricdata.ResourceMetrics
+				require.NoError(t, reader.Collect(ctx, &rm))
+
+				assert.Equal(t, "conflict", attributeOf(t, rm, "idempotency.requests", "result"))
+			})
+
+			t.Run("IncFingerprintMismatch は result=fingerprint_mismatch", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+				reader := sdkmetric.NewManualReader()
+				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+				im, err := observability.NewIdempotencyMetrics(provider)
+				require.NoError(t, err)
+
+				im.IncFingerprintMismatch(ctx, "PostResources")
+
+				var rm metricdata.ResourceMetrics
+				require.NoError(t, reader.Collect(ctx, &rm))
+
+				assert.Equal(t, "fingerprint_mismatch", attributeOf(t, rm, "idempotency.requests", "result"))
+			})
 		})
 
 		t.Run("失敗系メソッドは phase ラベルへ対応する値を emit する", func(t *testing.T) {
 			t.Parallel()
 
-			cases := []struct {
-				name      string
-				record    func(im *observability.IdempotencyMetrics, ctx context.Context)
-				wantPhase string
-			}{
-				{"IncClaimFailure は phase=claim", func(im *observability.IdempotencyMetrics, ctx context.Context) {
-					im.IncClaimFailure(ctx, "PostResources")
-				}, "claim"},
-				{"IncCompleteFailure は phase=complete", func(im *observability.IdempotencyMetrics, ctx context.Context) {
-					im.IncCompleteFailure(ctx, "PostResources")
-				}, "complete"},
-				{
-					"IncExpiredCleanupFailure は phase=gc_cleanup",
-					func(im *observability.IdempotencyMetrics, ctx context.Context) { im.IncExpiredCleanupFailure(ctx) },
-					"gc_cleanup",
-				},
-			}
-			for _, tc := range cases {
-				t.Run(tc.name, func(t *testing.T) {
-					t.Parallel()
+			t.Run("IncClaimFailure は phase=claim", func(t *testing.T) {
+				t.Parallel()
 
-					ctx := context.Background()
-					reader := sdkmetric.NewManualReader()
-					provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+				ctx := context.Background()
+				reader := sdkmetric.NewManualReader()
+				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 
-					im, err := observability.NewIdempotencyMetrics(provider)
-					require.NoError(t, err)
+				im, err := observability.NewIdempotencyMetrics(provider)
+				require.NoError(t, err)
 
-					tc.record(im, ctx)
+				im.IncClaimFailure(ctx, "PostResources")
 
-					var rm metricdata.ResourceMetrics
-					require.NoError(t, reader.Collect(ctx, &rm))
+				var rm metricdata.ResourceMetrics
+				require.NoError(t, reader.Collect(ctx, &rm))
 
-					assert.Equal(t, tc.wantPhase, attributeOf(t, rm, "idempotency.failures", "phase"))
-				})
-			}
+				assert.Equal(t, "claim", attributeOf(t, rm, "idempotency.failures", "phase"))
+			})
+
+			t.Run("IncCompleteFailure は phase=complete", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+				reader := sdkmetric.NewManualReader()
+				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+				im, err := observability.NewIdempotencyMetrics(provider)
+				require.NoError(t, err)
+
+				im.IncCompleteFailure(ctx, "PostResources")
+
+				var rm metricdata.ResourceMetrics
+				require.NoError(t, reader.Collect(ctx, &rm))
+
+				assert.Equal(t, "complete", attributeOf(t, rm, "idempotency.failures", "phase"))
+			})
+
+			t.Run("IncExpiredCleanupFailure は phase=gc_cleanup", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+				reader := sdkmetric.NewManualReader()
+				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+				im, err := observability.NewIdempotencyMetrics(provider)
+				require.NoError(t, err)
+
+				im.IncExpiredCleanupFailure(ctx)
+
+				var rm metricdata.ResourceMetrics
+				require.NoError(t, reader.Collect(ctx, &rm))
+
+				assert.Equal(t, "gc_cleanup", attributeOf(t, rm, "idempotency.failures", "phase"))
+			})
 		})
 
 		t.Run("IncExpiredCleanup は job=idempotency_gc を emit する", func(t *testing.T) {

@@ -86,22 +86,29 @@ func Test_provideAuthenticator(t *testing.T) {
 	})
 
 	// local / ci / test 以外（本番相当）はすべて fail-closed でエラーを返すこと。
-	envs := map[string]string{
-		"development環境": config.EnvDevelopment,
-		"staging環境":     config.EnvStaging,
-		"production環境":  config.EnvProduction,
+	assertFailClosed := func(t *testing.T, env string) {
+		t.Helper()
+		cfg := config.MockConfigForTest(t)
+		appCfg := config.NewApplicationConfig(cfg)
+		appCfg.SetApplicationEnv(t, env)
+		logger := logging.NewTestLogger(t)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.Error(t, err)
+		assert.Nil(t, authenticator)
 	}
-	for name, env := range envs {
-		t.Run(name+"では Authenticator を配線せずエラーを返す", func(t *testing.T) {
-			t.Parallel()
 
-			cfg := config.MockConfigForTest(t)
-			appCfg := config.NewApplicationConfig(cfg)
-			appCfg.SetApplicationEnv(t, env)
-			logger := logging.NewTestLogger(t)
-			authenticator, err := provideAuthenticator(appCfg, logger)
-			require.Error(t, err)
-			require.Nil(t, authenticator)
-		})
-	}
+	t.Run("development環境では Authenticator を配線せずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+		assertFailClosed(t, config.EnvDevelopment)
+	})
+
+	t.Run("staging環境では Authenticator を配線せずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+		assertFailClosed(t, config.EnvStaging)
+	})
+
+	t.Run("production環境では Authenticator を配線せずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+		assertFailClosed(t, config.EnvProduction)
+	})
 }

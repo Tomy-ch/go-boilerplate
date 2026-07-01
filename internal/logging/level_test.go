@@ -13,20 +13,36 @@ func TestParseLevel(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("有効なレベル文字列を対応する Level に変換できる", func(t *testing.T) {
+		t.Run("debugをLevelDebugに変換できる", func(t *testing.T) {
 			t.Parallel()
 
-			cases := map[string]Level{
-				"debug": LevelDebug(),
-				"info":  LevelInfo(),
-				"warn":  LevelWarn(),
-				"error": LevelError(),
-			}
-			for input, want := range cases {
-				lv, err := ParseLevel(input)
-				require.NoError(t, err)
-				assert.Equal(t, want, lv)
-			}
+			lv, err := ParseLevel("debug")
+			require.NoError(t, err)
+			assert.Equal(t, LevelDebug(), lv)
+		})
+
+		t.Run("infoをLevelInfoに変換できる", func(t *testing.T) {
+			t.Parallel()
+
+			lv, err := ParseLevel("info")
+			require.NoError(t, err)
+			assert.Equal(t, LevelInfo(), lv)
+		})
+
+		t.Run("warnをLevelWarnに変換できる", func(t *testing.T) {
+			t.Parallel()
+
+			lv, err := ParseLevel("warn")
+			require.NoError(t, err)
+			assert.Equal(t, LevelWarn(), lv)
+		})
+
+		t.Run("errorをLevelErrorに変換できる", func(t *testing.T) {
+			t.Parallel()
+
+			lv, err := ParseLevel("error")
+			require.NoError(t, err)
+			assert.Equal(t, LevelError(), lv)
 		})
 	})
 

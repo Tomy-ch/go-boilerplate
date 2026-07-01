@@ -56,6 +56,24 @@ func pendingMessage(t *testing.T) outboxbndry.PendingMessage {
 	}
 }
 
+func TestNewRelay(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全依存を渡すと非nilのRelayUsecaseを生成する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			got := newRelay(t, mock_tx.NewMockManager(ctrl), mock_outbox.NewMockStore(ctrl),
+				mock_publisher.NewMockPublisher(ctrl))
+
+			assert.NotNil(t, got)
+		})
+	})
+}
+
 func TestRelayUsecase_RelayBatch(t *testing.T) {
 	t.Parallel()
 

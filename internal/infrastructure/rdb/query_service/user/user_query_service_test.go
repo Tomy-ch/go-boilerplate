@@ -26,6 +26,38 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestBuildLikeTokens(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キーワードが空の場合、全件マッチのトークンを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := buildLikeTokens(nil)
+			assert.Equal(t, []string{"%"}, actual)
+		})
+
+		t.Run("キーワードを部分一致のLIKEパターンへ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			actual := buildLikeTokens([]string{"Grace", "Lee"})
+			require.Len(t, actual, 2)
+			assert.Equal(t, "%Grace%", actual[0])
+			assert.Equal(t, "%Lee%", actual[1])
+		})
+
+		t.Run("LIKEワイルドカードを含むキーワードはエスケープされる", func(t *testing.T) {
+			t.Parallel()
+
+			actual := buildLikeTokens([]string{"50%_off"})
+			require.Len(t, actual, 1)
+			assert.Equal(t, `%50\%\_off%`, actual[0])
+		})
+	})
+}
+
 func Test_service_FindByFilter(t *testing.T) {
 	t.Parallel()
 

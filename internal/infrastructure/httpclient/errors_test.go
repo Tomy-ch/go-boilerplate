@@ -19,39 +19,80 @@ func TestStatusToAppError(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]struct {
-			status  int
-			want    error
-			wantNil bool
-		}{
-			"100はエラーなし_1xxはdefault分岐":       {status: http.StatusContinue, wantNil: true},
-			"200はエラーなし":                     {status: http.StatusOK, wantNil: true},
-			"204はエラーなし":                     {status: http.StatusNoContent, wantNil: true},
-			"301はErrUnavailable_非追従リダイレクト":  {status: http.StatusMovedPermanently, want: apperror.ErrUnavailable},
-			"302はErrUnavailable_非追従リダイレクト":  {status: http.StatusFound, want: apperror.ErrUnavailable},
-			"400はErrInvalidArgument":        {status: http.StatusBadRequest, want: apperror.ErrInvalidArgument},
-			"401はErrUnauthenticated":        {status: http.StatusUnauthorized, want: apperror.ErrUnauthenticated},
-			"403はErrPermissionDenied":       {status: http.StatusForbidden, want: apperror.ErrPermissionDenied},
-			"404はErrNotFound":               {status: http.StatusNotFound, want: apperror.ErrNotFound},
-			"409はErrConflict":               {status: http.StatusConflict, want: apperror.ErrConflict},
-			"422はErrValidation":             {status: http.StatusUnprocessableEntity, want: apperror.ErrValidation},
-			"429はErrTooManyRequests":        {status: http.StatusTooManyRequests, want: apperror.ErrTooManyRequests},
-			"418など他の4xxはErrInvalidArgument": {status: http.StatusTeapot, want: apperror.ErrInvalidArgument},
-			"500はErrUnavailable":            {status: http.StatusInternalServerError, want: apperror.ErrUnavailable},
-			"503はErrUnavailable":            {status: http.StatusServiceUnavailable, want: apperror.ErrUnavailable},
-		}
+		t.Run("100はエラーなし_1xxはdefault分岐", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, statusToAppError(http.StatusContinue))
+		})
 
-		for name, tc := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				got := statusToAppError(tc.status)
-				if tc.wantNil {
-					require.NoError(t, got)
-					return
-				}
-				require.ErrorIs(t, got, tc.want)
-			})
-		}
+		t.Run("200はエラーなし", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, statusToAppError(http.StatusOK))
+		})
+
+		t.Run("204はエラーなし", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, statusToAppError(http.StatusNoContent))
+		})
+
+		t.Run("301はErrUnavailable_非追従リダイレクト", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusMovedPermanently), apperror.ErrUnavailable)
+		})
+
+		t.Run("302はErrUnavailable_非追従リダイレクト", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusFound), apperror.ErrUnavailable)
+		})
+
+		t.Run("400はErrInvalidArgument", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusBadRequest), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("401はErrUnauthenticated", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusUnauthorized), apperror.ErrUnauthenticated)
+		})
+
+		t.Run("403はErrPermissionDenied", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusForbidden), apperror.ErrPermissionDenied)
+		})
+
+		t.Run("404はErrNotFound", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusNotFound), apperror.ErrNotFound)
+		})
+
+		t.Run("409はErrConflict", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusConflict), apperror.ErrConflict)
+		})
+
+		t.Run("422はErrValidation", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusUnprocessableEntity), apperror.ErrValidation)
+		})
+
+		t.Run("429はErrTooManyRequests", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusTooManyRequests), apperror.ErrTooManyRequests)
+		})
+
+		t.Run("418など他の4xxはErrInvalidArgument", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusTeapot), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("500はErrUnavailable", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusInternalServerError), apperror.ErrUnavailable)
+		})
+
+		t.Run("503はErrUnavailable", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, statusToAppError(http.StatusServiceUnavailable), apperror.ErrUnavailable)
+		})
 	})
 }
 
@@ -161,22 +202,29 @@ func TestStatusClass(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]struct {
-			status int
-			want   string
-		}{
-			"100番台は1xx": {status: http.StatusContinue, want: "1xx"},
-			"200番台は2xx": {status: http.StatusOK, want: "2xx"},
-			"300番台は3xx": {status: http.StatusFound, want: "3xx"},
-			"400番台は4xx": {status: http.StatusNotFound, want: "4xx"},
-			"500番台は5xx": {status: http.StatusBadGateway, want: "5xx"},
-		}
+		t.Run("100番台は1xx", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "1xx", statusClass(http.StatusContinue))
+		})
 
-		for name, tc := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, tc.want, statusClass(tc.status))
-			})
-		}
+		t.Run("200番台は2xx", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "2xx", statusClass(http.StatusOK))
+		})
+
+		t.Run("300番台は3xx", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "3xx", statusClass(http.StatusFound))
+		})
+
+		t.Run("400番台は4xx", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "4xx", statusClass(http.StatusNotFound))
+		})
+
+		t.Run("500番台は5xx", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "5xx", statusClass(http.StatusBadGateway))
+		})
 	})
 }

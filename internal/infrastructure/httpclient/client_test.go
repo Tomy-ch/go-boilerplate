@@ -54,6 +54,28 @@ func newClient(t *testing.T, registry httpclient.Registry) httpclient.Client {
 	)
 }
 
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("依存を渡して構築すると非nilのClientを返す", func(t *testing.T) {
+			t.Parallel()
+
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				clocktestkit.NewNoopSleeper(t),
+				system.NewClock(),
+				httpclient.NewRegistry(nil),
+				observability.NewNoopHTTPClientMetrics(t),
+			)
+
+			assert.NotNil(t, client)
+		})
+	})
+}
+
 func TestClientDo(t *testing.T) {
 	t.Parallel()
 
@@ -108,35 +130,43 @@ func TestClientDo(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		statusCases := map[string]struct {
-			status int
-			want   error
-		}{
-			"404はErrNotFound":        {status: http.StatusNotFound, want: apperror.ErrNotFound},
-			"400はErrInvalidArgument": {status: http.StatusBadRequest, want: apperror.ErrInvalidArgument},
-			"429はErrTooManyRequests": {status: http.StatusTooManyRequests, want: apperror.ErrTooManyRequests},
-			"500はErrUnavailable":     {status: http.StatusInternalServerError, want: apperror.ErrUnavailable},
+		// ステータスコードごとに、apperror へ正規化しつつレスポンス本体も返すことを確認する。
+		assertStatusMapped := func(t *testing.T, status int, want error) {
+			t.Helper()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(status)
+				_, _ = w.Write([]byte("error-body"))
+			}))
+			t.Cleanup(srv.Close)
+
+			client := newClient(t, httpclient.NewRegistry(nil))
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "sample", srv.URL))
+
+			require.ErrorIs(t, err, want)
+			require.NotNil(t, resp)
+			assert.Equal(t, status, resp.StatusCode)
+			assert.Equal(t, []byte("error-body"), resp.Body)
 		}
 
-		for name, tc := range statusCases {
-			t.Run(name+"_でもレスポンスは返す", func(t *testing.T) {
-				t.Parallel()
+		t.Run("404はErrNotFoundでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusNotFound, apperror.ErrNotFound)
+		})
 
-				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-					w.WriteHeader(tc.status)
-					_, _ = w.Write([]byte("error-body"))
-				}))
-				t.Cleanup(srv.Close)
+		t.Run("400はErrInvalidArgumentでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusBadRequest, apperror.ErrInvalidArgument)
+		})
 
-				client := newClient(t, httpclient.NewRegistry(nil))
-				resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "sample", srv.URL))
+		t.Run("429はErrTooManyRequestsでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusTooManyRequests, apperror.ErrTooManyRequests)
+		})
 
-				require.ErrorIs(t, err, tc.want)
-				require.NotNil(t, resp)
-				assert.Equal(t, tc.status, resp.StatusCode)
-				assert.Equal(t, []byte("error-body"), resp.Body)
-			})
-		}
+		t.Run("500はErrUnavailableでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusInternalServerError, apperror.ErrUnavailable)
+		})
 
 		t.Run("transport失敗はErrUnavailableを返しレスポンスはnil", func(t *testing.T) {
 			t.Parallel()

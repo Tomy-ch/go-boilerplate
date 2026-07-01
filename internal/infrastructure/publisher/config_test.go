@@ -15,43 +15,84 @@ func Test_parseEndpoint(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]string{
-			"http スキームの URL を受理する":  "http://localhost:8080/events",
-			"https スキームの URL を受理する": "https://example.com/ingest",
-			"ホストのみの URL を受理する":      "http://receiver",
-		}
-		for name, raw := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
+		t.Run("http スキームの URL を受理する", func(t *testing.T) {
+			t.Parallel()
 
-				got, err := parseEndpoint(raw)
+			const raw = "http://localhost:8080/events"
+			got, err := parseEndpoint(raw)
 
-				require.NoError(t, err)
-				assert.Equal(t, Endpoint(raw), got)
-			})
-		}
+			require.NoError(t, err)
+			assert.Equal(t, Endpoint(raw), got)
+		})
+
+		t.Run("https スキームの URL を受理する", func(t *testing.T) {
+			t.Parallel()
+
+			const raw = "https://example.com/ingest"
+			got, err := parseEndpoint(raw)
+
+			require.NoError(t, err)
+			assert.Equal(t, Endpoint(raw), got)
+		})
+
+		t.Run("ホストのみの URL を受理する", func(t *testing.T) {
+			t.Parallel()
+
+			const raw = "http://receiver"
+			got, err := parseEndpoint(raw)
+
+			require.NoError(t, err)
+			assert.Equal(t, Endpoint(raw), got)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]string{
-			"空文字は弾く":                "",
-			"スキーム無しは弾く":             "example.com/events",
-			"http/https 以外のスキームは弾く": "ftp://example.com",
-			"ホスト欠落は弾く":              "http://",
-			"解析不能な URL は弾く":         "http://[::1",
-		}
-		for name, raw := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
+		t.Run("空文字は弾く", func(t *testing.T) {
+			t.Parallel()
 
-				got, err := parseEndpoint(raw)
+			got, err := parseEndpoint("")
 
-				require.ErrorIs(t, err, ErrInvalidEndpoint)
-				assert.Empty(t, got)
-			})
-		}
+			require.ErrorIs(t, err, ErrInvalidEndpoint)
+			assert.Empty(t, got)
+		})
+
+		t.Run("スキーム無しは弾く", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseEndpoint("example.com/events")
+
+			require.ErrorIs(t, err, ErrInvalidEndpoint)
+			assert.Empty(t, got)
+		})
+
+		t.Run("http/https 以外のスキームは弾く", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseEndpoint("ftp://example.com")
+
+			require.ErrorIs(t, err, ErrInvalidEndpoint)
+			assert.Empty(t, got)
+		})
+
+		t.Run("ホスト欠落は弾く", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseEndpoint("http://")
+
+			require.ErrorIs(t, err, ErrInvalidEndpoint)
+			assert.Empty(t, got)
+		})
+
+		t.Run("解析不能な URL は弾く", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseEndpoint("http://[::1")
+
+			require.ErrorIs(t, err, ErrInvalidEndpoint)
+			assert.Empty(t, got)
+		})
 	})
 }
 

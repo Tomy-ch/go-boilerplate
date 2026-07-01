@@ -11,6 +11,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewLogFields(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成したLogFieldBuilderが渡した設定を保持する", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			obsCfg := config.NewObservabilityConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
+
+			builder := NewLogFields(obsCfg, osCfg)
+			require.NotNil(t, builder)
+
+			impl, ok := builder.(*logFieldBuilder)
+			require.True(t, ok)
+			assert.Same(t, obsCfg, impl.obsCfg)
+			assert.Same(t, osCfg, impl.osCfg)
+		})
+	})
+}
+
 func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 	t.Parallel()
 

@@ -7,17 +7,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestState(t *testing.T) {
+func TestNewState(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("NewStateは非nilを返す", func(t *testing.T) {
+		t.Run("非nilなStateを構築する", func(t *testing.T) {
 			t.Parallel()
-			s := NewState()
-			assert.NotNil(t, s)
+
+			assert.NotNil(t, NewState())
 		})
+	})
+}
+
+func TestState(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
 		t.Run("SetとSnapshotは値を保存して返す", func(t *testing.T) {
 			t.Parallel()

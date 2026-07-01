@@ -206,21 +206,23 @@ func TestFull(t *testing.T) {
 		t.Run("0以下は決定論的に0を返す", func(t *testing.T) {
 			t.Parallel()
 
-			tests := []struct {
-				name string
-				in   time.Duration
-			}{
-				{name: "0は0", in: 0},
-				{name: "負数は0", in: -time.Second},
-				{name: "最小負数は0", in: time.Duration(math.MinInt64)},
-			}
-			for _, tt := range tests {
-				t.Run(tt.name, func(t *testing.T) {
-					t.Parallel()
+			t.Run("0は0", func(t *testing.T) {
+				t.Parallel()
 
-					assert.Equal(t, time.Duration(0), Full(tt.in))
-				})
-			}
+				assert.Equal(t, time.Duration(0), Full(0))
+			})
+
+			t.Run("負数は0", func(t *testing.T) {
+				t.Parallel()
+
+				assert.Equal(t, time.Duration(0), Full(-time.Second))
+			})
+
+			t.Run("最小負数は0", func(t *testing.T) {
+				t.Parallel()
+
+				assert.Equal(t, time.Duration(0), Full(time.Duration(math.MinInt64)))
+			})
 		})
 
 		t.Run("正の値は0からその値の範囲に収まる", func(t *testing.T) {
