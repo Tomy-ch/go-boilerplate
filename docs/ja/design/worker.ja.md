@@ -2,7 +2,7 @@
 
 [Worker README（日本語）](../../../internal/controller/worker/README.ja.md) | English: [worker.md](../../design/worker.md)
 
-本書は worker scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、採用判断は `docs/decisions.md` の ADR を参照。
+本書は worker scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、採用判断は worker ADR（[ADR-0038](../adr/0038-broker-agnostic-worker-scaffold.ja.md) 以降）を参照。
 
 ---
 
