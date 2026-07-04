@@ -27,11 +27,16 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
   - **rule**（日々強制される帰結）→ `docs/rules.md` に残し ADR へ backlink。
   - **inventory**（コード追従の目録）→ `docs/reference/dependencies.md`。ADR にしない。
 
-## 粒度方針（本版で確定）
+## 粒度・採番・順序方針
 
-**細粒度＝決定単位。約 92 本。** サブシステム（outbox / idempotency / job / observability）は
-サブ決定ごとに独立 ADR へ分割する（retention・MaxAttempts・TTL 等も各 1 本）。fork 側が
-サブ決定を個別に supersede できることを優先する。
+- **細粒度＝決定単位。約 92 本。** サブシステム（outbox / idempotency / job /
+  observability）はサブ決定ごとに独立 ADR へ分割する。
+- **順序は依存・基礎度順**に採番する：基礎原則 → 契約(OpenAPI) → HTTP 層 → 永続化 →
+  DI/config/errors → 非同期サブシステム → observability → ライブラリ/ビルド/CI →
+  バイナリ/イメージ/デプロイ → プロジェクト全体の除外。番号は暫定で Phase 0 で確定
+  （発見順ではなく本順序を正とする）。
+- 種別: `migrate`＝decisions.md から移設 / `new`＝未文書化の潜在決定 /
+  `exclusion`＝負の決定。★＝最優先（明確な代替案＋影響大＋現状ゼロ）。
 
 ## 各 ADR 作成時の共通参照（全 ADR で必ず再読）
 
@@ -43,249 +48,226 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 - `docs/adr/README.md` / `docs/adr/template.md` — Phase 0 で作る形式・採番・分類規約。
 - 対象サブシステムの `docs/design/<name>.md` と該当パッケージ `README.md`。
 
-## 移行対象 ADR 一覧・採番・参照
+## 移行対象 ADR 一覧（依存・基礎度順）
 
-種別: `migrate`＝decisions.md から移設 / `new`＝未文書化の潜在決定 /
-`exclusion`＝負の決定。★＝最優先（明確な代替案＋影響大＋現状ゼロ）。
 「作成時に再読」は共通参照に**加えて**読むファイル。
 
-### 基盤・アーキテクチャ
+### 基礎原則
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0001 | 実用的オニオンアーキテクチャの採用 | migrate | decisions.md:23-61 / architecture.md / rules.md(層依存 9-36) |
-| 0002 | モジュラモノリス（マイクロサービス非目標） | new | architecture.md:253-266,294-303 / project/scope.md:35,46-57 |
-| 0003 | 構造安全をツール＋CI(depguard)で強制 | new | architecture.md:77-92 / .golangci.yml(depguard) / rules.md:49-77 |
-| 0004 | REST/Worker/Job は駆動アダプタ（分割軸にしない） | new | design/rest.md:11 / design/README.md:16-18 / design/worker.md |
-| 0005 | OpenAPI-first API 契約 | migrate | decisions.md:63-90 / rules.md:78-93 |
+| 0001 | ロックイン回避を設計原則にする(ベンダ/ライブラリ置換可能性) | new | architecture.md:94-104 / project/policy.md / decisions.md:226-236 |
+| 0002 | 実用的オニオンアーキテクチャの採用 | migrate | decisions.md:23-61 / architecture.md / rules.md:9-36 |
+| 0003 | 境界を interface で定義し疎結合化(DIP) | new | architecture.md(dependency inversion) / rules.md:9-36。※0002 と統合可 |
+| 0004 | モジュラモノリス(マイクロサービス非目標) | new | architecture.md:253-266 / project/scope.md:46-57 |
+| 0005 | REST/Worker/Job は駆動アダプタ(分割軸にしない) | new | design/rest.md:11 / design/README.md:16-18 |
+| 0006 | 構造安全をツール＋CI(depguard)で強制 | new | architecture.md:77-92 / .golangci.yml / rules.md:49-77 |
+| 0007 | with-AI 開発方式(AGENTS.md を運用契約に) | new | AGENTS.md / CLAUDE.md / .claude/ |
+| 0008 | docs を正典とする戦略(EN 正典＋ja mirror＋portal) | new | docs/index.md / docs/maintenance/docs-structure.md / docs/portal/manifest.yaml |
 
-### 永続化
-
-| # | ADR | 種別 | 作成時に再読 |
-| --- | --- | --- | --- |
-| 0006 | SQL-first データアクセス | migrate | decisions.md:92-117 |
-| 0007 | sqlc による型安全 SQL 生成 | migrate | decisions.md:119-144 |
-| 0008 | append-only な不変マイグレーション | new | rules.md:94-111 / development-flow.md |
-| 0009 | 軽量 CQRS（Repository=書込 / QueryService=読取 / CommandService も配線） | new ★ | infrastructure/rdb/query_service/README.md:40-47 / di/module/persistence.go:36 / rules.md:158-169 / usecase/README.md |
-| 0010 | 競合時の tx 再試行＋呼び出し側冪等契約 | new ★ | usecase/boundary/tx/README.md:16-18 / infrastructure/rdb/driver/transaction.go:79,116 / design/outbox.md |
-| 0011 | UUIDv7（時間順）識別子戦略 | new | pkg/uuid/README.md:5,11 / sqlc.yaml(型 override) |
-
-### HTTP フレームワーク・基盤
+### 契約・OpenAPI
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0012 | Echo を HTTP フレームワークに採用 | migrate | decisions.md:146-170 |
-| 0013 | 優先度順（データ駆動）ミドルウェア連鎖 | new | design/rest.md:29,244 / controller/httpstack/README.md |
-| 0014 | 外向き HTTP レジリエンス基盤(retry/CB/budget/dual timeout) | new ★ | infrastructure/httpclient/README.md:5 / httpclient 実装 |
-| 0015 | egress SSRF / dial ガードのセキュリティ姿勢 | new ★ | observability/http_client_transport.go:18-23 / infrastructure/httpclient/README.md(security) / outbox/http_publisher.go:30 |
+| 0009 | OpenAPI-first API 契約 | migrate | decisions.md:63-90 / rules.md:78-93 |
+| 0010 | Redocly モジュール分割＋bundle→生成 のスペック工程 | new | openapi/README.md:13-33,58-74 / redocly.yaml / .makefiles/openapi/gen.mk |
+| 0011 | tag/handler 単位 oapi-codegen 生成＋strict-server モード | new | handler/**/*_handler.go:1-2(//go:generate) / handler/**/gen/server.gen.go |
+| 0012 | spec 駆動リクエスト検証＋認証(security:=強制)／レスポンス実行時検証なし | new | httpstack/oapi/oapi.go:17-39 / openapi/README.md:122 / openapi/boundary-ownership.md:30 |
+| 0013 | 境界値オーナーシップ(OpenAPI=ワイヤ契約≠ドメイン規則、request⊆domain⊆response) | new | openapi/boundary-ownership.md:7-8,21-27,50-56 |
+| 0014 | `/metrics` の認証例外(OpenAPI 検証外・別 Echo BasicAuth) | new | openapi/README.md:122 / httpstack。※0012 に統合可 |
+
+### HTTP 層
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0015 | Echo を HTTP フレームワークに採用 | migrate | decisions.md:146-170 |
+| 0016 | 優先度順(データ駆動)ミドルウェア連鎖 | new | design/rest.md:29,244 / controller/httpstack/README.md |
+| 0017 | 外向き HTTP レジリエンス基盤(retry/CB/budget/dual timeout) | new ★ | infrastructure/httpclient/README.md:5 |
+| 0018 | egress SSRF/dial ガードのセキュリティ姿勢 | new ★ | observability/http_client_transport.go:18-23 / httpclient/README.md / outbox/http_publisher.go:30 |
+
+### 永続化・データ
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0019 | SQL-first データアクセス | migrate | decisions.md:92-117 |
+| 0020 | sqlc による型安全 SQL 生成 | migrate | decisions.md:119-144 |
+| 0021 | merge-dml＋dump-schema →『database/gen/』(schema.gen.sql) を sqlc 単一入力に | new | .makefiles/database/dml-merge.mk:47-48 / gen.mk:27-34 / sqlc.yaml:4-5 / database/README.md:26-47 |
+| 0022 | append-only な不変マイグレーション | new | rules.md:94-111 / development-flow.md |
+| 0023 | migration ID は連番(6桁)＋gap/pair を CI 強制(timestamp 不採用) | new | database/migrations/README.md:53-69 / migration-check.yaml。0022 は不変性、本 ADR は採番規律 |
+| 0024 | マスタデータは migration・トランザクション seed は seed/(本番除外) | new | database/seed/README.md:47-58 / database/README.md / migrations 000003,000005,000008 |
+| 0025 | 軽量 CQRS(Repository=書込 / QueryService=読取 / command_service も配線) | migrate/new ★ | infrastructure/rdb/query_service/README.md:40-47 / di/module/persistence.go:36 / rules.md:158-169 |
+| 0026 | system_query を非CQRS 第4 DML カテゴリに(health/idempotency/outbox) | new | database/dml/README.md:23-31 / database/dml/system_query/README.md |
+| 0027 | 競合時の tx 再試行＋呼び出し側冪等契約 | new ★ | usecase/boundary/tx/README.md:16-18 / infrastructure/rdb/driver/transaction.go:79,116 |
+| 0028 | 全文検索は DB 内(GENERATED STORED 列＋GIN pg_trgm、query_service 経由) | new | migrations/000011_users_table_search_text_column.up.sql / dml/query_service/user/select_users_by_keyword.sql |
+| 0029 | UUIDv7(時間順)識別子戦略 | new | pkg/uuid/README.md:5,11 / sqlc.yaml(型 override) |
 
 ### DI・config・errors
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0016 | Uber Fx を DI＋ライフサイクルに採用 | migrate | decisions.md:172-197 |
-| 0017 | fx を中立 DI 抽象で封じ込め(Registrar/Shutdowner) | new | di/lifecycle/README.md / di/shutdowner/README.md |
-| 0018 | DI で環境ごとに実装を差し替える(env-gated wiring) | new | di/module/authz.go:29-47 / di/module/README.md / config の Env 定数(EnvLocal/EnvCI/EnvTest/本番相当) |
-| 0019 | 不変・起動時一括・fail-fast な型付き config | new | config/README.md / config/config.go |
-| 0020 | プロトコル非依存の集約エラー分類(apperror) | new | apperror/README.md:5,8 / rules.md:215-221 |
+| 0030 | Uber Fx を DI＋ライフサイクルに採用 | migrate | decisions.md:172-197 |
+| 0031 | fx を中立 DI 抽象で封じ込め(Registrar/Shutdowner) | new | di/lifecycle/README.md / di/shutdowner/README.md |
+| 0032 | DI で環境ごとに実装を差し替える(env-gated wiring) | new | di/module/authz.go:29-47 / di/module/README.md / config の Env 定数 |
+| 0033 | サブシステム別 envPrefix 型付きローダ | new | internal/config/envspec.go:5-19 / env/README.md:9-13 |
+| 0034 | default-in-code(不変) vs required-in-file(可変) ガバナンス | new | env/README.md:16,22-24 / internal/config/envspec.go |
+| 0035 | 不変・起動時一括・fail-fast な型付き config | new | config/README.md / config/config.go |
+| 0036 | go:embed で config(.env)/migration を同梱＝自己完結バイナリ | new | embed.go:7 / config/README.md |
+| 0037 | プロトコル非依存の集約エラー分類(apperror) | new | apperror/README.md:5,8 / rules.md:215-221 |
 
-### ライブラリ・ツールチェーン
+### 非同期サブシステム
 
-| # | ADR | 種別 | 作成時に再読 |
-| --- | --- | --- | --- |
-| 0021 | 単一責務ライブラリ選定ポリシー | migrate | decisions.md:226-236 |
-| 0022 | bridge/instrumentation 例外（SRP 例外） | migrate | decisions.md:296-314 |
-| 0023 | コンテナ化ツールチェーン＋mise 固定(再現性) | new | rules.md:281-296 / makefile / .makefiles/ / mise.toml |
-
-### worker
+worker:
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0024 | broker 非依存 pull-ack worker scaffold | migrate | decisions.md:199-224 / design/worker.md |
-| 0025 | push/streaming broker を対象外 | exclusion | decisions.md:209,222 / design/worker.md |
-| 0026 | SQS アダプタは opt-in / 既定バイナリ非リンク | migrate | decisions.md:212,223-224 / infrastructure/queue/sqs/README.md |
+| 0038 | broker 非依存 pull-ack worker scaffold | migrate | decisions.md:199-224 / design/worker.md |
+| 0039 | push/streaming broker を対象外 | exclusion | decisions.md:209,222 / design/worker.md |
+| 0040 | SQS アダプタは opt-in / 既定バイナリ非リンク | migrate | decisions.md:212,223-224 / infrastructure/queue/sqs/README.md |
 
-### outbox（design/outbox.md 全体が decisions.md に欠落。:5 のリンク切れも解消）
-
-| # | ADR | 種別 | 作成時に再読 |
-| --- | --- | --- | --- |
-| 0027 | トランザクショナル outbox（業務 tx 内で emit） | new | design/outbox.md:11,35 |
-| 0028 | at-least-once poll（transport retry 無効 / D10） | new | design/outbox.md:36,263 |
-| 0029 | SKIP LOCKED 単一 tx relay（多インスタンス安全） | new | design/outbox.md:37 / database/dml/system_query/outbox/claim_pending_outbox.sql |
-| 0030 | message_id を受信側 Idempotency-Key に伝播 | new | design/outbox.md:38 |
-| 0031 | MaxAttempts=10 で dead（人手 replay まで終端） | new | design/outbox.md:52,256 |
-| 0032 | 7d retention GC（batch 10,000） | new | design/outbox.md:54,259 / .../outbox/delete_published_outbox.sql |
-| 0033 | publisher の非標準 HTTP プロファイルを relay に隔離 | new | design/outbox.md:176,268 / di/outboxrelay |
-| 0034 | relay は常駐 / GC は one-shot cron | new | design/outbox.md:27 |
-
-### idempotency
+outbox（design/outbox.md 全体が decisions.md に欠落。:5 のリンク切れも解消）:
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0035 | claim/businessFn/complete を単一 tx で at-most-once | new | design/idempotency.md:28,13 |
-| 0036 | 全 Store 呼び出しで scope 必須(IDOR 防止) | new | design/idempotency.md:29 |
-| 0037 | TTL 24h 固定（per-route 設定なし） | new | design/idempotency.md:227-229,252 |
-| 0038 | レスポンス本体を JSON 保存(PII トレードオフ) | new | design/idempotency.md:231 |
-| 0039 | idempotency GC を別 one-shot ジョブ化 | new | design/idempotency.md:23,230 |
-| 0040 | 楽観ロック/レート制限と直交（opt-in） | exclusion | design/idempotency.md:13 |
+| 0041 | トランザクショナル outbox(業務 tx 内で emit) | new | design/outbox.md:11,35 |
+| 0042 | at-least-once poll(transport retry 無効 / D10) | new | design/outbox.md:36,263 |
+| 0043 | SKIP LOCKED 単一 tx relay(多インスタンス安全) | new | design/outbox.md:37 / database/dml/system_query/outbox/claim_pending_outbox.sql |
+| 0044 | message_id を受信側 Idempotency-Key に伝播 | new | design/outbox.md:38 |
+| 0045 | MaxAttempts=10 で dead(人手 replay まで終端) | new | design/outbox.md:52,256 |
+| 0046 | 7d retention GC(batch 10,000) | new | design/outbox.md:54,259 / .../outbox/delete_published_outbox.sql |
+| 0047 | publisher の非標準 HTTP プロファイルを relay に隔離 | new | design/outbox.md:176,268 / di/outboxrelay |
+| 0048 | relay は常駐 / GC は one-shot cron | new | design/outbox.md:27 |
 
-### job
+idempotency:
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0041 | 起動毎に fx.App を新規構築(one-shot) | new | design/job.md:24 |
-| 0042 | broker/circuit/drain/health を持たない(worker と対照) | exclusion | design/job.md:24 |
-| 0043 | ジョブは明示登録（auto-discovery なし） | new | design/job.md:178 |
+| 0049 | claim/businessFn/complete を単一 tx で at-most-once | new | design/idempotency.md:28,13 |
+| 0050 | 全 Store 呼び出しで scope 必須(IDOR 防止) | new | design/idempotency.md:29 |
+| 0051 | TTL 24h 固定(per-route 設定なし) | new | design/idempotency.md:227-229,252 |
+| 0052 | レスポンス本体を JSON 保存(PII トレードオフ) | new | design/idempotency.md:231 |
+| 0053 | idempotency GC を別 one-shot ジョブ化 | new | design/idempotency.md:23,230 |
+| 0054 | 楽観ロック/レート制限と直交(opt-in) | exclusion | design/idempotency.md:13 |
+
+job:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0055 | 起動毎に fx.App を新規構築(one-shot) | new | design/job.md:24 |
+| 0056 | broker/circuit/drain/health を持たない(worker と対照) | exclusion | design/job.md:24 |
+| 0057 | ジョブは明示登録(auto-discovery なし) | new | design/job.md:178 |
 
 ### observability
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0044 | config 駆動 observability gating | migrate | decisions.md:272-294 / design/observability.md:16 |
-| 0045 | ベンダ中立 OTLP-only エクスポート(Collector 委譲) | new | design/observability.md:15 / observability/README.md |
-| 0046 | メトリクス 2 経路(OTLP push＋Prometheus scrape) | new | design/observability.md:146-153 |
-| 0047 | provider をライフサイクル非依存に(ProviderShutdowner) | new | design/observability.md:30 |
-| 0048 | SDK 既定サンプリング固定(env 非設定) | exclusion | design/observability.md:80 |
+| 0058 | config 駆動 observability gating | migrate | decisions.md:272-294 / design/observability.md:16 |
+| 0059 | ベンダ中立 OTLP-only エクスポート(Collector 委譲) | new | design/observability.md:15 / observability/README.md |
+| 0060 | 公式 OTel semconv を使用(custom なし・vendor キーを typed config に入れない) | exclusion | internal/observability/provider.go:23,58-60 / observability/README.md:46-51 |
+| 0061 | メトリクス 2 経路(OTLP push＋Prometheus scrape) | new | design/observability.md:146-153 |
+| 0062 | provider をライフサイクル非依存に(ProviderShutdowner) | new | design/observability.md:30 |
+| 0063 | SDK 既定サンプリング固定(env 非設定) | exclusion | design/observability.md:80 |
 
-### 除外（負の ADR）
-
-| # | ADR | 種別 | 作成時に再読 |
-| --- | --- | --- | --- |
-| 0049 | アプリ内レート制限器を持たない | exclusion | project/out-of-scope.md:11-16 |
-| 0050 | scheduled job 並走制御はスケジューラ委譲 | exclusion | project/out-of-scope.md:17-26 |
-| 0051 | 汎用 Cache 抽象を持たない | exclusion | project/out-of-scope.md:49-57 |
-
-### 追加(2nd pass): 設計原則・運営・ツールチェーン・メタ
-
-> 初回スキャンが `internal` / `pkg` / `docs` 中心で未カバーだった `.github` /
-> `scripts` / `docker` / `.claude` / トップレベル思想からの追補。番号は暫定
-> （Phase 0 で通し再採番）。
+### ライブラリ・ビルド・ツールチェーン
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0052 | ロックイン回避を設計原則にする(ベンダ/ライブラリ置換可能性) | new | architecture.md:94-104 / project/policy.md / decisions.md:226-236。0021/0026/0045 の上位原則 |
-| 0053 | 境界を interface で定義し疎結合化(DIP) | new | architecture.md(dependency inversion) / rules.md:9-36。※0001 onion と重複気味・統合可 |
-| 0054 | with-AI 開発方式(AGENTS.md を運用契約に) | new | AGENTS.md / CLAUDE.md / .claude/ |
-| 0055 | docs を正典とする戦略(EN 正典＋ja mirror＋portal、docs が agent を駆動) | new | docs/index.md / docs/maintenance/docs-structure.md / docs/portal/manifest.yaml |
-| 0056 | GitHub Actions を SHA ピン＋供給網検疫で固定 | new | .github/actions-pin.toml / scripts/pin-actions / .github/workflows / (actions-pin skill) |
-| 0057 | 運用スクリプトは scripts/ に Node(.mjs)/Go で置き sh 不採用 | new | scripts/README.md / scripts/(全 .mjs,.go) / rules.md(pkg↔internal 分離)。script↔pkg↔internal の役割分離も明記 |
-| 0058 | go:embed で config(.env)/migration を同梱＝自己完結バイナリ | new | embed.go:7 / config/README.md。※0019 は不変性、本 ADR は同梱/自己完結の観点 |
-| 0059 | ローカル開発環境を docker-compose で提供(tool-runner＋ビューア群) | new | docker-compose.yaml / docker/。※0023 はツール実行、本 ADR は dev stack 構成 |
+| 0064 | 単一責務ライブラリ選定ポリシー | migrate | decisions.md:226-236 |
+| 0065 | bridge/instrumentation 例外(SRP 例外) | migrate | decisions.md:296-314 |
+| 0066 | コンテナ化ツールチェーン＋mise 固定(再現性) | new | rules.md:281-296 / makefile / .makefiles/ / mise.toml |
+| 0067 | mise SSOT のダウンストリーム伝播＋CI ドリフトgate | new | mise.toml:1-7,47-49 / sync-versions-check.yaml:39-61 / scripts/sync-versions |
+| 0068 | Make を単一ツールエントリポイントに(.mk 登録＋自己文書化 help 契約) | new | makefile:6-64 / scripts/make_help.mjs:23-53 |
+| 0069 | 運用スクリプトは scripts/ に Node(.mjs)/Go で置き sh 不採用 | new | scripts/README.md / scripts/。script↔pkg↔internal の役割分離も明記 |
+| 0070 | ローカル開発環境を docker-compose で提供(tool-runner＋ビューア群) | new | docker-compose.yaml / docker/ |
 
-### 追加(3rd pass): 未スキャン領域スイープ（cmd/build/CI/DB/openapi/env/test/方式）
-
-> `internal/pkg/docs` 以外を4系統で体系スイープした結果。genuine な decision のみ。
-> 番号は暫定（Phase 0 で通し再採番）。
-
-CLI・バイナリ・デプロイ:
+### CI・品質ゲート
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0060 | CLI humble-object 分割（thin cmd/ + testable internal/cli 中核） | new | internal/cli/README.md:49-82 / cmd/commands.go:6-19 / cmd/outbox_relay.go:28-43 |
-| 0061 | 全ロールを単一マルチコマンドバイナリに集約 | new | cmd/main.go:13-31 / cmd/commands.go:7-18 |
-| 0062 | 単一ランタイムイメージ＋コマンド上書き（用途別イメージを作らない） | new | docker/server/Dockerfile:55-57 / docker/server/README.md:24-26 / docker/README.md:63 |
-| 0063 | hardened-alpine ランタイム基盤（distroless/scratch 不採用） | exclusion | docker/server/Dockerfile:42-53 / docker/server/README.md:16,21 |
-| 0064 | per-env イメージ（.env マトリクス×APP_ENV build-arg、ビルド時固定・実行時注入なし） | new | docker/server/Dockerfile:25-30 / deploy-app.yaml:54-63,198,212 / env/README.md:176 |
-| 0065 | マイグレーションは pre-deploy one-shot（起動時 auto-migrate 禁止） | exclusion | deploy-app.yaml:192-204 |
-| 0066 | リリースイメージの供給網完全性（cosign 署名＋provenance＋SBOM） | new | deploy-app.yaml:131-168 |
-| 0067 | デプロイはベンダ中立スケルトン（build/sign 実装・cloud CD 雛形・registry 非固定） | new | deploy-app.yaml:67-72,96-102,181-218 |
+| 0071 | 2層 golangci 設定(minimal 既定 vs full 権威ゲート) | new | .golangci.yaml / .golangci-full.yaml / .makefiles/go/golangci-lint.mk:8,11 |
+| 0072 | ローカル git hook が CI 契約を複製(local==CI・glob 限定・bypass-then-verify-once) | new | .lefthook.yaml:1-55 |
+| 0073 | 総カバレッジ90% を CI ハードゲート化＋例外ガバナンス | new | .makefiles/go/test.mk:11-12,44-51 / internal/observability/README.md:504-523 / go-test.yaml:79-80 |
+| 0074 | CI で実 fx グラフ＋実 Postgres を起動検証 | new | app-di-startup-check.yaml:58-83 / worker-boot-check.yaml:60-82 / job-boot-check.yaml:59-81 |
+| 0075 | 生成物ドリフトゲート＋リリースブランチ集中自動生成 bot | new | gen-go-artifacts-check.yaml:36-111 / gen-db-artifacts-check.yaml / auto-generate-docs.yaml:90-181 |
+| 0076 | 多層セキュリティスキャン(到達可能性フィルタ govulncheck＋定期 CodeQL SAST) | new | code-ql.yaml:21-22 / vulnerability-check.yaml:57-61 / secret-scan.yaml / trivy-fs.yaml |
+| 0077 | GitHub Actions を SHA ピン＋供給網検疫で固定 | new | .github/actions-pin.toml / scripts/pin-actions / .github/workflows |
 
-ビルド・CI・品質ゲート:
-
-| # | ADR | 種別 | 作成時に再読 |
-| --- | --- | --- | --- |
-| 0068 | Make を単一ツールエントリポイントに（.mk 登録＋自己文書化 help 契約） | new | makefile:6-64 / scripts/make_help.mjs:23-53 |
-| 0069 | 総カバレッジ90% を CI ハードゲート化＋例外ガバナンス（作為的テスト禁止・承認制免除） | new | .makefiles/go/test.mk:11-12,44-51 / internal/observability/README.md:504-523 / go-test.yaml:79-80 |
-| 0070 | CI で実 fx グラフ＋実 Postgres を起動検証（server /ready・worker/job unknown sentinel） | new | app-di-startup-check.yaml:58-83 / worker-boot-check.yaml:60-82 / job-boot-check.yaml:59-81 |
-| 0071 | 生成物ドリフトゲート＋リリースブランチ集中自動生成 bot | new | gen-go-artifacts-check.yaml:36-111 / gen-db-artifacts-check.yaml / gen-oapi-artifacts-check.yaml / auto-generate-docs.yaml:90-181 |
-| 0072 | 多層セキュリティスキャン（到達可能性フィルタ govulncheck＋定期 CodeQL SAST） | new | code-ql.yaml:21-22 / vulnerability-check.yaml:57-61 / secret-scan.yaml / trivy-fs.yaml |
-
-DB・SQL 生成:
+### 開発プロセス・品質
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0073 | merge-dml＋dump-schema →『database/gen/』(schema.gen.sql) を sqlc 単一入力に | new | .makefiles/database/dml-merge.mk:47-48 / gen.mk:27-34 / sqlc.yaml:4-5 / database/README.md:26-47 |
-| 0074 | マスタデータは migration・トランザクション seed は seed/（本番除外） | new | database/seed/README.md:47-58 / database/README.md / migrations 000003,000005,000008 |
-| 0075 | 全文検索は DB 内（GENERATED STORED 列＋GIN pg_trgm、query_service 経由） | new | migrations/000011_users_table_search_text_column.up.sql / dml/query_service/user/select_users_by_keyword.sql |
+| 0078 | 実DB always-rollback 統合テスト(sentinel error でロールバック、mock しない) | new | internal/infrastructure/rdb/testkit/README.md:1-257 / test_kit.go |
+| 0079 | 多モデル敵対レビュー(reviewer≠implementer、finder→verifier＋runtime-gap) | new | .claude/agents/adversarial-reviewer.md:1-8 / review-verifier.md / skills/local-review/SKILL.md |
+| 0080 | spec 駆動 lean A scaffold(domain・usecase のみ spec、controller・infra は導出) | new | .claude/scaffold-spec/*.md / scaffold-endpoint / scaffold-controller / scaffold-infra-db |
 
-OpenAPI・境界:
-
-| # | ADR | 種別 | 作成時に再読 |
-| --- | --- | --- | --- |
-| 0076 | tag 単位・handler パッケージ単位の oapi-codegen 生成＋strict-server モード | new | handler/**/*_handler.go:1-2(//go:generate) / handler/**/gen/server.gen.go |
-| 0077 | spec 駆動リクエスト検証＋認証（kin-openapi、security:=強制点）／レスポンス実行時検証なし | new | httpstack/oapi/oapi.go:17-39 / openapi/README.md:122 / openapi/boundary-ownership.md:30 |
-| 0078 | 境界値オーナーシップ（OpenAPI=ワイヤ契約≠ドメイン規則、request⊆domain⊆response） | new | openapi/boundary-ownership.md:7-8,21-27,50-56 |
-| 0079 | Redocly モジュール分割＋bundle→生成 のスペック工程 | new | openapi/README.md:13-33,58-74 / redocly.yaml / .makefiles/openapi/gen.mk |
-
-config・env:
+### バイナリ・イメージ・デプロイ
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0080 | サブシステム別 envPrefix 型付きローダ（Loader が12サブシステム struct 合成） | new | internal/config/envspec.go:5-19 / env/README.md:9-13 |
-| 0081 | default-in-code(フレームワーク不変) vs required-in-file(プロジェクト可変) ガバナンス | new | env/README.md:16,22-24 / internal/config/envspec.go |
+| 0081 | CLI humble-object 分割(thin cmd/ + testable internal/cli 中核) | new | internal/cli/README.md:49-82 / cmd/commands.go:6-19 / cmd/outbox_relay.go:28-43 |
+| 0082 | 全ロールを単一マルチコマンドバイナリに集約 | new | cmd/main.go:13-31 / cmd/commands.go:7-18 |
+| 0083 | 単一ランタイムイメージ＋コマンド上書き(用途別イメージを作らない) | new | docker/server/Dockerfile:55-57 / docker/server/README.md:24-26 |
+| 0084 | hardened-alpine ランタイム基盤(distroless/scratch 不採用) | exclusion | docker/server/Dockerfile:42-53 / docker/server/README.md:16,21 |
+| 0085 | per-env イメージ(.env マトリクス×APP_ENV build-arg、ビルド時固定) | new | docker/server/Dockerfile:25-30 / deploy-app.yaml:54-63 / env/README.md:176 |
+| 0086 | マイグレーションは pre-deploy one-shot(起動時 auto-migrate 禁止) | exclusion | deploy-app.yaml:192-204 |
+| 0087 | リリースイメージの供給網完全性(cosign 署名＋provenance＋SBOM) | new | deploy-app.yaml:131-168 |
+| 0088 | デプロイはベンダ中立スケルトン(build/sign 実装・cloud CD 雛形・registry 非固定) | new | deploy-app.yaml:67-72,96-102,181-218 |
+| 0089 | 静的 docs/ を GitHub Pages で公開(production push で発行) | new | deploy-docs.yaml:1-45。0008 と対 |
 
-テスト・開発方式:
+### プロジェクト全体の除外（負の ADR）
 
 | # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0082 | 実DB always-rollback 統合テスト（sentinel error でロールバック、mock しない） | new | internal/infrastructure/rdb/testkit/README.md:1-257 / test_kit.go |
-| 0083 | 多モデル敵対レビュー（reviewer≠implementer、finder→verifier＋runtime-gap） | new | .claude/agents/adversarial-reviewer.md:1-8 / review-verifier.md / skills/local-review/SKILL.md |
-| 0084 | spec 駆動 lean A scaffold（domain・usecase のみ spec、controller・infra は導出） | new | .claude/scaffold-spec/*.md / scaffold-endpoint / scaffold-controller / scaffold-infra-db |
-
-保留から昇格（3rd pass の borderline を採用）:
-
-| # | ADR | 種別 | 作成時に再読 |
-| --- | --- | --- | --- |
-| 0085 | 静的 docs/ を GitHub Pages で公開（production push で発行） | new | deploy-docs.yaml:1-45。0055 docs 正典戦略と対 |
-| 0086 | 2層 golangci 設定（minimal 既定 vs full 権威ゲート） | new | .golangci.yaml / .golangci-full.yaml / .makefiles/go/golangci-lint.mk:8,11 |
-| 0087 | mise SSOT のダウンストリーム伝播＋CI ドリフトgate（go.mod/Dockerfile/README へ同期） | new | mise.toml:1-7,47-49 / sync-versions-check.yaml:39-61 / scripts/sync-versions。0023 の派生 |
-| 0088 | ローカル git hook が CI 契約を複製（local==CI・glob 限定・bypass-then-verify-once） | new | .lefthook.yaml:1-55 |
-| 0089 | system_query を非CQRS 第4 DML カテゴリに（health/idempotency/outbox のシステムクエリ） | new | database/dml/README.md:23-31 / database/dml/system_query/README.md。0009 CQRS と別軸 |
-| 0090 | マイグレーション ID は連番(6桁)＋gap/pair を CI 強制（timestamp 不採用） | new | database/migrations/README.md:53-69 / migration-check.yaml。0008 は不変性、本 ADR は採番規律 |
-| 0091 | `/metrics` の認証例外（OpenAPI 検証パイプライン外・別 Echo BasicAuth） | new | openapi/README.md:122 / httpstack。※0077 に統合可 |
-| 0092 | 公式 OTel semconv を使用（custom を持たず vendor キーを typed config に入れない） | exclusion | internal/observability/provider.go:23,58-60 / observability/README.md:46-51 |
+| 0090 | アプリ内レート制限器を持たない | exclusion | project/out-of-scope.md:11-16 |
+| 0091 | scheduled job 並走制御はスケジューラ委譲 | exclusion | project/out-of-scope.md:17-26 |
+| 0092 | 汎用 Cache 抽象を持たない | exclusion | project/out-of-scope.md:49-57 |
 
 ### ADR にしないもの
 
 - **rule（rules.md に残す＋backlink）**: 層依存方向 / usecase-境界依存 / 生成コード
   非編集 / ドメイン純粋性 / context 伝播 / DTO 境界変換 / tx 配置 / エラー処理機構 /
   comment・doc・testing 規約 / 薄いハンドラ / pkg 相互独立 / 実効的不変性 /
-  idempotency claim 機構 / RED メトリクス基数制限。
+  idempotency claim 機構 / RED メトリクス基数制限 / OpenAPI casing・URL versioning 規約 /
+  secret 階層 / mock 生成方針。
 - **inventory（生きた文書へ）**: 直接依存表 → `docs/reference/dependencies.md`
   （`net/http/otelhttp` / `otel/sdk/log` の欠落もここで修正）/ ミドルウェア優先度
-  定数表 → REST 設計文書に残す。
+  定数表 → REST 設計文書に残す / sqlc 生成設定 / ワークフロー標準エンベロープ。
 - **棄却した除外候補（out-of-scope に列挙のみ／代替案が薄く ADR 化しない）**:
   デプロイ実装 / IaC / o11y 運用設定 / circuit breaker / secret rotation / 監査ログ /
   RBAC / セッション管理 / PII 暗号化 / 認証機構 / アカウントロックアウト /
-  データエクスポート・削除。代替案分析を持つ 0049-0051 のみ ADR 昇格した。
+  データエクスポート・削除。
 
-## フェーズ別作業手順
+## フェーズ別作業手順（種別ベース）
+
+番号ではなく種別で駆動するため、上表の並べ替え・採番変更に影響されない。
 
 ### Phase 0: 型固定
 
 `docs/adr/` に README（決定ログ＋分類規約＋supersede 運用）/ template.md（MADR-lite）/
-`0000-record-architecture-decisions.md`（メタ ADR）/ 見本 1 本（0001 onion）を作成し、
-形式・採番・supersede 運用を確定する。
+`0000-record-architecture-decisions.md`（メタ ADR）/ 見本 1 本（0002 onion）を作成し、
+形式・採番・supersede 運用を確定する。ここで本計画の依存・基礎度順を正式採番に落とす。
 
-### Phase 1: 既存決定の移設（migrate 種別）
+### Phase 1: migrate 種別を全移設
 
-0001,0005,0006,0007,0012,0016,0021,0022,0024,0026,0044 を decisions.md から 1:1 移設。
+decisions.md 記載の既存決定（onion / OpenAPI-first / SQL-first / sqlc / Echo / Fx /
+library-selection-policy / bridge 例外 / worker-scaffold / SQS-opt-in / o11y-gating の
+11 本）を 1:1 で ADR 化。内容は移すだけ。
 
-### Phase 2: 強い新規（★）
+### Phase 2: ★（強い新規）
 
-0009,0010,0014,0015 を作成。現状ゼロで影響大のものを優先。
+軽量 CQRS(0025) / tx 再試行契約(0027) / HTTP レジリエンス(0017) / SSRF ガード(0018)。
+現状ゼロで影響大のものを優先。
 
-### Phase 3: サブシステム・潜在決定
+### Phase 3: 残りの new を依存順に作成
 
-outbox(0027-0034) / idempotency(0035-0039) / job(0041,0043) / observability
-追加(0045-0047)、および 0002-0004,0008,0011,0013,0017-0020,0023、さらに
-0052-0059(設計原則・運営・ツールチェーン・メタ)、さらに 0060-0084(未スキャン
-領域スイープ)、さらに 0085-0091(保留昇格) を作成。outbox 作成時に
-`design/outbox.md:5` のリンク切れを解消。
+基礎原則 → 契約 → HTTP → 永続化 → DI/config → 非同期サブシステム → observability →
+ライブラリ/ビルド/CI → 開発プロセス → バイナリ/デプロイ の順で new 種別を作成。
+outbox 作成時に `design/outbox.md:5` のリンク切れを解消。
 
-### Phase 4: 除外（負の ADR）
+### Phase 4: exclusion（負の ADR）
 
-0025,0040,0042,0048,0049,0050,0051,0092 を作成。out-of-scope.md 等は目録として残す。
+push/streaming 除外 / idempotency 直交 / job 機構除外 / サンプリング固定 /
+公式 semconv / hardened-alpine / pre-deploy migration / rate-limiter / Cache /
+scheduled-job 並走。out-of-scope.md 等は目録として残す。
 
 ### Phase 5: インベントリ分離・参照貼替・撤去
 
@@ -319,6 +301,7 @@ outbox(0027-0034) / idempotency(0035-0039) / job(0041,0043) / observability
 - **markdownlint。** 見出しに `<...>` 形式は HTML タグ扱いで MD024 誤検知、コード
   フェンスは言語必須。ローカル mermaid lint は環境依存で失敗（内容問題ではない）。
 - **粒度。** 本版は細粒度（約 92 本）。粗くしたい場合はサブシステム単位に束ね直す。
+- **統合候補。** 0003(DIP)↔0002(onion) / 0014(/metrics 例外)↔0012(検証) は統合可。
 
 ## 完了条件
 
