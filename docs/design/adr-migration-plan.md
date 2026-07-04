@@ -3,6 +3,15 @@
 > 一時文書（provisional）。`docs/decisions.md` を per-file ADR 群へ移行するための
 > 作業計画。移行完了後に削除する。**このファイル単体で（会話コンテキストが失われても）
 > 各 ADR 作成を再開できる**よう、決定ごとに「作成時に再読すべきファイル」を記載する。
+>
+> **進捗（2026-07-04）**: Phase 0-4 完了 — 全 92 本の ADR（0001-0092）＋メタ 0000 を
+> `docs/design/adr/` に materialized。依存インベントリを `docs/reference/dependencies.md`
+> へ分離（欠落していた `net/http/otelhttp` / `otel/sdk/log` を補完）。`docs/decisions.md`
+> はリダイレクト stub 化し、EN 正典（README / index / rules / design/README / worker /
+> docs-structure）の直接参照を ADR 群へ貼替済み。**残（Phase 5 テール）**: (1) 物理昇格
+> `docs/design/adr/` → `docs/adr/`（相対リンク全書換を伴う）、(2) ja ミラー約 92 本
+> （`canonicalize-doc`）、(3) rules.md 各ルール→対応 ADR の backlink 追加、(4) portal
+> guides / `.claude/agents/doc-reviewer.md` / AGENTS.md（人手）の参照更新。
 
 ## 背景と目的
 
