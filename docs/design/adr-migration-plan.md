@@ -29,7 +29,7 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 
 ## 粒度方針（本版で確定）
 
-**細粒度＝決定単位。約 84 本。** サブシステム（outbox / idempotency / job / observability）は
+**細粒度＝決定単位。約 92 本。** サブシステム（outbox / idempotency / job / observability）は
 サブ決定ごとに独立 ADR へ分割する（retention・MaxAttempts・TTL 等も各 1 本）。fork 側が
 サブ決定を個別に supersede できることを優先する。
 
@@ -232,7 +232,18 @@ config・env:
 | 0083 | 多モデル敵対レビュー（reviewer≠implementer、finder→verifier＋runtime-gap） | new | .claude/agents/adversarial-reviewer.md:1-8 / review-verifier.md / skills/local-review/SKILL.md |
 | 0084 | spec 駆動 lean A scaffold（domain・usecase のみ spec、controller・infra は導出） | new | .claude/scaffold-spec/*.md / scaffold-endpoint / scaffold-controller / scaffold-infra-db |
 
-**保留候補（borderline。要判断で未採番）**: GH Pages でのドキュメント公開 / 2層 golangci 設定(minimal vs full) / mise SSOT 伝播＋ドリフトgate(0023 の派生) / lefthook が CI 契約を複製(local==CI) / system_query を非CQRS第4カテゴリ / migration 連番(6桁)＋gap の CI 強制 / `/metrics` 認証例外 / 公式 OTel semconv 使用(custom 無し＝OTLP-only の帰結)。
+保留から昇格（3rd pass の borderline を採用）:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0085 | 静的 docs/ を GitHub Pages で公開（production push で発行） | new | deploy-docs.yaml:1-45。0055 docs 正典戦略と対 |
+| 0086 | 2層 golangci 設定（minimal 既定 vs full 権威ゲート） | new | .golangci.yaml / .golangci-full.yaml / .makefiles/go/golangci-lint.mk:8,11 |
+| 0087 | mise SSOT のダウンストリーム伝播＋CI ドリフトgate（go.mod/Dockerfile/README へ同期） | new | mise.toml:1-7,47-49 / sync-versions-check.yaml:39-61 / scripts/sync-versions。0023 の派生 |
+| 0088 | ローカル git hook が CI 契約を複製（local==CI・glob 限定・bypass-then-verify-once） | new | .lefthook.yaml:1-55 |
+| 0089 | system_query を非CQRS 第4 DML カテゴリに（health/idempotency/outbox のシステムクエリ） | new | database/dml/README.md:23-31 / database/dml/system_query/README.md。0009 CQRS と別軸 |
+| 0090 | マイグレーション ID は連番(6桁)＋gap/pair を CI 強制（timestamp 不採用） | new | database/migrations/README.md:53-69 / migration-check.yaml。0008 は不変性、本 ADR は採番規律 |
+| 0091 | `/metrics` の認証例外（OpenAPI 検証パイプライン外・別 Echo BasicAuth） | new | openapi/README.md:122 / httpstack。※0077 に統合可 |
+| 0092 | 公式 OTel semconv を使用（custom を持たず vendor キーを typed config に入れない） | exclusion | internal/observability/provider.go:23,58-60 / observability/README.md:46-51 |
 
 ### ADR にしないもの
 
@@ -269,11 +280,12 @@ config・env:
 outbox(0027-0034) / idempotency(0035-0039) / job(0041,0043) / observability
 追加(0045-0047)、および 0002-0004,0008,0011,0013,0017-0020,0023、さらに
 0052-0059(設計原則・運営・ツールチェーン・メタ)、さらに 0060-0084(未スキャン
-領域スイープ) を作成。outbox 作成時に `design/outbox.md:5` のリンク切れを解消。
+領域スイープ)、さらに 0085-0091(保留昇格) を作成。outbox 作成時に
+`design/outbox.md:5` のリンク切れを解消。
 
 ### Phase 4: 除外（負の ADR）
 
-0025,0040,0042,0048,0049,0050,0051 を作成。out-of-scope.md 等は目録として残す。
+0025,0040,0042,0048,0049,0050,0051,0092 を作成。out-of-scope.md 等は目録として残す。
 
 ### Phase 5: インベントリ分離・参照貼替・撤去
 
@@ -306,11 +318,11 @@ outbox(0027-0034) / idempotency(0035-0039) / job(0041,0043) / observability
 - **ja 二重管理。** 各 ADR は `docs/ja/adr/` にミラー要（`canonicalize-doc`）。
 - **markdownlint。** 見出しに `<...>` 形式は HTML タグ扱いで MD024 誤検知、コード
   フェンスは言語必須。ローカル mermaid lint は環境依存で失敗（内容問題ではない）。
-- **粒度。** 本版は細粒度（約 84 本）。粗くしたい場合はサブシステム単位に束ね直す。
+- **粒度。** 本版は細粒度（約 92 本）。粗くしたい場合はサブシステム単位に束ね直す。
 
 ## 完了条件
 
-- 約 84 本の ADR が `docs/adr/` に存在し、種別分類が反映されている。
+- 約 92 本の ADR が `docs/adr/` に存在し、種別分類が反映されている。
 - 依存表が `docs/reference/dependencies.md` に分離され欠落が修正されている。
 - rules.md の該当ルールから対応 ADR へ backlink がある。
 - `docs/decisions.md` への全参照が貼替済み（AGENTS.md は人手更新）。
