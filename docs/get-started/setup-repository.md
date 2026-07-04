@@ -186,10 +186,10 @@ grep -rl "setup-review" docs/adr/
 
 For your project, review each and decide:
 
-- **Keep** — the exclusion fits your project; nothing to do.
-- **Override** — you need the opposite. Do **not** edit the original ADR. Add a new ADR that supersedes it (set the new ADR's `supersedes:`, flip the old one's `status:` to `superseded`), then implement accordingly.
+- **Keep** — the exclusion fits your project; leave the ADR as is.
+- **Change** — you need the opposite. Setup is where a fork establishes its **own baseline** from the template, so **edit the ADR directly** (rewrite its Decision / Consequences and update `deciders` / `date`) to record your project's choice, then implement accordingly.
 
-This preserves the template's original rationale while recording your project's divergence as an auditable decision.
+The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
 ## Phase 11: Remove Sample APIs
 

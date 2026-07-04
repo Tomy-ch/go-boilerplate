@@ -231,13 +231,13 @@ migration / 0090 rate-limiter / 0091 scheduled-job / 0092 Cache）は、テン�
 - 各 exclusion ADR に `tags: [exclusion, setup-review]` を付与し、セットアップ導線から
   機械的に列挙できるようにする。
 - リポジトリセットアップ手順（`docs/get-started/setup-repository.md` / ja）に
-  「exclusion ADR をレビューし、**受容**するか **supersede**（自分の決定を新 ADR として
-  追加し旧を `superseded` にする）か決める」ステップを **Phase 10 として追記済み**。
-  `grep -rl setup-review docs/adr/` で列挙する。専用の `make setup-review-adrs` 的な
-  列挙ターゲット化は任意（Phase 4 以降）。**注意**: 参照先 `docs/adr/` は Phase 5 で
-  最終配置に昇格するまで空（現在は `docs/design/adr/` に仮置き）。
-- 元 ADR は消さず supersede する（ADR 不変運用と整合）。この「exclusion ADR を setup 時の
-  上書きポイントにする」方針自体も 1 本の ADR に昇格させる余地あり（要判断）。
+  「exclusion ADR をレビューし、**受容**するか **直接編集**（Decision/Consequences を
+  書き換え）して自プロジェクトのベースラインにするか決める」ステップを **Phase 10 として
+  追記済み**。`grep -rl setup-review docs/adr/` で列挙。専用の列挙ターゲット化は任意。
+  **注意**: 参照先 `docs/adr/` は Phase 5 の昇格まで空（現在 `docs/design/adr/` 仮置き）。
+- **セットアップ時は直接編集、運用開始後は supersede** と使い分ける（前者は fork による
+  一度きりの再ベースライン化、後者は決定の見直し履歴保存）。この使い分け自体を 1 本の
+  ADR に昇格させる余地あり（要判断）。
 
 ### ADR にしないもの
 
