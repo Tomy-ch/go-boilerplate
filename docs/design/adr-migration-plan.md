@@ -29,7 +29,7 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 
 ## 粒度方針（本版で確定）
 
-**細粒度＝決定単位。約 59 本。** サブシステム（outbox / idempotency / job / observability）は
+**細粒度＝決定単位。約 84 本。** サブシステム（outbox / idempotency / job / observability）は
 サブ決定ごとに独立 ADR へ分割する（retention・MaxAttempts・TTL 等も各 1 本）。fork 側が
 サブ決定を個別に supersede できることを優先する。
 
@@ -172,6 +172,68 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 | 0058 | go:embed で config(.env)/migration を同梱＝自己完結バイナリ | new | embed.go:7 / config/README.md。※0019 は不変性、本 ADR は同梱/自己完結の観点 |
 | 0059 | ローカル開発環境を docker-compose で提供(tool-runner＋ビューア群) | new | docker-compose.yaml / docker/。※0023 はツール実行、本 ADR は dev stack 構成 |
 
+### 追加(3rd pass): 未スキャン領域スイープ（cmd/build/CI/DB/openapi/env/test/方式）
+
+> `internal/pkg/docs` 以外を4系統で体系スイープした結果。genuine な decision のみ。
+> 番号は暫定（Phase 0 で通し再採番）。
+
+CLI・バイナリ・デプロイ:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0060 | CLI humble-object 分割（thin cmd/ + testable internal/cli 中核） | new | internal/cli/README.md:49-82 / cmd/commands.go:6-19 / cmd/outbox_relay.go:28-43 |
+| 0061 | 全ロールを単一マルチコマンドバイナリに集約 | new | cmd/main.go:13-31 / cmd/commands.go:7-18 |
+| 0062 | 単一ランタイムイメージ＋コマンド上書き（用途別イメージを作らない） | new | docker/server/Dockerfile:55-57 / docker/server/README.md:24-26 / docker/README.md:63 |
+| 0063 | hardened-alpine ランタイム基盤（distroless/scratch 不採用） | exclusion | docker/server/Dockerfile:42-53 / docker/server/README.md:16,21 |
+| 0064 | per-env イメージ（.env マトリクス×APP_ENV build-arg、ビルド時固定・実行時注入なし） | new | docker/server/Dockerfile:25-30 / deploy-app.yaml:54-63,198,212 / env/README.md:176 |
+| 0065 | マイグレーションは pre-deploy one-shot（起動時 auto-migrate 禁止） | exclusion | deploy-app.yaml:192-204 |
+| 0066 | リリースイメージの供給網完全性（cosign 署名＋provenance＋SBOM） | new | deploy-app.yaml:131-168 |
+| 0067 | デプロイはベンダ中立スケルトン（build/sign 実装・cloud CD 雛形・registry 非固定） | new | deploy-app.yaml:67-72,96-102,181-218 |
+
+ビルド・CI・品質ゲート:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0068 | Make を単一ツールエントリポイントに（.mk 登録＋自己文書化 help 契約） | new | makefile:6-64 / scripts/make_help.mjs:23-53 |
+| 0069 | 総カバレッジ90% を CI ハードゲート化＋例外ガバナンス（作為的テスト禁止・承認制免除） | new | .makefiles/go/test.mk:11-12,44-51 / internal/observability/README.md:504-523 / go-test.yaml:79-80 |
+| 0070 | CI で実 fx グラフ＋実 Postgres を起動検証（server /ready・worker/job unknown sentinel） | new | app-di-startup-check.yaml:58-83 / worker-boot-check.yaml:60-82 / job-boot-check.yaml:59-81 |
+| 0071 | 生成物ドリフトゲート＋リリースブランチ集中自動生成 bot | new | gen-go-artifacts-check.yaml:36-111 / gen-db-artifacts-check.yaml / gen-oapi-artifacts-check.yaml / auto-generate-docs.yaml:90-181 |
+| 0072 | 多層セキュリティスキャン（到達可能性フィルタ govulncheck＋定期 CodeQL SAST） | new | code-ql.yaml:21-22 / vulnerability-check.yaml:57-61 / secret-scan.yaml / trivy-fs.yaml |
+
+DB・SQL 生成:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0073 | merge-dml＋dump-schema →『database/gen/』(schema.gen.sql) を sqlc 単一入力に | new | .makefiles/database/dml-merge.mk:47-48 / gen.mk:27-34 / sqlc.yaml:4-5 / database/README.md:26-47 |
+| 0074 | マスタデータは migration・トランザクション seed は seed/（本番除外） | new | database/seed/README.md:47-58 / database/README.md / migrations 000003,000005,000008 |
+| 0075 | 全文検索は DB 内（GENERATED STORED 列＋GIN pg_trgm、query_service 経由） | new | migrations/000011_users_table_search_text_column.up.sql / dml/query_service/user/select_users_by_keyword.sql |
+
+OpenAPI・境界:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0076 | tag 単位・handler パッケージ単位の oapi-codegen 生成＋strict-server モード | new | handler/**/*_handler.go:1-2(//go:generate) / handler/**/gen/server.gen.go |
+| 0077 | spec 駆動リクエスト検証＋認証（kin-openapi、security:=強制点）／レスポンス実行時検証なし | new | httpstack/oapi/oapi.go:17-39 / openapi/README.md:122 / openapi/boundary-ownership.md:30 |
+| 0078 | 境界値オーナーシップ（OpenAPI=ワイヤ契約≠ドメイン規則、request⊆domain⊆response） | new | openapi/boundary-ownership.md:7-8,21-27,50-56 |
+| 0079 | Redocly モジュール分割＋bundle→生成 のスペック工程 | new | openapi/README.md:13-33,58-74 / redocly.yaml / .makefiles/openapi/gen.mk |
+
+config・env:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0080 | サブシステム別 envPrefix 型付きローダ（Loader が12サブシステム struct 合成） | new | internal/config/envspec.go:5-19 / env/README.md:9-13 |
+| 0081 | default-in-code(フレームワーク不変) vs required-in-file(プロジェクト可変) ガバナンス | new | env/README.md:16,22-24 / internal/config/envspec.go |
+
+テスト・開発方式:
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0082 | 実DB always-rollback 統合テスト（sentinel error でロールバック、mock しない） | new | internal/infrastructure/rdb/testkit/README.md:1-257 / test_kit.go |
+| 0083 | 多モデル敵対レビュー（reviewer≠implementer、finder→verifier＋runtime-gap） | new | .claude/agents/adversarial-reviewer.md:1-8 / review-verifier.md / skills/local-review/SKILL.md |
+| 0084 | spec 駆動 lean A scaffold（domain・usecase のみ spec、controller・infra は導出） | new | .claude/scaffold-spec/*.md / scaffold-endpoint / scaffold-controller / scaffold-infra-db |
+
+**保留候補（borderline。要判断で未採番）**: GH Pages でのドキュメント公開 / 2層 golangci 設定(minimal vs full) / mise SSOT 伝播＋ドリフトgate(0023 の派生) / lefthook が CI 契約を複製(local==CI) / system_query を非CQRS第4カテゴリ / migration 連番(6桁)＋gap の CI 強制 / `/metrics` 認証例外 / 公式 OTel semconv 使用(custom 無し＝OTLP-only の帰結)。
+
 ### ADR にしないもの
 
 - **rule（rules.md に残す＋backlink）**: 層依存方向 / usecase-境界依存 / 生成コード
@@ -206,8 +268,8 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 
 outbox(0027-0034) / idempotency(0035-0039) / job(0041,0043) / observability
 追加(0045-0047)、および 0002-0004,0008,0011,0013,0017-0020,0023、さらに
-0052-0059(設計原則・運営・ツールチェーン・メタ) を作成。outbox 作成時に
-`design/outbox.md:5` のリンク切れを解消。
+0052-0059(設計原則・運営・ツールチェーン・メタ)、さらに 0060-0084(未スキャン
+領域スイープ) を作成。outbox 作成時に `design/outbox.md:5` のリンク切れを解消。
 
 ### Phase 4: 除外（負の ADR）
 
@@ -244,11 +306,11 @@ outbox(0027-0034) / idempotency(0035-0039) / job(0041,0043) / observability
 - **ja 二重管理。** 各 ADR は `docs/ja/adr/` にミラー要（`canonicalize-doc`）。
 - **markdownlint。** 見出しに `<...>` 形式は HTML タグ扱いで MD024 誤検知、コード
   フェンスは言語必須。ローカル mermaid lint は環境依存で失敗（内容問題ではない）。
-- **粒度。** 本版は細粒度（約 59 本）。粗くしたい場合はサブシステム単位に束ね直す。
+- **粒度。** 本版は細粒度（約 84 本）。粗くしたい場合はサブシステム単位に束ね直す。
 
 ## 完了条件
 
-- 約 59 本の ADR が `docs/adr/` に存在し、種別分類が反映されている。
+- 約 84 本の ADR が `docs/adr/` に存在し、種別分類が反映されている。
 - 依存表が `docs/reference/dependencies.md` に分離され欠落が修正されている。
 - rules.md の該当ルールから対応 ADR へ backlink がある。
 - `docs/decisions.md` への全参照が貼替済み（AGENTS.md は人手更新）。
