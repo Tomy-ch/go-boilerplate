@@ -243,7 +243,7 @@ job:
 ### Phase 0: 型固定
 
 `docs/adr/` に README（決定ログ＋分類規約＋supersede 運用）/ template.md（MADR-lite）/
-`0000-record-architecture-decisions.md`（メタ ADR）/ 見本 1 本（0002 onion）を作成し、
+`0000-record-architecture-decisions.md`（メタ ADR）/ 見本 1 本（0001 ロックイン回避）を作成し、
 形式・採番・supersede 運用を確定する。ここで本計画の依存・基礎度順を正式採番に落とす。
 
 ### Phase 1: migrate 種別を全移設
