@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-07-04
+deciders: [maintainers]
 tags: [foundational, architecture, dependencies]
 ---
 
@@ -39,13 +40,13 @@ OTLP-only export, and the vendor-neutral deploy skeleton (each recorded as its o
 
 ## Consequences
 
-### Benefits
+### Positive Consequences
 
 - Infrastructure and providers are swappable behind stable interfaces; no SaaS captivity.
 - The dependency surface stays auditable — each library has one replaceable job.
 - Forks can retarget cloud, broker, or telemetry backends without touching domain/usecase.
 
-### Trade-offs
+### Negative Consequences
 
 - Neutral seams can cost technology-specific capabilities (the trade-off examined per case,
   e.g. the deliberately rejected generic cache abstraction).

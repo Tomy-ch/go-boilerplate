@@ -42,6 +42,10 @@ a decision (an ADR); the *list* of them is a living reference.
 | --- | --- | --- |
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs | accepted |
 | [0001](0001-avoid-lock-in.md) | Adopt lock-in avoidance as a design principle | accepted |
+| [0002](0002-onion-architecture.md) | Adopt pragmatic onion architecture | accepted |
 
-<!-- The remaining ~90 decisions (0002 onward) are enumerated, ordered, and sourced in
+<!-- The remaining ~90 decisions (0003 onward) are enumerated, ordered, and sourced in
 ../adr-migration-plan.md and are materialized in Phases 1-4 of that plan. -->
+
+Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
+Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

@@ -1,6 +1,7 @@
 ---
 status: proposed        # proposed | accepted | superseded | deprecated
 date: YYYY-MM-DD
+deciders: []            # who made the call, e.g. [maintainers]
 supersedes:             # ADR number this replaces, if any (e.g. 0003)
 superseded-by:          # ADR number that replaces this one, if any
 tags: []                # e.g. [architecture, http, persistence]
@@ -25,13 +26,15 @@ provide X." Be specific about scope and boundary.
 
 ## Consequences
 
-### Benefits
+### Positive Consequences
 
 - ...
 
-### Trade-offs
+### Negative Consequences
 
 - ...
+
+<!-- Optional: ### Neutral Consequences -->
 
 ## Alternatives Considered
 

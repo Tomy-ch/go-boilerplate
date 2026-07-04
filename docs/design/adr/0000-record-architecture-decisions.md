@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-07-04
+deciders: [maintainers]
 tags: [meta, documentation]
 ---
 
@@ -44,13 +45,13 @@ editing its body.
 
 ## Consequences
 
-### Benefits
+### Positive Consequences
 
 - Decision history is preserved; supersession is auditable.
 - Forks can override one decision by adding one ADR.
 - Drifting catalogs (dependencies) live where drift is expected, not inside immutable records.
 
-### Trade-offs
+### Negative Consequences
 
 - More files and cross-references to maintain (each ADR also needs a `docs/ja/adr/` mirror).
 - Contributors must classify (decision vs rule vs inventory) before writing — a small upfront judgment cost.
