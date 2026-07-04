@@ -25,8 +25,10 @@ Example:
 docs/
 ├ architecture.md
 ├ development-flow.md
-├ decisions.md
-└ rules.md
+├ decisions.md   # redirect stub → design/adr/
+├ rules.md
+├ design/adr/    # Architecture Decision Records (per-file ADR)
+└ reference/dependencies.md
 ```
 
 These files are displayed in the **Architecture (English)** section.

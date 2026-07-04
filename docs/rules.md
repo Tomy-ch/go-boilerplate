@@ -247,7 +247,7 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
 - **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
 - **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
 - **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
-- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/decisions.md` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
+- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/design/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 
 ## Testing & Definition of Done
