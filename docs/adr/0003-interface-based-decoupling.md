@@ -42,7 +42,7 @@ Concretely:
 
 - **Repository interfaces** are declared in the domain layer; infrastructure provides the
   implementations.
-- **Boundary interfaces** (clock, randomness, outbox, idempotency) are declared in
+- **Boundary interfaces** (e.g. clock, auth, outbox, idempotency, tx) are declared in
   `internal/usecase/boundary`; infrastructure provides the implementations.
 - Usecase depends on domain interfaces and boundary interfaces — never on infrastructure
   packages directly.

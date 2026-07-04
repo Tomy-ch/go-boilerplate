@@ -28,12 +28,15 @@ to the single-responsibility policy, on these common grounds:
   (Echo / pgx / zap) and raise maintenance debt rather than reduce it.
 - Each is **small and Apache-2.0 licensed**, so worst case it can be vendored / forked; the
   fork cost is bounded to the production line counts recorded per library.
-- All ship on **otel-contrib's monthly release train**, kept lockstep with OpenTelemetry;
-  the only residual drift surface is the framework-side interface, and those interfaces
-  (`echo.MiddlewareFunc` / pgx `QueryTracer` / `zapcore.Core`) are stable v1.
+- The otel-contrib ones (`otelecho`, `otelhttp`, `otelzap`) ship on **otel-contrib's monthly
+  release train**, kept lockstep with OpenTelemetry; `otelpgx` is a third-party package
+  (`github.com/exaring/otelpgx`, Apache-2.0) tracking pgx + OpenTelemetry independently. In
+  every case the only residual drift surface is the framework-side interface, and those
+  interfaces (`echo.MiddlewareFunc` / `net/http.RoundTripper` / pgx `QueryTracer` /
+  `zapcore.Core`) are stable v1.
 
-The currently-accepted exceptions are `otelecho` (root server span), `otelpgx` (SQL query
-spans), and `otelzap` (zap → OTel log bridge).
+The currently-accepted exceptions are `otelecho` (root server span), `otelhttp` (outbound
+HTTP client spans), `otelpgx` (SQL query spans), and `otelzap` (zap → OTel log bridge).
 
 ## Consequences
 

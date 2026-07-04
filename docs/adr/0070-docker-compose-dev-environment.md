@@ -47,13 +47,17 @@ need.
 | `docs_viewer` | `docker/document/Dockerfile` target `document_viewer` | 8082 | nginx serving `docs/`; portal at `/portal/` |
 | `sql_editor` | `sosedoff/pgweb` | 8081 | Web SQL editor |
 
+(A lightweight **`database`** profile also exists — `database` + `sql_editor` only — for working
+against the DB without the `api_server` / observability stack; several services carry more than
+one profile tag.)
+
 **Profile: `generate`** — on-demand tool runners for codegen and documentation; started
 per `make` target invocation, not kept running.
 
 | Service | Dockerfile target | Description |
 | --- | --- | --- |
 | `go_tool_runner` | `go_tools` | oapi-codegen, mockgen, sqlc, migrate, trivy, hadolint, and others |
-| `node_tool_runner` | `node_tools` | redocly-cli, js-yaml |
+| `node_tool_runner` | `node_tools` | redocly-cli, markdownlint-cli2, commitlint (+ script deps such as js-yaml) |
 | `python_tool_runner` | `python_tools` | sqlfluff |
 | `er_diagram_generator` | `schemaspy/schemaspy` image | ER diagram generation |
 

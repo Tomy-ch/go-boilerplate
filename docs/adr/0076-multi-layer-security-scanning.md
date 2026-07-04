@@ -39,11 +39,12 @@ and tool:
 
 **1. Reachability-filtered vulnerability scan — govulncheck** (`vulnerability-check.yaml`):
 Triggered on every PR that touches `.go`, `go.mod`, or `go.sum`. Runs
-`govulncheck -json ./...` and post-processes the JSON output to retain only findings
-where the call trace depth is greater than 1 (i.e. the vulnerable code is actually
+`govulncheck -json ./...` (JSON mode) and post-processes the output with `jq` to retain
+only findings whose call trace has depth > 1 (i.e. the vulnerable symbol is actually
 reachable from the application's call graph). Unreachable CVEs are excluded from the
-actionable finding count. Results are posted as an upsert PR comment; the workflow
-exits non-zero only when reachable findings exist.
+actionable count. The reachable-finding count is surfaced as an upsert PR comment for
+prioritisation. This scan is **advisory** — it reports reachable findings on the PR rather
+than hard-failing the build on them (unlike the secret scan, which does fail closed).
 
 **2. SAST — CodeQL** (`code-ql.yaml`, lines 21–22):
 Triggered on PRs touching Go files, on pushes to `release/*`, `develop`, `staging`, and

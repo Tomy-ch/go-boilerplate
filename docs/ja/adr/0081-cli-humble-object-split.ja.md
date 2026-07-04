@@ -54,6 +54,6 @@ Cobra 登録を避けるが、複数のバイナリの配布が必要となり�
 
 ## 補足
 
-- パターンの例: `cmd/outbox_relay.go`（薄いシェル）と `internal/cli/outboxrelay/`（コアパッケージ）。
+- パターンの例: `cmd/outbox_relay.go`（薄いシェル）と `internal/cli/outbox/`（コアパッケージ）。
 - `cmd/commands.go` 内の `registerCommands` はすべてのサブコマンドの単一登録ポイントである。
 - ソース: `internal/cli/README.md` §"Design Policy" および §"Testing Policy"。

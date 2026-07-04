@@ -24,11 +24,13 @@ messages and prevents partial initialization.
 
 ## Decision
 
-Configuration is loaded **exactly once** at application startup through `config.New()`.
-The loading sequence is:
+Configuration is loaded **exactly once** at application startup through `config.SetUpConfig()`,
+which chains `config.Load()` (reads the embedded `env/.env` into process env vars) then
+`config.New()` (parse + validate). The loading sequence is:
 
 ```text
-env/.env (embedded) → env.ParseAs[Loader]() → validateConfig() → *Config
+config.Load(): env/.env (embedded) → process env
+config.New():  env.ParseAs[Loader]() → validateConfig() → *Config
 ```
 
 The returned `*Config` type is **immutable**: it exposes only getter methods; no setter
@@ -78,6 +80,7 @@ startup verification.
 ## Notes
 
 - Source: `internal/config/README.md` (Design Principles section),
+  `internal/config/setup.go` (`SetUpConfig()`), `internal/config/loader.go` (`Load()`),
   `internal/config/config.go` (`New()` and `validateConfig()`).
 - Subsystem struct layout: [ADR-0033](0033-subsystem-typed-config-loaders.md).
 - Default-vs-required governance: [ADR-0034](0034-config-default-vs-required-governance.md).

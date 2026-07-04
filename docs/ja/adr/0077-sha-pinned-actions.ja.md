@@ -50,7 +50,7 @@ Go ツール（`scripts/pin-actions/main.go`）が 3 つのサブコマンドを
 - `check`: 同じ書き換えロジックをドライランモードで実行し、ワークフロー行がアンピン済み、古い、または
   ロックファイルに存在しない場合に非ゼロで終了する。CI とプレコミットフックで使用される。
 
-プレコミットフック（`.lefthook.yaml` の `pin-actions`、ワークフロー YAML と `actions-pin.toml` に
+プレコミットフック（`.lefthook.yaml` の `pin-actions`、ワークフロー YAML・action YAML・`actions-pin.toml` に
 グロブスコープ）はワークフローファイルに触れるすべてのコミットで `make pin-actions-check` を実行し、
 アンピン済みまたは古い参照がリモートに到達する前にブロックされることを保証する。
 

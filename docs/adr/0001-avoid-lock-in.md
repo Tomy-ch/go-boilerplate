@@ -67,6 +67,6 @@ convenient SDK imports and framework types leaking across layers.
 ## Notes
 
 - Sources: `docs/architecture.md` (vendor-neutral / OSS-replaceable), `docs/project/policy.md`
-  (vendor neutrality), `docs/decisions.md` (library selection policy).
+  (vendor neutrality), `docs/project/policy.md` § "Library Selection Policy".
 - Enforced in part by the layer/`pkg` import rules in [`docs/rules.md`](../rules.md).
 - Full ADR set and ordering: [the ADR log](README.md).

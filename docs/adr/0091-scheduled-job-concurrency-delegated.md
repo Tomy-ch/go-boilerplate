@@ -20,8 +20,10 @@ advisory database lock (e.g. `pg_try_advisory_lock`) or a distributed lock (e.g.
 `SET NX`). These mechanisms add infrastructure dependencies and coordination logic that must
 be tested, operated, and kept in sync with the job lifecycle.
 
-The template bundles four scheduled jobs: `outbox-gc`, `idempotency-gc`, `usercount`, and
-the outbox relay. Each is designed to be concurrency-safe without application-level locking:
+The template bundles three scheduled one-shot jobs — `outbox-gc`, `idempotency-gc`, and
+`usercount` — plus the continuously running outbox relay process (a resident engine, not a
+scheduled job; see [ADR-0048](0048-relay-resident-gc-oneshot.md)). Each is designed to be
+concurrency-safe without application-level locking:
 
 - `outbox-gc` and `idempotency-gc` are age-predicate, idempotent batch deletes — running
   them concurrently produces the same result as running them once.

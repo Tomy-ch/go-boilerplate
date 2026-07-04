@@ -43,7 +43,7 @@ three responsibilities:
 
 ### Repository (command/write path)
 
-- Interface defined in the **domain layer** (`internal/domain/<aggregate>/repository.go`).
+- Interface defined in the **domain layer** (`internal/domain/<aggregate>/<aggregate>_repository.go`).
 - Responsible for aggregate persistence and simple single-aggregate reads: fetch by ID,
   simple filter/list/count by the aggregate's own attributes.
 - Does not handle cross-aggregate joins, aggregation, or keyword search.

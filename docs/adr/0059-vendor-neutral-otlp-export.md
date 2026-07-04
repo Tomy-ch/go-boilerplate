@@ -53,7 +53,7 @@ signal that is disabled (empty or `none` exporter value) builds no OTLP exporter
 - Requires a Collector or Agent sidecar in every environment that enables export.
   Direct-to-vendor export without a Collector is not supported by this design.
 - Two transport options (`http/protobuf` and `grpc`) must be maintained; misconfigured
-  protocol produces a build-time error (`errInvalidOTLPProtocol`).
+  protocol produces a startup-time error at provider construction (`errInvalidOTLPProtocol`).
 
 ## Alternatives Considered
 

@@ -23,7 +23,7 @@ Go API スキャフォールドは複数のオペレーショナルロールを�
 
 - `serve` — HTTP サーバー（長時間実行）
 - `migrate-up` / `migrate-down` — データベースマイグレーション
-- `seed` — データシーディング
+- `db-seed` — データシーディング
 - `fix-collation` — 照合順序修復ユーティリティ
 - `dump-schema` — スキーマダンプ
 - `merge-dml` — DML マージ

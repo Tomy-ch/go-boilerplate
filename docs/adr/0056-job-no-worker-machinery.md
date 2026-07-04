@@ -39,7 +39,7 @@ indefinitely and must manage concurrent in-flight messages over an unbounded lif
   CI step, or an operator manual re-run).
 - **No circuit breaker**: a one-shot invocation either succeeds or fails; a circuit breaker
   has no intake stream to throttle and no repeated attempts to protect against.
-- **No drain phase**: there is only one unit of work; the graceful-stop window (30 s) is
+- **No drain phase**: there is only one unit of work; the graceful-stop window (default 45 s, `SHUTDOWN_TIMEOUT`) is
   provided to allow Fx lifecycle hooks to clean up, but there are no in-flight messages to
   drain.
 - **No health listener**: a job runs for a bounded duration under direct operator control;

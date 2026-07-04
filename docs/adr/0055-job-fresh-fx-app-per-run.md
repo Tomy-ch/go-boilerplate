@@ -32,9 +32,9 @@ exit code, with no residual state leaking between invocations.
 
 Each `job` subcommand invocation constructs a **fresh `fx.App`** (no resident process).
 `di.RunJob` / `NewJobCore` compose the container, `app.Start` fires lifecycle hooks, the
-job executes on a detached goroutine (via `context.WithoutCancel` so the job is not
-cancelled when `OnStart` returns), and `app.Stop` tears everything down before the process
-exits. The job result is returned to the CLI as a non-zero exit code on failure.
+job executes on a detached goroutine whose run context comes from `SupervisedRunner`
+(`context.WithCancel(context.Background())`), so it is not cancelled when the `OnStart`
+start-context returns, and `app.Stop` tears everything down before the process exits. The job result is returned to the CLI as a non-zero exit code on failure.
 
 ## Consequences
 

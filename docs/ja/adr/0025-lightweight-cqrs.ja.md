@@ -31,7 +31,7 @@ accepted
 
 ### Repository（コマンド / 書き込みパス）
 
-- インターフェースは**ドメインレイヤー**で定義する（`internal/domain/<aggregate>/repository.go`）。
+- インターフェースは**ドメインレイヤー**で定義する（`internal/domain/<aggregate>/<aggregate>_repository.go`）。
 - 集約の永続化とシンプルな単一集約の読み込みを担当する：IDによるフェッチ・集約自身の属性によるシンプルなフィルタ / リスト / カウント。
 - 集約をまたぐジョイン・集計・キーワード検索は扱わない。
 - 実装は`internal/infrastructure/rdb/repository/<aggregate>/`に置く。

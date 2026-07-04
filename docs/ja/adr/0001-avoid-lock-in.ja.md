@@ -56,5 +56,5 @@ accepted
 
 ## 補足
 
-- ソース: `docs/architecture.md`（ベンダーニュートラル / OSS 交換可能）、`docs/project/policy.md`（ベンダーニュートラリティ）、`docs/decisions.md`（ライブラリ選定ポリシー）。
+- ソース: `docs/architecture.md`（ベンダーニュートラル / OSS 交換可能）、`docs/project/policy.md`（ベンダーニュートラリティ）、`docs/project/policy.md` §「Library Selection Policy」。
 - 一部は [`docs/rules.md`](../../rules.md) のレイヤー/`pkg` インポートルールによって強制される。

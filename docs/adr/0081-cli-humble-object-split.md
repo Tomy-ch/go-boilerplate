@@ -74,7 +74,7 @@ with the single-binary decision (see [ADR-0082](0082-single-multi-command-binary
 
 ## Notes
 
-- Pattern illustrated in `cmd/outbox_relay.go` (thin shell) and `internal/cli/outboxrelay/`
+- Pattern illustrated in `cmd/outbox_relay.go` (thin shell) and `internal/cli/outbox/`
   (core package).
 - `registerCommands` in `cmd/commands.go` is the single registration point for all
   subcommands.

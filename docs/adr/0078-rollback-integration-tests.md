@@ -101,4 +101,4 @@ schema.
   recognized and suppressed by `WithinTx`; it is never surfaced to the test as a failure.
 - Tests asserting on values produced inside `fn` must use `require`/`assert` inside the
   closure, because `WithinTx` does not propagate `fn`'s return value.
-- Infra test coverage target: ≥ 85% (per [`docs/rules.md`](../rules.md)).
+- Infra test coverage target: ≥ 85% (per [`.claude/skills/scaffold-infra-db/SKILL.md`](../../.claude/skills/scaffold-infra-db/SKILL.md); the repo-wide bar in [`docs/rules.md`](../rules.md) is > 90%).

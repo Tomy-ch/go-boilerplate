@@ -55,7 +55,7 @@ A Go tool (`scripts/pin-actions/main.go`) provides three subcommands:
   workflow line is unpinned, stale, or absent from the lockfile. Used in CI and the
   pre-commit hook.
 
-The pre-commit hook (`pin-actions` in `.lefthook.yaml`, glob-scoped to workflow YAML and
+The pre-commit hook (`pin-actions` in `.lefthook.yaml`, glob-scoped to workflow YAML, action YAML, and
 `actions-pin.toml`) runs `make pin-actions-check` on every commit that touches workflow
 files, ensuring that un-pinned or stale references are blocked before they reach the
 remote.

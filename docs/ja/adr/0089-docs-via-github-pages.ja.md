@@ -59,6 +59,6 @@ accepted
 
 ## 補足
 
-- `.github/workflows/deploy-docs.yaml` 行 1-45 がワークフロー定義の全体である。
+- `.github/workflows/deploy-docs.yaml` 行 1-44 がワークフロー定義の全体である。
 - 正典ソース原則は ADR-0008 に定められている。
 - ソース: `.github/workflows/deploy-docs.yaml`。

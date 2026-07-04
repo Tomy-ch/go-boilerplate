@@ -44,7 +44,7 @@ The hook stages and their commands are:
 
 - `pre-commit` (parallel): `lint` (`.go`), `test-cached` (`.go`), `sql-lint` (`.sql`),
   `md-lint` (`.md`), `actions-lint` (workflow YAML), `docker-lint` (Dockerfiles),
-  `pin-actions` (workflow YAML + `actions-pin.toml`), `migration-check-version` (`.sql`),
+  `pin-actions` (workflow YAML + action YAML + `actions-pin.toml`), `migration-check-version` (`.sql`),
   `migration-check-gap` (`.sql`).
 - `commit-msg`: `commitlint`.
 - `pre-push` (parallel): `secret-scan`, `test` (full, no cache, `.go`),

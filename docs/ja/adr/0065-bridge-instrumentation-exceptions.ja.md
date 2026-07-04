@@ -30,13 +30,15 @@ accepted
   保守負債を削減するどころか増やすことになる。
 - それぞれ**小規模かつ Apache-2.0 ライセンス**であるため、最悪の場合はベンダー化 / フォークが
   可能。フォークコストはライブラリごとに記録された本番コード行数の範囲に留まる。
-- すべてが**otel-contrib の月次リリーストレイン**で提供され、OpenTelemetry とロックステップで
-  維持される。残存するドリフトサーフェスはフレームワーク側のインターフェースのみであり、
-  それらのインターフェース（`echo.MiddlewareFunc` / pgx `QueryTracer` / `zapcore.Core`）は
+- otel-contrib 系（`otelecho` / `otelhttp` / `otelzap`）は**otel-contrib の月次リリーストレイン**で
+  提供され、OpenTelemetry とロックステップで維持される。`otelpgx` は
+  サードパーティパッケージ（`github.com/exaring/otelpgx`、Apache-2.0）で、pgx と OpenTelemetry を
+  独立に追従する。いずれの場合も残存するドリフトサーフェスはフレームワーク側のインターフェースのみで、
+  それら（`echo.MiddlewareFunc` / `net/http.RoundTripper` / pgx `QueryTracer` / `zapcore.Core`）は
   安定した v1 である。
 
-現在受け入れられている例外は `otelecho`（ルートサーバースパン）・`otelpgx`（SQL クエリスパン）・
-`otelzap`（zap → OTel ログブリッジ）である。
+現在受け入れられている例外は `otelecho`（ルートサーバースパン）・`otelhttp`（外向き HTTP クライアント
+スパン）・`otelpgx`（SQL クエリスパン）・`otelzap`（zap → OTel ログブリッジ）である。
 
 ## 影響
 

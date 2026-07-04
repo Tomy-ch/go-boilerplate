@@ -44,13 +44,16 @@ PostgreSQL データベース、オブザーバビリティスタック、ドキ
 | `docs_viewer` | `docker/document/Dockerfile` ターゲット `document_viewer` | 8082 | `docs/` を配信する nginx。`/portal/` にポータル |
 | `sql_editor` | `sosedoff/pgweb` | 8081 | Web SQL エディター |
 
+（軽量な **`database`** プロファイルも存在する — `database` + `sql_editor` のみ — `api_server` /
+observability スタックなしで DB に対して作業する用途。複数のサービスが 2 つ以上のプロファイルタグを持つ。）
+
 **プロファイル: `generate`** — コード生成とドキュメント用のオンデマンドツールランナー。
 `make` ターゲット呼び出しごとに起動され、常時稼働ではない。
 
 | サービス | Dockerfile ターゲット | 説明 |
 | --- | --- | --- |
 | `go_tool_runner` | `go_tools` | oapi-codegen、mockgen、sqlc、migrate、trivy、hadolint など |
-| `node_tool_runner` | `node_tools` | redocly-cli、js-yaml |
+| `node_tool_runner` | `node_tools` | redocly-cli、markdownlint-cli2、commitlint（＋ js-yaml 等のスクリプト依存） |
 | `python_tool_runner` | `python_tools` | sqlfluff |
 | `er_diagram_generator` | `schemaspy/schemaspy` イメージ | ER ダイアグラム生成 |
 

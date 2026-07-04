@@ -55,8 +55,9 @@ Two execution flavours:
 
 - `make help` provides a self-updating, always-accurate reference for every registered
   target; documentation never drifts from the actual command surface.
-- New `.mk` files are picked up automatically by the top-level include and by
-  `make_help.mjs`; no registration step beyond placing the file in `.makefiles/`.
+- `make_help.mjs` discovers new `.mk` files automatically (recursive scan of `.makefiles/`),
+  so `make help` stays accurate; making `make` *execute* a new group still requires adding an
+  explicit `include` line to the top-level `makefile`.
 - CI, git hooks, and skills share one stable entrypoint.
 - The normal / `-ci` flavour split keeps the same logical operation available in both
   containerised and bare-metal contexts.

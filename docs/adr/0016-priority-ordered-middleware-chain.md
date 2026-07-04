@@ -17,7 +17,7 @@ The inbound HTTP middleware chain must execute in a specific, invariant order â€
 injection must precede observability (so spans carry the ID), observability must precede
 recovery (so panics are traced), authentication must precede handlers, and so on. The current
 order is: uri-pre (1), requestID (1), observability (2), recovery (3), cors (4), security
-(5), openapi (6), forcejson (7), logging (8), cookie (10).
+(5), openapi (6), forcejson (7), httpredmetrics (8), logging (9), cookie (10).
 
 The project uses [ADR-0030](0030-uber-fx-di.md) (Uber fx) for dependency injection. Each
 middleware lives in its own `*_di.go` file under `internal/di/server/extension/`, meaning

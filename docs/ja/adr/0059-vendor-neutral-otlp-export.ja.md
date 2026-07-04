@@ -54,7 +54,7 @@ OpenTelemetry の OTLP エクスポーターパッケージのみである。
 - エクスポートを有効にするすべての環境で Collector または Agent サイドカーが必要になる。
   Collector を介さないベンダー直接エクスポートはこの設計では対応しない。
 - 2 つのトランスポートオプション（`http/protobuf` と `grpc`）を維持しなければならない。
-  プロトコルの設定誤りはビルド時エラー（`errInvalidOTLPProtocol`）となる。
+  プロトコルの設定誤りは起動時（provider 構築時）のエラー（`errInvalidOTLPProtocol`）となる。
 
 ## 検討した代替案
 

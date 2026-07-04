@@ -42,7 +42,7 @@ CI パリティが保証される。
 
 - `pre-commit`（並列）: `lint`（`.go`）、`test-cached`（`.go`）、`sql-lint`（`.sql`）、
   `md-lint`（`.md`）、`actions-lint`（ワークフロー YAML）、`docker-lint`（Dockerfile）、
-  `pin-actions`（ワークフロー YAML + `actions-pin.toml`）、`migration-check-version`（`.sql`）、
+  `pin-actions`（ワークフロー YAML + action YAML + `actions-pin.toml`）、`migration-check-version`（`.sql`）、
   `migration-check-gap`（`.sql`）。
 - `commit-msg`: `commitlint`。
 - `pre-push`（並列）: `secret-scan`、`test`（完全、キャッシュなし、`.go`）、

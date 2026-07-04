@@ -26,7 +26,7 @@ accepted
 
 ## 決定
 
-各 `job` サブコマンドの呼び出しは**新しい `fx.App`** を構築する（常駐プロセスなし）。`di.RunJob` / `NewJobCore` がコンテナを合成し、`app.Start` がライフサイクルフックを起動し、ジョブはデタッチされたゴルーチン上で実行される（`context.WithoutCancel` により `OnStart` が返ってもジョブはキャンセルされない）。`app.Stop` がプロセス終了前にすべてをティアダウンする。ジョブの結果は失敗時に非ゼロ終了コードとして CLI に返される。
+各 `job` サブコマンドの呼び出しは**新しい `fx.App`** を構築する（常駐プロセスなし）。`di.RunJob` / `NewJobCore` がコンテナを合成し、`app.Start` がライフサイクルフックを起動し、ジョブはデタッチされたゴルーチン上で実行される（実行コンテキストは `SupervisedRunner` の `context.WithCancel(context.Background())` 由来のため、`OnStart` の start-context が返ってもキャンセルされない）。`app.Stop` がプロセス終了前にすべてをティアダウンする。ジョブの結果は失敗時に非ゼロ終了コードとして CLI に返される。
 
 ## 影響
 

@@ -25,7 +25,7 @@ as a Cobra subcommand registered in `registerCommands`:
 
 - `serve` — HTTP server (long-running)
 - `migrate-up` / `migrate-down` — database migrations
-- `seed` — data seeding
+- `db-seed` — data seeding
 - `fix-collation` — collation repair utility
 - `dump-schema` — schema dump
 - `merge-dml` — DML merge

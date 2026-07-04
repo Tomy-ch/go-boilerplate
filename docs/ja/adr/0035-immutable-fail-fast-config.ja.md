@@ -21,10 +21,11 @@ accepted
 
 ## 決定
 
-設定はアプリケーション起動時に `config.New()` を通じて**ちょうど 1 回**ロードされる。ロードシーケンスは以下の通り:
+設定はアプリケーション起動時に `config.SetUpConfig()` を通じて**ちょうど 1 回**ロードされる。これは `config.Load()`（embedded な `env/.env` をプロセス環境変数へ読み込む）→ `config.New()`（parse + validate）を連結する。ロードシーケンスは以下の通り:
 
 ```text
-env/.env (embedded) → env.ParseAs[Loader]() → validateConfig() → *Config
+config.Load(): env/.env (embedded) → プロセス環境変数
+config.New():  env.ParseAs[Loader]() → validateConfig() → *Config
 ```
 
 返される `*Config` 型は**不変**である。ゲッターメソッドのみを公開し、セッターメソッドは存在しない。コンポーネントは `*Config` オブジェクト全体ではなく、DI プロバイダー経由でスコープを絞った SubConfig 値（例: `*config.ServerConfig`、`*config.DatabaseConfig`）を受け取る。
@@ -58,7 +59,7 @@ env/.env (embedded) → env.ParseAs[Loader]() → validateConfig() → *Config
 
 ## 補足
 
-- 出典: `internal/config/README.md`（Design Principles セクション）、`internal/config/config.go`（`New()` と `validateConfig()`）。
+- 出典: `internal/config/README.md`（Design Principles セクション）、`internal/config/setup.go`（`SetUpConfig()`）、`internal/config/loader.go`（`Load()`）、`internal/config/config.go`（`New()` と `validateConfig()`）。
 - サブシステム構造体のレイアウト: [ADR-0033](0033-subsystem-typed-config-loaders.ja.md)。
 - デフォルト対必須のガバナンス: [ADR-0034](0034-config-default-vs-required-governance.ja.md)。
 - 埋め込み env ファイルの仕組み: [ADR-0036](0036-embedded-self-contained-binary.ja.md)。
