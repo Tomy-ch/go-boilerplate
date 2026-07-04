@@ -230,10 +230,12 @@ migration / 0090 rate-limiter / 0091 scheduled-job / 0092 Cache）は、テン�
 
 - 各 exclusion ADR に `tags: [exclusion, setup-review]` を付与し、セットアップ導線から
   機械的に列挙できるようにする。
-- リポジトリセットアップ（`make setup-repo` 系 / `docs/get-started/setup-repository.md`）に
+- リポジトリセットアップ手順（`docs/get-started/setup-repository.md` / ja）に
   「exclusion ADR をレビューし、**受容**するか **supersede**（自分の決定を新 ADR として
-  追加し旧を `superseded` にする）か決める」ステップを追加する。実装は Phase 4（exclusion
-  ADR 作成）以降に setup フロー拡張として別途。
+  追加し旧を `superseded` にする）か決める」ステップを **Phase 10 として追記済み**。
+  `grep -rl setup-review docs/adr/` で列挙する。専用の `make setup-review-adrs` 的な
+  列挙ターゲット化は任意（Phase 4 以降）。**注意**: 参照先 `docs/adr/` は Phase 5 で
+  最終配置に昇格するまで空（現在は `docs/design/adr/` に仮置き）。
 - 元 ADR は消さず supersede する（ADR 不変運用と整合）。この「exclusion ADR を setup 時の
   上書きポイントにする」方針自体も 1 本の ADR に昇格させる余地あり（要判断）。
 

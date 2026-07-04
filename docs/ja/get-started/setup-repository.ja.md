@@ -156,7 +156,24 @@ usecaseの[Authenticator](internal/usecase/boundary/auth/authenticator.go)イン
 
 実装が完了したら、[認証のDIモジュール](internal/di/module/core/auth.go) を編集して、認証機能をアプリケーションに組み込んでください。
 
-## Phase 10: サンプルAPIの削除
+## Phase 10: テンプレートの意図的な除外（ADR）のレビュー
+
+認証・認可（Phase 9）やデプロイ（Phase 8）以外にも、このテンプレートはいくつかの**意図的な非選択**をしています。例：アプリ内レート制限器を持たない / 汎用 Cache 抽象を持たない / scheduled job の並走制御はスケジューラに委譲 / push・streaming ブローカーは worker の対象外。
+
+これらは [docs/adr/](docs/adr/) 配下の **exclusion ADR** として記録され、`setup-review` タグが付いています。次で一覧できます：
+
+```sh
+grep -rl "setup-review" docs/adr/
+```
+
+プロジェクトごとに各 ADR をレビューし、次を判断してください：
+
+- **そのまま採用** — その除外が自プロジェクトに合う場合は何もしない。
+- **上書き** — 逆の方針が必要な場合。元の ADR は**編集せず**、それを supersede する新しい ADR を追加し（新 ADR に `supersedes:` を設定し、旧 ADR の `status:` を `superseded` にする）、実装する。
+
+これにより、テンプレートの元の根拠を保ったまま、自プロジェクトの逸脱を追跡可能な決定として残せます。
+
+## Phase 11: サンプルAPIの削除
 
 このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
 
