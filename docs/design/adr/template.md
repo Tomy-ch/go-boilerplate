@@ -4,7 +4,7 @@ date: YYYY-MM-DD
 deciders: []            # who made the call, e.g. [maintainers]
 supersedes:             # ADR number this replaces, if any (e.g. 0003)
 superseded-by:          # ADR number that replaces this one, if any
-tags: []                # e.g. [architecture, http, persistence]
+tags: []                # e.g. [architecture, http]; exclusions add: setup-review
 ---
 
 # ADR-NNNN: imperative decision title

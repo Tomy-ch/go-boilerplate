@@ -221,6 +221,22 @@ job:
 | 0091 | scheduled job 並走制御はスケジューラ委譲 | exclusion | project/out-of-scope.md:17-26 |
 | 0092 | 汎用 Cache 抽象を持たない | exclusion | project/out-of-scope.md:49-57 |
 
+### 除外(負の)ADR とリポジトリセットアップ
+
+exclusion 種別（0039 push/streaming / 0054 idempotency 直交 / 0056 job 機構除外 /
+0060 公式 semconv / 0063 サンプリング固定 / 0084 hardened-alpine / 0086 pre-deploy
+migration / 0090 rate-limiter / 0091 scheduled-job / 0092 Cache）は、テンプレの
+**意図的な非選択**であり、fork 利用者が最も方針転換したい箇所。
+
+- 各 exclusion ADR に `tags: [exclusion, setup-review]` を付与し、セットアップ導線から
+  機械的に列挙できるようにする。
+- リポジトリセットアップ（`make setup-repo` 系 / `docs/get-started/setup-repository.md`）に
+  「exclusion ADR をレビューし、**受容**するか **supersede**（自分の決定を新 ADR として
+  追加し旧を `superseded` にする）か決める」ステップを追加する。実装は Phase 4（exclusion
+  ADR 作成）以降に setup フロー拡張として別途。
+- 元 ADR は消さず supersede する（ADR 不変運用と整合）。この「exclusion ADR を setup 時の
+  上書きポイントにする」方針自体も 1 本の ADR に昇格させる余地あり（要判断）。
+
 ### ADR にしないもの
 
 - **rule（rules.md に残す＋backlink）**: 層依存方向 / usecase-境界依存 / 生成コード

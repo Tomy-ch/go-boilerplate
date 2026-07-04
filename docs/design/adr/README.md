@@ -35,6 +35,7 @@ a decision (an ADR); the *list* of them is a living reference.
 - **Template**: copy [`template.md`](template.md).
 - **Meta**: [`0000-record-architecture-decisions.md`](0000-record-architecture-decisions.md) records the decision to use ADRs and this classification.
 - **Translation**: each ADR mirrors to `docs/ja/adr/` (via the `canonicalize-doc` flow).
+- **Exclusion ADRs** (deliberate "we do NOT do X") carry a `setup-review` tag so the repository-setup flow can enumerate them for a fork to keep or supersede with its own decision.
 
 ## Log
 
