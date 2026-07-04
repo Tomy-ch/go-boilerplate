@@ -144,17 +144,38 @@ make branch-minor
 
 `Note: Please modify this section according to your environment` と書かれている箇所が、環境に合わせて変更が必要な箇所になります。
 
-## Phase 9: 認証機の作成
+## Phase 9: 認証・認可の実装
 
-このboilerplateには、認証機能の実装例として、JWTを使用したサンプルコードが含まれています。プロジェクトの要件に合わせて、認証機能を実装してください。
+この boilerplate は認証（authn）と認可（authz）の双方について **開発用スタブのみ** を同梱しており、それらは `local` / `ci` / `test` 環境に **限って** 配線されています。`development` / `staging` / `production` では DI プロバイダが **fail-closed** です。スタブの配線を拒否してエラーを返すため、本物のコンポーネントを実装・配線するまでアプリケーションは **意図的に起動しません**。
 
-usecaseの[Authenticator](internal/usecase/boundary/auth/authenticator.go)インターフェースを実装する形で、認証機能を作成します。
+これは意図的な強制装置です。署名を検証しない認証器や許可オールの認可器が本番環境に出荷されることを決して起こさないためのものです。**`development` / `staging` / `production` 向けに両方を実装することは、プロジェクト開始時の必須タスクです。**
 
-実装は [internal/infrastructure/auth/README.ja.md](internal/infrastructure/auth/README.ja.md) を参照してください。
+> [!IMPORTANT]
+> `Authorizer` は `InfrastructureModule` の内部で提供されるため、**usecase を構築するすべてのプロセス** — HTTP サーバ **と** バックグラウンドの job / worker プロセス — が設定済みの `Authorizer` を必要とします。Phase 9.2 が完了するまで、`APP_ENV=development` / `staging` / `production` でいずれを起動しても Fx 構築時に `no authorizer configured for environment` で終了します（authn も同様に `no authenticator configured for environment`）。本物のコンポーネントを実装する前にこれが表示されるのは想定内であり、バグではありません。
 
-実装例(local): [internal/infrastructure/auth/local/auth_local.go](internal/infrastructure/auth/local/auth_local.go)
+### 9.1 認証（authn）
 
-実装が完了したら、[認証のDIモジュール](internal/di/module/core/auth.go) を編集して、認証機能をアプリケーションに組み込んでください。
+この boilerplate には認証の実装例として JWT を使用したサンプルコードが含まれています。プロジェクトの要件に合わせて認証を実装してください。
+
+usecase の [Authenticator](internal/usecase/boundary/auth/authenticator.go) インターフェースを実装する形で認証機能を作成します。
+
+- 参照: [internal/infrastructure/auth/README.ja.md](internal/infrastructure/auth/README.ja.md)
+- スタブ実装例（local・署名なし）: [internal/infrastructure/auth/local/auth_local.go](internal/infrastructure/auth/local/auth_local.go)
+- `stg` / `prd` 実装（JWT / OAuth2 / OIDC / Cognito / Auth0 など）を `internal/infrastructure/auth/{stg,prd}/` 配下に追加します。
+- 環境ごとの配線は [認証の DI モジュール](internal/di/module/core/auth.go)（`provideAuthenticator`）を編集し、`default` の fail-closed 分岐を `case config.EnvDevelopment / EnvStaging / EnvProduction` に置き換えて本物の `Authenticator` を返します。
+
+### 9.2 認可（authz）
+
+この boilerplate は開発用スタブとして **許可オール（allow-all）** の認可器を同梱しています。自プロジェクト向けに本物の Policy Decision Point（PDP）を実装してください。
+
+usecase の [Authorizer](internal/usecase/boundary/authz/authorizer.go) インターフェースを実装する形で認可機能を作成します。
+
+- 参照: [internal/infrastructure/authz/README.ja.md](internal/infrastructure/authz/README.ja.md)
+- スタブ実装例（許可オール）: [internal/infrastructure/authz/allowall/authz_allowall.go](internal/infrastructure/authz/allowall/authz_allowall.go)
+- `stg` / `prd` 実装（claims からの RBAC / 所有者チェック / OPA・Cedar などの外部ポリシーエンジン）を `internal/infrastructure/authz/{stg,prd}/` 配下に追加します。
+- 環境ごとの配線は [認可の DI モジュール](internal/di/module/authz.go)（`provideAuthorizer`）を編集し、`default` の fail-closed 分岐を `case config.EnvDevelopment / EnvStaging / EnvProduction` に置き換えて本物の `Authorizer` を返します。
+
+`Authorize(ctx, *auth.Authn, Action, *Resource)` のシグネチャは既に完全な `Authn`（subject / scopes / claims）と対象 `Resource`（任意の `OwnerID` 付き）を運ぶため、RBAC と所有者（オブジェクトレベル）モデルの双方を呼び出し箇所を変えずに表現できます。
 
 ## Phase 10: テンプレートの意図的な除外（ADR）のレビュー
 
