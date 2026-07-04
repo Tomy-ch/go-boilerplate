@@ -1,201 +1,232 @@
-# ADR 移行 作業計画書
+# ADR 移行 作業計画書（細粒度版）
 
 > 一時文書（provisional）。`docs/decisions.md` を per-file ADR 群へ移行するための
-> 作業計画。移行完了後に削除する。リポジトリ全体スキャン（canonical / design docs /
-> exclusion / latent code の 4 面）で洗い出した候補にもとづく。
+> 作業計画。移行完了後に削除する。**このファイル単体で（会話コンテキストが失われても）
+> 各 ADR 作成を再開できる**よう、決定ごとに「作成時に再読すべきファイル」を記載する。
 
 ## 背景と目的
 
-`docs/decisions.md` は約 8 決定＋依存インベントリを 1 ファイルに集約しているが、次の
-2 点が問題化している。
+`docs/decisions.md` は約 8 決定＋依存インベントリを 1 ファイルに集約しているが、
+(1) その場編集で決定履歴が失われ（例: observability セクションは `OBSERVABILITY_ENABLED`
+撤去時に上書きされ旧設計の理由が消えた）、(2) 不変であるべき決定と `go.mod` 追従の
+依存表が混在して依存表が陳腐化した（`net/http/otelhttp` / `otel/sdk/log` 欠落）。
 
-- **その場編集で決定履歴が失われる。** 例：observability セクションは
-  `OBSERVABILITY_ENABLED` 撤去時に上書きされ、旧設計を選んだ理由が消えた。
-- **性質の異なる内容の混在。** 不変であるべき決定と、`go.mod` に追従して変化し続ける
-  依存表が同居し、依存表が静かに陳腐化した（`net/http/otelhttp` / `otel/sdk/log`
-  の欠落）。
-
-本リポジトリはテンプレートであり、利用者は fork して各決定を個別に上書き
-（supersede）したい。per-file ADR にすれば、モノリスを触らず 1 ファイル追加で
-個別 supersede できる。
-
-## 現状診断（要点）
-
-- decisions.md 記載の決定は現状のコードと整合（onion / OpenAPI-first / sqlc / echo /
-  fx / worker / o11y gating）。**思想面の陳腐化はない。**
-- 陳腐化しているのは依存表のみ：直接依存 `net/http/otelhttp` `otel/sdk/log` が未記載
-  （後述の通りインベントリは ADR 化せず別文書へ）。
-- **outbox サブシステムが decisions.md に丸ごと欠落**。加えて
-  `docs/design/outbox.md:5` が存在しない outbox ADR を指す**リンク切れ**がある。
-- スキャンの結果、ADR 化に値する決定は **約 30 件**（既存移行 9＋新規 21）と判明。
+本リポジトリはテンプレートであり、利用者は fork して各決定を個別に supersede したい。
+per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個別 supersede できる。
 
 ## 移行方針
 
-- **形式**：MADR-lite（frontmatter に `status` / `date` / `supersedes` /
-  `superseded-by`、本文は Context / Decision / Consequences / Alternatives）。
-- **配置（最終）**：`docs/adr/NNNN-kebab-title.md`（4 桁採番、番号は再利用しない）。
-  今回の計画段階では実 ADR は作らず、本計画書のみ。
-- **不変運用**：`accepted` 後は本文を編集せず、supersede は新 ADR 追加＋旧 ADR の
+- **形式**: MADR-lite（frontmatter に `status` / `date` / `supersedes` /
+  `superseded-by` / `tags`、本文は Context / Decision / Consequences / Alternatives）。
+- **配置（最終）**: `docs/adr/NNNN-kebab-title.md`（4 桁採番、番号は再利用しない）。
+  ja ミラーは `docs/ja/adr/`。
+- **不変運用**: `accepted` 後は本文を編集せず、supersede は新 ADR 追加＋旧 ADR の
   status 変更で行う。
-- **分類**（ここで種別を確定してから移す）：
+- **分類**（移す前に種別を確定する）:
   - **decision / exclusion** → ADR（`docs/adr/`）。
-  - **rule**（日々強制される帰結。層依存・DTO 境界など）→ `docs/rules.md` に残し、
-    ADR への backlink を張る。
-  - **inventory**（コードに追従して変化する目録）→ `docs/reference/dependencies.md`
-    等の生きた文書。ADR にしない。
+  - **rule**（日々強制される帰結）→ `docs/rules.md` に残し ADR へ backlink。
+  - **inventory**（コード追従の目録）→ `docs/reference/dependencies.md`。ADR にしない。
 
-## 移行対象 ADR 一覧と採番案
+## 粒度方針（本版で確定）
 
-種別凡例：`migrate`＝decisions.md から移設 / `new`＝未文書化の潜在決定 /
-`exclusion`＝負の決定。★＝最優先の強い新規（明確な代替案＋影響大＋現状ゼロ）。
+**細粒度＝決定単位。約 50 本。** サブシステム（outbox / idempotency / job / observability）は
+サブ決定ごとに独立 ADR へ分割する（retention・MaxAttempts・TTL 等も各 1 本）。fork 側が
+サブ決定を個別に supersede できることを優先する。
+
+## 各 ADR 作成時の共通参照（全 ADR で必ず再読）
+
+どの ADR を書くときも先に以下を読むこと。
+
+- `CLAUDE.md` — 改変スコープ・生成物・言語規則（可視出力は日本語）。
+- `docs/rules.md` — 非交渉ルール。ADR は rule と重複させず backlink を張る。
+- `docs/decisions.md` — 移設元の原文（migrate 種別はここが本文ソース）。
+- `docs/adr/README.md` / `docs/adr/template.md` — Phase 0 で作る形式・採番・分類規約。
+- 対象サブシステムの `docs/design/<name>.md` と該当パッケージ `README.md`。
+
+## 移行対象 ADR 一覧・採番・参照
+
+種別: `migrate`＝decisions.md から移設 / `new`＝未文書化の潜在決定 /
+`exclusion`＝負の決定。★＝最優先（明確な代替案＋影響大＋現状ゼロ）。
+「作成時に再読」は共通参照に**加えて**読むファイル。
 
 ### 基盤・アーキテクチャ
 
-| # | ADR | 種別 | 出所 |
+| # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0001 | 実用的オニオンアーキテクチャの採用 | migrate | decisions.md:23 |
-| 0002 | モジュラモノリス（マイクロサービスは非目標） | new | architecture.md:253, scope.md:46 |
-| 0003 | 構造安全をツール＋CI（depguard）で強制 | new | architecture.md:77 |
-| 0004 | REST/Worker/Job は駆動アダプタ（分割軸にしない） | new | rest.md:11 |
+| 0001 | 実用的オニオンアーキテクチャの採用 | migrate | decisions.md:23-61 / architecture.md / rules.md(層依存 9-36) |
+| 0002 | モジュラモノリス（マイクロサービス非目標） | new | architecture.md:253-266,294-303 / project/scope.md:35,46-57 |
+| 0003 | 構造安全をツール＋CI(depguard)で強制 | new | architecture.md:77-92 / .golangci.yml(depguard) / rules.md:49-77 |
+| 0004 | REST/Worker/Job は駆動アダプタ（分割軸にしない） | new | design/rest.md:11 / design/README.md:16-18 / design/worker.md |
+| 0005 | OpenAPI-first API 契約 | migrate | decisions.md:63-90 / rules.md:78-93 |
 
-### API / 永続化
+### 永続化
 
-| # | ADR | 種別 | 出所 |
+| # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0005 | OpenAPI-first API 契約 | migrate | decisions.md:63 |
-| 0006 | SQL-first ＋ sqlc（SQL-first と sqlc を統合） | migrate | decisions.md:92,119 |
-| 0007 | append-only な不変マイグレーション | new | rules.md:94 |
-| 0008 | 軽量 CQRS（QueryService 読み取り分離、IF は usecase） | new ★ | rdb/query_service/README.md:8 |
-| 0009 | 競合時のトランザクション再試行＋呼び出し側冪等契約 | new ★ | boundary/tx/README.md:16 |
-| 0010 | UUIDv7（時間順）識別子戦略 | new | pkg/uuid/README.md:5 |
+| 0006 | SQL-first データアクセス | migrate | decisions.md:92-117 |
+| 0007 | sqlc による型安全 SQL 生成 | migrate | decisions.md:119-144 |
+| 0008 | append-only な不変マイグレーション | new | rules.md:94-111 / development-flow.md |
+| 0009 | 軽量 CQRS（QueryService 読取分離、IF は usecase） | new ★ | infrastructure/rdb/query_service/README.md:8,46 / rules.md:158-169 / usecase/README.md |
+| 0010 | 競合時の tx 再試行＋呼び出し側冪等契約 | new ★ | usecase/boundary/tx/README.md:16-18 / infrastructure/rdb/driver/transaction.go:79,116 / design/outbox.md |
+| 0011 | UUIDv7（時間順）識別子戦略 | new | pkg/uuid/README.md:5,11 / sqlc.yaml(型 override) |
 
-### HTTP フレームワーク / 基盤
+### HTTP フレームワーク・基盤
 
-| # | ADR | 種別 | 出所 |
+| # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0011 | Echo を HTTP フレームワークに採用 | migrate | decisions.md:146 |
-| 0012 | 優先度順（データ駆動）ミドルウェア連鎖 | new | rest.md:29 |
-| 0013 | 外向き HTTP レジリエンス基盤（retry/CB/budget/dual timeout） | new ★ | httpclient/README.md:5 |
-| 0014 | egress SSRF / dial ガードのセキュリティ姿勢 | new ★ | http_client_transport.go:18 |
+| 0012 | Echo を HTTP フレームワークに採用 | migrate | decisions.md:146-170 |
+| 0013 | 優先度順（データ駆動）ミドルウェア連鎖 | new | design/rest.md:29,244 / controller/httpstack/README.md |
+| 0014 | 外向き HTTP レジリエンス基盤(retry/CB/budget/dual timeout) | new ★ | infrastructure/httpclient/README.md:5 / httpclient 実装 |
+| 0015 | egress SSRF / dial ガードのセキュリティ姿勢 | new ★ | observability/http_client_transport.go:18-23 / infrastructure/httpclient/README.md(security) / outbox/http_publisher.go:30 |
 
-### DI / config / errors
+### DI・config・errors
 
-| # | ADR | 種別 | 出所 |
+| # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0015 | Uber Fx を DI＋ライフサイクルに採用 | migrate | decisions.md:172 |
-| 0016 | fx を中立 DI 抽象で封じ込め（Registrar/Shutdowner） | new | di/lifecycle/README.md |
-| 0017 | 不変・起動時一括・fail-fast な型付き config | new | config/README.md |
-| 0018 | プロトコル非依存の集約エラー分類（apperror） | new | apperror/README.md:5 |
+| 0016 | Uber Fx を DI＋ライフサイクルに採用 | migrate | decisions.md:172-197 |
+| 0017 | fx を中立 DI 抽象で封じ込め(Registrar/Shutdowner) | new | di/lifecycle/README.md / di/shutdowner/README.md |
+| 0018 | 不変・起動時一括・fail-fast な型付き config | new | config/README.md / config/config.go |
+| 0019 | プロトコル非依存の集約エラー分類(apperror) | new | apperror/README.md:5,8 / rules.md:215-221 |
 
-### 非同期サブシステム
+### ライブラリ・ツールチェーン
 
-| # | ADR | 種別 | 出所 |
+| # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0019 | broker 非依存 pull-ack worker scaffold | migrate | decisions.md:199 |
-| 0020 | トランザクショナル outbox ＋ at-least-once 配送 | new | design/outbox.md（:5 のリンク切れも解消） |
-| 0021 | idempotency サブシステム（単一 tx / scope 必須 / 24h TTL） | new | design/idempotency.md:28 |
-| 0022 | one-shot ジョブ実行器（起動毎 fx.App） | new | design/job.md:24 |
+| 0020 | 単一責務ライブラリ選定ポリシー | migrate | decisions.md:226-236 |
+| 0021 | bridge/instrumentation 例外（SRP 例外） | migrate | decisions.md:296-314 |
+| 0022 | コンテナ化ツールチェーン＋mise 固定(再現性) | new | rules.md:281-296 / makefile / .makefiles/ / mise.toml |
 
-### observability / 依存 / 除外
+### worker
 
-| # | ADR | 種別 | 出所 |
+| # | ADR | 種別 | 作成時に再読 |
 | --- | --- | --- | --- |
-| 0023 | config 駆動 observability gating | migrate | decisions.md:272 |
-| 0024 | ベンダ中立 OTLP-only エクスポート（Collector 委譲） | new | observability.md:15 |
-| 0025 | observability アーキ（2 経路メトリクス / provider 非依存 / 固定サンプリング） | new | design/observability.md:30 |
-| 0026 | 単一責務ライブラリ選定ポリシー（＋bridge 例外） | migrate | decisions.md:226 |
-| 0027 | コンテナ化ツールチェーン＋mise 固定（再現性） | new | rules.md:281 |
-| 0028 | アプリ内レート制限器を持たない | exclusion | out-of-scope.md:11 |
-| 0029 | scheduled job の並走制御はスケジューラ委譲 | exclusion | out-of-scope.md:17 |
-| 0030 | 汎用 Cache 抽象を持たない | exclusion | out-of-scope.md:49 |
+| 0023 | broker 非依存 pull-ack worker scaffold | migrate | decisions.md:199-224 / design/worker.md |
+| 0024 | push/streaming broker を対象外 | exclusion | decisions.md:209,222 / design/worker.md |
+| 0025 | SQS アダプタは opt-in / 既定バイナリ非リンク | migrate | decisions.md:212,223-224 / infrastructure/queue/sqs/README.md |
+
+### outbox（design/outbox.md 全体が decisions.md に欠落。:5 のリンク切れも解消）
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0026 | トランザクショナル outbox（業務 tx 内で emit） | new | design/outbox.md:11,35 |
+| 0027 | at-least-once poll（transport retry 無効 / D10） | new | design/outbox.md:36,263 |
+| 0028 | SKIP LOCKED 単一 tx relay（多インスタンス安全） | new | design/outbox.md:37 / database/dml/system_query/outbox/claim_pending_outbox.sql |
+| 0029 | message_id を受信側 Idempotency-Key に伝播 | new | design/outbox.md:38 |
+| 0030 | MaxAttempts=10 で dead（人手 replay まで終端） | new | design/outbox.md:52,256 |
+| 0031 | 7d retention GC（batch 10,000） | new | design/outbox.md:54,259 / .../outbox/delete_published_outbox.sql |
+| 0032 | publisher の非標準 HTTP プロファイルを relay に隔離 | new | design/outbox.md:176,268 / di/outboxrelay |
+| 0033 | relay は常駐 / GC は one-shot cron | new | design/outbox.md:27 |
+
+### idempotency
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0034 | claim/businessFn/complete を単一 tx で at-most-once | new | design/idempotency.md:28,13 |
+| 0035 | 全 Store 呼び出しで scope 必須(IDOR 防止) | new | design/idempotency.md:29 |
+| 0036 | TTL 24h 固定（per-route 設定なし） | new | design/idempotency.md:227-229,252 |
+| 0037 | レスポンス本体を JSON 保存(PII トレードオフ) | new | design/idempotency.md:231 |
+| 0038 | idempotency GC を別 one-shot ジョブ化 | new | design/idempotency.md:23,230 |
+| 0039 | 楽観ロック/レート制限と直交（opt-in） | exclusion | design/idempotency.md:13 |
+
+### job
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0040 | 起動毎に fx.App を新規構築(one-shot) | new | design/job.md:24 |
+| 0041 | broker/circuit/drain/health を持たない(worker と対照) | exclusion | design/job.md:24 |
+| 0042 | ジョブは明示登録（auto-discovery なし） | new | design/job.md:178 |
+
+### observability
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0043 | config 駆動 observability gating | migrate | decisions.md:272-294 / design/observability.md:16 |
+| 0044 | ベンダ中立 OTLP-only エクスポート(Collector 委譲) | new | design/observability.md:15 / observability/README.md |
+| 0045 | メトリクス 2 経路(OTLP push＋Prometheus scrape) | new | design/observability.md:146-153 |
+| 0046 | provider をライフサイクル非依存に(ProviderShutdowner) | new | design/observability.md:30 |
+| 0047 | SDK 既定サンプリング固定(env 非設定) | exclusion | design/observability.md:80 |
+
+### 除外（負の ADR）
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0048 | アプリ内レート制限器を持たない | exclusion | project/out-of-scope.md:11-16 |
+| 0049 | scheduled job 並走制御はスケジューラ委譲 | exclusion | project/out-of-scope.md:17-26 |
+| 0050 | 汎用 Cache 抽象を持たない | exclusion | project/out-of-scope.md:49-57 |
 
 ### ADR にしないもの
 
-- **rule（rules.md に残す＋backlink）**：層依存方向 / usecase-境界依存 / 生成コード
-  非編集 / ドメイン純粋性 / context 伝播 / DTO 境界変換 / tx 配置 / エラー処理機構
-  / comment・doc・testing 規約 / 薄いハンドラ / pkg 相互独立 / 実効的不変性 /
+- **rule（rules.md に残す＋backlink）**: 層依存方向 / usecase-境界依存 / 生成コード
+  非編集 / ドメイン純粋性 / context 伝播 / DTO 境界変換 / tx 配置 / エラー処理機構 /
+  comment・doc・testing 規約 / 薄いハンドラ / pkg 相互独立 / 実効的不変性 /
   idempotency claim 機構 / RED メトリクス基数制限。
-- **inventory（生きた文書へ）**：直接依存表（→ `docs/reference/dependencies.md`。
-  ここで `net/http/otelhttp` / `otel/sdk/log` の欠落も修正）/ ミドルウェア優先度
-  定数表（→ REST の設計文書に残す）。
-
-## 粒度方針
-
-**サブシステム/決定単位を基本、独自の代替案を持つものだけ独立 ADR** とし、約 30 本に
-収める。例：outbox の retention や MaxAttempts は個別 ADR にせず 0020 の Consequences
-に束ねる。より細かく（約 45 本）／より粗く（約 20 本）も選択可。
+- **inventory（生きた文書へ）**: 直接依存表 → `docs/reference/dependencies.md`
+  （`net/http/otelhttp` / `otel/sdk/log` の欠落もここで修正）/ ミドルウェア優先度
+  定数表 → REST 設計文書に残す。
 
 ## フェーズ別作業手順
 
 ### Phase 0: 型固定
 
-`docs/adr/` に README（決定ログ＋分類規約＋supersede 運用）/ template（MADR-lite）/
+`docs/adr/` に README（決定ログ＋分類規約＋supersede 運用）/ template.md（MADR-lite）/
 `0000-record-architecture-decisions.md`（メタ ADR）/ 見本 1 本（0001 onion）を作成し、
 形式・採番・supersede 運用を確定する。
 
-### Phase 1: 既存 9 件の移設
+### Phase 1: 既存決定の移設（migrate 種別）
 
-decisions.md の既存決定（onion / OpenAPI-first / SQL-first＋sqlc / echo / fx / worker /
-library policy / o11y gating）を 1:1 で ADR 化。内容は移すだけ。
+0001,0005,0006,0007,0012,0016,0020,0021,0023,0025,0043 を decisions.md から 1:1 移設。
 
-### Phase 2: 強い新規 4 件
+### Phase 2: 強い新規（★）
 
-★（0008 CQRS/QueryService、0009 tx 再試行契約、0013 HTTP レジリエンス基盤、
-0014 SSRF ガード）を新規作成。現状ゼロで影響が大きいものを優先。
+0009,0010,0014,0015 を作成。現状ゼロで影響大のものを優先。
 
 ### Phase 3: サブシステム・潜在決定
 
-outbox / idempotency / job / observability 追加、および architecture・rules 由来の
-潜在決定（0002-0004, 0007, 0010, 0016-0018, 0025, 0027）を作成。outbox 作成時に
-`docs/design/outbox.md:5` のリンク切れを解消。
+outbox(0026-0033) / idempotency(0034-0039) / job(0040-0042) / observability
+追加(0044-0047)、および 0002-0004,0008,0011,0013,0017-0019,0022,0024 を作成。
+outbox 作成時に `design/outbox.md:5` のリンク切れを解消。
 
 ### Phase 4: 除外（負の ADR）
 
-0028-0030 を作成。out-of-scope.md の該当項目は目録として残しつつ、代替案分析を持つ
-3 件のみ ADR へ昇格。
+0039,0041,0047,0048,0049,0050 を作成。out-of-scope.md 等は目録として残す。
 
-### Phase 5: インベントリ分離・参照貼り替え・撤去
+### Phase 5: インベントリ分離・参照貼替・撤去
 
-依存表を `docs/reference/dependencies.md` へ移し欠落を修正。全参照を貼り替え、ja を
-同期し、`docs/decisions.md` を撤去（または 1 行リダイレクト）。
+依存表を `docs/reference/dependencies.md` へ移し欠落修正。全参照貼替、ja 同期、
+`docs/decisions.md` 撤去（または 1 行リダイレクト）。
 
-## 参照貼り替え対象
+## 参照貼り替え対象（Phase 5）
 
-`docs/decisions.md` は約 20 ファイルから参照されている。
+`docs/decisions.md` は約 20 ファイルから参照される。
 
-- canonical：README（en/ja）/ rules.md / index.md / maintenance/docs-structure.md
-- design：docs/design/README.md / worker.md / outbox.md（および ja 各種）
-- portal：docs/portal/guides/（overview / worker-design / outbox-design、en/ja）
-- ツール：`.claude/agents/doc-reviewer.md`
-- **AGENTS.md**：人間専用ファイル。ここの参照更新は**人手**で行う必要がある。
+- canonical: README(en/ja) / rules.md / index.md / maintenance/docs-structure.md
+- design: design/README.md / worker.md / outbox.md（および ja）
+- portal: portal/guides/(overview / worker-design / outbox-design, en/ja)
+- ツール: `.claude/agents/doc-reviewer.md`
+- **AGENTS.md**: 人間専用。参照更新は**人手**で行う。
+
+## 再開手順（コンテキストなしで着手する場合）
+
+1. 本ファイルと「各 ADR 作成時の共通参照」を読む。
+2. Phase 0 が未了なら先に型固定を行う。
+3. 作る ADR を上表から選び、「作成時に再読」＋共通参照を読んでから template で起票。
+4. migrate は decisions.md 原文を Context/Decision/Consequences/Alternatives へ再配置。
+   new/exclusion は出所 design doc / README / コードから同構造で起こす。
+5. rule と重複させない。関連 rule には backlink を張る。
+6. 進捗は本表の状態でなく PR の追加コミットで追う（PR は base `release/v2.0.1`）。
 
 ## リスクと注意点
 
-- **AGENTS.md は AI 編集禁止。** 移行の最終段で人間が参照行を更新する前提。
-- **ja 二重管理。** 各 ADR は `docs/ja/adr/` にミラーが必要（`canonicalize-doc`）。
-  ファイル数が倍になる。
-- **markdownlint。** 見出しに `<...>` 形式を使うと HTML タグ扱いで MD024 誤検知、
-  コードフェンスは言語必須。ローカルの mermaid lint は環境依存で失敗する（内容問題
-  ではない）。
-- **粒度の再議。** サブシステムをまとめすぎると supersede 単位が粗くなる。★の 4 件は
-  独立必須。
+- **AGENTS.md は AI 編集禁止。** Phase 5 の参照更新は人手前提。
+- **ja 二重管理。** 各 ADR は `docs/ja/adr/` にミラー要（`canonicalize-doc`）。
+- **markdownlint。** 見出しに `<...>` 形式は HTML タグ扱いで MD024 誤検知、コード
+  フェンスは言語必須。ローカル mermaid lint は環境依存で失敗（内容問題ではない）。
+- **粒度。** 本版は細粒度（約 50 本）。粗くしたい場合はサブシステム単位に束ね直す。
 
 ## 完了条件
 
-- 30 本（粒度合意後の確定数）の ADR が `docs/adr/` に存在し、種別分類が反映されている。
-- 依存表が `docs/reference/dependencies.md` に分離され、欠落が修正されている。
-- rules.md の該当ルールから対応 ADR へ backlink が張られている。
-- `docs/decisions.md` への全参照が貼り替え済み（AGENTS.md は人手更新）。
-- ja ミラーが同期され、`docs/decisions.md` が撤去またはリダイレクト化されている。
-
-## 付録: スキャン手順
-
-本計画の候補洗い出しは、リポジトリ 4 面を並列走査して ADR 化候補を
-decision / exclusion / rule / inventory に分類する一次スキルで行った。
-
-- **canonical**：decisions.md / architecture.md / rules.md
-- **subsystem design**：docs/design/\*.md
-- **exclusion**：docs/project/\*.md（out-of-scope 中心）
-- **latent**：各パッケージ README＋コードの "why" コメント
-
-再走査が必要なら同手順を反復する。スキル本体はリポジトリには含めない（一次利用）。
+- 約 50 本の ADR が `docs/adr/` に存在し、種別分類が反映されている。
+- 依存表が `docs/reference/dependencies.md` に分離され欠落が修正されている。
+- rules.md の該当ルールから対応 ADR へ backlink がある。
+- `docs/decisions.md` への全参照が貼替済み（AGENTS.md は人手更新）。
+- ja ミラー同期、`docs/decisions.md` が撤去またはリダイレクト化されている。
