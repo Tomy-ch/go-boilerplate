@@ -25,9 +25,9 @@ Example:
 docs/
 ├ architecture.md
 ├ development-flow.md
-├ decisions.md   # redirect stub → design/adr/
+├ decisions.md   # redirect stub → adr/
 ├ rules.md
-├ design/adr/    # Architecture Decision Records (per-file ADR)
+├ adr/    # Architecture Decision Records (per-file ADR)
 └ reference/dependencies.md
 ```
 
