@@ -29,7 +29,7 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 
 ## 粒度方針（本版で確定）
 
-**細粒度＝決定単位。約 51 本。** サブシステム（outbox / idempotency / job / observability）は
+**細粒度＝決定単位。約 59 本。** サブシステム（outbox / idempotency / job / observability）は
 サブ決定ごとに独立 ADR へ分割する（retention・MaxAttempts・TTL 等も各 1 本）。fork 側が
 サブ決定を個別に supersede できることを優先する。
 
@@ -155,6 +155,23 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 | 0050 | scheduled job 並走制御はスケジューラ委譲 | exclusion | project/out-of-scope.md:17-26 |
 | 0051 | 汎用 Cache 抽象を持たない | exclusion | project/out-of-scope.md:49-57 |
 
+### 追加(2nd pass): 設計原則・運営・ツールチェーン・メタ
+
+> 初回スキャンが `internal` / `pkg` / `docs` 中心で未カバーだった `.github` /
+> `scripts` / `docker` / `.claude` / トップレベル思想からの追補。番号は暫定
+> （Phase 0 で通し再採番）。
+
+| # | ADR | 種別 | 作成時に再読 |
+| --- | --- | --- | --- |
+| 0052 | ロックイン回避を設計原則にする(ベンダ/ライブラリ置換可能性) | new | architecture.md:94-104 / project/policy.md / decisions.md:226-236。0021/0026/0045 の上位原則 |
+| 0053 | 境界を interface で定義し疎結合化(DIP) | new | architecture.md(dependency inversion) / rules.md:9-36。※0001 onion と重複気味・統合可 |
+| 0054 | with-AI 開発方式(AGENTS.md を運用契約に) | new | AGENTS.md / CLAUDE.md / .claude/ |
+| 0055 | docs を正典とする戦略(EN 正典＋ja mirror＋portal、docs が agent を駆動) | new | docs/index.md / docs/maintenance/docs-structure.md / docs/portal/manifest.yaml |
+| 0056 | GitHub Actions を SHA ピン＋供給網検疫で固定 | new | .github/actions-pin.toml / scripts/pin-actions / .github/workflows / (actions-pin skill) |
+| 0057 | 運用スクリプトは scripts/ に Node(.mjs)/Go で置き sh 不採用 | new | scripts/README.md / scripts/(全 .mjs,.go) / rules.md(pkg↔internal 分離)。script↔pkg↔internal の役割分離も明記 |
+| 0058 | go:embed で config(.env)/migration を同梱＝自己完結バイナリ | new | embed.go:7 / config/README.md。※0019 は不変性、本 ADR は同梱/自己完結の観点 |
+| 0059 | ローカル開発環境を docker-compose で提供(tool-runner＋ビューア群) | new | docker-compose.yaml / docker/。※0023 はツール実行、本 ADR は dev stack 構成 |
+
 ### ADR にしないもの
 
 - **rule（rules.md に残す＋backlink）**: 層依存方向 / usecase-境界依存 / 生成コード
@@ -188,8 +205,9 @@ per-file ADR にすれば、モノリスを触らず 1 ファイル追加で個�
 ### Phase 3: サブシステム・潜在決定
 
 outbox(0027-0034) / idempotency(0035-0039) / job(0041,0043) / observability
-追加(0045-0047)、および 0002-0004,0008,0011,0013,0017-0020,0023 を作成。
-outbox 作成時に `design/outbox.md:5` のリンク切れを解消。
+追加(0045-0047)、および 0002-0004,0008,0011,0013,0017-0020,0023、さらに
+0052-0059(設計原則・運営・ツールチェーン・メタ) を作成。outbox 作成時に
+`design/outbox.md:5` のリンク切れを解消。
 
 ### Phase 4: 除外（負の ADR）
 
@@ -226,11 +244,11 @@ outbox 作成時に `design/outbox.md:5` のリンク切れを解消。
 - **ja 二重管理。** 各 ADR は `docs/ja/adr/` にミラー要（`canonicalize-doc`）。
 - **markdownlint。** 見出しに `<...>` 形式は HTML タグ扱いで MD024 誤検知、コード
   フェンスは言語必須。ローカル mermaid lint は環境依存で失敗（内容問題ではない）。
-- **粒度。** 本版は細粒度（約 51 本）。粗くしたい場合はサブシステム単位に束ね直す。
+- **粒度。** 本版は細粒度（約 59 本）。粗くしたい場合はサブシステム単位に束ね直す。
 
 ## 完了条件
 
-- 約 51 本の ADR が `docs/adr/` に存在し、種別分類が反映されている。
+- 約 59 本の ADR が `docs/adr/` に存在し、種別分類が反映されている。
 - 依存表が `docs/reference/dependencies.md` に分離され欠落が修正されている。
 - rules.md の該当ルールから対応 ADR へ backlink がある。
 - `docs/decisions.md` への全参照が貼替済み（AGENTS.md は人手更新）。
