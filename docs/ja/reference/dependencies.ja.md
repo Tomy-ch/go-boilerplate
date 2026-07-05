@@ -7,9 +7,9 @@ English: [dependencies.md](../../reference/dependencies.md)
 参照であり、不変の記録ではありません。
 
 - 依存採用の**ポリシー**（一責務 = 一関心）は決定であり ADR です:
-  [`ADR-0064`](../adr/0064-library-selection-policy.ja.md)。
+  [`ADR-0065`](../adr/0065-library-selection-policy.ja.md)。
 - 2 つの上流にまたがる **bridge / instrumentation** ライブラリは、そのポリシーの
-  境界のある例外として受容します: [`ADR-0065`](../adr/0065-bridge-instrumentation-exceptions.ja.md)。
+  境界のある例外として受容します: [`ADR-0066`](../adr/0066-bridge-instrumentation-exceptions.ja.md)。
 
 > この表は `go.mod`（`require` ブロックの非 indirect エントリ）と同期を保つこと。以下の
 > バージョンはスナップショットであり正ではありません（正は `go.mod`）。
@@ -18,7 +18,7 @@ English: [dependencies.md](../../reference/dependencies.md)
 
 | 領域 | ライブラリ | 責務 |
 | --- | --- | --- |
-| Web / API | `labstack/echo/v4` | HTTP web フレームワーク（[ADR-0015](../adr/0015-echo-http-framework.ja.md) 参照） |
+| Web / API | `labstack/echo/v4` | HTTP web フレームワーク（[ADR-0017](../adr/0017-echo-http-framework.ja.md) 参照） |
 | Web / API | `oapi-codegen/echo-middleware` | Echo 向け OpenAPI リクエスト検証ミドルウェア |
 | Web / API | `oapi-codegen/runtime` | oapi-codegen 生成コードのランタイムサポート |
 | Web / API | `getkin/kin-openapi` | OpenAPI 3 ドキュメントモデル / ローダ |
@@ -27,15 +27,15 @@ English: [dependencies.md](../../reference/dependencies.md)
 | Database | `jackc/pgx/v5` | PostgreSQL ドライバ |
 | Database | `golang-migrate/migrate/v4` | スキーママイグレーション実行 |
 | Errors / utils | `cockroachdb/errors` | スタックトレース付きエラーラップ |
-| Errors / utils | `google/uuid` | UUID 生成（UUIDv7、[ADR-0029](../adr/0029-uuidv7-identifiers.ja.md) 参照） |
+| Errors / utils | `google/uuid` | UUID 生成（UUIDv7、[ADR-0030](../adr/0030-uuidv7-identifiers.ja.md) 参照） |
 | Errors / utils | `golang.org/x/crypto` | 暗号プリミティブ |
 | Errors / utils | `golang.org/x/sync` | 並行プリミティブ（errgroup など） |
-| DI / logging / CLI | `go.uber.org/fx` | DI コンテナ（[ADR-0030](../adr/0030-uber-fx-di.ja.md) 参照） |
+| DI / logging / CLI | `go.uber.org/fx` | DI コンテナ（[ADR-0031](../adr/0031-uber-fx-di.ja.md) 参照） |
 | DI / logging / CLI | `go.uber.org/zap` | 構造化ロギング |
 | DI / logging / CLI | `spf13/cobra` | CLI コマンドフレームワーク |
 | Testing | `go.uber.org/mock` | モック生成ランタイム |
 | Testing | `stretchr/testify` | アサーション |
-| Messaging / worker | `aws/aws-sdk-go-v2` | AWS API クライアントコア（worker アダプタ、opt-in — [ADR-0040](../adr/0040-sqs-adapter-opt-in.ja.md) 参照） |
+| Messaging / worker | `aws/aws-sdk-go-v2` | AWS API クライアントコア（worker アダプタ、opt-in — [ADR-0041](../adr/0041-sqs-adapter-opt-in.ja.md) 参照） |
 | Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS クライアント（pull-ack worker） |
 | Metrics exposition | `prometheus/client_golang` | Prometheus 形式メトリクスエンドポイント + カスタムコレクタ |
 | Metrics exposition | `prometheus/client_model` | Prometheus メトリクスデータモデル（共有型） |
@@ -51,12 +51,12 @@ English: [dependencies.md](../../reference/dependencies.md)
 otel core グループには pre-v1.0（`v0.x`）モジュール（OTLP ログエクスポータと `sdk/log`）が
 含まれますが、いずれも**単一**の上流（OpenTelemetry 自体）に結合しており 2 つではないため、
 ポリシー内で例外扱いしません。OTLP エクスポータは `contrib/exporters/autoexport` ではなく
-typed な `OBS_*` config から明示的に構築されます（[ADR-0058](../adr/0058-config-driven-observability-gating.ja.md) 参照）。
+typed な `OBS_*` config から明示的に構築されます（[ADR-0059](../adr/0059-config-driven-observability-gating.ja.md) 参照）。
 
 ## bridge / instrumentation 例外
 
 以下は**独立にバージョニングされる 2 つの上流**（フレームワーク/ライブラリ × OpenTelemetry）に
-またがるため「一関心・一上流」から外れ、[ADR-0065](../adr/0065-bridge-instrumentation-exceptions.ja.md)
+またがるため「一関心・一上流」から外れ、[ADR-0066](../adr/0066-bridge-instrumentation-exceptions.ja.md)
 に基づき境界のある例外として受容します。
 
 | ライブラリ | 結合 | 役割 |
@@ -73,5 +73,5 @@ typed な `OBS_*` config から明示的に構築されます（[ADR-0058](../ad
 
 - 以前この依存表は `docs/decisions.md` にインラインでしたが、ドリフトしていました
   （`net/http/otelhttp` 計装と `otel/sdk/log` SDK が欠落）。**目録**（本ファイル）を
-  **ポリシー**（[ADR-0064](../adr/0064-library-selection-policy.ja.md)）から分離した理由がこれで、
+  **ポリシー**（[ADR-0065](../adr/0065-library-selection-policy.ja.md)）から分離した理由がこれで、
   不変の決定が `go.mod` を追う一覧を抱えなくて済むようになりました。

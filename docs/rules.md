@@ -52,7 +52,7 @@ Usecase → Boundary(interface) → Infrastructure
 
 ## Generated Code Rules
 
-> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0020](adr/0020-sqlc-type-safe-sql.md), [ADR-0021](adr/0021-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0075](adr/0075-generated-artifact-drift-gate.md).
+> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0076](adr/0076-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -101,7 +101,7 @@ OpenAPI definition is the **single source of truth of API**.
 
 ## Database Migration
 
-> Rationale: [ADR-0022](adr/0022-append-only-immutable-migrations.md), [ADR-0023](adr/0023-sequential-migration-ids.md).
+> Rationale: [ADR-0024](adr/0024-append-only-immutable-migrations.md), [ADR-0025](adr/0025-sequential-migration-ids.md).
 
 Changes to the database schema must follow strict migration rules.
 
@@ -169,7 +169,7 @@ Examples:
 
 ## Repository / QueryService Rules
 
-> Rationale: [ADR-0025](adr/0025-lightweight-cqrs.md), [ADR-0026](adr/0026-system-query-dml-category.md).
+> Rationale: [ADR-0027](adr/0027-lightweight-cqrs.md), [ADR-0028](adr/0028-system-cqrs-dml-category.md).
 
 - Repository handles Aggregate persistence and simple reads of a single Aggregate
   (fetch by ID, and simple filter / list / count by the Aggregate's own attributes).
@@ -223,14 +223,14 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ### Transaction Rules
 
-> Rationale: [ADR-0027](adr/0027-transaction-retry-idempotent-callers.md).
+> Rationale: [ADR-0029](adr/0029-transaction-retry-idempotent-callers.md).
 
 - Transactions must be started only in the Usecase layer
 - Infrastructure / Repository must not start transactions
 
 ## Error Handling Rules
 
-> Rationale: [ADR-0037](adr/0037-apperror-protocol-agnostic-errors.md).
+> Rationale: [ADR-0038](adr/0038-apperror-protocol-agnostic-errors.md).
 
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
@@ -298,7 +298,7 @@ Before generating code, AI agents must refer to the following documents.
 
 ## Toolchain Execution Rules
 
-> Rationale: [ADR-0066](adr/0066-containerized-pinned-toolchain.md), [ADR-0067](adr/0067-mise-ssot-drift-gate.md).
+> Rationale: [ADR-0067](adr/0067-containerized-pinned-toolchain.md), [ADR-0068](adr/0068-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
 containerized tool-runners so they stay reproducible across machines.
