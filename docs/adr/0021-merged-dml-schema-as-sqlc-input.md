@@ -16,7 +16,7 @@ accepted
 sqlc requires two inputs: a schema (table definitions) and SQL query files. The schema
 evolves through migrations applied to a live database, and DML queries are spread across
 per-category subdirectories (`repository/`, `query_service/`, `command_service/`,
-`system_query/`). Pointing sqlc directly at raw migration files is impractical because sqlc
+`system_cqrs/`). Pointing sqlc directly at raw migration files is impractical because sqlc
 does not understand migration sequencing — it would need all DDL statements merged and
 applied in order. Pointing it at scattered DML directories without merging would require
 sqlc to be aware of the directory layout.

@@ -76,7 +76,7 @@ without changing the subsystem contract.
 - Source: [`docs/design/idempotency.md`](../design/idempotency.md) §4 (operational notes, "PII
   caveat").
 - The `response_payload` column type and `Complete` SQL are defined in
-  `database/dml/system_query/idempotency/`.
+  `database/dml/system_cqrs/idempotency/`.
 - The 24-hour TTL that bounds PII retention is decided in ADR-0051.
 - Integrators with PII-bearing DTOs should ensure their database backup encryption and
   access controls cover the `idempotency_keys` table.

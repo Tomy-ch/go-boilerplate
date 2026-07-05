@@ -66,5 +66,5 @@ WHERE id IN (
 ## 補足
 
 - `DefaultRetention`（7 日）と `DefaultGCBatchSize`（10,000）は `docs/design/outbox.md`（用語集エントリ「GC (SweepPublished)」）に記述されている。
-- SQL ソース: `database/dml/system_query/outbox/delete_published_outbox.sql`。
+- SQL ソース: `database/dml/system_cqrs/outbox/delete_published_outbox.sql`。
 - 関連 ADR: [ADR-0045](0045-outbox-dead-after-max-attempts.ja.md)、[ADR-0048](0048-relay-resident-gc-oneshot.ja.md)。

@@ -60,7 +60,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0023](0023-sequential-migration-ids.ja.md) | CI で強制するギャップ・ペアチェック付きの 6 桁連番マイグレーション ID を使用する | accepted |
 | [0024](0024-master-data-via-migration.ja.md) | マスターデータをマイグレーションで提供する; トランザクショナルシードを本番から除外する | accepted |
 | [0025](0025-lightweight-cqrs.ja.md) | 軽量 CQRS を採用する — 書き込みは Repository、読み込みは QueryService | accepted |
-| [0026](0026-system-query-dml-category.ja.md) | CQRS 分割外の第 4 DML カテゴリとして system_query を導入する | accepted |
+| [0026](0026-system-query-dml-category.ja.md) | CQRS 分割外の第 4 DML カテゴリとして system_cqrs を導入する | accepted |
 | [0027](0027-transaction-retry-idempotent-callers.ja.md) | シリアライゼーション競合時にトランザクションをリトライする; 呼び出し元のべき等性を要求する | accepted |
 | [0028](0028-in-database-full-text-search.ja.md) | GIN trgm インデックス付き GENERATED STORED 列を使用してデータベースで全文検索を実行する | accepted |
 | [0029](0029-uuidv7-identifiers.ja.md) | すべてのエンティティ主キーに UUIDv7（時刻順）識別子を使用する | accepted |

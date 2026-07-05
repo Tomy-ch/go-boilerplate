@@ -1,12 +1,12 @@
-# system_query
+# system_cqrs
 
 English | [日本語](README.ja.md)
 
-`internal/infrastructure/rdb/system_query` is an Infrastructure layer package that provides **system-operational DB queries**.
+`internal/infrastructure/rdb/system_cqrs` is an Infrastructure layer package that provides **system-operational DB queries**.
 
 ## Position in Onion Architecture
 
-system_query is a **DB access category**, distinct from Repository and QueryService.
+system_cqrs is a **DB access category**, distinct from Repository and QueryService.
 
 ```mermaid
 flowchart TB
@@ -14,7 +14,7 @@ flowchart TB
         SQIF["DBSystemQuery interface"]
     end
     subgraph "Infrastructure Layer"
-        SQImpl["system_query impl"]
+        SQImpl["system_cqrs impl"]
     end
 
     SQImpl -. implements .-> SQIF
@@ -55,7 +55,7 @@ type DBHealth struct {
 The interface is defined in the Usecase layer:
 
 ```text
-internal/usecase/healthcheck/query/health_check_system_query.go
+internal/usecase/healthcheck/query/health_check_system_cqrs.go
 ```
 
 ### idempotency
@@ -90,13 +90,13 @@ See [`internal/usecase/boundary/outbox/README.md`](../../../usecase/boundary/out
 ## Structure
 
 ```text
-internal/infrastructure/rdb/system_query/
+internal/infrastructure/rdb/system_cqrs/
 ├── healthcheck/
-│   └── health_check_system_query.go
+│   └── health_check_system_cqrs.go
 ├── idempotency/
-│   └── idempotency_system_query.go
+│   └── idempotency_system_cqrs.go
 └── outbox/
-    └── outbox_system_query.go
+    └── outbox_system_cqrs.go
 ```
 
 ## Design Policy
@@ -112,5 +112,5 @@ internal/infrastructure/rdb/system_query/
 To add a new system query:
 
 1. Define the interface in `internal/usecase/<concern>/query/`
-2. Place the implementation in `internal/infrastructure/rdb/system_query/<concern>/`
-3. Add DI registration in `internal/di/module/persistence.go` (`persistenceModule`'s `system_query` submodule)
+2. Place the implementation in `internal/infrastructure/rdb/system_cqrs/<concern>/`
+3. Add DI registration in `internal/di/module/persistence.go` (`persistenceModule`'s `system_cqrs` submodule)

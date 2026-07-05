@@ -81,4 +81,4 @@ this use case.
 - Related: [ADR-0002](0002-onion-architecture.md) (onion architecture — `Run` depends only
   on `Store` seam and `tx.Manager`, not on infrastructure).
 - The `Store` seam is defined at `internal/usecase/boundary/idempotency`; the RDB
-  implementation lives in `internal/infrastructure/rdb/system_query/idempotency`.
+  implementation lives in `internal/infrastructure/rdb/system_cqrs/idempotency`.

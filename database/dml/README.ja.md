@@ -16,7 +16,7 @@ database/dml/
 ├── query_service/    # 検索専用 DML（読み取り最適化）
 │   └── user/
 ├── command_service/  # コマンド専用 DML（将来拡張用）
-└── system_query/     # システム運用クエリ（ヘルスチェック等）
+└── system_cqrs/     # システム運用クエリ（ヘルスチェック等）
     └── health_check/
 ```
 
@@ -27,7 +27,7 @@ database/dml/
 |`repository/`|`internal/infrastructure/rdb/repository/`|Domain 層|Aggregate の CRUD|
 |`query_service/`|`internal/infrastructure/rdb/query_service/`|Usecase 層|ユースケース固有の検索|
 |`command_service/`|（将来拡張）|Usecase 層|書き込み専用コマンド|
-|`system_query/`|`internal/infrastructure/rdb/system_query/`|Usecase 層|システム運用クエリ|
+|`system_cqrs/`|`internal/infrastructure/rdb/system_cqrs/`|Usecase 層|システム運用クエリ|
 
 ## SQL ファイルの配置ルール
 

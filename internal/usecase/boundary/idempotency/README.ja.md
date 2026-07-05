@@ -23,4 +23,4 @@ type Store interface {
 
 ## 実装
 
-`internal/infrastructure/rdb/system_query/idempotency/` に sqlc 生成クエリを用いた RDB 具体実装が配置されています。
+`internal/infrastructure/rdb/system_cqrs/idempotency/` に sqlc 生成クエリを用いた RDB 具体実装が配置されています。

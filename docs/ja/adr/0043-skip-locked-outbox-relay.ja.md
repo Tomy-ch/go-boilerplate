@@ -63,5 +63,5 @@ FOR UPDATE SKIP LOCKED;
 ## 補足
 
 - マルチインスタンス安全性の不変条件: `docs/design/outbox.md`（§「Design invariants」）。
-- SQL ソース: `database/dml/system_query/outbox/claim_pending_outbox.sql`。
+- SQL ソース: `database/dml/system_cqrs/outbox/claim_pending_outbox.sql`。
 - 関連 ADR: [ADR-0041](0041-transactional-outbox.ja.md)、[ADR-0042](0042-at-least-once-outbox-poll.ja.md)。

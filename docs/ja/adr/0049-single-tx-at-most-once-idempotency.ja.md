@@ -54,4 +54,4 @@ accepted
 
 - 出典: [`docs/design/idempotency.md`](../../design/idempotency.md) §1（設計原則）および §2.2（リクエストごとの決定図）。
 - 関連: [ADR-0002](0002-onion-architecture.ja.md)（オニオンアーキテクチャ — `Run` は `Store` シームと `tx.Manager` にのみ依存し、インフラには依存しない）。
-- `Store` シームは `internal/usecase/boundary/idempotency` に定義されており、RDB 実装は `internal/infrastructure/rdb/system_query/idempotency` にある。
+- `Store` シームは `internal/usecase/boundary/idempotency` に定義されており、RDB 実装は `internal/infrastructure/rdb/system_cqrs/idempotency` にある。

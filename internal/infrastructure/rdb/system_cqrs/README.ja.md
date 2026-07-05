@@ -1,12 +1,12 @@
-# system_query
+# system_cqrs
 
 [English](README.md) | 日本語
 
-`internal/infrastructure/rdb/system_query` は、**システム運用向けの DB クエリ**を提供する Infrastructure 層のパッケージです。
+`internal/infrastructure/rdb/system_cqrs` は、**システム運用向けの DB クエリ**を提供する Infrastructure 層のパッケージです。
 
 ## オニオンアーキテクチャにおける位置づけ
 
-system_query は Repository や QueryService とは異なる **DB アクセスカテゴリ**です。
+system_cqrs は Repository や QueryService とは異なる **DB アクセスカテゴリ**です。
 
 ```mermaid
 flowchart TB
@@ -14,7 +14,7 @@ flowchart TB
         SQIF["DBSystemQuery interface"]
     end
     subgraph "Infrastructure 層"
-        SQImpl["system_query 実装"]
+        SQImpl["system_cqrs 実装"]
     end
 
     SQImpl -. implements .-> SQIF
@@ -55,7 +55,7 @@ type DBHealth struct {
 interface は Usecase 層に定義されています。
 
 ```text
-internal/usecase/healthcheck/query/health_check_system_query.go
+internal/usecase/healthcheck/query/health_check_system_cqrs.go
 ```
 
 ### idempotency
@@ -90,13 +90,13 @@ func New(provider driver.DatabaseDriver, tf observability.TracerFactory) outboxb
 ## 構成
 
 ```text
-internal/infrastructure/rdb/system_query/
+internal/infrastructure/rdb/system_cqrs/
 ├── healthcheck/
-│   └── health_check_system_query.go
+│   └── health_check_system_cqrs.go
 ├── idempotency/
-│   └── idempotency_system_query.go
+│   └── idempotency_system_cqrs.go
 └── outbox/
-    └── outbox_system_query.go
+    └── outbox_system_cqrs.go
 ```
 
 ## 設計方針
@@ -112,5 +112,5 @@ internal/infrastructure/rdb/system_query/
 新しいシステムクエリを追加する場合：
 
 1. `internal/usecase/<concern>/query/` に interface を定義
-2. `internal/infrastructure/rdb/system_query/<concern>/` に実装を配置
-3. `internal/di/module/persistence.go`（`persistenceModule` の `system_query` サブモジュール）に DI 登録を追加
+2. `internal/infrastructure/rdb/system_cqrs/<concern>/` に実装を配置
+3. `internal/di/module/persistence.go`（`persistenceModule` の `system_cqrs` サブモジュール）に DI 登録を追加

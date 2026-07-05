@@ -78,5 +78,5 @@ delivery path.
 ## Notes
 
 - Multi-instance safety invariant: `docs/design/outbox.md` (§ "Design invariants").
-- SQL source: `database/dml/system_query/outbox/claim_pending_outbox.sql`.
+- SQL source: `database/dml/system_cqrs/outbox/claim_pending_outbox.sql`.
 - Related ADRs: [ADR-0041](0041-transactional-outbox.md), [ADR-0042](0042-at-least-once-outbox-poll.md).

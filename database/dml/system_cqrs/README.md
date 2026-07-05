@@ -12,12 +12,12 @@ System operational queries for health checks, metrics collection, and infrastruc
 
 ## Infrastructure Mapping
 
-Implementation: `internal/infrastructure/rdb/system_query/`
+Implementation: `internal/infrastructure/rdb/system_cqrs/`
 
 ## Directory Structure
 
 ```text
-system_query/
+system_cqrs/
 ├── health_check/
 │   ├── select_system_health.sql
 │   └── ...

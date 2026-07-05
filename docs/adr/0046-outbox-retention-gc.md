@@ -79,6 +79,6 @@ Operationally simple but unsustainable at any non-trivial event volume.
 
 - `DefaultRetention` (7 days) and `DefaultGCBatchSize` (10 000) described in
   `docs/design/outbox.md` (Glossary entry "GC (SweepPublished)").
-- SQL source: `database/dml/system_query/outbox/delete_published_outbox.sql`.
+- SQL source: `database/dml/system_cqrs/outbox/delete_published_outbox.sql`.
 - Related ADRs: [ADR-0045](0045-outbox-dead-after-max-attempts.md),
   [ADR-0048](0048-relay-resident-gc-oneshot.md).

@@ -1,5 +1,5 @@
 
--- === source: database/dml/system_query/outbox/claim_pending_outbox.sql ===
+-- === source: database/dml/system_cqrs/outbox/claim_pending_outbox.sql ===
 -- name: ClaimPendingOutbox :many
 -- pending 行を最大 $1 件 claim する。SKIP LOCKED により多インスタンスでも同一行を二重取得しない。
 -- 順序保証は捨てているため id 昇順で十分。呼び出し側 tx の保持中だけロックされる。
@@ -18,7 +18,7 @@ ORDER BY id
 LIMIT $1
 FOR UPDATE SKIP LOCKED;
 
--- === source: database/dml/system_query/outbox/delete_published_outbox.sql ===
+-- === source: database/dml/system_cqrs/outbox/delete_published_outbox.sql ===
 -- name: DeletePublishedOutbox :execrows
 -- retention 用 GC。published_at が cutoff より古い行を最大 $2 件削除し、削除件数を返す。
 -- 長時間稼働で outbox が単調増加しないようにする。
@@ -32,7 +32,7 @@ WHERE id IN (
         LIMIT $2
     );
 
--- === source: database/dml/system_query/outbox/insert_outbox.sql ===
+-- === source: database/dml/system_cqrs/outbox/insert_outbox.sql ===
 -- name: InsertOutbox :one
 -- 業務 tx 内で outbox 行を 1 行 INSERT する（emit）。message_id は DB が採番し返す。
 INSERT INTO outbox (
@@ -46,7 +46,7 @@ INSERT INTO outbox (
 )
 RETURNING id, message_id;
 
--- === source: database/dml/system_query/outbox/mark_outbox_dead.sql ===
+-- === source: database/dml/system_cqrs/outbox/mark_outbox_dead.sql ===
 -- name: MarkOutboxDead :execrows
 -- attempts が max に達した恒久失敗行を dead へ遷移する。無限リトライを止め、手動 replay 対象として残置する。
 UPDATE outbox
@@ -54,7 +54,7 @@ SET status = 'dead'
 WHERE id = $1
     AND status = 'pending';
 
--- === source: database/dml/system_query/outbox/mark_outbox_failed.sql ===
+-- === source: database/dml/system_cqrs/outbox/mark_outbox_failed.sql ===
 -- name: MarkOutboxFailed :one
 -- publish 失敗時に attempts を加算し last_error を記録する。加算後の attempts を返し、
 -- 呼び出し側が max 到達判定（dead 化）に用いる。次 poll で自然に再送される。
@@ -66,7 +66,7 @@ WHERE id = $1
     AND status = 'pending'
 RETURNING attempts;
 
--- === source: database/dml/system_query/outbox/mark_outbox_published.sql ===
+-- === source: database/dml/system_cqrs/outbox/mark_outbox_published.sql ===
 -- name: MarkOutboxPublished :execrows
 -- publish 成功行を published へ遷移する。published_at に遷移時刻を記録する。
 UPDATE outbox
@@ -76,7 +76,7 @@ SET
 WHERE id = $1
     AND status = 'pending';
 
--- === source: database/dml/system_query/outbox/oldest_pending_outbox.sql ===
+-- === source: database/dml/system_cqrs/outbox/oldest_pending_outbox.sql ===
 -- name: OldestPendingOutbox :one
 -- SLI(outbox lag) 算出用。最古 pending 行の created_at を返す。pending 行が無ければ 0 行を返す。
 SELECT created_at
@@ -85,7 +85,7 @@ WHERE status = 'pending'
 ORDER BY id
 LIMIT 1;
 
--- === source: database/dml/system_query/outbox/replay_dead_outbox.sql ===
+-- === source: database/dml/system_cqrs/outbox/replay_dead_outbox.sql ===
 -- name: ReplayDeadOutbox :execrows
 -- dead 行を pending へ戻し再 publish 対象に復帰させる（運用 replay）。attempts/last_error をリセットする。
 -- $1 が NULL の場合は全 dead 行、指定時は当該 message_id のみを対象とする。

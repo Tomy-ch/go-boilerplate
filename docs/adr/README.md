@@ -69,7 +69,7 @@ do X") are tagged `setup-review`.
 | [0023](0023-sequential-migration-ids.md) | Use sequential 6-digit migration IDs with CI-enforced gap and pair checks | accepted |
 | [0024](0024-master-data-via-migration.md) | Ship master data via migration; keep transactional seed out of production | accepted |
 | [0025](0025-lightweight-cqrs.md) | Adopt lightweight CQRS — Repository for writes, QueryService for reads | accepted |
-| [0026](0026-system-query-dml-category.md) | Introduce system_query as a fourth DML category outside the CQRS split | accepted |
+| [0026](0026-system-query-dml-category.md) | Introduce system_cqrs as a fourth DML category outside the CQRS split | accepted |
 | [0027](0027-transaction-retry-idempotent-callers.md) | Retry transactions on serialization conflict; require callers to be idempotent | accepted |
 | [0028](0028-in-database-full-text-search.md) | Run full-text search in the database using a GENERATED STORED column with a GIN trgm index | accepted |
 | [0029](0029-uuidv7-identifiers.md) | Use UUIDv7 (time-ordered) identifiers for all entity primary keys | accepted |

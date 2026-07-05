@@ -12,12 +12,12 @@
 
 ## インフラストラクチャマッピング
 
-実装: `internal/infrastructure/rdb/system_query/`
+実装: `internal/infrastructure/rdb/system_cqrs/`
 
 ## ディレクトリ構成
 
 ```text
-system_query/
+system_cqrs/
 ├── health_check/
 │   ├── select_system_health.sql
 │   └── ...

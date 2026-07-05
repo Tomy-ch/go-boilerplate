@@ -21,7 +21,7 @@ type systemQuery struct {
 func New(
 	provider driver.DatabaseDriver,
 	tf observability.TracerFactory,
-) query.DBSystemQuery {
+) query.DBSystemCqrs {
 	return &systemQuery{
 		db:     provider,
 		tracer: tf.Infra(),

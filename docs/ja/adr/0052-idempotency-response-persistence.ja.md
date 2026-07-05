@@ -52,6 +52,6 @@ accepted
 ## 補足
 
 - 出典: [`docs/design/idempotency.md`](../../design/idempotency.md) §4（運用メモ、「PII caveat」）。
-- `response_payload` カラム型と `Complete` SQL は `database/dml/system_query/idempotency/` で定義されている。
+- `response_payload` カラム型と `Complete` SQL は `database/dml/system_cqrs/idempotency/` で定義されている。
 - PII 保持期間を制限する 24 時間 TTL は ADR-0051 で決定されている。
 - PII を含む DTO を持つインテグレーターは、データベースのバックアップ暗号化とアクセス制御が `idempotency_keys` テーブルをカバーしていることを確認すること。

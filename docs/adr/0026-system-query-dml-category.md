@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [persistence, cqrs]
 ---
 
-# ADR-0026: Introduce system_query as a fourth DML category outside the CQRS split
+# ADR-0026: Introduce system_cqrs as a fourth DML category outside the CQRS split
 
 ## Status
 
@@ -34,18 +34,18 @@ explicit.
 
 ## Decision
 
-`database/dml/system_query/` is a **fourth DML category** for system operational queries
+`database/dml/system_cqrs/` is a **fourth DML category** for system operational queries
 (health verification, idempotency enforcement, outbox delivery). Its implementations live
-in `internal/infrastructure/rdb/system_query/` and are registered under a dedicated
-`system_query` sub-module in `persistenceModule`
+in `internal/infrastructure/rdb/system_cqrs/` and are registered under a dedicated
+`system_cqrs` sub-module in `persistenceModule`
 (`internal/di/module/persistence.go`).
 
-The `system_query` category is explicitly outside the CQRS read/write split described in
+The `system_cqrs` category is explicitly outside the CQRS read/write split described in
 [ADR-0025](0025-lightweight-cqrs.md). It serves infrastructure concerns, not application
 business logic.
 
 `make gen-query` processes all four categories through the same merge-dml and sqlc pipeline
-(see [ADR-0021](0021-merged-dml-schema-as-sqlc-input.md)), so system_query participates
+(see [ADR-0021](0021-merged-dml-schema-as-sqlc-input.md)), so system_cqrs participates
 in the same type-safe code generation as the other categories.
 
 ## Consequences
@@ -63,16 +63,18 @@ in the same type-safe code generation as the other categories.
 
 - Developers must be aware of the four-category model when placing new queries, adding
   cognitive overhead compared to a two-category or flat model.
-- The name `system_query` sounds read-only but includes idempotency writes and outbox
+- The name `system_cqrs` sounds read-only but includes idempotency writes and outbox
   inserts; "infrastructure-operational" would be more precise but longer.
 
 ## Alternatives Considered
 
 ### Merge system queries into repository/
 
-Simple structure, but conflates domain-aggregate concerns with infrastructure-operational
-concerns. Health checks and idempotency keys have no aggregate; placing them in
-`repository/` is misleading and makes the Repository concept less coherent.
+Simple structure, but `repository/` maintains a strict 1:1 structure with domain aggregates,
+so system operational concerns that have no aggregate owner must not live there. It conflates
+domain-aggregate concerns with infrastructure-operational concerns. Health checks and
+idempotency keys have no aggregate; placing them in `repository/` is misleading and makes the
+Repository concept less coherent.
 
 ### A single infrastructure/ category
 
@@ -89,7 +91,7 @@ compile-time guarantees sqlc provides are worth the additional structure.
 
 - Source: [`database/dml/README.md`](../../database/dml/README.md) § "Directory
   Structure" and § "Subdirectory Mapping to Onion Architecture".
-- Source: [`database/dml/system_query/README.md`](../../database/dml/system_query/README.md).
+- Source: [`database/dml/system_cqrs/README.md`](../../database/dml/system_cqrs/README.md).
 - DI registration: [`internal/di/module/persistence.go`](../../internal/di/module/persistence.go).
-- Related: [ADR-0025](0025-lightweight-cqrs.md) (CQRS split that system_query falls
+- Related: [ADR-0025](0025-lightweight-cqrs.md) (CQRS split that system_cqrs falls
   outside of); [ADR-0021](0021-merged-dml-schema-as-sqlc-input.md) (merge-dml pipeline).

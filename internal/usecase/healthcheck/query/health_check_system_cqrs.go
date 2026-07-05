@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// DBSystemQuery は、データベースの健全性を確認するシステムクエリのインターフェースです。
-type DBSystemQuery interface {
+// DBSystemCqrs は、データベースの健全性を確認するシステムクエリのインターフェースです。
+type DBSystemCqrs interface {
 	CheckDBHealth(ctx context.Context) (DBHealth, error)
 }
 

@@ -24,13 +24,13 @@ func TestNew(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		tf := observability.NewNoopTracerFactory(t)
-		sysQuery := mock_query.NewMockDBSystemQuery(ctrl)
+		sysQuery := mock_query.NewMockDBSystemCqrs(ctrl)
 		clock := clocktest.NewMockClock(t, time.Time{})
 
 		expected := &usecase{
-			tracer:        tf.Usecase(),
-			clock:         clock,
-			dbSystemQuery: sysQuery,
+			tracer:       tf.Usecase(),
+			clock:        clock,
+			dbSystemCqrs: sysQuery,
 		}
 		actual := New(sysQuery, tf, clock)
 
@@ -51,7 +51,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
+			mockSysQuery := mock_query.NewMockDBSystemCqrs(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{
 				Ready:       true,
 				Latency:     1000,
@@ -61,9 +61,9 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			mockClock := clocktest.NewMockClockOnce(t, now)
 
 			u := &usecase{
-				tracer:        lt,
-				clock:         mockClock,
-				dbSystemQuery: mockSysQuery,
+				tracer:       lt,
+				clock:        mockClock,
+				dbSystemCqrs: mockSysQuery,
 			}
 
 			result, err := u.CheckHealth(ctx)
@@ -85,15 +85,15 @@ func Test_usecase_CheckHealth(t *testing.T) {
 
 			expectedErr := testkit.ExpectedDBError()
 
-			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
+			mockSysQuery := mock_query.NewMockDBSystemCqrs(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{}, expectedErr).Times(1)
 
 			mockClock := clocktest.NewMockClockOnce(t, now)
 
 			u := &usecase{
-				tracer:        lt,
-				clock:         mockClock,
-				dbSystemQuery: mockSysQuery,
+				tracer:       lt,
+				clock:        mockClock,
+				dbSystemCqrs: mockSysQuery,
 			}
 
 			actualResult, actualErr := u.CheckHealth(ctx)

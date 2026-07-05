@@ -42,7 +42,7 @@ flowchart TB
 |sqlc|SQL から生成された型安全なクエリ実行コード|
 |pgerror|PostgreSQL エラー → アプリケーションエラー変換|
 |metrics|コネクションプール統計の Prometheus メトリクス|
-|system_query|システム運用クエリ（ヘルスチェック等）|
+|system_cqrs|システム運用クエリ（ヘルスチェック等）|
 |testkit|RDB テストユーティリティ（実DB + rollback）|
 
 ## ディレクトリ構成
@@ -51,7 +51,7 @@ flowchart TB
 internal/infrastructure/rdb
  ├ repository/        Repository 実装
  ├ query_service/     QueryService 実装
- ├ system_query/      システム運用クエリ（ヘルスチェック等）
+ ├ system_cqrs/      システム運用クエリ（ヘルスチェック等）
  ├ driver/            DB 接続 / トランザクション + pgx クエリトレーサー（ログ / トレース）
  ├ sqlc/              sqlc 生成コード + SQL helper
  ├ pgerror/           PostgreSQL エラー正規化
@@ -187,15 +187,15 @@ Gauge（接続数）と Counter（取得回数・破棄回数等）を提供し�
 
 [metrics ディレクトリの README](metrics/README.ja.md)
 
-## system_query
+## system_cqrs
 
-`system_query` は **システム運用向けの DB クエリ**（ヘルスチェック等）を提供する層です。
+`system_cqrs` は **システム運用向けの DB クエリ**（ヘルスチェック等）を提供する層です。
 
 Repository / QueryService とは異なり、ビジネスドメインに属さない運用・監視目的のクエリを担当します。
 
 詳細は以下を参照してください。
 
-[system_query ディレクトリの README](system_query/README.ja.md)
+[system_cqrs ディレクトリの README](system_cqrs/README.ja.md)
 
 ## testkit
 
@@ -248,7 +248,7 @@ PostgreSQL 固有エラーは`pgerror`でアプリケーション共通エラー
 
 SQL 実行はすべて`sqlc`を通して行います。
 
-例外: `sqlc` で表現できない PostgreSQL のセッション設定コマンド（例: 行ロッククエリ前に発行する `SET LOCAL lock_timeout`）は直接 `Exec` で実行してよい。これらは `system_query` に限定し、エラーは引き続き `pgerror.NormalizeError` を経由させます。
+例外: `sqlc` で表現できない PostgreSQL のセッション設定コマンド（例: 行ロッククエリ前に発行する `SET LOCAL lock_timeout`）は直接 `Exec` で実行してよい。これらは `system_cqrs` に限定し、エラーは引き続き `pgerror.NormalizeError` を経由させます。
 
 ### 6. 可観測性
 
