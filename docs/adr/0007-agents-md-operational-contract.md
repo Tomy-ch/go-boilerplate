@@ -14,7 +14,7 @@ accepted
 ## Context
 
 This repository is designed to operate safely with AI-assisted development tools (Claude
-Code, Cursor, GitHub Copilot, Gemini CLI / Code Assist, OpenAI Codex CLI). Each tool has
+Code, Cursor, GitHub Copilot, Gemini CLI / Code Assist, OpenAI Codex CLI). Each tool is expected to have
 its own native configuration mechanism (`.claude/`, `.cursor/`, `.github/copilot-instructions.md`,
 `.gemini/`, `.agents/`), but without a common contract, each configuration independently
 re-specifies the same behavioral rules — modification scope, forbidden shortcuts, layer
@@ -74,6 +74,9 @@ codified as skill files under `.claude/skills/`.
   reducing the risk of inadvertent overwrites.
 - Skill files under `.claude/skills/` codify reusable procedures without modifying the base
   contract.
+- The AGENTS.md and README-driven contract also helps converge AI output variance: it raises
+  AI-generated code and workflow execution toward the level a developer would achieve by
+  reading the canonical READMEs.
 
 ### Negative Consequences
 

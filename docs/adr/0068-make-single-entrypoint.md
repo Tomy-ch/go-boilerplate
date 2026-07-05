@@ -58,7 +58,10 @@ Two execution flavours:
 - `make_help.mjs` discovers new `.mk` files automatically (recursive scan of `.makefiles/`),
   so `make help` stays accurate; making `make` *execute* a new group still requires adding an
   explicit `include` line to the top-level `makefile`.
-- CI, git hooks, and skills share one stable entrypoint.
+- CI, git hooks, and skills share one stable entrypoint. Because CI, lefthook, and the
+  developer terminal all ultimately invoke the same `make` target implementation, command
+  mistakes and environment divergence are reduced — there is no separate set of commands
+  to get wrong in different contexts.
 - The normal / `-ci` flavour split keeps the same logical operation available in both
   containerised and bare-metal contexts.
 

@@ -55,11 +55,16 @@ generated artifact and must not be edited manually.
   generation, keeping both human organization and tooling simplicity.
 - The generated Go code (`internal/infrastructure/rdb/sqlc/gen/`) is fully reproducible
   from the same migrated DB state.
+- The committed `schema.gen.sql` snapshot lets reviewers audit the generated Go code without
+  re-running the migration pipeline: the runtime source of truth is the SQL files, but the
+  generation-input state exists only on the generator's local DB at generation time, so the
+  snapshot makes it available for review without reconstruction.
 
 ### Negative Consequences
 
 - A live, migrated database must be available before running `make gen-query`; the schema
-  dump cannot be produced from migration files alone.
+  dump cannot be produced from migration files alone. In practice this is harmless because a
+  local container is always running during normal development.
 - `database/gen/` must be committed or regenerated in CI, adding a dependency on the DB
   container during generation.
 

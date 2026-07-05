@@ -30,7 +30,12 @@ to cover them, or to generalise the port to a lowest-common-denominator interfac
 ## Decision
 
 We deliberately do NOT support push-type brokers or streaming-log consumers within the
-worker port defined by [ADR-0038](0038-broker-agnostic-worker-scaffold.md).
+worker port defined by [ADR-0038](0038-broker-agnostic-worker-scaffold.md). The exclusion
+is not about pull-ack being the only conceivable model — it is about deliberately avoiding
+the need to build and maintain multiple adapter variants. Pull-ack is the chosen concrete
+instance; push and streaming are excluded because supporting them would require either a
+diluted lowest-common-denominator interface or separate adapters with their own maintenance
+burden.
 
 - **Push delivery** (RabbitMQ-style) already has a natural home in this codebase: the HTTP
   controller layer receives pushed requests. A webhook endpoint is the correct adapter for

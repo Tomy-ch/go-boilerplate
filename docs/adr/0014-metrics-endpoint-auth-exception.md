@@ -70,6 +70,9 @@ middleware registered on the route.
   separate from JWT/BearerAuth used for API endpoints.
 - The constant-time comparison in the validator prevents credential leakage via timing
   analysis.
+- App-level BasicAuth and infrastructure-level access control are **not mutually exclusive** —
+  running both is defense in depth: if one silently breaks (a misconfigured network rule, a
+  disabled gateway policy), the other still guards the endpoint.
 
 ### Negative Consequences
 
@@ -87,6 +90,15 @@ Would make the security enforcement consistent with other endpoints. Rejected: t
 endpoint is an operational concern, not an API resource — adding it to the spec pollutes
 the consumer contract and requires generating types for a Prometheus response format that
 oapi-codegen cannot model.
+
+### Route /metrics through the application Authenticator (Authn)
+
+Reuse the same per-request `Authenticator` used for API endpoints. Rejected: full
+per-request authentication is over-engineering for an operational endpoint that is scraped
+frequently, and adds latency on the hot scrape path. BasicAuth has low setup and
+verification cost and fits an ops endpoint. The trade-off is that the operator must manage
+the metrics username/password and keep them out of source control (do not commit real
+values in `env/.env.*`).
 
 ### Skip auth on /metrics and rely on network-level access control
 

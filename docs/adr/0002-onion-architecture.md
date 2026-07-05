@@ -52,7 +52,9 @@ of the concentric-layers idea, not a full Clean Architecture with extra abstract
 ### Layered MVC
 
 Simple, but tends to mix domain logic and infrastructure logic, eroding the stable core
-this project prioritizes.
+this project prioritizes. It also creates conditions for fat Model or service classes —
+business logic accumulating in one place — which the layered approach here avoids by
+assigning distinct responsibilities to domain, usecase, and infrastructure.
 
 ### Clean Architecture
 

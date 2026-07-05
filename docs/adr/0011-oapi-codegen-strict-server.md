@@ -83,13 +83,16 @@ strict interface to the plain `ServerInterface` that Echo route registration exp
 
 Simpler to configure. Rejected because it couples all handler packages to a shared
 interface — adding or changing one endpoint recompiles everything and makes responsibility
-boundaries ambiguous.
+boundaries ambiguous. In active team development, simultaneous edits to a single shared
+generated file also produce frequent merge conflicts.
 
 ### Plain echo-server mode (without strict-server)
 
 Still scoped per tag, but each handler method receives a raw `echo.Context` and must
 perform its own binding and serialisation. Rejected because it reproduces the same
-boilerplate in every handler and leaves room for inconsistent error handling.
+boilerplate in every handler and leaves room for inconsistent error handling. Writing this
+binding and serialisation boilerplate in every handler also significantly inflates overall
+line count.
 
 ## Notes
 

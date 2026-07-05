@@ -30,7 +30,8 @@ Go code is derived from it (see [ADR-0020](0020-sqlc-type-safe-sql.md)).
 
 - Full control over every query.
 - Clear, predictable performance characteristics.
-- Explicit, reviewable data-access patterns.
+- Explicit, reviewable data-access patterns; writing queries as SQL files allows database
+  administrators and data owners to review query behavior in the language they already know.
 
 ### Negative Consequences
 
@@ -42,7 +43,9 @@ Go code is derived from it (see [ADR-0020](0020-sqlc-type-safe-sql.md)).
 ### Full ORM
 
 Rejected: convenient, but obscures query behavior and performance, working against the
-explicit-data-access goal.
+explicit-data-access goal. Library updates also introduce breaking changes that require
+continuous tracking and can produce unexpected runtime errors in production; query builders
+are comparatively static and stable in this regard.
 
 ### Query builder
 

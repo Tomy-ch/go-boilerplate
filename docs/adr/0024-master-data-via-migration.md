@@ -16,10 +16,9 @@ accepted
 Two categories of initial data exist in the project:
 
 1. **Master data** — reference tables that must be present for the application to function
-   correctly in any environment (prefectures, product statuses, purchase statuses). These
-   rows are stable, enumerable, and production-required.
-2. **Transactional seed data** — users, products, demo orders needed only in
-   development/test environments. These rows must never reach production.
+   correctly in any environment. These rows are stable, enumerable, and production-required.
+2. **Transactional seed data** — demo/mock data needed only in development/test
+   environments. These rows must never reach production.
 
 Mixing both categories into a single seeding mechanism creates deployment risk: a seed step
 that runs in production could insert test data. Alternatively, omitting a dedicated seed
@@ -28,12 +27,7 @@ step forces operators to manually insert master data after every fresh deploymen
 ## Decision
 
 **Master data** is inserted inside its corresponding migration file alongside the table DDL,
-using `INSERT ... ON CONFLICT (id) DO NOTHING` for idempotency. Examples:
-
-- `000003_create_prefectures.up.sql` — inserts all 47 Japan prefectures alongside the
-  `CREATE TABLE` statement.
-- `000005_create_product_statuses.up.sql` — inserts the initial product status rows.
-- `000008_create_purchase_statuses.up.sql` — inserts the initial purchase status rows.
+using `INSERT ... ON CONFLICT (id) DO NOTHING` for idempotency.
 
 `make migrate-up` is the only command required to bring a new environment to a fully
 functional state; no separate data step is needed.

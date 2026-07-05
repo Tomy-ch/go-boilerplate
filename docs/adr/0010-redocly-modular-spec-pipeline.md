@@ -52,13 +52,16 @@ requires relative-file refs to resolve correctly.
   `operationId`) are enforced at lint time before code generation runs.
 - `make gen-api` is the single command that runs bundle, docs, and codegen in sequence; `redocly lint` runs separately via `make lint-oapi` (also a CI gate).
 - Documentation is generated from the same source as the code.
+- Because handler code is generated from the bundled spec, the YAML definition always precedes the implementation; drift between definition and implementation cannot flow undetected into production.
 
 ### Negative Consequences
 
 - Contributors must learn the Redocly split-file convention and always use relative `$ref`
   paths — a non-standard authoring style compared to a flat OpenAPI YAML.
 - The `openapi.gen.yaml` bundled file is generated output and must never be edited by hand;
-  this can cause confusion when the two files diverge during a partial edit.
+  this can cause confusion when the two files diverge during a partial edit. (The CI
+  `gen-oapi-artifacts-check` workflow detects divergence and fails the PR if the committed
+  file is stale, making manual-edit confusion discoverable before merge.)
 
 ## Alternatives Considered
 

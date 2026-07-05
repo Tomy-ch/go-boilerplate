@@ -14,9 +14,12 @@ accepted
 ## Context
 
 [ADR-0009](0009-openapi-first.md) makes the OpenAPI spec the single source of truth for
-the wire contract. To have the spec actually protect the server at runtime — not just
-document it — request validation and security-scheme enforcement must run automatically for
-every inbound request, derived from the same spec document. At the same time, validating
+the wire contract. The OpenAPI definition is the formal contract between the backend and
+its consumers (frontend, partner APIs); it must therefore be treated as the highest
+priority, and request handling must be controlled to prevent violations of that contract
+from reaching business logic. To have the spec actually protect the server at runtime —
+not just document it — request validation and security-scheme enforcement must run
+automatically for every inbound request, derived from the same spec document. At the same time, validating
 outbound responses against the spec at runtime is expensive and, if the spec and code are
 kept in sync through code generation (see [ADR-0011](0011-oapi-codegen-strict-server.md)),
 unnecessary.

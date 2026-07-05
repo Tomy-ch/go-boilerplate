@@ -40,7 +40,18 @@ Adopt **Uber Fx** as the dependency injection container and application lifecycl
 ### Manual DI
 
 Rejected: effective for small systems, but becomes difficult to manage as the dependency
-graph grows.
+graph grows. Specific problems at this system's scale:
+
+- The composition root grows proportionally with each added component; every new
+  dependency requires explicit wiring, causing combinatorial growth.
+- Multiple shared resources (DB pool, logger, observability) must be threaded as
+  arguments through the entire wiring chain, making file-level decomposition
+  impractical.
+- A bloated composition root increases the likelihood of merge conflicts as multiple
+  contributors touch the same wiring site.
+- Manual DI suits small systems, but past a certain threshold readability degrades
+  acceleratingly; it is rarely rewritten once entrenched and becomes permanent
+  technical debt.
 
 ### Google Wire
 

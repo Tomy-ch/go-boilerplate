@@ -23,24 +23,18 @@ accepted
 
 各サブシステムは `internal/config/envspec.go` に独自の**型付き構造体**を持ち、ルートの `Loader` 構造体はすべてのサブシステムを対応する `envPrefix` タグとともに名前付きフィールドとして埋め込む。環境変数名は `{SUBSYSTEM}_{NAME}` の `UPPER_SNAKE_CASE` に従う。
 
-`envspec.go` で定義されるルート `Loader`:
+`internal/config/envspec.go` のルート `Loader` は、各サブシステムを `envPrefix` タグ付きの名前付きフィールドとして埋め込む。構造のイメージ:
 
 ```go
+// 省略形 — サブシステムの完全な一覧は internal/config/envspec.go を参照。
 type Loader struct {
-    OS            OperatingSystem `envPrefix:"OS_"`
-    App           Application     `envPrefix:"APP_"`
-    Server        Server          `envPrefix:"SERVER_"`
-    Observability Observability   `envPrefix:"OBS_"`
-    Metrics       Metrics         `envPrefix:"METRICS_"`
-    Database      Database        `envPrefix:"DB_"`
-    DBConnection  DBConnection    `envPrefix:"DBCONN_"`
-    Security      Security        `envPrefix:"SECURITY_"`
-    SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
-    Auth          Auth            `envPrefix:"AUTH_"`
-    Worker        Worker          `envPrefix:"WORKER_"`
-    Outbox        Outbox          `envPrefix:"OUTBOX_"`
+    OS     OperatingSystem `envPrefix:"OS_"`
+    Server Server          `envPrefix:"SERVER_"`
+    // … サブシステムごとに 1 フィールド
 }
 ```
+
+サブシステムの完全な一覧とフィールド詳細は `internal/config/envspec.go` と、ローディングフローの解説は `internal/config/README.md` を参照。
 
 `env.ParseAs[Loader]()`（`github.com/caarlos0/env/v11` 経由）がプレフィックス付きの環境変数を自動的に対応する型付き構造体フィールドにマッピングする。
 

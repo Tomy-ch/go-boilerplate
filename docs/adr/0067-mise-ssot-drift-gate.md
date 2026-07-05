@@ -62,11 +62,12 @@ Any resulting diff causes the workflow to fail and instructs the author to run
   on failure.
 - Docker image versions have a single canonical location even though they are not
   `[tools]` entries.
+- The CI drift gate is a deliberate guardrail: wrong versions cannot silently enter the
+  development branch. Running `make sync-versions` and committing the result is expected,
+  intentional friction — not having this gate would be the riskier choice.
 
 ### Negative Consequences
 
-- Contributors must remember to run `make sync-versions` after editing `mise.toml` and
-  commit the resulting changes; the CI gate will reject the PR otherwise.
 - The `[env]` section for Docker image versions is a slightly different pattern from
   the `[tools]` table; contributors must know which section applies to which kind of
   version.

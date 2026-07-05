@@ -17,7 +17,9 @@ The project documentation serves two distinct audiences with different needs:
 
 - **AI agents** — need precise, unambiguous English technical prose to generate correct code
   and follow correct workflows. They must read a single authoritative source; reading
-  translations introduces translation-lag risk.
+  translations introduces translation-lag risk. Additionally, AI tools typically consume
+  approximately 1.5–2.0× more tokens when processing Japanese text and carry a higher risk of
+  misreading and hallucination, making English the more reliable input language for agents.
 - **Human developers** — may prefer Japanese; benefit from a navigable portal rather than
   raw markdown files.
 

@@ -27,7 +27,9 @@ Make observability a single, typed, **config-driven** switch:
   `OBS_METRICS_EXPORTER` / `OBS_LOGS_EXPORTER` / `OBS_OTLP_ENDPOINT` / `OBS_OTLP_PROTOCOL`),
   not in `OTEL_*` env read by autoexport.
 - There is **no dedicated enable flag**. Observability is *derived* as enabled when any of
-  the three exporter settings is a non-empty, non-`none` value.
+  the three exporter settings is a non-empty, non-`none` value. Deriving from the exporter
+  settings is intentional: a bare enable flag paired with a dead exporter is meaningless;
+  this design forces operators to be conscious of export configuration.
 - Gating is applied at **construction time**: a disabled signal builds no exporter / batcher
   / reader / runtime collector (no network, no goroutines), the Echo otelecho middleware
   degrades to pass-through, and the otelzap log core is not Tee'd into the logger. The SDK

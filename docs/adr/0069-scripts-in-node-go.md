@@ -90,7 +90,9 @@ or by reading configuration files), never by importing `internal/` packages dire
 
 Ubiquitous and zero-dependency, but fragile under edge cases and hard to test. The
 project's scripts involve enough conditional logic and file manipulation that shell
-becomes a maintenance liability.
+becomes a maintenance liability. Shell is also poorly suited for tasks such as numeric
+computation, conditional branching over multiple states, or format-specific tooling such
+as Mermaid diagram linting — all of which appear in this project's script inventory.
 
 ### Python
 

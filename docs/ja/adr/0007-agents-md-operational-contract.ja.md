@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-このリポジトリは AI 支援開発ツール（Claude Code、Cursor、GitHub Copilot、Gemini CLI / Code Assist、OpenAI Codex CLI）と安全に連携して動作するよう設計されている。各ツールはそれぞれ固有の設定機構（`.claude/`、`.cursor/`、`.github/copilot-instructions.md`、`.gemini/`、`.agents/`）を持つが、共通の契約がなければ、各設定が同じ行動規則（変更スコープ、禁止ショートカット、レイヤー境界規則、git 規律、言語要件）を独立して再定義することになり、ツール間でのドリフトリスクが生じる。
+このリポジトリは AI 支援開発ツール（Claude Code、Cursor、GitHub Copilot、Gemini CLI / Code Assist、OpenAI Codex CLI）と安全に連携して動作するよう設計されている。各ツールはそれぞれ固有の設定機構（`.claude/`、`.cursor/`、`.github/copilot-instructions.md`、`.gemini/`、`.agents/`）を持つことを想定されているが、共通の契約がなければ、各設定が同じ行動規則（変更スコープ、禁止ショートカット、レイヤー境界規則、git 規律、言語要件）を独立して再定義することになり、ツール間でのドリフトリスクが生じる。
 
 このコードベース上で動作する AI エージェントは、どのツールやモデルが稼働中であるかにかかわらず一貫して制約されなければならない。
 
@@ -54,6 +54,7 @@ accepted
 - 指示の優先順位が明示される。競合が決定論的に解決される。
 - 保護ファイル（生成コード、ポータルコンテンツ、`AGENTS.md` 自体）が列挙され、意図しない上書きのリスクが低減される。
 - `.claude/skills/` 配下のスキルファイルが、基本契約を変更することなく再利用可能な手順を体系化する。
+- `AGENTS.md` と正典 README に基づく契約は、AI の出力誤差を収束させる効果もある。開発者が正典 README を読んで作業した場合と同等のレベルに AI の出力品質を引き上げる。
 
 ### ネガティブな影響
 

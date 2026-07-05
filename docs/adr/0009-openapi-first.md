@@ -33,19 +33,22 @@ shape.
 - Type-safe request/response structures generated from the spec.
 - Consistency with frontend consumers working from the same document.
 - API documentation is generated, not maintained by hand.
+- In team development the contract must be authored and agreed on before any implementation begins, which naturally prompts review by the responsible lead or reviewer.
 
 ### Negative Consequences
 
 - Adding or changing an endpoint requires editing the spec first and regenerating — a
   heavier step than editing a handler directly.
-- Contributors must learn the OpenAPI authoring + generation workflow.
+- Contributors must learn the OpenAPI YAML authoring conventions; the generation step itself is fully encapsulated by `make gen-api` and does not need to be understood in detail.
 
 ## Alternatives Considered
 
 ### Code-first API (generate OpenAPI from code)
 
 Rejected: generating the spec from handler code tends to leave the API contract unclear and
-lets the implementation, not an agreed contract, drive the shape.
+lets the implementation, not an agreed contract, drive the shape. It also prevents the
+system's behaviour from being locked down in a formal definition, risking that frontend
+consumers are given more latitude than intended.
 
 ### GraphQL-first
 

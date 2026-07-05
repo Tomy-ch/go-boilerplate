@@ -29,24 +29,20 @@ Each subsystem has its own **typed struct** in `internal/config/envspec.go`, and
 root `Loader` struct embeds all subsystems as named fields with a matching `envPrefix`
 tag. Environment variable names follow `{SUBSYSTEM}_{NAME}` in `UPPER_SNAKE_CASE`.
 
-The root `Loader` as defined in `envspec.go`:
+The root `Loader` in `internal/config/envspec.go` embeds each subsystem as a named
+field with a matching `envPrefix` tag. The illustrative shape is:
 
 ```go
+// Abbreviated — see internal/config/envspec.go for the definitive list of subsystems.
 type Loader struct {
-    OS            OperatingSystem `envPrefix:"OS_"`
-    App           Application     `envPrefix:"APP_"`
-    Server        Server          `envPrefix:"SERVER_"`
-    Observability Observability   `envPrefix:"OBS_"`
-    Metrics       Metrics         `envPrefix:"METRICS_"`
-    Database      Database        `envPrefix:"DB_"`
-    DBConnection  DBConnection    `envPrefix:"DBCONN_"`
-    Security      Security        `envPrefix:"SECURITY_"`
-    SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
-    Auth          Auth            `envPrefix:"AUTH_"`
-    Worker        Worker          `envPrefix:"WORKER_"`
-    Outbox        Outbox          `envPrefix:"OUTBOX_"`
+    OS     OperatingSystem `envPrefix:"OS_"`
+    Server Server          `envPrefix:"SERVER_"`
+    // … one field per subsystem
 }
 ```
+
+For the full subsystem list and field details, see `internal/config/envspec.go` and the
+loading flow in `internal/config/README.md`.
 
 `env.ParseAs[Loader]()` (via `github.com/caarlos0/env/v11`) maps the prefixed
 environment variables into the corresponding typed struct fields automatically.

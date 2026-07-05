@@ -65,7 +65,8 @@ from the HTTP classification helper `IsAppError`.
 ### Negative Consequences
 
 - Every repository and infrastructure adapter must explicitly translate external errors
-  to `apperror` sentinels; untranslated errors fall through as `ErrInternal`.
+  to `apperror` sentinels; consistent application of this discipline requires attention
+  in code review.
 - Adding a new sentinel category requires cross-cutting review (it must make sense
   across multiple use cases and have a clear HTTP/worker mapping).
 

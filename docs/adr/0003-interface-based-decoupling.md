@@ -32,6 +32,10 @@ The forces driving this decision:
   satisfies each Repository or Boundary interface.
 - DI resolution (see ADR-0030) wires implementations to interfaces at startup, so the
   cross-layer seam must be an interface for the DI container to inject.
+- Defining interfaces as cross-layer contracts allows each layer to own its processing
+  logic independently, unbound from the implementation details behind the interface.
+  Without interface definitions — coupling layers through concrete types — callers must
+  track callee internals, reducing refactorability across the boundary.
 
 ## Decision
 
