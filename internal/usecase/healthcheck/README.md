@@ -24,8 +24,8 @@ error, not as a `Degraded` / `Unhealthy` DTO).
 The `query` subpackage is a thin leaf boundary: `DBSystemQuery` with a single
 `CheckDBHealth(ctx) (DBHealth, error)`, where `DBHealth` reports `Ready`,
 `RespondedAt`, and `Latency`. The concrete implementation lives in
-`internal/infrastructure/rdb/system_query/healthcheck/` and runs a lightweight
-`SELECT 1` liveness probe (`database/dml/system_query/health_check/`).
+`internal/infrastructure/rdb/system_cqrs/healthcheck/` and runs a lightweight
+`SELECT 1` liveness probe (`database/dml/system_cqrs/health_check/`).
 
 ## Layout
 
@@ -34,5 +34,5 @@ The `query` subpackage is a thin leaf boundary: `DBSystemQuery` with a single
 | usecase | `internal/usecase/healthcheck/` (this package) |
 | DB probe boundary | `internal/usecase/healthcheck/query/` (`DBSystemQuery`) |
 | clock boundary | `internal/usecase/boundary/clock/` (`Clock`) |
-| infrastructure | `internal/infrastructure/rdb/system_query/healthcheck/` |
-| sqlc DML | `database/dml/system_query/health_check/` |
+| infrastructure | `internal/infrastructure/rdb/system_cqrs/healthcheck/` |
+| sqlc DML | `database/dml/system_cqrs/health_check/` |

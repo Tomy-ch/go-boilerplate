@@ -310,7 +310,7 @@ flowchart TB
 
 ### Role of internal/di/module/persistence.go
 
-Persistence providers (repository / query_service / system_query) are registered in
+Persistence providers (repository / query_service / system_cqrs) are registered in
 `persistenceModule`, which `InfrastructureModule()` composes.
 
 ```go

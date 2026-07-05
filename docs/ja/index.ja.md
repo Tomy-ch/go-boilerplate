@@ -15,7 +15,7 @@
 |[architecture.ja.md](architecture.ja.md)|システム全体のアーキテクチャとレイヤ責務|
 |[rules.ja.md](rules.ja.md)|破ってはいけないアーキテクチャルール|
 |[development-flow.ja.md](development-flow.ja.md)|標準的な開発フロー|
-|[decisions.ja.md](decisions.ja.md)|技術選定および設計判断の背景|
+|[adr/](adr/README.ja.md)|アーキテクチャ決定記録（ADR）— 技術選定および設計判断の背景|
 
 ## 推奨読書順
 
@@ -23,14 +23,14 @@
 
 ```mermaid
 flowchart TB
-    A["architecture.ja.md"] --> B["development-flow.ja.md"] --> C["rules.ja.md"] --> D["decisions.ja.md"]
+    A["architecture.ja.md"] --> B["development-flow.ja.md"] --> C["rules.ja.md"] --> D["adr/"]
 ```
 
 ### メンテナ / コントリビューター
 
 ```mermaid
 flowchart TB
-    A["architecture.ja.md"] --> B["rules.ja.md"] --> C["development-flow.ja.md"] --> D["decisions.ja.md"]
+    A["architecture.ja.md"] --> B["rules.ja.md"] --> C["development-flow.ja.md"] --> D["adr/"]
 ```
 
 ### AIエージェント
