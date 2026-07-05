@@ -41,6 +41,11 @@ of the concentric-layers idea, not a full Clean Architecture with extra abstract
 - Ease of testing (the domain core is pure and needs no infrastructure to test).
 - Replaceable infrastructure behind domain interfaces.
 - A stable domain core insulated from external change.
+- The pure domain + usecase layers are the portable core, which keeps a future rewrite
+  tractable: staying in Go, a replacement moves essentially those two layers; even a
+  language change reduces to analysing/porting domain + usecase, since they carry no
+  framework or infrastructure coupling (this is why onion is paired with lock-in avoidance,
+  [ADR-0001](0001-avoid-lock-in.md)).
 
 ### Negative Consequences
 

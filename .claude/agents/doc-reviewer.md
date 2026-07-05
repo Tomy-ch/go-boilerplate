@@ -44,7 +44,7 @@ The orchestrator gives you the scope — the changed-file list / diff, or explic
 ## How to review
 
 1. Read `docs/rules.md` "Documentation Rules". Then read the doc(s) in scope.
-2. For every factual claim a doc makes about the code (a named symbol, file, command, flag, signature, behavior), **verify it against the actual code** — open the file, `grep` the symbol, check the path exists. Accuracy findings are your highest-value output and must be evidenced, not guessed.
+2. For every factual claim a doc makes about the code (a named symbol, file, command, flag, signature, behavior), **verify it against the actual code** — open the file, `grep` the symbol, check the path exists. Accuracy findings are your highest-value output and must be evidenced, not guessed. When a claim points at a *directory* rather than a specific file, read that directory's `README.md` first for orientation, then load only the specific files you need — more stable than scanning the whole directory.
 3. Then judge substance / rot / redundancy.
 4. Report **only** what you can quote and (for accuracy) evidence against the code. Be conservative — do not turn style preferences into findings.
 

@@ -49,6 +49,12 @@ OpenAPI request constraint  ⊆  domain rule  ⊆  OpenAPI response capacity
   server emits a contract violation that nothing on the server side catches — there is no
   runtime response validation.
 
+A violation at each layer also surfaces as a *different* error, which helps place
+responsibility: a request-constraint violation is rejected by the validation middleware as a
+`400` before the domain runs; a domain-rule violation is a business validation error raised
+by the domain; a response-constraint violation is a server-side contract breach that nothing
+catches at runtime (it must be prevented by construction, since responses are not validated).
+
 When modifying a constraint value, decide from its own concern. Do not copy a domain
 constant into OpenAPI or vice versa and assume they must stay equal.
 
@@ -61,6 +67,10 @@ constant into OpenAPI or vice versa and assume they must stay equal.
   (defensive wire boundary), without requiring a domain change.
 - The direction invariant is checkable: a test that reads `openapi.gen.yaml` and domain
   constants can assert `request ≤ domain ≤ response` in CI.
+- Ownership is cleanly separated by role — DB capacity → DBA / data owner, wire contract →
+  developer, business rule → domain expert — so the system can be built without merging all
+  three sets of requirements into one place (the owners coordinate, but do not have to
+  co-locate their constraints).
 
 ### Negative Consequences
 

@@ -13,16 +13,13 @@ accepted
 
 ## Context
 
-The project's technology rationale historically lived in a single file
-(`docs/decisions.md`): a growing collation of ~8 decisions plus a dependency inventory.
-Two problems surfaced:
+Collating a project's technology rationale into a single growing file has two problems:
 
-- **In-place editing loses history.** Decisions were rewritten when reality changed (e.g.
-  the observability section was rewritten when the `OBSERVABILITY_ENABLED` flag was
-  removed). The record of *why we once chose the old design* was discarded.
-- **Mixed content.** The file blended immutable decisions with a living dependency table
-  that must track `go.mod` — forcing a drifting catalog into a "rationale" document, where
-  it silently went stale.
+- **In-place editing loses history.** Rewriting a decision when reality changes discards
+  the record of *why the old design was once chosen*.
+- **Mixed content.** Blending immutable decisions with a living inventory (e.g. a dependency
+  table that must track `go.mod`) forces a drifting catalog into a "rationale" document,
+  where it silently goes stale.
 
 This is a **template** repository: downstream users fork it and need to understand *why*
 each choice was made, and to *supersede* individual choices with their own without editing
