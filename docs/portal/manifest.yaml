@@ -82,9 +82,6 @@ meta:
         items: [sqlc-query-guide, sqlc-settings]
       - title: Seed
         items: [database-seed]
-    # ADR は 94 本を番号(依存)順の論理区分でサブグループ化する。README = 決定ログ索引。
-    # ADR は curated guide (下部の copy エントリ) には登録せず、docs/adr/ を auto-discover
-    # したセクションとして閲覧のみ提供する。
     adr:
       - title: Index / Meta
         items: [README, template, 0000-record-architecture-decisions]
