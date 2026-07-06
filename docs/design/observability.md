@@ -95,7 +95,7 @@ flowchart TD
         PROV["provider.go: NewResource / NewTracerProvider / NewMeterProvider"]
         LOGP["log_provider.go: NewLoggerProvider / NewLogCore (otelzap)"]
         TF["tracer_factory.go / layer_tracer.go: TracerFactory → LayerTracer"]
-        HELP["helper.go: RunWithSpan / StartSpanWithParent / ShouldLogWithSpan"]
+        HELP["helper.go: RunWithSpan / StartSpanWithParent / ShouldLogWithSpan / NewTraceExtractor"]
         PGX["pgx_tracer.go: NewPgxTracer (otelpgx)"]
         HC["http_client_*.go: transport + RED metrics"]
         MET["outbox / worker / idempotency / httpclient meter instruments"]
@@ -111,6 +111,9 @@ flowchart TD
         UC["usecase"]
         INFRA["infrastructure: rdb (pgx), external HTTP clients"]
     end
+    subgraph logL["internal/logging = foundation"]
+        LOGGING["Logger (ctx-native) / TraceExtractor interface / LogCore"]
+    end
     subgraph exitL["exit paths"]
         OTLP["OTLP → Collector/Agent (traces/metrics/logs)"]
         SCRAPE["/metrics (promhttp default registry)"]
@@ -125,7 +128,10 @@ flowchart TD
     DIM --> HC
     DIM --> PROM
     DIM --> HOOK
+    DIM --> HELP
     SD --> HOOK
+    LOGP --> LOGGING
+    HELP --> LOGGING
     CTRL --> TF
     UC --> TF
     INFRA --> PGX
@@ -138,10 +144,10 @@ flowchart TD
     PROM --> SCRAPE
 
     classDef done fill:#e6ffed,stroke:#2da44e;
-    class OBSCFG,PROV,LOGP,TF,HELP,PGX,HC,MET,PROM,SD,DIM,HOOK,CTRL,UC,INFRA,OTLP,SCRAPE done;
+    class OBSCFG,PROV,LOGP,TF,HELP,PGX,HC,MET,PROM,SD,DIM,HOOK,CTRL,UC,INFRA,LOGGING,OTLP,SCRAPE done;
 ```
 
-> Dependencies always point **into** `observability` from the outer layers; `observability` itself depends only on `config` / `system` / `pkg` and the OTel SDK. It never imports `di/lifecycle` (shutdown is inverted via `ProviderShutdowner`).
+> Dependencies from the application layers always point **into** `observability`; `observability` itself depends on `config` / `system` / `pkg`, `internal/logging` (the `TraceExtractor` interface it implements + the `LogCore` type it returns), and the OTel SDK. The reverse never holds — `logging` does not import `observability`, so the trace gate is injected as a `TraceExtractor` rather than pulled. `observability` never imports `di/lifecycle` (shutdown is inverted via `ProviderShutdowner`).
 
 ### 3.2 Two metric exit paths (this is deliberate)
 
