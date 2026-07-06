@@ -47,15 +47,17 @@ Application code uses only the **Logger interface**.
 
 ```go
 type Logger interface {
-    Debug(msg string, fields ...*Field)
-    Info(msg string, fields ...*Field)
-    Warn(msg string, fields ...*Field)
-    Error(msg string, fields ...*Field)
+    Debug(ctx context.Context, msg string, fields ...*Field)
+    Info(ctx context.Context, msg string, fields ...*Field)
+    Warn(ctx context.Context, msg string, fields ...*Field)
+    Error(ctx context.Context, msg string, fields ...*Field)
 
     Named(name string) Logger
     CallerSkip(skip int) Logger
 }
 ```
+
+Each output method takes a `context.Context` and auto-injects `trace_id` / `span_id` extracted from it. Where no request-scoped span exists (DI startup, fx events, CLI bootstrap), pass `context.Background()`; injection is simply skipped. Callers never pass `trace_id` / `span_id` as explicit fields.
 
 `Named` returns a child logger with the given name appended, and `CallerSkip` returns a logger whose caller reporting skips the given number of stack frames (useful when logging through a wrapper). Conversion of `*Field` to `zap.Field` is done internally by the unexported `convertFields` and is not part of the public interface.
 
@@ -69,11 +71,15 @@ This design provides:
 
 Loggers are created by output format. Pass a `Level` (output level) and the level at which stacktraces start.
 
+The third argument is a `TraceExtractor` that pulls `trace_id` / `span_id` from the log call's `ctx`; pass `nil` to disable trace injection (e.g. CLI bootstrap loggers). At the DI root, fx wires `observability.NewTraceExtractor(obsCfg)` into `provideLogger` as its `TraceExtractor`.
+
 ```go
 // JSON logger (machine-readable; production-style output)
-logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), extract)
 // Console logger (human-readable; development-style output)
-logger := logging.NewConsoleLogger(logging.LevelDebug(), logging.LevelWarn())
+logger := logging.NewConsoleLogger(logging.LevelDebug(), logging.LevelWarn(), extract)
+// No trace injection (e.g. CLI bootstrap before DI):
+logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 ```
 
 `LevelDebug` / `LevelInfo` / `LevelWarn` / `LevelError` are functions that return the corresponding `Level` value.
@@ -114,7 +120,7 @@ log export is enabled (and `nil` otherwise). `provideLogger` in
 Log fields are created using the `Field` type.
 
 ```go
-logger.Info(
+logger.Info(ctx,
     "user created",
     logging.String("user_id", "123"),
     logging.Int("age", 20),
@@ -160,8 +166,9 @@ type LogFieldBuilder interface {
 }
 ```
 
-Trace / span fields are not built by a dedicated method; each `Build*` method appends
-them to its own output when observability is enabled (see below).
+`trace_id` / `span_id` are not built here — the `Logger` injects them from `ctx` at emit
+time. `BuildSQLEndFields` additionally appends `parent_span_id` (which cannot be derived
+from `ctx`) when observability is enabled and a parent span ID is present.
 
 Creation
 
@@ -189,8 +196,9 @@ Each Build method receives a dedicated input struct.
 |`HTTPResponseLogInput`|HTTP response log|Method, Path, URI, Status, Latency, RequestID|
 |`SQLFieldsEndInput`|SQL end log|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
 
-All input structs carry `EventAt` (event timestamp) and `TraceID` / `SpanID` (trace
-information). `ParentSpanID` exists only on `SQLFieldsEndInput`.
+All input structs carry `EventAt` (event timestamp). Trace information (`trace_id` /
+`span_id`) is no longer carried here — the `Logger` injects it from `ctx`.
+`SQLFieldsEndInput` additionally carries `ParentSpanID`, which cannot be derived from `ctx`.
 
 ## HTTP Logging
 
@@ -235,16 +243,17 @@ tabs / repeated spaces collapsed to a single-line form).
 
 ## Observability Fields
 
-There is no standalone observability builder. Trace / span fields are appended to the
-HTTP and SQL log output when observability is enabled and both `TraceID` and `SpanID`
-are present:
+There is no standalone observability builder. `trace_id` / `span_id` are injected by the
+`Logger` from the log call's `ctx` (via the DI-wired `TraceExtractor`), so they appear on
+every log emitted with an active span — not only HTTP / SQL logs:
 
-- `trace_id`
-- `span_id`
-- `parent_span_id` (SQL only, and only when a parent span ID is present)
+- `trace_id` — injected by the `Logger` from `ctx`
+- `span_id` — injected by the `Logger` from `ctx`
+- `parent_span_id` — appended by `BuildSQLEndFields` (SQL only), since it cannot be derived
+  from `ctx`; only when a parent span ID is present
 
-If observability is disabled (or the trace / span IDs are empty), these fields are not
-output. The `layer` / `package` / `function` fields are part of the SQL log output
+If observability is disabled (or `ctx` carries no valid span), these fields are not output.
+The `layer` / `package` / `function` fields are part of the SQL log output
 (from `SQLFieldsEndInput`), not the trace attachment.
 
 ## Test Kit

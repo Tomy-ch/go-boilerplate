@@ -44,23 +44,29 @@ func encoderConfig(encodeLevel zapcore.LevelEncoder) zapcore.EncoderConfig {
 }
 
 // NewJSONLogger は JSON 構造化ロガーを生成します。
-// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
-func NewJSONLogger(level, stacktraceLevel Level) Logger {
+// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、
+// extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。
+func NewJSONLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger {
 	enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
-	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, true)
+	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, true, extract)
 }
 
 // NewConsoleLogger は人間可読な console ロガーを生成します。
-// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
-func NewConsoleLogger(level, stacktraceLevel Level) Logger {
+// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、
+// extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。
+func NewConsoleLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger {
 	enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
-	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false)
+	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false, extract)
 }
 
 // buildLogger は encoder と出力先から Logger を構築します。
 // jsonArrayStacktrace=true のとき、stacktrace を行配列として出力します。
 func buildLogger(
-	enc zapcore.Encoder, ws zapcore.WriteSyncer, level, stacktraceLevel zapcore.Level, jsonArrayStacktrace bool,
+	enc zapcore.Encoder,
+	ws zapcore.WriteSyncer,
+	level, stacktraceLevel zapcore.Level,
+	jsonArrayStacktrace bool,
+	extract TraceExtractor,
 ) Logger {
 	core := zapcore.NewCore(enc, ws, zap.NewAtomicLevelAt(level))
 	if jsonArrayStacktrace {
@@ -71,5 +77,5 @@ func buildLogger(
 		zap.AddStacktrace(stacktraceLevel),
 		zap.ErrorOutput(stderrSyncer),
 	)
-	return &logger{log: zl}
+	return &logger{log: zl, extract: extract}
 }

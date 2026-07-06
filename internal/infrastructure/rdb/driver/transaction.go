@@ -160,7 +160,7 @@ func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.
 	if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 		logFields := append([]*logging.Field{logging.Error(logging.ErrorKey, pgErr)}, fields...)
 		t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
-			"Failed to rollback transaction", logFields...,
+			ctx, "Failed to rollback transaction", logFields...,
 		)
 	}
 }

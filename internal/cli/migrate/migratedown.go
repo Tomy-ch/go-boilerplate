@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"context"
 	"fmt"
 
 	"go-boilerplate/internal/logging"
@@ -13,40 +14,43 @@ import (
 // MigrateDownRun は、データベースマイグレーションを Down 方向に適用します。
 // steps=0 なら全マイグレーションをロールバックし、正数なら段数分だけ戻します。steps が負の場合はエラーを返します。dirty 状態の DB は Force で整合を取ってから Down します。
 func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
+	// CLI 起動系のため trace span は無い。context.Background() を用いる。
+	ctx := context.Background()
+
 	if steps < 0 {
 		// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。
 		err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))
-		logger.Named("migrateDownRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
+		logger.Named("migrateDownRun").Error(ctx, "invalid steps", logging.Error(logging.ErrorKey, err))
 		return err
 	}
 
 	m, err := newMigrator(database)
 	if err != nil {
-		logger.Named("migrateDownRun.buildMigrateInstance").Error("failed to create migrate instance",
+		logger.Named("migrateDownRun.buildMigrateInstance").Error(ctx, "failed to create migrate instance",
 			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
 
 	if steps == 0 {
-		logger.Named("migrateDownRun").Info("running full migration down")
+		logger.Named("migrateDownRun").Info(ctx, "running full migration down")
 		if err := executeMigrateFullDown(m); err != nil {
-			logger.Named("migrateDownRun.executeMigrateFullDown").Error("down migration failed",
+			logger.Named("migrateDownRun.executeMigrateFullDown").Error(ctx, "down migration failed",
 				logging.Error(logging.ErrorKey, err),
 			)
 			return err
 		}
 	} else {
-		logger.Named("migrateDownRun").Info("running migration down steps", logging.Int("steps", steps))
+		logger.Named("migrateDownRun").Info(ctx, "running migration down steps", logging.Int("steps", steps))
 		if err := executeMigrateDownSteps(m, steps); err != nil {
-			logger.Named("migrateDownRun.executeMigrateDownSteps").Error("down migration steps failed",
+			logger.Named("migrateDownRun.executeMigrateDownSteps").Error(ctx, "down migration steps failed",
 				logging.Error(logging.ErrorKey, err),
 			)
 			return err
 		}
 	}
 
-	logger.Named("migrateDownRun").Info("✅ migration down completed")
+	logger.Named("migrateDownRun").Info(ctx, "✅ migration down completed")
 	return nil
 }
 
