@@ -73,9 +73,9 @@ func Test_newStartServerFunc(t *testing.T) {
 			mockLogger.EXPECT().Named("server.Start").Return(namedMock).AnyTimes()
 			namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
 			namedMock.EXPECT().
-				Info("http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Info(gomock.Any(), "http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Times(1)
-			namedMock.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+			namedMock.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 			lc := &net.ListenConfig{}
 			ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
@@ -151,12 +151,12 @@ func Test_newStartServerFunc(t *testing.T) {
 			mockLogger.EXPECT().Named("server.Start").Return(namedMock).AnyTimes()
 			namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
 			namedMock.EXPECT().
-				Info("http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Info(gomock.Any(), "http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				AnyTimes()
 			errLogged := make(chan struct{})
 			namedMock.EXPECT().
-				Error("failed to start http server", gomock.Any()).
-				Do(func(string, ...*logging.Field) { close(errLogged) }).
+				Error(gomock.Any(), "failed to start http server", gomock.Any()).
+				Do(func(context.Context, string, ...*logging.Field) { close(errLogged) }).
 				Times(1)
 
 			cfg := config.MockConfigForTest(t)
@@ -195,7 +195,7 @@ func Test_newStopServerFunc(t *testing.T) {
 			mockLogger := mock_logging.NewMockLogger(ctrl)
 			mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
 			mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
-			mockLogger.EXPECT().Info("http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			mockLogger.EXPECT().Info(gomock.Any(), "http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
 			cfg := config.MockConfigForTest(t)
 			srvCfg := config.NewServerConfig(cfg)
@@ -218,8 +218,8 @@ func Test_newStopServerFunc(t *testing.T) {
 			mockLogger := mock_logging.NewMockLogger(ctrl)
 			mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
 			mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
-			mockLogger.EXPECT().Info("http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
-			mockLogger.EXPECT().Error("failed to shutdown http server", gomock.Any()).Times(1)
+			mockLogger.EXPECT().Info(gomock.Any(), "http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			mockLogger.EXPECT().Error(gomock.Any(), "failed to shutdown http server", gomock.Any()).Times(1)
 
 			cfg := config.MockConfigForTest(t)
 			srvCfg := config.NewServerConfig(cfg)
