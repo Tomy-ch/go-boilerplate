@@ -9,6 +9,8 @@ allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git a
 
 You have been invoked via `/commit`. Argument string: `$ARGUMENTS`
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 This command analyzes uncommitted changes in the working tree and produces one or more git commits with appropriate granularity and the project's prefix convention. All commit messages are in Japanese, per `CLAUDE.md`.
 
 This command intentionally bypasses lefthook on every commit (`git commit --no-verify`) so that pre-commit checks (`make lint` / `make test` / `make sql-lint` / migration checks) do not fire N times during multi-commit splits. Instead, after all commits succeed, Step 6 runs each lefthook-defined `pre-commit` command directly plus `make fix` as a single verification pass. We do not call `lefthook run pre-commit` itself because lefthook skips registered commands when nothing is staged (which is exactly the case after this command stages and commits everything).
