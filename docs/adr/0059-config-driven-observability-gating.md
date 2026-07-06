@@ -34,6 +34,14 @@ Make observability a single, typed, **config-driven** switch:
   / reader / runtime collector (no network, no goroutines), the Echo otelecho middleware
   degrades to pass-through, and the otelzap log core is not Tee'd into the logger. The SDK
   provider shells remain (cheap, inert) — this is runtime disabling, not build-time removal.
+- The same config-driven gate also governs **per-log trace correlation**. `trace_id` /
+  `span_id` are injected by the `Logger` itself (ctx-native API — `Info(ctx, msg, ...)`),
+  never appended by callers, on each log line whose `ctx` carries a valid span. The gate —
+  observability enabled **and** the ctx carries a valid span — is consolidated in a single
+  `observability.NewTraceExtractor(obsCfg)` closure that is DI-injected into the `Logger` as a
+  `logging.TraceExtractor`. `logging` depends only on that abstraction and never imports
+  `observability`, so the gate stays config-driven without inverting the inward-only
+  dependency direction (see [ADR-0003](0003-interface-based-decoupling.md)).
 
 ## Consequences
 
@@ -43,6 +51,10 @@ Make observability a single, typed, **config-driven** switch:
 - Lightweight environments pay no observability cost (no exporters, readers, collector, or
   per-request spans).
 - Portability preserved: any OTLP backend is still just `OBS_*_EXPORTER=otlp` + an endpoint.
+- The `trace_id` / `span_id` gate lives in one place (the injected extractor); callers pass
+  `ctx`, not `trace_id` / `span_id`. The one exception is `parent_span_id`, which cannot be
+  derived from `ctx` and is therefore gated directly by `obsCfg.Enabled()` in
+  `BuildSQLEndFields`.
 
 ### Negative Consequences
 
@@ -72,5 +84,5 @@ requirement.
 ## Notes
 
 - Vendor-neutral OTLP-only export and the official-semconv stance are recorded separately (see the observability ADRs in [the ADR log](README.md)).
-- Design reference: `docs/design/observability.md`.
+- Design reference: `docs/design/observability.md`. The ctx-native `Logger` and the injected `TraceExtractor` that carries the per-log trace gate are described in `internal/logging/README.md`.
 - Migrated from `docs/decisions.md` (§ "Why config-driven observability gating").

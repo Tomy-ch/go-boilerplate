@@ -36,6 +36,13 @@ accepted
   Echo の otelecho ミドルウェアはパススルーに縮退し、otelzap のログコアはロガーに
   Tee されない。SDK プロバイダーシェルは存在したまま（安価で不活性）— これはランタイムの
   無効化であり、ビルド時の除去ではない。
+- 同じ config 駆動ゲートは**ログごとの trace 相関**も統制する。`trace_id` / `span_id` は
+  `Logger` 自身が、ctx が有効な span を持つ各ログ行へ注入し（ctx-native API — `Info(ctx, msg, ...)`）、
+  呼び出し側が付与することはない。ゲート（observability が有効**かつ** ctx が有効な span を持つこと）は、
+  `Logger` に DI 注入される単一の `observability.NewTraceExtractor(obsCfg)` クロージャに
+  集約される（`logging.TraceExtractor` として注入）。`logging` はこの抽象のみに依存し
+  `observability` を import しないため、外層から内側へ向かう依存方向を反転させることなく、
+  ゲートを config 駆動のまま保てる（[ADR-0003](0003-interface-based-decoupling.ja.md) 参照）。
 
 ## 影響
 
@@ -46,6 +53,9 @@ accepted
   コレクター・リクエストごとのスパンなし）。
 - ポータビリティが保たれる: OTLP 対応バックエンドであれば `OBS_*_EXPORTER=otlp` とエンドポイントを
   指定するだけでよい。
+- `trace_id` / `span_id` のゲートは 1 箇所（注入される extractor）にのみ存在する。呼び出し側は
+  `trace_id` / `span_id` ではなく `ctx` を渡す。唯一の例外は `parent_span_id` で、ctx から
+  導出できないため `BuildSQLEndFields` 内で `obsCfg.Enabled()` により直接ゲートされる。
 
 ### ネガティブな影響
 
@@ -75,5 +85,5 @@ accepted
 ## 補足
 
 - ベンダー中立の OTLP 専用エクスポートと公式 semconv に関する方針は別途記録されている。
-- 設計参照: `docs/design/observability.md`。
+- 設計参照: `docs/design/observability.md`。ctx-native な `Logger` と、ログごとの trace ゲートを担う注入型 `TraceExtractor` は `internal/logging/README.md` に記載。
 - 移行元: `docs/decisions.md`（§「Why config-driven observability gating」）。
