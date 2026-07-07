@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#375EAB"/>
 
-  <title>idempotency - go-boilerplate godoc</title>
+  <title>outbox - go-boilerplate godoc</title>
 
 
 
@@ -37,7 +37,7 @@
 
 
   <h1>
-    Package idempotency
+    Package outbox
     <span class="text-muted"></span>
   </h1>
 
@@ -68,7 +68,7 @@
 		
 		<div id="short-nav">
 			<dl>
-			<dd><code>import &#34;go-boilerplate/internal/infrastructure/rdb/system_query/idempotency&#34;</code></dd>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox&#34;</code></dd>
 			</dl>
 			<dl>
 			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
@@ -84,7 +84,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package idempotency は、冪等性キーの永続化（boundary idempotency.Store）の RDB 実装を提供します。
+				<p>Package outbox は、outbox テーブルの永続化（boundary outbox.Store）の RDB 実装を提供します。
 
 				
 			</p></div>
@@ -104,7 +104,7 @@
 			
 			
 				
-				<dd><a href="#New">func New(provider driver.DatabaseDriver, tf observability.TracerFactory) idempotencybndry.Store</a></dd>
+				<dd><a href="#New">func New(provider driver.DatabaseDriver, tf observability.TracerFactory) outboxbndry.Store</a></dd>
 			
 			
 			
@@ -118,7 +118,7 @@
 			<p>
 			<span style="font-size:90%">
 			
-				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query/idempotency/idempotency_system_query.go.html">idempotency_system_query.go</a>
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox/outbox_system_cqrs.go.html">outbox_system_cqrs.go</a>
 			
 			</span>
 			</p>
@@ -133,7 +133,7 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query/idempotency/idempotency_system_query.go.html?s=852:952#L18">New</a>
+			<h2 id="New">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox/outbox_system_cqrs.go.html?s=675:770#L15">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -141,8 +141,8 @@
 			<pre>func New(
     provider <a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/">driver</a>.<a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/#DatabaseDriver">DatabaseDriver</a>,
     tf <a href="../../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
-) <a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a></pre>
-			<p>New は、idempotency.Store の RDB 実装を生成して返します。
+) <a href="../../../../../../go-boilerplate/internal/usecase/boundary/outbox/">outboxbndry</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/outbox/#Store">Store</a></pre>
+			<p>New は、outbox.Store の RDB 実装を生成して返します。
 
 			
 			

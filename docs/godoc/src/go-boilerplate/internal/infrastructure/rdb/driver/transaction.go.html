@@ -217,7 +217,7 @@
 <span id="L160" class="ln">   160  </span>	if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 <span id="L161" class="ln">   161  </span>		logFields := append([]*logging.Field{logging.Error(logging.ErrorKey, pgErr)}, fields...)
 <span id="L162" class="ln">   162  </span>		t.logger.CallerSkip(callerSkipCount).Named(&#34;TransactionManager&#34;).Error(
-<span id="L163" class="ln">   163  </span>			&#34;Failed to rollback transaction&#34;, logFields...,
+<span id="L163" class="ln">   163  </span>			ctx, &#34;Failed to rollback transaction&#34;, logFields...,
 <span id="L164" class="ln">   164  </span>		)
 <span id="L165" class="ln">   165  </span>	}
 <span id="L166" class="ln">   166  </span>}

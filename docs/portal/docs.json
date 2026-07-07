@@ -4975,12 +4975,6 @@
       "source": "docs/openapi/index.html"
     },
     {
-      "sectionId": "godoc",
-      "title": "Godoc",
-      "path": "../godoc/index.html",
-      "source": "docs/godoc/index.html"
-    },
-    {
       "sectionId": "db-schema",
       "title": "DB Schema",
       "path": "../db-schema/index.html",
