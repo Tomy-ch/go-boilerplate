@@ -93,7 +93,7 @@
 <span id="L36" class="ln">    36  </span>
 <span id="L37" class="ln">    37  </span><span class="comment">// mergeDMLRun は mergedml.RunMerge への薄い委譲殻です。</span>
 <span id="L38" class="ln">    38  </span>func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
-<span id="L39" class="ln">    39  </span>	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+<span id="L39" class="ln">    39  </span>	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 <span id="L40" class="ln">    40  </span>
 <span id="L41" class="ln">    41  </span>	gen := mergedml.NewGenerator(logger, workDir)
 <span id="L42" class="ln">    42  </span>	return mergedml.RunMerge(ctx, gen, targetType)

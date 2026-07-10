@@ -71,11 +71,11 @@
 <span id="L14" class="ln">    14  </span>	db driver.DatabaseDriver,
 <span id="L15" class="ln">    15  </span>	logger logging.Logger,
 <span id="L16" class="ln">    16  </span>) {
-<span id="L17" class="ln">    17  </span>	reg.RegisterStop(func(_ context.Context) error {
+<span id="L17" class="ln">    17  </span>	reg.RegisterStop(func(ctx context.Context) error {
 <span id="L18" class="ln">    18  </span>		l := logger.Named(&#34;db.CloseHook&#34;)
-<span id="L19" class="ln">    19  </span>		l.Info(&#34;Closing database connection&#34;)
+<span id="L19" class="ln">    19  </span>		l.Info(ctx, &#34;Closing database connection&#34;)
 <span id="L20" class="ln">    20  </span>		if err := db.Close(); err != nil {
-<span id="L21" class="ln">    21  </span>			l.Error(&#34;failed to close database&#34;, logging.Error(logging.ErrorKey, err))
+<span id="L21" class="ln">    21  </span>			l.Error(ctx, &#34;failed to close database&#34;, logging.Error(logging.ErrorKey, err))
 <span id="L22" class="ln">    22  </span>			return err
 <span id="L23" class="ln">    23  </span>		}
 <span id="L24" class="ln">    24  </span>		return nil
