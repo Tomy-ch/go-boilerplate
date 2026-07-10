@@ -12,9 +12,9 @@
 
 |ターゲット|ベースイメージ|含まれるツール|
 |---|---|---|
-|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.14-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild（+ ポータルバンドル用ライブラリ）|
-|`python_tools`|`python:3.14.2-slim`|sqlfluff|
+|`go_tools`|`golang:1.26.5-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
+|`node_tools`|`node:24.18.0-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild（+ ポータルバンドル用ライブラリ）|
+|`python_tools`|`python:3.14.6-slim`|sqlfluff|
 
 ## go_tools
 

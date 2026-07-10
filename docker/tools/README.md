@@ -12,9 +12,9 @@ This Dockerfile provides **code generation and bundling tool containers** for th
 
 |Target|Base Image|Included Tools|
 |---|---|---|
-|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.14-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild (+ portal bundling libs)|
-|`python_tools`|`python:3.14.2-slim`|sqlfluff|
+|`go_tools`|`golang:1.26.5-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
+|`node_tools`|`node:24.18.0-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild (+ portal bundling libs)|
+|`python_tools`|`python:3.14.6-slim`|sqlfluff|
 
 ## go_tools
 

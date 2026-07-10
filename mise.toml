@@ -8,9 +8,9 @@ min_version = "2026.6.0"
 
 [tools]
 # 言語ランタイム
-go = "1.26.4"
-node = "24.14"
-python = "3.14.2"
+go = "1.26.5"
+node = "24.18.0"
+python = "3.14.6"
 
 # Go ベース（標準レジストリで解決可）
 oapi-codegen = "2.7.0"

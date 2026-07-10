@@ -12,9 +12,9 @@ This Dockerfile defines the application server images. It uses multi-stage build
 
 |Target|Base Image|Purpose|
 |---|---|---|
-|`builder`|`golang:1.26.4-alpine`|Build the Go binary with `ldflags` (version/revision/build date)|
+|`builder`|`golang:1.26.5-alpine`|Build the Go binary with `ldflags` (version/revision/build date)|
 |`runtime`|`alpine:3.23`|Production runtime container (non-root `app` user); also runs migrations via command override|
-|`tooling`|`golang:1.26.4-alpine`|Local development environment (hot reload + debugging)|
+|`tooling`|`golang:1.26.5-alpine`|Local development environment (hot reload + debugging)|
 
 ## runtime
 

@@ -5,7 +5,7 @@ ARG MISE_VERSION=v2026.6.0
 # Go ツールビルダー：mise.toml のバージョン pin で Go 系ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 go_tools ステージに mise 本体を残さないための中継。
 # ------------------------------
-FROM golang:1.27rc2-alpine AS go_tools_builder
+FROM golang:1.26.5-alpine AS go_tools_builder
 
 # CGO_ENABLED=0: `go:` backend で install されるツール（mockgen）を静的バイナリにする
 ENV CGO_ENABLED=0
@@ -53,7 +53,7 @@ RUN mkdir /out \
 # Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
-FROM golang:1.27rc2-alpine AS go_tools
+FROM golang:1.26.5-alpine AS go_tools
 
 RUN apk add --no-cache \
     bash \
@@ -78,7 +78,7 @@ CMD []
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
 # 補助スクリプトが依存する npm パッケージをローカル node_modules にインストールしておく
 # ------------------------------
-FROM node:26.4-alpine AS node_tools
+FROM node:24.18.0-alpine AS node_tools
 
 # パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
