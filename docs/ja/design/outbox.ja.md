@@ -2,7 +2,7 @@
 
 [Outbox Store README（日本語）](../../../internal/usecase/boundary/outbox/README.ja.md) | English: [outbox.md](../../design/outbox.md)
 
-本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0042](../adr/0042-transactional-outbox.ja.md) 以降）を参照。
+本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0042](../adr/0042-transactional-outbox.ja.md) 以降）、relay の重複窓を本テンプレートで意図的にハードニングしない決定（および本番コピー向けの多層再設計の推奨）は [ADR-0094](../adr/0094-outbox-relay-hardening-delegated.ja.md) を参照。
 
 ---
 
