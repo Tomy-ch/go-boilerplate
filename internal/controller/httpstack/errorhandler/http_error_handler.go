@@ -47,7 +47,7 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError)
 			writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
 			fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
-			logger.Named("errorhandler.handleHTTPError").Error("failed to write error response", fields...)
+			logger.Named("errorhandler.handleHTTPError").Error(c.Request().Context(), "failed to write error response", fields...)
 			// ヘッダ送出途中の失敗ではレスポンスが commit 済みになり得るため、未 commit 時のみ 500 を書く。
 			if !c.Response().Committed {
 				c.Response().WriteHeader(http.StatusInternalServerError)
@@ -143,11 +143,12 @@ func logHTTPError(
 		return
 	}
 	fields := httpErrorField(c, lf, he)
+	ctx := c.Request().Context()
 	switch {
 	case he.HTTPStatus >= errorLevelBoundHTTPStatus:
-		logger.Error("errorhandler.server_error", fields...)
+		logger.Error(ctx, "errorhandler.server_error", fields...)
 	default:
-		logger.Warn("errorhandler.client_error", fields...)
+		logger.Warn(ctx, "errorhandler.client_error", fields...)
 	}
 }
 

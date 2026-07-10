@@ -1,6 +1,8 @@
 package di
 
 import (
+	"context"
+
 	"go-boilerplate/internal/logging"
 
 	"go.uber.org/fx/fxevent"
@@ -78,7 +80,7 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 			"Application failed to stop", nil,
 			f.logger.Info, "Application stopped")
 	case *fxevent.RollingBack:
-		f.logger.Error("start failed, rolling back", logging.Error(logging.ErrorKey, e.StartErr))
+		f.logger.Error(context.Background(), "start failed, rolling back", logging.Error(logging.ErrorKey, e.StartErr))
 	case *fxevent.RolledBack:
 		f.record(e.Err,
 			"Rollback failed", nil,
@@ -87,14 +89,16 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 }
 
 // record は fx イベントの成否に応じてログを記録します。
+// fxevent.Logger は ctx を持たないため context.Background() を用います。
 func (f *fxEventLogger) record(
 	err error,
 	failMsg string, failFields []*logging.Field,
-	logOK func(string, ...*logging.Field), okMsg string, okFields ...*logging.Field,
+	logOK func(context.Context, string, ...*logging.Field), okMsg string, okFields ...*logging.Field,
 ) {
+	ctx := context.Background()
 	if err != nil {
-		f.logger.Error(failMsg, append(failFields, logging.Error(logging.ErrorKey, err))...)
+		f.logger.Error(ctx, failMsg, append(failFields, logging.Error(logging.ErrorKey, err))...)
 		return
 	}
-	logOK(okMsg, okFields...)
+	logOK(ctx, okMsg, okFields...)
 }

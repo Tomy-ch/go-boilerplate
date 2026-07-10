@@ -105,25 +105,25 @@
 			
 			
 				
-				<dd><a href="#MockDBSystemQuery">type MockDBSystemQuery</a></dd>
+				<dd><a href="#MockDBSystemCqrs">type MockDBSystemCqrs</a></dd>
 				
 					
-					<dd>    <a href="#NewMockDBSystemQuery">func NewMockDBSystemQuery(ctrl *gomock.Controller) *MockDBSystemQuery</a></dd>
+					<dd>    <a href="#NewMockDBSystemCqrs">func NewMockDBSystemCqrs(ctrl *gomock.Controller) *MockDBSystemCqrs</a></dd>
 				
 				
 					
-					<dd>    <a href="#MockDBSystemQuery.CheckDBHealth">func (m *MockDBSystemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)</a></dd>
+					<dd>    <a href="#MockDBSystemCqrs.CheckDBHealth">func (m *MockDBSystemCqrs) CheckDBHealth(ctx context.Context) (query.DBHealth, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockDBSystemQuery.EXPECT">func (m *MockDBSystemQuery) EXPECT() *MockDBSystemQueryMockRecorder</a></dd>
+					<dd>    <a href="#MockDBSystemCqrs.EXPECT">func (m *MockDBSystemCqrs) EXPECT() *MockDBSystemCqrsMockRecorder</a></dd>
 				
 			
 				
-				<dd><a href="#MockDBSystemQueryMockRecorder">type MockDBSystemQueryMockRecorder</a></dd>
+				<dd><a href="#MockDBSystemCqrsMockRecorder">type MockDBSystemCqrsMockRecorder</a></dd>
 				
 				
 					
-					<dd>    <a href="#MockDBSystemQueryMockRecorder.CheckDBHealth">func (mr *MockDBSystemQueryMockRecorder) CheckDBHealth(ctx any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockDBSystemCqrsMockRecorder.CheckDBHealth">func (mr *MockDBSystemCqrsMockRecorder) CheckDBHealth(ctx any) *gomock.Call</a></dd>
 				
 			
 			
@@ -137,7 +137,7 @@
 			<p>
 			<span style="font-size:90%">
 			
-				<a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_query.go.gen.go.html">mock_health_check_system_query.go.gen.go</a>
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_cqrs.go.gen.go.html">mock_health_check_system_cqrs.go.gen.go</a>
 			
 			</span>
 			</p>
@@ -153,14 +153,14 @@
 		
 			
 			
-			<h2 id="MockDBSystemQuery">type <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_query.go.gen.go.html?s=526:648#L11">MockDBSystemQuery</a>
-				<a class="permalink" href="#MockDBSystemQuery">¶</a>
+			<h2 id="MockDBSystemCqrs">type <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_cqrs.go.gen.go.html?s=521:641#L11">MockDBSystemCqrs</a>
+				<a class="permalink" href="#MockDBSystemCqrs">¶</a>
 				
 				
 			</h2>
-			<p>MockDBSystemQuery is a mock of DBSystemQuery interface.
+			<p>MockDBSystemCqrs is a mock of DBSystemCqrs interface.
 
-			</p><pre>type MockDBSystemQuery struct {
+			</p><pre>type MockDBSystemCqrs struct {
     <span class="comment">// contains filtered or unexported fields</span>
 }
 </pre>
@@ -175,13 +175,13 @@
 
 			
 				
-				<h3 id="NewMockDBSystemQuery">func <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_query.go.gen.go.html?s=852:921#L23">NewMockDBSystemQuery</a>
-					<a class="permalink" href="#NewMockDBSystemQuery">¶</a>
+				<h3 id="NewMockDBSystemCqrs">func <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_cqrs.go.gen.go.html?s=840:907#L23">NewMockDBSystemCqrs</a>
+					<a class="permalink" href="#NewMockDBSystemCqrs">¶</a>
 					
 					
 				</h3>
-				<pre>func NewMockDBSystemQuery(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockDBSystemQuery">MockDBSystemQuery</a></pre>
-				<p>NewMockDBSystemQuery creates a new mock instance.
+				<pre>func NewMockDBSystemCqrs(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockDBSystemCqrs">MockDBSystemCqrs</a></pre>
+				<p>NewMockDBSystemCqrs creates a new mock instance.
 
 				
 				
@@ -189,12 +189,12 @@
 
 			
 				
-				</p><h3 id="MockDBSystemQuery.CheckDBHealth">func (*MockDBSystemQuery) <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_query.go.gen.go.html?s=1239:1325#L35">CheckDBHealth</a>
-					<a class="permalink" href="#MockDBSystemQuery.CheckDBHealth">¶</a>
+				</p><h3 id="MockDBSystemCqrs.CheckDBHealth">func (*MockDBSystemCqrs) <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_cqrs.go.gen.go.html?s=1221:1306#L35">CheckDBHealth</a>
+					<a class="permalink" href="#MockDBSystemCqrs.CheckDBHealth">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockDBSystemQuery">MockDBSystemQuery</a>) CheckDBHealth(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/healthcheck/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/healthcheck/query/#DBHealth">DBHealth</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockDBSystemCqrs">MockDBSystemCqrs</a>) CheckDBHealth(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/healthcheck/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/healthcheck/query/#DBHealth">DBHealth</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>CheckDBHealth mocks base method.
 
 				
@@ -202,12 +202,12 @@
 				
 			
 				
-				</p><h3 id="MockDBSystemQuery.EXPECT">func (*MockDBSystemQuery) <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_query.go.gen.go.html?s=1111:1178#L30">EXPECT</a>
-					<a class="permalink" href="#MockDBSystemQuery.EXPECT">¶</a>
+				</p><h3 id="MockDBSystemCqrs.EXPECT">func (*MockDBSystemCqrs) <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_cqrs.go.gen.go.html?s=1095:1160#L30">EXPECT</a>
+					<a class="permalink" href="#MockDBSystemCqrs.EXPECT">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockDBSystemQuery">MockDBSystemQuery</a>) EXPECT() *<a href="#MockDBSystemQueryMockRecorder">MockDBSystemQueryMockRecorder</a></pre>
+				<pre>func (m *<a href="#MockDBSystemCqrs">MockDBSystemCqrs</a>) EXPECT() *<a href="#MockDBSystemCqrsMockRecorder">MockDBSystemCqrsMockRecorder</a></pre>
 				<p>EXPECT returns an object that allows the caller to indicate expected use.
 
 				
@@ -217,14 +217,14 @@
 		
 			
 			
-			</p><h2 id="MockDBSystemQueryMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_query.go.gen.go.html?s=727:797#L18">MockDBSystemQueryMockRecorder</a>
-				<a class="permalink" href="#MockDBSystemQueryMockRecorder">¶</a>
+			</p><h2 id="MockDBSystemCqrsMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_cqrs.go.gen.go.html?s=718:786#L18">MockDBSystemCqrsMockRecorder</a>
+				<a class="permalink" href="#MockDBSystemCqrsMockRecorder">¶</a>
 				
 				
 			</h2>
-			<p>MockDBSystemQueryMockRecorder is the mock recorder for MockDBSystemQuery.
+			<p>MockDBSystemCqrsMockRecorder is the mock recorder for MockDBSystemCqrs.
 
-			</p><pre>type MockDBSystemQueryMockRecorder struct {
+			</p><pre>type MockDBSystemCqrsMockRecorder struct {
     <span class="comment">// contains filtered or unexported fields</span>
 }
 </pre>
@@ -241,12 +241,12 @@
 
 			
 				
-				<h3 id="MockDBSystemQueryMockRecorder.CheckDBHealth">func (*MockDBSystemQueryMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_query.go.gen.go.html?s=1539:1615#L44">CheckDBHealth</a>
-					<a class="permalink" href="#MockDBSystemQueryMockRecorder.CheckDBHealth">¶</a>
+				<h3 id="MockDBSystemCqrsMockRecorder.CheckDBHealth">func (*MockDBSystemCqrsMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/healthcheck/query/mock/mock_health_check_system_cqrs.go.gen.go.html?s=1520:1595#L44">CheckDBHealth</a>
+					<a class="permalink" href="#MockDBSystemCqrsMockRecorder.CheckDBHealth">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockDBSystemQueryMockRecorder">MockDBSystemQueryMockRecorder</a>) CheckDBHealth(ctx <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockDBSystemCqrsMockRecorder">MockDBSystemCqrsMockRecorder</a>) CheckDBHealth(ctx <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>CheckDBHealth indicates an expected call of CheckDBHealth.
 
 				

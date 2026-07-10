@@ -61,8 +61,8 @@
 |---|---|---|---|---|
 |METRICS_HOST|metrics bind host|string|0.0.0.0||
 |METRICS_PORT|metrics port|int|6060||
-|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理推奨（本番）|
-|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|本番は必ず変更 / シークレット管理推奨|
+|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
+|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
 
 ### Observability
 

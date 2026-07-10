@@ -178,7 +178,7 @@
 <span id="L121" class="ln">   121  </span>				})
 <span id="L122" class="ln">   122  </span>
 <span id="L123" class="ln">   123  </span>			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
-<span id="L124" class="ln">   124  </span>			require.NoError(t, g.sanitizeSchemaInPlace())
+<span id="L124" class="ln">   124  </span>			require.NoError(t, g.sanitizeSchemaInPlace(context.Background()))
 <span id="L125" class="ln">   125  </span>
 <span id="L126" class="ln">   126  </span>			got := string(written)
 <span id="L127" class="ln">   127  </span>			assert.Contains(t, got, &#34;CREATE TABLE users (id int);&#34;)
@@ -201,7 +201,7 @@
 <span id="L144" class="ln">   144  </span>			fs.EXPECT().ReadFile(gomock.Any()).Return(nil, xerrors.New(&#34;read failed&#34;))
 <span id="L145" class="ln">   145  </span>
 <span id="L146" class="ln">   146  </span>			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
-<span id="L147" class="ln">   147  </span>			require.Error(t, g.sanitizeSchemaInPlace())
+<span id="L147" class="ln">   147  </span>			require.Error(t, g.sanitizeSchemaInPlace(context.Background()))
 <span id="L148" class="ln">   148  </span>		})
 <span id="L149" class="ln">   149  </span>
 <span id="L150" class="ln">   150  </span>		t.Run(&#34;書き込み失敗時はエラー&#34;, func(t *testing.T) {
@@ -213,7 +213,7 @@
 <span id="L156" class="ln">   156  </span>			fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New(&#34;write failed&#34;))
 <span id="L157" class="ln">   157  </span>
 <span id="L158" class="ln">   158  </span>			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
-<span id="L159" class="ln">   159  </span>			require.Error(t, g.sanitizeSchemaInPlace())
+<span id="L159" class="ln">   159  </span>			require.Error(t, g.sanitizeSchemaInPlace(context.Background()))
 <span id="L160" class="ln">   160  </span>		})
 <span id="L161" class="ln">   161  </span>	})
 <span id="L162" class="ln">   162  </span>}

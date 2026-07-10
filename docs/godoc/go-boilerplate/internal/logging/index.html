@@ -199,10 +199,10 @@
 				<dd><a href="#Logger">type Logger</a></dd>
 				
 					
-					<dd>    <a href="#NewConsoleLogger">func NewConsoleLogger(level, stacktraceLevel Level) Logger</a></dd>
+					<dd>    <a href="#NewConsoleLogger">func NewConsoleLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger</a></dd>
 				
 					
-					<dd>    <a href="#NewJSONLogger">func NewJSONLogger(level, stacktraceLevel Level) Logger</a></dd>
+					<dd>    <a href="#NewJSONLogger">func NewJSONLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger</a></dd>
 				
 					
 					<dd>    <a href="#NewObservedTestLogger">func NewObservedTestLogger(t *testing.T) (Logger, *observer.ObservedLogs)</a></dd>
@@ -220,6 +220,11 @@
 			
 				
 				<dd><a href="#SQLFieldsEndInput">type SQLFieldsEndInput</a></dd>
+				
+				
+			
+				
+				<dd><a href="#TraceExtractor">type TraceExtractor</a></dd>
 				
 				
 			
@@ -555,7 +560,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=746:1193#L14">HTTPRequestLogInput</a>
+			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=746:1160#L14">HTTPRequestLogInput</a>
 				<a class="permalink" href="#HTTPRequestLogInput">¶</a>
 				
 				
@@ -581,9 +586,6 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 <span id="HTTPRequestLogInput.PathParams"></span>    PathParams  map[<a href="../../../builtin/#string">string</a>]<a href="../../../builtin/#string">string</a>
 <span id="HTTPRequestLogInput.QueryParams"></span>    QueryParams map[<a href="../../../builtin/#string">string</a>][]<a href="../../../builtin/#string">string</a>
-
-<span id="HTTPRequestLogInput.TraceID"></span>    TraceID <a href="../../../builtin/#string">string</a>
-<span id="HTTPRequestLogInput.SpanID"></span>    SpanID  <a href="../../../builtin/#string">string</a>
 }
 </pre>
 
@@ -601,7 +603,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1311:1503#L39">HTTPResponseLogInput</a>
+			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1278:1434#L36">HTTPResponseLogInput</a>
 				<a class="permalink" href="#HTTPResponseLogInput">¶</a>
 				
 				
@@ -619,8 +621,6 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 <span id="HTTPResponseLogInput.Latency"></span>    Latency <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>
 
 <span id="HTTPResponseLogInput.RequestID"></span>    RequestID <a href="../../../builtin/#string">string</a>
-<span id="HTTPResponseLogInput.TraceID"></span>    TraceID   <a href="../../../builtin/#string">string</a>
-<span id="HTTPResponseLogInput.SpanID"></span>    SpanID    <a href="../../../builtin/#string">string</a>
 }
 </pre>
 
@@ -725,7 +725,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=347:374#L2">LogCore</a>
+			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=496:523#L7">LogCore</a>
 				<a class="permalink" href="#LogCore">¶</a>
 				
 				
@@ -771,7 +771,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1956:2067#L75">NewLogFields</a>
+				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2043:2154#L70">NewLogFields</a>
 					<a class="permalink" href="#NewLogFields">¶</a>
 					
 					
@@ -802,22 +802,23 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=462:1084#L5">Logger</a>
+			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1022:1728#L15">Logger</a>
 				<a class="permalink" href="#Logger">¶</a>
 				
 				
 			</h2>
 			<p>Logger は、アプリ全体が使うロガーのインターフェースです。
+各出力メソッドは ctx を受け取り、trace_id / span_id を自動注入します。
 
 			</p><pre>type Logger interface {
     <span class="comment">// Debug はデバッグレベルのログを出力する。</span>
-    Debug(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    Debug(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
     <span class="comment">// Info は情報レベルのログを出力する。</span>
-    Info(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    Info(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
     <span class="comment">// Warn は警告レベルのログを出力する。</span>
-    Warn(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    Warn(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
     <span class="comment">// Error はエラーレベルのログを出力する。</span>
-    Error(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    Error(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
     <span class="comment">// Named は、新しい名前付きの Logger を返す。</span>
     Named(name <a href="../../../builtin/#string">string</a>) <a href="#Logger">Logger</a>
     <span class="comment">// CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。</span>
@@ -834,27 +835,29 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="NewConsoleLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=2047:2105#L45">NewConsoleLogger</a>
+				<h3 id="NewConsoleLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=2282:2364#L47">NewConsoleLogger</a>
 					<a class="permalink" href="#NewConsoleLogger">¶</a>
 					
 					
 				</h3>
-				<pre>func NewConsoleLogger(level, stacktraceLevel <a href="#Level">Level</a>) <a href="#Logger">Logger</a></pre>
+				<pre>func NewConsoleLogger(level, stacktraceLevel <a href="#Level">Level</a>, extract <a href="#TraceExtractor">TraceExtractor</a>) <a href="#Logger">Logger</a></pre>
 				<p>NewConsoleLogger は人間可読な console ロガーを生成します。
-level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
+level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、
+extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。
 
 				
 				
 			
 				
-				</p><h3 id="NewJSONLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=1655:1710#L38">NewJSONLogger</a>
+				</p><h3 id="NewJSONLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=1756:1835#L39">NewJSONLogger</a>
 					<a class="permalink" href="#NewJSONLogger">¶</a>
 					
 					
 				</h3>
-				<pre>func NewJSONLogger(level, stacktraceLevel <a href="#Level">Level</a>) <a href="#Logger">Logger</a></pre>
+				<pre>func NewJSONLogger(level, stacktraceLevel <a href="#Level">Level</a>, extract <a href="#TraceExtractor">TraceExtractor</a>) <a href="#Logger">Logger</a></pre>
 				<p>NewJSONLogger は JSON 構造化ロガーを生成します。
-level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
+level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、
+extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。
 
 				
 				
@@ -898,7 +901,7 @@ caller（発生源）を検証したいテストで使用します。
 				
 			
 				
-				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1546:1590#L33">WithCore</a>
+				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=2218:2262#L44">WithCore</a>
 					<a class="permalink" href="#WithCore">¶</a>
 					
 					
@@ -915,7 +918,7 @@ Tee した新しい Logger を返します。core が nil の場合は、元の 
 		
 			
 			
-			</p><h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1600:1850#L55">SQLFieldsEndInput</a>
+			</p><h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1531:1937#L50">SQLFieldsEndInput</a>
 				<a class="permalink" href="#SQLFieldsEndInput">¶</a>
 				
 				
@@ -936,11 +939,35 @@ Tee した新しい Logger を返します。core が nil の場合は、元の 
 <span id="SQLFieldsEndInput.Args"></span>    Args  []<a href="../../../builtin/#any">any</a>
 <span id="SQLFieldsEndInput.Err"></span>    Err   <a href="../../../builtin/#error">error</a>
 
-<span id="SQLFieldsEndInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsEndInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsEndInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsEndInput.ParentSpanID"></span>    <span class="comment">// ParentSpanID は呼び出し元 span の ID。trace_id / span_id は Logger が ctx から</span>
+    <span class="comment">// 自動注入するが、parent_span_id は ctx から導出できないため明示的に渡す。</span>
+    ParentSpanID <a href="../../../builtin/#string">string</a>
 }
 </pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="TraceExtractor">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=758:837#L11">TraceExtractor</a>
+				<a class="permalink" href="#TraceExtractor">¶</a>
+				
+				
+			</h2>
+			<p>TraceExtractor は、ctx から trace_id / span_id を抽出する関数です。ok=false のとき
+trace 情報を注入しません（logging を trace 実装から独立させ、循環参照を避けるための抽象）。
+
+			</p><pre>type TraceExtractor func(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>) (traceID, spanID <a href="../../../builtin/#string">string</a>, ok <a href="../../../builtin/#bool">bool</a>)</pre>
 
 			
 

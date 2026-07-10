@@ -61,8 +61,8 @@ This directory is the canonical reference for every environment variable read by
 |---|---|---|---|---|
 |METRICS_HOST|metrics bind host|string|0.0.0.0||
 |METRICS_PORT|metrics port|int|6060||
-|METRICS_USERNAME|Basic auth username|string|metrics-user|Secret management recommended (production)|
-|METRICS_PASSWORD|Basic auth password|string|metrics-password|Must be changed in production / secret management recommended|
+|METRICS_USERNAME|Basic auth username|string|metrics-user|Secret management required — kept out of source control; committed only for local / ci, injected at deploy time for dev / stg / prd|
+|METRICS_PASSWORD|Basic auth password|string|metrics-password|Secret management required — kept out of source control; committed only for local / ci, injected at deploy time for dev / stg / prd|
 
 ### Observability
 

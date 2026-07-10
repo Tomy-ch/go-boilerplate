@@ -89,11 +89,11 @@ func (t *queryTracer) TraceQueryEnd(
 
 	switch {
 	case data.Err != nil:
-		t.logger.Error("DB query failed", t.endFields(ctx, ld, duration, data.Err)...)
+		t.logger.Error(ctx, "DB query failed", t.endFields(ld, duration, data.Err)...)
 	case t.slowThreshold > 0 && duration > t.slowThreshold:
-		t.logger.Warn("DB slow query", t.endFields(ctx, ld, duration, nil)...)
+		t.logger.Warn(ctx, "DB slow query", t.endFields(ld, duration, nil)...)
 	default:
-		t.logger.Info("DB query completed", t.endFields(ctx, ld, duration, nil)...)
+		t.logger.Info(ctx, "DB query completed", t.endFields(ld, duration, nil)...)
 	}
 }
 
@@ -106,14 +106,12 @@ func (t *queryTracer) recordQueryMetric(ctx context.Context, sql string, duratio
 }
 
 func (t *queryTracer) endFields(
-	ctx context.Context, ld queryLogData, duration time.Duration, err error,
+	ld queryLogData, duration time.Duration, err error,
 ) []*logging.Field {
 	args := ld.args
 	if t.maskArgs {
 		args = nil
 	}
-
-	tc := observability.ExtractTraceContext(ctx)
 
 	return t.lf.BuildSQLEndFields(logging.SQLFieldsEndInput{
 		Layer:        queryTracerLayer,
@@ -123,8 +121,6 @@ func (t *queryTracer) endFields(
 		Query:        ld.sql,
 		Args:         args,
 		Err:          err,
-		TraceID:      tc.TraceID(),
-		SpanID:       tc.SpanID(),
 		ParentSpanID: ld.parentSpanID,
 	})
 }

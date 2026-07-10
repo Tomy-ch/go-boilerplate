@@ -2,6 +2,8 @@
 package recovery
 
 import (
+	"context"
+
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/server"
@@ -35,6 +37,7 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 		return productionConfig()
 	default:
 		logger.Named("middleware.recover").Warn(
+			context.Background(),
 			"Unknown environment, using production config for recover middleware",
 			logging.String("env", appCfg.Mode()),
 		)
@@ -51,7 +54,7 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 			logging.Strings(logging.InternalStackTraceKey, logging.SplitStackLines(string(stack))),
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
-		logger.Named("middleware.recover").Error("panic recovered", fields...)
+		logger.Named("middleware.recover").Error(c.Request().Context(), "panic recovered", fields...)
 		// ログ済みを記録し err を返す（echo が c.Error で 500 を返す。二重ログは ctxhelper.GetRecoveredFromEcho で抑止）。
 		ctxhelper.SetRecoveredToEcho(c, true)
 		return err

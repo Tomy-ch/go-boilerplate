@@ -83,7 +83,7 @@ func TestLogListenError(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			logger := mock_logging.NewMockLogger(ctrl)
 			logger.EXPECT().Named("metrics.ListenAndServe").Return(logger)
-			logger.EXPECT().Error("metrics server error", gomock.Any())
+			logger.EXPECT().Error(gomock.Any(), "metrics server error", gomock.Any())
 
 			logListenError(logger, xerrors.New("bind failed"))
 		})

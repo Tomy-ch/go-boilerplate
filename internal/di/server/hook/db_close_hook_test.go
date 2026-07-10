@@ -47,7 +47,7 @@ func TestRegisterDBCloseHooks(t *testing.T) {
 
 			namedMock := mock_logging.NewMockLogger(ctrl)
 			logger.EXPECT().Named("db.CloseHook").Return(namedMock)
-			namedMock.EXPECT().Info("Closing database connection")
+			namedMock.EXPECT().Info(gomock.Any(), "Closing database connection")
 			db.EXPECT().Close()
 
 			require.NoError(t, closeFn(context.Background()))
@@ -67,10 +67,10 @@ func TestRegisterDBCloseHooks(t *testing.T) {
 
 			namedMock := mock_logging.NewMockLogger(ctrl)
 			logger.EXPECT().Named("db.CloseHook").Return(namedMock)
-			namedMock.EXPECT().Info("Closing database connection")
+			namedMock.EXPECT().Info(gomock.Any(), "Closing database connection")
 			wantErr := xerrors.New("close failed")
 			db.EXPECT().Close().Return(wantErr)
-			namedMock.EXPECT().Error("failed to close database", gomock.Any()).Times(1)
+			namedMock.EXPECT().Error(gomock.Any(), "failed to close database", gomock.Any()).Times(1)
 
 			require.ErrorIs(t, closeFn(context.Background()), wantErr)
 		})

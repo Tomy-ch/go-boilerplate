@@ -157,6 +157,7 @@ func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage
 		}
 		u.metrics.IncDead(ctx)
 		u.logging.Named(relayLoggerName).Warn(
+			ctx,
 			"outbox message marked dead after reaching max attempts",
 			logging.String(logging.MessageIDKey, m.MessageID.String()),
 			logging.String(logging.EventTypeKey, m.EventType),
