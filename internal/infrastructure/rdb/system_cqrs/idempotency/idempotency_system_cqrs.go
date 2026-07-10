@@ -37,7 +37,8 @@ func New(
 
 // Claim は、claimed 行を作ります。新規に作れたら true、同一 (scope, key) の既存行があれば
 // false を返します。ロック競合タイムアウト時は ErrLockTimeout を返します。
-// 業務 tx 内から呼ぶこと（SET LOCAL lock_timeout がセッションに有効になる）。
+// 業務 tx 内から呼ぶこと。claim 待ち用の lock_timeout は claim 直後に既定へ戻すため、
+// 同一 tx で続く業務クエリへ 3s 上限が波及しない。
 func (s *store) Claim(ctx context.Context, p idempotencybndry.ClaimParams) (bool, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -56,10 +57,21 @@ func (s *store) Claim(ctx context.Context, p idempotencybndry.ClaimParams) (bool
 		RequestFingerprint: p.Fingerprint,
 		ExpiresAt:          p.ExpiresAt,
 	})
+
+	// claim が成功（新規）または既存キー検出で tx が健全なうちに、claim 待ち限定の
+	// lock_timeout を既定へ戻す。ロック競合等で claim が失敗した場合は tx が abort 済みで
+	// 後続コマンドを受け付けないため戻さない（呼び出し側が rollback する）。
+	existing := xerrors.Is(err, pgx.ErrNoRows)
+	if err == nil || existing {
+		if _, rerr := ldb.Exec(ctx, "SET LOCAL lock_timeout TO DEFAULT"); rerr != nil {
+			return false, pgerror.NormalizeError(rerr)
+		}
+	}
+
 	switch {
 	case err == nil:
 		return true, nil
-	case xerrors.Is(err, pgx.ErrNoRows):
+	case existing:
 		// ON CONFLICT DO NOTHING で 0 行 = 既存キーあり。
 		return false, nil
 	case pgerror.IsLockNotAvailable(err):

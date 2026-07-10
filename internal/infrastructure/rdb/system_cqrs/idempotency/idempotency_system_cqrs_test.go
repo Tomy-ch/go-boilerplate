@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
@@ -22,6 +23,9 @@ import (
 
 // errHolderRollback は、ロック競合テストで保持側 tx を最後にロールバックさせるための sentinel です。
 var errHolderRollback = xerrors.New("rollback holder tx for test")
+
+// errSubjectRollback は、lock_timeout 復元テストで業務側 tx を行を残さず終えるための sentinel です。
+var errSubjectRollback = xerrors.New("rollback subject tx for test")
 
 func newFingerprint(b byte) []byte {
 	fp := make([]byte, 32)
@@ -169,6 +173,96 @@ func Test_store_DeleteExpired(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, int64(0), deleted)
 			})
+		})
+	})
+}
+
+func Test_store_Claim_lockTimeoutScope(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	s := &store{tracer: lt, db: testDB}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("claim後の業務クエリは復元済みlock_timeoutで動き3s超のロック待ちでも55P03にならない", func(t *testing.T) {
+			t.Parallel()
+
+			// claim 時の SET LOCAL lock_timeout(3s) が業務フェーズへ波及していないことを、
+			// 保持側 tx の advisory lock を claim の 3s 上限を超えて待たせても 55P03 にならない、
+			// という振る舞いで検証する。WithinTx は txLock で直列化するため、独立した 2 本の
+			// TransactionManager（= 2 コネクション）で並行させる。
+			claimTimeout, err := time.ParseDuration(claimLockTimeout)
+			require.NoError(t, err)
+			holdDuration := claimTimeout + 1500*time.Millisecond
+
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
+
+			const advisoryLockKey = int64(732100000000000091)
+
+			holderLocked := make(chan struct{})
+			releaseHolder := make(chan struct{})
+			holderDone := make(chan error, 1)
+
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(releaseHolder) }) }
+			t.Cleanup(release) // 失敗時も保持側 goroutine をリークさせない
+
+			// 保持側 tx: advisory xact lock を取得し、claim の lock_timeout(3s)を超えて保持する。
+			go func() {
+				holderDone <- txm.Do(context.Background(), func(ctx context.Context) error {
+					if _, err := driver.New(ctx, testDB).Exec(ctx, "SELECT pg_advisory_xact_lock($1)", advisoryLockKey); err != nil {
+						return err
+					}
+					close(holderLocked)
+					<-releaseHolder
+					return errHolderRollback // rollback で advisory lock を解放する。
+				})
+			}()
+
+			select {
+			case <-holderLocked:
+			case err := <-holderDone:
+				require.NoError(t, err, "保持側 tx がロック取得前に失敗した")
+				return
+			}
+
+			// 業務側 tx: claim（ここで lock_timeout=3s がセットされ直後に既定へ戻る）後、
+			// 保持側が握る advisory lock を待つ。ロック待ちがブロックするため goroutine で実行する。
+			subjectDone := make(chan struct{})
+			var subjectTxErr, bizPhaseErr error
+			go func() {
+				defer close(subjectDone)
+				subjectTxErr = txm.Do(context.Background(), func(ctx context.Context) error {
+					claimed, err := s.Claim(ctx, idempotencybndry.ClaimParams{
+						Scope: "lock-timeout-restore-scope", Key: "key-1", Method: "POST", Path: "/v1/users",
+						Fingerprint: newFingerprint(0x06), ExpiresAt: time.Now().Add(time.Hour),
+					})
+					if err != nil {
+						return err
+					}
+					if !claimed {
+						return xerrors.New("subject: expected fresh claim to succeed")
+					}
+					// 業務フェーズのロック待ち。lock_timeout が claim に閉じていれば 55P03 にならない。
+					_, bizPhaseErr = driver.New(ctx, testDB).Exec(ctx, "SELECT pg_advisory_xact_lock($1)", advisoryLockKey)
+					return errSubjectRollback // 業務クエリの成否は bizPhaseErr で見て、行は残さない。
+				})
+			}()
+
+			// 業務側が claim を終えロック待ちに入ってから、claim の 3s 上限を確実に超える時間だけ
+			// 保持してから解放する。lock_timeout が未復元なら業務側は 3s で 55P03 になっている。
+			time.Sleep(holdDuration)
+			release()
+
+			<-subjectDone
+			require.NoError(t, bizPhaseErr)
+			require.False(t, pgerror.IsLockNotAvailable(bizPhaseErr))
+			require.ErrorIs(t, subjectTxErr, errSubjectRollback)
+			require.ErrorIs(t, <-holderDone, errHolderRollback)
 		})
 	})
 }
