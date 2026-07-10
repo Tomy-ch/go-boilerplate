@@ -31,6 +31,48 @@ func newTestGenerator(t *testing.T, fs FileSystem) *Generator {
 	}
 }
 
+func TestValidateTargetType(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("repositoryは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("repository"))
+		})
+		t.Run("query_serviceは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("query_service"))
+		})
+		t.Run("system_cqrsは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("system_cqrs"))
+		})
+		t.Run("command_serviceは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("command_service"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("空文字は不許可", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, validateTargetType(""))
+		})
+		t.Run("カレントディレクトリ指定は不許可", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, validateTargetType("."))
+		})
+		t.Run("想定外のタイプは不許可", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, validateTargetType("unknown"))
+		})
+	})
+}
+
 func TestGenerator_buildCategorySQLFile(t *testing.T) {
 	t.Parallel()
 
@@ -412,6 +454,16 @@ func TestRunMerge(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("不正なtypeはFS操作前に弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			// whitelist で弾かれるため ListSubDirNames 等の FS 呼び出しには一切到達しない。
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, RunMerge(context.Background(), g, "invalid_type"))
+		})
 
 		t.Run("カテゴリ一覧の取得に失敗するとエラー", func(t *testing.T) {
 			t.Parallel()
