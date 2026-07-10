@@ -95,7 +95,7 @@ flowchart TD
         PROV["provider.go: NewResource / NewTracerProvider / NewMeterProvider"]
         LOGP["log_provider.go: NewLoggerProvider / NewLogCore (otelzap)"]
         TF["tracer_factory.go / layer_tracer.go: TracerFactory → LayerTracer"]
-        HELP["helper.go: RunWithSpan / StartSpanWithParent / ShouldLogWithSpan"]
+        HELP["helper.go: RunWithSpan / StartSpanWithParent / ShouldLogWithSpan / NewTraceExtractor"]
         PGX["pgx_tracer.go: NewPgxTracer (otelpgx)"]
         HC["http_client_*.go: transport + RED metrics"]
         MET["outbox / worker / idempotency / httpclient meter instruments"]
@@ -111,6 +111,9 @@ flowchart TD
         UC["usecase"]
         INFRA["infrastructure: rdb (pgx) / 外部 HTTP client"]
     end
+    subgraph logL["internal/logging = 基盤"]
+        LOGGING["Logger (ctx-native) / TraceExtractor interface / LogCore"]
+    end
     subgraph exitL["出口"]
         OTLP["OTLP → Collector/Agent (traces/metrics/logs)"]
         SCRAPE["/metrics (promhttp default registry)"]
@@ -125,7 +128,10 @@ flowchart TD
     DIM --> HC
     DIM --> PROM
     DIM --> HOOK
+    DIM --> HELP
     SD --> HOOK
+    LOGP --> LOGGING
+    HELP --> LOGGING
     CTRL --> TF
     UC --> TF
     INFRA --> PGX
@@ -138,10 +144,10 @@ flowchart TD
     PROM --> SCRAPE
 
     classDef done fill:#e6ffed,stroke:#2da44e;
-    class OBSCFG,PROV,LOGP,TF,HELP,PGX,HC,MET,PROM,SD,DIM,HOOK,CTRL,UC,INFRA,OTLP,SCRAPE done;
+    class OBSCFG,PROV,LOGP,TF,HELP,PGX,HC,MET,PROM,SD,DIM,HOOK,CTRL,UC,INFRA,LOGGING,OTLP,SCRAPE done;
 ```
 
-> 依存は常に外側の層から `observability` へ**内向き**に入る。`observability` 自身は `config` / `system` / `pkg` と OTel SDK にのみ依存する。`di/lifecycle` は import しない（shutdown は `ProviderShutdowner` で反転）。
+> アプリケーション各層からの依存は常に `observability` へ**内向き**に入る。`observability` 自身は `config` / `system` / `pkg`、`internal/logging`（実装する `TraceExtractor` interface と返す `LogCore` 型）、および OTel SDK に依存する。逆方向は成り立たない — `logging` は `observability` を import しないため、trace ゲートは pull ではなく `TraceExtractor` として注入される。`observability` は `di/lifecycle` を import しない（shutdown は `ProviderShutdowner` で反転）。
 
 ### 3.2 metrics の 2 つの出口（これは意図的）
 

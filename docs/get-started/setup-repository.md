@@ -174,7 +174,24 @@ Create authorization functionality by implementing the usecase [Authorizer](inte
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
-## Phase 10: Remove Sample APIs
+## Phase 10: Review the template's deliberate exclusions (ADRs)
+
+Beyond authentication / authorization (Phase 9) and deployment (Phase 8), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
+
+Each such non-choice is recorded as an **exclusion ADR** under [docs/adr/](docs/adr/), tagged `setup-review`. List them with:
+
+```sh
+grep -rl "setup-review" docs/adr/
+```
+
+For your project, review each and decide:
+
+- **Keep** — the exclusion fits your project; leave the ADR as is.
+- **Change** — you need the opposite. Setup is where a fork establishes its **own baseline** from the template, so **edit the ADR directly** (rewrite its Decision / Consequences and update `deciders` / `date`) to record your project's choice, then implement accordingly.
+
+The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
+
+## Phase 11: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 

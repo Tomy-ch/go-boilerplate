@@ -144,7 +144,7 @@
 		
 			
 			
-			<h2 id="BuildHTTPRequestLogInput">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=450:541#L4">BuildHTTPRequestLogInput</a>
+			<h2 id="BuildHTTPRequestLogInput">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=508:599#L4">BuildHTTPRequestLogInput</a>
 				<a class="permalink" href="#BuildHTTPRequestLogInput">¶</a>
 				
 				
@@ -152,6 +152,7 @@
 			<pre>func BuildHTTPRequestLogInput(c echo.<a href="#Context">Context</a>, eventType <a href="../../../../builtin/#string">string</a>) <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#HTTPRequestLogInput">HTTPRequestLogInput</a></pre>
 			<p>BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
 eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
+trace_id / span_id は Logger が ctx から注入するため、ここでは設定しない。
 
 			
 			
@@ -159,7 +160,7 @@ eventType には呼び出し経路に応じたイベント種別（logging.Event
 		
 			
 			
-			</p><h2 id="ExtractPathParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1305:1361#L28">ExtractPathParams</a>
+			</p><h2 id="ExtractPathParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1228:1284#L25">ExtractPathParams</a>
 				<a class="permalink" href="#ExtractPathParams">¶</a>
 				
 				
@@ -173,7 +174,7 @@ eventType には呼び出し経路に応じたイベント種別（logging.Event
 		
 			
 			
-			</p><h2 id="ExtractQueryParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1598:1657#L37">ExtractQueryParams</a>
+			</p><h2 id="ExtractQueryParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1521:1580#L34">ExtractQueryParams</a>
 				<a class="permalink" href="#ExtractQueryParams">¶</a>
 				
 				

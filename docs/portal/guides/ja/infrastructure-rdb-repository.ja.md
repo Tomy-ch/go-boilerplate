@@ -358,7 +358,7 @@ flowchart TB
 
 ### internal/di/module/persistence.go の役割
 
-永続化系のプロバイダ（repository / query_service / system_query）は `persistenceModule`
+永続化系のプロバイダ（repository / query_service / system_cqrs）は `persistenceModule`
 に登録され、`InfrastructureModule()` がこれを合成します。
 
 ```go

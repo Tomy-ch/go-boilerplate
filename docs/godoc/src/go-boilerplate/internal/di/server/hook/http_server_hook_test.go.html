@@ -130,9 +130,9 @@
 <span id="L73" class="ln">    73  </span>			mockLogger.EXPECT().Named(&#34;server.Start&#34;).Return(namedMock).AnyTimes()
 <span id="L74" class="ln">    74  </span>			namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
 <span id="L75" class="ln">    75  </span>			namedMock.EXPECT().
-<span id="L76" class="ln">    76  </span>				Info(&#34;http started&#34;, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L76" class="ln">    76  </span>				Info(gomock.Any(), &#34;http started&#34;, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 <span id="L77" class="ln">    77  </span>				Times(1)
-<span id="L78" class="ln">    78  </span>			namedMock.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+<span id="L78" class="ln">    78  </span>			namedMock.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 <span id="L79" class="ln">    79  </span>
 <span id="L80" class="ln">    80  </span>			lc := &amp;net.ListenConfig{}
 <span id="L81" class="ln">    81  </span>			ln, err := lc.Listen(context.Background(), &#34;tcp&#34;, &#34;127.0.0.1:0&#34;)
@@ -208,12 +208,12 @@
 <span id="L151" class="ln">   151  </span>			mockLogger.EXPECT().Named(&#34;server.Start&#34;).Return(namedMock).AnyTimes()
 <span id="L152" class="ln">   152  </span>			namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
 <span id="L153" class="ln">   153  </span>			namedMock.EXPECT().
-<span id="L154" class="ln">   154  </span>				Info(&#34;http started&#34;, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L154" class="ln">   154  </span>				Info(gomock.Any(), &#34;http started&#34;, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 <span id="L155" class="ln">   155  </span>				AnyTimes()
 <span id="L156" class="ln">   156  </span>			errLogged := make(chan struct{})
 <span id="L157" class="ln">   157  </span>			namedMock.EXPECT().
-<span id="L158" class="ln">   158  </span>				Error(&#34;failed to start http server&#34;, gomock.Any()).
-<span id="L159" class="ln">   159  </span>				Do(func(string, ...*logging.Field) { close(errLogged) }).
+<span id="L158" class="ln">   158  </span>				Error(gomock.Any(), &#34;failed to start http server&#34;, gomock.Any()).
+<span id="L159" class="ln">   159  </span>				Do(func(context.Context, string, ...*logging.Field) { close(errLogged) }).
 <span id="L160" class="ln">   160  </span>				Times(1)
 <span id="L161" class="ln">   161  </span>
 <span id="L162" class="ln">   162  </span>			cfg := config.MockConfigForTest(t)
@@ -252,7 +252,7 @@
 <span id="L195" class="ln">   195  </span>			mockLogger := mock_logging.NewMockLogger(ctrl)
 <span id="L196" class="ln">   196  </span>			mockLogger.EXPECT().Named(&#34;server.Stop&#34;).Return(mockLogger).AnyTimes()
 <span id="L197" class="ln">   197  </span>			mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
-<span id="L198" class="ln">   198  </span>			mockLogger.EXPECT().Info(&#34;http stopping&#34;, gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+<span id="L198" class="ln">   198  </span>			mockLogger.EXPECT().Info(gomock.Any(), &#34;http stopping&#34;, gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 <span id="L199" class="ln">   199  </span>
 <span id="L200" class="ln">   200  </span>			cfg := config.MockConfigForTest(t)
 <span id="L201" class="ln">   201  </span>			srvCfg := config.NewServerConfig(cfg)
@@ -275,8 +275,8 @@
 <span id="L218" class="ln">   218  </span>			mockLogger := mock_logging.NewMockLogger(ctrl)
 <span id="L219" class="ln">   219  </span>			mockLogger.EXPECT().Named(&#34;server.Stop&#34;).Return(mockLogger).AnyTimes()
 <span id="L220" class="ln">   220  </span>			mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
-<span id="L221" class="ln">   221  </span>			mockLogger.EXPECT().Info(&#34;http stopping&#34;, gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
-<span id="L222" class="ln">   222  </span>			mockLogger.EXPECT().Error(&#34;failed to shutdown http server&#34;, gomock.Any()).Times(1)
+<span id="L221" class="ln">   221  </span>			mockLogger.EXPECT().Info(gomock.Any(), &#34;http stopping&#34;, gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+<span id="L222" class="ln">   222  </span>			mockLogger.EXPECT().Error(gomock.Any(), &#34;failed to shutdown http server&#34;, gomock.Any()).Times(1)
 <span id="L223" class="ln">   223  </span>
 <span id="L224" class="ln">   224  </span>			cfg := config.MockConfigForTest(t)
 <span id="L225" class="ln">   225  </span>			srvCfg := config.NewServerConfig(cfg)

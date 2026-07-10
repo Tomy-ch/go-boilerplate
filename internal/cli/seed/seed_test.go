@@ -27,11 +27,11 @@ func TestHandleSeedExecResult(t *testing.T) {
 
 		t.Run("実行成功はnilを返す", func(t *testing.T) {
 			t.Parallel()
-			require.NoError(t, handleSeedExecResult(logging.NewTestLogger(t), "seed.sql", nil))
+			require.NoError(t, handleSeedExecResult(context.Background(), logging.NewTestLogger(t), "seed.sql", nil))
 		})
 		t.Run("対象テーブル未作成はスキップしてnilを返す", func(t *testing.T) {
 			t.Parallel()
-			require.NoError(t, handleSeedExecResult(logging.NewTestLogger(t), "seed.sql", pgRelationNotExist))
+			require.NoError(t, handleSeedExecResult(context.Background(), logging.NewTestLogger(t), "seed.sql", pgRelationNotExist))
 		})
 	})
 
@@ -40,12 +40,12 @@ func TestHandleSeedExecResult(t *testing.T) {
 
 		t.Run("テーブル未作成以外のPostgreSQLエラーは伝播する", func(t *testing.T) {
 			t.Parallel()
-			err := handleSeedExecResult(logging.NewTestLogger(t), "seed.sql", pgSyntaxErr)
+			err := handleSeedExecResult(context.Background(), logging.NewTestLogger(t), "seed.sql", pgSyntaxErr)
 			require.ErrorIs(t, err, pgSyntaxErr)
 		})
 		t.Run("PostgreSQL以外のエラーも伝播する", func(t *testing.T) {
 			t.Parallel()
-			err := handleSeedExecResult(logging.NewTestLogger(t), "seed.sql", otherErr)
+			err := handleSeedExecResult(context.Background(), logging.NewTestLogger(t), "seed.sql", otherErr)
 			require.ErrorIs(t, err, otherErr)
 		})
 	})

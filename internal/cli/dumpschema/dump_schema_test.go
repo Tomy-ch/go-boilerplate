@@ -121,7 +121,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 				})
 
 			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
-			require.NoError(t, g.sanitizeSchemaInPlace())
+			require.NoError(t, g.sanitizeSchemaInPlace(context.Background()))
 
 			got := string(written)
 			assert.Contains(t, got, "CREATE TABLE users (id int);")
@@ -144,7 +144,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 			fs.EXPECT().ReadFile(gomock.Any()).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
-			require.Error(t, g.sanitizeSchemaInPlace())
+			require.Error(t, g.sanitizeSchemaInPlace(context.Background()))
 		})
 
 		t.Run("書き込み失敗時はエラー", func(t *testing.T) {
@@ -156,7 +156,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 			fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New("write failed"))
 
 			g := newTestGenerator(t, fs, mock_exec.NewMockRunner(ctrl))
-			require.Error(t, g.sanitizeSchemaInPlace())
+			require.Error(t, g.sanitizeSchemaInPlace(context.Background()))
 		})
 	})
 }

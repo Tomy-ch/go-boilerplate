@@ -72,7 +72,7 @@ func (e *Engine) Run(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
-			log.Error("outbox relay batch failed", logging.Error(logging.JobErrorKey, err))
+			log.Error(ctx, "outbox relay batch failed", logging.Error(logging.JobErrorKey, err))
 			if e.waitDone(ctx, e.set.ErrorBackoff) {
 				return nil
 			}
@@ -104,6 +104,6 @@ func (e *Engine) observeLag(ctx context.Context, log logging.Logger) {
 		return
 	}
 	if err := e.uc.RecordLag(ctx); err != nil {
-		log.Error("failed to record outbox lag", logging.Error(logging.JobErrorKey, err))
+		log.Error(ctx, "failed to record outbox lag", logging.Error(logging.JobErrorKey, err))
 	}
 }

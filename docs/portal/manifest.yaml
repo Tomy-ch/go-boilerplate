@@ -7,7 +7,9 @@ meta:
     - title: Get Started
       sections: [overview, get-started, make_commands, environment_variables, tutorial]
     - title: Architecture
-      sections: [architecture, project]
+      sections: [architecture, project, reference]
+    - title: Decisions (ADR)
+      sections: [adr]
     - title: Application Layers
       sections: [domain, usecase, controller, infrastructure]
     - title: Design
@@ -80,9 +82,133 @@ meta:
         items: [sqlc-query-guide, sqlc-settings]
       - title: Seed
         items: [database-seed]
+    adr:
+      - title: Index / Meta
+        items: [README, template, 0000-record-architecture-decisions]
+      - title: Foundational
+        items:
+          - 0001-avoid-lock-in
+          - 0002-onion-architecture
+          - 0003-interface-based-decoupling
+          - 0004-modular-monolith
+          - 0005-driving-adapters-not-split-axis
+          - 0006-structural-safety-via-tooling
+          - 0007-agents-md-operational-contract
+          - 0008-docs-as-canonical-source
+      - title: Contract / OpenAPI
+        items:
+          - 0009-openapi-first
+          - 0010-redocly-modular-spec-pipeline
+          - 0011-oapi-codegen-strict-server
+          - 0012-retain-generated-openapi
+          - 0013-spec-driven-request-validation
+          - 0014-validation-value-authority
+          - 0015-boundary-value-ownership
+          - 0016-metrics-endpoint-auth-exception
+      - title: HTTP Layer
+        items:
+          - 0017-echo-http-framework
+          - 0018-priority-ordered-middleware-chain
+          - 0019-outbound-http-resilience
+          - 0020-egress-ssrf-guard
+      - title: Persistence & Data
+        items:
+          - 0021-sql-first-data-access
+          - 0022-sqlc-type-safe-sql
+          - 0023-merged-dml-schema-as-sqlc-input
+          - 0024-append-only-immutable-migrations
+          - 0025-sequential-migration-ids
+          - 0026-master-data-via-migration
+          - 0027-lightweight-cqrs
+          - 0028-system-cqrs-dml-category
+          - 0029-transaction-retry-idempotent-callers
+          - 0030-uuidv7-identifiers
+      - title: DI / Config / Errors
+        items:
+          - 0031-uber-fx-di
+          - 0032-fx-neutral-di-abstraction
+          - 0033-env-gated-wiring
+          - 0034-subsystem-typed-config-loaders
+          - 0035-config-default-vs-required-governance
+          - 0036-immutable-fail-fast-config
+          - 0037-embedded-self-contained-binary
+          - 0038-apperror-protocol-agnostic-errors
+      - title: Async Subsystems (worker / outbox / idempotency / job)
+        items:
+          - 0039-broker-agnostic-worker-scaffold
+          - 0040-out-of-scope-push-streaming-brokers
+          - 0041-sqs-adapter-opt-in
+          - 0042-transactional-outbox
+          - 0043-at-least-once-outbox-poll
+          - 0044-skip-locked-outbox-relay
+          - 0045-message-id-idempotency-propagation
+          - 0046-outbox-dead-after-max-attempts
+          - 0047-outbox-retention-gc
+          - 0048-publisher-http-profile-isolation
+          - 0049-relay-resident-gc-oneshot
+          - 0050-single-tx-at-most-once-idempotency
+          - 0051-idempotency-scope-required
+          - 0052-idempotency-fixed-ttl
+          - 0053-idempotency-response-persistence
+          - 0054-idempotency-gc-separate-job
+          - 0055-idempotency-orthogonal-concerns
+          - 0056-job-fresh-fx-app-per-run
+          - 0057-job-no-worker-machinery
+          - 0058-job-explicit-registration
+      - title: Observability
+        items:
+          - 0059-config-driven-observability-gating
+          - 0060-vendor-neutral-otlp-export
+          - 0061-official-otel-semconv
+          - 0062-dual-path-metrics
+          - 0063-lifecycle-independent-provider
+          - 0064-fixed-default-sampling
+      - title: Libraries
+        items:
+          - 0065-library-selection-policy
+          - 0066-bridge-instrumentation-exceptions
+      - title: Toolchain / Build
+        items:
+          - 0067-containerized-pinned-toolchain
+          - 0068-mise-ssot-drift-gate
+          - 0069-make-single-entrypoint
+          - 0070-scripts-in-node-go
+          - 0071-docker-compose-dev-environment
+      - title: CI / Quality Gates
+        items:
+          - 0072-two-layer-golangci-config
+          - 0073-local-hooks-mirror-ci
+          - 0074-coverage-hard-gate
+          - 0075-ci-real-graph-boot-check
+          - 0076-generated-artifact-drift-gate
+          - 0077-multi-layer-security-scanning
+          - 0078-sha-pinned-actions
+      - title: Development Process
+        items:
+          - 0079-rollback-integration-tests
+          - 0080-multi-model-adversarial-review
+          - 0081-lean-a-spec-scaffold
+      - title: Binary / Image / Deploy
+        items:
+          - 0082-cli-humble-object-split
+          - 0083-single-multi-command-binary
+          - 0084-single-runtime-image
+          - 0085-hardened-alpine-runtime
+          - 0086-per-environment-images
+          - 0087-predeploy-oneshot-migration
+          - 0088-release-image-supply-chain
+          - 0089-vendor-neutral-deploy-skeleton
+          - 0090-docs-via-github-pages
+      - title: Project Exclusions
+        items:
+          - 0091-no-in-app-rate-limiter
+          - 0092-scheduled-job-concurrency-delegated
+          - 0093-no-generic-cache-abstraction
 
   # auto-Title-Case で汚くなる id の表示名を上書きする (略語 / 改名のみ用途)。
   section_titles:
+    adr: Architecture Decisions (ADR)
+    reference: Reference (Dependencies)
     architecture: Architecture Docs
     get-started: Setup Repository
     make_commands: Make Commands

@@ -21,6 +21,7 @@ func ObservabilityModule() fx.Option {
 			observability.NewProviderShutdowner,
 			observability.NewTracerFactory,
 			observability.NewLogCore,
+			observability.NewTraceExtractor,
 			observability.NewPgxTracer,
 			observability.NewTextMapPropagator,
 			observability.NewHTTPClientTransport,
