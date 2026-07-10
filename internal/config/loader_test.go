@@ -30,8 +30,9 @@ func TestLoad(t *testing.T) {
 
 		t.Run("埋め込み env の APP_ENV 素性をパッケージ変数へ捕捉する", func(t *testing.T) {
 			// OS 側で APP_ENV を上書きしても、捕捉されるのはあくまで埋め込み値であること。
-			// 埋め込み値は materialize 対象の env により変わる（ローカルは local、CI は ci）ため、
-			// 固定値ではなく「OS 注入値ではない非空の値が捕捉される」ことを検証する。
+			// 埋め込み値は materialize 対象の env により変わる（ローカルは local、CI は ci）ため
+			// 固定値では検証できないが、「OS 注入値ではない」かつ「既知の APP_ENV 値である」ことは
+			// materialize 非依存に検証でき、別キー（APP_MODE 等）への捕捉退行も検出できる。
 			t.Setenv("APP_ENV", "injected-at-runtime")
 			prev := embeddedAppEnv
 			t.Cleanup(func() { embeddedAppEnv = prev })
@@ -39,7 +40,9 @@ func TestLoad(t *testing.T) {
 
 			require.NoError(t, Load())
 			assert.NotEqual(t, "injected-at-runtime", embeddedAppEnv)
-			assert.NotEmpty(t, embeddedAppEnv)
+			assert.Contains(t,
+				[]string{EnvLocal, EnvCI, EnvTest, EnvDevelopment, EnvStaging, EnvProduction},
+				embeddedAppEnv)
 		})
 	})
 }
