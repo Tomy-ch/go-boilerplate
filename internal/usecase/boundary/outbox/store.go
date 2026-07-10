@@ -47,11 +47,13 @@ type Store interface {
 	Insert(ctx context.Context, p EmitParams) (uuid.UUID, error)
 	// ClaimPending は、pending 行を最大 limit 件を排他取得します。複数インスタンスが同時に呼び出しても同一行を二重取得しません。
 	ClaimPending(ctx context.Context, limit int32) ([]PendingMessage, error)
-	// MarkPublished は、publish 成功行を published へ遷移します（既に pending でなければ no-op）。
+	// MarkPublished は、publish 成功行を published へ遷移します。
+	// 遷移対象として所有していない行には作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。
 	MarkPublished(ctx context.Context, id int64) error
 	// MarkFailed は、attempts を加算し last_error を記録し、加算後の attempts を返します。
 	MarkFailed(ctx context.Context, id int64, lastErr string) (attempts int32, err error)
-	// MarkDead は、行を dead へ遷移します（既に pending でなければ no-op）。
+	// MarkDead は、行を dead へ遷移します。
+	// 遷移対象として所有していない行には作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。
 	MarkDead(ctx context.Context, id int64) error
 	// ReplayDead は、dead 行を pending へ戻します。messageID が nil なら全 dead 行を対象とし、戻した件数を返します。
 	ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error)
