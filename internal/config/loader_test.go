@@ -1,10 +1,14 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"strings"
 	"testing"
 
+	root "go-boilerplate"
+
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,19 +34,19 @@ func TestLoad(t *testing.T) {
 
 		t.Run("埋め込み env の APP_ENV 素性をパッケージ変数へ捕捉する", func(t *testing.T) {
 			// OS 側で APP_ENV を上書きしても、捕捉されるのはあくまで埋め込み値であること。
-			// 埋め込み値は materialize 対象の env により変わる（ローカルは local、CI は ci）ため
-			// 固定値では検証できないが、「OS 注入値ではない」かつ「既知の APP_ENV 値である」ことは
-			// materialize 非依存に検証でき、別キー（APP_MODE 等）への捕捉退行も検出できる。
+			// 期待値を同じ埋め込み env から再導出して完全一致を検証するため、materialize 対象の
+			// env に依存せず、かつ別キー（APP_MODE / DB_NAME 等）への捕捉退行も全面的に検出できる。
 			t.Setenv("APP_ENV", "injected-at-runtime")
 			prev := embeddedAppEnv
 			t.Cleanup(func() { embeddedAppEnv = prev })
 			embeddedAppEnv = ""
 
 			require.NoError(t, Load())
-			assert.NotEqual(t, "injected-at-runtime", embeddedAppEnv)
-			assert.Contains(t,
-				[]string{EnvLocal, EnvCI, EnvTest, EnvDevelopment, EnvStaging, EnvProduction},
-				embeddedAppEnv)
+			b, err := root.FS.ReadFile("env/.env")
+			require.NoError(t, err)
+			embedded, err := godotenv.Parse(bytes.NewReader(b))
+			require.NoError(t, err)
+			assert.Equal(t, embedded["APP_ENV"], embeddedAppEnv)
 		})
 	})
 }
