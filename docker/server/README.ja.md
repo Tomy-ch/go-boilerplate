@@ -12,9 +12,9 @@
 
 |ターゲット|ベースイメージ|用途|
 |---|---|---|
-|`builder`|`golang:1.26.4-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
+|`builder`|`golang:1.26.5-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
 |`runtime`|`alpine:3.23`|本番実行用コンテナ（非 root ユーザー `app`）。command override でマイグレーションも実行|
-|`tooling`|`golang:1.26.4-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
+|`tooling`|`golang:1.26.5-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
 
 ## runtime
 
