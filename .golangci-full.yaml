@@ -136,6 +136,15 @@ linters:
               desc: "reflect は原則使用しないでください（型安全性・可読性を損なうため）。
                 必要な場合は設計を見直し、個別に相談してください。"
         # アプリケーションの健全性を保つためのルール
+        reject_go_toolchain_packages: # go/ 配下のコンパイラ/ツールチェーン向けパッケージの使用を禁止します
+          files:
+            - "**/*.go"
+            - "!**/scripts/**.go" # コード生成ツールでは go/format・go/token 等の正当な用途があるため許可します
+          list-mode: lax
+          deny:
+            - pkg: go/
+              desc: "go/constant・go/ast・go/types 等の go/ 配下パッケージはコンパイラ/ツールチェーン向けであり、
+                アプリケーションコードでは使用しないでください。定数値等は個別に定義してください。"
         reject_dangerous_os: # os系のライブラリの使用を禁止します
           files:
             - "**/*.go"
@@ -488,7 +497,7 @@ linters:
       default-rpc-path: true   # rpc.DefaultPath の検出
       sql-isolation-level: true # sql.IsolationLevel の検出
       tls-signature-scheme: true # tls.SignatureScheme の検出
-      constant-kind: true      # 定数の種類（Kind）を検出
+      constant-kind: false     # go/constant.Kind への書き換えは go/ ツールチェーンパッケージ依存を招く（depguard で禁止）ため無効化します
       time-month: true         # time.Month の検出
 
   exclusions:
