@@ -34,8 +34,9 @@ func TestLoad(t *testing.T) {
 
 		t.Run("埋め込み env の APP_ENV 素性をパッケージ変数へ捕捉する", func(t *testing.T) {
 			// OS 側で APP_ENV を上書きしても、捕捉されるのはあくまで埋め込み値であること。
-			// 期待値を同じ埋め込み env から再導出して完全一致を検証するため、materialize 対象の
-			// env に依存せず、かつ別キー（APP_MODE / DB_NAME 等）への捕捉退行も全面的に検出できる。
+			// 期待値を同じ埋め込み env から再導出して完全一致を検証するため materialize 対象の env に
+			// 依存せず、別キーへの捕捉退行を検出できる（値が偶然 APP_ENV と一致するキーはローカルの
+			// env/.env では区別できないが、CI が materialize する env/.env.ci では全キーを検出できる）。
 			t.Setenv("APP_ENV", "injected-at-runtime")
 			prev := embeddedAppEnv
 			t.Cleanup(func() { embeddedAppEnv = prev })
