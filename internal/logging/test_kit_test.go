@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"testing"
 
 	"go-boilerplate/internal/config"
@@ -21,7 +22,7 @@ func TestNewTestLogger(t *testing.T) {
 			lg := NewTestLogger(t)
 
 			require.NotPanics(t, func() {
-				lg.Named("test").CallerSkip(1).Info("message", String("key", "value"))
+				lg.Named("test").CallerSkip(1).Info(context.Background(), "message", String("key", "value"))
 			})
 		})
 	})
@@ -40,7 +41,7 @@ func TestNewObservedTestLogger(t *testing.T) {
 			require.NotNil(t, lg)
 			require.NotNil(t, observed)
 
-			lg.Info("hello", String("key", "value"))
+			lg.Info(context.Background(), "hello", String("key", "value"))
 
 			logs := observed.All()
 			require.Len(t, logs, 1)
@@ -62,7 +63,7 @@ func TestNewObservedTestLoggerWithCaller(t *testing.T) {
 			require.NotNil(t, lg)
 			require.NotNil(t, observed)
 
-			lg.Info("hello", String("key", "value"))
+			lg.Info(context.Background(), "hello", String("key", "value"))
 
 			logs := observed.All()
 			require.Len(t, logs, 1)

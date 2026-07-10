@@ -8,6 +8,8 @@ Violating these rules may compromise the architectural integrity of the system.
 
 ## Layer Dependency Rules
 
+> Rationale: [ADR-0002](adr/0002-onion-architecture.md), [ADR-0003](adr/0003-interface-based-decoupling.md); enforced via [ADR-0006](adr/0006-structural-safety-via-tooling.md).
+
 Dependencies must always point **toward the inner layers**.
 
 ### Allowed Dependencies
@@ -37,6 +39,8 @@ These boundaries are **enforced in CI by `golangci-lint` depguard**, not by docu
 
 ## Usecase Dependency Rules
 
+> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
+
 Usecase must not directly depend on Infrastructure.
 
 - Dependencies must always go through Boundary (interface)
@@ -47,6 +51,8 @@ Usecase → Boundary(interface) → Infrastructure
 ```
 
 ## Generated Code Rules
+
+> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0076](adr/0076-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -77,6 +83,8 @@ Examples:
 
 ## OpenAPI-first
 
+> Rationale: [ADR-0009](adr/0009-openapi-first.md).
+
 Changes to APIs must always start from the **OpenAPI definition**.
 
 ```mermaid
@@ -92,6 +100,8 @@ flowchart TB
 OpenAPI definition is the **single source of truth of API**.
 
 ## Database Migration
+
+> Rationale: [ADR-0024](adr/0024-append-only-immutable-migrations.md), [ADR-0025](adr/0025-sequential-migration-ids.md).
 
 Changes to the database schema must follow strict migration rules.
 
@@ -111,6 +121,8 @@ flowchart TB
 This ensures that database history is always reproducible.
 
 ## Domain Layer Constraints
+
+> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
 
 The Domain layer must maintain a **pure and independent state**.
 
@@ -156,6 +168,8 @@ Examples:
 - repository implementation
 
 ## Repository / QueryService Rules
+
+> Rationale: [ADR-0027](adr/0027-lightweight-cqrs.md), [ADR-0028](adr/0028-system-cqrs-dml-category.md).
 
 - Repository handles Aggregate persistence and simple reads of a single Aggregate
   (fetch by ID, and simple filter / list / count by the Aggregate's own attributes).
@@ -209,10 +223,14 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ### Transaction Rules
 
+> Rationale: [ADR-0029](adr/0029-transaction-retry-idempotent-callers.md).
+
 - Transactions must be started only in the Usecase layer
 - Infrastructure / Repository must not start transactions
 
 ## Error Handling Rules
+
+> Rationale: [ADR-0038](adr/0038-apperror-protocol-agnostic-errors.md).
 
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
@@ -247,7 +265,7 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
 - **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
 - **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
 - **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
-- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/decisions.md` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
+- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 
 ## Testing & Definition of Done
@@ -279,6 +297,8 @@ Before generating code, AI agents must refer to the following documents.
 - `development-flow.md`
 
 ## Toolchain Execution Rules
+
+> Rationale: [ADR-0067](adr/0067-containerized-pinned-toolchain.md), [ADR-0068](adr/0068-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
 containerized tool-runners so they stay reproducible across machines.

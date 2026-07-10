@@ -137,7 +137,7 @@
 <span id="L80" class="ln">    80  </span>			state := mock_job.NewMockState(ctrl)
 <span id="L81" class="ln">    81  </span>			state.EXPECT().Snapshot().Return(&#34;&#34;, []string{}, nil).Times(1)
 <span id="L82" class="ln">    82  </span>			logger.EXPECT().Named(&#34;job.Hooks&#34;).Return(named).Times(1)
-<span id="L83" class="ln">    83  </span>			named.EXPECT().Info(&#34;No job to run&#34;, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+<span id="L83" class="ln">    83  </span>			named.EXPECT().Info(gomock.Any(), &#34;No job to run&#34;, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 <span id="L84" class="ln">    84  </span>			sd.EXPECT().Shutdown().Return(nil).Times(1)
 <span id="L85" class="ln">    85  </span>			runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 <span id="L86" class="ln">    86  </span>
@@ -185,9 +185,9 @@
 <span id="L128" class="ln">   128  </span>
 <span id="L129" class="ln">   129  </span>			sd.EXPECT().Shutdown().Return(assert.AnError).Times(1)
 <span id="L130" class="ln">   130  </span>			logger.EXPECT().Named(&#34;job.Hooks&#34;).Return(named).Times(1)
-<span id="L131" class="ln">   131  </span>			named.EXPECT().Error(gomock.Any(), gomock.Any()).Times(1)
+<span id="L131" class="ln">   131  </span>			named.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 <span id="L132" class="ln">   132  </span>
-<span id="L133" class="ln">   133  </span>			shutdown(sd, logger)
+<span id="L133" class="ln">   133  </span>			shutdown(context.Background(), sd, logger)
 <span id="L134" class="ln">   134  </span>		})
 <span id="L135" class="ln">   135  </span>	})
 <span id="L136" class="ln">   136  </span>}

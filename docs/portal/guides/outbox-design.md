@@ -2,7 +2,7 @@
 
 [Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](../ja/design/outbox.ja.md)
 
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the ADR in `docs/decisions.md`.
+This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0042](../adr/0042-transactional-outbox.md) onward).
 
 ---
 
@@ -26,7 +26,7 @@ Responsibility split (who owns what):
 | **Engine** (`controller/outbox/relay.go`) | controller | poll-loop orchestration: cadence, sleep/backoff, drain on ctx done, span | claim/publish/mark business (delegated to usecase) |
 | **outbox-gc job** (`controller/job/outboxgc`) | controller | one-shot GC entry point for an external scheduler | the loop (it is a cron, not a daemon) |
 | **httpPublisher** (`infrastructure/publisher`) | infrastructure | `Publisher` HTTP impl: POST + `Idempotency-Key` + non-standard client profile | retry (the poll loop is the retry) |
-| **outbox store** (`infrastructure/rdb/system_query/outbox`) | infrastructure | `Store` impl over sqlc gen + `pgerror.NormalizeError` | business decisions |
+| **outbox store** (`infrastructure/rdb/system_cqrs/outbox`) | infrastructure | `Store` impl over sqlc gen + `pgerror.NormalizeError` | business decisions |
 | **DI / cli / cmd** | di / cli / cmd(main) | relay-process composition / subcommands / lifecycle | business logic |
 | **OutboxConfig** | config | relay tuning (`OUTBOX_*`) | broker/endpoint internals |
 
@@ -132,7 +132,7 @@ flowchart TD
         CLK["clock.Clock / Sleeper"]
     end
     subgraph infraL["internal/infrastructure"]
-        SQ["rdb/system_query/outbox: Store impl (sqlc gen + pgerror)"]
+        SQ["rdb/system_cqrs/outbox: Store impl (sqlc gen + pgerror)"]
         HTTP["publisher/http_publisher.go: httpPublisher (POST, Idempotency-Key)"]
     end
     subgraph crossL["cross-cutting"]
@@ -249,7 +249,7 @@ flowchart LR
 | **transactional outbox** | The pattern of recording "intent to publish" as a DB row in the same tx as the domain change, then delivering it asynchronously. Avoids the dual-write anomaly. |
 | **emit** | The synchronous half: `EmitUsecase.Emit` INSERTs one row inside the caller's business tx (`internal/usecase/outbox/emit.go`). |
 | **relay** | The asynchronous half: a resident `Engine` poll loop that claims, publishes, and marks pending rows (`controller/outbox` + `usecase/outbox/relay.go`). |
-| **Store** | The persistence port for the outbox table (`usecase/boundary/outbox`). Implemented over sqlc gen in `infrastructure/rdb/system_query/outbox`. |
+| **Store** | The persistence port for the outbox table (`usecase/boundary/outbox`). Implemented over sqlc gen in `infrastructure/rdb/system_cqrs/outbox`. |
 | **Publisher** | The send port (`usecase/boundary/publisher`). The HTTP impl POSTs to `OUTBOX_ENDPOINT`. |
 | **status** | The row's lifecycle column — exactly `pending` / `published` / `dead` (CHECK-constrained). There is no `failed` status; a failed publish stays `pending`. |
 | **attempts / last_error** | Publish try count and latest failure reason. `MarkFailed` advances both; the row stays `pending` until `attempts ≥ MaxAttempts`. |

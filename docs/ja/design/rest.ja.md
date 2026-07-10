@@ -15,7 +15,7 @@ REST は **「request-in driving adapter」、Usecase 層への同期 HTTP 入�
 | 構成要素 | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
 | **Echo サーバ**（`server.NewAppServer`） | controller | TCP リスナ / read·write·idle タイムアウト / 生成 `RegisterHandlers` によるルート表 | 業務ロジック・middleware 方針 |
-| **middleware チェーン**（`httpstack/*`） | controller | 固定順の横断関心事：uri(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → logging → cookie | 業務ロジック |
+| **middleware チェーン**（`httpstack/*`） | controller | 固定順の横断関心事：uri(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | 業務ロジック |
 | **handler**（`controller/handler/**`） | controller | 型付きリクエスト解釈（`StrictHandler`）→ usecase を**1 メソッド**呼ぶ → DTO → `gen` 応答へ変換 | 業務ロジック・永続化・tx |
 | **error handler**（`httpstack/errorhandler`） | controller | `apperror` / Echo / OpenAPI エラー → HTTP ステータス＋コード、統一エラーボディ | 業務方針 |
 | **usecase** | usecase | **すべての**業務ロジック・トランザクション境界・ドメインオーケストレーション・エラー方針 | HTTP・フレームワーク・表現 |
@@ -65,7 +65,8 @@ stateDiagram-v2
     CORS --> Security: 5 security（HSTS, X-Frame-Options, …）
     Security --> OpenAPI: 6 openapi（リクエストスキーマ＋認証検証）
     OpenAPI --> ForceJSON: 7 forcejson（Content-Type）
-    ForceJSON --> Logging: 8 logging（開始時刻＋遅延応答ログ）
+    ForceJSON --> HTTPREDMetrics: 8 httpredmetrics（RED メトリクス）
+    HTTPREDMetrics --> Logging: 9 logging（開始時刻＋遅延応答ログ）
     Logging --> Cookie: 10 cookie（Secure/SameSite 強制）
     Cookie --> Handler: StrictHandler.<Op>
     Handler --> Usecase: 型付きリクエスト解釈 → s.uc.<Method>(ctx, …)
@@ -241,7 +242,7 @@ flowchart LR
 | **handler / `server{}`** | `operationId` ごと 1 メソッドの薄い controller 型：tracer span → リクエスト解釈 → usecase 1 メソッド → DTO → `gen` 応答へ変換。 |
 | **presenter** | DTO → `gen.<Op><Status>JSONResponse` 変換。handler メソッド内にインラインで実装。 |
 | **middleware (Use) / Pre** | priority 順に適用される per-request 横断関数（`Use`）と、ルーティング前に走る `Pre`（パス正規化）。 |
-| **priority** | 各 middleware の `*_di.go` の整数で extension エンジンがソート（uri-pre 1; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, logging 8, cookie 10）。 |
+| **priority** | 各 middleware の `*_di.go` の整数で extension エンジンがソート（uri-pre 1; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10）。 |
 | **extension エンジン**（`ApplyExtends`） | `Pre`/`Use`/`SrvCfg` provider を集約し priority でソートして Echo に適用。非 middleware の構成器（IP extractor, error handler）も適用。 |
 | **error handler** | Echo に設定する `HTTPErrorHandler`。`apperror` / `echo.HTTPError` / OpenAPI 検証エラーを統一 `HTTPErrorResponse`（status ＋ code 写像付き）へ正規化。 |
 | **apperror** | フレームワーク非依存のエラー分類。error handler が HTTP ステータスへ写像（例 `ErrConflict`→409, `ErrValidation`→422, `ErrInvalidArgument`→400）。 |

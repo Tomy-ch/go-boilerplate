@@ -62,6 +62,63 @@ func TestShouldLogWithSpan(t *testing.T) {
 	})
 }
 
+func TestNewTraceExtractor(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("obs有効かつスパンありの場合、trace_id/span_idとtrueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			obsCfg := config.NewObservabilityConfig(cfg)
+
+			tp := sdktrace.NewTracerProvider()
+			tracer := tp.Tracer("test")
+			ctx, sp := tracer.Start(context.Background(), "s")
+			defer func() { sp.End(); _ = tp.Shutdown(context.Background()) }()
+
+			wantSC := trace.SpanFromContext(ctx).SpanContext()
+			traceID, spanID, ok := NewTraceExtractor(obsCfg)(ctx)
+
+			assert.True(t, ok)
+			assert.Equal(t, wantSC.TraceID().String(), traceID)
+			assert.Equal(t, wantSC.SpanID().String(), spanID)
+		})
+
+		t.Run("obs有効だがスパン無しの場合、空とfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			obsCfg := config.NewObservabilityConfig(cfg)
+
+			traceID, spanID, ok := NewTraceExtractor(obsCfg)(context.Background())
+
+			assert.False(t, ok)
+			assert.Empty(t, traceID)
+			assert.Empty(t, spanID)
+		})
+
+		t.Run("obs無効の場合、スパンありでも空とfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := &config.ObservabilityConfig{}
+
+			tp := sdktrace.NewTracerProvider()
+			tracer := tp.Tracer("test")
+			ctx, sp := tracer.Start(context.Background(), "s")
+			defer func() { sp.End(); _ = tp.Shutdown(context.Background()) }()
+
+			traceID, spanID, ok := NewTraceExtractor(obsCfg)(ctx)
+
+			assert.False(t, ok)
+			assert.Empty(t, traceID)
+			assert.Empty(t, spanID)
+		})
+	})
+}
+
 func TestBuildSpanName(t *testing.T) {
 	t.Parallel()
 

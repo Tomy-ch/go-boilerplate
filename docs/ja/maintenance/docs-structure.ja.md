@@ -25,8 +25,10 @@ docs/
 docs/
 ├ architecture.md
 ├ development-flow.md
-├ decisions.md
-└ rules.md
+├ decisions.md   # リダイレクト stub → adr/
+├ rules.md
+├ adr/    # アーキテクチャ決定記録（per-file ADR）
+└ reference/dependencies.md
 ```
 
 これらのファイルは **Architecture (English)** セクションに表示されます。
@@ -51,8 +53,9 @@ docs/ja
 docs/ja
 ├ architecture.ja.md
 ├ development-flow.ja.md
-├ decisions.ja.md
-└ rules.ja.md
+├ decisions.ja.md   # リダイレクト stub → adr/
+├ rules.ja.md
+└ adr/    # アーキテクチャ決定記録（per-file ADR ミラー）
 ```
 
 これらのファイルは **Architecture (Japanese)** セクションに表示されます。

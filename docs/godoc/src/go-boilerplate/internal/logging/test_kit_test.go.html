@@ -58,101 +58,102 @@
 <pre><span id="L1" class="ln">     1  </span>package logging
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
-<span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>func TestNewTestLogger(t *testing.T) {
-<span id="L13" class="ln">    13  </span>	t.Parallel()
-<span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L16" class="ln">    16  </span>		t.Parallel()
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>		t.Run(&#34;メソッドチェーンと出力でpanicしないLoggerを返す&#34;, func(t *testing.T) {
-<span id="L19" class="ln">    19  </span>			t.Parallel()
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span>			lg := NewTestLogger(t)
-<span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span>			require.NotPanics(t, func() {
-<span id="L24" class="ln">    24  </span>				lg.Named(&#34;test&#34;).CallerSkip(1).Info(&#34;message&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L25" class="ln">    25  </span>			})
-<span id="L26" class="ln">    26  </span>		})
-<span id="L27" class="ln">    27  </span>	})
-<span id="L28" class="ln">    28  </span>}
-<span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span>func TestNewObservedTestLogger(t *testing.T) {
-<span id="L31" class="ln">    31  </span>	t.Parallel()
-<span id="L32" class="ln">    32  </span>
-<span id="L33" class="ln">    33  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L34" class="ln">    34  </span>		t.Parallel()
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>		t.Run(&#34;出力を捕捉するLoggerと観測ログを返す&#34;, func(t *testing.T) {
-<span id="L37" class="ln">    37  </span>			t.Parallel()
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span>			lg, observed := NewObservedTestLogger(t)
-<span id="L40" class="ln">    40  </span>			require.NotNil(t, lg)
-<span id="L41" class="ln">    41  </span>			require.NotNil(t, observed)
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>			lg.Info(&#34;hello&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>			logs := observed.All()
-<span id="L46" class="ln">    46  </span>			require.Len(t, logs, 1)
-<span id="L47" class="ln">    47  </span>			assert.Equal(t, &#34;hello&#34;, logs[0].Message)
-<span id="L48" class="ln">    48  </span>		})
-<span id="L49" class="ln">    49  </span>	})
-<span id="L50" class="ln">    50  </span>}
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>func TestNewObservedTestLoggerWithCaller(t *testing.T) {
-<span id="L53" class="ln">    53  </span>	t.Parallel()
-<span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L56" class="ln">    56  </span>		t.Parallel()
-<span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>		t.Run(&#34;caller情報付きで出力を捕捉するLoggerと観測ログを返す&#34;, func(t *testing.T) {
-<span id="L59" class="ln">    59  </span>			t.Parallel()
-<span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span>			lg, observed := NewObservedTestLoggerWithCaller(t)
-<span id="L62" class="ln">    62  </span>			require.NotNil(t, lg)
-<span id="L63" class="ln">    63  </span>			require.NotNil(t, observed)
-<span id="L64" class="ln">    64  </span>
-<span id="L65" class="ln">    65  </span>			lg.Info(&#34;hello&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>			logs := observed.All()
-<span id="L68" class="ln">    68  </span>			require.Len(t, logs, 1)
-<span id="L69" class="ln">    69  </span>			assert.Equal(t, &#34;hello&#34;, logs[0].Message)
-<span id="L70" class="ln">    70  </span>			assert.True(t, logs[0].Caller.Defined)
-<span id="L71" class="ln">    71  </span>		})
-<span id="L72" class="ln">    72  </span>	})
-<span id="L73" class="ln">    73  </span>}
-<span id="L74" class="ln">    74  </span>
-<span id="L75" class="ln">    75  </span>func TestNewTestLogFieldBuilder(t *testing.T) {
-<span id="L76" class="ln">    76  </span>	t.Parallel()
-<span id="L77" class="ln">    77  </span>
-<span id="L78" class="ln">    78  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L79" class="ln">    79  </span>		t.Parallel()
-<span id="L80" class="ln">    80  </span>
-<span id="L81" class="ln">    81  </span>		t.Run(&#34;MockConfig由来のobsCfg/osCfgを保持するBuilderを返す&#34;, func(t *testing.T) {
-<span id="L82" class="ln">    82  </span>			t.Parallel()
-<span id="L83" class="ln">    83  </span>
-<span id="L84" class="ln">    84  </span>			cfg := config.MockConfigForTest(t)
-<span id="L85" class="ln">    85  </span>			osCfg := config.NewOperatingSystemConfig(cfg)
-<span id="L86" class="ln">    86  </span>			obsCfg := config.NewObservabilityConfig(cfg)
-<span id="L87" class="ln">    87  </span>
-<span id="L88" class="ln">    88  </span>			actual := NewTestLogFieldBuilder(t)
-<span id="L89" class="ln">    89  </span>
-<span id="L90" class="ln">    90  </span>			expected := &amp;logFieldBuilder{
-<span id="L91" class="ln">    91  </span>				obsCfg: obsCfg,
-<span id="L92" class="ln">    92  </span>				osCfg:  osCfg,
-<span id="L93" class="ln">    93  </span>			}
-<span id="L94" class="ln">    94  </span>			assert.Equal(t, expected, actual)
-<span id="L95" class="ln">    95  </span>		})
-<span id="L96" class="ln">    96  </span>	})
-<span id="L97" class="ln">    97  </span>}
-<span id="L98" class="ln">    98  </span>
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L11" class="ln">    11  </span>)
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>func TestNewTestLogger(t *testing.T) {
+<span id="L14" class="ln">    14  </span>	t.Parallel()
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L17" class="ln">    17  </span>		t.Parallel()
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>		t.Run(&#34;メソッドチェーンと出力でpanicしないLoggerを返す&#34;, func(t *testing.T) {
+<span id="L20" class="ln">    20  </span>			t.Parallel()
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>			lg := NewTestLogger(t)
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span>			require.NotPanics(t, func() {
+<span id="L25" class="ln">    25  </span>				lg.Named(&#34;test&#34;).CallerSkip(1).Info(context.Background(), &#34;message&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L26" class="ln">    26  </span>			})
+<span id="L27" class="ln">    27  </span>		})
+<span id="L28" class="ln">    28  </span>	})
+<span id="L29" class="ln">    29  </span>}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>func TestNewObservedTestLogger(t *testing.T) {
+<span id="L32" class="ln">    32  </span>	t.Parallel()
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L35" class="ln">    35  </span>		t.Parallel()
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>		t.Run(&#34;出力を捕捉するLoggerと観測ログを返す&#34;, func(t *testing.T) {
+<span id="L38" class="ln">    38  </span>			t.Parallel()
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>			lg, observed := NewObservedTestLogger(t)
+<span id="L41" class="ln">    41  </span>			require.NotNil(t, lg)
+<span id="L42" class="ln">    42  </span>			require.NotNil(t, observed)
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>			lg.Info(context.Background(), &#34;hello&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>			logs := observed.All()
+<span id="L47" class="ln">    47  </span>			require.Len(t, logs, 1)
+<span id="L48" class="ln">    48  </span>			assert.Equal(t, &#34;hello&#34;, logs[0].Message)
+<span id="L49" class="ln">    49  </span>		})
+<span id="L50" class="ln">    50  </span>	})
+<span id="L51" class="ln">    51  </span>}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>func TestNewObservedTestLoggerWithCaller(t *testing.T) {
+<span id="L54" class="ln">    54  </span>	t.Parallel()
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L57" class="ln">    57  </span>		t.Parallel()
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>		t.Run(&#34;caller情報付きで出力を捕捉するLoggerと観測ログを返す&#34;, func(t *testing.T) {
+<span id="L60" class="ln">    60  </span>			t.Parallel()
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>			lg, observed := NewObservedTestLoggerWithCaller(t)
+<span id="L63" class="ln">    63  </span>			require.NotNil(t, lg)
+<span id="L64" class="ln">    64  </span>			require.NotNil(t, observed)
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>			lg.Info(context.Background(), &#34;hello&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>			logs := observed.All()
+<span id="L69" class="ln">    69  </span>			require.Len(t, logs, 1)
+<span id="L70" class="ln">    70  </span>			assert.Equal(t, &#34;hello&#34;, logs[0].Message)
+<span id="L71" class="ln">    71  </span>			assert.True(t, logs[0].Caller.Defined)
+<span id="L72" class="ln">    72  </span>		})
+<span id="L73" class="ln">    73  </span>	})
+<span id="L74" class="ln">    74  </span>}
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>func TestNewTestLogFieldBuilder(t *testing.T) {
+<span id="L77" class="ln">    77  </span>	t.Parallel()
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L80" class="ln">    80  </span>		t.Parallel()
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span>		t.Run(&#34;MockConfig由来のobsCfg/osCfgを保持するBuilderを返す&#34;, func(t *testing.T) {
+<span id="L83" class="ln">    83  </span>			t.Parallel()
+<span id="L84" class="ln">    84  </span>
+<span id="L85" class="ln">    85  </span>			cfg := config.MockConfigForTest(t)
+<span id="L86" class="ln">    86  </span>			osCfg := config.NewOperatingSystemConfig(cfg)
+<span id="L87" class="ln">    87  </span>			obsCfg := config.NewObservabilityConfig(cfg)
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>			actual := NewTestLogFieldBuilder(t)
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>			expected := &amp;logFieldBuilder{
+<span id="L92" class="ln">    92  </span>				obsCfg: obsCfg,
+<span id="L93" class="ln">    93  </span>				osCfg:  osCfg,
+<span id="L94" class="ln">    94  </span>			}
+<span id="L95" class="ln">    95  </span>			assert.Equal(t, expected, actual)
+<span id="L96" class="ln">    96  </span>		})
+<span id="L97" class="ln">    97  </span>	})
+<span id="L98" class="ln">    98  </span>}
+<span id="L99" class="ln">    99  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/logging/test_kit_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

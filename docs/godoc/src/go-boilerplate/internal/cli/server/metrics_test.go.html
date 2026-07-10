@@ -140,7 +140,7 @@
 <span id="L83" class="ln">    83  </span>			ctrl := gomock.NewController(t)
 <span id="L84" class="ln">    84  </span>			logger := mock_logging.NewMockLogger(ctrl)
 <span id="L85" class="ln">    85  </span>			logger.EXPECT().Named(&#34;metrics.ListenAndServe&#34;).Return(logger)
-<span id="L86" class="ln">    86  </span>			logger.EXPECT().Error(&#34;metrics server error&#34;, gomock.Any())
+<span id="L86" class="ln">    86  </span>			logger.EXPECT().Error(gomock.Any(), &#34;metrics server error&#34;, gomock.Any())
 <span id="L87" class="ln">    87  </span>
 <span id="L88" class="ln">    88  </span>			logListenError(logger, xerrors.New(&#34;bind failed&#34;))
 <span id="L89" class="ln">    89  </span>		})

@@ -58,52 +58,56 @@
 <pre><span id="L1" class="ln">     1  </span>package core
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L5" class="ln">     5  </span>	&#34;go-boilerplate/internal/controller/httpstack/oapi/auth&#34;
-<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/infrastructure/auth/local&#34;
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/controller/httpstack/oapi/auth&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/auth/local&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/logging&#34;
 <span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L11" class="ln">    11  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
 <span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span>	&#34;go.uber.org/fx&#34;
-<span id="L14" class="ln">    14  </span>)
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span><span class="comment">// callerSkipCount は、ロギングラッパーが追加するフレーム数を補正するためのスキップ数です。</span>
-<span id="L17" class="ln">    17  </span>const callerSkipCount = 1
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span><span class="comment">// AuthnModule は、認証関連の依存関係を提供するfxモジュールを返します。</span>
-<span id="L20" class="ln">    20  </span>func AuthnModule() fx.Option {
-<span id="L21" class="ln">    21  </span>	return fx.Module(&#34;core.authn&#34;,
-<span id="L22" class="ln">    22  </span>		fx.Provide(
-<span id="L23" class="ln">    23  </span>			provideAuthenticator,
-<span id="L24" class="ln">    24  </span>			auth.NewAuthenticator,
-<span id="L25" class="ln">    25  </span>		),
-<span id="L26" class="ln">    26  </span>	)
-<span id="L27" class="ln">    27  </span>}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span><span class="comment">// provideAuthenticator は、環境（EnvLocal / EnvCI / EnvTest）に対応した Authenticator を返します。</span>
-<span id="L30" class="ln">    30  </span><span class="comment">// それ以外の環境ではエラーを返し、FX の起動に失敗します。</span>
-<span id="L31" class="ln">    31  </span>func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logger) (authbd.Authenticator, error) {
-<span id="L32" class="ln">    32  </span>	switch appCfg.Env() {
-<span id="L33" class="ln">    33  </span>	case config.EnvLocal, config.EnvCI, config.EnvTest:
-<span id="L34" class="ln">    34  </span>		logger.Named(&#34;core.authn&#34;).CallerSkip(callerSkipCount).Warn(
-<span id="L35" class="ln">    35  </span>			&#34;Local authenticator wired: authentication is stubbed (non-production only)&#34;,
-<span id="L36" class="ln">    36  </span>			logging.String(&#34;env&#34;, appCfg.Env()),
-<span id="L37" class="ln">    37  </span>		)
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span>		return local.New(), nil
-<span id="L40" class="ln">    40  </span>	default:
-<span id="L41" class="ln">    41  </span>		logger.Named(&#34;core.authn&#34;).CallerSkip(callerSkipCount).Error(
-<span id="L42" class="ln">    42  </span>			&#34;No authenticator configured for the current environment&#34;,
-<span id="L43" class="ln">    43  </span>			logging.String(&#34;env&#34;, appCfg.Env()),
-<span id="L44" class="ln">    44  </span>		)
-<span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span>		return nil, xerrors.New(&#34;no authenticator configured for environment: &#34; + appCfg.Env())
-<span id="L47" class="ln">    47  </span>	}
-<span id="L48" class="ln">    48  </span>}
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span>	&#34;go.uber.org/fx&#34;
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">// callerSkipCount は、ロギングラッパーが追加するフレーム数を補正するためのスキップ数です。</span>
+<span id="L19" class="ln">    19  </span>const callerSkipCount = 1
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// AuthnModule は、認証関連の依存関係を提供するfxモジュールを返します。</span>
+<span id="L22" class="ln">    22  </span>func AuthnModule() fx.Option {
+<span id="L23" class="ln">    23  </span>	return fx.Module(&#34;core.authn&#34;,
+<span id="L24" class="ln">    24  </span>		fx.Provide(
+<span id="L25" class="ln">    25  </span>			provideAuthenticator,
+<span id="L26" class="ln">    26  </span>			auth.NewAuthenticator,
+<span id="L27" class="ln">    27  </span>		),
+<span id="L28" class="ln">    28  </span>	)
+<span id="L29" class="ln">    29  </span>}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// provideAuthenticator は、環境（EnvLocal / EnvCI / EnvTest）に対応した Authenticator を返します。</span>
+<span id="L32" class="ln">    32  </span><span class="comment">// それ以外の環境ではエラーを返し、FX の起動に失敗します。</span>
+<span id="L33" class="ln">    33  </span>func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logger) (authbd.Authenticator, error) {
+<span id="L34" class="ln">    34  </span>	switch appCfg.Env() {
+<span id="L35" class="ln">    35  </span>	case config.EnvLocal, config.EnvCI, config.EnvTest:
+<span id="L36" class="ln">    36  </span>		logger.Named(&#34;core.authn&#34;).CallerSkip(callerSkipCount).Warn(
+<span id="L37" class="ln">    37  </span>			context.Background(),
+<span id="L38" class="ln">    38  </span>			&#34;Local authenticator wired: authentication is stubbed (non-production only)&#34;,
+<span id="L39" class="ln">    39  </span>			logging.String(&#34;env&#34;, appCfg.Env()),
+<span id="L40" class="ln">    40  </span>		)
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>		return local.New(), nil
+<span id="L43" class="ln">    43  </span>	default:
+<span id="L44" class="ln">    44  </span>		logger.Named(&#34;core.authn&#34;).CallerSkip(callerSkipCount).Error(
+<span id="L45" class="ln">    45  </span>			context.Background(),
+<span id="L46" class="ln">    46  </span>			&#34;No authenticator configured for the current environment&#34;,
+<span id="L47" class="ln">    47  </span>			logging.String(&#34;env&#34;, appCfg.Env()),
+<span id="L48" class="ln">    48  </span>		)
 <span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>		return nil, xerrors.New(&#34;no authenticator configured for environment: &#34; + appCfg.Env())
+<span id="L51" class="ln">    51  </span>	}
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/di/module/core/auth.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

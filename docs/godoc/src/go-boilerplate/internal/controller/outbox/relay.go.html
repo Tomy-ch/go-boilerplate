@@ -129,7 +129,7 @@
 <span id="L72" class="ln">    72  </span>			if ctx.Err() != nil {
 <span id="L73" class="ln">    73  </span>				return nil
 <span id="L74" class="ln">    74  </span>			}
-<span id="L75" class="ln">    75  </span>			log.Error(&#34;outbox relay batch failed&#34;, logging.Error(logging.JobErrorKey, err))
+<span id="L75" class="ln">    75  </span>			log.Error(ctx, &#34;outbox relay batch failed&#34;, logging.Error(logging.JobErrorKey, err))
 <span id="L76" class="ln">    76  </span>			if e.waitDone(ctx, e.set.ErrorBackoff) {
 <span id="L77" class="ln">    77  </span>				return nil
 <span id="L78" class="ln">    78  </span>			}
@@ -161,7 +161,7 @@
 <span id="L104" class="ln">   104  </span>		return
 <span id="L105" class="ln">   105  </span>	}
 <span id="L106" class="ln">   106  </span>	if err := e.uc.RecordLag(ctx); err != nil {
-<span id="L107" class="ln">   107  </span>		log.Error(&#34;failed to record outbox lag&#34;, logging.Error(logging.JobErrorKey, err))
+<span id="L107" class="ln">   107  </span>		log.Error(ctx, &#34;failed to record outbox lag&#34;, logging.Error(logging.JobErrorKey, err))
 <span id="L108" class="ln">   108  </span>	}
 <span id="L109" class="ln">   109  </span>}
 <span id="L110" class="ln">   110  </span>
