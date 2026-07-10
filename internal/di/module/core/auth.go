@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/oapi/auth"
 	"go-boilerplate/internal/infrastructure/auth/local"
@@ -32,6 +34,7 @@ func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logge
 	switch appCfg.Env() {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
 		logger.Named("core.authn").CallerSkip(callerSkipCount).Warn(
+			context.Background(),
 			"Local authenticator wired: authentication is stubbed (non-production only)",
 			logging.String("env", appCfg.Env()),
 		)
@@ -39,6 +42,7 @@ func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logge
 		return local.New(), nil
 	default:
 		logger.Named("core.authn").CallerSkip(callerSkipCount).Error(
+			context.Background(),
 			"No authenticator configured for the current environment",
 			logging.String("env", appCfg.Env()),
 		)

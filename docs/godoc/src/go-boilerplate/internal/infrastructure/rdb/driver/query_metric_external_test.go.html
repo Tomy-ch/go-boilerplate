@@ -96,9 +96,9 @@
 <span id="L39" class="ln">    39  </span>	ctrl := gomock.NewController(t)
 <span id="L40" class="ln">    40  </span>	mockLogger := mock_logging.NewMockLogger(ctrl)
 <span id="L41" class="ln">    41  </span>	mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
-<span id="L42" class="ln">    42  </span>	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
-<span id="L43" class="ln">    43  </span>	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
-<span id="L44" class="ln">    44  </span>	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+<span id="L42" class="ln">    42  </span>	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+<span id="L43" class="ln">    43  </span>	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+<span id="L44" class="ln">    44  </span>	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 <span id="L45" class="ln">    45  </span>	lf := logging.NewTestLogFieldBuilder(t)
 <span id="L46" class="ln">    46  </span>
 <span id="L47" class="ln">    47  </span>	recorder := mock_driver.NewMockQueryRecorder(ctrl)

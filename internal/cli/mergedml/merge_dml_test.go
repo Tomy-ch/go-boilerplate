@@ -101,7 +101,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 				})
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.buildCategorySQLFile("user", "repository"))
+			require.NoError(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 
 			got := string(written)
 			assert.Contains(t, got, "SELECT 1;")
@@ -121,7 +121,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().Remove(dstPath).Return(nil)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.buildCategorySQLFile("user", "repository"))
+			require.NoError(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("SQLが空で生成物が未存在ならNotExistを無視する", func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().Remove(dstPath).Return(os.ErrNotExist)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.buildCategorySQLFile("user", "repository"))
+			require.NoError(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 	})
 
@@ -148,7 +148,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, xerrors.New("walk failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("連結中のReadFileに失敗するとエラー", func(t *testing.T) {
@@ -161,7 +161,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().ReadFile(f1).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("連結結果の書き出しに失敗するとエラー", func(t *testing.T) {
@@ -175,7 +175,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().WriteFile(dstPath, gomock.Any(), os.FileMode(genFilePerm)).Return(xerrors.New("write failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("SQLが空でRemoveがNotExist以外で失敗するとエラー", func(t *testing.T) {
@@ -187,7 +187,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().Remove(dstPath).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("SQLが空でも生成先がgenRootDir外ならensureUnderDirで弾く", func(t *testing.T) {
@@ -201,7 +201,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(escDmlDir).Return(nil, nil)
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), escCategory, "repository"))
 		})
 
 		t.Run("SQLがあっても生成先がgenRootDir外なら連結前にensureUnderDirで弾く", func(t *testing.T) {
@@ -215,7 +215,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(escDmlDir).Return([]string{filepath.Join(escDmlDir, "001.sql")}, nil)
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), escCategory, "repository"))
 		})
 	})
 }
@@ -242,7 +242,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(nil)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+			require.NoError(t, g.cleanupStaleGeneratedFiles(context.Background(), []string{"user"}, "repository"))
 		})
 
 		t.Run("カテゴリ0件のとき同typeの生成物を全削除し他typeは温存する", func(t *testing.T) {
@@ -259,7 +259,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().Remove(filepath.Join(genAbs, "b_repository.gen.sql")).Return(nil)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.cleanupStaleGeneratedFiles(nil, "repository"))
+			require.NoError(t, g.cleanupStaleGeneratedFiles(context.Background(), nil, "repository"))
 		})
 	})
 
@@ -274,7 +274,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+			require.Error(t, g.cleanupStaleGeneratedFiles(context.Background(), []string{"user"}, "repository"))
 		})
 
 		t.Run("stale削除に失敗するとエラー", func(t *testing.T) {
@@ -286,7 +286,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+			require.Error(t, g.cleanupStaleGeneratedFiles(context.Background(), []string{"user"}, "repository"))
 		})
 
 		t.Run("削除対象がgenRootDir外を指すとensureUnderDirで弾く", func(t *testing.T) {
@@ -298,7 +298,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"../../../../etc_repository.gen.sql"}, nil)
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.cleanupStaleGeneratedFiles(nil, "repository"))
+			require.Error(t, g.cleanupStaleGeneratedFiles(context.Background(), nil, "repository"))
 		})
 	})
 }

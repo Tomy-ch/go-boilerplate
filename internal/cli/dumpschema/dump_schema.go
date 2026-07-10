@@ -73,7 +73,7 @@ func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string
 	if err := gen.dumpSchema(ctx, dbURL, password); err != nil {
 		return err
 	}
-	return gen.sanitizeSchemaInPlace()
+	return gen.sanitizeSchemaInPlace(ctx)
 }
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
@@ -81,13 +81,13 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 	args := append([]string{dbURL}, g.dumpArgs...)
 	env := []string{"PGPASSWORD=" + password}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info(ctx, "start pg_dump schema",
 		logging.String("out", g.schemaRelPath),
 	)
 
 	out, err := g.runner.Output(ctx, g.workDir, env, g.dumpCommand, args)
 	if err != nil {
-		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed",
+		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn(ctx, "pg_dump failed",
 			logging.String("out", g.schemaRelPath),
 			logging.Error(logging.ErrorKey, err),
 		)
@@ -99,7 +99,7 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 		return xerrors.Wrap(err, "failed to write schema file")
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info(ctx, "pg_dump schema completed",
 		logging.String("out", g.schemaRelPath),
 	)
 
@@ -108,7 +108,7 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 
 // sanitizeSchemaInPlace は、schema.sql を sqlc 向けに整形します。
 // trimPrefixes 一致のメタ行に加え、空行（空白のみ・元から空）も除去します（空行除去まで含むのは意図的）。
-func (g *Generator) sanitizeSchemaInPlace() error {
+func (g *Generator) sanitizeSchemaInPlace(ctx context.Context) error {
 	srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
 	b, err := g.fs.ReadFile(srcAbs)
@@ -136,7 +136,7 @@ func (g *Generator) sanitizeSchemaInPlace() error {
 		return xerrors.Wrap(err, "write sanitized schema")
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info(ctx, "schema sanitized for sqlc",
 		logging.String("schema", g.schemaRelPath),
 	)
 	return nil

@@ -2,19 +2,21 @@
 
 [English](README.md) | 日本語
 
-`internal/logging` はアプリケーション全体で利用する **構造化ロギング基盤** を提供します。
+> このファイルは canonical な英語版 [README.md](README.md) の翻訳です。直接編集せず、更新は英語版から反映してください。
 
-本パッケージは `zap` をベースにしながら、アプリケーションコードが **zap に直接依存しない形**でログを扱えるようにするための抽象化レイヤです。
+`internal/logging` は、アプリケーション全体で使用する**構造化ログ基盤**を提供します。
 
-主な目的は次の通りです。
+本パッケージは `zap` をベースにしつつ、アプリケーションコードが **zap に直接依存せず**にロギングを扱えるよう抽象化レイヤーを提供します。
 
-- ログフォーマットの統一
+主な目的は以下のとおりです。
+
+- ログフォーマットの標準化
 - ログフィールドの安全な生成
-- observability（trace/span）との統合
-- テスト容易性の確保
-- フレームワーク非依存のログAPI提供
+- オブザーバビリティ（trace/span）との統合
+- テスタビリティの確保
+- フレームワーク非依存なロギング API の提供
 
-## パッケージ構成
+## Package Structure
 
 ```txt
 internal/logging
@@ -28,101 +30,100 @@ internal/logging
 └── mock/
 ```
 
-各ファイルの役割は次の通りです。
+各ファイルの役割は以下のとおりです。
 
 |ファイル|役割|
 |---|---|
-|`logger.go`|`Logger` interface、その `*logger` 実装、`WithCore`（追加の `LogCore` を Tee）|
+|`logger.go`|`Logger` インターフェース、その `*logger` 実装、および `WithCore`（追加の `LogCore` を Tee）|
 |`logger_core.go`|zap ベースの Logger 構築（`NewJSONLogger` / `NewConsoleLogger`、エンコーダ設定）|
 |`level.go`|`Level` 型と `LevelDebug/Info/Warn/Error` / `ParseLevel`|
-|`stacktrace_core.go`|zap 自動付与の `Entry.Stack` を JSON 出力時に行配列へ変換する zapcore.Core ラッパ|
-|`field.go`|ログフィールドの型とフィールド生成関数|
-|`field_builder.go`|HTTP / SQL ログフィールド生成|
+|`stacktrace_core.go`|自動付与される `Entry.Stack` を JSON 出力向けに行配列へ変換する zapcore.Core ラッパー|
+|`field.go`|ログフィールドの型とフィールドコンストラクタ|
+|`field_builder.go`|HTTP / SQL ログフィールドの生成|
 |`const.go`|ログキー定義|
-|`test_kit.go`|テスト用 Logger / FieldBuilder|
+|`test_kit.go`|テスト用の Logger / FieldBuilder|
 
-## Logger インターフェース
+## Logger Interface
 
-アプリケーションコードは **Logger interface** のみを利用します。
+アプリケーションコードは **Logger インターフェース**のみを使用します。
 
 ```go
 type Logger interface {
-    Debug(msg string, fields ...*Field)
-    Info(msg string, fields ...*Field)
-    Warn(msg string, fields ...*Field)
-    Error(msg string, fields ...*Field)
+    Debug(ctx context.Context, msg string, fields ...*Field)
+    Info(ctx context.Context, msg string, fields ...*Field)
+    Warn(ctx context.Context, msg string, fields ...*Field)
+    Error(ctx context.Context, msg string, fields ...*Field)
 
     Named(name string) Logger
     CallerSkip(skip int) Logger
 }
 ```
 
-`Named` は指定名を付与した子ロガーを返し、`CallerSkip` は caller 情報を指定フレーム数スキップして報告するロガーを返します（ラッパ越しにログ出力する場合に有用）。`*Field` から `zap.Field` への変換は非公開の `convertFields` が内部で行い、公開インターフェースには含まれません。
+各出力メソッドは `context.Context` を受け取り、そこから抽出した `trace_id` / `span_id` を自動注入します。リクエストスコープの span が存在しない箇所（DI 起動時、fx イベント、CLI ブートストラップ）では `context.Background()` を渡します。その場合、注入は単にスキップされます。呼び出し側が `trace_id` / `span_id` を明示的なフィールドとして渡すことはありません。
 
-この設計により
+`Named` は指定した名前を付与した子ロガーを返し、`CallerSkip` は caller 情報の出力時に指定した段数のスタックフレームをスキップするロガーを返します（ラッパー経由でログを出す場合に有用）。`*Field` から `zap.Field` への変換は、非公開の `convertFields` が内部で行い、公開インターフェースには含まれません。
 
-- zap 依存を内部に閉じ込める
-- テストでモック差し替え可能
-- logging 実装を変更してもアプリ層に影響しない
+この設計により、以下を実現します。
 
-というメリットがあります。
+- zap 依存のカプセル化
+- テストでのモック差し替え
+- ロギング実装が変わってもアプリケーション層に影響を与えない
 
-## Logger 生成
+## Logger Creation
 
-Logger は出力方式ごとに生成します。出力レベル（`Level`）と stacktrace を付与し始めるレベルを渡します。
+ロガーは出力フォーマットごとに生成します。`Level`（出力レベル）と、スタックトレースを付与し始めるレベルを渡します。
+
+第 3 引数はログ呼び出しの `ctx` から `trace_id` / `span_id` を抽出する `TraceExtractor` です。`nil` を渡すと trace 注入を無効化します（例: CLI ブートストラップ用ロガー）。DI ルートでは fx が `observability.NewTraceExtractor(obsCfg)` を `provideLogger` の `TraceExtractor` として配線します。
 
 ```go
-// JSON ロガー（機械可読・本番向け出力方式）
-logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
-// console ロガー（人間可読・開発向け出力方式）
-logger := logging.NewConsoleLogger(logging.LevelDebug(), logging.LevelWarn())
+// JSON ロガー（機械可読・本番向け出力）
+logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), extract)
+// console ロガー（人間可読・開発向け出力）
+logger := logging.NewConsoleLogger(logging.LevelDebug(), logging.LevelWarn(), extract)
+// trace 注入なし（例: DI 前の CLI ブートストラップ）
+logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 ```
 
-`LevelDebug` / `LevelInfo` / `LevelWarn` / `LevelError` は対応する `Level` 値を返す関数です。
+`LevelDebug` / `LevelInfo` / `LevelWarn` / `LevelError` は、対応する `Level` 値を返す関数です。
 
-`Level` は zap のレベルを包む型で、利用側が `zapcore` に直接依存しないようにします。レベル文字列（`debug` / `info` / `warn` / `error`）は `ParseLevel` で変換します。
+`Level` は zap のレベルをラップしており、呼び出し側が `zapcore` に直接依存しないようにします。レベル文字列（`debug` / `info` / `warn` / `error`）は `ParseLevel` でパースします。
 
 ```go
 level, err := logging.ParseLevel("info")
 ```
 
-実行中のプロセスがどの出力方式・レベルを使うかは、本パッケージではなく DI の合成ルートで決まります。`internal/di/module/logging.go` の `provideLogger` が `APP_MODE` から出力方式を、`APP_LOG_LEVEL` から出力レベルを選択します。
+実行中のプロセスがどの出力フォーマット・レベルを使うかは、ここではなく DI コンポジションルートで決定されます。`internal/di/module/logging.go` の `provideLogger` が、フォーマットを `APP_MODE` から、出力レベルを `APP_LOG_LEVEL` から選択します。
 
-|Mode|出力方式|Stacktrace|
+|モード|出力フォーマット|スタックトレース|
 |---|---|---|
-|production|JSON logger|Error以上|
-|development|console logger|Warn以上|
+|production|JSON ロガー|Error 以上|
+|development|console ロガー|Warn 以上|
 
-### 追加 Core の付与（Observability）
+### Attaching an Additional Core (Observability)
 
-`LogCore` は `zapcore.Core` の型エイリアスです。`WithCore` は既存の `Logger` に追加の
-core を Tee し（元 Logger と同じ最小レベルでゲート）、同じログエントリをその core からも
-出力させます。
+`LogCore` は `zapcore.Core` の型エイリアスです。`WithCore` は既存の `Logger` に追加の core を、ベースロガーの最小レベルでゲートしつつ Tee し、同じログエントリをその core にも出力させます。
 
 ```go
 logger = logging.WithCore(logger, extraCore)
 ```
 
-`core` が `nil` の場合は元の `Logger` をそのまま返し、渡された `Logger` が本パッケージの
-具象 `*logger` でない場合（テスト用 fake 等）もそのまま返します。
+`core` が `nil` の場合は元の `Logger` をそのまま返します。渡された `Logger` が本パッケージの具象 `*logger` でない場合（例: テスト用の fake）も、そのまま返します。
 
-これは OpenTelemetry ログ送出との接続点です。`internal/observability` の `NewLogCore` が、
-ログ送出が有効なときに zap ログを OTLP へ橋渡しする `otelzap` core を返します（無効時は `nil`）。
-`internal/di/module/logging.go` の `provideLogger` が両者を `WithCore` で結線します。
+これは OpenTelemetry ログエクスポートの接続点です。`internal/observability` が `NewLogCore` を提供し、ログエクスポートが有効なとき zap ログを OTLP へ橋渡しする `otelzap` core を返します（無効時は `nil`）。`internal/di/module/logging.go` の `provideLogger` が、両者を `WithCore` で結線します。
 
 ## Field
 
-ログフィールドは `Field` 型を利用して生成します。
+ログフィールドは `Field` 型で生成します。
 
 ```go
-logger.Info(
+logger.Info(ctx,
     "user created",
     logging.String("user_id", "123"),
     logging.Int("age", 20),
 )
 ```
 
-サポートしている型
+サポートする型
 
 |関数|型|
 |---|---|
@@ -132,26 +133,23 @@ logger.Info(
 |Int64|int64|
 |Float64|float64|
 |Bool|bool|
-|Time|time.Time（RFC3339Nano文字列に変換）|
-|DurationMs|time.Duration（ミリ秒単位のfloat64に変換）|
+|Time|time.Time（RFC3339Nano 文字列へ変換）|
+|DurationMs|time.Duration（ミリ秒の float64 へ変換）|
 |Error|error|
-|Stacktrace|error（スタックトレースを行配列 []string に変換）|
+|Stacktrace|error（スタックトレース行を []string へ変換）|
 |Any|any|
 
-`Stacktrace` はスタックを `[]string`（1 行 1 要素）として保持するため、Grafana / Loki
-などの JSON ビューアで改行が可読に表示されます。この分割を行うヘルパ
-`SplitStackLines(s string) []string` は公開されており、他所でも再利用されます
-（例: recovery ミドルウェアが生のランタイムスタックを `internal_stacktrace` フィールド用に分割）。
+`Stacktrace` はスタックを `[]string`（1 行につき 1 要素）として格納するため、Grafana / Loki などの JSON ビューアで改行が読みやすく表示されます。この分割を行うヘルパー `SplitStackLines(s string) []string` は公開されており、他箇所でも再利用されます（例: recovery ミドルウェアが `internal_stacktrace` フィールド向けに生ランタイムスタックを分割）。
 
 この設計の目的
 
-- zap.Field を直接使わせない
-- フィールド生成の安全性
-- API の統一
+- zap.Field の直接使用を防ぐ
+- 安全なフィールド生成を保証する
+- API を統一する
 
 ## LogFieldBuilder
 
-HTTP / SQL / Observability 用のログフィールド生成をまとめたコンポーネントです。
+HTTP / SQL / オブザーバビリティ向けのログフィールド生成を集約するコンポーネントです。
 
 ```go
 type LogFieldBuilder interface {
@@ -161,8 +159,7 @@ type LogFieldBuilder interface {
 }
 ```
 
-trace / span フィールドは専用メソッドで生成せず、各 `Build*` メソッドが observability
-有効時に自身の出力へ付与します（後述）。
+`trace_id` / `span_id` はここでは構築しません。`Logger` が出力時に `ctx` から注入します。`BuildSQLEndFields` は、オブザーバビリティが有効かつ親 span ID が存在する場合に、`ctx` から導出できない `parent_span_id` のみを追加で付与します。
 
 生成
 
@@ -170,31 +167,31 @@ trace / span フィールドは専用メソッドで生成せず、各 `Build*` 
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-`config.ObservabilityConfig` と `config.OperatingSystemConfig` を受け取り、trace/span フィールドの付与やタイムゾーン情報の付与を制御します。
+`config.ObservabilityConfig` と `config.OperatingSystemConfig` を受け取り、trace/span フィールドの付与とタイムゾーン情報を制御します。
 
-用途
+ユースケース
 
-- HTTPアクセスログ
-- SQLログ
-- trace/spanログ
+- HTTP アクセスログ
+- SQL ログ
+- trace/span ログ
 
-などの **構造化ログを自動生成**します。
+**構造化ログ**を自動生成します。
 
-### 入力構造体
+### Input Structs
 
 各 Build メソッドは専用の入力構造体を受け取ります。
 
 |構造体|用途|主なフィールド|
 |---|---|---|
-|`HTTPRequestLogInput`|HTTPリクエストログ|EventType, Method, Path, URI, RemoteIP, Host, Scheme, Proto, UserAgent, ContentType, ContentLength, PathParams, QueryParams|
-|`HTTPResponseLogInput`|HTTPレスポンスログ|Method, Path, URI, Status, Latency, RequestID|
-|`SQLFieldsEndInput`|SQL終了ログ|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
+|`HTTPRequestLogInput`|HTTP リクエストログ|EventType, Method, Path, URI, RemoteIP, Host, Scheme, Proto, UserAgent, ContentType, ContentLength, PathParams, QueryParams|
+|`HTTPResponseLogInput`|HTTP レスポンスログ|Method, Path, URI, Status, Latency, RequestID|
+|`SQLFieldsEndInput`|SQL 終了ログ|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
 
-すべての入力構造体は `EventAt`（イベント発生時刻）と `TraceID` / `SpanID`（トレース情報）を持ちます。`ParentSpanID` は `SQLFieldsEndInput` のみに存在します。
+すべての入力構造体は `EventAt`（イベント発生時刻）を持ちます。trace 情報（`trace_id` / `span_id`）はここでは保持しません。`Logger` が `ctx` から注入します。`SQLFieldsEndInput` は追加で `ParentSpanID` を持ちますが、これは `ctx` から導出できません。
 
 ## HTTP Logging
 
-HTTPリクエスト / レスポンスログは次のフィールドを出力します。
+HTTP リクエスト / レスポンスログは以下のフィールドを出力します。
 
 例（Request）
 
@@ -215,7 +212,7 @@ HTTPリクエスト / レスポンスログは次のフィールドを出力し�
 
 ## SQL Logging
 
-SQLログは `BuildSQLEndFields` によりクエリの **終了**時点で出力されます。
+SQL ログは、クエリの**終了時点**に `BuildSQLEndFields` を通じて出力されます。
 
 ### SQL End
 
@@ -227,28 +224,24 @@ SQLログは `BuildSQLEndFields` によりクエリの **終了**時点で出力
 - `latency_ms=4`
 - `raw_query=SELECT ...`
 - `query_compact=SELECT ...`
-- `args_count=2`（引数がある場合のみ）
+- `args_count=2`（引数が存在する場合のみ）
 - `internal_error=...`（クエリが失敗した場合のみ）
 
-クエリは `raw_query`（そのまま）と `query_compact`（改行・タブ・連続空白を 1 行に圧縮した形）の
-2 種類が出力されます。
+クエリは 2 つのフォーマットで出力されます。`raw_query`（そのまま）と `query_compact`（改行 / タブ / 連続空白を 1 行形式に畳んだもの）です。
 
-## Observability フィールド
+## Observability Fields
 
-専用の observability ビルダはありません。trace / span フィールドは、observability が有効で
-かつ `TraceID` と `SpanID` の両方が存在するときに、HTTP / SQL ログ出力へ付与されます。
+独立したオブザーバビリティ用ビルダーはありません。`trace_id` / `span_id` は `Logger` がログ呼び出しの `ctx`（DI で配線された `TraceExtractor` 経由）から注入するため、アクティブな span を持つすべてのログに現れます。HTTP / SQL ログに限りません。
 
-- `trace_id`
-- `span_id`
-- `parent_span_id`（SQL のみ、かつ親スパン ID が存在する場合のみ）
+- `trace_id` — `Logger` が `ctx` から注入
+- `span_id` — `Logger` が `ctx` から注入
+- `parent_span_id` — `BuildSQLEndFields` が付与（SQL のみ）。`ctx` から導出できないため。親 span ID が存在する場合のみ
 
-observability が無効な場合（または trace / span ID が空の場合）は出力されません。
-`layer` / `package` / `function` は trace 付与ではなく SQL ログ出力（`SQLFieldsEndInput`）の
-一部です。
+オブザーバビリティが無効な場合（または `ctx` が有効な span を持たない場合）、これらのフィールドは出力されません。`layer` / `package` / `function` フィールドは（`SQLFieldsEndInput` 由来の）SQL ログ出力の一部であり、trace の付与ではありません。
 
 ## Test Kit
 
-テストでは `NewTestLogger` を利用します。
+テストでは `NewTestLogger` を使用します。
 
 ```go
 logger := logging.NewTestLogger(t)
@@ -257,57 +250,56 @@ logger := logging.NewTestLogger(t)
 特徴
 
 - `zaptest.NewLogger`
-- テストログを `testing.T` に出力
+- テストログを `testing.T` へ出力
 - 副作用なし
 
-出力されたログ（レベル / 出力有無 / caller）を検証したい場合は、`*observer.ObservedLogs` を
-`Logger` と併せて返す observed 版を使用します。
+出力されたログ（レベル / 有無 / caller）を検証する場合は、`*observer.ObservedLogs` を `Logger` と併せて返す observed 版を使用します。
 
 ```go
 logger, observed := logging.NewObservedTestLogger(t)
 loggerWithCaller, observed := logging.NewObservedTestLoggerWithCaller(t)
 ```
 
-LogFieldBuilder のテスト用インスタンス
+LogFieldBuilder 用のテストインスタンス
 
 ```go
 logging.NewTestLogFieldBuilder(t)
 ```
 
-## 設計方針
+## Design Policy
 
-この logging パッケージは次のポリシーで設計されています。
+本ロギングパッケージは、以下の方針に基づいて設計されています。
 
-### 1 zap を直接使わせない
+### 1 zap を直接使わない
 
-アプリケーションコードは `zap.Logger`, `zap.Field` に依存しません。
+アプリケーションコードは `zap.Logger`、`zap.Field` に依存しません。
 
 ### 2 Field をラップする
 
-ログフィールドは `Field` 型を利用します。
+ログフィールドは `Field` 型を使用します。
 
 理由
 
-- フィールド生成APIを固定
-- zap 依存の隠蔽
+- フィールド生成 API を固定する
+- zap 依存を隠蔽する
 
-### 3 Observability を統合
+### 3 オブザーバビリティを統合する
 
-trace / span 情報は logging 層で統合します。
+trace / span 情報をロギング層で統合します。
 
 - `trace_id`
 - `span_id`
 - `parent_span_id`
 
-### 4 テスト容易性
+### 4 テスタビリティ
 
-Logger は interface のため `mockgen` でモック生成可能です。
+Logger はインターフェースであるため、`mockgen` でモック化できます。
 
-## ログキー定数
+## Log Key Constants
 
-`const.go` で定義されるログキーの一覧です。
+`const.go` で定義されるログキーです。
 
-### HTTP系
+### HTTP
 
 |定数|キー|
 |---|---|
@@ -334,7 +326,7 @@ Logger は interface のため `mockgen` でモック生成可能です。
 |`LatencyKey`|`latency_ms`|
 |`RequestIDKey`|`request_id`|
 
-### エラー系
+### Error
 
 |定数|キー|
 |---|---|
@@ -346,7 +338,7 @@ Logger は interface のため `mockgen` でモック生成可能です。
 |`InternalErrorKey`|`internal_error`|
 |`InternalStackTraceKey`|`internal_stacktrace`|
 
-### クエリ系
+### Query
 
 |定数|キー|
 |---|---|
@@ -354,7 +346,7 @@ Logger は interface のため `mockgen` でモック生成可能です。
 |`QueryCompactKey`|`query_compact`|
 |`QueryArgsCountKey`|`args_count`|
 
-### Job系
+### Job
 
 |定数|キー|
 |---|---|
@@ -364,7 +356,7 @@ Logger は interface のため `mockgen` でモック生成可能です。
 |`JobResultKey`|`job_result`|
 |`FilterKey`|`filter`|
 
-### worker系
+### Worker
 
 |定数|キー|
 |---|---|
@@ -373,7 +365,7 @@ Logger は interface のため `mockgen` でモック生成可能です。
 |`ReceiveCountKey`|`receive_count`|
 |`PanicKey`|`panic`|
 
-### 可観測系
+### Observability
 
 |定数|キー|
 |---|---|
@@ -385,12 +377,12 @@ Logger は interface のため `mockgen` でモック生成可能です。
 |`PackageKey`|`package`|
 |`FunctionKey`|`function`|
 
-## セキュリティ注意点
+## Security Considerations
 
-ログには次の情報を **出力しないよう注意してください**
+以下の情報をログに出力しないよう注意してください。
 
 - パスワード
 - 認証トークン
 - 個人情報
 
-必要な場合は **マスキング処理**を行ってください。
+必要に応じて**マスキング処理**を適用してください。

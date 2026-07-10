@@ -36,7 +36,7 @@ func newMergeDMLCommand() *cobra.Command {
 
 // mergeDMLRun は mergedml.RunMerge への薄い委譲殻です。
 func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
-	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 
 	gen := mergedml.NewGenerator(logger, workDir)
 	return mergedml.RunMerge(ctx, gen, targetType)

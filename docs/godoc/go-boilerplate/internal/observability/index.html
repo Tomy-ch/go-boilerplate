@@ -146,6 +146,9 @@ Worker / HTTPClient / Outbox 向けメトリクスセット、OTLP Provider の�
 				<dd><a href="#NewTextMapPropagator">func NewTextMapPropagator() propagation.TextMapPropagator</a></dd>
 			
 				
+				<dd><a href="#NewTraceExtractor">func NewTraceExtractor(obsCfg *config.ObservabilityConfig) logging.TraceExtractor</a></dd>
+			
+				
 				<dd><a href="#NewTracerProvider">func NewTracerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdktrace.TracerProvider, error)</a></dd>
 			
 				
@@ -421,7 +424,7 @@ Worker / HTTPClient / Outbox 向けメトリクスセット、OTLP Provider の�
 		
 			
 			
-			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=765:823#L14">BuildSpanName</a>
+			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=800:858#L15">BuildSpanName</a>
 				<a class="permalink" href="#BuildSpanName">¶</a>
 				
 				
@@ -598,6 +601,22 @@ MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 gor
 		
 			
 			
+			</p><h2 id="NewTraceExtractor">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2716:2797#L75">NewTraceExtractor</a>
+				<a class="permalink" href="#NewTraceExtractor">¶</a>
+				
+				
+			</h2>
+			<pre>func NewTraceExtractor(obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>) <a href="../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../go-boilerplate/internal/logging/#TraceExtractor">TraceExtractor</a></pre>
+			<p>NewTraceExtractor は、ctx から trace_id / span_id を抽出する logging.TraceExtractor を返します。
+obs 無効時・ctx に有効な span が無い場合は 3 番目の戻り値 false を返し、Logger 側の trace 注入を
+抑止します。
+
+			
+			
+
+		
+			
+			
 			</p><h2 id="NewTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=2642:2758#L64">NewTracerProvider</a>
 				<a class="permalink" href="#NewTracerProvider">¶</a>
 				
@@ -666,7 +685,7 @@ MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 gor
 		
 			
 			
-			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=485:569#L9">ShouldLogWithSpan</a>
+			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=520:604#L10">ShouldLogWithSpan</a>
 				<a class="permalink" href="#ShouldLogWithSpan">¶</a>
 				
 				
@@ -1250,7 +1269,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 		
 			
 			
-			</p><h2 id="TraceContext">type <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=202:293#L2">TraceContext</a>
+			</p><h2 id="TraceContext">type <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=237:328#L3">TraceContext</a>
 				<a class="permalink" href="#TraceContext">¶</a>
 				
 				
@@ -1272,7 +1291,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 
 			
 				
-				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1025:1084#L19">ExtractTraceContext</a>
+				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1060:1119#L20">ExtractTraceContext</a>
 					<a class="permalink" href="#ExtractTraceContext">¶</a>
 					
 					
@@ -1284,7 +1303,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1459:1616#L32">StartSpanWithParent</a>
+				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1494:1651#L33">StartSpanWithParent</a>
 					<a class="permalink" href="#StartSpanWithParent">¶</a>
 					
 					
@@ -1303,7 +1322,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 
 			
 				
-				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2340:2385#L67">ParentSpanID</a>
+				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2375:2420#L68">ParentSpanID</a>
 					<a class="permalink" href="#TraceContext.ParentSpanID">¶</a>
 					
 					
@@ -1316,7 +1335,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2200:2239#L62">SpanID</a>
+				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2235:2274#L63">SpanID</a>
 					<a class="permalink" href="#TraceContext.SpanID">¶</a>
 					
 					
@@ -1329,7 +1348,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2070:2110#L57">TraceID</a>
+				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2105:2145#L58">TraceID</a>
 					<a class="permalink" href="#TraceContext.TraceID">¶</a>
 					
 					

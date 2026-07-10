@@ -58,6 +58,7 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 	}
 
 	j.logging.Named(jobName).Info(
+		ctx,
 		"Result: expired idempotency keys deleted",
 		logging.Int64(logging.JobResultKey, deleted),
 	)

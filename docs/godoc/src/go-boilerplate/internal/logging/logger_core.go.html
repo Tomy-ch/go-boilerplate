@@ -101,36 +101,42 @@
 <span id="L44" class="ln">    44  </span>}
 <span id="L45" class="ln">    45  </span>
 <span id="L46" class="ln">    46  </span><span class="comment">// NewJSONLogger は JSON 構造化ロガーを生成します。</span>
-<span id="L47" class="ln">    47  </span><span class="comment">// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。</span>
-<span id="L48" class="ln">    48  </span>func NewJSONLogger(level, stacktraceLevel Level) Logger {
-<span id="L49" class="ln">    49  </span>	enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
-<span id="L50" class="ln">    50  </span>	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, true)
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span><span class="comment">// NewConsoleLogger は人間可読な console ロガーを生成します。</span>
-<span id="L54" class="ln">    54  </span><span class="comment">// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。</span>
-<span id="L55" class="ln">    55  </span>func NewConsoleLogger(level, stacktraceLevel Level) Logger {
-<span id="L56" class="ln">    56  </span>	enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
-<span id="L57" class="ln">    57  </span>	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false)
-<span id="L58" class="ln">    58  </span>}
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span><span class="comment">// buildLogger は encoder と出力先から Logger を構築します。</span>
-<span id="L61" class="ln">    61  </span><span class="comment">// jsonArrayStacktrace=true のとき、stacktrace を行配列として出力します。</span>
-<span id="L62" class="ln">    62  </span>func buildLogger(
-<span id="L63" class="ln">    63  </span>	enc zapcore.Encoder, ws zapcore.WriteSyncer, level, stacktraceLevel zapcore.Level, jsonArrayStacktrace bool,
-<span id="L64" class="ln">    64  </span>) Logger {
-<span id="L65" class="ln">    65  </span>	core := zapcore.NewCore(enc, ws, zap.NewAtomicLevelAt(level))
-<span id="L66" class="ln">    66  </span>	if jsonArrayStacktrace {
-<span id="L67" class="ln">    67  </span>		core = wrapStacktraceCore(core, stacktraceKey)
-<span id="L68" class="ln">    68  </span>	}
-<span id="L69" class="ln">    69  </span>	zl := zap.New(core,
-<span id="L70" class="ln">    70  </span>		zap.AddCaller(),
-<span id="L71" class="ln">    71  </span>		zap.AddStacktrace(stacktraceLevel),
-<span id="L72" class="ln">    72  </span>		zap.ErrorOutput(stderrSyncer),
-<span id="L73" class="ln">    73  </span>	)
-<span id="L74" class="ln">    74  </span>	return &amp;logger{log: zl}
-<span id="L75" class="ln">    75  </span>}
-<span id="L76" class="ln">    76  </span>
+<span id="L47" class="ln">    47  </span><span class="comment">// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、</span>
+<span id="L48" class="ln">    48  </span><span class="comment">// extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。</span>
+<span id="L49" class="ln">    49  </span>func NewJSONLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger {
+<span id="L50" class="ln">    50  </span>	enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
+<span id="L51" class="ln">    51  </span>	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, true, extract)
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// NewConsoleLogger は人間可読な console ロガーを生成します。</span>
+<span id="L55" class="ln">    55  </span><span class="comment">// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、</span>
+<span id="L56" class="ln">    56  </span><span class="comment">// extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。</span>
+<span id="L57" class="ln">    57  </span>func NewConsoleLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger {
+<span id="L58" class="ln">    58  </span>	enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
+<span id="L59" class="ln">    59  </span>	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false, extract)
+<span id="L60" class="ln">    60  </span>}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span><span class="comment">// buildLogger は encoder と出力先から Logger を構築します。</span>
+<span id="L63" class="ln">    63  </span><span class="comment">// jsonArrayStacktrace=true のとき、stacktrace を行配列として出力します。</span>
+<span id="L64" class="ln">    64  </span>func buildLogger(
+<span id="L65" class="ln">    65  </span>	enc zapcore.Encoder,
+<span id="L66" class="ln">    66  </span>	ws zapcore.WriteSyncer,
+<span id="L67" class="ln">    67  </span>	level, stacktraceLevel zapcore.Level,
+<span id="L68" class="ln">    68  </span>	jsonArrayStacktrace bool,
+<span id="L69" class="ln">    69  </span>	extract TraceExtractor,
+<span id="L70" class="ln">    70  </span>) Logger {
+<span id="L71" class="ln">    71  </span>	core := zapcore.NewCore(enc, ws, zap.NewAtomicLevelAt(level))
+<span id="L72" class="ln">    72  </span>	if jsonArrayStacktrace {
+<span id="L73" class="ln">    73  </span>		core = wrapStacktraceCore(core, stacktraceKey)
+<span id="L74" class="ln">    74  </span>	}
+<span id="L75" class="ln">    75  </span>	zl := zap.New(core,
+<span id="L76" class="ln">    76  </span>		zap.AddCaller(),
+<span id="L77" class="ln">    77  </span>		zap.AddStacktrace(stacktraceLevel),
+<span id="L78" class="ln">    78  </span>		zap.ErrorOutput(stderrSyncer),
+<span id="L79" class="ln">    79  </span>	)
+<span id="L80" class="ln">    80  </span>	return &amp;logger{log: zl, extract: extract}
+<span id="L81" class="ln">    81  </span>}
+<span id="L82" class="ln">    82  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/logging/logger_core.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

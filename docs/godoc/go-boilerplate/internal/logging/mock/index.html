@@ -150,22 +150,22 @@
 					<dd>    <a href="#MockLogger.CallerSkip">func (m *MockLogger) CallerSkip(skip int) logging.Logger</a></dd>
 				
 					
-					<dd>    <a href="#MockLogger.Debug">func (m *MockLogger) Debug(msg string, fields ...*logging.Field)</a></dd>
+					<dd>    <a href="#MockLogger.Debug">func (m *MockLogger) Debug(ctx context.Context, msg string, fields ...*logging.Field)</a></dd>
 				
 					
 					<dd>    <a href="#MockLogger.EXPECT">func (m *MockLogger) EXPECT() *MockLoggerMockRecorder</a></dd>
 				
 					
-					<dd>    <a href="#MockLogger.Error">func (m *MockLogger) Error(msg string, fields ...*logging.Field)</a></dd>
+					<dd>    <a href="#MockLogger.Error">func (m *MockLogger) Error(ctx context.Context, msg string, fields ...*logging.Field)</a></dd>
 				
 					
-					<dd>    <a href="#MockLogger.Info">func (m *MockLogger) Info(msg string, fields ...*logging.Field)</a></dd>
+					<dd>    <a href="#MockLogger.Info">func (m *MockLogger) Info(ctx context.Context, msg string, fields ...*logging.Field)</a></dd>
 				
 					
 					<dd>    <a href="#MockLogger.Named">func (m *MockLogger) Named(name string) logging.Logger</a></dd>
 				
 					
-					<dd>    <a href="#MockLogger.Warn">func (m *MockLogger) Warn(msg string, fields ...*logging.Field)</a></dd>
+					<dd>    <a href="#MockLogger.Warn">func (m *MockLogger) Warn(ctx context.Context, msg string, fields ...*logging.Field)</a></dd>
 				
 			
 				
@@ -176,19 +176,19 @@
 					<dd>    <a href="#MockLoggerMockRecorder.CallerSkip">func (mr *MockLoggerMockRecorder) CallerSkip(skip any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockLoggerMockRecorder.Debug">func (mr *MockLoggerMockRecorder) Debug(msg any, fields ...any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockLoggerMockRecorder.Debug">func (mr *MockLoggerMockRecorder) Debug(ctx, msg any, fields ...any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockLoggerMockRecorder.Error">func (mr *MockLoggerMockRecorder) Error(msg any, fields ...any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockLoggerMockRecorder.Error">func (mr *MockLoggerMockRecorder) Error(ctx, msg any, fields ...any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockLoggerMockRecorder.Info">func (mr *MockLoggerMockRecorder) Info(msg any, fields ...any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockLoggerMockRecorder.Info">func (mr *MockLoggerMockRecorder) Info(ctx, msg any, fields ...any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockLoggerMockRecorder.Named">func (mr *MockLoggerMockRecorder) Named(name any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockLoggerMockRecorder.Warn">func (mr *MockLoggerMockRecorder) Warn(msg any, fields ...any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockLoggerMockRecorder.Warn">func (mr *MockLoggerMockRecorder) Warn(ctx, msg any, fields ...any) *gomock.Call</a></dd>
 				
 			
 			
@@ -375,7 +375,7 @@
 		
 			
 			
-			</p><h2 id="MockLogger">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=426:534#L10">MockLogger</a>
+			</p><h2 id="MockLogger">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=445:553#L11">MockLogger</a>
 				<a class="permalink" href="#MockLogger">¶</a>
 				
 				
@@ -397,7 +397,7 @@
 
 			
 				
-				<h3 id="NewMockLogger">func <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=703:758#L22">NewMockLogger</a>
+				<h3 id="NewMockLogger">func <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=722:777#L23">NewMockLogger</a>
 					<a class="permalink" href="#NewMockLogger">¶</a>
 					
 					
@@ -411,7 +411,7 @@
 
 			
 				
-				</p><h3 id="MockLogger.CallerSkip">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1045:1101#L34">CallerSkip</a>
+				</p><h3 id="MockLogger.CallerSkip">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1064:1120#L35">CallerSkip</a>
 					<a class="permalink" href="#MockLogger.CallerSkip">¶</a>
 					
 					
@@ -424,12 +424,12 @@
 				
 			
 				
-				</p><h3 id="MockLogger.Debug">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1522:1586#L48">Debug</a>
+				</p><h3 id="MockLogger.Debug">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1541:1626#L49">Debug</a>
 					<a class="permalink" href="#MockLogger.Debug">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Debug(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Debug(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
 				<p>Debug mocks base method.
 
 				
@@ -437,7 +437,7 @@
 				
 			
 				
-				</p><h3 id="MockLogger.EXPECT">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=934:987#L29">EXPECT</a>
+				</p><h3 id="MockLogger.EXPECT">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=953:1006#L30">EXPECT</a>
 					<a class="permalink" href="#MockLogger.EXPECT">¶</a>
 					
 					
@@ -450,12 +450,12 @@
 				
 			
 				
-				</p><h3 id="MockLogger.Error">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2074:2138#L65">Error</a>
+				</p><h3 id="MockLogger.Error">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2129:2214#L66">Error</a>
 					<a class="permalink" href="#MockLogger.Error">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Error(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Error(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
 				<p>Error mocks base method.
 
 				
@@ -463,12 +463,12 @@
 				
 			
 				
-				</p><h3 id="MockLogger.Info">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2625:2688#L82">Info</a>
+				</p><h3 id="MockLogger.Info">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2716:2800#L83">Info</a>
 					<a class="permalink" href="#MockLogger.Info">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Info(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Info(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
 				<p>Info mocks base method.
 
 				
@@ -476,7 +476,7 @@
 				
 			
 				
-				</p><h3 id="MockLogger.Named">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3170:3224#L99">Named</a>
+				</p><h3 id="MockLogger.Named">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3297:3351#L100">Named</a>
 					<a class="permalink" href="#MockLogger.Named">¶</a>
 					
 					
@@ -489,12 +489,12 @@
 				
 			
 				
-				</p><h3 id="MockLogger.Warn">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3614:3677#L113">Warn</a>
+				</p><h3 id="MockLogger.Warn">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3741:3825#L114">Warn</a>
 					<a class="permalink" href="#MockLogger.Warn">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Warn(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Warn(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
 				<p>Warn mocks base method.
 
 				
@@ -504,7 +504,7 @@
 		
 			
 			
-			</p><h2 id="MockLoggerMockRecorder">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=599:655#L17">MockLoggerMockRecorder</a>
+			</p><h2 id="MockLoggerMockRecorder">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=618:674#L18">MockLoggerMockRecorder</a>
 				<a class="permalink" href="#MockLoggerMockRecorder">¶</a>
 				
 				
@@ -528,7 +528,7 @@
 
 			
 				
-				<h3 id="MockLoggerMockRecorder.CallerSkip">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1274:1341#L42">CallerSkip</a>
+				<h3 id="MockLoggerMockRecorder.CallerSkip">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1293:1360#L43">CallerSkip</a>
 					<a class="permalink" href="#MockLoggerMockRecorder.CallerSkip">¶</a>
 					
 					
@@ -541,12 +541,12 @@
 				
 			
 				
-				</p><h3 id="MockLoggerMockRecorder.Debug">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1779:1855#L58">Debug</a>
+				</p><h3 id="MockLoggerMockRecorder.Debug">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1824:1905#L59">Debug</a>
 					<a class="permalink" href="#MockLoggerMockRecorder.Debug">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Debug(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Debug(ctx, msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Debug indicates an expected call of Debug.
 
 				
@@ -554,12 +554,12 @@
 				
 			
 				
-				</p><h3 id="MockLoggerMockRecorder.Error">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2331:2407#L75">Error</a>
+				</p><h3 id="MockLoggerMockRecorder.Error">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2412:2493#L76">Error</a>
 					<a class="permalink" href="#MockLoggerMockRecorder.Error">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Error(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Error(ctx, msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Error indicates an expected call of Error.
 
 				
@@ -567,12 +567,12 @@
 				
 			
 				
-				</p><h3 id="MockLoggerMockRecorder.Info">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2878:2953#L92">Info</a>
+				</p><h3 id="MockLoggerMockRecorder.Info">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2995:3075#L93">Info</a>
 					<a class="permalink" href="#MockLoggerMockRecorder.Info">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Info(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Info(ctx, msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Info indicates an expected call of Info.
 
 				
@@ -580,7 +580,7 @@
 				
 			
 				
-				</p><h3 id="MockLoggerMockRecorder.Named">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3382:3444#L107">Named</a>
+				</p><h3 id="MockLoggerMockRecorder.Named">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3509:3571#L108">Named</a>
 					<a class="permalink" href="#MockLoggerMockRecorder.Named">¶</a>
 					
 					
@@ -593,12 +593,12 @@
 				
 			
 				
-				</p><h3 id="MockLoggerMockRecorder.Warn">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3867:3942#L123">Warn</a>
+				</p><h3 id="MockLoggerMockRecorder.Warn">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=4020:4100#L124">Warn</a>
 					<a class="permalink" href="#MockLoggerMockRecorder.Warn">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Warn(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Warn(ctx, msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Warn indicates an expected call of Warn.
 
 				

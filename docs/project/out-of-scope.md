@@ -14,6 +14,16 @@
     counters do not share state and cannot enforce a correct global limit
   - This belongs at the infrastructure edge (API gateway / load balancer /
     reverse proxy / service mesh)
+- Scheduled job concurrency control
+  - Overlap / multi-instance guarding for scheduled jobs (k8s CronJob
+    `concurrencyPolicy`, advisory locks) is left to the scheduler
+  - No application-level mutual exclusion is provided because the bundled
+    jobs are already concurrency-safe by design: `outbox-gc` and
+    `idempotency-gc` are age-predicate, idempotent batch deletes,
+    `usercount` is read-only, and the outbox relay claims rows with
+    `FOR UPDATE SKIP LOCKED`
+  - If you require strict single-run semantics, set
+    `concurrencyPolicy: Forbid` at the scheduler
 
 ## Items Strongly Dependent on Domain Requirements
 
