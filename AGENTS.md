@@ -29,7 +29,7 @@ The source of truth for design, rules, and flows is under `docs/` and the per-pa
 | Non-negotiable rules (layer deps, generated code, domain constraints, DTO boundary, tx, errors, comments) | `docs/rules.md` |
 | How to perform a change (API / DB / business-logic flows, finding related code) | `docs/development-flow.md` |
 | Testing conventions (structure, naming, `require`/`assert`, mocks, coverage exceptions) | `docs/testing-conventions.md` (DoD in `docs/rules.md`) |
-| Technology rationale (ADR: onion / OpenAPI-first / sqlc / echo / fx / worker / o11y) | `docs/decisions.md` |
+| Technology rationale (per-file ADR: onion / OpenAPI-first / sqlc / echo / fx / worker / o11y) | `docs/adr/` (log: `docs/adr/README.md`) |
 | Per-layer / per-package detail | `internal/**/README.md`, `pkg/**/README.md` |
 | Subsystem design references (rest / worker / job / outbox / idempotency / observability) | `docs/design/README.md` |
 

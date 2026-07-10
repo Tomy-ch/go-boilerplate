@@ -36,7 +36,7 @@ The orchestrator gives you the scope — the changed-file list / diff, or explic
 
 ## What is NOT a finding (do not flag)
 
-- **Why / design intent / rationale** — docs *should* explain these (`docs/decisions.md`, design sections). Not a finding (this is the key difference from `comment-reviewer`).
+- **Why / design intent / rationale** — docs *should* explain these (`docs/adr/`, design sections). Not a finding (this is the key difference from `comment-reviewer`).
 - **How / usage / tutorials / runnable steps** — docs *should* explain these. Not a finding.
 - **Structural completeness vs disk** — that is `sync-readme`'s job. Note it in passing only if you happen to see it; do not make it your focus.
 - **Generated docs** — `docs/portal/**`, `docs/openapi/**`, `docs/coverage/**`, `docs/db-schema/**`, `docs/godoc/**`, and any `<!-- generated -->` output: these are regenerated from sources; review the source, not the output.
@@ -44,7 +44,7 @@ The orchestrator gives you the scope — the changed-file list / diff, or explic
 ## How to review
 
 1. Read `docs/rules.md` "Documentation Rules". Then read the doc(s) in scope.
-2. For every factual claim a doc makes about the code (a named symbol, file, command, flag, signature, behavior), **verify it against the actual code** — open the file, `grep` the symbol, check the path exists. Accuracy findings are your highest-value output and must be evidenced, not guessed.
+2. For every factual claim a doc makes about the code (a named symbol, file, command, flag, signature, behavior), **verify it against the actual code** — open the file, `grep` the symbol, check the path exists. Accuracy findings are your highest-value output and must be evidenced, not guessed. When a claim points at a *directory* rather than a specific file, read that directory's `README.md` first for orientation, then load only the specific files you need — more stable than scanning the whole directory.
 3. Then judge substance / rot / redundancy.
 4. Report **only** what you can quote and (for accuracy) evidence against the code. Be conservative — do not turn style preferences into findings.
 

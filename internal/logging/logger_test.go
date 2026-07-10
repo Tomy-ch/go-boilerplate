@@ -2,6 +2,7 @@ package logging
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -21,7 +22,7 @@ func TestWithCore(t *testing.T) {
 
 		t.Run("coreがnilなら元のLoggerをそのまま返す", func(t *testing.T) {
 			t.Parallel()
-			base := NewConsoleLogger(LevelDebug(), LevelError())
+			base := NewConsoleLogger(LevelDebug(), LevelError(), nil)
 			got := WithCore(base, nil)
 			assert.Same(t, base, got)
 		})
@@ -33,12 +34,33 @@ func TestWithCore(t *testing.T) {
 			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
 			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
 
-			base := NewConsoleLogger(LevelDebug(), LevelError())
+			base := NewConsoleLogger(LevelDebug(), LevelError(), nil)
 			got := WithCore(base, extra)
 
 			assert.NotSame(t, base, got)
-			got.Info("tee-test")
+			got.Info(context.Background(), "tee-test")
 			assert.Contains(t, buf.String(), "tee-test")
+		})
+
+		t.Run("extractがTee後のLoggerへ伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			called := false
+			base := &logger{
+				log: zap.NewNop(),
+				extract: func(context.Context) (string, string, bool) {
+					called = true
+					return "t", "s", true
+				},
+			}
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&bytes.Buffer{}), zapcore.DebugLevel)
+
+			got, ok := WithCore(base, extra).(*logger)
+			require.True(t, ok)
+			require.NotNil(t, got.extract)
+			got.extract(context.Background())
+			assert.True(t, called)
 		})
 
 		t.Run("追加coreは元Loggerの最小レベルでゲートされる", func(t *testing.T) {
@@ -49,13 +71,13 @@ func TestWithCore(t *testing.T) {
 			// 追加 core 自体は Debug まで通すが、元 Logger は Info のため Debug はゲートされる。
 			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
 
-			base := NewConsoleLogger(LevelInfo(), LevelError())
+			base := NewConsoleLogger(LevelInfo(), LevelError(), nil)
 			got := WithCore(base, extra)
 
-			got.Debug("gated-out")
+			got.Debug(context.Background(), "gated-out")
 			assert.NotContains(t, buf.String(), "gated-out")
 
-			got.Info("passed")
+			got.Info(context.Background(), "passed")
 			assert.Contains(t, buf.String(), "passed")
 		})
 
@@ -67,13 +89,13 @@ func TestWithCore(t *testing.T) {
 			// 元 Logger は Debug のため tee は Info でも呼ばれるが、追加 core は Error 以上のみ有効。
 			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.ErrorLevel)
 
-			base := NewConsoleLogger(LevelDebug(), LevelError())
+			base := NewConsoleLogger(LevelDebug(), LevelError(), nil)
 			got := WithCore(base, extra)
 
-			got.Info("gated-info")
+			got.Info(context.Background(), "gated-info")
 			assert.NotContains(t, buf.String(), "gated-info")
 
-			got.Error("passed-error")
+			got.Error(context.Background(), "passed-error")
 			assert.Contains(t, buf.String(), "passed-error")
 		})
 	})
@@ -145,6 +167,25 @@ func Test_logger_CallerSkip(t *testing.T) {
 			actual := baseLogger.CallerSkip(skip)
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("extractがCallerSkip後のLoggerへ伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			called := false
+			base := &logger{
+				log: zap.NewNop(),
+				extract: func(context.Context) (string, string, bool) {
+					called = true
+					return "t", "s", true
+				},
+			}
+
+			child, ok := base.CallerSkip(1).(*logger)
+			require.True(t, ok)
+			require.NotNil(t, child.extract)
+			child.extract(context.Background())
+			assert.True(t, called)
+		})
 	})
 }
 
@@ -166,6 +207,25 @@ func Test_logger_Named(t *testing.T) {
 			}
 			actual := baseLogger.Named(name)
 			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("extractが子Loggerへ伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			called := false
+			base := &logger{
+				log: zap.NewNop(),
+				extract: func(context.Context) (string, string, bool) {
+					called = true
+					return "t", "s", true
+				},
+			}
+
+			child, ok := base.Named("child").(*logger)
+			require.True(t, ok)
+			require.NotNil(t, child.extract)
+			child.extract(context.Background())
+			assert.True(t, called)
 		})
 	})
 }
@@ -251,7 +311,7 @@ func Test_logger_Debug(t *testing.T) {
 			t.Parallel()
 
 			l, buf := newBufLogger()
-			l.Debug("debug message", String("key", "value"))
+			l.Debug(context.Background(), "debug message", String("key", "value"))
 
 			out := buf.String()
 			assert.Contains(t, out, "debug message")
@@ -271,7 +331,7 @@ func Test_logger_Info(t *testing.T) {
 			t.Parallel()
 
 			l, buf := newBufLogger()
-			l.Info("info message", String("key", "value"))
+			l.Info(context.Background(), "info message", String("key", "value"))
 
 			out := buf.String()
 			assert.Contains(t, out, "info message")
@@ -291,7 +351,7 @@ func Test_logger_Warn(t *testing.T) {
 			t.Parallel()
 
 			l, buf := newBufLogger()
-			l.Warn("warn message", String("key", "value"))
+			l.Warn(context.Background(), "warn message", String("key", "value"))
 
 			out := buf.String()
 			assert.Contains(t, out, "warn message")
@@ -311,12 +371,69 @@ func Test_logger_Error(t *testing.T) {
 			t.Parallel()
 
 			l, buf := newBufLogger()
-			l.Error("error message", String("key", "value"))
+			l.Error(context.Background(), "error message", String("key", "value"))
 
 			out := buf.String()
 			assert.Contains(t, out, "error message")
 			assert.Contains(t, out, "key")
 			assert.Contains(t, out, "value")
+		})
+	})
+}
+
+func Test_logger_injectTrace(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("extractorがtrueを返すとtrace_idとspan_idが正しいキーで先頭2要素に注入される", func(t *testing.T) {
+			t.Parallel()
+
+			l := &logger{
+				log: zap.NewNop(),
+				extract: func(context.Context) (string, string, bool) {
+					return "trace-abc", "span-xyz", true
+				},
+			}
+
+			got := l.injectTrace(context.Background(), []*Field{String("key", "value")})
+
+			require.Len(t, got, 3)
+			assert.Equal(t, String(TraceIDKey, "trace-abc"), got[0])
+			assert.Equal(t, String(SpanIDKey, "span-xyz"), got[1])
+			assert.Equal(t, String("key", "value"), got[2])
+		})
+
+		t.Run("extractorがnilならtraceは注入されずそのまま出力される", func(t *testing.T) {
+			t.Parallel()
+
+			l, buf := newBufLogger()
+			l.Info(context.Background(), "no extractor", String("key", "value"))
+
+			out := buf.String()
+			assert.Contains(t, out, "no extractor")
+			assert.Contains(t, out, "value")
+			assert.NotContains(t, out, TraceIDKey)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("extractorがfalseを返すとtraceは注入されない", func(t *testing.T) {
+			t.Parallel()
+
+			l, buf := newBufLogger()
+			l.extract = func(context.Context) (string, string, bool) {
+				return "", "", false
+			}
+			l.Info(context.Background(), "gated trace", String("key", "value"))
+
+			out := buf.String()
+			assert.Contains(t, out, "gated trace")
+			assert.Contains(t, out, "value")
+			assert.NotContains(t, out, TraceIDKey)
 		})
 	})
 }

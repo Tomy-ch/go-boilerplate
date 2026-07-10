@@ -7,7 +7,7 @@ transaction as the domain change), **relay** (claim pending rows and publish
 them), **GC** (prune old published rows), and **replay** (return dead rows to
 pending). All persistence goes through the `Store` boundary
 (`internal/usecase/boundary/outbox`); the concrete RDB implementation lives in
-`internal/infrastructure/rdb/system_query/outbox/`.
+`internal/infrastructure/rdb/system_cqrs/outbox/`.
 
 ## Why an outbox?
 
@@ -96,5 +96,5 @@ touches `dead`, and replay never touches `published`.
 | --- | --- |
 | boundary (`Store`) | `internal/usecase/boundary/outbox/` |
 | usecase | `internal/usecase/outbox/` (this package) |
-| infrastructure | `internal/infrastructure/rdb/system_query/outbox/` |
-| sqlc DML | `database/dml/system_query/outbox/` |
+| infrastructure | `internal/infrastructure/rdb/system_cqrs/outbox/` |
+| sqlc DML | `database/dml/system_cqrs/outbox/` |

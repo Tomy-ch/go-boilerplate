@@ -19,7 +19,7 @@ DB トランザクションは **1 リクエスト内**の原子性を保証す�
 | **middleware**（`httpstack/idempotency`） | controller | `Idempotency-Key` の抽出・検証、認証必須化、**fingerprint** 計算、`Request` を ctx へ載せる | tx・永続化・replay 判定 |
 | **Run[T]** オーケストレータ | usecase（`usecase/idempotency`） | `claim → businessFn → complete` を**単一 tx**で / replay・409・422 振り分け / TTL 付与 / metrics | HTTP 解釈・SQL・業務ルール |
 | **Store**（seam） | usecase/boundary | 永続化契約：`Claim` / `Get` / `Complete` / `DeleteExpired` ＋ `Status` / `Record` / `ErrLockTimeout` | 実装・業務方針 |
-| **store** 実装 | infrastructure（`rdb/system_query`） | sqlc ラップ / `SET LOCAL lock_timeout` / `ON CONFLICT DO NOTHING` / `pgerror.NormalizeError` | replay 判定・HTTP |
+| **store** 実装 | infrastructure（`rdb/system_cqrs`） | sqlc ラップ / `SET LOCAL lock_timeout` / `ON CONFLICT DO NOTHING` / `pgerror.NormalizeError` | replay 判定・HTTP |
 | **GCUsecase ＋ `idempotencygc` job** | usecase ＋ controller/job | 失効キーの一括削除（TTL 後始末） | リクエスト経路 |
 | **`idempotency_keys` テーブル** | database | 保存状態（scope / key / fingerprint / status / response / `expires_at`） | — |
 
@@ -136,11 +136,11 @@ flowchart TD
         MOCK["idempotency/mock/: 生成モック"]
     end
     subgraph infraL["internal/infrastructure/rdb"]
-        IMPL["system_query/idempotency: store 実装<br/>SET LOCAL lock_timeout='3s' ＋ ON CONFLICT ＋ pgerror"]
+        IMPL["system_cqrs/idempotency: store 実装<br/>SET LOCAL lock_timeout='3s' ＋ ON CONFLICT ＋ pgerror"]
         SQLC["sqlc/gen: ClaimIdempotencyKey/Get/Complete/DeleteExpired"]
     end
     subgraph dbL["database"]
-        DML["dml/system_query/idempotency/*.sql"]
+        DML["dml/system_cqrs/idempotency/*.sql"]
         MIG["migrations: idempotency_keys (UNIQUE(scope,key), expires_at idx)"]
     end
     subgraph crossL["横断"]

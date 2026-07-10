@@ -42,7 +42,7 @@ The following exist as supporting components.
 |sqlc|Type-safe query execution code generated from SQL|
 |pgerror|PostgreSQL error → application error conversion|
 |metrics|Connection pool statistics as Prometheus metrics|
-|system_query|System operational queries (health check, etc.)|
+|system_cqrs|System operational queries (health check, etc.)|
 |testkit|RDB test utilities (real DB + rollback)|
 
 ## Directory Structure
@@ -51,7 +51,7 @@ The following exist as supporting components.
 internal/infrastructure/rdb
  ├ repository/        Repository implementation
  ├ query_service/     QueryService implementation
- ├ system_query/      System operational queries (health check, etc.)
+ ├ system_cqrs/      System operational queries (health check, etc.)
  ├ driver/            DB connection / transaction + pgx query tracer (logging / tracing)
  ├ sqlc/              sqlc generated code + SQL helper
  ├ pgerror/           PostgreSQL error normalization
@@ -190,15 +190,15 @@ See details below.
 
 [metrics directory README](metrics/README.md)
 
-## system_query
+## system_cqrs
 
-`system_query` is a layer that provides **system-operational DB queries** (health check, etc.).
+`system_cqrs` is a layer that provides **system-operational DB queries** (health check, etc.).
 
 Unlike Repository / QueryService, it handles operational and monitoring queries that do not belong to the business domain.
 
 See details below.
 
-[system_query directory README](system_query/README.md)
+[system_cqrs directory README](system_cqrs/README.md)
 
 ## testkit
 
@@ -249,7 +249,7 @@ PostgreSQL-specific errors are converted into application-wide errors by `pgerro
 
 All SQL execution is performed through `sqlc`.
 
-Exception: PostgreSQL session-configuration commands that `sqlc` cannot model (e.g. `SET LOCAL lock_timeout` issued before a row-locking query) may be run via a direct `Exec`. These are confined to `system_query` and their errors still flow through `pgerror.NormalizeError`.
+Exception: PostgreSQL session-configuration commands that `sqlc` cannot model (e.g. `SET LOCAL lock_timeout` issued before a row-locking query) may be run via a direct `Exec`. These are confined to `system_cqrs` and their errors still flow through `pgerror.NormalizeError`.
 
 ### 6. Observability
 

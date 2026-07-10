@@ -2,6 +2,7 @@
 package extension
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -128,6 +129,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
 
 	log := logger.Named("ApplyMiddlewares").CallerSkip(callerSkip)
 	log.Info(
+		context.Background(),
 		fmt.Sprintf("Applying %s middleware", kind),
 		logging.Int("count", len(mws)),
 	)
@@ -138,6 +140,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
 
 	for _, mw := range mws {
 		log.Info(
+			context.Background(),
 			fmt.Sprintf("Applying %s middleware", kind),
 			logging.Int("priority", mw.priority),
 			logging.String("middleware", mw.name),
@@ -191,11 +194,13 @@ func extractPriorityConflicts(byPriority map[int][]string) []string {
 func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) {
 	log := logger.Named("ApplyConfigurators").CallerSkip(callerSkip)
 	log.Info(
+		context.Background(),
 		"Applying server configurator",
 		logging.Int("count", len(cfgs)),
 	)
 	for _, cfg := range cfgs {
 		log.Info(
+			context.Background(),
 			"Applying server configurator",
 			logging.String("configurator", cfg.Name),
 		)

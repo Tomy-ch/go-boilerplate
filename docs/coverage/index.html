@@ -417,11 +417,11 @@
 				
 				<option value="file180">go-boilerplate/internal/infrastructure/rdb/sqlc/like.go (100.0%)</option>
 				
-				<option value="file181">go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck/health_check_system_query.go (100.0%)</option>
+				<option value="file181">go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck/health_check_system_cqrs.go (100.0%)</option>
 				
-				<option value="file182">go-boilerplate/internal/infrastructure/rdb/system_query/idempotency/idempotency_system_query.go (100.0%)</option>
+				<option value="file182">go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency/idempotency_system_cqrs.go (100.0%)</option>
 				
-				<option value="file183">go-boilerplate/internal/infrastructure/rdb/system_query/outbox/outbox_system_query.go (100.0%)</option>
+				<option value="file183">go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox/outbox_system_cqrs.go (100.0%)</option>
 				
 				<option value="file184">go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go (100.0%)</option>
 				
@@ -656,7 +656,7 @@ func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string
         <span class="cov8" title="1">if err := gen.dumpSchema(ctx, dbURL, password); err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
-        <span class="cov8" title="1">return gen.sanitizeSchemaInPlace()</span>
+        <span class="cov8" title="1">return gen.sanitizeSchemaInPlace(ctx)</span>
 }
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
@@ -664,13 +664,13 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
         args := append([]string{dbURL}, g.dumpArgs...)
         env := []string{"PGPASSWORD=" + password}
 
-        g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
+        g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info(ctx, "start pg_dump schema",
                 logging.String("out", g.schemaRelPath),
         )
 
         out, err := g.runner.Output(ctx, g.workDir, env, g.dumpCommand, args)
         if err != nil </span><span class="cov8" title="1">{
-                g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed",
+                g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn(ctx, "pg_dump failed",
                         logging.String("out", g.schemaRelPath),
                         logging.Error(logging.ErrorKey, err),
                 )
@@ -682,7 +682,7 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
                 return xerrors.Wrap(err, "failed to write schema file")
         }</span>
 
-        <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
+        <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info(ctx, "pg_dump schema completed",
                 logging.String("out", g.schemaRelPath),
         )
 
@@ -691,7 +691,7 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 
 // sanitizeSchemaInPlace は、schema.sql を sqlc 向けに整形します。
 // trimPrefixes 一致のメタ行に加え、空行（空白のみ・元から空）も除去します（空行除去まで含むのは意図的）。
-func (g *Generator) sanitizeSchemaInPlace() error <span class="cov8" title="1">{
+func (g *Generator) sanitizeSchemaInPlace(ctx context.Context) error <span class="cov8" title="1">{
         srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
         b, err := g.fs.ReadFile(srcAbs)
@@ -719,7 +719,7 @@ func (g *Generator) sanitizeSchemaInPlace() error <span class="cov8" title="1">{
                 return xerrors.Wrap(err, "write sanitized schema")
         }</span>
 
-        <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
+        <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info(ctx, "schema sanitized for sqlc",
                 logging.String("schema", g.schemaRelPath),
         )
         return nil</span>
@@ -773,7 +773,7 @@ func validateDatabaseName(name string) error <span class="cov8" title="1">{
 // パスワードは引数に載せず PGPASSWORD で渡します。
 func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger, dbURL, password, database string) error <span class="cov8" title="1">{
         log := logger.CallerSkip(callerSkipCount).Named("fixcollation")
-        log.Info("start collation fix", logging.String("database", database))
+        log.Info(ctx, "start collation fix", logging.String("database", database))
 
         sqlStatements := []string{
                 fmt.Sprintf("REINDEX DATABASE %s;", database),
@@ -785,7 +785,7 @@ func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger
         for _, sql := range sqlStatements </span><span class="cov8" title="1">{
                 args := []string{dbURL, "-v", "ON_ERROR_STOP=1", "-c", sql}
                 if _, err := runner.Output(ctx, workDir, env, psqlCommand, args); err != nil </span><span class="cov8" title="1">{
-                        log.Error("psql command failed",
+                        log.Error(ctx, "psql command failed",
                                 logging.String("database", database),
                                 logging.String("sql", sql),
                                 logging.Error(logging.ErrorKey, err),
@@ -794,7 +794,7 @@ func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger
                 }</span>
         }
 
-        <span class="cov8" title="1">log.Info("collation fix completed successfully", logging.String("database", database))
+        <span class="cov8" title="1">log.Info(ctx, "collation fix completed successfully", logging.String("database", database))
         return nil</span>
 }
 </pre>
@@ -1013,20 +1013,22 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error <spa
 
         categories, err := gen.fs.ListSubDirNames(gen.dmlTypeRootAbs(targetType))
         if err != nil </span><span class="cov8" title="1">{
-                logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error("failed to list directories",
+                logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error(ctx, "failed to list directories",
                         logging.Error(logging.ErrorKey, err),
                 )
                 return err
         }</span>
         <span class="cov8" title="1">if len(categories) == 0 </span><span class="cov8" title="1">{
                 logger.CallerSkip(gen.callerSkipCount).Named("mergedml.NoCategories").Info(
+                        ctx,
                         "no categories found under dml directory, cleanup only",
                         logging.String("dml_path", gen.dmlRootDir+targetType),
                 )
 
                 // ★ 0件でも stale を消す（=このtypeの生成物を全消しに近い挙動）
-                if err := gen.cleanupStaleGeneratedFiles(nil, targetType); err != nil </span><span class="cov8" title="1">{
+                if err := gen.cleanupStaleGeneratedFiles(ctx, nil, targetType); err != nil </span><span class="cov8" title="1">{
                         logger.CallerSkip(gen.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Error(
+                                ctx,
                                 "failed to cleanup stale generated sql files",
                                 logging.Error(logging.ErrorKey, err),
                         )
@@ -1046,19 +1048,20 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error <spa
                         }</span>
                         <span class="cov8" title="1">defer sem.Release(1)
 
-                        return gen.buildCategorySQLFile(cat, targetType)</span>
+                        return gen.buildCategorySQLFile(egCtx, cat, targetType)</span>
                 })
         }
 
         <span class="cov8" title="1">if err := eg.Wait(); err != nil </span><span class="cov8" title="1">{
-                gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.buildMergedQueries").Error("failed to build merged sql files",
+                gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.buildMergedQueries").Error(ctx, "failed to build merged sql files",
                         logging.Error(logging.ErrorKey, err),
                 )
                 return err
         }</span>
 
-        <span class="cov8" title="1">if err := gen.cleanupStaleGeneratedFiles(categories, targetType); err != nil </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if err := gen.cleanupStaleGeneratedFiles(ctx, categories, targetType); err != nil </span><span class="cov8" title="1">{
                 gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Error(
+                        ctx,
                         "failed to cleanup stale generated sql files",
                         logging.Error(logging.ErrorKey, err),
                 )
@@ -1074,7 +1077,7 @@ func (g *Generator) dmlTypeRootAbs(targetType string) string <span class="cov8" 
 }</span>
 
 // buildCategorySQLFile は、指定されたカテゴリのSQLファイルを連結して1つのSQLファイルにまとめます。
-func (g *Generator) buildCategorySQLFile(category, targetType string) error <span class="cov8" title="1">{
+func (g *Generator) buildCategorySQLFile(ctx context.Context, category, targetType string) error <span class="cov8" title="1">{
         // 入力走査も workDir 起点で統一する。CWD 起点だと CWD != workDir のとき走査結果が 0 件になり、
         // 「入力なし」分岐に入って workDir 配下の生成物を誤って削除してしまうため。
         dmlDir := filepath.Join(g.workDir, g.dmlRootDir, targetType, category)
@@ -1099,6 +1102,7 @@ func (g *Generator) buildCategorySQLFile(category, targetType string) error <spa
                 }</span>
 
                 <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.buildCategorySQLFile").Info(
+                        ctx,
                         "no sql files found, remove generated file if exists",
                         logging.String("category", category),
                         logging.String("type", targetType),
@@ -1107,7 +1111,7 @@ func (g *Generator) buildCategorySQLFile(category, targetType string) error <spa
                 return nil</span>
         }
 
-        <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.buildCategorySQLFile").Info("build merged sql for sqlc",
+        <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.buildCategorySQLFile").Info(ctx, "build merged sql for sqlc",
                 logging.String("category", category),
                 logging.String("type", targetType),
                 logging.String("dst", dstPath),
@@ -1178,7 +1182,7 @@ func resolveConcurrency(numCPU int) int <span class="cov8" title="1">{
         return max(min(numCPU, maxSQLCConcurrency), minSQLCConcurrency)
 }</span>
 
-func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error <span class="cov8" title="1">{
+func (g *Generator) cleanupStaleGeneratedFiles(ctx context.Context, categories []string, targetType string) error <span class="cov8" title="1">{
         keep := make(map[string]struct{}, len(categories))
         for _, cat := range categories </span><span class="cov8" title="1">{
                 keep[fmt.Sprintf("%s_%s.gen.sql", cat, targetType)] = struct{}{}
@@ -1212,6 +1216,7 @@ func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType s
                 }</span>
 
                 <span class="cov8" title="1">g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Info(
+                        ctx,
                         "remove stale generated sql",
                         logging.String("file", filepath.ToSlash(full)),
                         logging.String("type", targetType),
@@ -1225,6 +1230,7 @@ func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType s
 		<pre class="file" id="file4" style="display: none">package migrate
 
 import (
+        "context"
         "fmt"
 
         "go-boilerplate/internal/logging"
@@ -1237,40 +1243,43 @@ import (
 // MigrateDownRun は、データベースマイグレーションを Down 方向に適用します。
 // steps=0 なら全マイグレーションをロールバックし、正数なら段数分だけ戻します。steps が負の場合はエラーを返します。dirty 状態の DB は Force で整合を取ってから Down します。
 func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error <span class="cov8" title="1">{
+        // CLI 起動系のため trace span は無い。context.Background() を用いる。
+        ctx := context.Background()
+
         if steps &lt; 0 </span><span class="cov8" title="1">{
                 // 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。
                 err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))
-                logger.Named("migrateDownRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
+                logger.Named("migrateDownRun").Error(ctx, "invalid steps", logging.Error(logging.ErrorKey, err))
                 return err
         }</span>
 
         <span class="cov8" title="1">m, err := newMigrator(database)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Named("migrateDownRun.buildMigrateInstance").Error("failed to create migrate instance",
+                logger.Named("migrateDownRun.buildMigrateInstance").Error(ctx, "failed to create migrate instance",
                         logging.Error(logging.ErrorKey, err),
                 )
                 return err
         }</span>
 
         <span class="cov8" title="1">if steps == 0 </span><span class="cov8" title="1">{
-                logger.Named("migrateDownRun").Info("running full migration down")
+                logger.Named("migrateDownRun").Info(ctx, "running full migration down")
                 if err := executeMigrateFullDown(m); err != nil </span><span class="cov8" title="1">{
-                        logger.Named("migrateDownRun.executeMigrateFullDown").Error("down migration failed",
+                        logger.Named("migrateDownRun.executeMigrateFullDown").Error(ctx, "down migration failed",
                                 logging.Error(logging.ErrorKey, err),
                         )
                         return err
                 }</span>
         } else<span class="cov8" title="1"> {
-                logger.Named("migrateDownRun").Info("running migration down steps", logging.Int("steps", steps))
+                logger.Named("migrateDownRun").Info(ctx, "running migration down steps", logging.Int("steps", steps))
                 if err := executeMigrateDownSteps(m, steps); err != nil </span><span class="cov8" title="1">{
-                        logger.Named("migrateDownRun.executeMigrateDownSteps").Error("down migration steps failed",
+                        logger.Named("migrateDownRun.executeMigrateDownSteps").Error(ctx, "down migration steps failed",
                                 logging.Error(logging.ErrorKey, err),
                         )
                         return err
                 }</span>
         }
 
-        <span class="cov8" title="1">logger.Named("migrateDownRun").Info("✅ migration down completed")
+        <span class="cov8" title="1">logger.Named("migrateDownRun").Info(ctx, "✅ migration down completed")
         return nil</span>
 }
 
@@ -1309,6 +1318,7 @@ func executeMigrateFullDown(m Migrator) error <span class="cov8" title="1">{
 		<pre class="file" id="file5" style="display: none">package migrate
 
 import (
+        "context"
         "fmt"
 
         "go-boilerplate/internal/logging"
@@ -1320,32 +1330,35 @@ import (
 // MigrateUpRun は、データベースマイグレーションを Up 方向に適用します。
 // steps=0 なら全マイグレーションを適用し、正数なら段数分だけ適用します。steps が負の場合はエラーを返します。既に最新の場合（ErrNoChange）は成功扱いです。
 func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error <span class="cov8" title="1">{
+        // CLI 起動系のため trace span は無い。context.Background() を用いる。
+        ctx := context.Background()
+
         if steps &lt; 0 </span><span class="cov8" title="1">{
                 err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))
-                logger.Named("migrateUpRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
+                logger.Named("migrateUpRun").Error(ctx, "invalid steps", logging.Error(logging.ErrorKey, err))
                 return err
         }</span>
 
         <span class="cov8" title="1">m, err := newMigrator(database)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Named("migrateUpRun.buildMigrateInstance").Error("failed to create migrate instance",
+                logger.Named("migrateUpRun.buildMigrateInstance").Error(ctx, "failed to create migrate instance",
                         logging.Error(logging.ErrorKey, err),
                 )
                 return err
         }</span>
 
         <span class="cov8" title="1">if steps == 0 </span><span class="cov8" title="1">{
-                logger.Named("migrateUpRun").Info("running full migration up")
+                logger.Named("migrateUpRun").Info(ctx, "running full migration up")
         }</span> else<span class="cov8" title="1"> {
-                logger.Named("migrateUpRun").Info("running migration up steps", logging.Int("steps", steps))
+                logger.Named("migrateUpRun").Info(ctx, "running migration up steps", logging.Int("steps", steps))
         }</span>
         <span class="cov8" title="1">if err := executeMigrateUp(m, steps); err != nil </span><span class="cov8" title="1">{
-                logger.Named("migrateUpRun.executeMigrateUp").Error("migration failed",
+                logger.Named("migrateUpRun.executeMigrateUp").Error(ctx, "migration failed",
                         logging.Error(logging.ErrorKey, err),
                 )
                 return err
         }</span>
-        <span class="cov8" title="1">logger.Named("migrateUpRun").Info("✅ migration completed")
+        <span class="cov8" title="1">logger.Named("migrateUpRun").Info(ctx, "✅ migration completed")
 
         return nil</span>
 }
@@ -1451,25 +1464,27 @@ func RunDBSeed(
         database string,
         openDB func(logging.Logger, string) (driver.DatabaseDriver, error),
 ) error <span class="cov8" title="1">{
+        // CLI 起動系のため trace span は無い。context.Background() を用いる。
+        ctx := context.Background()
+
         db, err := openDB(logger, database)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error(logging.ErrorKey, err))
+                logger.Named("dbSeedRun.dbOpen").Error(ctx, "failed to open database connection", logging.Error(logging.ErrorKey, err))
                 return err
         }</span>
         <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
                 if cerr := db.Close(); cerr != nil </span><span class="cov8" title="1">{
-                        logger.Named("dbSeedRun.dbClose").Error("failed to close database connection", logging.Error(logging.ErrorKey, cerr))
+                        logger.Named("dbSeedRun.dbClose").Error(ctx, "failed to close database connection", logging.Error(logging.ErrorKey, cerr))
                 }</span>
         }()
 
         <span class="cov8" title="1">files, err := fsys.Glob(seedFilePlace + "/*.sql")
         if err != nil </span><span class="cov8" title="1">{
-                logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error(logging.ErrorKey, err))
+                logger.Named("dbSeedRun.globSeedFiles").Error(ctx, "failed to glob seed files", logging.Error(logging.ErrorKey, err))
                 return err
         }</span>
 
-        <span class="cov8" title="1">ctx := context.Background()
-        return runSeeds(ctx, fsys, db, logger, files)</span>
+        <span class="cov8" title="1">return runSeeds(ctx, fsys, db, logger, files)</span>
 }
 
 // runSeeds は、seed ファイル群を昇順で順次実行します。実行エラーは握り潰さず呼び出し元へ返しつつ、
@@ -1485,7 +1500,7 @@ func runSeeds(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, logger 
         <span class="cov8" title="1">if seedErr != nil </span><span class="cov8" title="1">{
                 return seedErr
         }</span>
-        <span class="cov8" title="1">logger.Named("dbSeedRun").Info("✅ seeding completed")
+        <span class="cov8" title="1">logger.Named("dbSeedRun").Info(ctx, "✅ seeding completed")
 
         return nil</span>
 }
@@ -1495,6 +1510,7 @@ func execSeedFile(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, log
         data, err := fsys.ReadFile(filePath)
         if err != nil </span><span class="cov8" title="1">{
                 logger.Named("dbSeedRun.os.ReadFile").Error(
+                        ctx,
                         "failed to read seed file",
                         logging.String("file", filePath),
                         logging.Error(logging.ErrorKey, err),
@@ -1503,16 +1519,17 @@ func execSeedFile(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, log
         }</span>
 
         <span class="cov8" title="1">_, err = db.Exec(ctx, string(data))
-        return handleSeedExecResult(logger, filePath, err)</span>
+        return handleSeedExecResult(ctx, logger, filePath, err)</span>
 }
 
 // handleSeedExecResult は、seed 実行結果を PostgreSQL 固有エラーの種類に応じて記録し、
 // スキップ可能なケース（成功・対象テーブル未作成）では nil を、それ以外の実行エラーでは
 // そのエラーを返します。
-func handleSeedExecResult(logger logging.Logger, filePath string, err error) error <span class="cov8" title="1">{
+func handleSeedExecResult(ctx context.Context, logger logging.Logger, filePath string, err error) error <span class="cov8" title="1">{
         log := logger.Named("dbSeedRun.Exec")
         if err == nil </span><span class="cov8" title="1">{
                 log.Info(
+                        ctx,
                         "seed file executed successfully",
                         logging.String("file", filePath),
                 )
@@ -1524,6 +1541,7 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
         // seed 対象テーブルが未作成の環境では警告に留め、他の seed 実行を継続します（スキップ扱い）。
         if isPgErr &amp;&amp; pgErr.Code == relationDoesNotExistCode </span><span class="cov8" title="1">{
                 log.Warn(
+                        ctx,
                         "table does not exist, skipping seed",
                         logging.String("file", filePath),
                         logging.Error(logging.ErrorKey, err),
@@ -1537,6 +1555,7 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
         }</span>
 
         <span class="cov8" title="1">log.Error(
+                ctx,
                 message,
                 logging.String("file", filePath),
                 logging.Error(logging.ErrorKey, err),
@@ -1591,7 +1610,7 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
         <span class="cov8" title="1">end := func(ctx context.Context) </span><span class="cov8" title="1">{
                 // 停止失敗でアプリ本体を巻き込まないよう、panic せずログに留める（start 側の goroutine と同方針）。
                 if err := metricsSrv.Shutdown(ctx); err != nil </span><span class="cov8" title="1">{
-                        logger.Named("metrics.Shutdown").Error("metrics server shutdown error", logging.Error(logging.ErrorKey, err))
+                        logger.Named("metrics.Shutdown").Error(ctx, "metrics server shutdown error", logging.Error(logging.ErrorKey, err))
                 }</span>
         }
         <span class="cov8" title="1">return start, end</span>
@@ -1601,7 +1620,8 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
 // エラーのみをログ記録します。bind 失敗等でアプリ本体を巻き込まないよう、panic せずログに留めます。
 func logListenError(logger logging.Logger, err error) <span class="cov8" title="1">{
         if err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) </span><span class="cov8" title="1">{
-                logger.Named("metrics.ListenAndServe").Error("metrics server error", logging.Error(logging.ErrorKey, err))
+                // start goroutine 内で request ctx を持たないため context.Background() を用いる。
+                logger.Named("metrics.ListenAndServe").Error(context.Background(), "metrics server error", logging.Error(logging.ErrorKey, err))
         }</span>
 }
 </pre>
@@ -1693,13 +1713,13 @@ func NewHealthServer(addr string, ready func() bool, logger logging.Logger) (fun
         start := func() </span><span class="cov8" title="1">{
                 go func() </span><span class="cov8" title="1">{
                         if err := srv.ListenAndServe(); err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) </span><span class="cov8" title="1">{
-                                logger.Named("worker.health").Error("health server error", logging.Error(logging.ErrorKey, err))
+                                logger.Named("worker.health").Error(context.Background(), "health server error", logging.Error(logging.ErrorKey, err))
                         }</span>
                 }()
         }
         <span class="cov8" title="1">stop := func(ctx context.Context) </span><span class="cov8" title="1">{
                 if err := srv.Shutdown(ctx); err != nil </span><span class="cov8" title="1">{
-                        logger.Named("worker.health").Error("health server shutdown error", logging.Error(logging.ErrorKey, err))
+                        logger.Named("worker.health").Error(ctx, "health server shutdown error", logging.Error(logging.ErrorKey, err))
                 }</span>
         }
         <span class="cov8" title="1">return start, stop</span>
@@ -5442,7 +5462,7 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
                         reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError)
                         writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
                         fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
-                        logger.Named("errorhandler.handleHTTPError").Error("failed to write error response", fields...)
+                        logger.Named("errorhandler.handleHTTPError").Error(c.Request().Context(), "failed to write error response", fields...)
                         // ヘッダ送出途中の失敗ではレスポンスが commit 済みになり得るため、未 commit 時のみ 500 を書く。
                         if !c.Response().Committed </span><span class="cov0" title="0">{
                                 c.Response().WriteHeader(http.StatusInternalServerError)
@@ -5538,11 +5558,12 @@ func logHTTPError(
                 return
         }</span>
         <span class="cov8" title="1">fields := httpErrorField(c, lf, he)
+        ctx := c.Request().Context()
         switch </span>{
         case he.HTTPStatus &gt;= errorLevelBoundHTTPStatus:<span class="cov8" title="1">
-                logger.Error("errorhandler.server_error", fields...)</span>
+                logger.Error(ctx, "errorhandler.server_error", fields...)</span>
         default:<span class="cov8" title="1">
-                logger.Warn("errorhandler.client_error", fields...)</span>
+                logger.Warn(ctx, "errorhandler.client_error", fields...)</span>
         }
 }
 
@@ -5772,15 +5793,13 @@ import (
         "go-boilerplate/internal/controller/httpstack/requestid"
         "go-boilerplate/internal/controller/server"
         "go-boilerplate/internal/logging"
-        "go-boilerplate/internal/observability"
 
         "github.com/labstack/echo/v4"
 )
 
 type requestLog struct {
-        c        echo.Context
-        lf       logging.LogFieldBuilder
-        traceCtx *observability.TraceContext
+        c  echo.Context
+        lf logging.LogFieldBuilder
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
@@ -5798,15 +5817,15 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
                         }</span>
 
                         <span class="cov8" title="1">start := time.Now()
+                        ctx := c.Request().Context()
 
                         l := requestLog{
-                                c:        c,
-                                lf:       lf,
-                                traceCtx: observability.ExtractTraceContext(c.Request().Context()),
+                                c:  c,
+                                lf: lf,
                         }
 
                         reqFields := l.buildRequestLogFields(start)
-                        logger.Named("http.request").Info("request received", reqFields...)
+                        logger.Named("http.request").Info(ctx, "request received", reqFields...)
 
                         c.Response().After(func() </span><span class="cov8" title="1">{
                                 latency := time.Since(start)
@@ -5814,9 +5833,9 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
                                 fields := l.buildResponseLogFields(latency)
                                 resLogger := logger.Named("http.response")
                                 if c.Response().Status &gt;= MinStatusError </span><span class="cov8" title="1">{
-                                        resLogger.Error("request handled", fields...)
+                                        resLogger.Error(ctx, "request handled", fields...)
                                 }</span> else<span class="cov8" title="1"> {
-                                        resLogger.Info("request handled", fields...)
+                                        resLogger.Info(ctx, "request handled", fields...)
                                 }</span>
                         })
 
@@ -5841,8 +5860,6 @@ func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field <spa
                 UserAgent:     req.UserAgent(),
                 ContentType:   req.Header.Get(echo.HeaderContentType),
                 ContentLength: req.ContentLength,
-                TraceID:       l.traceCtx.TraceID(),
-                SpanID:        l.traceCtx.SpanID(),
                 PathParams:    server.ExtractPathParams(l.c),
                 QueryParams:   server.ExtractQueryParams(l.c),
         }
@@ -5862,8 +5879,6 @@ func (l requestLog) buildResponseLogFields(latency time.Duration) []*logging.Fie
                 Status:    res.Status,
                 Latency:   latency,
                 RequestID: requestid.GetRequestIDFromResponse(l.c),
-                TraceID:   l.traceCtx.TraceID(),
-                SpanID:    l.traceCtx.SpanID(),
         }
         return l.lf.BuildHTTPResponseFields(resIn)
 }</span>
@@ -6091,6 +6106,8 @@ func IsOpsPath(path string) bool <span class="cov8" title="1">{
 package recovery
 
 import (
+        "context"
+
         "go-boilerplate/internal/config"
         "go-boilerplate/internal/controller/ctxhelper"
         "go-boilerplate/internal/controller/server"
@@ -6124,6 +6141,7 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
                 return productionConfig()</span>
         default:<span class="cov8" title="1">
                 logger.Named("middleware.recover").Warn(
+                        context.Background(),
                         "Unknown environment, using production config for recover middleware",
                         logging.String("env", appCfg.Mode()),
                 )
@@ -6140,7 +6158,7 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
                         logging.Strings(logging.InternalStackTraceKey, logging.SplitStackLines(string(stack))),
                 }
                 fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
-                logger.Named("middleware.recover").Error("panic recovered", fields...)
+                logger.Named("middleware.recover").Error(c.Request().Context(), "panic recovered", fields...)
                 // ログ済みを記録し err を返す（echo が c.Error で 500 を返す。二重ログは ctxhelper.GetRecoveredFromEcho で抑止）。
                 ctxhelper.SetRecoveredToEcho(c, true)
                 return err
@@ -6544,6 +6562,7 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error <span class=
         }</span>
 
         <span class="cov8" title="1">j.logging.Named(jobName).Info(
+                ctx,
                 "Result: expired idempotency keys deleted",
                 logging.Int64(logging.JobResultKey, deleted),
         )
@@ -6633,6 +6652,7 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error <span class=
         }</span>
 
         <span class="cov8" title="1">j.logging.Named(jobName).Info(
+                ctx,
                 "Result: published outbox rows deleted",
                 logging.Int64(logging.JobResultKey, deleted),
         )
@@ -6828,6 +6848,7 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error <span class=
                 return err
         }</span>
         <span class="cov8" title="1">u.logging.Named(jobName).Info(
+                ctx,
                 "Result: total user count",
                 logging.Int64(logging.JobResultKey, count),
                 logging.String(logging.FilterKey, filter),
@@ -6910,7 +6931,7 @@ func (e *Engine) Run(ctx context.Context) error <span class="cov8" title="1">{
                         if ctx.Err() != nil </span><span class="cov8" title="1">{
                                 return nil
                         }</span>
-                        <span class="cov8" title="1">log.Error("outbox relay batch failed", logging.Error(logging.JobErrorKey, err))
+                        <span class="cov8" title="1">log.Error(ctx, "outbox relay batch failed", logging.Error(logging.JobErrorKey, err))
                         if e.waitDone(ctx, e.set.ErrorBackoff) </span><span class="cov8" title="1">{
                                 return nil
                         }</span>
@@ -6942,7 +6963,7 @@ func (e *Engine) observeLag(ctx context.Context, log logging.Logger) <span class
                 return
         }</span>
         <span class="cov8" title="1">if err := e.uc.RecordLag(ctx); err != nil </span><span class="cov8" title="1">{
-                log.Error("failed to record outbox lag", logging.Error(logging.JobErrorKey, err))
+                log.Error(ctx, "failed to record outbox lag", logging.Error(logging.JobErrorKey, err))
         }</span>
 }
 </pre>
@@ -6975,16 +6996,15 @@ import (
         "time"
 
         "go-boilerplate/internal/logging"
-        "go-boilerplate/internal/observability"
 
         "github.com/labstack/echo/v4"
 )
 
 // BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
 // eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
+// trace_id / span_id は Logger が ctx から注入するため、ここでは設定しない。
 func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequestLogInput <span class="cov8" title="1">{
         req := c.Request()
-        traceCtx := observability.ExtractTraceContext(req.Context())
         return logging.HTTPRequestLogInput{
                 EventType:     eventType,
                 EventAt:       time.Now(),
@@ -7000,8 +7020,6 @@ func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequ
                 ContentLength: req.ContentLength,
                 QueryParams:   ExtractQueryParams(c),
                 PathParams:    ExtractPathParams(c),
-                TraceID:       traceCtx.TraceID(),
-                SpanID:        traceCtx.SpanID(),
         }
 }</span>
 
@@ -7424,8 +7442,9 @@ func (r *run) safeHandle(ctx context.Context, m worker.Message) (err error) <spa
                 if rec := recover(); rec != nil </span><span class="cov8" title="1">{
                         // panic 値はログにのみ残し、伝播するエラーには含めない（秘密情報の漏洩防止）。
                         r.e.log.Named("worker.recover").Error(
+                                ctx,
                                 "panic recovered in handler",
-                                append(msgFields(ctx, r.name, m), logging.String(logging.PanicKey, fmt.Sprintf("%v", rec)))...,
+                                append(msgFields(r.name, m), logging.String(logging.PanicKey, fmt.Sprintf("%v", rec)))...,
                         )
                         err = xerrors.Wrap(apperror.ErrRetryable, "panic recovered in handler")
                 }</span>
@@ -7461,8 +7480,9 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() <span
                                         // 握り潰さず可視化する。lease 延長失敗は早期再配送→重複処理の予兆。
                                         <span class="cov8" title="1">r.e.met.ExtendError(ctx)
                                         r.e.log.Named("worker.extend").Warn(
+                                                ctx,
                                                 "extend failed",
-                                                append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))...,
+                                                append(msgFields(r.name, m), logging.Error(logging.ErrorKey, err))...,
                                         )</span>
                                 }
                         }
@@ -7482,26 +7502,26 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) <sp
                 r.ack(ctx, m) // A1: 成功時のみ Ack
                 r.cb.onSuccess()
                 r.e.met.Processed(ctx)
-                r.e.log.Named("worker.process").Debug("message processed", msgFields(ctx, r.name, m)...)
+                r.e.log.Named("worker.process").Debug(ctx, "message processed", msgFields(r.name, m)...)
                 return
         }</span>
 
         <span class="cov8" title="1">r.e.met.Failed(ctx)
-        fields := append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))
+        fields := append(msgFields(r.name, m), logging.Error(logging.ErrorKey, err))
 
         switch classify(err) </span>{
         case catRetryable:<span class="cov8" title="1">
                 r.nack(ctx, m) // A2
                 r.cb.onFailure()
                 r.e.met.Retried(ctx)
-                r.e.log.Named("worker.process").Warn("retryable failure, nacked", fields...)</span>
+                r.e.log.Named("worker.process").Warn(ctx, "retryable failure, nacked", fields...)</span>
         case catPermanent:<span class="cov8" title="1">
                 r.routePermanent(ctx, m, err) // A5
                 r.cb.onSuccess()
                 r.e.met.DLQ(ctx)
-                r.e.log.Named("worker.process").Warn("permanent failure, routed to dead-letter", fields...)</span>
+                r.e.log.Named("worker.process").Warn(ctx, "permanent failure, routed to dead-letter", fields...)</span>
         case catFatal:<span class="cov8" title="1">
-                r.e.log.Named("worker.process").Error("fatal failure, stopping engine", fields...)
+                r.e.log.Named("worker.process").Error(ctx, "fatal failure, stopping engine", fields...)
                 r.triggerFatal(err)</span> // A5（Fatal）
         }
 }
@@ -7510,7 +7530,7 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) <sp
 func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) <span class="cov8" title="1">{
         if r.failure != nil </span><span class="cov8" title="1">{
                 if err := r.failure.Fail(ctx, m, cause); err != nil </span><span class="cov8" title="1">{
-                        r.logErr("worker.failure", "failure handler error", err)
+                        r.logErr(ctx, "worker.failure", "failure handler error", err)
                         return
                 }</span>
         }
@@ -7519,7 +7539,7 @@ func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error)
 
 func (r *run) ack(ctx context.Context, m worker.Message) <span class="cov8" title="1">{
         if err := r.consumer.Ack(ctx, m); err != nil </span><span class="cov8" title="1">{
-                r.logErr("worker.ack", "ack error", err)
+                r.logErr(ctx, "worker.ack", "ack error", err)
         }</span>
 }
 
@@ -7528,7 +7548,7 @@ func (r *run) ack(ctx context.Context, m worker.Message) <span class="cov8" titl
 func (r *run) nack(ctx context.Context, m worker.Message) <span class="cov8" title="1">{
         d := r.nackBackoff(m.ReceiveCount)
         if err := r.consumer.NackWithBackoff(ctx, m, d); err != nil </span><span class="cov8" title="1">{
-                r.logErr("worker.nack", "nack error", err)
+                r.logErr(ctx, "worker.nack", "nack error", err)
         }</span>
 }
 
@@ -7543,7 +7563,7 @@ func (r *run) nackBackoff(receiveCount int) time.Duration <span class="cov8" tit
 // onPollError は、Receive の失敗をサーキットへ反映します（broker 到達不能など）。
 func (r *run) onPollError(ctx context.Context, err error) <span class="cov8" title="1">{
         r.e.met.PollError(ctx)
-        r.logErr("worker.poll", "receive error", err)
+        r.logErr(ctx, "worker.poll", "receive error", err)
         r.cb.onFailure()
 }</span>
 
@@ -7553,7 +7573,7 @@ func (r *run) warnIfPoison(ctx context.Context, m worker.Message) <span class="c
         if th &lt;= 0 || m.ReceiveCount &lt; th </span><span class="cov8" title="1">{
                 return
         }</span>
-        <span class="cov8" title="1">r.e.log.Named("worker.poison").Warn("receive count threshold reached", msgFields(ctx, r.name, m)...)</span>
+        <span class="cov8" title="1">r.e.log.Named("worker.poison").Warn(ctx, "receive count threshold reached", msgFields(r.name, m)...)</span>
 }
 
 // triggerFatal は、Fatal を記録して engine を停止（ctx キャンセル）します。ログは handleResult が出します。
@@ -7572,8 +7592,8 @@ func (r *run) fatalErr() error <span class="cov8" title="1">{
         return r.fatal
 }</span>
 
-func (r *run) logErr(name, msg string, err error) <span class="cov8" title="1">{
-        r.e.log.Named(name).Error(msg, logging.Error(logging.ErrorKey, err))
+func (r *run) logErr(ctx context.Context, name, msg string, err error) <span class="cov8" title="1">{
+        r.e.log.Named(name).Error(ctx, msg, logging.Error(logging.ErrorKey, err))
 }</span>
 
 // drain は、in-flight の完了を DrainTimeout まで待ちます（C1。未完は Ack されず再配送へ）。
@@ -7845,23 +7865,22 @@ func (r *run) withTrace(ctx context.Context, m worker.Message) context.Context <
         return observability.ExtractFromCarrier(ctx, m.Attributes)
 }</span>
 
-// msgFields は、構造化ログ用のフィールド（worker 名 / message id / receive count / trace id）を返します（D3）。
-func msgFields(ctx context.Context, name string, m worker.Message) []*logging.Field <span class="cov8" title="1">{
-        fields := []*logging.Field{
+// msgFields は、構造化ログ用のフィールド（worker 名 / message id / receive count）を返します（D3）。
+// trace_id は Logger が ctx から自動注入するため、ここでは付与しません。
+func msgFields(name string, m worker.Message) []*logging.Field <span class="cov8" title="1">{
+        return []*logging.Field{
                 logging.String(logging.WorkerNameKey, name),
                 logging.String(logging.MessageIDKey, m.ID),
                 logging.Int(logging.ReceiveCountKey, m.ReceiveCount),
         }
-        if traceID := observability.ExtractTraceContext(ctx).TraceID(); traceID != "" </span><span class="cov8" title="1">{
-                fields = append(fields, logging.String(logging.TraceIDKey, traceID))
-        }</span>
-        <span class="cov8" title="1">return fields</span>
-}
+}</span>
 </pre>
 		
 		<pre class="file" id="file89" style="display: none">package di
 
 import (
+        "context"
+
         "go-boilerplate/internal/logging"
 
         "go.uber.org/fx/fxevent"
@@ -7939,7 +7958,7 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) <span class="cov8" title="
                         "Application failed to stop", nil,
                         f.logger.Info, "Application stopped")</span>
         case *fxevent.RollingBack:<span class="cov8" title="1">
-                f.logger.Error("start failed, rolling back", logging.Error(logging.ErrorKey, e.StartErr))</span>
+                f.logger.Error(context.Background(), "start failed, rolling back", logging.Error(logging.ErrorKey, e.StartErr))</span>
         case *fxevent.RolledBack:<span class="cov8" title="1">
                 f.record(e.Err,
                         "Rollback failed", nil,
@@ -7948,16 +7967,18 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) <span class="cov8" title="
 }
 
 // record は fx イベントの成否に応じてログを記録します。
+// fxevent.Logger は ctx を持たないため context.Background() を用います。
 func (f *fxEventLogger) record(
         err error,
         failMsg string, failFields []*logging.Field,
-        logOK func(string, ...*logging.Field), okMsg string, okFields ...*logging.Field,
+        logOK func(context.Context, string, ...*logging.Field), okMsg string, okFields ...*logging.Field,
 ) <span class="cov8" title="1">{
+        ctx := context.Background()
         if err != nil </span><span class="cov8" title="1">{
-                f.logger.Error(failMsg, append(failFields, logging.Error(logging.ErrorKey, err))...)
+                f.logger.Error(ctx, failMsg, append(failFields, logging.Error(logging.ErrorKey, err))...)
                 return
         }</span>
-        <span class="cov8" title="1">logOK(okMsg, okFields...)</span>
+        <span class="cov8" title="1">logOK(ctx, okMsg, okFields...)</span>
 }
 </pre>
 		
@@ -8036,7 +8057,7 @@ func RunJob(grace time.Duration) (StartFunc, StopFunc) <span class="cov8" title=
                                 logging.Strings(logging.JobArgsKey, args),
                                 logging.Error(logging.JobErrorKey, err),
                         )
-                        l.Error("failed to start job application", fields...)
+                        l.Error(ctx, "failed to start job application", fields...)
                         // 共有 done に触れると hook goroutine と二重 close／送信になり得るため、専用チャネルで返す。
                         failCh := make(chan error, 1)
                         failCh &lt;- err
@@ -8048,7 +8069,7 @@ func RunJob(grace time.Duration) (StartFunc, StopFunc) <span class="cov8" title=
                         logging.String(logging.JobNameKey, name),
                         logging.Strings(logging.JobArgsKey, args),
                 )
-                l.Info("job started", fields...)
+                l.Info(ctx, "job started", fields...)
 
                 return done</span>
         }
@@ -8059,11 +8080,11 @@ func RunJob(grace time.Duration) (StartFunc, StopFunc) <span class="cov8" title=
                         fields := append(jobEventFields(logging.EventTypeEnd, osCfg.TimeZone()),
                                 logging.Error(logging.JobErrorKey, err),
                         )
-                        l.Error("failed to stop job application", fields...)
+                        l.Error(ctx, "failed to stop job application", fields...)
                         return err
                 }</span>
 
-                <span class="cov8" title="1">l.Info("job application finished", jobEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
+                <span class="cov8" title="1">l.Info(ctx, "job application finished", jobEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
                 return nil</span>
         }
 
@@ -8128,6 +8149,7 @@ func runJobAndShutdown(
         name, args, done := state.Snapshot()
         if done == nil </span><span class="cov8" title="1">{
                 logger.Named("job.Hooks").Info(
+                        jobCtx,
                         "No job to run",
                         logging.String(logging.EventTypeKey, logging.EventTypeStart),
                         logging.Time(logging.EventAtKey, time.Now()),
@@ -8135,7 +8157,7 @@ func runJobAndShutdown(
                         logging.String(logging.JobNameKey, name),
                         logging.Strings(logging.JobArgsKey, args),
                 )
-                shutdown(sd, logger)
+                shutdown(jobCtx, sd, logger)
                 return
         }</span>
 
@@ -8143,14 +8165,15 @@ func runJobAndShutdown(
 
         done &lt;- runner.Run(jobCtx, name, args)
 
-        shutdown(sd, logger)</span>
+        shutdown(jobCtx, sd, logger)</span>
 }
 
 // shutdown は、ジョブ完了後のアプリ停止を要求し、失敗時はジョブ系のログ様式に合わせて記録します。
 // エラーは黙殺せずログ記録する。
-func shutdown(sd shutdowner.Shutdowner, logger logging.Logger) <span class="cov8" title="1">{
+func shutdown(ctx context.Context, sd shutdowner.Shutdowner, logger logging.Logger) <span class="cov8" title="1">{
         if err := sd.Shutdown(); err != nil </span><span class="cov8" title="1">{
                 logger.Named("job.Hooks").Error(
+                        ctx,
                         "failed to shutdown",
                         logging.Error(logging.JobErrorKey, err),
                 )
@@ -8301,6 +8324,8 @@ func (s SupervisedRunner) Register(reg Registrar) <span class="cov8" title="1">{
 		<pre class="file" id="file96" style="display: none">package module
 
 import (
+        "context"
+
         "go-boilerplate/internal/config"
         "go-boilerplate/internal/infrastructure/authz/allowall"
         "go-boilerplate/internal/logging"
@@ -8333,6 +8358,7 @@ func provideAuthorizer(appCfg *config.ApplicationConfig, logger logging.Logger) 
         switch appCfg.Env() </span>{
         case config.EnvLocal, config.EnvCI, config.EnvTest:<span class="cov8" title="1">
                 logger.Named("authz").CallerSkip(callerSkipCount).Warn(
+                        context.Background(),
                         "Allow-all authorizer wired: every request is permitted (non-production only)",
                         logging.String("env", appCfg.Env()),
                 )
@@ -8340,6 +8366,7 @@ func provideAuthorizer(appCfg *config.ApplicationConfig, logger logging.Logger) 
                 return allowall.New(), nil</span>
         default:<span class="cov8" title="1">
                 logger.Named("authz").CallerSkip(callerSkipCount).Error(
+                        context.Background(),
                         "No authorizer configured for the current environment",
                         logging.String("env", appCfg.Env()),
                 )
@@ -8447,6 +8474,8 @@ func ControllerModule() fx.Option <span class="cov8" title="1">{
 		<pre class="file" id="file100" style="display: none">package core
 
 import (
+        "context"
+
         "go-boilerplate/internal/config"
         "go-boilerplate/internal/controller/httpstack/oapi/auth"
         "go-boilerplate/internal/infrastructure/auth/local"
@@ -8478,6 +8507,7 @@ func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logge
         switch appCfg.Env() </span>{
         case config.EnvLocal, config.EnvCI, config.EnvTest:<span class="cov8" title="1">
                 logger.Named("core.authn").CallerSkip(callerSkipCount).Warn(
+                        context.Background(),
                         "Local authenticator wired: authentication is stubbed (non-production only)",
                         logging.String("env", appCfg.Env()),
                 )
@@ -8485,6 +8515,7 @@ func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logge
                 return local.New(), nil</span>
         default:<span class="cov8" title="1">
                 logger.Named("core.authn").CallerSkip(callerSkipCount).Error(
+                        context.Background(),
                         "No authenticator configured for the current environment",
                         logging.String("env", appCfg.Env()),
                 )
@@ -8736,7 +8767,12 @@ func LoggingModule() fx.Option <span class="cov8" title="1">{
 
 // provideLogger は、アプリケーション設定に応じた Logger を生成します。
 // logCore が非 nil のときは、その core を Tee した Logger を返します。
-func provideLogger(appCfg *config.ApplicationConfig, logCore logging.LogCore) (logging.Logger, error) <span class="cov8" title="1">{
+// extract は ctx から trace_id / span_id を注入する抽出関数です。
+func provideLogger(
+        appCfg *config.ApplicationConfig,
+        logCore logging.LogCore,
+        extract logging.TraceExtractor,
+) (logging.Logger, error) <span class="cov8" title="1">{
         level, err := logging.ParseLevel(appCfg.LogLevel())
         if err != nil </span><span class="cov8" title="1">{
                 return nil, xerrors.Wrap(err, fmt.Sprintf("invalid APP_LOG_LEVEL %q", appCfg.LogLevel()))
@@ -8744,9 +8780,9 @@ func provideLogger(appCfg *config.ApplicationConfig, logCore logging.LogCore) (l
 
         <span class="cov8" title="1">switch </span>{
         case appCfg.IsProductionMode():<span class="cov8" title="1">
-                return logging.WithCore(logging.NewJSONLogger(level, logging.LevelError()), logCore), nil</span>
+                return logging.WithCore(logging.NewJSONLogger(level, logging.LevelError(), extract), logCore), nil</span>
         case appCfg.IsDevelopmentMode():<span class="cov8" title="1">
-                return logging.WithCore(logging.NewConsoleLogger(level, logging.LevelWarn()), logCore), nil</span>
+                return logging.WithCore(logging.NewConsoleLogger(level, logging.LevelWarn(), extract), logCore), nil</span>
         default:<span class="cov8" title="1">
                 return nil, xerrors.New("unknown app mode: " + appCfg.Mode())</span>
         }
@@ -8776,6 +8812,7 @@ func ObservabilityModule() fx.Option <span class="cov8" title="1">{
                         observability.NewProviderShutdowner,
                         observability.NewTracerFactory,
                         observability.NewLogCore,
+                        observability.NewTraceExtractor,
                         observability.NewPgxTracer,
                         observability.NewTextMapPropagator,
                         observability.NewHTTPClientTransport,
@@ -8867,15 +8904,15 @@ import (
         userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user" // sample-api:line
         "go-boilerplate/internal/infrastructure/rdb/repository/prefecture"     // sample-api:line
         "go-boilerplate/internal/infrastructure/rdb/repository/user"           // sample-api:line
-        "go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck"
-        idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_query/idempotency"
-        outboxsq "go-boilerplate/internal/infrastructure/rdb/system_query/outbox"
+        "go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
+        idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
+        outboxsq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox"
 
         "go.uber.org/fx"
 )
 
 // persistenceModule は、RDB を背後に持つ永続化系の依存（repository / query_service /
-// command_service / system_query）を提供するfx.Moduleです。DatabaseModule() の db 接続層
+// command_service / system_cqrs）を提供するfx.Moduleです。DatabaseModule() の db 接続層
 // とは区別され、その上に載るデータアクセス実装をまとめます。
 func persistenceModule() fx.Option <span class="cov8" title="1">{
         return fx.Module("persistence",
@@ -8903,7 +8940,7 @@ func persistenceModule() fx.Option <span class="cov8" title="1">{
                         // sample-api:end
                         ),
                 ),
-                fx.Module("system_query",
+                fx.Module("system_cqrs",
                         fx.Provide(
                                 healthcheck.New,
                                 idempotencysq.New,
@@ -8935,6 +8972,8 @@ func securityModule() fx.Option <span class="cov8" title="1">{
 		<pre class="file" id="file115" style="display: none">package module
 
 import (
+        "context"
+
         "go-boilerplate/internal/config"
         "go-boilerplate/internal/logging"
         "go-boilerplate/internal/system"
@@ -8957,6 +8996,7 @@ func SystemModule() fx.Option <span class="cov8" title="1">{
 // logBuildInfo は、起動時にアプリのビルド情報を1行ログへ出力します。
 func logBuildInfo(logger logging.Logger, bi system.BuildInfo, appCfg *config.ApplicationConfig) <span class="cov8" title="1">{
         logger.Named("system.buildinfo").CallerSkip(callerSkipCount).Info(
+                context.Background(),
                 "application build info",
                 logging.String("version", bi.Version()),
                 logging.String("revision", bi.Revision()),
@@ -9270,6 +9310,7 @@ func NewApplicationCore(extra ...fx.Option) *fx.App <span class="cov8" title="1"
 package extension
 
 import (
+        "context"
         "fmt"
         "sort"
         "strings"
@@ -9396,6 +9437,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
 
         <span class="cov8" title="1">log := logger.Named("ApplyMiddlewares").CallerSkip(callerSkip)
         log.Info(
+                context.Background(),
                 fmt.Sprintf("Applying %s middleware", kind),
                 logging.Int("count", len(mws)),
         )
@@ -9406,6 +9448,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
 
         <span class="cov8" title="1">for _, mw := range mws </span><span class="cov8" title="1">{
                 log.Info(
+                        context.Background(),
                         fmt.Sprintf("Applying %s middleware", kind),
                         logging.Int("priority", mw.priority),
                         logging.String("middleware", mw.name),
@@ -9459,11 +9502,13 @@ func extractPriorityConflicts(byPriority map[int][]string) []string <span class=
 func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) <span class="cov8" title="1">{
         log := logger.Named("ApplyConfigurators").CallerSkip(callerSkip)
         log.Info(
+                context.Background(),
                 "Applying server configurator",
                 logging.Int("count", len(cfgs)),
         )
         for _, cfg := range cfgs </span><span class="cov8" title="1">{
                 log.Info(
+                        context.Background(),
                         "Applying server configurator",
                         logging.String("configurator", cfg.Name),
                 )
@@ -10093,11 +10138,11 @@ func RegisterDBCloseHooks(
         db driver.DatabaseDriver,
         logger logging.Logger,
 ) <span class="cov8" title="1">{
-        reg.RegisterStop(func(_ context.Context) error </span><span class="cov8" title="1">{
+        reg.RegisterStop(func(ctx context.Context) error </span><span class="cov8" title="1">{
                 l := logger.Named("db.CloseHook")
-                l.Info("Closing database connection")
+                l.Info(ctx, "Closing database connection")
                 if err := db.Close(); err != nil </span><span class="cov8" title="1">{
-                        l.Error("failed to close database", logging.Error(logging.ErrorKey, err))
+                        l.Error(ctx, "failed to close database", logging.Error(logging.ErrorKey, err))
                         return err
                 }</span>
                 <span class="cov8" title="1">return nil</span>
@@ -10165,7 +10210,7 @@ func newStartServerFunc(
 
                 go func() </span><span class="cov8" title="1">{
                         if err := e.Start(""); err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) </span><span class="cov8" title="1">{
-                                log.Named("server.Start").Error("failed to start http server", logging.Error(logging.ErrorKey, err))
+                                log.Named("server.Start").Error(ctx, "failed to start http server", logging.Error(logging.ErrorKey, err))
                         }</span>
                 }()
                 <span class="cov8" title="1">fields := append(lifecycleEventFields(logging.EventTypeStart, osCfg.TimeZone()),
@@ -10174,7 +10219,7 @@ func newStartServerFunc(
                         logging.String("cidr", secCfg.CIDR().IP.String()),
                         logging.String("mode", appCfg.Mode()),
                 )
-                log.Named("server.Start").CallerSkip(serverCallerSkip).Info("http started", fields...)
+                log.Named("server.Start").CallerSkip(serverCallerSkip).Info(ctx, "http started", fields...)
                 return nil</span>
         }
 }
@@ -10185,9 +10230,9 @@ func newStopServerFunc(
 ) func(context.Context) error <span class="cov8" title="1">{
         return func(ctx context.Context) error </span><span class="cov8" title="1">{
                 l := log.Named("server.Stop").CallerSkip(serverCallerSkip)
-                l.Info("http stopping", lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
+                l.Info(ctx, "http stopping", lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
                 if err := e.Shutdown(ctx); err != nil </span><span class="cov8" title="1">{
-                        l.Error("failed to shutdown http server", logging.Error(logging.ErrorKey, err))
+                        l.Error(ctx, "failed to shutdown http server", logging.Error(logging.ErrorKey, err))
                         return err
                 }</span>
                 <span class="cov8" title="1">return nil</span>
@@ -10374,6 +10419,7 @@ func RunWorker(grace time.Duration) (StartFunc, StopFunc) <span class="cov8" tit
 
                 if err := app.Start(ctx); err != nil </span><span class="cov8" title="1">{
                         l.Error(
+                                ctx,
                                 "failed to start worker application",
                                 logging.String(logging.WorkerNameKey, name),
                                 logging.Error(logging.ErrorKey, err),
@@ -10385,17 +10431,17 @@ func RunWorker(grace time.Duration) (StartFunc, StopFunc) <span class="cov8" tit
                         return failCh
                 }</span>
 
-                <span class="cov8" title="1">l.Info("worker started", logging.String(logging.WorkerNameKey, name))
+                <span class="cov8" title="1">l.Info(ctx, "worker started", logging.String(logging.WorkerNameKey, name))
                 return done</span>
         }
 
         <span class="cov8" title="1">stop := func(ctx context.Context) error </span><span class="cov8" title="1">{
                 l := logger.Named("worker.RunWorker").CallerSkip(callSkip)
                 if err := app.Stop(ctx); err != nil </span><span class="cov8" title="1">{
-                        l.Error("failed to stop worker application", logging.Error(logging.ErrorKey, err))
+                        l.Error(ctx, "failed to stop worker application", logging.Error(logging.ErrorKey, err))
                         return err
                 }</span>
-                <span class="cov8" title="1">l.Info("worker application finished")
+                <span class="cov8" title="1">l.Info(ctx, "worker application finished")
                 return nil</span>
         }
 
@@ -10434,7 +10480,7 @@ func RegisterWorkerHooks(
                 Body: func(ctx context.Context) </span><span class="cov8" title="1">{
                         name, _, done := state.Snapshot()
                         if done == nil </span><span class="cov8" title="1">{
-                                logger.Named("worker.Hooks").Info("No worker to run", logging.String(logging.WorkerNameKey, name))
+                                logger.Named("worker.Hooks").Info(ctx, "No worker to run", logging.String(logging.WorkerNameKey, name))
                                 return
                         }</span>
                         <span class="cov8" title="1">defer close(done)
@@ -12954,11 +13000,11 @@ func (t *queryTracer) TraceQueryEnd(
 
         switch </span>{
         case data.Err != nil:<span class="cov8" title="1">
-                t.logger.Error("DB query failed", t.endFields(ctx, ld, duration, data.Err)...)</span>
+                t.logger.Error(ctx, "DB query failed", t.endFields(ld, duration, data.Err)...)</span>
         case t.slowThreshold &gt; 0 &amp;&amp; duration &gt; t.slowThreshold:<span class="cov8" title="1">
-                t.logger.Warn("DB slow query", t.endFields(ctx, ld, duration, nil)...)</span>
+                t.logger.Warn(ctx, "DB slow query", t.endFields(ld, duration, nil)...)</span>
         default:<span class="cov8" title="1">
-                t.logger.Info("DB query completed", t.endFields(ctx, ld, duration, nil)...)</span>
+                t.logger.Info(ctx, "DB query completed", t.endFields(ld, duration, nil)...)</span>
         }
 }
 
@@ -12971,16 +13017,14 @@ func (t *queryTracer) recordQueryMetric(ctx context.Context, sql string, duratio
 }
 
 func (t *queryTracer) endFields(
-        ctx context.Context, ld queryLogData, duration time.Duration, err error,
+        ld queryLogData, duration time.Duration, err error,
 ) []*logging.Field <span class="cov8" title="1">{
         args := ld.args
         if t.maskArgs </span><span class="cov8" title="1">{
                 args = nil
         }</span>
 
-        <span class="cov8" title="1">tc := observability.ExtractTraceContext(ctx)
-
-        return t.lf.BuildSQLEndFields(logging.SQLFieldsEndInput{
+        <span class="cov8" title="1">return t.lf.BuildSQLEndFields(logging.SQLFieldsEndInput{
                 Layer:        queryTracerLayer,
                 PkgName:      queryTracerPkg,
                 EventAt:      time.Now(),
@@ -12988,8 +13032,6 @@ func (t *queryTracer) endFields(
                 Query:        ld.sql,
                 Args:         args,
                 Err:          err,
-                TraceID:      tc.TraceID(),
-                SpanID:       tc.SpanID(),
                 ParentSpanID: ld.parentSpanID,
         })</span>
 }
@@ -13157,7 +13199,7 @@ func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.
         if pgErr := tx.Rollback(cleanupCtx); pgErr != nil </span><span class="cov8" title="1">{
                 logFields := append([]*logging.Field{logging.Error(logging.ErrorKey, pgErr)}, fields...)
                 t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
-                        "Failed to rollback transaction", logFields...,
+                        ctx, "Failed to rollback transaction", logFields...,
                 )
         }</span>
 }
@@ -14046,7 +14088,7 @@ type systemQuery struct {
 func New(
         provider driver.DatabaseDriver,
         tf observability.TracerFactory,
-) query.DBSystemQuery <span class="cov8" title="1">{
+) query.DBSystemCqrs <span class="cov8" title="1">{
         return &amp;systemQuery{
                 db:     provider,
                 tracer: tf.Infra(),
@@ -14878,9 +14920,6 @@ type HTTPRequestLogInput struct {
 
         PathParams  map[string]string
         QueryParams map[string][]string
-
-        TraceID string
-        SpanID  string
 }
 
 // HTTPResponseLogInput は、HTTPレスポンスのログ出力用の入力情報をまとめた構造体です。
@@ -14895,8 +14934,6 @@ type HTTPResponseLogInput struct {
         Latency time.Duration
 
         RequestID string
-        TraceID   string
-        SpanID    string
 }
 
 // SQLFieldsEndInput は、SQL ログ出力用の入力情報をまとめた構造体です。
@@ -14914,8 +14951,8 @@ type SQLFieldsEndInput struct {
         Args  []any
         Err   error
 
-        TraceID      string
-        SpanID       string
+        // ParentSpanID は呼び出し元 span の ID。trace_id / span_id は Logger が ctx から
+        // 自動注入するが、parent_span_id は ctx から導出できないため明示的に渡す。
         ParentSpanID string
 }
 
@@ -14949,7 +14986,7 @@ func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Fie
                 Any(PathParamsKey, req.PathParams),
         )
 
-        return l.appendTraceSpanFields(fields, req.TraceID, req.SpanID, "")
+        return fields
 }</span>
 
 // BuildHTTPResponseFields は、HTTPレスポンスの情報を含むFieldのスライスを生成します。
@@ -14965,7 +15002,7 @@ func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*
                 String(RequestIDKey, resp.RequestID),
         )
 
-        return l.appendTraceSpanFields(fields, resp.TraceID, resp.SpanID, "")
+        return fields
 }</span>
 
 // BuildSQLEndFields は、SQLの終了時点のログ出力用の Field スライスを構築します。
@@ -14992,7 +15029,13 @@ func (l *logFieldBuilder) BuildSQLEndFields(sql SQLFieldsEndInput) []*Field <spa
                 fields = append(fields, Error(InternalErrorKey, sql.Err))
         }</span>
 
-        <span class="cov8" title="1">return l.appendTraceSpanFields(fields, sql.TraceID, sql.SpanID, sql.ParentSpanID)</span>
+        // trace_id / span_id は Logger が ctx から注入する。parent_span_id のみ
+        // ctx から導出できないためここで明示付与する（obs 有効時のみ）。
+        <span class="cov8" title="1">if l.obsCfg.Enabled() &amp;&amp; sql.ParentSpanID != "" </span><span class="cov8" title="1">{
+                fields = append(fields, String(ParentSpanIDKey, sql.ParentSpanID))
+        }</span>
+
+        <span class="cov8" title="1">return fields</span>
 }
 
 // buildEventHeader は、全イベントログ共通の先頭フィールド
@@ -15004,31 +15047,6 @@ func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Fi
                 String(EventTzKey, l.osCfg.TimeZone()),
         }
 }</span>
-
-// appendTraceSpanFields は、obs が有効なとき trace/span を fields に追加する。
-func (l *logFieldBuilder) appendTraceSpanFields(
-        fields []*Field,
-        traceID string,
-        spanID string,
-        parentSpanID string,
-) []*Field <span class="cov8" title="1">{
-        if !l.obsCfg.Enabled() || traceID == "" || spanID == "" </span><span class="cov8" title="1">{
-                return fields
-        }</span>
-
-        <span class="cov8" title="1">fields = append(fields,
-                String(TraceIDKey, traceID),
-                String(SpanIDKey, spanID),
-        )
-
-        if parentSpanID == "" </span><span class="cov8" title="1">{
-                return fields
-        }</span>
-
-        <span class="cov8" title="1">return append(fields,
-                String(ParentSpanIDKey, parentSpanID),
-        )</span>
-}
 
 // buildCompactQuery は、SQL クエリを1行の短縮表現に変換します。
 func (*logFieldBuilder) buildCompactQuery(q string) string <span class="cov8" title="1">{
@@ -15097,23 +15115,33 @@ func ParseLevel(s string) (Level, error) <span class="cov8" title="1">{
 package logging
 
 import (
+        "context"
+
         "go.uber.org/zap"
         "go.uber.org/zap/zapcore"
 )
 
+// traceFieldCount は、trace 注入時に先頭へ足すフィールド数（trace_id / span_id）です。
+const traceFieldCount = 2
+
 // LogCore は、Logger に追加で Tee できるログ core の型です。
 type LogCore = zapcore.Core
 
+// TraceExtractor は、ctx から trace_id / span_id を抽出する関数です。ok=false のとき
+// trace 情報を注入しません（logging を trace 実装から独立させ、循環参照を避けるための抽象）。
+type TraceExtractor func(ctx context.Context) (traceID, spanID string, ok bool)
+
 // Logger は、アプリ全体が使うロガーのインターフェースです。
+// 各出力メソッドは ctx を受け取り、trace_id / span_id を自動注入します。
 type Logger interface {
         // Debug はデバッグレベルのログを出力する。
-        Debug(msg string, fields ...*Field)
+        Debug(ctx context.Context, msg string, fields ...*Field)
         // Info は情報レベルのログを出力する。
-        Info(msg string, fields ...*Field)
+        Info(ctx context.Context, msg string, fields ...*Field)
         // Warn は警告レベルのログを出力する。
-        Warn(msg string, fields ...*Field)
+        Warn(ctx context.Context, msg string, fields ...*Field)
         // Error はエラーレベルのログを出力する。
-        Error(msg string, fields ...*Field)
+        Error(ctx context.Context, msg string, fields ...*Field)
         // Named は、新しい名前付きの Logger を返す。
         Named(name string) Logger
         // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
@@ -15121,7 +15149,8 @@ type Logger interface {
 }
 
 type logger struct {
-        log *zap.Logger
+        log     *zap.Logger
+        extract TraceExtractor
 }
 
 // levelGatedCore は、埋め込み core を最小レベル min で絞り込む zapcore.Core ラッパーです。
@@ -15149,6 +15178,7 @@ func WithCore(l Logger, core LogCore) Logger <span class="cov8" title="1">{
                 log: base.log.WithOptions(zap.WrapCore(func(c zapcore.Core) zapcore.Core </span><span class="cov8" title="1">{
                         return zapcore.NewTee(c, gated)
                 }</span>)),
+                extract: base.extract,
         }
 }
 
@@ -15173,36 +15203,54 @@ func (c levelGatedCore) With(fields []zapcore.Field) zapcore.Core <span class="c
 // Named は、新しい名前付きの Logger を返す。
 func (l *logger) Named(name string) Logger <span class="cov8" title="1">{
         return &amp;logger{
-                log: l.log.Named(name),
+                log:     l.log.Named(name),
+                extract: l.extract,
         }
 }</span>
 
 // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
 func (l *logger) CallerSkip(skip int) Logger <span class="cov8" title="1">{
         return &amp;logger{
-                log: l.log.WithOptions(zap.AddCallerSkip(skip)),
+                log:     l.log.WithOptions(zap.AddCallerSkip(skip)),
+                extract: l.extract,
         }
 }</span>
 
 // Debug はデバッグレベルのログを出力する。
-func (l *logger) Debug(msg string, fields ...*Field) <span class="cov8" title="1">{
-        l.log.Debug(msg, l.convertFields(fields)...)
+func (l *logger) Debug(ctx context.Context, msg string, fields ...*Field) <span class="cov8" title="1">{
+        l.log.Debug(msg, l.convertFields(l.injectTrace(ctx, fields))...)
 }</span>
 
 // Info は情報レベルのログを出力する。
-func (l *logger) Info(msg string, fields ...*Field) <span class="cov8" title="1">{
-        l.log.Info(msg, l.convertFields(fields)...)
+func (l *logger) Info(ctx context.Context, msg string, fields ...*Field) <span class="cov8" title="1">{
+        l.log.Info(msg, l.convertFields(l.injectTrace(ctx, fields))...)
 }</span>
 
 // Warn は警告レベルのログを出力する。
-func (l *logger) Warn(msg string, fields ...*Field) <span class="cov8" title="1">{
-        l.log.Warn(msg, l.convertFields(fields)...)
+func (l *logger) Warn(ctx context.Context, msg string, fields ...*Field) <span class="cov8" title="1">{
+        l.log.Warn(msg, l.convertFields(l.injectTrace(ctx, fields))...)
 }</span>
 
 // Error はエラーレベルのログを出力する。
-func (l *logger) Error(msg string, fields ...*Field) <span class="cov8" title="1">{
-        l.log.Error(msg, l.convertFields(fields)...)
+func (l *logger) Error(ctx context.Context, msg string, fields ...*Field) <span class="cov8" title="1">{
+        l.log.Error(msg, l.convertFields(l.injectTrace(ctx, fields))...)
 }</span>
+
+// injectTrace は、TraceExtractor が trace を返す場合に trace_id / span_id を
+// フィールド先頭へ注入する。extractor 未注入（nil）や span 無効時は fields をそのまま返す。
+func (l *logger) injectTrace(ctx context.Context, fields []*Field) []*Field <span class="cov8" title="1">{
+        if l.extract == nil </span><span class="cov8" title="1">{
+                return fields
+        }</span>
+        <span class="cov8" title="1">traceID, spanID, ok := l.extract(ctx)
+        if !ok </span><span class="cov8" title="1">{
+                return fields
+        }</span>
+
+        <span class="cov8" title="1">out := make([]*Field, 0, len(fields)+traceFieldCount)
+        out = append(out, String(TraceIDKey, traceID), String(SpanIDKey, spanID))
+        return append(out, fields...)</span>
+}
 
 // convertFields は Field のスライスを zap.Field のスライスに変換する。
 func (l *logger) convertFields(fs []*Field) []zap.Field <span class="cov8" title="1">{
@@ -15283,23 +15331,29 @@ func encoderConfig(encodeLevel zapcore.LevelEncoder) zapcore.EncoderConfig <span
 }</span>
 
 // NewJSONLogger は JSON 構造化ロガーを生成します。
-// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
-func NewJSONLogger(level, stacktraceLevel Level) Logger <span class="cov8" title="1">{
+// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、
+// extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。
+func NewJSONLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger <span class="cov8" title="1">{
         enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
-        return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, true)
+        return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, true, extract)
 }</span>
 
 // NewConsoleLogger は人間可読な console ロガーを生成します。
-// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
-func NewConsoleLogger(level, stacktraceLevel Level) Logger <span class="cov8" title="1">{
+// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベル、
+// extract は ctx から trace を注入する抽出関数（nil のとき trace 注入なし）です。
+func NewConsoleLogger(level, stacktraceLevel Level, extract TraceExtractor) Logger <span class="cov8" title="1">{
         enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
-        return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false)
+        return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false, extract)
 }</span>
 
 // buildLogger は encoder と出力先から Logger を構築します。
 // jsonArrayStacktrace=true のとき、stacktrace を行配列として出力します。
 func buildLogger(
-        enc zapcore.Encoder, ws zapcore.WriteSyncer, level, stacktraceLevel zapcore.Level, jsonArrayStacktrace bool,
+        enc zapcore.Encoder,
+        ws zapcore.WriteSyncer,
+        level, stacktraceLevel zapcore.Level,
+        jsonArrayStacktrace bool,
+        extract TraceExtractor,
 ) Logger <span class="cov8" title="1">{
         core := zapcore.NewCore(enc, ws, zap.NewAtomicLevelAt(level))
         if jsonArrayStacktrace </span><span class="cov8" title="1">{
@@ -15310,7 +15364,7 @@ func buildLogger(
                 zap.AddStacktrace(stacktraceLevel),
                 zap.ErrorOutput(stderrSyncer),
         )
-        return &amp;logger{log: zl}</span>
+        return &amp;logger{log: zl, extract: extract}</span>
 }
 </pre>
 		
@@ -15442,6 +15496,7 @@ import (
         "context"
 
         "go-boilerplate/internal/config"
+        "go-boilerplate/internal/logging"
 
         "go.opentelemetry.io/otel/trace"
 )
@@ -15515,6 +15570,19 @@ func (tc *TraceContext) SpanID() string <span class="cov8" title="1">{
 func (tc *TraceContext) ParentSpanID() string <span class="cov8" title="1">{
         return tc.parentSpanID
 }</span>
+
+// NewTraceExtractor は、ctx から trace_id / span_id を抽出する logging.TraceExtractor を返します。
+// obs 無効時・ctx に有効な span が無い場合は 3 番目の戻り値 false を返し、Logger 側の trace 注入を
+// 抑止します。
+func NewTraceExtractor(obsCfg *config.ObservabilityConfig) logging.TraceExtractor <span class="cov8" title="1">{
+        return func(ctx context.Context) (string, string, bool) </span><span class="cov8" title="1">{
+                if !ShouldLogWithSpan(ctx, obsCfg) </span><span class="cov8" title="1">{
+                        return "", "", false
+                }</span>
+                <span class="cov8" title="1">tc := ExtractTraceContext(ctx)
+                return tc.TraceID(), tc.SpanID(), true</span>
+        }
+}
 </pre>
 		
 		<pre class="file" id="file198" style="display: none">package observability
@@ -17608,9 +17676,9 @@ type DTO struct {
 
 // usecase は、システムの健全性チェックに関するユースケースを提供します。
 type usecase struct {
-        tracer        observability.LayerTracer
-        clock         clock.Clock
-        dbSystemQuery query.DBSystemQuery
+        tracer       observability.LayerTracer
+        clock        clock.Clock
+        dbSystemCqrs query.DBSystemCqrs
 }
 
 // Usecase は、システムの健全性チェックに関するユースケースを定義します。
@@ -17620,11 +17688,11 @@ type Usecase interface {
 }
 
 // New は、システムの健全性チェックに関するユースケースを初期化します。
-func New(dbsq query.DBSystemQuery, tf observability.TracerFactory, clock clock.Clock) Usecase <span class="cov8" title="1">{
+func New(dbsq query.DBSystemCqrs, tf observability.TracerFactory, clock clock.Clock) Usecase <span class="cov8" title="1">{
         return &amp;usecase{
-                tracer:        tf.Usecase(),
-                clock:         clock,
-                dbSystemQuery: dbsq,
+                tracer:       tf.Usecase(),
+                clock:        clock,
+                dbSystemCqrs: dbsq,
         }
 }</span>
 
@@ -17634,7 +17702,7 @@ func (u *usecase) CheckHealth(ctx context.Context) (*DTO, error) <span class="co
         defer endSpan()
 
         applTime := u.clock.Now()
-        dbHealth, err := u.dbSystemQuery.CheckDBHealth(ctx)
+        dbHealth, err := u.dbSystemCqrs.CheckDBHealth(ctx)
         if err != nil </span><span class="cov8" title="1">{
                 return nil, err
         }</span>
@@ -18253,6 +18321,7 @@ func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage
                 }</span>
                 <span class="cov8" title="1">u.metrics.IncDead(ctx)
                 u.logging.Named(relayLoggerName).Warn(
+                        ctx,
                         "outbox message marked dead after reaching max attempts",
                         logging.String(logging.MessageIDKey, m.MessageID.String()),
                         logging.String(logging.EventTypeKey, m.EventType),

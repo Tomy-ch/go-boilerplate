@@ -7,7 +7,7 @@
 publish する）、**GC**（古い published 行を刈り取る）、**replay**（dead 行を
 pending へ戻す）を提供します。永続化はすべて `Store` 境界
 （`internal/usecase/boundary/outbox`）を経由し、具体的な RDB 実装は
-`internal/infrastructure/rdb/system_query/outbox/` にあります。
+`internal/infrastructure/rdb/system_cqrs/outbox/` にあります。
 
 ## なぜ outbox か
 
@@ -97,5 +97,5 @@ stateDiagram-v2
 | --- | --- |
 | boundary（`Store`） | `internal/usecase/boundary/outbox/` |
 | usecase | `internal/usecase/outbox/`（本パッケージ） |
-| infrastructure | `internal/infrastructure/rdb/system_query/outbox/` |
-| sqlc DML | `database/dml/system_query/outbox/` |
+| infrastructure | `internal/infrastructure/rdb/system_cqrs/outbox/` |
+| sqlc DML | `database/dml/system_cqrs/outbox/` |

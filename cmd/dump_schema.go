@@ -33,14 +33,14 @@ func newDumpSchemaCommand() *cobra.Command {
 
 // runDumpSchema は dumpschema.RunDump への薄い委譲殻です。
 func runDumpSchema(ctx context.Context, workDir string) error {
-	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 
 	gen := dumpschema.NewGenerator(logger, workDir)
 
 	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()
 		if cerr != nil {
-			logger.Named("dumpschema.SetUpConfig").Error("failed to load config", logging.Error(logging.ErrorKey, cerr))
+			logger.Named("dumpschema.SetUpConfig").Error(ctx, "failed to load config", logging.Error(logging.ErrorKey, cerr))
 			return "", "", cerr
 		}
 		dbCfg := config.NewDatabaseConfig(cfg)

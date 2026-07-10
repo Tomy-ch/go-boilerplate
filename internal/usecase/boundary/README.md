@@ -44,9 +44,9 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`authz`|`Authorizer`|Decide whether a subject may perform an action on a resource|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
 |`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`|
-|`idempotency`|`Store`|Idempotency-key persistence boundary (claim / replay / conflict)|`internal/infrastructure/rdb/system_query/idempotency/`|
+|`idempotency`|`Store`|Idempotency-key persistence boundary (claim / replay / conflict)|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
-|`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_query/outbox/`|
+|`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
 |`security`|`Hasher`|Password hashing and comparison|`internal/infrastructure/security/`|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|

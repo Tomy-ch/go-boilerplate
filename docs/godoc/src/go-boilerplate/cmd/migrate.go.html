@@ -94,7 +94,7 @@
 <span id="L37" class="ln">    37  </span>--steps に正の整数を指定すると、現在位置からその段数だけ Up します。
 <span id="L38" class="ln">    38  </span>--database フラグを指定すると、対象のデータベース（例: local, test）に対して Up を行います。`,
 <span id="L39" class="ln">    39  </span>		RunE: func(_ *cobra.Command, _ []string) error {
-<span id="L40" class="ln">    40  </span>			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+<span id="L40" class="ln">    40  </span>			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 <span id="L41" class="ln">    41  </span>			return climigrate.MigrateUpRun(steps, database, logger, buildMigrateInstance)
 <span id="L42" class="ln">    42  </span>		},
 <span id="L43" class="ln">    43  </span>	}
@@ -121,7 +121,7 @@
 <span id="L64" class="ln">    64  </span>--steps に正の整数を指定すると、現在位置からその段数だけ Down します。
 <span id="L65" class="ln">    65  </span>--database フラグを指定すると、対象のデータベース（例: local, test）に対して Down を行います。`,
 <span id="L66" class="ln">    66  </span>		RunE: func(_ *cobra.Command, _ []string) error {
-<span id="L67" class="ln">    67  </span>			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+<span id="L67" class="ln">    67  </span>			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 <span id="L68" class="ln">    68  </span>			return climigrate.MigrateDownRun(steps, database, logger, buildMigrateInstance)
 <span id="L69" class="ln">    69  </span>		},
 <span id="L70" class="ln">    70  </span>	}

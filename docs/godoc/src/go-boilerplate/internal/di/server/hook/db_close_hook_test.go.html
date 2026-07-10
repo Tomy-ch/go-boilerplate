@@ -104,7 +104,7 @@
 <span id="L47" class="ln">    47  </span>
 <span id="L48" class="ln">    48  </span>			namedMock := mock_logging.NewMockLogger(ctrl)
 <span id="L49" class="ln">    49  </span>			logger.EXPECT().Named(&#34;db.CloseHook&#34;).Return(namedMock)
-<span id="L50" class="ln">    50  </span>			namedMock.EXPECT().Info(&#34;Closing database connection&#34;)
+<span id="L50" class="ln">    50  </span>			namedMock.EXPECT().Info(gomock.Any(), &#34;Closing database connection&#34;)
 <span id="L51" class="ln">    51  </span>			db.EXPECT().Close()
 <span id="L52" class="ln">    52  </span>
 <span id="L53" class="ln">    53  </span>			require.NoError(t, closeFn(context.Background()))
@@ -124,10 +124,10 @@
 <span id="L67" class="ln">    67  </span>
 <span id="L68" class="ln">    68  </span>			namedMock := mock_logging.NewMockLogger(ctrl)
 <span id="L69" class="ln">    69  </span>			logger.EXPECT().Named(&#34;db.CloseHook&#34;).Return(namedMock)
-<span id="L70" class="ln">    70  </span>			namedMock.EXPECT().Info(&#34;Closing database connection&#34;)
+<span id="L70" class="ln">    70  </span>			namedMock.EXPECT().Info(gomock.Any(), &#34;Closing database connection&#34;)
 <span id="L71" class="ln">    71  </span>			wantErr := xerrors.New(&#34;close failed&#34;)
 <span id="L72" class="ln">    72  </span>			db.EXPECT().Close().Return(wantErr)
-<span id="L73" class="ln">    73  </span>			namedMock.EXPECT().Error(&#34;failed to close database&#34;, gomock.Any()).Times(1)
+<span id="L73" class="ln">    73  </span>			namedMock.EXPECT().Error(gomock.Any(), &#34;failed to close database&#34;, gomock.Any()).Times(1)
 <span id="L74" class="ln">    74  </span>
 <span id="L75" class="ln">    75  </span>			require.ErrorIs(t, closeFn(context.Background()), wantErr)
 <span id="L76" class="ln">    76  </span>		})

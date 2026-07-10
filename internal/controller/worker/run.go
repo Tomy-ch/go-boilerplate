@@ -194,8 +194,9 @@ func (r *run) safeHandle(ctx context.Context, m worker.Message) (err error) {
 		if rec := recover(); rec != nil {
 			// panic 値はログにのみ残し、伝播するエラーには含めない（秘密情報の漏洩防止）。
 			r.e.log.Named("worker.recover").Error(
+				ctx,
 				"panic recovered in handler",
-				append(msgFields(ctx, r.name, m), logging.String(logging.PanicKey, fmt.Sprintf("%v", rec)))...,
+				append(msgFields(r.name, m), logging.String(logging.PanicKey, fmt.Sprintf("%v", rec)))...,
 			)
 			err = xerrors.Wrap(apperror.ErrRetryable, "panic recovered in handler")
 		}
@@ -231,8 +232,9 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 					// 握り潰さず可視化する。lease 延長失敗は早期再配送→重複処理の予兆。
 					r.e.met.ExtendError(ctx)
 					r.e.log.Named("worker.extend").Warn(
+						ctx,
 						"extend failed",
-						append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))...,
+						append(msgFields(r.name, m), logging.Error(logging.ErrorKey, err))...,
 					)
 				}
 			}
@@ -252,26 +254,26 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 		r.ack(ctx, m) // A1: 成功時のみ Ack
 		r.cb.onSuccess()
 		r.e.met.Processed(ctx)
-		r.e.log.Named("worker.process").Debug("message processed", msgFields(ctx, r.name, m)...)
+		r.e.log.Named("worker.process").Debug(ctx, "message processed", msgFields(r.name, m)...)
 		return
 	}
 
 	r.e.met.Failed(ctx)
-	fields := append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))
+	fields := append(msgFields(r.name, m), logging.Error(logging.ErrorKey, err))
 
 	switch classify(err) {
 	case catRetryable:
 		r.nack(ctx, m) // A2
 		r.cb.onFailure()
 		r.e.met.Retried(ctx)
-		r.e.log.Named("worker.process").Warn("retryable failure, nacked", fields...)
+		r.e.log.Named("worker.process").Warn(ctx, "retryable failure, nacked", fields...)
 	case catPermanent:
 		r.routePermanent(ctx, m, err) // A5
 		r.cb.onSuccess()
 		r.e.met.DLQ(ctx)
-		r.e.log.Named("worker.process").Warn("permanent failure, routed to dead-letter", fields...)
+		r.e.log.Named("worker.process").Warn(ctx, "permanent failure, routed to dead-letter", fields...)
 	case catFatal:
-		r.e.log.Named("worker.process").Error("fatal failure, stopping engine", fields...)
+		r.e.log.Named("worker.process").Error(ctx, "fatal failure, stopping engine", fields...)
 		r.triggerFatal(err) // A5（Fatal）
 	}
 }
@@ -280,7 +282,7 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) {
 	if r.failure != nil {
 		if err := r.failure.Fail(ctx, m, cause); err != nil {
-			r.logErr("worker.failure", "failure handler error", err)
+			r.logErr(ctx, "worker.failure", "failure handler error", err)
 			return
 		}
 	}
@@ -289,7 +291,7 @@ func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error)
 
 func (r *run) ack(ctx context.Context, m worker.Message) {
 	if err := r.consumer.Ack(ctx, m); err != nil {
-		r.logErr("worker.ack", "ack error", err)
+		r.logErr(ctx, "worker.ack", "ack error", err)
 	}
 }
 
@@ -298,7 +300,7 @@ func (r *run) ack(ctx context.Context, m worker.Message) {
 func (r *run) nack(ctx context.Context, m worker.Message) {
 	d := r.nackBackoff(m.ReceiveCount)
 	if err := r.consumer.NackWithBackoff(ctx, m, d); err != nil {
-		r.logErr("worker.nack", "nack error", err)
+		r.logErr(ctx, "worker.nack", "nack error", err)
 	}
 }
 
@@ -313,7 +315,7 @@ func (r *run) nackBackoff(receiveCount int) time.Duration {
 // onPollError は、Receive の失敗をサーキットへ反映します（broker 到達不能など）。
 func (r *run) onPollError(ctx context.Context, err error) {
 	r.e.met.PollError(ctx)
-	r.logErr("worker.poll", "receive error", err)
+	r.logErr(ctx, "worker.poll", "receive error", err)
 	r.cb.onFailure()
 }
 
@@ -323,7 +325,7 @@ func (r *run) warnIfPoison(ctx context.Context, m worker.Message) {
 	if th <= 0 || m.ReceiveCount < th {
 		return
 	}
-	r.e.log.Named("worker.poison").Warn("receive count threshold reached", msgFields(ctx, r.name, m)...)
+	r.e.log.Named("worker.poison").Warn(ctx, "receive count threshold reached", msgFields(r.name, m)...)
 }
 
 // triggerFatal は、Fatal を記録して engine を停止（ctx キャンセル）します。ログは handleResult が出します。
@@ -342,8 +344,8 @@ func (r *run) fatalErr() error {
 	return r.fatal
 }
 
-func (r *run) logErr(name, msg string, err error) {
-	r.e.log.Named(name).Error(msg, logging.Error(logging.ErrorKey, err))
+func (r *run) logErr(ctx context.Context, name, msg string, err error) {
+	r.e.log.Named(name).Error(ctx, msg, logging.Error(logging.ErrorKey, err))
 }
 
 // drain は、in-flight の完了を DrainTimeout まで待ちます（C1。未完は Ack されず再配送へ）。
