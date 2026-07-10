@@ -39,9 +39,9 @@ func TestTracedDB_QueryMetricsInstrumentation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockLogger := mock_logging.NewMockLogger(ctrl)
 	mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
-	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	recorder := mock_driver.NewMockQueryRecorder(ctrl)

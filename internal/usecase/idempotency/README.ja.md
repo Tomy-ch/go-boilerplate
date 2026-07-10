@@ -93,9 +93,9 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 | 層 | パス |
 | --- | --- |
 | migration | `database/migrations/000001_create_idempotency_keys.*.sql` |
-| sqlc DML | `database/dml/system_query/idempotency/` |
+| sqlc DML | `database/dml/system_cqrs/idempotency/` |
 | boundary | `internal/usecase/boundary/idempotency/`（`Store`） |
-| infrastructure | `internal/infrastructure/rdb/system_query/idempotency/` |
+| infrastructure | `internal/infrastructure/rdb/system_cqrs/idempotency/` |
 | usecase | `internal/usecase/idempotency/`（`Run[T]`, `GCUsecase`） |
 | controller（入り口） | `internal/controller/httpstack/idempotency/` |
 | GC ジョブ | `internal/controller/job/idempotencygc/` |

@@ -10,6 +10,7 @@
 package mock_logging
 
 import (
+	context "context"
 	logging "go-boilerplate/internal/logging"
 	reflect "reflect"
 
@@ -55,9 +56,9 @@ func (mr *MockLoggerMockRecorder) CallerSkip(skip any) *gomock.Call {
 }
 
 // Debug mocks base method.
-func (m *MockLogger) Debug(msg string, fields ...*logging.Field) {
+func (m *MockLogger) Debug(ctx context.Context, msg string, fields ...*logging.Field) {
 	m.ctrl.T.Helper()
-	varargs := []any{msg}
+	varargs := []any{ctx, msg}
 	for _, a := range fields {
 		varargs = append(varargs, a)
 	}
@@ -65,16 +66,16 @@ func (m *MockLogger) Debug(msg string, fields ...*logging.Field) {
 }
 
 // Debug indicates an expected call of Debug.
-func (mr *MockLoggerMockRecorder) Debug(msg any, fields ...any) *gomock.Call {
+func (mr *MockLoggerMockRecorder) Debug(ctx, msg any, fields ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{msg}, fields...)
+	varargs := append([]any{ctx, msg}, fields...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Debug", reflect.TypeOf((*MockLogger)(nil).Debug), varargs...)
 }
 
 // Error mocks base method.
-func (m *MockLogger) Error(msg string, fields ...*logging.Field) {
+func (m *MockLogger) Error(ctx context.Context, msg string, fields ...*logging.Field) {
 	m.ctrl.T.Helper()
-	varargs := []any{msg}
+	varargs := []any{ctx, msg}
 	for _, a := range fields {
 		varargs = append(varargs, a)
 	}
@@ -82,16 +83,16 @@ func (m *MockLogger) Error(msg string, fields ...*logging.Field) {
 }
 
 // Error indicates an expected call of Error.
-func (mr *MockLoggerMockRecorder) Error(msg any, fields ...any) *gomock.Call {
+func (mr *MockLoggerMockRecorder) Error(ctx, msg any, fields ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{msg}, fields...)
+	varargs := append([]any{ctx, msg}, fields...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Error", reflect.TypeOf((*MockLogger)(nil).Error), varargs...)
 }
 
 // Info mocks base method.
-func (m *MockLogger) Info(msg string, fields ...*logging.Field) {
+func (m *MockLogger) Info(ctx context.Context, msg string, fields ...*logging.Field) {
 	m.ctrl.T.Helper()
-	varargs := []any{msg}
+	varargs := []any{ctx, msg}
 	for _, a := range fields {
 		varargs = append(varargs, a)
 	}
@@ -99,9 +100,9 @@ func (m *MockLogger) Info(msg string, fields ...*logging.Field) {
 }
 
 // Info indicates an expected call of Info.
-func (mr *MockLoggerMockRecorder) Info(msg any, fields ...any) *gomock.Call {
+func (mr *MockLoggerMockRecorder) Info(ctx, msg any, fields ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{msg}, fields...)
+	varargs := append([]any{ctx, msg}, fields...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Info", reflect.TypeOf((*MockLogger)(nil).Info), varargs...)
 }
 
@@ -120,9 +121,9 @@ func (mr *MockLoggerMockRecorder) Named(name any) *gomock.Call {
 }
 
 // Warn mocks base method.
-func (m *MockLogger) Warn(msg string, fields ...*logging.Field) {
+func (m *MockLogger) Warn(ctx context.Context, msg string, fields ...*logging.Field) {
 	m.ctrl.T.Helper()
-	varargs := []any{msg}
+	varargs := []any{ctx, msg}
 	for _, a := range fields {
 		varargs = append(varargs, a)
 	}
@@ -130,8 +131,8 @@ func (m *MockLogger) Warn(msg string, fields ...*logging.Field) {
 }
 
 // Warn indicates an expected call of Warn.
-func (mr *MockLoggerMockRecorder) Warn(msg any, fields ...any) *gomock.Call {
+func (mr *MockLoggerMockRecorder) Warn(ctx, msg any, fields ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{msg}, fields...)
+	varargs := append([]any{ctx, msg}, fields...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Warn", reflect.TypeOf((*MockLogger)(nil).Warn), varargs...)
 }

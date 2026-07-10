@@ -58,7 +58,7 @@ func newStartServerFunc(
 
 		go func() {
 			if err := e.Start(""); err != nil && !xerrors.Is(err, http.ErrServerClosed) {
-				log.Named("server.Start").Error("failed to start http server", logging.Error(logging.ErrorKey, err))
+				log.Named("server.Start").Error(ctx, "failed to start http server", logging.Error(logging.ErrorKey, err))
 			}
 		}()
 		fields := append(lifecycleEventFields(logging.EventTypeStart, osCfg.TimeZone()),
@@ -67,7 +67,7 @@ func newStartServerFunc(
 			logging.String("cidr", secCfg.CIDR().IP.String()),
 			logging.String("mode", appCfg.Mode()),
 		)
-		log.Named("server.Start").CallerSkip(serverCallerSkip).Info("http started", fields...)
+		log.Named("server.Start").CallerSkip(serverCallerSkip).Info(ctx, "http started", fields...)
 		return nil
 	}
 }
@@ -78,9 +78,9 @@ func newStopServerFunc(
 ) func(context.Context) error {
 	return func(ctx context.Context) error {
 		l := log.Named("server.Stop").CallerSkip(serverCallerSkip)
-		l.Info("http stopping", lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
+		l.Info(ctx, "http stopping", lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
 		if err := e.Shutdown(ctx); err != nil {
-			l.Error("failed to shutdown http server", logging.Error(logging.ErrorKey, err))
+			l.Error(ctx, "failed to shutdown http server", logging.Error(logging.ErrorKey, err))
 			return err
 		}
 		return nil

@@ -24,9 +24,9 @@
 `query` サブパッケージは薄い leaf 境界です。`DBSystemQuery` は単一の
 `CheckDBHealth(ctx) (DBHealth, error)` を持ち、`DBHealth` は `Ready`・
 `RespondedAt`・`Latency` を報告します。具体的な実装は
-`internal/infrastructure/rdb/system_query/healthcheck/` にあり、軽量な
+`internal/infrastructure/rdb/system_cqrs/healthcheck/` にあり、軽量な
 `SELECT 1` による liveness probe を実行します
-（`database/dml/system_query/health_check/`）。
+（`database/dml/system_cqrs/health_check/`）。
 
 ## レイアウト
 
@@ -35,5 +35,5 @@
 | usecase | `internal/usecase/healthcheck/`（本パッケージ） |
 | DB probe 境界 | `internal/usecase/healthcheck/query/`（`DBSystemQuery`） |
 | clock 境界 | `internal/usecase/boundary/clock/`（`Clock`） |
-| infrastructure | `internal/infrastructure/rdb/system_query/healthcheck/` |
-| sqlc DML | `database/dml/system_query/health_check/` |
+| infrastructure | `internal/infrastructure/rdb/system_cqrs/healthcheck/` |
+| sqlc DML | `database/dml/system_cqrs/health_check/` |

@@ -19,7 +19,7 @@ Responsibility split (who owns what):
 | **middleware** (`httpstack/idempotency`) | controller | extract + validate `Idempotency-Key`, require authn, compute the request **fingerprint**, thread `Request` into ctx | transaction, persistence, replay decision |
 | **Run[T]** orchestrator | usecase (`usecase/idempotency`) | `claim → businessFn → complete` in **one tx** / replay·409·422 routing / TTL stamping / metrics | HTTP parsing, SQL, business rules |
 | **Store** (seam) | usecase/boundary | persistence contract: `Claim` / `Get` / `Complete` / `DeleteExpired` + `Status` / `Record` / `ErrLockTimeout` | implementation, business policy |
-| **store** impl | infrastructure (`rdb/system_query`) | sqlc wrap / `SET LOCAL lock_timeout` / `ON CONFLICT DO NOTHING` / `pgerror.NormalizeError` | replay decision, HTTP |
+| **store** impl | infrastructure (`rdb/system_cqrs`) | sqlc wrap / `SET LOCAL lock_timeout` / `ON CONFLICT DO NOTHING` / `pgerror.NormalizeError` | replay decision, HTTP |
 | **GCUsecase + `idempotencygc` job** | usecase + controller/job | batch-delete expired keys (TTL housekeeping) | the request path |
 | **`idempotency_keys` table** | database | persisted state (scope / key / fingerprint / status / response / `expires_at`) | — |
 
@@ -136,11 +136,11 @@ flowchart TD
         MOCK["idempotency/mock/: generated mock"]
     end
     subgraph infraL["internal/infrastructure/rdb"]
-        IMPL["system_query/idempotency: store impl<br/>SET LOCAL lock_timeout='3s' + ON CONFLICT + pgerror"]
+        IMPL["system_cqrs/idempotency: store impl<br/>SET LOCAL lock_timeout='3s' + ON CONFLICT + pgerror"]
         SQLC["sqlc/gen: ClaimIdempotencyKey/Get/Complete/DeleteExpired"]
     end
     subgraph dbL["database"]
-        DML["dml/system_query/idempotency/*.sql"]
+        DML["dml/system_cqrs/idempotency/*.sql"]
         MIG["migrations: idempotency_keys (UNIQUE(scope,key), expires_at idx)"]
     end
     subgraph crossL["cross-cutting"]

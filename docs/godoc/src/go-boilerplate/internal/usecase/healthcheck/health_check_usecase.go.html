@@ -88,9 +88,9 @@
 <span id="L31" class="ln">    31  </span>
 <span id="L32" class="ln">    32  </span><span class="comment">// usecase は、システムの健全性チェックに関するユースケースを提供します。</span>
 <span id="L33" class="ln">    33  </span>type usecase struct {
-<span id="L34" class="ln">    34  </span>	tracer        observability.LayerTracer
-<span id="L35" class="ln">    35  </span>	clock         clock.Clock
-<span id="L36" class="ln">    36  </span>	dbSystemQuery query.DBSystemQuery
+<span id="L34" class="ln">    34  </span>	tracer       observability.LayerTracer
+<span id="L35" class="ln">    35  </span>	clock        clock.Clock
+<span id="L36" class="ln">    36  </span>	dbSystemCqrs query.DBSystemCqrs
 <span id="L37" class="ln">    37  </span>}
 <span id="L38" class="ln">    38  </span>
 <span id="L39" class="ln">    39  </span><span class="comment">// Usecase は、システムの健全性チェックに関するユースケースを定義します。</span>
@@ -100,11 +100,11 @@
 <span id="L43" class="ln">    43  </span>}
 <span id="L44" class="ln">    44  </span>
 <span id="L45" class="ln">    45  </span><span class="comment">// New は、システムの健全性チェックに関するユースケースを初期化します。</span>
-<span id="L46" class="ln">    46  </span>func New(dbsq query.DBSystemQuery, tf observability.TracerFactory, clock clock.Clock) Usecase {
+<span id="L46" class="ln">    46  </span>func New(dbsq query.DBSystemCqrs, tf observability.TracerFactory, clock clock.Clock) Usecase {
 <span id="L47" class="ln">    47  </span>	return &amp;usecase{
-<span id="L48" class="ln">    48  </span>		tracer:        tf.Usecase(),
-<span id="L49" class="ln">    49  </span>		clock:         clock,
-<span id="L50" class="ln">    50  </span>		dbSystemQuery: dbsq,
+<span id="L48" class="ln">    48  </span>		tracer:       tf.Usecase(),
+<span id="L49" class="ln">    49  </span>		clock:        clock,
+<span id="L50" class="ln">    50  </span>		dbSystemCqrs: dbsq,
 <span id="L51" class="ln">    51  </span>	}
 <span id="L52" class="ln">    52  </span>}
 <span id="L53" class="ln">    53  </span>
@@ -114,7 +114,7 @@
 <span id="L57" class="ln">    57  </span>	defer endSpan()
 <span id="L58" class="ln">    58  </span>
 <span id="L59" class="ln">    59  </span>	applTime := u.clock.Now()
-<span id="L60" class="ln">    60  </span>	dbHealth, err := u.dbSystemQuery.CheckDBHealth(ctx)
+<span id="L60" class="ln">    60  </span>	dbHealth, err := u.dbSystemCqrs.CheckDBHealth(ctx)
 <span id="L61" class="ln">    61  </span>	if err != nil {
 <span id="L62" class="ln">    62  </span>		return nil, err
 <span id="L63" class="ln">    63  </span>	}

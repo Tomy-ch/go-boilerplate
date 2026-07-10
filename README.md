@@ -145,7 +145,7 @@ The source of truth lives close to the code. Start here and follow the link that
 - [docs/architecture.md](docs/architecture.md) — system structure & layer responsibilities
 - [docs/rules.md](docs/rules.md) — non-negotiable rules (layer deps, generated code, DTO, tx, errors)
 - [docs/development-flow.md](docs/development-flow.md) — how to perform a change (API / DB / logic)
-- [docs/decisions.md](docs/decisions.md) — technology rationale (ADR)
+- [docs/adr/](docs/adr/README.md) — architecture decision records (ADR); technology rationale
 - [docs/testing-conventions.md](docs/testing-conventions.md) — testing conventions
 - [docs/project/versioning.md](docs/project/versioning.md) — versioning policy
 

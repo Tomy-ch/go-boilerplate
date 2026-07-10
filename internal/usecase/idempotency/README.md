@@ -93,9 +93,9 @@ Default scope = principal. To isolate keys per endpoint as well (`scope = princi
 | Layer | Path |
 | --- | --- |
 | migration | `database/migrations/000001_create_idempotency_keys.*.sql` |
-| sqlc DML | `database/dml/system_query/idempotency/` |
+| sqlc DML | `database/dml/system_cqrs/idempotency/` |
 | boundary | `internal/usecase/boundary/idempotency/` (`Store`) |
-| infrastructure | `internal/infrastructure/rdb/system_query/idempotency/` |
+| infrastructure | `internal/infrastructure/rdb/system_cqrs/idempotency/` |
 | usecase | `internal/usecase/idempotency/` (`Run[T]`, `GCUsecase`) |
 | controller (entry) | `internal/controller/httpstack/idempotency/` |
 | GC job | `internal/controller/job/idempotencygc/` |
