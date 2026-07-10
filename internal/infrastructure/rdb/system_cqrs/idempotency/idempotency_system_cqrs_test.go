@@ -192,11 +192,10 @@ func Test_store_Claim_lockTimeoutScope(t *testing.T) {
 
 			// claim 時の SET LOCAL lock_timeout(3s) が業務フェーズへ波及していないことを、
 			// 保持側 tx の advisory lock を claim の 3s 上限を超えて待たせても 55P03 にならない、
-			// という振る舞いで検証する。WithinTx は txLock で直列化するため、独立した 2 本の
-			// TransactionManager（= 2 コネクション）で並行させる。
+			// という振る舞いで検証する。WithinTx は txLock で直列化するため使わず、同一
+			// TransactionManager の Do を 2 本並行させる（Do ごとに別コネクションの tx を張る）。
 			claimTimeout, err := time.ParseDuration(claimLockTimeout)
 			require.NoError(t, err)
-			holdDuration := claimTimeout + 1500*time.Millisecond
 
 			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
 			txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
@@ -253,9 +252,13 @@ func Test_store_Claim_lockTimeoutScope(t *testing.T) {
 				})
 			}()
 
-			// 業務側が claim を終えロック待ちに入ってから、claim の 3s 上限を確実に超える時間だけ
-			// 保持してから解放する。lock_timeout が未復元なら業務側は 3s で 55P03 になっている。
-			time.Sleep(holdDuration)
+			// 業務側が実際に advisory lock 待ちへ入るまで待つ。goroutine 起動直後に保持タイマーを
+			// 始めると、CI 遅延でロック待ち突入前に解放してしまい偽陽性で通る窓があるため。
+			waitForAdvisoryLockWait(t, testDB, advisoryLockKey)
+
+			// ロック待ちを確認できたので、claim の 3s 上限を確実に超える時間だけ保持してから解放する。
+			// lock_timeout が未復元なら業務側は待機中に 3s で 55P03 になっている。
+			time.Sleep(claimTimeout + time.Second)
 			release()
 
 			<-subjectDone
@@ -265,6 +268,23 @@ func Test_store_Claim_lockTimeoutScope(t *testing.T) {
 			require.ErrorIs(t, <-holderDone, errHolderRollback)
 		})
 	})
+}
+
+// waitForAdvisoryLockWait は、指定キーの advisory lock 待ち（granted=false）が pg_locks に
+// 現れるまで待ちます。bigint 版 advisory lock は classid=上位32bit / objid=下位32bit /
+// objsubid=1 に分解されるため、キーを再構成して照合します。
+func waitForAdvisoryLockWait(t *testing.T, db driver.DatabaseDriver, key int64) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		var waiting bool
+		if err := driver.New(context.Background(), db).QueryRow(context.Background(),
+			`SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted
+				AND (classid::bigint << 32) + objid::bigint = $1 AND objsubid = 1)`,
+			key).Scan(&waiting); err != nil {
+			return false
+		}
+		return waiting
+	}, 10*time.Second, 50*time.Millisecond, "advisory lock 待ちに入らなかった")
 }
 
 func Test_store_errors(t *testing.T) {
