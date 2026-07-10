@@ -74,8 +74,8 @@ type Server struct {
 type Metrics struct {
 	Host     string `env:"HOST,required"`
 	Port     int    `env:"PORT,required"`
-	UserName string `env:"USERNAME,required"`
-	Password string `env:"PASSWORD,required"`
+	UserName string `env:"USERNAME,required,notEmpty"`
+	Password string `env:"PASSWORD,required,notEmpty"`
 }
 
 // Observability は OTLP exporter 設定（trace/metric/log の送出先種別・エンドポイント・プロトコル）、

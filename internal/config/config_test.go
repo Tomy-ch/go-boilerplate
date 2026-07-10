@@ -150,6 +150,24 @@ func TestNewConfig(t *testing.T) {
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
+
+		t.Run("METRICS_USERNAMEが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
+			setEnvVarsForTesting(t)
+			t.Setenv("METRICS_USERNAME", "") // 空文字は required を通過するが notEmpty で弾く
+
+			actual, err := New()
+			assert.Nil(t, actual)
+			require.ErrorContains(t, err, "METRICS_USERNAME")
+		})
+
+		t.Run("METRICS_PASSWORDが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
+			setEnvVarsForTesting(t)
+			t.Setenv("METRICS_PASSWORD", "") // 空文字は required を通過するが notEmpty で弾く
+
+			actual, err := New()
+			assert.Nil(t, actual)
+			require.ErrorContains(t, err, "METRICS_PASSWORD")
+		})
 	})
 }
 
