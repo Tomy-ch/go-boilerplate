@@ -114,4 +114,9 @@ var (
 		errInvalidConfig,
 		"invalid auth config, either cookie name or header name must be provided",
 	)
+	// ErrEmbeddedEnvMismatch は、production モードなのに非本番の env がバイナリへ埋め込まれている（materialize-env 忘れ）ことを示すエラーです。
+	ErrEmbeddedEnvMismatch = xerrors.Wrap(
+		errInvalidConfig,
+		"embedded env is non-production while running in production mode; run make materialize-env before building",
+	)
 )

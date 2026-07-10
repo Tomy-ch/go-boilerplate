@@ -27,6 +27,15 @@ func TestLoad(t *testing.T) {
 			require.NoError(t, Load())
 			assert.Equal(t, "existing-value", os.Getenv("APP_NAME"))
 		})
+
+		t.Run("埋め込み env の APP_ENV 素性をパッケージ変数へ捕捉する", func(t *testing.T) {
+			// OS 側で APP_ENV を上書きしても、捕捉されるのはあくまで埋め込み値であること。
+			t.Setenv("APP_ENV", "injected-at-runtime")
+			embeddedAppEnv = ""
+
+			require.NoError(t, Load())
+			assert.Equal(t, EnvLocal, embeddedAppEnv)
+		})
 	})
 }
 
