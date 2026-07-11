@@ -282,18 +282,54 @@ func Test_validateEmbeddedEnv(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("productionモードで非本番素性(deny-list)の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
-			for _, env := range []string{EnvLocal, EnvCI, EnvTest, EnvDevelopment, ""} {
-				func() {
-					defer restore()()
-					embeddedAppEnv = env
+		t.Run("productionモードでlocal素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvLocal
 
-					cfg := mockLoader(t)
-					cfg.App.Mode = ProductionMode
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
 
-					require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
-				}()
-			}
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードでci素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvCI
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードでtest素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvTest
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードでdevelopment素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvDevelopment
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードで埋め込みenvが空の場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = ""
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
 		})
 	})
 }
