@@ -139,6 +139,10 @@ func NewGenerator(logger logging.Logger, workDir string) *Generator {
 func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	logger := gen.logger
 
+	if err := validateTargetType(targetType); err != nil {
+		return err
+	}
+
 	categories, err := gen.fs.ListSubDirNames(gen.dmlTypeRootAbs(targetType))
 	if err != nil {
 		logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error(ctx, "failed to list directories",
@@ -197,6 +201,16 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	}
 
 	return nil
+}
+
+// validateTargetType は、許可済みの DML カテゴリタイプのみを受け付けます。
+func validateTargetType(targetType string) error {
+	switch targetType {
+	case "repository", "query_service", "system_cqrs", "command_service":
+		return nil
+	default:
+		return xerrors.New("invalid target type: " + targetType)
+	}
 }
 
 // dmlTypeRootAbs は、指定されたタイプのDMLルートディレクトリの絶対パスを返します。
