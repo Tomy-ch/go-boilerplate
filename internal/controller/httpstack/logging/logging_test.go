@@ -136,6 +136,10 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 			fields := l.buildRequestLogFields(time.Now())
 
 			assert.Contains(t, fields, logging.String(logging.MethodKey, http.MethodGet))
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/path?foo=bar"))
+			assert.Contains(t, fields, logging.String(logging.RemoteIPKey, "1.2.3.4:5678"))
+			assert.Contains(t, fields, logging.String(logging.HostKey, "example.local"))
+			assert.Contains(t, fields, logging.String(logging.UserAgentKey, "ua-test"))
 		})
 	})
 }
