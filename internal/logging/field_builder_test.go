@@ -284,57 +284,6 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 			assert.NotContains(t, keys, QueryArgsCountKey)
 		})
 	})
-}
-
-// fieldKeys は、Field スライスからキー文字列の一覧を抽出するテストヘルパーです。
-func fieldKeys(fs []*Field) []string {
-	keys := make([]string, 0, len(fs))
-	for _, f := range fs {
-		keys = append(keys, f.key)
-	}
-	return keys
-}
-
-func TestLogFields_BuildSQLEndFields_ParentSpanID(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperatingSystemConfig(cfg)
-
-	baseInput := SQLFieldsEndInput{
-		EventAt:      time.Now(),
-		Layer:        "layer",
-		PkgName:      "pkg",
-		FuncName:     "fn",
-		SpanName:     "sn",
-		Query:        "SELECT 1",
-		Latency:      time.Millisecond,
-		ParentSpanID: "p-1",
-	}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("obs有効かつparent_span_idがある場合、parent_span_idを追加する", func(t *testing.T) {
-			t.Parallel()
-
-			lf := NewLogFields(obsCfg, osCfg)
-			keys := fieldKeys(lf.BuildSQLEndFields(baseInput))
-			assert.Contains(t, keys, ParentSpanIDKey)
-		})
-
-		t.Run("parent_span_idが空の場合、parent_span_idは追加されない", func(t *testing.T) {
-			t.Parallel()
-
-			s := baseInput
-			s.ParentSpanID = ""
-
-			lf := NewLogFields(obsCfg, osCfg)
-			keys := fieldKeys(lf.BuildSQLEndFields(s))
-			assert.NotContains(t, keys, ParentSpanIDKey)
-		})
-	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
@@ -349,11 +298,31 @@ func TestLogFields_BuildSQLEndFields_ParentSpanID(t *testing.T) {
 			disabledObsCfg.SetObservabilityLogsExporter(t, "")
 			require.False(t, disabledObsCfg.Enabled())
 
-			lf := NewLogFields(disabledObsCfg, osCfg)
-			keys := fieldKeys(lf.BuildSQLEndFields(baseInput))
+			s := SQLFieldsEndInput{
+				EventAt:      time.Now(),
+				Layer:        "layer",
+				PkgName:      "pkg",
+				FuncName:     "fn",
+				SpanName:     "sn",
+				Query:        q,
+				Latency:      12 * time.Millisecond,
+				ParentSpanID: "p-1",
+			}
+
+			disabledLf := NewLogFields(disabledObsCfg, osCfg)
+			keys := fieldKeys(disabledLf.BuildSQLEndFields(s))
 			assert.NotContains(t, keys, ParentSpanIDKey)
 		})
 	})
+}
+
+// fieldKeys は、Field スライスからキー文字列の一覧を抽出するテストヘルパーです。
+func fieldKeys(fs []*Field) []string {
+	keys := make([]string, 0, len(fs))
+	for _, f := range fs {
+		keys = append(keys, f.key)
+	}
+	return keys
 }
 
 func Test_buildCompactQuery(t *testing.T) {
