@@ -14,6 +14,20 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// newExtractSpyLogger は、extract の呼び出しを記録する logger と呼び出し有無のフラグを返すテストヘルパーです。
+func newExtractSpyLogger(t *testing.T) (*logger, *bool) {
+	t.Helper()
+
+	called := false
+	return &logger{
+		log: zap.NewNop(),
+		extract: func(context.Context) (string, string, bool) {
+			called = true
+			return "t", "s", true
+		},
+	}, &called
+}
+
 func TestWithCore(t *testing.T) {
 	t.Parallel()
 
@@ -45,14 +59,7 @@ func TestWithCore(t *testing.T) {
 		t.Run("extractがTee後のLoggerへ伝播する", func(t *testing.T) {
 			t.Parallel()
 
-			called := false
-			base := &logger{
-				log: zap.NewNop(),
-				extract: func(context.Context) (string, string, bool) {
-					called = true
-					return "t", "s", true
-				},
-			}
+			base, called := newExtractSpyLogger(t)
 			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
 			extra := zapcore.NewCore(enc, zapcore.AddSync(&bytes.Buffer{}), zapcore.DebugLevel)
 
@@ -60,7 +67,7 @@ func TestWithCore(t *testing.T) {
 			require.True(t, ok)
 			require.NotNil(t, got.extract)
 			got.extract(context.Background())
-			assert.True(t, called)
+			assert.True(t, *called)
 		})
 
 		t.Run("追加coreは元Loggerの最小レベルでゲートされる", func(t *testing.T) {
@@ -171,20 +178,13 @@ func Test_logger_CallerSkip(t *testing.T) {
 		t.Run("extractがCallerSkip後のLoggerへ伝播する", func(t *testing.T) {
 			t.Parallel()
 
-			called := false
-			base := &logger{
-				log: zap.NewNop(),
-				extract: func(context.Context) (string, string, bool) {
-					called = true
-					return "t", "s", true
-				},
-			}
+			base, called := newExtractSpyLogger(t)
 
 			child, ok := base.CallerSkip(1).(*logger)
 			require.True(t, ok)
 			require.NotNil(t, child.extract)
 			child.extract(context.Background())
-			assert.True(t, called)
+			assert.True(t, *called)
 		})
 	})
 }
@@ -212,20 +212,13 @@ func Test_logger_Named(t *testing.T) {
 		t.Run("extractが子Loggerへ伝播する", func(t *testing.T) {
 			t.Parallel()
 
-			called := false
-			base := &logger{
-				log: zap.NewNop(),
-				extract: func(context.Context) (string, string, bool) {
-					called = true
-					return "t", "s", true
-				},
-			}
+			base, called := newExtractSpyLogger(t)
 
 			child, ok := base.Named("child").(*logger)
 			require.True(t, ok)
 			require.NotNil(t, child.extract)
 			child.extract(context.Background())
-			assert.True(t, called)
+			assert.True(t, *called)
 		})
 	})
 }
