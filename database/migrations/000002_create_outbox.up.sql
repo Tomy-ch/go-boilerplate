@@ -31,3 +31,5 @@ COMMENT ON COLUMN outbox.created_at IS '作成日時';
 COMMENT ON COLUMN outbox.published_at IS 'publish 完了日時（published 遷移時刻）';
 
 CREATE INDEX outbox_pending_idx ON outbox (id) WHERE status = 'pending';
+CREATE INDEX outbox_published_gc_idx ON outbox (published_at) WHERE status = 'published';
+CREATE INDEX outbox_dead_idx ON outbox (id) WHERE status = 'dead';
