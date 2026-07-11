@@ -316,7 +316,10 @@ func Test_Engine_ExtendHeartbeat(t *testing.T) {
 			set := baseSettings()
 			set.ExtendInterval = 5 * time.Millisecond
 
-			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+			// ハートビート goroutine は stop 後に "extend failed" を 1 度だけ出しうるため、
+			// test 終了と競合しない t 非依存の logger を使う（このテストはログを検証しない）。
+			logger, _ := logging.NewObservedTestLogger(t)
+			cancel, done := startEngine(t, set, logger, w)
 			defer func() { closeRelease(); cancel(); <-done }()
 
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
@@ -630,21 +633,27 @@ func Test_Engine_CircuitBreaker(t *testing.T) {
 			set.MaxInFlight = 1
 			set.BatchSize = 1
 			set.CircuitFailureThreshold = 2
-			set.CircuitOpenBackoffInitial = 300 * time.Millisecond
-			set.CircuitOpenBackoffMax = 300 * time.Millisecond
+			// cooldown を 1s 級へ引き上げ、-race のスローダウン下でも観測窓に Half-open probe が割り込まないようにする。
+			set.CircuitOpenBackoffInitial = time.Second
+			set.CircuitOpenBackoffMax = time.Second
 
 			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
 			defer func() { cancel(); <-done }()
 
-			// B4-1: 連続 2 失敗で Open。cooldown 中は Receive されず Nack が増えない。
+			// B4-1: 連続 2 失敗で Open へ遷移する。MaxInFlight=1 のため poll loop は失敗確定
+			// （onFailure で trip）まで次の Receive に進めず、Open 遷移後は cooldown 待機に入る。
 			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 2 }, eventually, tick)
-			nacksAtOpen := len(f.NackedIDs())
-			time.Sleep(80 * time.Millisecond) // cooldown(300ms) 未満
-			assert.Len(t, f.NackedIDs(), nacksAtOpen)
+			// Open 中は intake が止まり Receive されないため、cooldown（1s）より十分短い窓で
+			// Nack も Ack も増えないことを確認する（実時間 sleep には依存しない）。
+			require.Never(t, func() bool {
+				return len(f.NackedIDs()) > 2 || len(f.AckedIDs()) > 0
+			}, 200*time.Millisecond, tick)
+			// 再配送された "a" が Receive されず queue に滞留していることが intake 停止の証跡。
+			assert.Equal(t, 1, f.QueueLen())
 
 			// B4-2: 回復させると cooldown 経過後の Half-open 試行で成功し Ack される。
 			failing.Store(false)
-			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, 3*time.Second, tick)
+			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, 5*time.Second, tick)
 		})
 	})
 

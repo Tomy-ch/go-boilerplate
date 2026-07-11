@@ -13,7 +13,7 @@ COVERAGE_THRESHOLD := 90
 
 test:
 	@TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
-	go test $$TGT_PKGS -cover -count=1
+	go test $$TGT_PKGS -race -cover -count=1
 
 test-cached:
 	@TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
@@ -39,7 +39,7 @@ test-cover-ci:
 		| grep -Ev '$(GO_TEST_EXCLUDE)' \
 		| tr '\n' ',' \
 		| sed 's/,$$//')"; \
-	go test $$TGT_PKGS -coverpkg=$$COVER_PKGS -coverprofile=coverage.out -covermode=atomic -count=1
+	go test $$TGT_PKGS -race -coverpkg=$$COVER_PKGS -coverprofile=coverage.out -covermode=atomic -count=1
 
 cover-gate:
 	@test -f coverage.out || { echo "❌ coverage.out がありません（先に make test-cover-ci を実行）"; exit 1; }
