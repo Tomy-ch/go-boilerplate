@@ -163,7 +163,28 @@ func validateConfig(cfg Loader) error {
 		return err
 	}
 
+	if err := validateEmbeddedEnv(cfg.App); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// validateEmbeddedEnv は、production モードでバイナリに焼き込まれた env の素性を検証します。
+// 実効モードが production かつ埋め込み env の APP_ENV が非本番（deny-list）の場合、
+// materialize-env 忘れによりローカル値が本番へ紛れ込んでいるとみなしエラーを返します。
+// deny 型のため、未知の新環境ラベルには寛容です。development モードは実行時注入を優先する設計思想により全て許容します。
+func validateEmbeddedEnv(appCfg Application) error {
+	if appCfg.Mode != ProductionMode {
+		return nil
+	}
+
+	switch embeddedAppEnv {
+	case EnvLocal, EnvCI, EnvTest, EnvDevelopment, "":
+		return ErrEmbeddedEnvMismatch
+	default:
+		return nil
+	}
 }
 
 // validateApplicationConfig は、アプリケーション設定を検証します。

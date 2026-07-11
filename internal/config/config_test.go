@@ -150,6 +150,24 @@ func TestNewConfig(t *testing.T) {
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
+
+		t.Run("METRICS_USERNAMEが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
+			setEnvVarsForTesting(t)
+			t.Setenv("METRICS_USERNAME", "") // 空文字は required を通過するが notEmpty で弾く
+
+			actual, err := New()
+			assert.Nil(t, actual)
+			require.ErrorContains(t, err, "METRICS_USERNAME")
+		})
+
+		t.Run("METRICS_PASSWORDが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
+			setEnvVarsForTesting(t)
+			t.Setenv("METRICS_PASSWORD", "") // 空文字は required を通過するが notEmpty で弾く
+
+			actual, err := New()
+			assert.Nil(t, actual)
+			require.ErrorContains(t, err, "METRICS_PASSWORD")
+		})
 	})
 }
 
@@ -220,6 +238,62 @@ func Test_validateConfig(t *testing.T) {
 
 			err := validateConfig(cfg)
 			require.ErrorIs(t, err, ErrAuthConfigMissing)
+		})
+	})
+}
+
+//nolint:paralleltest // embeddedAppEnv パッケージ変数を操作するため並列化不可
+func Test_validateEmbeddedEnv(t *testing.T) {
+	restore := func() func() {
+		saved := embeddedAppEnv
+		return func() { embeddedAppEnv = saved }
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("productionモードで本番素性(prd)の埋め込みenvの場合、エラーが返されないこと", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvProduction
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.NoError(t, validateConfig(cfg))
+		})
+
+		t.Run("productionモードで未知の環境素性の場合はdeny-listにないため許容されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = "unknown-future-env"
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.NoError(t, validateConfig(cfg))
+		})
+
+		t.Run("developmentモードでは非本番素性の埋め込みenvでも許容されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvLocal
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = DevelopmentMode
+
+			require.NoError(t, validateConfig(cfg))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("productionモードで非本番素性(deny-list)の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			for _, env := range []string{EnvLocal, EnvCI, EnvTest, EnvDevelopment, ""} {
+				func() {
+					defer restore()()
+					embeddedAppEnv = env
+
+					cfg := mockLoader(t)
+					cfg.App.Mode = ProductionMode
+
+					require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+				}()
+			}
 		})
 	})
 }
