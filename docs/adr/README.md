@@ -137,6 +137,7 @@ do X") are tagged `setup-review`.
 | [0091](0091-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
 | [0092](0092-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
 | [0093](0093-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
+| [0094](0094-outbox-relay-hardening-delegated.md) | Delegate outbox-relay duplicate-window hardening (multi-layer lease redesign) to production copies | accepted (exclusion) |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).
