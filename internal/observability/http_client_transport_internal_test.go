@@ -2,7 +2,6 @@ package observability
 
 import (
 	"context"
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,12 +38,6 @@ func TestGuardedDialControl(t *testing.T) {
 			// 100.128.0.0 は /10 の外＝グローバル扱いで通ること（過剰ブロック防止）。
 			require.NoError(t, guardedDialControl(deny, "tcp", "100.128.0.1:80", nil))
 		})
-
-		t.Run("IPリテラルでないホスト名は素通しする", func(t *testing.T) {
-			t.Parallel()
-			// ParseIP が nil（未解決ホスト名）なら、実接続先 IP の判定は dial 後に委ねるため素通しする。
-			require.NoError(t, guardedDialControl(deny, "tcp", "example.com:80", nil))
-		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -54,6 +47,20 @@ func TestGuardedDialControl(t *testing.T) {
 			t.Parallel()
 			// net.SplitHostPort が失敗するアドレス（ポート区切り無し）はそのままエラーを返す。
 			require.Error(t, guardedDialControl(deny, "tcp", "noport", nil))
+		})
+
+		t.Run("IPリテラルでないホスト名はfail-closeで拒否する", func(t *testing.T) {
+			t.Parallel()
+			// パース不能なアドレスは許可せず拒否する（fail-close）。
+			require.Error(t, guardedDialControl(allow, "tcp", "example.com:80", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "example.com:80", nil))
+		})
+
+		t.Run("zone付きIPv6リンクローカルはフラグに関わらず拒否する", func(t *testing.T) {
+			t.Parallel()
+			// fe80::1%eth0 は zone 付きでも link-local と判定してブロックする（判定回避の穴を塞ぐ）。
+			require.Error(t, guardedDialControl(allow, "tcp", "[fe80::1%eth0]:80", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "[fe80::1%eth0]:80", nil))
 		})
 
 		t.Run("リンクローカル(メタデータ)はフラグに関わらず拒否する", func(t *testing.T) {
@@ -92,33 +99,6 @@ func TestGuardedDialControl(t *testing.T) {
 			require.Error(t, guardedDialControl(allow, "tcp", "192.0.0.1:80", nil))
 			// RFC 3849 IPv6 ドキュメント用（2001:db8::/32）— テスト/文書専用で実到達不能。
 			require.Error(t, guardedDialControl(allow, "tcp", "[2001:db8::1]:443", nil))
-		})
-	})
-}
-
-func TestMustParseCIDR(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("正当なCIDRリテラルを*net.IPNetへ解析する", func(t *testing.T) {
-			t.Parallel()
-
-			n := mustParseCIDR("10.0.0.0/8")
-
-			require.NotNil(t, n)
-			assert.True(t, n.Contains(net.ParseIP("10.1.2.3")))
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("不正なCIDRリテラルはpanicする", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Panics(t, func() { mustParseCIDR("not-a-cidr") })
 		})
 	})
 }

@@ -34,6 +34,9 @@ func parseEndpoint(raw string) (Endpoint, error) {
 	if u.Host == "" {
 		return "", xerrors.Wrap(ErrInvalidEndpoint, "OUTBOX_ENDPOINT must include a host")
 	}
+	if u.Hostname() == "" {
+		return "", xerrors.Wrap(ErrInvalidEndpoint, "OUTBOX_ENDPOINT must include a hostname")
+	}
 
 	return Endpoint(raw), nil
 }
