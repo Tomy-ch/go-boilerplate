@@ -23,6 +23,25 @@ func emitParams() outboxbndry.EmitParams {
 	}
 }
 
+// newTestStore は、共有テストDB上の store と tx 直列化ランナーを組み立てるテストヘルパーです。
+func newTestStore(t *testing.T) (*store, testkit.TransactionRunner) {
+	t.Helper()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	return &store{tracer: lt, db: testDB}, txm
+}
+
+// canceledContext は、キャンセル済みの context を返すテストヘルパーです。
+func canceledContext(t *testing.T) context.Context {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
@@ -36,18 +55,15 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, expected, New(testDB, tf))
 }
 
-func Test_store_lifecycle(t *testing.T) {
+func Test_store_Insert(t *testing.T) {
 	t.Parallel()
 
-	testDB := testkit.NewTestDB(t)
-	lt := observability.NewMockInfraLayerTracer(t)
-	txm := testkit.NewTestTransactionRunner(t)
-	s := &store{tracer: lt, db: testDB}
+	s, txm := newTestStore(t)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Insert→claim→publish の一連が成立し published 後は claim されない", func(t *testing.T) {
+		t.Run("非nilのmessage_idを返しpending行を作成する", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -55,7 +71,42 @@ func Test_store_lifecycle(t *testing.T) {
 				require.NoError(t, err)
 				assert.False(t, msgID.IsNil())
 
-				// pending を claim すると挿入行が返る。
+				// 挿入行は pending として claim できる。
+				msgs, err := s.ClaimPending(ctx, 10)
+				require.NoError(t, err)
+				require.Len(t, msgs, 1)
+				assert.Equal(t, msgID, msgs[0].MessageID)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := s.Insert(canceledContext(t), emitParams())
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_ClaimPending(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("pending行を挿入内容とともに返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				msgID, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+
 				msgs, err := s.ClaimPending(ctx, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
@@ -63,16 +114,79 @@ func Test_store_lifecycle(t *testing.T) {
 				assert.Equal(t, "purchase.created.v1", msgs[0].EventType)
 				assert.JSONEq(t, `{"v":1}`, string(msgs[0].Payload))
 				assert.Equal(t, int32(0), msgs[0].Attempts)
+			})
+		})
 
-				// published へ遷移すると再 claim では返らない。
+		t.Run("pending行が無ければ空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				msgs, err := s.ClaimPending(ctx, 10)
+				require.NoError(t, err)
+				assert.Empty(t, msgs)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := s.ClaimPending(canceledContext(t), 10)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_MarkPublished(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("publishedへ遷移し再claimでは返らない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				_, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+				msgs, err := s.ClaimPending(ctx, 10)
+				require.NoError(t, err)
+				require.Len(t, msgs, 1)
+
 				require.NoError(t, s.MarkPublished(ctx, msgs[0].ID))
+
 				after, err := s.ClaimPending(ctx, 10)
 				require.NoError(t, err)
 				assert.Empty(t, after)
 			})
 		})
+	})
 
-		t.Run("MarkFailed は attempts を加算し加算後の値を返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorIs(t, s.MarkPublished(canceledContext(t), 1), apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_MarkFailed(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("attemptsを加算し加算後の値を返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -88,7 +202,38 @@ func Test_store_lifecycle(t *testing.T) {
 			})
 		})
 
-		t.Run("MarkDead→ReplayDead で dead が pending へ戻る", func(t *testing.T) {
+		t.Run("pendingでないidに対しては0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				attempts, err := s.MarkFailed(ctx, 1<<60, "boom")
+				require.NoError(t, err)
+				assert.Equal(t, int32(0), attempts)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := s.MarkFailed(canceledContext(t), 1, "boom")
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_MarkDead(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("deadへ遷移しclaimされなくなる", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -99,12 +244,44 @@ func Test_store_lifecycle(t *testing.T) {
 				require.Len(t, msgs, 1)
 
 				require.NoError(t, s.MarkDead(ctx, msgs[0].ID))
-				// dead 中は claim されない。
+
 				none, err := s.ClaimPending(ctx, 10)
 				require.NoError(t, err)
 				assert.Empty(t, none)
+			})
+		})
+	})
 
-				// replay で pending へ復帰し再び claim される。
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorIs(t, s.MarkDead(canceledContext(t), 1), apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_ReplayDead(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("dead行がpendingへ戻り再びclaimされる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				_, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+				msgs, err := s.ClaimPending(ctx, 10)
+				require.NoError(t, err)
+				require.Len(t, msgs, 1)
+				require.NoError(t, s.MarkDead(ctx, msgs[0].ID))
+
 				replayed, err := s.ReplayDead(ctx, nil)
 				require.NoError(t, err)
 				assert.GreaterOrEqual(t, replayed, int64(1))
@@ -115,7 +292,7 @@ func Test_store_lifecycle(t *testing.T) {
 			})
 		})
 
-		t.Run("ReplayDead に message_id を指定すると当該 1 件のみ pending へ戻る", func(t *testing.T) {
+		t.Run("message_idを指定すると当該1件のみpendingへ戻る", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -145,8 +322,29 @@ func Test_store_lifecycle(t *testing.T) {
 				assert.NotEqual(t, otherMsgID, back[0].MessageID)
 			})
 		})
+	})
 
-		t.Run("DeletePublished は cutoff より古い published 行を削除する", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := s.ReplayDead(canceledContext(t), nil)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_DeletePublished(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("cutoffより古いpublished行を削除する", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -163,7 +361,7 @@ func Test_store_lifecycle(t *testing.T) {
 			})
 		})
 
-		t.Run("DeletePublished は cutoff より新しい published 行が残る場合は0件", func(t *testing.T) {
+		t.Run("cutoffより新しいpublished行が残る場合は0件", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -180,8 +378,29 @@ func Test_store_lifecycle(t *testing.T) {
 				assert.Equal(t, int64(0), deleted)
 			})
 		})
+	})
 
-		t.Run("OldestPendingCreatedAt は pending 有無で ok を返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := s.DeletePublished(canceledContext(t), time.Now(), 1)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_OldestPendingCreatedAt(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("pending有無でokを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -199,48 +418,16 @@ func Test_store_lifecycle(t *testing.T) {
 				assert.False(t, createdAt.IsZero())
 			})
 		})
-
-		t.Run("MarkFailed は pending でない id に対しては 0 を返す", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				attempts, err := s.MarkFailed(ctx, 1<<60, "boom")
-				require.NoError(t, err)
-				assert.Equal(t, int32(0), attempts)
-			})
-		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("キャンセル済みコンテキストでは各操作がErrCanceledへ正規化して返す", func(t *testing.T) {
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			cancel()
-
-			_, insertErr := s.Insert(ctx, emitParams())
-			require.ErrorIs(t, insertErr, apperror.ErrCanceled)
-
-			_, claimErr := s.ClaimPending(ctx, 10)
-			require.ErrorIs(t, claimErr, apperror.ErrCanceled)
-
-			require.ErrorIs(t, s.MarkPublished(ctx, 1), apperror.ErrCanceled)
-
-			_, failErr := s.MarkFailed(ctx, 1, "boom")
-			require.ErrorIs(t, failErr, apperror.ErrCanceled)
-
-			require.ErrorIs(t, s.MarkDead(ctx, 1), apperror.ErrCanceled)
-
-			_, replayErr := s.ReplayDead(ctx, nil)
-			require.ErrorIs(t, replayErr, apperror.ErrCanceled)
-
-			_, delErr := s.DeletePublished(ctx, time.Now(), 1)
-			require.ErrorIs(t, delErr, apperror.ErrCanceled)
-
-			_, _, oldestErr := s.OldestPendingCreatedAt(ctx)
-			require.ErrorIs(t, oldestErr, apperror.ErrCanceled)
+			_, _, err := s.OldestPendingCreatedAt(canceledContext(t))
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
 }
