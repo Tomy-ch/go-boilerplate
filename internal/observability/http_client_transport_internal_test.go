@@ -63,6 +63,14 @@ func TestGuardedDialControl(t *testing.T) {
 			require.Error(t, guardedDialControl(deny, "tcp", "[fe80::1%eth0]:80", nil))
 		})
 
+		t.Run("IPv4-mappedのIPv6リテラルでも予約帯/CGNATを拒否する", func(t *testing.T) {
+			t.Parallel()
+			// netip.Prefix.Contains は family 不一致（IPv4 prefix vs 4-in-6）で false を返すため、
+			// Unmap による正規化が退行すると ::ffff: 形式で判定を迂回できてしまう。
+			require.Error(t, guardedDialControl(allow, "tcp", "[::ffff:240.0.0.1]:80", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "[::ffff:100.64.0.1]:80", nil))
+		})
+
 		t.Run("リンクローカル(メタデータ)はフラグに関わらず拒否する", func(t *testing.T) {
 			t.Parallel()
 			require.Error(t, guardedDialControl(allow, "tcp", "169.254.169.254:80", nil))
