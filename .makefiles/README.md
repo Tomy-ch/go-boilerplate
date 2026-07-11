@@ -30,7 +30,7 @@ Make targets are mainly organized into the following units.
 
 ## Notes
 
-- Adding a new `.mk` file under a group is enough — `makefile` already `include`s all known groups.
+- Adding a new target to an existing group file needs no top-level edit. Adding a new `.mk` file, however, requires appending its `include` line to the top-level `makefile` — files are included individually, not by wildcard.
 - Prefer `make new-migrate-<name>` (and similar helpers) over manual file creation; the helpers enforce naming conventions and number sequences.
 - For one-off operational commands (`make setup-repo`, etc.) keep them under `.makefiles/github/operation/` so they stay separate from developer-facing targets.
 
