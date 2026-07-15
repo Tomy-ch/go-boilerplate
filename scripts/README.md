@@ -18,6 +18,7 @@ scripts/
 ├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
 ├── genctxkey/                  # Context key code generator (Go)
 ├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)
+├── pin-images/                 # Pin Dockerfile `FROM` base images to digests (Go)
 └── setup/                     # Initial project setup scripts
     ├── replace-module.mjs
     ├── replace-app-metadata.mjs
@@ -72,6 +73,7 @@ See [genctxkey/README.md](genctxkey/README.md) for details.
 |Script|Description|Invoked By|
 |---|---|---|
 |`pin-actions/`|Pin every external GitHub Actions `uses:` in `.github/workflows/**` and `.github/actions/**` to an immutable commit SHA. `resolve` walks the references and resolves each tag/branch to a SHA via `git ls-remote`, writing the lockfile `.github/actions-pin.toml` (SSOT) — with a supply-chain quarantine that refuses commits younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14, keeping the existing pin instead). `apply` rewrites each `uses:` to `@<sha> # <tag>` from the lockfile. `check` runs the same comparison without writing and exits non-zero on any unpinned/stale/unregistered reference (for CI / hooks). Idempotent: an already-pinned line re-resolves off its trailing `# <tag>` comment.|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
+|`pin-images/`|Pin every `FROM` base image in `docker/*/Dockerfile` to an immutable digest. `resolve` collects each `image:tag` and resolves its current digest via `docker buildx imagetools inspect`, writing the lockfile `docker/images-pin.toml` (SSOT) — with a supply-chain cooldown that refuses digests whose image-config `created` is younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14). A mutable tag has no queryable history, so the step-back target is the tool's own prior lock entry; with none (bootstrap) the image is left tag-only. `apply` normalizes each `FROM` to `image:tag@sha256:...` from the lockfile and strips the digest back to tag-only for quarantined images. `check` runs the same comparison without writing and exits non-zero on drift (for CI / hooks). The tag stays inline as the version SSOT.|`make pin-images-resolve` / `pin-images-apply` / `pin-images-check`|
 
 ### Initial Setup (`setup/`)
 

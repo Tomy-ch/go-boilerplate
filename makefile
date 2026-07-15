@@ -50,6 +50,7 @@ include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
 # Docker関連
 include .makefiles/docker/lint.mk
+include .makefiles/docker/pin.mk
 
 # 一括実行系ファイル
 # GitHub関連

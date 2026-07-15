@@ -5,7 +5,7 @@ ARG MISE_VERSION=v2026.6.0
 # Go ツールビルダー：mise.toml のバージョン pin で Go 系ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 go_tools ステージに mise 本体を残さないための中継。
 # ------------------------------
-FROM golang:1.26.5-alpine AS go_tools_builder
+FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS go_tools_builder
 
 # CGO_ENABLED=0: `go:` backend で install されるツール（mockgen）を静的バイナリにする
 ENV CGO_ENABLED=0
@@ -53,7 +53,7 @@ RUN mkdir /out \
 # Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
-FROM golang:1.26.5-alpine AS go_tools
+FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS go_tools
 
 RUN apk add --no-cache \
     bash \
@@ -78,7 +78,7 @@ CMD []
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
 # 補助スクリプトが依存する npm パッケージをローカル node_modules にインストールしておく
 # ------------------------------
-FROM node:24.18.0-alpine AS node_tools
+FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS node_tools
 
 # パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
@@ -106,10 +106,12 @@ RUN mise install npm:@redocly/cli \
     && mise install npm:@commitlint/cli \
     && rm -rf /root/.cache /root/.npm
 
-# scripts の依存を in-tree（/app/scripts/node_modules）へ install する
-WORKDIR /app/scripts
-COPY docker/tools/package.json docker/tools/package-lock.json ./
-RUN npm ci \
+# scripts の依存を in-tree（/app/scripts/node_modules）へ install する。
+# --ignore-scripts はサプライチェーン攻撃の主要 RCE 経路（依存の postinstall 等）を封じる防御。
+# 本ツリーの install script は esbuild のみで、そのバイナリは @esbuild/<platform>（lock 済み）
+# から実行時に解決されるため、script を飛ばしても portal ビルドは動く。
+COPY docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc ./
+RUN npm ci --ignore-scripts \
     && npm cache clean --force \
     && rm -rf /root/.npm
 
@@ -126,7 +128,7 @@ CMD []
 #       jinja extras 無しの素の sqlfluff を入れている。
 #       jinja テンプレートを SQL ファイルで使う場合は別途見直し。
 # ------------------------------
-FROM python:3.14.6-slim AS python_tools
+FROM python:3.14.6-slim@sha256:d3400aa122fa42cf0af0dbe8ec3091b047eac5c8f7e3539f7135e86d855dc015 AS python_tools
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
