@@ -128,7 +128,7 @@ subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の�
 - テストの harness が**実行しない** constructor / provider / factory 本体を通ってしか到達できない分岐は未カバー扱い — 依存グラフを構築するだけでコンストラクタを実行しないグラフ / 配線検証 harness はそれらの本体をカバーしないので、直接の単体テスト（関数を実際に呼ぶ）が要る。 適用される harness は層 README の Test Strategy が明示する。
 - 「再現できない」と理由付けされた `t.Skip` は受け入れず軸A のギャップとして疑う: 層 README の Test Strategy に到達できる統合スタイルの harness が無いか確認する（例: 真の並行 / ロック競合は、直列化するテスト用 tx ヘルパでは表現できず独立コネクションが要る）。skip 分岐を具体的な再現経路つきで 追加検討 として surface する。
 
-カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。
+カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。加えて **criticality（1-10）** を*本番影響*で採点して付す（レンズ由来 severity とは直交する軸 —「追加検討」は*どの種類*のギャップか、criticality は*壊れたらどれだけ悪いか*）。未検証のまま壊れた場合に出荷されるリグレッションを一文添え、追加検討 finding を criticality 降順に並べて最悪から潰せるようにする: 9-10 データ破壊 / 認証・認可の穴 / 整合性違反 · 7-8 ユーザ影響のあるロジック誤り（誤った status / DTO マッピング）· 5-6 軽微な edge / boundary · 3-4 網羅性のための nice-to-have · 1-2 任意。構造準拠（修正必須）には criticality を付けない（常に即修正）。
 
 **軸B — 意味網羅**: カバー済みの各分岐のケースが、単に実行されたことではなく*その分岐固有*の outcome を assert しているか。 本軸は **`docs/testing-conventions.md` section 10 が定める意味網羅バー**を subject の分岐集合に適用する — 「固有に assert 済み」の定義は §10 が SSOT（`scaffold-test` と共有し、生成器はこれを満たすよう生成する）。 以下の分岐別チェックはその具体適用。
 
@@ -189,8 +189,9 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
   - verifier: CONFIRMED / PLAUSIBLE
 
 ## 観点ギャップ: 分岐網羅（追加検討）
-- <file> に対して subject <subject path> から導出:
+- <file> に対して subject <subject path> から導出（criticality 降順）:
   - 分岐未カバー: <subject file:line の分岐>
+  - criticality: <1-10> — 未検証で壊れた場合のリグレッション: <一文>
   - 提案: t.Run("<case name>", ...) — カバーする分岐 / sentinel: <reason>
   - verifier: CONFIRMED / PLAUSIBLE
 
@@ -243,6 +244,7 @@ PR レビューフローで `code-review` / `local-review` / `arch-check` と並
 - ✅ スコープ既定: 変更ファイル。 他選択肢あり。
 - ✅ 最終レポートは日本語、 lens 別グルーピング、 severity tag。
 - ✅ `pkg/` は意図的に「Test Strategy 節なし」層として扱い、 documentation gap として警告しない。
+- ✅ criticality (1-10) は Axis A の 追加検討 finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
 
 ## チェックリスト
 
