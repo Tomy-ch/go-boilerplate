@@ -13,6 +13,10 @@ const (
 	defaultProgressStaleAfter = 60 * time.Second
 	// circuitBackoffMultiplier は、Open の cooldown を指数的に伸ばす際の倍率です。
 	circuitBackoffMultiplier = 2
+	// defaultCircuitOpenBackoffInitial は、CircuitOpenBackoffInitial 未設定時の既定値です。
+	defaultCircuitOpenBackoffInitial = 1 * time.Second
+	// defaultCircuitOpenBackoffMax は、CircuitOpenBackoffMax 未設定時の既定値です。
+	defaultCircuitOpenBackoffMax = 30 * time.Second
 
 	// defaultNackBackoffInitial は、NackBackoffInitial 未設定時の既定値です。
 	defaultNackBackoffInitial = 1 * time.Second
@@ -73,6 +77,13 @@ func (s *Settings) normalize() {
 	}
 	if s.CircuitHalfOpenProbe < 1 {
 		s.CircuitHalfOpenProbe = 1
+	}
+	// cooldown が 0 だと Open が即 half-open へ退化するため既定を補う（circuit 無効時は未使用）。
+	if s.CircuitOpenBackoffInitial <= 0 {
+		s.CircuitOpenBackoffInitial = defaultCircuitOpenBackoffInitial
+	}
+	if s.CircuitOpenBackoffMax <= 0 {
+		s.CircuitOpenBackoffMax = defaultCircuitOpenBackoffMax
 	}
 	if s.ProgressStaleAfter <= 0 {
 		s.ProgressStaleAfter = defaultProgressStaleAfter

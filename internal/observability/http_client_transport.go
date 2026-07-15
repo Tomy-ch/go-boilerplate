@@ -23,6 +23,7 @@ var cgnatPrefix = netip.MustParsePrefix("100.64.0.0/10")
 // reservedPrefixes は、bogon/予約帯として常時拒否する CIDR 一覧です。
 // これらは正当な宛先になり得ないため、allowPrivateNetwork フラグに関わらずブロックします。
 var reservedPrefixes = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),       // RFC 1122/6890 「このネットワーク」（IsUnspecified は 0.0.0.0 ちょうどしか捕捉しない）
 	netip.MustParsePrefix("240.0.0.0/4"),     // RFC 1112/6890 将来予約（Future Use）
 	netip.MustParsePrefix("192.0.0.0/24"),    // RFC 6890 IETF プロトコル割当（IETF Protocol Assignments）
 	netip.MustParsePrefix("192.0.2.0/24"),    // RFC 5737 TEST-NET-1（ドキュメント/テスト用）
