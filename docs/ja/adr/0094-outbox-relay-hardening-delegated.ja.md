@@ -26,7 +26,11 @@ mark する（[ADR-0043]、[ADR-0044]）。この種の設計はすべて不可�
 
 - **tx 滞留**: publish が claim tx の内側で走るため、最悪 tx 時間は
   `BatchSize (100) × 試行あたりタイムアウト (~3s) ≈ 300s`。vacuum horizon をピン留めし、pool
-  接続を 1 本占有する。
+  接続を 1 本占有する。この帰結として、pool 全体への `idle_in_transaction_session_timeout` の
+  バックストップは意図的に見送っている（`driver.applyDBTimeouts` は `statement_timeout` /
+  `lock_timeout` のみを設定する）: 暴走トランザクションをバックストップできるほど短い一律値は、
+  relay 自身の長命な claim→publish→mark tx を kill してしまう。pool 全体への有効化が安全に
+  なるのは、設計図の第 2 層が publish をトランザクション外へ移した後である。
 - **per-message backoff の不在**: max attempts はハードコードされ（`DefaultMaxAttempts = 10`）、
   失敗行は次 poll（既定 1s）で再 claim される。数十秒の下流停止だけで pending 全量が `dead` へ
   落ちる。

@@ -106,6 +106,14 @@ Rewrite the files in the [env/](env/) directory according to your project.
 
 For the meaning of configuration values, refer to [env/README.md](env/README.md).
 
+### Review the clamped config values
+
+A few subsystems **clamp** out-of-range values to safe defaults instead of failing startup — a resilience choice so a misconfigured process still runs. A clamp only triggers when you explicitly set `0` / a negative / an invalid value (the shipped env vars carry sane `envDefault`s), but because the correction is applied silently at runtime, review these when you tune the corresponding `WORKER_*` / `OUTBOX_*` / `SECURE_COOKIE_*` values:
+
+- **Worker engine** (`WORKER_*`) — `Settings.normalize()`; see [internal/controller/worker/README.md](../../internal/controller/worker/README.md) (Config clamping).
+- **Outbox relay** (`OUTBOX_*`) — `provideRelaySettings`; see [internal/controller/outbox/README.md](../../internal/controller/outbox/README.md) (Settings → Clamping).
+- **Secure cookie** (`SECURE_COOKIE_SAME_SITE`) — `normalizeSameSite` clamps any non-`Lax`/`Strict`/`None` value to "do not override"; see [internal/controller/httpstack/cookie/README.md](../../internal/controller/httpstack/cookie/README.md).
+
 ## Phase 7: Repository Initialization
 
 After completing the above steps, initialize the repository after the first push.

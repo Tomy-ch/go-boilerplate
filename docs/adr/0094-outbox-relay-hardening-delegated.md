@@ -25,7 +25,11 @@ The shipped single-transaction relay carries these windows:
 
 - **Transaction dwell**: publish runs inside the claim tx, so the worst-case tx duration is
   `BatchSize (100) x per-attempt timeout (~3s) ≈ 300s`, pinning the vacuum horizon and holding a
-  pool connection.
+  pool connection. Consequently a pool-wide `idle_in_transaction_session_timeout` backstop is
+  deliberately omitted (`driver.applyDBTimeouts` sets only `statement_timeout` / `lock_timeout`):
+  a blanket value short enough to backstop runaway transactions would kill the relay's own
+  long-lived claim→publish→mark tx. It becomes safe to enable pool-wide once blueprint layer 2
+  moves publish outside the transaction.
 - **No per-message backoff**: max attempts is hard-coded (`DefaultMaxAttempts = 10`) and failed
   rows are re-claimed on the next poll (default 1s), so a downstream outage of only tens of
   seconds drives the whole pending backlog to `dead`.
