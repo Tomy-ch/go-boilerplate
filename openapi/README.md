@@ -102,10 +102,12 @@ A deliberate, per-location convention (enforced by `redocly lint`):
 |Location|Casing|Example|
 |---|---|---|
 |Request / response **body fields**|`camelCase`|`firstName`, `postalCode`, `nextCursor`, `hasNext`, `requestId`|
-|**Query / path parameters**|`snake_case`|`per_page`, `user_id`|
+|**Query / path parameters**|`camelCase`|`perPage`, `userId`|
 |`operationId`|`PascalCase`, verb-first|`GetUsers`, `PostUsers`|
 
-Body fields and parameters intentionally use different casing (body = camelCase to match JSON / TS clients; params = snake_case as is common in URLs). Keep each location internally consistent.
+HTTP headers are out of scope for this table — they follow the conventional `Train-Case` (e.g. `Idempotency-Key`).
+
+Body fields and parameters use the same `camelCase` casing on purpose: aligning parameters with body fields keeps the wire contract consistent with JS / TS frontends and generated SDKs. Keep each location internally consistent.
 
 ### Versioning
 

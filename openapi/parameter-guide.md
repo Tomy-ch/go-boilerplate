@@ -16,7 +16,7 @@ parameters:
 
 |Element|Convention|Example|
 |---|---|---|
-|Path name|slug format|`/v1/users/{user_id}`|
+|Path name|slug format|`/v1/users/{userId}`|
 |Directory|lowercase by concern|`pagination/`, `search/`, `user/`|
 |File name|PascalCase + Param|`PageParam.yaml`, `UserIdParam.yaml`|
 
