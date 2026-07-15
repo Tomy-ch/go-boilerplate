@@ -2,17 +2,27 @@ package outbox
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/infrastructure/system"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// errRollbackForTest は、SKIP LOCKED 並行テストで保持側 tx を行を残さず終えるための sentinel です。
+var errRollbackForTest = xerrors.New("rollback tx for test")
 
 func emitParams() outboxbndry.EmitParams {
 	return outboxbndry.EmitParams{
@@ -138,6 +148,93 @@ func Test_store_ClaimPending(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
+}
+
+// Test_store_ClaimPending_concurrentSkipLocked は、ADR-0044 の核である多インスタンス排他
+// （FOR UPDATE SKIP LOCKED により別々の並行 tx が同一 pending 行を二重 claim しない）を、
+// 2 コネクション（= 2 tx）を並行させて DB レベルで検証します。
+//
+// testkit の WithinTx は txLock で全 tx を直列化するため、この並行排他は構造的に再現できません。
+// そこで idempotency 側の並行テストと同様に driver.NewTransactionManager を直接使い 2 tx を並行走行させます。
+// SKIP LOCKED は両 tx から見える committed 行を必要とするため、本テストのみ非並列にし
+// （他テストの「pending が空」アサートと committed 行が衝突しないよう sequential フェーズで完結させる）、
+// 専用 aggregate_id の行を投入・後始末します。
+//
+//nolint:paralleltest // committed fixture が並列テストの全体空アサートと衝突するため非並列
+func Test_store_ClaimPending_concurrentSkipLocked(t *testing.T) {
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	s := &store{tracer: lt, db: testDB}
+
+	dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+	txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
+
+	const aggregateID = "skiplocked-concurrency-test"
+
+	// 後始末: 本テストが commit した専用行を必ず削除する（sequential フェーズ内で完結させる）。
+	t.Cleanup(func() {
+		_ = txm.Do(context.Background(), func(ctx context.Context) error {
+			_, err := driver.New(ctx, testDB).Exec(ctx, "DELETE FROM outbox WHERE aggregate_id = $1", aggregateID)
+			return err
+		})
+	})
+
+	// 2 件の pending 行を commit し、両 tx から見えるようにする。
+	params := emitParams()
+	params.AggregateID = aggregateID
+	require.NoError(t, txm.Do(context.Background(), func(ctx context.Context) error {
+		for range 2 {
+			if _, err := s.Insert(ctx, params); err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+
+	holderClaimed := make(chan struct{})
+	releaseHolder := make(chan struct{})
+	holderDone := make(chan error, 1)
+
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releaseHolder) }) }
+	t.Cleanup(release) // 失敗時も保持側 goroutine をリークさせない
+
+	// 保持側 tx: pending 行を claim（FOR UPDATE SKIP LOCKED で行ロック）し、未コミットで保持する。
+	go func() {
+		holderDone <- txm.Do(context.Background(), func(ctx context.Context) error {
+			claimed, err := s.ClaimPending(ctx, 10)
+			if err != nil {
+				return err
+			}
+			if len(claimed) != 2 {
+				return xerrors.New(fmt.Sprintf("holder: expected to claim 2 rows, got %d", len(claimed)))
+			}
+			close(holderClaimed)
+			<-releaseHolder
+			return errRollbackForTest // rollback で行を pending へ戻す
+		})
+	}()
+
+	select {
+	case <-holderClaimed:
+	case err := <-holderDone:
+		require.NoError(t, err, "保持側 tx が claim 前に失敗した")
+		return
+	}
+
+	// 競合側 tx: 保持側がロック中の行を SKIP LOCKED で全て skip し、空を得る（二重 claim しない）。
+	contenderErr := txm.Do(context.Background(), func(ctx context.Context) error {
+		claimed, err := s.ClaimPending(ctx, 10)
+		if err != nil {
+			return err
+		}
+		assert.Empty(t, claimed, "SKIP LOCKED: 保持側が claim 中の行は競合 tx から claim されてはならない")
+		return nil
+	})
+	require.NoError(t, contenderErr)
+
+	release()
+	require.ErrorIs(t, <-holderDone, errRollbackForTest)
 }
 
 func Test_store_MarkPublished(t *testing.T) {
