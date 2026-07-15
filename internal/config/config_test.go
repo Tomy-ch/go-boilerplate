@@ -240,15 +240,6 @@ func Test_validateConfig(t *testing.T) {
 			require.ErrorIs(t, err, ErrAuthConfigMissing)
 		})
 
-		t.Run("shutdownとrequestの交差検証でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.App.ShutdownTimeout = cfg.Server.RequestTimeout - time.Second // RequestTimeout 未満
-
-			err := validateConfig(cfg)
-			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
-		})
-
 		t.Run("メトリクス設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
@@ -481,40 +472,6 @@ func Test_validateServerConfig(t *testing.T) {
 	})
 }
 
-func Test_validateShutdownTimeout(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("ShutdownTimeoutがRequestTimeoutを上回る場合", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			err := validateShutdownTimeout(cfg.App, cfg.Server)
-			require.NoError(t, err)
-		})
-
-		t.Run("ShutdownTimeoutがRequestTimeoutと同値の場合は許容されること", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.App.ShutdownTimeout = cfg.Server.RequestTimeout // 境界値: 等値は有効
-			err := validateShutdownTimeout(cfg.App, cfg.Server)
-			require.NoError(t, err)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("ShutdownTimeoutがRequestTimeout未満の場合", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.App.ShutdownTimeout = cfg.Server.RequestTimeout - time.Second // RequestTimeout より 1s 短い
-			err := validateShutdownTimeout(cfg.App, cfg.Server)
-			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
-		})
-	})
-}
-
 func Test_validateMetricsConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -561,6 +518,34 @@ func Test_validateMetricsConfig(t *testing.T) {
 			cfg.Metrics.Port = MaxPort + 1 // 無効なポート番号（上限境界）
 			err := validateMetricsConfig(cfg.Metrics)
 			require.ErrorIs(t, err, ErrInvalidMetricsPortRange)
+		})
+	})
+}
+
+func Test_validateServerShutdown(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("shutdownがrequestを上回る場合は成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateServerShutdown(90*time.Second, 60*time.Second))
+		})
+
+		t.Run("shutdownがrequestと同値の場合は許容される", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateServerShutdown(60*time.Second, 60*time.Second)) // 境界値: 等値は有効
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("shutdownがrequest未満の場合はErrShutdownTimeoutBelowRequestTimeoutを返す", func(t *testing.T) {
+			t.Parallel()
+			err := validateServerShutdown(60*time.Second-time.Second, 60*time.Second)
+			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
 		})
 	})
 }
