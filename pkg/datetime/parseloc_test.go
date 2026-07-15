@@ -234,7 +234,7 @@ func TestParseCustomLayoutToLocation(t *testing.T) {
 	})
 }
 
-func TestToLocation_NilLocation(t *testing.T) {
+func Test_toLocation_NilLocation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {
