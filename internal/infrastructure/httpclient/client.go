@@ -59,13 +59,13 @@ func noFollowRedirect(_ *http.Request, _ []*http.Request) error {
 
 // validate は、型で防げない Request の precondition を検査します。
 // 空 Downstream / ゼロ値 Method / AllowRetry の空 key はいずれも ErrInvalidArgument で弾きます。
-func (req *Request) validate() error {
+func (r *Request) validate() error {
 	switch {
-	case req.downstream == "":
+	case r.downstream == "":
 		return errDownstreamRequired
-	case req.method == (Method{}):
+	case r.method == (Method{}):
 		return errMethodRequired
-	case req.allowRetry && req.idempotencyKey == "":
+	case r.allowRetry && r.idempotencyKey == "":
 		return errIdempotencyKeyRequired
 	}
 	return nil
