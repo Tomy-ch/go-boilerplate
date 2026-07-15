@@ -147,6 +147,14 @@ func validateConfig(cfg Loader) error {
 		return err
 	}
 
+	if err := validateShutdownTimeout(cfg.App, cfg.Server); err != nil {
+		return err
+	}
+
+	if err := validateMetricsConfig(cfg.Metrics); err != nil {
+		return err
+	}
+
 	if err := validateDatabaseConfig(cfg.Database); err != nil {
 		return err
 	}
@@ -238,6 +246,20 @@ func validateServerConfig(srvCfg Server) error {
 		return ErrWriteTimeoutBelowRequestTimeout
 	}
 	return nil
+}
+
+// validateShutdownTimeout は、graceful shutdown 猶予が処理中リクエストの予算を下回らないことを検証します。
+// ShutdownTimeout（App）と RequestTimeout（Server）の交差検証のため、両設定を受け取ります。
+func validateShutdownTimeout(appCfg Application, srvCfg Server) error {
+	if appCfg.ShutdownTimeout < srvCfg.RequestTimeout {
+		return ErrShutdownTimeoutBelowRequestTimeout
+	}
+	return nil
+}
+
+// validateMetricsConfig は、メトリクスサーバー設定を検証します。
+func validateMetricsConfig(metricsCfg Metrics) error {
+	return validatePortRange(metricsCfg.Port, ErrInvalidMetricsPortRange)
 }
 
 // validateDatabaseConfig は、データベース設定を検証します。

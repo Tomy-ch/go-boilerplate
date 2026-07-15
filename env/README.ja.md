@@ -40,7 +40,7 @@
 |APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
 |APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
-|APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|45s|Code default `45s`。SIGTERM時の待機時間|
+|APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。`SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だと起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 
 ### Server
 

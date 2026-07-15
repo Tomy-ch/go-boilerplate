@@ -463,6 +463,70 @@ func Test_validateServerConfig(t *testing.T) {
 	})
 }
 
+func Test_validateShutdownTimeout(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ShutdownTimeoutがRequestTimeoutを上回る場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			err := validateShutdownTimeout(cfg.App, cfg.Server)
+			require.NoError(t, err)
+		})
+
+		t.Run("ShutdownTimeoutがRequestTimeoutと同値の場合は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.ShutdownTimeout = cfg.Server.RequestTimeout // 境界値: 等値は有効
+			err := validateShutdownTimeout(cfg.App, cfg.Server)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ShutdownTimeoutがRequestTimeout未満の場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.ShutdownTimeout = cfg.Server.RequestTimeout - time.Second // RequestTimeout より 1s 短い
+			err := validateShutdownTimeout(cfg.App, cfg.Server)
+			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
+		})
+	})
+}
+
+func Test_validateMetricsConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		cfg := mockLoader(t)
+		err := validateMetricsConfig(cfg.Metrics)
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ポート番号がMinPort未満の場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MinPort - 1 // 無効なポート番号（下限境界）
+			err := validateMetricsConfig(cfg.Metrics)
+			require.ErrorIs(t, err, ErrInvalidMetricsPortRange)
+		})
+
+		t.Run("ポート番号がMaxPortを超えている場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MaxPort + 1 // 無効なポート番号（上限境界）
+			err := validateMetricsConfig(cfg.Metrics)
+			require.ErrorIs(t, err, ErrInvalidMetricsPortRange)
+		})
+	})
+}
+
 func Test_validateDatabaseConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
