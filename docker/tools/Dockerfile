@@ -78,7 +78,7 @@ CMD []
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
 # 補助スクリプトが依存する npm パッケージをローカル node_modules にインストールしておく
 # ------------------------------
-FROM node:24.18.0-alpine AS node_tools
+FROM node:26.5.0-alpine AS node_tools
 
 # パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
