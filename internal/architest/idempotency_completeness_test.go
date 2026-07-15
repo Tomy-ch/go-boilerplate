@@ -1,5 +1,5 @@
-// Package audit は、コントローラ handler 層の機械検証テストのみを収容します（実装コードは持ちません）。
-package audit
+// Package architest は、レイヤ横断のアーキテクチャ不変条件を機械検証するテストのみを収容します（実装コードは持ちません）。
+package architest
 
 import (
 	"io/fs"
@@ -79,8 +79,8 @@ func handlerRoot(t *testing.T) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	// <handler>/audit/idempotency_completeness_test.go の 2 階層上が handler ルート。
-	return filepath.Dir(filepath.Dir(thisFile))
+	// internal/architest/<file> から internal/controller/handler を辿る。
+	return filepath.Join(filepath.Dir(thisFile), "..", "controller", "handler")
 }
 
 // collectMarkedParams は、`type <Op>Params struct {` ブロックが IdempotencyKey フィールドを
