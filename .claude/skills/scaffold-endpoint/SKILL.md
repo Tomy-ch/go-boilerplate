@@ -1,20 +1,20 @@
 ---
 name: scaffold-endpoint
-description: End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev front end that turns that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (AskUserQuestion) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + domain.md + usecase.md for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** (backward-compatible fast path) — jump straight to the core when `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`local-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the front-end design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`local-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
+description: End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev-style upstream design phases that turn that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (AskUserQuestion) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + domain.md + usecase.md for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** (backward-compatible fast path) — jump straight to the core when `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`local-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the upstream design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`local-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
 ---
 
 # Scaffold Endpoint
 
-Top-level orchestrator that takes a feature from wherever you are — a rough idea or a finished spec set — to a reviewed, running onion-architecture endpoint. It grafts a **feature-dev-style front end** (clarify → explore → design → draft the inputs) onto an unchanged **deterministic spec-driven core** (verify → scaffold each layer → test → curl), and closes with a **quality review built from this repo's own review skills**.
+Top-level orchestrator that takes a feature from wherever you are — a rough idea or a finished spec set — to a reviewed, running onion-architecture endpoint. It grafts a **feature-dev-style set of upstream design phases** (clarify → explore → design → draft the inputs) onto an unchanged **deterministic spec-driven core** (verify → scaffold each layer → test → curl), and closes with a **quality review built from this repo's own review skills**.
 
-The core's strength is that it is deterministic: specs + OpenAPI + SQL fully determine the generated code. The front end exists only to *produce* those inputs when you don't have them yet — it never bypasses or weakens the core.
+The core's strength is that it is deterministic: specs + OpenAPI + SQL fully determine the generated code. These upstream phases exist only to *produce* those inputs when you don't have them yet — it never bypasses or weakens the core.
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
 ## When to Use
 
 - Starting a new feature / endpoint end-to-end — whether you have only an idea, or the 2 specs (`domain.md` + `usecase.md`) + OpenAPI YAML + SQL are already prepared.
-- You want the design front end (clarify ambiguities → explore existing patterns → weigh approaches) *before* any code is written.
+- You want the upstream design phases (clarify ambiguities → explore existing patterns → weigh approaches) *before* any code is written.
 - You want all layers built with the same conventions and one consolidated report, then reviewed by `local-review` / `arch-check` / `test-review`.
 
 Do NOT use this skill for:
@@ -25,12 +25,12 @@ Do NOT use this skill for:
 
 ## Two Entry Modes (auto-detected in Phase 0)
 
-| Mode | Trigger | Front end (Phases 1–4) | Core (Phases 5–7) |
+| Mode | Trigger | Upstream phases (1–4) | Core (Phases 5–7) |
 | --- | --- | --- | --- |
 | **A. idea-first** | User starts from an idea / requirement; `docs/spec/<feature>/` is missing or lacks `domain.md`/`usecase.md` | **runs** — clarify → explore → design → draft inputs | runs |
 | **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen already exist | **skipped** (fast path — backward compatible with the original scaffold-endpoint) | runs |
 
-Mode B is exactly the original behavior. Never force the front end on a user who already has valid inputs; detect and skip. Conversely, never skip straight to `verify-spec` when the specs don't exist yet — that is the gap the front end fills.
+Mode B is exactly the original behavior. Never force the upstream phases on a user who already has valid inputs; detect and skip. Conversely, never skip straight to `verify-spec` when the specs don't exist yet — that is the gap the upstream phases fill.
 
 ## What This Skill Reads / Writes
 
@@ -39,16 +39,16 @@ Mode B is exactly the original behavior. Never force the front end on a user who
 - `docs/spec/<feature>/{domain,usecase}.md` — via child skills (lean A: 2 spec files only).
 - OpenAPI gen + sqlc gen + domain Repository IF — derivation sources for controller / infra (no spec).
 - `.claude/scaffold-spec/lifecycle.md` — for the canonical workflow / scaffold execution order.
-- Layer `README.md` + `docs/` at runtime (front end reads them as the source of truth for existing patterns; does not hardcode design rules that would drift).
+- Layer `README.md` + `docs/` at runtime (the upstream phases read them as the source of truth for existing patterns; does not hardcode design rules that would drift).
 
 **Writes**:
 
 - **Mode B**: nothing directly. All writes happen inside the chained child skills, each within its own scope.
-- **Mode A (front end, Phase 4 only)**: *draft* input artifacts for user review — `openapi/**` (OpenAPI YAML), `database/migrations/**` (new files only) + `database/dml/**` (SQL), `docs/spec/<feature>/{domain,usecase}.md` (via `new-spec`, then filled). These are all inside the AI modification scope in `CLAUDE.md`. The front end never writes Go source; that stays with the core's child skills.
+- **Mode A (upstream phases, Phase 4 only)**: *draft* input artifacts for user review — `openapi/**` (OpenAPI YAML), `database/migrations/**` (new files only) + `database/dml/**` (SQL), `docs/spec/<feature>/{domain,usecase}.md` (via `new-spec`, then filled). These are all inside the AI modification scope in `CLAUDE.md`. These upstream phases never write Go source; that stays with the core's child skills.
 
 ## Preconditions for the core (Phases 5+)
 
-These must be true before the **core** runs. In Mode A they are the *output* of the front end (Phase 4); in Mode B the user has already satisfied them.
+These must be true before the **core** runs. In Mode A they are the *output* of the upstream phases (Phase 4); in Mode B the user has already satisfied them.
 
 | # | Precondition | Verifier |
 | --- | --- | --- |
@@ -77,15 +77,15 @@ If any precondition fails when the core starts, the relevant child skill will su
 Then detect the entry mode:
 
 - Check `docs/spec/<feature>/`. If it contains both `domain.md` and `usecase.md` **and** the user's request reads as "scaffold from my ready specs", choose **Mode B** and go straight to Phase 5.
-- Otherwise choose **Mode A** and run the front end (Phases 1–4). If the directory is missing entirely, that is the normal idea-first start — do not treat it as an error.
+- Otherwise choose **Mode A** and run the upstream phases (Phases 1–4). If the directory is missing entirely, that is the normal idea-first start — do not treat it as an error.
 
 If the mode is ambiguous (specs exist but the user is clearly still designing), ask which they want rather than guessing.
 
 ---
 
-## Front end (Mode A only) — Phases 1–4
+## Upstream design phases (Mode A only) — Phases 1–4
 
-The front end is grafted from the official `feature-dev` workflow, but wired to this repo's agents and constrained to its architecture. It reuses the existing **`Explore`** and **`Plan`** agents rather than introducing new ones.
+These upstream phases are grafted from the official `feature-dev` workflow, but wired to this repo's agents and constrained to its architecture. It reuses the existing **`Explore`** and **`Plan`** agents rather than introducing new ones.
 
 ### Phase 1. Discovery + Clarifying Questions
 
@@ -212,7 +212,7 @@ If any check fails, surface TODO + FB and stop (do NOT commit).
 
 ---
 
-## Back end (both modes) — Phases 8–9
+## Review & closing (both modes) — Phases 8–9
 
 ### Phase 8. Quality Review (reuse the repo's review skills)
 
@@ -253,12 +253,12 @@ Do NOT commit. Do NOT push.
 ## AI Modification Scope
 
 - **Mode B**: this skill writes no files. All scope is delegated to child skills, each within their own constraints (see their SKILL.md).
-- **Mode A**: additionally, the front end drafts input artifacts in Phase 4 — only under `openapi/**`, `database/dml/**`, `database/migrations/**` (new files only), and `docs/spec/<feature>/**` (all inside the `CLAUDE.md` AI modification scope). It never writes Go source and never touches generated files.
+- **Mode A**: additionally, the upstream phases draft input artifacts in Phase 4 — only under `openapi/**`, `database/dml/**`, `database/migrations/**` (new files only), and `docs/spec/<feature>/**` (all inside the `CLAUDE.md` AI modification scope). It never writes Go source and never touches generated files.
 
 ## Constraints
 
-- ❌ Force the front end (Phases 1–4) when Mode B inputs already exist — detect and skip.
-- ❌ Skip straight to `verify-spec` when the specs do not exist yet — the front end must produce them first (Mode A).
+- ❌ Force the upstream phases (Phases 1–4) when Mode B inputs already exist — detect and skip.
+- ❌ Skip straight to `verify-spec` when the specs do not exist yet — the upstream phases must produce them first (Mode A).
 - ❌ Let an architecture approach (Phase 3) step outside the onion / lean A / OpenAPI-first / sqlc rails — the design space is within them.
 - ❌ Invent business content in Phase 4 — draft from the confirmed design; stop and ask on a genuine gap.
 - ❌ Edit generated files (`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`) or an existing migration.
@@ -268,7 +268,7 @@ Do NOT commit. Do NOT push.
 - ❌ Auto-rollback files written by a successful earlier phase/child when a later one fails — the user decides.
 - ❌ Skip the feature-confirmation `AskUserQuestion` (Phase 0).
 - ✅ Japanese user-facing output.
-- ✅ Reuse the existing `Explore` / `Plan` agents for the front end (no new agent types).
+- ✅ Reuse the existing `Explore` / `Plan` agents for the upstream phases (no new agent types).
 - ✅ Run child skills in the documented dependency order (domain → infra-db → usecase → controller).
 - ✅ Surface a consolidated final report covering every phase that ran + the final `make test`.
 - ✅ Let each child skill ask its own confirmation per layer (human-in-the-loop on judgment-heavy steps).

@@ -2,14 +2,14 @@
 
 # Scaffold Endpoint
 
-feature を「今いる地点」— ラフなアイデアでも、書き上げた spec でも — から、レビュー済みで稼働するオニオンアーキ endpoint まで運ぶトップレベルオーケストレータ。**feature-dev 由来のフロントエンド**（明確化 → 探索 → 設計 → 入力ドラフト作成）を、無改変の**決定論的な spec 駆動コア**（検証 → 各層 scaffold → テスト → curl）に接ぎ木し、最後に**このリポジトリ自身のレビュースキルで構成した品質レビュー**で締める。
+feature を「今いる地点」— ラフなアイデアでも、書き上げた spec でも — から、レビュー済みで稼働するオニオンアーキ endpoint まで運ぶトップレベルオーケストレータ。**feature-dev 由来の上流設計フェーズ**（明確化 → 探索 → 設計 → 入力ドラフト作成）を、無改変の**決定論的な spec 駆動コア**（検証 → 各層 scaffold → テスト → curl）に接ぎ木し、最後に**このリポジトリ自身のレビュースキルで構成した品質レビュー**で締める。
 
-コアの強みは決定論性にある: spec + OpenAPI + SQL が生成コードを完全に決める。フロントエンドは、それらの入力がまだ無いときに*生成する*ためだけに存在し、コアを迂回・弱体化させることは決してない。
+コアの強みは決定論性にある: spec + OpenAPI + SQL が生成コードを完全に決める。上流フェーズは、それらの入力がまだ無いときに*生成する*ためだけに存在し、コアを迂回・弱体化させることは決してない。
 
 ## 使うとき
 
 - 新規 feature / endpoint を end-to-end で立ち上げる — アイデアしか無くても、2 spec（`domain.md` + `usecase.md`）+ OpenAPI YAML + SQL が用意済みでも。
-- コードを書く*前*に設計フロントエンド（曖昧点の明確化 → 既存パターンの探索 → アプローチの比較）を回したい。
+- コードを書く*前*に上流の設計フェーズ（曖昧点の明確化 → 既存パターンの探索 → アプローチの比較）を回したい。
 - 全層を同じ規約で構築し 1 つの統合レポートを得た上で、`local-review` / `arch-check` / `test-review` でレビューしたい。
 
 以下の用途には使いません:
@@ -20,12 +20,12 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 ## 2 つのエントリモード（Phase 0 で自動判定）
 
-| モード | トリガ | フロントエンド (Phase 1–4) | コア (Phase 5–7) |
+| モード | トリガ | 上流フェーズ (Phase 1–4) | コア (Phase 5–7) |
 | --- | --- | --- | --- |
 | **A. idea-first** | アイデア / 要件から開始。`docs/spec/<feature>/` が無い、または `domain.md`/`usecase.md` を欠く | **実行** — 明確化 → 探索 → 設計 → 入力ドラフト | 実行 |
 | **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path — 従来 scaffold-endpoint と後方互換） | 実行 |
 
-モード B は従来の挙動そのもの。有効な入力を既に持つユーザーにフロントエンドを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこがフロントエンドの埋める穴。
+モード B は従来の挙動そのもの。有効な入力を既に持つユーザーに上流フェーズを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこが上流フェーズの埋める穴。
 
 ## 読み書き範囲
 
@@ -34,16 +34,16 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 - `docs/spec/<feature>/{domain,usecase}.md`（child skill 経由、lean A: 2 spec のみ）。
 - OpenAPI gen + sqlc gen + domain Repository IF — controller / infra の導出元（spec なし）。
 - `.claude/scaffold-spec/lifecycle.md` — canonical workflow / scaffold execution order。
-- layer `README.md` + `docs/` を実行時に参照（フロントエンドは既存パターンの真の出所として読む。drift する設計ルールをハードコードしない）。
+- layer `README.md` + `docs/` を実行時に参照（上流フェーズは既存パターンの真の出所として読む。drift する設計ルールをハードコードしない）。
 
 **書き込み**:
 
 - **モード B**: 直接はなし。全書き込みは child skill 内、各自のスコープ内で発生。
-- **モード A（フロントエンド、Phase 4 のみ）**: ユーザーレビュー用の*ドラフト*入力アーティファクト — `openapi/**`（OpenAPI YAML）、`database/migrations/**`（新規ファイルのみ）+ `database/dml/**`（SQL）、`docs/spec/<feature>/{domain,usecase}.md`（`new-spec` 経由 → 記入）。いずれも `CLAUDE.md` の AI 修正スコープ内。フロントエンドは Go ソースを書かない — それはコアの child skill の担当。
+- **モード A（上流フェーズ、Phase 4 のみ）**: ユーザーレビュー用の*ドラフト*入力アーティファクト — `openapi/**`（OpenAPI YAML）、`database/migrations/**`（新規ファイルのみ）+ `database/dml/**`（SQL）、`docs/spec/<feature>/{domain,usecase}.md`（`new-spec` 経由 → 記入）。いずれも `CLAUDE.md` の AI 修正スコープ内。上流フェーズは Go ソースを書かない — それはコアの child skill の担当。
 
 ## コア（Phase 5+）の前提条件
 
-これらは**コア**の実行前に真である必要がある。モード A ではフロントエンド（Phase 4）の*成果物*であり、モード B ではユーザーが既に満たしている。
+これらは**コア**の実行前に真である必要がある。モード A では上流フェーズ（Phase 4）の*成果物*であり、モード B ではユーザーが既に満たしている。
 
 | # | 前提 | 検証者 |
 | --- | --- | --- |
@@ -72,15 +72,15 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 続いてエントリモードを判定:
 
 - `docs/spec/<feature>/` を確認。`domain.md` と `usecase.md` の両方があり**かつ**ユーザーの依頼が「用意済み spec からの scaffold」と読めるなら、**モード B** を選び Phase 5 へ直行。
-- それ以外は**モード A** を選びフロントエンド（Phase 1–4）を回す。ディレクトリごと無い場合は通常の idea-first 開始 — エラー扱いしない。
+- それ以外は**モード A** を選び上流フェーズ（Phase 1–4）を回す。ディレクトリごと無い場合は通常の idea-first 開始 — エラー扱いしない。
 
 モードが曖昧（spec はあるがユーザーはまだ設計中）なら、推測せずどちらか尋ねる。
 
 ---
 
-## フロントエンド（モード A のみ）— Phase 1–4
+## 上流の設計フェーズ（モード A のみ）— Phase 1–4
 
-フロントエンドは公式 `feature-dev` ワークフローからの接ぎ木だが、このリポジトリのエージェントに配線し、アーキテクチャに拘束する。新エージェントを導入せず既存の **`Explore`** / **`Plan`** エージェントを流用する。
+上流フェーズは公式 `feature-dev` ワークフローからの接ぎ木だが、このリポジトリのエージェントに配線し、アーキテクチャに拘束する。新エージェントを導入せず既存の **`Explore`** / **`Plan`** エージェントを流用する。
 
 ### Phase 1. Discovery + Clarifying Questions
 
@@ -207,7 +207,7 @@ cross-layer 統合（handler → usecase → domain → infra）が全体とし�
 
 ---
 
-## バックエンド（両モード）— Phase 8–9
+## レビュー・クロージング（両モード）— Phase 8–9
 
 ### Phase 8. 品質レビュー（repo のレビュースキル再利用）
 
@@ -248,12 +248,12 @@ commit しない。push しない。
 ## AI 修正スコープ
 
 - **モード B**: 本 skill 自体はファイルを書かない。全スコープは child skill に委譲（各 SKILL.md の constraint 参照）。
-- **モード A**: 加えてフロントエンドが Phase 4 で入力アーティファクトをドラフトする — `openapi/**`、`database/dml/**`、`database/migrations/**`（新規ファイルのみ）、`docs/spec/<feature>/**`（いずれも `CLAUDE.md` の AI 修正スコープ内）に限る。Go ソースは書かず、生成ファイルにも触れない。
+- **モード A**: 加えて上流フェーズが Phase 4 で入力アーティファクトをドラフトする — `openapi/**`、`database/dml/**`、`database/migrations/**`（新規ファイルのみ）、`docs/spec/<feature>/**`（いずれも `CLAUDE.md` の AI 修正スコープ内）に限る。Go ソースは書かず、生成ファイルにも触れない。
 
 ## 制約事項
 
-- ❌ モード B の入力が既に存在するのにフロントエンド（Phase 1–4）を強制 — 検出してスキップ。
-- ❌ spec がまだ無いのに `verify-spec` へ直行 — フロントエンドが先に生成すべき（モード A）。
+- ❌ モード B の入力が既に存在するのに上流フェーズ（Phase 1–4）を強制 — 検出してスキップ。
+- ❌ spec がまだ無いのに `verify-spec` へ直行 — 上流フェーズが先に生成すべき（モード A）。
 - ❌ アーキテクチャ案（Phase 3）を onion / lean A / OpenAPI-first / sqlc のレール外へ出す — 設計空間はレール内。
 - ❌ Phase 4 で業務内容を発明 — 確定設計からドラフトし、本当の欠落は停止して尋ねる。
 - ❌ 生成ファイル（`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`）や既存 migration を編集。
@@ -263,7 +263,7 @@ commit しない。push しない。
 - ❌ 後段フェーズ/child 失敗時に成功済み earlier の書き込みを自動 rollback — user 判断。
 - ❌ feature 確認 `AskUserQuestion`（Phase 0）をスキップ。
 - ✅ ユーザー向け出力は日本語。
-- ✅ フロントエンドは既存の `Explore` / `Plan` エージェントを流用（新エージェント型なし）。
+- ✅ 上流フェーズは既存の `Explore` / `Plan` エージェントを流用（新エージェント型なし）。
 - ✅ 依存順序（domain → infra-db → usecase → controller）で child 起動。
 - ✅ 実行した全フェーズ + 最終 `make test` を統合した最終レポートを surface。
 - ✅ 各 child skill が自身の確認を layer ごとに取る（judgment-heavy step で human-in-the-loop）。
