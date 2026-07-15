@@ -12,7 +12,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestSecurityCookieModule_ProvidesSecurityCookie(t *testing.T) {
+func TestSecurityCookieModule(t *testing.T) {
 	t.Parallel()
 
 	t.Run("fx アプリで SecurityCookie が提供される", func(t *testing.T) {

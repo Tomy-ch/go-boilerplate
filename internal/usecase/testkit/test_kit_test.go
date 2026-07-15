@@ -24,7 +24,7 @@ func TestExpectedDBError(t *testing.T) {
 	})
 }
 
-func TestMockTransactionManager(t *testing.T) {
+func TestNewMockTransactionManager(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Do がコールバックを実行する", func(t *testing.T) {

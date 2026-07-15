@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBuildSecureConfig(t *testing.T) {
+func Test_buildSecureConfig(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

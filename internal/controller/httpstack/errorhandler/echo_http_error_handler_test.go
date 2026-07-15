@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
+func Test_normalizeEchoHTTPError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

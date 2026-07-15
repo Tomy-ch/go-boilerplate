@@ -34,7 +34,7 @@ func TestNewGC(t *testing.T) {
 	})
 }
 
-func TestGCUsecase_SweepExpired(t *testing.T) {
+func Test_gcUsecase_SweepExpired(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

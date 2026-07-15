@@ -27,7 +27,7 @@ Do NOT use this skill for:
 
 **Reads (always)**:
 
-- `docs/testing-conventions.md` — the project-wide testing conventions (parallel mandate, naming, require vs assert, generated-mock policy, architectural rules).
+- `docs/testing-conventions.md` — the project-wide testing conventions (parallel mandate, naming, require vs assert, generated-mock policy, architectural rules) **and its section 10 semantic quality bar / anti-patterns** — the SSOT the generated tests must satisfy (each case asserts its branch's distinctive outcome; none of the listed anti-patterns is emitted). `test-review` reads the same section to review against it, so generator and reviewer stay symmetric — no viewpoint or anti-pattern list is duplicated into this skill.
 - The target source file — to extract the function/method signature, parameters, return types, error sentinels, and any in-package helpers.
 - The nearest layer README, resolved by walking up from the target file:
   - `internal/domain/README.md` for `internal/domain/**`
@@ -202,6 +202,7 @@ func Test<Subject>(t *testing.T) {
 
 Additional generation rules:
 
+- **Satisfy the semantic quality bar (`docs/testing-conventions.md` section 10).** Each generated case must assert its branch's *distinctive* outcome — error branches via `require.ErrorIs` on the specific sentinel, success / state-mutating branches on the resulting value / field, boundary cases on both sides — never a vacuous `require.NoError` / `assert.NotNil`-only body that merely proves the branch executed. Do not emit any section-10 anti-pattern (weak assertion, name over-promising the assertion, brittle internals coupling, over-mocking, time-literal pinning leak, redundant comments). This is the same section `test-review` reviews against — do NOT restate the list here, read it at runtime.
 - **Test helpers** declared in the same package (e.g. `newValidUser(t)`) are reused as-is. If a helper does not yet exist but the same fixture would be repeated 3+ times across the produced tests, generate an unexported `t.Helper()`-tagged helper at the bottom of the test file.
 - **`uuid.NewTestFromSalt(t, "<salt>")`** is the canonical way to obtain a deterministic UUID inside tests (per `pkg/uuid`).
 - **`ptr.To(...)` / `ptr.Copy(...)`** are used for nullable pointer fields per the domain README's "Handling time and ID" / "Invariants" sections.
@@ -265,6 +266,7 @@ The `AskUserQuestion` invocation for **the multi-subject bundling exception** re
 - ✅ Generated mocks from `*/mock/` only.
 - ✅ Deterministic fixtures (fixed `baseTime`, `uuid.NewTestFromSalt(t, ...)`).
 - ✅ `t.Helper()` on helper functions in the produced test file.
+- ✅ Satisfy the section-10 semantic quality bar (each case asserts its branch's distinctive outcome; no anti-pattern emitted) — read from `docs/testing-conventions.md`, not restated here.
 - ✅ Mutation-check regression-critical cases (inject the regression into the subject, confirm the test FAILs, revert) — a case that stays green under the mutation is a tautology, not a guard.
 
 ## Checklist

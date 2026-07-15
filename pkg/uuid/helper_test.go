@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFromGoogle(t *testing.T) {
+func Test_fromGoogle(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -23,7 +23,7 @@ func TestFromGoogle(t *testing.T) {
 	})
 }
 
-func TestToGoogle(t *testing.T) {
+func Test_toGoogle(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

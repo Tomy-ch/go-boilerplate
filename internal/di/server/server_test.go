@@ -12,7 +12,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func Test_Module(t *testing.T) {
+func TestModule(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Module が nil でないこと", func(t *testing.T) {
@@ -38,7 +38,7 @@ func Test_Module(t *testing.T) {
 	})
 }
 
-func Test_HookModule(t *testing.T) {
+func TestHookModule(t *testing.T) {
 	t.Parallel()
 
 	t.Run("HookModule が nil でないこと", func(t *testing.T) {
@@ -54,7 +54,7 @@ func Test_HookModule(t *testing.T) {
 	})
 }
 
-func Test_MiddlewareModule(t *testing.T) {
+func TestMiddlewareModule(t *testing.T) {
 	t.Parallel()
 
 	t.Run("MiddlewareModule が nil でないこと", func(t *testing.T) {

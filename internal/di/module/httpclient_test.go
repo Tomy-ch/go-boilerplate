@@ -23,7 +23,7 @@ import (
 // 同時アクセスとなり -race が競合を検出するため、本テストは非並列にする（本番は単一アプリ）。
 //
 //nolint:paralleltest // 上記の理由により fx アプリ起動ケースは非並列
-func TestHTTPClientModule_ProvidesClient(t *testing.T) {
+func Test_httpClientModule_ProvidesClient(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("実モジュール配線(clock + httpclient)から Client が構築される", func(t *testing.T) {
 			var client httpclient.Client

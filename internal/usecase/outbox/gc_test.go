@@ -33,7 +33,7 @@ func TestNewGC(t *testing.T) {
 	})
 }
 
-func TestGCUsecase_SweepPublished(t *testing.T) {
+func Test_gcUsecase_SweepPublished(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

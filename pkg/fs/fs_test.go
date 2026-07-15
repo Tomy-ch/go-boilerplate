@@ -9,29 +9,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOS_WriteFileAndReadFile(t *testing.T) {
+func TestOS_WriteFile(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("WriteFile後にReadFileで同じ内容が読める", func(t *testing.T) {
+		t.Run("書き込んだ内容がファイルに永続化される", func(t *testing.T) {
 			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), "sample.txt")
-			sut := OS{}
 
-			require.NoError(t, sut.WriteFile(path, []byte("hello"), 0o600))
+			require.NoError(t, OS{}.WriteFile(path, []byte("hello"), 0o600))
 
-			got, err := sut.ReadFile(path)
+			got, err := os.ReadFile(path) //nolint:gosec // テスト用一時ファイルの読み戻し
 			require.NoError(t, err)
 			assert.Equal(t, "hello", string(got))
 		})
 	})
-}
-
-func TestOS_WriteFile(t *testing.T) {
-	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
@@ -45,8 +40,23 @@ func TestOS_WriteFile(t *testing.T) {
 	})
 }
 
-func TestOS_ReadFile_NotExist(t *testing.T) {
+func TestOS_ReadFile(t *testing.T) {
 	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在するファイルの内容を読み取る", func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "sample.txt")
+			require.NoError(t, os.WriteFile(path, []byte("hello"), 0o600))
+
+			got, err := OS{}.ReadFile(path)
+			require.NoError(t, err)
+			assert.Equal(t, "hello", string(got))
+		})
+	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
