@@ -36,8 +36,9 @@ func NewDownstreamProfile() httpclient.DownstreamProfile {
 	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
 }
 
-// RequiredDownstream は、本 publisher が利用する Downstream を返します。
-// DI がこれを required_downstreams グループへ登録し、対応 profile の登録漏れを起動時に検出します。
+// RequiredDownstream は、本 publisher が使用する Downstream を返します。
+// required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に
+// silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。
 func RequiredDownstream() httpclient.Downstream {
 	return downstream
 }

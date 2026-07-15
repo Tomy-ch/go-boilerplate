@@ -249,7 +249,8 @@ func validateServerConfig(srvCfg Server) error {
 }
 
 // validateShutdownTimeout は、graceful shutdown 猶予が処理中リクエストの予算を下回らないことを検証します。
-// ShutdownTimeout（App）と RequestTimeout（Server）の交差検証のため、両設定を受け取ります。
+// 全プロファイル（server / worker / job / outbox）で共通に走るため、HTTP サーバーを持たない worker / job で
+// APP_SHUTDOWN_TIMEOUT を短縮する場合は、SERVER_REQUEST_TIMEOUT も併せて下げる必要がある。
 func validateShutdownTimeout(appCfg Application, srvCfg Server) error {
 	if appCfg.ShutdownTimeout < srvCfg.RequestTimeout {
 		return ErrShutdownTimeoutBelowRequestTimeout
@@ -257,7 +258,7 @@ func validateShutdownTimeout(appCfg Application, srvCfg Server) error {
 	return nil
 }
 
-// validateMetricsConfig は、メトリクスサーバー設定を検証します。
+// validateMetricsConfig は、メトリクスサーバーのポート番号が有効範囲内であることを検証します。
 func validateMetricsConfig(metricsCfg Metrics) error {
 	return validatePortRange(metricsCfg.Port, ErrInvalidMetricsPortRange)
 }

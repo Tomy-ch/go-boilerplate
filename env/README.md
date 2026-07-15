@@ -40,7 +40,7 @@ This directory is the canonical reference for every environment variable read by
 |APP_LOG_LEVEL|Log output level|string|debug / info / warn / error|Output format follows Mode; level is set explicitly per environment|
 |APP_NAME|Application name|string|Boilerplate|Used for log / metrics identification|
 |APP_ENV|Environment identifier|string|local / ci / dev / stg / prd|For environment distinction. Also used as the embedded-env provenance guard (see Notes)|
-|APP_SHUTDOWN_TIMEOUT|Graceful shutdown duration|duration|65s|Code default `65s`. Wait time on SIGTERM. Must be `>= SERVER_REQUEST_TIMEOUT` (startup fails otherwise) so drain never truncates an in-budget request|
+|APP_SHUTDOWN_TIMEOUT|Graceful shutdown duration|duration|65s|Code default `65s`. Wait time on SIGTERM. Must be `>= SERVER_REQUEST_TIMEOUT` (startup fails otherwise) so drain never truncates an in-budget request. The check runs for every process, so when lowering this for a non-HTTP process (worker / job), lower `SERVER_REQUEST_TIMEOUT` accordingly|
 
 ### Server
 
