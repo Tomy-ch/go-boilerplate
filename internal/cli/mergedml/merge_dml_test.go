@@ -31,7 +31,7 @@ func newTestGenerator(t *testing.T, fs FileSystem) *Generator {
 	}
 }
 
-func TestValidateTargetType(t *testing.T) {
+func Test_validateTargetType(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -344,7 +344,7 @@ func TestGenerator_dmlTypeRootAbs(t *testing.T) {
 	})
 }
 
-func TestResolveConcurrencyConst(t *testing.T) {
+func Test_resolveConcurrencyConst(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -360,7 +360,7 @@ func TestResolveConcurrencyConst(t *testing.T) {
 	})
 }
 
-func TestResolveConcurrency(t *testing.T) {
+func Test_resolveConcurrency(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -538,7 +538,7 @@ func TestRunMerge(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_ListSubDirNames(t *testing.T) {
+func Test_osFileSystem_ListSubDirNames(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -570,7 +570,7 @@ func TestOSFileSystem_ListSubDirNames(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_ListGenFileNames(t *testing.T) {
+func Test_osFileSystem_ListGenFileNames(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -601,7 +601,7 @@ func TestOSFileSystem_ListGenFileNames(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_FindSQLFiles(t *testing.T) {
+func Test_osFileSystem_FindSQLFiles(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -636,7 +636,7 @@ func TestOSFileSystem_FindSQLFiles(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_ReadFile(t *testing.T) {
+func Test_osFileSystem_ReadFile(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -666,7 +666,7 @@ func TestOSFileSystem_ReadFile(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_WriteFile(t *testing.T) {
+func Test_osFileSystem_WriteFile(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -696,7 +696,7 @@ func TestOSFileSystem_WriteFile(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_Remove(t *testing.T) {
+func Test_osFileSystem_Remove(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem

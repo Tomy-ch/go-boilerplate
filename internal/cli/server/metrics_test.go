@@ -24,7 +24,7 @@ import (
 // metricsBlockPathSeq は、DefaultServeMux への二重登録 panic を避けるため一意な登録パスを払い出します。
 var metricsBlockPathSeq atomic.Int64
 
-func TestMetricsServer(t *testing.T) {
+func Test_metricsServer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestMetricsServer(t *testing.T) {
 	})
 }
 
-func TestLogListenError(t *testing.T) {
+func Test_logListenError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

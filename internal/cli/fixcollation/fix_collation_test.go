@@ -13,7 +13,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestValidateDatabaseName(t *testing.T) {
+func Test_validateDatabaseName(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -43,7 +43,7 @@ func TestValidateDatabaseName(t *testing.T) {
 	})
 }
 
-func TestFixCollation(t *testing.T) {
+func Test_fixCollation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
