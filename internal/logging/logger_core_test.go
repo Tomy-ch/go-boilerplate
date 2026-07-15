@@ -34,7 +34,7 @@ func Test_mustOpenSink(t *testing.T) {
 	})
 }
 
-func TestBuildLogger(t *testing.T) {
+func Test_buildLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

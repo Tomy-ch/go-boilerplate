@@ -12,7 +12,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_NewRunner(t *testing.T) {
+func TestNewRunner(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)

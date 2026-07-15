@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func TestBuildLikeTokens(t *testing.T) {
+func Test_buildLikeTokens(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

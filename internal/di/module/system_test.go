@@ -46,7 +46,7 @@ func TestSystemModule_ProvidesBuildInfo(t *testing.T) {
 	})
 }
 
-func TestLogBuildInfo(t *testing.T) {
+func Test_logBuildInfo(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

@@ -26,7 +26,7 @@ func newTestAppCfg(t *testing.T) *config.ApplicationConfig {
 	return config.NewApplicationConfig(config.MockConfigForTest(t))
 }
 
-func Test_NewLoggerProvider(t *testing.T) {
+func TestNewLoggerProvider(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -125,28 +125,32 @@ func Test_newLogExporter(t *testing.T) {
 func Test_ensureOTLPPath(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_path無しなら補う", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, "http://observability:4318/v1/logs", ensureOTLPPath("http://observability:4318", otlpLogsPath))
-	})
 
-	t.Run("正常系_末尾スラッシュも補う", func(t *testing.T) {
-		t.Parallel()
-		assert.Equal(t, "http://observability:4318/v1/logs", ensureOTLPPath("http://observability:4318/", otlpLogsPath))
-	})
+		t.Run("path無しなら補う", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "http://observability:4318/v1/logs", ensureOTLPPath("http://observability:4318", otlpLogsPath))
+		})
 
-	t.Run("正常系_path有りならそのまま", func(t *testing.T) {
-		t.Parallel()
-		assert.Equal(t, "http://observability:4318/custom", ensureOTLPPath("http://observability:4318/custom", otlpLogsPath))
-	})
+		t.Run("末尾スラッシュも補う", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "http://observability:4318/v1/logs", ensureOTLPPath("http://observability:4318/", otlpLogsPath))
+		})
 
-	t.Run("正常系_パース不能ならそのまま", func(t *testing.T) {
-		t.Parallel()
-		assert.Equal(t, "://bad", ensureOTLPPath("://bad", otlpLogsPath))
+		t.Run("path有りならそのまま", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "http://observability:4318/custom", ensureOTLPPath("http://observability:4318/custom", otlpLogsPath))
+		})
+
+		t.Run("パース不能ならそのまま", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "://bad", ensureOTLPPath("://bad", otlpLogsPath))
+		})
 	})
 }
 
-func Test_NewLogCore(t *testing.T) {
+func TestNewLogCore(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

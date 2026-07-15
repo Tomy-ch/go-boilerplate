@@ -666,7 +666,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestEntity_Accessors(t *testing.T) {
+func TestUser_Accessors(t *testing.T) {
 	t.Parallel()
 	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 

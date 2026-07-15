@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNormalizeStatus(t *testing.T) {
+func Test_normalizeStatus(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -25,7 +25,7 @@ func TestNormalizeStatus(t *testing.T) {
 	})
 }
 
-func TestStatusClass(t *testing.T) {
+func Test_statusClass(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestStatusClass(t *testing.T) {
 	})
 }
 
-func TestStatusCodeLabel(t *testing.T) {
+func Test_statusCodeLabel(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

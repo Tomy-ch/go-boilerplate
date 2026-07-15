@@ -44,7 +44,7 @@ func TestBindHandler(t *testing.T) {
 	)
 }
 
-func TestGetReady(t *testing.T) {
+func Test_server_GetReady(t *testing.T) {
 	t.Parallel()
 
 	loc := config.NewTestLocation(t)

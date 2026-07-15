@@ -34,7 +34,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestUsecaseConvert(t *testing.T) {
+func Test_usecase_Convert(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

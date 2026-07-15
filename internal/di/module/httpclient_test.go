@@ -18,7 +18,7 @@ import (
 	infrasystem "go-boilerplate/internal/system"
 )
 
-func TestHTTPClientModule_ProvidesClient(t *testing.T) {
+func Test_httpClientModule_ProvidesClient(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

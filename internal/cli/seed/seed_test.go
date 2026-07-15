@@ -15,7 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestHandleSeedExecResult(t *testing.T) {
+func Test_handleSeedExecResult(t *testing.T) {
 	t.Parallel()
 
 	otherErr := xerrors.New("boom")
@@ -51,7 +51,7 @@ func TestHandleSeedExecResult(t *testing.T) {
 	})
 }
 
-func TestExecSeedFile(t *testing.T) {
+func Test_execSeedFile(t *testing.T) {
 	t.Parallel()
 
 	const path = "database/seed/001.sql"
@@ -111,7 +111,7 @@ func TestExecSeedFile(t *testing.T) {
 	})
 }
 
-func TestRunSeeds(t *testing.T) {
+func Test_runSeeds(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

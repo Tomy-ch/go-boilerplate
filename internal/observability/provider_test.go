@@ -43,7 +43,7 @@ func shutdownMeterProvider(t *testing.T, mp *sdkmetric.MeterProvider) {
 	_ = mp.Shutdown(ctx)
 }
 
-func Test_NewResource(t *testing.T) {
+func TestNewResource(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestNewTextMapPropagator(t *testing.T) {
 }
 
 //nolint:paralleltest // otel グローバル状態(TracerProvider/Propagator)を差し替えるため並列化不可
-func Test_NewTracerProvider(t *testing.T) {
+func TestNewTracerProvider(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("trace有効(http)で伝播器を設定しグローバルなTracerProviderを構築する", func(t *testing.T) {
 			prevTP, prevProp := otel.GetTracerProvider(), otel.GetTextMapPropagator()
@@ -169,7 +169,7 @@ func Test_NewTracerProvider(t *testing.T) {
 	})
 }
 
-func Test_ProvideTracerProvider(t *testing.T) {
+func TestProvideTracerProvider(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -187,7 +187,7 @@ func Test_ProvideTracerProvider(t *testing.T) {
 	})
 }
 
-func Test_ProvideMeterProvider(t *testing.T) {
+func TestProvideMeterProvider(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -206,7 +206,7 @@ func Test_ProvideMeterProvider(t *testing.T) {
 }
 
 //nolint:paralleltest // otel グローバル状態(MeterProvider)を差し替えるため並列化不可
-func Test_NewMeterProvider(t *testing.T) {
+func TestNewMeterProvider(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("metric有効(http)でグローバルなMeterProviderを構築する", func(t *testing.T) {
 			prevMP := otel.GetMeterProvider()
