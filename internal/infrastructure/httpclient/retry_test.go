@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsRetrySafe(t *testing.T) {
+func Test_isRetrySafe(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestIsRetrySafe(t *testing.T) {
 	})
 }
 
-func TestIsRetryableOutcome(t *testing.T) {
+func Test_isRetryableOutcome(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestIsRetryableOutcome(t *testing.T) {
 	})
 }
 
-func TestComputeBackoff(t *testing.T) {
+func Test_computeBackoff(t *testing.T) {
 	t.Parallel()
 
 	profile := Profile{
@@ -157,7 +157,7 @@ func TestComputeBackoff(t *testing.T) {
 	})
 }
 
-func TestRetryWait(t *testing.T) {
+func Test_retryWait(t *testing.T) {
 	t.Parallel()
 
 	profile := Profile{
@@ -211,7 +211,7 @@ func TestRetryWait(t *testing.T) {
 	})
 }
 
-func TestRetryAfter(t *testing.T) {
+func Test_retryAfter(t *testing.T) {
 	t.Parallel()
 
 	now := time.Unix(1000, 0).UTC()

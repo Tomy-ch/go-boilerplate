@@ -28,6 +28,9 @@ type Client interface {
 }
 
 // Downstream は、breaker / metrics / profile / budget の共通キー（論理依存名）です。
+//
+// 必須です。空値は breaker / budget / metrics のキーが "" に collapse し依存ごとの分離が崩れるため、
+// Do が ErrInvalidArgument で弾きます（string 別名で型では空値を排除できないため実行時に担保）。
 type Downstream string
 
 // Method は、HTTP メソッドを表す閉じた自前型です（net/http に依存しません）。
@@ -43,8 +46,8 @@ type Header map[string][]string
 // Request は、1 回の外部 HTTP 呼び出しの意図を表します。
 //
 // 構築は NewRequest（必須項目をシグネチャで強制）と With* オプション経由のみ。任意メソッド文字列は
-// 型でコンパイル時に排除し、「空メソッド」「AllowRetry なのに IdempotencyKey 不在」といった残りの
-// 不正状態は Do 実行時に ErrInvalidArgument で弾きます。
+// 型でコンパイル時に排除し、「空 Downstream」「空メソッド」「AllowRetry なのに IdempotencyKey 不在」と
+// いった残りの不正状態は Do 実行時に ErrInvalidArgument で弾きます。
 type Request struct {
 	// downstream は、論理依存名です（必須）。breaker / metrics / profile / budget のキーになります。
 	downstream Downstream
@@ -98,7 +101,7 @@ func MethodDelete() Method { return Method{"DELETE"} }
 func (m Method) String() string { return m.s }
 
 // NewRequest は、必須項目（method / downstream / url）をシグネチャで強制してリクエストを生成します。
-// 任意メソッド文字列は型で排除済み。空メソッドや AllowRetry の key 不在は Do 実行時に弾かれます。
+// 任意メソッド文字列は型で排除済み。空 Downstream・空メソッド・AllowRetry の key 不在は Do 実行時に弾かれます。
 func NewRequest(method Method, downstream Downstream, url string, opts ...RequestOption) *Request {
 	r := &Request{
 		downstream: downstream,

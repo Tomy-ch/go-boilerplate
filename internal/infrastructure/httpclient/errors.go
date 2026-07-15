@@ -18,6 +18,22 @@ const (
 	statusServerErrorMin = 500
 )
 
+// 静的な apperror ラップ（sentinel）を集約します。動的ラップ・分類(Is)は呼び出し側で行います。
+var (
+	// errCircuitOpen は、circuit breaker による fail-fast を表す内部マーカです。
+	// ErrUnavailable を内包するため呼び出し側の分類は従来どおりですが、metrics では transport 失敗と
+	// 区別して計上するために使います。
+	errCircuitOpen = xerrors.Wrap(apperror.ErrUnavailable, "circuit open")
+
+	// 型で防げない Request の precondition 違反（いずれも ErrInvalidArgument）。
+	errDownstreamRequired     = xerrors.Wrap(apperror.ErrInvalidArgument, "Downstream is required")
+	errMethodRequired         = xerrors.Wrap(apperror.ErrInvalidArgument, "Method is required")
+	errIdempotencyKeyRequired = xerrors.Wrap(apperror.ErrInvalidArgument, "AllowRetry requires IdempotencyKey")
+
+	// errResponseTooLarge は、レスポンスボディが上限を超過したことを表します（ErrUnavailable）。
+	errResponseTooLarge = xerrors.Wrap(apperror.ErrUnavailable, "response body exceeds max bytes")
+)
+
 // statusToAppError は、HTTP ステータスコードを apperror sentinel に写像します。
 // 2xx は nil を返します。3xx はリダイレクト非追従のため未解決とみなし ErrUnavailable を返します
 // （resp に Location を残すので、追従が必要な呼び出し側はそれを参照できます）。

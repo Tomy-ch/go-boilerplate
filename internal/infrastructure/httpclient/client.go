@@ -17,11 +17,6 @@ import (
 // idempotencyHeader は、冪等性キーを伝搬する HTTP ヘッダ名です。
 const idempotencyHeader = "Idempotency-Key"
 
-// errCircuitOpen は、circuit breaker による fail-fast を表す内部マーカです。
-// ErrUnavailable を内包するため呼び出し側の分類は従来どおりですが、metrics では transport 失敗と
-// 区別して計上するために使います。
-var errCircuitOpen = xerrors.Wrap(apperror.ErrUnavailable, "circuit open")
-
 // client は、Client の実装です。
 type client struct {
 	httpClient *http.Client
@@ -62,13 +57,24 @@ func noFollowRedirect(_ *http.Request, _ []*http.Request) error {
 	return http.ErrUseLastResponse
 }
 
+// validate は、型で防げない Request の precondition を検査します。
+// 空 Downstream / ゼロ値 Method / AllowRetry の空 key はいずれも ErrInvalidArgument で弾きます。
+func (req *Request) validate() error {
+	switch {
+	case req.downstream == "":
+		return errDownstreamRequired
+	case req.method == (Method{}):
+		return errMethodRequired
+	case req.allowRetry && req.idempotencyKey == "":
+		return errIdempotencyKeyRequired
+	}
+	return nil
+}
+
 // Do は、req を送信し Response を返します。retry / backoff / deadline 規律を含みます。
 func (c *client) Do(ctx context.Context, req *Request) (*Response, error) {
-	if req.method == (Method{}) {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "Method is required")
-	}
-	if req.allowRetry && req.idempotencyKey == "" {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "AllowRetry requires IdempotencyKey")
+	if err := req.validate(); err != nil {
+		return nil, err
 	}
 
 	profile := c.registry.Profile(req.downstream)
@@ -239,7 +245,7 @@ func readBody(body io.Reader, maxBytes int64) ([]byte, error) {
 		return nil, err
 	}
 	if int64(len(data)) > maxBytes {
-		return nil, xerrors.Wrap(apperror.ErrUnavailable, "response body exceeds max bytes")
+		return nil, errResponseTooLarge
 	}
 	return data, nil
 }

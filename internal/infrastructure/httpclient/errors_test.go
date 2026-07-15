@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStatusToAppError(t *testing.T) {
+func Test_statusToAppError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestStatusToAppError(t *testing.T) {
 	})
 }
 
-func TestNormalizeTransportError(t *testing.T) {
+func Test_normalizeTransportError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestNormalizeTransportError(t *testing.T) {
 	})
 }
 
-func TestRedactErrMessage(t *testing.T) {
+func Test_redactErrMessage(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -196,7 +196,7 @@ func TestRedactErrMessage(t *testing.T) {
 	})
 }
 
-func TestStatusClass(t *testing.T) {
+func Test_statusClass(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
