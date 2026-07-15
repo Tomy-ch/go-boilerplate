@@ -233,7 +233,7 @@ func Test_newRecoverConfig(t *testing.T) {
 	})
 }
 
-func TestDevelopmentConfig(t *testing.T) {
+func Test_developmentConfig(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -253,7 +253,7 @@ func TestDevelopmentConfig(t *testing.T) {
 	})
 }
 
-func TestProductionConfig(t *testing.T) {
+func Test_productionConfig(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

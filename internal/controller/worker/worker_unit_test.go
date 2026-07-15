@@ -123,7 +123,7 @@ func Test_Engine_Healthy(t *testing.T) {
 	})
 }
 
-func Test_Settings_normalize(t *testing.T) {
+func TestSettings_normalize(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -235,7 +235,7 @@ func Test_Settings_normalize(t *testing.T) {
 	})
 }
 
-func Test_NewState(t *testing.T) {
+func TestNewState(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
