@@ -92,3 +92,35 @@ Rules for exceptions:
 - Do **not** add contrived tests or extra implementation solely to color these lines.
 - Record each exception in the owning package's `README` (the concrete file/function list).
 - **Governance:** a new exception is **not added at will** — it is recorded only with an appropriate approver's (e.g. architect) sign-off. If an exempted function later gains real branching logic (not error plumbing), that logic must be unit-tested like everything else.
+
+## 10. Semantic quality bar (anti-patterns)
+
+Sections 1–9 make a test *well-formed*; they do not make it *meaningful*. A test can be
+100 % structurally compliant, lift coverage, and still assert nothing about what makes the
+exercised branch distinct. This section is the semantic bar every test must meet and the
+anti-patterns to avoid. It is the **single source for test quality**, read by both
+`scaffold-test` (to generate tests that satisfy it) and `test-review` (to flag tests that
+violate it) — keeping the list here prevents the generator and the reviewer from drifting.
+
+### Meaning coverage (意味網羅)
+
+Reaching a branch is not enough — each case must assert that branch's **distinctive**
+outcome, not merely that it executed. A covered-but-vacuously-asserted branch passes and
+lifts coverage yet reveals nothing.
+
+- **Error branch** — assert the specific sentinel via `require.ErrorIs`, not just `require.Error`.
+- **Success branch** — assert the resulting value / state that distinguishes it from the other branches, not just `require.NoError` / `assert.NotNil`.
+- **State-mutating method** — assert the post-mutation field / invariant, not just that the call returned.
+- **Immutable pointer / reference getter** — assert immutability (mutating the returned value must not affect the entity), not just value equality.
+- **Boundary** — assert the differing outcome on each side (accept vs reject), not only the accept side.
+
+### Anti-patterns (avoid when writing, flag when reviewing)
+
+- **Weak assertion** — `assert.NotNil` as the sole check on a complex return; `assert.NoError` with no follow-up state assertion; `assert.Equal(t, len(actual), 1)` instead of asserting the element. *Exception:* a trivial constructor kept as its own `TestXxx` for the one-`TestXxx`-per-subject rule (section 1) is a *strengthen-in-place* case — recommend a stronger assertion, never delete the dedicated test or fold it into another subject's test.
+- **Name over-promising the assertion** — a `t.Run` case name claims a property the body does not verify (e.g. `"…を保持した収集器を返す"` while the body only asserts `NotNil`). Either assert the property or rename the case. *Corollary:* a branchless pass-through / wiring function (e.g. a DI provider forwarding its input to a constructor) needs only one honest case; extra cases re-running the same `NotNil` with different inputs add no coverage and should be collapsed.
+- **Brittle internals coupling** — reading unexported fields when the public API would do; asserting on log output or error-message *strings* instead of `errors.Is`.
+- **Over-mocking** — mocking a collaborator a real (pure) implementation would cover more revealingly; call-count matchers at a granularity that locks the implementation in place.
+- **Time-literal pinning leak** — `time.Now()` called inside the assertion instead of a fixed `baseTime`; comparisons relying on the system clock.
+- **Responsibility creep** — one `TestXxx` driving multiple subjects without the recorded rationale (also a section-1 violation).
+- **Helper duplication** — a 5+-line fixture repeated across 3+ `TestXxx` functions that should be a `t.Helper()`-tagged helper.
+- **Redundant comments** — inline comments that restate the code or narrate *why*; case intent belongs in the Japanese `t.Run` name, not in comments (per the Comment Rules in [`rules.md`](rules.md)).

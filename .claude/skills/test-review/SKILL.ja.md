@@ -21,7 +21,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 **常に読む**:
 
-- `docs/testing-conventions.md`。
+- `docs/testing-conventions.md` — **section 10（意味的品質のバー / アンチパターン）を含む**。 Lens 3 と Lens 4 軸B（意味網羅）の SSOT であり、`scaffold-test` と共有する。
 - `.claude/skills/scaffold-test/SKILL.md` — 生成側 canonical ルール（parallel 必須 / `t.Run` per subcase / 正常系・異常系 グルーピング / 日本語命名 / require vs assert / mock 方針 / for-loop 方針 / 1 関数 = 1 `TestXxx`）。本スキルはこれらに対してレビューする（重複定義しない）。
 - 対象ファイルから walk up で解決した層 README:
   - `internal/domain/README.md`（Testing strategy）
@@ -111,18 +111,9 @@ Output: README が宣言しているが test が exercise していない観点�
 
 ### Lens 3: 意味的品質
 
-アサーションが本当に意味を持っているかを監査:
+アサーションが本当に意味を持っているかを、**`docs/testing-conventions.md` section 10（意味的品質のバー / アンチパターン）を唯一の source of truth として**監査する。 この節は `scaffold-test` と共有する SSOT（生成器はこれを満たすように生成し、本 lens はこれへの違反を検出する）— runtime で読み、その時点で列挙されている内容を適用する。 アンチパターンのカタログを本スキルにハードコードしない（doc からドリフトする）。 執筆時点の §10 の列挙: 弱いアサーション（trivial constructor の 1:1 *その場で強化*例外つき — より強い assert を推奨し、専用 `TestXxx` を削除・他 subject へ畳み込まない）、ケース名がアサートを過剰約束（分岐なし pass-through / 配線の系 — 冗長な `NotNil` 再実行は畳む）、内部結合の脆さ、過剰モック、時刻リテラル漏れ、`TestXxx` 責務肥大、ヘルパ重複、冗長コメント。 §10 がアンチパターンを追加・削除・改訂したら、この段落ではなく doc に従う。
 
-- **弱いアサーション**: 複雑な戻り値に対する唯一の確認が `assert.NotNil(t, x)`、`assert.NoError` 後に state 確認なし、`assert.Equal(t, len(actual), 1)` のように要素自体を assert していない 等。
-- **ケース名がアサートを過剰約束**: `t.Run` ケース名が本体で検証していない性質を名乗る — 例: 本体は `NotNil` だけなのに `"…を保持した収集器を返す"`。保持値が unexported フィールドにある / 別ユニットの責務、という場合に起きる。固有の性質を assert するか、検証している内容にケース名を合わせる。系: **分岐なしの pass-through / 配線関数**（入力をコンストラクタへ素通しするだけの DI provider 等）は honest な 1 ケースで十分 — 入力を変えて同じ `NotNil` を再実行するケースは分岐で区別されず網羅を増やさないので畳む。
-- **内部結合の脆さ**: public API で済むのに unexported フィールドを読みに行く、`errors.Is` を使わず error メッセージ文字列で assert する。
-- **過剰モック**: pure 実装で済む collaborator まで全て mock 化、call count の粒度が実装にロックインしている。
-- **時刻リテラル漏れ**: `time.Now()` を assert 内で呼ぶ（固定 `baseTime` でなく）、system clock 依存比較。
-- **`TestXxx` 責務肥大**: 1 `TestXxx` が複数 subject を回しているのに rationale が弱い（ルール違反でもあるが意味的 smell でもある）。
-- **ヘルパ重複**: 5 行以上の同一 fixture が 3 `TestXxx` で繰り返されている → `t.Helper()` 化候補。
-- **冗長コメント**: コードを言い換える／振る舞いでなく*なぜ*を語るインラインコメント。本プロジェクトはテストコメントを最小に保つ＝ケースの意図は日本語 `t.Run` 名に載せコメントに書かない。識別子言い換えコメントやテスト都合の説明がテスト本体に残っていれば指摘（1行 godoc 形式の宣言コメントは対象外、`-race` 直列ブロック例外コメントは必須＝冗長ではない）。
-
-Output: `file:line` + 「なぜ弱い / 脆いか」の 1 文説明 finding リスト。
+Output: `file:line` + 違反した §10 アンチパターン + 「なぜ弱い / 脆いか」の 1 文説明 finding リスト。
 
 ### Lens 4: 観点ギャップ — 分岐 × 意味 網羅 (subject 駆動)
 
@@ -139,7 +130,7 @@ subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の�
 
 カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。
 
-**軸B — 意味網羅**: カバー済みの各分岐のケースが、単に実行されたことではなく*その分岐固有*の outcome を assert しているか。
+**軸B — 意味網羅**: カバー済みの各分岐のケースが、単に実行されたことではなく*その分岐固有*の outcome を assert しているか。 本軸は **`docs/testing-conventions.md` section 10 が定める意味網羅バー**を subject の分岐集合に適用する — 「固有に assert 済み」の定義は §10 が SSOT（`scaffold-test` と共有し、生成器はこれを満たすよう生成する）。 以下の分岐別チェックはその具体適用。
 
 - error 分岐は `require.Error` 止まりでなく `require.ErrorIs` で固有 sentinel を assert。
 - 成功分岐は `require.NoError` / `assert.NotNil` 止まりでなく、他分岐と区別される結果値 / state を assert。
@@ -245,6 +236,7 @@ PR レビューフローで `code-review` / `local-review` / `arch-check` と並
 - ❌ `make test` 実行（本スキルはレビュー、実行は `make test` 別途）。
 - ❌ verifier を通さず finder 出力をそのまま信頼（`skip_verifier: true` 親指定以外、verifier は必須）。
 - ❌ 観点リストのハードコード（SSOT は層 README の Test Strategy 節、`pkg/` は明文化された例外）。
+- ❌ 意味的品質アンチパターンのカタログ（Lens 3）や意味網羅バー（Lens 4 軸B）のハードコード — SSOT は `docs/testing-conventions.md` section 10、runtime 読み込み。
 - ❌ `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のルール重複定義（runtime 読み込み）。
 - ✅ verifier は skeptical 既定（曖昧時は PLAUSIBLE 寄り）。
 - ✅ reviewer 既定モデル `sonnet`（Opus 実装者と異なる）。 必要なら orchestrator が上書きして reviewer ≠ implementer を維持。
