@@ -307,7 +307,7 @@ func Test_repository_FindByActive(t *testing.T) {
 	})
 }
 
-func Test_repository_CreateUser(t *testing.T) {
+func Test_repository_Create(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)

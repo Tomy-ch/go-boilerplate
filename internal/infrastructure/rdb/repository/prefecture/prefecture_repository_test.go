@@ -28,7 +28,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func TestFindByName(t *testing.T) {
+func Test_repository_FindByName(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -83,7 +83,7 @@ func TestFindByName(t *testing.T) {
 	})
 }
 
-func TestFindByID(t *testing.T) {
+func Test_repository_FindByID(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -141,7 +141,7 @@ func TestFindByID(t *testing.T) {
 	})
 }
 
-func TestFindByIDs(t *testing.T) {
+func Test_repository_FindByIDs(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)

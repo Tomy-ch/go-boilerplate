@@ -84,7 +84,7 @@ func TestNewQueryTracer(t *testing.T) {
 	})
 }
 
-func TestQueryTracer_TraceQueryEnd(t *testing.T) {
+func Test_queryTracer_TraceQueryEnd(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -189,7 +189,7 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 	})
 }
 
-func TestQueryTracer_TraceQueryStart(t *testing.T) {
+func Test_queryTracer_TraceQueryStart(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -244,7 +244,7 @@ func TestQueryTracer_TraceQueryStart(t *testing.T) {
 	})
 }
 
-func TestQueryTracer_endFields_Mask(t *testing.T) {
+func Test_queryTracer_endFields_Mask(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
