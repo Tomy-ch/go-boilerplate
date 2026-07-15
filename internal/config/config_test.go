@@ -239,6 +239,24 @@ func Test_validateConfig(t *testing.T) {
 			err := validateConfig(cfg)
 			require.ErrorIs(t, err, ErrAuthConfigMissing)
 		})
+
+		t.Run("shutdownとrequestの交差検証でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.ShutdownTimeout = cfg.Server.RequestTimeout - time.Second // RequestTimeout 未満
+
+			err := validateConfig(cfg)
+			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
+		})
+
+		t.Run("メトリクス設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MinPort - 1 // 無効なポート番号
+
+			err := validateConfig(cfg)
+			require.ErrorIs(t, err, ErrInvalidMetricsPortRange)
+		})
 	})
 }
 
@@ -501,9 +519,29 @@ func Test_validateMetricsConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		cfg := mockLoader(t)
-		err := validateMetricsConfig(cfg.Metrics)
-		require.NoError(t, err)
+
+		t.Run("デフォルトのポート番号は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			err := validateMetricsConfig(cfg.Metrics)
+			require.NoError(t, err)
+		})
+
+		t.Run("ポート番号がMinPortの場合は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MinPort // 有効範囲の下限境界
+			err := validateMetricsConfig(cfg.Metrics)
+			require.NoError(t, err)
+		})
+
+		t.Run("ポート番号がMaxPortの場合は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MaxPort // 有効範囲の上限境界
+			err := validateMetricsConfig(cfg.Metrics)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

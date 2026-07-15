@@ -27,33 +27,24 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 		t.Run("実モジュール配線(clock + httpclient)から Client が構築される", func(t *testing.T) {
 			t.Parallel()
 
-			ctrl := gomock.NewController(t)
+			var client httpclient.Client
+			app := newHTTPClientTestApp(t, fx.Populate(&client))
 
-			mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
-			mockLog := mock_logging.NewMockLogger(ctrl)
-			mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
-			mockReg.EXPECT().RegisterStop(gomock.Any()).AnyTimes()
+			require.NoError(t, app.Start(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+			assert.NotNil(t, client)
+		})
+
+		t.Run("required と対応 profile が揃っていれば起動する", func(t *testing.T) {
+			t.Parallel()
 
 			var client httpclient.Client
-
-			// 本番と同じ clockModule()/httpClientModule() を通し、配線そのものを検証する。
-			app := fx.New(
-				ObservabilityModule(),
-				clockModule(),
-				httpClientModule(),
-				fx.Provide(func() testing.TB { return t }),
-				fx.Provide(func() lifecycle.Registrar { return mockReg }),
-				fx.Provide(func() logging.Logger { return mockLog }),
-				fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
-				fx.Provide(func() *config.ApplicationConfig {
-					return config.NewApplicationConfig(config.MockConfigForTest(t))
+			app := newHTTPClientTestApp(t,
+				provideHTTPClientProfiles(func() httpclient.DownstreamProfile {
+					return httpclient.DownstreamProfile{Name: "svc", Profile: httpclient.DefaultProfile()}
 				}),
-				fx.Provide(func() *config.ObservabilityConfig {
-					return config.NewObservabilityConfig(config.MockConfigForTest(t))
-				}),
-				fx.Provide(infrasystem.NewBuildInfo),
+				provideRequiredDownstreams(func() httpclient.Downstream { return "svc" }),
 				fx.Populate(&client),
-				fx.NopLogger,
 			)
 
 			require.NoError(t, app.Start(context.Background()))
@@ -61,4 +52,50 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 			assert.NotNil(t, client)
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("required に対応する profile が未登録の場合、起動に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			// profile を登録せず required だけ宣言すると、silent fallback ではなく起動失敗になる。
+			var client httpclient.Client
+			app := newHTTPClientTestApp(t,
+				provideRequiredDownstreams(func() httpclient.Downstream { return "orphan" }),
+				fx.Populate(&client),
+			)
+
+			require.Error(t, app.Start(context.Background()))
+		})
+	})
+}
+
+// newHTTPClientTestApp は、本番同様の clockModule / httpClientModule 配線に extra を足した fx アプリを構築します。
+func newHTTPClientTestApp(t *testing.T, extra ...fx.Option) *fx.App {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
+	mockLog := mock_logging.NewMockLogger(ctrl)
+	mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+	mockReg.EXPECT().RegisterStop(gomock.Any()).AnyTimes()
+
+	return fx.New(append([]fx.Option{
+		ObservabilityModule(),
+		clockModule(),
+		httpClientModule(),
+		fx.Provide(func() testing.TB { return t }),
+		fx.Provide(func() lifecycle.Registrar { return mockReg }),
+		fx.Provide(func() logging.Logger { return mockLog }),
+		fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+		fx.Provide(func() *config.ApplicationConfig {
+			return config.NewApplicationConfig(config.MockConfigForTest(t))
+		}),
+		fx.Provide(func() *config.ObservabilityConfig {
+			return config.NewObservabilityConfig(config.MockConfigForTest(t))
+		}),
+		fx.Provide(infrasystem.NewBuildInfo),
+		fx.NopLogger,
+	}, extra...)...)
 }

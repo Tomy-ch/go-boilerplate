@@ -127,6 +127,21 @@ func Test_store_ClaimPending(t *testing.T) {
 			})
 		})
 
+		t.Run("limitを超えるpending行があってもlimit件までしか返さない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				for range 3 {
+					_, err := s.Insert(ctx, emitParams())
+					require.NoError(t, err)
+				}
+
+				msgs, err := s.ClaimPending(ctx, 2)
+				require.NoError(t, err)
+				require.Len(t, msgs, 2)
+			})
+		})
+
 		t.Run("pending行が無ければ空を返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -191,27 +206,57 @@ func Test_store_ClaimPending_concurrentSkipLocked(t *testing.T) {
 		return nil
 	}))
 
+	// 全 skip: 保持側が 2 行すべてをロックする間、競合側は 0 行（すべて skip される）。
+	assertSkipLockedContention(t, txm.Do, s, 10, 2, 0)
+
+	// release 後は行が pending へ戻り、新規 tx から再 claim できる（ロック解放後は取得可能）。
+	// SELECT のみのため rollback で pending のまま残し、次の部分 skip フェーズで再利用する。
+	reclaimErr := txm.Do(context.Background(), func(ctx context.Context) error {
+		claimed, err := s.ClaimPending(ctx, 10)
+		if err != nil {
+			return err
+		}
+		assert.Len(t, claimed, 2, "release 後は保持されていた行を再 claim できる")
+		return errRollbackForTest
+	})
+	require.ErrorIs(t, reclaimErr, errRollbackForTest)
+
+	// 部分 skip: 保持側が 1 行だけロックし、競合側は残り 1 行を取得できる（ロック済のみ skip）。
+	assertSkipLockedContention(t, txm.Do, s, 1, 1, 1)
+}
+
+// assertSkipLockedContention は、保持側 tx が holderLimit 件をロックして保持する間に競合側 tx を走らせ、
+// 保持側が wantHolder 件・競合側が wantContender 件を claim することを検証します（SKIP LOCKED の排他/部分 skip）。
+// 保持側は行を残さないよう最後に rollback します。do は TransactionManager.Do を渡します。
+func assertSkipLockedContention(
+	t *testing.T,
+	do func(context.Context, func(context.Context) error) error,
+	s *store,
+	holderLimit int32,
+	wantHolder, wantContender int,
+) {
+	t.Helper()
+
 	holderClaimed := make(chan struct{})
-	releaseHolder := make(chan struct{})
+	release := make(chan struct{})
 	holderDone := make(chan error, 1)
 
-	var releaseOnce sync.Once
-	release := func() { releaseOnce.Do(func() { close(releaseHolder) }) }
-	t.Cleanup(release) // 失敗時も保持側 goroutine をリークさせない
+	var once sync.Once
+	rel := func() { once.Do(func() { close(release) }) }
+	t.Cleanup(rel) // 失敗時も保持側 goroutine をリークさせない
 
-	// 保持側 tx: pending 行を claim（FOR UPDATE SKIP LOCKED で行ロック）し、未コミットで保持する。
 	go func() {
-		holderDone <- txm.Do(context.Background(), func(ctx context.Context) error {
-			claimed, err := s.ClaimPending(ctx, 10)
+		holderDone <- do(context.Background(), func(ctx context.Context) error {
+			claimed, err := s.ClaimPending(ctx, holderLimit)
 			if err != nil {
 				return err
 			}
-			if len(claimed) != 2 {
-				return xerrors.New(fmt.Sprintf("holder: expected to claim 2 rows, got %d", len(claimed)))
+			if len(claimed) != wantHolder {
+				return xerrors.New(fmt.Sprintf("holder: expected to claim %d rows, got %d", wantHolder, len(claimed)))
 			}
 			close(holderClaimed)
-			<-releaseHolder
-			return errRollbackForTest // rollback で行を pending へ戻す
+			<-release
+			return errRollbackForTest
 		})
 	}()
 
@@ -222,18 +267,17 @@ func Test_store_ClaimPending_concurrentSkipLocked(t *testing.T) {
 		return
 	}
 
-	// 競合側 tx: 保持側がロック中の行を SKIP LOCKED で全て skip し、空を得る（二重 claim しない）。
-	contenderErr := txm.Do(context.Background(), func(ctx context.Context) error {
+	contenderErr := do(context.Background(), func(ctx context.Context) error {
 		claimed, err := s.ClaimPending(ctx, 10)
 		if err != nil {
 			return err
 		}
-		assert.Empty(t, claimed, "SKIP LOCKED: 保持側が claim 中の行は競合 tx から claim されてはならない")
+		assert.Len(t, claimed, wantContender, "SKIP LOCKED: ロック済行は skip し、未ロック行のみ取得する")
 		return nil
 	})
 	require.NoError(t, contenderErr)
 
-	release()
+	rel()
 	require.ErrorIs(t, <-holderDone, errRollbackForTest)
 }
 

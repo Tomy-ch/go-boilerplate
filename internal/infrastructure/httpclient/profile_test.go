@@ -64,7 +64,8 @@ func TestNewRegistryFromProfiles(t *testing.T) {
 				{Name: "dup", Profile: httpclient.DefaultProfile()},
 			})
 
-			require.Error(t, err)
+			// sentinel を持たないため、重複固有のメッセージで他経路のエラーと区別する。
+			require.ErrorContains(t, err, "duplicate httpclient profile for downstream")
 			assert.Nil(t, registry)
 		})
 	})
@@ -102,6 +103,20 @@ func TestMissingDownstreams(t *testing.T) {
 
 			missing := httpclient.MissingDownstreams(profiles, []httpclient.Downstream{"a", "missing"})
 			assert.Equal(t, []httpclient.Downstream{"missing"}, missing)
+		})
+
+		t.Run("profilesが空なら全requiredを欠落として返す", func(t *testing.T) {
+			t.Parallel()
+
+			missing := httpclient.MissingDownstreams(nil, []httpclient.Downstream{"x"})
+			assert.Equal(t, []httpclient.Downstream{"x"}, missing)
+		})
+
+		t.Run("複数欠落はrequiredの登場順で返す", func(t *testing.T) {
+			t.Parallel()
+
+			missing := httpclient.MissingDownstreams(profiles, []httpclient.Downstream{"x", "a", "y"})
+			assert.Equal(t, []httpclient.Downstream{"x", "y"}, missing)
 		})
 	})
 }

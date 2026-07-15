@@ -105,6 +105,8 @@ func TestGuardedDialControl(t *testing.T) {
 			require.Error(t, guardedDialControl(allow, "tcp", "198.18.0.1:80", nil))
 			// RFC 1122/6890「このネットワーク」（0.0.0.0/8）— 0.0.0.0 ちょうど以外も拒否する。
 			require.Error(t, guardedDialControl(allow, "tcp", "0.0.0.1:80", nil))
+			// 0.0.0.0 ちょうどは IsUnspecified 経路で拒否される（/8 追加前からの既存挙動）。
+			require.Error(t, guardedDialControl(allow, "tcp", "0.0.0.0:80", nil))
 			// RFC 6890 IETF プロトコル割当（192.0.0.0/24）— 一般宛て通信には使われない。
 			require.Error(t, guardedDialControl(allow, "tcp", "192.0.0.1:80", nil))
 			// RFC 3849 IPv6 ドキュメント用（2001:db8::/32）— テスト/文書専用で実到達不能。

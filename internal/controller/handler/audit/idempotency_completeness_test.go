@@ -106,6 +106,10 @@ func collectMarkedParams(lines []string, file string, marked map[string]string) 
 
 // collectRunWrapped は、メソッド宣言ブロック内に idempotency.Run 呼び出しがあるとき、その
 // メソッド名を wrapped へ加えます。ブロックは行頭 `func ` から次の行頭 `func ` までとします。
+//
+// 検出は import 別名なしの直接呼び出し `idempotency.Run(` に限る。別名 import（`idem.Run(` 等）や
+// 変数へ束ねてからの間接呼び出しは検出できない。現行ハンドラは直接呼び出しのみのため問題ないが、
+// この規約から外れると完全性検証が偽陰性になりうる点に注意。
 func collectRunWrapped(lines []string, wrapped map[string]struct{}) {
 	currentMethod := ""
 	for _, line := range lines {
