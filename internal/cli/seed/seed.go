@@ -27,7 +27,6 @@ func RunDBSeed(
 	database string,
 	openDB func(logging.Logger, string) (driver.DatabaseDriver, error),
 ) error {
-	// CLI 起動系のため trace span は無い。context.Background() を用いる。
 	ctx := context.Background()
 
 	db, err := openDB(logger, database)

@@ -22,7 +22,7 @@ func LoggingModule() fx.Option {
 
 // provideLogger は、アプリケーション設定に応じた Logger を生成します。
 // logCore が非 nil のときは、その core を Tee した Logger を返します。
-// extract は ctx から trace_id / span_id を注入する抽出関数です。
+// extract は ctx から trace_id / span_id を抽出して注入する TraceExtractor です（nil のとき trace 注入なし）。
 func provideLogger(
 	appCfg *config.ApplicationConfig,
 	logCore logging.LogCore,

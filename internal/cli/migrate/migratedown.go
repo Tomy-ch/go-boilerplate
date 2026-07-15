@@ -14,7 +14,6 @@ import (
 // MigrateDownRun は、データベースマイグレーションを Down 方向に適用します。
 // steps=0 なら全マイグレーションをロールバックし、正数なら段数分だけ戻します。steps が負の場合はエラーを返します。dirty 状態の DB は Force で整合を取ってから Down します。
 func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
-	// CLI 起動系のため trace span は無い。context.Background() を用いる。
 	ctx := context.Background()
 
 	if steps < 0 {

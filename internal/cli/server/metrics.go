@@ -54,7 +54,6 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
 // エラーのみをログ記録します。bind 失敗等でアプリ本体を巻き込まないよう、panic せずログに留めます。
 func logListenError(logger logging.Logger, err error) {
 	if err != nil && !xerrors.Is(err, http.ErrServerClosed) {
-		// start goroutine 内で request ctx を持たないため context.Background() を用いる。
 		logger.Named("metrics.ListenAndServe").Error(context.Background(), "metrics server error", logging.Error(logging.ErrorKey, err))
 	}
 }

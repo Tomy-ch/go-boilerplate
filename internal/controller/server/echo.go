@@ -10,7 +10,6 @@ import (
 
 // BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
 // eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
-// trace_id / span_id は Logger が ctx から注入するため、ここでは設定しない。
 func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequestLogInput {
 	req := c.Request()
 	return logging.HTTPRequestLogInput{

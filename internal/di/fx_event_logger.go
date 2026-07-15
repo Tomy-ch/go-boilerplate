@@ -89,7 +89,6 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 }
 
 // record は fx イベントの成否に応じてログを記録します。
-// fxevent.Logger は ctx を持たないため context.Background() を用います。
 func (f *fxEventLogger) record(
 	err error,
 	failMsg string, failFields []*logging.Field,
