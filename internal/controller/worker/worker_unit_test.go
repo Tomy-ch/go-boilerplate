@@ -33,7 +33,7 @@ func newTestEngine(t *testing.T, set Settings, w bw.Worker) *Engine {
 	return eng
 }
 
-func Test_Engine_Names(t *testing.T) {
+func TestEngine_Names(t *testing.T) {
 	t.Parallel()
 
 	noop := handlerFunc(func(context.Context, bw.Message) error { return nil })
@@ -76,7 +76,7 @@ func Test_Engine_Names(t *testing.T) {
 	})
 }
 
-func Test_Engine_Healthy(t *testing.T) {
+func TestEngine_Healthy(t *testing.T) {
 	t.Parallel()
 
 	noop := handlerFunc(func(context.Context, bw.Message) error { return nil })

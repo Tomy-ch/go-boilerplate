@@ -65,7 +65,7 @@ func startEngine(t *testing.T, set Settings, log logging.Logger, w bw.Worker) (c
 
 // --- New / Names / Run ---
 
-func Test_New(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -112,7 +112,12 @@ func Test_New(t *testing.T) {
 	})
 }
 
-func Test_Engine_Run(t *testing.T) {
+// (*Engine).Run は 1 subject = 1 TestXxx の規約に従い単一のテスト関数へ集約している。
+// Run の多数の挙動シナリオを正常系/異常系のサブテストとして束ねる構造上、認知的複雑度が
+// 閾値を超えるが、各サブテストは独立しており分割は subject 単位の規約に反するため抑止する。
+//
+//nolint:gocognit // Run の全シナリオを 1 subject=1 テストへ集約するため（各サブテストは独立）
+func TestEngine_Run(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -133,6 +138,311 @@ func Test_Engine_Run(t *testing.T) {
 			case <-time.After(eventually):
 				t.Fatal("ctx cancel で engine が終了しなかった")
 			}
+		})
+
+		t.Run("成功時に Ack され Nack されない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool { return len(f.AckedIDs()) == 1 }, eventually, tick)
+			assert.Empty(t, f.NackedIDs())
+		})
+
+		t.Run("長時間処理中に Extend が周期的に呼ばれる", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"})
+			release := make(chan struct{})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				<-release
+				return nil
+			})}
+			set := baseSettings()
+			set.ExtendInterval = 5 * time.Millisecond
+
+			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+			defer func() { close(release); cancel(); <-done }()
+
+			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
+		})
+
+		t.Run("ExtendInterval が 0 以下の場合は Extend が呼ばれない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			set := baseSettings()
+			set.ExtendInterval = 0
+
+			r := newRun(newTestEngine(t, set, w), w)
+			stop := r.startHeartbeat(context.Background(), bw.Message{ID: "a"})
+			stop()
+
+			assert.Equal(t, 0, f.ExtendCount("a"))
+		})
+
+		t.Run("同一 ID の重複配送がそのまま Handler に届く", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"}, bw.Message{ID: "a"})
+			var mu sync.Mutex
+			count := 0
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				mu.Lock()
+				count++
+				mu.Unlock()
+				return nil
+			})}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool {
+				mu.Lock()
+				defer mu.Unlock()
+				return count == 2
+			}, eventually, tick)
+		})
+
+		t.Run("Permanent は FailureHandler へ退避してから Ack される", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"})
+			w := testWorker{name: "w", cons: f, failure: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				return xerrors.Wrap(apperror.ErrPermanent, "bad message")
+			})}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool {
+				return len(f.Failed()) == 1 && len(f.AckedIDs()) == 1
+			}, eventually, tick)
+			assert.Empty(t, f.NackedIDs())
+			require.ErrorIs(t, f.Failed()[0].Cause, apperror.ErrPermanent)
+		})
+
+		t.Run("Fatal は cancel 無しでも engine を停止させる", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"})
+			fatal := xerrors.Wrap(apperror.ErrFatal, "config broken")
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				return fatal
+			})}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			defer cancel()
+
+			select {
+			case err := <-done:
+				require.ErrorIs(t, err, apperror.ErrFatal)
+			case <-time.After(eventually):
+				t.Fatal("Fatal で engine が停止しなかった")
+			}
+		})
+
+		t.Run("1 メッセージの panic が他メッセージ・engine を巻き込まない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "good"}, bw.Message{ID: "bad"})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
+				if m.ID == "bad" {
+					panic("boom")
+				}
+				return nil
+			})}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), "good") }, eventually, tick)
+			require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), "bad") }, eventually, tick)
+			// panic は Retryable に変換され、per-message backoff つきで再配送される。
+			assert.True(t, f.NackBackoffApplied("bad"), "NackWithBackoff で再配送されること")
+		})
+
+		t.Run("ReceiveCount が閾値以上で warn ログが出る", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"})
+			set := baseSettings()
+			set.ReceiveCountWarnThreshold = 1
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+
+			cancel, done := startEngine(t, set, logger, w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool {
+				return observed.FilterMessage("receive count threshold reached").Len() >= 1
+			}, eventually, tick)
+		})
+
+		t.Run("同時 Handle 数が Concurrency を超えない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			for i := range 6 {
+				f.Enqueue(bw.Message{ID: string(rune('a' + i))})
+			}
+			var cur, maxObserved atomic.Int32
+			release := make(chan struct{})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				c := cur.Add(1)
+				for {
+					old := maxObserved.Load()
+					if c <= old || maxObserved.CompareAndSwap(old, c) {
+						break
+					}
+				}
+				<-release
+				cur.Add(-1)
+				return nil
+			})}
+			set := baseSettings()
+			set.Concurrency = 2
+			set.MaxInFlight = 8
+			set.BatchSize = 8
+
+			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+			defer func() { close(release); cancel(); <-done }()
+
+			require.Eventually(t, func() bool { return cur.Load() == 2 }, eventually, tick)
+			assert.LessOrEqual(t, maxObserved.Load(), int32(2))
+		})
+
+		t.Run("in-flight が MaxInFlight を超えない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			for i := range 10 {
+				f.Enqueue(bw.Message{ID: string(rune('a' + i))})
+			}
+			release := make(chan struct{})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				<-release
+				return nil
+			})}
+			set := baseSettings()
+			set.Concurrency = 3
+			set.MaxInFlight = 3
+			set.BatchSize = 5
+
+			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+			defer func() { close(release); cancel(); <-done }()
+
+			require.Eventually(t, func() bool { return f.InflightLen() == 3 }, eventually, tick)
+			assert.LessOrEqual(t, f.InflightLen(), 3)
+		})
+
+		t.Run("同一 PartitionKey のメッセージは投入順に直列処理される", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(
+				bw.Message{ID: "1", PartitionKey: "k"},
+				bw.Message{ID: "2", PartitionKey: "k"},
+				bw.Message{ID: "3", PartitionKey: "k"},
+			)
+			var mu sync.Mutex
+			var order []string
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
+				time.Sleep(2 * time.Millisecond)
+				mu.Lock()
+				order = append(order, m.ID)
+				mu.Unlock()
+				return nil
+			})}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool {
+				mu.Lock()
+				defer mu.Unlock()
+				return len(order) == 3
+			}, eventually, tick)
+
+			mu.Lock()
+			defer mu.Unlock()
+			assert.Equal(t, []string{"1", "2", "3"}, order)
+		})
+
+		t.Run("連続失敗で Open し intake が止まり、回復後 Half-open で再開する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"})
+			var failing atomic.Bool
+			failing.Store(true)
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				if failing.Load() {
+					return xerrors.Wrap(apperror.ErrRetryable, "downstream down")
+				}
+				return nil
+			})}
+			set := baseSettings()
+			set.Concurrency = 1
+			set.MaxInFlight = 1
+			set.BatchSize = 1
+			set.CircuitFailureThreshold = 2
+			// cooldown を 1s 級へ引き上げ、-race のスローダウン下でも観測窓に Half-open probe が割り込まないようにする。
+			set.CircuitOpenBackoffInitial = time.Second
+			set.CircuitOpenBackoffMax = time.Second
+
+			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			// B4-1: 連続 2 失敗で Open へ遷移する。MaxInFlight=1 のため poll loop は失敗確定
+			// （onFailure で trip）まで次の Receive に進めず、Open 遷移後は cooldown 待機に入る。
+			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 2 }, eventually, tick)
+			// Open 中は intake が止まり Receive されないため、cooldown（1s）より十分短い窓で
+			// Nack も Ack も増えないことを確認する（実時間 sleep には依存しない）。
+			require.Never(t, func() bool {
+				return len(f.NackedIDs()) > 2 || len(f.AckedIDs()) > 0
+			}, 200*time.Millisecond, tick)
+			// 再配送された "a" が Receive されず queue に滞留していることが intake 停止の証跡。
+			assert.Equal(t, 1, f.QueueLen())
+
+			// B4-2: 回復させると cooldown 経過後の Half-open 試行で成功し Ack される。
+			failing.Store(false)
+			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, 5*time.Second, tick)
+		})
+
+		t.Run("失敗ログに message id と receive count が構造化フィールドで残る", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			f := testkit.NewFake()
+			f.Enqueue(bw.Message{ID: "a"})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				return xerrors.Wrap(apperror.ErrRetryable, "downstream")
+			})}
+
+			cancel, done := startEngine(t, baseSettings(), logger, w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool {
+				return observed.FilterMessage("retryable failure, nacked").Len() >= 1
+			}, eventually, tick)
+
+			entry := observed.FilterMessage("retryable failure, nacked").All()[0]
+			ctxMap := entry.ContextMap()
+			assert.Equal(t, "a", ctxMap[logging.MessageIDKey])
+			assert.Equal(t, int64(1), ctxMap[logging.ReceiveCountKey])
 		})
 	})
 
@@ -171,32 +481,6 @@ func Test_Engine_Run(t *testing.T) {
 
 			require.Eventually(t, func() bool { return len(f.AckedIDs()) == 1 }, eventually, tick)
 		})
-	})
-}
-
-func Test_Engine_AckNackDiscipline(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("成功時に Ack され Nack されない", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "a"})
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
-
-			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-			defer func() { cancel(); <-done }()
-
-			require.Eventually(t, func() bool { return len(f.AckedIDs()) == 1 }, eventually, tick)
-			assert.Empty(t, f.NackedIDs())
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("Retryable 失敗時は Nack され Ack されない", func(t *testing.T) {
 			t.Parallel()
@@ -251,52 +535,6 @@ func Test_Engine_AckNackDiscipline(t *testing.T) {
 
 			assert.Equal(t, 1, observed.FilterMessage("nack error").Len())
 		})
-	})
-}
-
-func Test_Engine_ExtendHeartbeat(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("長時間処理中に Extend が周期的に呼ばれる", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "a"})
-			release := make(chan struct{})
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-				<-release
-				return nil
-			})}
-			set := baseSettings()
-			set.ExtendInterval = 5 * time.Millisecond
-
-			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-			defer func() { close(release); cancel(); <-done }()
-
-			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
-		})
-
-		t.Run("ExtendInterval が 0 以下の場合は Extend が呼ばれない", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
-			set := baseSettings()
-			set.ExtendInterval = 0
-
-			r := newRun(newTestEngine(t, set, w), w)
-			stop := r.startHeartbeat(context.Background(), bw.Message{ID: "a"})
-			stop()
-
-			assert.Equal(t, 0, f.ExtendCount("a"))
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("Extend が失敗してもハートビートは継続し処理は完了する", func(t *testing.T) {
 			t.Parallel()
@@ -357,308 +595,6 @@ func Test_Engine_ExtendHeartbeat(t *testing.T) {
 
 			assert.Equal(t, 0, observed.FilterMessage("extend failed").Len())
 		})
-	})
-}
-
-func Test_Engine_DuplicateDelivery(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("同一 ID の重複配送がそのまま Handler に届く", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "a"}, bw.Message{ID: "a"})
-			var mu sync.Mutex
-			count := 0
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-				mu.Lock()
-				count++
-				mu.Unlock()
-				return nil
-			})}
-
-			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-			defer func() { cancel(); <-done }()
-
-			require.Eventually(t, func() bool {
-				mu.Lock()
-				defer mu.Unlock()
-				return count == 2
-			}, eventually, tick)
-		})
-	})
-}
-
-func Test_Engine_PermanentAndFatal(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("Permanent は FailureHandler へ退避してから Ack される", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "a"})
-			w := testWorker{name: "w", cons: f, failure: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-				return xerrors.Wrap(apperror.ErrPermanent, "bad message")
-			})}
-
-			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-			defer func() { cancel(); <-done }()
-
-			require.Eventually(t, func() bool {
-				return len(f.Failed()) == 1 && len(f.AckedIDs()) == 1
-			}, eventually, tick)
-			assert.Empty(t, f.NackedIDs())
-			require.ErrorIs(t, f.Failed()[0].Cause, apperror.ErrPermanent)
-		})
-
-		t.Run("Fatal は cancel 無しでも engine を停止させる", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "a"})
-			fatal := xerrors.Wrap(apperror.ErrFatal, "config broken")
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-				return fatal
-			})}
-
-			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-			defer cancel()
-
-			select {
-			case err := <-done:
-				require.ErrorIs(t, err, apperror.ErrFatal)
-			case <-time.After(eventually):
-				t.Fatal("Fatal で engine が停止しなかった")
-			}
-		})
-	})
-}
-
-func Test_Engine_PanicIsolation(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("1 メッセージの panic が他メッセージ・engine を巻き込まない", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "good"}, bw.Message{ID: "bad"})
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
-				if m.ID == "bad" {
-					panic("boom")
-				}
-				return nil
-			})}
-
-			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-			defer func() { cancel(); <-done }()
-
-			require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), "good") }, eventually, tick)
-			require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), "bad") }, eventually, tick)
-			// panic は Retryable に変換され、per-message backoff つきで再配送される。
-			assert.True(t, f.NackBackoffApplied("bad"), "NackWithBackoff で再配送されること")
-		})
-	})
-}
-
-func Test_Engine_PoisonWarn(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("ReceiveCount が閾値以上で warn ログが出る", func(t *testing.T) {
-			t.Parallel()
-
-			logger, observed := logging.NewObservedTestLogger(t)
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "a"})
-			set := baseSettings()
-			set.ReceiveCountWarnThreshold = 1
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
-
-			cancel, done := startEngine(t, set, logger, w)
-			defer func() { cancel(); <-done }()
-
-			require.Eventually(t, func() bool {
-				return observed.FilterMessage("receive count threshold reached").Len() >= 1
-			}, eventually, tick)
-		})
-	})
-}
-
-func Test_Engine_ConcurrencyLimit(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("同時 Handle 数が Concurrency を超えない", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			for i := range 6 {
-				f.Enqueue(bw.Message{ID: string(rune('a' + i))})
-			}
-			var cur, maxObserved atomic.Int32
-			release := make(chan struct{})
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-				c := cur.Add(1)
-				for {
-					old := maxObserved.Load()
-					if c <= old || maxObserved.CompareAndSwap(old, c) {
-						break
-					}
-				}
-				<-release
-				cur.Add(-1)
-				return nil
-			})}
-			set := baseSettings()
-			set.Concurrency = 2
-			set.MaxInFlight = 8
-			set.BatchSize = 8
-
-			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-			defer func() { close(release); cancel(); <-done }()
-
-			require.Eventually(t, func() bool { return cur.Load() == 2 }, eventually, tick)
-			assert.LessOrEqual(t, maxObserved.Load(), int32(2))
-		})
-	})
-}
-
-func Test_Engine_InflightLimit(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("in-flight が MaxInFlight を超えない", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			for i := range 10 {
-				f.Enqueue(bw.Message{ID: string(rune('a' + i))})
-			}
-			release := make(chan struct{})
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-				<-release
-				return nil
-			})}
-			set := baseSettings()
-			set.Concurrency = 3
-			set.MaxInFlight = 3
-			set.BatchSize = 5
-
-			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-			defer func() { close(release); cancel(); <-done }()
-
-			require.Eventually(t, func() bool { return f.InflightLen() == 3 }, eventually, tick)
-			assert.LessOrEqual(t, f.InflightLen(), 3)
-		})
-	})
-}
-
-func Test_Engine_PartitionSerialization(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("同一 PartitionKey のメッセージは投入順に直列処理される", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(
-				bw.Message{ID: "1", PartitionKey: "k"},
-				bw.Message{ID: "2", PartitionKey: "k"},
-				bw.Message{ID: "3", PartitionKey: "k"},
-			)
-			var mu sync.Mutex
-			var order []string
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
-				time.Sleep(2 * time.Millisecond)
-				mu.Lock()
-				order = append(order, m.ID)
-				mu.Unlock()
-				return nil
-			})}
-
-			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-			defer func() { cancel(); <-done }()
-
-			require.Eventually(t, func() bool {
-				mu.Lock()
-				defer mu.Unlock()
-				return len(order) == 3
-			}, eventually, tick)
-
-			mu.Lock()
-			defer mu.Unlock()
-			assert.Equal(t, []string{"1", "2", "3"}, order)
-		})
-	})
-}
-
-func Test_Engine_CircuitBreaker(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("連続失敗で Open し intake が止まり、回復後 Half-open で再開する", func(t *testing.T) {
-			t.Parallel()
-
-			f := testkit.NewFake()
-			f.Enqueue(bw.Message{ID: "a"})
-			var failing atomic.Bool
-			failing.Store(true)
-			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-				if failing.Load() {
-					return xerrors.Wrap(apperror.ErrRetryable, "downstream down")
-				}
-				return nil
-			})}
-			set := baseSettings()
-			set.Concurrency = 1
-			set.MaxInFlight = 1
-			set.BatchSize = 1
-			set.CircuitFailureThreshold = 2
-			// cooldown を 1s 級へ引き上げ、-race のスローダウン下でも観測窓に Half-open probe が割り込まないようにする。
-			set.CircuitOpenBackoffInitial = time.Second
-			set.CircuitOpenBackoffMax = time.Second
-
-			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-			defer func() { cancel(); <-done }()
-
-			// B4-1: 連続 2 失敗で Open へ遷移する。MaxInFlight=1 のため poll loop は失敗確定
-			// （onFailure で trip）まで次の Receive に進めず、Open 遷移後は cooldown 待機に入る。
-			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 2 }, eventually, tick)
-			// Open 中は intake が止まり Receive されないため、cooldown（1s）より十分短い窓で
-			// Nack も Ack も増えないことを確認する（実時間 sleep には依存しない）。
-			require.Never(t, func() bool {
-				return len(f.NackedIDs()) > 2 || len(f.AckedIDs()) > 0
-			}, 200*time.Millisecond, tick)
-			// 再配送された "a" が Receive されず queue に滞留していることが intake 停止の証跡。
-			assert.Equal(t, 1, f.QueueLen())
-
-			// B4-2: 回復させると cooldown 経過後の Half-open 試行で成功し Ack される。
-			failing.Store(false)
-			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, 5*time.Second, tick)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("Open の cooldown 待機中に ctx がキャンセルされると acquire が中断する", func(t *testing.T) {
 			t.Parallel()
@@ -685,7 +621,7 @@ func Test_Engine_CircuitBreaker(t *testing.T) {
 	})
 }
 
-func Test_Engine_drain(t *testing.T) {
+func TestEngine_drain(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
