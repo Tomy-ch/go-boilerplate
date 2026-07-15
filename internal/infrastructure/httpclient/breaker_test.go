@@ -24,7 +24,7 @@ func recordClosedFailures(b *breaker, n int, now time.Time) {
 	}
 }
 
-func TestBreakerAllowAndRecord(t *testing.T) {
+func Test_breaker_allow_record(t *testing.T) {
 	t.Parallel()
 
 	base := time.Unix(1000, 0)
@@ -184,7 +184,7 @@ func TestBreakerAllowAndRecord(t *testing.T) {
 	})
 }
 
-func TestBreakerShouldOpen(t *testing.T) {
+func Test_breaker_shouldOpen(t *testing.T) {
 	t.Parallel()
 
 	base := time.Unix(1000, 0)
@@ -222,7 +222,7 @@ func TestBreakerShouldOpen(t *testing.T) {
 	})
 }
 
-func TestBreakerManagerGet(t *testing.T) {
+func Test_breakerManager_get(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
