@@ -1,0 +1,7 @@
+# Docker base image の pin 対象 digest（SSOT）。
+# make pin-images-resolve で解決・make pin-images-apply で Dockerfile へ反映する。
+"alpine:3.24" = "sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b"
+"golang:1.26.5-alpine" = "sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"
+"nginx:1.31-alpine" = "sha256:54f2a904c251d5a34adf545a72d32515a15e08418dae0266e23be2e18c66fefa"
+"node:24.18.0-alpine" = "sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd"
+"python:3.14.6-slim" = "sha256:d3400aa122fa42cf0af0dbe8ec3091b047eac5c8f7e3539f7135e86d855dc015"
