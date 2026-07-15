@@ -7,7 +7,7 @@ on:
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
-      - '.golangci.yml'
+      - '.golangci.yaml'
       - '.golangci-full.yaml'
 
 permissions:
