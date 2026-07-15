@@ -19,7 +19,7 @@ meta:
     - title: Cross-Cutting
       sections: [cross-cutting, integration]
     - title: Build / Operations
-      sections: [docker, database, scripts, ci, maintenance, deployment]
+      sections: [docker, database, scripts, agent-config, ci, maintenance, deployment]
     - title: API Contracts
       sections: [external]
 
@@ -572,6 +572,14 @@ scripts:
   # Japanese
   - src: scripts/README.ja.md
     dst: docs/portal/guides/ja/scripts.ja.md
+
+agent-config:
+  # English
+  - src: .claude/README.md
+    dst: docs/portal/guides/agent-config.md
+  # Japanese
+  - src: .claude/README.ja.md
+    dst: docs/portal/guides/ja/agent-config.ja.md
 
 ci:
   # English
