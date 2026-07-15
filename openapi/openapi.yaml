@@ -91,6 +91,8 @@ components:
       $ref: './components/parameters/pagination/CursorAfterParam.yaml'
     CursorFirstParam:
       $ref: './components/parameters/pagination/CursorFirstParam.yaml'
+    IdempotencyKeyParam:
+      $ref: './components/parameters/idempotency/IdempotencyKeyParam.yaml'
     # sample-api:begin
     # サンプルAPI用のパラメーター定義
     KeywordParam:

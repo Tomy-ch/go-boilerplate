@@ -84,6 +84,19 @@ var (
 		errInvalidConfig,
 		"write timeout must be greater than or equal to request timeout",
 	)
+	// ErrShutdownTimeoutBelowRequestTimeout は、graceful shutdown 猶予（APP_SHUTDOWN_TIMEOUT）が
+	// per-request deadline budget（SERVER_REQUEST_TIMEOUT）を下回っていることを示すエラーです。
+	// SHUTDOWN_TIMEOUT < REQUEST_TIMEOUT だと、SIGTERM 受信時に drain がまだ予算内のリクエストを
+	// 猶予切れで切断します。server グラフの起動時に検証されます（ValidateServerShutdown）。
+	ErrShutdownTimeoutBelowRequestTimeout = xerrors.Wrap(
+		errInvalidConfig,
+		"shutdown timeout must be greater than or equal to request timeout",
+	)
+	// ErrInvalidMetricsPortRange は、メトリクスサーバーの無効なポート範囲に関するエラーを表します。
+	ErrInvalidMetricsPortRange = xerrors.Wrap(
+		errInvalidConfig,
+		fmt.Sprintf("invalid metrics port range, must be between %d and %d", MinPort, MaxPort),
+	)
 	// ErrInvalidDBPortRange は、データベースの無効なポート範囲に関するエラーを表します。
 	ErrInvalidDBPortRange = xerrors.Wrap(
 		errInvalidConfig,

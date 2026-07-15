@@ -55,7 +55,7 @@ type Application struct {
 	Name            string        `env:"NAME,required"`
 	Mode            string        `env:"MODE,required"`
 	LogLevel        string        `env:"LOG_LEVEL,required"`
-	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT"   envDefault:"45s"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT"   envDefault:"65s"`
 }
 
 // Server は HTTP サーバーのバインドアドレスおよび各種タイムアウトに関する設定を保持する。

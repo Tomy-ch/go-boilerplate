@@ -143,6 +143,8 @@ func TestSettings_normalize(t *testing.T) {
 			assert.Equal(t, defaultProgressStaleAfter, s.ProgressStaleAfter)
 			assert.Equal(t, defaultNackBackoffInitial, s.NackBackoffInitial)
 			assert.Equal(t, defaultNackBackoffMax, s.NackBackoffMax)
+			assert.Equal(t, defaultCircuitOpenBackoffInitial, s.CircuitOpenBackoffInitial)
+			assert.Equal(t, defaultCircuitOpenBackoffMax, s.CircuitOpenBackoffMax)
 		})
 
 		t.Run("MaxInFlight が Concurrency 未満の場合は Concurrency まで引き上げる", func(t *testing.T) {
@@ -206,6 +208,24 @@ func TestSettings_normalize(t *testing.T) {
 			s.normalize()
 
 			assert.Equal(t, defaultNackBackoffMax, s.NackBackoffMax)
+		})
+
+		t.Run("CircuitOpenBackoffInitial が 0 以下の場合は既定値に補完する", func(t *testing.T) {
+			t.Parallel()
+
+			s := Settings{CircuitOpenBackoffInitial: -1}
+			s.normalize()
+
+			assert.Equal(t, defaultCircuitOpenBackoffInitial, s.CircuitOpenBackoffInitial)
+		})
+
+		t.Run("CircuitOpenBackoffMax が 0 以下の場合は既定値に補完する", func(t *testing.T) {
+			t.Parallel()
+
+			s := Settings{CircuitOpenBackoffMax: -1}
+			s.normalize()
+
+			assert.Equal(t, defaultCircuitOpenBackoffMax, s.CircuitOpenBackoffMax)
 		})
 
 		t.Run("有効な値が指定されている場合はそのまま保持する", func(t *testing.T) {

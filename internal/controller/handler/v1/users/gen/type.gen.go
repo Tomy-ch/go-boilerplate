@@ -155,6 +155,9 @@ type UsersResponse struct {
 // ActiveParam defines model for ActiveParam.
 type ActiveParam = bool
 
+// IdempotencyKeyParam defines model for IdempotencyKeyParam.
+type IdempotencyKeyParam = string
+
 // PageParam defines model for PageParam.
 type PageParam = int
 
@@ -198,6 +201,14 @@ type GetUsersParams struct {
 
 	// PerPage 1ページあたりの取得件数
 	PerPage *PerPageParam `form:"per_page,omitempty" json:"per_page,omitempty"`
+}
+
+// PostUsersParams defines parameters for PostUsers.
+type PostUsersParams struct {
+	// IdempotencyKey 冪等キー。非冪等な変更操作（作成系など）で、同一キーによるリトライを重複実行なく
+	// 安全にするための識別子。サーバは同一 (認証主体, キー) の再送を初回結果のリプレイとして扱う。
+	// このヘッダを宣言する操作は、ハンドラが必ず idempotency.Run 経由で処理する契約（完全性テストで機械検証）。
+	IdempotencyKey *IdempotencyKeyParam `json:"Idempotency-Key,omitempty"`
 }
 
 // PostUsersJSONRequestBody defines body for PostUsers for application/json ContentType.
