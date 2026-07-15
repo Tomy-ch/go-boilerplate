@@ -92,6 +92,9 @@ linters:
     - whitespace # 不要な空白を検出します
 
   settings:
+    staticcheck:
+      checks:
+        - all
     decorder:
       dec-order:
         - "const"
@@ -486,7 +489,7 @@ linters:
           arguments:
             - []
             - []
-            - [{ skipPackageNameChecks: true }]
+            - [{ skipPackageNameChecks: true }] # 変数名の命名規則をチェックしますが、パッケージ名のチェックはスキップします。これにより、パッケージ名が変数名と同じ場合でもエラーにならなくなります。
     usestdlibvars:
       http-method: true        # HTTPメソッド文字列の検出（"GET" → http.MethodGet）
       http-status-code: true   # ステータスコードの検出（500 → http.StatusInternalServerError）

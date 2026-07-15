@@ -115,6 +115,9 @@ linters:
     # - zerologlint # zerolog の使い方において間違いや抜けを防止するための静的解析ツール
 
   settings:
+    staticcheck:
+      checks:
+        - all
     decorder:
       dec-order:
         - "const"
