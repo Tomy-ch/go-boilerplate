@@ -48,7 +48,7 @@ requires relative-file refs to resolve correctly.
 ### Positive Consequences
 
 - Split files are independently reviewable and reusable via `$ref`.
-- Naming conventions (camelCase body fields, snake_case parameters, PascalCase
+- Naming conventions (camelCase body fields, camelCase parameters, PascalCase
   `operationId`) are enforced at lint time before code generation runs.
 - `make gen-api` is the single command that runs bundle, docs, and codegen in sequence; `redocly lint` runs separately via `make lint-oapi` (also a CI gate).
 - Documentation is generated from the same source as the code.

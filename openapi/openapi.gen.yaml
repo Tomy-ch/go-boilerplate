@@ -205,7 +205,7 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/users/{user_id}:
+  /v1/users/{userId}:
     get:
       operationId: GetUsersDetail
       tags:
@@ -490,7 +490,7 @@ components:
         default: 1
         example: 1
     PerPageParam:
-      name: per_page
+      name: perPage
       in: query
       description: 1ページあたりの取得件数
       required: false
@@ -548,7 +548,7 @@ components:
         type: boolean
         example: true
     UserIdParam:
-      name: user_id
+      name: userId
       in: path
       required: true
       description: ユーザーのUUID

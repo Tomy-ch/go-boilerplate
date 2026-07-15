@@ -26,7 +26,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("GET /v1/users/{user_id}がUserResponseを返す", func(t *testing.T) {
+		t.Run("GET /v1/users/{userId}がUserResponseを返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -47,7 +47,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			AssertJSONResponseType[detailgen.UserResponse](t, actual)
 		})
 
-		t.Run("PUT /v1/users/{user_id}が更新後のUserResponseを返す", func(t *testing.T) {
+		t.Run("PUT /v1/users/{userId}が更新後のUserResponseを返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -73,7 +73,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			AssertJSONResponseType[detailgen.UserResponse](t, actual)
 		})
 
-		t.Run("PATCH /v1/users/{user_id}が部分更新後のUserResponseを返す", func(t *testing.T) {
+		t.Run("PATCH /v1/users/{userId}が部分更新後のUserResponseを返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -121,7 +121,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
 		})
 
-		t.Run("DELETE /v1/users/{user_id}が削除を行い204を返す", func(t *testing.T) {
+		t.Run("DELETE /v1/users/{userId}が削除を行い204を返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -142,7 +142,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("GET /v1/users/{user_id}がErrNotFoundで404を返す", func(t *testing.T) {
+		t.Run("GET /v1/users/{userId}がErrNotFoundで404を返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			UseAppErrorHandler(t, e)
@@ -160,7 +160,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusNotFound)
 		})
 
-		t.Run("GET /v1/users/{user_id}がErrInternalで500を返す", func(t *testing.T) {
+		t.Run("GET /v1/users/{userId}がErrInternalで500を返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			UseAppErrorHandler(t, e)

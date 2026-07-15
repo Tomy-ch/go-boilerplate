@@ -163,5 +163,5 @@ type GetUsersSearchParams struct {
 	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
 
 	// PerPage 1ページあたりの取得件数
-	PerPage *PerPageParam `form:"per_page,omitempty" json:"per_page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }

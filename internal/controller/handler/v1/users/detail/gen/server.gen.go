@@ -20,16 +20,16 @@ type ServerInterface interface {
 	// (PUT /v1/users/me/password)
 	PutUsersMePassword(ctx echo.Context) error
 	// 単一ユーザーの削除
-	// (DELETE /v1/users/{user_id})
+	// (DELETE /v1/users/{userId})
 	DeleteUsersDetail(ctx echo.Context, userId UserIdParam) error
 	// 単一ユーザーの取得
-	// (GET /v1/users/{user_id})
+	// (GET /v1/users/{userId})
 	GetUsersDetail(ctx echo.Context, userId UserIdParam) error
 	// 単一ユーザーの部分更新
-	// (PATCH /v1/users/{user_id})
+	// (PATCH /v1/users/{userId})
 	PatchUsersDetail(ctx echo.Context, userId UserIdParam) error
 	// 単一ユーザーの更新
-	// (PUT /v1/users/{user_id})
+	// (PUT /v1/users/{userId})
 	PutUsersDetail(ctx echo.Context, userId UserIdParam) error
 }
 
@@ -52,12 +52,12 @@ func (w *ServerInterfaceWrapper) PutUsersMePassword(ctx echo.Context) error {
 // DeleteUsersDetail converts echo context to params.
 func (w *ServerInterfaceWrapper) DeleteUsersDetail(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "user_id" -------------
+	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -70,12 +70,12 @@ func (w *ServerInterfaceWrapper) DeleteUsersDetail(ctx echo.Context) error {
 // GetUsersDetail converts echo context to params.
 func (w *ServerInterfaceWrapper) GetUsersDetail(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "user_id" -------------
+	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -88,12 +88,12 @@ func (w *ServerInterfaceWrapper) GetUsersDetail(ctx echo.Context) error {
 // PatchUsersDetail converts echo context to params.
 func (w *ServerInterfaceWrapper) PatchUsersDetail(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "user_id" -------------
+	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -106,12 +106,12 @@ func (w *ServerInterfaceWrapper) PatchUsersDetail(ctx echo.Context) error {
 // PutUsersDetail converts echo context to params.
 func (w *ServerInterfaceWrapper) PutUsersDetail(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "user_id" -------------
+	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -169,10 +169,10 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.PUT(options.BaseURL+"/v1/users/me/password", wrapper.PutUsersMePassword, options.OperationMiddlewares["PutUsersMePassword"]...)
-	router.DELETE(options.BaseURL+"/v1/users/:user_id", wrapper.DeleteUsersDetail, options.OperationMiddlewares["DeleteUsersDetail"]...)
-	router.GET(options.BaseURL+"/v1/users/:user_id", wrapper.GetUsersDetail, options.OperationMiddlewares["GetUsersDetail"]...)
-	router.PATCH(options.BaseURL+"/v1/users/:user_id", wrapper.PatchUsersDetail, options.OperationMiddlewares["PatchUsersDetail"]...)
-	router.PUT(options.BaseURL+"/v1/users/:user_id", wrapper.PutUsersDetail, options.OperationMiddlewares["PutUsersDetail"]...)
+	router.DELETE(options.BaseURL+"/v1/users/:userId", wrapper.DeleteUsersDetail, options.OperationMiddlewares["DeleteUsersDetail"]...)
+	router.GET(options.BaseURL+"/v1/users/:userId", wrapper.GetUsersDetail, options.OperationMiddlewares["GetUsersDetail"]...)
+	router.PATCH(options.BaseURL+"/v1/users/:userId", wrapper.PatchUsersDetail, options.OperationMiddlewares["PatchUsersDetail"]...)
+	router.PUT(options.BaseURL+"/v1/users/:userId", wrapper.PutUsersDetail, options.OperationMiddlewares["PutUsersDetail"]...)
 
 }
 
@@ -297,7 +297,7 @@ func (response PutUsersMePassword503JSONResponse) VisitPutUsersMePasswordRespons
 }
 
 type DeleteUsersDetailRequestObject struct {
-	UserId UserIdParam `json:"user_id"`
+	UserId UserIdParam `json:"userId"`
 }
 
 type DeleteUsersDetailResponseObject interface {
@@ -415,7 +415,7 @@ func (response DeleteUsersDetail503JSONResponse) VisitDeleteUsersDetailResponse(
 }
 
 type GetUsersDetailRequestObject struct {
-	UserId UserIdParam `json:"user_id"`
+	UserId UserIdParam `json:"userId"`
 }
 
 type GetUsersDetailResponseObject interface {
@@ -525,7 +525,7 @@ func (response GetUsersDetail503JSONResponse) VisitGetUsersDetailResponse(w http
 }
 
 type PatchUsersDetailRequestObject struct {
-	UserId UserIdParam `json:"user_id"`
+	UserId UserIdParam `json:"userId"`
 	Body   *PatchUsersDetailJSONRequestBody
 }
 
@@ -666,7 +666,7 @@ func (response PatchUsersDetail503JSONResponse) VisitPatchUsersDetailResponse(w 
 }
 
 type PutUsersDetailRequestObject struct {
-	UserId UserIdParam `json:"user_id"`
+	UserId UserIdParam `json:"userId"`
 	Body   *PutUsersDetailJSONRequestBody
 }
 
@@ -812,16 +812,16 @@ type StrictServerInterface interface {
 	// (PUT /v1/users/me/password)
 	PutUsersMePassword(ctx context.Context, request PutUsersMePasswordRequestObject) (PutUsersMePasswordResponseObject, error)
 	// 単一ユーザーの削除
-	// (DELETE /v1/users/{user_id})
+	// (DELETE /v1/users/{userId})
 	DeleteUsersDetail(ctx context.Context, request DeleteUsersDetailRequestObject) (DeleteUsersDetailResponseObject, error)
 	// 単一ユーザーの取得
-	// (GET /v1/users/{user_id})
+	// (GET /v1/users/{userId})
 	GetUsersDetail(ctx context.Context, request GetUsersDetailRequestObject) (GetUsersDetailResponseObject, error)
 	// 単一ユーザーの部分更新
-	// (PATCH /v1/users/{user_id})
+	// (PATCH /v1/users/{userId})
 	PatchUsersDetail(ctx context.Context, request PatchUsersDetailRequestObject) (PatchUsersDetailResponseObject, error)
 	// 単一ユーザーの更新
-	// (PUT /v1/users/{user_id})
+	// (PUT /v1/users/{userId})
 	PutUsersDetail(ctx context.Context, request PutUsersDetailRequestObject) (PutUsersDetailResponseObject, error)
 }
 
