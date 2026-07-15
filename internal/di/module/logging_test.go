@@ -92,10 +92,9 @@ func Test_provideLogger(t *testing.T) {
 				return "", "", false
 			})
 
-			// 出力レベルを error にし、Debug で probe する。Debug エントリは zap に破棄され
-			// stdout を汚さないが、trace 注入（=extract 呼び出し）は引数評価で必ず走るため、
-			// extract が返却 Logger へ配線されていることを副作用なく検証できる。
-			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "error"), nil, extract)
+			// 出力される（レベル有効な）ログでのみ extract は呼ばれる。出力レベルを debug に
+			// して Debug を1回出力し、extract が返却 Logger へ配線されていることを検証する。
+			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"), nil, extract)
 			require.NoError(t, err)
 			require.NotNil(t, lg)
 
