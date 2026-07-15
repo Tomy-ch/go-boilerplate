@@ -10,7 +10,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// traceFieldCount は、trace 注入時に先頭へ足すフィールド数（trace_id / span_id）です。
+// traceFieldCount は、injectTrace が先頭へ注入する trace_id / span_id の 2 フィールド分。
+// 注入後スライスの容量見積もりに使う。
 const traceFieldCount = 2
 
 // LogCore は、Logger に追加で Tee できるログ core の型です。
@@ -21,7 +22,8 @@ type LogCore = zapcore.Core
 type TraceExtractor func(ctx context.Context) (traceID, spanID string, ok bool)
 
 // Logger は、アプリ全体が使うロガーのインターフェースです。
-// 各出力メソッドは ctx を受け取り、trace_id / span_id を自動注入します。
+// 各出力メソッドは ctx を受け取り、TraceExtractor が設定されていれば ctx 上の span から
+// trace_id / span_id を注入します（未設定・span 無効時は注入しません）。
 type Logger interface {
 	// Debug はデバッグレベルのログを出力する。
 	Debug(ctx context.Context, msg string, fields ...*Field)
@@ -107,22 +109,30 @@ func (l *logger) CallerSkip(skip int) Logger {
 
 // Debug はデバッグレベルのログを出力する。
 func (l *logger) Debug(ctx context.Context, msg string, fields ...*Field) {
-	l.log.Debug(msg, l.convertFields(l.injectTrace(ctx, fields))...)
+	if ce := l.log.Check(zapcore.DebugLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
 }
 
 // Info は情報レベルのログを出力する。
 func (l *logger) Info(ctx context.Context, msg string, fields ...*Field) {
-	l.log.Info(msg, l.convertFields(l.injectTrace(ctx, fields))...)
+	if ce := l.log.Check(zapcore.InfoLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
 }
 
 // Warn は警告レベルのログを出力する。
 func (l *logger) Warn(ctx context.Context, msg string, fields ...*Field) {
-	l.log.Warn(msg, l.convertFields(l.injectTrace(ctx, fields))...)
+	if ce := l.log.Check(zapcore.WarnLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
 }
 
 // Error はエラーレベルのログを出力する。
 func (l *logger) Error(ctx context.Context, msg string, fields ...*Field) {
-	l.log.Error(msg, l.convertFields(l.injectTrace(ctx, fields))...)
+	if ce := l.log.Check(zapcore.ErrorLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
 }
 
 // injectTrace は、TraceExtractor が trace を返す場合に trace_id / span_id を
