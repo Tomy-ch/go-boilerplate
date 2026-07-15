@@ -1,6 +1,7 @@
 ---
 name: adr-scan
-description: PROVISIONAL / one-off. Full-repository scan that discovers ADR-worthy architectural decisions across the whole repo (not just docs/decisions.md) so decisions.md can be migrated to a formal docs/adr/ set. Fans out read-only discovery over four surfaces — canonical docs (decisions/architecture/rules), subsystem design docs (docs/design/**), deliberate-exclusion docs (docs/project/**, out-of-scope), and latent decisions (per-package READMEs + code "why" comments) — classifying each candidate as decision (ADR-worthy) / rule (stays in rules.md) / inventory (stays in a living reference) / exclusion (ADR-worthy negative decision). Read-only: produces a candidate ADR inventory only, writes no docs/adr files. Delete after the migration format is locked.
+description: >-
+  PROVISIONAL / one-off. Full-repository scan that discovers ADR-worthy architectural decisions across the whole repo (not just docs/decisions.md) so decisions.md can be migrated to a formal docs/adr/ set. Fans out read-only discovery over four surfaces — canonical docs (decisions/architecture/rules), subsystem design docs (docs/design/**), deliberate-exclusion docs (docs/project/**, out-of-scope), and latent decisions (per-package READMEs + code "why" comments) — classifying each candidate as decision (ADR-worthy) / rule (stays in rules.md) / inventory (stays in a living reference) / exclusion (ADR-worthy negative decision). Read-only: produces a candidate ADR inventory only, writes no docs/adr files. Delete after the migration format is locked.
 ---
 
 # adr-scan (provisional)
