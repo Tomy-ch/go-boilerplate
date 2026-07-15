@@ -6,20 +6,18 @@ import (
 	"net/http"
 	"testing"
 
-	"go-boilerplate/internal/apperror"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestBuildRequest は、自前型 Request から net/http のリクエストが正しく組み立つことを検証します。
-func TestBuildRequest(t *testing.T) {
+// Test_buildRequest は、自前型 Request から net/http のリクエストが正しく組み立つことを検証します。
+func Test_buildRequest(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("method_url_header_body_冪等性キーを反映したhttpRequestを組み立てる", func(t *testing.T) {
+		t.Run("method・URL・header・body・冪等性キーを反映して net/http.Request を組み立てる", func(t *testing.T) {
 			t.Parallel()
 
 			req := &Request{
@@ -47,45 +45,63 @@ func TestBuildRequest(t *testing.T) {
 	})
 }
 
-// TestClientDo_AllowRetryWithoutKey_Guard は、WithRetry("") や非公開フィールド直構築で到達し得る
-// 「allowRetry あり・idempotencyKey なし」という不正状態に対する Do の防御的ガードを検証します。
+// Test_client_Do は、型で防げない Request の precondition（validate）に対する Do の防御的ガードを
+// 検証します。空 Downstream / ゼロ値 Method / AllowRetry の空 key はいずれも個別 sentinel で弾かれます。
 //
-// 型では空 key を排除できないため、Do 実行時のガードで担保します。
-func TestClientDo_AllowRetryWithoutKey_Guard(t *testing.T) {
+// ガードは Do の最初の文で registry / network に触れる前に返るため、ゼロ値 client で足ります。
+func Test_client_Do(t *testing.T) {
 	t.Parallel()
 
-	// ガードは Do の最初の文で、ネットワーク・registry 等に触れる前に返るため、ゼロ値 client で足りる。
-	c := &client{}
-	req := &Request{
-		downstream: "retry",
-		method:     MethodPost(),
-		url:        "http://example.com",
-		allowRetry: true,
-	}
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := c.Do(context.Background(), req)
+		t.Run("Downstreamが空の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
 
-	require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-	assert.Nil(t, resp)
-}
+			c := &client{}
+			req := &Request{
+				downstream: "",
+				method:     MethodGet(),
+				url:        "http://example.com",
+			}
 
-// TestClientDo_EmptyMethod_Guard は、ゼロ値 Method{}（buildRequest が空文字を net/http へ渡すと
-// 暗黙に GET 昇格し isRetrySafe と不整合になる）に対する Do の防御的ガードを検証します。
-//
-// 型ではゼロ値 Method{} を排除できないため、Do 実行時のガードで担保します。
-func TestClientDo_EmptyMethod_Guard(t *testing.T) {
-	t.Parallel()
+			resp, err := c.Do(context.Background(), req)
 
-	// ガードは Do の最初の文で、ネットワーク・registry 等に触れる前に返るため、ゼロ値 client で足りる。
-	c := &client{}
-	req := &Request{
-		downstream: "empty-method",
-		method:     Method{}, // ゼロ値（MethodGet() 等の定義済み値ではない）
-		url:        "http://example.com",
-	}
+			require.ErrorIs(t, err, errDownstreamRequired)
+			assert.Nil(t, resp)
+		})
 
-	resp, err := c.Do(context.Background(), req)
+		t.Run("Methodがゼロ値の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
 
-	require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-	assert.Nil(t, resp)
+			c := &client{}
+			req := &Request{
+				downstream: "empty-method",
+				method:     Method{},
+				url:        "http://example.com",
+			}
+
+			resp, err := c.Do(context.Background(), req)
+
+			require.ErrorIs(t, err, errMethodRequired)
+			assert.Nil(t, resp)
+		})
+
+		t.Run("AllowRetryありでIdempotencyKeyが空の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := &client{}
+			req := &Request{
+				downstream: "retry",
+				method:     MethodPost(),
+				url:        "http://example.com",
+				allowRetry: true,
+			}
+
+			resp, err := c.Do(context.Background(), req)
+
+			require.ErrorIs(t, err, errIdempotencyKeyRequired)
+			assert.Nil(t, resp)
+		})
+	})
 }
