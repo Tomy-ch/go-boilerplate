@@ -1,0 +1,69 @@
+name: Pin Images Check
+
+on:
+  pull_request:
+    paths:
+      - 'docker/*/Dockerfile'
+      - 'docker/images-pin.toml'
+      - 'scripts/pin-images/**'
+      - '.makefiles/docker/pin.mk'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pin-images-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check base images are pinned
+        id: pin
+        shell: bash
+        run: |
+          set +e
+
+          make pin-images-check 2>&1 | tee /tmp/pin-images.log
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Pin images: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Pin images: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Comment pin-images result on PR
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- pin-images-result -->'
+          title: ${{ steps.pin.outputs.title }}
+          body-file: /tmp/pin-images.log
+          details-summary: 'pin-images log'
+
+      - name: Fail if not pinned
+        if: always() && steps.pin.outputs.status != 'success'
+        run: exit 1
