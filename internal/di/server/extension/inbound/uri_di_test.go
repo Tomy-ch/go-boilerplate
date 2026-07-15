@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPreMiddleware(t *testing.T) {
+func TestURIPreMiddleware(t *testing.T) {
 	t.Parallel()
 
 	mw := URIPreMiddleware()

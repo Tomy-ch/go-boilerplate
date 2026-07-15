@@ -64,7 +64,7 @@ func Test_NewApplicationCore_BootsWithMockedDB(t *testing.T) {
 	assert.True(t, closeCalled, "db close hook がモックドライバの Close を呼ぶこと")
 }
 
-func Test_NewApplicationServer_WrapsAppStartStop(t *testing.T) {
+func TestNewApplicationServer_WrapsAppStartStop(t *testing.T) {
 	t.Parallel()
 
 	// ライフサイクルフックの発火有無で、ラッパーが実際に app.Start / app.Stop を駆動したことを検証する。

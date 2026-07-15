@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestPersistenceModule_GraphIsValid(t *testing.T) {
+func Test_persistenceModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
 	// 永続化系（repository / query_service / system_cqrs）はリポジトリ追加で増える領域。
