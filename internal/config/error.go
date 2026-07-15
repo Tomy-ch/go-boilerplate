@@ -87,7 +87,7 @@ var (
 	// ErrShutdownTimeoutBelowRequestTimeout は、graceful shutdown 猶予（APP_SHUTDOWN_TIMEOUT）が
 	// per-request deadline budget（SERVER_REQUEST_TIMEOUT）を下回っていることを示すエラーです。
 	// SHUTDOWN_TIMEOUT < REQUEST_TIMEOUT だと、SIGTERM 受信時に drain がまだ予算内のリクエストを
-	// 猶予切れで切断します。SHUTDOWN_TIMEOUT は必ず REQUEST_TIMEOUT 以上を設定してください。
+	// 猶予切れで切断します。server グラフの起動時に検証されます（ValidateServerShutdown）。
 	ErrShutdownTimeoutBelowRequestTimeout = xerrors.Wrap(
 		errInvalidConfig,
 		"shutdown timeout must be greater than or equal to request timeout",

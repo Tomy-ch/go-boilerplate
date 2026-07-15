@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecodeFeedCursor(t *testing.T) {
+func Test_decodeFeedCursor(t *testing.T) {
 	t.Parallel()
 
 	validID := uuid.NewTestFromSalt(t, "feed_cursor_id")
@@ -84,7 +84,7 @@ func TestDecodeFeedCursor(t *testing.T) {
 	})
 }
 
-func TestEncodeFeedCursor(t *testing.T) {
+func Test_encodeFeedCursor(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

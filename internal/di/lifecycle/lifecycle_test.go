@@ -29,7 +29,7 @@ func TestNewLifecycleRegistrar(t *testing.T) {
 	})
 }
 
-func Test_RegisterStartExecutesOnAppStart(t *testing.T) {
+func Test_lifecycleRegistrar_RegisterStart(t *testing.T) {
 	t.Parallel()
 
 	var started bool
@@ -51,7 +51,7 @@ func Test_RegisterStartExecutesOnAppStart(t *testing.T) {
 	assert.True(t, started)
 }
 
-func Test_RegisterShutdownExecutesOnAppStop(t *testing.T) {
+func Test_lifecycleRegistrar_RegisterStop(t *testing.T) {
 	t.Parallel()
 
 	var stopped bool

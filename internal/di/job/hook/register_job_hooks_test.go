@@ -62,7 +62,7 @@ func TestRegisterJobHooks(t *testing.T) {
 	})
 }
 
-func TestRunJobAndShutdown(t *testing.T) {
+func Test_runJobAndShutdown(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestRunJobAndShutdown(t *testing.T) {
 	})
 }
 
-func TestShutdown(t *testing.T) {
+func Test_shutdown(t *testing.T) {
 	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {

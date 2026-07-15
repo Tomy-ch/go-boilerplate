@@ -304,7 +304,7 @@ func Test_validatePriorityConflicts(t *testing.T) {
 	})
 }
 
-func TestExtractPriorityConflicts(t *testing.T) {
+func Test_extractPriorityConflicts(t *testing.T) {
 	t.Parallel()
 
 	t.Run("重複なしの場合は空スライスを返す", func(t *testing.T) {

@@ -33,7 +33,7 @@ func TestNewReplay(t *testing.T) {
 	})
 }
 
-func TestReplayUsecase_ReplayDead(t *testing.T) {
+func Test_replayUsecase_ReplayDead(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

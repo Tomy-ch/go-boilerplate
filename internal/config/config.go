@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	"golang.org/x/crypto/bcrypt"
@@ -147,10 +148,6 @@ func validateConfig(cfg Loader) error {
 		return err
 	}
 
-	if err := validateShutdownTimeout(cfg.App, cfg.Server); err != nil {
-		return err
-	}
-
 	if err := validateMetricsConfig(cfg.Metrics); err != nil {
 		return err
 	}
@@ -248,18 +245,24 @@ func validateServerConfig(srvCfg Server) error {
 	return nil
 }
 
-// validateShutdownTimeout は、graceful shutdown 猶予が処理中リクエストの予算を下回らないことを検証します。
-// ShutdownTimeout（App）と RequestTimeout（Server）の交差検証のため、両設定を受け取ります。
-func validateShutdownTimeout(appCfg Application, srvCfg Server) error {
-	if appCfg.ShutdownTimeout < srvCfg.RequestTimeout {
+// validateMetricsConfig は、メトリクスサーバーのポート番号が有効範囲内であることを検証します。
+func validateMetricsConfig(metricsCfg Metrics) error {
+	return validatePortRange(metricsCfg.Port, ErrInvalidMetricsPortRange)
+}
+
+// ValidateServerShutdown は、graceful shutdown 猶予が処理中リクエストの予算を下回らないことを検証します。
+// 値の妥当性ルールは config の責務だが、この制約は HTTP サーバーを組むプロセスにのみ意味を持つため、
+// New() では全プロファイル共通に走らせず、server グラフの DI から適用する（di/server が結線する）。
+func ValidateServerShutdown(appCfg *ApplicationConfig, srvCfg *ServerConfig) error {
+	return validateServerShutdown(appCfg.ShutdownTimeout(), srvCfg.RequestTimeout())
+}
+
+// validateServerShutdown は、shutdown >= request を検証します。
+func validateServerShutdown(shutdown, request time.Duration) error {
+	if shutdown < request {
 		return ErrShutdownTimeoutBelowRequestTimeout
 	}
 	return nil
-}
-
-// validateMetricsConfig は、メトリクスサーバー設定を検証します。
-func validateMetricsConfig(metricsCfg Metrics) error {
-	return validatePortRange(metricsCfg.Port, ErrInvalidMetricsPortRange)
 }
 
 // validateDatabaseConfig は、データベース設定を検証します。

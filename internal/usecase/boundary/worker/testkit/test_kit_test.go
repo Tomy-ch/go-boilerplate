@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-func Test_Fake_Receive(t *testing.T) {
+func TestFake_Receive(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -135,7 +135,7 @@ func Test_Fake_Receive(t *testing.T) {
 	})
 }
 
-func Test_Fake_Ack(t *testing.T) {
+func TestFake_Ack(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -157,7 +157,7 @@ func Test_Fake_Ack(t *testing.T) {
 	})
 }
 
-func Test_Fake_Nack(t *testing.T) {
+func TestFake_Nack(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -183,7 +183,7 @@ func Test_Fake_Nack(t *testing.T) {
 	})
 }
 
-func Test_Fake_NackWithBackoff(t *testing.T) {
+func TestFake_NackWithBackoff(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -217,7 +217,7 @@ func Test_Fake_NackWithBackoff(t *testing.T) {
 	})
 }
 
-func Test_Fake_Extend(t *testing.T) {
+func TestFake_Extend(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -255,7 +255,7 @@ func Test_Fake_Extend(t *testing.T) {
 	})
 }
 
-func Test_Fake_Fail(t *testing.T) {
+func TestFake_Fail(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

@@ -48,7 +48,7 @@ func TestBindHandler(t *testing.T) {
 	)
 }
 
-func TestGetVersion(t *testing.T) {
+func Test_server_GetVersion(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)

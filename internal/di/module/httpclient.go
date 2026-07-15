@@ -54,9 +54,8 @@ func provideHTTPClientProfiles(constructors ...any) fx.Option {
 	return fx.Options(opts...)
 }
 
-// provideRequiredDownstreams は、各 gateway が利用する Downstream を required_downstreams グループへ
-// 登録します。ここへ登録された Downstream は provideHTTPClientRegistry が profile 登録の有無を
-// 起動時に検証するため、profile 登録漏れが loud な失敗になります。
+// provideRequiredDownstreams は、各 constructors が返す Downstream を required_downstreams グループへ
+// 登録します。ここへ登録された Downstream は、対応 profile が未登録のまま起動すると loud な失敗になります。
 func provideRequiredDownstreams(constructors ...any) fx.Option {
 	opts := make([]fx.Option, len(constructors))
 	for i, c := range constructors {

@@ -39,7 +39,7 @@ func (r *recordingStop) fn() StopFunc {
 	}
 }
 
-func TestRunJob(t *testing.T) {
+func Test_runJob(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -161,7 +161,7 @@ func TestRunJob(t *testing.T) {
 	})
 }
 
-func TestGracefulStop(t *testing.T) {
+func Test_gracefulStop(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

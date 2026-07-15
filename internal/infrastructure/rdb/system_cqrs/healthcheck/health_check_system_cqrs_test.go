@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func Test_healthCheckSystemCqrs_GetDBHealth(t *testing.T) {
+func Test_systemQuery_CheckDBHealth(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)

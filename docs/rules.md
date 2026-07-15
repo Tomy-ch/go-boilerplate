@@ -254,6 +254,7 @@ Usecase should **avoid direct dependency on Infrastructure**.
 - NG (How / restatement / tautology):
   - `// ReadFile は os.ReadFile を呼び出して…`（implementation means / How）
   - restating the implementation steps; internal-representation notes (`// 内部表現は [16]byte`); tautologies (`// User は User です`)
+  - a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (rot; an unresolved, legitimate TODO is not flagged)
 - Enforcement split: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of comments on exported declarations. This **content** rule (What quality + good Why + no How) is semantic and cannot be linted — it is enforced by review: `local-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments (What correct / sufficient / substantive; Why non-obvious) and **flags** bad ones (How / 経緯 / restatement / tautology), then auto-fixes the confirmed findings.
 - **Language scope**: this content rule is **language-agnostic** — it applies to Go and non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). The Go examples above are illustrative, not a scope limit. Non-Go files are **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same standard — How narration, development 経緯, and redundant restatements are NG even in a build script or workflow file; the good Why (non-obvious rationale) and the load-bearing-constraint note stay.
 

@@ -11,7 +11,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestLoggingModule_ProvidesUseMiddleware(t *testing.T) {
+func TestLoggingModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		LoggingModule(),
@@ -20,7 +20,7 @@ func TestLoggingModule_ProvidesUseMiddleware(t *testing.T) {
 	)
 }
 
-func TestObservabilityModule_ProvidesUseMiddleware(t *testing.T) {
+func TestObservabilityModule(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
@@ -30,7 +30,7 @@ func TestObservabilityModule_ProvidesUseMiddleware(t *testing.T) {
 	)
 }
 
-func TestRequestIDModule_ProvidesUseMiddleware(t *testing.T) {
+func TestRequestIDModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use", RequestIDModule())
 }

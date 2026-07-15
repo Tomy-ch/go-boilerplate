@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func Test_extractFromCarrier_D1(t *testing.T) {
+func Test_extractFromCarrier(t *testing.T) {
 	t.Parallel()
 
 	prop := propagation.TraceContext{}
@@ -117,7 +117,7 @@ func Test_mapCarrier_Keys(t *testing.T) {
 	})
 }
 
-func Test_injectToCarrier_D1(t *testing.T) {
+func Test_injectToCarrier(t *testing.T) {
 	t.Parallel()
 
 	prop := propagation.TraceContext{}

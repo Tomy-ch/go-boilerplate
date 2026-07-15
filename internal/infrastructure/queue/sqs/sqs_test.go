@@ -66,7 +66,7 @@ func TestNewDeadLetter(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Receive(t *testing.T) {
+func Test_consumer_Receive(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -253,7 +253,7 @@ func Test_Consumer_Receive(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Ack(t *testing.T) {
+func Test_consumer_Ack(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -313,7 +313,7 @@ func Test_Consumer_Ack(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Nack(t *testing.T) {
+func Test_consumer_Nack(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -373,7 +373,7 @@ func Test_Consumer_Nack(t *testing.T) {
 	})
 }
 
-func Test_Consumer_NackWithBackoff(t *testing.T) {
+func Test_consumer_NackWithBackoff(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -471,7 +471,7 @@ func Test_Consumer_NackWithBackoff(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Extend(t *testing.T) {
+func Test_consumer_Extend(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -530,7 +530,7 @@ func Test_Consumer_Extend(t *testing.T) {
 	})
 }
 
-func Test_DeadLetter_Fail(t *testing.T) {
+func Test_deadLetter_Fail(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

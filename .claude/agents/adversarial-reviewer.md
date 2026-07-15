@@ -21,12 +21,23 @@ The orchestrator gives you:
 
 ## Lens definitions
 
-- **correctness** — logic bugs, nil / zero-value / empty-slice edge cases, wrong field mapping, off-by-one, error-handling gaps (swallowed errors, wrong wrapping), incorrect transaction boundaries, context misuse, concurrency hazards, wrong status/error returned.
+- **correctness** — logic bugs, nil / zero-value / empty-slice edge cases, wrong field mapping, off-by-one, error-handling gaps / **silent failures** (see the focus block below), incorrect transaction boundaries, context misuse, concurrency hazards, wrong status/error returned.
 - **security** — missing `security:` declaration (endpoint reachable without auth), IDOR (acting on a resource id that is not the authenticated subject — e.g. `/users/{id}` vs `/users/me`), authorization bypass, mass-assignment / over-binding (DTO accepts fields it must not), secret / hash / PII leakage in responses or logs, injection, unsafe input trust.
 - **architecture** — Onion / layer violations per `CLAUDE.md`: infra called from handler, business logic in handler, domain depending on infra, usecase returning domain entities, layer bypass, edits to generated files, new patterns introduced without instruction. (For exhaustive layer compliance, `arch-check` is the heavier tool — here you flag the obvious, high-signal violations.)
 - **runtime-gap** — defects that **mocked tests cannot catch**: DI wiring mismatch (`BindHandler` unregistered / mis-provided), shared OpenAPI schema edits that break *sibling* endpoints (a `components/*` referenced by more than one operation), real-DB SQL behavior differing from the mock (filters, null handling, ordering, uniqueness), OpenAPI validation-middleware effects, `allOf` / `additionalProperties: false` ripple. State explicitly what runtime check would expose each one.
 
 (Comment quality — comments that narrate internal processing / rationale / restate code instead of describing behavior — is **not** a lens here. It is owned by the dedicated `comment-reviewer` agent, which `local-review` fans out alongside these lenses and whose findings it auto-fixes.)
+
+### Silent-failure focus (correctness lens only)
+
+The mechanical half of "swallowed error" is already caught by lint (`errcheck` / `errorlint` / `forbidigo` / `rowserrcheck` in `.golangci-full.yaml`) — do **not** re-report an ignored `_ = err` or a missing `rows.Err()`. Spend this lens on the **semantic** silent failures a linter structurally cannot see. Read `docs/rules.md` (Error Handling Rules) + `pkg/xerrors/README.md` + `internal/infrastructure/rdb/pgerror/README.md` at runtime as the basis, and look for:
+
+- **Log-and-swallow** — the error is consumed (`logger.Error(err)`) then `nil` is returned and execution continues, so the caller mistakes failure for success.
+- **Normalization bypass** — infra returns a driver-raw error (`pgx.ErrNoRows` etc.) without `pgerror.NormalizeError`, so an upstream `apperror.Is(err, ErrNotFound)` branch silently misses (404 degrades to 500).
+- **`defer` error loss** — a deferred `tx.Rollback()` error is dropped, or a named return `err` is conditionally cleared/overwritten in a `defer` so a bad commit goes through (tx boundary is usecase-owned).
+- **`recover()` swallow** — `recover()` without converting to an error, or defeating the rules.md "panic loudly on the unreachable" idiom with a defensive `if err != nil { return err }` that hides it.
+- **Wrong-sentinel check** — `errors.Is/As` against the wrong sentinel: API-correct but the branch silently dies because the target sentinel is mismatched (invisible to `errorlint`).
+- **apperror→status collapse** — controller returns a blanket 500 without discriminating the usecase's apperror kind (should be 404 / 409 / 422 — `docs/rules.md` Error transformation).
 
 ## How to review
 

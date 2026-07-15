@@ -83,7 +83,7 @@ func TestParseSearchTokens(t *testing.T) {
 	})
 }
 
-func TestSplitIntoTerms(t *testing.T) {
+func Test_splitIntoTerms(t *testing.T) {
 	t.Parallel()
 
 	t.Run("アンダースコアで分割", func(t *testing.T) {
@@ -105,7 +105,7 @@ func TestSplitIntoTerms(t *testing.T) {
 	})
 }
 
-func TestDedupePreserveOrder(t *testing.T) {
+func Test_dedupePreserveOrder(t *testing.T) {
 	t.Parallel()
 
 	t.Run("重複を先頭出現順で除去", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestDedupePreserveOrder(t *testing.T) {
 	})
 }
 
-func TestLimit(t *testing.T) {
+func Test_limit(t *testing.T) {
 	t.Parallel()
 
 	t.Run("要素数が上限以下", func(t *testing.T) {

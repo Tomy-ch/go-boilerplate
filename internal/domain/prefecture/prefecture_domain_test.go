@@ -109,7 +109,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestEntity_Accessors(t *testing.T) {
+func TestPrefecture_Accessors(t *testing.T) {
 	t.Parallel()
 
 	id, err := uuid.New()

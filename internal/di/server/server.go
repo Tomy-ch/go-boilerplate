@@ -2,6 +2,7 @@
 package server
 
 import (
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/inbound"
@@ -27,6 +28,8 @@ func Module() fx.Option {
 func HookModule() fx.Option {
 	return fx.Module("server.hook",
 		fx.Invoke(
+			// server グラフに限って shutdown/request の交差検証を適用する（非 HTTP プロセスへ波及させない）。
+			config.ValidateServerShutdown,
 			hook.RegisterHTTPServerHooks,
 		),
 	)

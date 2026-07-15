@@ -72,7 +72,7 @@ func (upDownCounterFailingMeter) Int64UpDownCounter(
 	return nil, errUpDownCounter
 }
 
-func Test_NewWorkerMetrics_D2(t *testing.T) {
+func TestNewWorkerMetrics(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

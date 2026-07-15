@@ -11,7 +11,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestErrorHandlerModule_ProvidesServeConfig(t *testing.T) {
+func TestErrorHandlerModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.SrvCfg](t, "server.configurators",
 		ErrorHandlerModule(),
@@ -21,12 +21,12 @@ func TestErrorHandlerModule_ProvidesServeConfig(t *testing.T) {
 	)
 }
 
-func TestForceJSONModule_ProvidesUseMiddleware(t *testing.T) {
+func TestForceJSONModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use", ForceJSONModule())
 }
 
-func TestRecoveryModule_ProvidesUseMiddleware(t *testing.T) {
+func TestRecoveryModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		RecoveryModule(),

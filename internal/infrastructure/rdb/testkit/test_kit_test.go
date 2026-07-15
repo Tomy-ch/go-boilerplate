@@ -32,7 +32,7 @@ func TestNewTestTransactionRunner(t *testing.T) {
 	assert.True(t, ran)
 }
 
-func Test_testTxRunner_Do(t *testing.T) {
+func Test_testTxRunner_WithinTx(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)

@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-func TestLookupErrorMetaByHTTPStatus(t *testing.T) {
+func Test_lookupErrorMetaByHTTPStatus(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestLookupErrorMetaByHTTPStatus(t *testing.T) {
 	})
 }
 
-func TestLookupErrorMetaByAppError(t *testing.T) {
+func Test_lookupErrorMetaByAppError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
