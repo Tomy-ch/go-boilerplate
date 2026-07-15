@@ -236,6 +236,7 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 - NG（How / 言い換え / トートロジー）:
   - `// ReadFile は os.ReadFile を呼び出して…`（実装手段 / How）
   - 実装手順の逐次なぞり；内部表現メモ（`// 内部表現は [16]byte`）；トートロジー（`// User は User です`）
+  - 下のコードが既に条件を満たしている解決済みの `// TODO:` / `// FIXME:` 残置（陳腐化。未解決の正当な TODO は対象外）
 - 強制の分担: `revive` の `exported` ルールは export 宣言コメントの **有無**と **`Name` 前置の形式**しか保証しない。この **内容**ルール（What 品質 + 良い Why + How なし）は意味的で lint 不能 — レビューで強制する: `local-review` が専用の `comment-reviewer` agent を fan-out し、良いコメントの**検証**（What が 正確/充足/有意、Why が非自明）と悪いコメントの**検出**（How / 経緯 / 言い換え / トートロジー）を行い、確定した指摘を自動修正する。
 - **言語スコープ**: この内容ルールは**言語非依存** — Go と非 Go（shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML）に等しく適用する。上記の Go 例は例示でありスコープ限定ではない。非 Go は**高リスク**で対象外ではない: `revive` は Go しか見ないため、非 Go では `comment-reviewer` レビューが唯一のチェックになる。非 Go コメントも同基準で扱う — How ナレーション・開発の経緯・冗長な言い換えはビルドスクリプトやワークフローファイルでも NG。良い Why（非自明な理由）と load-bearing 制約注記は残す。
 
