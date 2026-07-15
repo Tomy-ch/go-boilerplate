@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func TestGuardedDialControl(t *testing.T) {
+func Test_guardedDialControl(t *testing.T) {
 	t.Parallel()
 
 	allow := ContextWithAllowPrivateNetwork(context.Background(), true)

@@ -35,7 +35,7 @@ func (e *recordingExporter) recorded() []string {
 	return append([]string(nil), e.names...)
 }
 
-func Test_LayerTracer_Start(t *testing.T) {
+func TestLayerTracer_Start(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -77,7 +77,7 @@ func Test_LayerTracer_Start(t *testing.T) {
 	})
 }
 
-func Test_LayerTracer_StartWithSuffix(t *testing.T) {
+func TestLayerTracer_StartWithSuffix(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestRunWithSpan(t *testing.T) {
 	})
 }
 
-func Test_LayerTracer_makeSpanName(t *testing.T) {
+func TestLayerTracer_makeSpanName(t *testing.T) {
 	t.Parallel()
 
 	expectedLayer := "layer"
