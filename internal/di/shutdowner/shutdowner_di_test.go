@@ -9,7 +9,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func Test_ModuleProvidesWorkingShutdowner(t *testing.T) {
+func TestModule(t *testing.T) {
 	t.Parallel()
 
 	// Module() が提供する Shutdowner が実 fx.Shutdowner に結線されており、

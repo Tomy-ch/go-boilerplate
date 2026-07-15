@@ -14,7 +14,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestIPExtractorModule_ProvidesServeConfig(t *testing.T) {
+func TestIPExtractorModule(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	testkit.RequireProvidesOne[extension.SrvCfg](t, "server.configurators",
@@ -23,7 +23,7 @@ func TestIPExtractorModule_ProvidesServeConfig(t *testing.T) {
 	)
 }
 
-func TestOpenAPIModule_ProvidesUseMiddleware(t *testing.T) {
+func TestOpenAPIModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		OpenAPIModule(),
@@ -35,12 +35,12 @@ func TestOpenAPIModule_ProvidesUseMiddleware(t *testing.T) {
 	)
 }
 
-func TestURIModule_ProvidesPreMiddleware(t *testing.T) {
+func TestURIModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre", URIModule())
 }
 
-func TestBodyLimitModule_ProvidesPreMiddleware(t *testing.T) {
+func TestBodyLimitModule(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",
@@ -49,7 +49,7 @@ func TestBodyLimitModule_ProvidesPreMiddleware(t *testing.T) {
 	)
 }
 
-func TestTimeoutModule_ProvidesPreMiddleware(t *testing.T) {
+func TestTimeoutModule(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",

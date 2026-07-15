@@ -30,7 +30,7 @@ func Test_newHTTPRedMetricsRecorder(t *testing.T) {
 	assert.Same(t, pr, rec)
 }
 
-func TestHTTPRedMetricsModule_ProvidesUseMiddleware(t *testing.T) {
+func TestHTTPRedMetricsModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		HTTPRedMetricsModule(),
