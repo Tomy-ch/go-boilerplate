@@ -1,6 +1,11 @@
 package httpclient
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"go-boilerplate/pkg/xerrors"
+)
 
 const (
 	// デフォルト Profile（未登録 Downstream 用の安全側設定）の各値。
@@ -113,12 +118,35 @@ func NewRegistry(profiles map[Downstream]Profile) Registry {
 
 // NewRegistryFromProfiles は、各 gateway が寄与した DownstreamProfile 群から Registry を生成します。
 // 未登録の Downstream には DefaultProfile が適用されます。
-func NewRegistryFromProfiles(profiles []DownstreamProfile) Registry {
+// 同一 Name が重複した場合は、silent な last-wins 上書きを避けるためエラーを返します。
+func NewRegistryFromProfiles(profiles []DownstreamProfile) (Registry, error) {
 	m := make(map[Downstream]Profile, len(profiles))
 	for _, p := range profiles {
+		if _, dup := m[p.Name]; dup {
+			return nil, xerrors.New(fmt.Sprintf("duplicate httpclient profile for downstream %q", p.Name))
+		}
 		m[p.Name] = p.Profile
 	}
-	return NewRegistry(m)
+	return NewRegistry(m), nil
+}
+
+// MissingDownstreams は、required のうち profiles に Profile が登録されていない Downstream を返します。
+// 起動時の網羅チェックに使い、空スライスなら全ての required が登録済みであることを表します。
+// これにより gateway 追加時の profile 登録漏れ・改名が、silent な DefaultProfile fallback ではなく
+// loud な起動失敗として顕在化します。
+func MissingDownstreams(profiles []DownstreamProfile, required []Downstream) []Downstream {
+	registered := make(map[Downstream]struct{}, len(profiles))
+	for _, p := range profiles {
+		registered[p.Name] = struct{}{}
+	}
+
+	var missing []Downstream
+	for _, d := range required {
+		if _, ok := registered[d]; !ok {
+			missing = append(missing, d)
+		}
+	}
+	return missing
 }
 
 // Profile は、d に対応する Profile を返します。未登録なら fallback を返します。

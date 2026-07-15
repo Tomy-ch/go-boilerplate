@@ -41,6 +41,12 @@ func NewDownstreamProfile() httpclient.DownstreamProfile {
 	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
 }
 
+// RequiredDownstream は、本 gateway が利用する Downstream を返します。
+// DI がこれを required_downstreams グループへ登録し、対応 profile の登録漏れを起動時に検出します。
+func RequiredDownstream() httpclient.Downstream {
+	return downstream
+}
+
 // New は、為替レート gateway の外部サービス実装を生成します。
 func New(
 	endpoint Endpoint,

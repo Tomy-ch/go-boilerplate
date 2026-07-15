@@ -36,6 +36,12 @@ func NewDownstreamProfile() httpclient.DownstreamProfile {
 	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
 }
 
+// RequiredDownstream は、本 publisher が利用する Downstream を返します。
+// DI がこれを required_downstreams グループへ登録し、対応 profile の登録漏れを起動時に検出します。
+func RequiredDownstream() httpclient.Downstream {
+	return downstream
+}
+
 // New は、publish 境界の HTTP 実装を生成します。
 func New(
 	endpoint Endpoint,
