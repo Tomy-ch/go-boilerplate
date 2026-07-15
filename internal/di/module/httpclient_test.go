@@ -18,15 +18,14 @@ import (
 	infrasystem "go-boilerplate/internal/system"
 )
 
+// 各ケースは fx アプリを起動し、ObservabilityModule 経由で buildinfo を prometheus の
+// DefaultRegisterer（global）へ登録する。複数アプリを並列起動すると同一 global への
+// 同時アクセスとなり -race が競合を検出するため、本テストは非並列にする（本番は単一アプリ）。
+//
+//nolint:paralleltest // 上記の理由により fx アプリ起動ケースは非並列
 func TestHTTPClientModule_ProvidesClient(t *testing.T) {
-	t.Parallel()
-
 	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
 		t.Run("実モジュール配線(clock + httpclient)から Client が構築される", func(t *testing.T) {
-			t.Parallel()
-
 			var client httpclient.Client
 			app := newHTTPClientTestApp(t, fx.Populate(&client))
 
@@ -36,8 +35,6 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 		})
 
 		t.Run("required と対応 profile が揃っていれば起動する", func(t *testing.T) {
-			t.Parallel()
-
 			var client httpclient.Client
 			app := newHTTPClientTestApp(t,
 				provideHTTPClientProfiles(func() httpclient.DownstreamProfile {
@@ -54,11 +51,7 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
 		t.Run("required に対応する profile が未登録の場合、起動に失敗する", func(t *testing.T) {
-			t.Parallel()
-
 			// profile を登録せず required だけ宣言すると、silent fallback ではなく起動失敗になる。
 			var client httpclient.Client
 			app := newHTTPClientTestApp(t,
