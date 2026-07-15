@@ -74,7 +74,7 @@ func TestNewRelay(t *testing.T) {
 	})
 }
 
-func TestRelayUsecase_RelayBatch(t *testing.T) {
+func Test_relayUsecase_RelayBatch(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -354,7 +354,7 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 	})
 }
 
-func TestRelayUsecase_RecordLag(t *testing.T) {
+func Test_relayUsecase_RecordLag(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)

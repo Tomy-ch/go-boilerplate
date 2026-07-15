@@ -221,7 +221,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 	})
 }
 
-func Test_usecase_Create(t *testing.T) {
+func Test_usecase_CreateUser(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
