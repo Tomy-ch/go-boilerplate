@@ -22,7 +22,7 @@
 
 **常に読む**:
 
-- `docs/testing-conventions.md`（parallel 必須・命名・require vs assert・mock 方針・層構造ルール）。
+- `docs/testing-conventions.md`（parallel 必須・命名・require vs assert・mock 方針・層構造ルール）**および section 10 の意味的品質バー / アンチパターン** — 生成テストが満たすべき SSOT（各ケースはその分岐固有の outcome を assert し、列挙されたアンチパターンを出力しない）。 `test-review` も同じ節を読んでレビューするため、生成器とレビュアは対称に保たれる — 観点・アンチパターンのリストを本スキルへ複製しない。
 - 対象ソースファイル（シグネチャ・引数・戻り値・エラーセンチネル・package 内ヘルパを抽出）。
 - ファイルパスから自動解決する層別 README:
   - `internal/domain/README.md` （`internal/domain/**`）
@@ -195,6 +195,7 @@ func Test<Subject>(t *testing.T) {
 
 追加の生成ルール:
 
+- **意味的品質バー（`docs/testing-conventions.md` section 10）を満たす。** 生成する各ケースはその分岐*固有*の outcome を assert すること — エラー分岐は固有 sentinel を `require.ErrorIs`、成功 / 状態変更分岐は結果の値 / フィールド、境界は両側 — 分岐が実行されたことだけを示す空虚な `require.NoError` / `assert.NotNil` のみの本体にしない。 §10 のアンチパターン（弱いアサーション、ケース名の過剰約束、内部結合の脆さ、過剰モック、時刻リテラル漏れ、冗長コメント）を一切出力しない。 これは `test-review` がレビューする節と同一 — リストを本スキルに再掲せず runtime で読む。
 - **テストヘルパ**は package 内既存のもの（例: `newValidUser(t)`）を再利用。 未定義かつ同じ fixture を 3 回以上繰り返すならば、test ファイル末尾に `t.Helper()` 付きの unexported ヘルパを生成。
 - **`uuid.NewTestFromSalt(t, "<salt>")`** がテスト内で deterministic な UUID を取得する canonical 手段（`pkg/uuid`）。
 - **`ptr.To(...)` / `ptr.Copy(...)`** は nullable ポインタフィールドで利用（domain README の "Handling time and ID" / "Invariants" 節 参照）。
@@ -258,6 +259,7 @@ chain モードでは以下をスキップ:
 - ✅ mock は `*/mock/` 由来のみ。
 - ✅ deterministic な fixture（固定 `baseTime`、`uuid.NewTestFromSalt(t, ...)`）。
 - ✅ 生成 test ファイル内ヘルパに `t.Helper()`。
+- ✅ section 10 の意味的品質バーを満たす（各ケースは分岐固有の outcome を assert・アンチパターンを出力しない）— `docs/testing-conventions.md` から読み、本スキルに再掲しない。
 - ✅ 回帰の要となるケースはミューテーション検証（subject に退行を注入→テストが FAIL することを確認→戻す）。注入下で緑のままのケースはガードでなくトートロジー。
 
 ## チェックリスト

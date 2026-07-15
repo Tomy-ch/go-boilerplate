@@ -26,7 +26,7 @@ Do NOT use this skill for:
 
 **Reads (always)**:
 
-- `docs/testing-conventions.md` — the project-wide testing conventions.
+- `docs/testing-conventions.md` — the project-wide testing conventions, **including section 10 (Semantic quality bar / anti-patterns)** — the SSOT for Lens 3 and Lens 4 Axis B (意味網羅), shared with `scaffold-test`.
 - `.claude/skills/scaffold-test/SKILL.md` — the canonical generation rules (parallel mandate, `t.Run` per subcase, 正常系 / 異常系 grouping, Japanese naming, require vs assert, mock policy, `for`-loop policy, one-`TestXxx`-per-subject policy). This skill reviews against those same rules — no duplication.
 - The nearest layer README, walked up from each target test file:
   - `internal/domain/README.md` (Testing strategy)
@@ -116,18 +116,9 @@ Output: a list of viewpoints the README declares but the test file does not exer
 
 ### Lens 3: Semantic Quality
 
-Audits whether the assertions are actually meaningful:
+Audits whether the assertions are actually meaningful, **against `docs/testing-conventions.md` section 10 (Semantic quality bar / anti-patterns) as the single source of truth**. That section is the SSOT shared with `scaffold-test` (the generator satisfies it; this lens flags violations of it) — read it at runtime and apply whatever it currently lists. Do NOT hardcode the anti-pattern catalogue here; it drifts from the doc. As of this writing §10 enumerates: weak assertions (with the trivial-constructor 1:1 *strengthen-in-place* exception — recommend a stronger assertion, never delete the dedicated `TestXxx` or fold it into another subject's test), name over-promising the assertion (with the branchless pass-through / wiring corollary — collapse redundant `NotNil` re-runs), brittle internals coupling, over-mocking, time-literal pinning leaks, `TestXxx` responsibility creep, helper duplication, and redundant comments. If §10 adds, removes, or refines an anti-pattern, follow the doc, not this paragraph.
 
-- **Weak assertions**: `assert.NotNil(t, x)` as the only check for a complex return value; `assert.NoError` without follow-up state assertions; `assert.Equal(t, len(actual), 1)` instead of asserting on the element. Caveat: a weak assertion on a **trivial constructor kept as its own `TestXxx` for the 1:1 mapping** (`scaffold-test` Rule 1 reverse direction) is a *strengthen-in-place* finding, never a *delete-the-test* one — recommend a stronger assertion, but do NOT recommend removing the dedicated `TestXxx` (the 1:1 slot outranks weak-test avoidance). Likewise never recommend folding it into another subject's test.
-- **Name over-promising the assertion**: a `t.Run` case name claims a property the body does not actually verify — e.g. `"…を保持した収集器を返す"` while the body only asserts `NotNil`, when the held value lives in an unexported field or is another unit's responsibility. Either assert the distinctive property or rename the case to what is verified. Corollary: for a **branchless pass-through / wiring function** (e.g. a DI provider that just forwards its input to a constructor), one honest case is correct — extra cases that re-run the same `NotNil` assertion with different inputs add no coverage (no branch distinguishes them) and should be collapsed.
-- **Brittle internals coupling**: tests reading unexported fields when the public API would do; tests asserting on logging output or error message *strings* without `errors.Is`.
-- **Over-mocking**: every collaborator mocked when a real (pure) implementation would be lighter and more revealing; mock setup verifying call counts at a granularity that locks the implementation in place.
-- **Time-literal pinning leaks**: `time.Now()` called inside the assertion rather than a fixed `baseTime`; comparisons relying on system clock.
-- **`TestXxx` responsibility creep**: one `TestXxx` driving multiple subjects without a recorded rationale (rule violation already, but also a semantic smell when the rationale is weak).
-- **Helper duplication**: a 5+-line fixture repeated across three `TestXxx` functions that should be a `t.Helper()`-tagged helper.
-- **Redundant comments**: inline comments that restate the code or narrate *why* (rather than behavior). The project keeps test comments minimal — case intent lives in the Japanese `t.Run` name, not in comments. Flag restated-identifier comments and test-rationale narration left in the test body (one-line godoc-style declaration comments are exempt; the `-race` serial-block exception comment is required, not redundant).
-
-Output: a list of findings with `file:line` and a one-sentence explanation of why the assertion is weak or brittle.
+Output: a list of findings with `file:line`, the §10 anti-pattern violated, and a one-sentence explanation of why the assertion is weak or brittle.
 
 ### Lens 4: Viewpoint Gap — Branch × Meaning Completeness (subject-driven)
 
@@ -144,7 +135,7 @@ Reads the subject source file itself and builds, **per function / method**, a tw
 
 A branch with NO covering case is a **分岐未カバー** finding → severity **追加検討** (proactive). Cite the subject `file:line` of the uncovered branch + a proposed `t.Run` case name.
 
-**Axis B — meaning coverage (意味網羅)**: each covered branch's case actually asserts that branch's *distinctive* outcome, not merely that it executed.
+**Axis B — meaning coverage (意味網羅)**: each covered branch's case actually asserts that branch's *distinctive* outcome, not merely that it executed. This axis applies the **意味網羅 bar defined in `docs/testing-conventions.md` section 10** to the subject's branch set — §10 is the SSOT for what "distinctly asserted" means (shared with `scaffold-test`, which generates to satisfy it); the per-branch checks below are its concrete application.
 
 - An error branch asserts the specific sentinel via `require.ErrorIs` — not just `require.Error`.
 - A success branch asserts the resulting value / state that distinguishes it from the other branches — not just `require.NoError` / `assert.NotNil`.
@@ -250,6 +241,7 @@ When chained from such an orchestrator in the future, the parent passes a contex
 - ❌ Running `make test` (this skill reviews tests, not runs them; coverage / pass-status is `make test`'s job, run separately).
 - ❌ Trusting finder output without verification (the verifier stage is mandatory unless the parent passes `skip_verifier: true`).
 - ❌ Hardcoding viewpoint lists (the SSOT is the layer README's Test Strategy section; `pkg/` is the documented exception).
+- ❌ Hardcoding the semantic-quality anti-pattern catalogue (Lens 3) or the 意味網羅 bar (Lens 4 Axis B) — the SSOT is `docs/testing-conventions.md` section 10, read at runtime.
 - ❌ Duplicating rules already in `docs/testing-conventions.md` or `scaffold-test/SKILL.md` (the skill reads them at runtime).
 - ✅ Default to skepticism in the verifier (PLAUSIBLE > CONFIRMED when ambiguous).
 - ✅ Default reviewer model is `sonnet` (different from Opus implementers); orchestrator may override to keep reviewer ≠ implementer.
