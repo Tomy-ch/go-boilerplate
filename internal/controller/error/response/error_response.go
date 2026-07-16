@@ -6,6 +6,7 @@ package response
 import (
 	"fmt"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/error/response/gen"
 )
 
@@ -21,8 +22,22 @@ type HTTPErrorResponse struct {
 
 // NewHTTPErrorFromAppError は、err をアプリケーションエラーとして解釈し、対応する HTTP エラーレスポンスを返します。
 // 既知のエラー型に一致しない場合は 500 Internal Server Error として扱います。
+// err に [apperror.Meta] が付与されている場合、非空の Code / Message は既定値を上書きし、
+// Details は明示引数 details が無い場合にのみ採用されます。HTTP ステータスはセンチネル分類のまま変わりません。
 func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByAppError(err)
+
+	if appMeta, ok := apperror.MetaFrom(err); ok {
+		if appMeta.Code != "" {
+			meta.Code = appMeta.Code
+		}
+		if appMeta.Message != "" {
+			meta.Message = appMeta.Message
+		}
+		if len(details) == 0 {
+			details = appMeta.Details
+		}
+	}
 
 	res := newHTTPErrorFromMeta(meta, details...)
 	res.Internal = err

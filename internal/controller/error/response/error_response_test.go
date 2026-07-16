@@ -52,6 +52,54 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 
 			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
 		})
+
+		t.Run("MetaのDetailsがある場合、レスポンスのDetailsに反映される", func(t *testing.T) {
+			t.Parallel()
+
+			err := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "profile invalid"), "firstName", "email")
+
+			expected := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{
+					Code:    codeValidationFailed,
+					Message: errorMessageValidationFailed,
+					Details: new([]string{"firstName", "email"}),
+				},
+				HTTPStatus: http.StatusUnprocessableEntity,
+				Internal:   err,
+			}
+
+			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
+		})
+
+		t.Run("MetaのCodeとMessageが非空の場合、既定値を上書きしステータスは変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "profile invalid"), apperror.Meta{
+				Code:    "CUSTOM_CODE",
+				Message: "カスタムメッセージ",
+			})
+
+			expected := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{
+					Code:    "CUSTOM_CODE",
+					Message: "カスタムメッセージ",
+				},
+				HTTPStatus: http.StatusUnprocessableEntity,
+				Internal:   err,
+			}
+
+			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
+		})
+
+		t.Run("明示引数のdetailsはMetaのDetailsより優先される", func(t *testing.T) {
+			t.Parallel()
+
+			err := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "profile invalid"), "firstName")
+
+			actual := NewHTTPErrorFromAppError(err, "explicit detail")
+
+			assert.Equal(t, new([]string{"explicit detail"}), actual.Details)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

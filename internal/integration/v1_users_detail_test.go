@@ -7,14 +7,17 @@ import (
 	"go-boilerplate/internal/apperror"
 	detail "go-boilerplate/internal/controller/handler/v1/users/detail"
 	detailgen "go-boilerplate/internal/controller/handler/v1/users/detail/gen"
+	domainuser "go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -176,6 +179,68 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
+		})
+
+		t.Run("PUT /v1/users/{userId}が複数フィールド不正で422とdetailsを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			validationErr := apperror.WithDetails(xerrors.Join(
+				xerrors.Wrap(domainuser.ErrInvalidFirstName, "length must be between 1 and 100 characters (got 0)"),
+				xerrors.Wrap(domainuser.ErrInvalidEmail, "length must be between 1 and 100 characters (got 101)"),
+			), domainuser.FieldFirstName, domainuser.FieldEmail)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
+				Return(user.UserView{}, validationErr)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-put-422"))
+
+			body := &detailgen.PutUsersDetailJSONRequestBody{
+				FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
+				Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
+				City: "Shibuya", Street: "1-1-1",
+			}
+
+			actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, headers)
+			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)
+			require.NotNil(t, errResp.Details)
+			assert.Equal(t, []string{domainuser.FieldFirstName, domainuser.FieldEmail}, *errResp.Details)
+			// 理由文はログ専用であり、レスポンスの details には露出しない
+			assert.NotContains(t, *errResp.Details, "length must be between 1 and 100 characters (got 0)")
+		})
+
+		t.Run("PATCH /v1/users/{userId}が単一フィールド不正で422とdetailsを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			validationErr := apperror.WithDetails(
+				xerrors.Wrap(domainuser.ErrInvalidFirstName, "length must be between 1 and 100 characters (got 0)"),
+				domainuser.FieldFirstName,
+			)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
+				Return(user.UserView{}, validationErr)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-patch-422"))
+
+			body := &detailgen.PatchUsersDetailJSONRequestBody{
+				FirstName: new(""),
+			}
+
+			actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, headers)
+			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)
+			require.NotNil(t, errResp.Details)
+			assert.Equal(t, []string{domainuser.FieldFirstName}, *errResp.Details)
 		})
 	})
 }

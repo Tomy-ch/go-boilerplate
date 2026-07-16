@@ -18,7 +18,7 @@ type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
 	Code string `json:"code"`
 
-	// Details エラーの詳細情報(任意)
+	// Details エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
 	Details *[]string `json:"details,omitempty"`
 
 	// Message 人間が読めるエラーメッセージ

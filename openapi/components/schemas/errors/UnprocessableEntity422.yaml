@@ -1,4 +1,4 @@
-description: 入力値が要件を満たしていません。
+description: 入力値が要件を満たしていません。details に不正なフィールド名が入ります。
 content:
   application/json:
     schema:
