@@ -4,6 +4,7 @@ package user
 import (
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/stringkit"
 	"go-boilerplate/pkg/uuid"
@@ -229,7 +230,9 @@ func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error {
 	return nil
 }
 
-// validateProfileFields は、プロフィール系フィールドの不変条件を検証します。
+// validateProfileFields は、プロフィール系フィールドの不変条件をすべて検証し、失敗を収集します。
+// 失敗があった場合は各フィールドの検証エラーを結合し、不正フィールドの識別子を
+// apperror.Meta の Details として付与して返します（理由文はエラーメッセージ側にのみ残ります）。
 func validateProfileFields(
 	firstName, lastName, email, phone string,
 	prefectureID uuid.UUID,
@@ -237,34 +240,50 @@ func validateProfileFields(
 	building *string,
 	postalCode string,
 ) error {
+	var errs []error
+	var fields []string
+
 	if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
-		return xerrors.Wrap(ErrInvalidFirstName, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidFirstName, msg))
+		fields = append(fields, FieldFirstName)
 	}
 	if ok, msg := stringkit.ValidateInRange(lastName, minLength, maxLastNameLength); !ok {
-		return xerrors.Wrap(ErrInvalidLastName, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidLastName, msg))
+		fields = append(fields, FieldLastName)
 	}
 	if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
-		return xerrors.Wrap(ErrInvalidEmail, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidEmail, msg))
+		fields = append(fields, FieldEmail)
 	}
 	if ok, msg := stringkit.ValidateInRange(phone, minLength, maxPhoneLength); !ok {
-		return xerrors.Wrap(ErrInvalidPhone, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidPhone, msg))
+		fields = append(fields, FieldPhone)
 	}
 	if prefectureID.IsNil() {
-		return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
+		errs = append(errs, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required"))
+		fields = append(fields, FieldPrefecture)
 	}
 	if ok, msg := stringkit.ValidateInRange(city, minLength, maxCityLength); !ok {
-		return xerrors.Wrap(ErrInvalidCity, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidCity, msg))
+		fields = append(fields, FieldCity)
 	}
 	if ok, msg := stringkit.ValidateInRange(street, minLength, maxStreetLength); !ok {
-		return xerrors.Wrap(ErrInvalidStreet, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidStreet, msg))
+		fields = append(fields, FieldStreet)
 	}
 	if building != nil {
 		if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok {
-			return xerrors.Wrap(ErrInvalidBuilding, msg)
+			errs = append(errs, xerrors.Wrap(ErrInvalidBuilding, msg))
+			fields = append(fields, FieldBuilding)
 		}
 	}
 	if ok, msg := stringkit.ValidateInRange(postalCode, minLength, maxPostalCodeLength); !ok {
-		return xerrors.Wrap(ErrInvalidPostalCode, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidPostalCode, msg))
+		fields = append(fields, FieldPostalCode)
+	}
+
+	if len(errs) > 0 {
+		return apperror.WithDetails(xerrors.Join(errs...), fields...)
 	}
 	return nil
 }
