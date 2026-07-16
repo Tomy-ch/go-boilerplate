@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
+	"go-boilerplate/internal/controller/httpstack/oapi/validator"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
@@ -78,8 +79,13 @@ func TestMiddleware(t *testing.T) {
 			lf := logging.NewTestLogFieldBuilder(t)
 			obsLogger, observed := logging.NewObservedTestLogger(t)
 
+			spec, err := validator.GetValidator()
+			require.NoError(t, err)
+			policy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+			require.NoError(t, err)
+
 			e := echo.New()
-			errorhandler.New(e, obsLogger, lf, obsCfg)
+			errorhandler.New(e, policy, obsLogger, lf, obsCfg)
 			e.Use(Middleware(obsLogger, lf, appCfg))
 			e.GET("/panic", func(_ echo.Context) error { panic("boom-panic") })
 

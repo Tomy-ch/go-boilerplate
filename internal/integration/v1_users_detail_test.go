@@ -242,5 +242,30 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			require.NotNil(t, errResp.Details)
 			assert.Equal(t, []string{domainuser.FieldFirstName}, *errResp.Details)
 		})
+
+		t.Run("details未対応のGETはMeta付きエラーでもdetailsを返さない(fail-closed)", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			// GET /v1/users/{userId} は OpenAPI で ErrorResponseWithDetails を宣言していない(opt-in 外)。
+			// Meta に details が付いていても errorhandler が fail-closed で落とす。
+			metaErr := apperror.WithDetails(
+				xerrors.Wrap(domainuser.ErrInvalidFirstName, "length must be between 1 and 100 characters (got 0)"),
+				domainuser.FieldFirstName,
+			)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(user.UserView{}, metaErr)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-get-nodetails"))
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
+			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)
+			assert.Nil(t, errResp.Details)
+		})
 	})
 }
