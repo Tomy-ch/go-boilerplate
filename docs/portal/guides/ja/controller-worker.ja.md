@@ -49,4 +49,8 @@ engine は **in-memory fake**（`internal/usecase/boundary/worker/testkit` の `
 
 SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は **default では配線せず**、`aws-sdk-go-v2` を出荷バイナリに載せない。
 
+## Config の clamp（安全な既定値であり、silent ではない）
+
+`Settings.normalize()`（`settings.go`）は、engine-core の範囲外値を起動失敗にするのではなく安全な既定値へ **clamp** する — 設定を誤った worker でも crash-loop せず動き続けるという回復性重視の選択。clamp されるフィールド：`Concurrency` / `MaxInFlight` / `BatchSize`（`Concurrency <= MaxInFlight` かつ `1 <= BatchSize <= MaxInFlight` へ矯正）、`DrainTimeout`、`CircuitHalfOpenProbe`、`CircuitOpenBackoffInitial` / `CircuitOpenBackoffMax`（有効化したブレーカが cooldown ゼロへ退化しないように）、`ProgressStaleAfter`、`NackBackoffInitial` / `NackBackoffMax`。`WORKER_*` env var は非ゼロの `envDefault` を持つため、clamp が発動するのは運用者が明示的に `0` / 負値を設定したときだけ。ここ（およびセットアップレビュー、[`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md) 参照）に記すことで、clamp を silent にせずレビュー可能に保つ。
+
 > 詳細設計（状態遷移 / 実装箇所マップ / 用語集）: [docs/ja/design/worker.ja.md](../../../docs/ja/design/worker.ja.md)。
