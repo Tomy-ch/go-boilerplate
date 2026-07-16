@@ -28,14 +28,14 @@ func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByAppError(err)
 
 	if appMeta, ok := apperror.MetaFrom(err); ok {
-		if appMeta.Code != "" {
-			meta.Code = appMeta.Code
+		if appMeta.Code() != "" {
+			meta.Code = appMeta.Code()
 		}
-		if appMeta.Message != "" {
-			meta.Message = appMeta.Message
+		if appMeta.Message() != "" {
+			meta.Message = appMeta.Message()
 		}
 		if len(details) == 0 {
-			details = appMeta.Details
+			details = appMeta.Details()
 		}
 	}
 

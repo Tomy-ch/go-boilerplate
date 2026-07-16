@@ -52,9 +52,9 @@ When the error carries an `apperror.Meta` (see `internal/apperror` README), `New
 |Response field|Without Meta|With Meta|
 |---|---|---|
 |HTTP status|From sentinel classification|From sentinel classification (**Meta never changes it**)|
-|`code`|Status default|`Meta.Code` if non-empty, else status default|
-|`message`|Status default|`Meta.Message` if non-empty, else status default|
-|`details`|Explicit `details` argument|Explicit `details` argument if given, else `Meta.Details`|
+|`code`|Status default|`Meta.Code()` if non-empty, else status default|
+|`message`|Status default|`Meta.Message()` if non-empty, else status default|
+|`details`|Explicit `details` argument|Explicit `details` argument if given, else `Meta.Details()`|
 
 ## Error Code and HTTP Status Mapping
 

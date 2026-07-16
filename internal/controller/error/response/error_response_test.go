@@ -74,10 +74,8 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 		t.Run("MetaのCodeとMessageが非空の場合、既定値を上書きしステータスは変わらない", func(t *testing.T) {
 			t.Parallel()
 
-			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "profile invalid"), apperror.Meta{
-				Code:    "CUSTOM_CODE",
-				Message: "カスタムメッセージ",
-			})
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "profile invalid"),
+				apperror.NewMeta("CUSTOM_CODE").WithMessage("カスタムメッセージ"))
 
 			expected := &HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{

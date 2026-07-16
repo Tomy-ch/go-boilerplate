@@ -10,6 +10,70 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewMeta(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Code と Details が設定され Message は空", func(t *testing.T) {
+			t.Parallel()
+			meta := apperror.NewMeta("CUSTOM_CODE", "firstName", "email")
+			assert.Equal(t, "CUSTOM_CODE", meta.Code())
+			assert.Empty(t, meta.Message())
+			assert.Equal(t, []string{"firstName", "email"}, meta.Details())
+		})
+
+		t.Run("渡した Details スライスを後から変更しても構築済みメタに影響しない", func(t *testing.T) {
+			t.Parallel()
+			details := []string{"firstName"}
+			meta := apperror.NewMeta("", details...)
+			details[0] = "mutated"
+			assert.Equal(t, []string{"firstName"}, meta.Details())
+		})
+
+		t.Run("Details 無しの場合 nil を返す", func(t *testing.T) {
+			t.Parallel()
+			meta := apperror.NewMeta("CUSTOM_CODE")
+			assert.Nil(t, meta.Details())
+		})
+	})
+}
+
+func TestMeta_WithMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Message が上書きされたコピーを返し元は変わらない", func(t *testing.T) {
+			t.Parallel()
+			base := apperror.NewMeta("CUSTOM_CODE", "firstName")
+			overridden := base.WithMessage("custom message")
+			assert.Equal(t, "custom message", overridden.Message())
+			assert.Equal(t, "CUSTOM_CODE", overridden.Code())
+			assert.Equal(t, []string{"firstName"}, overridden.Details())
+			assert.Empty(t, base.Message())
+		})
+	})
+}
+
+func TestMeta_Details(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("返り値を書き換えても内部状態に影響しない", func(t *testing.T) {
+			t.Parallel()
+			meta := apperror.NewMeta("", "firstName")
+			got := meta.Details()
+			got[0] = "mutated"
+			assert.Equal(t, []string{"firstName"}, meta.Details())
+		})
+	})
+}
+
 func TestWithMeta(t *testing.T) {
 	t.Parallel()
 
@@ -18,7 +82,7 @@ func TestWithMeta(t *testing.T) {
 
 		t.Run("元エラーのセンチネル分類を保持する", func(t *testing.T) {
 			t.Parallel()
-			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "invalid"), apperror.Meta{Code: "CUSTOM"})
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "invalid"), apperror.NewMeta("CUSTOM"))
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 
@@ -28,31 +92,21 @@ func TestWithMeta(t *testing.T) {
 				xerrors.Wrap(apperror.ErrValidation, "validation failed"),
 				xerrors.Wrap(apperror.ErrNotFound, "missing"),
 			)
-			err := apperror.WithMeta(joined, apperror.Meta{Code: "CUSTOM"})
+			err := apperror.WithMeta(joined, apperror.NewMeta("CUSTOM"))
 			require.ErrorIs(t, err, apperror.ErrValidation)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 
 		t.Run("エラーメッセージは元エラーのまま", func(t *testing.T) {
 			t.Parallel()
-			err := apperror.WithMeta(xerrors.New("original"), apperror.Meta{Code: "CUSTOM"})
+			err := apperror.WithMeta(xerrors.New("original"), apperror.NewMeta("CUSTOM"))
 			assert.Equal(t, "original", err.Error())
 		})
 
 		t.Run("スタックトレース表現は元エラーへ委譲される", func(t *testing.T) {
 			t.Parallel()
-			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "invalid"), apperror.Meta{})
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "invalid"), apperror.NewMeta(""))
 			assert.Contains(t, xerrors.StackTrace(err), "meta_test.go")
-		})
-
-		t.Run("渡した Details スライスを後から変更しても付与済みメタに影響しない", func(t *testing.T) {
-			t.Parallel()
-			details := []string{"firstName"}
-			err := apperror.WithMeta(apperror.ErrValidation, apperror.Meta{Details: details})
-			details[0] = "mutated"
-			meta, ok := apperror.MetaFrom(err)
-			require.True(t, ok)
-			assert.Equal(t, []string{"firstName"}, meta.Details)
 		})
 	})
 
@@ -61,7 +115,7 @@ func TestWithMeta(t *testing.T) {
 
 		t.Run("nil の場合 nil を返す", func(t *testing.T) {
 			t.Parallel()
-			require.NoError(t, apperror.WithMeta(nil, apperror.Meta{Code: "CUSTOM"}))
+			require.NoError(t, apperror.WithMeta(nil, apperror.NewMeta("CUSTOM")))
 		})
 	})
 }
@@ -78,9 +132,9 @@ func TestWithDetails(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrValidation)
 			meta, ok := apperror.MetaFrom(err)
 			require.True(t, ok)
-			assert.Empty(t, meta.Code)
-			assert.Empty(t, meta.Message)
-			assert.Equal(t, []string{"firstName", "email"}, meta.Details)
+			assert.Empty(t, meta.Code())
+			assert.Empty(t, meta.Message())
+			assert.Equal(t, []string{"firstName", "email"}, meta.Details())
 		})
 	})
 
@@ -102,16 +156,13 @@ func TestMetaFrom(t *testing.T) {
 
 		t.Run("付与した Code / Message / Details を抽出できる", func(t *testing.T) {
 			t.Parallel()
-			err := apperror.WithMeta(apperror.ErrValidation, apperror.Meta{
-				Code:    "CUSTOM_CODE",
-				Message: "custom message",
-				Details: []string{"firstName", "email"},
-			})
+			err := apperror.WithMeta(apperror.ErrValidation,
+				apperror.NewMeta("CUSTOM_CODE", "firstName", "email").WithMessage("custom message"))
 			meta, ok := apperror.MetaFrom(err)
 			require.True(t, ok)
-			assert.Equal(t, "CUSTOM_CODE", meta.Code)
-			assert.Equal(t, "custom message", meta.Message)
-			assert.Equal(t, []string{"firstName", "email"}, meta.Details)
+			assert.Equal(t, "CUSTOM_CODE", meta.Code())
+			assert.Equal(t, "custom message", meta.Message())
+			assert.Equal(t, []string{"firstName", "email"}, meta.Details())
 		})
 
 		t.Run("さらにラップされていても抽出できる", func(t *testing.T) {
@@ -119,27 +170,16 @@ func TestMetaFrom(t *testing.T) {
 			err := xerrors.Wrap(apperror.WithDetails(apperror.ErrValidation, "email"), "update failed")
 			meta, ok := apperror.MetaFrom(err)
 			require.True(t, ok)
-			assert.Equal(t, []string{"email"}, meta.Details)
+			assert.Equal(t, []string{"email"}, meta.Details())
 		})
 
 		t.Run("多重に付与されている場合は外側が勝つ", func(t *testing.T) {
 			t.Parallel()
-			inner := apperror.WithMeta(apperror.ErrValidation, apperror.Meta{Code: "INNER"})
-			outer := apperror.WithMeta(inner, apperror.Meta{Code: "OUTER"})
+			inner := apperror.WithMeta(apperror.ErrValidation, apperror.NewMeta("INNER"))
+			outer := apperror.WithMeta(inner, apperror.NewMeta("OUTER"))
 			meta, ok := apperror.MetaFrom(outer)
 			require.True(t, ok)
-			assert.Equal(t, "OUTER", meta.Code)
-		})
-
-		t.Run("MetaFrom が返す Details を書き換えても内部状態に影響しない", func(t *testing.T) {
-			t.Parallel()
-			err := apperror.WithDetails(apperror.ErrValidation, "firstName")
-			meta, ok := apperror.MetaFrom(err)
-			require.True(t, ok)
-			meta.Details[0] = "mutated"
-			again, ok := apperror.MetaFrom(err)
-			require.True(t, ok)
-			assert.Equal(t, []string{"firstName"}, again.Details)
+			assert.Equal(t, "OUTER", meta.Code())
 		})
 	})
 
