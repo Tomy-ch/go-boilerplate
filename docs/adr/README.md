@@ -24,10 +24,10 @@ a decision (an ADR); the *list* of them is a living reference.
 
 ## Conventions
 
-- **Filename**: `NNNN-kebab-title.md`, zero-padded 4 digits, monotonically increasing. Numbers are never reused, even after supersession.
-- **Ordering**: numbers follow dependency / foundational order (principles → contract → layers → subsystems → cross-cutting → exclusions), not discovery order.
+- **Filename**: `NNNN-kebab-title.md`, zero-padded 4 digits. A number freed by supersession is never re-assigned to a different decision.
+- **Ordering**: numbers follow dependency / foundational order (principles → contract → layers → subsystems → cross-cutting → exclusions), not discovery order. To preserve this order, a new ADR may be **inserted at its thematic position by shifting all subsequent numbers +1** (a pure renumbering: every shifted ADR keeps its content, and all repository-internal references are updated in the same change). External references to ADR numbers from before such a shift may be stale — the kebab title in the filename is the stable identifier.
 - **Status lifecycle**: `proposed` → `accepted` → (`superseded` | `deprecated`).
-- **Immutable**: once `accepted`, edit only the `Status` line and add a `Superseded-by` link. Everything else stays as written.
+- **Immutable**: once `accepted`, edit only the `Status` line and add a `Superseded-by` link. Everything else stays as written. Immutability protects the recorded *decision content*; the insertion renumbering above changes only the number, not the record.
 - **Template**: copy [`template.md`](template.md).
 - **Meta**: [`0000-record-architecture-decisions.md`](0000-record-architecture-decisions.md) records the decision to use ADRs and this classification.
 - **Translation**: each ADR mirrors to `docs/ja/adr/` (via the `canonicalize-doc` flow).
