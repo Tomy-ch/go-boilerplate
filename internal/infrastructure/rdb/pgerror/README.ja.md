@@ -57,6 +57,12 @@ flowchart TB
 func NormalizeExecResult(affected int64, err error) error
 ```
 
+**保存済み行からのエンティティ再構築**（`rowToXxx` → `New(...)`）でドメインコンストラクタが返したエラーには `NormalizeReconstructError` を使います。保存済みデータがドメイン不変条件に違反するのはデータ不整合（サーバ側障害）であり、クライアントへ `422` + フィールド `details` として露出させないため、エラーを意図的に **`apperror.ErrInternal` へ平坦化**します（load-bearing flatten: 検証センチネルと `apperror.Meta` をチェーンから消す）。理由文はメッセージに残るためログには届きます。
+
+```go
+func NormalizeReconstructError(err error) error
+```
+
 ## SQLSTATE マッピング
 
 以下の PostgreSQL SQLSTATE がアプリケーションエラーへ変換されます。
