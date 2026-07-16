@@ -52,7 +52,7 @@ func TestNew(t *testing.T) {
 			lf := logging.NewTestLogFieldBuilder(t)
 
 			New(e, z, lf, obsCfg)
-			require.NotNil(t, e.HTTPErrorHandler)
+			assert.NotNil(t, e.HTTPErrorHandler)
 		})
 	})
 }
@@ -245,12 +245,15 @@ func Test_normalizeHTTPError(t *testing.T) {
 			)
 			metaErr := apperror.WithDetails(joined, "firstName", "email")
 
+			expected := response.NewHTTPErrorFromAppError(metaErr)
+			expected.RequestId = expectedRequestID
+
 			actual := normalizeHTTPError(metaErr, expectedRequestID)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, actual.HTTPStatus)
 			require.NotNil(t, actual.Details)
 			assert.Equal(t, []string{"firstName", "email"}, *actual.Details)
-			assert.Equal(t, expectedRequestID, actual.RequestId)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("Echo.HTTPErrorのInternalにOpenAPIエラーがある場合_RequestErrorは400で正規化される", func(t *testing.T) {

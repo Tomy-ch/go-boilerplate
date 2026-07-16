@@ -1011,15 +1011,6 @@ func TestUser_UpdateProfile(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("プロフィールフィールドが不正な場合、エラーを返す", func(t *testing.T) {
-			t.Parallel()
-			u, base := newValidUser(t)
-
-			err := u.UpdateProfile("", "Smith", "jane@example.com", "0987654321",
-				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
-			require.ErrorIs(t, err, ErrInvalidFirstName)
-		})
-
 		t.Run("単一フィールドが不正な場合、そのフィールド識別子のみが付与される", func(t *testing.T) {
 			t.Parallel()
 			u, base := newValidUser(t)
