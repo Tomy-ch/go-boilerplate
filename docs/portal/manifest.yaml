@@ -121,90 +121,91 @@ meta:
           - 0026-master-data-via-migration
           - 0027-lightweight-cqrs
           - 0028-system-cqrs-dml-category
-          - 0029-transaction-retry-idempotent-callers
-          - 0030-uuidv7-identifiers
+          - 0029-commandservice-atomicity-criterion
+          - 0030-transaction-retry-idempotent-callers
+          - 0031-uuidv7-identifiers
       - title: DI / Config / Errors
         items:
-          - 0031-uber-fx-di
-          - 0032-fx-neutral-di-abstraction
-          - 0033-env-gated-wiring
-          - 0034-subsystem-typed-config-loaders
-          - 0035-config-default-vs-required-governance
-          - 0036-immutable-fail-fast-config
-          - 0037-embedded-self-contained-binary
-          - 0038-apperror-protocol-agnostic-errors
-          - 0039-error-metadata-code-message-details
+          - 0032-uber-fx-di
+          - 0033-fx-neutral-di-abstraction
+          - 0034-env-gated-wiring
+          - 0035-subsystem-typed-config-loaders
+          - 0036-config-default-vs-required-governance
+          - 0037-immutable-fail-fast-config
+          - 0038-embedded-self-contained-binary
+          - 0039-apperror-protocol-agnostic-errors
+          - 0040-error-metadata-code-message-details
       - title: Async Subsystems (worker / outbox / idempotency / job)
         items:
-          - 0040-broker-agnostic-worker-scaffold
-          - 0041-out-of-scope-push-streaming-brokers
-          - 0042-sqs-adapter-opt-in
-          - 0043-transactional-outbox
-          - 0044-at-least-once-outbox-poll
-          - 0045-skip-locked-outbox-relay
-          - 0046-message-id-idempotency-propagation
-          - 0047-outbox-dead-after-max-attempts
-          - 0048-outbox-retention-gc
-          - 0049-publisher-http-profile-isolation
-          - 0050-relay-resident-gc-oneshot
-          - 0051-single-tx-at-most-once-idempotency
-          - 0052-idempotency-scope-required
-          - 0053-idempotency-fixed-ttl
-          - 0054-idempotency-response-persistence
-          - 0055-idempotency-gc-separate-job
-          - 0056-idempotency-orthogonal-concerns
-          - 0057-job-fresh-fx-app-per-run
-          - 0058-job-no-worker-machinery
-          - 0059-job-explicit-registration
+          - 0041-broker-agnostic-worker-scaffold
+          - 0042-out-of-scope-push-streaming-brokers
+          - 0043-sqs-adapter-opt-in
+          - 0044-transactional-outbox
+          - 0045-at-least-once-outbox-poll
+          - 0046-skip-locked-outbox-relay
+          - 0047-message-id-idempotency-propagation
+          - 0048-outbox-dead-after-max-attempts
+          - 0049-outbox-retention-gc
+          - 0050-publisher-http-profile-isolation
+          - 0051-relay-resident-gc-oneshot
+          - 0052-single-tx-at-most-once-idempotency
+          - 0053-idempotency-scope-required
+          - 0054-idempotency-fixed-ttl
+          - 0055-idempotency-response-persistence
+          - 0056-idempotency-gc-separate-job
+          - 0057-idempotency-orthogonal-concerns
+          - 0058-job-fresh-fx-app-per-run
+          - 0059-job-no-worker-machinery
+          - 0060-job-explicit-registration
       - title: Observability
         items:
-          - 0060-config-driven-observability-gating
-          - 0061-vendor-neutral-otlp-export
-          - 0062-official-otel-semconv
-          - 0063-dual-path-metrics
-          - 0064-lifecycle-independent-provider
-          - 0065-fixed-default-sampling
+          - 0061-config-driven-observability-gating
+          - 0062-vendor-neutral-otlp-export
+          - 0063-official-otel-semconv
+          - 0064-dual-path-metrics
+          - 0065-lifecycle-independent-provider
+          - 0066-fixed-default-sampling
       - title: Libraries
         items:
-          - 0066-library-selection-policy
-          - 0067-bridge-instrumentation-exceptions
+          - 0067-library-selection-policy
+          - 0068-bridge-instrumentation-exceptions
       - title: Toolchain / Build
         items:
-          - 0068-containerized-pinned-toolchain
-          - 0069-mise-ssot-drift-gate
-          - 0070-make-single-entrypoint
-          - 0071-scripts-in-node-go
-          - 0072-docker-compose-dev-environment
+          - 0069-containerized-pinned-toolchain
+          - 0070-mise-ssot-drift-gate
+          - 0071-make-single-entrypoint
+          - 0072-scripts-in-node-go
+          - 0073-docker-compose-dev-environment
       - title: CI / Quality Gates
         items:
-          - 0073-two-layer-golangci-config
-          - 0074-local-hooks-mirror-ci
-          - 0075-coverage-hard-gate
-          - 0076-ci-real-graph-boot-check
-          - 0077-generated-artifact-drift-gate
-          - 0078-multi-layer-security-scanning
-          - 0079-sha-pinned-actions
+          - 0074-two-layer-golangci-config
+          - 0075-local-hooks-mirror-ci
+          - 0076-coverage-hard-gate
+          - 0077-ci-real-graph-boot-check
+          - 0078-generated-artifact-drift-gate
+          - 0079-multi-layer-security-scanning
+          - 0080-sha-pinned-actions
       - title: Development Process
         items:
-          - 0080-rollback-integration-tests
-          - 0081-multi-model-adversarial-review
-          - 0082-lean-a-spec-scaffold
+          - 0081-rollback-integration-tests
+          - 0082-multi-model-adversarial-review
+          - 0083-lean-a-spec-scaffold
       - title: Binary / Image / Deploy
         items:
-          - 0083-cli-humble-object-split
-          - 0084-single-multi-command-binary
-          - 0085-single-runtime-image
-          - 0086-hardened-alpine-runtime
-          - 0087-per-environment-images
-          - 0088-predeploy-oneshot-migration
-          - 0089-release-image-supply-chain
-          - 0090-vendor-neutral-deploy-skeleton
-          - 0091-docs-via-github-pages
+          - 0084-cli-humble-object-split
+          - 0085-single-multi-command-binary
+          - 0086-single-runtime-image
+          - 0087-hardened-alpine-runtime
+          - 0088-per-environment-images
+          - 0089-predeploy-oneshot-migration
+          - 0090-release-image-supply-chain
+          - 0091-vendor-neutral-deploy-skeleton
+          - 0092-docs-via-github-pages
       - title: Project Exclusions
         items:
-          - 0092-no-in-app-rate-limiter
-          - 0093-scheduled-job-concurrency-delegated
-          - 0094-no-generic-cache-abstraction
+          - 0093-no-in-app-rate-limiter
+          - 0094-scheduled-job-concurrency-delegated
+          - 0095-no-generic-cache-abstraction
 
   # auto-Title-Case で汚くなる id の表示名を上書きする (略語 / 改名のみ用途)。
   section_titles:

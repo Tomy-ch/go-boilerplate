@@ -124,6 +124,52 @@ case xerrors.Is(err, apperror.ErrNotFound):
 
 という利点があります。
 
+## エラーメタ情報（`Meta`）
+
+`Meta` / `WithMeta` / `WithDetails` / `MetaFrom` により、エラー発生箇所がセンチネル分類の上に**動的でプロトコル中立なレスポンス向けメタ情報**を付与できます。
+
+```go
+// 不正フィールドの識別子を付与する（domain 層）
+return apperror.WithDetails(xerrors.Join(errs...), "firstName", "email")
+
+// transport の境界で抽出する（controller 層）
+if meta, ok := apperror.MetaFrom(err); ok { ... }
+```
+
+ルール:
+
+- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0039](../../docs/adr/0039-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0040](../../docs/adr/0040-error-metadata-code-message-details.md) 参照）。
+- 全フィールド任意です。空の項目は、解決されたステータスに対する controller の既定 `code` / `message` にフォールバックします。
+- `Message` は利用者向け文言で、正は controller のカタログにあります。**Domain / Usecase では空のまま**にし、`Code` / `Details` のみを設定してください。
+- `Details` の値は API レスポンスにそのまま公開されます。**公開して安全な識別子のみ**（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはいけません。理由文はラップしたエラーメッセージ側に残し、ログ専用とします。
+- チェーン内で `WithMeta` が多重に付与された場合、**最も外側が勝ちます**（`MetaFrom` は `xerrors.As` を使用）。上位層が上書きしたい場合は意図的に再ラップしてください。
+- `WithMeta` は装飾であり分類ではありません。`xerrors.Is` / `IsAppError` はラップされたセンチネル（`xerrors.Join` の全枝を含む）をそのまま検知します。
+
+### 仕組み: センチネルへの埋め込みではなくラッパー
+
+`WithMeta` はセンチネルに何かを入れるのでは**ありません** — センチネルは共有のパッケージ変数
+なので、リクエスト固有のデータを持たせると別リクエストへ漏れます。代わりに、元のエラーを
+内側に抱える `MetaError` でチェーン全体を包みます:
+
+```go
+type MetaError struct {
+    meta Meta  // リクエスト固有の荷物
+    err  error // 元のチェーン丸ごと（センチネルを含む）
+}
+
+func (e *MetaError) Unwrap() error { return e.err }
+```
+
+メソッド名は **`Unwrap() error` でなければなりません** — これはスタイルの選択ではなく標準
+ライブラリのチェーン契約です: `errors.Is` / `errors.As`（したがって `xerrors.Is` / `As`）は
+まさにこのシグネチャ（Join の場合は `Unwrap() []error`）を探してチェーンを辿ります。改名
+するとラッパーが不透明になり、422 分類が壊れます。
+
+役割分担に注意してください: `Unwrap` は**1枚だけ**剥がします — 返すのは内側のチェーン
+そのままで、センチネルではありません。センチネルへの到達は `errors.Is` の仕事で、チェーンを
+降りながら `Unwrap` を再帰的に呼びます。各ラッパー型は「自分の包装を外す」だけを実装し、
+走査ロジックは標準ライブラリに一箇所だけ存在します。
+
 ## Job / CLI でのエラー扱い
 
 `apperror` は HTTP だけでなく **Job / CLI Controller** でも利用できます。

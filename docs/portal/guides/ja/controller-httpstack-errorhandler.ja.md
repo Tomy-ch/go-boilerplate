@@ -76,6 +76,7 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 
 - `requestId` は常に付与（`requestid.GetRequestIDFromResponse` で取得）
 - `Details` と `Internal` エラーは利用可能な場合に含まれる
+- エラーが `apperror.Meta` を運んでいる場合、`NewHTTPErrorFromAppError` 内で `code` / `message` / `details` がステータス既定値を上書きする（HTTP ステータスは変わらない）— [`controller/error/response/README.ja.md`](../../error/response/README.ja.md) の「`apperror.Meta` による上書き」節を参照
 - `Internal` エラーとスタックトレースはログに出力されるが、**クライアントには返されない**
 
 ## ログ出力

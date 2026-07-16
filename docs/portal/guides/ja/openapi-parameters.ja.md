@@ -28,15 +28,15 @@ parameters/
 
 本プロジェクトは**2つのページネーション方式**を提供し、それぞれが各方式で慣用的なパラメータ名を**あえて統一せず**保持しています：
 
-- **オフセット**（`page` / `per_page`）— REST 流のページ移動。件数が有限でページ指定できる一覧向け。
+- **オフセット**（`page` / `perPage`）— REST 流のページ移動。件数が有限でページ指定できる一覧向け。
 - **カーソル / keyset**（`first` / `after`）— Relay 流の前方走査。offset が高コスト・不安定になる大規模・無限フィード向け。
 
-カーソル側を `per_page` 等にリネームするのは非慣用的（カーソル走査に「ページ」概念はない）かつ API 破壊変更になるため、この分離は意図的です。
+カーソル側を `perPage` 等にリネームするのは非慣用的（カーソル走査に「ページ」概念はない）かつ API 破壊変更になるため、この分離は意図的です。
 
 |ファイル|パラメータ|型|方式|説明|
 |---|---|---|---|---|
 |`PageParam.yaml`|`page` (query)|integer|offset|ページ番号（1始まり、デフォルト: 1）|
-|`PerPageParam.yaml`|`per_page` (query)|integer|offset|1ページあたりの件数（デフォルト: 10、最大: 100）|
+|`PerPageParam.yaml`|`perPage` (query)|integer|offset|1ページあたりの件数（デフォルト: 10、最大: 100）|
 |`CursorFirstParam.yaml`|`first` (query)|integer|cursor|取得件数の上限（デフォルト: 50、最大: 200）|
 |`CursorAfterParam.yaml`|`after` (query)|string|cursor|次ページ用の不透明カーソル。先頭ページは省略|
 
@@ -51,7 +51,7 @@ parameters/
 
 |ファイル|パラメータ|型|説明|
 |---|---|---|---|
-|`UserIdParam.yaml`|`user_id` (path)|string (uuid)|ユーザー UUID|
+|`UserIdParam.yaml`|`userId` (path)|string (uuid)|ユーザー UUID|
 
 ## 使い方
 
