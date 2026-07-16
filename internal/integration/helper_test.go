@@ -157,6 +157,14 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo) {
 func AssertErrorResponse(t *testing.T, actualResponse *http.Response, wantStatus int) {
 	t.Helper()
 
+	AssertErrorResponseBody(t, actualResponse, wantStatus)
+}
+
+// AssertErrorResponseBody は、[AssertErrorResponse] と同じ検証を行ったうえで、
+// デコード済みの ErrorResponse を返します。details 等のボディ内容まで検証する場合に使います。
+func AssertErrorResponseBody(t *testing.T, actualResponse *http.Response, wantStatus int) responsegen.ErrorResponse {
+	t.Helper()
+
 	resBody, err := io.ReadAll(actualResponse.Body)
 	require.NoError(t, err)
 
@@ -166,4 +174,5 @@ func AssertErrorResponse(t *testing.T, actualResponse *http.Response, wantStatus
 	var errResp responsegen.ErrorResponse
 	require.NoError(t, json.Unmarshal(resBody, &errResp), "エラーレスポンスが ErrorResponse 形式でシリアライズされていません。")
 	assert.NotEmpty(t, errResp.Code)
+	return errResp
 }
