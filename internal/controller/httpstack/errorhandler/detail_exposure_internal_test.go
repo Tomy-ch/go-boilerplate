@@ -3,9 +3,94 @@ package errorhandler
 import (
 	"testing"
 
+	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// Test_buildDetailExposureMap_matchesContract は、opt-in マップ(policy が details プロパティの有無で
+// 導出)が、OpenAPI 契約(error レスポンスが ErrorResponseWithDetails コンポーネントを参照するか)と
+// 1:1 で一致することを固定する契約テストです。
+//
+// 期待集合は policy とは独立した方法で導出します: 各 operation の error レスポンス JSON スキーマが
+// components.schemas.ErrorResponseWithDetails と同一(kin-openapi は $ref を共有ポインタへ解決する)
+// かをポインタ同一性で判定します。両者が一致することで「details プロパティ有無 ⇔ WithDetails 参照」の
+// 暗黙依存(ADR-0041)が壊れていないことを保証します。
+func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
+	t.Parallel()
+
+	spec, err := validator.GetValidator()
+	require.NoError(t, err)
+	require.NotNil(t, spec.Components)
+
+	withDetails := spec.Components.Schemas["ErrorResponseWithDetails"]
+	require.NotNil(t, withDetails, "ErrorResponseWithDetails コンポーネントが spec に存在すること")
+	require.NotNil(t, withDetails.Value)
+
+	// 契約から独立導出(ポインタ同一性)した期待集合と、policy の property 判定を突き合わせる。
+	expected := operationsReferencingSchema(spec, withDetails.Value)
+	actual := buildDetailExposureMap(spec)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("opt-inマップが契約(WithDetails参照)と1:1で一致する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("スキーマ分割が実際に効いている(空でない)", func(t *testing.T) {
+			t.Parallel()
+			assert.NotEmpty(t, expected)
+		})
+
+		t.Run("details を返す既知の operation が opt-in に含まれる", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, actual["PostUsers"])
+			assert.True(t, actual["PutUsersDetail"])
+			assert.True(t, actual["PatchUsersDetail"])
+		})
+	})
+}
+
+// operationsReferencingSchema は、いずれかの error レスポンス(4xx/5xx)の JSON スキーマが
+// target と同一(kin-openapi は $ref を共有ポインタへ解決)である operation の集合を返します。
+// policy の details プロパティ判定とは独立した契約導出です。
+func operationsReferencingSchema(spec *openapi3.T, target *openapi3.Schema) map[string]bool {
+	found := make(map[string]bool)
+	for _, item := range spec.Paths.Map() {
+		for _, op := range item.Operations() {
+			if op.OperationID != "" && op.Responses != nil && operationReferencesSchema(op, target) {
+				found[op.OperationID] = true
+			}
+		}
+	}
+	return found
+}
+
+// operationReferencesSchema は、operation の error レスポンスのいずれかが target スキーマを参照するかを返します。
+func operationReferencesSchema(op *openapi3.Operation, target *openapi3.Schema) bool {
+	for status, respRef := range op.Responses.Map() {
+		if isErrorStatusCode(status) && responseReferencesSchema(respRef, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// responseReferencesSchema は、レスポンスの application/json スキーマが target と同一かを返します。
+func responseReferencesSchema(respRef *openapi3.ResponseRef, target *openapi3.Schema) bool {
+	if respRef == nil || respRef.Value == nil {
+		return false
+	}
+	mediaType := respRef.Value.Content.Get("application/json")
+	if mediaType == nil || mediaType.Schema == nil {
+		return false
+	}
+	return mediaType.Schema.Value == target
+}
 
 func Test_isErrorStatusCode(t *testing.T) {
 	t.Parallel()
