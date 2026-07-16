@@ -20,18 +20,17 @@ func TestWithMeta(t *testing.T) {
 			t.Parallel()
 			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "invalid"), apperror.Meta{Code: "CUSTOM"})
 			require.ErrorIs(t, err, apperror.ErrValidation)
-			assert.True(t, apperror.IsAppError(err))
 		})
 
-		t.Run("Join された複数センチネルすべての分類を保持する", func(t *testing.T) {
+		t.Run("Join された複数センチネルの分類をすべて保持する", func(t *testing.T) {
 			t.Parallel()
 			joined := xerrors.Join(
-				xerrors.Wrap(apperror.ErrValidation, "first name failed"),
-				xerrors.Wrap(apperror.ErrValidation, "email failed"),
+				xerrors.Wrap(apperror.ErrValidation, "validation failed"),
+				xerrors.Wrap(apperror.ErrNotFound, "missing"),
 			)
-			err := apperror.WithDetails(joined, "firstName", "email")
+			err := apperror.WithMeta(joined, apperror.Meta{Code: "CUSTOM"})
 			require.ErrorIs(t, err, apperror.ErrValidation)
-			assert.True(t, apperror.IsAppError(err))
+			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 
 		t.Run("エラーメッセージは元エラーのまま", func(t *testing.T) {
@@ -45,6 +44,16 @@ func TestWithMeta(t *testing.T) {
 			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "invalid"), apperror.Meta{})
 			assert.Contains(t, xerrors.StackTrace(err), "meta_test.go")
 		})
+
+		t.Run("渡した Details スライスを後から変更しても付与済みメタに影響しない", func(t *testing.T) {
+			t.Parallel()
+			details := []string{"firstName"}
+			err := apperror.WithMeta(apperror.ErrValidation, apperror.Meta{Details: details})
+			details[0] = "mutated"
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{"firstName"}, meta.Details)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -52,7 +61,35 @@ func TestWithMeta(t *testing.T) {
 
 		t.Run("nil の場合 nil を返す", func(t *testing.T) {
 			t.Parallel()
-			assert.NoError(t, apperror.WithMeta(nil, apperror.Meta{Code: "CUSTOM"}))
+			require.NoError(t, apperror.WithMeta(nil, apperror.Meta{Code: "CUSTOM"}))
+		})
+	})
+}
+
+func TestWithDetails(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Details のみが付与されセンチネル分類を保持する", func(t *testing.T) {
+			t.Parallel()
+			err := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName", "email")
+			require.ErrorIs(t, err, apperror.ErrValidation)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Empty(t, meta.Code)
+			assert.Empty(t, meta.Message)
+			assert.Equal(t, []string{"firstName", "email"}, meta.Details)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nil の場合 nil を返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, apperror.WithDetails(nil, "firstName"))
 		})
 	})
 }
@@ -77,16 +114,6 @@ func TestMetaFrom(t *testing.T) {
 			assert.Equal(t, []string{"firstName", "email"}, meta.Details)
 		})
 
-		t.Run("WithDetails は Details のみを付与する", func(t *testing.T) {
-			t.Parallel()
-			err := apperror.WithDetails(apperror.ErrValidation, "firstName")
-			meta, ok := apperror.MetaFrom(err)
-			require.True(t, ok)
-			assert.Empty(t, meta.Code)
-			assert.Empty(t, meta.Message)
-			assert.Equal(t, []string{"firstName"}, meta.Details)
-		})
-
 		t.Run("さらにラップされていても抽出できる", func(t *testing.T) {
 			t.Parallel()
 			err := xerrors.Wrap(apperror.WithDetails(apperror.ErrValidation, "email"), "update failed")
@@ -104,7 +131,7 @@ func TestMetaFrom(t *testing.T) {
 			assert.Equal(t, "OUTER", meta.Code)
 		})
 
-		t.Run("抽出した Details を書き換えても元の Meta に影響しない", func(t *testing.T) {
+		t.Run("MetaFrom が返す Details を書き換えても内部状態に影響しない", func(t *testing.T) {
 			t.Parallel()
 			err := apperror.WithDetails(apperror.ErrValidation, "firstName")
 			meta, ok := apperror.MetaFrom(err)

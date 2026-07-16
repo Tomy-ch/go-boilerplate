@@ -29,9 +29,13 @@ type MetaError struct {
 }
 
 // WithMeta は、err に meta を付与したエラーを返します。err が nil の場合は nil を返します。
+// Details は防御的コピーするため、呼び出し元は渡したスライスを以後安全に変更できます。
 func WithMeta(err error, meta Meta) error {
 	if err == nil {
 		return nil
+	}
+	if meta.Details != nil {
+		meta.Details = append([]string(nil), meta.Details...)
 	}
 	return &MetaError{meta: meta, err: err}
 }
