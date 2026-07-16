@@ -139,7 +139,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ErrorResponseWithDetails'
   /v1/users:
     get:
       operationId: GetUsers
@@ -569,7 +569,8 @@ components:
   schemas:
     ErrorResponse:
       type: object
-      description: エラーレスポンスの共通スキーマ
+      description: |
+        エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
       required:
         - code
         - message
@@ -587,14 +588,6 @@ components:
           type: string
           description: リクエストID
           example: abcdefghijklmnopqrstuvwxyz
-        details:
-          type: array
-          description: エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
-          items:
-            type: string
-          example:
-            - firstName
-            - email
     ResponseHealth:
       $ref: '#/components/schemas/HealthResponse'
     ResponseReady:
@@ -845,6 +838,35 @@ components:
           type: string
           description: サービス名
           example: go-boilerplate
+    ErrorResponseWithDetails:
+      type: object
+      description: |
+        詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+      required:
+        - code
+        - message
+        - requestId
+      properties:
+        code:
+          type: string
+          description: 機械的に処理可能なエラーコード
+          example: EXAMPLE_ERROR
+        message:
+          type: string
+          description: 人間が読めるエラーメッセージ
+          example: 定義されたエラーメッセージ
+        requestId:
+          type: string
+          description: リクエストID
+          example: abcdefghijklmnopqrstuvwxyz
+        details:
+          type: array
+          description: エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
+          items:
+            type: string
+          example:
+            - firstName
+            - email
     PaginationMetadataResponse:
       type: object
       required:
@@ -1020,7 +1042,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResponseWithDetails'
     NotFound404:
       description: 指定されたリソースが存在しません。
       content:

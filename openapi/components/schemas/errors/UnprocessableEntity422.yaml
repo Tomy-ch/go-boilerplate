@@ -2,4 +2,4 @@ description: 入力値が要件を満たしていません。details に不正�
 content:
   application/json:
     schema:
-      $ref: '../ErrorResponse.yaml'
+      $ref: '../ErrorResponseWithDetails.yaml'

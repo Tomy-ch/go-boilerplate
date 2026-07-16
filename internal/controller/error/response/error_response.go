@@ -14,7 +14,9 @@ import (
 //
 //nolint:errname // HTTPエラーレスポンスのDTOであり、レスポンス本体を表す名称が適切なため XxxError 形式には改名しない
 type HTTPErrorResponse struct {
-	gen.ErrorResponse
+	// 内部の組み立て型は details を持つ superset。実際に details をクライアントへ返すかは
+	// エンドポイントの opt-in(errorhandler の details ゲート)で決まる。
+	gen.ErrorResponseWithDetails
 
 	HTTPStatus int   `json:"-"`
 	Internal   error `json:"-"`
@@ -69,7 +71,7 @@ func newHTTPErrorFromMeta(meta httpErrorMeta, details ...string) *HTTPErrorRespo
 		detailsPtr = new(details)
 	}
 	return &HTTPErrorResponse{
-		ErrorResponse: gen.ErrorResponse{
+		ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 			Code:    meta.Code,
 			Message: meta.Message,
 			Details: detailsPtr,

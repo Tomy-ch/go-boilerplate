@@ -156,7 +156,7 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 
 type Unauthorized401JSONResponse ErrorResponse
 
-type UnprocessableEntity422JSONResponse ErrorResponse
+type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
 type GetUsersRequestObject struct {
 	Params GetUsersParams
