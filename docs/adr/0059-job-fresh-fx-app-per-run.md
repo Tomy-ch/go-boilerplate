@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [job, async]
 ---
 
-# ADR-0058: Each job launch constructs a fresh fx.App (one-shot lifecycle)
+# ADR-0059: Each job launch constructs a fresh fx.App (one-shot lifecycle)
 
 ## Status
 

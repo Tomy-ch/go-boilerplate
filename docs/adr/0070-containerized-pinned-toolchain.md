@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [toolchain, build]
 ---
 
-# ADR-0069: Use a containerized toolchain pinned by mise for reproducibility
+# ADR-0070: Use a containerized toolchain pinned by mise for reproducibility
 
 ## Status
 

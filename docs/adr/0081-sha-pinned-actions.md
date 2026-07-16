@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [ci, security, supply-chain]
 ---
 
-# ADR-0080: Pin GitHub Actions by SHA with a supply-chain quarantine
+# ADR-0081: Pin GitHub Actions by SHA with a supply-chain quarantine
 
 ## Status
 

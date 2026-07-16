@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [observability, exclusion, setup-review]
 ---
 
-# ADR-0066: Fix the SDK default sampling; do not expose sampling as an env knob
+# ADR-0067: Fix the SDK default sampling; do not expose sampling as an env knob
 
 ## Status
 
@@ -76,6 +76,6 @@ the full span tree is visible.
 - Implementation confirmation: `internal/observability/README.md` §1 `NewTracerProvider`
   ("Uses the SDK default sampler (`ParentBased(AlwaysSample)`); sampling is not currently
   env-configurable").
-- Parent: [ADR-0061](0061-config-driven-observability-gating.md).
+- Parent: [ADR-0062](0062-config-driven-observability-gating.md).
 - Setup reviewer action: confirm that no `ObservabilityConfig` field for sample rate is
   added during project initialization.

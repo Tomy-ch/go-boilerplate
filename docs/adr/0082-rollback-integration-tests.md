@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [testing]
 ---
 
-# ADR-0081: Run infrastructure integration tests against a real DB with sentinel-error rollback
+# ADR-0082: Run infrastructure integration tests against a real DB with sentinel-error rollback
 
 ## Status
 

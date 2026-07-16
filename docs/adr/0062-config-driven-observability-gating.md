@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [observability, config]
 ---
 
-# ADR-0061: Config-driven observability gating
+# ADR-0062: Config-driven observability gating
 
 ## Status
 

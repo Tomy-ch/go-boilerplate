@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0093: アプリケーション内レートリミッターを提供しない
+# ADR-0094: アプリケーション内レートリミッターを提供しない
 
-English canonical: [0093-no-in-app-rate-limiter.md](../../adr/0093-no-in-app-rate-limiter.md)
+English canonical: [0094-no-in-app-rate-limiter.md](../../adr/0094-no-in-app-rate-limiter.md)
 
 ## ステータス
 

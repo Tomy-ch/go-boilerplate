@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [toolchain, dev-env]
 ---
 
-# ADR-0073: Local dev environment is provided via Docker Compose with profile-separated services
+# ADR-0074: Local dev environment is provided via Docker Compose with profile-separated services
 
 ## Status
 
@@ -21,7 +21,7 @@ working on a feature does not need the documentation viewer or the ER diagram ge
 running.
 
 Tool execution must also be reproducible across machines (see
-[ADR-0069](0069-containerized-pinned-toolchain.md)), which means tools run inside
+[ADR-0070](0070-containerized-pinned-toolchain.md)), which means tools run inside
 containers rather than directly on the host. A single `docker-compose.yaml` that covers
 both application services and tool runners gives one consistent mechanism for all
 container management.
@@ -118,6 +118,6 @@ editor-agnostic and usable from any terminal.
 - Dockerfile targets and service details:
   [`docker/README.md`](../../docker/README.md).
 - Container-based reproducibility rationale:
-  [ADR-0069](0069-containerized-pinned-toolchain.md).
+  [ADR-0070](0070-containerized-pinned-toolchain.md).
 - `make serve` (development profile), `make tools` (tools profile):
   [`.makefiles/README.md`](../../.makefiles/README.md).

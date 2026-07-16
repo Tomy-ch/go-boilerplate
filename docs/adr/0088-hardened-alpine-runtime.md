@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [deploy, image, exclusion, setup-review]
 ---
 
-# ADR-0087: Use a hardened-alpine runtime base; do NOT use distroless/scratch
+# ADR-0088: Use a hardened-alpine runtime base; do NOT use distroless/scratch
 
 ## Status
 

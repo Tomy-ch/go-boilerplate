@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [docs, deploy]
 ---
 
-# ADR-0092: Publish static docs/ via GitHub Pages (released on production push)
+# ADR-0093: Publish static docs/ via GitHub Pages (released on production push)
 
 ## Status
 

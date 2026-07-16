@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [observability, exclusion, setup-review]
 ---
 
-# ADR-0063: 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない
+# ADR-0064: 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない
 
-English canonical: [0063-official-otel-semconv.md](../../adr/0063-official-otel-semconv.md)
+English canonical: [0064-official-otel-semconv.md](../../adr/0064-official-otel-semconv.md)
 
 ## ステータス
 
@@ -61,7 +61,7 @@ OpenTelemetry はバージョン管理されたセマンティック規約パッ
 ### ベンダー固有キーを `ObservabilityConfig` に追加する
 
 却下: バックエンドルーティングの決定が型付き設定レイヤーに埋め込まれ、特定ベンダーへの
-結合が生まれ、[ADR-0062](0062-vendor-neutral-otlp-export.ja.md) のベンダー中立の立場が
+結合が生まれ、[ADR-0063](0063-vendor-neutral-otlp-export.ja.md) のベンダー中立の立場が
 損なわれる。ベンダーエンリッチメントは Collector パイプラインに属する。
 
 ### プロジェクトローカルな semconv 風キーを発明する
@@ -72,8 +72,8 @@ OpenTelemetry はバージョン管理されたセマンティック規約パッ
 
 ## 補足
 
-- 補完する決定: [ADR-0062](0062-vendor-neutral-otlp-export.ja.md)（ベンダー中立エクスポート）。
-- 親ゲーティング: [ADR-0061](0061-config-driven-observability-gating.ja.md)。
+- 補完する決定: [ADR-0063](0063-vendor-neutral-otlp-export.ja.md)（ベンダー中立エクスポート）。
+- 親ゲーティング: [ADR-0062](0062-config-driven-observability-gating.ja.md)。
 - 実装根拠: `internal/observability/provider.go` 23 行目（semconv インポート）、
   58–60 行目（`NewResource` 内の `semconv.ServiceName` / `semconv.DeploymentEnvironmentName` /
   `semconv.ServiceVersion`）; `internal/observability/README.md` 46–51 行目

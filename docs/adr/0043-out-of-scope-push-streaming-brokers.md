@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [worker, async, exclusion, setup-review]
 ---
 
-# ADR-0042: Push-type brokers and streaming-log platforms are out of scope for the worker port
+# ADR-0043: Push-type brokers and streaming-log platforms are out of scope for the worker port
 
 ## Status
 
@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-The broker-agnostic worker scaffold ([ADR-0041](0041-broker-agnostic-worker-scaffold.md))
+The broker-agnostic worker scaffold ([ADR-0042](0042-broker-agnostic-worker-scaffold.md))
 defines a pull-ack port (`Consumer` / `Handler` / `FailureHandler`) that allows different
 queue brokers to be wired as adapters without changing the engine. This design creates
 pressure to also cover:
@@ -30,7 +30,7 @@ to cover them, or to generalise the port to a lowest-common-denominator interfac
 ## Decision
 
 We deliberately do NOT support push-type brokers or streaming-log consumers within the
-worker port defined by [ADR-0041](0041-broker-agnostic-worker-scaffold.md). The exclusion
+worker port defined by [ADR-0042](0042-broker-agnostic-worker-scaffold.md). The exclusion
 is not about pull-ack being the only conceivable model — it is about deliberately avoiding
 the need to build and maintain multiple adapter variants. Pull-ack is the chosen concrete
 instance; push and streaming are excluded because supporting them would require either a
@@ -82,7 +82,7 @@ concrete over hypothetical abstraction.
 
 ## Notes
 
-- Related: [ADR-0041](0041-broker-agnostic-worker-scaffold.md) (pull-ack worker scaffold,
+- Related: [ADR-0042](0042-broker-agnostic-worker-scaffold.md) (pull-ack worker scaffold,
   the port this ADR qualifies).
 - Source: `docs/decisions.md` (§ "Why a broker-agnostic worker scaffold", Decision bullet 3
   and Alternatives Considered).

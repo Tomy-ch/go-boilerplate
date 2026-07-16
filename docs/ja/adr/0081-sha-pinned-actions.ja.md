@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [ci, security, supply-chain]
 ---
 
-# ADR-0080: GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する
+# ADR-0081: GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する
 
-English canonical: [0080-sha-pinned-actions.md](../../adr/0080-sha-pinned-actions.md)
+English canonical: [0081-sha-pinned-actions.md](../../adr/0081-sha-pinned-actions.md)
 
 ## ステータス
 

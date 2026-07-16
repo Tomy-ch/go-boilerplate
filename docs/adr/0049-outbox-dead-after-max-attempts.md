@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, async]
 ---
 
-# ADR-0048: MaxAttempts = 10, then the message is dead (terminal until manual replay)
+# ADR-0049: MaxAttempts = 10, then the message is dead (terminal until manual replay)
 
 ## Status
 
@@ -70,5 +70,5 @@ its lock. Deferred in favour of the simpler attempt-count approach.
 
 - `DefaultMaxAttempts`, the `dead` state, and manual replay are described in
   `docs/design/outbox.md` (§ "State transitions", Glossary entries "MaxAttempts" and "dead").
-- Related ADRs: [ADR-0045](0045-at-least-once-outbox-poll.md),
-  [ADR-0049](0049-outbox-retention-gc.md).
+- Related ADRs: [ADR-0046](0046-at-least-once-outbox-poll.md),
+  [ADR-0050](0050-outbox-retention-gc.md).

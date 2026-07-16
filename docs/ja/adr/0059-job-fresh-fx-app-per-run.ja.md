@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [job, async]
 ---
 
-# ADR-0058: ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル）
+# ADR-0059: ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル）
 
-English canonical: [0058-job-fresh-fx-app-per-run.md](../../adr/0058-job-fresh-fx-app-per-run.md)
+English canonical: [0059-job-fresh-fx-app-per-run.md](../../adr/0059-job-fresh-fx-app-per-run.md)
 
 ## ステータス
 

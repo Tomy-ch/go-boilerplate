@@ -27,7 +27,7 @@ accepted
 対する実装者の判断に委ねられ、判断が実装者ごとにぶれる。「複数の集約に触れるのだから
 CommandService が要る」という素朴なヒューリスティクスは、結果整合で済むはずの処理を
 同期トランザクションに引き込み、本プロジェクトの outbox ファーストの設計
-（[ADR-0044](0044-transactional-outbox.ja.md)）と矛盾する。関連する曖昧さは ADR-0027
+（[ADR-0045](0045-transactional-outbox.ja.md)）と矛盾する。関連する曖昧さは ADR-0027
 自体にもある。その帰結には CommandService が「柔軟な update や delete などの書き込みを
 自由に最適化できる」とあり、書き込み形状の柔軟性やパフォーマンスだけで CommandService を
 導入する十分な根拠になると誤読される余地がある。
@@ -69,7 +69,7 @@ CommandService が必要になるのは、非機能要件がその分解を禁�
 複数の集約にまたがる書き込みに遭遇したとき:
 
 1. まず、結果整合（outbox イベント経由のカスケード、
-   [ADR-0044](0044-transactional-outbox.ja.md)）に分解できるかを要件に問う。
+   [ADR-0045](0045-transactional-outbox.ja.md)）に分解できるかを要件に問う。
 2. 分解できるなら、通常の usecase + outbox として実装する（**デフォルト**）。
 3. 原子性が要件として残る場合に限り、CommandService を使う（**例外。正当化が必須**）。
 
@@ -87,7 +87,7 @@ CommandService が必要になるのは、非機能要件がその分解を禁�
   なければならない。「在庫がないのに購買が成功した」状態は、一瞬たりとも観測されては
   ならない（売り越し禁止）。したがって `purchases` / `purchase_details` / `products`
   への書き込みは単一トランザクションの原子性を要し、outbox への挿入は
-  [ADR-0044](0044-transactional-outbox.ja.md) のとおり通常どおり同一トランザクションに
+  [ADR-0045](0045-transactional-outbox.ja.md) のとおり通常どおり同一トランザクションに
   参加する。分解の余地はない。（CommandService を正当化するのは outbox 挿入では
   ない — 通常の usecase も自身のトランザクション内で outbox に書き込む。正当化の
   根拠は在庫と購買の原子性である。）
@@ -142,7 +142,7 @@ CommandService に移る）。
 
 判定は単純になるが、結果整合で済むはずの処理を同期トランザクションに引き込む
 インセンティブを生み、本プロジェクトの outbox ファーストの設計
-（[ADR-0044](0044-transactional-outbox.ja.md)）と矛盾する。却下。
+（[ADR-0045](0045-transactional-outbox.ja.md)）と矛盾する。却下。
 
 ### Saga / プロセスマネージャの導入
 
@@ -163,7 +163,7 @@ CommandService に移る）。
   しない。
 - 関連: [ADR-0028](0028-system-cqrs-dml-category.ja.md)（CQRS 分割の外側で outbox の
   DML を担う `system_cqrs` カテゴリ）、
-  [ADR-0044](0044-transactional-outbox.ja.md)（デフォルトの分解経路が依存する
+  [ADR-0045](0045-transactional-outbox.ja.md)（デフォルトの分解経路が依存する
   outbox パターン）、
   [ADR-0030](0030-transaction-retry-idempotent-callers.ja.md)（原子的書き込みが走る
   単一トランザクションのリトライセマンティクス）。

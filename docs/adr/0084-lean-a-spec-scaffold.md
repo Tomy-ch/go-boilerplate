@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [process, ai, scaffold]
 ---
 
-# ADR-0083: Scaffold only domain and usecase from spec files; derive controller and infra from generated code
+# ADR-0084: Scaffold only domain and usecase from spec files; derive controller and infra from generated code
 
 ## Status
 

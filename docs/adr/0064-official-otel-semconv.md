@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [observability, exclusion, setup-review]
 ---
 
-# ADR-0063: Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config
+# ADR-0064: Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config
 
 ## Status
 
@@ -60,7 +60,7 @@ during initial project setup still respects this boundary.
 
 Rejected: it would embed backend routing decisions in the typed config layer, creating
 coupling to a specific vendor and undermining the vendor-neutral stance of
-[ADR-0062](0062-vendor-neutral-otlp-export.md). Vendor enrichment belongs in the
+[ADR-0063](0063-vendor-neutral-otlp-export.md). Vendor enrichment belongs in the
 Collector pipeline.
 
 ### Invent project-local semconv-like keys
@@ -71,8 +71,8 @@ requires backend-specific remapping.
 
 ## Notes
 
-- Complements: [ADR-0062](0062-vendor-neutral-otlp-export.md) (vendor-neutral export).
-- Parent gating: [ADR-0061](0061-config-driven-observability-gating.md).
+- Complements: [ADR-0063](0063-vendor-neutral-otlp-export.md) (vendor-neutral export).
+- Parent gating: [ADR-0062](0062-config-driven-observability-gating.md).
 - Implementation evidence: `internal/observability/provider.go` line 23 (semconv import),
   lines 58–60 (`semconv.ServiceName` / `semconv.DeploymentEnvironmentName` /
   `semconv.ServiceVersion` in `NewResource`); `internal/observability/README.md` lines

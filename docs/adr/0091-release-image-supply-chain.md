@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [deploy, security, supply-chain]
 ---
 
-# ADR-0090: Release-image supply-chain integrity (cosign signing + provenance + SBOM)
+# ADR-0091: Release-image supply-chain integrity (cosign signing + provenance + SBOM)
 
 ## Status
 

@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [docs, deploy]
 ---
 
-# ADR-0092: docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース）
+# ADR-0093: docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース）
 
-English canonical: [0092-docs-via-github-pages.md](../../adr/0092-docs-via-github-pages.md)
+English canonical: [0093-docs-via-github-pages.md](../../adr/0093-docs-via-github-pages.md)
 
 ## ステータス
 

@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [process, ai, review]
 ---
 
-# ADR-0082: ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する
+# ADR-0083: ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する
 
-English canonical: [0082-multi-model-adversarial-review.md](../../adr/0082-multi-model-adversarial-review.md)
+English canonical: [0083-multi-model-adversarial-review.md](../../adr/0083-multi-model-adversarial-review.md)
 
 ## ステータス
 

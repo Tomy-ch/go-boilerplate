@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [observability, exclusion, setup-review]
 ---
 
-# ADR-0066: SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない
+# ADR-0067: SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない
 
-English canonical: [0066-fixed-default-sampling.md](../../adr/0066-fixed-default-sampling.md)
+English canonical: [0067-fixed-default-sampling.md](../../adr/0067-fixed-default-sampling.md)
 
 ## ステータス
 
@@ -75,6 +75,6 @@ Collector でのテールベースサンプリングが推奨される代替案�
 - 実装確認: `internal/observability/README.md` §1 `NewTracerProvider`
   （「SDK デフォルトサンプラー（`ParentBased(AlwaysSample)`）を使用。サンプリングは
   現時点では環境変数で設定可能ではない」）。
-- 親: [ADR-0061](0061-config-driven-observability-gating.ja.md)。
+- 親: [ADR-0062](0062-config-driven-observability-gating.ja.md)。
 - セットアップレビュアーの対応: プロジェクト初期化時にサンプリングレート用の
   `ObservabilityConfig` フィールドが追加されていないことを確認する。

@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0093: Do not provide an in-application rate limiter
+# ADR-0094: Do not provide an in-application rate limiter
 
 ## Status
 

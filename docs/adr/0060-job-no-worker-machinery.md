@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [job, async, exclusion, setup-review]
 ---
 
-# ADR-0059: Jobs deliberately have no broker, circuit breaker, drain, or health machinery
+# ADR-0060: Jobs deliberately have no broker, circuit breaker, drain, or health machinery
 
 ## Status
 
@@ -15,7 +15,7 @@ accepted
 
 The job subsystem and the worker subsystem are both async entry points into the Usecase
 layer, and they share the same Fx DI container pattern. The worker engine
-([ADR-0041](0041-broker-agnostic-worker-scaffold.md)) provides a rich operational layer:
+([ADR-0042](0042-broker-agnostic-worker-scaffold.md)) provides a rich operational layer:
 a pull-ack broker seam, a 3-state circuit breaker on the intake side, a drain phase on
 shutdown (waiting for in-flight messages), and an HTTP health listener (`/healthz`,
 `/readyz`).
@@ -80,6 +80,6 @@ usefulness for a process expected to exit imminently.
 
 ## Notes
 
-- Contrast with [ADR-0041](0041-broker-agnostic-worker-scaffold.md) (worker: broker seam,
+- Contrast with [ADR-0042](0042-broker-agnostic-worker-scaffold.md) (worker: broker seam,
   circuit breaker, drain, health listener).
 - Source: `docs/design/job.md` (§ 1 Role theory, design principle paragraph).

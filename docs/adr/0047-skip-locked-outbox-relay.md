@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, async, concurrency]
 ---
 
-# ADR-0046: Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances)
+# ADR-0047: Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances)
 
 ## Status
 
@@ -79,4 +79,4 @@ delivery path.
 
 - Multi-instance safety invariant: `docs/design/outbox.md` (§ "Design invariants").
 - SQL source: `database/dml/system_cqrs/outbox/claim_pending_outbox.sql`.
-- Related ADRs: [ADR-0044](0044-transactional-outbox.md), [ADR-0045](0045-at-least-once-outbox-poll.md).
+- Related ADRs: [ADR-0045](0045-transactional-outbox.md), [ADR-0046](0046-at-least-once-outbox-poll.md).

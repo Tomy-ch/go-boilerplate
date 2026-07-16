@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [deploy, image]
 ---
 
-# ADR-0086: コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし）
+# ADR-0087: コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし）
 
-English canonical: [0086-single-runtime-image.md](../../adr/0086-single-runtime-image.md)
+English canonical: [0087-single-runtime-image.md](../../adr/0087-single-runtime-image.md)
 
 ## ステータス
 
@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-プロジェクトが単一のマルチコマンドバイナリをシップするため（[ADR-0085](0085-single-multi-command-binary.ja.md) 参照）、デプロイメントには HTTP サーバーロールだけでなくマイグレーションロールも必要となる。素朴なアプローチでは専用のマイグレーションイメージを作成するが、それはバイナリを重複させ、サプライチェーンのスコープを肥大化させ、2 つの成果物にまたがるイメージバージョンの調整が必要となる。
+プロジェクトが単一のマルチコマンドバイナリをシップするため（[ADR-0086](0086-single-multi-command-binary.ja.md) 参照）、デプロイメントには HTTP サーバーロールだけでなくマイグレーションロールも必要となる。素朴なアプローチでは専用のマイグレーションイメージを作成するが、それはバイナリを重複させ、サプライチェーンのスコープを肥大化させ、2 つの成果物にまたがるイメージバージョンの調整が必要となる。
 
 ## 決定
 
@@ -31,7 +31,7 @@ docker run <image> /app/server migrate-up
 
 ### ポジティブな影響
 
-- デプロイメントごとに署名、アテスト、検証する 1 つのイメージダイジェスト。サプライチェーンの完全性チェックがすべてのロールに均一に適用される（[ADR-0090](0090-release-image-supply-chain.ja.md) 参照）。
+- デプロイメントごとに署名、アテスト、検証する 1 つのイメージダイジェスト。サプライチェーンの完全性チェックがすべてのロールに均一に適用される（[ADR-0091](0091-release-image-supply-chain.ja.md) 参照）。
 - マイグレーションバイナリは常にサービングバイナリと完全に同じバージョンであり、マイグレーションとアプリケーションコード間のバージョンスキューを排除する。
 - CI サーフェスの削減: 1 つのビルドステップ、1 つのプッシュ、1 セットのタグ。
 
@@ -54,4 +54,4 @@ docker run <image> /app/server migrate-up
 
 - `docker/server/Dockerfile` 55-57 行: `CMD ["/app/server", "serve"]` がデフォルト。マイグレーションはこれを `["/app/server", "migrate-up"]` にオーバーライドする。
 - `docker/server/README.md`: "Schema migrations run from the `runtime` image via command override, so no dedicated migration target exists."
-- マイグレーションオーケストレーション（ワンショット事前デプロイジョブ）は別の関心事である。ADR-0089 を参照。
+- マイグレーションオーケストレーション（ワンショット事前デプロイジョブ）は別の関心事である。ADR-0090 を参照。

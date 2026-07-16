@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [idempotency, privacy]
 ---
 
-# ADR-0055: 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容）
+# ADR-0056: 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容）
 
-English canonical: [0055-idempotency-response-persistence.md](../../adr/0055-idempotency-response-persistence.md)
+English canonical: [0056-idempotency-response-persistence.md](../../adr/0056-idempotency-response-persistence.md)
 
 ## ステータス
 
@@ -53,5 +53,5 @@ accepted
 
 - 出典: [`docs/design/idempotency.md`](../../design/idempotency.md) §4（運用メモ、「PII caveat」）。
 - `response_payload` カラム型と `Complete` SQL は `database/dml/system_cqrs/idempotency/` で定義されている。
-- PII 保持期間を制限する 24 時間 TTL は ADR-0054 で決定されている。
+- PII 保持期間を制限する 24 時間 TTL は ADR-0055 で決定されている。
 - PII を含む DTO を持つインテグレーターは、データベースのバックアップ暗号化とアクセス制御が `idempotency_keys` テーブルをカバーしていることを確認すること。

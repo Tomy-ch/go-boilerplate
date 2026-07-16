@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [toolchain, ci]
 ---
 
-# ADR-0070: mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する
+# ADR-0071: mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する
 
-English canonical: [0070-mise-ssot-drift-gate.md](../../adr/0070-mise-ssot-drift-gate.md)
+English canonical: [0071-mise-ssot-drift-gate.md](../../adr/0071-mise-ssot-drift-gate.md)
 
 ## ステータス
 
@@ -86,7 +86,7 @@ Go プログラムは追加の依存なしに `go run` で実行でき、適切�
 ## 補足
 
 - コンテナベース実行に関する関連決定:
-  [ADR-0069](0069-containerized-pinned-toolchain.ja.md)。
+  [ADR-0070](0070-containerized-pinned-toolchain.ja.md)。
 - SSOT コメントと `[env]` セクションを持つ `mise.toml`:
   [`mise.toml`](../../../mise.toml)。
 - CI ドリフトゲートワークフロー:

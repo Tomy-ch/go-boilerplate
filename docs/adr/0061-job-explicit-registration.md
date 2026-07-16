@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [job, async]
 ---
 
-# ADR-0060: Jobs are explicitly registered (no auto-discovery)
+# ADR-0061: Jobs are explicitly registered (no auto-discovery)
 
 ## Status
 

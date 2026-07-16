@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [worker, async, dependencies]
 ---
 
-# ADR-0043: SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない
+# ADR-0044: SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない
 
-English canonical: [0043-sqs-adapter-opt-in.md](../../adr/0043-sqs-adapter-opt-in.md)
+English canonical: [0044-sqs-adapter-opt-in.md](../../adr/0044-sqs-adapter-opt-in.md)
 
 ## ステータス
 
@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-ワーカースキャフォールド（[ADR-0041](0041-broker-agnostic-worker-scaffold.ja.md)）は AWS SQS 向けのリファレンスブローカーアダプターを同梱している。このアダプターをデフォルトビルドに組み込むと、キューを消費しない `serve` を含むすべてのバイナリが `aws-sdk-go-v2` をリンクし、ロックイン回避原則（[ADR-0001](0001-avoid-lock-in.ja.md)）に反して依存性サーフェスが拡大する。
+ワーカースキャフォールド（[ADR-0042](0042-broker-agnostic-worker-scaffold.ja.md)）は AWS SQS 向けのリファレンスブローカーアダプターを同梱している。このアダプターをデフォルトビルドに組み込むと、キューを消費しない `serve` を含むすべてのバイナリが `aws-sdk-go-v2` をリンクし、ロックイン回避原則（[ADR-0001](0001-avoid-lock-in.ja.md)）に反して依存性サーフェスが拡大する。
 
 ## 決定
 
@@ -45,6 +45,6 @@ SQS アダプターを**オプトイン**のままにする。リファレンス
 
 ## 補足
 
-- 親決定: [ADR-0041](0041-broker-agnostic-worker-scaffold.ja.md)。原則: [ADR-0001](0001-avoid-lock-in.ja.md)。
+- 親決定: [ADR-0042](0042-broker-agnostic-worker-scaffold.ja.md)。原則: [ADR-0001](0001-avoid-lock-in.ja.md)。
 - 参考: `internal/infrastructure/queue/sqs/README.md`。
 - `docs/decisions.md`（§「Why a broker-agnostic worker scaffold」— dependency isolation）から移行。

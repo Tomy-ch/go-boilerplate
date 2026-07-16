@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [ci, tooling]
 ---
 
-# ADR-0075: ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証）
+# ADR-0076: ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証）
 
-English canonical: [0075-local-hooks-mirror-ci.md](../../adr/0075-local-hooks-mirror-ci.md)
+English canonical: [0076-local-hooks-mirror-ci.md](../../adr/0076-local-hooks-mirror-ci.md)
 
 ## ステータス
 

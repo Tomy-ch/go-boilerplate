@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, http]
 ---
 
-# ADR-0050: パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する
+# ADR-0051: パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する
 
-English canonical: [0050-publisher-http-profile-isolation.md](../../adr/0050-publisher-http-profile-isolation.md)
+English canonical: [0051-publisher-http-profile-isolation.md](../../adr/0051-publisher-http-profile-isolation.md)
 
 ## ステータス
 
@@ -17,7 +17,7 @@ accepted
 
 アウトボックス HTTP パブリッシャーは、共有デフォルト HTTP クライアントプロファイルから次の 3 点で逸脱する必要がある。
 
-1. **`MaxAttempts = 1`** — トランスポートレベルのリトライは無効にしなければならない。リレーのポールループが at-least-once リトライ機構であるため（[ADR-0045](0045-at-least-once-outbox-poll.ja.md) 参照）、両方を有効にするとリトライが二重増幅してしまう（決定 D10）。
+1. **`MaxAttempts = 1`** — トランスポートレベルのリトライは無効にしなければならない。リレーのポールループが at-least-once リトライ機構であるため（[ADR-0046](0046-at-least-once-outbox-poll.ja.md) 参照）、両方を有効にするとリトライが二重増幅してしまう（決定 D10）。
 
 2. **`PropagateTrace = false`** — W3C の `traceparent` ヘッダーは emit 時点でキャプチャされ、`headers` カラムにそのまま保存される。パブリッシャーはその保存値をリプレイすることで、受信側が元のトレーススパンに接続できるようにする。送信時に自動でトレースコンテキストを注入すると、保存済みの `traceparent` がリレー自身のスパンで上書きされ、トレースの連続性が断ち切られる。
 
@@ -66,4 +66,4 @@ OutboxRelayModule
   - `internal/di/module/outboxrelay.go`（`OutboxRelayModule`）
   - `internal/infrastructure/publisher/http_publisher.go`（`NewDownstreamProfile`）
 - 耐障害性と SSRF クライアントポリシー: ADR-0019、ADR-0020（プレーンテキスト — 未公開）。
-- 関連 ADR: [ADR-0045](0045-at-least-once-outbox-poll.ja.md)、[ADR-0051](0051-relay-resident-gc-oneshot.ja.md)。
+- 関連 ADR: [ADR-0046](0046-at-least-once-outbox-poll.ja.md)、[ADR-0052](0052-relay-resident-gc-oneshot.ja.md)。

@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [idempotency, reliability]
 ---
 
-# ADR-0052: claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する
+# ADR-0053: claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する
 
-English canonical: [0052-single-tx-at-most-once-idempotency.md](../../adr/0052-single-tx-at-most-once-idempotency.md)
+English canonical: [0053-single-tx-at-most-once-idempotency.md](../../adr/0053-single-tx-at-most-once-idempotency.md)
 
 ## ステータス
 

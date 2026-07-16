@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [process, ai, scaffold]
 ---
 
-# ADR-0083: スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する
+# ADR-0084: スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する
 
-English canonical: [0083-lean-a-spec-scaffold.md](../../adr/0083-lean-a-spec-scaffold.md)
+English canonical: [0084-lean-a-spec-scaffold.md](../../adr/0084-lean-a-spec-scaffold.md)
 
 ## ステータス
 

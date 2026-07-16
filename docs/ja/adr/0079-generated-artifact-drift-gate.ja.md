@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [ci, codegen]
 ---
 
-# ADR-0078: 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット
+# ADR-0079: 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット
 
-English canonical: [0078-generated-artifact-drift-gate.md](../../adr/0078-generated-artifact-drift-gate.md)
+English canonical: [0079-generated-artifact-drift-gate.md](../../adr/0079-generated-artifact-drift-gate.md)
 
 ## ステータス
 

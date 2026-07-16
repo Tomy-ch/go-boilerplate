@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, async, idempotency]
 ---
 
-# ADR-0047: アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する
+# ADR-0048: アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する
 
-English canonical: [0047-message-id-idempotency-propagation.md](../../adr/0047-message-id-idempotency-propagation.md)
+English canonical: [0048-message-id-idempotency-propagation.md](../../adr/0048-message-id-idempotency-propagation.md)
 
 ## ステータス
 
@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-リレーは少なくとも1回のセマンティクスでメッセージをデリバリーする（[ADR-0045](0045-at-least-once-outbox-poll.ja.md) を参照）。そのため、一時的なデリバリー失敗、プロセス再起動、またはエッジケースの重複クレームにより、レシーバーが同じメッセージを複数の HTTP 呼び出しで受け取ることがある。アプリケーションレベルの調整なしにレシーバーが重複排除できるようにするため、すべてのデリバリーは、トランスポート試行ではなく論理イベントを識別する、安定したグローバルにユニークなキーを持つ必要がある。
+リレーは少なくとも1回のセマンティクスでメッセージをデリバリーする（[ADR-0046](0046-at-least-once-outbox-poll.ja.md) を参照）。そのため、一時的なデリバリー失敗、プロセス再起動、またはエッジケースの重複クレームにより、レシーバーが同じメッセージを複数の HTTP 呼び出しで受け取ることがある。アプリケーションレベルの調整なしにレシーバーが重複排除できるようにするため、すべてのデリバリーは、トランスポート試行ではなく論理イベントを識別する、安定したグローバルにユニークなキーを持つ必要がある。
 
 ## 決定
 
@@ -48,4 +48,4 @@ accepted
 
 - レシーバーの冪等性設計不変条件: `docs/design/outbox.md`（§「Design invariants」、インテグレーターチェックリスト ③）。
 - `message_id` の伝播は `internal/infrastructure/publisher/http_publisher.go` の `Publish`（`httpclient.WithIdempotencyKey`）で実装されている。
-- 関連 ADR: [ADR-0044](0044-transactional-outbox.ja.md)、[ADR-0045](0045-at-least-once-outbox-poll.ja.md)。
+- 関連 ADR: [ADR-0045](0045-transactional-outbox.ja.md)、[ADR-0046](0046-at-least-once-outbox-poll.ja.md)。

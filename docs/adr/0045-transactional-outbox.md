@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, async, reliability]
 ---
 
-# ADR-0044: Transactional outbox: emit events within the business transaction
+# ADR-0045: Transactional outbox: emit events within the business transaction
 
 ## Status
 
@@ -66,4 +66,4 @@ code.
 - Dual-write avoidance is a design invariant; see `docs/design/outbox.md` (§ "Design invariants").
 - Migrated from `docs/design/outbox.md` §1 (Role theory) and the invariants table.
 - Related ADRs: [ADR-0002](0002-onion-architecture.md) (onion architecture, layer ownership).
-- Related ADRs: [ADR-0045](0045-at-least-once-outbox-poll.md) (delivery guarantee), [ADR-0046](0046-skip-locked-outbox-relay.md) (relay concurrency).
+- Related ADRs: [ADR-0046](0046-at-least-once-outbox-poll.md) (delivery guarantee), [ADR-0047](0047-skip-locked-outbox-relay.md) (relay concurrency).

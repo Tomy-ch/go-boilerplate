@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, async, ops]
 ---
 
-# ADR-0051: The relay is a resident process; GC is a one-shot cron job
+# ADR-0052: The relay is a resident process; GC is a one-shot cron job
 
 ## Status
 
@@ -75,5 +75,5 @@ achievable without a resident process.
 - Responsibility split: `docs/design/outbox.md` (§ "Role theory", table rows for
   `outbox-gc job` and relay `Engine`).
 - Integrator checklist ⑤–⑥: `docs/design/outbox.md` §4.
-- Related ADRs: [ADR-0044](0044-transactional-outbox.md),
-  [ADR-0049](0049-outbox-retention-gc.md).
+- Related ADRs: [ADR-0045](0045-transactional-outbox.md),
+  [ADR-0050](0050-outbox-retention-gc.md).

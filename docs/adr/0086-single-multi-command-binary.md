@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [cli, build]
 ---
 
-# ADR-0085: All roles are one multi-command binary
+# ADR-0086: All roles are one multi-command binary
 
 ## Status
 
@@ -41,7 +41,7 @@ registration to `registerCommands`, and exits with a non-zero code on error.
 ### Positive Consequences
 
 - One build artifact to version, push, and pull. The same image can run any role via command
-  override (see [ADR-0086](0086-single-runtime-image.md)).
+  override (see [ADR-0087](0087-single-runtime-image.md)).
 - Shared initialization paths (config, DI, logging) are compiled once and reused across all
   subcommands.
 - Version metadata (`Version`, `Revision`, `BuildDate`) is embedded once via `-ldflags` and
@@ -71,5 +71,5 @@ subcommand level.
 ## Notes
 
 - `cmd/main.go` and `cmd/commands.go` are the authoritative entry points.
-- Command logic lives in `internal/cli/<command>/` per [ADR-0084](0084-cli-humble-object-split.md).
+- Command logic lives in `internal/cli/<command>/` per [ADR-0085](0085-cli-humble-object-split.md).
 - Source: `cmd/main.go`, `cmd/commands.go`.

@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [ci, security]
 ---
 
-# ADR-0079: 多層セキュリティスキャン（到達可能性フィルタ付き govulncheck + スケジュール CodeQL SAST + シークレット + FS スキャン）
+# ADR-0080: 多層セキュリティスキャン（到達可能性フィルタ付き govulncheck + スケジュール CodeQL SAST + シークレット + FS スキャン）
 
-English canonical: [0079-multi-layer-security-scanning.md](../../adr/0079-multi-layer-security-scanning.md)
+English canonical: [0080-multi-layer-security-scanning.md](../../adr/0080-multi-layer-security-scanning.md)
 
 ## ステータス
 
@@ -103,4 +103,4 @@ Trivy は CVE とシークレットの両方をスキャンできるが、その
   `.github/workflows/secret-scan.yaml`、
   `.github/workflows/trivy-fs.yaml`。
 - `.golangci-full.yaml` の `gosec` リンターは静的解析中に追加のインプロセスセキュリティチェックを提供する
-  （[ADR-0074](0074-two-layer-golangci-config.ja.md) 参照）。
+  （[ADR-0075](0075-two-layer-golangci-config.ja.md) 参照）。

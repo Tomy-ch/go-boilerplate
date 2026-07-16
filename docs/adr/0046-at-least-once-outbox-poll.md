@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, async]
 ---
 
-# ADR-0045: At-least-once delivery via polling (transport-level retry disabled)
+# ADR-0046: At-least-once delivery via polling (transport-level retry disabled)
 
 ## Status
 
@@ -40,7 +40,7 @@ Transport-level retry is disabled: `MaxAttempts = 1` in `NewDownstreamProfile` (
 - A single delivery failure does not stall the relay loop or block other rows.
 - `attempts` and `last_error` provide direct, unambiguous observability of what failed
   and how many times.
-- Eventual dead-lettering (see [ADR-0048](0048-outbox-dead-after-max-attempts.md)) is
+- Eventual dead-lettering (see [ADR-0049](0049-outbox-dead-after-max-attempts.md)) is
   predictable because `attempts` advances at most once per poll.
 
 ### Negative Consequences
@@ -48,7 +48,7 @@ Transport-level retry is disabled: `MaxAttempts = 1` in `NewDownstreamProfile` (
 - Delivery latency after a failure is bounded by `PollInterval` (default 1 s), not by an
   immediate transport retry.
 - At-least-once semantics mean the receiver must be idempotent on the `Idempotency-Key`
-  header (see [ADR-0047](0047-message-id-idempotency-propagation.md)).
+  header (see [ADR-0048](0048-message-id-idempotency-propagation.md)).
 
 ## Alternatives Considered
 
@@ -70,5 +70,5 @@ claimed). Deferred in favour of the simpler poll-loop approach.
   Glossary entry "retry-by-poll").
 - Transport retry is disabled in `internal/infrastructure/publisher/http_publisher.go`
   (`NewDownstreamProfile`, `MaxAttempts = 1`).
-- Related ADRs: [ADR-0044](0044-transactional-outbox.md), [ADR-0046](0046-skip-locked-outbox-relay.md),
-  [ADR-0048](0048-outbox-dead-after-max-attempts.md).
+- Related ADRs: [ADR-0045](0045-transactional-outbox.md), [ADR-0047](0047-skip-locked-outbox-relay.md),
+  [ADR-0049](0049-outbox-dead-after-max-attempts.md).

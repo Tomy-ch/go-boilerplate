@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [deploy, image, config]
 ---
 
-# ADR-0088: Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time)
+# ADR-0089: Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time)
 
 ## Status
 
@@ -55,7 +55,7 @@ override any embedded value, so secrets are never required to be embedded.
   eliminating a class of misconfiguration errors (wrong env vars, missing env vars at
   container start).
 - Each image is independently verifiable and auditable: the embedded config is part of
-  the signed artifact (see [ADR-0090](0090-release-image-supply-chain.md)).
+  the signed artifact (see [ADR-0091](0091-release-image-supply-chain.md)).
 - No runtime config-management sidecar or secret-injection step is required for the base
   config values.
 

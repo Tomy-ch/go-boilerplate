@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, async, idempotency]
 ---
 
-# ADR-0047: Propagate the outbox message_id as the receiver's Idempotency-Key
+# ADR-0048: Propagate the outbox message_id as the receiver's Idempotency-Key
 
 ## Status
 
@@ -14,7 +14,7 @@ accepted
 ## Context
 
 The relay delivers messages with at-least-once semantics
-(see [ADR-0045](0045-at-least-once-outbox-poll.md)), meaning a receiver may observe the
+(see [ADR-0046](0046-at-least-once-outbox-poll.md)), meaning a receiver may observe the
 same message on more than one HTTP call — due to transient delivery failures, process
 restarts, or edge-case duplicate claims. To allow the receiver to de-duplicate without
 application-level coordination, every delivery must carry a stable, globally unique key
@@ -65,4 +65,4 @@ key. Impractical for at-least-once delivery.
 - `message_id` propagation implemented in
   `internal/infrastructure/publisher/http_publisher.go` (`Publish`,
   `httpclient.WithIdempotencyKey`).
-- Related ADRs: [ADR-0044](0044-transactional-outbox.md), [ADR-0045](0045-at-least-once-outbox-poll.md).
+- Related ADRs: [ADR-0045](0045-transactional-outbox.md), [ADR-0046](0046-at-least-once-outbox-poll.md).

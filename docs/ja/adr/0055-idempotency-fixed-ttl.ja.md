@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [idempotency]
 ---
 
-# ADR-0054: 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない
+# ADR-0055: 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない
 
-English canonical: [0054-idempotency-fixed-ttl.md](../../adr/0054-idempotency-fixed-ttl.md)
+English canonical: [0055-idempotency-fixed-ttl.md](../../adr/0055-idempotency-fixed-ttl.md)
 
 ## ステータス
 
@@ -52,4 +52,4 @@ TTL は `Run[T]` オーケストレーター内の定数として **24 時間**�
 
 - 出典: [`docs/design/idempotency.md`](../../design/idempotency.md) §4（運用メモ、「TTL = 24h」）および §5（用語集エントリ「ttl」）。
 - `expires_at` カラムは `idempotency_keys` マイグレーションでインデックスが付与されており、GC の範囲スキャンを安価に保つ。
-- 関連 ADR-0056（冪等性 GC を独立したジョブとして実行）は、スイープクエリをシンプルに保つためにこの固定 TTL に依存している。
+- 関連 ADR-0057（冪等性 GC を独立したジョブとして実行）は、スイープクエリをシンプルに保つためにこの固定 TTL に依存している。

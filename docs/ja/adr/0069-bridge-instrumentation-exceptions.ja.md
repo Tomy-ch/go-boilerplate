@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [dependencies, observability, exception]
 ---
 
-# ADR-0068: ブリッジ / 計装ライブラリを有界な SRP 例外として認める
+# ADR-0069: ブリッジ / 計装ライブラリを有界な SRP 例外として認める
 
-English canonical: [0068-bridge-instrumentation-exceptions.md](../../adr/0068-bridge-instrumentation-exceptions.md)
+English canonical: [0069-bridge-instrumentation-exceptions.md](../../adr/0069-bridge-instrumentation-exceptions.md)
 
 ## ステータス
 
@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-ライブラリ選定ポリシー（[ADR-0067](0067-library-selection-policy.ja.md)）は、責任が単一の
+ライブラリ選定ポリシー（[ADR-0068](0068-library-selection-policy.ja.md)）は、責任が単一の
 上流に結びついていることを要求する。計装ライブラリおよびブリッジライブラリは本質的に
 **独立してバージョン管理される 2 つの上流**（フレームワーク / ライブラリ × OpenTelemetry）の間に
 立つため、この基準を満たせない。しかし、これらのグルーを手で実装すると対象の内部ライフサイクルに
@@ -65,6 +65,6 @@ accepted
 
 ## 補足
 
-- 親ポリシー: [ADR-0067](0067-library-selection-policy.ja.md)。関連ゲーティング決定: [ADR-0061](0061-config-driven-observability-gating.ja.md)。
+- 親ポリシー: [ADR-0068](0068-library-selection-policy.ja.md)。関連ゲーティング決定: [ADR-0062](0062-config-driven-observability-gating.ja.md)。
 - ライブラリごとのバージョンと行数は調査時点（2026-06-25 調査）のインベントリスナップショットであり、この不変の記録ではなく依存関係リファレンス（`docs/reference/dependencies.md`、Phase 5）に属する。
 - 移行元: `docs/decisions.md`（§「Exceptions: instrumentation / bridge libraries」）。

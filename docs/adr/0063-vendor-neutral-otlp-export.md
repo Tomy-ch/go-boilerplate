@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [observability]
 ---
 
-# ADR-0062: Vendor-neutral OTLP-only export (delegate backend to the Collector)
+# ADR-0063: Vendor-neutral OTLP-only export (delegate backend to the Collector)
 
 ## Status
 
@@ -34,7 +34,7 @@ per-signal path (`/v1/traces`, `/v1/metrics`, `/v1/logs`) is appended automatica
 the URL carries no path. No vendor SDK is imported; the only exporter dependency is the
 OpenTelemetry OTLP exporter packages.
 
-This decision is gated by [ADR-0061](0061-config-driven-observability-gating.md): a
+This decision is gated by [ADR-0062](0062-config-driven-observability-gating.md): a
 signal that is disabled (empty or `none` exporter value) builds no OTLP exporter at all.
 
 ## Consequences
@@ -66,7 +66,7 @@ itself, violating [ADR-0001](0001-avoid-lock-in.md).
 ### OTel autoexport (reading `OTEL_*` env vars directly)
 
 Rejected: autoexport reads the environment outside the typed config system and would
-create a second control plane. [ADR-0061](0061-config-driven-observability-gating.md)
+create a second control plane. [ADR-0062](0062-config-driven-observability-gating.md)
 records this rejection in detail.
 
 ### Console exporter for local development
@@ -78,7 +78,7 @@ negligible benefit.
 ## Notes
 
 - Parent principle: [ADR-0001](0001-avoid-lock-in.md) (lock-in avoidance).
-- Config-driven gating: [ADR-0061](0061-config-driven-observability-gating.md).
+- Config-driven gating: [ADR-0062](0062-config-driven-observability-gating.md).
 - Source: `docs/design/observability.md` §1 "Role theory", `internal/observability/README.md`
   "Configuration boundary".
 - Implementation: `internal/observability/provider.go` (OTLP-only exporter construction

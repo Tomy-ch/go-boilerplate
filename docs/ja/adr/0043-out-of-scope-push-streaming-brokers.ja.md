@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [worker, async, exclusion, setup-review]
 ---
 
-# ADR-0042: プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外
+# ADR-0043: プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外
 
-English canonical: [0042-out-of-scope-push-streaming-brokers.md](../../adr/0042-out-of-scope-push-streaming-brokers.md)
+English canonical: [0043-out-of-scope-push-streaming-brokers.md](../../adr/0043-out-of-scope-push-streaming-brokers.md)
 
 ## ステータス
 
@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-ブローカー非依存のワーカースキャフォールド（[ADR-0041](0041-broker-agnostic-worker-scaffold.ja.md)）は、エンジンを変更せずに異なるキューブローカーをアダプターとして接続できるプル・アック型ポート（`Consumer` / `Handler` / `FailureHandler`）を定義している。この設計は、以下もカバーすべきというプレッシャーを生む:
+ブローカー非依存のワーカースキャフォールド（[ADR-0042](0042-broker-agnostic-worker-scaffold.ja.md)）は、エンジンを変更せずに異なるキューブローカーをアダプターとして接続できるプル・アック型ポート（`Consumer` / `Handler` / `FailureHandler`）を定義している。この設計は、以下もカバーすべきというプレッシャーを生む:
 
 - **プッシュ型ブローカー**（例: RabbitMQ、AMQP）— コンシューマーがポーリングするのではなく、ブローカーがコンシューマーにメッセージをプッシュする。
 - **ストリーミングログ基盤**（例: Apache Kafka、Amazon Kinesis）— 消費にはオフセット管理、コンシューマーグループ、パーティション割り当てが伴い、プロトコルがプル・アック型と根本的に異なる。
@@ -24,7 +24,7 @@ accepted
 
 ## 決定
 
-[ADR-0041](0041-broker-agnostic-worker-scaffold.ja.md) で定義されたワーカーポートでは、プッシュ型ブローカーとストリーミングログコンシューマーを意図的にサポートしない。この除外は、プル・アック型が唯一望ましいモデルだからではなく、プッシュ型をサポートして複数のアダプターを構築・維持することを意図的に避けたためである。プル・アック型はそのうえで選択された具体的なインスタンスにすぎない。プッシュ型やストリーミングをサポートすれば、最大公約数的なインターフェースへの希釈か、独自のメンテナンスコストを伴う個別アダプターの新設が必要になる。
+[ADR-0042](0042-broker-agnostic-worker-scaffold.ja.md) で定義されたワーカーポートでは、プッシュ型ブローカーとストリーミングログコンシューマーを意図的にサポートしない。この除外は、プル・アック型が唯一望ましいモデルだからではなく、プッシュ型をサポートして複数のアダプターを構築・維持することを意図的に避けたためである。プル・アック型はそのうえで選択された具体的なインスタンスにすぎない。プッシュ型やストリーミングをサポートすれば、最大公約数的なインターフェースへの希釈か、独自のメンテナンスコストを伴う個別アダプターの新設が必要になる。
 
 - **プッシュ型デリバリー**（RabbitMQ スタイル）は、このコードベースに自然な居場所がある。HTTP コントローラーレイヤーがプッシュされたリクエストを受け取る。Webhook エンドポイントがプッシュ型ブローカーの正しいアダプターである。
 - **ストリーミングログコンシューマー**（Kafka / Kinesis）はオフセットコミット、コンシューマーグループ調整、パーティション単位の状態を必要とし、プル・アック型ポートの拡張ではなく、根本的に異なるエンジンに属する。
@@ -56,6 +56,6 @@ accepted
 
 ## 補足
 
-- 関連: [ADR-0041](0041-broker-agnostic-worker-scaffold.ja.md)（プル・アック型ワーカースキャフォールド — この ADR が限定するポート）。
+- 関連: [ADR-0042](0042-broker-agnostic-worker-scaffold.ja.md)（プル・アック型ワーカースキャフォールド — この ADR が限定するポート）。
 - ソース: `docs/decisions.md`（§「Why a broker-agnostic worker scaffold」、Decision 箇条書き 3 および Alternatives Considered）。
 - ソース: `docs/design/worker.md`（§ 1 Role theory）。

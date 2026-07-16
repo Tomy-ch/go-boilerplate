@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [dependencies, policy]
 ---
 
-# ADR-0067: 単一責任のライブラリ選定ポリシー
+# ADR-0068: 単一責任のライブラリ選定ポリシー
 
-English canonical: [0067-library-selection-policy.md](../../adr/0067-library-selection-policy.md)
+English canonical: [0068-library-selection-policy.md](../../adr/0068-library-selection-policy.md)
 
 ## ステータス
 
@@ -28,7 +28,7 @@ accepted
 **独立してバージョン管理される 2 つの上流**（フレームワーク / ライブラリ × OpenTelemetry）の間に
 立つライブラリは**ブリッジ / 計装**ライブラリであり、単一責任基準から外れるため、
 明示的かつ個別に正当化された例外として扱う
-（[ADR-0068](0068-bridge-instrumentation-exceptions.ja.md) 参照）。
+（[ADR-0069](0069-bridge-instrumentation-exceptions.ja.md) 参照）。
 
 ## 影響
 
@@ -57,6 +57,6 @@ accepted
 
 ## 補足
 
-- 親原則: [ADR-0001](0001-avoid-lock-in.ja.md)。例外: [ADR-0068](0068-bridge-instrumentation-exceptions.ja.md)。
+- 親原則: [ADR-0001](0001-avoid-lock-in.ja.md)。例外: [ADR-0069](0069-bridge-instrumentation-exceptions.ja.md)。
 - 依存関係の*リスト*は決定ではなくインベントリ — `docs/reference/dependencies.md`（Phase 5）に移動する。この ADR は*ポリシー*のみを記録する。
 - 移行元: `docs/decisions.md`（§「Library Selection Policy」）。

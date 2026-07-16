@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [observability, di]
 ---
 
-# ADR-0065: オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner）
+# ADR-0066: オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner）
 
-English canonical: [0065-lifecycle-independent-provider.md](../../adr/0065-lifecycle-independent-provider.md)
+English canonical: [0066-lifecycle-independent-provider.md](../../adr/0066-lifecycle-independent-provider.md)
 
 ## ステータス
 
@@ -85,4 +85,4 @@ DI ライフサイクルフックが自然な選択肢となる。
   `internal/observability/provider.go`（`NewTracerProvider`・`NewMeterProvider`・
   `ProvideTracerProvider`・`ProvideMeterProvider`）、
   `internal/observability/log_provider.go`（`NewLoggerProvider`）。
-- 親: [ADR-0061](0061-config-driven-observability-gating.ja.md)。
+- 親: [ADR-0062](0062-config-driven-observability-gating.ja.md)。

@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [deploy, image, exclusion, setup-review]
 ---
 
-# ADR-0087: ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない
+# ADR-0088: ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない
 
-English canonical: [0087-hardened-alpine-runtime.md](../../adr/0087-hardened-alpine-runtime.md)
+English canonical: [0088-hardened-alpine-runtime.md](../../adr/0088-hardened-alpine-runtime.md)
 
 ## ステータス
 

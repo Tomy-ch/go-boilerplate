@@ -24,7 +24,7 @@ Without such a criterion, the placement of multi-aggregate write operations fall
 implementer judgment about inter-aggregate semantics, and decisions vary by implementer. The
 naive heuristic — "it touches more than one aggregate, so it needs a CommandService" — pulls
 work that could be eventually consistent into synchronous transactions, contradicting this
-project's outbox-first design ([ADR-0044](0044-transactional-outbox.md)). A related ambiguity
+project's outbox-first design ([ADR-0045](0045-transactional-outbox.md)). A related ambiguity
 exists in ADR-0027 itself: its consequences note that CommandService "can freely optimize
 flexible updates, deletes", which could be misread as write-shape flexibility or performance
 being sufficient grounds for introducing one.
@@ -66,7 +66,7 @@ requirement arises.
 When encountering a write that spans multiple aggregates:
 
 1. First, ask the requirements whether it can be decomposed into eventual consistency (a
-   cascade via outbox events, [ADR-0044](0044-transactional-outbox.md)).
+   cascade via outbox events, [ADR-0045](0045-transactional-outbox.md)).
 2. If it can, implement it as a regular usecase + outbox (**default**).
 3. Only when atomicity remains as a requirement, use a CommandService (**exception; must be
    justified**).
@@ -86,7 +86,7 @@ demonstrate how the criterion is applied, not descriptions of existing endpoints
   stock" must never be observable, even momentarily (no overselling). The writes to
   `purchases` / `purchase_details` / `products` therefore require single-transaction
   atomicity, and the outbox insert joins that same transaction as usual per
-  [ADR-0044](0044-transactional-outbox.md). There is no room for decomposition. (The outbox
+  [ADR-0045](0045-transactional-outbox.md). There is no room for decomposition. (The outbox
   insert itself is not what justifies the CommandService — a regular usecase also writes the
   outbox in its own transaction; the justification is the stock/purchase atomicity.)
 - **User withdrawal (negative example: avoided by decomposition).** The core of withdrawal is
@@ -146,7 +146,7 @@ evidence that the criterion is not grounded in requirements. Rejected.
 
 Simpler to decide, but it creates an incentive to pull work that could be eventually
 consistent into synchronous transactions, contradicting this project's outbox-first design
-([ADR-0044](0044-transactional-outbox.md)). Rejected.
+([ADR-0045](0045-transactional-outbox.md)). Rejected.
 
 ### Introducing Saga / process manager
 
@@ -165,7 +165,7 @@ Rejected for now; not excluded as a future evolution.
   grounds for a CommandService; the atomicity requirement is the sole criterion, and this ADR
   governs placement going forward. ADR-0027 is not edited or superseded.
 - Related: [ADR-0028](0028-system-cqrs-dml-category.md) (`system_cqrs` category that carries
-  the outbox DML, outside the CQRS split); [ADR-0044](0044-transactional-outbox.md) (the
+  the outbox DML, outside the CQRS split); [ADR-0045](0045-transactional-outbox.md) (the
   outbox pattern that the default decomposition path relies on);
   [ADR-0030](0030-transaction-retry-idempotent-callers.md) (retry semantics of the single
   transaction an atomic write runs in).

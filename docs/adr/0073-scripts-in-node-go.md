@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [toolchain, scripts]
 ---
 
-# ADR-0072: Operational scripts live in scripts/ as Node (.mjs) or Go; shell scripting is not used
+# ADR-0073: Operational scripts live in scripts/ as Node (.mjs) or Go; shell scripting is not used
 
 ## Status
 
@@ -111,6 +111,6 @@ adds a dependency.
 - Scripts directory overview and per-script descriptions:
   [`scripts/README.md`](../../scripts/README.md).
 - Toolchain container definitions (node_tool_runner, go_tool_runner):
-  [ADR-0069](0069-containerized-pinned-toolchain.md).
+  [ADR-0070](0070-containerized-pinned-toolchain.md).
 - Make target entrypoint for invoking scripts:
-  [ADR-0071](0071-make-single-entrypoint.md).
+  [ADR-0072](0072-make-single-entrypoint.md).

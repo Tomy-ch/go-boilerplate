@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [idempotency, privacy]
 ---
 
-# ADR-0055: Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff)
+# ADR-0056: Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff)
 
 ## Status
 
@@ -77,6 +77,6 @@ without changing the subsystem contract.
   caveat").
 - The `response_payload` column type and `Complete` SQL are defined in
   `database/dml/system_cqrs/idempotency/`.
-- The 24-hour TTL that bounds PII retention is decided in ADR-0054.
+- The 24-hour TTL that bounds PII retention is decided in ADR-0055.
 - Integrators with PII-bearing DTOs should ensure their database backup encryption and
   access controls cover the `idempotency_keys` table.

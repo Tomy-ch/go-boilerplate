@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [toolchain, build]
 ---
 
-# ADR-0071: Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する
+# ADR-0072: Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する
 
-English canonical: [0071-make-single-entrypoint.md](../../adr/0071-make-single-entrypoint.md)
+English canonical: [0072-make-single-entrypoint.md](../../adr/0072-make-single-entrypoint.md)
 
 ## ステータス
 

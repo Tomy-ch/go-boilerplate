@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [ci, security]
 ---
 
-# ADR-0079: Multi-layer security scanning (reachability-filtered govulncheck + scheduled CodeQL SAST + secret + fs scans)
+# ADR-0080: Multi-layer security scanning (reachability-filtered govulncheck + scheduled CodeQL SAST + secret + fs scans)
 
 ## Status
 
@@ -112,4 +112,4 @@ sacrifice depth for simplicity.
   `.github/workflows/secret-scan.yaml`,
   `.github/workflows/trivy-fs.yaml`.
 - The `gosec` linter in `.golangci-full.yaml` provides an additional in-process security
-  check during static analysis (see [ADR-0074](0074-two-layer-golangci-config.md)).
+  check during static analysis (see [ADR-0075](0075-two-layer-golangci-config.md)).

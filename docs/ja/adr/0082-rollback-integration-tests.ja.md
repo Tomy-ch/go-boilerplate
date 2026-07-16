@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [testing]
 ---
 
-# ADR-0081: インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する
+# ADR-0082: インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する
 
-English canonical: [0081-rollback-integration-tests.md](../../adr/0081-rollback-integration-tests.md)
+English canonical: [0082-rollback-integration-tests.md](../../adr/0082-rollback-integration-tests.md)
 
 ## ステータス
 

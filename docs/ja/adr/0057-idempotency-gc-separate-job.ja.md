@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [idempotency, gc, ops]
 ---
 
-# ADR-0056: 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する
+# ADR-0057: 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する
 
-English canonical: [0056-idempotency-gc-separate-job.md](../../adr/0056-idempotency-gc-separate-job.md)
+English canonical: [0057-idempotency-gc-separate-job.md](../../adr/0057-idempotency-gc-separate-job.md)
 
 ## ステータス
 
@@ -57,4 +57,4 @@ accepted
 - 出典: [`docs/design/idempotency.md`](../../design/idempotency.md) §1（責務表、「GCUsecase + idempotencygc job」）および §4（運用メモ、「Schedule the GC」）。
 - `GCUsecase` は `internal/usecase/idempotency/gc.go` にある。ジョブエントリポイントは `internal/controller/job/idempotencygc/` にある。
 - `idempotency_keys` の `expires_at` インデックスにより、テーブル総サイズに関わらず各 `DeleteExpired` バッチスキャンを安価に保つ。
-- 関連: [ADR-0054](0054-idempotency-fixed-ttl.ja.md)（GC がスイープ対象とする 24 時間固定 TTL）。
+- 関連: [ADR-0055](0055-idempotency-fixed-ttl.ja.md)（GC がスイープ対象とする 24 時間固定 TTL）。

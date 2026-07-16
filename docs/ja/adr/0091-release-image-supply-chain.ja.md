@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [deploy, security, supply-chain]
 ---
 
-# ADR-0090: リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM）
+# ADR-0091: リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM）
 
-English canonical: [0090-release-image-supply-chain.md](../../adr/0090-release-image-supply-chain.md)
+English canonical: [0091-release-image-supply-chain.md](../../adr/0091-release-image-supply-chain.md)
 
 ## ステータス
 

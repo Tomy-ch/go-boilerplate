@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [observability, di]
 ---
 
-# ADR-0065: Observability providers are lifecycle-independent (ProviderShutdowner)
+# ADR-0066: Observability providers are lifecycle-independent (ProviderShutdowner)
 
 ## Status
 
@@ -84,4 +84,4 @@ exit, producing incomplete traces and metric gaps.
   `internal/observability/provider.go` (`NewTracerProvider`, `NewMeterProvider`,
   `ProvideTracerProvider`, `ProvideMeterProvider`),
   `internal/observability/log_provider.go` (`NewLoggerProvider`).
-- Parent: [ADR-0061](0061-config-driven-observability-gating.md).
+- Parent: [ADR-0062](0062-config-driven-observability-gating.md).

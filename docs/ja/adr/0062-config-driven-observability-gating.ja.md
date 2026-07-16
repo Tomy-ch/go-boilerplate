@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [observability, config]
 ---
 
-# ADR-0061: 設定駆動によるオブザーバビリティゲーティング
+# ADR-0062: 設定駆動によるオブザーバビリティゲーティング
 
-English canonical: [0061-config-driven-observability-gating.md](../../adr/0061-config-driven-observability-gating.md)
+English canonical: [0062-config-driven-observability-gating.md](../../adr/0062-config-driven-observability-gating.md)
 
 ## ステータス
 

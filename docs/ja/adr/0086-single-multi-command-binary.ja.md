@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [cli, build]
 ---
 
-# ADR-0085: すべてのロールを 1 つのマルチコマンドバイナリに集約する
+# ADR-0086: すべてのロールを 1 つのマルチコマンドバイナリに集約する
 
-English canonical: [0085-single-multi-command-binary.md](../../adr/0085-single-multi-command-binary.md)
+English canonical: [0086-single-multi-command-binary.md](../../adr/0086-single-multi-command-binary.md)
 
 ## ステータス
 
@@ -37,7 +37,7 @@ Go API スキャフォールドは複数のオペレーショナルロールを�
 
 ### ポジティブな影響
 
-- バージョン管理、プッシュ、プルのための 1 つのビルド成果物。同じイメージをコマンドオーバーライドで任意のロールとして実行できる（[ADR-0086](0086-single-runtime-image.ja.md) 参照）。
+- バージョン管理、プッシュ、プルのための 1 つのビルド成果物。同じイメージをコマンドオーバーライドで任意のロールとして実行できる（[ADR-0087](0087-single-runtime-image.ja.md) 参照）。
 - 共有の初期化パス（設定、DI、ロギング）は 1 回コンパイルされ、すべてのサブコマンドで再利用される。
 - バージョンメタデータ（`Version`、`Revision`、`BuildDate`）は `-ldflags` を介して 1 回埋め込まれ、すべてのロールで `--version` によって報告される。
 
@@ -59,5 +59,5 @@ Go API スキャフォールドは複数のオペレーショナルロールを�
 ## 補足
 
 - `cmd/main.go` と `cmd/commands.go` が権威あるエントリポイントである。
-- コマンドロジックは [ADR-0084](0084-cli-humble-object-split.ja.md) に従って `internal/cli/<command>/` に置かれる。
+- コマンドロジックは [ADR-0085](0085-cli-humble-object-split.ja.md) に従って `internal/cli/<command>/` に置かれる。
 - ソース: `cmd/main.go`、`cmd/commands.go`。

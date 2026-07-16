@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, async, reliability]
 ---
 
-# ADR-0044: トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する
+# ADR-0045: トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する
 
-English canonical: [0044-transactional-outbox.md](../../adr/0044-transactional-outbox.md)
+English canonical: [0045-transactional-outbox.md](../../adr/0045-transactional-outbox.md)
 
 ## ステータス
 
@@ -51,4 +51,4 @@ accepted
 - デュアルライト回避は設計上の不変条件。`docs/design/outbox.md`（§「Design invariants」）を参照。
 - `docs/design/outbox.md` §1（Role theory）と不変条件テーブルから移行。
 - 関連 ADR: [ADR-0002](0002-onion-architecture.ja.md)（オニオンアーキテクチャ、レイヤー所有権）。
-- 関連 ADR: [ADR-0045](0045-at-least-once-outbox-poll.ja.md)（デリバリー保証）、[ADR-0046](0046-skip-locked-outbox-relay.ja.md)（リレー並行性）。
+- 関連 ADR: [ADR-0046](0046-at-least-once-outbox-poll.ja.md)（デリバリー保証）、[ADR-0047](0047-skip-locked-outbox-relay.ja.md)（リレー並行性）。

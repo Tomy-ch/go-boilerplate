@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [toolchain, build]
 ---
 
-# ADR-0069: 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する
+# ADR-0070: 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する
 
-English canonical: [0069-containerized-pinned-toolchain.md](../../adr/0069-containerized-pinned-toolchain.md)
+English canonical: [0070-containerized-pinned-toolchain.md](../../adr/0070-containerized-pinned-toolchain.md)
 
 ## ステータス
 

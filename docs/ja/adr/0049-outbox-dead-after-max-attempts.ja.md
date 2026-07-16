@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, async]
 ---
 
-# ADR-0048: MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端）
+# ADR-0049: MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端）
 
-English canonical: [0048-outbox-dead-after-max-attempts.md](../../adr/0048-outbox-dead-after-max-attempts.md)
+English canonical: [0049-outbox-dead-after-max-attempts.md](../../adr/0049-outbox-dead-after-max-attempts.md)
 
 ## ステータス
 
@@ -54,4 +54,4 @@ accepted
 ## 補足
 
 - `DefaultMaxAttempts`、`dead` 状態、手動リプレイは `docs/design/outbox.md`（§「State transitions」、用語集エントリ「MaxAttempts」と「dead」）に記述されている。
-- 関連 ADR: [ADR-0045](0045-at-least-once-outbox-poll.ja.md)、[ADR-0049](0049-outbox-retention-gc.ja.md)。
+- 関連 ADR: [ADR-0046](0046-at-least-once-outbox-poll.ja.md)、[ADR-0050](0050-outbox-retention-gc.ja.md)。

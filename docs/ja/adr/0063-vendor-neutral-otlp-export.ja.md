@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [observability]
 ---
 
-# ADR-0062: ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲）
+# ADR-0063: ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲）
 
-English canonical: [0062-vendor-neutral-otlp-export.md](../../adr/0062-vendor-neutral-otlp-export.md)
+English canonical: [0063-vendor-neutral-otlp-export.md](../../adr/0063-vendor-neutral-otlp-export.md)
 
 ## ステータス
 
@@ -36,7 +36,7 @@ accepted
 自動的に付加される。ベンダー SDK はインポートしない。唯一のエクスポーター依存関係は
 OpenTelemetry の OTLP エクスポーターパッケージのみである。
 
-この決定は [ADR-0061](0061-config-driven-observability-gating.ja.md) によってゲーティングされる。
+この決定は [ADR-0062](0062-config-driven-observability-gating.ja.md) によってゲーティングされる。
 無効なシグナル（エクスポーター値が空または `none`）は OTLP エクスポーターを一切構築しない。
 
 ## 影響
@@ -67,7 +67,7 @@ OpenTelemetry の OTLP エクスポーターパッケージのみである。
 ### OTel autoexport（`OTEL_*` 環境変数を直接読む）
 
 却下: autoexport は型付き設定システムの外側で環境変数を読み込み、第二のコントロールプレーンを
-生み出す。[ADR-0061](0061-config-driven-observability-gating.ja.md) がこの却下を詳述している。
+生み出す。[ADR-0062](0062-config-driven-observability-gating.ja.md) がこの却下を詳述している。
 
 ### ローカル開発用コンソールエクスポーター
 
@@ -78,7 +78,7 @@ OpenTelemetry の OTLP エクスポーターパッケージのみである。
 ## 補足
 
 - 親原則: [ADR-0001](0001-avoid-lock-in.ja.md)（ロックイン回避）。
-- 設定駆動ゲーティング: [ADR-0061](0061-config-driven-observability-gating.ja.md)。
+- 設定駆動ゲーティング: [ADR-0062](0062-config-driven-observability-gating.ja.md)。
 - 出典: `docs/design/observability.md` §1「Role theory」、`internal/observability/README.md`
   「Configuration boundary」。
 - 実装: `internal/observability/provider.go`（`newSpanExporter` / `newMetricExporter` における

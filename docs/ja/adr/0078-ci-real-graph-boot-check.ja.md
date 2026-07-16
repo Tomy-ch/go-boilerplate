@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [ci, testing]
 ---
 
-# ADR-0077: CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証）
+# ADR-0078: CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証）
 
-English canonical: [0077-ci-real-graph-boot-check.md](../../adr/0077-ci-real-graph-boot-check.md)
+English canonical: [0078-ci-real-graph-boot-check.md](../../adr/0078-ci-real-graph-boot-check.md)
 
 ## ステータス
 
@@ -92,4 +92,4 @@ PR ごとに CI でそれらを検出するには、実行中のブローカー�
   `.github/workflows/worker-boot-check.yaml` の 60〜82 行目、
   `.github/workflows/job-boot-check.yaml` の 59〜81 行目。
 - 関連: [ADR-0032](0032-uber-fx-di.ja.md) — このチェックが実行する Uber fx DI コンテナのグラフ。
-- 関連: [ADR-0041](0041-broker-agnostic-worker-scaffold.ja.md) — エントリポイントが検証されるワーカーサブシステム。
+- 関連: [ADR-0042](0042-broker-agnostic-worker-scaffold.ja.md) — エントリポイントが検証されるワーカーサブシステム。

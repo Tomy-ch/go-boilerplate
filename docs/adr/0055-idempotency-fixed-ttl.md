@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [idempotency]
 ---
 
-# ADR-0054: Fix idempotency key TTL at 24 hours with no per-route configuration
+# ADR-0055: Fix idempotency key TTL at 24 hours with no per-route configuration
 
 ## Status
 
@@ -72,5 +72,5 @@ the 24-hour constant, which already covers the dominant retry scenarios.
   24h") and §5 (glossary entry for "ttl").
 - The `expires_at` column is indexed in the `idempotency_keys` migration so the GC's
   range scan remains cheap.
-- Related ADR-0056 (idempotency GC as a separate job) relies on this fixed TTL to keep
+- Related ADR-0057 (idempotency GC as a separate job) relies on this fixed TTL to keep
   the sweep query simple.

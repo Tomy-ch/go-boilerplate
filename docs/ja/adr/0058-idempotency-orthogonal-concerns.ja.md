@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [idempotency, exclusion, setup-review]
 ---
 
-# ADR-0057: 冪等性をオプティミスティックロックおよびレート制限と直交に保つ
+# ADR-0058: 冪等性をオプティミスティックロックおよびレート制限と直交に保つ
 
-English canonical: [0057-idempotency-orthogonal-concerns.md](../../adr/0057-idempotency-orthogonal-concerns.md)
+English canonical: [0058-idempotency-orthogonal-concerns.md](../../adr/0058-idempotency-orthogonal-concerns.md)
 
 ## ステータス
 

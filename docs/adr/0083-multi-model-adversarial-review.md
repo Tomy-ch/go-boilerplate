@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [process, ai, review]
 ---
 
-# ADR-0082: Use multi-model adversarial review with finder and verifier subagents
+# ADR-0083: Use multi-model adversarial review with finder and verifier subagents
 
 ## Status
 

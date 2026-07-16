@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [toolchain, scripts]
 ---
 
-# ADR-0072: 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない
+# ADR-0073: 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない
 
-English canonical: [0072-scripts-in-node-go.md](../../adr/0072-scripts-in-node-go.md)
+English canonical: [0073-scripts-in-node-go.md](../../adr/0073-scripts-in-node-go.md)
 
 ## ステータス
 
@@ -101,6 +101,6 @@ Node と同じ ESM モデルを共有するが、ツールスタックに存在�
 - スクリプトディレクトリの概要とスクリプトごとの説明:
   [`scripts/README.md`](../../../scripts/README.md)。
 - ツールチェーンコンテナ定義（node_tool_runner、go_tool_runner）:
-  [ADR-0069](0069-containerized-pinned-toolchain.ja.md)。
+  [ADR-0070](0070-containerized-pinned-toolchain.ja.md)。
 - スクリプトを呼び出す Make ターゲットエントリポイント:
-  [ADR-0071](0071-make-single-entrypoint.ja.md)。
+  [ADR-0072](0072-make-single-entrypoint.ja.md)。

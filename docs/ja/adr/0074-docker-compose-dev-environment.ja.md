@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [toolchain, dev-env]
 ---
 
-# ADR-0073: ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する
+# ADR-0074: ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する
 
-English canonical: [0073-docker-compose-dev-environment.md](../../adr/0073-docker-compose-dev-environment.md)
+English canonical: [0074-docker-compose-dev-environment.md](../../adr/0074-docker-compose-dev-environment.md)
 
 ## ステータス
 
@@ -20,7 +20,7 @@ PostgreSQL データベース、オブザーバビリティスタック、ドキ
 これらのサービスはライフサイクルが異なり、同時にすべてが必要なわけではない——機能開発中のコントリビューターには
 ドキュメントビューアや ER ダイアグラムジェネレータが実行されている必要はない。
 
-ツール実行はマシン間で再現可能でなければならない（[ADR-0069](0069-containerized-pinned-toolchain.ja.md) 参照）。
+ツール実行はマシン間で再現可能でなければならない（[ADR-0070](0070-containerized-pinned-toolchain.ja.md) 参照）。
 これはツールがホストで直接ではなくコンテナ内で実行されることを意味する。アプリケーションサービスとツールランナーの
 両方をカバーする単一の `docker-compose.yaml` が、すべてのコンテナ管理に一貫したメカニズムを提供する。
 
@@ -106,6 +106,6 @@ API サーバーをホスト上で直接実行する（例: `mise` 経由でイ�
 - Dockerfile ターゲットとサービス詳細:
   [`docker/README.md`](../../../docker/README.md)。
 - コンテナベース再現性の根拠:
-  [ADR-0069](0069-containerized-pinned-toolchain.ja.md)。
+  [ADR-0070](0070-containerized-pinned-toolchain.ja.md)。
 - `make serve`（development プロファイル）、`make tools`（tools プロファイル）:
   [`.makefiles/README.md`](../../../.makefiles/README.md)。

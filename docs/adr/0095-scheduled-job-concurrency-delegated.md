@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0094: Do not control scheduled-job concurrency in-app; delegate to the scheduler
+# ADR-0095: Do not control scheduled-job concurrency in-app; delegate to the scheduler
 
 ## Status
 
@@ -22,7 +22,7 @@ be tested, operated, and kept in sync with the job lifecycle.
 
 The template bundles three scheduled one-shot jobs — `outbox-gc`, `idempotency-gc`, and
 `usercount` — plus the continuously running outbox relay process (a resident engine, not a
-scheduled job; see [ADR-0051](0051-relay-resident-gc-oneshot.md)). Each is designed to be
+scheduled job; see [ADR-0052](0052-relay-resident-gc-oneshot.md)). Each is designed to be
 concurrency-safe without application-level locking:
 
 - `outbox-gc` and `idempotency-gc` are age-predicate, idempotent batch deletes — running

@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [idempotency, security]
 ---
 
-# ADR-0053: Every Store call requires an explicit scope to prevent cross-user key collisions
+# ADR-0054: Every Store call requires an explicit scope to prevent cross-user key collisions
 
 ## Status
 

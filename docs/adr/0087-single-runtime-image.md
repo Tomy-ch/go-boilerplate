@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [deploy, image]
 ---
 
-# ADR-0086: A single runtime image with command override (no purpose-specific images)
+# ADR-0087: A single runtime image with command override (no purpose-specific images)
 
 ## Status
 
@@ -14,7 +14,7 @@ accepted
 ## Context
 
 Because the project ships a single multi-command binary (see
-[ADR-0085](0085-single-multi-command-binary.md)), deployments require not only the HTTP
+[ADR-0086](0086-single-multi-command-binary.md)), deployments require not only the HTTP
 server role but also the migration role. A naive approach would produce a dedicated migration
 image; however, that would duplicate the binary, inflate supply-chain scope, and require
 coordinating image versions across two artifacts.
@@ -36,7 +36,7 @@ No separate migration image, job image, or worker image is produced or maintaine
 ### Positive Consequences
 
 - One image digest to sign, attest, and verify per deployment. Supply-chain integrity
-  checks apply uniformly to all roles (see [ADR-0090](0090-release-image-supply-chain.md)).
+  checks apply uniformly to all roles (see [ADR-0091](0091-release-image-supply-chain.md)).
 - The migration binary is always exactly the same version as the serving binary, eliminating
   version skew between migration and application code.
 - Reduced CI surface: one build step, one push, one set of tags.
@@ -68,4 +68,4 @@ migration and app binary is a latent correctness risk.
 - `docker/server/README.md`: "Schema migrations run from the `runtime` image via command
   override, so no dedicated migration target exists."
 - Migration orchestration (one-shot pre-deploy job) is a separate concern; see
-  ADR-0089.
+  ADR-0090.

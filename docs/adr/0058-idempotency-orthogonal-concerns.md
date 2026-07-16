@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [idempotency, exclusion, setup-review]
 ---
 
-# ADR-0057: Keep idempotency orthogonal to optimistic locking and rate limiting
+# ADR-0058: Keep idempotency orthogonal to optimistic locking and rate limiting
 
 ## Status
 

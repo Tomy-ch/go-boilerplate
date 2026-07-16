@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [job, async]
 ---
 
-# ADR-0060: Job は明示的に登録する（自動検出なし）
+# ADR-0061: Job は明示的に登録する（自動検出なし）
 
-English canonical: [0060-job-explicit-registration.md](../../adr/0060-job-explicit-registration.md)
+English canonical: [0061-job-explicit-registration.md](../../adr/0061-job-explicit-registration.md)
 
 ## ステータス
 

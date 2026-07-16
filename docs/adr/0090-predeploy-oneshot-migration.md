@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [deploy, migration, exclusion, setup-review]
 ---
 
-# ADR-0089: Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup
+# ADR-0090: Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup
 
 ## Status
 
@@ -25,7 +25,7 @@ potentially causing a cascade restart loop; and a slow migration delays health-c
 readiness, triggering premature container replacement.
 
 The `runtime` image ships the full `migrate-up` subcommand (see
-[ADR-0086](0086-single-runtime-image.md)) precisely to support the pre-deploy pattern via
+[ADR-0087](0087-single-runtime-image.md)) precisely to support the pre-deploy pattern via
 command override.
 
 ## Decision
@@ -76,7 +76,7 @@ migration failures from application failures in observability.
 ### Separate migration binary or image
 
 Would require maintaining a second artifact. The single-image command-override approach
-achieves the same result without the overhead (see [ADR-0086](0086-single-runtime-image.md)).
+achieves the same result without the overhead (see [ADR-0087](0087-single-runtime-image.md)).
 
 ## Notes
 

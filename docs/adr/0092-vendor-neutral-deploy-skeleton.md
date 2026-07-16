@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [deploy]
 ---
 
-# ADR-0091: Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a template; registry not fixed)
+# ADR-0092: Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a template; registry not fixed)
 
 ## Status
 
@@ -32,7 +32,7 @@ The deploy workflow (`deploy-app.yaml`) is structured as a **vendor-neutral skel
 
 - **Fully implemented** (no modification needed): image build, tagging, caching
   (`docker/build-push-action`), cosign signing, build-provenance attestation, and SBOM
-  attestation (see [ADR-0090](0090-release-image-supply-chain.md)).
+  attestation (see [ADR-0091](0091-release-image-supply-chain.md)).
 - **Template stubs** (must be replaced by setup teams):
   - `Define registry` / `Login to registry` — registry selection and authentication.
     The `meta_registry` output variable is referenced by all downstream steps so a single

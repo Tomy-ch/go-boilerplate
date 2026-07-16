@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [exclusion, outbox, messaging, reliability, setup-review]
 ---
 
-# ADR-0096: Delegate outbox-relay duplicate-window hardening to production copies
+# ADR-0097: Delegate outbox-relay duplicate-window hardening to production copies
 
 ## Status
 
@@ -14,7 +14,7 @@ accepted
 ## Context
 
 The outbox relay claims pending rows, publishes them over HTTP, and marks the outcome inside a
-single transaction ([ADR-0045], [ADR-0046]). Any such design is bounded by an impossibility
+single transaction ([ADR-0046], [ADR-0047]). Any such design is bounded by an impossibility
 result: an external side effect (the HTTP POST) and its record (the DB row) cannot be made atomic
 (Two Generals). Duplicate, loss, and availability *windows* — bounded time intervals during which
 an invariant can be violated — cannot all be zero; a design only chooses which window remains.
@@ -46,13 +46,13 @@ A hardened design that closes every closable window exists (the blueprint below)
 ship it in the template is real. However, it adds schema (two columns and a status value), a
 leader-election dependency on runtime topology, and tuning knobs (lease length, deadline margin,
 backoff curve) whose correct values are deployment-specific — policy the template cannot know,
-mirroring the reasoning of [ADR-0093] and [ADR-0094].
+mirroring the reasoning of [ADR-0094] and [ADR-0095].
 
 ## Decision
 
 We deliberately do NOT harden the outbox relay in this template. The template keeps the simple
 single-transaction relay together with its shipped absorption contract: `message_id` propagates as
-`Idempotency-Key` ([ADR-0047]) and the bundled idempotency middleware deduplicates on the receiving
+`Idempotency-Key` ([ADR-0048]) and the bundled idempotency middleware deduplicates on the receiving
 side, so duplicates collapse to exactly-once *effect* whenever the receiver is built from this
 template (third-party receivers inherit the dedup obligation as an integration requirement).
 
@@ -169,15 +169,15 @@ mechanism.
 - Design reference: [`docs/design/outbox.md`](../design/outbox.md) — §1 invariants and the §4
   integrator checklist carry the receiver-dedup obligation this decision relies on.
 - Related ADRs: [ADR-0030] (tx-retry idempotency contract; the shipped relay is its sole
-  sanctioned exception, which blueprint layer 2 removes), [ADR-0045] (at-least-once poll),
-  [ADR-0046] (SKIP LOCKED claim), [ADR-0047] (message-id / Idempotency-Key propagation),
-  [ADR-0048] (dead-lettering after max attempts).
+  sanctioned exception, which blueprint layer 2 removes), [ADR-0046] (at-least-once poll),
+  [ADR-0047] (SKIP LOCKED claim), [ADR-0048] (message-id / Idempotency-Key propagation),
+  [ADR-0049] (dead-lettering after max attempts).
 - Full ADR set and ordering: [the ADR log](README.md).
 
 [ADR-0030]: 0030-transaction-retry-idempotent-callers.md
-[ADR-0045]: 0045-at-least-once-outbox-poll.md
-[ADR-0046]: 0046-skip-locked-outbox-relay.md
-[ADR-0047]: 0047-message-id-idempotency-propagation.md
-[ADR-0048]: 0048-outbox-dead-after-max-attempts.md
-[ADR-0093]: 0093-no-in-app-rate-limiter.md
-[ADR-0094]: 0094-scheduled-job-concurrency-delegated.md
+[ADR-0046]: 0046-at-least-once-outbox-poll.md
+[ADR-0047]: 0047-skip-locked-outbox-relay.md
+[ADR-0048]: 0048-message-id-idempotency-propagation.md
+[ADR-0049]: 0049-outbox-dead-after-max-attempts.md
+[ADR-0094]: 0094-no-in-app-rate-limiter.md
+[ADR-0095]: 0095-scheduled-job-concurrency-delegated.md

@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0094: スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する
+# ADR-0095: スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する
 
-English canonical: [0094-scheduled-job-concurrency-delegated.md](../../adr/0094-scheduled-job-concurrency-delegated.md)
+English canonical: [0095-scheduled-job-concurrency-delegated.md](../../adr/0095-scheduled-job-concurrency-delegated.md)
 
 ## ステータス
 
@@ -17,7 +17,7 @@ accepted
 
 マルチインスタンス環境で動作するスケジュールジョブは、前回の実行が終わる前に新たな実行が開始したり、複数インスタンスが同じウォールクロックのティックで同じジョブを起動したりすることがある。従来の対処策はアプリケーションレベルの相互排除メカニズムであり、通常はアドバイザリデータベースロック（例: `pg_try_advisory_lock`）や分散ロック（例: Redis `SET NX`）が使われる。これらのメカニズムはインフラ依存と調整ロジックを追加し、テスト・運用・ジョブライフサイクルとの同期管理が必要になる。
 
-このテンプレートは 3 つのスケジュール（one-shot）ジョブ（`outbox-gc`、`idempotency-gc`、`usercount`）と、常駐する outbox リレープロセス（スケジュールジョブではなく常駐エンジン。[ADR-0051](0051-relay-resident-gc-oneshot.ja.md) 参照）を含んでいる。各々はアプリケーションレベルのロックなしに並行安全となるよう設計されている:
+このテンプレートは 3 つのスケジュール（one-shot）ジョブ（`outbox-gc`、`idempotency-gc`、`usercount`）と、常駐する outbox リレープロセス（スケジュールジョブではなく常駐エンジン。[ADR-0052](0052-relay-resident-gc-oneshot.ja.md) 参照）を含んでいる。各々はアプリケーションレベルのロックなしに並行安全となるよう設計されている:
 
 - `outbox-gc` と `idempotency-gc` は年齢述語による冪等なバッチ削除であり、並行実行しても 1 回の実行と同じ結果になる。
 - `usercount` は読み取り専用である。

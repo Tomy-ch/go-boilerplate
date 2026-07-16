@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [toolchain, ci]
 ---
 
-# ADR-0070: mise.toml is the single source of truth; versions propagate downstream with a CI drift gate
+# ADR-0071: mise.toml is the single source of truth; versions propagate downstream with a CI drift gate
 
 ## Status
 
@@ -95,7 +95,7 @@ cost in multi-contributor projects.
 ## Notes
 
 - Related decision on container-based execution:
-  [ADR-0069](0069-containerized-pinned-toolchain.md).
+  [ADR-0070](0070-containerized-pinned-toolchain.md).
 - `mise.toml` with SSOT comment and `[env]` section:
   [`mise.toml`](../../mise.toml).
 - CI drift-gate workflow:

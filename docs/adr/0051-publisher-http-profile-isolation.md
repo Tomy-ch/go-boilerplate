@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, http]
 ---
 
-# ADR-0050: Isolate the publisher's non-standard HTTP profile inside the relay
+# ADR-0051: Isolate the publisher's non-standard HTTP profile inside the relay
 
 ## Status
 
@@ -17,7 +17,7 @@ The outbox HTTP publisher requires three deviations from the shared default HTTP
 profile:
 
 1. **`MaxAttempts = 1`** — transport-level retry must be disabled because the relay poll
-   loop is the at-least-once retry mechanism (see [ADR-0045](0045-at-least-once-outbox-poll.md)).
+   loop is the at-least-once retry mechanism (see [ADR-0046](0046-at-least-once-outbox-poll.md)).
    Enabling both would cause double-retry amplification (decision D10).
 
 2. **`PropagateTrace = false`** — the W3C `traceparent` header is captured at emit time
@@ -89,5 +89,5 @@ Breaks shared observability (RED metrics, tracing) and bypasses the policy enfor
   - `internal/di/module/outboxrelay.go` (`OutboxRelayModule`)
   - `internal/infrastructure/publisher/http_publisher.go` (`NewDownstreamProfile`)
 - Resilience and SSRF client policies: ADR-0019, ADR-0020 (plain text — not yet published).
-- Related ADRs: [ADR-0045](0045-at-least-once-outbox-poll.md),
-  [ADR-0051](0051-relay-resident-gc-oneshot.md).
+- Related ADRs: [ADR-0046](0046-at-least-once-outbox-poll.md),
+  [ADR-0052](0052-relay-resident-gc-oneshot.md).

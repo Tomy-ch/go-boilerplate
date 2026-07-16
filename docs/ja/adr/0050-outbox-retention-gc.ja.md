@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, async, gc]
 ---
 
-# ADR-0049: 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ）
+# ADR-0050: 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ）
 
-English canonical: [0049-outbox-retention-gc.md](../../adr/0049-outbox-retention-gc.md)
+English canonical: [0050-outbox-retention-gc.md](../../adr/0050-outbox-retention-gc.md)
 
 ## ステータス
 
@@ -19,7 +19,7 @@ accepted
 
 ## 決定
 
-`GCUsecase.SweepPublished` は `published_at` タイムスタンプが `DefaultRetention = 7 日` より古い `published` 行を削除し、1 回の呼び出しで最大 `DefaultGCBatchSize = 10,000` 行を処理する。基底の SQL は `published_at` 順に候補を選択し `id IN (サブクエリ)` で削除することで、ステートメントごとのロック時間を制限する。GC は `cmd job outbox-gc` — 外部 cron でスケジュールされるワンショットコマンド — 経由で呼び出される（[ADR-0051](0051-relay-resident-gc-oneshot.ja.md) を参照）。
+`GCUsecase.SweepPublished` は `published_at` タイムスタンプが `DefaultRetention = 7 日` より古い `published` 行を削除し、1 回の呼び出しで最大 `DefaultGCBatchSize = 10,000` 行を処理する。基底の SQL は `published_at` 順に候補を選択し `id IN (サブクエリ)` で削除することで、ステートメントごとのロック時間を制限する。GC は `cmd job outbox-gc` — 外部 cron でスケジュールされるワンショットコマンド — 経由で呼び出される（[ADR-0052](0052-relay-resident-gc-oneshot.ja.md) を参照）。
 
 SQL は以下の通り:
 
@@ -67,4 +67,4 @@ WHERE id IN (
 
 - `DefaultRetention`（7 日）と `DefaultGCBatchSize`（10,000）は `docs/design/outbox.md`（用語集エントリ「GC (SweepPublished)」）に記述されている。
 - SQL ソース: `database/dml/system_cqrs/outbox/delete_published_outbox.sql`。
-- 関連 ADR: [ADR-0048](0048-outbox-dead-after-max-attempts.ja.md)、[ADR-0051](0051-relay-resident-gc-oneshot.ja.md)。
+- 関連 ADR: [ADR-0049](0049-outbox-dead-after-max-attempts.ja.md)、[ADR-0052](0052-relay-resident-gc-oneshot.ja.md)。

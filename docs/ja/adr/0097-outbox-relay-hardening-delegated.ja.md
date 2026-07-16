@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [exclusion, outbox, messaging, reliability, setup-review]
 ---
 
-# ADR-0096: outbox relay の重複窓ハードニングは本番コピー側の責務とする
+# ADR-0097: outbox relay の重複窓ハードニングは本番コピー側の責務とする
 
-English canonical: [0096-outbox-relay-hardening-delegated.md](../../adr/0096-outbox-relay-hardening-delegated.md)
+English canonical: [0097-outbox-relay-hardening-delegated.md](../../adr/0097-outbox-relay-hardening-delegated.md)
 
 ## ステータス
 
@@ -16,7 +16,7 @@ accepted
 ## コンテキスト
 
 outbox relay は pending 行を claim し、HTTP で publish し、その結果を**単一トランザクション内**で
-mark する（[ADR-0045]、[ADR-0046]）。この種の設計はすべて不可能性の結果に縛られる: 外部副作用
+mark する（[ADR-0046]、[ADR-0047]）。この種の設計はすべて不可能性の結果に縛られる: 外部副作用
 （HTTP POST）とその記録（DB 行）は原子化できない（Two Generals）。重複・喪失・可用性の
 *窓（window）* — 不変条件が一時的に破られうる、始点と終点を持つ時間区間 — を同時にゼロには
 できず、設計とは「どの窓を残すか」の選択である。窓への対処は 3 種類しかない: **閉じる**
@@ -46,13 +46,13 @@ mark する（[ADR-0045]、[ADR-0046]）。この種の設計はすべて不可�
 閉じられる窓をすべて閉じるハードニング設計は存在する（下記設計図）。テンプレートに実装する圧力は
 現実にある。しかしそれはスキーマ（列 2 本 + status 値）、実行トポロジへのリーダー選出依存、そして
 デプロイ固有のチューニング値（lease 長・deadline margin・backoff 曲線）を持ち込む — テンプレートが
-知り得ないポリシーであり、[ADR-0093] と [ADR-0094] と同じ論法が当てはまる。
+知り得ないポリシーであり、[ADR-0094] と [ADR-0095] と同じ論法が当てはまる。
 
 ## 決定
 
 このテンプレートでは outbox relay のハードニングを**意図的に実装しない**。テンプレートは単純な
 単一トランザクション relay と、同梱の吸収契約 — `message_id` を `Idempotency-Key` として伝搬
-（[ADR-0047]）し、受信側の同梱冪等性ミドルウェアが dedup する — を維持する。受信側も本テンプレート
+（[ADR-0048]）し、受信側の同梱冪等性ミドルウェアが dedup する — を維持する。受信側も本テンプレート
 から作られていれば重複は exactly-once *effect* に構造的に畳まれる（第三者実装の受信者は dedup 義務を
 統合要件として引き継ぐ）。
 
@@ -159,15 +159,15 @@ end-to-end で重複を閉じられるが、出荷済み契約を超えた受信
 - 設計リファレンス: [`docs/design/outbox.md`](../../design/outbox.md) — §1 の不変条件と §4 の
   統合者チェックリストが、本決定が依拠する受信側 dedup 義務を規定する。
 - 関連 ADR: [ADR-0030]（tx リトライ冪等性契約。出荷状態の relay はその唯一の公認例外であり、
-  設計図の第 2 層がこの例外を除去する）、[ADR-0045]（at-least-once poll）、[ADR-0046]
-  （SKIP LOCKED claim）、[ADR-0047]（message-id / Idempotency-Key 伝搬）、[ADR-0048]
+  設計図の第 2 層がこの例外を除去する）、[ADR-0046]（at-least-once poll）、[ADR-0047]
+  （SKIP LOCKED claim）、[ADR-0048]（message-id / Idempotency-Key 伝搬）、[ADR-0049]
   （max attempts 到達での dead 化）。
 - ADR 全体の一覧と順序: [ADR ログ](README.ja.md)。
 
 [ADR-0030]: 0030-transaction-retry-idempotent-callers.ja.md
-[ADR-0045]: 0045-at-least-once-outbox-poll.ja.md
-[ADR-0046]: 0046-skip-locked-outbox-relay.ja.md
-[ADR-0047]: 0047-message-id-idempotency-propagation.ja.md
-[ADR-0048]: 0048-outbox-dead-after-max-attempts.ja.md
-[ADR-0093]: 0093-no-in-app-rate-limiter.ja.md
-[ADR-0094]: 0094-scheduled-job-concurrency-delegated.ja.md
+[ADR-0046]: 0046-at-least-once-outbox-poll.ja.md
+[ADR-0047]: 0047-skip-locked-outbox-relay.ja.md
+[ADR-0048]: 0048-message-id-idempotency-propagation.ja.md
+[ADR-0049]: 0049-outbox-dead-after-max-attempts.ja.md
+[ADR-0094]: 0094-no-in-app-rate-limiter.ja.md
+[ADR-0095]: 0095-scheduled-job-concurrency-delegated.ja.md

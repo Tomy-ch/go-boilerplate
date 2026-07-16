@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [ci, lint]
 ---
 
-# ADR-0074: 2 層の golangci 設定——最小デフォルトと完全な権威ゲート
+# ADR-0075: 2 層の golangci 設定——最小デフォルトと完全な権威ゲート
 
-English canonical: [0074-two-layer-golangci-config.md](../../adr/0074-two-layer-golangci-config.md)
+English canonical: [0075-two-layer-golangci-config.md](../../adr/0075-two-layer-golangci-config.md)
 
 ## ステータス
 

@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [cli, architecture]
 ---
 
-# ADR-0084: CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア）
+# ADR-0085: CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア）
 
-English canonical: [0084-cli-humble-object-split.md](../../adr/0084-cli-humble-object-split.md)
+English canonical: [0085-cli-humble-object-split.md](../../adr/0085-cli-humble-object-split.md)
 
 ## ステータス
 
@@ -50,7 +50,7 @@ CLI コマンドは、本番環境でリアルな依存関係をワイヤリン�
 
 ### コマンドごとに別のバイナリ
 
-Cobra 登録を避けるが、複数のバイナリの配布が必要となり、デプロイが複雑化し、初期化コード（設定ロード、DI）の共有が妨げられる。シングルバイナリの決定（[ADR-0085](0085-single-multi-command-binary.ja.md) 参照）と矛盾する。
+Cobra 登録を避けるが、複数のバイナリの配布が必要となり、デプロイが複雑化し、初期化コード（設定ロード、DI）の共有が妨げられる。シングルバイナリの決定（[ADR-0086](0086-single-multi-command-binary.ja.md) 参照）と矛盾する。
 
 ## 補足
 

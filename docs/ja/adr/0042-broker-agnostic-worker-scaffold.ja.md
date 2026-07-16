@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [worker, async, adapter]
 ---
 
-# ADR-0041: ブローカー非依存のプル・アック型ワーカースキャフォールド
+# ADR-0042: ブローカー非依存のプル・アック型ワーカースキャフォールド
 
-English canonical: [0041-broker-agnostic-worker-scaffold.md](../../adr/0041-broker-agnostic-worker-scaffold.md)
+English canonical: [0042-broker-agnostic-worker-scaffold.md](../../adr/0042-broker-agnostic-worker-scaffold.md)
 
 ## ステータス
 
@@ -36,7 +36,7 @@ accepted
 
 ### ネガティブな影響
 
-- ポートは意図的に狭い（プル・アック型のみ）。プッシュ型とストリーミングログモデルは適合しないため除外されている（ADR-0042 として別途記録、Phase 4 で具体化）。
+- ポートは意図的に狭い（プル・アック型のみ）。プッシュ型とストリーミングログモデルは適合しないため除外されている（ADR-0043 として別途記録、Phase 4 で具体化）。
 - 新しいブローカーごとに、シームを実装するアダプターが必要になる。
 
 ## 検討した代替案
@@ -47,10 +47,10 @@ accepted
 
 ### アダプターの依存性分離のためのビルドタグ
 
-却下: このリポジトリに前例がなく、シングルバイナリではモジュール分離が不十分。`cmd` からアダプターをインポートしないことで、タグなしで分離が達成できる（[ADR-0043](0043-sqs-adapter-opt-in.ja.md) を参照）。
+却下: このリポジトリに前例がなく、シングルバイナリではモジュール分離が不十分。`cmd` からアダプターをインポートしないことで、タグなしで分離が達成できる（[ADR-0044](0044-sqs-adapter-opt-in.ja.md) を参照）。
 
 ## 補足
 
-- プッシュ/ストリーミング除外: ADR-0042（Phase 4）。SQS アダプターのオプトイン分離: [ADR-0043](0043-sqs-adapter-opt-in.ja.md)。
+- プッシュ/ストリーミング除外: ADR-0043（Phase 4）。SQS アダプターのオプトイン分離: [ADR-0044](0044-sqs-adapter-opt-in.ja.md)。
 - 設計参考: `docs/design/worker.md`。
 - `docs/decisions.md`（§「Why a broker-agnostic worker scaffold」）から移行。

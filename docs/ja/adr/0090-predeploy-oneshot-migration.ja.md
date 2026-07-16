@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [deploy, migration, exclusion, setup-review]
 ---
 
-# ADR-0089: マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない
+# ADR-0090: マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない
 
-English canonical: [0089-predeploy-oneshot-migration.md](../../adr/0089-predeploy-oneshot-migration.md)
+English canonical: [0090-predeploy-oneshot-migration.md](../../adr/0090-predeploy-oneshot-migration.md)
 
 ## ステータス
 
@@ -19,7 +19,7 @@ accepted
 
 スタートアップマイグレーションは別のオーケストレーションステップを必要としないため魅力的である。しかし、よく知られた障害モードがある: マイグレーションは起動時にすべてのレプリカで実行されるため、並列実行を避けるための分散ロックが必要となる。マイグレーションが失敗するとコンテナがクラッシュし、カスケードリスタートループを引き起こす可能性がある。また、遅いマイグレーションはヘルスチェックの準備完了を遅らせ、コンテナの早期交換をトリガーする。
 
-`runtime` イメージはコマンドオーバーライードを介してデプロイ前パターンをサポートするために、完全な `migrate-up` サブコマンドをシップする（[ADR-0086](0086-single-runtime-image.ja.md) 参照）。
+`runtime` イメージはコマンドオーバーライードを介してデプロイ前パターンをサポートするために、完全な `migrate-up` サブコマンドをシップする（[ADR-0087](0087-single-runtime-image.ja.md) 参照）。
 
 ## 決定
 
@@ -58,7 +58,7 @@ docker run <image> /app/server migrate-up
 
 ### 別のマイグレーションバイナリまたはイメージ
 
-第 2 の成果物の管理が必要となる。シングルイメージのコマンドオーバーライードアプローチがオーバーヘッドなしに同じ結果を達成する（[ADR-0086](0086-single-runtime-image.ja.md) 参照）。
+第 2 の成果物の管理が必要となる。シングルイメージのコマンドオーバーライードアプローチがオーバーヘッドなしに同じ結果を達成する（[ADR-0087](0087-single-runtime-image.ja.md) 参照）。
 
 ## 補足
 

@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [worker, async, dependencies]
 ---
 
-# ADR-0043: SQS adapter is opt-in and not linked into the default binary
+# ADR-0044: SQS adapter is opt-in and not linked into the default binary
 
 ## Status
 
@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-The worker scaffold ([ADR-0041](0041-broker-agnostic-worker-scaffold.md)) ships a reference
+The worker scaffold ([ADR-0042](0042-broker-agnostic-worker-scaffold.md)) ships a reference
 broker adapter for AWS SQS. If that adapter were wired into the default build, every binary —
 including `serve`, which never consumes a queue — would link `aws-sdk-go-v2`, enlarging the
 dependency surface against the lock-in-avoidance principle
@@ -52,6 +52,6 @@ insufficient. Not importing the adapter from `cmd` isolates the dependency witho
 
 ## Notes
 
-- Parent decision: [ADR-0041](0041-broker-agnostic-worker-scaffold.md). Principle: [ADR-0001](0001-avoid-lock-in.md).
+- Parent decision: [ADR-0042](0042-broker-agnostic-worker-scaffold.md). Principle: [ADR-0001](0001-avoid-lock-in.md).
 - Reference: `internal/infrastructure/queue/sqs/README.md`.
 - Migrated from `docs/decisions.md` (§ "Why a broker-agnostic worker scaffold" — dependency isolation).

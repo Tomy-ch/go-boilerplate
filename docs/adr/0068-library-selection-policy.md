@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [dependencies, policy]
 ---
 
-# ADR-0067: Single-responsibility library selection policy
+# ADR-0068: Single-responsibility library selection policy
 
 ## Status
 
@@ -27,7 +27,7 @@ replaceable responsibility.
 Libraries that stand between **two independently-versioned upstreams** (a framework/library
 *and* OpenTelemetry) are **bridge / instrumentation** libraries; they deviate from the
 single-responsibility criterion and are treated as explicit, individually-justified
-exceptions (see [ADR-0068](0068-bridge-instrumentation-exceptions.md)).
+exceptions (see [ADR-0069](0069-bridge-instrumentation-exceptions.md)).
 
 ## Consequences
 
@@ -56,6 +56,6 @@ these are admitted as bounded, documented exceptions instead.
 
 ## Notes
 
-- Parent principle: [ADR-0001](0001-avoid-lock-in.md). Exceptions: [ADR-0068](0068-bridge-instrumentation-exceptions.md).
+- Parent principle: [ADR-0001](0001-avoid-lock-in.md). Exceptions: [ADR-0069](0069-bridge-instrumentation-exceptions.md).
 - The *list* of dependencies is an inventory, not a decision — it moves to `docs/reference/dependencies.md` (Phase 5); this ADR records the *policy* only.
 - Migrated from `docs/decisions.md` (§ "Library Selection Policy").

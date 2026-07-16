@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0095: 汎用 Cache 抽象化を提供しない
+# ADR-0096: 汎用 Cache 抽象化を提供しない
 
-English canonical: [0095-no-generic-cache-abstraction.md](../../adr/0095-no-generic-cache-abstraction.md)
+English canonical: [0096-no-generic-cache-abstraction.md](../../adr/0096-no-generic-cache-abstraction.md)
 
 ## ステータス
 

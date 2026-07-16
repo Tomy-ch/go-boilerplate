@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [ci, lint]
 ---
 
-# ADR-0074: Two-layer golangci config: minimal default vs full authoritative gate
+# ADR-0075: Two-layer golangci config: minimal default vs full authoritative gate
 
 ## Status
 

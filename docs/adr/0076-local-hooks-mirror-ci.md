@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [ci, tooling]
 ---
 
-# ADR-0075: Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once)
+# ADR-0076: Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once)
 
 ## Status
 

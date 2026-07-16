@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [observability, metrics]
 ---
 
-# ADR-0064: Metrics travel two paths — OTLP push and Prometheus scrape
+# ADR-0065: Metrics travel two paths — OTLP push and Prometheus scrape
 
 ## Status
 
@@ -82,7 +82,7 @@ Collector configuration.
 ## Notes
 
 - Source: `docs/design/observability.md` §3.2 "Two metric exit paths", table at lines 146–153.
-- Parent: [ADR-0061](0061-config-driven-observability-gating.md) (config-driven gating).
+- Parent: [ADR-0062](0062-config-driven-observability-gating.md) (config-driven gating).
 - Implementation: `internal/observability/metrics/buildinfo/` (buildinfo collector),
   `internal/observability/metrics/queue/` (queue depth collector),
   OTel meter instruments in `outbox_metrics.go`, `worker_metrics.go`,

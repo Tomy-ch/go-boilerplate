@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [ci, testing]
 ---
 
-# ADR-0076: 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける
+# ADR-0077: 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける
 
-English canonical: [0076-coverage-hard-gate.md](../../adr/0076-coverage-hard-gate.md)
+English canonical: [0077-coverage-hard-gate.md](../../adr/0077-coverage-hard-gate.md)
 
 ## ステータス
 

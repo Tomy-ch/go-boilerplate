@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [deploy, image, config]
 ---
 
-# ADR-0088: 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定）
+# ADR-0089: 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定）
 
-English canonical: [0088-per-environment-images.md](../../adr/0088-per-environment-images.md)
+English canonical: [0089-per-environment-images.md](../../adr/0089-per-environment-images.md)
 
 ## ステータス
 
@@ -45,7 +45,7 @@ go build ... -o /app/bin/server ./cmd/
 ### ポジティブな影響
 
 - コンテナが実行される環境はランタイム注入ではなくビルド時に決定され、設定ミスのクラス（誤った環境変数、コンテナ起動時の環境変数の欠落）を排除する。
-- 各イメージは独立して検証可能かつ監査可能である: 埋め込まれた設定は署名された成果物の一部である（[ADR-0090](0090-release-image-supply-chain.ja.md) 参照）。
+- 各イメージは独立して検証可能かつ監査可能である: 埋め込まれた設定は署名された成果物の一部である（[ADR-0091](0091-release-image-supply-chain.ja.md) 参照）。
 - ベース設定値のためのランタイム設定管理サイドカーやシークレット注入ステップは必要ない。
 
 ### ネガティブな影響

@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [ci, testing]
 ---
 
-# ADR-0077: CI boots the real fx graph against real Postgres (startup verification)
+# ADR-0078: CI boots the real fx graph against real Postgres (startup verification)
 
 ## Status
 
@@ -98,5 +98,5 @@ are clearly attributed.
   `.github/workflows/job-boot-check.yaml` lines 59–81.
 - Related: [ADR-0032](0032-uber-fx-di.md) — the Uber fx DI container whose graph this
   check exercises.
-- Related: [ADR-0041](0041-broker-agnostic-worker-scaffold.md) — the worker subsystem
+- Related: [ADR-0042](0042-broker-agnostic-worker-scaffold.md) — the worker subsystem
   whose entrypoint is verified.

@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [idempotency, gc, ops]
 ---
 
-# ADR-0056: Run idempotency key garbage collection as a separate one-shot CLI job
+# ADR-0057: Run idempotency key garbage collection as a separate one-shot CLI job
 
 ## Status
 
@@ -80,5 +80,5 @@ observe and restart independently, and introduces goroutine lifecycle management
   `internal/controller/job/idempotencygc/`.
 - The `expires_at` index in `idempotency_keys` keeps each `DeleteExpired` batch scan cheap
   regardless of total table size.
-- Related: [ADR-0054](0054-idempotency-fixed-ttl.md) (fixed 24h TTL that the GC sweeps
+- Related: [ADR-0055](0055-idempotency-fixed-ttl.md) (fixed 24h TTL that the GC sweeps
   against).

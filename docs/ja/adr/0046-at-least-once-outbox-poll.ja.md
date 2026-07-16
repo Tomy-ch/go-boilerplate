@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, async]
 ---
 
-# ADR-0045: ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化）
+# ADR-0046: ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化）
 
-English canonical: [0045-at-least-once-outbox-poll.md](../../adr/0045-at-least-once-outbox-poll.md)
+English canonical: [0046-at-least-once-outbox-poll.md](../../adr/0046-at-least-once-outbox-poll.md)
 
 ## ステータス
 
@@ -33,12 +33,12 @@ accepted
 - リトライ動作が決定論的になる。ポールサイクルごとに正確に 1 回のトランスポート試行。
 - 単一のデリバリー失敗がリレーループを停止させたり、他の行をブロックしたりしない。
 - `attempts` と `last_error` が、何が失敗し何回失敗したかを直接的で明確な観測可能性として提供する。
-- 最終的なデッドレター処理（[ADR-0048](0048-outbox-dead-after-max-attempts.ja.md) を参照）が予測可能になる。`attempts` はポールごとに最大 1 回しか進まない。
+- 最終的なデッドレター処理（[ADR-0049](0049-outbox-dead-after-max-attempts.ja.md) を参照）が予測可能になる。`attempts` はポールごとに最大 1 回しか進まない。
 
 ### ネガティブな影響
 
 - 失敗後のデリバリーレイテンシは `PollInterval`（デフォルト 1 秒）によって制限され、即時のトランスポートリトライよりも遅い。
-- 少なくとも1回のセマンティクスにより、レシーバーは `Idempotency-Key` ヘッダー（[ADR-0047](0047-message-id-idempotency-propagation.ja.md) を参照）に対して冪等でなければならない。
+- 少なくとも1回のセマンティクスにより、レシーバーは `Idempotency-Key` ヘッダー（[ADR-0048](0048-message-id-idempotency-propagation.ja.md) を参照）に対して冪等でなければならない。
 
 ## 検討した代替案
 
@@ -54,4 +54,4 @@ accepted
 
 - 少なくとも1回と D10 は `docs/design/outbox.md`（§「Design invariants」、用語集エントリ「retry-by-poll」）に記述されている。
 - トランスポートリトライは `internal/infrastructure/publisher/http_publisher.go` の `NewDownstreamProfile`（`MaxAttempts = 1`）で無効化されている。
-- 関連 ADR: [ADR-0044](0044-transactional-outbox.ja.md)、[ADR-0046](0046-skip-locked-outbox-relay.ja.md)、[ADR-0048](0048-outbox-dead-after-max-attempts.ja.md)。
+- 関連 ADR: [ADR-0045](0045-transactional-outbox.ja.md)、[ADR-0047](0047-skip-locked-outbox-relay.ja.md)、[ADR-0049](0049-outbox-dead-after-max-attempts.ja.md)。

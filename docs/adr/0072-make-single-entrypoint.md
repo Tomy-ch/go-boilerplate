@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [toolchain, build]
 ---
 
-# ADR-0071: Make is the single tool entrypoint with .mk registration and self-documenting help
+# ADR-0072: Make is the single tool entrypoint with .mk registration and self-documenting help
 
 ## Status
 

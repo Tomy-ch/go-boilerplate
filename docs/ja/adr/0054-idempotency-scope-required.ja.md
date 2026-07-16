@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [idempotency, security]
 ---
 
-# ADR-0053: クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする
+# ADR-0054: クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする
 
-English canonical: [0053-idempotency-scope-required.md](../../adr/0053-idempotency-scope-required.md)
+English canonical: [0054-idempotency-scope-required.md](../../adr/0054-idempotency-scope-required.md)
 
 ## ステータス
 

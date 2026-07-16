@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0095: Do not provide a generic Cache abstraction
+# ADR-0096: Do not provide a generic Cache abstraction
 
 ## Status
 

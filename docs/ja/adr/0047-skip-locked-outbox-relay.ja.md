@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, async, concurrency]
 ---
 
-# ADR-0046: SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全）
+# ADR-0047: SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全）
 
-English canonical: [0046-skip-locked-outbox-relay.md](../../adr/0046-skip-locked-outbox-relay.md)
+English canonical: [0047-skip-locked-outbox-relay.md](../../adr/0047-skip-locked-outbox-relay.md)
 
 ## ステータス
 
@@ -64,4 +64,4 @@ FOR UPDATE SKIP LOCKED;
 
 - マルチインスタンス安全性の不変条件: `docs/design/outbox.md`（§「Design invariants」）。
 - SQL ソース: `database/dml/system_cqrs/outbox/claim_pending_outbox.sql`。
-- 関連 ADR: [ADR-0044](0044-transactional-outbox.ja.md)、[ADR-0045](0045-at-least-once-outbox-poll.ja.md)。
+- 関連 ADR: [ADR-0045](0045-transactional-outbox.ja.md)、[ADR-0046](0046-at-least-once-outbox-poll.ja.md)。

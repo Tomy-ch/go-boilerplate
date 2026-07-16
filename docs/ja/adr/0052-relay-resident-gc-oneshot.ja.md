@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [outbox, async, ops]
 ---
 
-# ADR-0051: リレーは常駐プロセス、GC はワンショット cron ジョブ
+# ADR-0052: リレーは常駐プロセス、GC はワンショット cron ジョブ
 
-English canonical: [0051-relay-resident-gc-oneshot.md](../../adr/0051-relay-resident-gc-oneshot.md)
+English canonical: [0052-relay-resident-gc-oneshot.md](../../adr/0052-relay-resident-gc-oneshot.md)
 
 ## ステータス
 
@@ -57,4 +57,4 @@ accepted
 
 - 責務の分割: `docs/design/outbox.md`（§「ロール理論」、`outbox-gc job` とリレー `Engine` の表の行）。
 - インテグレーターチェックリスト ⑤〜⑥: `docs/design/outbox.md` §4。
-- 関連 ADR: [ADR-0044](0044-transactional-outbox.ja.md)、[ADR-0049](0049-outbox-retention-gc.ja.md)。
+- 関連 ADR: [ADR-0045](0045-transactional-outbox.ja.md)、[ADR-0050](0050-outbox-retention-gc.ja.md)。

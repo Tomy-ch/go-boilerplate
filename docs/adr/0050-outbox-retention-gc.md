@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [outbox, async, gc]
 ---
 
-# ADR-0049: 7-day retention GC of published rows (batches of 10,000)
+# ADR-0050: 7-day retention GC of published rows (batches of 10,000)
 
 ## Status
 
@@ -25,7 +25,7 @@ older than `DefaultRetention = 7 days`, processing at most `DefaultGCBatchSize =
 rows per invocation. The underlying SQL selects candidates ordered by `published_at` and
 deletes by `id IN (subquery)`, bounding the lock duration per statement. GC is invoked
 via `cmd job outbox-gc` — a one-shot command scheduled by an external cron (see
-[ADR-0051](0051-relay-resident-gc-oneshot.md)).
+[ADR-0052](0052-relay-resident-gc-oneshot.md)).
 
 The SQL is:
 
@@ -80,5 +80,5 @@ Operationally simple but unsustainable at any non-trivial event volume.
 - `DefaultRetention` (7 days) and `DefaultGCBatchSize` (10 000) described in
   `docs/design/outbox.md` (Glossary entry "GC (SweepPublished)").
 - SQL source: `database/dml/system_cqrs/outbox/delete_published_outbox.sql`.
-- Related ADRs: [ADR-0048](0048-outbox-dead-after-max-attempts.md),
-  [ADR-0051](0051-relay-resident-gc-oneshot.md).
+- Related ADRs: [ADR-0049](0049-outbox-dead-after-max-attempts.md),
+  [ADR-0052](0052-relay-resident-gc-oneshot.md).

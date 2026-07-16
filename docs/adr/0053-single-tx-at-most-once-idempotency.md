@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [idempotency, reliability]
 ---
 
-# ADR-0052: Run claim, business function, and complete in a single transaction for at-most-once semantics
+# ADR-0053: Run claim, business function, and complete in a single transaction for at-most-once semantics
 
 ## Status
 

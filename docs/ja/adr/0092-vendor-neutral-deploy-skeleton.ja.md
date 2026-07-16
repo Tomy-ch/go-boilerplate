@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [deploy]
 ---
 
-# ADR-0091: デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はテンプレート；レジストリは固定しない）
+# ADR-0092: デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はテンプレート；レジストリは固定しない）
 
-English canonical: [0091-vendor-neutral-deploy-skeleton.md](../../adr/0091-vendor-neutral-deploy-skeleton.md)
+English canonical: [0092-vendor-neutral-deploy-skeleton.md](../../adr/0092-vendor-neutral-deploy-skeleton.md)
 
 ## ステータス
 
@@ -25,7 +25,7 @@ accepted
 
 デプロイワークフロー（`deploy-app.yaml`）を**ベンダー中立のスケルトン**として構成する:
 
-- **実装済み**（変更不要）: イメージのビルド・タグ付け・キャッシュ（`docker/build-push-action`）、cosign 署名、ビルドプロベナンスアテステーション、SBOM アテステーション（[ADR-0090](0090-release-image-supply-chain.ja.md) 参照）。
+- **実装済み**（変更不要）: イメージのビルド・タグ付け・キャッシュ（`docker/build-push-action`）、cosign 署名、ビルドプロベナンスアテステーション、SBOM アテステーション（[ADR-0091](0091-release-image-supply-chain.ja.md) 参照）。
 - **テンプレートスタブ**（セットアップチームが置き換える必要あり）:
   - `Define registry` / `Login to registry` — レジストリの選択と認証。`meta_registry` 出力変数はすべての後続ステップから参照されるため、ここを 1 か所置き換えるだけで全体に反映される。現状は例示として `ghcr.io` をデフォルトとしている。
   - `Configure cloud credentials` — OIDC / Workload Identity / Federated Identity のセットアップ。

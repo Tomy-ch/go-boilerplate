@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [ci, codegen]
 ---
 
-# ADR-0078: Generated-artifact drift gate + release-branch-centralized auto-generation bot
+# ADR-0079: Generated-artifact drift gate + release-branch-centralized auto-generation bot
 
 ## Status
 

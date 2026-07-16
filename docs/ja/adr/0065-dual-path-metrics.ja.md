@@ -5,9 +5,9 @@ deciders: [maintainers]
 tags: [observability, metrics]
 ---
 
-# ADR-0064: メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ
+# ADR-0065: メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ
 
-English canonical: [0064-dual-path-metrics.md](../../adr/0064-dual-path-metrics.md)
+English canonical: [0065-dual-path-metrics.md](../../adr/0065-dual-path-metrics.md)
 
 ## ステータス
 
@@ -82,7 +82,7 @@ OTLP へプッシュする）か、Prometheus スクレイプエンドポイン�
 ## 補足
 
 - 出典: `docs/design/observability.md` §3.2「Two metric exit paths」、146–153 行目のテーブル。
-- 親: [ADR-0061](0061-config-driven-observability-gating.ja.md)（設定駆動ゲーティング）。
+- 親: [ADR-0062](0062-config-driven-observability-gating.ja.md)（設定駆動ゲーティング）。
 - 実装: `internal/observability/metrics/buildinfo/`（buildinfo コレクター）、
   `internal/observability/metrics/queue/`（キュー深度コレクター）、
   `outbox_metrics.go`・`worker_metrics.go`・`idempotency_metrics.go`・

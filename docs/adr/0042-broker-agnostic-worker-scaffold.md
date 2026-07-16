@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [worker, async, adapter]
 ---
 
-# ADR-0041: Broker-agnostic pull-ack worker scaffold
+# ADR-0042: Broker-agnostic pull-ack worker scaffold
 
 ## Status
 
@@ -47,7 +47,7 @@ Provide a **broker-agnostic, pull-ack worker scaffold**:
 ### Negative Consequences
 
 - The port is deliberately narrow (pull-ack only); push and streaming-log models do not fit
-  and are excluded (recorded separately as ADR-0042, materialized in Phase 4).
+  and are excluded (recorded separately as ADR-0043, materialized in Phase 4).
 - Each new broker requires an adapter implementing the seam.
 
 ## Alternatives Considered
@@ -62,10 +62,10 @@ extension of this port.
 
 Rejected: no precedent in this repo, and with a single binary, module separation is
 insufficient. Not importing an adapter from `cmd` achieves isolation without tags (see
-[ADR-0043](0043-sqs-adapter-opt-in.md)).
+[ADR-0044](0044-sqs-adapter-opt-in.md)).
 
 ## Notes
 
-- Push / streaming exclusion: ADR-0042 (Phase 4). SQS adapter opt-in isolation: [ADR-0043](0043-sqs-adapter-opt-in.md).
+- Push / streaming exclusion: ADR-0043 (Phase 4). SQS adapter opt-in isolation: [ADR-0044](0044-sqs-adapter-opt-in.md).
 - Design reference: `docs/design/worker.md`.
 - Migrated from `docs/decisions.md` (§ "Why a broker-agnostic worker scaffold").

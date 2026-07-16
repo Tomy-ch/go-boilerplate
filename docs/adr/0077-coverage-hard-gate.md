@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [ci, testing]
 ---
 
-# ADR-0076: Total coverage 90% is a CI hard gate, with an exception-governance path
+# ADR-0077: Total coverage 90% is a CI hard gate, with an exception-governance path
 
 ## Status
 

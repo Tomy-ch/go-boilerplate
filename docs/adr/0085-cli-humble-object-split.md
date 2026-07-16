@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [cli, architecture]
 ---
 
-# ADR-0084: CLI humble-object split (thin cmd/ shell + testable internal/cli core)
+# ADR-0085: CLI humble-object split (thin cmd/ shell + testable internal/cli core)
 
 ## Status
 
@@ -70,7 +70,7 @@ grow, this tends toward integration-test-only coverage or test-skipped code path
 
 Avoids Cobra registration but requires distributing multiple binaries, complicates
 deployment, and prevents sharing initialization code (config loading, DI). Inconsistent
-with the single-binary decision (see [ADR-0085](0085-single-multi-command-binary.md)).
+with the single-binary decision (see [ADR-0086](0086-single-multi-command-binary.md)).
 
 ## Notes
 
