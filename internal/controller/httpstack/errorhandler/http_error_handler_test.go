@@ -220,6 +220,49 @@ func Test_handleHTTPError(t *testing.T) {
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 		})
 
+		t.Run("details付きエラーはpolicyが拒否するとwireからdetailsが落ちる", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
+			handleHTTPError(c, stubDetailPolicy{allow: false}, logger, lf, obsCfg, metaErr)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			_, hasDetails := got["details"]
+			assert.False(t, hasDetails)
+		})
+
+		t.Run("details付きエラーはpolicyが許可するとwireにdetailsが載る", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
+			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, metaErr)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			assert.Equal(t, []any{"firstName"}, got["details"])
+		})
+
 		t.Run("二重呼び出しでもレスポンスボディは1つだけ書かれる", func(t *testing.T) {
 			t.Parallel()
 

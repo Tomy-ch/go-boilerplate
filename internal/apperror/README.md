@@ -135,7 +135,7 @@ if meta, ok := apperror.MetaFrom(err); ok { ... meta.Code() / meta.Message() / m
 
 Rules:
 
-- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0038](../../docs/adr/0038-apperror-protocol-agnostic-errors.md) intact (see [ADR-0039](../../docs/adr/0039-error-metadata-code-message-details.md)).
+- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0039](../../docs/adr/0039-apperror-protocol-agnostic-errors.md) intact (see [ADR-0040](../../docs/adr/0040-error-metadata-code-message-details.md)).
 - Fields are unexported; `Meta` is built only via `NewMeta(code, details...)` (which defensively copies `details`). Everything is optional — empty values fall back to the controller's default `code` / `message` for the resolved status.
 - The user-facing message can be set only through the explicit, greppable `WithMessage` — its source of truth is the controller catalog, so **only the controller layer may call it**; Domain / Usecase set `code` / `details` only.
 - `Details` values are exposed verbatim in the API response. Put **public-safe identifiers only** (e.g., invalid field names) — never reason texts or raw input values. Reason texts belong in the wrapped error message, which stays log-only.

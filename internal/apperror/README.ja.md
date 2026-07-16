@@ -142,7 +142,7 @@ if meta, ok := apperror.MetaFrom(err); ok { ... meta.Code() / meta.Message() / m
 
 ルール:
 
-- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0038](../../docs/adr/0038-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0039](../../docs/adr/0039-error-metadata-code-message-details.md) 参照）。
+- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0039](../../docs/adr/0039-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0040](../../docs/adr/0040-error-metadata-code-message-details.md) 参照）。
 - フィールドは非公開で、`Meta` の構築は `NewMeta(code, details...)` 経由のみです（`details` は防御的コピーされます）。全項目任意で、空の値は解決されたステータスに対する controller の既定 `code` / `message` にフォールバックします。
 - 利用者向け文言は明示的で grep 可能な `WithMessage` を通してのみ設定できます。文言の正は controller のカタログにあるため、**呼び出しは controller 層に限ります**。Domain / Usecase は `code` / `details` のみを設定してください。
 - `Details` の値は API レスポンスにそのまま公開されます。**公開して安全な識別子のみ**（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはいけません。理由文はラップしたエラーメッセージ側に残し、ログ専用とします。
