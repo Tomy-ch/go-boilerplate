@@ -76,6 +76,7 @@ All errors are returned as JSON using `response.HTTPErrorResponse`:
 
 - `requestId` is always attached (extracted via `requestid.GetRequestIDFromResponse`)
 - `Details` and `Internal` error are included when available
+- When the error carries an `apperror.Meta`, its `code` / `message` / `details` override the status defaults inside `NewHTTPErrorFromAppError` (the HTTP status never changes) — see the `apperror.Meta` Overrides section of [`controller/error/response/README.md`](../../error/response/README.md)
 - `Internal` error and stack trace are logged but **not returned to the client**
 
 ## Logging

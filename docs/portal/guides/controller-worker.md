@@ -49,4 +49,8 @@ The engine is **completed against the in-memory fake** (`internal/usecase/bounda
 
 The SQS reference adapter (`internal/infrastructure/queue/sqs`) is **not wired by default** so `aws-sdk-go-v2` stays out of the shipped binary.
 
+## Config clamping (safe defaults, not silent)
+
+`Settings.normalize()` (`settings.go`) **clamps** out-of-range engine-core values to safe defaults rather than failing startup — a resilience choice so a misconfigured worker still runs instead of crash-looping. Clamped fields: `Concurrency` / `MaxInFlight` / `BatchSize` (coerced into `Concurrency <= MaxInFlight` and `1 <= BatchSize <= MaxInFlight`), `DrainTimeout`, `CircuitHalfOpenProbe`, `CircuitOpenBackoffInitial` / `CircuitOpenBackoffMax` (so an enabled breaker never degenerates to a zero cooldown), `ProgressStaleAfter`, and `NackBackoffInitial` / `NackBackoffMax`. The `WORKER_*` env vars carry non-zero `envDefault`s, so a clamp only triggers when an operator explicitly sets `0` / a negative value. Documenting it here (and in the setup review, see [`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md)) keeps the clamping reviewable rather than silent.
+
 > Design deep-dive (state transitions / implementation map / glossary): [docs/design/worker.md](../../../docs/design/worker.md).

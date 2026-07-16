@@ -214,6 +214,23 @@ if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
 }
 ```
 
+**ユーザーが修正できる入力フィールド**については、最初の失敗で止めない: 全フィールドを
+検証し、フィールドごとのエラーを結合した上で、不正フィールドの識別子を
+`apperror.WithDetails` で付与する。これにより API は不正フィールドを一度にすべて報告できる
+（[`internal/apperror/README.ja.md`](../apperror/README.ja.md) のエラーメタ情報節を参照）:
+
+```go
+errs = append(errs, xerrors.Wrap(ErrInvalidEmail, msg))
+fields = append(fields, FieldEmail) // API プロパティ名と一致する定数
+...
+return apperror.WithDetails(xerrors.Join(errs...), fields...)
+```
+
+フィールド識別子は API リクエストのプロパティ名と一致するドメイン定数
+（`FieldEmail = "email"`）で、理由文はラップしたエラーメッセージ側に残す（ログ専用）。
+サーバ内部の不変条件（id・タイムスタンプ・パスワードハッシュ）は first-error return の
+まま — ユーザーが修正できる入力ではないため。
+
 ### 不変条件（Domain Invariant）
 
 エンティティは **Invariantを常に満たす**。

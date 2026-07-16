@@ -214,6 +214,23 @@ if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
 }
 ```
 
+For **user-correctable input fields**, do not stop at the first failure: validate all
+fields, join the per-field errors, and attach the invalid field identifiers via
+`apperror.WithDetails` so the API can report every invalid field at once
+(see the Error Metadata section of [`internal/apperror/README.md`](../apperror/README.md)):
+
+```go
+errs = append(errs, xerrors.Wrap(ErrInvalidEmail, msg))
+fields = append(fields, FieldEmail) // constant matching the API property name
+...
+return apperror.WithDetails(xerrors.Join(errs...), fields...)
+```
+
+The field identifiers are domain constants (`FieldEmail = "email"`) matching the API
+request property names; the reason text stays in the wrapped error message (log-only).
+Server-internal invariants (id, timestamps, password hash) keep first-error return —
+they are not user-correctable input.
+
 ### Invariants (Domain Invariant)
 
 Entities must **always satisfy invariants**.
