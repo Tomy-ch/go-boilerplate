@@ -5,9 +5,9 @@ single responsibility each fulfils. Unlike an ADR, this list is *expected to dri
 `go.mod` — it is a reference, not an immutable record.
 
 - The **policy** for adopting a dependency (one responsibility = one concern) is a decision:
-  [`ADR-0065`](../adr/0065-library-selection-policy.md).
+  [`ADR-0066`](../adr/0066-library-selection-policy.md).
 - **Bridge / instrumentation** libraries that straddle two upstreams are accepted as bounded
-  exceptions to that policy: [`ADR-0066`](../adr/0066-bridge-instrumentation-exceptions.md).
+  exceptions to that policy: [`ADR-0067`](../adr/0067-bridge-instrumentation-exceptions.md).
 
 > Keep this table in sync with `go.mod` (`require` block, non-indirect entries). Versions
 > below are a snapshot and are not authoritative — `go.mod` is.
@@ -33,7 +33,7 @@ single responsibility each fulfils. Unlike an ADR, this list is *expected to dri
 | DI / logging / CLI | `spf13/cobra` | CLI command framework |
 | Testing | `go.uber.org/mock` | Mock generation runtime |
 | Testing | `stretchr/testify` | Assertions |
-| Messaging / worker | `aws/aws-sdk-go-v2` | AWS API client core (worker adapter, opt-in — see [ADR-0041](../adr/0041-sqs-adapter-opt-in.md)) |
+| Messaging / worker | `aws/aws-sdk-go-v2` | AWS API client core (worker adapter, opt-in — see [ADR-0042](../adr/0042-sqs-adapter-opt-in.md)) |
 | Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS client (pull-ack worker) |
 | Metrics exposition | `prometheus/client_golang` | Prometheus-format metrics endpoint + custom collectors |
 | Metrics exposition | `prometheus/client_model` | Prometheus metric data model (shared types) |
@@ -50,13 +50,13 @@ The otel core group includes pre-v1.0 (`v0.x`) modules (the OTLP log exporters a
 `sdk/log`), but each couples to a **single** upstream (OpenTelemetry itself), not two, so
 they are in-policy and not treated as exceptions. The OTLP exporters are constructed
 explicitly from typed `OBS_*` config rather than via `contrib/exporters/autoexport`
-(see [ADR-0059](../adr/0059-config-driven-observability-gating.md)).
+(see [ADR-0060](../adr/0060-config-driven-observability-gating.md)).
 
 ## Bridge / instrumentation exceptions
 
 These stand between **two independently-versioned upstreams** (a framework/library ×
 OpenTelemetry), so they fall outside "one concern, one upstream" and are accepted as bounded
-exceptions per [ADR-0066](../adr/0066-bridge-instrumentation-exceptions.md).
+exceptions per [ADR-0067](../adr/0067-bridge-instrumentation-exceptions.md).
 
 | Library | Coupling | Role |
 | --- | --- | --- |
@@ -72,5 +72,5 @@ exceptions per [ADR-0066](../adr/0066-bridge-instrumentation-exceptions.md).
 
 - Previously the dependency table lived inline in `docs/decisions.md`; it drifted (the
   `net/http/otelhttp` instrumentation and `otel/sdk/log` SDK were missing). Splitting the
-  *inventory* (this file) from the *policy* ([ADR-0065](../adr/0065-library-selection-policy.md))
+  *inventory* (this file) from the *policy* ([ADR-0066](../adr/0066-library-selection-policy.md))
   is why: the immutable decision no longer carries a list that must track `go.mod`.

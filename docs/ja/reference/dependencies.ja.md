@@ -7,9 +7,9 @@ English: [dependencies.md](../../reference/dependencies.md)
 参照であり、不変の記録ではありません。
 
 - 依存採用の**ポリシー**（一責務 = 一関心）は決定であり ADR です:
-  [`ADR-0065`](../adr/0065-library-selection-policy.ja.md)。
+  [`ADR-0066`](../adr/0066-library-selection-policy.ja.md)。
 - 2 つの上流にまたがる **bridge / instrumentation** ライブラリは、そのポリシーの
-  境界のある例外として受容します: [`ADR-0066`](../adr/0066-bridge-instrumentation-exceptions.ja.md)。
+  境界のある例外として受容します: [`ADR-0067`](../adr/0067-bridge-instrumentation-exceptions.ja.md)。
 
 > この表は `go.mod`（`require` ブロックの非 indirect エントリ）と同期を保つこと。以下の
 > バージョンはスナップショットであり正ではありません（正は `go.mod`）。
@@ -35,7 +35,7 @@ English: [dependencies.md](../../reference/dependencies.md)
 | DI / logging / CLI | `spf13/cobra` | CLI コマンドフレームワーク |
 | Testing | `go.uber.org/mock` | モック生成ランタイム |
 | Testing | `stretchr/testify` | アサーション |
-| Messaging / worker | `aws/aws-sdk-go-v2` | AWS API クライアントコア（worker アダプタ、opt-in — [ADR-0041](../adr/0041-sqs-adapter-opt-in.ja.md) 参照） |
+| Messaging / worker | `aws/aws-sdk-go-v2` | AWS API クライアントコア（worker アダプタ、opt-in — [ADR-0042](../adr/0042-sqs-adapter-opt-in.ja.md) 参照） |
 | Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS クライアント（pull-ack worker） |
 | Metrics exposition | `prometheus/client_golang` | Prometheus 形式メトリクスエンドポイント + カスタムコレクタ |
 | Metrics exposition | `prometheus/client_model` | Prometheus メトリクスデータモデル（共有型） |
@@ -51,12 +51,12 @@ English: [dependencies.md](../../reference/dependencies.md)
 otel core グループには pre-v1.0（`v0.x`）モジュール（OTLP ログエクスポータと `sdk/log`）が
 含まれますが、いずれも**単一**の上流（OpenTelemetry 自体）に結合しており 2 つではないため、
 ポリシー内で例外扱いしません。OTLP エクスポータは `contrib/exporters/autoexport` ではなく
-typed な `OBS_*` config から明示的に構築されます（[ADR-0059](../adr/0059-config-driven-observability-gating.ja.md) 参照）。
+typed な `OBS_*` config から明示的に構築されます（[ADR-0060](../adr/0060-config-driven-observability-gating.ja.md) 参照）。
 
 ## bridge / instrumentation 例外
 
 以下は**独立にバージョニングされる 2 つの上流**（フレームワーク/ライブラリ × OpenTelemetry）に
-またがるため「一関心・一上流」から外れ、[ADR-0066](../adr/0066-bridge-instrumentation-exceptions.ja.md)
+またがるため「一関心・一上流」から外れ、[ADR-0067](../adr/0067-bridge-instrumentation-exceptions.ja.md)
 に基づき境界のある例外として受容します。
 
 | ライブラリ | 結合 | 役割 |
@@ -73,5 +73,5 @@ typed な `OBS_*` config から明示的に構築されます（[ADR-0059](../ad
 
 - 以前この依存表は `docs/decisions.md` にインラインでしたが、ドリフトしていました
   （`net/http/otelhttp` 計装と `otel/sdk/log` SDK が欠落）。**目録**（本ファイル）を
-  **ポリシー**（[ADR-0065](../adr/0065-library-selection-policy.ja.md)）から分離した理由がこれで、
+  **ポリシー**（[ADR-0066](../adr/0066-library-selection-policy.ja.md)）から分離した理由がこれで、
   不変の決定が `go.mod` を追う一覧を抱えなくて済むようになりました。

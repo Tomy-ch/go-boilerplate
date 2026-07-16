@@ -133,77 +133,78 @@ meta:
           - 0036-immutable-fail-fast-config
           - 0037-embedded-self-contained-binary
           - 0038-apperror-protocol-agnostic-errors
+          - 0039-error-metadata-code-message-details
       - title: Async Subsystems (worker / outbox / idempotency / job)
         items:
-          - 0039-broker-agnostic-worker-scaffold
-          - 0040-out-of-scope-push-streaming-brokers
-          - 0041-sqs-adapter-opt-in
-          - 0042-transactional-outbox
-          - 0043-at-least-once-outbox-poll
-          - 0044-skip-locked-outbox-relay
-          - 0045-message-id-idempotency-propagation
-          - 0046-outbox-dead-after-max-attempts
-          - 0047-outbox-retention-gc
-          - 0048-publisher-http-profile-isolation
-          - 0049-relay-resident-gc-oneshot
-          - 0050-single-tx-at-most-once-idempotency
-          - 0051-idempotency-scope-required
-          - 0052-idempotency-fixed-ttl
-          - 0053-idempotency-response-persistence
-          - 0054-idempotency-gc-separate-job
-          - 0055-idempotency-orthogonal-concerns
-          - 0056-job-fresh-fx-app-per-run
-          - 0057-job-no-worker-machinery
-          - 0058-job-explicit-registration
+          - 0040-broker-agnostic-worker-scaffold
+          - 0041-out-of-scope-push-streaming-brokers
+          - 0042-sqs-adapter-opt-in
+          - 0043-transactional-outbox
+          - 0044-at-least-once-outbox-poll
+          - 0045-skip-locked-outbox-relay
+          - 0046-message-id-idempotency-propagation
+          - 0047-outbox-dead-after-max-attempts
+          - 0048-outbox-retention-gc
+          - 0049-publisher-http-profile-isolation
+          - 0050-relay-resident-gc-oneshot
+          - 0051-single-tx-at-most-once-idempotency
+          - 0052-idempotency-scope-required
+          - 0053-idempotency-fixed-ttl
+          - 0054-idempotency-response-persistence
+          - 0055-idempotency-gc-separate-job
+          - 0056-idempotency-orthogonal-concerns
+          - 0057-job-fresh-fx-app-per-run
+          - 0058-job-no-worker-machinery
+          - 0059-job-explicit-registration
       - title: Observability
         items:
-          - 0059-config-driven-observability-gating
-          - 0060-vendor-neutral-otlp-export
-          - 0061-official-otel-semconv
-          - 0062-dual-path-metrics
-          - 0063-lifecycle-independent-provider
-          - 0064-fixed-default-sampling
+          - 0060-config-driven-observability-gating
+          - 0061-vendor-neutral-otlp-export
+          - 0062-official-otel-semconv
+          - 0063-dual-path-metrics
+          - 0064-lifecycle-independent-provider
+          - 0065-fixed-default-sampling
       - title: Libraries
         items:
-          - 0065-library-selection-policy
-          - 0066-bridge-instrumentation-exceptions
+          - 0066-library-selection-policy
+          - 0067-bridge-instrumentation-exceptions
       - title: Toolchain / Build
         items:
-          - 0067-containerized-pinned-toolchain
-          - 0068-mise-ssot-drift-gate
-          - 0069-make-single-entrypoint
-          - 0070-scripts-in-node-go
-          - 0071-docker-compose-dev-environment
+          - 0068-containerized-pinned-toolchain
+          - 0069-mise-ssot-drift-gate
+          - 0070-make-single-entrypoint
+          - 0071-scripts-in-node-go
+          - 0072-docker-compose-dev-environment
       - title: CI / Quality Gates
         items:
-          - 0072-two-layer-golangci-config
-          - 0073-local-hooks-mirror-ci
-          - 0074-coverage-hard-gate
-          - 0075-ci-real-graph-boot-check
-          - 0076-generated-artifact-drift-gate
-          - 0077-multi-layer-security-scanning
-          - 0078-sha-pinned-actions
+          - 0073-two-layer-golangci-config
+          - 0074-local-hooks-mirror-ci
+          - 0075-coverage-hard-gate
+          - 0076-ci-real-graph-boot-check
+          - 0077-generated-artifact-drift-gate
+          - 0078-multi-layer-security-scanning
+          - 0079-sha-pinned-actions
       - title: Development Process
         items:
-          - 0079-rollback-integration-tests
-          - 0080-multi-model-adversarial-review
-          - 0081-lean-a-spec-scaffold
+          - 0080-rollback-integration-tests
+          - 0081-multi-model-adversarial-review
+          - 0082-lean-a-spec-scaffold
       - title: Binary / Image / Deploy
         items:
-          - 0082-cli-humble-object-split
-          - 0083-single-multi-command-binary
-          - 0084-single-runtime-image
-          - 0085-hardened-alpine-runtime
-          - 0086-per-environment-images
-          - 0087-predeploy-oneshot-migration
-          - 0088-release-image-supply-chain
-          - 0089-vendor-neutral-deploy-skeleton
-          - 0090-docs-via-github-pages
+          - 0083-cli-humble-object-split
+          - 0084-single-multi-command-binary
+          - 0085-single-runtime-image
+          - 0086-hardened-alpine-runtime
+          - 0087-per-environment-images
+          - 0088-predeploy-oneshot-migration
+          - 0089-release-image-supply-chain
+          - 0090-vendor-neutral-deploy-skeleton
+          - 0091-docs-via-github-pages
       - title: Project Exclusions
         items:
-          - 0091-no-in-app-rate-limiter
-          - 0092-scheduled-job-concurrency-delegated
-          - 0093-no-generic-cache-abstraction
+          - 0092-no-in-app-rate-limiter
+          - 0093-scheduled-job-concurrency-delegated
+          - 0094-no-generic-cache-abstraction
 
   # auto-Title-Case で汚くなる id の表示名を上書きする (略語 / 改名のみ用途)。
   section_titles:

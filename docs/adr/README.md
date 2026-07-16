@@ -82,63 +82,63 @@ do X") are tagged `setup-review`.
 | [0036](0036-immutable-fail-fast-config.md) | Config is immutable, loaded once at startup, fail-fast | accepted |
 | [0037](0037-embedded-self-contained-binary.md) | go:embed bundles config (.env) and migrations for a self-contained binary | accepted |
 | [0038](0038-apperror-protocol-agnostic-errors.md) | Protocol-agnostic aggregated error classification (apperror) | accepted |
-| [0039](0039-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
-| [0040](0040-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
-| [0041](0041-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | accepted |
-| [0042](0042-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
-| [0043](0043-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
-| [0044](0044-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
-| [0045](0045-message-id-idempotency-propagation.md) | Propagate the outbox message_id as the receiver's Idempotency-Key | accepted |
-| [0046](0046-outbox-dead-after-max-attempts.md) | MaxAttempts = 10, then the message is dead (terminal until manual replay) | accepted |
-| [0047](0047-outbox-retention-gc.md) | 7-day retention GC of published rows (batches of 10,000) | accepted |
-| [0048](0048-publisher-http-profile-isolation.md) | Isolate the publisher's non-standard HTTP profile inside the relay | accepted |
-| [0049](0049-relay-resident-gc-oneshot.md) | The relay is a resident process; GC is a one-shot cron job | accepted |
-| [0050](0050-single-tx-at-most-once-idempotency.md) | Run claim, business function, and complete in a single transaction for at-most-once semantics | accepted |
-| [0051](0051-idempotency-scope-required.md) | Every Store call requires an explicit scope to prevent cross-user key collisions | accepted |
-| [0052](0052-idempotency-fixed-ttl.md) | Fix idempotency key TTL at 24 hours with no per-route configuration | accepted |
-| [0053](0053-idempotency-response-persistence.md) | Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff) | accepted |
-| [0054](0054-idempotency-gc-separate-job.md) | Run idempotency key garbage collection as a separate one-shot CLI job | accepted |
-| [0055](0055-idempotency-orthogonal-concerns.md) | Keep idempotency orthogonal to optimistic locking and rate limiting | accepted (exclusion) |
-| [0056](0056-job-fresh-fx-app-per-run.md) | Each job launch constructs a fresh fx.App (one-shot lifecycle) | accepted |
-| [0057](0057-job-no-worker-machinery.md) | Jobs deliberately have no broker, circuit breaker, drain, or health machinery | accepted (exclusion) |
-| [0058](0058-job-explicit-registration.md) | Jobs are explicitly registered (no auto-discovery) | accepted |
-| [0059](0059-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
-| [0060](0060-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
-| [0061](0061-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |
-| [0062](0062-dual-path-metrics.md) | Metrics travel two paths — OTLP push and Prometheus scrape | accepted |
-| [0063](0063-lifecycle-independent-provider.md) | Observability providers are lifecycle-independent (ProviderShutdowner) | accepted |
-| [0064](0064-fixed-default-sampling.md) | Fix the SDK default sampling; do not expose sampling as an env knob | accepted (exclusion) |
-| [0065](0065-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
-| [0066](0066-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
-| [0067](0067-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
-| [0068](0068-mise-ssot-drift-gate.md) | mise.toml is the single source of truth; versions propagate downstream with a CI drift gate | accepted |
-| [0069](0069-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
-| [0070](0070-scripts-in-node-go.md) | Operational scripts live in scripts/ as Node (.mjs) or Go; shell scripting is not used | accepted |
-| [0071](0071-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
-| [0072](0072-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
-| [0073](0073-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
-| [0074](0074-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
-| [0075](0075-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
-| [0076](0076-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
-| [0077](0077-multi-layer-security-scanning.md) | Multi-layer security scanning (reachability-filtered govulncheck + scheduled CodeQL SAST + secret + fs scans) | accepted |
-| [0078](0078-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
-| [0079](0079-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
-| [0080](0080-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
-| [0081](0081-lean-a-spec-scaffold.md) | Scaffold only domain and usecase from spec files; derive controller and infra from generated code | accepted |
-| [0082](0082-cli-humble-object-split.md) | CLI humble-object split (thin cmd/ shell + testable internal/cli core) | accepted |
-| [0083](0083-single-multi-command-binary.md) | All roles are one multi-command binary | accepted |
-| [0084](0084-single-runtime-image.md) | A single runtime image with command override (no purpose-specific images) | accepted |
-| [0085](0085-hardened-alpine-runtime.md) | Use a hardened-alpine runtime base; do NOT use distroless/scratch | accepted (exclusion) |
-| [0086](0086-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
-| [0087](0087-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
-| [0088](0088-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
-| [0089](0089-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a template; registry not fixed) | accepted |
-| [0090](0090-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
-| [0091](0091-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
-| [0092](0092-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
-| [0093](0093-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
-| [0094](0094-outbox-relay-hardening-delegated.md) | Delegate outbox-relay duplicate-window hardening (multi-layer lease redesign) to production copies | accepted (exclusion) |
-| [0095](0095-error-metadata-code-message-details.md) | Protocol-neutral error metadata (code / message / details) on top of apperror | accepted |
+| [0039](0039-error-metadata-code-message-details.md) | Protocol-neutral error metadata (code / message / details) on top of apperror | accepted |
+| [0040](0040-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
+| [0041](0041-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
+| [0042](0042-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | accepted |
+| [0043](0043-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
+| [0044](0044-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
+| [0045](0045-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
+| [0046](0046-message-id-idempotency-propagation.md) | Propagate the outbox message_id as the receiver's Idempotency-Key | accepted |
+| [0047](0047-outbox-dead-after-max-attempts.md) | MaxAttempts = 10, then the message is dead (terminal until manual replay) | accepted |
+| [0048](0048-outbox-retention-gc.md) | 7-day retention GC of published rows (batches of 10,000) | accepted |
+| [0049](0049-publisher-http-profile-isolation.md) | Isolate the publisher's non-standard HTTP profile inside the relay | accepted |
+| [0050](0050-relay-resident-gc-oneshot.md) | The relay is a resident process; GC is a one-shot cron job | accepted |
+| [0051](0051-single-tx-at-most-once-idempotency.md) | Run claim, business function, and complete in a single transaction for at-most-once semantics | accepted |
+| [0052](0052-idempotency-scope-required.md) | Every Store call requires an explicit scope to prevent cross-user key collisions | accepted |
+| [0053](0053-idempotency-fixed-ttl.md) | Fix idempotency key TTL at 24 hours with no per-route configuration | accepted |
+| [0054](0054-idempotency-response-persistence.md) | Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff) | accepted |
+| [0055](0055-idempotency-gc-separate-job.md) | Run idempotency key garbage collection as a separate one-shot CLI job | accepted |
+| [0056](0056-idempotency-orthogonal-concerns.md) | Keep idempotency orthogonal to optimistic locking and rate limiting | accepted (exclusion) |
+| [0057](0057-job-fresh-fx-app-per-run.md) | Each job launch constructs a fresh fx.App (one-shot lifecycle) | accepted |
+| [0058](0058-job-no-worker-machinery.md) | Jobs deliberately have no broker, circuit breaker, drain, or health machinery | accepted (exclusion) |
+| [0059](0059-job-explicit-registration.md) | Jobs are explicitly registered (no auto-discovery) | accepted |
+| [0060](0060-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
+| [0061](0061-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
+| [0062](0062-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |
+| [0063](0063-dual-path-metrics.md) | Metrics travel two paths — OTLP push and Prometheus scrape | accepted |
+| [0064](0064-lifecycle-independent-provider.md) | Observability providers are lifecycle-independent (ProviderShutdowner) | accepted |
+| [0065](0065-fixed-default-sampling.md) | Fix the SDK default sampling; do not expose sampling as an env knob | accepted (exclusion) |
+| [0066](0066-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
+| [0067](0067-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
+| [0068](0068-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
+| [0069](0069-mise-ssot-drift-gate.md) | mise.toml is the single source of truth; versions propagate downstream with a CI drift gate | accepted |
+| [0070](0070-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
+| [0071](0071-scripts-in-node-go.md) | Operational scripts live in scripts/ as Node (.mjs) or Go; shell scripting is not used | accepted |
+| [0072](0072-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
+| [0073](0073-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
+| [0074](0074-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
+| [0075](0075-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
+| [0076](0076-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
+| [0077](0077-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
+| [0078](0078-multi-layer-security-scanning.md) | Multi-layer security scanning (reachability-filtered govulncheck + scheduled CodeQL SAST + secret + fs scans) | accepted |
+| [0079](0079-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
+| [0080](0080-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
+| [0081](0081-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
+| [0082](0082-lean-a-spec-scaffold.md) | Scaffold only domain and usecase from spec files; derive controller and infra from generated code | accepted |
+| [0083](0083-cli-humble-object-split.md) | CLI humble-object split (thin cmd/ shell + testable internal/cli core) | accepted |
+| [0084](0084-single-multi-command-binary.md) | All roles are one multi-command binary | accepted |
+| [0085](0085-single-runtime-image.md) | A single runtime image with command override (no purpose-specific images) | accepted |
+| [0086](0086-hardened-alpine-runtime.md) | Use a hardened-alpine runtime base; do NOT use distroless/scratch | accepted (exclusion) |
+| [0087](0087-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
+| [0088](0088-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
+| [0089](0089-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
+| [0090](0090-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a template; registry not fixed) | accepted |
+| [0091](0091-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
+| [0092](0092-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
+| [0093](0093-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
+| [0094](0094-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
+| [0095](0095-outbox-relay-hardening-delegated.md) | Delegate outbox-relay duplicate-window hardening (multi-layer lease redesign) to production copies | accepted (exclusion) |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

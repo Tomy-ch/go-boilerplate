@@ -73,63 +73,63 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0036](0036-immutable-fail-fast-config.ja.md) | 設定は不変、起動時に 1 回だけロード、フェイルファスト | accepted |
 | [0037](0037-embedded-self-contained-binary.ja.md) | go:embed で設定（.env）とマイグレーションをバンドルし、自己完結型バイナリを実現する | accepted |
 | [0038](0038-apperror-protocol-agnostic-errors.ja.md) | プロトコル非依存の集約エラー分類 (apperror) | accepted |
-| [0039](0039-broker-agnostic-worker-scaffold.ja.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
-| [0040](0040-out-of-scope-push-streaming-brokers.ja.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
-| [0041](0041-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | accepted |
-| [0042](0042-transactional-outbox.ja.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
-| [0043](0043-at-least-once-outbox-poll.ja.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
-| [0044](0044-skip-locked-outbox-relay.ja.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |
-| [0045](0045-message-id-idempotency-propagation.ja.md) | アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する | accepted |
-| [0046](0046-outbox-dead-after-max-attempts.ja.md) | MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端） | accepted |
-| [0047](0047-outbox-retention-gc.ja.md) | 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ） | accepted |
-| [0048](0048-publisher-http-profile-isolation.ja.md) | パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する | accepted |
-| [0049](0049-relay-resident-gc-oneshot.ja.md) | リレーは常駐プロセス、GC はワンショット cron ジョブ | accepted |
-| [0050](0050-single-tx-at-most-once-idempotency.ja.md) | claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する | accepted |
-| [0051](0051-idempotency-scope-required.ja.md) | クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする | accepted |
-| [0052](0052-idempotency-fixed-ttl.ja.md) | 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない | accepted |
-| [0053](0053-idempotency-response-persistence.ja.md) | 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容） | accepted |
-| [0054](0054-idempotency-gc-separate-job.ja.md) | 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する | accepted |
-| [0055](0055-idempotency-orthogonal-concerns.ja.md) | 冪等性をオプティミスティックロックおよびレート制限と直交に保つ | accepted (exclusion) |
-| [0056](0056-job-fresh-fx-app-per-run.ja.md) | ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル） | accepted |
-| [0057](0057-job-no-worker-machinery.ja.md) | ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない | accepted (exclusion) |
-| [0058](0058-job-explicit-registration.ja.md) | Job は明示的に登録する（自動検出なし） | accepted |
-| [0059](0059-config-driven-observability-gating.ja.md) | 設定駆動によるオブザーバビリティゲーティング | accepted |
-| [0060](0060-vendor-neutral-otlp-export.ja.md) | ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲） | accepted |
-| [0061](0061-official-otel-semconv.ja.md) | 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない | accepted (exclusion) |
-| [0062](0062-dual-path-metrics.ja.md) | メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ | accepted |
-| [0063](0063-lifecycle-independent-provider.ja.md) | オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner） | accepted |
-| [0064](0064-fixed-default-sampling.ja.md) | SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない | accepted (exclusion) |
-| [0065](0065-library-selection-policy.ja.md) | 単一責任のライブラリ選定ポリシー | accepted |
-| [0066](0066-bridge-instrumentation-exceptions.ja.md) | ブリッジ / 計装ライブラリを有界な SRP 例外として認める | accepted |
-| [0067](0067-containerized-pinned-toolchain.ja.md) | 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する | accepted |
-| [0068](0068-mise-ssot-drift-gate.ja.md) | mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する | accepted |
-| [0069](0069-make-single-entrypoint.ja.md) | Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する | accepted |
-| [0070](0070-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない | accepted |
-| [0071](0071-docker-compose-dev-environment.ja.md) | ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する | accepted |
-| [0072](0072-two-layer-golangci-config.ja.md) | 2 層の golangci 設定——最小デフォルトと完全な権威ゲート | accepted |
-| [0073](0073-local-hooks-mirror-ci.ja.md) | ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証） | accepted |
-| [0074](0074-coverage-hard-gate.ja.md) | 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける | accepted |
-| [0075](0075-ci-real-graph-boot-check.ja.md) | CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証） | accepted |
-| [0076](0076-generated-artifact-drift-gate.ja.md) | 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット | accepted |
-| [0077](0077-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン（到達可能性フィルタ付き govulncheck + スケジュール CodeQL SAST + シークレット + FS スキャン） | accepted |
-| [0078](0078-sha-pinned-actions.ja.md) | GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する | accepted |
-| [0079](0079-rollback-integration-tests.ja.md) | インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する | accepted |
-| [0080](0080-multi-model-adversarial-review.ja.md) | ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する | accepted |
-| [0081](0081-lean-a-spec-scaffold.ja.md) | スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する | accepted |
-| [0082](0082-cli-humble-object-split.ja.md) | CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア） | accepted |
-| [0083](0083-single-multi-command-binary.ja.md) | すべてのロールを 1 つのマルチコマンドバイナリに集約する | accepted |
-| [0084](0084-single-runtime-image.ja.md) | コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし） | accepted |
-| [0085](0085-hardened-alpine-runtime.ja.md) | ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない | accepted (exclusion) |
-| [0086](0086-per-environment-images.ja.md) | 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定） | accepted |
-| [0087](0087-predeploy-oneshot-migration.ja.md) | マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない | accepted (exclusion) |
-| [0088](0088-release-image-supply-chain.ja.md) | リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM） | accepted |
-| [0089](0089-vendor-neutral-deploy-skeleton.ja.md) | デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はテンプレート；レジストリは固定しない） | accepted |
-| [0090](0090-docs-via-github-pages.ja.md) | docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース） | accepted |
-| [0091](0091-no-in-app-rate-limiter.ja.md) | アプリケーション内レートリミッターを提供しない | accepted (exclusion) |
-| [0092](0092-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
-| [0093](0093-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
-| [0094](0094-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
-| [0095](0095-error-metadata-code-message-details.ja.md) | apperror の上に載せるプロトコル中立なエラーメタ情報（code / message / details） | accepted |
+| [0039](0039-error-metadata-code-message-details.ja.md) | apperror の上に載せるプロトコル中立なエラーメタ情報（code / message / details） | accepted |
+| [0040](0040-broker-agnostic-worker-scaffold.ja.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
+| [0041](0041-out-of-scope-push-streaming-brokers.ja.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
+| [0042](0042-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | accepted |
+| [0043](0043-transactional-outbox.ja.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
+| [0044](0044-at-least-once-outbox-poll.ja.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
+| [0045](0045-skip-locked-outbox-relay.ja.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |
+| [0046](0046-message-id-idempotency-propagation.ja.md) | アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する | accepted |
+| [0047](0047-outbox-dead-after-max-attempts.ja.md) | MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端） | accepted |
+| [0048](0048-outbox-retention-gc.ja.md) | 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ） | accepted |
+| [0049](0049-publisher-http-profile-isolation.ja.md) | パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する | accepted |
+| [0050](0050-relay-resident-gc-oneshot.ja.md) | リレーは常駐プロセス、GC はワンショット cron ジョブ | accepted |
+| [0051](0051-single-tx-at-most-once-idempotency.ja.md) | claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する | accepted |
+| [0052](0052-idempotency-scope-required.ja.md) | クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする | accepted |
+| [0053](0053-idempotency-fixed-ttl.ja.md) | 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない | accepted |
+| [0054](0054-idempotency-response-persistence.ja.md) | 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容） | accepted |
+| [0055](0055-idempotency-gc-separate-job.ja.md) | 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する | accepted |
+| [0056](0056-idempotency-orthogonal-concerns.ja.md) | 冪等性をオプティミスティックロックおよびレート制限と直交に保つ | accepted (exclusion) |
+| [0057](0057-job-fresh-fx-app-per-run.ja.md) | ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル） | accepted |
+| [0058](0058-job-no-worker-machinery.ja.md) | ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない | accepted (exclusion) |
+| [0059](0059-job-explicit-registration.ja.md) | Job は明示的に登録する（自動検出なし） | accepted |
+| [0060](0060-config-driven-observability-gating.ja.md) | 設定駆動によるオブザーバビリティゲーティング | accepted |
+| [0061](0061-vendor-neutral-otlp-export.ja.md) | ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲） | accepted |
+| [0062](0062-official-otel-semconv.ja.md) | 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない | accepted (exclusion) |
+| [0063](0063-dual-path-metrics.ja.md) | メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ | accepted |
+| [0064](0064-lifecycle-independent-provider.ja.md) | オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner） | accepted |
+| [0065](0065-fixed-default-sampling.ja.md) | SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない | accepted (exclusion) |
+| [0066](0066-library-selection-policy.ja.md) | 単一責任のライブラリ選定ポリシー | accepted |
+| [0067](0067-bridge-instrumentation-exceptions.ja.md) | ブリッジ / 計装ライブラリを有界な SRP 例外として認める | accepted |
+| [0068](0068-containerized-pinned-toolchain.ja.md) | 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する | accepted |
+| [0069](0069-mise-ssot-drift-gate.ja.md) | mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する | accepted |
+| [0070](0070-make-single-entrypoint.ja.md) | Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する | accepted |
+| [0071](0071-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない | accepted |
+| [0072](0072-docker-compose-dev-environment.ja.md) | ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する | accepted |
+| [0073](0073-two-layer-golangci-config.ja.md) | 2 層の golangci 設定——最小デフォルトと完全な権威ゲート | accepted |
+| [0074](0074-local-hooks-mirror-ci.ja.md) | ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証） | accepted |
+| [0075](0075-coverage-hard-gate.ja.md) | 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける | accepted |
+| [0076](0076-ci-real-graph-boot-check.ja.md) | CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証） | accepted |
+| [0077](0077-generated-artifact-drift-gate.ja.md) | 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット | accepted |
+| [0078](0078-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン（到達可能性フィルタ付き govulncheck + スケジュール CodeQL SAST + シークレット + FS スキャン） | accepted |
+| [0079](0079-sha-pinned-actions.ja.md) | GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する | accepted |
+| [0080](0080-rollback-integration-tests.ja.md) | インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する | accepted |
+| [0081](0081-multi-model-adversarial-review.ja.md) | ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する | accepted |
+| [0082](0082-lean-a-spec-scaffold.ja.md) | スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する | accepted |
+| [0083](0083-cli-humble-object-split.ja.md) | CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア） | accepted |
+| [0084](0084-single-multi-command-binary.ja.md) | すべてのロールを 1 つのマルチコマンドバイナリに集約する | accepted |
+| [0085](0085-single-runtime-image.ja.md) | コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし） | accepted |
+| [0086](0086-hardened-alpine-runtime.ja.md) | ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない | accepted (exclusion) |
+| [0087](0087-per-environment-images.ja.md) | 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定） | accepted |
+| [0088](0088-predeploy-oneshot-migration.ja.md) | マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない | accepted (exclusion) |
+| [0089](0089-release-image-supply-chain.ja.md) | リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM） | accepted |
+| [0090](0090-vendor-neutral-deploy-skeleton.ja.md) | デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はテンプレート；レジストリは固定しない） | accepted |
+| [0091](0091-docs-via-github-pages.ja.md) | docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース） | accepted |
+| [0092](0092-no-in-app-rate-limiter.ja.md) | アプリケーション内レートリミッターを提供しない | accepted (exclusion) |
+| [0093](0093-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
+| [0094](0094-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
+| [0095](0095-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
 
 フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
 Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。

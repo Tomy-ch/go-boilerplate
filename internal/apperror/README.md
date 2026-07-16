@@ -131,7 +131,7 @@ if meta, ok := apperror.MetaFrom(err); ok { ... }
 
 Rules:
 
-- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0038](../../docs/adr/0038-apperror-protocol-agnostic-errors.md) intact (see [ADR-0095](../../docs/adr/0095-error-metadata-code-message-details.md)).
+- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0038](../../docs/adr/0038-apperror-protocol-agnostic-errors.md) intact (see [ADR-0039](../../docs/adr/0039-error-metadata-code-message-details.md)).
 - All fields are optional. Empty fields fall back to the controller's default `code` / `message` for the resolved status.
 - `Message` is a user-facing message whose source of truth is the controller catalog. **Domain / Usecase should leave it empty** and set `Code` / `Details` only.
 - `Details` values are exposed verbatim in the API response. Put **public-safe identifiers only** (e.g., invalid field names) — never reason texts or raw input values. Reason texts belong in the wrapped error message, which stays log-only.
