@@ -79,6 +79,17 @@ All errors are returned as JSON using `response.HTTPErrorResponse`:
 - When the error carries an `apperror.Meta`, its `code` / `message` / `details` override the status defaults inside `NewHTTPErrorFromAppError` (the HTTP status never changes) — see the `apperror.Meta` Overrides section of [`controller/error/response/README.md`](../../error/response/README.md)
 - `Internal` error and stack trace are logged but **not returned to the client**
 
+### Details opt-in gate (fail-closed)
+
+`details` are **opt-in per endpoint**. A `DetailPolicy` (built once at startup from the OpenAPI
+spec, `detail_exposure.go`) precomputes which operations declare the `ErrorResponseWithDetails`
+schema. On the error path, if the response carries `details`, `handleHTTPError` resolves the
+request's operation and — unless it opted in — strips `details` from the **client wire** only
+(`writeErrorResponse` copies the body; the `resp` object and the logs keep the full `details`).
+An unmatched route or a non-opted-in operation both fail **closed** (no `details`). The policy
+router is host-agnostic (built from a servers-stripped spec copy), so proxied / test hosts still
+resolve by path + method. Rationale: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
+
 ## Logging
 
 Error logging is controlled by `ObservabilityConfig.TargetStatusCodeSet()`:

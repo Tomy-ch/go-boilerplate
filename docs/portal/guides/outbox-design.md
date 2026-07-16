@@ -2,7 +2,7 @@
 
 [Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](../ja/design/outbox.ja.md)
 
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0044](../adr/0044-transactional-outbox.md) onward); for the deliberate decision NOT to harden the relay's duplicate windows in this template (and the recommended multi-layer redesign for production copies) see [ADR-0096](../adr/0096-outbox-relay-hardening-delegated.md).
+This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0045](../adr/0045-transactional-outbox.md) onward); for the deliberate decision NOT to harden the relay's duplicate windows in this template (and the recommended multi-layer redesign for production copies) see [ADR-0097](../adr/0097-outbox-relay-hardening-delegated.md).
 
 ---
 

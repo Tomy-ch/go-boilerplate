@@ -79,6 +79,17 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 - エラーが `apperror.Meta` を運んでいる場合、`NewHTTPErrorFromAppError` 内で `code` / `message` / `details` がステータス既定値を上書きする（HTTP ステータスは変わらない）— [`controller/error/response/README.ja.md`](../../error/response/README.ja.md) の「`apperror.Meta` による上書き」節を参照
 - `Internal` エラーとスタックトレースはログに出力されるが、**クライアントには返されない**
 
+### details の opt-in ゲート（fail-closed）
+
+`details` は**エンドポイントごとの opt-in**。`DetailPolicy`（起動時に OpenAPI spec から構築、
+`detail_exposure.go`）が「どの operation が `ErrorResponseWithDetails` スキーマを宣言しているか」を
+前計算する。エラー経路で、レスポンスが `details` を持つ場合、`handleHTTPError` はリクエストの
+operation を解決し、opt-in していない限り**クライアント wire からのみ** `details` を落とす
+（`writeErrorResponse` が body をコピー。`resp` 本体とログには完全な `details` が残る）。ルート
+不一致・未 opt-in はいずれも **fail-closed**（details なし）。policy 用 router は servers を除去した
+spec 複製から作るため Host 非依存で、proxy / test の Host でもパス + メソッドで解決できる。
+理由: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md)。
+
 ## ログ出力
 
 エラーログは `ObservabilityConfig.TargetStatusCodeSet()` で制御されます：

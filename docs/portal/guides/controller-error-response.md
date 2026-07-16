@@ -52,9 +52,15 @@ When the error carries an `apperror.Meta` (see `internal/apperror` README), `New
 |Response field|Without Meta|With Meta|
 |---|---|---|
 |HTTP status|From sentinel classification|From sentinel classification (**Meta never changes it**)|
-|`code`|Status default|`Meta.Code` if non-empty, else status default|
-|`message`|Status default|`Meta.Message` if non-empty, else status default|
-|`details`|Explicit `details` argument|Explicit `details` argument if given, else `Meta.Details`|
+|`code`|Status default|`Meta.Code()` if non-empty, else status default|
+|`message`|Status default|`Meta.Message()` if non-empty, else status default|
+|`details`|Explicit `details` argument|Explicit `details` argument if given, else `Meta.Details()`|
+
+This builder is **request-agnostic**: it always constructs the superset envelope
+(`gen.ErrorResponseWithDetails`) and attaches whatever `details` the error holds. Whether
+those `details` actually reach the client is decided downstream by the `errorhandler`'s
+per-endpoint opt-in gate (fail-closed), the same way `requestId` is left empty here and filled
+at the edge. See the `errorhandler` README and [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
 
 ## Error Code and HTTP Status Mapping
 
