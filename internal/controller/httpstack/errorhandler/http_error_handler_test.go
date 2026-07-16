@@ -236,6 +236,23 @@ func Test_normalizeHTTPError(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 
+		t.Run("Meta付きAppErrorを渡した場合はDetailsが反映される", func(t *testing.T) {
+			t.Parallel()
+
+			joined := xerrors.Join(
+				xerrors.Wrap(apperror.ErrValidation, "first name failed"),
+				xerrors.Wrap(apperror.ErrValidation, "email failed"),
+			)
+			metaErr := apperror.WithDetails(joined, "firstName", "email")
+
+			actual := normalizeHTTPError(metaErr, expectedRequestID)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, actual.HTTPStatus)
+			require.NotNil(t, actual.Details)
+			assert.Equal(t, []string{"firstName", "email"}, *actual.Details)
+			assert.Equal(t, expectedRequestID, actual.RequestId)
+		})
+
 		t.Run("Echo.HTTPErrorのInternalにOpenAPIエラーがある場合_RequestErrorは400で正規化される", func(t *testing.T) {
 			t.Parallel()
 			reqErr := &openapi3filter.RequestError{}
