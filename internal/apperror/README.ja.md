@@ -138,7 +138,7 @@ if meta, ok := apperror.MetaFrom(err); ok { ... }
 
 ルール:
 
-- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0038](../../docs/adr/0038-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0039](../../docs/adr/0039-error-metadata-code-message-details.md) 参照）。
+- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0039](../../docs/adr/0039-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0040](../../docs/adr/0040-error-metadata-code-message-details.md) 参照）。
 - 全フィールド任意です。空の項目は、解決されたステータスに対する controller の既定 `code` / `message` にフォールバックします。
 - `Message` は利用者向け文言で、正は controller のカタログにあります。**Domain / Usecase では空のまま**にし、`Code` / `Details` のみを設定してください。
 - `Details` の値は API レスポンスにそのまま公開されます。**公開して安全な識別子のみ**（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはいけません。理由文はラップしたエラーメッセージ側に残し、ログ専用とします。

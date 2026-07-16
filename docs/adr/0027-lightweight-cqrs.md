@@ -76,7 +76,7 @@ three responsibilities:
 
 Repository, QueryService, and CommandService are all registered in `persistenceModule` in
 `internal/di/module/persistence.go` and injected via Uber Fx (see
-[ADR-0031](0031-uber-fx-di.md)). This is not full CQRS: there is no separate read store,
+[ADR-0032](0032-uber-fx-di.md)). This is not full CQRS: there is no separate read store,
 event sourcing, or eventually-consistent projection pipeline.
 
 See [`docs/rules.md`](../rules.md) § "Repository / QueryService Rules" for the
