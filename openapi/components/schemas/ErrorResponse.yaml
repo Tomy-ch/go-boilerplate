@@ -19,9 +19,9 @@ properties:
     example: "abcdefghijklmnopqrstuvwxyz"
   details:
     type: array
-    description: エラーの詳細情報(任意)
+    description: エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
     items:
       type: string
     example:
-      - "エラーの詳細の文章1"
-      - "エラーの詳細の文章2"
+      - "firstName"
+      - "email"
