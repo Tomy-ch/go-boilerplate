@@ -117,6 +117,53 @@ This provides the following benefits:
 - Error messages are centrally managed in the Controller
 - Domain does not need to be changed when API specifications change
 
+## Error Metadata (`Meta`)
+
+`Meta` / `WithMeta` / `WithDetails` / `MetaFrom` let the error-raising site attach **dynamic, protocol-neutral response metadata** on top of the sentinel classification.
+
+```go
+// Attach the identifiers of the invalid fields (domain layer)
+return apperror.WithDetails(xerrors.Join(errs...), "firstName", "email")
+
+// Extract at the transport edge (controller layer)
+if meta, ok := apperror.MetaFrom(err); ok { ... }
+```
+
+Rules:
+
+- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0038](../../docs/adr/0038-apperror-protocol-agnostic-errors.md) intact (see [ADR-0095](../../docs/adr/0095-error-metadata-code-message-details.md)).
+- All fields are optional. Empty fields fall back to the controller's default `code` / `message` for the resolved status.
+- `Message` is a user-facing message whose source of truth is the controller catalog. **Domain / Usecase should leave it empty** and set `Code` / `Details` only.
+- `Details` values are exposed verbatim in the API response. Put **public-safe identifiers only** (e.g., invalid field names) — never reason texts or raw input values. Reason texts belong in the wrapped error message, which stays log-only.
+- When `WithMeta` is applied multiple times in a chain, **the outermost one wins** (`MetaFrom` uses `xerrors.As`). Re-wrapping is the intended way for an upper layer to override.
+- `WithMeta` decorates, it does not classify: `xerrors.Is` / `IsAppError` still see the wrapped sentinel(s), including all branches of a `xerrors.Join`.
+
+### How it works: a wrapper, not a mutation
+
+`WithMeta` does **not** put anything into the sentinels — they are shared package
+variables, so storing request-scoped data in them would leak across requests. Instead
+it wraps the whole error chain in a `MetaError` that holds the original error inside:
+
+```go
+type MetaError struct {
+    meta Meta  // request-scoped payload
+    err  error // the original chain, sentinels included
+}
+
+func (e *MetaError) Unwrap() error { return e.err }
+```
+
+The method **must** be named `Unwrap() error` — that is the standard library's chain
+contract, not a stylistic choice: `errors.Is` / `errors.As` (and therefore
+`xerrors.Is` / `As`) look for exactly this signature (or `Unwrap() []error` for joins)
+to traverse a chain. Renaming it would make the wrapper opaque and break the 422
+classification.
+
+Note the division of labor: `Unwrap` only peels **one layer** — it returns the inner
+chain as-is, not the sentinel. Reaching the sentinel is `errors.Is`'s job, which calls
+`Unwrap` recursively while walking the chain. Each wrapper type implements "remove my
+own wrapping"; the traversal logic lives once, in the standard library.
+
 ## Error Handling in Job / CLI
 
 `apperror` can be used not only for HTTP but also for **Job / CLI Controller**.

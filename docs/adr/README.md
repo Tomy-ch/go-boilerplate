@@ -138,6 +138,7 @@ do X") are tagged `setup-review`.
 | [0092](0092-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
 | [0093](0093-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
 | [0094](0094-outbox-relay-hardening-delegated.md) | Delegate outbox-relay duplicate-window hardening (multi-layer lease redesign) to production copies | accepted (exclusion) |
+| [0095](0095-error-metadata-code-message-details.md) | Protocol-neutral error metadata (code / message / details) on top of apperror | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).
