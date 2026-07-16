@@ -19,8 +19,9 @@ flowchart TB
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (fallback)"]
     AddReqID["Attach RequestID"]
-    Write["Write JSON response"]
-    Log["Log with structured fields"]
+    Gate{"Details gate<br/>(policy.Allows?)"}
+    Write["Write JSON response<br/>(strip details if not opted-in)"]
+    Log["Log with structured fields<br/>(details kept)"]
 
     Error --> Guard
     Guard -- yes --> return
@@ -31,7 +32,7 @@ flowchart TB
     OAPICheck -- yes --> OAPIErr --> AddReqID
     OAPICheck -- no --> EchoNorm --> AddReqID
     TypeCheck -- other --> Fallback --> AddReqID
-    AddReqID --> Write --> Log
+    AddReqID --> Gate --> Write --> Log
 ```
 
 ## Error Normalization

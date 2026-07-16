@@ -22,7 +22,8 @@ func ErrorHandlerModule() fx.Option {
 	)
 }
 
-// provideDetailPolicy は、OpenAPI spec から details 公開の opt-in ポリシーを構築します。
+// provideDetailPolicy は、OpenAPI spec から [errorhandler.DetailPolicy] を構築して fx に提供します。
+// spec の解析に失敗した場合はエラーを返し、fx がアプリ起動を中断します。
 func provideDetailPolicy(spec *openapi3.T) (errorhandler.DetailPolicy, error) {
 	return errorhandler.NewOpenAPIDetailPolicy(spec)
 }

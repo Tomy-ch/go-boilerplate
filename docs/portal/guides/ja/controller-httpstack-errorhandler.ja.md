@@ -19,8 +19,9 @@ flowchart TB
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (フォールバック)"]
     AddReqID["RequestID 付与"]
-    Write["JSON レスポンス書き込み"]
-    Log["構造化ログ出力"]
+    Gate{"details ゲート<br/>(policy.Allows?)"}
+    Write["JSON レスポンス書き込み<br/>(未 opt-in なら details を削除)"]
+    Log["構造化ログ出力<br/>(details は温存)"]
 
     Error --> Guard
     Guard -- yes --> return
@@ -31,7 +32,7 @@ flowchart TB
     OAPICheck -- yes --> OAPIErr --> AddReqID
     OAPICheck -- no --> EchoNorm --> AddReqID
     TypeCheck -- その他 --> Fallback --> AddReqID
-    AddReqID --> Write --> Log
+    AddReqID --> Gate --> Write --> Log
 ```
 
 ## エラー正規化
@@ -121,6 +122,14 @@ spec 複製から作るため Host 非依存で、proxy / test の Host でも�
 |`http_error_handler.go`|メインハンドラ、正規化ディスパッチ、ログ出力|
 |`echo_http_error_handler.go`|`echo.HTTPError` → `HTTPErrorResponse` の正規化|
 |`open_api_error_handler.go`|OpenAPI バリデーションエラー → `HTTPErrorResponse` の正規化|
+|`detail_exposure.go`|`DetailPolicy` — OpenAPI spec から解決するエンドポイントごとの `details` opt-in|
+
+## カバレッジ例外
+
+`docs/testing-conventions.md` §9 に基づき、以下の infallible な防御分岐は未カバーのまま残す(作為的テストは書かない):
+
+- `detail_exposure.go` `NewOpenAPIDetailPolicy` — `gorillamux.NewRouter` のエラー返却。router は検証済み spec の servers 除去コピーから構築するため実際上失敗しない。
+- `http_error_handler.go` `handleHTTPError` — 書き込み失敗かつレスポンス commit 済みの場合の入れ子 `WriteHeader(500)`(到達不能な二重 commit エッジ)。
 
 ## 注意点
 

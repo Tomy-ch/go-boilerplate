@@ -19,8 +19,9 @@ flowchart TB
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (fallback)"]
     AddReqID["Attach RequestID"]
-    Write["Write JSON response"]
-    Log["Log with structured fields"]
+    Gate{"Details gate<br/>(policy.Allows?)"}
+    Write["Write JSON response<br/>(strip details if not opted-in)"]
+    Log["Log with structured fields<br/>(details kept)"]
 
     Error --> Guard
     Guard -- yes --> return
@@ -31,7 +32,7 @@ flowchart TB
     OAPICheck -- yes --> OAPIErr --> AddReqID
     OAPICheck -- no --> EchoNorm --> AddReqID
     TypeCheck -- other --> Fallback --> AddReqID
-    AddReqID --> Write --> Log
+    AddReqID --> Gate --> Write --> Log
 ```
 
 ## Error Normalization
@@ -121,6 +122,14 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 |`http_error_handler.go`|Main handler, normalization dispatcher, logging|
 |`echo_http_error_handler.go`|Normalize `echo.HTTPError` to `HTTPErrorResponse`|
 |`open_api_error_handler.go`|Normalize OpenAPI validation errors to `HTTPErrorResponse`|
+|`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec|
+
+## Coverage exceptions
+
+Per `docs/testing-conventions.md` §9, the following infallible defensive branches are left uncovered (no contrived tests):
+
+- `detail_exposure.go` `NewOpenAPIDetailPolicy` — the `gorillamux.NewRouter` error return. The router is built from a servers-stripped copy of an already-validated spec, so it cannot fail in practice.
+- `http_error_handler.go` `handleHTTPError` — the nested `WriteHeader(500)` after a write failure on an already-committed response (unreachable double-commit edge).
 
 ## Notes
 

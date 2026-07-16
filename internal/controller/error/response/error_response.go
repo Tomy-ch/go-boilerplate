@@ -14,7 +14,7 @@ import (
 //
 //nolint:errname // HTTPエラーレスポンスのDTOであり、レスポンス本体を表す名称が適切なため XxxError 形式には改名しない
 type HTTPErrorResponse struct {
-	// 内部の組み立て型は details を持つ superset。実際に details をクライアントへ返すかは
+	// この埋め込みは常に details フィールドを持つが、実際にクライアントへ返すかは
 	// エンドポイントの opt-in(errorhandler の details ゲート)で決まる。
 	gen.ErrorResponseWithDetails
 

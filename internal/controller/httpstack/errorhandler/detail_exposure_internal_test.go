@@ -133,6 +133,17 @@ func Test_responseHasDetailsProperty(t *testing.T) {
 			)
 			assert.True(t, responseHasDetailsProperty(&openapi3.ResponseRef{Value: resp}))
 		})
+
+		t.Run("allOf 合成の要素に details プロパティがある場合 true", func(t *testing.T) {
+			t.Parallel()
+			schema := openapi3.NewObjectSchema()
+			schema.AllOf = openapi3.SchemaRefs{
+				openapi3.NewSchemaRef("", openapi3.NewObjectSchema()),
+				openapi3.NewSchemaRef("", openapi3.NewObjectSchema().WithProperty(detailsPropertyName, openapi3.NewArraySchema())),
+			}
+			resp := openapi3.NewResponse().WithJSONSchema(schema)
+			assert.True(t, responseHasDetailsProperty(&openapi3.ResponseRef{Value: resp}))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -156,6 +167,21 @@ func Test_responseHasDetailsProperty(t *testing.T) {
 		t.Run("JSONスキーマに details プロパティが無い場合 false", func(t *testing.T) {
 			t.Parallel()
 			resp := openapi3.NewResponse().WithJSONSchema(openapi3.NewObjectSchema())
+			assert.False(t, responseHasDetailsProperty(&openapi3.ResponseRef{Value: resp}))
+		})
+
+		t.Run("スキーマ値が nil の場合 false", func(t *testing.T) {
+			t.Parallel()
+			resp := openapi3.NewResponse()
+			resp.Content = openapi3.Content{"application/json": &openapi3.MediaType{Schema: &openapi3.SchemaRef{}}}
+			assert.False(t, responseHasDetailsProperty(&openapi3.ResponseRef{Value: resp}))
+		})
+
+		t.Run("allOf に nil 要素が含まれても details が無ければ false", func(t *testing.T) {
+			t.Parallel()
+			schema := openapi3.NewObjectSchema()
+			schema.AllOf = openapi3.SchemaRefs{nil, openapi3.NewSchemaRef("", openapi3.NewObjectSchema())}
+			resp := openapi3.NewResponse().WithJSONSchema(schema)
 			assert.False(t, responseHasDetailsProperty(&openapi3.ResponseRef{Value: resp}))
 		})
 	})

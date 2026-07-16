@@ -19,8 +19,9 @@ flowchart TB
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (フォールバック)"]
     AddReqID["RequestID 付与"]
-    Write["JSON レスポンス書き込み"]
-    Log["構造化ログ出力"]
+    Gate{"details ゲート<br/>(policy.Allows?)"}
+    Write["JSON レスポンス書き込み<br/>(未 opt-in なら details を削除)"]
+    Log["構造化ログ出力<br/>(details は温存)"]
 
     Error --> Guard
     Guard -- yes --> return
@@ -31,7 +32,7 @@ flowchart TB
     OAPICheck -- yes --> OAPIErr --> AddReqID
     OAPICheck -- no --> EchoNorm --> AddReqID
     TypeCheck -- その他 --> Fallback --> AddReqID
-    AddReqID --> Write --> Log
+    AddReqID --> Gate --> Write --> Log
 ```
 
 ## エラー正規化
