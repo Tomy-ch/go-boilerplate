@@ -37,12 +37,32 @@ export const SAMPLE_DOMAINS = {
       "database/dml/query_service/user",
       "database/migrations/000004_create_users.up.sql",
       "database/migrations/000004_create_users.down.sql",
-      "database/migrations/000011_users_table_search_text_column.up.sql",
-      "database/migrations/000011_users_table_search_text_column.down.sql",
+      "database/migrations/000013_users_table_search_text_column.up.sql",
+      "database/migrations/000013_users_table_search_text_column.down.sql",
       "database/seed/000001_users.sql",
 
       "docs/spec/user",
       "docs/spec/user-search",
+    ],
+  },
+
+  userRole: {
+    description:
+      "サンプル 認可基盤（user_roles テーブル + user_roles ベース Authorizer）。user サンプルに同梱削除される",
+    paths: [
+      // Authorizer 実装（本番相当環境に配線。削除後は provideAuthorizer が fail-closed に戻る）
+      "internal/infrastructure/authz/userrole",
+
+      "database/migrations/000005_create_roles.up.sql",
+      "database/migrations/000005_create_roles.down.sql",
+      "database/migrations/000006_create_user_roles.up.sql",
+      "database/migrations/000006_create_user_roles.down.sql",
+      "database/seed/000008_user_roles.sql",
+
+      // domain(role.go 等) / infra repository(user_role_repository.go) / dml(select_roles_by_user_id.sql)
+      // は user ドメインのディレクトリ配下にあり、user エントリの削除で同時に消えるため個別指定は不要。
+      // roles / user_roles を含む共有生成物（schema.gen.sql / models.gen.go / user_repository.gen.*）は
+      // 削除後の再生成（db-init → gen-query）で最新化される。
     ],
   },
 
@@ -65,12 +85,12 @@ export const SAMPLE_DOMAINS = {
   product: {
     description: "サンプル 商品ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
     paths: [
-      "database/migrations/000005_create_product_statuses.up.sql",
-      "database/migrations/000005_create_product_statuses.down.sql",
-      "database/migrations/000006_create_product_categories.up.sql",
-      "database/migrations/000006_create_product_categories.down.sql",
-      "database/migrations/000007_create_products.up.sql",
-      "database/migrations/000007_create_products.down.sql",
+      "database/migrations/000007_create_product_statuses.up.sql",
+      "database/migrations/000007_create_product_statuses.down.sql",
+      "database/migrations/000008_create_product_categories.up.sql",
+      "database/migrations/000008_create_product_categories.down.sql",
+      "database/migrations/000009_create_products.up.sql",
+      "database/migrations/000009_create_products.down.sql",
       "database/seed/000002_products_electronic_equipment.sql",
       "database/seed/000003_products_books.sql",
       "database/seed/000004_products_clothing.sql",
@@ -83,12 +103,12 @@ export const SAMPLE_DOMAINS = {
   order: {
     description: "サンプル 注文ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
     paths: [
-      "database/migrations/000008_create_purchase_statuses.up.sql",
-      "database/migrations/000008_create_purchase_statuses.down.sql",
-      "database/migrations/000009_create_purchases.up.sql",
-      "database/migrations/000009_create_purchases.down.sql",
-      "database/migrations/000010_create_purchase_details.up.sql",
-      "database/migrations/000010_create_purchase_details.down.sql",
+      "database/migrations/000010_create_purchase_statuses.up.sql",
+      "database/migrations/000010_create_purchase_statuses.down.sql",
+      "database/migrations/000011_create_purchases.up.sql",
+      "database/migrations/000011_create_purchases.down.sql",
+      "database/migrations/000012_create_purchase_details.up.sql",
+      "database/migrations/000012_create_purchase_details.down.sql",
     ],
   },
 }
@@ -98,7 +118,8 @@ export const MARKER_FILES = [
   "openapi/openapi.yaml",
   "internal/di/module/controller.go",
   "internal/di/module/usecase.go",
-  "internal/di/module/infrastructure.go",
+  "internal/di/module/persistence.go",
+  "internal/di/module/authz.go",
   "internal/di/module/job.go",
 ]
 
