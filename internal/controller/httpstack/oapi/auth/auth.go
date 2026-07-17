@@ -48,13 +48,13 @@ func authExtractor(
 	authCfg *config.AuthConfig,
 	authenticator authbd.Authenticator,
 ) (*authbd.Authn, error) {
-	token := extractToken(req, authCfg)
+	scheme, token := extractToken(req, authCfg)
 	if token == "" {
 		//nolint:nilnil // トークン未提供を表す。呼び出し側で authn==nil を判定し未提供エラーへ変換するため意図的にnil,nilを返す
 		return nil, nil
 	}
 
-	cred, err := authbd.NewCredential(token)
+	cred, err := authbd.NewCredential(scheme, token)
 	if err != nil {
 		return nil, err
 	}
@@ -67,31 +67,22 @@ func authExtractor(
 	return authn, nil
 }
 
-// extractToken は、認証トークンを抽出します。
-func extractToken(r *http.Request, authCfg *config.AuthConfig) string {
-	// extract from Cookie
-	if authCfg.CookieName() != "" {
-		if ck, err := r.Cookie(authCfg.CookieName()); err == nil && ck != nil {
-			if v := strings.TrimSpace(ck.Value); v != "" {
-				return v
-			}
-		}
-	}
-
-	// extract from Header
+// extractToken は、Authorization ヘッダから認証スキームとトークンを抽出します。
+// 戻り値は (scheme, token)。Bearer 前提のため、Cookie は参照しません。
+func extractToken(r *http.Request, authCfg *config.AuthConfig) (string, string) {
 	if authCfg.HeaderName() == "" {
-		return ""
+		return "", ""
 	}
 
 	raw := strings.TrimSpace(r.Header.Get(authCfg.HeaderName()))
 	if raw == "" {
-		return ""
+		return "", ""
 	}
 	if authCfg.AllowedHeaderBearer() && strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) {
 		if after, ok := strings.CutPrefix(raw, prefixBearer); ok {
-			return strings.TrimSpace(after)
+			return authbd.SchemeBearer, strings.TrimSpace(after)
 		}
-		return ""
+		return "", ""
 	}
-	return raw
+	return "", raw
 }
