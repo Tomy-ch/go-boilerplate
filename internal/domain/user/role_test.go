@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strings"
 	"testing"
 
 	"go-boilerplate/pkg/uuid"
@@ -52,6 +53,13 @@ func TestNewRole(t *testing.T) {
 			t.Parallel()
 
 			_, err := NewRole(validID, "", int(RoleCodeAdmin))
+			require.ErrorIs(t, err, ErrInvalidRoleName)
+		})
+
+		t.Run("名前が最大文字数を超える場合、ErrInvalidRoleName を返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := NewRole(validID, strings.Repeat("あ", maxRoleNameLength+1), int(RoleCodeAdmin))
 			require.ErrorIs(t, err, ErrInvalidRoleName)
 		})
 

@@ -138,6 +138,42 @@ func Test_authorizer_Authorize(t *testing.T) {
 			require.ErrorIs(t, actualErr, authzbd.ErrForbidden)
 		})
 
+		t.Run("認証主体が nil の場合、ロールを参照せず ErrForbidden を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			roleRepo := mock_user.NewMockRoleRepository(ctrl)
+
+			auth := New(roleRepo)
+			err := auth.Authorize(
+				context.Background(),
+				nil,
+				authzbd.ActionUserGet,
+				authzbd.NewResource("user", nil),
+			)
+			require.ErrorIs(t, err, authzbd.ErrForbidden)
+		})
+
+		t.Run("非管理者かつリソースが nil の場合、ErrForbidden を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			subjectID := uuid.NewTestFromSalt(t, "no_resource_subject")
+
+			roleRepo := mock_user.NewMockRoleRepository(ctrl)
+			roleRepo.EXPECT().FindRolesByUserID(gomock.Any(), subjectID).
+				Return(user.Roles{newRole(t, user.RoleCodeGeneral, "一般")}, nil)
+
+			auth := New(roleRepo)
+			err := auth.Authorize(
+				context.Background(),
+				newAuthn(t, subjectID),
+				authzbd.ActionUserGet,
+				nil,
+			)
+			require.ErrorIs(t, err, authzbd.ErrForbidden)
+		})
+
 		t.Run("ロール取得がエラーの場合、そのエラーを伝播する", func(t *testing.T) {
 			t.Parallel()
 

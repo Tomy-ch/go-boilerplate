@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/user"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
@@ -43,7 +44,7 @@ func Test_roleRepository_FindRolesByUserID(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("管理者ロールを持つユーザーの場合、管理者を含むロール一覧が取得できる", func(t *testing.T) {
+		t.Run("管理者ロールを持つユーザーの場合、管理者と一般を併せ持つロール一覧が取得できる", func(t *testing.T) {
 			t.Parallel()
 
 			adminUserID, err := uuid.Parse("550e8400-e29b-41d4-a716-446655440000")
@@ -52,7 +53,11 @@ func Test_roleRepository_FindRolesByUserID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.FindRolesByUserID(ctx, adminUserID)
 				require.NoError(t, err)
+				require.Len(t, actual, 2)
 				assert.True(t, actual.HasAdmin())
+				// ORDER BY r.code のため管理者(1)→一般(2)の順で返る。
+				assert.Equal(t, user.RoleCodeAdmin, actual[0].Code())
+				assert.Equal(t, user.RoleCodeGeneral, actual[1].Code())
 			})
 		})
 
@@ -101,5 +106,39 @@ func Test_roleRepository_FindRolesByUserID(t *testing.T) {
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
+
+		t.Run("ドメイン不変条件に反する行が存在する場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			generalUserID, err := uuid.Parse("a95a2dd3-2b37-4def-8041-23d2138faccc")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				// 既知ロール外の code を持つ行を割り当て、行→エンティティ再構築の失敗経路を誘発する。
+				insertInvalidRole(ctx, t, driver.New(ctx, testDB), generalUserID, uuid.NewTestFromSalt(t, "invalid_role"))
+
+				actual, err := repo.FindRolesByUserID(ctx, generalUserID)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
 	})
+}
+
+// insertInvalidRole は、既知ロール外の code(99) を持つロールを対象ユーザーへ割り当てるヘルパーです。
+// FindRolesByUserID が行→エンティティ変換で再構築エラーになる経路を検証するために使用します。
+func insertInvalidRole(ctx context.Context, t *testing.T, db driver.DBTX, userID, roleID uuid.UUID) {
+	t.Helper()
+
+	_, err := db.Exec(ctx,
+		"INSERT INTO roles (id, name, code) VALUES ($1, $2, $3)",
+		roleID, "invalid-role", int16(99), // code=99 は RoleCode.valid() を満たさずドメイン不変条件違反となる。
+	)
+	require.NoError(t, err)
+
+	_, err = db.Exec(ctx,
+		"INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)",
+		userID, roleID,
+	)
+	require.NoError(t, err)
 }

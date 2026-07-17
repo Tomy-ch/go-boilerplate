@@ -4,11 +4,14 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/infrastructure/authz/allowall"
+	"go-boilerplate/internal/infrastructure/authz/userrole"
 	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_authzModule_GraphIsValid(t *testing.T) {
@@ -66,6 +69,21 @@ func Test_provideAuthorizer(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, allowall.New(), authorizer)
 			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
+		})
+
+		t.Run("本番相当環境でRoleRepoが供給される場合、user_rolesベースAuthorizerが提供されINFOが出る", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			appCfg.SetApplicationEnv(t, config.EnvProduction)
+			logger, logs := logging.NewObservedTestLogger(t)
+			roleRepo := mock_user.NewMockRoleRepository(gomock.NewController(t))
+
+			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: appCfg, Logger: logger, RoleRepo: roleRepo})
+			require.NoError(t, err)
+			assert.Equal(t, userrole.New(roleRepo), authorizer)
+			assert.Len(t, logs.FilterMessage("user_roles-based authorizer wired").All(), 1)
 		})
 	})
 
