@@ -204,6 +204,53 @@ func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetU
 	return &i, err
 }
 
+const getUserRolesByUserID = `-- name: GetUserRolesByUserID :many
+SELECT
+    r.id,
+    r.name,
+    r.code
+FROM user_roles AS ur
+INNER JOIN roles AS r ON ur.role_id = r.id
+WHERE ur.user_id = $1
+ORDER BY r.code
+`
+
+type GetUserRolesByUserIDRow struct {
+	ID   uuid.UUID
+	Name string
+	Code int16
+}
+
+// === source: database/dml/repository/user/select_roles_by_user_id.sql ===
+//
+//	SELECT
+//	    r.id,
+//	    r.name,
+//	    r.code
+//	FROM user_roles AS ur
+//	INNER JOIN roles AS r ON ur.role_id = r.id
+//	WHERE ur.user_id = $1
+//	ORDER BY r.code
+func (q *Queries) GetUserRolesByUserID(ctx context.Context, userIDParam uuid.UUID) ([]*GetUserRolesByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, getUserRolesByUserID, userIDParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*GetUserRolesByUserIDRow
+	for rows.Next() {
+		var i GetUserRolesByUserIDRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Code); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveUsers = `-- name: ListActiveUsers :many
 SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
