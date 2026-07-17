@@ -109,7 +109,6 @@ func New() (*Config, error) {
 			domain:   cfg.SecureCookie.Domain,
 		},
 		auth: AuthConfig{
-			cookieName:          cfg.Auth.CookieName,
 			headerName:          cfg.Auth.HeaderName,
 			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
 		},
@@ -324,7 +323,7 @@ func parseCIDR(s string) (*net.IPNet, error) {
 
 // validateAuthConfig は、認証設定を検証します。
 func validateAuthConfig(authCfg Auth) error {
-	if authCfg.CookieName == "" && authCfg.HeaderName == "" {
+	if authCfg.HeaderName == "" {
 		return ErrAuthConfigMissing
 	}
 	return nil

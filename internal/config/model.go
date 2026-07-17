@@ -113,9 +113,8 @@ type SecureCookieConfig struct {
 	domain   string
 }
 
-// AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。
+// AuthConfig は、認証に使うヘッダー名・Bearer 許可の設定を保持します。
 type AuthConfig struct {
-	cookieName          string
 	headerName          string
 	allowedHeaderBearer bool
 }
@@ -380,9 +379,6 @@ func (s *SecureCookieConfig) Domain() string { return s.domain }
 
 // NewAuthConfig は、認証の設定を返します。
 func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
-
-// CookieName は、認証に使用するCookie名を返します。
-func (a *AuthConfig) CookieName() string { return a.cookieName }
 
 // HeaderName は、認証に使用するヘッダー名を返します。
 func (a *AuthConfig) HeaderName() string { return a.headerName }
