@@ -128,7 +128,7 @@ func (s *server) PutUsersMePassword(ctx context.Context, request gen.PutUsersMeP
 	if !ok {
 		return nil, ErrUnauthenticatedUser
 	}
-	id, err := authn.ID()
+	id, err := authn.UserID()
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
 	}

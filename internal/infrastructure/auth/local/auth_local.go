@@ -34,14 +34,14 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 		return nil, ErrLocalMockAuthenticatorInvalidToken
 	}
 
-	sub := a.resolveSubject(cred.AccessToken())
+	sub := a.resolveSubject(cred.Token())
 	if sub == "" {
 		return nil, ErrLocalMockAuthenticatorInvalidToken
 	}
 
 	return authbd.New(
 		sub,
-		authbd.ProviderMock,
+		authbd.IssuerMock,
 		nil,
 		nil,
 	)

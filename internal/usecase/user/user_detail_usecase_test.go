@@ -42,7 +42,7 @@ func newDenyAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
 // newTestAuthn は、テスト用の認証主体（Authn）を返します。
 func newTestAuthn(t *testing.T) *authbd.Authn {
 	t.Helper()
-	authn, err := authbd.New(uuid.NewTestFromSalt(t, "caller").String(), authbd.ProviderMock, nil, nil)
+	authn, err := authbd.New(uuid.NewTestFromSalt(t, "caller").String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 	return authn
 }
@@ -593,7 +593,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
 	id := uuid.NewTestFromSalt(t, "user")
 	prefID := uuid.NewTestFromSalt(t, "prefecture")
-	authn, err := authbd.New(id.String(), authbd.ProviderMock, nil, nil)
+	authn, err := authbd.New(id.String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 
 	allowAuthorizer := func(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
