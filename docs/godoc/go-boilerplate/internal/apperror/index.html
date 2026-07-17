@@ -108,6 +108,52 @@
 				
 				<dd><a href="#IsAppError">func IsAppError(err error) bool</a></dd>
 			
+				
+				<dd><a href="#WithDetails">func WithDetails(err error, details ...string) error</a></dd>
+			
+				
+				<dd><a href="#WithMeta">func WithMeta(err error, meta Meta) error</a></dd>
+			
+			
+				
+				<dd><a href="#Meta">type Meta</a></dd>
+				
+					
+					<dd>    <a href="#MetaFrom">func MetaFrom(err error) (Meta, bool)</a></dd>
+				
+					
+					<dd>    <a href="#NewMeta">func NewMeta(code string, details ...string) Meta</a></dd>
+				
+				
+					
+					<dd>    <a href="#Meta.Code">func (m Meta) Code() string</a></dd>
+				
+					
+					<dd>    <a href="#Meta.Details">func (m Meta) Details() []string</a></dd>
+				
+					
+					<dd>    <a href="#Meta.Message">func (m Meta) Message() string</a></dd>
+				
+					
+					<dd>    <a href="#Meta.WithMessage">func (m Meta) WithMessage(message string) Meta</a></dd>
+				
+			
+				
+				<dd><a href="#MetaError">type MetaError</a></dd>
+				
+				
+					
+					<dd>    <a href="#MetaError.Error">func (e *MetaError) Error() string</a></dd>
+				
+					
+					<dd>    <a href="#MetaError.Format">func (e *MetaError) Format(s fmt.State, verb rune)</a></dd>
+				
+					
+					<dd>    <a href="#MetaError.Meta">func (e *MetaError) Meta() Meta</a></dd>
+				
+					
+					<dd>    <a href="#MetaError.Unwrap">func (e *MetaError) Unwrap() error</a></dd>
+				
 			
 			
 			</dl>
@@ -121,6 +167,8 @@
 			<span style="font-size:90%">
 			
 				<a href="../../../src/go-boilerplate/internal/apperror/apperror.go.html">apperror.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/apperror/meta.go.html">meta.go</a>
 			
 			</span>
 			</p>
@@ -190,6 +238,227 @@ engine が Handler の返すエラーを分類して挙動を変えるために�
 			
 
 		
+			
+			
+			</p><h2 id="WithDetails">func <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=2494:2546#L60">WithDetails</a>
+				<a class="permalink" href="#WithDetails">¶</a>
+				
+				
+			</h2>
+			<pre>func WithDetails(err <a href="../../../builtin/#error">error</a>, details ...<a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#error">error</a></pre>
+			<p>WithDetails は、err に details のみを付与したエラーを返します。<a href="#WithMeta">WithMeta</a> の糖衣です。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="WithMeta">func <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=2258:2299#L52">WithMeta</a>
+				<a class="permalink" href="#WithMeta">¶</a>
+				
+				
+			</h2>
+			<pre>func WithMeta(err <a href="../../../builtin/#error">error</a>, meta <a href="#Meta">Meta</a>) <a href="../../../builtin/#error">error</a></pre>
+			<p>WithMeta は、err に meta を付与したエラーを返します。err が nil の場合は nil を返します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Meta">type <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=410:480#L3">Meta</a>
+				<a class="permalink" href="#Meta">¶</a>
+				
+				
+			</h2>
+			<p>Meta は、エラー発生箇所がレスポンス向けに動的に付与できるメタ情報です。
+<a href="#NewMeta">NewMeta</a> で構築します。空の項目は transport 層(controller)の既定値にフォールバックします。
+apperror センチネルによる分類(HTTP ステータス解決)には一切影響しません。
+
+			</p><pre>type Meta struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="MetaFrom">func <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=2823:2860#L66">MetaFrom</a>
+					<a class="permalink" href="#MetaFrom">¶</a>
+					
+					
+				</h3>
+				<pre>func MetaFrom(err <a href="../../../builtin/#error">error</a>) (<a href="#Meta">Meta</a>, <a href="../../../builtin/#bool">bool</a>)</pre>
+				<p>MetaFrom は、err のチェーンから最も外側の <a href="#MetaError">MetaError</a> の Meta を抽出します。
+多重に付与されている場合は外側が勝ちます。見つからない場合は ok=false を返します。
+
+				
+				
+			
+				
+				</p><h3 id="NewMeta">func <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=1271:1320#L21">NewMeta</a>
+					<a class="permalink" href="#NewMeta">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMeta(code <a href="../../../builtin/#string">string</a>, details ...<a href="../../../builtin/#string">string</a>) <a href="#Meta">Meta</a></pre>
+				<p>NewMeta は、機械可読なエラーコード code と詳細識別子 details から Meta を構築します。
+code が空の場合はステータス由来の既定コードが使われます。details はレスポンスに
+そのまま公開されるため、識別子(例: 不正フィールド名)のみを入れ、理由文や入力値
+そのものを入れてはいけません。details は防御的コピーされます。
+利用者向け文言は持ちません(文言の正は controller のカタログ。上書きは <a href="#Meta.WithMessage">Meta.WithMessage</a>)。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Meta.Code">func (Meta) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=1791:1818#L34">Code</a>
+					<a class="permalink" href="#Meta.Code">¶</a>
+					
+					
+				</h3>
+				<pre>func (m <a href="#Meta">Meta</a>) Code() <a href="../../../builtin/#string">string</a></pre>
+				<p>Code は機械可読なエラーコードを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Meta.Details">func (Meta) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=2016:2048#L44">Details</a>
+					<a class="permalink" href="#Meta.Details">¶</a>
+					
+					
+				</h3>
+				<pre>func (m <a href="#Meta">Meta</a>) Details() []<a href="../../../builtin/#string">string</a></pre>
+				<p>Details は詳細識別子の防御的コピーを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Meta.Message">func (Meta) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=1893:1923#L39">Message</a>
+					<a class="permalink" href="#Meta.Message">¶</a>
+					
+					
+				</h3>
+				<pre>func (m <a href="#Meta">Meta</a>) Message() <a href="../../../builtin/#string">string</a></pre>
+				<p>Message は利用者向け文言を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Meta.WithMessage">func (Meta) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=1645:1691#L28">WithMessage</a>
+					<a class="permalink" href="#Meta.WithMessage">¶</a>
+					
+					
+				</h3>
+				<pre>func (m <a href="#Meta">Meta</a>) WithMessage(message <a href="../../../builtin/#string">string</a>) <a href="#Meta">Meta</a></pre>
+				<p>WithMessage は、利用者向け文言を上書きした Meta のコピーを返します。
+文言の正は controller のカタログにあるため、呼び出しは controller 層に限ります
+(domain / usecase では使わない)。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MetaError">type <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=652:700#L11">MetaError</a>
+				<a class="permalink" href="#MetaError">¶</a>
+				
+				
+			</h2>
+			<p>MetaError は、Meta を運ぶラッパーエラーです。
+Unwrap により元エラーのセンチネル分類(<a href="/go-boilerplate/pkg/xerrors#Is">xerrors.Is</a> / <a href="#IsAppError">IsAppError</a>)を保持します。
+
+			</p><pre>type MetaError struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MetaError.Error">func (*MetaError) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=3100:3134#L75">Error</a>
+					<a class="permalink" href="#MetaError.Error">¶</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#MetaError">MetaError</a>) Error() <a href="../../../builtin/#string">string</a></pre>
+				<p>Error は error インターフェースを実装します。メッセージは元エラーのまま変えません。
+
+				
+				
+				
+			
+				
+				</p><h3 id="MetaError.Format">func (*MetaError) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=3977:4027#L93">Format</a>
+					<a class="permalink" href="#MetaError.Format">¶</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#MetaError">MetaError</a>) Format(s <a href="../../../fmt/">fmt</a>.<a href="../../../fmt/#State">State</a>, verb <a href="../../../builtin/#rune">rune</a>)</pre>
+				<p>Format は fmt.Formatter を実装し、元エラーの表現(スタックトレース含む)へ委譲します。
+これがないと %+v(ログ出力)で元エラーのスタックトレースが失われます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="MetaError.Meta">func (*MetaError) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=3704:3735#L87">Meta</a>
+					<a class="permalink" href="#MetaError.Meta">¶</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#MetaError">MetaError</a>) Meta() <a href="#Meta">Meta</a></pre>
+				<p>Meta は付与されたメタ情報を返します。フィールドは非公開のため、取り出した値経由で
+内部状態を変更することはできません(<a href="#Meta.Details">Meta.Details</a> は防御的コピーを返します)。
+
+				
+				
+				
+			
+				
+				</p><h3 id="MetaError.Unwrap">func (*MetaError) <a href="../../../src/go-boilerplate/internal/apperror/meta.go.html?s=3416:3450#L81">Unwrap</a>
+					<a class="permalink" href="#MetaError.Unwrap">¶</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#MetaError">MetaError</a>) Unwrap() <a href="../../../builtin/#error">error</a></pre>
+				<p>Unwrap は元エラーを返します。シグネチャは errors.Is / errors.As がチェーンを辿るための
+標準ライブラリ契約であり、改名するとセンチネル分類がこのラッパーを貫通できなくなります。
+
+				
+				
+				
+			
 		
 	
 

@@ -21,7 +21,7 @@ paths/
 └── v1/                     # バージョニングされた API（サンプル）
     ├── users.yaml          # /v1/users       ← エンドポイント＋子あり
     └── users/
-        ├── user_id.yaml    # /v1/users/{user_id}
+        ├── userId.yaml     # /v1/users/{userId}
         ├── search.yaml     # /v1/users/search
         └── me/             # /v1/users/me/...（プレフィックスのみ）
             └── password.yaml  # /v1/users/me/password
@@ -47,7 +47,7 @@ paths/
 
 ```text
 /v1/users             → users.yaml
-/v1/users/{user_id}   → users/user_id.yaml
+/v1/users/{userId}    → users/userId.yaml
 /v1/users/me/password → users/me/password.yaml
 /v1/users/search      → users/search.yaml
 ```
@@ -73,10 +73,10 @@ paths/
 
 |要素|規則|例|
 |---|---|---|
-|ファイル名|snake_case|`user_id.yaml`, `search.yaml`|
+|ファイル名|URL セグメントに一致（小文字）／パスパラメータファイルは param の `camelCase` 名に一致|`search.yaml`, `userId.yaml`|
 |ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/users/me/password` → `v1/users/me/password.yaml`|
 |leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`users.yaml` ＋ `users/`|
-|パスパラメータ|snake_case ファイル名（波括弧なし）|`{user_id}` → `user_id.yaml`|
+|パスパラメータ|param の `camelCase` 名に一致するファイル名（波括弧なし）|`{userId}` → `userId.yaml`|
 |operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`GetUsers`, `PostUsers`|
 |tags|パスベースのグルーピング|`v1/users`, `health`|
 
@@ -86,7 +86,7 @@ paths/
 
 ```text
 paths/v1/users.yaml             → handler/v1/users/
-paths/v1/users/user_id.yaml     → handler/v1/users/detail/
+paths/v1/users/userId.yaml      → handler/v1/users/detail/
 paths/v1/users/me/password.yaml → handler/v1/users/detail/
 paths/v1/users/search.yaml      → handler/v1/users/search/
 ```

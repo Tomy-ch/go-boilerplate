@@ -81,7 +81,7 @@ func TestStrictMiddleware(t *testing.T) {
 	})
 }
 
-func TestMiddleware_handle(t *testing.T) {
+func Test_handle(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

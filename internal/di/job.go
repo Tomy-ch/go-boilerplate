@@ -73,7 +73,7 @@ func RunJob(grace time.Duration) (StartFunc, StopFunc) {
 				logging.Strings(logging.JobArgsKey, args),
 				logging.Error(logging.JobErrorKey, err),
 			)
-			l.Error("failed to start job application", fields...)
+			l.Error(ctx, "failed to start job application", fields...)
 			// 共有 done に触れると hook goroutine と二重 close／送信になり得るため、専用チャネルで返す。
 			failCh := make(chan error, 1)
 			failCh <- err
@@ -85,7 +85,7 @@ func RunJob(grace time.Duration) (StartFunc, StopFunc) {
 			logging.String(logging.JobNameKey, name),
 			logging.Strings(logging.JobArgsKey, args),
 		)
-		l.Info("job started", fields...)
+		l.Info(ctx, "job started", fields...)
 
 		return done
 	}
@@ -96,11 +96,11 @@ func RunJob(grace time.Duration) (StartFunc, StopFunc) {
 			fields := append(jobEventFields(logging.EventTypeEnd, osCfg.TimeZone()),
 				logging.Error(logging.JobErrorKey, err),
 			)
-			l.Error("failed to stop job application", fields...)
+			l.Error(ctx, "failed to stop job application", fields...)
 			return err
 		}
 
-		l.Info("job application finished", jobEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
+		l.Info(ctx, "job application finished", jobEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
 		return nil
 	}
 

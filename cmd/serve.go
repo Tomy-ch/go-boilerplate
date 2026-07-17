@@ -36,7 +36,7 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	logger := logging.NewJSONLogger(level, logging.LevelError())
+	logger := logging.NewJSONLogger(level, logging.LevelError(), nil)
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),

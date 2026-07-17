@@ -1,6 +1,8 @@
 package module
 
 import (
+	"context"
+
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/authz/allowall"
 	"go-boilerplate/internal/logging"
@@ -33,6 +35,7 @@ func provideAuthorizer(appCfg *config.ApplicationConfig, logger logging.Logger) 
 	switch appCfg.Env() {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
 		logger.Named("authz").CallerSkip(callerSkipCount).Warn(
+			context.Background(),
 			"Allow-all authorizer wired: every request is permitted (non-production only)",
 			logging.String("env", appCfg.Env()),
 		)
@@ -40,6 +43,7 @@ func provideAuthorizer(appCfg *config.ApplicationConfig, logger logging.Logger) 
 		return allowall.New(), nil
 	default:
 		logger.Named("authz").CallerSkip(callerSkipCount).Error(
+			context.Background(),
 			"No authorizer configured for the current environment",
 			logging.String("env", appCfg.Env()),
 		)

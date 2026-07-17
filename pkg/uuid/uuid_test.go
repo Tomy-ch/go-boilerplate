@@ -48,7 +48,7 @@ func TestNewTestFromSalt(t *testing.T) {
 	assert.NotEqual(t, uuid1, NewTestFromSalt(t, "other-salt"))
 }
 
-func TestBytes(t *testing.T) {
+func TestUUID_Bytes(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestBytes(t *testing.T) {
 	assert.Equal(t, uuid.b, bytes)
 }
 
-func TestIsNil(t *testing.T) {
+func TestUUID_IsNil(t *testing.T) {
 	t.Parallel()
 	var nilUUID UUID
 	assert.True(t, nilUUID.IsNil())
@@ -67,7 +67,7 @@ func TestIsNil(t *testing.T) {
 	assert.False(t, uuid.IsNil())
 }
 
-func TestToPrimitive(t *testing.T) {
+func TestUUID_ToPrimitive(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
@@ -83,14 +83,14 @@ func TestFromPrimitive(t *testing.T) {
 	assert.Equal(t, uuid, got)
 }
 
-func TestString(t *testing.T) {
+func TestUUID_String(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
 	assert.NotEmpty(t, uuid.String())
 }
 
-func TestEqual(t *testing.T) {
+func TestUUID_Equal(t *testing.T) {
 	t.Parallel()
 	uuid1, err := New()
 	require.NoError(t, err)
@@ -102,14 +102,14 @@ func TestEqual(t *testing.T) {
 	assert.False(t, uuid1.Equal(uuid3))
 }
 
-func TestToPtr(t *testing.T) {
+func TestUUID_ToPtr(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
 	assert.NotNil(t, uuid.ToPtr())
 }
 
-func TestEqualPtr(t *testing.T) {
+func TestUUID_EqualPtr(t *testing.T) {
 	t.Parallel()
 	uuid1, err := New()
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestParse(t *testing.T) {
 	})
 }
 
-func TestScan(t *testing.T) {
+func TestUUID_Scan(t *testing.T) {
 	t.Parallel()
 	u, err := New()
 	require.NoError(t, err)
@@ -180,7 +180,7 @@ func TestScan(t *testing.T) {
 	})
 }
 
-func TestValue(t *testing.T) {
+func TestUUID_Value(t *testing.T) {
 	t.Parallel()
 	u, err := New()
 	require.NoError(t, err)

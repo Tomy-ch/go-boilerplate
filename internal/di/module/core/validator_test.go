@@ -13,7 +13,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-func TestValidatorModule_ProvidesValidator(t *testing.T) {
+func TestValidatorModule(t *testing.T) {
 	t.Parallel()
 
 	t.Run("fx アプリで Validator が提供される", func(t *testing.T) {

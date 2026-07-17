@@ -26,7 +26,7 @@ func TestNewBuildInfo(t *testing.T) {
 	})
 }
 
-func TestBuildInfoMethods(t *testing.T) {
+func Test_buildInfo_Methods(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

@@ -218,6 +218,8 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 - 「起き得ない失敗」は構造的に起こせなくするのを優先する。境界で値の有効性が既に保証される場合（例: echo で検証済みの path パラメータ）、防御的な `error` 戻りをスタックに引き回さず、**到達不能エラーで `panic` するヘルパー**経由で変換する。そのヘルパーは `Must` 系の明示的な命名にし、panic 経路を単体テストする。
 - 理由: 到達不能な `if err != nil { return err }` はデッドコードであり、テスト不能・カバレッジ低下・意図の隠蔽を招く。`panic` は不変条件を文書化し、前提が破られたら確実に気づける。
 - `apperror` センチネルを元エラーに付与する場合は `pkg/xerrors` を使う。元エラーを文字列へ潰す `Wrap(sentinel, err.Error())` より、型・スタックを chain に残して `Is` / `As` で辿れる `Join(sentinel, err)` を優先する。例外は2つ: 機密（クエリ・userinfo を含む URL 等）を含みうるエラーへの **redact** ルールと、**意図的な型消去** ルール — `Wrap` による潰しは意図的なこともある（元の型を chain から消す）ため、既存の正規化器を `Join` へ変える前に、その型に**マッチしないこと**に依存する下流の `Is` / `As` 述語（例: `*pgconn.PgError` の SQLSTATE を見る tx リトライ述語）をすべて確認する。完全な方針は [`pkg/xerrors/README.md`](../../pkg/xerrors/README.md) を参照。
+- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0040](adr/0040-error-metadata-code-message-details.ja.md)。
+- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0041](adr/0041-error-details-opt-in-gate.ja.md)。
 
 ## コメントルール
 
@@ -236,6 +238,7 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 - NG（How / 言い換え / トートロジー）:
   - `// ReadFile は os.ReadFile を呼び出して…`（実装手段 / How）
   - 実装手順の逐次なぞり；内部表現メモ（`// 内部表現は [16]byte`）；トートロジー（`// User は User です`）
+  - 下のコードが既に条件を満たしている解決済みの `// TODO:` / `// FIXME:` 残置（陳腐化。未解決の正当な TODO は対象外）
 - 強制の分担: `revive` の `exported` ルールは export 宣言コメントの **有無**と **`Name` 前置の形式**しか保証しない。この **内容**ルール（What 品質 + 良い Why + How なし）は意味的で lint 不能 — レビューで強制する: `local-review` が専用の `comment-reviewer` agent を fan-out し、良いコメントの**検証**（What が 正確/充足/有意、Why が非自明）と悪いコメントの**検出**（How / 経緯 / 言い換え / トートロジー）を行い、確定した指摘を自動修正する。
 - **言語スコープ**: この内容ルールは**言語非依存** — Go と非 Go（shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML）に等しく適用する。上記の Go 例は例示でありスコープ限定ではない。非 Go は**高リスク**で対象外ではない: `revive` は Go しか見ないため、非 Go では `comment-reviewer` レビューが唯一のチェックになる。非 Go コメントも同基準で扱う — How ナレーション・開発の経緯・冗長な言い換えはビルドスクリプトやワークフローファイルでも NG。良い Why（非自明な理由）と load-bearing 制約注記は残す。
 
@@ -247,7 +250,7 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 - **有意**: 自明を超えて情報を与えること。見出しやディレクトリ名の単なる言い換えのような埋め草は不可。
 - **経緯排除**: 恒久 doc に開発の経緯を語らない。移行履歴・障害の後日談・「なぜ X から乗り換えたか」は release note（`.github/release/`）/ PR / commit ログに置き、常に真であるべき README には置かない。
 - **冗長な言い換え排除**: 隣接する正典 doc やコードが既に述べていることを逐語的に複製しない。**リンク**で参照する。
-- **What / Why / How すべて歓迎**: コードコメントと異なり、docs は **Why**（設計意図・根拠＝`docs/decisions.md` や設計セクションの役割）と **How**（使い方・チュートリアル・実行手順）を*書くべき*。これらは指摘対象ではない。
+- **What / Why / How すべて歓迎**: コードコメントと異なり、docs は **Why**（設計意図・根拠＝`docs/adr/` や設計セクションの役割）と **How**（使い方・チュートリアル・実行手順）を*書くべき*。これらは指摘対象ではない。
 - この内容ルールの対象外（別ツールが担当）: ディスク上のファイルとの構造ドリフト（`sync-readme`）、portal 掲載価値のキュレーション（`readme-review`）。
 
 ## テストと完了の定義（Definition of Done）

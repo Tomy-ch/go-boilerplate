@@ -14,7 +14,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestAuthModule(t *testing.T) {
+func TestAuthnModule(t *testing.T) {
 	t.Parallel()
 
 	t.Run("fx アプリで Authenticator が提供される", func(t *testing.T) {

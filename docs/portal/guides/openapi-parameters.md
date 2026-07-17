@@ -28,15 +28,15 @@ parameters/
 
 This project offers **two pagination strategies**, and each deliberately keeps its own idiomatic parameter names — they are **not** unified on purpose:
 
-- **Offset** (`page` / `per_page`) — REST-style page navigation. Use for finite, page-addressable lists.
+- **Offset** (`page` / `perPage`) — REST-style page navigation. Use for finite, page-addressable lists.
 - **Cursor / keyset** (`first` / `after`) — Relay-style forward traversal. Use for large or infinite feeds where offset is too expensive or unstable.
 
-Renaming the cursor params to `per_page` etc. would be non-idiomatic (cursor traversal has no "pages") and an API-breaking change, so the split is intentional.
+Renaming the cursor params to `perPage` etc. would be non-idiomatic (cursor traversal has no "pages") and an API-breaking change, so the split is intentional.
 
 |File|Parameter|Type|Strategy|Description|
 |---|---|---|---|---|
 |`PageParam.yaml`|`page` (query)|integer|offset|Page number (1-based, default: 1)|
-|`PerPageParam.yaml`|`per_page` (query)|integer|offset|Items per page (default: 10, max: 100)|
+|`PerPageParam.yaml`|`perPage` (query)|integer|offset|Items per page (default: 10, max: 100)|
 |`CursorFirstParam.yaml`|`first` (query)|integer|cursor|Max items to return (default: 50, max: 200)|
 |`CursorAfterParam.yaml`|`after` (query)|string|cursor|Opaque cursor for the next page; omit for the first page|
 
@@ -51,7 +51,7 @@ Renaming the cursor params to `per_page` etc. would be non-idiomatic (cursor tra
 
 |File|Parameter|Type|Description|
 |---|---|---|---|
-|`UserIdParam.yaml`|`user_id` (path)|string (uuid)|User UUID|
+|`UserIdParam.yaml`|`userId` (path)|string (uuid)|User UUID|
 
 ## Usage
 

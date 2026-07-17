@@ -61,15 +61,15 @@
 <span id="L4" class="ln">     4  </span>	userqs &#34;go-boilerplate/internal/infrastructure/rdb/query_service/user&#34; <span class="comment">// sample-api:line</span>
 <span id="L5" class="ln">     5  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/repository/prefecture&#34;     <span class="comment">// sample-api:line</span>
 <span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/repository/user&#34;           <span class="comment">// sample-api:line</span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck&#34;
-<span id="L8" class="ln">     8  </span>	idempotencysq &#34;go-boilerplate/internal/infrastructure/rdb/system_query/idempotency&#34;
-<span id="L9" class="ln">     9  </span>	outboxsq &#34;go-boilerplate/internal/infrastructure/rdb/system_query/outbox&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck&#34;
+<span id="L8" class="ln">     8  </span>	idempotencysq &#34;go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency&#34;
+<span id="L9" class="ln">     9  </span>	outboxsq &#34;go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox&#34;
 <span id="L10" class="ln">    10  </span>
 <span id="L11" class="ln">    11  </span>	&#34;go.uber.org/fx&#34;
 <span id="L12" class="ln">    12  </span>)
 <span id="L13" class="ln">    13  </span>
 <span id="L14" class="ln">    14  </span><span class="comment">// persistenceModule は、RDB を背後に持つ永続化系の依存（repository / query_service /</span>
-<span id="L15" class="ln">    15  </span><span class="comment">// command_service / system_query）を提供するfx.Moduleです。DatabaseModule() の db 接続層</span>
+<span id="L15" class="ln">    15  </span><span class="comment">// command_service / system_cqrs）を提供するfx.Moduleです。DatabaseModule() の db 接続層</span>
 <span id="L16" class="ln">    16  </span><span class="comment">// とは区別され、その上に載るデータアクセス実装をまとめます。</span>
 <span id="L17" class="ln">    17  </span>func persistenceModule() fx.Option {
 <span id="L18" class="ln">    18  </span>	return fx.Module(&#34;persistence&#34;,
@@ -97,7 +97,7 @@
 <span id="L40" class="ln">    40  </span>			<span class="comment">// sample-api:end</span>
 <span id="L41" class="ln">    41  </span>			),
 <span id="L42" class="ln">    42  </span>		),
-<span id="L43" class="ln">    43  </span>		fx.Module(&#34;system_query&#34;,
+<span id="L43" class="ln">    43  </span>		fx.Module(&#34;system_cqrs&#34;,
 <span id="L44" class="ln">    44  </span>			fx.Provide(
 <span id="L45" class="ln">    45  </span>				healthcheck.New,
 <span id="L46" class="ln">    46  </span>				idempotencysq.New,

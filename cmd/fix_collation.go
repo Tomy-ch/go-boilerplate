@@ -33,12 +33,12 @@ func newFixCollationCommand() *cobra.Command {
 
 // runFixCollation は fixcollation.RunFix への薄い委譲殻です。
 func runFixCollation(ctx context.Context, database string) error {
-	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 
 	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()
 		if cerr != nil {
-			logger.Error("failed to load config", logging.Error(logging.ErrorKey, cerr))
+			logger.Error(ctx, "failed to load config", logging.Error(logging.ErrorKey, cerr))
 			return "", "", cerr
 		}
 		dbCfg := config.NewDatabaseConfig(cfg)

@@ -60,6 +60,19 @@ func NormalizeError(err error) error {
 	return xerrors.Join(apperror.ErrInternal, err)
 }
 
+// NormalizeReconstructError は、DB 行からのエンティティ再構築（ドメインコンストラクタ）が
+// 返したエラーをデータ不整合として ErrInternal へ平坦化します。
+// 保存済みデータがドメイン不変条件を満たさないのはサーバ内部障害であり、入力検証エラー
+// （422 / details 付き）としてクライアントへ露出させないため、元エラーの分類センチネルと
+// apperror.Meta を意図的にチェーンから消します（load-bearing flatten）。理由文はメッセージに
+// 残るためログには出ます。err が nil の場合は nil を返します。
+func NormalizeReconstructError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return xerrors.Wrap(apperror.ErrInternal, "entity reconstruction from stored row failed: "+err.Error())
+}
+
 // NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。
 // エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
 // 対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。

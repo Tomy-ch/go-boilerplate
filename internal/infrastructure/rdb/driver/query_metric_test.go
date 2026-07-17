@@ -40,7 +40,7 @@ func TestWithQueryName(t *testing.T) {
 	})
 }
 
-func TestClassifyOperation(t *testing.T) {
+func Test_classifyOperation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestClassifyOperation(t *testing.T) {
 	})
 }
 
-func TestClassifyErrorClass(t *testing.T) {
+func Test_classifyErrorClass(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -191,7 +191,7 @@ func TestClassifyErrorClass(t *testing.T) {
 	})
 }
 
-func TestBuildQueryAttrs(t *testing.T) {
+func Test_buildQueryAttrs(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

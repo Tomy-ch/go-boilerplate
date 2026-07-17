@@ -81,7 +81,7 @@
 <span id="L24" class="ln">    24  </span>	}
 <span id="L25" class="ln">    25  </span>}
 <span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span>func TestBreakerAllowAndRecord(t *testing.T) {
+<span id="L27" class="ln">    27  </span>func Test_breaker_allow_record(t *testing.T) {
 <span id="L28" class="ln">    28  </span>	t.Parallel()
 <span id="L29" class="ln">    29  </span>
 <span id="L30" class="ln">    30  </span>	base := time.Unix(1000, 0)
@@ -241,7 +241,7 @@
 <span id="L184" class="ln">   184  </span>	})
 <span id="L185" class="ln">   185  </span>}
 <span id="L186" class="ln">   186  </span>
-<span id="L187" class="ln">   187  </span>func TestBreakerShouldOpen(t *testing.T) {
+<span id="L187" class="ln">   187  </span>func Test_breaker_shouldOpen(t *testing.T) {
 <span id="L188" class="ln">   188  </span>	t.Parallel()
 <span id="L189" class="ln">   189  </span>
 <span id="L190" class="ln">   190  </span>	base := time.Unix(1000, 0)
@@ -279,7 +279,7 @@
 <span id="L222" class="ln">   222  </span>	})
 <span id="L223" class="ln">   223  </span>}
 <span id="L224" class="ln">   224  </span>
-<span id="L225" class="ln">   225  </span>func TestBreakerManagerGet(t *testing.T) {
+<span id="L225" class="ln">   225  </span>func Test_breakerManager_get(t *testing.T) {
 <span id="L226" class="ln">   226  </span>	t.Parallel()
 <span id="L227" class="ln">   227  </span>
 <span id="L228" class="ln">   228  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {

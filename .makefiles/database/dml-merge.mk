@@ -4,14 +4,14 @@
 .PHONY: merge-dml-repo ## ドメイン用DMLのマージ
 .PHONY: merge-dml-qs ## クエリサービス用DMLのマージ
 .PHONY: merge-dml-cs ## コマンドサービス用DMLのマージ
-.PHONY: merge-dml-sysq ## システムクエリ用DMLのマージ
+.PHONY: merge-dml-sysq ## システムCQRS用DMLのマージ
 .PHONY: merge-dml-core ## 指定したタイプのDMLのマージを実行 (例: make merge-dml-core type="repository" work-dir=".")
 # -----CI用ターゲット-----
 .PHONY: merge-dml-ci ## DMLのマージを実行（CI用）
 .PHONY: merge-dml-ci-repo ## ドメイン用DMLのマージ（CI用）
 .PHONY: merge-dml-ci-qs ## クエリサービス用DMLのマージ（CI用）
 .PHONY: merge-dml-ci-cs ## コマンドサービス用DMLのマージ（CI用）
-.PHONY: merge-dml-ci-sysq ## システムクエリ用DMLのマージ（CI用）
+.PHONY: merge-dml-ci-sysq ## システムCQRS用DMLのマージ（CI用）
 .PHONY: merge-dml-ci-core ## 指定したタイプのDMLのマージを実行（CI用） (例: make merge-dml-ci-core type="repository" work-dir=".")
 
 # -----Dockerコンテナ内で実行するコマンド群-----
@@ -22,7 +22,7 @@ merge-dml-repo:
 merge-dml-qs:
 	$(MAKE) merge-dml-core type="query_service" work-dir="."
 merge-dml-sysq:
-	$(MAKE) merge-dml-core type="system_query" work-dir="."
+	$(MAKE) merge-dml-core type="system_cqrs" work-dir="."
 merge-dml-cs:
 	$(MAKE) merge-dml-core type="command_service" work-dir="."
 merge-dml-core:
@@ -41,7 +41,7 @@ merge-dml-ci-repo:
 merge-dml-ci-qs:
 	$(MAKE) merge-dml-ci-core type="query_service" work-dir=$(work-dir)
 merge-dml-ci-sysq:
-	$(MAKE) merge-dml-ci-core type="system_query" work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-core type="system_cqrs" work-dir=$(work-dir)
 merge-dml-ci-cs:
 	$(MAKE) merge-dml-ci-core type="command_service" work-dir=$(work-dir)
 merge-dml-ci-core:

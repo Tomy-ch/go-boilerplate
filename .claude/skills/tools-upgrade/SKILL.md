@@ -43,6 +43,7 @@ Per the "Exception: Skill Execution" clause in `CLAUDE.md`, the following paths 
 
 - `mise.toml` (the `[tools]` table — write only entries the user explicitly approved)
 - `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md`, `docker/**/README.ja.md` — only as the downstream output of `make sync-versions` (the script handles these atomically)
+- `docker/**/Dockerfile` `FROM` `@sha256:...` digests + `docker/images-pin.toml` — only via `make pin-images-apply` / `pin-images-resolve`, when a `go` / `node` / `python` runtime bump changed a base-image tag
 
 The following remain protected even during skill execution:
 
@@ -134,6 +135,18 @@ If any of `go` / `node` / `python` was updated, run `make sync-versions`. This p
 
 If only non-runtime tools were updated, skip `make sync-versions`.
 
+### 6.5. Re-pin Base Image Digests if a Runtime Changed
+
+If step 6 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `pin-images` skill's job, chained here):
+
+```sh
+make pin-images-resolve   # run `docker login` first if Docker Hub returns 429
+make pin-images-apply
+make pin-images-check
+```
+
+The just-published runtime image is normally inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown, so `pin-images-apply` strips the stale digest and leaves the `FROM` on the tag only (quarantined) — `pin-images-check` accepts that. Report it and note that `/pin-images` should be re-run once the image ages. Skip this step entirely when step 6 was skipped (no runtime change → no tag change → digests still valid).
+
 ### 7. Verify
 
 ```sh
@@ -174,6 +187,7 @@ Confirm the following before reporting completion:
 - [ ] If eligible set non-empty: user confirmed per-tool update set via `AskUserQuestion`
 - [ ] `mise.toml` rewritten atomically with only approved changes, preserving key formats and `v`-prefix convention
 - [ ] `make sync-versions` run if go / node / python was updated
+- [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`); quarantined-until-aged images reported for a later `/pin-images` re-run
 - [ ] `make lint` + `make test` run after writes
 - [ ] Final result table reported to the user
 - [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync

@@ -24,7 +24,7 @@ import (
 // metricsBlockPathSeq は、DefaultServeMux への二重登録 panic を避けるため一意な登録パスを払い出します。
 var metricsBlockPathSeq atomic.Int64
 
-func TestMetricsServer(t *testing.T) {
+func Test_metricsServer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestMetricsServer(t *testing.T) {
 	})
 }
 
-func TestLogListenError(t *testing.T) {
+func Test_logListenError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestLogListenError(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			logger := mock_logging.NewMockLogger(ctrl)
 			logger.EXPECT().Named("metrics.ListenAndServe").Return(logger)
-			logger.EXPECT().Error("metrics server error", gomock.Any())
+			logger.EXPECT().Error(gomock.Any(), "metrics server error", gomock.Any())
 
 			logListenError(logger, xerrors.New("bind failed"))
 		})

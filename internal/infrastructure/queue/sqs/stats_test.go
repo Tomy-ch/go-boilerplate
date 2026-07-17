@@ -52,7 +52,7 @@ func TestNewQueueStatsProvider(t *testing.T) {
 	})
 }
 
-func Test_StatsProvider_QueueStats(t *testing.T) {
+func Test_statsProvider_QueueStats(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

@@ -317,12 +317,12 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1044:1078#L27">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1202:1236#L24">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
 			</h2>
-			<p>BadRequest400 エラーレスポンスの共通スキーマ
+			<p>BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type BadRequest400 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -397,19 +397,16 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=242:604#L1">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=367:637#L1">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
 			</h2>
-			<p>ErrorResponse エラーレスポンスの共通スキーマ
+			<p>ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type ErrorResponse struct {
 <span id="ErrorResponse.Code"></span>    <span class="comment">// Code 機械的に処理可能なエラーコード</span>
     Code <a href="../../../../../../../builtin/#string">string</a> `json:&#34;code&#34;`
-
-<span id="ErrorResponse.Details"></span>    <span class="comment">// Details エラーの詳細情報(任意)</span>
-    Details *[]<a href="../../../../../../../builtin/#string">string</a> `json:&#34;details,omitempty&#34;`
 
 <span id="ErrorResponse.Message"></span>    <span class="comment">// Message 人間が読めるエラーメッセージ</span>
     Message <a href="../../../../../../../builtin/#string">string</a> `json:&#34;message&#34;`
@@ -433,7 +430,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ExchangeRateResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=676:979#L12">ExchangeRateResponse</a>
+			<h2 id="ExchangeRateResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=709:1012#L9">ExchangeRateResponse</a>
 				<a class="permalink" href="#ExchangeRateResponse">¶</a>
 				
 				
@@ -612,7 +609,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRatesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1592:1887#L42">GetExchangeRatesParams</a>
+			<h2 id="GetExchangeRatesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=2000:2295#L39">GetExchangeRatesParams</a>
 				<a class="permalink" href="#GetExchangeRatesParams">¶</a>
 				
 				
@@ -694,12 +691,12 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1152:1195#L30">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1435:1478#L27">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
 			</h2>
-			<p>InternalServerError500 エラーレスポンスの共通スキーマ
+			<p>InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type InternalServerError500 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -850,12 +847,12 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1268:1310#L33">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1676:1718#L30">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
 			</h2>
-			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ
+			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type ServiceUnavailable503 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 

@@ -102,10 +102,12 @@ $ref: '#/components/schemas/UserResponse'
 |ロケーション|casing|例|
 |---|---|---|
 |リクエスト／レスポンスの**ボディフィールド**|`camelCase`|`firstName`, `postalCode`, `nextCursor`, `hasNext`, `requestId`|
-|**クエリ／パスパラメータ**|`snake_case`|`per_page`, `user_id`|
+|**クエリ／パスパラメータ**|`camelCase`|`perPage`, `userId`|
 |`operationId`|`PascalCase`・動詞始まり|`GetUsers`, `PostUsers`|
 
-ボディフィールドとパラメータは意図的に casing を分けています（ボディ＝JSON/TS クライアントに合わせ camelCase、パラメータ＝URL で一般的な snake_case）。各ロケーション内では統一します。
+HTTP ヘッダーはこの表の対象外です — 慣例に従い `Train-Case`（例 `Idempotency-Key`）を用います。
+
+ボディフィールドとパラメータは意図的に同じ `camelCase` に統一しています（パラメータをボディフィールドと揃えることで、JS/TS フロントエンドや生成 SDK とワイヤー契約を一致させる）。各ロケーション内では統一します。
 
 ### バージョニング
 

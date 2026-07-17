@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ExtractPathParams(t *testing.T) {
+func TestExtractPathParams(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
@@ -46,7 +46,7 @@ func Test_ExtractPathParams(t *testing.T) {
 	})
 }
 
-func Test_ExtractQueryParams(t *testing.T) {
+func TestExtractQueryParams(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
@@ -81,7 +81,7 @@ func Test_ExtractQueryParams(t *testing.T) {
 	})
 }
 
-func Test_BuildHTTPRequestLogInput(t *testing.T) {
+func TestBuildHTTPRequestLogInput(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

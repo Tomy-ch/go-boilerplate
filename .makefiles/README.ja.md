@@ -30,7 +30,7 @@ Make ターゲットは主に以下の単位で整理されています。
 
 ## 補足
 
-- 新規 `.mk` ファイルは該当グループ配下に追加すれば OK。`makefile` 側で既に `include` 済み
+- 既存グループファイルへのターゲット追加ならトップレベル編集は不要。ただし新規 `.mk` ファイルを追加する場合は、トップレベル `makefile` へ `include` 行の追記が必要（ワイルドカードではなく個別 include のため）
 - ファイル直接作成より `make new-migrate-<name>` 等のヘルパーを優先（命名規約と番号採番を自動化）
 - 一回限りの運用コマンド（`make setup-repo` 等）は `.makefiles/github/operation/` 配下に置き、開発者向けターゲットと分離する
 
@@ -247,12 +247,16 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 
 ## `.makefiles/docker` 系
 
-`go_tool_runner` コンテナ経由で hadolint により Dockerfile を lint します。
+`go_tool_runner` コンテナ経由で hadolint により Dockerfile を lint し、`FROM` の base image を
+不変の digest へ固定します（サプライチェーン対策）。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make docker-lint` | `docker/*/Dockerfile` を hadolint で lint します。 | `go_tool_runner` コンテナ内で `make docker-lint-ci` を呼び出します。 |
 | `make docker-lint-ci` | `hadolint docker/*/Dockerfile` を直接実行します。 | CI 用ターゲット。無効化ルールは `.hadolint.yaml`。 |
+| `make pin-images-resolve` | 各 `FROM` の `image:tag` を現在の digest へ解決し `docker/images-pin.toml` lockfile を更新します。 | `PIN_IMAGES_MIN_AGE_DAYS`（既定 14；0 で無効）日未満の digest は quarantine。registry アクセス（`docker`）が必要。 |
+| `make pin-images-apply` | lockfile を元に `FROM` を `image:tag@sha256:...` へ固定します（quarantine 中の image は tag のまま）。 | なし |
+| `make pin-images-check` | `FROM` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit gate。 |
 
 ## `.makefiles/openapi` 系
 

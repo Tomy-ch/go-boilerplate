@@ -87,21 +87,30 @@ This separates the input structure from the operation semantics.
 
 ## Core Schemas
 
-### ErrorResponse
+### ErrorResponse / ErrorResponseWithDetails
 
-Unified error response used across all endpoints:
+Two error envelopes. `ErrorResponse` is the base (no `details`) used by most error statuses;
+`ErrorResponseWithDetails` adds `details` and is referenced **only** by responses that
+intentionally expose it. Which operations reference `ErrorResponseWithDetails` is the
+**per-endpoint opt-in switch** for detail exposure (enforced fail-closed at the edge — see
+[ADR-0041](../../../docs/adr/0041-error-details-opt-in-gate.md)).
 
 ```yaml
+# ErrorResponse.yaml (base)
 type: object
 required: [code, message, requestId]
 properties:
   code:       # Machine-readable error code (e.g., BAD_REQUEST)
   message:    # Human-readable error message
-  details:    # Optional array of detail strings
   requestId:  # Request tracking ID
+
+# ErrorResponseWithDetails.yaml (base + details)
+#   ...same fields, plus:
+#   details:  # Public-safe identifiers (e.g., invalid field names)
 ```
 
-Maps to `response.HTTPErrorResponse` in Go — see `internal/controller/error/response/`.
+The Go builder (`response.HTTPErrorResponse`) embeds the `ErrorResponseWithDetails` superset —
+see `internal/controller/error/response/`.
 
 ### errors/ — reusable error response objects (DRY)
 

@@ -22,7 +22,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-func TestTxManager_Do(t *testing.T) {
+func Test_txManager_Do(t *testing.T) {
 	t.Parallel()
 
 	// Begin 経路で生 SQLSTATE を注入し、pgx.Tx を mock せずにリトライ挙動を検証する。

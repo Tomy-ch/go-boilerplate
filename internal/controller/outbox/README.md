@@ -18,6 +18,7 @@ English | [日本語](README.ja.md)
   - `BatchSize int32` — rows to claim per poll.
   - `PollInterval time.Duration` — wait after a batch that did not fully drain (empty / partial / stalled).
   - `ErrorBackoff time.Duration` — wait after `RelayBatch` returns an error.
+  - **Clamping (safe defaults, not silent):** `provideRelaySettings` (`internal/di/module/outboxrelay.go`) **clamps** `BatchSize` / `PollInterval` / `ErrorBackoff` to their defaults when set to `0` / a negative value, since a non-positive poll/backoff would spin (hot loop). This is a deliberate resilience choice, not a failure. The `OUTBOX_*` env vars carry non-zero `envDefault`s, so a clamp only triggers on an explicit `0` override; it is documented here and enumerated in the setup review ([`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md)) so it stays reviewable rather than silent.
 
 ## Loop semantics (`Run`)
 

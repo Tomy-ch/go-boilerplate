@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Exponential_Duration(t *testing.T) {
+func TestExponential_Duration(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

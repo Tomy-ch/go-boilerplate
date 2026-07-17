@@ -139,22 +139,28 @@ func NewGenerator(logger logging.Logger, workDir string) *Generator {
 func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	logger := gen.logger
 
+	if err := validateTargetType(targetType); err != nil {
+		return err
+	}
+
 	categories, err := gen.fs.ListSubDirNames(gen.dmlTypeRootAbs(targetType))
 	if err != nil {
-		logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error("failed to list directories",
+		logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error(ctx, "failed to list directories",
 			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
 	if len(categories) == 0 {
 		logger.CallerSkip(gen.callerSkipCount).Named("mergedml.NoCategories").Info(
+			ctx,
 			"no categories found under dml directory, cleanup only",
 			logging.String("dml_path", gen.dmlRootDir+targetType),
 		)
 
 		// ★ 0件でも stale を消す（=このtypeの生成物を全消しに近い挙動）
-		if err := gen.cleanupStaleGeneratedFiles(nil, targetType); err != nil {
+		if err := gen.cleanupStaleGeneratedFiles(ctx, nil, targetType); err != nil {
 			logger.CallerSkip(gen.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Error(
+				ctx,
 				"failed to cleanup stale generated sql files",
 				logging.Error(logging.ErrorKey, err),
 			)
@@ -174,19 +180,20 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 			}
 			defer sem.Release(1)
 
-			return gen.buildCategorySQLFile(cat, targetType)
+			return gen.buildCategorySQLFile(egCtx, cat, targetType)
 		})
 	}
 
 	if err := eg.Wait(); err != nil {
-		gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.buildMergedQueries").Error("failed to build merged sql files",
+		gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.buildMergedQueries").Error(ctx, "failed to build merged sql files",
 			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
 
-	if err := gen.cleanupStaleGeneratedFiles(categories, targetType); err != nil {
+	if err := gen.cleanupStaleGeneratedFiles(ctx, categories, targetType); err != nil {
 		gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Error(
+			ctx,
 			"failed to cleanup stale generated sql files",
 			logging.Error(logging.ErrorKey, err),
 		)
@@ -196,13 +203,23 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	return nil
 }
 
+// validateTargetType は、許可済みの DML カテゴリタイプのみを受け付けます。
+func validateTargetType(targetType string) error {
+	switch targetType {
+	case "repository", "query_service", "system_cqrs", "command_service":
+		return nil
+	default:
+		return xerrors.New("invalid target type: " + targetType)
+	}
+}
+
 // dmlTypeRootAbs は、指定されたタイプのDMLルートディレクトリの絶対パスを返します。
 func (g *Generator) dmlTypeRootAbs(targetType string) string {
 	return filepath.Join(g.workDir, g.dmlRootDir, targetType)
 }
 
 // buildCategorySQLFile は、指定されたカテゴリのSQLファイルを連結して1つのSQLファイルにまとめます。
-func (g *Generator) buildCategorySQLFile(category, targetType string) error {
+func (g *Generator) buildCategorySQLFile(ctx context.Context, category, targetType string) error {
 	// 入力走査も workDir 起点で統一する。CWD 起点だと CWD != workDir のとき走査結果が 0 件になり、
 	// 「入力なし」分岐に入って workDir 配下の生成物を誤って削除してしまうため。
 	dmlDir := filepath.Join(g.workDir, g.dmlRootDir, targetType, category)
@@ -227,6 +244,7 @@ func (g *Generator) buildCategorySQLFile(category, targetType string) error {
 		}
 
 		g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.buildCategorySQLFile").Info(
+			ctx,
 			"no sql files found, remove generated file if exists",
 			logging.String("category", category),
 			logging.String("type", targetType),
@@ -235,7 +253,7 @@ func (g *Generator) buildCategorySQLFile(category, targetType string) error {
 		return nil
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.buildCategorySQLFile").Info("build merged sql for sqlc",
+	g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.buildCategorySQLFile").Info(ctx, "build merged sql for sqlc",
 		logging.String("category", category),
 		logging.String("type", targetType),
 		logging.String("dst", dstPath),
@@ -306,7 +324,7 @@ func resolveConcurrency(numCPU int) int {
 	return max(min(numCPU, maxSQLCConcurrency), minSQLCConcurrency)
 }
 
-func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {
+func (g *Generator) cleanupStaleGeneratedFiles(ctx context.Context, categories []string, targetType string) error {
 	keep := make(map[string]struct{}, len(categories))
 	for _, cat := range categories {
 		keep[fmt.Sprintf("%s_%s.gen.sql", cat, targetType)] = struct{}{}
@@ -340,6 +358,7 @@ func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType s
 		}
 
 		g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Info(
+			ctx,
 			"remove stale generated sql",
 			logging.String("file", filepath.ToSlash(full)),
 			logging.String("type", targetType),

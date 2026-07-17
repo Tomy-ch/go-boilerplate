@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestWebapiModule_GraphIsValid(t *testing.T) {
+func Test_webapiModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
 	// 外部 Web API gateway は httpclient.Client / TracerFactory に依存するため、

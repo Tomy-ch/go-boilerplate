@@ -2,7 +2,7 @@
 
 English | [日本語](secure-uuid.ja.md)
 
-This project adopts an API design that exposes UUIDs (e.g., `user_id`) externally. The following multi-layered defenses eliminate or mitigate security concerns.
+This project adopts an API design that exposes UUIDs (e.g., `userId`) externally. The following multi-layered defenses eliminate or mitigate security concerns.
 
 ## Prerequisites and Design Philosophy
 

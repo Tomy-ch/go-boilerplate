@@ -21,7 +21,7 @@ type ServerInterface interface {
 	GetUsers(ctx echo.Context, params GetUsersParams) error
 	// ユーザーの作成
 	// (POST /v1/users)
-	PostUsers(ctx echo.Context) error
+	PostUsers(ctx echo.Context, params PostUsersParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -49,11 +49,11 @@ func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
 	}
 
-	// ------------- Optional query parameter "per_page" -------------
+	// ------------- Optional query parameter "perPage" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", ctx.QueryParams(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter perPage: %s", err))
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -67,8 +67,28 @@ func (w *ServerInterfaceWrapper) PostUsers(ctx echo.Context) error {
 
 	ctx.Set(string(BearerAuthScopes), []string{})
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostUsersParams
+
+	headers := ctx.Request().Header
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyParam
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostUsers(ctx)
+	err = w.Handler.PostUsers(ctx, params)
 	return err
 }
 
@@ -136,7 +156,7 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 
 type Unauthorized401JSONResponse ErrorResponse
 
-type UnprocessableEntity422JSONResponse ErrorResponse
+type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
 type GetUsersRequestObject struct {
 	Params GetUsersParams
@@ -235,7 +255,8 @@ func (response GetUsers503JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 }
 
 type PostUsersRequestObject struct {
-	Body *PostUsersJSONRequestBody
+	Params PostUsersParams
+	Body   *PostUsersJSONRequestBody
 }
 
 type PostUsersResponseObject interface {
@@ -408,8 +429,10 @@ func (sh *strictHandler) GetUsers(ctx echo.Context, params GetUsersParams) error
 }
 
 // PostUsers operation middleware
-func (sh *strictHandler) PostUsers(ctx echo.Context) error {
+func (sh *strictHandler) PostUsers(ctx echo.Context, params PostUsersParams) error {
 	var request PostUsersRequestObject
+
+	request.Params = params
 
 	var body PostUsersJSONRequestBody
 	if err := ctx.Bind(&body); err != nil {

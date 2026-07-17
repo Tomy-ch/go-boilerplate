@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 )
@@ -13,7 +12,6 @@ import (
 // eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
 func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequestLogInput {
 	req := c.Request()
-	traceCtx := observability.ExtractTraceContext(req.Context())
 	return logging.HTTPRequestLogInput{
 		EventType:     eventType,
 		EventAt:       time.Now(),
@@ -29,8 +27,6 @@ func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequ
 		ContentLength: req.ContentLength,
 		QueryParams:   ExtractQueryParams(c),
 		PathParams:    ExtractPathParams(c),
-		TraceID:       traceCtx.TraceID(),
-		SpanID:        traceCtx.SpanID(),
 	}
 }
 

@@ -109,6 +109,9 @@
 				
 				<dd><a href="#NewDownstreamProfile">func NewDownstreamProfile() httpclient.DownstreamProfile</a></dd>
 			
+				
+				<dd><a href="#RequiredDownstream">func RequiredDownstream() httpclient.Downstream</a></dd>
+			
 			
 				
 				<dd><a href="#Endpoint">type Endpoint</a></dd>
@@ -146,7 +149,7 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1512:1620#L35">New</a>
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1887:1995#L42">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -172,6 +175,22 @@
 			<pre>func NewDownstreamProfile() <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#DownstreamProfile">DownstreamProfile</a></pre>
 			<p>NewDownstreamProfile は、外部為替サービス向けの resilient プロファイルを返します。
 外部サービスのため trace を伝搬せず、private/loopback 宛て接続を拒否します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1729:1776#L37">RequiredDownstream</a>
+				<a class="permalink" href="#RequiredDownstream">¶</a>
+				
+				
+			</h2>
+			<pre>func RequiredDownstream() <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#Downstream">Downstream</a></pre>
+			<p>RequiredDownstream は、本 gateway が使用する Downstream を返します。
+required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に
+silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。
 
 			
 			

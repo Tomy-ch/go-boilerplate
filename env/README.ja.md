@@ -40,7 +40,7 @@
 |APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
 |APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
-|APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|45s|Code default `45s`。SIGTERM時の待機時間|
+|APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。HTTP サーバーでは `SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だとサーバー起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 
 ### Server
 
@@ -61,8 +61,8 @@
 |---|---|---|---|---|
 |METRICS_HOST|metrics bind host|string|0.0.0.0||
 |METRICS_PORT|metrics port|int|6060||
-|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理推奨（本番）|
-|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|本番は必ず変更 / シークレット管理推奨|
+|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
+|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
 
 ### Observability
 

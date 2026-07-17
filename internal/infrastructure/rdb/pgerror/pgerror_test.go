@@ -307,3 +307,41 @@ func TestNormalizeExecResult(t *testing.T) {
 		})
 	})
 }
+
+func TestNormalizeReconstructError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilの場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, NormalizeReconstructError(nil))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("検証エラーがErrInternalへ平坦化され元の分類は消える", func(t *testing.T) {
+			t.Parallel()
+			src := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "first name failed"), "firstName")
+
+			got := NormalizeReconstructError(src)
+
+			require.ErrorIs(t, got, apperror.ErrInternal)
+			require.NotErrorIs(t, got, apperror.ErrValidation)
+			_, ok := apperror.MetaFrom(got)
+			assert.False(t, ok)
+		})
+
+		t.Run("理由文はメッセージに保持される", func(t *testing.T) {
+			t.Parallel()
+			src := xerrors.Wrap(apperror.ErrValidation, "first name failed")
+
+			got := NormalizeReconstructError(src)
+
+			assert.Contains(t, got.Error(), "first name failed")
+		})
+	})
+}

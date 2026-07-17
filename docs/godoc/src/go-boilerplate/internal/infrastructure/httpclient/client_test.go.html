@@ -133,7 +133,7 @@
 <span id="L76" class="ln">    76  </span>	})
 <span id="L77" class="ln">    77  </span>}
 <span id="L78" class="ln">    78  </span>
-<span id="L79" class="ln">    79  </span>func TestClientDo(t *testing.T) {
+<span id="L79" class="ln">    79  </span>func Test_client_Do_Send(t *testing.T) {
 <span id="L80" class="ln">    80  </span>	t.Parallel()
 <span id="L81" class="ln">    81  </span>
 <span id="L82" class="ln">    82  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -319,7 +319,7 @@
 <span id="L262" class="ln">   262  </span>	})
 <span id="L263" class="ln">   263  </span>}
 <span id="L264" class="ln">   264  </span>
-<span id="L265" class="ln">   265  </span>func TestClientDoRedirect(t *testing.T) {
+<span id="L265" class="ln">   265  </span>func Test_client_Do_Redirect(t *testing.T) {
 <span id="L266" class="ln">   266  </span>	t.Parallel()
 <span id="L267" class="ln">   267  </span>
 <span id="L268" class="ln">   268  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -378,7 +378,7 @@
 <span id="L321" class="ln">   321  </span>	})
 <span id="L322" class="ln">   322  </span>}
 <span id="L323" class="ln">   323  </span>
-<span id="L324" class="ln">   324  </span>func TestClientDoMinimumAttempt(t *testing.T) {
+<span id="L324" class="ln">   324  </span>func Test_client_Do_MinimumAttempt(t *testing.T) {
 <span id="L325" class="ln">   325  </span>	t.Parallel()
 <span id="L326" class="ln">   326  </span>
 <span id="L327" class="ln">   327  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -404,7 +404,7 @@
 <span id="L347" class="ln">   347  </span>	})
 <span id="L348" class="ln">   348  </span>}
 <span id="L349" class="ln">   349  </span>
-<span id="L350" class="ln">   350  </span>func TestClientDoRetry(t *testing.T) {
+<span id="L350" class="ln">   350  </span>func Test_client_Do_Retry(t *testing.T) {
 <span id="L351" class="ln">   351  </span>	t.Parallel()
 <span id="L352" class="ln">   352  </span>
 <span id="L353" class="ln">   353  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -494,7 +494,7 @@
 <span id="L437" class="ln">   437  </span>	})
 <span id="L438" class="ln">   438  </span>}
 <span id="L439" class="ln">   439  </span>
-<span id="L440" class="ln">   440  </span>func TestClientDoBackoff(t *testing.T) {
+<span id="L440" class="ln">   440  </span>func Test_client_Do_Backoff(t *testing.T) {
 <span id="L441" class="ln">   441  </span>	t.Parallel()
 <span id="L442" class="ln">   442  </span>
 <span id="L443" class="ln">   443  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -541,7 +541,7 @@
 <span id="L484" class="ln">   484  </span>	})
 <span id="L485" class="ln">   485  </span>}
 <span id="L486" class="ln">   486  </span>
-<span id="L487" class="ln">   487  </span>func TestClientDoDeadline(t *testing.T) {
+<span id="L487" class="ln">   487  </span>func Test_client_Do_Deadline(t *testing.T) {
 <span id="L488" class="ln">   488  </span>	t.Parallel()
 <span id="L489" class="ln">   489  </span>
 <span id="L490" class="ln">   490  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
@@ -589,7 +589,7 @@
 <span id="L532" class="ln">   532  </span>	})
 <span id="L533" class="ln">   533  </span>}
 <span id="L534" class="ln">   534  </span>
-<span id="L535" class="ln">   535  </span>func TestClientDoBreaker(t *testing.T) {
+<span id="L535" class="ln">   535  </span>func Test_client_Do_Breaker(t *testing.T) {
 <span id="L536" class="ln">   536  </span>	t.Parallel()
 <span id="L537" class="ln">   537  </span>
 <span id="L538" class="ln">   538  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
@@ -629,7 +629,7 @@
 <span id="L572" class="ln">   572  </span>	})
 <span id="L573" class="ln">   573  </span>}
 <span id="L574" class="ln">   574  </span>
-<span id="L575" class="ln">   575  </span>func TestClientDoBreakerReturnsLastResponse(t *testing.T) {
+<span id="L575" class="ln">   575  </span>func Test_client_Do_BreakerReturnsLastResponse(t *testing.T) {
 <span id="L576" class="ln">   576  </span>	t.Parallel()
 <span id="L577" class="ln">   577  </span>
 <span id="L578" class="ln">   578  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -665,7 +665,7 @@
 <span id="L608" class="ln">   608  </span>	})
 <span id="L609" class="ln">   609  </span>}
 <span id="L610" class="ln">   610  </span>
-<span id="L611" class="ln">   611  </span>func TestClientDoBudget(t *testing.T) {
+<span id="L611" class="ln">   611  </span>func Test_client_Do_Budget(t *testing.T) {
 <span id="L612" class="ln">   612  </span>	t.Parallel()
 <span id="L613" class="ln">   613  </span>
 <span id="L614" class="ln">   614  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
@@ -702,7 +702,7 @@
 <span id="L645" class="ln">   645  </span>	})
 <span id="L646" class="ln">   646  </span>}
 <span id="L647" class="ln">   647  </span>
-<span id="L648" class="ln">   648  </span>func TestClientDoRetryAfter(t *testing.T) {
+<span id="L648" class="ln">   648  </span>func Test_client_Do_RetryAfter(t *testing.T) {
 <span id="L649" class="ln">   649  </span>	t.Parallel()
 <span id="L650" class="ln">   650  </span>
 <span id="L651" class="ln">   651  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -749,7 +749,7 @@
 <span id="L692" class="ln">   692  </span>	})
 <span id="L693" class="ln">   693  </span>}
 <span id="L694" class="ln">   694  </span>
-<span id="L695" class="ln">   695  </span>func TestClientDoTimeout(t *testing.T) {
+<span id="L695" class="ln">   695  </span>func Test_client_Do_Timeout(t *testing.T) {
 <span id="L696" class="ln">   696  </span>	t.Parallel()
 <span id="L697" class="ln">   697  </span>
 <span id="L698" class="ln">   698  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {

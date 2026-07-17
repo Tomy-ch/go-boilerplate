@@ -223,6 +223,11 @@
 				
 			
 				
+				<dd><a href="#ErrorResponseWithDetails">type ErrorResponseWithDetails</a></dd>
+				
+				
+			
+				
 				<dd><a href="#Forbidden403">type Forbidden403</a></dd>
 				
 				
@@ -707,7 +712,7 @@
 		
 			
 			
-			<h2 id="RegisterHandlers">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=6146:6206#L143">RegisterHandlers</a>
+			<h2 id="RegisterHandlers">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=6126:6186#L143">RegisterHandlers</a>
 				<a class="permalink" href="#RegisterHandlers">¶</a>
 				
 				
@@ -721,7 +726,7 @@
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=6408:6495#L149">RegisterHandlersWithBaseURL</a>
+			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=6388:6475#L149">RegisterHandlersWithBaseURL</a>
 				<a class="permalink" href="#RegisterHandlersWithBaseURL">¶</a>
 				
 				
@@ -736,7 +741,7 @@ paths so the API can be served under a prefix.
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=6706:6810#L155">RegisterHandlersWithOptions</a>
+			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=6686:6790#L155">RegisterHandlersWithOptions</a>
 				<a class="permalink" href="#RegisterHandlersWithOptions">¶</a>
 				
 				
@@ -752,12 +757,12 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4218:4252#L136">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=5142:5176#L148">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
 			</h2>
-			<p>BadRequest400 エラーレスポンスの共通スキーマ
+			<p>BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type BadRequest400 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -775,7 +780,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7524:7568#L169">BadRequest400JSONResponse</a>
+			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7500:7544#L169">BadRequest400JSONResponse</a>
 				<a class="permalink" href="#BadRequest400JSONResponse">¶</a>
 				
 				
@@ -797,12 +802,12 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="Conflict409">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4315:4347#L139">Conflict409</a>
+			<h2 id="Conflict409">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=5364:5396#L151">Conflict409</a>
 				<a class="permalink" href="#Conflict409">¶</a>
 				
 				
 			</h2>
-			<p>Conflict409 エラーレスポンスの共通スキーマ
+			<p>Conflict409 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type Conflict409 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -820,7 +825,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="Conflict409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7570:7612#L171">Conflict409JSONResponse</a>
+			<h2 id="Conflict409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7546:7588#L171">Conflict409JSONResponse</a>
 				<a class="permalink" href="#Conflict409JSONResponse">¶</a>
 				
 				
@@ -842,7 +847,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail204Response">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10938:10982#L297">DeleteUsersDetail204Response</a>
+			<h2 id="DeleteUsersDetail204Response">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10924:10968#L297">DeleteUsersDetail204Response</a>
 				<a class="permalink" href="#DeleteUsersDetail204Response">¶</a>
 				
 				
@@ -864,7 +869,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail204Response.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail204Response) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10984:11088#L300">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail204Response.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail204Response) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10970:11074#L300">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail204Response.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -878,7 +883,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11126:11199#L305">DeleteUsersDetail400JSONResponse</a>
+			<h2 id="DeleteUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11112:11185#L305">DeleteUsersDetail400JSONResponse</a>
 				<a class="permalink" href="#DeleteUsersDetail400JSONResponse">¶</a>
 				
 				
@@ -899,7 +904,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail400JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11201:11309#L307">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail400JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11187:11295#L307">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail400JSONResponse.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -913,7 +918,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11528:11603#L319">DeleteUsersDetail401JSONResponse</a>
+			<h2 id="DeleteUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11514:11589#L319">DeleteUsersDetail401JSONResponse</a>
 				<a class="permalink" href="#DeleteUsersDetail401JSONResponse">¶</a>
 				
 				
@@ -934,7 +939,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail401JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11605:11713#L321">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail401JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11591:11699#L321">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail401JSONResponse.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -948,7 +953,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11932:12004#L333">DeleteUsersDetail403JSONResponse</a>
+			<h2 id="DeleteUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11918:11990#L333">DeleteUsersDetail403JSONResponse</a>
 				<a class="permalink" href="#DeleteUsersDetail403JSONResponse">¶</a>
 				
 				
@@ -969,7 +974,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail403JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12006:12114#L335">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail403JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=11992:12100#L335">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail403JSONResponse.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -983,7 +988,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12333:12404#L347">DeleteUsersDetail404JSONResponse</a>
+			<h2 id="DeleteUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12319:12390#L347">DeleteUsersDetail404JSONResponse</a>
 				<a class="permalink" href="#DeleteUsersDetail404JSONResponse">¶</a>
 				
 				
@@ -1004,7 +1009,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail404JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12406:12514#L349">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail404JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12392:12500#L349">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail404JSONResponse.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -1018,7 +1023,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12733:12804#L361">DeleteUsersDetail409JSONResponse</a>
+			<h2 id="DeleteUsersDetail409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12719:12790#L361">DeleteUsersDetail409JSONResponse</a>
 				<a class="permalink" href="#DeleteUsersDetail409JSONResponse">¶</a>
 				
 				
@@ -1039,7 +1044,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail409JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail409JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12806:12914#L363">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail409JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail409JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=12792:12900#L363">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail409JSONResponse.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -1053,7 +1058,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13133:13217#L375">DeleteUsersDetail500JSONResponse</a>
+			<h2 id="DeleteUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13119:13203#L375">DeleteUsersDetail500JSONResponse</a>
 				<a class="permalink" href="#DeleteUsersDetail500JSONResponse">¶</a>
 				
 				
@@ -1076,7 +1081,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail500JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13219:13327#L379">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail500JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13205:13313#L379">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail500JSONResponse.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -1090,7 +1095,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13546:13629#L391">DeleteUsersDetail503JSONResponse</a>
+			<h2 id="DeleteUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13532:13615#L391">DeleteUsersDetail503JSONResponse</a>
 				<a class="permalink" href="#DeleteUsersDetail503JSONResponse">¶</a>
 				
 				
@@ -1113,7 +1118,7 @@ including any per-operation middleware.
 
 			
 				
-				<h3 id="DeleteUsersDetail503JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13631:13739#L395">VisitDeleteUsersDetailResponse</a>
+				<h3 id="DeleteUsersDetail503JSONResponse.VisitDeleteUsersDetailResponse">func (DeleteUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13617:13725#L395">VisitDeleteUsersDetailResponse</a>
 					<a class="permalink" href="#DeleteUsersDetail503JSONResponse.VisitDeleteUsersDetailResponse">¶</a>
 					
 					
@@ -1127,14 +1132,14 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10740:10823#L289">DeleteUsersDetailRequestObject</a>
+			<h2 id="DeleteUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10727:10809#L289">DeleteUsersDetailRequestObject</a>
 				<a class="permalink" href="#DeleteUsersDetailRequestObject">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type DeleteUsersDetailRequestObject struct {
-<span id="DeleteUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;user_id&#34;`
+<span id="DeleteUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;userId&#34;`
 }
 </pre>
 
@@ -1152,7 +1157,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DeleteUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10825:10936#L293">DeleteUsersDetailResponseObject</a>
+			<h2 id="DeleteUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10811:10922#L293">DeleteUsersDetailResponseObject</a>
 				<a class="permalink" href="#DeleteUsersDetailResponseObject">¶</a>
 				
 				
@@ -1176,7 +1181,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="EchoRouter">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=4738:5468#L117">EchoRouter</a>
+			<h2 id="EchoRouter">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=4718:5448#L117">EchoRouter</a>
 				<a class="permalink" href="#EchoRouter">¶</a>
 				
 				
@@ -1211,19 +1216,16 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=390:752#L7">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=515:785#L7">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
 			</h2>
-			<p>ErrorResponse エラーレスポンスの共通スキーマ
+			<p>ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type ErrorResponse struct {
 <span id="ErrorResponse.Code"></span>    <span class="comment">// Code 機械的に処理可能なエラーコード</span>
     Code <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;code&#34;`
-
-<span id="ErrorResponse.Details"></span>    <span class="comment">// Details エラーの詳細情報(任意)</span>
-    Details *[]<a href="../../../../../../../../builtin/#string">string</a> `json:&#34;details,omitempty&#34;`
 
 <span id="ErrorResponse.Message"></span>    <span class="comment">// Message 人間が読めるエラーメッセージ</span>
     Message <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;message&#34;`
@@ -1247,12 +1249,48 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4411:4444#L142">Forbidden403</a>
+			<h2 id="ErrorResponseWithDetails">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=1094:1551#L19">ErrorResponseWithDetails</a>
+				<a class="permalink" href="#ErrorResponseWithDetails">¶</a>
+				
+				
+			</h2>
+			<p>ErrorResponseWithDetails 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+
+			</p><pre>type ErrorResponseWithDetails struct {
+<span id="ErrorResponseWithDetails.Code"></span>    <span class="comment">// Code 機械的に処理可能なエラーコード</span>
+    Code <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;code&#34;`
+
+<span id="ErrorResponseWithDetails.Details"></span>    <span class="comment">// Details エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る</span>
+    Details *[]<a href="../../../../../../../../builtin/#string">string</a> `json:&#34;details,omitempty&#34;`
+
+<span id="ErrorResponseWithDetails.Message"></span>    <span class="comment">// Message 人間が読めるエラーメッセージ</span>
+    Message <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;message&#34;`
+
+<span id="ErrorResponseWithDetails.RequestId"></span>    <span class="comment">// RequestId リクエストID</span>
+    RequestId <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;requestId&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=5585:5618#L154">Forbidden403</a>
 				<a class="permalink" href="#Forbidden403">¶</a>
 				
 				
 			</h2>
-			<p>Forbidden403 エラーレスポンスの共通スキーマ
+			<p>Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type Forbidden403 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -1270,7 +1308,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7614:7657#L173">Forbidden403JSONResponse</a>
+			<h2 id="Forbidden403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7590:7633#L173">Forbidden403JSONResponse</a>
 				<a class="permalink" href="#Forbidden403JSONResponse">¶</a>
 				
 				
@@ -1292,7 +1330,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetail200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14147:14194#L415">GetUsersDetail200JSONResponse</a>
+			<h2 id="GetUsersDetail200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14132:14179#L415">GetUsersDetail200JSONResponse</a>
 				<a class="permalink" href="#GetUsersDetail200JSONResponse">¶</a>
 				
 				
@@ -1312,7 +1350,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersDetail200JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14196:14298#L417">VisitGetUsersDetailResponse</a>
+				<h3 id="GetUsersDetail200JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14181:14283#L417">VisitGetUsersDetailResponse</a>
 					<a class="permalink" href="#GetUsersDetail200JSONResponse.VisitGetUsersDetailResponse">¶</a>
 					
 					
@@ -1326,7 +1364,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14517:14587#L429">GetUsersDetail400JSONResponse</a>
+			<h2 id="GetUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14502:14572#L429">GetUsersDetail400JSONResponse</a>
 				<a class="permalink" href="#GetUsersDetail400JSONResponse">¶</a>
 				
 				
@@ -1347,7 +1385,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersDetail400JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14589:14691#L431">VisitGetUsersDetailResponse</a>
+				<h3 id="GetUsersDetail400JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14574:14676#L431">VisitGetUsersDetailResponse</a>
 					<a class="permalink" href="#GetUsersDetail400JSONResponse.VisitGetUsersDetailResponse">¶</a>
 					
 					
@@ -1361,7 +1399,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14910:14982#L443">GetUsersDetail401JSONResponse</a>
+			<h2 id="GetUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14895:14967#L443">GetUsersDetail401JSONResponse</a>
 				<a class="permalink" href="#GetUsersDetail401JSONResponse">¶</a>
 				
 				
@@ -1382,7 +1420,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersDetail401JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14984:15086#L445">VisitGetUsersDetailResponse</a>
+				<h3 id="GetUsersDetail401JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14969:15071#L445">VisitGetUsersDetailResponse</a>
 					<a class="permalink" href="#GetUsersDetail401JSONResponse.VisitGetUsersDetailResponse">¶</a>
 					
 					
@@ -1396,7 +1434,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15305:15374#L457">GetUsersDetail403JSONResponse</a>
+			<h2 id="GetUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15290:15359#L457">GetUsersDetail403JSONResponse</a>
 				<a class="permalink" href="#GetUsersDetail403JSONResponse">¶</a>
 				
 				
@@ -1417,7 +1455,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersDetail403JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15376:15478#L459">VisitGetUsersDetailResponse</a>
+				<h3 id="GetUsersDetail403JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15361:15463#L459">VisitGetUsersDetailResponse</a>
 					<a class="permalink" href="#GetUsersDetail403JSONResponse.VisitGetUsersDetailResponse">¶</a>
 					
 					
@@ -1431,7 +1469,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15697:15765#L471">GetUsersDetail404JSONResponse</a>
+			<h2 id="GetUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15682:15750#L471">GetUsersDetail404JSONResponse</a>
 				<a class="permalink" href="#GetUsersDetail404JSONResponse">¶</a>
 				
 				
@@ -1452,7 +1490,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersDetail404JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15767:15869#L473">VisitGetUsersDetailResponse</a>
+				<h3 id="GetUsersDetail404JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=15752:15854#L473">VisitGetUsersDetailResponse</a>
 					<a class="permalink" href="#GetUsersDetail404JSONResponse.VisitGetUsersDetailResponse">¶</a>
 					
 					
@@ -1466,7 +1504,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16088:16169#L485">GetUsersDetail500JSONResponse</a>
+			<h2 id="GetUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16073:16154#L485">GetUsersDetail500JSONResponse</a>
 				<a class="permalink" href="#GetUsersDetail500JSONResponse">¶</a>
 				
 				
@@ -1489,7 +1527,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersDetail500JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16171:16273#L489">VisitGetUsersDetailResponse</a>
+				<h3 id="GetUsersDetail500JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16156:16258#L489">VisitGetUsersDetailResponse</a>
 					<a class="permalink" href="#GetUsersDetail500JSONResponse.VisitGetUsersDetailResponse">¶</a>
 					
 					
@@ -1503,7 +1541,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16492:16572#L501">GetUsersDetail503JSONResponse</a>
+			<h2 id="GetUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16477:16557#L501">GetUsersDetail503JSONResponse</a>
 				<a class="permalink" href="#GetUsersDetail503JSONResponse">¶</a>
 				
 				
@@ -1526,7 +1564,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersDetail503JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16574:16676#L505">VisitGetUsersDetailResponse</a>
+				<h3 id="GetUsersDetail503JSONResponse.VisitGetUsersDetailResponse">func (GetUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16559:16661#L505">VisitGetUsersDetailResponse</a>
 					<a class="permalink" href="#GetUsersDetail503JSONResponse.VisitGetUsersDetailResponse">¶</a>
 					
 					
@@ -1540,14 +1578,14 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13958:14038#L407">GetUsersDetailRequestObject</a>
+			<h2 id="GetUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=13944:14023#L407">GetUsersDetailRequestObject</a>
 				<a class="permalink" href="#GetUsersDetailRequestObject">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type GetUsersDetailRequestObject struct {
-<span id="GetUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;user_id&#34;`
+<span id="GetUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;userId&#34;`
 }
 </pre>
 
@@ -1565,7 +1603,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14040:14145#L411">GetUsersDetailResponseObject</a>
+			<h2 id="GetUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=14025:14130#L411">GetUsersDetailResponseObject</a>
 				<a class="permalink" href="#GetUsersDetailResponseObject">¶</a>
 				
 				
@@ -1589,12 +1627,12 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4518:4561#L145">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=5817:5860#L157">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
 			</h2>
-			<p>InternalServerError500 エラーレスポンスの共通スキーマ
+			<p>InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type InternalServerError500 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -1612,7 +1650,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7659:7712#L175">InternalServerError500JSONResponse</a>
+			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7635:7688#L175">InternalServerError500JSONResponse</a>
 				<a class="permalink" href="#InternalServerError500JSONResponse">¶</a>
 				
 				
@@ -1634,12 +1672,12 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4624:4656#L148">NotFound404</a>
+			<h2 id="NotFound404">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=6048:6080#L160">NotFound404</a>
 				<a class="permalink" href="#NotFound404">¶</a>
 				
 				
 			</h2>
-			<p>NotFound404 エラーレスポンスの共通スキーマ
+			<p>NotFound404 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type NotFound404 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -1657,7 +1695,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7714:7756#L177">NotFound404JSONResponse</a>
+			<h2 id="NotFound404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7690:7732#L177">NotFound404JSONResponse</a>
 				<a class="permalink" href="#NotFound404JSONResponse">¶</a>
 				
 				
@@ -1679,7 +1717,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17131:17180#L526">PatchUsersDetail200JSONResponse</a>
+			<h2 id="PatchUsersDetail200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17115:17164#L526">PatchUsersDetail200JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail200JSONResponse">¶</a>
 				
 				
@@ -1699,7 +1737,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail200JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17182:17288#L528">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail200JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17166:17272#L528">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail200JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1713,7 +1751,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17507:17579#L540">PatchUsersDetail400JSONResponse</a>
+			<h2 id="PatchUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17491:17563#L540">PatchUsersDetail400JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail400JSONResponse">¶</a>
 				
 				
@@ -1734,7 +1772,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail400JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17581:17687#L542">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail400JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17565:17671#L542">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail400JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1748,7 +1786,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17906:17980#L554">PatchUsersDetail401JSONResponse</a>
+			<h2 id="PatchUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17890:17964#L554">PatchUsersDetail401JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail401JSONResponse">¶</a>
 				
 				
@@ -1769,7 +1807,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail401JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17982:18088#L556">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail401JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17966:18072#L556">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail401JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1783,7 +1821,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18307:18378#L568">PatchUsersDetail403JSONResponse</a>
+			<h2 id="PatchUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18291:18362#L568">PatchUsersDetail403JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail403JSONResponse">¶</a>
 				
 				
@@ -1804,7 +1842,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail403JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18380:18486#L570">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail403JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18364:18470#L570">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail403JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1818,7 +1856,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18705:18775#L582">PatchUsersDetail404JSONResponse</a>
+			<h2 id="PatchUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18689:18759#L582">PatchUsersDetail404JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail404JSONResponse">¶</a>
 				
 				
@@ -1839,7 +1877,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail404JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18777:18883#L584">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail404JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=18761:18867#L584">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail404JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1853,7 +1891,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19102:19172#L596">PatchUsersDetail409JSONResponse</a>
+			<h2 id="PatchUsersDetail409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19086:19156#L596">PatchUsersDetail409JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail409JSONResponse">¶</a>
 				
 				
@@ -1874,7 +1912,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail409JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail409JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19174:19280#L598">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail409JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail409JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19158:19264#L598">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail409JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1888,7 +1926,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19499:19582#L610">PatchUsersDetail422JSONResponse</a>
+			<h2 id="PatchUsersDetail422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19483:19566#L610">PatchUsersDetail422JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail422JSONResponse">¶</a>
 				
 				
@@ -1911,7 +1949,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail422JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail422JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19584:19690#L614">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail422JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail422JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19568:19674#L614">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail422JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1925,7 +1963,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19909:19992#L626">PatchUsersDetail500JSONResponse</a>
+			<h2 id="PatchUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19893:19976#L626">PatchUsersDetail500JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail500JSONResponse">¶</a>
 				
 				
@@ -1948,7 +1986,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail500JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19994:20100#L630">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail500JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=19978:20084#L630">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail500JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1962,7 +2000,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20319:20401#L642">PatchUsersDetail503JSONResponse</a>
+			<h2 id="PatchUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20303:20385#L642">PatchUsersDetail503JSONResponse</a>
 				<a class="permalink" href="#PatchUsersDetail503JSONResponse">¶</a>
 				
 				
@@ -1985,7 +2023,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PatchUsersDetail503JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20403:20509#L646">VisitPatchUsersDetailResponse</a>
+				<h3 id="PatchUsersDetail503JSONResponse.VisitPatchUsersDetailResponse">func (PatchUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20387:20493#L646">VisitPatchUsersDetailResponse</a>
 					<a class="permalink" href="#PatchUsersDetail503JSONResponse.VisitPatchUsersDetailResponse">¶</a>
 					
 					
@@ -1999,7 +2037,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetailJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=5481:5536#L169">PatchUsersDetailJSONRequestBody</a>
+			<h2 id="PatchUsersDetailJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=7399:7454#L181">PatchUsersDetailJSONRequestBody</a>
 				<a class="permalink" href="#PatchUsersDetailJSONRequestBody">¶</a>
 				
 				
@@ -2022,14 +2060,14 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16895:17018#L517">PatchUsersDetailRequestObject</a>
+			<h2 id="PatchUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=16880:17002#L517">PatchUsersDetailRequestObject</a>
 				<a class="permalink" href="#PatchUsersDetailRequestObject">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type PatchUsersDetailRequestObject struct {
-<span id="PatchUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;user_id&#34;`
+<span id="PatchUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;userId&#34;`
 <span id="PatchUsersDetailRequestObject.Body"></span>    Body   *<a href="#PatchUsersDetailJSONRequestBody">PatchUsersDetailJSONRequestBody</a>
 }
 </pre>
@@ -2048,7 +2086,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PatchUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17020:17129#L522">PatchUsersDetailResponseObject</a>
+			<h2 id="PatchUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=17004:17113#L522">PatchUsersDetailResponseObject</a>
 				<a class="permalink" href="#PatchUsersDetailResponseObject">¶</a>
 				
 				
@@ -2072,7 +2110,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20956:21003#L667">PutUsersDetail200JSONResponse</a>
+			<h2 id="PutUsersDetail200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20939:20986#L667">PutUsersDetail200JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail200JSONResponse">¶</a>
 				
 				
@@ -2092,7 +2130,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail200JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21005:21107#L669">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail200JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20988:21090#L669">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail200JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2106,7 +2144,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21326:21396#L681">PutUsersDetail400JSONResponse</a>
+			<h2 id="PutUsersDetail400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21309:21379#L681">PutUsersDetail400JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail400JSONResponse">¶</a>
 				
 				
@@ -2127,7 +2165,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail400JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21398:21500#L683">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail400JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21381:21483#L683">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail400JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2141,7 +2179,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21719:21791#L695">PutUsersDetail401JSONResponse</a>
+			<h2 id="PutUsersDetail401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21702:21774#L695">PutUsersDetail401JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail401JSONResponse">¶</a>
 				
 				
@@ -2162,7 +2200,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail401JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21793:21895#L697">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail401JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=21776:21878#L697">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail401JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2176,7 +2214,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22114:22183#L709">PutUsersDetail403JSONResponse</a>
+			<h2 id="PutUsersDetail403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22097:22166#L709">PutUsersDetail403JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail403JSONResponse">¶</a>
 				
 				
@@ -2197,7 +2235,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail403JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22185:22287#L711">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail403JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22168:22270#L711">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail403JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2211,7 +2249,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22506:22574#L723">PutUsersDetail404JSONResponse</a>
+			<h2 id="PutUsersDetail404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22489:22557#L723">PutUsersDetail404JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail404JSONResponse">¶</a>
 				
 				
@@ -2232,7 +2270,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail404JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22576:22678#L725">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail404JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22559:22661#L725">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail404JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2246,7 +2284,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22897:22965#L737">PutUsersDetail409JSONResponse</a>
+			<h2 id="PutUsersDetail409JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22880:22948#L737">PutUsersDetail409JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail409JSONResponse">¶</a>
 				
 				
@@ -2267,7 +2305,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail409JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail409JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22967:23069#L739">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail409JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail409JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=22950:23052#L739">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail409JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2281,7 +2319,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23288:23369#L751">PutUsersDetail422JSONResponse</a>
+			<h2 id="PutUsersDetail422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23271:23352#L751">PutUsersDetail422JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail422JSONResponse">¶</a>
 				
 				
@@ -2304,7 +2342,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail422JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail422JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23371:23473#L755">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail422JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail422JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23354:23456#L755">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail422JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2318,7 +2356,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23692:23773#L767">PutUsersDetail500JSONResponse</a>
+			<h2 id="PutUsersDetail500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23675:23756#L767">PutUsersDetail500JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail500JSONResponse">¶</a>
 				
 				
@@ -2341,7 +2379,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail500JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23775:23877#L771">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail500JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=23758:23860#L771">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail500JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2355,7 +2393,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=24096:24176#L783">PutUsersDetail503JSONResponse</a>
+			<h2 id="PutUsersDetail503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=24079:24159#L783">PutUsersDetail503JSONResponse</a>
 				<a class="permalink" href="#PutUsersDetail503JSONResponse">¶</a>
 				
 				
@@ -2378,7 +2416,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersDetail503JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=24178:24280#L787">VisitPutUsersDetailResponse</a>
+				<h3 id="PutUsersDetail503JSONResponse.VisitPutUsersDetailResponse">func (PutUsersDetail503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=24161:24263#L787">VisitPutUsersDetailResponse</a>
 					<a class="permalink" href="#PutUsersDetail503JSONResponse.VisitPutUsersDetailResponse">¶</a>
 					
 					
@@ -2392,7 +2430,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetailJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=5637:5688#L172">PutUsersDetailJSONRequestBody</a>
+			<h2 id="PutUsersDetailJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=7555:7606#L184">PutUsersDetailJSONRequestBody</a>
 				<a class="permalink" href="#PutUsersDetailJSONRequestBody">¶</a>
 				
 				
@@ -2415,14 +2453,14 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20728:20847#L658">PutUsersDetailRequestObject</a>
+			<h2 id="PutUsersDetailRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20712:20830#L658">PutUsersDetailRequestObject</a>
 				<a class="permalink" href="#PutUsersDetailRequestObject">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type PutUsersDetailRequestObject struct {
-<span id="PutUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;user_id&#34;`
+<span id="PutUsersDetailRequestObject.UserId"></span>    UserId <a href="#UserIdParam">UserIdParam</a> `json:&#34;userId&#34;`
 <span id="PutUsersDetailRequestObject.Body"></span>    Body   *<a href="#PutUsersDetailJSONRequestBody">PutUsersDetailJSONRequestBody</a>
 }
 </pre>
@@ -2441,7 +2479,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20849:20954#L663">PutUsersDetailResponseObject</a>
+			<h2 id="PutUsersDetailResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=20832:20937#L663">PutUsersDetailResponseObject</a>
 				<a class="permalink" href="#PutUsersDetailResponseObject">¶</a>
 				
 				
@@ -2465,7 +2503,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePassword204Response">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8120:8165#L193">PutUsersMePassword204Response</a>
+			<h2 id="PutUsersMePassword204Response">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8107:8152#L193">PutUsersMePassword204Response</a>
 				<a class="permalink" href="#PutUsersMePassword204Response">¶</a>
 				
 				
@@ -2487,7 +2525,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersMePassword204Response.VisitPutUsersMePasswordResponse">func (PutUsersMePassword204Response) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8167:8273#L196">VisitPutUsersMePasswordResponse</a>
+				<h3 id="PutUsersMePassword204Response.VisitPutUsersMePasswordResponse">func (PutUsersMePassword204Response) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8154:8260#L196">VisitPutUsersMePasswordResponse</a>
 					<a class="permalink" href="#PutUsersMePassword204Response.VisitPutUsersMePasswordResponse">¶</a>
 					
 					
@@ -2501,7 +2539,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePassword400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8311:8385#L201">PutUsersMePassword400JSONResponse</a>
+			<h2 id="PutUsersMePassword400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8298:8372#L201">PutUsersMePassword400JSONResponse</a>
 				<a class="permalink" href="#PutUsersMePassword400JSONResponse">¶</a>
 				
 				
@@ -2522,7 +2560,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersMePassword400JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8387:8497#L203">VisitPutUsersMePasswordResponse</a>
+				<h3 id="PutUsersMePassword400JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8374:8484#L203">VisitPutUsersMePasswordResponse</a>
 					<a class="permalink" href="#PutUsersMePassword400JSONResponse.VisitPutUsersMePasswordResponse">¶</a>
 					
 					
@@ -2536,7 +2574,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePassword401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8716:8792#L215">PutUsersMePassword401JSONResponse</a>
+			<h2 id="PutUsersMePassword401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8703:8779#L215">PutUsersMePassword401JSONResponse</a>
 				<a class="permalink" href="#PutUsersMePassword401JSONResponse">¶</a>
 				
 				
@@ -2557,7 +2595,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersMePassword401JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8794:8904#L217">VisitPutUsersMePasswordResponse</a>
+				<h3 id="PutUsersMePassword401JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8781:8891#L217">VisitPutUsersMePasswordResponse</a>
 					<a class="permalink" href="#PutUsersMePassword401JSONResponse.VisitPutUsersMePasswordResponse">¶</a>
 					
 					
@@ -2571,7 +2609,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePassword404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9123:9195#L229">PutUsersMePassword404JSONResponse</a>
+			<h2 id="PutUsersMePassword404JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9110:9182#L229">PutUsersMePassword404JSONResponse</a>
 				<a class="permalink" href="#PutUsersMePassword404JSONResponse">¶</a>
 				
 				
@@ -2592,7 +2630,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersMePassword404JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9197:9307#L231">VisitPutUsersMePasswordResponse</a>
+				<h3 id="PutUsersMePassword404JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword404JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9184:9294#L231">VisitPutUsersMePasswordResponse</a>
 					<a class="permalink" href="#PutUsersMePassword404JSONResponse.VisitPutUsersMePasswordResponse">¶</a>
 					
 					
@@ -2606,7 +2644,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePassword422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9526:9578#L243">PutUsersMePassword422JSONResponse</a>
+			<h2 id="PutUsersMePassword422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9513:9565#L243">PutUsersMePassword422JSONResponse</a>
 				<a class="permalink" href="#PutUsersMePassword422JSONResponse">¶</a>
 				
 				
@@ -2626,7 +2664,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersMePassword422JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword422JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9580:9690#L245">VisitPutUsersMePasswordResponse</a>
+				<h3 id="PutUsersMePassword422JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword422JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9567:9677#L245">VisitPutUsersMePasswordResponse</a>
 					<a class="permalink" href="#PutUsersMePassword422JSONResponse.VisitPutUsersMePasswordResponse">¶</a>
 					
 					
@@ -2640,7 +2678,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePassword500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9909:9994#L257">PutUsersMePassword500JSONResponse</a>
+			<h2 id="PutUsersMePassword500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9896:9981#L257">PutUsersMePassword500JSONResponse</a>
 				<a class="permalink" href="#PutUsersMePassword500JSONResponse">¶</a>
 				
 				
@@ -2663,7 +2701,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersMePassword500JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9996:10106#L261">VisitPutUsersMePasswordResponse</a>
+				<h3 id="PutUsersMePassword500JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=9983:10093#L261">VisitPutUsersMePasswordResponse</a>
 					<a class="permalink" href="#PutUsersMePassword500JSONResponse.VisitPutUsersMePasswordResponse">¶</a>
 					
 					
@@ -2677,7 +2715,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePassword503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10325:10409#L273">PutUsersMePassword503JSONResponse</a>
+			<h2 id="PutUsersMePassword503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10312:10396#L273">PutUsersMePassword503JSONResponse</a>
 				<a class="permalink" href="#PutUsersMePassword503JSONResponse">¶</a>
 				
 				
@@ -2700,7 +2738,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="PutUsersMePassword503JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10411:10521#L277">VisitPutUsersMePasswordResponse</a>
+				<h3 id="PutUsersMePassword503JSONResponse.VisitPutUsersMePasswordResponse">func (PutUsersMePassword503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=10398:10508#L277">VisitPutUsersMePasswordResponse</a>
 					<a class="permalink" href="#PutUsersMePassword503JSONResponse.VisitPutUsersMePasswordResponse">¶</a>
 					
 					
@@ -2714,7 +2752,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePasswordJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=5313:5376#L166">PutUsersMePasswordJSONRequestBody</a>
+			<h2 id="PutUsersMePasswordJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=7231:7294#L178">PutUsersMePasswordJSONRequestBody</a>
 				<a class="permalink" href="#PutUsersMePasswordJSONRequestBody">¶</a>
 				
 				
@@ -2737,7 +2775,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePasswordRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7915:8003#L185">PutUsersMePasswordRequestObject</a>
+			<h2 id="PutUsersMePasswordRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7902:7990#L185">PutUsersMePasswordRequestObject</a>
 				<a class="permalink" href="#PutUsersMePasswordRequestObject">¶</a>
 				
 				
@@ -2762,7 +2800,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PutUsersMePasswordResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=8005:8118#L189">PutUsersMePasswordResponseObject</a>
+			<h2 id="PutUsersMePasswordResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7992:8105#L189">PutUsersMePasswordResponseObject</a>
 				<a class="permalink" href="#PutUsersMePasswordResponseObject">¶</a>
 				
 				
@@ -2786,7 +2824,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=5537:6082#L130">RegisterHandlersOptions</a>
+			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=5517:6062#L130">RegisterHandlersOptions</a>
 				<a class="permalink" href="#RegisterHandlersOptions">¶</a>
 				
 				
@@ -2820,7 +2858,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=365:1032#L8">ServerInterface</a>
+			<h2 id="ServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=365:1028#L8">ServerInterface</a>
 				<a class="permalink" href="#ServerInterface">¶</a>
 				
 				
@@ -2832,16 +2870,16 @@ either of them for path registration
     <span class="comment">// (PUT /v1/users/me/password)</span>
     PutUsersMePassword(ctx echo.<a href="#Context">Context</a>) <a href="../../../../../../../../builtin/#error">error</a>
     <span class="comment">// 単一ユーザーの削除</span>
-    <span class="comment">// (DELETE /v1/users/{user_id})</span>
+    <span class="comment">// (DELETE /v1/users/{userId})</span>
     DeleteUsersDetail(ctx echo.<a href="#Context">Context</a>, userId <a href="#UserIdParam">UserIdParam</a>) <a href="../../../../../../../../builtin/#error">error</a>
     <span class="comment">// 単一ユーザーの取得</span>
-    <span class="comment">// (GET /v1/users/{user_id})</span>
+    <span class="comment">// (GET /v1/users/{userId})</span>
     GetUsersDetail(ctx echo.<a href="#Context">Context</a>, userId <a href="#UserIdParam">UserIdParam</a>) <a href="../../../../../../../../builtin/#error">error</a>
     <span class="comment">// 単一ユーザーの部分更新</span>
-    <span class="comment">// (PATCH /v1/users/{user_id})</span>
+    <span class="comment">// (PATCH /v1/users/{userId})</span>
     PatchUsersDetail(ctx echo.<a href="#Context">Context</a>, userId <a href="#UserIdParam">UserIdParam</a>) <a href="../../../../../../../../builtin/#error">error</a>
     <span class="comment">// 単一ユーザーの更新</span>
-    <span class="comment">// (PUT /v1/users/{user_id})</span>
+    <span class="comment">// (PUT /v1/users/{userId})</span>
     PutUsersDetail(ctx echo.<a href="#Context">Context</a>, userId <a href="#UserIdParam">UserIdParam</a>) <a href="../../../../../../../../builtin/#error">error</a>
 }</pre>
 
@@ -2855,7 +2893,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="NewStrictHandler">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=25692:25792#L821">NewStrictHandler</a>
+				<h3 id="NewStrictHandler">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=25671:25771#L821">NewStrictHandler</a>
 					<a class="permalink" href="#NewStrictHandler">¶</a>
 					
 					
@@ -2870,7 +2908,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=1098:1161#L27">ServerInterfaceWrapper</a>
+			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=1094:1157#L27">ServerInterfaceWrapper</a>
 				<a class="permalink" href="#ServerInterfaceWrapper">¶</a>
 				
 				
@@ -2894,7 +2932,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="ServerInterfaceWrapper.DeleteUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=1529:1603#L43">DeleteUsersDetail</a>
+				<h3 id="ServerInterfaceWrapper.DeleteUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=1525:1599#L43">DeleteUsersDetail</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.DeleteUsersDetail">¶</a>
 					
 					
@@ -2907,7 +2945,7 @@ either of them for path registration
 				
 			
 				
-				</p><h3 id="ServerInterfaceWrapper.GetUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=2297:2368#L61">GetUsersDetail</a>
+				</p><h3 id="ServerInterfaceWrapper.GetUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=2289:2360#L61">GetUsersDetail</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.GetUsersDetail">¶</a>
 					
 					
@@ -2920,7 +2958,7 @@ either of them for path registration
 				
 			
 				
-				</p><h3 id="ServerInterfaceWrapper.PatchUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=3061:3134#L79">PatchUsersDetail</a>
+				</p><h3 id="ServerInterfaceWrapper.PatchUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=3049:3122#L79">PatchUsersDetail</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.PatchUsersDetail">¶</a>
 					
 					
@@ -2933,7 +2971,7 @@ either of them for path registration
 				
 			
 				
-				</p><h3 id="ServerInterfaceWrapper.PutUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=3827:3898#L97">PutUsersDetail</a>
+				</p><h3 id="ServerInterfaceWrapper.PutUsersDetail">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=3811:3882#L97">PutUsersDetail</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.PutUsersDetail">¶</a>
 					
 					
@@ -2946,7 +2984,7 @@ either of them for path registration
 				
 			
 				
-				</p><h3 id="ServerInterfaceWrapper.PutUsersMePassword">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=1218:1293#L32">PutUsersMePassword</a>
+				</p><h3 id="ServerInterfaceWrapper.PutUsersMePassword">func (*ServerInterfaceWrapper) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=1214:1289#L32">PutUsersMePassword</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.PutUsersMePassword">¶</a>
 					
 					
@@ -2961,12 +2999,12 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4729:4771#L151">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=6278:6320#L163">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
 			</h2>
-			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ
+			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type ServiceUnavailable503 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -2984,7 +3022,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7758:7810#L179">ServiceUnavailable503JSONResponse</a>
+			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7734:7786#L179">ServiceUnavailable503JSONResponse</a>
 				<a class="permalink" href="#ServiceUnavailable503JSONResponse">¶</a>
 				
 				
@@ -3006,7 +3044,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=25529:25600#L818">StrictHandlerFunc</a>
+			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=25508:25579#L818">StrictHandlerFunc</a>
 				<a class="permalink" href="#StrictHandlerFunc">¶</a>
 				
 				
@@ -3028,7 +3066,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=25601:25690#L819">StrictMiddlewareFunc</a>
+			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=25580:25669#L819">StrictMiddlewareFunc</a>
 				<a class="permalink" href="#StrictMiddlewareFunc">¶</a>
 				
 				
@@ -3050,7 +3088,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=24556:25527#L800">StrictServerInterface</a>
+			<h2 id="StrictServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=24539:25506#L800">StrictServerInterface</a>
 				<a class="permalink" href="#StrictServerInterface">¶</a>
 				
 				
@@ -3062,16 +3100,16 @@ either of them for path registration
     <span class="comment">// (PUT /v1/users/me/password)</span>
     PutUsersMePassword(ctx <a href="../../../../../../../../context/">context</a>.<a href="../../../../../../../../context/#Context">Context</a>, request <a href="#PutUsersMePasswordRequestObject">PutUsersMePasswordRequestObject</a>) (<a href="#PutUsersMePasswordResponseObject">PutUsersMePasswordResponseObject</a>, <a href="../../../../../../../../builtin/#error">error</a>)
     <span class="comment">// 単一ユーザーの削除</span>
-    <span class="comment">// (DELETE /v1/users/{user_id})</span>
+    <span class="comment">// (DELETE /v1/users/{userId})</span>
     DeleteUsersDetail(ctx <a href="../../../../../../../../context/">context</a>.<a href="../../../../../../../../context/#Context">Context</a>, request <a href="#DeleteUsersDetailRequestObject">DeleteUsersDetailRequestObject</a>) (<a href="#DeleteUsersDetailResponseObject">DeleteUsersDetailResponseObject</a>, <a href="../../../../../../../../builtin/#error">error</a>)
     <span class="comment">// 単一ユーザーの取得</span>
-    <span class="comment">// (GET /v1/users/{user_id})</span>
+    <span class="comment">// (GET /v1/users/{userId})</span>
     GetUsersDetail(ctx <a href="../../../../../../../../context/">context</a>.<a href="../../../../../../../../context/#Context">Context</a>, request <a href="#GetUsersDetailRequestObject">GetUsersDetailRequestObject</a>) (<a href="#GetUsersDetailResponseObject">GetUsersDetailResponseObject</a>, <a href="../../../../../../../../builtin/#error">error</a>)
     <span class="comment">// 単一ユーザーの部分更新</span>
-    <span class="comment">// (PATCH /v1/users/{user_id})</span>
+    <span class="comment">// (PATCH /v1/users/{userId})</span>
     PatchUsersDetail(ctx <a href="../../../../../../../../context/">context</a>.<a href="../../../../../../../../context/#Context">Context</a>, request <a href="#PatchUsersDetailRequestObject">PatchUsersDetailRequestObject</a>) (<a href="#PatchUsersDetailResponseObject">PatchUsersDetailResponseObject</a>, <a href="../../../../../../../../builtin/#error">error</a>)
     <span class="comment">// 単一ユーザーの更新</span>
-    <span class="comment">// (PUT /v1/users/{user_id})</span>
+    <span class="comment">// (PUT /v1/users/{userId})</span>
     PutUsersDetail(ctx <a href="../../../../../../../../context/">context</a>.<a href="../../../../../../../../context/#Context">Context</a>, request <a href="#PutUsersDetailRequestObject">PutUsersDetailRequestObject</a>) (<a href="#PutUsersDetailResponseObject">PutUsersDetailResponseObject</a>, <a href="../../../../../../../../builtin/#error">error</a>)
 }</pre>
 
@@ -3089,12 +3127,12 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4838:4874#L154">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=6512:6548#L166">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				
 			</h2>
-			<p>Unauthorized401 エラーレスポンスの共通スキーマ
+			<p>Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type Unauthorized401 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -3112,7 +3150,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7812:7858#L181">Unauthorized401JSONResponse</a>
+			<h2 id="Unauthorized401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7788:7834#L181">Unauthorized401JSONResponse</a>
 				<a class="permalink" href="#Unauthorized401JSONResponse">¶</a>
 				
 				
@@ -3134,14 +3172,14 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UnprocessableEntity422">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4948:4991#L157">UnprocessableEntity422</a>
+			<h2 id="UnprocessableEntity422">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=6855:6909#L169">UnprocessableEntity422</a>
 				<a class="permalink" href="#UnprocessableEntity422">¶</a>
 				
 				
 			</h2>
-			<p>UnprocessableEntity422 エラーレスポンスの共通スキーマ
+			<p>UnprocessableEntity422 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
 
-			</p><pre>type UnprocessableEntity422 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+			</p><pre>type UnprocessableEntity422 = <a href="#ErrorResponseWithDetails">ErrorResponseWithDetails</a></pre>
 
 			
 
@@ -3157,13 +3195,13 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UnprocessableEntity422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7860:7913#L183">UnprocessableEntity422JSONResponse</a>
+			<h2 id="UnprocessableEntity422JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/server.gen.go.html?s=7836:7900#L183">UnprocessableEntity422JSONResponse</a>
 				<a class="permalink" href="#UnprocessableEntity422JSONResponse">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type UnprocessableEntity422JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+			<pre>type UnprocessableEntity422JSONResponse <a href="#ErrorResponseWithDetails">ErrorResponseWithDetails</a></pre>
 
 			
 
@@ -3179,7 +3217,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UserBaseInputRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=1149:1845#L25">UserBaseInputRequest</a>
+			<h2 id="UserBaseInputRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=1948:2644#L37">UserBaseInputRequest</a>
 				<a class="permalink" href="#UserBaseInputRequest">¶</a>
 				
 				
@@ -3233,7 +3271,7 @@ additionalProperties は指定しない。未知フィールドは生成型の�
 		
 			
 			
-			<h2 id="UserIdParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4116:4153#L133">UserIdParam</a>
+			<h2 id="UserIdParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4915:4952#L145">UserIdParam</a>
 				<a class="permalink" href="#UserIdParam">¶</a>
 				
 				
@@ -3256,7 +3294,7 @@ additionalProperties は指定しない。未知フィールドは生成型の�
 		
 			
 			
-			<h2 id="UserPasswordPutRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=1946:2176#L55">UserPasswordPutRequest</a>
+			<h2 id="UserPasswordPutRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=2745:2975#L67">UserPasswordPutRequest</a>
 				<a class="permalink" href="#UserPasswordPutRequest">¶</a>
 				
 				
@@ -3286,7 +3324,7 @@ additionalProperties は指定しない。未知フィールドは生成型の�
 		
 			
 			
-			<h2 id="UserPatchRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=2569:2613#L67">UserPatchRequest</a>
+			<h2 id="UserPatchRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=3368:3412#L79">UserPatchRequest</a>
 				<a class="permalink" href="#UserPatchRequest">¶</a>
 				
 				
@@ -3312,7 +3350,7 @@ additionalProperties は指定しない。未知フィールドは生成型の�
 		
 			
 			
-			<h2 id="UserPutRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=2667:3259#L70">UserPutRequest</a>
+			<h2 id="UserPutRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=3466:4058#L82">UserPutRequest</a>
 				<a class="permalink" href="#UserPutRequest">¶</a>
 				
 				
@@ -3363,7 +3401,7 @@ additionalProperties は指定しない。未知フィールドは生成型の�
 		
 			
 			
-			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=3332:4068#L100">UserResponse</a>
+			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/detail/gen/type.gen.go.html?s=4131:4867#L112">UserResponse</a>
 				<a class="permalink" href="#UserResponse">¶</a>
 				
 				

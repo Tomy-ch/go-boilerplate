@@ -84,7 +84,7 @@ func TestNewQueryTracer(t *testing.T) {
 	})
 }
 
-func TestQueryTracer_TraceQueryEnd(t *testing.T) {
+func Test_queryTracer_TraceQueryEnd(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -103,13 +103,36 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 
 			qt, mockLogger := newTestQueryTracer(t)
 			qt.slowThreshold = time.Second
-			mockLogger.EXPECT().Info("DB query completed", gomock.Any()).Times(1)
+			mockLogger.EXPECT().Info(gomock.Any(), "DB query completed", gomock.Any()).Times(1)
 
 			ctx := context.WithValue(context.Background(), queryLogKey{}, queryLogData{
 				sql:   "SELECT 1",
 				start: time.Now(),
 			})
 			qt.TraceQueryEnd(ctx, nil, pgx.TraceQueryEndData{})
+		})
+
+		t.Run("正常終了ログに latency_ms と query フィールドが乗る", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			qt := newObservedQueryTracer(t, logger)
+			qt.slowThreshold = time.Second
+
+			ctx := context.WithValue(context.Background(), queryLogKey{}, queryLogData{
+				sql:   "SELECT 1",
+				start: time.Now(),
+			})
+			qt.TraceQueryEnd(ctx, nil, pgx.TraceQueryEndData{})
+
+			entries := observed.FilterMessage("DB query completed").All()
+			require.Len(t, entries, 1)
+
+			ctxMap := entries[0].ContextMap()
+			assert.Contains(t, ctxMap, logging.LatencyKey)
+			assert.Equal(t, "SELECT 1", ctxMap[logging.RawQueryKey])
+			// parentSpanID 未設定（空）なので parent_span_id は出力されない。
+			assert.NotContains(t, ctxMap, logging.ParentSpanIDKey)
 		})
 	})
 
@@ -120,7 +143,7 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 			t.Parallel()
 
 			qt, mockLogger := newTestQueryTracer(t)
-			mockLogger.EXPECT().Error("DB query failed", gomock.Any()).Times(1)
+			mockLogger.EXPECT().Error(gomock.Any(), "DB query failed", gomock.Any()).Times(1)
 
 			ctx := context.WithValue(context.Background(), queryLogKey{}, queryLogData{
 				sql:   "SELECT 1",
@@ -155,7 +178,7 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 
 			qt, mockLogger := newTestQueryTracer(t)
 			qt.slowThreshold = time.Millisecond
-			mockLogger.EXPECT().Warn("DB slow query", gomock.Any()).Times(1)
+			mockLogger.EXPECT().Warn(gomock.Any(), "DB slow query", gomock.Any()).Times(1)
 
 			ctx := context.WithValue(context.Background(), queryLogKey{}, queryLogData{
 				sql:   "SELECT 1",
@@ -166,7 +189,7 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 	})
 }
 
-func TestQueryTracer_TraceQueryStart(t *testing.T) {
+func Test_queryTracer_TraceQueryStart(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -183,7 +206,7 @@ func TestQueryTracer_TraceQueryStart(t *testing.T) {
 
 			qt, mockLogger := newTestQueryTracer(t)
 			qt.slowThreshold = time.Second
-			mockLogger.EXPECT().Info("DB query completed", gomock.Any()).Times(1)
+			mockLogger.EXPECT().Info(gomock.Any(), "DB query completed", gomock.Any()).Times(1)
 
 			// TraceQueryStart が開始時点の spanID を queryLogData.parentSpanID に取り込む。
 			startedCtx := qt.TraceQueryStart(ctx, nil, pgx.TraceQueryStartData{SQL: "SELECT 1"})
@@ -196,10 +219,32 @@ func TestQueryTracer_TraceQueryStart(t *testing.T) {
 			// TraceQueryEnd へ渡し、parentSpanID が終了処理経路へ引き継がれることを確認する。
 			qt.TraceQueryEnd(startedCtx, nil, pgx.TraceQueryEndData{})
 		})
+
+		t.Run("正常終了ログに parent_span_id フィールドが乗る", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, end := observability.NewStubSpanContext(t)
+			defer end()
+
+			// 開始時点の span ID が parent_span_id としてログに乗ることを値レベルで検証する。
+			wantParentSpanID := observability.ExtractTraceContext(ctx).SpanID()
+			require.NotEmpty(t, wantParentSpanID)
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			qt := newObservedQueryTracer(t, logger)
+			qt.slowThreshold = time.Second
+
+			startedCtx := qt.TraceQueryStart(ctx, nil, pgx.TraceQueryStartData{SQL: "SELECT 1"})
+			qt.TraceQueryEnd(startedCtx, nil, pgx.TraceQueryEndData{})
+
+			entries := observed.FilterMessage("DB query completed").All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, wantParentSpanID, entries[0].ContextMap()[logging.ParentSpanIDKey])
+		})
 	})
 }
 
-func TestQueryTracer_endFields_Mask(t *testing.T) {
+func Test_queryTracer_endFields_Mask(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

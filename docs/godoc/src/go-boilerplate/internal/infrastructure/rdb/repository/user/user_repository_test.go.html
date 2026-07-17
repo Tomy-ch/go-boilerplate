@@ -300,7 +300,7 @@
 <span id="L243" class="ln">   243  </span>
 <span id="L244" class="ln">   244  </span>					res, actualErr := repo.FindByActive(ctx, nil, 100, 0)
 <span id="L245" class="ln">   245  </span>					require.Nil(t, res)
-<span id="L246" class="ln">   246  </span>					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
+<span id="L246" class="ln">   246  </span>					require.ErrorIs(t, actualErr, apperror.ErrInternal)
 <span id="L247" class="ln">   247  </span>				})
 <span id="L248" class="ln">   248  </span>			})
 <span id="L249" class="ln">   249  </span>
@@ -328,7 +328,7 @@
 <span id="L271" class="ln">   271  </span>
 <span id="L272" class="ln">   272  </span>					res, actualErr := repo.FindByActive(ctx, new(true), 100, 0)
 <span id="L273" class="ln">   273  </span>					require.Nil(t, res)
-<span id="L274" class="ln">   274  </span>					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
+<span id="L274" class="ln">   274  </span>					require.ErrorIs(t, actualErr, apperror.ErrInternal)
 <span id="L275" class="ln">   275  </span>				})
 <span id="L276" class="ln">   276  </span>			})
 <span id="L277" class="ln">   277  </span>
@@ -357,14 +357,14 @@
 <span id="L300" class="ln">   300  </span>
 <span id="L301" class="ln">   301  </span>					res, actualErr := repo.FindByActive(ctx, new(false), 100, 0)
 <span id="L302" class="ln">   302  </span>					require.Nil(t, res)
-<span id="L303" class="ln">   303  </span>					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
+<span id="L303" class="ln">   303  </span>					require.ErrorIs(t, actualErr, apperror.ErrInternal)
 <span id="L304" class="ln">   304  </span>				})
 <span id="L305" class="ln">   305  </span>			})
 <span id="L306" class="ln">   306  </span>		})
 <span id="L307" class="ln">   307  </span>	})
 <span id="L308" class="ln">   308  </span>}
 <span id="L309" class="ln">   309  </span>
-<span id="L310" class="ln">   310  </span>func Test_repository_CreateUser(t *testing.T) {
+<span id="L310" class="ln">   310  </span>func Test_repository_Create(t *testing.T) {
 <span id="L311" class="ln">   311  </span>	t.Parallel()
 <span id="L312" class="ln">   312  </span>
 <span id="L313" class="ln">   313  </span>	testDB := testkit.NewTestDB(t)

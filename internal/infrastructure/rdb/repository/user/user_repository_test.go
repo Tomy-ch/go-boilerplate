@@ -243,7 +243,7 @@ func Test_repository_FindByActive(t *testing.T) {
 
 					res, actualErr := repo.FindByActive(ctx, nil, 100, 0)
 					require.Nil(t, res)
-					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
+					require.ErrorIs(t, actualErr, apperror.ErrInternal)
 				})
 			})
 
@@ -271,7 +271,7 @@ func Test_repository_FindByActive(t *testing.T) {
 
 					res, actualErr := repo.FindByActive(ctx, new(true), 100, 0)
 					require.Nil(t, res)
-					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
+					require.ErrorIs(t, actualErr, apperror.ErrInternal)
 				})
 			})
 
@@ -300,14 +300,14 @@ func Test_repository_FindByActive(t *testing.T) {
 
 					res, actualErr := repo.FindByActive(ctx, new(false), 100, 0)
 					require.Nil(t, res)
-					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
+					require.ErrorIs(t, actualErr, apperror.ErrInternal)
 				})
 			})
 		})
 	})
 }
 
-func Test_repository_CreateUser(t *testing.T) {
+func Test_repository_Create(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)

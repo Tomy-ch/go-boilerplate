@@ -4,29 +4,34 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/oapi/validator"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/testkit"
 	"go-boilerplate/internal/logging"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
 
-func TestErrorHandlerModule_ProvidesServeConfig(t *testing.T) {
+func TestErrorHandlerModule(t *testing.T) {
 	t.Parallel()
+	spec, err := validator.GetValidator()
+	require.NoError(t, err)
 	testkit.RequireProvidesOne[extension.SrvCfg](t, "server.configurators",
 		ErrorHandlerModule(),
 		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
 		fx.Provide(func() logging.LogFieldBuilder { return logging.NewTestLogFieldBuilder(t) }),
 		fx.Supply(config.NewObservabilityConfig(config.MockConfigForTest(t))),
+		fx.Supply(spec),
 	)
 }
 
-func TestForceJSONModule_ProvidesUseMiddleware(t *testing.T) {
+func TestForceJSONModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use", ForceJSONModule())
 }
 
-func TestRecoveryModule_ProvidesUseMiddleware(t *testing.T) {
+func TestRecoveryModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		RecoveryModule(),

@@ -1,6 +1,7 @@
 ---
 name: drift-detector-usecase
-description: Read-only usecase-layer drift detector. Surfaces three drift categories between `internal/usecase/README.md` (canonical, with Implementation Example) + `internal/usecase/boundary/README.md`, the usecase implementation, and the usecase-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
+description: >-
+  Read-only usecase-layer drift detector. Surfaces three drift categories between `internal/usecase/README.md` (canonical, with Implementation Example) + `internal/usecase/boundary/README.md`, the usecase implementation, and the usecase-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

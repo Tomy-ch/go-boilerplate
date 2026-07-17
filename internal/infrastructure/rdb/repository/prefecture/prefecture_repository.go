@@ -39,11 +39,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Pr
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return prefecture.New(
-		row.ID,
-		row.Name,
-		int(row.Code),
-	)
+	return rowToPrefecture(row.ID, row.Name, row.Code)
 }
 
 // FindByIDs は、複数IDから都道府県エンティティ一覧を取得します。
@@ -59,11 +55,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 
 	prefectures := make(prefecture.Prefectures, len(rows))
 	for i, row := range rows {
-		prefectureEntity, err := prefecture.New(
-			row.ID,
-			row.Name,
-			int(row.Code),
-		)
+		prefectureEntity, err := rowToPrefecture(row.ID, row.Name, row.Code)
 		if err != nil {
 			return nil, err
 		}
@@ -84,9 +76,15 @@ func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.P
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return prefecture.New(
-		row.ID,
-		row.Name,
-		int(row.Code),
-	)
+	return rowToPrefecture(row.ID, row.Name, row.Code)
+}
+
+// rowToPrefecture は、DB 行の値からドメインエンティティを再構築します。
+// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
+func rowToPrefecture(id uuid.UUID, name string, code int16) (*prefecture.Prefecture, error) {
+	entity, err := prefecture.New(id, name, int(code))
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
+	return entity, nil
 }

@@ -17,5 +17,8 @@ func webapiModule() fx.Option {
 		provideHTTPClientProfiles(
 			exchangerateext.NewDownstreamProfile, // sample-api:line
 		),
+		provideRequiredDownstreams(
+			exchangerateext.RequiredDownstream, // sample-api:line
+		),
 	)
 }

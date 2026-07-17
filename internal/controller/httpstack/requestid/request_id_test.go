@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_getRequestID(t *testing.T) {
+func TestGetRequestIDFromResponse(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

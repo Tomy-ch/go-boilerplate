@@ -22,11 +22,12 @@ var (
 	// operationSystem
 	expectedOSTimeZone = "Asia/Tokyo"
 	// application
-	expectedApplicationEnv          = "test"
-	expectedApplicationName         = "TestApp"
-	expectedApplicationMode         = DevelopmentMode
-	expectedApplicationLogLevel     = "debug"
-	expectedAppShutdownTimeoutCount = 60
+	expectedApplicationEnv      = "test"
+	expectedApplicationName     = "TestApp"
+	expectedApplicationMode     = DevelopmentMode
+	expectedApplicationLogLevel = "debug"
+	// SHUTDOWN_TIMEOUT >= REQUEST_TIMEOUT(90s) の交差検証を満たす値にする。
+	expectedAppShutdownTimeoutCount = 95
 	expectedAppShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
 	expectedAppShutdownTimeout      = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// server

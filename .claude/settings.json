@@ -119,7 +119,26 @@
       "Bash(docker images *)",
       "Bash(docker compose ps *)",
       "Bash(docker compose logs *)",
-      "Bash(docker compose config *)"
+      "Bash(docker compose config *)",
+
+      "Edit(.makefiles/**)",
+      "Write(.makefiles/**)"
+    ],
+    "ask": [
+      "Edit(makefile)",
+      "Write(makefile)",
+      "Edit(.makefiles/go/test.mk)",
+      "Write(.makefiles/go/test.mk)",
+      "Edit(.makefiles/go/golangci-lint.mk)",
+      "Write(.makefiles/go/golangci-lint.mk)",
+      "Edit(.makefiles/database/migrate.mk)",
+      "Write(.makefiles/database/migrate.mk)",
+      "Edit(.makefiles/github/lint.mk)",
+      "Write(.makefiles/github/lint.mk)",
+      "Edit(.makefiles/github/commitlint.mk)",
+      "Write(.makefiles/github/commitlint.mk)",
+      "Edit(.makefiles/github/pin.mk)",
+      "Write(.makefiles/github/pin.mk)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -169,7 +188,14 @@
       "Bash(make fix-collation*)",
       "Bash(make go-update*)",
       "Bash(make gh-login*)",
-      "Bash(make remove-generated-sqlc*)"
+      "Bash(make remove-generated-sqlc*)",
+
+      "Edit(.makefiles/github/operation/**)",
+      "Write(.makefiles/github/operation/**)",
+      "Edit(.makefiles/github/setting/**)",
+      "Write(.makefiles/github/setting/**)",
+      "Edit(.makefiles/app/env.mk)",
+      "Write(.makefiles/app/env.mk)"
     ]
   }
 }
