@@ -8,6 +8,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - '.makefiles/**'
+      - 'openapi/**/*.yaml'
   workflow_dispatch:
 
 concurrency:
