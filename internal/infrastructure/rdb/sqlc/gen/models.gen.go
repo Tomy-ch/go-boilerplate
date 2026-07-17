@@ -206,9 +206,35 @@ type Purchases struct {
 	UpdatedAt time.Time
 }
 
+// ロール
+type Roles struct {
+	// ID
+	ID uuid.UUID
+	// 名称
+	Name string
+	// コード
+	Code int16
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 type SchemaMigrations struct {
 	Version int64
 	Dirty   bool
+}
+
+// ユーザロール
+type UserRoles struct {
+	// ユーザID
+	UserID uuid.UUID
+	// ロールID
+	RoleID uuid.UUID
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
 }
 
 // ユーザ
