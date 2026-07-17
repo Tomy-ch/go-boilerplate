@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>func TestIsRetrySafe(t *testing.T) {
+<span id="L15" class="ln">    15  </span>func Test_isRetrySafe(t *testing.T) {
 <span id="L16" class="ln">    16  </span>	t.Parallel()
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -117,7 +117,7 @@
 <span id="L60" class="ln">    60  </span>	})
 <span id="L61" class="ln">    61  </span>}
 <span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span>func TestIsRetryableOutcome(t *testing.T) {
+<span id="L63" class="ln">    63  </span>func Test_isRetryableOutcome(t *testing.T) {
 <span id="L64" class="ln">    64  </span>	t.Parallel()
 <span id="L65" class="ln">    65  </span>
 <span id="L66" class="ln">    66  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -175,7 +175,7 @@
 <span id="L118" class="ln">   118  </span>	})
 <span id="L119" class="ln">   119  </span>}
 <span id="L120" class="ln">   120  </span>
-<span id="L121" class="ln">   121  </span>func TestComputeBackoff(t *testing.T) {
+<span id="L121" class="ln">   121  </span>func Test_computeBackoff(t *testing.T) {
 <span id="L122" class="ln">   122  </span>	t.Parallel()
 <span id="L123" class="ln">   123  </span>
 <span id="L124" class="ln">   124  </span>	profile := Profile{
@@ -214,7 +214,7 @@
 <span id="L157" class="ln">   157  </span>	})
 <span id="L158" class="ln">   158  </span>}
 <span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>func TestRetryWait(t *testing.T) {
+<span id="L160" class="ln">   160  </span>func Test_retryWait(t *testing.T) {
 <span id="L161" class="ln">   161  </span>	t.Parallel()
 <span id="L162" class="ln">   162  </span>
 <span id="L163" class="ln">   163  </span>	profile := Profile{
@@ -268,7 +268,7 @@
 <span id="L211" class="ln">   211  </span>	})
 <span id="L212" class="ln">   212  </span>}
 <span id="L213" class="ln">   213  </span>
-<span id="L214" class="ln">   214  </span>func TestRetryAfter(t *testing.T) {
+<span id="L214" class="ln">   214  </span>func Test_retryAfter(t *testing.T) {
 <span id="L215" class="ln">   215  </span>	t.Parallel()
 <span id="L216" class="ln">   216  </span>
 <span id="L217" class="ln">   217  </span>	now := time.Unix(1000, 0).UTC()

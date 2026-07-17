@@ -106,7 +106,7 @@
 <span id="L49" class="ln">    49  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)&#34;,
 <span id="L50" class="ln">    50  </span>		id,
 <span id="L51" class="ln">    51  </span>		&#34;Feed&#34;,
-<span id="L52" class="ln">    52  </span>		&#34;&#34;, <span class="comment">// last_name 空 = user.ErrInvalidLastName を誘発する。</span>
+<span id="L52" class="ln">    52  </span>		&#34;&#34;, <span class="comment">// last_name 空 = ドメイン不変条件違反(再構築エラー)を誘発する。</span>
 <span id="L53" class="ln">    53  </span>		&#34;$2a$08$dummydummydummydummydummydummydummydummydummydummydu&#34;,
 <span id="L54" class="ln">    54  </span>		&#34;feed-&#34;+id+&#34;@example.com&#34;,
 <span id="L55" class="ln">    55  </span>		&#34;000-000-0000&#34;,
@@ -262,7 +262,7 @@
 <span id="L205" class="ln">   205  </span>			})
 <span id="L206" class="ln">   206  </span>		})
 <span id="L207" class="ln">   207  </span>
-<span id="L208" class="ln">   208  </span>		t.Run(&#34;先頭ページで不正な行が含まれるとドメイン変換でErrInvalidLastNameを返す&#34;, func(t *testing.T) {
+<span id="L208" class="ln">   208  </span>		t.Run(&#34;先頭ページで不正な行が含まれるとデータ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
 <span id="L209" class="ln">   209  </span>			t.Parallel()
 <span id="L210" class="ln">   210  </span>
 <span id="L211" class="ln">   211  </span>			txm.WithinTx(func(ctx context.Context) {
@@ -272,28 +272,29 @@
 <span id="L215" class="ln">   215  </span>
 <span id="L216" class="ln">   216  </span>				actual, err := repo.FindFeed(ctx, nil, 10)
 <span id="L217" class="ln">   217  </span>				require.Nil(t, actual)
-<span id="L218" class="ln">   218  </span>				require.ErrorIs(t, err, user.ErrInvalidLastName)
-<span id="L219" class="ln">   219  </span>			})
-<span id="L220" class="ln">   220  </span>		})
-<span id="L221" class="ln">   221  </span>
-<span id="L222" class="ln">   222  </span>		t.Run(&#34;afterカーソル指定で不正な行が含まれるとドメイン変換でErrInvalidLastNameを返す&#34;, func(t *testing.T) {
-<span id="L223" class="ln">   223  </span>			t.Parallel()
-<span id="L224" class="ln">   224  </span>
-<span id="L225" class="ln">   225  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L226" class="ln">   226  </span>				<span class="comment">// 不正行を base に置き、それより新しい時刻をカーソル境界にして次ページへ確実に含める。</span>
-<span id="L227" class="ln">   227  </span>				invalidID := &#34;ffffffff-0000-4000-8000-0000000000a2&#34;
-<span id="L228" class="ln">   228  </span>				insertInvalidFeedUser(ctx, t, driver.New(ctx, testDB), invalidID, base)
-<span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span>				afterCursor := user.NewFeedCursor(base.Add(time.Hour), mustParse(invalidID))
-<span id="L231" class="ln">   231  </span>				after := &amp;afterCursor
-<span id="L232" class="ln">   232  </span>				actual, err := repo.FindFeed(ctx, after, 10)
-<span id="L233" class="ln">   233  </span>				require.Nil(t, actual)
-<span id="L234" class="ln">   234  </span>				require.ErrorIs(t, err, user.ErrInvalidLastName)
-<span id="L235" class="ln">   235  </span>			})
-<span id="L236" class="ln">   236  </span>		})
-<span id="L237" class="ln">   237  </span>	})
-<span id="L238" class="ln">   238  </span>}
-<span id="L239" class="ln">   239  </span>
+<span id="L218" class="ln">   218  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L219" class="ln">   219  </span>				require.NotErrorIs(t, err, user.ErrInvalidLastName)
+<span id="L220" class="ln">   220  </span>			})
+<span id="L221" class="ln">   221  </span>		})
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span>		t.Run(&#34;afterカーソル指定で不正な行が含まれるとデータ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
+<span id="L224" class="ln">   224  </span>			t.Parallel()
+<span id="L225" class="ln">   225  </span>
+<span id="L226" class="ln">   226  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L227" class="ln">   227  </span>				<span class="comment">// 不正行を base に置き、それより新しい時刻をカーソル境界にして次ページへ確実に含める。</span>
+<span id="L228" class="ln">   228  </span>				invalidID := &#34;ffffffff-0000-4000-8000-0000000000a2&#34;
+<span id="L229" class="ln">   229  </span>				insertInvalidFeedUser(ctx, t, driver.New(ctx, testDB), invalidID, base)
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span>				afterCursor := user.NewFeedCursor(base.Add(time.Hour), mustParse(invalidID))
+<span id="L232" class="ln">   232  </span>				after := &amp;afterCursor
+<span id="L233" class="ln">   233  </span>				actual, err := repo.FindFeed(ctx, after, 10)
+<span id="L234" class="ln">   234  </span>				require.Nil(t, actual)
+<span id="L235" class="ln">   235  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L236" class="ln">   236  </span>			})
+<span id="L237" class="ln">   237  </span>		})
+<span id="L238" class="ln">   238  </span>	})
+<span id="L239" class="ln">   239  </span>}
+<span id="L240" class="ln">   240  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_repository_feed_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

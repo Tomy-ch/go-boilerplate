@@ -72,7 +72,7 @@
 <span id="L15" class="ln">    15  </span>	&#34;go.uber.org/mock/gomock&#34;
 <span id="L16" class="ln">    16  </span>)
 <span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>func TestHandleSeedExecResult(t *testing.T) {
+<span id="L18" class="ln">    18  </span>func Test_handleSeedExecResult(t *testing.T) {
 <span id="L19" class="ln">    19  </span>	t.Parallel()
 <span id="L20" class="ln">    20  </span>
 <span id="L21" class="ln">    21  </span>	otherErr := xerrors.New(&#34;boom&#34;)
@@ -108,7 +108,7 @@
 <span id="L51" class="ln">    51  </span>	})
 <span id="L52" class="ln">    52  </span>}
 <span id="L53" class="ln">    53  </span>
-<span id="L54" class="ln">    54  </span>func TestExecSeedFile(t *testing.T) {
+<span id="L54" class="ln">    54  </span>func Test_execSeedFile(t *testing.T) {
 <span id="L55" class="ln">    55  </span>	t.Parallel()
 <span id="L56" class="ln">    56  </span>
 <span id="L57" class="ln">    57  </span>	const path = &#34;database/seed/001.sql&#34;
@@ -168,7 +168,7 @@
 <span id="L111" class="ln">   111  </span>	})
 <span id="L112" class="ln">   112  </span>}
 <span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span>func TestRunSeeds(t *testing.T) {
+<span id="L114" class="ln">   114  </span>func Test_runSeeds(t *testing.T) {
 <span id="L115" class="ln">   115  </span>	t.Parallel()
 <span id="L116" class="ln">   116  </span>
 <span id="L117" class="ln">   117  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {

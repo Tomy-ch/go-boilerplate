@@ -383,12 +383,12 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2521:2555#L80">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2679:2713#L77">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
 			</h2>
-			<p>BadRequest400 エラーレスポンスの共通スキーマ
+			<p>BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type BadRequest400 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -428,7 +428,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CursorAfterParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2341:2371#L74">CursorAfterParam</a>
+			<h2 id="CursorAfterParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2374:2404#L71">CursorAfterParam</a>
 				<a class="permalink" href="#CursorAfterParam">¶</a>
 				
 				
@@ -451,7 +451,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CursorFirstParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2429:2456#L77">CursorFirstParam</a>
+			<h2 id="CursorFirstParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2462:2489#L74">CursorFirstParam</a>
 				<a class="permalink" href="#CursorFirstParam">¶</a>
 				
 				
@@ -539,19 +539,16 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=749:1111#L16">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=874:1144#L16">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
 			</h2>
-			<p>ErrorResponse エラーレスポンスの共通スキーマ
+			<p>ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type ErrorResponse struct {
 <span id="ErrorResponse.Code"></span>    <span class="comment">// Code 機械的に処理可能なエラーコード</span>
     Code <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;code&#34;`
-
-<span id="ErrorResponse.Details"></span>    <span class="comment">// Details エラーの詳細情報(任意)</span>
-    Details *[]<a href="../../../../../../../../builtin/#string">string</a> `json:&#34;details,omitempty&#34;`
 
 <span id="ErrorResponse.Message"></span>    <span class="comment">// Message 人間が読めるエラーメッセージ</span>
     Message <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;message&#34;`
@@ -575,12 +572,12 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2619:2652#L83">Forbidden403</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2902:2935#L80">Forbidden403</a>
 				<a class="permalink" href="#Forbidden403">¶</a>
 				
 				
 			</h2>
-			<p>Forbidden403 エラーレスポンスの共通スキーマ
+			<p>Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type Forbidden403 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -833,7 +830,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeedParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=3261:3590#L101">GetUsersFeedParams</a>
+			<h2 id="GetUsersFeedParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=3919:4248#L98">GetUsersFeedParams</a>
 				<a class="permalink" href="#GetUsersFeedParams">¶</a>
 				
 				
@@ -912,12 +909,12 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2726:2769#L86">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=3134:3177#L83">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
 			</h2>
-			<p>InternalServerError500 エラーレスポンスの共通スキーマ
+			<p>InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type InternalServerError500 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -1068,12 +1065,12 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2842:2884#L89">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=3375:3417#L86">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
 			</h2>
-			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ
+			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type ServiceUnavailable503 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -1184,12 +1181,12 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2951:2987#L92">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=3609:3645#L89">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				
 			</h2>
-			<p>Unauthorized401 エラーレスポンスの共通スキーマ
+			<p>Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 
 			</p><pre>type Unauthorized401 = <a href="#ErrorResponse">ErrorResponse</a></pre>
 
@@ -1229,7 +1226,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=1184:1920#L31">UserResponse</a>
+			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=1217:1953#L28">UserResponse</a>
 				<a class="permalink" href="#UserResponse">¶</a>
 				
 				
@@ -1283,7 +1280,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UsersFeedResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=1980:2283#L64">UsersFeedResponse</a>
+			<h2 id="UsersFeedResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2013:2316#L61">UsersFeedResponse</a>
 				<a class="permalink" href="#UsersFeedResponse">¶</a>
 				
 				

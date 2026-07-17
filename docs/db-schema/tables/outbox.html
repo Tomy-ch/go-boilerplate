@@ -309,7 +309,7 @@
                                     <td><p>作成日時</p></td>
                                 </tr>
                                 <tr>
-                                    <td><span id="published_at">published_at</span></td>
+                                    <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="published_at">published_at</span></td>
                                     <td>timestamptz</td>
                                     <td>35,6</td>
                                     <td title='nullable'>√</td>
@@ -362,6 +362,12 @@
                                     <td>id</td>
                                 </tr>
                                 <tr>
+                                    <td title='Indexed'>outbox_dead_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Ascending'>Asc</span></td>
+                                    <td>id</td>
+                                </tr>
+                                <tr>
                                     <td class='uniqueKey' title='Unique Key'><i class='icon ion-key iconkey'></i> outbox_message_id_unique</td>
                                     <td>Must be unique</td>
                                     <td><span title='Ascending'>Asc</span></td>
@@ -372,6 +378,12 @@
                                     <td>Performance</td>
                                     <td><span title='Ascending'>Asc</span></td>
                                     <td>id</td>
+                                </tr>
+                                <tr>
+                                    <td title='Indexed'>outbox_published_gc_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Ascending'>Asc</span></td>
+                                    <td>published_at</td>
                                 </tr>
                                 </tbody>
                             </table>

@@ -93,42 +93,49 @@
 <span id="L36" class="ln">    36  </span>	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
 <span id="L37" class="ln">    37  </span>}
 <span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span><span class="comment">// New は、publish 境界の HTTP 実装を生成します。</span>
-<span id="L40" class="ln">    40  </span>func New(
-<span id="L41" class="ln">    41  </span>	endpoint Endpoint,
-<span id="L42" class="ln">    42  </span>	client httpclient.Client,
-<span id="L43" class="ln">    43  </span>	tf observability.TracerFactory,
-<span id="L44" class="ln">    44  </span>) boundary.Publisher {
-<span id="L45" class="ln">    45  </span>	return &amp;httpPublisher{
-<span id="L46" class="ln">    46  </span>		endpoint: endpoint,
-<span id="L47" class="ln">    47  </span>		client:   client,
-<span id="L48" class="ln">    48  </span>		tracer:   tf.Infra(),
-<span id="L49" class="ln">    49  </span>	}
-<span id="L50" class="ln">    50  </span>}
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span><span class="comment">// Publish は、メッセージを受信エンドポイントへ POST します。</span>
-<span id="L53" class="ln">    53  </span><span class="comment">// message_id を Idempotency-Key として伝搬し、非冪等メソッドだが retry は明示的に無効化します</span>
-<span id="L54" class="ln">    54  </span><span class="comment">// （再送は relay の次 poll が担う）。非 2xx / transport 失敗は substrate が apperror へ写像して返します。</span>
-<span id="L55" class="ln">    55  </span>func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
-<span id="L56" class="ln">    56  </span>	ctx, endSpan := p.tracer.Start(ctx)
-<span id="L57" class="ln">    57  </span>	defer endSpan()
+<span id="L39" class="ln">    39  </span><span class="comment">// RequiredDownstream は、本 publisher が使用する Downstream を返します。</span>
+<span id="L40" class="ln">    40  </span><span class="comment">// required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に</span>
+<span id="L41" class="ln">    41  </span><span class="comment">// silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。</span>
+<span id="L42" class="ln">    42  </span>func RequiredDownstream() httpclient.Downstream {
+<span id="L43" class="ln">    43  </span>	return downstream
+<span id="L44" class="ln">    44  </span>}
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span><span class="comment">// New は、publish 境界の HTTP 実装を生成します。</span>
+<span id="L47" class="ln">    47  </span>func New(
+<span id="L48" class="ln">    48  </span>	endpoint Endpoint,
+<span id="L49" class="ln">    49  </span>	client httpclient.Client,
+<span id="L50" class="ln">    50  </span>	tf observability.TracerFactory,
+<span id="L51" class="ln">    51  </span>) boundary.Publisher {
+<span id="L52" class="ln">    52  </span>	return &amp;httpPublisher{
+<span id="L53" class="ln">    53  </span>		endpoint: endpoint,
+<span id="L54" class="ln">    54  </span>		client:   client,
+<span id="L55" class="ln">    55  </span>		tracer:   tf.Infra(),
+<span id="L56" class="ln">    56  </span>	}
+<span id="L57" class="ln">    57  </span>}
 <span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>	header := httpclient.Header{&#34;Content-Type&#34;: {&#34;application/json&#34;}}
-<span id="L60" class="ln">    60  </span>	for k, v := range m.Headers {
-<span id="L61" class="ln">    61  </span>		header[k] = []string{v}
-<span id="L62" class="ln">    62  </span>	}
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span>	<span class="comment">// AllowRetry は付与しない（at-least-once は relay の poll ループが担う）。</span>
-<span id="L65" class="ln">    65  </span>	<span class="comment">// 受信側 dedup 用に IdempotencyKey（message_id）のみ伝搬する。</span>
-<span id="L66" class="ln">    66  </span>	_, err := p.client.Do(ctx, httpclient.NewRequest(
-<span id="L67" class="ln">    67  </span>		httpclient.MethodPost(), downstream, string(p.endpoint),
-<span id="L68" class="ln">    68  </span>		httpclient.WithHeader(header),
-<span id="L69" class="ln">    69  </span>		httpclient.WithBody(m.Payload),
-<span id="L70" class="ln">    70  </span>		httpclient.WithIdempotencyKey(m.MessageID.String()),
-<span id="L71" class="ln">    71  </span>	))
-<span id="L72" class="ln">    72  </span>	return err
-<span id="L73" class="ln">    73  </span>}
-<span id="L74" class="ln">    74  </span>
+<span id="L59" class="ln">    59  </span><span class="comment">// Publish は、メッセージを受信エンドポイントへ POST します。</span>
+<span id="L60" class="ln">    60  </span><span class="comment">// message_id を Idempotency-Key として伝搬し、非冪等メソッドだが retry は明示的に無効化します</span>
+<span id="L61" class="ln">    61  </span><span class="comment">// （再送は relay の次 poll が担う）。非 2xx / transport 失敗は substrate が apperror へ写像して返します。</span>
+<span id="L62" class="ln">    62  </span>func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
+<span id="L63" class="ln">    63  </span>	ctx, endSpan := p.tracer.Start(ctx)
+<span id="L64" class="ln">    64  </span>	defer endSpan()
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>	header := httpclient.Header{&#34;Content-Type&#34;: {&#34;application/json&#34;}}
+<span id="L67" class="ln">    67  </span>	for k, v := range m.Headers {
+<span id="L68" class="ln">    68  </span>		header[k] = []string{v}
+<span id="L69" class="ln">    69  </span>	}
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span>	<span class="comment">// AllowRetry は付与しない（at-least-once は relay の poll ループが担う）。</span>
+<span id="L72" class="ln">    72  </span>	<span class="comment">// 受信側 dedup 用に IdempotencyKey（message_id）のみ伝搬する。</span>
+<span id="L73" class="ln">    73  </span>	_, err := p.client.Do(ctx, httpclient.NewRequest(
+<span id="L74" class="ln">    74  </span>		httpclient.MethodPost(), downstream, string(p.endpoint),
+<span id="L75" class="ln">    75  </span>		httpclient.WithHeader(header),
+<span id="L76" class="ln">    76  </span>		httpclient.WithBody(m.Payload),
+<span id="L77" class="ln">    77  </span>		httpclient.WithIdempotencyKey(m.MessageID.String()),
+<span id="L78" class="ln">    78  </span>	))
+<span id="L79" class="ln">    79  </span>	return err
+<span id="L80" class="ln">    80  </span>}
+<span id="L81" class="ln">    81  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

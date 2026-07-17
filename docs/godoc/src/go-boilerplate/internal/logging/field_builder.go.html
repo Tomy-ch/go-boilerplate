@@ -206,39 +206,38 @@
 <span id="L149" class="ln">   149  </span>		fields = append(fields, Error(InternalErrorKey, sql.Err))
 <span id="L150" class="ln">   150  </span>	}
 <span id="L151" class="ln">   151  </span>
-<span id="L152" class="ln">   152  </span>	<span class="comment">// trace_id / span_id は Logger が ctx から注入する。parent_span_id のみ</span>
-<span id="L153" class="ln">   153  </span>	<span class="comment">// ctx から導出できないためここで明示付与する（obs 有効時のみ）。</span>
-<span id="L154" class="ln">   154  </span>	if l.obsCfg.Enabled() &amp;&amp; sql.ParentSpanID != &#34;&#34; {
-<span id="L155" class="ln">   155  </span>		fields = append(fields, String(ParentSpanIDKey, sql.ParentSpanID))
-<span id="L156" class="ln">   156  </span>	}
-<span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span>	return fields
-<span id="L159" class="ln">   159  </span>}
-<span id="L160" class="ln">   160  </span>
-<span id="L161" class="ln">   161  </span><span class="comment">// buildEventHeader は、全イベントログ共通の先頭フィールド</span>
-<span id="L162" class="ln">   162  </span><span class="comment">// （イベント種別・発生時刻・タイムゾーン）を構築する。</span>
-<span id="L163" class="ln">   163  </span>func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Field {
-<span id="L164" class="ln">   164  </span>	return []*Field{
-<span id="L165" class="ln">   165  </span>		String(EventTypeKey, eventType),
-<span id="L166" class="ln">   166  </span>		Time(EventAtKey, at),
-<span id="L167" class="ln">   167  </span>		String(EventTzKey, l.osCfg.TimeZone()),
-<span id="L168" class="ln">   168  </span>	}
-<span id="L169" class="ln">   169  </span>}
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span><span class="comment">// buildCompactQuery は、SQL クエリを1行の短縮表現に変換します。</span>
-<span id="L172" class="ln">   172  </span>func (*logFieldBuilder) buildCompactQuery(q string) string {
-<span id="L173" class="ln">   173  </span>	if q == &#34;&#34; {
-<span id="L174" class="ln">   174  </span>		return &#34;&#34;
-<span id="L175" class="ln">   175  </span>	}
-<span id="L176" class="ln">   176  </span>
-<span id="L177" class="ln">   177  </span>	s := strings.ReplaceAll(q, &#34;\n&#34;, &#34; &#34;)
-<span id="L178" class="ln">   178  </span>	s = strings.ReplaceAll(s, &#34;\t&#34;, &#34; &#34;)
-<span id="L179" class="ln">   179  </span>
-<span id="L180" class="ln">   180  </span>	s = strings.Join(strings.Fields(s), &#34; &#34;)
-<span id="L181" class="ln">   181  </span>
-<span id="L182" class="ln">   182  </span>	return s
-<span id="L183" class="ln">   183  </span>}
-<span id="L184" class="ln">   184  </span>
+<span id="L152" class="ln">   152  </span>	<span class="comment">// parent_span_id は obs 有効時のみ付与する（trace_id / span_id は Logger 側で注入）。</span>
+<span id="L153" class="ln">   153  </span>	if l.obsCfg.Enabled() &amp;&amp; sql.ParentSpanID != &#34;&#34; {
+<span id="L154" class="ln">   154  </span>		fields = append(fields, String(ParentSpanIDKey, sql.ParentSpanID))
+<span id="L155" class="ln">   155  </span>	}
+<span id="L156" class="ln">   156  </span>
+<span id="L157" class="ln">   157  </span>	return fields
+<span id="L158" class="ln">   158  </span>}
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span><span class="comment">// buildEventHeader は、全イベントログ共通の先頭フィールド</span>
+<span id="L161" class="ln">   161  </span><span class="comment">// （イベント種別・発生時刻・タイムゾーン）を構築する。</span>
+<span id="L162" class="ln">   162  </span>func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Field {
+<span id="L163" class="ln">   163  </span>	return []*Field{
+<span id="L164" class="ln">   164  </span>		String(EventTypeKey, eventType),
+<span id="L165" class="ln">   165  </span>		Time(EventAtKey, at),
+<span id="L166" class="ln">   166  </span>		String(EventTzKey, l.osCfg.TimeZone()),
+<span id="L167" class="ln">   167  </span>	}
+<span id="L168" class="ln">   168  </span>}
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span><span class="comment">// buildCompactQuery は、SQL クエリを1行の短縮表現に変換します。</span>
+<span id="L171" class="ln">   171  </span>func (*logFieldBuilder) buildCompactQuery(q string) string {
+<span id="L172" class="ln">   172  </span>	if q == &#34;&#34; {
+<span id="L173" class="ln">   173  </span>		return &#34;&#34;
+<span id="L174" class="ln">   174  </span>	}
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>	s := strings.ReplaceAll(q, &#34;\n&#34;, &#34; &#34;)
+<span id="L177" class="ln">   177  </span>	s = strings.ReplaceAll(s, &#34;\t&#34;, &#34; &#34;)
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>	s = strings.Join(strings.Fields(s), &#34; &#34;)
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span>	return s
+<span id="L182" class="ln">   182  </span>}
+<span id="L183" class="ln">   183  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/logging/field_builder.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

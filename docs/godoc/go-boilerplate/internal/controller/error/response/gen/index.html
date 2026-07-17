@@ -106,7 +106,7 @@
 			
 			
 				
-				<dd><a href="#ErrorResponse">type ErrorResponse</a></dd>
+				<dd><a href="#ErrorResponseWithDetails">type ErrorResponseWithDetails</a></dd>
 				
 				
 			
@@ -137,24 +137,24 @@
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../src/go-boilerplate/internal/controller/error/response/gen/type.gen.go.html?s=242:604#L1">ErrorResponse</a>
-				<a class="permalink" href="#ErrorResponse">¶</a>
+			<h2 id="ErrorResponseWithDetails">type <a href="../../../../../../src/go-boilerplate/internal/controller/error/response/gen/type.gen.go.html?s=486:943#L1">ErrorResponseWithDetails</a>
+				<a class="permalink" href="#ErrorResponseWithDetails">¶</a>
 				
 				
 			</h2>
-			<p>ErrorResponse エラーレスポンスの共通スキーマ
+			<p>ErrorResponseWithDetails 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
 
-			</p><pre>type ErrorResponse struct {
-<span id="ErrorResponse.Code"></span>    <span class="comment">// Code 機械的に処理可能なエラーコード</span>
+			</p><pre>type ErrorResponseWithDetails struct {
+<span id="ErrorResponseWithDetails.Code"></span>    <span class="comment">// Code 機械的に処理可能なエラーコード</span>
     Code <a href="../../../../../../builtin/#string">string</a> `json:&#34;code&#34;`
 
-<span id="ErrorResponse.Details"></span>    <span class="comment">// Details エラーの詳細情報(任意)</span>
+<span id="ErrorResponseWithDetails.Details"></span>    <span class="comment">// Details エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る</span>
     Details *[]<a href="../../../../../../builtin/#string">string</a> `json:&#34;details,omitempty&#34;`
 
-<span id="ErrorResponse.Message"></span>    <span class="comment">// Message 人間が読めるエラーメッセージ</span>
+<span id="ErrorResponseWithDetails.Message"></span>    <span class="comment">// Message 人間が読めるエラーメッセージ</span>
     Message <a href="../../../../../../builtin/#string">string</a> `json:&#34;message&#34;`
 
-<span id="ErrorResponse.RequestId"></span>    <span class="comment">// RequestId リクエストID</span>
+<span id="ErrorResponseWithDetails.RequestId"></span>    <span class="comment">// RequestId リクエストID</span>
     RequestId <a href="../../../../../../builtin/#string">string</a> `json:&#34;requestId&#34;`
 }
 </pre>
