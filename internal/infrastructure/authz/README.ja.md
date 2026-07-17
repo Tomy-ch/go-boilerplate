@@ -1,5 +1,7 @@
 # authz ディレクトリ
 
+[English](README.md) | 日本語
+
 `internal/infrastructure/authz` は **認可（authz）インフラストラクチャ** を提供します。`internal/infrastructure/auth`（認証）と対になる存在です。
 
 `Authorizer` の **実装** を格納します。その抽象は Usecase 層の Boundary として定義されます。
@@ -11,9 +13,9 @@ internal/usecase/boundary/authz
 ## 役割
 
 - `Authorizer` インターフェース（Policy Decision Point）の実装を提供する。
-- 認証主体がリソースに対して操作を実行してよいかを判定する。
+- 認証済みの主体がリソースに対して操作を実行してよいかを判定する。
 
-認証と異なり、認可は **アプリケーション状態に対するポリシー判断** です。この Boundary は **Usecase 層**（Policy Enforcement Point）から参照され、Usecase が `Authorize(...)` を呼び、拒否時に `apperror.ErrPermissionDenied`（403）を返します。
+認証と異なり、認可は **アプリケーション状態に対するポリシー判断** です。この Boundary は **Usecase 層**（Policy Enforcement Point）から利用され、Usecase が `Authorize(...)` を呼び出し、拒否時に `apperror.ErrPermissionDenied`（403）を返します。
 
 ## アーキテクチャ上の位置づけ
 
@@ -30,12 +32,13 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 |ディレクトリ|用途|
 |---|---|
 |`allowall`|local / CI / test 用の全許可スタブ（すべて許可）|
+|`userrole`|`user_roles` ベースの RBAC Authorizer サンプル。本番相当の環境向け（admin ⇒ 許可、それ以外はリソース所有者のみ許可）。`user` サンプルの一部であり、サンプル削除とともに削除される。|
 
-実運用では RBAC / 外部ポリシーエンジン実装へ差し替えます。
+実運用ではこれらを RBAC / 外部ポリシーエンジン実装へ差し替えます。
 
 ## local / staging / production の実装
 
-`allowall` は **開発用スタブ**であり、配線されるのは `local` / `ci` / `test` のみです。`development` / `staging` / `production` では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。DI プロバイダは **fail-closed** のため、実装するまでこれらの環境は設計上起動しません。
+`allowall` は **開発用スタブ**であり、配線されるのは `local` / `ci` / `test` のみです。`development` / `staging` / `production` では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。DI プロバイダは **fail-closed** であり、`Authorizer` 依存が供給されない場合、それらの環境は設計上起動を拒否します。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が提供され、これらの環境を本番相当として担います。サンプルを削除すると、自前の実装を配線するまで fail-closed エラーに戻ります。
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
@@ -52,7 +55,7 @@ internal/infrastructure/authz
 - RBAC（`auth.Authn` の claims / scopes から導いたロール）
 - 外部ポリシーエンジン（OPA / Cedar）
 
-各環境は `provideAuthorizer`（`internal/di/module/authz.go`）で、現在の `default`（fail-closed エラー）の代わりに `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加して実実装を返すよう配線します。
+各環境は `provideAuthorizer`（`internal/di/module/authz.go`）に `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加し、実実装を返すことで配線します。現在の `default` 分岐は、`RoleRepository` が供給されている場合はサンプル `userrole` を配線し、供給されていない場合は fail-closed エラーを返します。
 
 ## DI への登録
 
