@@ -28,20 +28,20 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		authenticator := New()
-		cred, err := authbd.NewCredential("debug:some-subject")
+		cred, err := authbd.NewCredential(authbd.SchemeBearer, "debug:some-subject")
 		require.NoError(t, err)
 
 		authn, err := authenticator.Authenticate(ctx, cred)
 		require.NoError(t, err)
 		assert.Equal(t, "some-subject", authn.Subject())
-		assert.Equal(t, authbd.ProviderMock, authn.Provider())
+		assert.Equal(t, authbd.IssuerMock, authn.Issuer())
 	})
 
 	t.Run("トークン文字列が prefix を含まない場合はエラーになる", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		authenticator := New()
-		cred, err := authbd.NewCredential("invalid-token")
+		cred, err := authbd.NewCredential(authbd.SchemeBearer, "invalid-token")
 		require.NoError(t, err)
 
 		authn, err := authenticator.Authenticate(ctx, cred)

@@ -81,7 +81,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	if !ok {
 		return nil, ErrUnauthenticatedUser
 	}
-	userID, err := authn.ID()
+	userID, err := authn.UserID()
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
 	}
