@@ -110,6 +110,7 @@ RUN mise install npm:@redocly/cli \
 # --ignore-scripts はサプライチェーン攻撃の主要 RCE 経路（依存の postinstall 等）を封じる防御。
 # 本ツリーの install script は esbuild のみで、そのバイナリは @esbuild/<platform>（lock 済み）
 # から実行時に解決されるため、script を飛ばしても portal ビルドは動く。
+WORKDIR /app/scripts
 COPY docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc ./
 RUN npm ci --ignore-scripts \
     && npm cache clean --force \
