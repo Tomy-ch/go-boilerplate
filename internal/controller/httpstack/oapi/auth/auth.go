@@ -67,8 +67,9 @@ func authExtractor(
 	return authn, nil
 }
 
-// extractToken は、Authorization ヘッダから認証スキームとトークンを抽出します。
-// 戻り値は (scheme, token)。Bearer 前提のため、Cookie は参照しません。
+// extractToken は、authCfg.HeaderName() で設定された認証ヘッダーからスキームとトークンを抽出します。
+// ヘッダーが Authorization かつ Bearer 許可時のみ Bearer プレフィックスを検証して scheme に SchemeBearer を設定し、
+// それ以外はヘッダー値をそのまま token として返し scheme は空文字になります。
 func extractToken(r *http.Request, authCfg *config.AuthConfig) (string, string) {
 	if authCfg.HeaderName() == "" {
 		return "", ""
