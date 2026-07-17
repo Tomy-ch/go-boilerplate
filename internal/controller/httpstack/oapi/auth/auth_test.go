@@ -37,8 +37,7 @@ func TestNewAuthenticator(t *testing.T) {
 			fn := NewAuthenticator(ac, m)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "user123"})
+			req.Header.Set(ac.HeaderName(), "Bearer user123")
 			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
@@ -68,8 +67,7 @@ func TestNewAuthenticator(t *testing.T) {
 			fn := NewAuthenticator(ac, m)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "user123"})
+			req.Header.Set(ac.HeaderName(), "Bearer user123")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 			err := fn(context.Background(), in)
@@ -88,8 +86,7 @@ func TestNewAuthenticator(t *testing.T) {
 			fn := NewAuthenticator(ac, m)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
+			req.Header.Set(ac.HeaderName(), "Bearer tok")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 			err := fn(context.Background(), in)
@@ -125,8 +122,7 @@ func TestNewAuthenticator(t *testing.T) {
 			fn := NewAuthenticator(ac, m)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
+			req.Header.Set(ac.HeaderName(), "Bearer tok")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 			err := fn(context.Background(), in)
@@ -152,8 +148,7 @@ func Test_authExtractor(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
+			req.Header.Set(ac.HeaderName(), "Bearer tok")
 
 			got, err := authExtractor(context.Background(), req, ac, m)
 			require.NoError(t, err)
@@ -186,8 +181,7 @@ func Test_authExtractor(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
+			req.Header.Set(ac.HeaderName(), "Bearer tok")
 
 			authn, err := authExtractor(context.Background(), req, ac, m)
 			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
@@ -209,40 +203,18 @@ func Test_extractToken(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Cookieから抽出できる", func(t *testing.T) {
-			t.Parallel()
-			ac := newAuthConfig(t)
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "cookieTok"})
-			tok := extractToken(req, ac)
-			assert.Equal(t, "cookieTok", tok)
-		})
-
-		t.Run("CookieとHeaderが両方ある場合_Cookieが優先されHeaderは無視される", func(t *testing.T) {
-			t.Parallel()
-			ac := newAuthConfig(t)
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			//nolint:gosec // G124: テスト用のリクエストクッキー
-			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "cookieTok"})
-			req.Header.Set(ac.HeaderName(), "Bearer headerTok")
-			tok := extractToken(req, ac)
-			assert.Equal(t, "cookieTok", tok)
-		})
-
-		t.Run("Bearer形式のヘッダの場合、トークン部分が抽出される", func(t *testing.T) {
+		t.Run("Bearer形式のヘッダの場合、トークン部分とBearerスキームが抽出される", func(t *testing.T) {
 			t.Parallel()
 			ac := newAuthConfig(t)
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set(ac.HeaderName(), "Bearer abcdef")
-			tok := extractToken(req, ac)
+			scheme, tok := extractToken(req, ac)
+			assert.Equal(t, authbd.SchemeBearer, scheme)
 			assert.Equal(t, "abcdef", tok)
 		})
 
-		t.Run("AllowedHeaderBearer=falseの場合はヘッダ値をそのまま返す", func(t *testing.T) {
+		t.Run("AllowedHeaderBearer=falseの場合はヘッダ値をそのまま返しスキームは空", func(t *testing.T) {
 			t.Parallel()
 			ac := newAuthConfig(t)
 			ac.SetHeaderName(t, "X-API-KEY")
@@ -251,11 +223,12 @@ func Test_extractToken(t *testing.T) {
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set("X-Api-Key", "apikey-123")
-			tok := extractToken(req, ac)
+			scheme, tok := extractToken(req, ac)
+			assert.Empty(t, scheme)
 			assert.Equal(t, "apikey-123", tok)
 		})
 
-		t.Run("AuthorizationヘッダかつAllowedHeaderBearer=falseの場合はrawを返す", func(t *testing.T) {
+		t.Run("AuthorizationヘッダかつAllowedHeaderBearer=falseの場合はrawを返しスキームは空", func(t *testing.T) {
 			t.Parallel()
 			ac := newAuthConfig(t)
 			ac.SetAllowedHeaderBearer(t, false)
@@ -263,7 +236,8 @@ func Test_extractToken(t *testing.T) {
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set(ac.HeaderName(), "Bearer secret")
-			tok := extractToken(req, ac)
+			scheme, tok := extractToken(req, ac)
+			assert.Empty(t, scheme)
 			assert.Equal(t, "Bearer secret", tok)
 		})
 	})
@@ -279,7 +253,8 @@ func Test_extractToken(t *testing.T) {
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer smallcase")
-			tok := extractToken(req, ac)
+			scheme, tok := extractToken(req, ac)
+			assert.Empty(t, scheme)
 			assert.Empty(t, tok)
 		})
 
@@ -289,7 +264,8 @@ func Test_extractToken(t *testing.T) {
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set(ac.HeaderName(), "Token abcdef")
-			tok := extractToken(req, ac)
+			scheme, tok := extractToken(req, ac)
+			assert.Empty(t, scheme)
 			assert.Empty(t, tok)
 		})
 
@@ -298,7 +274,8 @@ func Test_extractToken(t *testing.T) {
 			ac := newAuthConfig(t)
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			tok := extractToken(req, ac)
+			scheme, tok := extractToken(req, ac)
+			assert.Empty(t, scheme)
 			assert.Empty(t, tok)
 		})
 	})
