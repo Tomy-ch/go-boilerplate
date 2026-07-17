@@ -422,11 +422,6 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			auth := cfg.auth
 
-			t.Run("Cookie名を取得できる", func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, expectedAuthCookieName, auth.CookieName())
-			})
-
 			t.Run("ヘッダー名を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedAuthHeaderName, auth.HeaderName())

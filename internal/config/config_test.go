@@ -89,7 +89,6 @@ func TestNewConfig(t *testing.T) {
 					domain:   expectedSecureCookieDomain,
 				},
 				auth: AuthConfig{
-					cookieName:          expectedAuthCookieName,
 					headerName:          expectedAuthHeaderName,
 					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
@@ -214,9 +213,7 @@ func Test_validateConfig(t *testing.T) {
 		t.Run("認証設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
-			// CookieNameとHeaderNameの両方が空
-			cfg.Auth.CookieName = ""
-			cfg.Auth.HeaderName = ""
+			cfg.Auth.HeaderName = "" // HeaderName が空
 
 			err := validateConfig(cfg)
 			require.ErrorIs(t, err, ErrAuthConfigMissing)
@@ -511,27 +508,9 @@ func Test_validateAuthConfig(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("CookieNameとHeaderNameの両方が設定されている場合、エラーが返されないこと", func(t *testing.T) {
+		t.Run("HeaderNameが設定されている場合、エラーが返されないこと", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
-			err := validateAuthConfig(cfg.Auth)
-			require.NoError(t, err)
-		})
-
-		t.Run("CookieNameのみ設定されている場合、エラーが返されないこと", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.Auth.HeaderName = "" // HeaderName のみ空
-
-			err := validateAuthConfig(cfg.Auth)
-			require.NoError(t, err)
-		})
-
-		t.Run("HeaderNameのみ設定されている場合、エラーが返されないこと", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.Auth.CookieName = "" // CookieName のみ空
-
 			err := validateAuthConfig(cfg.Auth)
 			require.NoError(t, err)
 		})
@@ -539,12 +518,10 @@ func Test_validateAuthConfig(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("CookieNameとHeaderNameの両方が空の場合、エラーが返されること", func(t *testing.T) {
+		t.Run("HeaderNameが空の場合、エラーが返されること", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
-			// CookieNameとHeaderNameの両方が空
-			cfg.Auth.CookieName = ""
-			cfg.Auth.HeaderName = ""
+			cfg.Auth.HeaderName = "" // HeaderName が空
 
 			err := validateAuthConfig(cfg.Auth)
 			require.ErrorIs(t, err, ErrAuthConfigMissing)

@@ -112,6 +112,6 @@ var (
 	// ErrAuthConfigMissing は、認証設定が不足していることに関するエラーを表します。
 	ErrAuthConfigMissing = xerrors.Wrap(
 		errInvalidConfig,
-		"invalid auth config, either cookie name or header name must be provided",
+		"invalid auth config, header name must be provided",
 	)
 )

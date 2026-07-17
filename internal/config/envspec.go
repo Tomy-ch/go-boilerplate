@@ -138,9 +138,8 @@ type SecureCookie struct {
 	Domain   string `env:"DOMAIN"`
 }
 
-// Auth は認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持する。
+// Auth は認証に使うヘッダー名・Bearer 許可の設定を保持する。
 type Auth struct {
-	CookieName          string `env:"COOKIE_NAME,required"`
 	HeaderName          string `env:"HEADER_NAME,required"`
 	AllowedHeaderBearer bool   `env:"ALLOWED_HEADER_BEARER,required"`
 }

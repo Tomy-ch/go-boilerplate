@@ -130,7 +130,6 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_COOKIE_NAME|認証Cookie名|string|auth_token||
 |AUTH_HEADER_NAME|ヘッダ名|string|Authorization||
 |AUTH_ALLOWED_HEADER_BEARER|Bearer許可|bool|true||
 

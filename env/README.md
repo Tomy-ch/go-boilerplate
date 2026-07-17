@@ -130,7 +130,6 @@ This directory is the canonical reference for every environment variable read by
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|AUTH_COOKIE_NAME|Auth cookie name|string|auth_token||
 |AUTH_HEADER_NAME|Header name|string|Authorization||
 |AUTH_ALLOWED_HEADER_BEARER|Allow Bearer|bool|true||
 
