@@ -23,7 +23,7 @@ func TestNewClock(t *testing.T) {
 	})
 }
 
-func TestClockNow(t *testing.T) {
+func Test_systemClock_Now(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestNewSleeper(t *testing.T) {
 	})
 }
 
-func TestClockSleep(t *testing.T) {
+func Test_systemClock_Sleep(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

@@ -15,7 +15,7 @@ The documentation is intended for both **human developers** and **AI agents**.
 |[architecture.md](architecture.md)|Overall system architecture and layer responsibilities|
 |[rules.md](rules.md)|Architectural rules that must not be violated|
 |[development-flow.md](development-flow.md)|Standard development workflow|
-|[decisions.md](decisions.md)|Background of technology selection and design decisions|
+|[adr/](adr/README.md)|Architecture Decision Records — background of technology selection and design decisions|
 
 ## Recommended Reading Order
 
@@ -23,14 +23,14 @@ The documentation is intended for both **human developers** and **AI agents**.
 
 ```mermaid
 flowchart TB
-    A["architecture.md"] --> B["development-flow.md"] --> C["rules.md"] --> D["decisions.md"]
+    A["architecture.md"] --> B["development-flow.md"] --> C["rules.md"] --> D["adr/"]
 ```
 
 ### Maintainers / Contributors
 
 ```mermaid
 flowchart TB
-    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["decisions.md"]
+    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["adr/"]
 ```
 
 ### AI Agents

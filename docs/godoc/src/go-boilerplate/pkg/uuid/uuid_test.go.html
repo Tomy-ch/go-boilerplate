@@ -105,7 +105,7 @@
 <span id="L48" class="ln">    48  </span>	assert.NotEqual(t, uuid1, NewTestFromSalt(t, &#34;other-salt&#34;))
 <span id="L49" class="ln">    49  </span>}
 <span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span>func TestBytes(t *testing.T) {
+<span id="L51" class="ln">    51  </span>func TestUUID_Bytes(t *testing.T) {
 <span id="L52" class="ln">    52  </span>	t.Parallel()
 <span id="L53" class="ln">    53  </span>	uuid, err := New()
 <span id="L54" class="ln">    54  </span>	require.NoError(t, err)
@@ -114,7 +114,7 @@
 <span id="L57" class="ln">    57  </span>	assert.Equal(t, uuid.b, bytes)
 <span id="L58" class="ln">    58  </span>}
 <span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>func TestIsNil(t *testing.T) {
+<span id="L60" class="ln">    60  </span>func TestUUID_IsNil(t *testing.T) {
 <span id="L61" class="ln">    61  </span>	t.Parallel()
 <span id="L62" class="ln">    62  </span>	var nilUUID UUID
 <span id="L63" class="ln">    63  </span>	assert.True(t, nilUUID.IsNil())
@@ -124,7 +124,7 @@
 <span id="L67" class="ln">    67  </span>	assert.False(t, uuid.IsNil())
 <span id="L68" class="ln">    68  </span>}
 <span id="L69" class="ln">    69  </span>
-<span id="L70" class="ln">    70  </span>func TestToPrimitive(t *testing.T) {
+<span id="L70" class="ln">    70  </span>func TestUUID_ToPrimitive(t *testing.T) {
 <span id="L71" class="ln">    71  </span>	t.Parallel()
 <span id="L72" class="ln">    72  </span>	uuid, err := New()
 <span id="L73" class="ln">    73  </span>	require.NoError(t, err)
@@ -140,14 +140,14 @@
 <span id="L83" class="ln">    83  </span>	assert.Equal(t, uuid, got)
 <span id="L84" class="ln">    84  </span>}
 <span id="L85" class="ln">    85  </span>
-<span id="L86" class="ln">    86  </span>func TestString(t *testing.T) {
+<span id="L86" class="ln">    86  </span>func TestUUID_String(t *testing.T) {
 <span id="L87" class="ln">    87  </span>	t.Parallel()
 <span id="L88" class="ln">    88  </span>	uuid, err := New()
 <span id="L89" class="ln">    89  </span>	require.NoError(t, err)
 <span id="L90" class="ln">    90  </span>	assert.NotEmpty(t, uuid.String())
 <span id="L91" class="ln">    91  </span>}
 <span id="L92" class="ln">    92  </span>
-<span id="L93" class="ln">    93  </span>func TestEqual(t *testing.T) {
+<span id="L93" class="ln">    93  </span>func TestUUID_Equal(t *testing.T) {
 <span id="L94" class="ln">    94  </span>	t.Parallel()
 <span id="L95" class="ln">    95  </span>	uuid1, err := New()
 <span id="L96" class="ln">    96  </span>	require.NoError(t, err)
@@ -159,14 +159,14 @@
 <span id="L102" class="ln">   102  </span>	assert.False(t, uuid1.Equal(uuid3))
 <span id="L103" class="ln">   103  </span>}
 <span id="L104" class="ln">   104  </span>
-<span id="L105" class="ln">   105  </span>func TestToPtr(t *testing.T) {
+<span id="L105" class="ln">   105  </span>func TestUUID_ToPtr(t *testing.T) {
 <span id="L106" class="ln">   106  </span>	t.Parallel()
 <span id="L107" class="ln">   107  </span>	uuid, err := New()
 <span id="L108" class="ln">   108  </span>	require.NoError(t, err)
 <span id="L109" class="ln">   109  </span>	assert.NotNil(t, uuid.ToPtr())
 <span id="L110" class="ln">   110  </span>}
 <span id="L111" class="ln">   111  </span>
-<span id="L112" class="ln">   112  </span>func TestEqualPtr(t *testing.T) {
+<span id="L112" class="ln">   112  </span>func TestUUID_EqualPtr(t *testing.T) {
 <span id="L113" class="ln">   113  </span>	t.Parallel()
 <span id="L114" class="ln">   114  </span>	uuid1, err := New()
 <span id="L115" class="ln">   115  </span>	require.NoError(t, err)
@@ -199,7 +199,7 @@
 <span id="L142" class="ln">   142  </span>	})
 <span id="L143" class="ln">   143  </span>}
 <span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>func TestScan(t *testing.T) {
+<span id="L145" class="ln">   145  </span>func TestUUID_Scan(t *testing.T) {
 <span id="L146" class="ln">   146  </span>	t.Parallel()
 <span id="L147" class="ln">   147  </span>	u, err := New()
 <span id="L148" class="ln">   148  </span>	require.NoError(t, err)
@@ -237,7 +237,7 @@
 <span id="L180" class="ln">   180  </span>	})
 <span id="L181" class="ln">   181  </span>}
 <span id="L182" class="ln">   182  </span>
-<span id="L183" class="ln">   183  </span>func TestValue(t *testing.T) {
+<span id="L183" class="ln">   183  </span>func TestUUID_Value(t *testing.T) {
 <span id="L184" class="ln">   184  </span>	t.Parallel()
 <span id="L185" class="ln">   185  </span>	u, err := New()
 <span id="L186" class="ln">   186  </span>	require.NoError(t, err)

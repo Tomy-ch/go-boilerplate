@@ -8,6 +8,8 @@ Violating these rules may compromise the architectural integrity of the system.
 
 ## Layer Dependency Rules
 
+> Rationale: [ADR-0002](adr/0002-onion-architecture.md), [ADR-0003](adr/0003-interface-based-decoupling.md); enforced via [ADR-0006](adr/0006-structural-safety-via-tooling.md).
+
 Dependencies must always point **toward the inner layers**.
 
 ### Allowed Dependencies
@@ -37,6 +39,8 @@ These boundaries are **enforced in CI by `golangci-lint` depguard**, not by docu
 
 ## Usecase Dependency Rules
 
+> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
+
 Usecase must not directly depend on Infrastructure.
 
 - Dependencies must always go through Boundary (interface)
@@ -47,6 +51,8 @@ Usecase → Boundary(interface) → Infrastructure
 ```
 
 ## Generated Code Rules
+
+> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0079](adr/0079-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -77,6 +83,8 @@ Examples:
 
 ## OpenAPI-first
 
+> Rationale: [ADR-0009](adr/0009-openapi-first.md).
+
 Changes to APIs must always start from the **OpenAPI definition**.
 
 ```mermaid
@@ -92,6 +100,8 @@ flowchart TB
 OpenAPI definition is the **single source of truth of API**.
 
 ## Database Migration
+
+> Rationale: [ADR-0024](adr/0024-append-only-immutable-migrations.md), [ADR-0025](adr/0025-sequential-migration-ids.md).
 
 Changes to the database schema must follow strict migration rules.
 
@@ -111,6 +121,8 @@ flowchart TB
 This ensures that database history is always reproducible.
 
 ## Domain Layer Constraints
+
+> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
 
 The Domain layer must maintain a **pure and independent state**.
 
@@ -156,6 +168,8 @@ Examples:
 - repository implementation
 
 ## Repository / QueryService Rules
+
+> Rationale: [ADR-0027](adr/0027-lightweight-cqrs.md), [ADR-0028](adr/0028-system-cqrs-dml-category.md).
 
 - Repository handles Aggregate persistence and simple reads of a single Aggregate
   (fetch by ID, and simple filter / list / count by the Aggregate's own attributes).
@@ -209,15 +223,21 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ### Transaction Rules
 
+> Rationale: [ADR-0030](adr/0030-transaction-retry-idempotent-callers.md).
+
 - Transactions must be started only in the Usecase layer
 - Infrastructure / Repository must not start transactions
 
 ## Error Handling Rules
 
+> Rationale: [ADR-0039](adr/0039-apperror-protocol-agnostic-errors.md).
+
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
 - When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
+- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0040](adr/0040-error-metadata-code-message-details.md).
+- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0041](adr/0041-error-details-opt-in-gate.md).
 
 ## Comment Rules
 
@@ -236,6 +256,7 @@ Usecase should **avoid direct dependency on Infrastructure**.
 - NG (How / restatement / tautology):
   - `// ReadFile は os.ReadFile を呼び出して…`（implementation means / How）
   - restating the implementation steps; internal-representation notes (`// 内部表現は [16]byte`); tautologies (`// User は User です`)
+  - a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (rot; an unresolved, legitimate TODO is not flagged)
 - Enforcement split: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of comments on exported declarations. This **content** rule (What quality + good Why + no How) is semantic and cannot be linted — it is enforced by review: `local-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments (What correct / sufficient / substantive; Why non-obvious) and **flags** bad ones (How / 経緯 / restatement / tautology), then auto-fixes the confirmed findings.
 - **Language scope**: this content rule is **language-agnostic** — it applies to Go and non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). The Go examples above are illustrative, not a scope limit. Non-Go files are **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same standard — How narration, development 経緯, and redundant restatements are NG even in a build script or workflow file; the good Why (non-obvious rationale) and the load-bearing-constraint note stay.
 
@@ -247,7 +268,7 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
 - **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
 - **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
 - **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
-- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/decisions.md` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
+- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 
 ## Testing & Definition of Done
@@ -279,6 +300,8 @@ Before generating code, AI agents must refer to the following documents.
 - `development-flow.md`
 
 ## Toolchain Execution Rules
+
+> Rationale: [ADR-0070](adr/0070-containerized-pinned-toolchain.md), [ADR-0071](adr/0071-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
 containerized tool-runners so they stay reproducible across machines.

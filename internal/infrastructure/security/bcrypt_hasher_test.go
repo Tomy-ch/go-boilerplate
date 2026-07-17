@@ -27,7 +27,7 @@ func TestNewBcryptHasher(t *testing.T) {
 	})
 }
 
-func TestBcryptHasher_Hash(t *testing.T) {
+func Test_bcrypter_Hash(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestBcryptHasher_Hash(t *testing.T) {
 	})
 }
 
-func TestBcryptHasher_Compare(t *testing.T) {
+func Test_bcrypter_Compare(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

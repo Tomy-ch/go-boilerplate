@@ -52,6 +52,7 @@ func RunWorker(grace time.Duration) (StartFunc, StopFunc) {
 
 		if err := app.Start(ctx); err != nil {
 			l.Error(
+				ctx,
 				"failed to start worker application",
 				logging.String(logging.WorkerNameKey, name),
 				logging.Error(logging.ErrorKey, err),
@@ -63,17 +64,17 @@ func RunWorker(grace time.Duration) (StartFunc, StopFunc) {
 			return failCh
 		}
 
-		l.Info("worker started", logging.String(logging.WorkerNameKey, name))
+		l.Info(ctx, "worker started", logging.String(logging.WorkerNameKey, name))
 		return done
 	}
 
 	stop := func(ctx context.Context) error {
 		l := logger.Named("worker.RunWorker").CallerSkip(callSkip)
 		if err := app.Stop(ctx); err != nil {
-			l.Error("failed to stop worker application", logging.Error(logging.ErrorKey, err))
+			l.Error(ctx, "failed to stop worker application", logging.Error(logging.ErrorKey, err))
 			return err
 		}
-		l.Info("worker application finished")
+		l.Info(ctx, "worker application finished")
 		return nil
 	}
 

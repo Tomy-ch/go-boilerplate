@@ -106,6 +106,14 @@ Rewrite the files in the [env/](env/) directory according to your project.
 
 For the meaning of configuration values, refer to [env/README.md](env/README.md).
 
+### Review the clamped config values
+
+A few subsystems **clamp** out-of-range values to safe defaults instead of failing startup — a resilience choice so a misconfigured process still runs. A clamp only triggers when you explicitly set `0` / a negative / an invalid value (the shipped env vars carry sane `envDefault`s), but because the correction is applied silently at runtime, review these when you tune the corresponding `WORKER_*` / `OUTBOX_*` / `SECURE_COOKIE_*` values:
+
+- **Worker engine** (`WORKER_*`) — `Settings.normalize()`; see [internal/controller/worker/README.md](../../internal/controller/worker/README.md) (Config clamping).
+- **Outbox relay** (`OUTBOX_*`) — `provideRelaySettings`; see [internal/controller/outbox/README.md](../../internal/controller/outbox/README.md) (Settings → Clamping).
+- **Secure cookie** (`SECURE_COOKIE_SAME_SITE`) — `normalizeSameSite` clamps any non-`Lax`/`Strict`/`None` value to "do not override"; see [internal/controller/httpstack/cookie/README.md](../../internal/controller/httpstack/cookie/README.md).
+
 ## Phase 7: Repository Initialization
 
 After completing the above steps, initialize the repository after the first push.
@@ -174,7 +182,24 @@ Create authorization functionality by implementing the usecase [Authorizer](inte
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
-## Phase 10: Remove Sample APIs
+## Phase 10: Review the template's deliberate exclusions (ADRs)
+
+Beyond authentication / authorization (Phase 9) and deployment (Phase 8), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
+
+Each such non-choice is recorded as an **exclusion ADR** under [docs/adr/](docs/adr/), tagged `setup-review`. List them with:
+
+```sh
+grep -rl "setup-review" docs/adr/
+```
+
+For your project, review each and decide:
+
+- **Keep** — the exclusion fits your project; leave the ADR as is.
+- **Change** — you need the opposite. Setup is where a fork establishes its **own baseline** from the template, so **edit the ADR directly** (rewrite its Decision / Consequences and update `deciders` / `date`) to record your project's choice, then implement accordingly.
+
+The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
+
+## Phase 11: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 

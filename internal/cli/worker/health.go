@@ -32,13 +32,13 @@ func NewHealthServer(addr string, ready func() bool, logger logging.Logger) (fun
 	start := func() {
 		go func() {
 			if err := srv.ListenAndServe(); err != nil && !xerrors.Is(err, http.ErrServerClosed) {
-				logger.Named("worker.health").Error("health server error", logging.Error(logging.ErrorKey, err))
+				logger.Named("worker.health").Error(context.Background(), "health server error", logging.Error(logging.ErrorKey, err))
 			}
 		}()
 	}
 	stop := func(ctx context.Context) {
 		if err := srv.Shutdown(ctx); err != nil {
-			logger.Named("worker.health").Error("health server shutdown error", logging.Error(logging.ErrorKey, err))
+			logger.Named("worker.health").Error(ctx, "health server shutdown error", logging.Error(logging.ErrorKey, err))
 		}
 	}
 	return start, stop

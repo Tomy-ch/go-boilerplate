@@ -76,7 +76,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestClientDo(t *testing.T) {
+func Test_client_Do_Send(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestClientDo(t *testing.T) {
 	})
 }
 
-func TestClientDoRedirect(t *testing.T) {
+func Test_client_Do_Redirect(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -321,7 +321,7 @@ func TestNewRegistry(t *testing.T) {
 	})
 }
 
-func TestClientDoMinimumAttempt(t *testing.T) {
+func Test_client_Do_MinimumAttempt(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -347,7 +347,7 @@ func TestClientDoMinimumAttempt(t *testing.T) {
 	})
 }
 
-func TestClientDoRetry(t *testing.T) {
+func Test_client_Do_Retry(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -437,7 +437,7 @@ func TestClientDoRetry(t *testing.T) {
 	})
 }
 
-func TestClientDoBackoff(t *testing.T) {
+func Test_client_Do_Backoff(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -484,7 +484,7 @@ func TestClientDoBackoff(t *testing.T) {
 	})
 }
 
-func TestClientDoDeadline(t *testing.T) {
+func Test_client_Do_Deadline(t *testing.T) {
 	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {
@@ -532,7 +532,7 @@ func TestClientDoDeadline(t *testing.T) {
 	})
 }
 
-func TestClientDoBreaker(t *testing.T) {
+func Test_client_Do_Breaker(t *testing.T) {
 	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {
@@ -572,7 +572,7 @@ func TestClientDoBreaker(t *testing.T) {
 	})
 }
 
-func TestClientDoBreakerReturnsLastResponse(t *testing.T) {
+func Test_client_Do_BreakerReturnsLastResponse(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -608,7 +608,7 @@ func TestClientDoBreakerReturnsLastResponse(t *testing.T) {
 	})
 }
 
-func TestClientDoBudget(t *testing.T) {
+func Test_client_Do_Budget(t *testing.T) {
 	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {
@@ -645,7 +645,7 @@ func TestClientDoBudget(t *testing.T) {
 	})
 }
 
-func TestClientDoRetryAfter(t *testing.T) {
+func Test_client_Do_RetryAfter(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -692,7 +692,7 @@ func TestClientDoRetryAfter(t *testing.T) {
 	})
 }
 
-func TestClientDoTimeout(t *testing.T) {
+func Test_client_Do_Timeout(t *testing.T) {
 	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {

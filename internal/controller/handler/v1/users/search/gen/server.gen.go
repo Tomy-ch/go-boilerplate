@@ -53,11 +53,11 @@ func (w *ServerInterfaceWrapper) GetUsersSearch(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
 	}
 
-	// ------------- Optional query parameter "per_page" -------------
+	// ------------- Optional query parameter "perPage" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "per_page", ctx.QueryParams(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", ctx.QueryParams(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter per_page: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter perPage: %s", err))
 	}
 
 	// Invoke the callback with all the unmarshaled arguments

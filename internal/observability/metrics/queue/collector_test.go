@@ -41,7 +41,7 @@ func TestNewStatsCollector(t *testing.T) {
 	})
 }
 
-func Test_StatsCollector_Collect(t *testing.T) {
+func TestStatsCollector_Collect(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -254,7 +254,7 @@ worker_queue_stats_collection_failures_total{adapter="sqs",queue="unknown",worke
 	})
 }
 
-func Test_RegisterStatsCollector(t *testing.T) {
+func TestRegisterStatsCollector(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

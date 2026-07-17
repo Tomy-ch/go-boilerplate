@@ -33,7 +33,7 @@ func newTestEngine(t *testing.T, set Settings, w bw.Worker) *Engine {
 	return eng
 }
 
-func Test_Engine_Names(t *testing.T) {
+func TestEngine_Names(t *testing.T) {
 	t.Parallel()
 
 	noop := handlerFunc(func(context.Context, bw.Message) error { return nil })
@@ -76,7 +76,7 @@ func Test_Engine_Names(t *testing.T) {
 	})
 }
 
-func Test_Engine_Healthy(t *testing.T) {
+func TestEngine_Healthy(t *testing.T) {
 	t.Parallel()
 
 	noop := handlerFunc(func(context.Context, bw.Message) error { return nil })
@@ -123,7 +123,7 @@ func Test_Engine_Healthy(t *testing.T) {
 	})
 }
 
-func Test_Settings_normalize(t *testing.T) {
+func TestSettings_normalize(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -143,6 +143,8 @@ func Test_Settings_normalize(t *testing.T) {
 			assert.Equal(t, defaultProgressStaleAfter, s.ProgressStaleAfter)
 			assert.Equal(t, defaultNackBackoffInitial, s.NackBackoffInitial)
 			assert.Equal(t, defaultNackBackoffMax, s.NackBackoffMax)
+			assert.Equal(t, defaultCircuitOpenBackoffInitial, s.CircuitOpenBackoffInitial)
+			assert.Equal(t, defaultCircuitOpenBackoffMax, s.CircuitOpenBackoffMax)
 		})
 
 		t.Run("MaxInFlight が Concurrency 未満の場合は Concurrency まで引き上げる", func(t *testing.T) {
@@ -208,6 +210,24 @@ func Test_Settings_normalize(t *testing.T) {
 			assert.Equal(t, defaultNackBackoffMax, s.NackBackoffMax)
 		})
 
+		t.Run("CircuitOpenBackoffInitial が 0 以下の場合は既定値に補完する", func(t *testing.T) {
+			t.Parallel()
+
+			s := Settings{CircuitOpenBackoffInitial: -1}
+			s.normalize()
+
+			assert.Equal(t, defaultCircuitOpenBackoffInitial, s.CircuitOpenBackoffInitial)
+		})
+
+		t.Run("CircuitOpenBackoffMax が 0 以下の場合は既定値に補完する", func(t *testing.T) {
+			t.Parallel()
+
+			s := Settings{CircuitOpenBackoffMax: -1}
+			s.normalize()
+
+			assert.Equal(t, defaultCircuitOpenBackoffMax, s.CircuitOpenBackoffMax)
+		})
+
 		t.Run("有効な値が指定されている場合はそのまま保持する", func(t *testing.T) {
 			t.Parallel()
 
@@ -235,7 +255,7 @@ func Test_Settings_normalize(t *testing.T) {
 	})
 }
 
-func Test_NewState(t *testing.T) {
+func TestNewState(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -483,29 +503,67 @@ func Test_run_dispatchAll(t *testing.T) {
 	})
 }
 
+func Test_run_waitForSlot(t *testing.T) {
+	t.Parallel()
+
+	newTestRun := func(t *testing.T) *run {
+		t.Helper()
+		f := testkit.NewFake()
+		w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+		return newRun(newTestEngine(t, baseSettings(), w), w)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("in-flight に空きがある場合は即座に空き数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+
+			free, ok := r.waitForSlot(context.Background())
+
+			assert.True(t, ok)
+			assert.Equal(t, cap(r.inflight), free)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("in-flight が満杯かつ ctx がキャンセル済みの場合は中断する", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+			for range cap(r.inflight) {
+				r.inflight <- struct{}{}
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			free, ok := r.waitForSlot(ctx)
+
+			assert.False(t, ok)
+			assert.Zero(t, free)
+		})
+	})
+}
+
 func Test_msgFields(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("trace が無い場合は worker 名・message id・receive count のみを返す", func(t *testing.T) {
+		t.Run("worker 名・message id・receive count を正しいキーと値で返す（trace_id は Logger が注入する）", func(t *testing.T) {
 			t.Parallel()
 
-			fields := msgFields(context.Background(), "w", bw.Message{ID: "a", ReceiveCount: 1})
+			fields := msgFields("w", bw.Message{ID: "a", ReceiveCount: 2})
 
-			assert.Len(t, fields, 3)
-		})
-
-		t.Run("trace がある場合は trace id フィールドを追加する", func(t *testing.T) {
-			t.Parallel()
-
-			ctx, end := observability.NewStubSpanContext(t)
-			defer end()
-
-			fields := msgFields(ctx, "w", bw.Message{ID: "a", ReceiveCount: 1})
-
-			assert.Len(t, fields, 4)
+			require.Len(t, fields, 3)
+			assert.Equal(t, logging.String(logging.WorkerNameKey, "w"), fields[0])
+			assert.Equal(t, logging.String(logging.MessageIDKey, "a"), fields[1])
+			assert.Equal(t, logging.Int(logging.ReceiveCountKey, 2), fields[2])
 		})
 	})
 }

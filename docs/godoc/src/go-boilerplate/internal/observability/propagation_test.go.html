@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span>	&#34;go.opentelemetry.io/otel/trace&#34;
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>func Test_extractFromCarrier_D1(t *testing.T) {
+<span id="L15" class="ln">    15  </span>func Test_extractFromCarrier(t *testing.T) {
 <span id="L16" class="ln">    16  </span>	t.Parallel()
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>	prop := propagation.TraceContext{}
@@ -174,7 +174,7 @@
 <span id="L117" class="ln">   117  </span>	})
 <span id="L118" class="ln">   118  </span>}
 <span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>func Test_injectToCarrier_D1(t *testing.T) {
+<span id="L120" class="ln">   120  </span>func Test_injectToCarrier(t *testing.T) {
 <span id="L121" class="ln">   121  </span>	t.Parallel()
 <span id="L122" class="ln">   122  </span>
 <span id="L123" class="ln">   123  </span>	prop := propagation.TraceContext{}

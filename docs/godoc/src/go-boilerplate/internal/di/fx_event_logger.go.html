@@ -58,104 +58,107 @@
 <pre><span id="L1" class="ln">     1  </span>package di
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
 <span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;go.uber.org/fx/fxevent&#34;
-<span id="L7" class="ln">     7  </span>)
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span><span class="comment">// fxEventLogger は fx イベントを構造化ロガーへ流す fxevent.Logger 実装。</span>
-<span id="L10" class="ln">    10  </span>type fxEventLogger struct {
-<span id="L11" class="ln">    11  </span>	logger logging.Logger
-<span id="L12" class="ln">    12  </span>}
-<span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span><span class="comment">// NewFxEventLogger は、fx.WithLogger に渡す fxevent.Logger を生成します。</span>
-<span id="L15" class="ln">    15  </span>func NewFxEventLogger(logger logging.Logger) fxevent.Logger {
-<span id="L16" class="ln">    16  </span>	return &amp;fxEventLogger{logger: logger.Named(&#34;Fx&#34;).CallerSkip(callSkip)}
-<span id="L17" class="ln">    17  </span>}
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>func (f *fxEventLogger) LogEvent(event fxevent.Event) {
-<span id="L20" class="ln">    20  </span>	switch e := event.(type) {
-<span id="L21" class="ln">    21  </span>	case *fxevent.OnStartExecuted:
-<span id="L22" class="ln">    22  </span>		f.record(e.Err,
-<span id="L23" class="ln">    23  </span>			&#34;OnStart hook failed&#34;,
-<span id="L24" class="ln">    24  </span>			[]*logging.Field{logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName)},
-<span id="L25" class="ln">    25  </span>			f.logger.Debug, &#34;OnStart hook executed&#34;,
-<span id="L26" class="ln">    26  </span>			logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName),
-<span id="L27" class="ln">    27  </span>			logging.DurationMs(&#34;runtime_ms&#34;, e.Runtime))
-<span id="L28" class="ln">    28  </span>	case *fxevent.OnStopExecuted:
-<span id="L29" class="ln">    29  </span>		f.record(e.Err,
-<span id="L30" class="ln">    30  </span>			&#34;OnStop hook failed&#34;,
-<span id="L31" class="ln">    31  </span>			[]*logging.Field{logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName)},
-<span id="L32" class="ln">    32  </span>			f.logger.Debug, &#34;OnStop hook executed&#34;,
-<span id="L33" class="ln">    33  </span>			logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName),
-<span id="L34" class="ln">    34  </span>			logging.DurationMs(&#34;runtime_ms&#34;, e.Runtime))
-<span id="L35" class="ln">    35  </span>	case *fxevent.Supplied:
-<span id="L36" class="ln">    36  </span>		f.record(e.Err,
-<span id="L37" class="ln">    37  </span>			&#34;Supply failed&#34;,
-<span id="L38" class="ln">    38  </span>			[]*logging.Field{logging.String(&#34;type&#34;, e.TypeName), logging.String(&#34;module&#34;, e.ModuleName)},
-<span id="L39" class="ln">    39  </span>			f.logger.Debug, &#34;Supplied&#34;,
-<span id="L40" class="ln">    40  </span>			logging.String(&#34;type&#34;, e.TypeName), logging.String(&#34;module&#34;, e.ModuleName))
-<span id="L41" class="ln">    41  </span>	case *fxevent.Provided:
-<span id="L42" class="ln">    42  </span>		f.record(e.Err,
-<span id="L43" class="ln">    43  </span>			&#34;Provide failed&#34;,
-<span id="L44" class="ln">    44  </span>			[]*logging.Field{logging.String(&#34;constructor&#34;, e.ConstructorName), logging.String(&#34;module&#34;, e.ModuleName)},
-<span id="L45" class="ln">    45  </span>			f.logger.Debug, &#34;Provided&#34;,
-<span id="L46" class="ln">    46  </span>			logging.String(&#34;constructor&#34;, e.ConstructorName), logging.String(&#34;module&#34;, e.ModuleName),
-<span id="L47" class="ln">    47  </span>			logging.Strings(&#34;output_types&#34;, e.OutputTypeNames))
-<span id="L48" class="ln">    48  </span>	case *fxevent.Invoked:
-<span id="L49" class="ln">    49  </span>		f.record(e.Err,
-<span id="L50" class="ln">    50  </span>			&#34;Invoke failed&#34;,
-<span id="L51" class="ln">    51  </span>			[]*logging.Field{logging.String(&#34;function&#34;, e.FunctionName), logging.String(&#34;module&#34;, e.ModuleName)},
-<span id="L52" class="ln">    52  </span>			f.logger.Debug, &#34;Invoked&#34;,
-<span id="L53" class="ln">    53  </span>			logging.String(&#34;function&#34;, e.FunctionName), logging.String(&#34;module&#34;, e.ModuleName))
-<span id="L54" class="ln">    54  </span>	case *fxevent.Replaced:
-<span id="L55" class="ln">    55  </span>		f.record(e.Err,
-<span id="L56" class="ln">    56  </span>			&#34;Replace failed&#34;,
-<span id="L57" class="ln">    57  </span>			[]*logging.Field{logging.String(&#34;module&#34;, e.ModuleName)},
-<span id="L58" class="ln">    58  </span>			f.logger.Debug, &#34;Replaced&#34;,
-<span id="L59" class="ln">    59  </span>			logging.Strings(&#34;output_types&#34;, e.OutputTypeNames), logging.String(&#34;module&#34;, e.ModuleName))
-<span id="L60" class="ln">    60  </span>	case *fxevent.Decorated:
-<span id="L61" class="ln">    61  </span>		f.record(e.Err,
-<span id="L62" class="ln">    62  </span>			&#34;Decorate failed&#34;,
-<span id="L63" class="ln">    63  </span>			[]*logging.Field{logging.String(&#34;decorator&#34;, e.DecoratorName), logging.String(&#34;module&#34;, e.ModuleName)},
-<span id="L64" class="ln">    64  </span>			f.logger.Debug, &#34;Decorated&#34;,
-<span id="L65" class="ln">    65  </span>			logging.String(&#34;decorator&#34;, e.DecoratorName), logging.String(&#34;module&#34;, e.ModuleName),
-<span id="L66" class="ln">    66  </span>			logging.Strings(&#34;output_types&#34;, e.OutputTypeNames))
-<span id="L67" class="ln">    67  </span>	case *fxevent.LoggerInitialized:
-<span id="L68" class="ln">    68  </span>		f.record(e.Err,
-<span id="L69" class="ln">    69  </span>			&#34;Logger initialization failed&#34;, nil,
-<span id="L70" class="ln">    70  </span>			f.logger.Debug, &#34;Custom logger initialized&#34;,
-<span id="L71" class="ln">    71  </span>			logging.String(&#34;constructor&#34;, e.ConstructorName))
-<span id="L72" class="ln">    72  </span>	case *fxevent.Started:
-<span id="L73" class="ln">    73  </span>		f.record(e.Err,
-<span id="L74" class="ln">    74  </span>			&#34;Application failed to start&#34;, nil,
-<span id="L75" class="ln">    75  </span>			f.logger.Info, &#34;Application started&#34;)
-<span id="L76" class="ln">    76  </span>	case *fxevent.Stopped:
-<span id="L77" class="ln">    77  </span>		f.record(e.Err,
-<span id="L78" class="ln">    78  </span>			&#34;Application failed to stop&#34;, nil,
-<span id="L79" class="ln">    79  </span>			f.logger.Info, &#34;Application stopped&#34;)
-<span id="L80" class="ln">    80  </span>	case *fxevent.RollingBack:
-<span id="L81" class="ln">    81  </span>		f.logger.Error(&#34;start failed, rolling back&#34;, logging.Error(logging.ErrorKey, e.StartErr))
-<span id="L82" class="ln">    82  </span>	case *fxevent.RolledBack:
-<span id="L83" class="ln">    83  </span>		f.record(e.Err,
-<span id="L84" class="ln">    84  </span>			&#34;Rollback failed&#34;, nil,
-<span id="L85" class="ln">    85  </span>			f.logger.Debug, &#34;Application rolled back&#34;)
-<span id="L86" class="ln">    86  </span>	}
-<span id="L87" class="ln">    87  </span>}
-<span id="L88" class="ln">    88  </span>
-<span id="L89" class="ln">    89  </span><span class="comment">// record は fx イベントの成否に応じてログを記録します。</span>
-<span id="L90" class="ln">    90  </span>func (f *fxEventLogger) record(
-<span id="L91" class="ln">    91  </span>	err error,
-<span id="L92" class="ln">    92  </span>	failMsg string, failFields []*logging.Field,
-<span id="L93" class="ln">    93  </span>	logOK func(string, ...*logging.Field), okMsg string, okFields ...*logging.Field,
-<span id="L94" class="ln">    94  </span>) {
-<span id="L95" class="ln">    95  </span>	if err != nil {
-<span id="L96" class="ln">    96  </span>		f.logger.Error(failMsg, append(failFields, logging.Error(logging.ErrorKey, err))...)
-<span id="L97" class="ln">    97  </span>		return
-<span id="L98" class="ln">    98  </span>	}
-<span id="L99" class="ln">    99  </span>	logOK(okMsg, okFields...)
-<span id="L100" class="ln">   100  </span>}
-<span id="L101" class="ln">   101  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go.uber.org/fx/fxevent&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span><span class="comment">// fxEventLogger は fx イベントを構造化ロガーへ流す fxevent.Logger 実装。</span>
+<span id="L12" class="ln">    12  </span>type fxEventLogger struct {
+<span id="L13" class="ln">    13  </span>	logger logging.Logger
+<span id="L14" class="ln">    14  </span>}
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span><span class="comment">// NewFxEventLogger は、fx.WithLogger に渡す fxevent.Logger を生成します。</span>
+<span id="L17" class="ln">    17  </span>func NewFxEventLogger(logger logging.Logger) fxevent.Logger {
+<span id="L18" class="ln">    18  </span>	return &amp;fxEventLogger{logger: logger.Named(&#34;Fx&#34;).CallerSkip(callSkip)}
+<span id="L19" class="ln">    19  </span>}
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>func (f *fxEventLogger) LogEvent(event fxevent.Event) {
+<span id="L22" class="ln">    22  </span>	switch e := event.(type) {
+<span id="L23" class="ln">    23  </span>	case *fxevent.OnStartExecuted:
+<span id="L24" class="ln">    24  </span>		f.record(e.Err,
+<span id="L25" class="ln">    25  </span>			&#34;OnStart hook failed&#34;,
+<span id="L26" class="ln">    26  </span>			[]*logging.Field{logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName)},
+<span id="L27" class="ln">    27  </span>			f.logger.Debug, &#34;OnStart hook executed&#34;,
+<span id="L28" class="ln">    28  </span>			logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName),
+<span id="L29" class="ln">    29  </span>			logging.DurationMs(&#34;runtime_ms&#34;, e.Runtime))
+<span id="L30" class="ln">    30  </span>	case *fxevent.OnStopExecuted:
+<span id="L31" class="ln">    31  </span>		f.record(e.Err,
+<span id="L32" class="ln">    32  </span>			&#34;OnStop hook failed&#34;,
+<span id="L33" class="ln">    33  </span>			[]*logging.Field{logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName)},
+<span id="L34" class="ln">    34  </span>			f.logger.Debug, &#34;OnStop hook executed&#34;,
+<span id="L35" class="ln">    35  </span>			logging.String(&#34;callee&#34;, e.FunctionName), logging.String(&#34;caller&#34;, e.CallerName),
+<span id="L36" class="ln">    36  </span>			logging.DurationMs(&#34;runtime_ms&#34;, e.Runtime))
+<span id="L37" class="ln">    37  </span>	case *fxevent.Supplied:
+<span id="L38" class="ln">    38  </span>		f.record(e.Err,
+<span id="L39" class="ln">    39  </span>			&#34;Supply failed&#34;,
+<span id="L40" class="ln">    40  </span>			[]*logging.Field{logging.String(&#34;type&#34;, e.TypeName), logging.String(&#34;module&#34;, e.ModuleName)},
+<span id="L41" class="ln">    41  </span>			f.logger.Debug, &#34;Supplied&#34;,
+<span id="L42" class="ln">    42  </span>			logging.String(&#34;type&#34;, e.TypeName), logging.String(&#34;module&#34;, e.ModuleName))
+<span id="L43" class="ln">    43  </span>	case *fxevent.Provided:
+<span id="L44" class="ln">    44  </span>		f.record(e.Err,
+<span id="L45" class="ln">    45  </span>			&#34;Provide failed&#34;,
+<span id="L46" class="ln">    46  </span>			[]*logging.Field{logging.String(&#34;constructor&#34;, e.ConstructorName), logging.String(&#34;module&#34;, e.ModuleName)},
+<span id="L47" class="ln">    47  </span>			f.logger.Debug, &#34;Provided&#34;,
+<span id="L48" class="ln">    48  </span>			logging.String(&#34;constructor&#34;, e.ConstructorName), logging.String(&#34;module&#34;, e.ModuleName),
+<span id="L49" class="ln">    49  </span>			logging.Strings(&#34;output_types&#34;, e.OutputTypeNames))
+<span id="L50" class="ln">    50  </span>	case *fxevent.Invoked:
+<span id="L51" class="ln">    51  </span>		f.record(e.Err,
+<span id="L52" class="ln">    52  </span>			&#34;Invoke failed&#34;,
+<span id="L53" class="ln">    53  </span>			[]*logging.Field{logging.String(&#34;function&#34;, e.FunctionName), logging.String(&#34;module&#34;, e.ModuleName)},
+<span id="L54" class="ln">    54  </span>			f.logger.Debug, &#34;Invoked&#34;,
+<span id="L55" class="ln">    55  </span>			logging.String(&#34;function&#34;, e.FunctionName), logging.String(&#34;module&#34;, e.ModuleName))
+<span id="L56" class="ln">    56  </span>	case *fxevent.Replaced:
+<span id="L57" class="ln">    57  </span>		f.record(e.Err,
+<span id="L58" class="ln">    58  </span>			&#34;Replace failed&#34;,
+<span id="L59" class="ln">    59  </span>			[]*logging.Field{logging.String(&#34;module&#34;, e.ModuleName)},
+<span id="L60" class="ln">    60  </span>			f.logger.Debug, &#34;Replaced&#34;,
+<span id="L61" class="ln">    61  </span>			logging.Strings(&#34;output_types&#34;, e.OutputTypeNames), logging.String(&#34;module&#34;, e.ModuleName))
+<span id="L62" class="ln">    62  </span>	case *fxevent.Decorated:
+<span id="L63" class="ln">    63  </span>		f.record(e.Err,
+<span id="L64" class="ln">    64  </span>			&#34;Decorate failed&#34;,
+<span id="L65" class="ln">    65  </span>			[]*logging.Field{logging.String(&#34;decorator&#34;, e.DecoratorName), logging.String(&#34;module&#34;, e.ModuleName)},
+<span id="L66" class="ln">    66  </span>			f.logger.Debug, &#34;Decorated&#34;,
+<span id="L67" class="ln">    67  </span>			logging.String(&#34;decorator&#34;, e.DecoratorName), logging.String(&#34;module&#34;, e.ModuleName),
+<span id="L68" class="ln">    68  </span>			logging.Strings(&#34;output_types&#34;, e.OutputTypeNames))
+<span id="L69" class="ln">    69  </span>	case *fxevent.LoggerInitialized:
+<span id="L70" class="ln">    70  </span>		f.record(e.Err,
+<span id="L71" class="ln">    71  </span>			&#34;Logger initialization failed&#34;, nil,
+<span id="L72" class="ln">    72  </span>			f.logger.Debug, &#34;Custom logger initialized&#34;,
+<span id="L73" class="ln">    73  </span>			logging.String(&#34;constructor&#34;, e.ConstructorName))
+<span id="L74" class="ln">    74  </span>	case *fxevent.Started:
+<span id="L75" class="ln">    75  </span>		f.record(e.Err,
+<span id="L76" class="ln">    76  </span>			&#34;Application failed to start&#34;, nil,
+<span id="L77" class="ln">    77  </span>			f.logger.Info, &#34;Application started&#34;)
+<span id="L78" class="ln">    78  </span>	case *fxevent.Stopped:
+<span id="L79" class="ln">    79  </span>		f.record(e.Err,
+<span id="L80" class="ln">    80  </span>			&#34;Application failed to stop&#34;, nil,
+<span id="L81" class="ln">    81  </span>			f.logger.Info, &#34;Application stopped&#34;)
+<span id="L82" class="ln">    82  </span>	case *fxevent.RollingBack:
+<span id="L83" class="ln">    83  </span>		f.logger.Error(context.Background(), &#34;start failed, rolling back&#34;, logging.Error(logging.ErrorKey, e.StartErr))
+<span id="L84" class="ln">    84  </span>	case *fxevent.RolledBack:
+<span id="L85" class="ln">    85  </span>		f.record(e.Err,
+<span id="L86" class="ln">    86  </span>			&#34;Rollback failed&#34;, nil,
+<span id="L87" class="ln">    87  </span>			f.logger.Debug, &#34;Application rolled back&#34;)
+<span id="L88" class="ln">    88  </span>	}
+<span id="L89" class="ln">    89  </span>}
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span><span class="comment">// record は fx イベントの成否に応じてログを記録します。</span>
+<span id="L92" class="ln">    92  </span>func (f *fxEventLogger) record(
+<span id="L93" class="ln">    93  </span>	err error,
+<span id="L94" class="ln">    94  </span>	failMsg string, failFields []*logging.Field,
+<span id="L95" class="ln">    95  </span>	logOK func(context.Context, string, ...*logging.Field), okMsg string, okFields ...*logging.Field,
+<span id="L96" class="ln">    96  </span>) {
+<span id="L97" class="ln">    97  </span>	ctx := context.Background()
+<span id="L98" class="ln">    98  </span>	if err != nil {
+<span id="L99" class="ln">    99  </span>		f.logger.Error(ctx, failMsg, append(failFields, logging.Error(logging.ErrorKey, err))...)
+<span id="L100" class="ln">   100  </span>		return
+<span id="L101" class="ln">   101  </span>	}
+<span id="L102" class="ln">   102  </span>	logOK(ctx, okMsg, okFields...)
+<span id="L103" class="ln">   103  </span>}
+<span id="L104" class="ln">   104  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/di/fx_event_logger.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

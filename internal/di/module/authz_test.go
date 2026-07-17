@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthzModule_GraphIsValid(t *testing.T) {
+func Test_authzModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
 	// Authorizer の配線のみを検証する。ApplicationConfig / Logger は commonDeps が供給する。

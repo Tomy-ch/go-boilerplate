@@ -29,6 +29,11 @@ pre-commit:
         - ".github/actions/**/*.{yml,yaml}"
         - ".github/actions-pin.toml"
       run: make pin-actions-check
+    pin-images:
+      glob:
+        - "docker/**/Dockerfile"
+        - "docker/images-pin.toml"
+      run: make pin-images-check
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version

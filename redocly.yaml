@@ -28,14 +28,23 @@ rules:
       type: SchemaProperties
     assertions:
       casing: camelCase
-  # クエリ / パスパラメータ名は snake_case
-  rule/parameter-names-snake_case:
+  # クエリ / パスパラメータ名は camelCase（body フィールドと揃え、JS/TS フロント・生成 SDK と一致させる）。
+  # header パラメータは HTTP 慣習の Train-Case（例: Idempotency-Key）が正しく camelCase にできないため対象外にする。
+  rule/parameter-names-camelCase:
     severity: error
     subject:
       type: Parameter
       property: name
+    where:
+      - subject:
+          type: Parameter
+          property: in
+        assertions:
+          enum:
+            - query
+            - path
     assertions:
-      casing: snake_case
+      casing: camelCase
   # operationId は PascalCase
   rule/operationId-PascalCase:
     severity: error

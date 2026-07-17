@@ -57,6 +57,12 @@ For write queries that return an affected-row count (sqlc `:execrows`), use `Nor
 func NormalizeExecResult(affected int64, err error) error
 ```
 
+For errors returned by a **domain constructor while reconstructing an entity from a stored row** (`rowToXxx` → `New(...)`), use `NormalizeReconstructError` — stored data violating a domain invariant is a data-integrity failure (server-side), so the error is deliberately **flattened to `apperror.ErrInternal`** (a load-bearing flatten: the validation sentinel and any `apperror.Meta` are removed from the chain) to prevent it surfacing to clients as `422` with field `details`. The reason text stays in the message, so it still reaches the logs.
+
+```go
+func NormalizeReconstructError(err error) error
+```
+
 ## SQLSTATE Mapping
 
 The following PostgreSQL SQLSTATE values are converted into application errors.

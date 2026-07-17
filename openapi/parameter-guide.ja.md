@@ -16,7 +16,7 @@ parameters:
 
 |要素|規則|例|
 |---|---|---|
-|パス名|スラッグ形式|`/v1/users/{user_id}`|
+|パス名|スラッグ形式|`/v1/users/{userId}`|
 |ディレクトリ|小文字・関心事別|`pagination/`, `search/`, `user/`|
 |ファイル名|PascalCase + Param|`PageParam.yaml`, `UserIdParam.yaml`|
 

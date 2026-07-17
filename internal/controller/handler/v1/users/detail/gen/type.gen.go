@@ -13,12 +13,24 @@ const (
 	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
 )
 
-// ErrorResponse エラーレスポンスの共通スキーマ
+// ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
 	Code string `json:"code"`
 
-	// Details エラーの詳細情報(任意)
+	// Message 人間が読めるエラーメッセージ
+	Message string `json:"message"`
+
+	// RequestId リクエストID
+	RequestId string `json:"requestId"`
+}
+
+// ErrorResponseWithDetails 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type ErrorResponseWithDetails struct {
+	// Code 機械的に処理可能なエラーコード
+	Code string `json:"code"`
+
+	// Details エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
 	Details *[]string `json:"details,omitempty"`
 
 	// Message 人間が読めるエラーメッセージ
@@ -142,29 +154,29 @@ type UserResponse struct {
 // UserIdParam defines model for UserIdParam.
 type UserIdParam = openapi_types.UUID
 
-// BadRequest400 エラーレスポンスの共通スキーマ
+// BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
 
-// Conflict409 エラーレスポンスの共通スキーマ
+// Conflict409 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type Conflict409 = ErrorResponse
 
-// Forbidden403 エラーレスポンスの共通スキーマ
+// Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type Forbidden403 = ErrorResponse
 
-// InternalServerError500 エラーレスポンスの共通スキーマ
+// InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
 
-// NotFound404 エラーレスポンスの共通スキーマ
+// NotFound404 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type NotFound404 = ErrorResponse
 
-// ServiceUnavailable503 エラーレスポンスの共通スキーマ
+// ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ServiceUnavailable503 = ErrorResponse
 
-// Unauthorized401 エラーレスポンスの共通スキーマ
+// Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type Unauthorized401 = ErrorResponse
 
-// UnprocessableEntity422 エラーレスポンスの共通スキーマ
-type UnprocessableEntity422 = ErrorResponse
+// UnprocessableEntity422 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type UnprocessableEntity422 = ErrorResponseWithDetails
 
 // basicAuthContextKey is the context key for BasicAuth security scheme
 type basicAuthContextKey string

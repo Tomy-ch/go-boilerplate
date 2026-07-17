@@ -132,7 +132,7 @@ func TestNewQueryRecorder(t *testing.T) {
 	})
 }
 
-func TestRegisterOrExisting(t *testing.T) {
+func Test_registerOrExisting(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

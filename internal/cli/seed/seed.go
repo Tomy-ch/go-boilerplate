@@ -27,24 +27,25 @@ func RunDBSeed(
 	database string,
 	openDB func(logging.Logger, string) (driver.DatabaseDriver, error),
 ) error {
+	ctx := context.Background()
+
 	db, err := openDB(logger, database)
 	if err != nil {
-		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error(logging.ErrorKey, err))
+		logger.Named("dbSeedRun.dbOpen").Error(ctx, "failed to open database connection", logging.Error(logging.ErrorKey, err))
 		return err
 	}
 	defer func() {
 		if cerr := db.Close(); cerr != nil {
-			logger.Named("dbSeedRun.dbClose").Error("failed to close database connection", logging.Error(logging.ErrorKey, cerr))
+			logger.Named("dbSeedRun.dbClose").Error(ctx, "failed to close database connection", logging.Error(logging.ErrorKey, cerr))
 		}
 	}()
 
 	files, err := fsys.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
-		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error(logging.ErrorKey, err))
+		logger.Named("dbSeedRun.globSeedFiles").Error(ctx, "failed to glob seed files", logging.Error(logging.ErrorKey, err))
 		return err
 	}
 
-	ctx := context.Background()
 	return runSeeds(ctx, fsys, db, logger, files)
 }
 
@@ -61,7 +62,7 @@ func runSeeds(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, logger 
 	if seedErr != nil {
 		return seedErr
 	}
-	logger.Named("dbSeedRun").Info("✅ seeding completed")
+	logger.Named("dbSeedRun").Info(ctx, "✅ seeding completed")
 
 	return nil
 }
@@ -71,6 +72,7 @@ func execSeedFile(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, log
 	data, err := fsys.ReadFile(filePath)
 	if err != nil {
 		logger.Named("dbSeedRun.os.ReadFile").Error(
+			ctx,
 			"failed to read seed file",
 			logging.String("file", filePath),
 			logging.Error(logging.ErrorKey, err),
@@ -79,16 +81,17 @@ func execSeedFile(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, log
 	}
 
 	_, err = db.Exec(ctx, string(data))
-	return handleSeedExecResult(logger, filePath, err)
+	return handleSeedExecResult(ctx, logger, filePath, err)
 }
 
 // handleSeedExecResult は、seed 実行結果を PostgreSQL 固有エラーの種類に応じて記録し、
 // スキップ可能なケース（成功・対象テーブル未作成）では nil を、それ以外の実行エラーでは
 // そのエラーを返します。
-func handleSeedExecResult(logger logging.Logger, filePath string, err error) error {
+func handleSeedExecResult(ctx context.Context, logger logging.Logger, filePath string, err error) error {
 	log := logger.Named("dbSeedRun.Exec")
 	if err == nil {
 		log.Info(
+			ctx,
 			"seed file executed successfully",
 			logging.String("file", filePath),
 		)
@@ -100,6 +103,7 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
 	// seed 対象テーブルが未作成の環境では警告に留め、他の seed 実行を継続します（スキップ扱い）。
 	if isPgErr && pgErr.Code == relationDoesNotExistCode {
 		log.Warn(
+			ctx,
 			"table does not exist, skipping seed",
 			logging.String("file", filePath),
 			logging.Error(logging.ErrorKey, err),
@@ -113,6 +117,7 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
 	}
 
 	log.Error(
+		ctx,
 		message,
 		logging.String("file", filePath),
 		logging.Error(logging.ErrorKey, err),

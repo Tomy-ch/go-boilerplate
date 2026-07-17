@@ -16,5 +16,8 @@ func outboxPublisherModule() fx.Option {
 		provideHTTPClientProfiles(
 			outboxpublisher.NewDownstreamProfile,
 		),
+		provideRequiredDownstreams(
+			outboxpublisher.RequiredDownstream,
+		),
 	)
 }

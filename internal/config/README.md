@@ -287,6 +287,8 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |`SetAllowedHeaderBearer`|`AuthConfig`|
 |`SetOutboxBatchSize`|`OutboxConfig`|
 |`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetOutboxPollInterval`|`OutboxConfig`|
+|`SetOutboxErrorBackoff`|`OutboxConfig`|
 |`SetSameSite`|`SecureCookieConfig`|
 |`SetDomain`|`SecureCookieConfig`|
 

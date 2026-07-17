@@ -92,7 +92,7 @@
 <span id="L35" class="ln">    35  </span>	return append([]string(nil), e.names...)
 <span id="L36" class="ln">    36  </span>}
 <span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>func Test_LayerTracer_Start(t *testing.T) {
+<span id="L38" class="ln">    38  </span>func TestLayerTracer_Start(t *testing.T) {
 <span id="L39" class="ln">    39  </span>	t.Parallel()
 <span id="L40" class="ln">    40  </span>
 <span id="L41" class="ln">    41  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -134,7 +134,7 @@
 <span id="L77" class="ln">    77  </span>	})
 <span id="L78" class="ln">    78  </span>}
 <span id="L79" class="ln">    79  </span>
-<span id="L80" class="ln">    80  </span>func Test_LayerTracer_StartWithSuffix(t *testing.T) {
+<span id="L80" class="ln">    80  </span>func TestLayerTracer_StartWithSuffix(t *testing.T) {
 <span id="L81" class="ln">    81  </span>	t.Parallel()
 <span id="L82" class="ln">    82  </span>
 <span id="L83" class="ln">    83  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -239,7 +239,7 @@
 <span id="L182" class="ln">   182  </span>	})
 <span id="L183" class="ln">   183  </span>}
 <span id="L184" class="ln">   184  </span>
-<span id="L185" class="ln">   185  </span>func Test_LayerTracer_makeSpanName(t *testing.T) {
+<span id="L185" class="ln">   185  </span>func TestLayerTracer_makeSpanName(t *testing.T) {
 <span id="L186" class="ln">   186  </span>	t.Parallel()
 <span id="L187" class="ln">   187  </span>
 <span id="L188" class="ln">   188  </span>	expectedLayer := &#34;layer&#34;

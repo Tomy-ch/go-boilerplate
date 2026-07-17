@@ -39,7 +39,7 @@ func TestNewEmit(t *testing.T) {
 	})
 }
 
-func TestEmitUsecase_Emit(t *testing.T) {
+func Test_emitUsecase_Emit(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

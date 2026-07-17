@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/logging"
 
 	"go.opentelemetry.io/otel/trace"
 )
@@ -76,4 +77,17 @@ func (tc *TraceContext) SpanID() string {
 // ParentSpanID は、TraceContext から ParentSpanID を取得します。
 func (tc *TraceContext) ParentSpanID() string {
 	return tc.parentSpanID
+}
+
+// NewTraceExtractor は、ctx から trace_id / span_id を抽出する logging.TraceExtractor を返します。
+// obs 無効時・ctx に有効な span が無い場合は 3 番目の戻り値 false を返し、Logger 側の trace 注入を
+// 抑止します。
+func NewTraceExtractor(obsCfg *config.ObservabilityConfig) logging.TraceExtractor {
+	return func(ctx context.Context) (string, string, bool) {
+		if !ShouldLogWithSpan(ctx, obsCfg) {
+			return "", "", false
+		}
+		tc := ExtractTraceContext(ctx)
+		return tc.TraceID(), tc.SpanID(), true
+	}
 }

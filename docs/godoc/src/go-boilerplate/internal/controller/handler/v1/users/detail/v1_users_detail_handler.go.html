@@ -58,7 +58,7 @@
 <pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml</span>
 <span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml</span>
 <span id="L3" class="ln">     3  </span>
-<span id="L4" class="ln">     4  </span><span class="comment">// Package detail は、/v1/users/{user_id} エンドポイントに関連するハンドラを提供します。</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// Package detail は、/v1/users/{userId} エンドポイントに関連するハンドラを提供します。</span>
 <span id="L5" class="ln">     5  </span>package detail
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span>import (

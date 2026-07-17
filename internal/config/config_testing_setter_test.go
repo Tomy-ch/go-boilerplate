@@ -3,6 +3,7 @@ package config
 import (
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,6 +123,18 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			expected := "http://test-relay:8080"
 			cfg.outbox.SetOutboxEndpoint(t, expected)
 			assert.Equal(t, expected, cfg.outbox.Endpoint())
+		})
+
+		t.Run("outboxのpoll間隔を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := 3 * time.Second
+			cfg.outbox.SetOutboxPollInterval(t, expected)
+			assert.Equal(t, expected, cfg.outbox.PollInterval())
+		})
+
+		t.Run("outboxのエラー時待機時間を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := 9 * time.Second
+			cfg.outbox.SetOutboxErrorBackoff(t, expected)
+			assert.Equal(t, expected, cfg.outbox.ErrorBackoff())
 		})
 
 		t.Run("worker health listener アドレスを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可

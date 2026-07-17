@@ -85,6 +85,15 @@ func Test_parseEndpoint(t *testing.T) {
 			assert.Empty(t, got)
 		})
 
+		t.Run("ホスト名が空(ポートのみ)は弾く", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseEndpoint("http://:8080")
+
+			require.ErrorIs(t, err, ErrInvalidEndpoint)
+			assert.Empty(t, got)
+		})
+
 		t.Run("解析不能な URL は弾く", func(t *testing.T) {
 			t.Parallel()
 

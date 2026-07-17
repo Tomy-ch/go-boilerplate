@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSplitFuncName(t *testing.T) {
+func Test_splitFuncName(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

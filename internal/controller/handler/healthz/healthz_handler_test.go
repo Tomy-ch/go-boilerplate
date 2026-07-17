@@ -35,7 +35,7 @@ func TestBindHandler(t *testing.T) {
 	)
 }
 
-func TestGetHealthz(t *testing.T) {
+func Test_server_GetHealthz(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

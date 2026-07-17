@@ -1,4 +1,4 @@
-name: per_page
+name: perPage
 in: query
 description: 1ページあたりの取得件数
 required: false

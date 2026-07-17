@@ -7,7 +7,9 @@ meta:
     - title: Get Started
       sections: [overview, get-started, make_commands, environment_variables, tutorial]
     - title: Architecture
-      sections: [architecture, project]
+      sections: [architecture, project, reference]
+    - title: Decisions (ADR)
+      sections: [adr]
     - title: Application Layers
       sections: [domain, usecase, controller, infrastructure]
     - title: Design
@@ -17,7 +19,7 @@ meta:
     - title: Cross-Cutting
       sections: [cross-cutting, integration]
     - title: Build / Operations
-      sections: [docker, database, scripts, ci, maintenance, deployment]
+      sections: [docker, database, scripts, agent-config, ci, maintenance, deployment]
     - title: API Contracts
       sections: [external]
 
@@ -80,9 +82,135 @@ meta:
         items: [sqlc-query-guide, sqlc-settings]
       - title: Seed
         items: [database-seed]
+    adr:
+      - title: Index / Meta
+        items: [README, template, 0000-record-architecture-decisions]
+      - title: Foundational
+        items:
+          - 0001-avoid-lock-in
+          - 0002-onion-architecture
+          - 0003-interface-based-decoupling
+          - 0004-modular-monolith
+          - 0005-driving-adapters-not-split-axis
+          - 0006-structural-safety-via-tooling
+          - 0007-agents-md-operational-contract
+          - 0008-docs-as-canonical-source
+      - title: Contract / OpenAPI
+        items:
+          - 0009-openapi-first
+          - 0010-redocly-modular-spec-pipeline
+          - 0011-oapi-codegen-strict-server
+          - 0012-retain-generated-openapi
+          - 0013-spec-driven-request-validation
+          - 0014-validation-value-authority
+          - 0015-boundary-value-ownership
+          - 0016-metrics-endpoint-auth-exception
+      - title: HTTP Layer
+        items:
+          - 0017-echo-http-framework
+          - 0018-priority-ordered-middleware-chain
+          - 0019-outbound-http-resilience
+          - 0020-egress-ssrf-guard
+      - title: Persistence & Data
+        items:
+          - 0021-sql-first-data-access
+          - 0022-sqlc-type-safe-sql
+          - 0023-merged-dml-schema-as-sqlc-input
+          - 0024-append-only-immutable-migrations
+          - 0025-sequential-migration-ids
+          - 0026-master-data-via-migration
+          - 0027-lightweight-cqrs
+          - 0028-system-cqrs-dml-category
+          - 0029-commandservice-atomicity-criterion
+          - 0030-transaction-retry-idempotent-callers
+          - 0031-uuidv7-identifiers
+      - title: DI / Config / Errors
+        items:
+          - 0032-uber-fx-di
+          - 0033-fx-neutral-di-abstraction
+          - 0034-env-gated-wiring
+          - 0035-subsystem-typed-config-loaders
+          - 0036-config-default-vs-required-governance
+          - 0037-immutable-fail-fast-config
+          - 0038-embedded-self-contained-binary
+          - 0039-apperror-protocol-agnostic-errors
+          - 0040-error-metadata-code-message-details
+      - title: Async Subsystems (worker / outbox / idempotency / job)
+        items:
+          - 0042-broker-agnostic-worker-scaffold
+          - 0043-out-of-scope-push-streaming-brokers
+          - 0044-sqs-adapter-opt-in
+          - 0045-transactional-outbox
+          - 0046-at-least-once-outbox-poll
+          - 0047-skip-locked-outbox-relay
+          - 0048-message-id-idempotency-propagation
+          - 0049-outbox-dead-after-max-attempts
+          - 0050-outbox-retention-gc
+          - 0051-publisher-http-profile-isolation
+          - 0052-relay-resident-gc-oneshot
+          - 0053-single-tx-at-most-once-idempotency
+          - 0054-idempotency-scope-required
+          - 0055-idempotency-fixed-ttl
+          - 0056-idempotency-response-persistence
+          - 0057-idempotency-gc-separate-job
+          - 0058-idempotency-orthogonal-concerns
+          - 0059-job-fresh-fx-app-per-run
+          - 0060-job-no-worker-machinery
+          - 0061-job-explicit-registration
+      - title: Observability
+        items:
+          - 0062-config-driven-observability-gating
+          - 0063-vendor-neutral-otlp-export
+          - 0064-official-otel-semconv
+          - 0065-dual-path-metrics
+          - 0066-lifecycle-independent-provider
+          - 0067-fixed-default-sampling
+      - title: Libraries
+        items:
+          - 0068-library-selection-policy
+          - 0069-bridge-instrumentation-exceptions
+      - title: Toolchain / Build
+        items:
+          - 0070-containerized-pinned-toolchain
+          - 0071-mise-ssot-drift-gate
+          - 0072-make-single-entrypoint
+          - 0073-scripts-in-node-go
+          - 0074-docker-compose-dev-environment
+      - title: CI / Quality Gates
+        items:
+          - 0075-two-layer-golangci-config
+          - 0076-local-hooks-mirror-ci
+          - 0077-coverage-hard-gate
+          - 0078-ci-real-graph-boot-check
+          - 0079-generated-artifact-drift-gate
+          - 0080-multi-layer-security-scanning
+          - 0081-sha-pinned-actions
+      - title: Development Process
+        items:
+          - 0082-rollback-integration-tests
+          - 0083-multi-model-adversarial-review
+          - 0084-lean-a-spec-scaffold
+      - title: Binary / Image / Deploy
+        items:
+          - 0085-cli-humble-object-split
+          - 0086-single-multi-command-binary
+          - 0087-single-runtime-image
+          - 0088-hardened-alpine-runtime
+          - 0089-per-environment-images
+          - 0090-predeploy-oneshot-migration
+          - 0091-release-image-supply-chain
+          - 0092-vendor-neutral-deploy-skeleton
+          - 0093-docs-via-github-pages
+      - title: Project Exclusions
+        items:
+          - 0094-no-in-app-rate-limiter
+          - 0095-scheduled-job-concurrency-delegated
+          - 0096-no-generic-cache-abstraction
 
   # auto-Title-Case で汚くなる id の表示名を上書きする (略語 / 改名のみ用途)。
   section_titles:
+    adr: Architecture Decisions (ADR)
+    reference: Reference (Dependencies)
     architecture: Architecture Docs
     get-started: Setup Repository
     make_commands: Make Commands
@@ -446,6 +574,14 @@ scripts:
   # Japanese
   - src: scripts/README.ja.md
     dst: docs/portal/guides/ja/scripts.ja.md
+
+agent-config:
+  # English
+  - src: .claude/README.md
+    dst: docs/portal/guides/agent-config.md
+  # Japanese
+  - src: .claude/README.ja.md
+    dst: docs/portal/guides/ja/agent-config.ja.md
 
 ci:
   # English

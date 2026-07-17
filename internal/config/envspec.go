@@ -55,7 +55,7 @@ type Application struct {
 	Name            string        `env:"NAME,required"`
 	Mode            string        `env:"MODE,required"`
 	LogLevel        string        `env:"LOG_LEVEL,required"`
-	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT"   envDefault:"45s"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT"   envDefault:"65s"`
 }
 
 // Server は HTTP サーバーのバインドアドレスおよび各種タイムアウトに関する設定を保持する。
@@ -74,8 +74,8 @@ type Server struct {
 type Metrics struct {
 	Host     string `env:"HOST,required"`
 	Port     int    `env:"PORT,required"`
-	UserName string `env:"USERNAME,required"`
-	Password string `env:"PASSWORD,required"`
+	UserName string `env:"USERNAME,required,notEmpty"`
+	Password string `env:"PASSWORD,required,notEmpty"`
 }
 
 // Observability は OTLP exporter 設定（trace/metric/log の送出先種別・エンドポイント・プロトコル）、

@@ -42,6 +42,7 @@
 
 - `mise.toml`（`[tools]` table のみ、ユーザーが承認したエントリだけを書き換え）
 - `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md`, `docker/**/README.ja.md` — `make sync-versions` の下流出力としてのみ（スクリプトが atomic に処理）
+- `docker/**/Dockerfile` の `FROM` `@sha256:...` digest ＋ `docker/images-pin.toml` — `go` / `node` / `python` ランタイム bump で base image タグが変わった場合のみ、`make pin-images-apply` / `pin-images-resolve` 経由で
 
 以下は引き続き保護対象（スキル実行中でも変更不可）。
 
@@ -133,6 +134,18 @@ GitHub Releases 系は `gh api` を優先する（`GITHUB_TOKEN` 経由で認証
 
 非ランタイムのツールだけが更新された場合は `make sync-versions` は不要。
 
+### 6.5. ランタイムが変わったら base image digest を再固定
+
+ステップ 6 で `make sync-versions` が走った（＝`go` / `node` / `python` bump で `FROM` の**タグ**が変わった）場合、以前 pin した `@sha256:...` digest は**旧**イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先）。registry から再 pin する（`pin-images` スキルの役目、ここで chain）:
+
+```sh
+make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`
+make pin-images-apply
+make pin-images-check
+```
+
+公開直後のランタイムイメージは通常 `PIN_IMAGES_MIN_AGE_DAYS` の cooldown 内なので、`pin-images-apply` は stale な digest を剥がして `FROM` を tag のみに戻す（quarantine）——`pin-images-check` はそれを許容する。その旨を報告し、イメージが古くなったら `/pin-images` を再実行すべきことを伝える。ステップ 6 をスキップした場合（ランタイム変更なし → タグ変更なし → digest は有効）は本ステップも丸ごとスキップする。
+
 ### 7. 検証
 
 ```sh
@@ -173,6 +186,7 @@ make test
 - [ ] eligible が非空なら、per-tool 適用候補を `AskUserQuestion` で確定
 - [ ] `mise.toml` を承認分のみ atomic に書き換え、key 形式と `v` prefix 慣習を保持
 - [ ] go / node / python が更新されたなら `make sync-versions` を実行
+- [ ] ランタイム bump 時は base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）; cooldown 未了で quarantine されたイメージは後日 `/pin-images` 再実行用に報告
 - [ ] `make lint` + `make test` を実行
 - [ ] 最終結果テーブルをユーザーに報告
 - [ ] `SKILL.md` 更新時は `SKILL.ja.md` も同期

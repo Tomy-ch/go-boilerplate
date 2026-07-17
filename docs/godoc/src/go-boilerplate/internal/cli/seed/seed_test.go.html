@@ -72,7 +72,7 @@
 <span id="L15" class="ln">    15  </span>	&#34;go.uber.org/mock/gomock&#34;
 <span id="L16" class="ln">    16  </span>)
 <span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>func TestHandleSeedExecResult(t *testing.T) {
+<span id="L18" class="ln">    18  </span>func Test_handleSeedExecResult(t *testing.T) {
 <span id="L19" class="ln">    19  </span>	t.Parallel()
 <span id="L20" class="ln">    20  </span>
 <span id="L21" class="ln">    21  </span>	otherErr := xerrors.New(&#34;boom&#34;)
@@ -84,11 +84,11 @@
 <span id="L27" class="ln">    27  </span>
 <span id="L28" class="ln">    28  </span>		t.Run(&#34;実行成功はnilを返す&#34;, func(t *testing.T) {
 <span id="L29" class="ln">    29  </span>			t.Parallel()
-<span id="L30" class="ln">    30  </span>			require.NoError(t, handleSeedExecResult(logging.NewTestLogger(t), &#34;seed.sql&#34;, nil))
+<span id="L30" class="ln">    30  </span>			require.NoError(t, handleSeedExecResult(context.Background(), logging.NewTestLogger(t), &#34;seed.sql&#34;, nil))
 <span id="L31" class="ln">    31  </span>		})
 <span id="L32" class="ln">    32  </span>		t.Run(&#34;対象テーブル未作成はスキップしてnilを返す&#34;, func(t *testing.T) {
 <span id="L33" class="ln">    33  </span>			t.Parallel()
-<span id="L34" class="ln">    34  </span>			require.NoError(t, handleSeedExecResult(logging.NewTestLogger(t), &#34;seed.sql&#34;, pgRelationNotExist))
+<span id="L34" class="ln">    34  </span>			require.NoError(t, handleSeedExecResult(context.Background(), logging.NewTestLogger(t), &#34;seed.sql&#34;, pgRelationNotExist))
 <span id="L35" class="ln">    35  </span>		})
 <span id="L36" class="ln">    36  </span>	})
 <span id="L37" class="ln">    37  </span>
@@ -97,18 +97,18 @@
 <span id="L40" class="ln">    40  </span>
 <span id="L41" class="ln">    41  </span>		t.Run(&#34;テーブル未作成以外のPostgreSQLエラーは伝播する&#34;, func(t *testing.T) {
 <span id="L42" class="ln">    42  </span>			t.Parallel()
-<span id="L43" class="ln">    43  </span>			err := handleSeedExecResult(logging.NewTestLogger(t), &#34;seed.sql&#34;, pgSyntaxErr)
+<span id="L43" class="ln">    43  </span>			err := handleSeedExecResult(context.Background(), logging.NewTestLogger(t), &#34;seed.sql&#34;, pgSyntaxErr)
 <span id="L44" class="ln">    44  </span>			require.ErrorIs(t, err, pgSyntaxErr)
 <span id="L45" class="ln">    45  </span>		})
 <span id="L46" class="ln">    46  </span>		t.Run(&#34;PostgreSQL以外のエラーも伝播する&#34;, func(t *testing.T) {
 <span id="L47" class="ln">    47  </span>			t.Parallel()
-<span id="L48" class="ln">    48  </span>			err := handleSeedExecResult(logging.NewTestLogger(t), &#34;seed.sql&#34;, otherErr)
+<span id="L48" class="ln">    48  </span>			err := handleSeedExecResult(context.Background(), logging.NewTestLogger(t), &#34;seed.sql&#34;, otherErr)
 <span id="L49" class="ln">    49  </span>			require.ErrorIs(t, err, otherErr)
 <span id="L50" class="ln">    50  </span>		})
 <span id="L51" class="ln">    51  </span>	})
 <span id="L52" class="ln">    52  </span>}
 <span id="L53" class="ln">    53  </span>
-<span id="L54" class="ln">    54  </span>func TestExecSeedFile(t *testing.T) {
+<span id="L54" class="ln">    54  </span>func Test_execSeedFile(t *testing.T) {
 <span id="L55" class="ln">    55  </span>	t.Parallel()
 <span id="L56" class="ln">    56  </span>
 <span id="L57" class="ln">    57  </span>	const path = &#34;database/seed/001.sql&#34;
@@ -168,7 +168,7 @@
 <span id="L111" class="ln">   111  </span>	})
 <span id="L112" class="ln">   112  </span>}
 <span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span>func TestRunSeeds(t *testing.T) {
+<span id="L114" class="ln">   114  </span>func Test_runSeeds(t *testing.T) {
 <span id="L115" class="ln">   115  </span>	t.Parallel()
 <span id="L116" class="ln">   116  </span>
 <span id="L117" class="ln">   117  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {

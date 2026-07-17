@@ -127,13 +127,13 @@
 <span id="L70" class="ln">    70  </span>		&#34;first_name&#34;,
 <span id="L71" class="ln">    71  </span>		&#34;last_name&#34;,
 <span id="L72" class="ln">    72  </span>		&#34;password&#34;,
-<span id="L73" class="ln">    73  </span>		&#34;email_address&#34;,
+<span id="L73" class="ln">    73  </span>		&#34;user@example.com&#34;,
 <span id="L74" class="ln">    74  </span>		&#34;phone_number&#34;,
 <span id="L75" class="ln">    75  </span>		prefectureID,
 <span id="L76" class="ln">    76  </span>		&#34;city_name&#34;,
 <span id="L77" class="ln">    77  </span>		&#34;town_address&#34;,
 <span id="L78" class="ln">    78  </span>		nil,
-<span id="L79" class="ln">    79  </span>		&#34;p_code&#34;,
+<span id="L79" class="ln">    79  </span>		&#34;150-0001&#34;,
 <span id="L80" class="ln">    80  </span>		now,
 <span id="L81" class="ln">    81  </span>		now,
 <span id="L82" class="ln">    82  </span>		nil,
@@ -278,7 +278,7 @@
 <span id="L221" class="ln">   221  </span>	})
 <span id="L222" class="ln">   222  </span>}
 <span id="L223" class="ln">   223  </span>
-<span id="L224" class="ln">   224  </span>func Test_usecase_Create(t *testing.T) {
+<span id="L224" class="ln">   224  </span>func Test_usecase_CreateUser(t *testing.T) {
 <span id="L225" class="ln">   225  </span>	t.Parallel()
 <span id="L226" class="ln">   226  </span>
 <span id="L227" class="ln">   227  </span>	ctx := context.Background()
@@ -293,13 +293,13 @@
 <span id="L236" class="ln">   236  </span>		&#34;first_name&#34;,
 <span id="L237" class="ln">   237  </span>		&#34;last_name&#34;,
 <span id="L238" class="ln">   238  </span>		&#34;password&#34;,
-<span id="L239" class="ln">   239  </span>		&#34;email_address&#34;,
+<span id="L239" class="ln">   239  </span>		&#34;user@example.com&#34;,
 <span id="L240" class="ln">   240  </span>		&#34;phone_number&#34;,
 <span id="L241" class="ln">   241  </span>		prefectureID,
 <span id="L242" class="ln">   242  </span>		&#34;city_name&#34;,
 <span id="L243" class="ln">   243  </span>		&#34;town_address&#34;,
 <span id="L244" class="ln">   244  </span>		nil,
-<span id="L245" class="ln">   245  </span>		&#34;p_code&#34;,
+<span id="L245" class="ln">   245  </span>		&#34;150-0001&#34;,
 <span id="L246" class="ln">   246  </span>		now,
 <span id="L247" class="ln">   247  </span>		now,
 <span id="L248" class="ln">   248  </span>		nil,
@@ -519,8 +519,8 @@
 <span id="L462" class="ln">   462  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture_domain&#34;)
 <span id="L463" class="ln">   463  </span>	userDomain, err := user.New(
 <span id="L464" class="ln">   464  </span>		uuid.NewTestFromSalt(t, &#34;user_domain&#34;),
-<span id="L465" class="ln">   465  </span>		&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
-<span id="L466" class="ln">   466  </span>		prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, now, now, nil,
+<span id="L465" class="ln">   465  </span>		&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;user@example.com&#34;, &#34;phone_number&#34;,
+<span id="L466" class="ln">   466  </span>		prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;150-0001&#34;, now, now, nil,
 <span id="L467" class="ln">   467  </span>	)
 <span id="L468" class="ln">   468  </span>	require.NoError(t, err)
 <span id="L469" class="ln">   469  </span>	prefectureDomain, err := prefecture.New(prefectureID, &#34;prefecture_name&#34;, 1)
@@ -673,8 +673,8 @@
 <span id="L616" class="ln">   616  </span>	newFeedUser := func(salt string, createdAt time.Time) *user.User {
 <span id="L617" class="ln">   617  </span>		u, uErr := user.New(
 <span id="L618" class="ln">   618  </span>			uuid.NewTestFromSalt(t, salt),
-<span id="L619" class="ln">   619  </span>			&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
-<span id="L620" class="ln">   620  </span>			prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, createdAt, createdAt, nil,
+<span id="L619" class="ln">   619  </span>			&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;user@example.com&#34;, &#34;phone_number&#34;,
+<span id="L620" class="ln">   620  </span>			prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;150-0001&#34;, createdAt, createdAt, nil,
 <span id="L621" class="ln">   621  </span>		)
 <span id="L622" class="ln">   622  </span>		require.NoError(t, uErr)
 <span id="L623" class="ln">   623  </span>		return u

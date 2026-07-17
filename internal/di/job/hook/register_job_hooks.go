@@ -46,6 +46,7 @@ func runJobAndShutdown(
 	name, args, done := state.Snapshot()
 	if done == nil {
 		logger.Named("job.Hooks").Info(
+			jobCtx,
 			"No job to run",
 			logging.String(logging.EventTypeKey, logging.EventTypeStart),
 			logging.Time(logging.EventAtKey, time.Now()),
@@ -53,7 +54,7 @@ func runJobAndShutdown(
 			logging.String(logging.JobNameKey, name),
 			logging.Strings(logging.JobArgsKey, args),
 		)
-		shutdown(sd, logger)
+		shutdown(jobCtx, sd, logger)
 		return
 	}
 
@@ -61,14 +62,15 @@ func runJobAndShutdown(
 
 	done <- runner.Run(jobCtx, name, args)
 
-	shutdown(sd, logger)
+	shutdown(jobCtx, sd, logger)
 }
 
 // shutdown は、ジョブ完了後のアプリ停止を要求し、失敗時はジョブ系のログ様式に合わせて記録します。
 // エラーは黙殺せずログ記録する。
-func shutdown(sd shutdowner.Shutdowner, logger logging.Logger) {
+func shutdown(ctx context.Context, sd shutdowner.Shutdowner, logger logging.Logger) {
 	if err := sd.Shutdown(); err != nil {
 		logger.Named("job.Hooks").Error(
+			ctx,
 			"failed to shutdown",
 			logging.Error(logging.JobErrorKey, err),
 		)

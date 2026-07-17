@@ -40,9 +40,6 @@ type HTTPRequestLogInput struct {
 
 	PathParams  map[string]string
 	QueryParams map[string][]string
-
-	TraceID string
-	SpanID  string
 }
 
 // HTTPResponseLogInput は、HTTPレスポンスのログ出力用の入力情報をまとめた構造体です。
@@ -57,8 +54,6 @@ type HTTPResponseLogInput struct {
 	Latency time.Duration
 
 	RequestID string
-	TraceID   string
-	SpanID    string
 }
 
 // SQLFieldsEndInput は、SQL ログ出力用の入力情報をまとめた構造体です。
@@ -76,8 +71,8 @@ type SQLFieldsEndInput struct {
 	Args  []any
 	Err   error
 
-	TraceID      string
-	SpanID       string
+	// ParentSpanID は呼び出し元 span の ID。trace_id / span_id は Logger が ctx から
+	// 自動注入するが、parent_span_id は ctx から導出できないため明示的に渡す。
 	ParentSpanID string
 }
 
@@ -111,7 +106,7 @@ func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Fie
 		Any(PathParamsKey, req.PathParams),
 	)
 
-	return l.appendTraceSpanFields(fields, req.TraceID, req.SpanID, "")
+	return fields
 }
 
 // BuildHTTPResponseFields は、HTTPレスポンスの情報を含むFieldのスライスを生成します。
@@ -127,7 +122,7 @@ func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*
 		String(RequestIDKey, resp.RequestID),
 	)
 
-	return l.appendTraceSpanFields(fields, resp.TraceID, resp.SpanID, "")
+	return fields
 }
 
 // BuildSQLEndFields は、SQLの終了時点のログ出力用の Field スライスを構築します。
@@ -154,7 +149,12 @@ func (l *logFieldBuilder) BuildSQLEndFields(sql SQLFieldsEndInput) []*Field {
 		fields = append(fields, Error(InternalErrorKey, sql.Err))
 	}
 
-	return l.appendTraceSpanFields(fields, sql.TraceID, sql.SpanID, sql.ParentSpanID)
+	// parent_span_id は obs 有効時のみ付与する（trace_id / span_id は Logger 側で注入）。
+	if l.obsCfg.Enabled() && sql.ParentSpanID != "" {
+		fields = append(fields, String(ParentSpanIDKey, sql.ParentSpanID))
+	}
+
+	return fields
 }
 
 // buildEventHeader は、全イベントログ共通の先頭フィールド
@@ -165,31 +165,6 @@ func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Fi
 		Time(EventAtKey, at),
 		String(EventTzKey, l.osCfg.TimeZone()),
 	}
-}
-
-// appendTraceSpanFields は、obs が有効なとき trace/span を fields に追加する。
-func (l *logFieldBuilder) appendTraceSpanFields(
-	fields []*Field,
-	traceID string,
-	spanID string,
-	parentSpanID string,
-) []*Field {
-	if !l.obsCfg.Enabled() || traceID == "" || spanID == "" {
-		return fields
-	}
-
-	fields = append(fields,
-		String(TraceIDKey, traceID),
-		String(SpanIDKey, spanID),
-	)
-
-	if parentSpanID == "" {
-		return fields
-	}
-
-	return append(fields,
-		String(ParentSpanIDKey, parentSpanID),
-	)
 }
 
 // buildCompactQuery は、SQL クエリを1行の短縮表現に変換します。

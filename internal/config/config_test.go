@@ -150,6 +150,24 @@ func TestNewConfig(t *testing.T) {
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
+
+		t.Run("METRICS_USERNAMEが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
+			setEnvVarsForTesting(t)
+			t.Setenv("METRICS_USERNAME", "") // 空文字は required を通過するが notEmpty で弾く
+
+			actual, err := New()
+			assert.Nil(t, actual)
+			require.ErrorContains(t, err, "METRICS_USERNAME")
+		})
+
+		t.Run("METRICS_PASSWORDが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
+			setEnvVarsForTesting(t)
+			t.Setenv("METRICS_PASSWORD", "") // 空文字は required を通過するが notEmpty で弾く
+
+			actual, err := New()
+			assert.Nil(t, actual)
+			require.ErrorContains(t, err, "METRICS_PASSWORD")
+		})
 	})
 }
 
@@ -220,6 +238,107 @@ func Test_validateConfig(t *testing.T) {
 
 			err := validateConfig(cfg)
 			require.ErrorIs(t, err, ErrAuthConfigMissing)
+		})
+
+		t.Run("メトリクス設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MinPort - 1 // 無効なポート番号
+
+			err := validateConfig(cfg)
+			require.ErrorIs(t, err, ErrInvalidMetricsPortRange)
+		})
+	})
+}
+
+//nolint:paralleltest // embeddedAppEnv パッケージ変数を操作するため並列化不可
+func Test_validateEmbeddedEnv(t *testing.T) {
+	restore := func() func() {
+		saved := embeddedAppEnv
+		return func() { embeddedAppEnv = saved }
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("productionモードで本番素性(prd)の埋め込みenvの場合、エラーが返されないこと", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvProduction
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.NoError(t, validateConfig(cfg))
+		})
+
+		t.Run("productionモードで未知の環境素性の場合はdeny-listにないため許容されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = "unknown-future-env"
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.NoError(t, validateConfig(cfg))
+		})
+
+		t.Run("developmentモードでは非本番素性の埋め込みenvでも許容されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvLocal
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = DevelopmentMode
+
+			require.NoError(t, validateConfig(cfg))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("productionモードでlocal素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvLocal
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードでci素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvCI
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードでtest素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvTest
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードでdevelopment素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvDevelopment
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
+		t.Run("productionモードで埋め込みenvが空の場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = ""
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
 		})
 	})
 }
@@ -349,6 +468,84 @@ func Test_validateServerConfig(t *testing.T) {
 
 			err := validateServerConfig(cfg.Server)
 			require.NoError(t, err)
+		})
+	})
+}
+
+func Test_validateMetricsConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("デフォルトのポート番号は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			err := validateMetricsConfig(cfg.Metrics)
+			require.NoError(t, err)
+		})
+
+		t.Run("ポート番号がMinPortの場合は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MinPort // 有効範囲の下限境界
+			err := validateMetricsConfig(cfg.Metrics)
+			require.NoError(t, err)
+		})
+
+		t.Run("ポート番号がMaxPortの場合は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MaxPort // 有効範囲の上限境界
+			err := validateMetricsConfig(cfg.Metrics)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ポート番号がMinPort未満の場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MinPort - 1 // 無効なポート番号（下限境界）
+			err := validateMetricsConfig(cfg.Metrics)
+			require.ErrorIs(t, err, ErrInvalidMetricsPortRange)
+		})
+
+		t.Run("ポート番号がMaxPortを超えている場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Metrics.Port = MaxPort + 1 // 無効なポート番号（上限境界）
+			err := validateMetricsConfig(cfg.Metrics)
+			require.ErrorIs(t, err, ErrInvalidMetricsPortRange)
+		})
+	})
+}
+
+func Test_validateServerShutdown(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("shutdownがrequestを上回る場合は成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateServerShutdown(90*time.Second, 60*time.Second))
+		})
+
+		t.Run("shutdownがrequestと同値の場合は許容される", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateServerShutdown(60*time.Second, 60*time.Second)) // 境界値: 等値は有効
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("shutdownがrequest未満の場合はErrShutdownTimeoutBelowRequestTimeoutを返す", func(t *testing.T) {
+			t.Parallel()
+			err := validateServerShutdown(60*time.Second-time.Second, 60*time.Second)
+			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
 		})
 	})
 }

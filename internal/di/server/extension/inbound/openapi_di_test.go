@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOpenAPIUseMiddleware(t *testing.T) {
+func TestOpenAPIMiddleware(t *testing.T) {
 	t.Parallel()
 
 	noopFn := func(context.Context, *openapi3filter.AuthenticationInput) error { return nil }

@@ -33,7 +33,7 @@ This package handles the generation and management of HTTP error responses.
 |---|---|
 |`code`|Application-level error identifier|
 |`message`|User-friendly message for end users|
-|`details`|Additional information for debugging (only publicly safe information)|
+|`details`|Public-safe identifiers giving error specifics (e.g., invalid field names). Never reason texts or raw input values|
 |`requestId`|Unique ID for request tracing|
 
 HTTP status codes are returned in the response header, and internal information such as stack traces is output only to logs.
@@ -44,6 +44,23 @@ HTTP status codes are returned in the response header, and internal information 
 |---|---|
 |`NewHTTPErrorFromAppError`|Generate HTTP error response from `apperror` (unknown errors fall back to 500)|
 |`NewHTTPErrorFromStatus`|Generate error response from HTTP status code (unknown status falls back to 500)|
+
+### `apperror.Meta` Overrides
+
+When the error carries an `apperror.Meta` (see `internal/apperror` README), `NewHTTPErrorFromAppError` overlays it on the defaults resolved from the sentinel classification:
+
+|Response field|Without Meta|With Meta|
+|---|---|---|
+|HTTP status|From sentinel classification|From sentinel classification (**Meta never changes it**)|
+|`code`|Status default|`Meta.Code()` if non-empty, else status default|
+|`message`|Status default|`Meta.Message()` if non-empty, else status default|
+|`details`|Explicit `details` argument|Explicit `details` argument if given, else `Meta.Details()`|
+
+This builder is **request-agnostic**: it always constructs the superset envelope
+(`gen.ErrorResponseWithDetails`) and attaches whatever `details` the error holds. Whether
+those `details` actually reach the client is decided downstream by the `errorhandler`'s
+per-endpoint opt-in gate (fail-closed), the same way `requestId` is left empty here and filled
+at the edge. See the `errorhandler` README and [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
 
 ## Error Code and HTTP Status Mapping
 

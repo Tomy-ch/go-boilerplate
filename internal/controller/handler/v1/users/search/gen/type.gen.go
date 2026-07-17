@@ -9,13 +9,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// ErrorResponse エラーレスポンスの共通スキーマ
+// ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
 	Code string `json:"code"`
-
-	// Details エラーの詳細情報(任意)
-	Details *[]string `json:"details,omitempty"`
 
 	// Message 人間が読めるエラーメッセージ
 	Message string `json:"message"`
@@ -130,19 +127,19 @@ type PageParam = int
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
 
-// BadRequest400 エラーレスポンスの共通スキーマ
+// BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
 
-// Forbidden403 エラーレスポンスの共通スキーマ
+// Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type Forbidden403 = ErrorResponse
 
-// InternalServerError500 エラーレスポンスの共通スキーマ
+// InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
 
-// ServiceUnavailable503 エラーレスポンスの共通スキーマ
+// ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ServiceUnavailable503 = ErrorResponse
 
-// Unauthorized401 エラーレスポンスの共通スキーマ
+// Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type Unauthorized401 = ErrorResponse
 
 // basicAuthContextKey is the context key for BasicAuth security scheme
@@ -163,5 +160,5 @@ type GetUsersSearchParams struct {
 	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
 
 	// PerPage 1ページあたりの取得件数
-	PerPage *PerPageParam `form:"per_page,omitempty" json:"per_page,omitempty"`
+	PerPage *PerPageParam `form:"perPage,omitempty" json:"perPage,omitempty"`
 }

@@ -84,8 +84,9 @@ func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit
 }
 
 // rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
+// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToUser(u gen.Users) (*user.User, error) {
-	return user.New(
+	entity, err := user.New(
 		u.ID,
 		u.FirstName,
 		u.LastName,
@@ -101,6 +102,10 @@ func rowToUser(u gen.Users) (*user.User, error) {
 		u.UpdatedAt,
 		u.DeletedAt,
 	)
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
+	return entity, nil
 }
 
 // rowsToUsers は、行スライスをドメインエンティティ列へ変換します。

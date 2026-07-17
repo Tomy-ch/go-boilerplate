@@ -149,7 +149,7 @@
 		
 			
 			
-			<h2 id="HTTPErrorResponse">type <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=615:726#L5">HTTPErrorResponse</a>
+			<h2 id="HTTPErrorResponse">type <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=651:973#L6">HTTPErrorResponse</a>
 				<a class="permalink" href="#HTTPErrorResponse">¶</a>
 				
 				
@@ -157,7 +157,9 @@
 			<p>HTTPErrorResponse は、HTTPエラーレスポンスの構造体です。
 
 			</p><pre>type HTTPErrorResponse struct {
-    <a href="../../../../../go-boilerplate/internal/controller/error/response/gen/">gen</a>.<a href="../../../../../go-boilerplate/internal/controller/error/response/gen/#ErrorResponse">ErrorResponse</a>
+    <span class="comment">// この埋め込みは常に details フィールドを持つが、実際にクライアントへ返すかは</span>
+    <span class="comment">// エンドポイントの opt-in(errorhandler の details ゲート)で決まる。</span>
+    <a href="../../../../../go-boilerplate/internal/controller/error/response/gen/">gen</a>.<a href="../../../../../go-boilerplate/internal/controller/error/response/gen/#ErrorResponseWithDetails">ErrorResponseWithDetails</a>
 
 <span id="HTTPErrorResponse.HTTPStatus"></span>    HTTPStatus <a href="../../../../../builtin/#int">int</a>   `json:&#34;-&#34;`
 <span id="HTTPErrorResponse.Internal"></span>    Internal   <a href="../../../../../builtin/#error">error</a> `json:&#34;-&#34;`
@@ -174,7 +176,7 @@
 
 			
 				
-				<h3 id="NewHTTPErrorFromAppError">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=987:1065#L14">NewHTTPErrorFromAppError</a>
+				<h3 id="NewHTTPErrorFromAppError">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=1505:1583#L19">NewHTTPErrorFromAppError</a>
 					<a class="permalink" href="#NewHTTPErrorFromAppError">¶</a>
 					
 					
@@ -182,12 +184,14 @@
 				<pre>func NewHTTPErrorFromAppError(err <a href="../../../../../builtin/#error">error</a>, details ...<a href="../../../../../builtin/#string">string</a>) *<a href="#HTTPErrorResponse">HTTPErrorResponse</a></pre>
 				<p>NewHTTPErrorFromAppError は、err をアプリケーションエラーとして解釈し、対応する HTTP エラーレスポンスを返します。
 既知のエラー型に一致しない場合は 500 Internal Server Error として扱います。
+err に <a href="/go-boilerplate/internal/apperror#Meta">apperror.Meta</a> が付与されている場合、非空の Code / Message は既定値を上書きし、
+Details は明示引数 details が無い場合にのみ採用されます。HTTP ステータスはセンチネル分類のまま変わりません。
 
 				
 				
 			
 				
-				</p><h3 id="NewHTTPErrorFromStatus">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=1415:1507#L24">NewHTTPErrorFromStatus</a>
+				</p><h3 id="NewHTTPErrorFromStatus">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=2178:2270#L41">NewHTTPErrorFromStatus</a>
 					<a class="permalink" href="#NewHTTPErrorFromStatus">¶</a>
 					
 					
@@ -202,7 +206,7 @@ err はログ出力用の元エラーとして Internal に格納されます。
 
 			
 				
-				</p><h3 id="HTTPErrorResponse.Error">func (*HTTPErrorResponse) <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=1734:1776#L33">Error</a>
+				</p><h3 id="HTTPErrorResponse.Error">func (*HTTPErrorResponse) <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=2497:2539#L50">Error</a>
 					<a class="permalink" href="#HTTPErrorResponse.Error">¶</a>
 					
 					

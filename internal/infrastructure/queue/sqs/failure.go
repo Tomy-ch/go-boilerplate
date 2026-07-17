@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"context"
-	"go/constant"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -11,6 +10,9 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/worker"
 )
+
+// attrDataTypeString は、SQS メッセージ属性の DataType に指定する文字列型の値です。
+const attrDataTypeString = "String"
 
 // 実装漏れをコンパイル時に検出します。
 var _ worker.FailureHandler = (*deadLetter)(nil)
@@ -40,7 +42,7 @@ func (d *deadLetter) Fail(ctx context.Context, m worker.Message, _ error) error 
 		MessageBody: aws.String(string(m.Body)),
 		MessageAttributes: map[string]types.MessageAttributeValue{
 			"failure_reason": {
-				DataType:    aws.String(constant.String.String()),
+				DataType:    aws.String(attrDataTypeString),
 				StringValue: aws.String("permanent"),
 			},
 		},

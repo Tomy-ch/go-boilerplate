@@ -100,7 +100,7 @@
 <span id="L43" class="ln">    43  </span>	_ = mp.Shutdown(ctx)
 <span id="L44" class="ln">    44  </span>}
 <span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span>func Test_NewResource(t *testing.T) {
+<span id="L46" class="ln">    46  </span>func TestNewResource(t *testing.T) {
 <span id="L47" class="ln">    47  </span>	t.Parallel()
 <span id="L48" class="ln">    48  </span>
 <span id="L49" class="ln">    49  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -161,7 +161,7 @@
 <span id="L104" class="ln">   104  </span>}
 <span id="L105" class="ln">   105  </span>
 <span id="L106" class="ln">   106  </span><span class="comment">//nolint:paralleltest // otel グローバル状態(TracerProvider/Propagator)を差し替えるため並列化不可</span>
-<span id="L107" class="ln">   107  </span>func Test_NewTracerProvider(t *testing.T) {
+<span id="L107" class="ln">   107  </span>func TestNewTracerProvider(t *testing.T) {
 <span id="L108" class="ln">   108  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L109" class="ln">   109  </span>		t.Run(&#34;trace有効(http)で伝播器を設定しグローバルなTracerProviderを構築する&#34;, func(t *testing.T) {
 <span id="L110" class="ln">   110  </span>			prevTP, prevProp := otel.GetTracerProvider(), otel.GetTextMapPropagator()
@@ -226,7 +226,7 @@
 <span id="L169" class="ln">   169  </span>	})
 <span id="L170" class="ln">   170  </span>}
 <span id="L171" class="ln">   171  </span>
-<span id="L172" class="ln">   172  </span>func Test_ProvideTracerProvider(t *testing.T) {
+<span id="L172" class="ln">   172  </span>func TestProvideTracerProvider(t *testing.T) {
 <span id="L173" class="ln">   173  </span>	t.Parallel()
 <span id="L174" class="ln">   174  </span>
 <span id="L175" class="ln">   175  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -244,7 +244,7 @@
 <span id="L187" class="ln">   187  </span>	})
 <span id="L188" class="ln">   188  </span>}
 <span id="L189" class="ln">   189  </span>
-<span id="L190" class="ln">   190  </span>func Test_ProvideMeterProvider(t *testing.T) {
+<span id="L190" class="ln">   190  </span>func TestProvideMeterProvider(t *testing.T) {
 <span id="L191" class="ln">   191  </span>	t.Parallel()
 <span id="L192" class="ln">   192  </span>
 <span id="L193" class="ln">   193  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -263,7 +263,7 @@
 <span id="L206" class="ln">   206  </span>}
 <span id="L207" class="ln">   207  </span>
 <span id="L208" class="ln">   208  </span><span class="comment">//nolint:paralleltest // otel グローバル状態(MeterProvider)を差し替えるため並列化不可</span>
-<span id="L209" class="ln">   209  </span>func Test_NewMeterProvider(t *testing.T) {
+<span id="L209" class="ln">   209  </span>func TestNewMeterProvider(t *testing.T) {
 <span id="L210" class="ln">   210  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L211" class="ln">   211  </span>		t.Run(&#34;metric有効(http)でグローバルなMeterProviderを構築する&#34;, func(t *testing.T) {
 <span id="L212" class="ln">   212  </span>			prevMP := otel.GetMeterProvider()

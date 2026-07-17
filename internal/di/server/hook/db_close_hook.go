@@ -14,11 +14,11 @@ func RegisterDBCloseHooks(
 	db driver.DatabaseDriver,
 	logger logging.Logger,
 ) {
-	reg.RegisterStop(func(_ context.Context) error {
+	reg.RegisterStop(func(ctx context.Context) error {
 		l := logger.Named("db.CloseHook")
-		l.Info("Closing database connection")
+		l.Info(ctx, "Closing database connection")
 		if err := db.Close(); err != nil {
-			l.Error("failed to close database", logging.Error(logging.ErrorKey, err))
+			l.Error(ctx, "failed to close database", logging.Error(logging.ErrorKey, err))
 			return err
 		}
 		return nil

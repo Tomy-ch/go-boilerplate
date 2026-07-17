@@ -19,18 +19,6 @@ func TestBindHandler(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	mtc := config.NewMetricsConfig(cfg)
-	e := echo.New()
-	BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
-
-	testassert.AssertEchoRouterPath(t, "/metrics", e.Routes())
-	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
-}
-
-func TestBindHandler_BasicAuth(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	mtc := config.NewMetricsConfig(cfg)
 
 	exec := func(t *testing.T, withAuth bool, user, pass string) int {
 		t.Helper()
@@ -48,6 +36,16 @@ func TestBindHandler_BasicAuth(t *testing.T) {
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("/metricsをGETで登録する", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
+
+			testassert.AssertEchoRouterPath(t, "/metrics", e.Routes())
+			testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
+		})
 
 		t.Run("正しい認証情報で200を返す", func(t *testing.T) {
 			t.Parallel()

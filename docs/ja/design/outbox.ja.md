@@ -2,7 +2,7 @@
 
 [Outbox Store README（日本語）](../../../internal/usecase/boundary/outbox/README.ja.md) | English: [outbox.md](../../design/outbox.md)
 
-本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は `docs/decisions.md` の ADR を参照。
+本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0045](../adr/0045-transactional-outbox.ja.md) 以降）、relay の重複窓を本テンプレートで意図的にハードニングしない決定（および本番コピー向けの多層再設計の推奨）は [ADR-0097](../adr/0097-outbox-relay-hardening-delegated.ja.md) を参照。
 
 ---
 
@@ -26,7 +26,7 @@ transactional outbox は **dual-write 異常の排除** のために存在しま
 | **Engine**（`controller/outbox/relay.go`） | controller | poll ループの統括: 周期・sleep/backoff・ctx 完了での drain・span | claim/publish/mark の業務（usecase へ委譲） |
 | **outbox-gc job**（`controller/job/outboxgc`） | controller | 外部スケジューラ向けの one-shot GC 入口 | ループ自体（daemon ではなく cron） |
 | **httpPublisher**（`infrastructure/publisher`） | infrastructure | `Publisher` の HTTP 実装: POST + `Idempotency-Key` + 非標準 client profile | retry（poll ループが retry 本体） |
-| **outbox store**（`infrastructure/rdb/system_query/outbox`） | infrastructure | sqlc gen + `pgerror.NormalizeError` 上の `Store` 実装 | 業務判断 |
+| **outbox store**（`infrastructure/rdb/system_cqrs/outbox`） | infrastructure | sqlc gen + `pgerror.NormalizeError` 上の `Store` 実装 | 業務判断 |
 | **DI / cli / cmd** | di / cli / cmd(main) | relay プロセスの合成 / サブコマンド / ライフサイクル | 業務ロジック |
 | **OutboxConfig** | config | relay チューニング（`OUTBOX_*`） | broker/endpoint の内部 |
 
@@ -130,7 +130,7 @@ flowchart TD
         CLK["clock.Clock / Sleeper"]
     end
     subgraph infraL["internal/infrastructure"]
-        SQ["rdb/system_query/outbox: Store 実装（sqlc gen + pgerror）"]
+        SQ["rdb/system_cqrs/outbox: Store 実装（sqlc gen + pgerror）"]
         HTTP["publisher/http_publisher.go: httpPublisher（POST, Idempotency-Key）"]
     end
     subgraph crossL["cross-cutting"]
@@ -247,7 +247,7 @@ flowchart LR
 | **transactional outbox** | 「publish する意図」をドメイン変更と同一 tx の DB 行として記録し、非同期に送出するパターン。dual-write 異常を回避する。 |
 | **emit** | 同期側の半身: `EmitUsecase.Emit` が呼び出し側の業務 tx 内で 1 行 INSERT する（`internal/usecase/outbox/emit.go`）。 |
 | **relay** | 非同期側の半身: pending 行を claim・publish・mark する常駐 `Engine` poll ループ（`controller/outbox` + `usecase/outbox/relay.go`）。 |
-| **Store** | outbox テーブルの永続化ポート（`usecase/boundary/outbox`）。`infrastructure/rdb/system_query/outbox` で sqlc gen 上に実装。 |
+| **Store** | outbox テーブルの永続化ポート（`usecase/boundary/outbox`）。`infrastructure/rdb/system_cqrs/outbox` で sqlc gen 上に実装。 |
 | **Publisher** | 送出ポート（`usecase/boundary/publisher`）。HTTP 実装が `OUTBOX_ENDPOINT` へ POST する。 |
 | **status** | 行のライフサイクル列 — 厳密に `pending` / `published` / `dead`（CHECK 制約）。`failed` という status は無く、publish 失敗は `pending` のまま。 |
 | **attempts / last_error** | publish 試行回数と直近失敗理由。`MarkFailed` が両方を進める。`attempts ≥ MaxAttempts` まで行は `pending`。 |

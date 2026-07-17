@@ -112,6 +112,9 @@ HTTP 実装を提供します。relay engine が claim した outbox メッセ�
 				
 				<dd><a href="#NewDownstreamProfile">func NewDownstreamProfile() httpclient.DownstreamProfile</a></dd>
 			
+				
+				<dd><a href="#RequiredDownstream">func RequiredDownstream() httpclient.Downstream</a></dd>
+			
 			
 				
 				<dd><a href="#Endpoint">type Endpoint</a></dd>
@@ -156,7 +159,7 @@ HTTP 実装を提供します。relay engine が claim した outbox メッセ�
 		
 			
 			
-			<h2 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=1819:1929#L30">New</a>
+			<h2 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=2196:2306#L37">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -185,6 +188,22 @@ relay の poll ループ自体が at-least-once の retry 本体であるため�
 二重になる。これを避けるため MaxAttempts=1 で transport retry を無効化する（D10）。
 traceparent は emit 時に capture した値を headers で明示伝搬するため、ここでの自動 inject は抑止する。
 送信先はクラスター外部の受信エンドポイントを想定するため、private/loopback 宛てを拒否する（SSRF 抑止）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RequiredDownstream">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=2060:2107#L32">RequiredDownstream</a>
+				<a class="permalink" href="#RequiredDownstream">¶</a>
+				
+				
+			</h2>
+			<pre>func RequiredDownstream() <a href="../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/#Downstream">Downstream</a></pre>
+			<p>RequiredDownstream は、本 publisher が使用する Downstream を返します。
+required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に
+silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。
 
 			
 			

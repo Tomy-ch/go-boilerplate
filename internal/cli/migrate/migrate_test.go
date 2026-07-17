@@ -231,7 +231,7 @@ func TestMigrateDownRun(t *testing.T) {
 	})
 }
 
-func TestExecuteMigrateFullDown(t *testing.T) {
+func Test_executeMigrateFullDown(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

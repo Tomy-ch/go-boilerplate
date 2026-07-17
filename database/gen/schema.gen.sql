@@ -742,9 +742,17 @@ ALTER TABLE ONLY public.users
 --
 CREATE INDEX idempotency_keys_expires_at_idx ON public.idempotency_keys USING btree (expires_at);
 --
+-- Name: outbox_dead_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX outbox_dead_idx ON public.outbox USING btree (id) WHERE (status = 'dead'::text);
+--
 -- Name: outbox_pending_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX outbox_pending_idx ON public.outbox USING btree (id) WHERE (status = 'pending'::text);
+--
+-- Name: outbox_published_gc_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX outbox_published_gc_idx ON public.outbox USING btree (published_at) WHERE (status = 'published'::text);
 --
 -- Name: users_search_text_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --

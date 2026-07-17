@@ -18,6 +18,7 @@
   - `BatchSize int32` — 1 回の poll で claim する行数。
   - `PollInterval time.Duration` — 捌き切らなかったバッチ（空振り / 部分消化 / stall）の後に待機する時間。
   - `ErrorBackoff time.Duration` — `RelayBatch` がエラーを返した後に待機する時間。
+  - **clamp（安全な既定値であり、silent ではない）：** `provideRelaySettings`（`internal/di/module/outboxrelay.go`）は `BatchSize` / `PollInterval` / `ErrorBackoff` が `0` / 負値に設定された場合、それぞれの既定値へ **clamp** する。非正の poll/backoff はスピン（ホットループ）してしまうため。これは失敗ではなく意図的な回復性の選択。`OUTBOX_*` env var は非ゼロの `envDefault` を持つため、clamp が発動するのは明示的な `0` 上書きのときだけ。silent にせずレビュー可能に保つため、ここに記し、セットアップレビュー（[`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md)）にも列挙する。
 
 ## ループ意味論（`Run`）
 
