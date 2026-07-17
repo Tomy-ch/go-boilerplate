@@ -19,8 +19,9 @@ flowchart TB
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (フォールバック)"]
     AddReqID["RequestID 付与"]
-    Write["JSON レスポンス書き込み"]
-    Log["構造化ログ出力"]
+    Gate{"details ゲート<br/>(policy.Allows?)"}
+    Write["JSON レスポンス書き込み<br/>(未 opt-in なら details を削除)"]
+    Log["構造化ログ出力<br/>(details は温存)"]
 
     Error --> Guard
     Guard -- yes --> return
@@ -31,7 +32,7 @@ flowchart TB
     OAPICheck -- yes --> OAPIErr --> AddReqID
     OAPICheck -- no --> EchoNorm --> AddReqID
     TypeCheck -- その他 --> Fallback --> AddReqID
-    AddReqID --> Write --> Log
+    AddReqID --> Gate --> Write --> Log
 ```
 
 ## エラー正規化
@@ -79,6 +80,17 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 - エラーが `apperror.Meta` を運んでいる場合、`NewHTTPErrorFromAppError` 内で `code` / `message` / `details` がステータス既定値を上書きする（HTTP ステータスは変わらない）— [`controller/error/response/README.ja.md`](../../error/response/README.ja.md) の「`apperror.Meta` による上書き」節を参照
 - `Internal` エラーとスタックトレースはログに出力されるが、**クライアントには返されない**
 
+### details の opt-in ゲート（fail-closed）
+
+`details` は**エンドポイントごとの opt-in**。`DetailPolicy`（起動時に OpenAPI spec から構築、
+`detail_exposure.go`）が「どの operation が `ErrorResponseWithDetails` スキーマを宣言しているか」を
+前計算する。エラー経路で、レスポンスが `details` を持つ場合、`handleHTTPError` はリクエストの
+operation を解決し、opt-in していない限り**クライアント wire からのみ** `details` を落とす
+（`writeErrorResponse` が body をコピー。`resp` 本体とログには完全な `details` が残る）。ルート
+不一致・未 opt-in はいずれも **fail-closed**（details なし）。policy 用 router は servers を除去した
+spec 複製から作るため Host 非依存で、proxy / test の Host でもパス + メソッドで解決できる。
+理由: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md)。
+
 ## ログ出力
 
 エラーログは `ObservabilityConfig.TargetStatusCodeSet()` で制御されます：
@@ -110,6 +122,13 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 |`http_error_handler.go`|メインハンドラ、正規化ディスパッチ、ログ出力|
 |`echo_http_error_handler.go`|`echo.HTTPError` → `HTTPErrorResponse` の正規化|
 |`open_api_error_handler.go`|OpenAPI バリデーションエラー → `HTTPErrorResponse` の正規化|
+|`detail_exposure.go`|`DetailPolicy` — OpenAPI spec から解決するエンドポイントごとの `details` opt-in|
+
+## カバレッジ例外
+
+`docs/testing-conventions.md` §9 に基づき、以下の infallible な防御分岐は未カバーのまま残す(作為的テストは書かない):
+
+- `http_error_handler.go` `handleHTTPError` — `writeErrorResponse` が失敗しつつレスポンス未 commit のときだけ通る入れ子 `WriteHeader(500)`。body は常に JSON 化可能な固定 struct(`gen.ErrorResponseWithDetails`)なので `c.JSON` は書き込み中(= `WriteHeader` で commit 済みの後)にしか失敗できず、未 commit での失敗は到達不能。到達可能な書き込み失敗経路(ログ出力・二重 commit なし)はカバー済み。
 
 ## 注意点
 

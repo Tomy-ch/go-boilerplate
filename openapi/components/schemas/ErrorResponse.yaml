@@ -1,5 +1,7 @@
 type: object
-description: エラーレスポンスの共通スキーマ
+description: >
+  エラーレスポンスの共通スキーマ（base）。
+  details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 required:
   - code
   - message
@@ -17,11 +19,3 @@ properties:
     type: string
     description: リクエストID
     example: "abcdefghijklmnopqrstuvwxyz"
-  details:
-    type: array
-    description: エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
-    items:
-      type: string
-    example:
-      - "firstName"
-      - "email"

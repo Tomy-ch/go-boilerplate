@@ -10,7 +10,6 @@ const (
 	maxCityLength         = 100
 	maxStreetLength       = 255
 	maxBuildingLength     = 255
-	maxPostalCodeLength   = 8
 
 	// MaxRawPasswordLength は、平文パスワードの最大文字数です。
 	MaxRawPasswordLength = 64
@@ -29,8 +28,10 @@ const (
 	FieldEmail = "email"
 	// FieldPhone は、電話番号フィールドの識別子です。
 	FieldPhone = "phone"
-	// FieldPrefecture は、都道府県フィールドの識別子です。
-	FieldPrefecture = "prefecture"
+	// FieldPrefectureID は、都道府県フィールドの識別子です。ドメインの検証対象は
+	// prefectureID(uuid)ですが、公開する識別子はクライアントが送信する API プロパティ名
+	// "prefecture"(都道府県名)に合わせています。
+	FieldPrefectureID = "prefecture"
 	// FieldCity は、市区町村フィールドの識別子です。
 	FieldCity = "city"
 	// FieldStreet は、番地フィールドの識別子です。

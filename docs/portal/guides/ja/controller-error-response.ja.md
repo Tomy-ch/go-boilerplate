@@ -52,9 +52,15 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 |レスポンスフィールド|Meta なし|Meta あり|
 |---|---|---|
 |HTTP ステータス|センチネル分類から解決|センチネル分類から解決（**Meta では変わらない**）|
-|`code`|ステータス既定値|`Meta.Code` が非空ならそれ、空なら既定値|
-|`message`|ステータス既定値|`Meta.Message` が非空ならそれ、空なら既定値|
-|`details`|明示引数 `details`|明示引数があればそれ、無ければ `Meta.Details`|
+|`code`|ステータス既定値|`Meta.Code()` が非空ならそれ、空なら既定値|
+|`message`|ステータス既定値|`Meta.Message()` が非空ならそれ、空なら既定値|
+|`details`|明示引数 `details`|明示引数があればそれ、無ければ `Meta.Details()`|
+
+この builder は **request 非依存**です。常に superset エンベロープ（`gen.ErrorResponseWithDetails`）を
+組み立て、エラーが持つ `details` を付与します。その `details` が実際にクライアントへ届くかは、
+下流の `errorhandler` のエンドポイントごとの opt-in ゲート（fail-closed）が決めます。`requestId` を
+ここで空にして edge で埋めるのと同じ構図です。`errorhandler` README と
+[ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md) を参照。
 
 ## エラーコードとHTTPステータスの対応
 

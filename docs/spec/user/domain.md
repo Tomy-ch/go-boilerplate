@@ -34,7 +34,7 @@ fields:
     min_length: 1
     max_length: 255
   - name: email
-    type: string
+    type: Email               # 値オブジェクト（長さ + local@domain 形式を factory で検証）
     required: true
     min_length: 1
     max_length: 100
@@ -62,10 +62,8 @@ fields:
     min_length: 1
     max_length: 255
   - name: postalCode
-    type: string
+    type: PostalCode           # 値オブジェクト（NNN-NNNN 形式を factory で検証。OpenAPI の pattern と一致）
     required: true
-    min_length: 1
-    max_length: 8
   - name: createdAt
     type: time.Time
     required: true
@@ -121,6 +119,20 @@ fields:
   underlying_type: string
   validation: 長さが MinRawPasswordLength(8) 以上 MaxRawPasswordLength(64) 以下。違反時 ErrInvalidRawPassword
   factory: NewRawPassword
+  methods:
+    - name: Value
+      returns: string
+- name: Email
+  underlying_type: string
+  validation: 長さが 1 以上 100 以下、かつ local@domain 形式（ドメインにドットを含む）。違反時 ErrInvalidEmail
+  factory: NewEmail
+  methods:
+    - name: Value
+      returns: string
+- name: PostalCode
+  underlying_type: string
+  validation: NNN-NNNN 形式（半角数字 3 桁 + ハイフン + 4 桁。OpenAPI リクエストの pattern と一致）。違反時 ErrInvalidPostalCode
+  factory: NewPostalCode
   methods:
     - name: Value
       returns: string

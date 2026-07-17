@@ -132,16 +132,21 @@ case xerrors.Is(err, apperror.ErrNotFound):
 // 不正フィールドの識別子を付与する（domain 層）
 return apperror.WithDetails(xerrors.Join(errs...), "firstName", "email")
 
+// code を付与する（任意の層）/ 利用者向け文言を上書きする（controller のみ）
+return apperror.WithMeta(err, apperror.NewMeta("CUSTOM_CODE", "firstName"))
+return apperror.WithMeta(err, apperror.NewMeta("CUSTOM_CODE").WithMessage("..."))
+
 // transport の境界で抽出する（controller 層）
-if meta, ok := apperror.MetaFrom(err); ok { ... }
+if meta, ok := apperror.MetaFrom(err); ok { ... meta.Code() / meta.Message() / meta.Details() ... }
 ```
 
 ルール:
 
 - **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0039](../../docs/adr/0039-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0040](../../docs/adr/0040-error-metadata-code-message-details.md) 参照）。
-- 全フィールド任意です。空の項目は、解決されたステータスに対する controller の既定 `code` / `message` にフォールバックします。
-- `Message` は利用者向け文言で、正は controller のカタログにあります。**Domain / Usecase では空のまま**にし、`Code` / `Details` のみを設定してください。
+- フィールドは非公開で、`Meta` の構築は `NewMeta(code, details...)` 経由のみです（`details` は防御的コピーされます）。全項目任意で、空の値は解決されたステータスに対する controller の既定 `code` / `message` にフォールバックします。
+- 利用者向け文言は明示的で grep 可能な `WithMessage` を通してのみ設定できます。文言の正は controller のカタログにあるため、**呼び出しは controller 層に限ります**。Domain / Usecase は `code` / `details` のみを設定してください。
 - `Details` の値は API レスポンスにそのまま公開されます。**公開して安全な識別子のみ**（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはいけません。理由文はラップしたエラーメッセージ側に残し、ログ専用とします。
+- **`details` の露出はエンドポイントごとの opt-in かつ fail-closed。** ここで `details` を付与するのは必要条件だが十分条件ではありません。クライアントが受け取るのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ。opt-in していない operation では controller の `errorhandler` が wire から `details` を落とします（ログには残る）。[ADR-0041](../../docs/adr/0041-error-details-opt-in-gate.md) を参照。
 - チェーン内で `WithMeta` が多重に付与された場合、**最も外側が勝ちます**（`MetaFrom` は `xerrors.As` を使用）。上位層が上書きしたい場合は意図的に再ラップしてください。
 - `WithMeta` は装飾であり分類ではありません。`xerrors.Is` / `IsAppError` はラップされたセンチネル（`xerrors.Join` の全枝を含む）をそのまま検知します。
 

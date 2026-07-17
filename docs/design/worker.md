@@ -2,7 +2,7 @@
 
 [Worker README](../../internal/controller/worker/README.md) | 日本語: [worker.ja.md](../ja/design/worker.ja.md)
 
-This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0041](../adr/0041-broker-agnostic-worker-scaffold.md) onward).
+This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0042](../adr/0042-broker-agnostic-worker-scaffold.md) onward).
 
 ---
 

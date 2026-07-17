@@ -14,7 +14,9 @@ import (
 //
 //nolint:errname // HTTPエラーレスポンスのDTOであり、レスポンス本体を表す名称が適切なため XxxError 形式には改名しない
 type HTTPErrorResponse struct {
-	gen.ErrorResponse
+	// この埋め込みは常に details フィールドを持つが、実際にクライアントへ返すかは
+	// エンドポイントの opt-in(errorhandler の details ゲート)で決まる。
+	gen.ErrorResponseWithDetails
 
 	HTTPStatus int   `json:"-"`
 	Internal   error `json:"-"`
@@ -28,14 +30,14 @@ func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByAppError(err)
 
 	if appMeta, ok := apperror.MetaFrom(err); ok {
-		if appMeta.Code != "" {
-			meta.Code = appMeta.Code
+		if appMeta.Code() != "" {
+			meta.Code = appMeta.Code()
 		}
-		if appMeta.Message != "" {
-			meta.Message = appMeta.Message
+		if appMeta.Message() != "" {
+			meta.Message = appMeta.Message()
 		}
 		if len(details) == 0 {
-			details = appMeta.Details
+			details = appMeta.Details()
 		}
 	}
 
@@ -69,7 +71,7 @@ func newHTTPErrorFromMeta(meta httpErrorMeta, details ...string) *HTTPErrorRespo
 		detailsPtr = new(details)
 	}
 	return &HTTPErrorResponse{
-		ErrorResponse: gen.ErrorResponse{
+		ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 			Code:    meta.Code,
 			Message: meta.Message,
 			Details: detailsPtr,

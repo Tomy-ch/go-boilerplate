@@ -87,21 +87,29 @@ additionalProperties: false
 
 ## コアスキーマ
 
-### ErrorResponse
+### ErrorResponse / ErrorResponseWithDetails
 
-全エンドポイントで使用される統一エラーレスポンス：
+2 つのエラーエンベロープ。`ErrorResponse` は base（`details` なし）で大半のエラーステータスが
+使う。`ErrorResponseWithDetails` は `details` を追加し、意図的に露出するレスポンスだけが参照する。
+どの operation が `ErrorResponseWithDetails` を参照するかが、details 露出の**エンドポイントごとの
+opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0041](../../../docs/adr/0041-error-details-opt-in-gate.md) 参照）。
 
 ```yaml
+# ErrorResponse.yaml (base)
 type: object
 required: [code, message, requestId]
 properties:
   code:       # 機械可読なエラーコード（例: BAD_REQUEST）
   message:    # ユーザー向けエラーメッセージ
-  details:    # オプションの詳細文字列配列
   requestId:  # リクエスト追跡 ID
+
+# ErrorResponseWithDetails.yaml (base + details)
+#   ...同じフィールドに加えて:
+#   details:  # 公開して安全な識別子（例: 不正フィールド名）
 ```
 
-Go 側の `response.HTTPErrorResponse` にマッピング — 詳細は `internal/controller/error/response/` を参照。
+Go 側の builder（`response.HTTPErrorResponse`）は `ErrorResponseWithDetails` superset を埋め込む
+— 詳細は `internal/controller/error/response/` を参照。
 
 ### errors/ — 再利用エラーレスポンスオブジェクト（DRY）
 

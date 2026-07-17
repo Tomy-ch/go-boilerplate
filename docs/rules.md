@@ -52,7 +52,7 @@ Usecase → Boundary(interface) → Infrastructure
 
 ## Generated Code Rules
 
-> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0078](adr/0078-generated-artifact-drift-gate.md).
+> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0079](adr/0079-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -237,6 +237,7 @@ Usecase should **avoid direct dependency on Infrastructure**.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
 - When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
 - To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0040](adr/0040-error-metadata-code-message-details.md).
+- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0041](adr/0041-error-details-opt-in-gate.md).
 
 ## Comment Rules
 
@@ -300,7 +301,7 @@ Before generating code, AI agents must refer to the following documents.
 
 ## Toolchain Execution Rules
 
-> Rationale: [ADR-0069](adr/0069-containerized-pinned-toolchain.md), [ADR-0070](adr/0070-mise-ssot-drift-gate.md).
+> Rationale: [ADR-0070](adr/0070-containerized-pinned-toolchain.md), [ADR-0071](adr/0071-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
 containerized tool-runners so they stay reproducible across machines.

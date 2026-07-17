@@ -19,8 +19,9 @@ flowchart TB
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (fallback)"]
     AddReqID["Attach RequestID"]
-    Write["Write JSON response"]
-    Log["Log with structured fields"]
+    Gate{"Details gate<br/>(policy.Allows?)"}
+    Write["Write JSON response<br/>(strip details if not opted-in)"]
+    Log["Log with structured fields<br/>(details kept)"]
 
     Error --> Guard
     Guard -- yes --> return
@@ -31,7 +32,7 @@ flowchart TB
     OAPICheck -- yes --> OAPIErr --> AddReqID
     OAPICheck -- no --> EchoNorm --> AddReqID
     TypeCheck -- other --> Fallback --> AddReqID
-    AddReqID --> Write --> Log
+    AddReqID --> Gate --> Write --> Log
 ```
 
 ## Error Normalization
@@ -79,6 +80,17 @@ All errors are returned as JSON using `response.HTTPErrorResponse`:
 - When the error carries an `apperror.Meta`, its `code` / `message` / `details` override the status defaults inside `NewHTTPErrorFromAppError` (the HTTP status never changes) — see the `apperror.Meta` Overrides section of [`controller/error/response/README.md`](../../error/response/README.md)
 - `Internal` error and stack trace are logged but **not returned to the client**
 
+### Details opt-in gate (fail-closed)
+
+`details` are **opt-in per endpoint**. A `DetailPolicy` (built once at startup from the OpenAPI
+spec, `detail_exposure.go`) precomputes which operations declare the `ErrorResponseWithDetails`
+schema. On the error path, if the response carries `details`, `handleHTTPError` resolves the
+request's operation and — unless it opted in — strips `details` from the **client wire** only
+(`writeErrorResponse` copies the body; the `resp` object and the logs keep the full `details`).
+An unmatched route or a non-opted-in operation both fail **closed** (no `details`). The policy
+router is host-agnostic (built from a servers-stripped spec copy), so proxied / test hosts still
+resolve by path + method. Rationale: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
+
 ## Logging
 
 Error logging is controlled by `ObservabilityConfig.TargetStatusCodeSet()`:
@@ -110,6 +122,14 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 |`http_error_handler.go`|Main handler, normalization dispatcher, logging|
 |`echo_http_error_handler.go`|Normalize `echo.HTTPError` to `HTTPErrorResponse`|
 |`open_api_error_handler.go`|Normalize OpenAPI validation errors to `HTTPErrorResponse`|
+|`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec|
+
+## Coverage exceptions
+
+Per `docs/testing-conventions.md` §9, the following infallible defensive branches are left uncovered (no contrived tests):
+
+- `detail_exposure.go` `NewOpenAPIDetailPolicy` — the `gorillamux.NewRouter` error return. The router is built from a servers-stripped copy of an already-validated spec, so it cannot fail in practice.
+- `http_error_handler.go` `handleHTTPError` — the nested `WriteHeader(500)` after a write failure on an already-committed response (unreachable double-commit edge).
 
 ## Notes
 
