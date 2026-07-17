@@ -89,6 +89,26 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
 		})
 
+		t.Run("MetaのCodeのみ非空の場合、Codeだけ上書きしMessageは既定値のまま", func(t *testing.T) {
+			t.Parallel()
+
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "profile invalid"), apperror.NewMeta("CUSTOM_CODE"))
+
+			actual := NewHTTPErrorFromAppError(err)
+			assert.Equal(t, "CUSTOM_CODE", actual.Code)
+			assert.Equal(t, errorMessageValidationFailed, actual.Message)
+		})
+
+		t.Run("MetaのMessageのみ非空の場合、Messageだけ上書きしCodeは既定値のまま", func(t *testing.T) {
+			t.Parallel()
+
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "profile invalid"), apperror.NewMeta("").WithMessage("カスタムメッセージ"))
+
+			actual := NewHTTPErrorFromAppError(err)
+			assert.Equal(t, codeValidationFailed, actual.Code)
+			assert.Equal(t, "カスタムメッセージ", actual.Message)
+		})
+
 		t.Run("明示引数のdetailsはMetaのDetailsより優先される", func(t *testing.T) {
 			t.Parallel()
 

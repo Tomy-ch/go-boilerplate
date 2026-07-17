@@ -1,6 +1,7 @@
 package apperror_test
 
 import (
+	"fmt"
 	"testing"
 
 	"go-boilerplate/internal/apperror"
@@ -9,6 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// plainError は fmt.Formatter を実装しない素の error です。
+// MetaError.Format のフォールバック分岐(委譲先が Formatter でない場合)を検証するために使います。
+type plainError struct{ msg string }
+
+func (e plainError) Error() string { return e.msg }
 
 func TestNewMeta(t *testing.T) {
 	t.Parallel()
@@ -196,6 +203,31 @@ func TestMetaFrom(t *testing.T) {
 			t.Parallel()
 			_, ok := apperror.MetaFrom(nil)
 			assert.False(t, ok)
+		})
+	})
+}
+
+func TestMetaError_Format(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("元エラーがfmt.Formatterの場合_スタックトレース付き表現へ委譲する", func(t *testing.T) {
+			t.Parallel()
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "boom"), apperror.NewMeta("CODE"))
+
+			out := fmt.Sprintf("%+v", err)
+			assert.Contains(t, out, "boom")
+			// %+v は委譲先 xerrors のスタックトレース(このテスト関数名)を含む
+			assert.Contains(t, out, "TestMetaError_Format")
+		})
+
+		t.Run("元エラーがfmt.Formatterでない場合_Error文字列にフォールバックする", func(t *testing.T) {
+			t.Parallel()
+			err := apperror.WithMeta(plainError{msg: "plain"}, apperror.NewMeta("CODE"))
+
+			assert.Equal(t, "plain", fmt.Sprintf("%+v", err))
 		})
 	})
 }

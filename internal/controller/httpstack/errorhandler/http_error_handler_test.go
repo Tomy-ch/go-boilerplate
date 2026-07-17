@@ -49,7 +49,7 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("EchoのHTTPErrorHandlerが設定される", func(t *testing.T) {
+		t.Run("apperrorをHTTPステータスへ変換する本ハンドラが設定される", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			z := logging.NewTestLogger(t)
@@ -57,7 +57,16 @@ func TestNew(t *testing.T) {
 			lf := logging.NewTestLogFieldBuilder(t)
 
 			New(e, stubDetailPolicy{allow: true}, z, lf, obsCfg)
-			assert.NotNil(t, e.HTTPErrorHandler)
+			require.NotNil(t, e.HTTPErrorHandler)
+
+			// echo 既定ハンドラは apperror を解釈しないため、ErrNotFound を 404 へ写像することで
+			// 本ハンドラが設定されたことを挙動で確認する。
+			rec := httptest.NewRecorder()
+			c := e.NewContext(httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/t", nil), rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+			e.HTTPErrorHandler(apperror.ErrNotFound, c)
+			assert.Equal(t, http.StatusNotFound, rec.Code)
 		})
 	})
 }
@@ -205,7 +214,7 @@ func Test_handleHTTPError(t *testing.T) {
 		t.Run("レスポンス書き込みとログ出力が行われる", func(t *testing.T) {
 			t.Parallel()
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -218,12 +227,13 @@ func Test_handleHTTPError(t *testing.T) {
 			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
 		})
 
-		t.Run("details付きエラーはpolicyが拒否するとwireからdetailsが落ちる", func(t *testing.T) {
+		t.Run("details付きエラーはpolicyが拒否するとwireから落ちるがログには残る", func(t *testing.T) {
 			t.Parallel()
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h", nil)
@@ -240,6 +250,10 @@ func Test_handleHTTPError(t *testing.T) {
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 			_, hasDetails := got["details"]
 			assert.False(t, hasDetails)
+
+			entries := observed.FilterMessage("errorhandler.client_error").All()
+			require.Len(t, entries, 1)
+			assert.Contains(t, entries[0].ContextMap()[logging.ErrorDetailsKey], "firstName")
 		})
 
 		t.Run("details付きエラーはpolicyが許可するとwireにdetailsが載る", func(t *testing.T) {

@@ -503,6 +503,52 @@ func Test_run_dispatchAll(t *testing.T) {
 	})
 }
 
+func Test_run_waitForSlot(t *testing.T) {
+	t.Parallel()
+
+	newTestRun := func(t *testing.T) *run {
+		t.Helper()
+		f := testkit.NewFake()
+		w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+		return newRun(newTestEngine(t, baseSettings(), w), w)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("in-flight に空きがある場合は即座に空き数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+
+			free, ok := r.waitForSlot(context.Background())
+
+			assert.True(t, ok)
+			assert.Equal(t, cap(r.inflight), free)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("in-flight が満杯かつ ctx がキャンセル済みの場合は中断する", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+			for range cap(r.inflight) {
+				r.inflight <- struct{}{}
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			free, ok := r.waitForSlot(ctx)
+
+			assert.False(t, ok)
+			assert.Zero(t, free)
+		})
+	})
+}
+
 func Test_msgFields(t *testing.T) {
 	t.Parallel()
 

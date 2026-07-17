@@ -9,15 +9,14 @@ import (
 	"go-boilerplate/internal/di/server/extension/testkit"
 	"go-boilerplate/internal/logging"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
 
 func TestErrorHandlerModule(t *testing.T) {
 	t.Parallel()
 	spec, err := validator.GetValidator()
-	if err != nil {
-		t.Fatalf("failed to load OpenAPI spec: %v", err)
-	}
+	require.NoError(t, err)
 	testkit.RequireProvidesOne[extension.SrvCfg](t, "server.configurators",
 		ErrorHandlerModule(),
 		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
