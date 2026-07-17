@@ -11,6 +11,9 @@ const (
 	maxStreetLength       = 255
 	maxBuildingLength     = 255
 
+	minRoleNameLength = 1
+	maxRoleNameLength = 100
+
 	// MaxRawPasswordLength は、平文パスワードの最大文字数です。
 	MaxRawPasswordLength = 64
 	// MinRawPasswordLength は、平文パスワードの最小文字数です。
