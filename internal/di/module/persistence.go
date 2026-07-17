@@ -21,6 +21,7 @@ func persistenceModule() fx.Option {
 				// sample-api:begin
 				// サンプルのリポジトリ
 				user.New,
+				user.NewRoleRepository,
 				prefecture.New,
 				// sample-api:end
 			),
