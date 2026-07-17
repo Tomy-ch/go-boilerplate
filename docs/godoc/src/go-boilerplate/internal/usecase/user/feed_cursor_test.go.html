@@ -70,7 +70,7 @@
 <span id="L13" class="ln">    13  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L14" class="ln">    14  </span>)
 <span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>func TestDecodeFeedCursor(t *testing.T) {
+<span id="L16" class="ln">    16  </span>func Test_decodeFeedCursor(t *testing.T) {
 <span id="L17" class="ln">    17  </span>	t.Parallel()
 <span id="L18" class="ln">    18  </span>
 <span id="L19" class="ln">    19  </span>	validID := uuid.NewTestFromSalt(t, &#34;feed_cursor_id&#34;)
@@ -141,7 +141,7 @@
 <span id="L84" class="ln">    84  </span>	})
 <span id="L85" class="ln">    85  </span>}
 <span id="L86" class="ln">    86  </span>
-<span id="L87" class="ln">    87  </span>func TestEncodeFeedCursor(t *testing.T) {
+<span id="L87" class="ln">    87  </span>func Test_encodeFeedCursor(t *testing.T) {
 <span id="L88" class="ln">    88  </span>	t.Parallel()
 <span id="L89" class="ln">    89  </span>
 <span id="L90" class="ln">    90  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -154,8 +154,8 @@
 <span id="L97" class="ln">    97  </span>			createdAt := time.Date(2025, time.March, 4, 5, 6, 7, 800000000, time.UTC)
 <span id="L98" class="ln">    98  </span>			last, err := user.New(
 <span id="L99" class="ln">    99  </span>				id,
-<span id="L100" class="ln">   100  </span>				&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
-<span id="L101" class="ln">   101  </span>				uuid.NewTestFromSalt(t, &#34;encode_feed_cursor_pref&#34;), &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, createdAt, createdAt, nil,
+<span id="L100" class="ln">   100  </span>				&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;user@example.com&#34;, &#34;phone_number&#34;,
+<span id="L101" class="ln">   101  </span>				uuid.NewTestFromSalt(t, &#34;encode_feed_cursor_pref&#34;), &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;150-0001&#34;, createdAt, createdAt, nil,
 <span id="L102" class="ln">   102  </span>			)
 <span id="L103" class="ln">   103  </span>			require.NoError(t, err)
 <span id="L104" class="ln">   104  </span>

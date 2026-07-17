@@ -71,7 +71,7 @@
 <span id="L14" class="ln">    14  </span>	&#34;go.uber.org/fx&#34;
 <span id="L15" class="ln">    15  </span>)
 <span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>func TestIPExtractorModule_ProvidesServeConfig(t *testing.T) {
+<span id="L17" class="ln">    17  </span>func TestIPExtractorModule(t *testing.T) {
 <span id="L18" class="ln">    18  </span>	t.Parallel()
 <span id="L19" class="ln">    19  </span>	cfg := config.MockConfigForTest(t)
 <span id="L20" class="ln">    20  </span>	testkit.RequireProvidesOne[extension.SrvCfg](t, &#34;server.configurators&#34;,
@@ -80,7 +80,7 @@
 <span id="L23" class="ln">    23  </span>	)
 <span id="L24" class="ln">    24  </span>}
 <span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span>func TestOpenAPIModule_ProvidesUseMiddleware(t *testing.T) {
+<span id="L26" class="ln">    26  </span>func TestOpenAPIModule(t *testing.T) {
 <span id="L27" class="ln">    27  </span>	t.Parallel()
 <span id="L28" class="ln">    28  </span>	testkit.RequireProvidesOne[extension.UseMiddleware](t, &#34;middlewares.use&#34;,
 <span id="L29" class="ln">    29  </span>		OpenAPIModule(),
@@ -92,12 +92,12 @@
 <span id="L35" class="ln">    35  </span>	)
 <span id="L36" class="ln">    36  </span>}
 <span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>func TestURIModule_ProvidesPreMiddleware(t *testing.T) {
+<span id="L38" class="ln">    38  </span>func TestURIModule(t *testing.T) {
 <span id="L39" class="ln">    39  </span>	t.Parallel()
 <span id="L40" class="ln">    40  </span>	testkit.RequireProvidesOne[extension.PreMiddleware](t, &#34;middlewares.pre&#34;, URIModule())
 <span id="L41" class="ln">    41  </span>}
 <span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>func TestBodyLimitModule_ProvidesPreMiddleware(t *testing.T) {
+<span id="L43" class="ln">    43  </span>func TestBodyLimitModule(t *testing.T) {
 <span id="L44" class="ln">    44  </span>	t.Parallel()
 <span id="L45" class="ln">    45  </span>	cfg := config.MockConfigForTest(t)
 <span id="L46" class="ln">    46  </span>	testkit.RequireProvidesOne[extension.PreMiddleware](t, &#34;middlewares.pre&#34;,
@@ -106,7 +106,7 @@
 <span id="L49" class="ln">    49  </span>	)
 <span id="L50" class="ln">    50  </span>}
 <span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>func TestTimeoutModule_ProvidesPreMiddleware(t *testing.T) {
+<span id="L52" class="ln">    52  </span>func TestTimeoutModule(t *testing.T) {
 <span id="L53" class="ln">    53  </span>	t.Parallel()
 <span id="L54" class="ln">    54  </span>	cfg := config.MockConfigForTest(t)
 <span id="L55" class="ln">    55  </span>	testkit.RequireProvidesOne[extension.PreMiddleware](t, &#34;middlewares.pre&#34;,

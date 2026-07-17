@@ -128,6 +128,9 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 				
 				<dd><a href="#Downstream">type Downstream</a></dd>
 				
+					
+					<dd>    <a href="#MissingDownstreams">func MissingDownstreams(profiles []DownstreamProfile, required []Downstream) []Downstream</a></dd>
+				
 				
 			
 				
@@ -178,7 +181,7 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 					<dd>    <a href="#NewRegistry">func NewRegistry(profiles map[Downstream]Profile) Registry</a></dd>
 				
 					
-					<dd>    <a href="#NewRegistryFromProfiles">func NewRegistryFromProfiles(profiles []DownstreamProfile) Registry</a></dd>
+					<dd>    <a href="#NewRegistryFromProfiles">func NewRegistryFromProfiles(profiles []DownstreamProfile) (Registry, error)</a></dd>
 				
 				
 			
@@ -272,7 +275,7 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 		
 			
 			
-			<h2 id="BreakerConfig">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=2567:2993#L44">BreakerConfig</a>
+			<h2 id="BreakerConfig">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=2610:3036#L49">BreakerConfig</a>
 				<a class="permalink" href="#BreakerConfig">¶</a>
 				
 				
@@ -332,7 +335,7 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/client.go.html?s=1199:1369#L28">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/client.go.html?s=849:1019#L23">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -355,12 +358,14 @@ transport は observability が計装した不透明な outbound transport で�
 		
 			
 			
-			</p><h2 id="Downstream">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=1634:1656#L21">Downstream</a>
+			</p><h2 id="Downstream">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=1897:1919#L24">Downstream</a>
 				<a class="permalink" href="#Downstream">¶</a>
 				
 				
 			</h2>
 			<p>Downstream は、breaker / metrics / profile / budget の共通キー（論理依存名）です。
+</p><p>必須です。空値は breaker / budget / metrics のキーが &#34;&#34; に collapse し依存ごとの分離が崩れるため、
+Do が ErrInvalidArgument で弾きます（string 別名で型では空値を排除できないため実行時に担保）。
 
 			</p><pre>type Downstream <a href="../../../../builtin/#string">string</a></pre>
 
@@ -373,12 +378,27 @@ transport は observability が計装した不透明な outbound transport で�
 			
 
 			
+				
+				<h3 id="MissingDownstreams">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=5960:6049#L127">MissingDownstreams</a>
+					<a class="permalink" href="#MissingDownstreams">¶</a>
+					
+					
+				</h3>
+				<pre>func MissingDownstreams(profiles []<a href="#DownstreamProfile">DownstreamProfile</a>, required []<a href="#Downstream">Downstream</a>) []<a href="#Downstream">Downstream</a></pre>
+				<p>MissingDownstreams は、required のうち profiles に Profile が登録されていない Downstream を返します。
+起動時の網羅チェックに使い、空スライスなら全ての required が登録済みであることを表します。
+これにより gateway 追加時の profile 登録漏れ・改名が、silent な DefaultProfile fallback ではなく
+loud な起動失敗として顕在化します。
+
+				
+				
+			
 
 			
 		
 			
 			
-			<h2 id="DownstreamProfile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3369:3542#L62">DownstreamProfile</a>
+			</p><h2 id="DownstreamProfile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3412:3585#L67">DownstreamProfile</a>
 				<a class="permalink" href="#DownstreamProfile">¶</a>
 				
 				
@@ -407,7 +427,7 @@ transport は observability が計装した不透明な outbound transport で�
 		
 			
 			
-			<h2 id="Header">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2173:2204#L31">Header</a>
+			<h2 id="Header">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2436:2467#L34">Header</a>
 				<a class="permalink" href="#Header">¶</a>
 				
 				
@@ -430,7 +450,7 @@ transport は observability が計装した不透明な outbound transport で�
 		
 			
 			
-			<h2 id="Method">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2040:2070#L28">Method</a>
+			<h2 id="Method">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2303:2333#L31">Method</a>
 				<a class="permalink" href="#Method">¶</a>
 				
 				
@@ -455,7 +475,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				<h3 id="MethodDelete">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4769:4795#L85">MethodDelete</a>
+				<h3 id="MethodDelete">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5052:5078#L88">MethodDelete</a>
 					<a class="permalink" href="#MethodDelete">¶</a>
 					
 					
@@ -467,7 +487,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="MethodGet">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4315:4338#L73">MethodGet</a>
+				</p><h3 id="MethodGet">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4598:4621#L76">MethodGet</a>
 					<a class="permalink" href="#MethodGet">¶</a>
 					
 					
@@ -480,7 +500,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="MethodPatch">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4650:4675#L82">MethodPatch</a>
+				</p><h3 id="MethodPatch">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4933:4958#L85">MethodPatch</a>
 					<a class="permalink" href="#MethodPatch">¶</a>
 					
 					
@@ -492,7 +512,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="MethodPost">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4426:4450#L76">MethodPost</a>
+				</p><h3 id="MethodPost">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4709:4733#L79">MethodPost</a>
 					<a class="permalink" href="#MethodPost">¶</a>
 					
 					
@@ -504,7 +524,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="MethodPut">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4537:4560#L79">MethodPut</a>
+				</p><h3 id="MethodPut">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4820:4843#L82">MethodPut</a>
 					<a class="permalink" href="#MethodPut">¶</a>
 					
 					
@@ -518,7 +538,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				</p><h3 id="Method.String">func (Method) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4907:4938#L88">String</a>
+				</p><h3 id="Method.String">func (Method) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5190:5221#L91">String</a>
 					<a class="permalink" href="#Method.String">¶</a>
 					
 					
@@ -533,7 +553,7 @@ ErrInvalidArgument で弾きます。
 		
 			
 			
-			</p><h2 id="Profile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=1023:2507#L17">Profile</a>
+			</p><h2 id="Profile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=1066:2550#L22">Profile</a>
 				<a class="permalink" href="#Profile">¶</a>
 				
 				
@@ -577,7 +597,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				<h3 id="DefaultProfile">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3834:3863#L76">DefaultProfile</a>
+				<h3 id="DefaultProfile">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3877:3906#L81">DefaultProfile</a>
 					<a class="permalink" href="#DefaultProfile">¶</a>
 					
 					
@@ -593,7 +613,7 @@ ErrInvalidArgument で弾きます。
 		
 			
 			
-			</p><h2 id="Registry">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3131:3301#L56">Registry</a>
+			</p><h2 id="Registry">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3174:3344#L61">Registry</a>
 				<a class="permalink" href="#Registry">¶</a>
 				
 				
@@ -615,7 +635,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				<h3 id="NewRegistry">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=4673:4731#L97">NewRegistry</a>
+				<h3 id="NewRegistry">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=4716:4774#L102">NewRegistry</a>
 					<a class="permalink" href="#NewRegistry">¶</a>
 					
 					
@@ -627,14 +647,15 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="NewRegistryFromProfiles">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=5011:5078#L106">NewRegistryFromProfiles</a>
+				</p><h3 id="NewRegistryFromProfiles">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=5172:5248#L112">NewRegistryFromProfiles</a>
 					<a class="permalink" href="#NewRegistryFromProfiles">¶</a>
 					
 					
 				</h3>
-				<pre>func NewRegistryFromProfiles(profiles []<a href="#DownstreamProfile">DownstreamProfile</a>) <a href="#Registry">Registry</a></pre>
+				<pre>func NewRegistryFromProfiles(profiles []<a href="#DownstreamProfile">DownstreamProfile</a>) (<a href="#Registry">Registry</a>, <a href="../../../../builtin/#error">error</a>)</pre>
 				<p>NewRegistryFromProfiles は、各 gateway が寄与した DownstreamProfile 群から Registry を生成します。
 未登録の Downstream には DefaultProfile が適用されます。
+同一 Name が重複した場合は、silent な last-wins 上書きを避けるためエラーを返します。
 
 				
 				
@@ -644,15 +665,15 @@ ErrInvalidArgument で弾きます。
 		
 			
 			
-			</p><h2 id="Request">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2631:3593#L38">Request</a>
+			</p><h2 id="Request">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2914:3876#L41">Request</a>
 				<a class="permalink" href="#Request">¶</a>
 				
 				
 			</h2>
 			<p>Request は、1 回の外部 HTTP 呼び出しの意図を表します。
 </p><p>構築は NewRequest（必須項目をシグネチャで強制）と With* オプション経由のみ。任意メソッド文字列は
-型でコンパイル時に排除し、「空メソッド」「AllowRetry なのに IdempotencyKey 不在」といった残りの
-不正状態は Do 実行時に ErrInvalidArgument で弾きます。
+型でコンパイル時に排除し、「空 Downstream」「空メソッド」「AllowRetry なのに IdempotencyKey 不在」と
+いった残りの不正状態は Do 実行時に ErrInvalidArgument で弾きます。
 
 			</p><pre>type Request struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -669,14 +690,14 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				<h3 id="NewRequest">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5224:5321#L92">NewRequest</a>
+				<h3 id="NewRequest">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5523:5620#L95">NewRequest</a>
 					<a class="permalink" href="#NewRequest">¶</a>
 					
 					
 				</h3>
 				<pre>func NewRequest(method <a href="#Method">Method</a>, downstream <a href="#Downstream">Downstream</a>, url <a href="../../../../builtin/#string">string</a>, opts ...<a href="#RequestOption">RequestOption</a>) *<a href="#Request">Request</a></pre>
 				<p>NewRequest は、必須項目（method / downstream / url）をシグネチャで強制してリクエストを生成します。
-任意メソッド文字列は型で排除済み。空メソッドや AllowRetry の key 不在は Do 実行時に弾かれます。
+任意メソッド文字列は型で排除済み。空 Downstream・空メソッド・AllowRetry の key 不在は Do 実行時に弾かれます。
 
 				
 				
@@ -684,7 +705,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				</p><h3 id="Request.AllowRetry">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7368:7403#L143">AllowRetry</a>
+				</p><h3 id="Request.AllowRetry">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7667:7702#L146">AllowRetry</a>
 					<a class="permalink" href="#Request.AllowRetry">¶</a>
 					
 					
@@ -697,7 +718,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="Request.Body">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7065:7096#L137">Body</a>
+				</p><h3 id="Request.Body">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7364:7395#L140">Body</a>
 					<a class="permalink" href="#Request.Body">¶</a>
 					
 					
@@ -710,7 +731,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="Request.Downstream">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6394:6435#L125">Downstream</a>
+				</p><h3 id="Request.Downstream">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6693:6734#L128">Downstream</a>
 					<a class="permalink" href="#Request.Downstream">¶</a>
 					
 					
@@ -723,7 +744,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="Request.Header">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6838:6871#L134">Header</a>
+				</p><h3 id="Request.Header">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7137:7170#L137">Header</a>
 					<a class="permalink" href="#Request.Header">¶</a>
 					
 					
@@ -736,7 +757,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="Request.IdempotencyKey">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7212:7253#L140">IdempotencyKey</a>
+				</p><h3 id="Request.IdempotencyKey">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7511:7552#L143">IdempotencyKey</a>
 					<a class="permalink" href="#Request.IdempotencyKey">¶</a>
 					
 					
@@ -749,7 +770,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="Request.Method">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6513:6546#L128">Method</a>
+				</p><h3 id="Request.Method">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6812:6845#L131">Method</a>
 					<a class="permalink" href="#Request.Method">¶</a>
 					
 					
@@ -762,7 +783,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="Request.URL">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6623:6653#L131">URL</a>
+				</p><h3 id="Request.URL">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6922:6952#L134">URL</a>
 					<a class="permalink" href="#Request.URL">¶</a>
 					
 					
@@ -777,7 +798,7 @@ ErrInvalidArgument で弾きます。
 		
 			
 			
-			</p><h2 id="RequestOption">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=3690:3723#L58">RequestOption</a>
+			</p><h2 id="RequestOption">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=3973:4006#L61">RequestOption</a>
 				<a class="permalink" href="#RequestOption">¶</a>
 				
 				
@@ -796,7 +817,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				<h3 id="WithBody">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5679:5716#L108">WithBody</a>
+				<h3 id="WithBody">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5978:6015#L111">WithBody</a>
 					<a class="permalink" href="#WithBody">¶</a>
 					
 					
@@ -808,7 +829,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="WithHeader">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5529:5568#L105">WithHeader</a>
+				</p><h3 id="WithHeader">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5828:5867#L108">WithHeader</a>
 					<a class="permalink" href="#WithHeader">¶</a>
 					
 					
@@ -820,7 +841,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="WithIdempotencyKey">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5859:5908#L111">WithIdempotencyKey</a>
+				</p><h3 id="WithIdempotencyKey">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6158:6207#L114">WithIdempotencyKey</a>
 					<a class="permalink" href="#WithIdempotencyKey">¶</a>
 					
 					
@@ -832,7 +853,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="WithRetry">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6195:6246#L117">WithRetry</a>
+				</p><h3 id="WithRetry">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6494:6545#L120">WithRetry</a>
 					<a class="permalink" href="#WithRetry">¶</a>
 					
 					
@@ -849,7 +870,7 @@ ErrInvalidArgument で弾きます。
 		
 			
 			
-			</p><h2 id="Response">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=3836:4121#L61">Response</a>
+			</p><h2 id="Response">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4119:4404#L64">Response</a>
 				<a class="permalink" href="#Response">¶</a>
 				
 				

@@ -126,10 +126,9 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 
 ## Coverage exceptions
 
-Per `docs/testing-conventions.md` §9, the following infallible defensive branches are left uncovered (no contrived tests):
+Per `docs/testing-conventions.md` §9, the following infallible defensive branch is left uncovered (no contrived tests):
 
-- `detail_exposure.go` `NewOpenAPIDetailPolicy` — the `gorillamux.NewRouter` error return. The router is built from a servers-stripped copy of an already-validated spec, so it cannot fail in practice.
-- `http_error_handler.go` `handleHTTPError` — the nested `WriteHeader(500)` after a write failure on an already-committed response (unreachable double-commit edge).
+- `http_error_handler.go` `handleHTTPError` — the nested `WriteHeader(500)` taken only when `writeErrorResponse` fails while the response is not yet committed. The body is the fixed, always-JSON-encodable `gen.ErrorResponseWithDetails` struct, so `c.JSON` can only fail during the write (after `WriteHeader` has already committed the response); the not-yet-committed failure is unreachable. The reachable write-failure path (log + no double commit) is covered.
 
 ## Notes
 

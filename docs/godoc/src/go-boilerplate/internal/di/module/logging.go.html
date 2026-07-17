@@ -79,7 +79,7 @@
 <span id="L22" class="ln">    22  </span>
 <span id="L23" class="ln">    23  </span><span class="comment">// provideLogger は、アプリケーション設定に応じた Logger を生成します。</span>
 <span id="L24" class="ln">    24  </span><span class="comment">// logCore が非 nil のときは、その core を Tee した Logger を返します。</span>
-<span id="L25" class="ln">    25  </span><span class="comment">// extract は ctx から trace_id / span_id を注入する抽出関数です。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// extract は ctx から trace_id / span_id を抽出して注入する TraceExtractor です（nil のとき trace 注入なし）。</span>
 <span id="L26" class="ln">    26  </span>func provideLogger(
 <span id="L27" class="ln">    27  </span>	appCfg *config.ApplicationConfig,
 <span id="L28" class="ln">    28  </span>	logCore logging.LogCore,

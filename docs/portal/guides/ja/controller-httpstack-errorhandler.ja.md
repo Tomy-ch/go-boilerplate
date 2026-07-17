@@ -128,8 +128,7 @@ spec 複製から作るため Host 非依存で、proxy / test の Host でも�
 
 `docs/testing-conventions.md` §9 に基づき、以下の infallible な防御分岐は未カバーのまま残す(作為的テストは書かない):
 
-- `detail_exposure.go` `NewOpenAPIDetailPolicy` — `gorillamux.NewRouter` のエラー返却。router は検証済み spec の servers 除去コピーから構築するため実際上失敗しない。
-- `http_error_handler.go` `handleHTTPError` — 書き込み失敗かつレスポンス commit 済みの場合の入れ子 `WriteHeader(500)`(到達不能な二重 commit エッジ)。
+- `http_error_handler.go` `handleHTTPError` — `writeErrorResponse` が失敗しつつレスポンス未 commit のときだけ通る入れ子 `WriteHeader(500)`。body は常に JSON 化可能な固定 struct(`gen.ErrorResponseWithDetails`)なので `c.JSON` は書き込み中(= `WriteHeader` で commit 済みの後)にしか失敗できず、未 commit での失敗は到達不能。到達可能な書き込み失敗経路(ログ出力・二重 commit なし)はカバー済み。
 
 ## 注意点
 

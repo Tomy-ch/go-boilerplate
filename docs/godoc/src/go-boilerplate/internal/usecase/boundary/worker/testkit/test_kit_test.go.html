@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>func Test_Fake_Receive(t *testing.T) {
+<span id="L15" class="ln">    15  </span>func TestFake_Receive(t *testing.T) {
 <span id="L16" class="ln">    16  </span>	t.Parallel()
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -192,7 +192,7 @@
 <span id="L135" class="ln">   135  </span>	})
 <span id="L136" class="ln">   136  </span>}
 <span id="L137" class="ln">   137  </span>
-<span id="L138" class="ln">   138  </span>func Test_Fake_Ack(t *testing.T) {
+<span id="L138" class="ln">   138  </span>func TestFake_Ack(t *testing.T) {
 <span id="L139" class="ln">   139  </span>	t.Parallel()
 <span id="L140" class="ln">   140  </span>
 <span id="L141" class="ln">   141  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -214,7 +214,7 @@
 <span id="L157" class="ln">   157  </span>	})
 <span id="L158" class="ln">   158  </span>}
 <span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>func Test_Fake_Nack(t *testing.T) {
+<span id="L160" class="ln">   160  </span>func TestFake_Nack(t *testing.T) {
 <span id="L161" class="ln">   161  </span>	t.Parallel()
 <span id="L162" class="ln">   162  </span>
 <span id="L163" class="ln">   163  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -240,7 +240,7 @@
 <span id="L183" class="ln">   183  </span>	})
 <span id="L184" class="ln">   184  </span>}
 <span id="L185" class="ln">   185  </span>
-<span id="L186" class="ln">   186  </span>func Test_Fake_NackWithBackoff(t *testing.T) {
+<span id="L186" class="ln">   186  </span>func TestFake_NackWithBackoff(t *testing.T) {
 <span id="L187" class="ln">   187  </span>	t.Parallel()
 <span id="L188" class="ln">   188  </span>
 <span id="L189" class="ln">   189  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -274,7 +274,7 @@
 <span id="L217" class="ln">   217  </span>	})
 <span id="L218" class="ln">   218  </span>}
 <span id="L219" class="ln">   219  </span>
-<span id="L220" class="ln">   220  </span>func Test_Fake_Extend(t *testing.T) {
+<span id="L220" class="ln">   220  </span>func TestFake_Extend(t *testing.T) {
 <span id="L221" class="ln">   221  </span>	t.Parallel()
 <span id="L222" class="ln">   222  </span>
 <span id="L223" class="ln">   223  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -312,7 +312,7 @@
 <span id="L255" class="ln">   255  </span>	})
 <span id="L256" class="ln">   256  </span>}
 <span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>func Test_Fake_Fail(t *testing.T) {
+<span id="L258" class="ln">   258  </span>func TestFake_Fail(t *testing.T) {
 <span id="L259" class="ln">   259  </span>	t.Parallel()
 <span id="L260" class="ln">   260  </span>
 <span id="L261" class="ln">   261  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {

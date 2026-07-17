@@ -44,11 +44,17 @@
          <index name="outbox_id_primary" unique="true">
             <column ascending="true" name="id"/>
          </index>
+         <index name="outbox_dead_idx" unique="false">
+            <column ascending="true" name="id"/>
+         </index>
          <index name="outbox_message_id_unique" unique="true">
             <column ascending="true" name="message_id"/>
          </index>
          <index name="outbox_pending_idx" unique="false">
             <column ascending="true" name="id"/>
+         </index>
+         <index name="outbox_published_gc_idx" unique="false">
+            <column ascending="true" name="published_at"/>
          </index>
          <checkConstraint constraint="(status = ANY (ARRAY['pending'::text, 'published'::text, 'dead'::text]))" name="outbox_status_check"/>
       </table>

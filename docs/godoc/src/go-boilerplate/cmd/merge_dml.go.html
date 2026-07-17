@@ -75,8 +75,8 @@
 <span id="L18" class="ln">    18  </span>
 <span id="L19" class="ln">    19  </span>	cmd := &amp;cobra.Command{
 <span id="L20" class="ln">    20  </span>		Use:   &#34;merge-dml&#34;,
-<span id="L21" class="ln">    21  </span>		Short: &#34;DMLディレクトリ(database/dml/&lt;repository/query_service/command_service&gt;)のsqlファイルを対象にして、&lt;type&gt;ごとにマージします。&#34;,
-<span id="L22" class="ln">    22  </span>		Long: &#34;指定されたタイプ(repository|query_service|command_service)のDMLディレクトリ内の全サブディレクトリを走査し、\n&#34; +
+<span id="L21" class="ln">    21  </span>		Short: &#34;DMLディレクトリ(database/dml/&lt;repository/query_service/system_cqrs/command_service&gt;)のsqlファイルを対象にして、&lt;type&gt;ごとにマージします。&#34;,
+<span id="L22" class="ln">    22  </span>		Long: &#34;指定されたタイプ(repository|query_service|system_cqrs|command_service)のDMLディレクトリ内の全サブディレクトリを走査し、\n&#34; +
 <span id="L23" class="ln">    23  </span>			&#34;各カテゴリごとにSQLファイルを連結して1つのSQLファイルにまとめます。\n&#34; +
 <span id="L24" class="ln">    24  </span>			&#34;生成されるファイルは database/gen/ 配下に &lt;category&gt;_&lt;type&gt;.gen.sql という名前で保存されます。&#34;,
 <span id="L25" class="ln">    25  </span>		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -84,7 +84,7 @@
 <span id="L27" class="ln">    27  </span>		},
 <span id="L28" class="ln">    28  </span>	}
 <span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span>	cmd.Flags().StringVar(&amp;targetType, &#34;type&#34;, &#34;&#34;, &#34;filter TYPE (repository|query_service|command_service)&#34;)
+<span id="L30" class="ln">    30  </span>	cmd.Flags().StringVar(&amp;targetType, &#34;type&#34;, &#34;&#34;, &#34;filter TYPE (repository|query_service|system_cqrs|command_service)&#34;)
 <span id="L31" class="ln">    31  </span>	_ = cmd.MarkFlagRequired(&#34;type&#34;)
 <span id="L32" class="ln">    32  </span>	cmd.Flags().StringVar(&amp;workDir, &#34;work-dir&#34;, &#34;/app&#34;, &#34;working directory path&#34;)
 <span id="L33" class="ln">    33  </span>

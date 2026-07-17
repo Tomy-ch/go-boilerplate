@@ -118,6 +118,9 @@
 				
 				<dd><a href="#NormalizeExecResult">func NormalizeExecResult(affected int64, err error) error</a></dd>
 			
+				
+				<dd><a href="#NormalizeReconstructError">func NormalizeReconstructError(err error) error</a></dd>
+			
 			
 			
 			</dl>
@@ -145,7 +148,7 @@
 		
 			
 			
-			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3132:3171#L94">IsLockNotAvailable</a>
+			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3997:4036#L107">IsLockNotAvailable</a>
 				<a class="permalink" href="#IsLockNotAvailable">¶</a>
 				
 				
@@ -159,7 +162,7 @@
 		
 			
 			
-			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3638:3677#L103">IsRetryableTxError</a>
+			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=4503:4542#L116">IsRetryableTxError</a>
 				<a class="permalink" href="#IsRetryableTxError">¶</a>
 				
 				
@@ -176,7 +179,7 @@
 		
 			
 			
-			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2511:2545#L67">IsUnavailable</a>
+			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3376:3410#L80">IsUnavailable</a>
 				<a class="permalink" href="#IsUnavailable">¶</a>
 				
 				
@@ -205,7 +208,7 @@
 		
 			
 			
-			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2101:2158#L56">NormalizeExecResult</a>
+			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2966:3023#L69">NormalizeExecResult</a>
 				<a class="permalink" href="#NormalizeExecResult">¶</a>
 				
 				
@@ -214,6 +217,25 @@
 			<p>NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。
 エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
 対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NormalizeReconstructError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2422:2469#L59">NormalizeReconstructError</a>
+				<a class="permalink" href="#NormalizeReconstructError">¶</a>
+				
+				
+			</h2>
+			<pre>func NormalizeReconstructError(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
+			<p>NormalizeReconstructError は、DB 行からのエンティティ再構築（ドメインコンストラクタ）が
+返したエラーをデータ不整合として ErrInternal へ平坦化します。
+保存済みデータがドメイン不変条件を満たさないのはサーバ内部障害であり、入力検証エラー
+（422 / details 付き）としてクライアントへ露出させないため、元エラーの分類センチネルと
+apperror.Meta を意図的にチェーンから消します（load-bearing flatten）。理由文はメッセージに
+残るためログには出ます。err が nil の場合は nil を返します。
 
 			
 			

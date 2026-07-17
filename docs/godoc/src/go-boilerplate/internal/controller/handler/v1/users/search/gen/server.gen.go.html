@@ -110,11 +110,11 @@
 <span id="L53" class="ln">    53  </span>		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf(&#34;Invalid format for parameter page: %s&#34;, err))
 <span id="L54" class="ln">    54  </span>	}
 <span id="L55" class="ln">    55  </span>
-<span id="L56" class="ln">    56  </span>	<span class="comment">// ------------- Optional query parameter &#34;per_page&#34; -------------</span>
+<span id="L56" class="ln">    56  </span>	<span class="comment">// ------------- Optional query parameter &#34;perPage&#34; -------------</span>
 <span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>	err = runtime.BindQueryParameterWithOptions(&#34;form&#34;, true, false, &#34;per_page&#34;, ctx.QueryParams(), &amp;params.PerPage, runtime.BindQueryParameterOptions{Type: &#34;integer&#34;, Format: &#34;&#34;})
+<span id="L58" class="ln">    58  </span>	err = runtime.BindQueryParameterWithOptions(&#34;form&#34;, true, false, &#34;perPage&#34;, ctx.QueryParams(), &amp;params.PerPage, runtime.BindQueryParameterOptions{Type: &#34;integer&#34;, Format: &#34;&#34;})
 <span id="L59" class="ln">    59  </span>	if err != nil {
-<span id="L60" class="ln">    60  </span>		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf(&#34;Invalid format for parameter per_page: %s&#34;, err))
+<span id="L60" class="ln">    60  </span>		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf(&#34;Invalid format for parameter perPage: %s&#34;, err))
 <span id="L61" class="ln">    61  </span>	}
 <span id="L62" class="ln">    62  </span>
 <span id="L63" class="ln">    63  </span>	<span class="comment">// Invoke the callback with all the unmarshaled arguments</span>

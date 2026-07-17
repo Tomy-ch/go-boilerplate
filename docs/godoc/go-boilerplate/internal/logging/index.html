@@ -725,7 +725,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=496:523#L7">LogCore</a>
+			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=553:580#L8">LogCore</a>
 				<a class="permalink" href="#LogCore">¶</a>
 				
 				
@@ -802,13 +802,14 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1022:1728#L15">Logger</a>
+			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1195:1901#L17">Logger</a>
 				<a class="permalink" href="#Logger">¶</a>
 				
 				
 			</h2>
 			<p>Logger は、アプリ全体が使うロガーのインターフェースです。
-各出力メソッドは ctx を受け取り、trace_id / span_id を自動注入します。
+各出力メソッドは ctx を受け取り、TraceExtractor が設定されていれば ctx 上の span から
+trace_id / span_id を注入します（未設定・span 無効時は注入しません）。
 
 			</p><pre>type Logger interface {
     <span class="comment">// Debug はデバッグレベルのログを出力する。</span>
@@ -901,7 +902,7 @@ caller（発生源）を検証したいテストで使用します。
 				
 			
 				
-				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=2218:2262#L44">WithCore</a>
+				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=2391:2435#L46">WithCore</a>
 					<a class="permalink" href="#WithCore">¶</a>
 					
 					
@@ -959,7 +960,7 @@ Tee した新しい Logger を返します。core が nil の場合は、元の 
 		
 			
 			
-			<h2 id="TraceExtractor">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=758:837#L11">TraceExtractor</a>
+			<h2 id="TraceExtractor">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=815:894#L12">TraceExtractor</a>
 				<a class="permalink" href="#TraceExtractor">¶</a>
 				
 				
