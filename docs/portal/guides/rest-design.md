@@ -15,7 +15,7 @@ Responsibility split (who owns what):
 | Component | Layer | Responsibility | Does NOT hold |
 | --- | --- | --- | --- |
 | **Echo server** (`server.NewAppServer`) | controller | TCP listener / read·write·idle timeouts / route table via generated `RegisterHandlers` | business logic, middleware policy |
-| **middleware chain** (`httpstack/*`) | controller | cross-cutting concerns in a fixed order: uri(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → logging → cookie | business logic |
+| **middleware chain** (`httpstack/*`) | controller | cross-cutting concerns in a fixed order: uri(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | business logic |
 | **handler** (`controller/handler/**`) | controller | parse typed request (`StrictHandler`) → call **one** usecase method → convert DTO → `gen` response | business logic, persistence, tx |
 | **error handler** (`httpstack/errorhandler`) | controller | map `apperror` / Echo / OpenAPI errors → HTTP status + code, unified error body | business policy |
 | **usecase** | usecase | **all** business logic, transaction boundaries, domain orchestration, error policy | HTTP, framework, presentation |
@@ -65,7 +65,8 @@ stateDiagram-v2
     CORS --> Security: 5 security (HSTS, X-Frame-Options, …)
     Security --> OpenAPI: 6 openapi (request schema + auth validation)
     OpenAPI --> ForceJSON: 7 forcejson (Content-Type)
-    ForceJSON --> Logging: 8 logging (start time + deferred response log)
+    ForceJSON --> HTTPREDMetrics: 8 httpredmetrics (RED metrics)
+    HTTPREDMetrics --> Logging: 9 logging (start time + deferred response log)
     Logging --> Cookie: 10 cookie (Secure/SameSite enforcement)
     Cookie --> Handler: StrictHandler.<Op>
     Handler --> Usecase: parse typed request → s.uc.<Method>(ctx, …)
@@ -241,7 +242,7 @@ flowchart LR
 | **handler / `server{}`** | The thin controller type with one method per `operationId`: tracer span → parse request → call one usecase method → convert DTO → `gen` response. |
 | **presenter** | The DTO → `gen.<Op><Status>JSONResponse` conversion, implemented inline in the handler method. |
 | **middleware (Use) / Pre** | Per-request cross-cutting functions applied in priority order (`Use`), plus `Pre` (path normalization) that runs before routing. |
-| **priority** | The integer in each middleware's `*_di.go` that the extension engine sorts on (uri-pre 1; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, logging 8, cookie 10). |
+| **priority** | The integer in each middleware's `*_di.go` that the extension engine sorts on (uri-pre 1; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10). |
 | **extension engine** (`ApplyExtends`) | Collects `Pre`/`Use`/`SrvCfg` providers, sorts by priority, and applies them to Echo; also applies non-middleware configurators (IP extractor, error handler). |
 | **error handler** | `HTTPErrorHandler` set on Echo; normalizes `apperror` / `echo.HTTPError` / OpenAPI validation errors into a unified `HTTPErrorResponse` with the mapped status + code. |
 | **apperror** | The framework-agnostic error taxonomy; the error handler maps it to HTTP status (e.g. `ErrConflict`→409, `ErrValidation`→422, `ErrInvalidArgument`→400). |

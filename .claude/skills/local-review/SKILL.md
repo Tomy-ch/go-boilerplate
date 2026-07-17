@@ -1,6 +1,7 @@
 ---
 name: local-review
-description: Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap) — plus the dedicated `comment-reviewer` subagent for comment quality, each on `sonnet` by default so reviewer ≠ an Opus implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other four lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
+description: >-
+  Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap) — plus the dedicated `comment-reviewer` subagent for comment quality, each on a user-selected model (fable / sonnet / opus / haiku; default auto = a model ≠ the implementer) so reviewer ≠ implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other four lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
 ---
 
 # Local Review
@@ -27,7 +28,8 @@ Do NOT use this skill for:
 Bias reduction is the design constraint, not a nicety. Reviewers therefore run as **subagents on a different model than whoever wrote the code**:
 
 - The reviewer agents (`adversarial-reviewer`, `comment-reviewer`, `review-verifier`) default to **`sonnet`** in their frontmatter, which differs from the usual Opus implementer.
-- **The orchestrator MUST guarantee reviewer ≠ implementer.** Check the model running this session. If it is *not* `sonnet`, the defaults are already correct — spawn as-is. If this session **is** `sonnet`, override the reviewer subagents to a different model via the `Agent` tool's `model` parameter (it takes precedence over the agent file's frontmatter) — e.g. `opus` for depth, or `haiku` for a cheap divergent pass. Never let reviewer and implementer be the same model.
+- **The reviewer model is chosen by the user in Step 0.** The options are `fable` (Fable 5) / `sonnet` / `opus` / `haiku`, plus an *auto* default that resolves to a model ≠ the session's implementer. Pass the chosen model to every reviewer subagent via the `Agent` tool's `model` parameter (it takes precedence over the agent file's `sonnet` default) — e.g. `opus` for depth, `haiku` for a cheap divergent pass, `fable` for a fresh independent perspective.
+- **The orchestrator MUST guarantee reviewer ≠ implementer.** If the user selects the same model as the session's implementer, warn that it undermines the different-model bias reduction and confirm before proceeding. Never silently let reviewer and implementer be the same model.
 - Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings. The single place this skill mutates source is Step 5.5, where the **orchestrator** (not a subagent) applies the verified comment-style fixes after user confirmation. The four code lenses are never auto-fixed.
 
 ## Step 0 — Confirm Scope
@@ -43,6 +45,27 @@ Call `AskUserQuestion` immediately. Default-detect scope by checking branch vs b
   - キャンセル
 ```
 
+### Reviewer model selection
+
+In the same `AskUserQuestion` call (a second question alongside scope), ask which model the
+reviewer subagents run on. `fable` (Fable 5) is available alongside the existing tiers:
+
+```text
+質問: レビュアーをどのモデルで実行しますか？（バイアス低減のため 実装者 ≠ レビュアー を推奨）
+選択肢:
+  - 自動（実装者と異なるモデルを既定選択）  ← 既定
+  - fable（Fable 5）
+  - sonnet
+  - opus（深掘り）
+  - haiku（安価・高速な発散パス）
+```
+
+*Auto* resolves to the agent-file default (`sonnet`) when the implementer is not `sonnet`,
+otherwise to a different tier. If the user picks the implementer's own model, warn (per Core
+Idea) that it weakens the different-model guarantee and confirm before continuing. The chosen
+model is passed to every `adversarial-reviewer` / `comment-reviewer` / `review-verifier`
+`Agent` call via the `model` parameter in Step 2 and Step 3.
+
 ### Flags
 
 - `--no-comment` — suppress Step 6 (do not post to the PR); produce the local report only. **Default is opt-out**: when an open PR exists for the current branch, Step 6 posts the surviving findings as inline review comments unless this flag is given.
@@ -57,10 +80,11 @@ Call `AskUserQuestion` immediately. Default-detect scope by checking branch vs b
 
 ## Step 2 — Fan-out Finders (different model, concurrent)
 
-Spawn all finders concurrently (issue every `Agent` call in a single message). Apply the model rule from Core Idea. Two agent types:
+Spawn all finders concurrently (issue every `Agent` call in a single message). Apply the model rule from Core Idea — pass the Step 0 user-selected reviewer model to every `Agent` call via the `model` parameter (omit only when *auto* already resolves to the agent-file default). Two agent types:
 
 - The four **code lenses** run `adversarial-reviewer` — one per lens, `agentType: "adversarial-reviewer"`, `label` like `find:security`.
 - The **comment dimension** runs the dedicated `comment-reviewer` — `agentType: "comment-reviewer"`, `label: "find:comment"`. This is the stronger, comment-focused agent (a richer taxonomy than a one-paragraph lens), and its findings feed the Step 5.5 auto-fix.
+- The **type-design dimension** runs the dedicated `type-design-reviewer` — `agentType: "type-design-reviewer"`, `label: "find:type-design"` — ONLY when the diff touches domain types (`internal/domain/**/*.go`). It scores each type on the four-axis rubric (Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement); its findings are suggestion-level (not auto-fixed).
 
 | Finder | Agent | Run when |
 | --- | --- | --- |
@@ -69,6 +93,7 @@ Spawn all finders concurrently (issue every `Agent` call in a single message). A
 | `architecture` | adversarial-reviewer | always |
 | `runtime-gap` | adversarial-reviewer | when a controller / DI / `openapi/**` / `database/**` is touched |
 | comment quality | **comment-reviewer** | when the diff adds / changes any code comment (almost always) |
+| type design | **type-design-reviewer** | when the diff touches domain types (`internal/domain/**/*.go`) |
 
 Each `adversarial-reviewer` prompt MUST include: the lens name + its definition, the base ref + changed-file list + the diff, and pointers to `CLAUDE.md` / the relevant `README.md` / OpenAPI spec / migrations.
 
@@ -76,7 +101,7 @@ The `comment-reviewer` prompt MUST include: the base ref + changed-file list + t
 
 ## Step 3 — Adversarial Verify
 
-Collect all findings and **dedup** by (file, line, claim). For each surviving finding, spawn one `review-verifier` subagent (concurrently), handing it the single finding + the base ref. Use `agentType: "review-verifier"`, `label` like `verify:<file>`.
+Collect all findings and **dedup** by (file, line, claim). For each surviving finding, spawn one `review-verifier` subagent (concurrently), handing it the single finding + the base ref. Use `agentType: "review-verifier"`, `label` like `verify:<file>`, and the Step 0 user-selected reviewer `model` (same reviewer ≠ implementer rule).
 
 - Keep **CONFIRMED** and **PLAUSIBLE** findings. Drop **REFUTED** (but keep a count for the report).
 - For a critical/high finding where a single verdict feels shaky, spawn 2–3 verifiers and go by majority — diversity beats one opinion on the findings that matter.
@@ -201,7 +226,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 
 ## Do / Do NOT
 
-- ✅ Guarantee reviewer model ≠ implementer model (override defaults if this session is sonnet).
+- ✅ Guarantee reviewer model ≠ implementer model (user selects it in Step 0; warn + confirm if they pick the implementer's model).
 - ✅ Run finders concurrently (one message, multiple `Agent` calls): the four code lenses via `adversarial-reviewer`, comment quality via `comment-reviewer`.
 - ✅ Independently verify every finding before reporting; drop REFUTED.
 - ✅ Run the runtime stage for touched endpoints; widen to all consumers on a shared-schema edit.
@@ -218,7 +243,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 ## Checklist
 
 - [ ] Scope confirmed via `AskUserQuestion`; base ref resolved.
-- [ ] Reviewer model verified ≠ implementer model.
+- [ ] Reviewer model selected in Step 0 and verified ≠ implementer model (warn + confirm if same).
 - [ ] Finders fanned out concurrently: 4 code lenses (`adversarial-reviewer`) + comment quality (`comment-reviewer`).
 - [ ] Every finding independently verified; REFUTED dropped (count kept).
 - [ ] Runtime curl + o11y done for touched endpoints (shared-schema → all consumers); destructive curls confirmed.

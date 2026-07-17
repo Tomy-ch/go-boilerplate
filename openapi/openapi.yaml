@@ -5,7 +5,7 @@ info:
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
-  version: 2.0.0
+  version: 2.1.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
     It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
@@ -70,8 +70,8 @@ paths:
   # サンプルAPI用のパス
   /v1/users:
     $ref: './paths/v1/users.yaml'
-  /v1/users/{user_id}:
-    $ref: './paths/v1/users/user_id.yaml'
+  /v1/users/{userId}:
+    $ref: './paths/v1/users/userId.yaml'
   /v1/users/me/password:
     $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
@@ -91,6 +91,8 @@ components:
       $ref: './components/parameters/pagination/CursorAfterParam.yaml'
     CursorFirstParam:
       $ref: './components/parameters/pagination/CursorFirstParam.yaml'
+    IdempotencyKeyParam:
+      $ref: './components/parameters/idempotency/IdempotencyKeyParam.yaml'
     # sample-api:begin
     # サンプルAPI用のパラメーター定義
     KeywordParam:

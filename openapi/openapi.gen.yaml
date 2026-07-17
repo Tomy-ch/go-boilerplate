@@ -5,7 +5,7 @@ info:
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
-  version: 2.0.0
+  version: 2.1.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
     It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
@@ -139,7 +139,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ErrorResponseWithDetails'
   /v1/users:
     get:
       operationId: GetUsers
@@ -176,6 +176,8 @@ paths:
       description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyParam'
       requestBody:
         required: true
         content:
@@ -203,7 +205,7 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/users/{user_id}:
+  /v1/users/{userId}:
     get:
       operationId: GetUsersDetail
       tags:
@@ -488,7 +490,7 @@ components:
         default: 1
         example: 1
     PerPageParam:
-      name: per_page
+      name: perPage
       in: query
       description: 1ページあたりの取得件数
       required: false
@@ -516,6 +518,19 @@ components:
         maximum: 200
         default: 50
         example: 50
+    IdempotencyKeyParam:
+      name: Idempotency-Key
+      in: header
+      description: |
+        冪等キー。非冪等な変更操作（作成系など）で、同一キーによるリトライを重複実行なく
+        安全にするための識別子。サーバは同一 (認証主体, キー) の再送を初回結果のリプレイとして扱う。
+        このヘッダを宣言する操作は、ハンドラが必ず idempotency.Run 経由で処理する契約（完全性テストで機械検証）。
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
     KeywordParam:
       name: keyword
       in: query
@@ -533,7 +548,7 @@ components:
         type: boolean
         example: true
     UserIdParam:
-      name: user_id
+      name: userId
       in: path
       required: true
       description: ユーザーのUUID
@@ -554,7 +569,8 @@ components:
   schemas:
     ErrorResponse:
       type: object
-      description: エラーレスポンスの共通スキーマ
+      description: |
+        エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
       required:
         - code
         - message
@@ -572,14 +588,6 @@ components:
           type: string
           description: リクエストID
           example: abcdefghijklmnopqrstuvwxyz
-        details:
-          type: array
-          description: エラーの詳細情報(任意)
-          items:
-            type: string
-          example:
-            - エラーの詳細の文章1
-            - エラーの詳細の文章2
     ResponseHealth:
       $ref: '#/components/schemas/HealthResponse'
     ResponseReady:
@@ -830,6 +838,35 @@ components:
           type: string
           description: サービス名
           example: go-boilerplate
+    ErrorResponseWithDetails:
+      type: object
+      description: |
+        詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+      required:
+        - code
+        - message
+        - requestId
+      properties:
+        code:
+          type: string
+          description: 機械的に処理可能なエラーコード
+          example: EXAMPLE_ERROR
+        message:
+          type: string
+          description: 人間が読めるエラーメッセージ
+          example: 定義されたエラーメッセージ
+        requestId:
+          type: string
+          description: リクエストID
+          example: abcdefghijklmnopqrstuvwxyz
+        details:
+          type: array
+          description: エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
+          items:
+            type: string
+          example:
+            - firstName
+            - email
     PaginationMetadataResponse:
       type: object
       required:
@@ -1001,11 +1038,11 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     UnprocessableEntity422:
-      description: 入力値が要件を満たしていません。
+      description: 入力値が要件を満たしていません。details に不正なフィールド名が入ります。
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResponseWithDetails'
     NotFound404:
       description: 指定されたリソースが存在しません。
       content:

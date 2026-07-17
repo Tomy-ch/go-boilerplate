@@ -7,14 +7,17 @@ import (
 	"go-boilerplate/internal/apperror"
 	detail "go-boilerplate/internal/controller/handler/v1/users/detail"
 	detailgen "go-boilerplate/internal/controller/handler/v1/users/detail/gen"
+	domainuser "go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -26,7 +29,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("GET /v1/users/{user_id}がUserResponseを返す", func(t *testing.T) {
+		t.Run("GET /v1/users/{userId}がUserResponseを返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -47,7 +50,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			AssertJSONResponseType[detailgen.UserResponse](t, actual)
 		})
 
-		t.Run("PUT /v1/users/{user_id}が更新後のUserResponseを返す", func(t *testing.T) {
+		t.Run("PUT /v1/users/{userId}が更新後のUserResponseを返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -73,7 +76,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			AssertJSONResponseType[detailgen.UserResponse](t, actual)
 		})
 
-		t.Run("PATCH /v1/users/{user_id}が部分更新後のUserResponseを返す", func(t *testing.T) {
+		t.Run("PATCH /v1/users/{userId}が部分更新後のUserResponseを返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -121,7 +124,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
 		})
 
-		t.Run("DELETE /v1/users/{user_id}が削除を行い204を返す", func(t *testing.T) {
+		t.Run("DELETE /v1/users/{userId}が削除を行い204を返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			ctrl := gomock.NewController(t)
@@ -142,7 +145,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("GET /v1/users/{user_id}がErrNotFoundで404を返す", func(t *testing.T) {
+		t.Run("GET /v1/users/{userId}がErrNotFoundで404を返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			UseAppErrorHandler(t, e)
@@ -160,7 +163,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusNotFound)
 		})
 
-		t.Run("GET /v1/users/{user_id}がErrInternalで500を返す", func(t *testing.T) {
+		t.Run("GET /v1/users/{userId}がErrInternalで500を返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			UseAppErrorHandler(t, e)
@@ -176,6 +179,93 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
+		})
+
+		t.Run("PUT /v1/users/{userId}が複数フィールド不正で422とdetailsを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			validationErr := apperror.WithDetails(xerrors.Join(
+				xerrors.Wrap(domainuser.ErrInvalidFirstName, "length must be between 1 and 100 characters (got 0)"),
+				xerrors.Wrap(domainuser.ErrInvalidEmail, "length must be between 1 and 100 characters (got 101)"),
+			), domainuser.FieldFirstName, domainuser.FieldEmail)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
+				Return(user.UserView{}, validationErr)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-put-422"))
+
+			body := &detailgen.PutUsersDetailJSONRequestBody{
+				FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
+				Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
+				City: "Shibuya", Street: "1-1-1",
+			}
+
+			actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, headers)
+			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)
+			require.NotNil(t, errResp.Details)
+			assert.Equal(t, []string{domainuser.FieldFirstName, domainuser.FieldEmail}, *errResp.Details)
+			// 理由文はログ専用であり、レスポンスの details には露出しない
+			assert.NotContains(t, *errResp.Details, "length must be between 1 and 100 characters (got 0)")
+		})
+
+		t.Run("PATCH /v1/users/{userId}が単一フィールド不正で422とdetailsを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			validationErr := apperror.WithDetails(
+				xerrors.Wrap(domainuser.ErrInvalidFirstName, "length must be between 1 and 100 characters (got 0)"),
+				domainuser.FieldFirstName,
+			)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
+				Return(user.UserView{}, validationErr)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-patch-422"))
+
+			body := &detailgen.PatchUsersDetailJSONRequestBody{
+				FirstName: new(""),
+			}
+
+			actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, headers)
+			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)
+			require.NotNil(t, errResp.Details)
+			assert.Equal(t, []string{domainuser.FieldFirstName}, *errResp.Details)
+		})
+
+		t.Run("details未対応のGETはMeta付きエラーでもdetailsを返さない(fail-closed)", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			// GET /v1/users/{userId} は OpenAPI で ErrorResponseWithDetails を宣言していない(opt-in 外)。
+			// Meta に details が付いていても errorhandler が fail-closed で落とす。
+			metaErr := apperror.WithDetails(
+				xerrors.Wrap(domainuser.ErrInvalidFirstName, "length must be between 1 and 100 characters (got 0)"),
+				domainuser.FieldFirstName,
+			)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(user.UserView{}, metaErr)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-get-nodetails"))
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
+			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)
+			assert.Nil(t, errResp.Details)
 		})
 	})
 }

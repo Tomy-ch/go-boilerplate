@@ -24,4 +24,4 @@ type Store interface {
 
 ## Implementation
 
-`internal/infrastructure/rdb/system_query/idempotency/` provides the concrete RDB implementation backed by sqlc-generated queries.
+`internal/infrastructure/rdb/system_cqrs/idempotency/` provides the concrete RDB implementation backed by sqlc-generated queries.

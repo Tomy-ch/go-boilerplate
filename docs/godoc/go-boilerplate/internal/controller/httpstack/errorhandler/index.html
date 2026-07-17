@@ -104,11 +104,19 @@
 			
 			
 				
-				<dd><a href="#New">func New(e *echo.Echo, log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig)</a></dd>
+				<dd><a href="#New">func New(e *echo.Echo, policy DetailPolicy, log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig)</a></dd>
 			
 				
-				<dd><a href="#NewHTTPErrorHandler">func NewHTTPErrorHandler(logger logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) echo.HTTPErrorHandler</a></dd>
+				<dd><a href="#NewHTTPErrorHandler">func NewHTTPErrorHandler(policy DetailPolicy, logger logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) echo.HTTPErrorHandler</a></dd>
 			
+			
+				
+				<dd><a href="#DetailPolicy">type DetailPolicy</a></dd>
+				
+					
+					<dd>    <a href="#NewOpenAPIDetailPolicy">func NewOpenAPIDetailPolicy(spec *openapi3.T) (DetailPolicy, error)</a></dd>
+				
+				
 			
 			
 			</dl>
@@ -120,6 +128,8 @@
 			<h3>Package files</h3>
 			<p>
 			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/detail_exposure.go.html">detail_exposure.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/echo_http_error_handler.go.html">echo_http_error_handler.go</a>
 			
@@ -140,12 +150,12 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/http_error_handler.go.html?s=711:817#L15">New</a>
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/http_error_handler.go.html?s=711:838#L15">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
 			</h2>
-			<pre>func New(e *echo.<a href="#Echo">Echo</a>, log <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>, obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>)</pre>
+			<pre>func New(e *echo.<a href="#Echo">Echo</a>, policy <a href="#DetailPolicy">DetailPolicy</a>, log <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>, obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>)</pre>
 			<p>New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。
 
 			
@@ -154,18 +164,66 @@
 		
 			
 			
-			</p><h2 id="NewHTTPErrorHandler">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/http_error_handler.go.html?s=964:1097#L20">NewHTTPErrorHandler</a>
+			</p><h2 id="NewHTTPErrorHandler">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/http_error_handler.go.html?s=1144:1305#L21">NewHTTPErrorHandler</a>
 				<a class="permalink" href="#NewHTTPErrorHandler">¶</a>
 				
 				
 			</h2>
-			<pre>func NewHTTPErrorHandler(logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>, obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>) echo.<a href="#HTTPErrorHandler">HTTPErrorHandler</a></pre>
+			<pre>func NewHTTPErrorHandler(
+    policy <a href="#DetailPolicy">DetailPolicy</a>,
+    logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>,
+    lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>,
+    obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>,
+) echo.<a href="#HTTPErrorHandler">HTTPErrorHandler</a></pre>
 			<p>NewHTTPErrorHandler は、echo.HTTPErrorHandler を生成して返します。
+policy は、レスポンスに details を含めてよいエンドポイントかを判定します(未 opt-in なら fail-closed で落とす)。
 
 			
 			
 
 		
+		
+			
+			
+			</p><h2 id="DetailPolicy">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/detail_exposure.go.html?s=596:895#L7">DetailPolicy</a>
+				<a class="permalink" href="#DetailPolicy">¶</a>
+				
+				
+			</h2>
+			<p>DetailPolicy は、エラーレスポンスに details を含めてよいリクエストかを判定します。
+
+			</p><pre>type DetailPolicy interface {
+    <span class="comment">// Allows は、req が解決する operation が OpenAPI で details 公開を opt-in しているかを返します。</span>
+    <span class="comment">// ルート不一致・operation 未解決・OperationID 空・未 opt-in はいずれも false(fail-closed)。</span>
+    Allows(req *<a href="../../../../../net/http/">http</a>.<a href="../../../../../net/http/#Request">Request</a>) <a href="../../../../../builtin/#bool">bool</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewOpenAPIDetailPolicy">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/detail_exposure.go.html?s=1668:1735#L24">NewOpenAPIDetailPolicy</a>
+					<a class="permalink" href="#NewOpenAPIDetailPolicy">¶</a>
+					
+					
+				</h3>
+				<pre>func NewOpenAPIDetailPolicy(spec *<a href="../../../../../github.com/getkin/kin-openapi/openapi3/">openapi3</a>.<a href="../../../../../github.com/getkin/kin-openapi/openapi3/#T">T</a>) (<a href="#DetailPolicy">DetailPolicy</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>NewOpenAPIDetailPolicy は、spec からエンドポイント opt-in ポリシーを構築します。
+details を返せるのは、error レスポンス(4xx/5xx)の JSON スキーマに details プロパティを持つ operation のみです。
+判定は Host に依存しないため、router は servers を除去した複製から構築します
+(servers を残すと gorillamux が Host マッチを行い、proxy 等の Host 不一致で全て fail-closed に倒れる)。
+
+				
+				
+			
+
+			
 		
 	
 

@@ -8,15 +8,13 @@ import (
 	"go-boilerplate/internal/controller/httpstack/requestid"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 )
 
 type requestLog struct {
-	c        echo.Context
-	lf       logging.LogFieldBuilder
-	traceCtx *observability.TraceContext
+	c  echo.Context
+	lf logging.LogFieldBuilder
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
@@ -34,15 +32,15 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 			}
 
 			start := time.Now()
+			ctx := c.Request().Context()
 
 			l := requestLog{
-				c:        c,
-				lf:       lf,
-				traceCtx: observability.ExtractTraceContext(c.Request().Context()),
+				c:  c,
+				lf: lf,
 			}
 
 			reqFields := l.buildRequestLogFields(start)
-			logger.Named("http.request").Info("request received", reqFields...)
+			logger.Named("http.request").Info(ctx, "request received", reqFields...)
 
 			c.Response().After(func() {
 				latency := time.Since(start)
@@ -50,9 +48,9 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 				fields := l.buildResponseLogFields(latency)
 				resLogger := logger.Named("http.response")
 				if c.Response().Status >= MinStatusError {
-					resLogger.Error("request handled", fields...)
+					resLogger.Error(ctx, "request handled", fields...)
 				} else {
-					resLogger.Info("request handled", fields...)
+					resLogger.Info(ctx, "request handled", fields...)
 				}
 			})
 
@@ -77,8 +75,6 @@ func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field {
 		UserAgent:     req.UserAgent(),
 		ContentType:   req.Header.Get(echo.HeaderContentType),
 		ContentLength: req.ContentLength,
-		TraceID:       l.traceCtx.TraceID(),
-		SpanID:        l.traceCtx.SpanID(),
 		PathParams:    server.ExtractPathParams(l.c),
 		QueryParams:   server.ExtractQueryParams(l.c),
 	}
@@ -98,8 +94,6 @@ func (l requestLog) buildResponseLogFields(latency time.Duration) []*logging.Fie
 		Status:    res.Status,
 		Latency:   latency,
 		RequestID: requestid.GetRequestIDFromResponse(l.c),
-		TraceID:   l.traceCtx.TraceID(),
-		SpanID:    l.traceCtx.SpanID(),
 	}
 	return l.lf.BuildHTTPResponseFields(resIn)
 }

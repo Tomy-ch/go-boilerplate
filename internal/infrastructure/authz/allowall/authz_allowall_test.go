@@ -25,7 +25,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestAuthorizer_Authorize(t *testing.T) {
+func Test_authorizer_Authorize(t *testing.T) {
 	t.Parallel()
 
 	newAuthn := func(t *testing.T) *authbd.Authn {

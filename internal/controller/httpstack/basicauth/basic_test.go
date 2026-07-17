@@ -1,6 +1,7 @@
 package basicauth
 
 import (
+	"strings"
 	"testing"
 
 	"go-boilerplate/internal/config"
@@ -47,6 +48,24 @@ func TestNewBasicAuthValidator(t *testing.T) {
 		t.Run("パスワードのみ一致しユーザー名が不一致の場合、falseを返す", func(t *testing.T) {
 			t.Parallel()
 			ok, err := validator("wrong-user", mtc.Password(), nil)
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
+
+		t.Run("空のユーザー名とパスワードの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			ok, err := validator("", "", nil)
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
+
+		t.Run("正しい資格情報と長さが大きく異なる資格情報でも一致せずfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			// 長さが極端に異なる資格情報でも、値が異なる以上は一致しない。
+			longUser := strings.Repeat("a", 1024)
+			longPass := strings.Repeat("b", 4096)
+
+			ok, err := validator(longUser, longPass, nil)
 			require.NoError(t, err)
 			assert.False(t, ok)
 		})

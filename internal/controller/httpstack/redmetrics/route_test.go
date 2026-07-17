@@ -20,7 +20,7 @@ func newContext(t *testing.T, path string) echo.Context {
 	return c
 }
 
-func TestRouteOf(t *testing.T) {
+func Test_routeOf(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

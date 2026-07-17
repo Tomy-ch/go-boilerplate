@@ -33,6 +33,7 @@ func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {
 					config.NewOperatingSystemConfig,
 				),
 				fx.Provide(func() logging.LogCore { return nil }),
+				fx.Provide(func() logging.TraceExtractor { return nil }),
 				fx.Populate(&lg, &lf),
 				fx.NopLogger,
 			)
@@ -42,7 +43,7 @@ func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {
 			assert.NotNil(t, lg)
 			assert.NotNil(t, lf)
 			// basic smoke: calling logger methods should not panic
-			assert.NotPanics(t, func() { lg.Info("test") })
+			assert.NotPanics(t, func() { lg.Info(context.Background(), "test") })
 		})
 	})
 }
@@ -63,23 +64,42 @@ func Test_provideLogger(t *testing.T) {
 
 		t.Run("本番モードかつinfoでLoggerを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "info"), nil)
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "info"), nil, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, lg)
 		})
 
 		t.Run("開発モードかつdebugでLoggerを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"), nil)
+			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"), nil, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, lg)
 		})
 
 		t.Run("本番モードでもdebug指定でLoggerを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "debug"), nil)
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "debug"), nil, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, lg)
+		})
+
+		t.Run("TraceExtractorが返却Loggerへ注入され出力時に呼ばれる", func(t *testing.T) {
+			t.Parallel()
+
+			invoked := false
+			extract := logging.TraceExtractor(func(context.Context) (string, string, bool) {
+				invoked = true
+				return "", "", false
+			})
+
+			// 出力される（レベル有効な）ログでのみ extract は呼ばれる。出力レベルを debug に
+			// して Debug を1回出力し、extract が返却 Logger へ配線されていることを検証する。
+			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"), nil, extract)
+			require.NoError(t, err)
+			require.NotNil(t, lg)
+
+			lg.Debug(context.Background(), "probe")
+			assert.True(t, invoked)
 		})
 	})
 
@@ -88,14 +108,14 @@ func Test_provideLogger(t *testing.T) {
 
 		t.Run("不正なログレベルはエラーを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "invalid"), nil)
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "invalid"), nil, nil)
 			require.Error(t, err)
 			assert.Nil(t, lg)
 		})
 
 		t.Run("未知のモードはエラーを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, "unknown", "info"), nil)
+			lg, err := provideLogger(newAppCfg(t, "unknown", "info"), nil, nil)
 			require.Error(t, err)
 			assert.Nil(t, lg)
 		})

@@ -38,8 +38,9 @@
 
 - `mise.toml`（`[tools]` 配下の `go` エントリ）
 - `go.mod`, `go.sum`, `vendor/`（`make tidy-lib` が再生成）
-- `docker/**/Dockerfile`（`make sync-versions` が自動書き換え）
+- `docker/**/Dockerfile`（`make sync-versions` が自動書き換え。`FROM` の `@sha256:...` digest は `make pin-images-apply` が書き換え）
 - `docker/**/README.md` / `README.ja.md`（`make sync-versions` が自動書き換え）
+- `docker/images-pin.toml`（base image digest lockfile。`make pin-images-resolve` が書き換え）
 
 ただし以下は引き続き保護対象（スキル実行中でも変更不可）:
 
@@ -151,6 +152,18 @@ make install-tools
 
 ステップ 3 で Dockerfile の `FROM` タグおよび `docker/**/README.md` の image 参照は書き換え済み。手動編集は不要。
 
+### 8.5. base image digest pin の再固定
+
+ステップ 3 は `FROM golang:` の**タグ**を変えたが、以前 pin した `@sha256:...` digest は**旧** Go イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先するため、ビルドは旧イメージを黙って pull する）。digest が新タグに追従するよう registry から再 pin する。これは `pin-images` スキルの役目（姉妹関係によりここで chain）:
+
+```sh
+make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`
+make pin-images-apply
+make pin-images-check
+```
+
+新しい Go イメージは公開直後のため通常 `PIN_IMAGES_MIN_AGE_DAYS`（既定 14 日）の cooldown 内にあり **quarantine** される: `pin-images-apply` は stale な digest を剥がして `FROM` を tag のみに戻し、`pin-images-check` はそれを許容する。ユーザーに報告し、新イメージが窓を越えて古くなったら `/pin-images` を再実行して digest pin を復活させるべき旨を伝える。詳細は `pin-images` スキル参照。
+
 ### 9. Docker コンテナの再ビルド
 
 Go バージョンアップでは base image タグが変わるため、新しいイメージを確実に pull・再ビルドできるよう `-clean`（`--no-cache --pull`）バリアントを使う:
@@ -184,6 +197,7 @@ make lint
 
 ```sh
 make sync-versions
+make pin-images-check
 make tidy-lib
 make install-tools
 make gen
@@ -203,6 +217,7 @@ make tool-runners-build-clean
 - [ ] リリースノート確認
 - [ ] `mise.toml` の `[tools] go` を `<TARGET_VERSION>` に更新
 - [ ] `make sync-versions` 実行（go.mod / Dockerfile / docker/**/README.md へ伝播）
+- [ ] base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）; cooldown 未了で quarantine された新 Go イメージは後日 `/pin-images` 再実行用に報告
 - [ ] ローカル Go の更新（`make go-update`、ユーザー作業）
 - [ ] `make tidy-lib` 実行
 - [ ] （任意）Go モジュール依存の更新を `AskUserQuestion` でユーザーに確認。実施する場合は `go get -u[=patch] ./...` + `make tidy-lib` を実行し、`go` directive は `<TARGET_VERSION>` のまま維持

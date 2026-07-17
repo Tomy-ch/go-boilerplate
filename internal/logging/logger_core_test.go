@@ -2,6 +2,7 @@ package logging
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -33,7 +34,7 @@ func Test_mustOpenSink(t *testing.T) {
 	})
 }
 
-func TestBuildLogger(t *testing.T) {
+func Test_buildLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -44,9 +45,9 @@ func TestBuildLogger(t *testing.T) {
 
 			var buf bytes.Buffer
 			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
-			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true, nil)
 
-			l.Info("hello")
+			l.Info(context.Background(), "hello")
 			assert.Contains(t, buf.String(), "hello")
 		})
 
@@ -55,9 +56,9 @@ func TestBuildLogger(t *testing.T) {
 
 			var buf bytes.Buffer
 			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
-			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true, nil)
 
-			l.Debug("should not appear")
+			l.Debug(context.Background(), "should not appear")
 			assert.Empty(t, buf.String())
 		})
 
@@ -66,8 +67,8 @@ func TestBuildLogger(t *testing.T) {
 
 			var buf bytes.Buffer
 			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
-			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
-			l.Error("simulated server error")
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true, nil)
+			l.Error(context.Background(), "simulated server error")
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), "\n"), &got))
@@ -84,8 +85,8 @@ func TestBuildLogger(t *testing.T) {
 
 			var buf bytes.Buffer
 			enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
-			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.DebugLevel, zapcore.ErrorLevel, false)
-			l.Error("simulated server error")
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.DebugLevel, zapcore.ErrorLevel, false, nil)
+			l.Error(context.Background(), "simulated server error")
 
 			out := buf.String()
 			require.Contains(t, out, "\n", "console output must keep newlines")
@@ -103,7 +104,7 @@ func TestNewJSONLogger(t *testing.T) {
 
 		t.Run("JSON用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger := NewJSONLogger(LevelInfo(), LevelError())
+			logger := NewJSONLogger(LevelInfo(), LevelError(), nil)
 			require.NotNil(t, logger)
 		})
 	})
@@ -117,7 +118,7 @@ func TestNewConsoleLogger(t *testing.T) {
 
 		t.Run("console用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger := NewConsoleLogger(LevelDebug(), LevelWarn())
+			logger := NewConsoleLogger(LevelDebug(), LevelWarn(), nil)
 			require.NotNil(t, logger)
 		})
 	})

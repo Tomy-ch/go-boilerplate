@@ -1,6 +1,7 @@
 ---
 name: drift-detector-domain
-description: Read-only domain-layer drift detector. Surfaces three drift categories between `internal/domain/README.md` (canonical), domain implementation, and the domain-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and the candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — it never asks the user and never writes README / SKILL / code. Per-item approval and the README / SKILL writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
+description: >-
+  Read-only domain-layer drift detector. Surfaces three drift categories between `internal/domain/README.md` (canonical), domain implementation, and the domain-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and the candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — it never asks the user and never writes README / SKILL / code. Per-item approval and the README / SKILL writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

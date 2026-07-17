@@ -62,7 +62,7 @@ func TestRegisterJobHooks(t *testing.T) {
 	})
 }
 
-func TestRunJobAndShutdown(t *testing.T) {
+func Test_runJobAndShutdown(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestRunJobAndShutdown(t *testing.T) {
 			state := mock_job.NewMockState(ctrl)
 			state.EXPECT().Snapshot().Return("", []string{}, nil).Times(1)
 			logger.EXPECT().Named("job.Hooks").Return(named).Times(1)
-			named.EXPECT().Info("No job to run", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			named.EXPECT().Info(gomock.Any(), "No job to run", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 			sd.EXPECT().Shutdown().Return(nil).Times(1)
 			runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
@@ -112,7 +112,7 @@ func TestRunJobAndShutdown(t *testing.T) {
 	})
 }
 
-func TestShutdown(t *testing.T) {
+func Test_shutdown(t *testing.T) {
 	t.Parallel()
 
 	t.Run("異常系", func(t *testing.T) {
@@ -128,9 +128,9 @@ func TestShutdown(t *testing.T) {
 
 			sd.EXPECT().Shutdown().Return(assert.AnError).Times(1)
 			logger.EXPECT().Named("job.Hooks").Return(named).Times(1)
-			named.EXPECT().Error(gomock.Any(), gomock.Any()).Times(1)
+			named.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
-			shutdown(sd, logger)
+			shutdown(context.Background(), sd, logger)
 		})
 	})
 }

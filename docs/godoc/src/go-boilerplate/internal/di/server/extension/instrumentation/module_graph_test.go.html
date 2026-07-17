@@ -68,7 +68,7 @@
 <span id="L11" class="ln">    11  </span>	&#34;go.uber.org/fx&#34;
 <span id="L12" class="ln">    12  </span>)
 <span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span>func TestLoggingModule_ProvidesUseMiddleware(t *testing.T) {
+<span id="L14" class="ln">    14  </span>func TestLoggingModule(t *testing.T) {
 <span id="L15" class="ln">    15  </span>	t.Parallel()
 <span id="L16" class="ln">    16  </span>	testkit.RequireProvidesOne[extension.UseMiddleware](t, &#34;middlewares.use&#34;,
 <span id="L17" class="ln">    17  </span>		LoggingModule(),
@@ -77,7 +77,7 @@
 <span id="L20" class="ln">    20  </span>	)
 <span id="L21" class="ln">    21  </span>}
 <span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span>func TestObservabilityModule_ProvidesUseMiddleware(t *testing.T) {
+<span id="L23" class="ln">    23  </span>func TestObservabilityModule(t *testing.T) {
 <span id="L24" class="ln">    24  </span>	t.Parallel()
 <span id="L25" class="ln">    25  </span>	cfg := config.MockConfigForTest(t)
 <span id="L26" class="ln">    26  </span>	testkit.RequireProvidesOne[extension.UseMiddleware](t, &#34;middlewares.use&#34;,
@@ -87,7 +87,7 @@
 <span id="L30" class="ln">    30  </span>	)
 <span id="L31" class="ln">    31  </span>}
 <span id="L32" class="ln">    32  </span>
-<span id="L33" class="ln">    33  </span>func TestRequestIDModule_ProvidesUseMiddleware(t *testing.T) {
+<span id="L33" class="ln">    33  </span>func TestRequestIDModule(t *testing.T) {
 <span id="L34" class="ln">    34  </span>	t.Parallel()
 <span id="L35" class="ln">    35  </span>	testkit.RequireProvidesOne[extension.UseMiddleware](t, &#34;middlewares.use&#34;, RequestIDModule())
 <span id="L36" class="ln">    36  </span>}

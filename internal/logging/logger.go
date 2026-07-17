@@ -4,23 +4,35 @@
 package logging
 
 import (
+	"context"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
+// traceFieldCount は、injectTrace が先頭へ注入する trace_id / span_id の 2 フィールド分。
+// 注入後スライスの容量見積もりに使う。
+const traceFieldCount = 2
+
 // LogCore は、Logger に追加で Tee できるログ core の型です。
 type LogCore = zapcore.Core
 
+// TraceExtractor は、ctx から trace_id / span_id を抽出する関数です。ok=false のとき
+// trace 情報を注入しません（logging を trace 実装から独立させ、循環参照を避けるための抽象）。
+type TraceExtractor func(ctx context.Context) (traceID, spanID string, ok bool)
+
 // Logger は、アプリ全体が使うロガーのインターフェースです。
+// 各出力メソッドは ctx を受け取り、TraceExtractor が設定されていれば ctx 上の span から
+// trace_id / span_id を注入します（未設定・span 無効時は注入しません）。
 type Logger interface {
 	// Debug はデバッグレベルのログを出力する。
-	Debug(msg string, fields ...*Field)
+	Debug(ctx context.Context, msg string, fields ...*Field)
 	// Info は情報レベルのログを出力する。
-	Info(msg string, fields ...*Field)
+	Info(ctx context.Context, msg string, fields ...*Field)
 	// Warn は警告レベルのログを出力する。
-	Warn(msg string, fields ...*Field)
+	Warn(ctx context.Context, msg string, fields ...*Field)
 	// Error はエラーレベルのログを出力する。
-	Error(msg string, fields ...*Field)
+	Error(ctx context.Context, msg string, fields ...*Field)
 	// Named は、新しい名前付きの Logger を返す。
 	Named(name string) Logger
 	// CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
@@ -28,7 +40,8 @@ type Logger interface {
 }
 
 type logger struct {
-	log *zap.Logger
+	log     *zap.Logger
+	extract TraceExtractor
 }
 
 // levelGatedCore は、埋め込み core を最小レベル min で絞り込む zapcore.Core ラッパーです。
@@ -56,6 +69,7 @@ func WithCore(l Logger, core LogCore) Logger {
 		log: base.log.WithOptions(zap.WrapCore(func(c zapcore.Core) zapcore.Core {
 			return zapcore.NewTee(c, gated)
 		})),
+		extract: base.extract,
 	}
 }
 
@@ -80,35 +94,61 @@ func (c levelGatedCore) With(fields []zapcore.Field) zapcore.Core {
 // Named は、新しい名前付きの Logger を返す。
 func (l *logger) Named(name string) Logger {
 	return &logger{
-		log: l.log.Named(name),
+		log:     l.log.Named(name),
+		extract: l.extract,
 	}
 }
 
 // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
 func (l *logger) CallerSkip(skip int) Logger {
 	return &logger{
-		log: l.log.WithOptions(zap.AddCallerSkip(skip)),
+		log:     l.log.WithOptions(zap.AddCallerSkip(skip)),
+		extract: l.extract,
 	}
 }
 
 // Debug はデバッグレベルのログを出力する。
-func (l *logger) Debug(msg string, fields ...*Field) {
-	l.log.Debug(msg, l.convertFields(fields)...)
+func (l *logger) Debug(ctx context.Context, msg string, fields ...*Field) {
+	if ce := l.log.Check(zapcore.DebugLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
 }
 
 // Info は情報レベルのログを出力する。
-func (l *logger) Info(msg string, fields ...*Field) {
-	l.log.Info(msg, l.convertFields(fields)...)
+func (l *logger) Info(ctx context.Context, msg string, fields ...*Field) {
+	if ce := l.log.Check(zapcore.InfoLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
 }
 
 // Warn は警告レベルのログを出力する。
-func (l *logger) Warn(msg string, fields ...*Field) {
-	l.log.Warn(msg, l.convertFields(fields)...)
+func (l *logger) Warn(ctx context.Context, msg string, fields ...*Field) {
+	if ce := l.log.Check(zapcore.WarnLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
 }
 
 // Error はエラーレベルのログを出力する。
-func (l *logger) Error(msg string, fields ...*Field) {
-	l.log.Error(msg, l.convertFields(fields)...)
+func (l *logger) Error(ctx context.Context, msg string, fields ...*Field) {
+	if ce := l.log.Check(zapcore.ErrorLevel, msg); ce != nil {
+		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
+	}
+}
+
+// injectTrace は、TraceExtractor が trace を返す場合に trace_id / span_id を
+// フィールド先頭へ注入する。extractor 未注入（nil）や span 無効時は fields をそのまま返す。
+func (l *logger) injectTrace(ctx context.Context, fields []*Field) []*Field {
+	if l.extract == nil {
+		return fields
+	}
+	traceID, spanID, ok := l.extract(ctx)
+	if !ok {
+		return fields
+	}
+
+	out := make([]*Field, 0, len(fields)+traceFieldCount)
+	out = append(out, String(TraceIDKey, traceID), String(SpanIDKey, spanID))
+	return append(out, fields...)
 }
 
 // convertFields は Field のスライスを zap.Field のスライスに変換する。

@@ -540,7 +540,7 @@ func TestGetterMethods(t *testing.T) {
 	})
 }
 
-func Test_ApplicationConfig_IsProductionMode(t *testing.T) {
+func TestApplicationConfig_IsProductionMode(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -560,7 +560,7 @@ func Test_ApplicationConfig_IsProductionMode(t *testing.T) {
 	})
 }
 
-func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
+func TestApplicationConfig_IsDevelopmentMode(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()

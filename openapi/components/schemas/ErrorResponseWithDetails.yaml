@@ -1,0 +1,30 @@
+type: object
+description: >
+  詳細識別子付きエラーレスポンススキーマ。
+  この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。
+  未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+required:
+  - code
+  - message
+  - requestId
+properties:
+  code:
+    type: string
+    description: 機械的に処理可能なエラーコード
+    example: "EXAMPLE_ERROR"
+  message:
+    type: string
+    description: 人間が読めるエラーメッセージ
+    example: "定義されたエラーメッセージ"
+  requestId:
+    type: string
+    description: リクエストID
+    example: "abcdefghijklmnopqrstuvwxyz"
+  details:
+    type: array
+    description: エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
+    items:
+      type: string
+    example:
+      - "firstName"
+      - "email"

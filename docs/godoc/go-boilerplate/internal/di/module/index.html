@@ -304,7 +304,7 @@ outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で�
 		
 			
 			
-			</p><h2 id="OutboxRelayModule">func <a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html?s=730:764#L7">OutboxRelayModule</a>
+			</p><h2 id="OutboxRelayModule">func <a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html?s=1150:1184#L16">OutboxRelayModule</a>
 				<a class="permalink" href="#OutboxRelayModule">¶</a>
 				
 				
@@ -321,7 +321,7 @@ relay 以外のプロセスへ漏れないよう共有 InfrastructureModule で�
 		
 			
 			
-			</p><h2 id="SystemModule">func <a href="../../../../src/go-boilerplate/internal/di/module/system.go.html?s=245:274#L2">SystemModule</a>
+			</p><h2 id="SystemModule">func <a href="../../../../src/go-boilerplate/internal/di/module/system.go.html?s=257:286#L4">SystemModule</a>
 				<a class="permalink" href="#SystemModule">¶</a>
 				
 				
@@ -365,18 +365,19 @@ relay 以外のプロセスへ漏れないよう共有 InfrastructureModule で�
 		
 			
 			
-			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=273:388#L1">HTTPClientProfilesIn</a>
+			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=366:553#L4">HTTPClientProfilesIn</a>
 				<a class="permalink" href="#HTTPClientProfilesIn">¶</a>
 				
 				
 			</h2>
-			<p>HTTPClientProfilesIn は、httpclient_profiles グループに集まった各 Downstream の Profile を
-集約する入力です（グループの consumer 側）。
+			<p>HTTPClientProfilesIn は、httpclient_profiles グループに集まった各 Downstream の Profile と、
+required_downstreams グループに集まった「登録が必須な Downstream」を集約する入力です。
 
 			</p><pre>type HTTPClientProfilesIn struct {
     <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#In">In</a>
 
 <span id="HTTPClientProfilesIn.Profiles"></span>    Profiles []<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/#DownstreamProfile">DownstreamProfile</a> `group:&#34;httpclient_profiles&#34;`
+<span id="HTTPClientProfilesIn.Required"></span>    Required []<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/#Downstream">Downstream</a>        `group:&#34;required_downstreams&#34;`
 }
 </pre>
 

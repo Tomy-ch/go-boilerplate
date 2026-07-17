@@ -9,7 +9,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func Test_ModuleProvidesWorkingRegistrar(t *testing.T) {
+func TestModule(t *testing.T) {
 	t.Parallel()
 
 	// Module() が提供する Registrar に登録した start/stop が、app の起動/停止で実際に発火することを検証する。

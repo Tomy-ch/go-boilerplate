@@ -88,8 +88,11 @@ func TestValidateShutdownGrace(t *testing.T) {
 		//nolint:paralleltest // EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
 		t.Run("drainがgrace以上の設定だとErrInvalidShutdownGraceを返す", func(t *testing.T) {
 			config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
-			t.Setenv("WORKER_DRAIN_TIMEOUT", "60s")
-			t.Setenv("APP_SHUTDOWN_TIMEOUT", "45s")
+			// APP_SHUTDOWN_TIMEOUT >= SERVER_REQUEST_TIMEOUT の交差検証を満たしたうえで、
+			// WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT（drain >= grace）を成立させる。
+			t.Setenv("SERVER_REQUEST_TIMEOUT", "60s")
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "90s")
+			t.Setenv("WORKER_DRAIN_TIMEOUT", "90s")
 
 			cfg, err := config.New()
 			require.NoError(t, err)

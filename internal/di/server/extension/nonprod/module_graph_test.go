@@ -10,7 +10,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestDebugModeModule_ProvidesServeConfig(t *testing.T) {
+func TestDebugModeModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.SrvCfg](t, "server.configurators",
 		DebugModeModule(),

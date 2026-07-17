@@ -29,7 +29,7 @@ func RegisterWorkerHooks(
 		Body: func(ctx context.Context) {
 			name, _, done := state.Snapshot()
 			if done == nil {
-				logger.Named("worker.Hooks").Info("No worker to run", logging.String(logging.WorkerNameKey, name))
+				logger.Named("worker.Hooks").Info(ctx, "No worker to run", logging.String(logging.WorkerNameKey, name))
 				return
 			}
 			defer close(done)

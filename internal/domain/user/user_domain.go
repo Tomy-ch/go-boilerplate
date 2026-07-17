@@ -4,6 +4,7 @@ package user
 import (
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/stringkit"
 	"go-boilerplate/pkg/uuid"
@@ -19,13 +20,13 @@ type User struct {
 	firstName    string
 	lastName     string
 	passwordHash string
-	email        string
+	email        Email
 	phone        string
 	prefectureID uuid.UUID
 	city         string
 	street       string
 	building     *string
-	postalCode   string
+	postalCode   PostalCode
 	createdAt    time.Time
 	updatedAt    time.Time
 	deletedAt    *time.Time
@@ -53,7 +54,8 @@ func New(
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
 
-	if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+	emailVO, postalCodeVO, err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode)
+	if err != nil {
 		return nil, err
 	}
 
@@ -76,13 +78,13 @@ func New(
 		firstName:    firstName,
 		lastName:     lastName,
 		passwordHash: passwordHash,
-		email:        email,
+		email:        emailVO,
 		phone:        phone,
 		prefectureID: prefectureID,
 		city:         city,
 		street:       street,
 		building:     ptr.Copy(building),
-		postalCode:   postalCode,
+		postalCode:   postalCodeVO,
 		createdAt:    createdAt,
 		updatedAt:    updatedAt,
 		deletedAt:    ptr.Copy(deletedAt),
@@ -102,7 +104,7 @@ func (u *User) LastName() string { return u.lastName }
 func (u *User) PasswordHash() string { return u.passwordHash }
 
 // Email は、ユーザーのメールアドレスを返します。
-func (u *User) Email() string { return u.email }
+func (u *User) Email() string { return u.email.Value() }
 
 // Phone は、ユーザーの電話番号を返します。
 func (u *User) Phone() string { return u.phone }
@@ -120,7 +122,7 @@ func (u *User) Street() string { return u.street }
 func (u *User) Building() *string { return ptr.Copy(u.building) }
 
 // PostalCode は、ユーザーの郵便番号を返します。
-func (u *User) PostalCode() string { return u.postalCode }
+func (u *User) PostalCode() string { return u.postalCode.Value() }
 
 // DeletedAt は、ユーザーの削除日時を返します。
 func (u *User) DeletedAt() *time.Time { return ptr.Copy(u.deletedAt) }
@@ -147,7 +149,8 @@ func (u *User) UpdateProfile(
 	if err := u.ensureNotDeleted(); err != nil {
 		return err
 	}
-	if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+	emailVO, postalCodeVO, err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode)
+	if err != nil {
 		return err
 	}
 	if err := u.ensureUpdatedAt(updatedAt); err != nil {
@@ -156,13 +159,13 @@ func (u *User) UpdateProfile(
 
 	u.firstName = firstName
 	u.lastName = lastName
-	u.email = email
+	u.email = emailVO
 	u.phone = phone
 	u.prefectureID = prefectureID
 	u.city = city
 	u.street = street
 	u.building = ptr.Copy(building)
-	u.postalCode = postalCode
+	u.postalCode = postalCodeVO
 	u.updatedAt = updatedAt
 	return nil
 }
@@ -229,44 +232,65 @@ func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error {
 	return nil
 }
 
-// validateProfileFields は、プロフィール系フィールドの不変条件を検証します。
+// validateProfileFields は、プロフィール系フィールドの不変条件をすべて検証し、失敗を収集します。
+// 失敗があった場合は各フィールドの検証エラーを結合し、不正フィールドの識別子を
+// apperror.Meta の Details として付与して返します（理由文はエラーメッセージ側にのみ残ります）。
+// email / postalCode は値オブジェクトの factory で検証し、成功時は構築済みの VO を返します。
 func validateProfileFields(
 	firstName, lastName, email, phone string,
 	prefectureID uuid.UUID,
 	city, street string,
 	building *string,
 	postalCode string,
-) error {
+) (Email, PostalCode, error) {
+	var errs []error
+	var fields []string
+
 	if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
-		return xerrors.Wrap(ErrInvalidFirstName, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidFirstName, msg))
+		fields = append(fields, FieldFirstName)
 	}
 	if ok, msg := stringkit.ValidateInRange(lastName, minLength, maxLastNameLength); !ok {
-		return xerrors.Wrap(ErrInvalidLastName, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidLastName, msg))
+		fields = append(fields, FieldLastName)
 	}
-	if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
-		return xerrors.Wrap(ErrInvalidEmail, msg)
+	emailVO, emailErr := NewEmail(email)
+	if emailErr != nil {
+		errs = append(errs, emailErr)
+		fields = append(fields, FieldEmail)
 	}
 	if ok, msg := stringkit.ValidateInRange(phone, minLength, maxPhoneLength); !ok {
-		return xerrors.Wrap(ErrInvalidPhone, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidPhone, msg))
+		fields = append(fields, FieldPhone)
 	}
 	if prefectureID.IsNil() {
-		return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
+		errs = append(errs, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required"))
+		fields = append(fields, FieldPrefectureID)
 	}
 	if ok, msg := stringkit.ValidateInRange(city, minLength, maxCityLength); !ok {
-		return xerrors.Wrap(ErrInvalidCity, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidCity, msg))
+		fields = append(fields, FieldCity)
 	}
 	if ok, msg := stringkit.ValidateInRange(street, minLength, maxStreetLength); !ok {
-		return xerrors.Wrap(ErrInvalidStreet, msg)
+		errs = append(errs, xerrors.Wrap(ErrInvalidStreet, msg))
+		fields = append(fields, FieldStreet)
 	}
 	if building != nil {
 		if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok {
-			return xerrors.Wrap(ErrInvalidBuilding, msg)
+			errs = append(errs, xerrors.Wrap(ErrInvalidBuilding, msg))
+			fields = append(fields, FieldBuilding)
 		}
 	}
-	if ok, msg := stringkit.ValidateInRange(postalCode, minLength, maxPostalCodeLength); !ok {
-		return xerrors.Wrap(ErrInvalidPostalCode, msg)
+	postalCodeVO, postalCodeErr := NewPostalCode(postalCode)
+	if postalCodeErr != nil {
+		errs = append(errs, postalCodeErr)
+		fields = append(fields, FieldPostalCode)
 	}
-	return nil
+
+	if len(errs) > 0 {
+		return Email{}, PostalCode{}, apperror.WithDetails(xerrors.Join(errs...), fields...)
+	}
+	return emailVO, postalCodeVO, nil
 }
 
 // validatePasswordHash は、パスワードハッシュの不変条件を検証します。

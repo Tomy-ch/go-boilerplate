@@ -11,7 +11,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestCookieModule_ProvidesUseMiddleware(t *testing.T) {
+func TestCookieModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		CookieModule(),
@@ -20,7 +20,7 @@ func TestCookieModule_ProvidesUseMiddleware(t *testing.T) {
 	)
 }
 
-func TestCORSModule_ProvidesUseMiddleware(t *testing.T) {
+func TestCORSModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		CORSModule(),
@@ -28,7 +28,7 @@ func TestCORSModule_ProvidesUseMiddleware(t *testing.T) {
 	)
 }
 
-func TestSecurityModule_ProvidesUseMiddleware(t *testing.T) {
+func TestModule(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
 		Module(),

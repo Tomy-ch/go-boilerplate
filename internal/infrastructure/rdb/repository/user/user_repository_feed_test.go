@@ -49,7 +49,7 @@ func insertInvalidFeedUser(ctx context.Context, t *testing.T, db driver.DBTX, id
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
 		id,
 		"Feed",
-		"", // last_name 空 = user.ErrInvalidLastName を誘発する。
+		"", // last_name 空 = ドメイン不変条件違反(再構築エラー)を誘発する。
 		"$2a$08$dummydummydummydummydummydummydummydummydummydummydu",
 		"feed-"+id+"@example.com",
 		"000-000-0000",
@@ -205,7 +205,7 @@ func Test_repository_FindFeed(t *testing.T) {
 			})
 		})
 
-		t.Run("先頭ページで不正な行が含まれるとドメイン変換でErrInvalidLastNameを返す", func(t *testing.T) {
+		t.Run("先頭ページで不正な行が含まれるとデータ不整合としてErrInternalを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -215,11 +215,12 @@ func Test_repository_FindFeed(t *testing.T) {
 
 				actual, err := repo.FindFeed(ctx, nil, 10)
 				require.Nil(t, actual)
-				require.ErrorIs(t, err, user.ErrInvalidLastName)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+				require.NotErrorIs(t, err, user.ErrInvalidLastName)
 			})
 		})
 
-		t.Run("afterカーソル指定で不正な行が含まれるとドメイン変換でErrInvalidLastNameを返す", func(t *testing.T) {
+		t.Run("afterカーソル指定で不正な行が含まれるとデータ不整合としてErrInternalを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -231,7 +232,7 @@ func Test_repository_FindFeed(t *testing.T) {
 				after := &afterCursor
 				actual, err := repo.FindFeed(ctx, after, 10)
 				require.Nil(t, actual)
-				require.ErrorIs(t, err, user.ErrInvalidLastName)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 	})

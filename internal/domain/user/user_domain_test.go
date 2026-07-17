@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -57,13 +58,13 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, firstName, actual.firstName)
 			assert.Equal(t, lastName, actual.lastName)
 			assert.Equal(t, passwordHash, actual.passwordHash)
-			assert.Equal(t, email, actual.email)
+			assert.Equal(t, email, actual.email.Value())
 			assert.Equal(t, phone, actual.phone)
 			assert.Equal(t, prefectureID, actual.prefectureID)
 			assert.Equal(t, city, actual.city)
 			assert.Equal(t, street, actual.street)
 			assert.Equal(t, *building, *actual.building)
-			assert.Equal(t, postalCode, actual.postalCode)
+			assert.Equal(t, postalCode, actual.postalCode.Value())
 			assert.Equal(t, createdAt, actual.createdAt)
 			assert.Equal(t, updatedAt, actual.updatedAt)
 			assert.Equal(t, *deletedAt, *actual.deletedAt)
@@ -316,6 +317,29 @@ func TestNew(t *testing.T) {
 				assert.Nil(t, actual)
 				require.ErrorIs(t, err, ErrInvalidEmail)
 			})
+
+			t.Run("emailの形式が不正な場合、エラーを返す", func(t *testing.T) {
+				t.Parallel()
+				actual, err := New(
+					id,
+					firstName,
+					lastName,
+					passwordHash,
+					"not-an-email",
+					phone,
+					prefectureID,
+					city,
+					street,
+					building,
+					postalCode,
+					createdAt,
+					updatedAt,
+					deletedAt,
+				)
+
+				assert.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidEmail)
+			})
 		})
 
 		t.Run("phoneが範囲外の場合、エラーを返す", func(t *testing.T) {
@@ -518,10 +542,10 @@ func TestNew(t *testing.T) {
 			})
 		})
 
-		t.Run("postalCodeが範囲外の場合、エラーを返す", func(t *testing.T) {
+		t.Run("postalCodeが不正な場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("postalCodeの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
+			t.Run("postalCodeが空文字の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(
 					id,
@@ -534,7 +558,7 @@ func TestNew(t *testing.T) {
 					city,
 					street,
 					building,
-					strings.Repeat("0", minLength-1),
+					"",
 					createdAt,
 					updatedAt,
 					deletedAt,
@@ -544,7 +568,7 @@ func TestNew(t *testing.T) {
 				require.ErrorIs(t, err, ErrInvalidPostalCode)
 			})
 
-			t.Run("postalCodeの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
+			t.Run("postalCodeがハイフン無しの場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(
 					id,
@@ -557,7 +581,7 @@ func TestNew(t *testing.T) {
 					city,
 					street,
 					building,
-					strings.Repeat("0", maxPostalCodeLength+1),
+					"1500001",
 					createdAt,
 					updatedAt,
 					deletedAt,
@@ -666,7 +690,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestEntity_Accessors(t *testing.T) {
+func TestUser_Accessors(t *testing.T) {
 	t.Parallel()
 	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
@@ -735,7 +759,7 @@ func TestEntity_Accessors(t *testing.T) {
 		t.Parallel()
 
 		actual := expected.Email()
-		assert.Equal(t, expected.email, actual)
+		assert.Equal(t, expected.email.Value(), actual)
 	})
 
 	t.Run("Phoneメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -777,7 +801,7 @@ func TestEntity_Accessors(t *testing.T) {
 		t.Parallel()
 
 		actual := expected.PostalCode()
-		assert.Equal(t, expected.postalCode, actual)
+		assert.Equal(t, expected.postalCode.Value(), actual)
 	})
 
 	t.Run("DeletedAtメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -995,14 +1019,14 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 			assert.Equal(t, "Jane", u.firstName)
 			assert.Equal(t, "Smith", u.lastName)
-			assert.Equal(t, "jane@example.com", u.email)
+			assert.Equal(t, "jane@example.com", u.email.Value())
 			assert.Equal(t, "0987654321", u.phone)
 			assert.Equal(t, newPrefID, u.prefectureID)
 			assert.Equal(t, "Minato", u.city)
 			assert.Equal(t, "4-5-6", u.street)
 			require.NotNil(t, u.building)
 			assert.Equal(t, "Tower", *u.building)
-			assert.Equal(t, "200-0002", u.postalCode)
+			assert.Equal(t, "200-0002", u.postalCode.Value())
 			assert.Equal(t, newUpdatedAt, u.updatedAt)
 		})
 	})
@@ -1010,13 +1034,30 @@ func TestUser_UpdateProfile(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("プロフィールフィールドが不正な場合、エラーを返す", func(t *testing.T) {
+		t.Run("単一フィールドが不正な場合、そのフィールド識別子のみが付与される", func(t *testing.T) {
 			t.Parallel()
 			u, base := newValidUser(t)
 
 			err := u.UpdateProfile("", "Smith", "jane@example.com", "0987654321",
 				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
 			require.ErrorIs(t, err, ErrInvalidFirstName)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldFirstName}, meta.Details())
+		})
+
+		t.Run("複数フィールドが同時に不正な場合、全フィールドのエラーと識別子が収集される", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+
+			err := u.UpdateProfile("", "Smith", strings.Repeat("e", maxEmailLength+1), "0987654321",
+				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidFirstName)
+			require.ErrorIs(t, err, ErrInvalidEmail)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldFirstName, FieldEmail}, meta.Details())
 		})
 
 		t.Run("updatedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {

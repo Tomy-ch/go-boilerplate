@@ -1,0 +1,361 @@
+// Package main は Dockerfile の `FROM` base image を不変の digest へ固定するツール。
+//
+//	resolve: docker/*/Dockerfile の FROM を走査し、image:tag を registry の現在 digest へ
+//	         解決して lockfile (docker/images-pin.toml) へ書き出す。
+//	apply:   lockfile を SSOT に各 FROM を `FROM image:tag@sha256:... [AS stage]` へ正規化する。
+//	check:   apply と同じ判定を書き換えなしで行い、drift があれば非ゼロ終了する（CI / hook 用）。
+//
+// tag は版の SSOT として FROM 行に残し、digest を lock 側で管理する（tag 再割り当て攻撃の遮断）。
+//
+// supply-chain cooldown: --min-age-days 未満（＝公開直後）の digest は採用しない。
+// mutable tag は「N 日前に何を指していたか」を registry へ問えないため、step-back 先は
+// git tag のような版履歴ではなく自分の前回 lock。前回 lock が無い初回は tag のみへ残す（skip）。
+//
+// apply は正規化型：lock に無い image（quarantine 中）は FROM から digest を剥がして tag のみへ戻す。
+// これにより「隔離が解けるまで tag 運用・解けたら pin」を冪等に表現する。
+package main
+
+import (
+	"bufio"
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+
+	"go-boilerplate/pkg/xerrors"
+)
+
+const (
+	lockFile        = "docker/images-pin.toml"
+	filePerm        = 0o644
+	minArgs         = 2 // プログラム名 + サブコマンド
+	inspectTimeout  = 60 * time.Second
+	hoursPerDay     = 24
+	createdTimeCols = 3 // "2006-01-02 15:04:05.000 +0000 UTC" を最初の 3 フィールドで再構成
+)
+
+var (
+	// FROM [--platform=...] <ref> [AS <stage>]
+	fromRe = regexp.MustCompile(`(?m)^(FROM[ \t]+)(?:--platform=\S+[ \t]+)?(\S+)([ \t]+(?i:AS)[ \t]+\S+)?[ \t]*$`)
+	// lockfile 行: "image:tag" = "sha256:..."
+	lockRe   = regexp.MustCompile(`^"([^"]+)"\s*=\s*"(sha256:[0-9a-f]+)"`)
+	digestRe = regexp.MustCompile(`(?m)^Digest:[ \t]+(sha256:[0-9a-f]+)`)
+)
+
+// imageRef は FROM が参照する registry image 1 件。key は image:tag。
+type imageRef struct {
+	image string // 例: golang, nginx, ghcr.io/foo/bar
+	tag   string // 例: 1.26.5-alpine
+}
+
+func (r imageRef) key() string { return r.image + ":" + r.tag }
+
+func main() {
+	log.SetFlags(0)
+	if len(os.Args) < minArgs {
+		log.Fatalf("❌ usage: pin-images <resolve|apply|check>")
+	}
+	root, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("❌ getwd: %v", err)
+	}
+	files, err := targetFiles(root)
+	if err != nil {
+		log.Fatalf("❌ %v", err)
+	}
+	switch os.Args[1] {
+	case "resolve":
+		fs := flag.NewFlagSet("resolve", flag.ExitOnError)
+		minAge := fs.Int("min-age-days", 0, "N 日未満の新しすぎる digest は quarantine（0 で無効）")
+		_ = fs.Parse(os.Args[2:])
+		resolve(root, files, *minAge)
+	case "apply":
+		applyOrCheck(root, files, false)
+	case "check":
+		applyOrCheck(root, files, true)
+	default:
+		log.Fatalf("❌ usage: pin-images <resolve|apply|check>")
+	}
+}
+
+func targetFiles(root string) ([]string, error) {
+	files, err := filepath.Glob(filepath.Join(root, "docker/*/Dockerfile"))
+	if err != nil {
+		return nil, xerrors.Wrap(err, "glob docker/*/Dockerfile")
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+// parseFrom は FROM の ref を image:tag へ分解する。第2戻り値が false なら対象外
+// （tag 無し＝ビルドステージ参照 / scratch、あるいは registry port を tag と誤認する形）。
+func parseFrom(ref string) (imageRef, bool) {
+	name, _, _ := strings.Cut(ref, "@") // 既存の @digest を捨てる
+	image, tag, ok := lastColonSplit(name)
+	if !ok || tag == "" || strings.Contains(tag, "/") {
+		return imageRef{}, false // tag が無い / 最後の ':' が registry:port だった
+	}
+	return imageRef{image: image, tag: tag}, true
+}
+
+// lastColonSplit は最後の ':' で分割する（tag に ':' は含まれない前提）。
+func lastColonSplit(s string) (string, string, bool) {
+	i := strings.LastIndex(s, ":")
+	if i < 0 {
+		return "", "", false
+	}
+	return s[:i], s[i+1:], true
+}
+
+func resolve(root string, files []string, minAgeDays int) {
+	keys := collectKeys(files)
+	existing, _ := readLock(filepath.Join(root, lockFile)) // 無ければ空
+
+	ctx := context.Background()
+	lock := map[string]string{}
+	var notes []string
+	for k, r := range keys {
+		digest, err := resolveDigest(ctx, r.key())
+		if err != nil {
+			log.Fatalf("❌ resolve %s: %v", k, err)
+		}
+		use, note := quarantine(ctx, r, k, digest, minAgeDays, existing)
+		if note != "" {
+			notes = append(notes, note)
+		}
+		if use == "" {
+			continue
+		}
+		lock[k] = use
+		log.Printf("  %s -> %s", k, use)
+	}
+	sort.Strings(notes)
+	for _, n := range notes {
+		log.Printf("  ⚠️ %s", n)
+	}
+
+	if err := writeLock(filepath.Join(root, lockFile), lock); err != nil {
+		log.Fatalf("❌ write lockfile: %v", err)
+	}
+	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
+}
+
+func collectKeys(files []string) map[string]imageRef {
+	keys := map[string]imageRef{}
+	for _, f := range files {
+		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
+		if err != nil {
+			log.Fatalf("❌ read %s: %v", f, err)
+		}
+		for _, m := range fromRe.FindAllStringSubmatch(string(data), -1) {
+			if r, ok := parseFrom(m[2]); ok {
+				keys[r.key()] = r
+			}
+		}
+	}
+	return keys
+}
+
+// quarantine は minAgeDays 未満の新しすぎる digest を採用しない。第1戻り値 "" は skip。
+func quarantine(ctx context.Context, r imageRef, key, candidate string, minAgeDays int, existing map[string]string) (string, string) {
+	if minAgeDays <= 0 {
+		return candidate, ""
+	}
+	age, err := digestAgeDays(ctx, r.key())
+	if err != nil {
+		log.Fatalf("❌ age %s: %v", key, err)
+	}
+	if age >= minAgeDays {
+		return candidate, ""
+	}
+	if prev, ok := existing[key]; ok {
+		return prev, fmt.Sprintf("%s: 現 digest が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays)
+	}
+	return "", fmt.Sprintf("%s: 現 digest が %d 日 (<%d)・既存ピン無しのため tag のまま skip", key, age, minAgeDays)
+}
+
+// resolveDigest は image:tag の現在の index digest を registry から取得する。
+func resolveDigest(ctx context.Context, ref string) (string, error) {
+	out, err := inspect(ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	m := digestRe.FindStringSubmatch(out)
+	if m == nil {
+		return "", xerrors.New(ref + ": Digest 行を解析できません")
+	}
+	return m[1], nil
+}
+
+// digestAgeDays は image:tag が指す digest の image config created から経過日数を返す。
+// 公式イメージのビルド日は publish 日にほぼ一致する。マルチアーキの場合は最も古い created を採る。
+func digestAgeDays(ctx context.Context, ref string) (int, error) {
+	created, err := earliestCreated(ctx, ref)
+	if err != nil {
+		return 0, err
+	}
+	return int(time.Since(created).Hours() / hoursPerDay), nil
+}
+
+func earliestCreated(ctx context.Context, ref string) (time.Time, error) {
+	// マルチアーキ (index) は .Image が map、単一アーキは struct。前者→後者でフォールバックする。
+	// inspect 自体のエラー（429 等）は握り潰さず伝播し、テンプレート不一致のときだけ次を試す。
+	var lastErr error
+	for _, tmpl := range []string{
+		`{{ range .Image }}{{ println .Created }}{{ end }}`,
+		`{{ println .Image.Created }}`,
+	} {
+		out, err := inspect(ctx, ref, "--format", tmpl)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if t, ok := minCreated(out); ok {
+			return t, nil
+		}
+	}
+	if lastErr != nil {
+		return time.Time{}, lastErr
+	}
+	return time.Time{}, xerrors.New(ref + ": created を解析できません")
+}
+
+// minCreated は inspect 出力の各行（"2006-01-02 15:04:05.9 +0000 UTC"）から最古の時刻を返す。
+func minCreated(out string) (time.Time, bool) {
+	var earliest time.Time
+	found := false
+	for line := range strings.SplitSeq(out, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < createdTimeCols {
+			continue
+		}
+		// "date time zone" の 3 フィールドだけを RFC 化して parse（末尾 "UTC" 等は捨てる）。
+		t, err := time.Parse("2006-01-02 15:04:05.999999999 -0700",
+			strings.Join(fields[:createdTimeCols], " "))
+		if err != nil {
+			continue
+		}
+		if !found || t.Before(earliest) {
+			earliest, found = t, true
+		}
+	}
+	return earliest, found
+}
+
+func inspect(ctx context.Context, ref string, extra ...string) (string, error) {
+	cctx, cancel := context.WithTimeout(ctx, inspectTimeout)
+	defer cancel()
+	args := append([]string{"buildx", "imagetools", "inspect", ref}, extra...)
+	cmd := exec.CommandContext(cctx, "docker", args...) //nolint:gosec // ref は Dockerfile 由来
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", xerrors.Wrap(err, "docker buildx imagetools inspect "+ref+": "+strings.TrimSpace(stderr.String()))
+	}
+	return string(out), nil
+}
+
+// rewritePins は lock を元に FROM を正規化した内容を返す。lock に無い image は digest を剥がす。
+func rewritePins(data string, lock map[string]string) string {
+	return fromRe.ReplaceAllStringFunc(data, func(line string) string {
+		m := fromRe.FindStringSubmatch(line)
+		r, ok := parseFrom(m[2])
+		if !ok {
+			return line
+		}
+		ref := r.key()
+		if digest, found := lock[r.key()]; found {
+			ref += "@" + digest
+		}
+		return m[1] + ref + m[3]
+	})
+}
+
+// applyOrCheck は lockfile を SSOT に FROM を正規化する。dryRun=true は書き換えず drift を非ゼロ終了で報告する。
+func applyOrCheck(root string, files []string, dryRun bool) {
+	lock, err := readLock(filepath.Join(root, lockFile))
+	if err != nil {
+		log.Fatalf("❌ read lockfile（先に make pin-images-resolve を実行してください）: %v", err)
+	}
+	var drifted []string
+	changed := 0
+	for _, f := range files {
+		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
+		if err != nil {
+			log.Fatalf("❌ read %s: %v", f, err)
+		}
+		out := rewritePins(string(data), lock)
+		if out == string(data) {
+			continue
+		}
+		if dryRun {
+			drifted = append(drifted, rel(root, f))
+			continue
+		}
+		if err := os.WriteFile(f, []byte(out), filePerm); err != nil { //nolint:gosec // Dockerfile 権限
+			log.Fatalf("❌ write %s: %v", f, err)
+		}
+		changed++
+		log.Printf("  updated %s", rel(root, f))
+	}
+	report(drifted, dryRun, changed)
+}
+
+func report(drifted []string, dryRun bool, changed int) {
+	if !dryRun {
+		log.Printf("✅ %d ファイルを正規化しました", changed)
+		return
+	}
+	if len(drifted) > 0 {
+		sort.Strings(drifted)
+		log.Fatalf("❌ FROM が lockfile と一致しません（make pin-images-resolve && make pin-images-apply してコミットしてください）: %s",
+			strings.Join(drifted, ", "))
+	}
+	log.Printf("✅ 全 base image が lockfile 通りに固定されています")
+}
+
+func writeLock(path string, lock map[string]string) error {
+	keys := make([]string, 0, len(lock))
+	for k := range lock {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	b.WriteString("# Docker base image の pin 対象 digest（SSOT）。\n")
+	b.WriteString("# make pin-images-resolve で解決・make pin-images-apply で Dockerfile へ反映する。\n")
+	for _, k := range keys {
+		fmt.Fprintf(&b, "%q = %q\n", k, lock[k])
+	}
+	return os.WriteFile(path, []byte(b.String()), filePerm)
+}
+
+func readLock(path string) (map[string]string, error) {
+	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	lock := map[string]string{}
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if m := lockRe.FindStringSubmatch(strings.TrimSpace(sc.Text())); m != nil {
+			lock[m[1]] = m[2]
+		}
+	}
+	return lock, sc.Err()
+}
+
+func rel(root, p string) string {
+	if r, err := filepath.Rel(root, p); err == nil {
+		return r
+	}
+	return p
+}

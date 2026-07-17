@@ -22,7 +22,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const targetPath = "/v1/users/:user_id"
+const targetPath = "/v1/users/:userId"
 
 // subject は、認可付きエンドポイントのテストで使う認証主体の subject です。
 const subject = "11111111-1111-1111-1111-111111111111"

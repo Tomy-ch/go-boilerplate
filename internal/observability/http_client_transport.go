@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/netip"
 	"syscall"
 
 	"go-boilerplate/pkg/xerrors"
@@ -14,21 +15,22 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// cgnatNet は、CGNAT 共有アドレス空間（RFC 6598, 100.64.0.0/10）です。
-// Go の net.IP.IsPrivate は RFC1918 / ULA(fc00::/7) のみで CGNAT を含まないため、
+// cgnatPrefix は、CGNAT 共有アドレス空間（RFC 6598, 100.64.0.0/10）です。
+// Go の netip.Addr.IsPrivate は RFC1918 / ULA(fc00::/7) のみで CGNAT を含まないため、
 // private 不許可時のブロック対象として明示的に判定します（クラウド内部用途の SSRF 面を塞ぐ）。
-var cgnatNet = mustParseCIDR("100.64.0.0/10")
+var cgnatPrefix = netip.MustParsePrefix("100.64.0.0/10")
 
-// reservedNets は、bogon/予約帯として常時拒否する CIDR 一覧です。
+// reservedPrefixes は、bogon/予約帯として常時拒否する CIDR 一覧です。
 // これらは正当な宛先になり得ないため、allowPrivateNetwork フラグに関わらずブロックします。
-var reservedNets = []*net.IPNet{
-	mustParseCIDR("240.0.0.0/4"),     // RFC 1112/6890 将来予約（Future Use）
-	mustParseCIDR("192.0.0.0/24"),    // RFC 6890 IETF プロトコル割当（IETF Protocol Assignments）
-	mustParseCIDR("192.0.2.0/24"),    // RFC 5737 TEST-NET-1（ドキュメント/テスト用）
-	mustParseCIDR("198.51.100.0/24"), // RFC 5737 TEST-NET-2（ドキュメント/テスト用）
-	mustParseCIDR("203.0.113.0/24"),  // RFC 5737 TEST-NET-3（ドキュメント/テスト用）
-	mustParseCIDR("198.18.0.0/15"),   // RFC 2544 ベンチマーク測定用（Benchmarking）
-	mustParseCIDR("2001:db8::/32"),   // RFC 3849 IPv6 ドキュメント用（Documentation）
+var reservedPrefixes = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),       // RFC 1122/6890 「このネットワーク」（IsUnspecified は 0.0.0.0 ちょうどしか捕捉しない）
+	netip.MustParsePrefix("240.0.0.0/4"),     // RFC 1112/6890 将来予約（Future Use）
+	netip.MustParsePrefix("192.0.0.0/24"),    // RFC 6890 IETF プロトコル割当（IETF Protocol Assignments）
+	netip.MustParsePrefix("192.0.2.0/24"),    // RFC 5737 TEST-NET-1（ドキュメント/テスト用）
+	netip.MustParsePrefix("198.51.100.0/24"), // RFC 5737 TEST-NET-2（ドキュメント/テスト用）
+	netip.MustParsePrefix("203.0.113.0/24"),  // RFC 5737 TEST-NET-3（ドキュメント/テスト用）
+	netip.MustParsePrefix("198.18.0.0/15"),   // RFC 2544 ベンチマーク測定用（Benchmarking）
+	netip.MustParsePrefix("2001:db8::/32"),   // RFC 3849 IPv6 ドキュメント用（Documentation）
 }
 
 // dialControl は、接続直前に呼ばれる net.Dialer の ControlContext 関数の型です。
@@ -117,38 +119,32 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 }
 
 // guardedDialControl は、名前解決後の実接続先 IP を検査する SSRF ガードです（DNS rebinding も防ぎます）。
-// link-local / unspecified / bogon予約帯は常に拒否し、loopback / private / CGNAT は ctx フラグで許可されない限り拒否します。
+// パース不能なアドレスは fail-close で拒否し（zone 付き IPv6 リテラルによる link-local 判定回避を塞ぐ）、
+// link-local / unspecified / bogon予約帯は常に拒否、loopback / private / CGNAT は ctx フラグで許可されない限り拒否します。
 func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
 	}
-	ip := net.ParseIP(host)
-	if ip == nil {
-		return nil
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return xerrors.New("ssrf guard: blocked unparsable address " + host)
 	}
-	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+	// zone を落として family を正規化し、Prefix 判定を IPv4-mapped/zone 付きでも取りこぼさないようにする。
+	addr = addr.Unmap().WithZone("")
+	if addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() || addr.IsUnspecified() {
 		return xerrors.New("ssrf guard: blocked address " + host)
 	}
 	// bogon/予約帯は正当な宛先にならないため allowPrivateNetwork フラグに関わらず常時拒否する。
-	for _, n := range reservedNets {
-		if n.Contains(ip) {
+	for _, p := range reservedPrefixes {
+		if p.Contains(addr) {
 			return xerrors.New("ssrf guard: blocked reserved address " + host)
 		}
 	}
-	if !allowPrivateNetworkFromContext(ctx) && (ip.IsLoopback() || ip.IsPrivate() || cgnatNet.Contains(ip)) {
+	if !allowPrivateNetworkFromContext(ctx) && (addr.IsLoopback() || addr.IsPrivate() || cgnatPrefix.Contains(addr)) {
 		return xerrors.New("ssrf guard: blocked private/loopback address " + host)
 	}
 	return nil
-}
-
-// mustParseCIDR は、定数 CIDR 文字列を *net.IPNet へ解析します。不正リテラルは起動時 panic です。
-func mustParseCIDR(s string) *net.IPNet {
-	_, n, err := net.ParseCIDR(s)
-	if err != nil {
-		panic(err)
-	}
-	return n
 }
 
 // permissiveDialControl は、すべての接続を許可する dial control です（テスト用）。

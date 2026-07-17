@@ -6,6 +6,7 @@ package response
 import (
 	"fmt"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/error/response/gen"
 )
 
@@ -13,7 +14,9 @@ import (
 //
 //nolint:errname // HTTPエラーレスポンスのDTOであり、レスポンス本体を表す名称が適切なため XxxError 形式には改名しない
 type HTTPErrorResponse struct {
-	gen.ErrorResponse
+	// この埋め込みは常に details フィールドを持つが、実際にクライアントへ返すかは
+	// エンドポイントの opt-in(errorhandler の details ゲート)で決まる。
+	gen.ErrorResponseWithDetails
 
 	HTTPStatus int   `json:"-"`
 	Internal   error `json:"-"`
@@ -21,8 +24,22 @@ type HTTPErrorResponse struct {
 
 // NewHTTPErrorFromAppError は、err をアプリケーションエラーとして解釈し、対応する HTTP エラーレスポンスを返します。
 // 既知のエラー型に一致しない場合は 500 Internal Server Error として扱います。
+// err に [apperror.Meta] が付与されている場合、非空の Code / Message は既定値を上書きし、
+// Details は明示引数 details が無い場合にのみ採用されます。HTTP ステータスはセンチネル分類のまま変わりません。
 func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByAppError(err)
+
+	if appMeta, ok := apperror.MetaFrom(err); ok {
+		if appMeta.Code() != "" {
+			meta.Code = appMeta.Code()
+		}
+		if appMeta.Message() != "" {
+			meta.Message = appMeta.Message()
+		}
+		if len(details) == 0 {
+			details = appMeta.Details()
+		}
+	}
 
 	res := newHTTPErrorFromMeta(meta, details...)
 	res.Internal = err
@@ -54,7 +71,7 @@ func newHTTPErrorFromMeta(meta httpErrorMeta, details ...string) *HTTPErrorRespo
 		detailsPtr = new(details)
 	}
 	return &HTTPErrorResponse{
-		ErrorResponse: gen.ErrorResponse{
+		ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 			Code:    meta.Code,
 			Message: meta.Message,
 			Details: detailsPtr,

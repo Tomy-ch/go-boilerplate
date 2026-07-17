@@ -8,12 +8,12 @@ const (
 	EnvCI = "ci"
 	// EnvTest はテスト環境を表します。
 	EnvTest = "test"
-	// EnvDevelopment は開発環境を表します。
-	EnvDevelopment = "development"
-	// EnvStaging はステージング環境を表します。
-	EnvStaging = "staging"
-	// EnvProduction は本番環境を表します。
-	EnvProduction = "production"
+	// EnvDevelopment は開発環境を表します（env ファイルの APP_ENV 実値）。
+	EnvDevelopment = "dev"
+	// EnvStaging はステージング環境を表します（env ファイルの APP_ENV 実値）。
+	EnvStaging = "stg"
+	// EnvProduction は本番環境を表します（env ファイルの APP_ENV 実値）。
+	EnvProduction = "prd"
 )
 
 // アプリ動作モードの列挙（挙動切替に使用）。Env とは独立。

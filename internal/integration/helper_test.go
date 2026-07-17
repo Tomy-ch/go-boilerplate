@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	responsegen "go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
+	"go-boilerplate/internal/controller/httpstack/oapi/validator"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/pkg/uuid"
@@ -146,7 +147,13 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo) {
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewTestLogFieldBuilder(t)
-	errorhandler.New(e, logging.NewTestLogger(t), lf, obsCfg)
+
+	spec, err := validator.GetValidator()
+	require.NoError(t, err)
+	policy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+	require.NoError(t, err)
+
+	errorhandler.New(e, policy, logging.NewTestLogger(t), lf, obsCfg)
 }
 
 // AssertErrorResponse は、異常系レスポンスの HTTP ステータスが wantStatus と一致し、
@@ -157,13 +164,22 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo) {
 func AssertErrorResponse(t *testing.T, actualResponse *http.Response, wantStatus int) {
 	t.Helper()
 
+	AssertErrorResponseBody(t, actualResponse, wantStatus)
+}
+
+// AssertErrorResponseBody は、[AssertErrorResponse] と同じ検証を行ったうえで、
+// デコード済みの ErrorResponse を返します。details 等のボディ内容まで検証する場合に使います。
+func AssertErrorResponseBody(t *testing.T, actualResponse *http.Response, wantStatus int) responsegen.ErrorResponseWithDetails {
+	t.Helper()
+
 	resBody, err := io.ReadAll(actualResponse.Body)
 	require.NoError(t, err)
 
 	assert.Equal(t, wantStatus, actualResponse.StatusCode)
 	assert.Contains(t, actualResponse.Header.Get(echo.HeaderContentType), "application/json")
 
-	var errResp responsegen.ErrorResponse
+	var errResp responsegen.ErrorResponseWithDetails
 	require.NoError(t, json.Unmarshal(resBody, &errResp), "エラーレスポンスが ErrorResponse 形式でシリアライズされていません。")
 	assert.NotEmpty(t, errResp.Code)
+	return errResp
 }

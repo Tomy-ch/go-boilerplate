@@ -160,7 +160,7 @@ func TestRegisterRecorder(t *testing.T) {
 	})
 }
 
-func TestIgnoreAlreadyRegistered(t *testing.T) {
+func Test_ignoreAlreadyRegistered(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

@@ -28,7 +28,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func TestFindByName(t *testing.T) {
+func Test_repository_FindByName(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -83,7 +83,7 @@ func TestFindByName(t *testing.T) {
 	})
 }
 
-func TestFindByID(t *testing.T) {
+func Test_repository_FindByID(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -141,7 +141,7 @@ func TestFindByID(t *testing.T) {
 	})
 }
 
-func TestFindByIDs(t *testing.T) {
+func Test_repository_FindByIDs(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -217,14 +217,14 @@ func TestFindByIDs(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 
-		t.Run("取得行のドメイン化に失敗した場合、そのエラーを返す", func(t *testing.T) {
+		t.Run("取得行のドメイン化に失敗した場合、データ不整合としてErrInternalを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				invalidID, err := uuid.Parse("00000000-0000-0000-0000-0000000000ff")
 				require.NoError(t, err)
 
-				// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化で ErrInvalidCode となる。
+				// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。
 				_, execErr := driver.New(ctx, testDB).Exec(ctx,
 					"INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)",
 					invalidID, "テスト無効県", 99,
@@ -233,7 +233,8 @@ func TestFindByIDs(t *testing.T) {
 
 				actual, err := repo.FindByIDs(ctx, []uuid.UUID{invalidID})
 				assert.Nil(t, actual)
-				require.ErrorIs(t, err, prefecture.ErrInvalidCode)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+				require.NotErrorIs(t, err, prefecture.ErrInvalidCode)
 			})
 		})
 	})

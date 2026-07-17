@@ -28,4 +28,4 @@ type Store interface {
 
 ## Implementation
 
-`internal/infrastructure/rdb/system_query/outbox/` provides the concrete RDB implementation backed by sqlc-generated queries.
+`internal/infrastructure/rdb/system_cqrs/outbox/` provides the concrete RDB implementation backed by sqlc-generated queries.

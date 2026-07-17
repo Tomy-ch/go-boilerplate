@@ -31,6 +31,48 @@ func newTestGenerator(t *testing.T, fs FileSystem) *Generator {
 	}
 }
 
+func Test_validateTargetType(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("repositoryは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("repository"))
+		})
+		t.Run("query_serviceは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("query_service"))
+		})
+		t.Run("system_cqrsは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("system_cqrs"))
+		})
+		t.Run("command_serviceは許可", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateTargetType("command_service"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("空文字は不許可", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, validateTargetType(""))
+		})
+		t.Run("カレントディレクトリ指定は不許可", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, validateTargetType("."))
+		})
+		t.Run("想定外のタイプは不許可", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, validateTargetType("unknown"))
+		})
+	})
+}
+
 func TestGenerator_buildCategorySQLFile(t *testing.T) {
 	t.Parallel()
 
@@ -59,7 +101,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 				})
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.buildCategorySQLFile("user", "repository"))
+			require.NoError(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 
 			got := string(written)
 			assert.Contains(t, got, "SELECT 1;")
@@ -79,7 +121,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().Remove(dstPath).Return(nil)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.buildCategorySQLFile("user", "repository"))
+			require.NoError(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("SQLが空で生成物が未存在ならNotExistを無視する", func(t *testing.T) {
@@ -91,7 +133,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().Remove(dstPath).Return(os.ErrNotExist)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.buildCategorySQLFile("user", "repository"))
+			require.NoError(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 	})
 
@@ -106,7 +148,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, xerrors.New("walk failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("連結中のReadFileに失敗するとエラー", func(t *testing.T) {
@@ -119,7 +161,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().ReadFile(f1).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("連結結果の書き出しに失敗するとエラー", func(t *testing.T) {
@@ -133,7 +175,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().WriteFile(dstPath, gomock.Any(), os.FileMode(genFilePerm)).Return(xerrors.New("write failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("SQLが空でRemoveがNotExist以外で失敗するとエラー", func(t *testing.T) {
@@ -145,7 +187,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().Remove(dstPath).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile("user", "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))
 		})
 
 		t.Run("SQLが空でも生成先がgenRootDir外ならensureUnderDirで弾く", func(t *testing.T) {
@@ -159,7 +201,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(escDmlDir).Return(nil, nil)
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), escCategory, "repository"))
 		})
 
 		t.Run("SQLがあっても生成先がgenRootDir外なら連結前にensureUnderDirで弾く", func(t *testing.T) {
@@ -173,7 +215,7 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 			fs.EXPECT().FindSQLFiles(escDmlDir).Return([]string{filepath.Join(escDmlDir, "001.sql")}, nil)
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.buildCategorySQLFile(escCategory, "repository"))
+			require.Error(t, g.buildCategorySQLFile(context.Background(), escCategory, "repository"))
 		})
 	})
 }
@@ -200,7 +242,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(nil)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+			require.NoError(t, g.cleanupStaleGeneratedFiles(context.Background(), []string{"user"}, "repository"))
 		})
 
 		t.Run("カテゴリ0件のとき同typeの生成物を全削除し他typeは温存する", func(t *testing.T) {
@@ -217,7 +259,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().Remove(filepath.Join(genAbs, "b_repository.gen.sql")).Return(nil)
 
 			g := newTestGenerator(t, fs)
-			require.NoError(t, g.cleanupStaleGeneratedFiles(nil, "repository"))
+			require.NoError(t, g.cleanupStaleGeneratedFiles(context.Background(), nil, "repository"))
 		})
 	})
 
@@ -232,7 +274,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().ListGenFileNames(genAbs).Return(nil, xerrors.New("read failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+			require.Error(t, g.cleanupStaleGeneratedFiles(context.Background(), []string{"user"}, "repository"))
 		})
 
 		t.Run("stale削除に失敗するとエラー", func(t *testing.T) {
@@ -244,7 +286,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(xerrors.New("remove failed"))
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+			require.Error(t, g.cleanupStaleGeneratedFiles(context.Background(), []string{"user"}, "repository"))
 		})
 
 		t.Run("削除対象がgenRootDir外を指すとensureUnderDirで弾く", func(t *testing.T) {
@@ -256,7 +298,7 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 			fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"../../../../etc_repository.gen.sql"}, nil)
 
 			g := newTestGenerator(t, fs)
-			require.Error(t, g.cleanupStaleGeneratedFiles(nil, "repository"))
+			require.Error(t, g.cleanupStaleGeneratedFiles(context.Background(), nil, "repository"))
 		})
 	})
 }
@@ -302,7 +344,7 @@ func TestGenerator_dmlTypeRootAbs(t *testing.T) {
 	})
 }
 
-func TestResolveConcurrencyConst(t *testing.T) {
+func Test_resolveConcurrencyConst(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -318,7 +360,7 @@ func TestResolveConcurrencyConst(t *testing.T) {
 	})
 }
 
-func TestResolveConcurrency(t *testing.T) {
+func Test_resolveConcurrency(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -413,6 +455,16 @@ func TestRunMerge(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("不正なtypeはFS操作前に弾く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			// whitelist で弾かれるため ListSubDirNames 等の FS 呼び出しには一切到達しない。
+			fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+			g := newTestGenerator(t, fs)
+			require.Error(t, RunMerge(context.Background(), g, "invalid_type"))
+		})
+
 		t.Run("カテゴリ一覧の取得に失敗するとエラー", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
@@ -486,7 +538,7 @@ func TestRunMerge(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_ListSubDirNames(t *testing.T) {
+func Test_osFileSystem_ListSubDirNames(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -518,7 +570,7 @@ func TestOSFileSystem_ListSubDirNames(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_ListGenFileNames(t *testing.T) {
+func Test_osFileSystem_ListGenFileNames(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -549,7 +601,7 @@ func TestOSFileSystem_ListGenFileNames(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_FindSQLFiles(t *testing.T) {
+func Test_osFileSystem_FindSQLFiles(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -584,7 +636,7 @@ func TestOSFileSystem_FindSQLFiles(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_ReadFile(t *testing.T) {
+func Test_osFileSystem_ReadFile(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -614,7 +666,7 @@ func TestOSFileSystem_ReadFile(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_WriteFile(t *testing.T) {
+func Test_osFileSystem_WriteFile(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem
@@ -644,7 +696,7 @@ func TestOSFileSystem_WriteFile(t *testing.T) {
 	})
 }
 
-func TestOSFileSystem_Remove(t *testing.T) {
+func Test_osFileSystem_Remove(t *testing.T) {
 	t.Parallel()
 
 	var sut osFileSystem

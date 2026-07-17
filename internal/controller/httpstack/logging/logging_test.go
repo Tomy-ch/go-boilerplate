@@ -7,9 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"go-boilerplate/internal/controller/handler/testkit/testspan"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -131,18 +129,17 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("スパンありはtrace/spanが含まれるリクエストログフィールドセットを返す", func(t *testing.T) {
+		t.Run("基本フィールドを返す（trace_id/span_idはLoggerがctxから注入する）", func(t *testing.T) {
 			t.Parallel()
 
-			cWithSpan, end := testspan.StartTestSpanForEcho(t, c)
-			defer end()
-
-			tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
-			l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
+			l := requestLog{c: c, lf: lf}
 			fields := l.buildRequestLogFields(time.Now())
 
-			assert.Contains(t, fields, logging.String(logging.TraceIDKey, tc.TraceID()))
-			assert.Contains(t, fields, logging.String(logging.SpanIDKey, tc.SpanID()))
+			assert.Contains(t, fields, logging.String(logging.MethodKey, http.MethodGet))
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/path?foo=bar"))
+			assert.Contains(t, fields, logging.String(logging.RemoteIPKey, "1.2.3.4:5678"))
+			assert.Contains(t, fields, logging.String(logging.HostKey, "example.local"))
+			assert.Contains(t, fields, logging.String(logging.UserAgentKey, "ua-test"))
 		})
 	})
 }
@@ -166,7 +163,7 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("スパンなしはtrace/spanは含まれないレスポンスログフィールドセットを返す", func(t *testing.T) {
+		t.Run("基本フィールドを返す（trace_id/span_idはLoggerがctxから注入する）", func(t *testing.T) {
 			t.Parallel()
 
 			c := newContext()
@@ -176,34 +173,11 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			c.Response().Status = expectedStatus
 			c.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-			l := requestLog{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
+			l := requestLog{c: c, lf: lf}
 			fields := l.buildResponseLogFields(150 * time.Millisecond)
 
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
 			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
-		})
-
-		t.Run("スパンありはtrace/spanが含まれるレスポンスログフィールドセットを返す", func(t *testing.T) {
-			t.Parallel()
-
-			c := newContext()
-			expectedStatus := http.StatusAccepted
-			expectedRequestID := "req-accepted"
-
-			cWithSpan, end := testspan.StartTestSpanForEcho(t, c)
-			defer end()
-
-			cWithSpan.Response().Status = expectedStatus
-			cWithSpan.Response().Header().Set("X-Request-Id", expectedRequestID)
-
-			tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
-			l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
-			fields := l.buildResponseLogFields(20 * time.Millisecond)
-
-			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
-			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
-			assert.Contains(t, fields, logging.String(logging.TraceIDKey, tc.TraceID()))
-			assert.Contains(t, fields, logging.String(logging.SpanIDKey, tc.SpanID()))
 		})
 	})
 }

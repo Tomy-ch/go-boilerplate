@@ -1,4 +1,4 @@
-name: user_id
+name: userId
 in: path
 required: true
 description: ユーザーのUUID

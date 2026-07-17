@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"context"
-	"go/constant"
 	"testing"
 	"time"
 
@@ -67,7 +66,7 @@ func TestNewDeadLetter(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Receive(t *testing.T) {
+func Test_consumer_Receive(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -88,7 +87,7 @@ func Test_Consumer_Receive(t *testing.T) {
 						string(types.MessageSystemAttributeNameMessageGroupId):          "grp",
 					},
 					MessageAttributes: map[string]types.MessageAttributeValue{
-						"traceparent": {DataType: aws.String(constant.String.String()), StringValue: aws.String("tp-val")},
+						"traceparent": {DataType: aws.String(attrDataTypeString), StringValue: aws.String("tp-val")},
 					},
 				}},
 			}, nil)
@@ -116,7 +115,7 @@ func Test_Consumer_Receive(t *testing.T) {
 					MessageId: aws.String("id1"),
 					Body:      aws.String("hello"),
 					MessageAttributes: map[string]types.MessageAttributeValue{
-						"traceparent": {DataType: aws.String(constant.String.String()), StringValue: nil},
+						"traceparent": {DataType: aws.String(attrDataTypeString), StringValue: nil},
 					},
 				}},
 			}, nil)
@@ -254,7 +253,7 @@ func Test_Consumer_Receive(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Ack(t *testing.T) {
+func Test_consumer_Ack(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -314,7 +313,7 @@ func Test_Consumer_Ack(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Nack(t *testing.T) {
+func Test_consumer_Nack(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -374,7 +373,7 @@ func Test_Consumer_Nack(t *testing.T) {
 	})
 }
 
-func Test_Consumer_NackWithBackoff(t *testing.T) {
+func Test_consumer_NackWithBackoff(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -472,7 +471,7 @@ func Test_Consumer_NackWithBackoff(t *testing.T) {
 	})
 }
 
-func Test_Consumer_Extend(t *testing.T) {
+func Test_consumer_Extend(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -531,7 +530,7 @@ func Test_Consumer_Extend(t *testing.T) {
 	})
 }
 
-func Test_DeadLetter_Fail(t *testing.T) {
+func Test_deadLetter_Fail(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

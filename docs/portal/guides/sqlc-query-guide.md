@@ -16,7 +16,7 @@ database/dml/
 ├── query_service/    # Search-specific DML (read optimization)
 │   └── user/
 ├── command_service/  # Command-specific DML (future extension)
-└── system_query/     # System operational queries (health check, etc.)
+└── system_cqrs/     # System operational queries (health check, etc.)
     └── health_check/
 ```
 
@@ -27,7 +27,7 @@ database/dml/
 |`repository/`|`internal/infrastructure/rdb/repository/`|Domain layer|Aggregate CRUD|
 |`query_service/`|`internal/infrastructure/rdb/query_service/`|Usecase layer|Usecase-specific search|
 |`command_service/`|(future extension)|Usecase layer|Write-only commands|
-|`system_query/`|`internal/infrastructure/rdb/system_query/`|Usecase layer|System operational queries|
+|`system_cqrs/`|`internal/infrastructure/rdb/system_cqrs/`|Usecase layer|System operational queries|
 
 ## SQL File Placement Rules
 

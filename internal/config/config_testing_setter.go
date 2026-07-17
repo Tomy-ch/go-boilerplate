@@ -3,6 +3,7 @@ package config
 import (
 	"net"
 	"testing"
+	"time"
 )
 
 // WARN: 本番コードでは使用しないでください。テスト用の設定を行うためのメソッドです。
@@ -197,6 +198,26 @@ func (o *OutboxConfig) SetOutboxBatchSize(tb testing.TB, batchSize int) {
 	prev := o.batchSize
 	o.batchSize = batchSize
 	tb.Cleanup(func() { o.batchSize = prev })
+}
+
+// SetOutboxPollInterval は、テスト用に outbox relay の poll 間隔を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *OutboxConfig) SetOutboxPollInterval(tb testing.TB, pollInterval time.Duration) {
+	tb.Helper()
+	prev := o.pollInterval
+	o.pollInterval = pollInterval
+	tb.Cleanup(func() { o.pollInterval = prev })
+}
+
+// SetOutboxErrorBackoff は、テスト用に outbox relay のエラー時待機時間を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *OutboxConfig) SetOutboxErrorBackoff(tb testing.TB, errorBackoff time.Duration) {
+	tb.Helper()
+	prev := o.errorBackoff
+	o.errorBackoff = errorBackoff
+	tb.Cleanup(func() { o.errorBackoff = prev })
 }
 
 // SetOutboxEndpoint は、テスト用に outbox relay の送信先エンドポイントを設定します。

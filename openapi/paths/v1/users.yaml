@@ -33,6 +33,8 @@ post:
   description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
   security:
     - BearerAuth: []
+  parameters:
+    - $ref: '../../components/parameters/idempotency/IdempotencyKeyParam.yaml'
   requestBody:
     required: true
     content:

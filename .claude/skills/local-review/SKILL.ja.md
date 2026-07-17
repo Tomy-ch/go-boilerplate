@@ -21,8 +21,9 @@
 
 バイアス低減が設計上の制約であって、おまけではない。よって reviewer は **コードを書いた者とは別モデルの subagent** として動く:
 
-- 2 つの reviewer エージェント（`adversarial-reviewer` / `review-verifier`）は frontmatter で既定 **`sonnet`**。通常の Opus 実装者と異なる。
-- **オーケストレーターは reviewer ≠ implementer を必ず保証する。** 本セッションのモデルを確認し、`sonnet` でなければ既定のままで spawn。本セッションが `sonnet` なら、`Agent` ツールの `model` 引数で reviewer を別モデルへ上書き（この引数はエージェント定義の frontmatter より優先）— 深さなら `opus`、安価な発散なら `haiku`。reviewer と implementer を同一モデルにしない。
+- reviewer エージェント（`adversarial-reviewer` / `comment-reviewer` / `review-verifier`）は frontmatter で既定 **`sonnet`**。通常の Opus 実装者と異なる。
+- **reviewer のモデルは Step 0 でユーザーが選ぶ。** 選択肢は `fable`（Fable 5）/ `sonnet` / `opus` / `haiku`、加えて実装者と異なるモデルへ解決される *自動* 既定。選んだモデルを `Agent` ツールの `model` 引数で各 reviewer subagent に渡す（この引数はエージェント定義の `sonnet` 既定より優先）— 深さなら `opus`、安価な発散なら `haiku`、独立した新しい視点なら `fable`。
+- **オーケストレーターは reviewer ≠ implementer を必ず保証する。** ユーザーが本セッションの実装者と同一モデルを選んだ場合は、別モデルによるバイアス低減が損なわれる旨を警告し、確認してから進める。reviewer と implementer を無言で同一モデルにしない。
 - reviewer は **read-only**（エージェント定義に Edit/Write 権限なし）。本スキルが修正を当てることはない。
 
 ## Step 0 — スコープ確認
@@ -38,6 +39,25 @@
   - キャンセル
 ```
 
+### reviewer モデルの選択
+
+同じ `AskUserQuestion` 呼び出しの中で（スコープと並べて2つ目の質問として）、reviewer subagent を
+どのモデルで動かすかを聞く。既存のティアに加え `fable`（Fable 5）が利用可能:
+
+```text
+質問: レビュアーをどのモデルで実行しますか？（バイアス低減のため 実装者 ≠ レビュアー を推奨）
+選択肢:
+  - 自動（実装者と異なるモデルを既定選択）  ← 既定
+  - fable（Fable 5）
+  - sonnet
+  - opus（深掘り）
+  - haiku（安価・高速な発散パス）
+```
+
+*自動* は、実装者が `sonnet` でなければエージェント定義の既定（`sonnet`）に、そうでなければ別ティアに
+解決する。ユーザーが実装者と同一モデルを選んだ場合は（中核アイデアのとおり）別モデル保証が弱まる旨を
+警告し、確認してから進める。選んだモデルは Step 2・Step 3 の各 `Agent` 呼び出しへ `model` 引数で渡す。
+
 ### フラグ
 
 - `--no-comment` — Step 6 を抑止（PR に投稿せず）ローカルレポートのみ。**既定はオプトアウト**: ブランチに open な PR があれば、このフラグが無い限り Step 6 が残った指摘をインラインコメントとして投稿する。
@@ -51,7 +71,7 @@
 
 ## Step 2 — Finder の fan-out（別モデル、lens ごとに1体）
 
-`adversarial-reviewer` subagent を **lens ごとに1体** 並列起動（`Agent` 呼び出しを1メッセージにまとめる）。中核アイデアのモデル規則を適用。
+`adversarial-reviewer` subagent を **lens ごとに1体** 並列起動（`Agent` 呼び出しを1メッセージにまとめる）。中核アイデアのモデル規則を適用し、Step 0 で選んだ reviewer モデルを各 `Agent` 呼び出しの `model` 引数で渡す（*自動* がエージェント定義の既定に解決するときのみ省略可）。
 
 | Lens | 起動条件 |
 | --- | --- |
@@ -62,9 +82,11 @@
 
 各 subagent プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`CLAUDE.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。`agentType: "adversarial-reviewer"`、`model:` は規則どおり、`label` は `find:security` のように。
 
+専用 finder を追加で並列起動する: (1) **comment-reviewer**（`agentType: "comment-reviewer"`, `label: "find:comment"`）— diff がコメントを追加/変更した時（ほぼ常時）、指摘は Step 5.5 で自動修正。(2) **type-design-reviewer**（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）— diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で採点し、指摘は suggestion 級（自動修正しない）。
+
 ## Step 3 — 敵対的 verify
 
-全 finding を集め、(file, line, claim) で **dedup**。残った finding ごとに `review-verifier` subagent を1体（並列）起動し、単一 finding + ベース ref を渡す。`agentType: "review-verifier"`、`label` は `verify:<file>`。
+全 finding を集め、(file, line, claim) で **dedup**。残った finding ごとに `review-verifier` subagent を1体（並列）起動し、単一 finding + ベース ref を渡す。`agentType: "review-verifier"`、`label` は `verify:<file>`、Step 0 で選んだ reviewer `model`（reviewer ≠ implementer は同様に維持）。
 
 - **CONFIRMED** と **PLAUSIBLE** を残す。**REFUTED** は落とす（件数はレポート用に保持）。
 - critical/high で単一判定が頼りないときは verifier を 2〜3 体立て多数決。重要な finding ほど単一意見より多様性。
@@ -166,7 +188,7 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 
 ## やる / やらない
 
-- ✅ reviewer モデル ≠ implementer モデルを保証（本セッションが sonnet なら既定を上書き）。
+- ✅ reviewer モデル ≠ implementer モデルを保証（Step 0 でユーザーが選択。実装者と同一を選んだ場合は警告して確認）。
 - ✅ finder は並列（1メッセージ・複数 `Agent` 呼び出し）、lens ごとに1体。
 - ✅ レポート前に全 finding を独立 verify、REFUTED は落とす。
 - ✅ 触られたエンドポイントはランタイム検証、共有スキーマ編集なら全 consumer に拡大。

@@ -21,11 +21,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// stubDetailPolicy は、details ゲートのテスト用に許可/拒否を固定する DetailPolicy スタブです。
+type stubDetailPolicy struct{ allow bool }
+
 // badWriter は書き込み時にエラーを返すテスト用の http.ResponseWriter 実装です。
 type badWriter struct {
 	header      http.Header
 	wroteHeader int
 }
+
+func (s stubDetailPolicy) Allows(*http.Request) bool { return s.allow }
 
 func (b *badWriter) Header() http.Header {
 	if b.header == nil {
@@ -44,15 +49,24 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("EchoのHTTPErrorHandlerが設定される", func(t *testing.T) {
+		t.Run("apperrorをHTTPステータスへ変換する本ハンドラが設定される", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
 			z := logging.NewTestLogger(t)
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			New(e, z, lf, obsCfg)
+			New(e, stubDetailPolicy{allow: true}, z, lf, obsCfg)
 			require.NotNil(t, e.HTTPErrorHandler)
+
+			// echo 既定ハンドラは apperror を解釈しないため、ErrNotFound を 404 へ写像することで
+			// 本ハンドラが設定されたことを挙動で確認する。
+			rec := httptest.NewRecorder()
+			c := e.NewContext(httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/t", nil), rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+			e.HTTPErrorHandler(apperror.ErrNotFound, c)
+			assert.Equal(t, http.StatusNotFound, rec.Code)
 		})
 	})
 }
@@ -68,7 +82,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			z := logging.NewTestLogger(t)
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
-			handler := NewHTTPErrorHandler(z, lf, obsCfg)
+			handler := NewHTTPErrorHandler(stubDetailPolicy{allow: true}, z, lf, obsCfg)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -113,7 +127,7 @@ func Test_writeErrorResponse(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "E_TEST",
 					Message:   "test message",
 					RequestId: "req-xyz",
@@ -121,7 +135,7 @@ func Test_writeErrorResponse(t *testing.T) {
 				HTTPStatus: http.StatusTeapot,
 			}
 
-			err := writeErrorResponse(c, he)
+			err := writeErrorResponse(c, he, true)
 			require.NoError(t, err)
 
 			assert.Equal(t, he.HTTPStatus, rec.Code)
@@ -132,6 +146,57 @@ func Test_writeErrorResponse(t *testing.T) {
 			assert.Equal(t, he.Code, got["code"])
 			assert.Equal(t, he.Message, got["message"])
 			assert.Equal(t, he.RequestId, got["requestId"])
+		})
+
+		t.Run("exposeDetailsがtrueの場合、detailsがwireに含まれる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/err", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
+					Code: "E_TEST", Message: "m", RequestId: "r", Details: new([]string{"firstName"}),
+				},
+				HTTPStatus: http.StatusUnprocessableEntity,
+			}
+
+			require.NoError(t, writeErrorResponse(c, he, true))
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			assert.Equal(t, []any{"firstName"}, got["details"])
+			// resp 本体の details は温存され、ログ経路で使える
+			require.NotNil(t, he.Details)
+			assert.Equal(t, []string{"firstName"}, *he.Details)
+		})
+
+		t.Run("exposeDetailsがfalseの場合、wireからdetailsが落ちるがresp本体には残る", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/err", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
+					Code: "E_TEST", Message: "m", RequestId: "r", Details: new([]string{"firstName"}),
+				},
+				HTTPStatus: http.StatusUnprocessableEntity,
+			}
+
+			require.NoError(t, writeErrorResponse(c, he, false))
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			_, hasDetails := got["details"]
+			assert.False(t, hasDetails)
+			// wire だけ落とし、resp 本体(ログ用)は温存する
+			require.NotNil(t, he.Details)
+			assert.Equal(t, []string{"firstName"}, *he.Details)
 		})
 	})
 }
@@ -149,7 +214,7 @@ func Test_handleHTTPError(t *testing.T) {
 		t.Run("レスポンス書き込みとログ出力が行われる", func(t *testing.T) {
 			t.Parallel()
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -159,9 +224,57 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
+		})
+
+		t.Run("details付きエラーはpolicyが拒否するとwireから落ちるがログには残る", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
+			handleHTTPError(c, stubDetailPolicy{allow: false}, logger, lf, obsCfg, metaErr)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			_, hasDetails := got["details"]
+			assert.False(t, hasDetails)
+
+			entries := observed.FilterMessage("errorhandler.client_error").All()
+			require.Len(t, entries, 1)
+			assert.Contains(t, entries[0].ContextMap()[logging.ErrorDetailsKey], "firstName")
+		})
+
+		t.Run("details付きエラーはpolicyが許可するとwireにdetailsが載る", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
+			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, metaErr)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			assert.Equal(t, []any{"firstName"}, got["details"])
 		})
 
 		t.Run("二重呼び出しでもレスポンスボディは1つだけ書かれる", func(t *testing.T) {
@@ -178,8 +291,8 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
-			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom"))
-			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -207,7 +320,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom2"))
+			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom2"))
 
 			assert.Equal(t, http.StatusInternalServerError, bw.wroteHeader)
 		})
@@ -233,6 +346,26 @@ func Test_normalizeHTTPError(t *testing.T) {
 			actual := normalizeHTTPError(expectedInternal, expectedRequestID)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, actual.HTTPStatus)
+			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("Meta付きAppErrorを渡した場合はDetailsが反映される", func(t *testing.T) {
+			t.Parallel()
+
+			joined := xerrors.Join(
+				xerrors.Wrap(apperror.ErrValidation, "first name failed"),
+				xerrors.Wrap(apperror.ErrValidation, "email failed"),
+			)
+			metaErr := apperror.WithDetails(joined, "firstName", "email")
+
+			expected := response.NewHTTPErrorFromAppError(metaErr)
+			expected.RequestId = expectedRequestID
+
+			actual := normalizeHTTPError(metaErr, expectedRequestID)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, actual.HTTPStatus)
+			require.NotNil(t, actual.Details)
+			assert.Equal(t, []string{"firstName", "email"}, *actual.Details)
 			assert.Equal(t, expected, actual)
 		})
 
@@ -298,7 +431,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			t.Parallel()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "E_ERR",
 					Message:   "err",
 					Details:   nil,
@@ -419,7 +552,7 @@ func Test_logHTTPError(t *testing.T) {
 			defer end()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "C302",
 					Message:   "M302",
 					RequestId: "r302",
@@ -440,7 +573,7 @@ func Test_logHTTPError(t *testing.T) {
 			defer end()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "C500",
 					Message:   "M500",
 					RequestId: "r500",
@@ -464,7 +597,7 @@ func Test_logHTTPError(t *testing.T) {
 			defer end()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "C404",
 					Message:   "M404",
 					RequestId: "r404",
@@ -532,7 +665,7 @@ func Test_httpErrorField(t *testing.T) {
 
 			c := newEchoCtx(t)
 			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "E_TEST",
 					Message:   "m",
 					RequestId: "rid",
@@ -556,7 +689,7 @@ func Test_httpErrorField(t *testing.T) {
 			details := []string{"d1", "d2"}
 			internalErr := xerrors.New("internal err")
 			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "E_INT",
 					Message:   "m2",
 					Details:   &details,
