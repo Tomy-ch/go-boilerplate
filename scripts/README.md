@@ -25,7 +25,7 @@ scripts/
     ├── replace-license-copyright.mjs
     ├── replace-repository-reference.mjs
     ├── remove-sample-api.mjs  # Remove the sample API (user/product/order) <!-- sample-api:line -->
-    └── lib/                   # Shared utilities for setup scripts (incl. sample-api.mjs manifest) <!-- sample-api:line -->
+    └── lib/                   # Shared utilities for setup scripts
 ```
 
 ## Script Categories

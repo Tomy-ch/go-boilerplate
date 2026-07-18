@@ -25,7 +25,7 @@ scripts/
     ├── replace-license-copyright.mjs
     ├── replace-repository-reference.mjs
     ├── remove-sample-api.mjs  # サンプルAPI(user/product/order)を削除 <!-- sample-api:line -->
-    └── lib/                   # setup スクリプト共通ユーティリティ（sample-api.mjs manifest を含む） <!-- sample-api:line -->
+    └── lib/                   # setup スクリプト共通ユーティリティ
 ```
 
 ## スクリプトカテゴリ
