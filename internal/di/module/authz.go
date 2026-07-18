@@ -47,8 +47,8 @@ func authzModule() fx.Option {
 
 // provideAuthorizer は、環境に対応した Authorizer を返します。
 // local / ci / test は全許可（allowall）の割り切り実装を配線します。
-// dev / stg / prd（本番相当）は本番向けの認可実装を配線します
-// （サンプルでは user_roles ベース、サンプル削除後は全拒否の deny-all 既定へ置換）。
+// dev / stg / prd（本番相当）は本番向けの認可実装を配線します。
+// サンプルでは user_roles ベース、サンプル削除後は全拒否の deny-all 既定へ置換されます。 // sample-api:line
 // 未知の環境名は、誤った Authorizer を配線しないよう起動エラーにします。
 func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 	logger := p.Logger.Named("authz").CallerSkip(callerSkipCount)
