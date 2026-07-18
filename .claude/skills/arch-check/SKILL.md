@@ -20,7 +20,7 @@ To audit a single layer, run this integrator and pick that layer in the scope qu
 Do NOT use this skill for:
 
 - Style / formatting — `make fix` / `make lint`.
-- General code review — `/review` / `/ultrareview` / `local-review`.
+- General code review — `/review` / `/ultrareview` / `impl-review`.
 - Spec validation — `verify-spec`.
 
 ## Architecture: parallel auditor subagents

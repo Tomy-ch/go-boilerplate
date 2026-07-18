@@ -26,13 +26,13 @@
 使わない場面:
 
 - 検出（レビュー生成）そのもの → `full-verify`。
-- 差分・PR レビュー → `local-review` / `/code-review`。
+- 差分・PR レビュー → `impl-review` / `/code-review`。
 - 単発のコミット作業 → `commit`。
 
 ## 位置づけ（他スキルとの棲み分け）
 
 `full-verify`（検出）の対の「**適用**」。差分レビューの適用ではなく、全体検証 md 群を
-重大度順・台帳駆動で直す。差分単位は `local-review` / `/code-review`、単発コミットは
+重大度順・台帳駆動で直す。差分単位は `impl-review` / `/code-review`、単発コミットは
 `commit`、層規約は `arch-check`。コミット機構自体は `commit` スキルに委譲する（6.）。
 
 ## 引数（既定値あり）

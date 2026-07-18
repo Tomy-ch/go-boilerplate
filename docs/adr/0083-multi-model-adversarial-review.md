@@ -29,7 +29,7 @@ A review workflow is needed that:
 
 ## Decision
 
-The `local-review` skill implements a multi-model adversarial review in the
+The `impl-review` skill implements a multi-model adversarial review in the
 **finder → verifier** shape:
 
 **Finder stage (concurrent):** Four code lenses (`correctness`, `security`, `architecture`,
@@ -87,7 +87,7 @@ is bias reduction through model divergence.
 ### Human-only review
 
 Provides genuine independence but is not available at every commit and does not scale with
-AI-driven development pace. The `local-review` skill is positioned as a pre-PR complement
+AI-driven development pace. The `impl-review` skill is positioned as a pre-PR complement
 to human review, not a replacement.
 
 ### Automated linting only
@@ -98,7 +98,7 @@ Rejected as insufficient for a full code review pass.
 
 ## Notes
 
-- Source: `.claude/skills/local-review/SKILL.md`, `.claude/agents/adversarial-reviewer.md`,
+- Source: `.claude/skills/impl-review/SKILL.md`, `.claude/agents/adversarial-reviewer.md`,
   `.claude/agents/review-verifier.md`.
 - The `adversarial-reviewer` and `review-verifier` agent files declare `model: sonnet`
   in their frontmatter; the orchestrator overrides this via the `Agent` tool `model`

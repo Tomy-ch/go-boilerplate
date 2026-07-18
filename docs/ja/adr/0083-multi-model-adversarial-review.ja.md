@@ -26,7 +26,7 @@ accepted
 
 ## 決定
 
-`local-review` スキルは、**ファインダー → ベリファイアー**形式のマルチモデル敵対的レビューを実装する:
+`impl-review` スキルは、**ファインダー → ベリファイアー**形式のマルチモデル敵対的レビューを実装する:
 
 **ファインダーステージ（並行）:** 4 つのコードレンズ（`correctness`、`security`、`architecture`、`runtime-gap`）がそれぞれ独立した `adversarial-reviewer` サブエージェントとして実行される。専用の `comment-reviewer` サブエージェントがコメント品質をカバーする。すべてのファインダーが並行実行される。オーケストレーターは、レビュアーエージェントが実装者とは異なるモデルで実行されることを保証する — レビュアーエージェントはデフォルトで `sonnet` であり、セッションモデルが一致する場合はオーケストレーターがオーバーライドする。
 
@@ -59,7 +59,7 @@ accepted
 
 ### 人間のみによるレビュー
 
-真の独立性を提供するが、すべてのコミットで利用可能なわけではなく、AI 駆動の開発ペースに対してスケールしない。`local-review` スキルは人間によるレビューの代替ではなく、PR 前の補完として位置付けられる。
+真の独立性を提供するが、すべてのコミットで利用可能なわけではなく、AI 駆動の開発ペースに対してスケールしない。`impl-review` スキルは人間によるレビューの代替ではなく、PR 前の補完として位置付けられる。
 
 ### 自動リントのみ
 
@@ -67,7 +67,7 @@ accepted
 
 ## 補足
 
-- ソース: `.claude/skills/local-review/SKILL.md`、`.claude/agents/adversarial-reviewer.md`、`.claude/agents/review-verifier.md`。
+- ソース: `.claude/skills/impl-review/SKILL.md`、`.claude/agents/adversarial-reviewer.md`、`.claude/agents/review-verifier.md`。
 - `adversarial-reviewer` と `review-verifier` エージェントファイルはフロントマターで `model: sonnet` を宣言する。セッションモデルも `sonnet` の場合、オーケストレーターは `Agent` ツールの `model` パラメーターを通じてこれをオーバーライドする。
 - コメント品質の指摘は Step 5.5 で自動適用される唯一の指摘であり、4 つのコードレンズはレポートのみ（スキルによる自動修正は適用されない）。
 - 指摘はデフォルトでブランチ PR にインラインレビューコメントとして投稿される。`--no-comment` で抑制、または `--no-apply` でコメント自動修正を抑制できる。
