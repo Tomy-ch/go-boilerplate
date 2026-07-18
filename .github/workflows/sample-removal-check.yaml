@@ -19,7 +19,9 @@ jobs:
     permissions:
       contents: read
     env:
-      ENV: ci
+      # local env を使う（DB_HOST=database）。compose の tool runner はサービス名 database で、
+      # runner 側の go test は下記 /etc/hosts マッピングで database→127.0.0.1(ポート公開)で解決する。
+      ENV: local
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -30,8 +32,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # 埋め込み用に ci env を materialize（他 CI と同様）。
-      - name: Materialize ci env for embedding
+      # DB_HOST=database を runner 側でも解決させる（compose が 5432 をホストへ公開しているため
+      # database→127.0.0.1 で go test 等が接続できる）。コンテナ内は compose ネットワークで解決。
+      - name: Map database host to localhost
+        run: echo "127.0.0.1 database" | sudo tee -a /etc/hosts
+
+      # 埋め込み用に env を materialize。
+      - name: Materialize env for embedding
         run: make materialize-env
 
       # compose の database を起動し healthy まで待つ。
