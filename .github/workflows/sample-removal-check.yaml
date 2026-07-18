@@ -5,16 +5,15 @@ name: Sample Removal Check
 # 実コマンドをそのまま docker compose stack 上で回すことで「ユーザーが実際に叩くコマンド」の
 # 動作を最高忠実度で確認する（DB は compose の database サービスを使い、tool runner も compose）。
 on:
-  # 初版は手動実行のみで実走検証する。green 化を確認後、下記 pull_request(paths) を有効化する。
   workflow_dispatch:
-  # pull_request:
-  #   paths:
-  #     - '.github/workflows/sample-removal-check.yaml'
-  #     - 'scripts/setup/remove-sample-api.mjs'
-  #     - 'scripts/setup/lib/sample-api.mjs'
-  #     - '.makefiles/github/operation/setup-repository.mk'
-  #     - '.makefiles/database/start-up.mk'
-  #     - 'database/maintenance/**'
+  pull_request:
+    paths:
+      - '.github/workflows/sample-removal-check.yaml'
+      - 'scripts/setup/remove-sample-api.mjs'
+      - 'scripts/setup/lib/sample-api.mjs'
+      - '.makefiles/github/operation/setup-repository.mk'
+      - '.makefiles/database/start-up.mk'
+      - 'database/maintenance/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
