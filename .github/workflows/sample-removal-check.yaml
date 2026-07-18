@@ -52,7 +52,7 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # make lint(golangci-lint)を runner で直実行するため、go-lint.yaml と同様に mise で導入する。
+      # golangci-lint / node を runner で直実行するため、go-lint.yaml と同様に mise で導入する。
       - name: Setup mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
@@ -60,8 +60,16 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install golangci-lint
-        run: mise install golangci-lint
+      - name: Install node & golangci-lint
+        run: mise install node golangci-lint
+
+      # 削除スクリプトの node 依存(commander 等)は docker/tools/package.json に定義され、
+      # node_tool_runner イメージでは /app/scripts/node_modules へ install される。runner 直実行でも
+      # 同じ構成を再現する（Dockerfile と同じ package.json を scripts/ へ置いて npm ci）。
+      - name: Install script node deps
+        run: |
+          cp docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc scripts/
+          npm ci --ignore-scripts --prefix scripts
 
       - name: Setup DB
         uses: ./.github/actions/setup-postgres
@@ -74,11 +82,15 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
-      # サンプル削除の「ファイル削除 + マーカー除去 + ツール自消滅」だけをコンテナで実行する。
-      # この段階は DB を一切触らないため、コンテナ内から DB へ到達する必要はない。
-      # 出力(/app のマウント経由)は runner の作業ツリーへ反映され、後続ステップが post-removal を見る。
+      # サンプル削除の「ファイル削除 + マーカー除去 + ツール自消滅」を runner で直実行する
+      # （DB を触らないため docker compose は不要）。
       - name: Remove sample files (delete + strip markers + self-destruct)
-        run: docker compose run --rm node_tool_runner node scripts/setup/remove-sample-api.mjs
+        run: node scripts/setup/remove-sample-api.mjs
+
+      # マーカー除去でフィールド整列・インデントが崩れるため、実削除フロー同様に整形する
+      # （実コマンドは gen-api gen-query fix lint を連鎖する。CI では gen を省くため fix のみ）。
+      - name: Format after removal (make fix)
+        run: make fix
 
       # フレッシュな test DB へ migrate-up。サンプル migration は既に消えているため core のみ適用される。
       - name: Migrate & seed core-only schema
