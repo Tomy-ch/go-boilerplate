@@ -12,6 +12,8 @@ import (
 const (
 	// ProviderMock はモック認証プロバイダを示します。
 	ProviderMock = "mock"
+	// ProviderJWT は JWT 検証による認証プロバイダを示します。
+	ProviderJWT = "jwt"
 )
 
 // Authn は、認証結果を表します。
