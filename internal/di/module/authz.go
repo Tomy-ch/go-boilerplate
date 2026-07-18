@@ -9,8 +9,6 @@ import (
 
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"
 
-	"go-boilerplate/pkg/xerrors"
-
 	"go.uber.org/fx"
 )
 
@@ -28,26 +26,27 @@ func authzModule() fx.Option {
 	)
 }
 
-// provideAuthorizer は、環境（EnvLocal / EnvCI / EnvTest）に対応した Authorizer を返します。
-// 現状の実装は全許可（allowall）の割り切りであるため、本番相当の環境では誤って全許可を
-// 配線しないようエラーを返し、RBAC / 外部ポリシーエンジン実装への差し替えを強制します。
+// provideAuthorizer は、現在の環境に対応した Authorizer を返します。現状の実装は全許可
+// （allowall）の割り切りのみで、非本番環境（local / ci / test）以外での生成は allowall 自身が
+// fail-closed で拒否します。ここではその結果に応じて、配線時の注意喚起（WARN）と拒否時の
+// エラーログ（ERROR）を出すだけで、環境ごとの許否判断そのものは持ちません。
 func provideAuthorizer(appCfg *config.ApplicationConfig, logger logging.Logger) (authzbd.Authorizer, error) {
-	switch appCfg.Env() {
-	case config.EnvLocal, config.EnvCI, config.EnvTest:
-		logger.Named("authz").CallerSkip(callerSkipCount).Warn(
-			context.Background(),
-			"Allow-all authorizer wired: every request is permitted (non-production only)",
-			logging.String("env", appCfg.Env()),
-		)
-
-		return allowall.New(), nil
-	default:
+	authorizer, err := allowall.New(appCfg)
+	if err != nil {
 		logger.Named("authz").CallerSkip(callerSkipCount).Error(
 			context.Background(),
 			"No authorizer configured for the current environment",
 			logging.String("env", appCfg.Env()),
 		)
 
-		return nil, xerrors.New("no authorizer configured for environment: " + appCfg.Env())
+		return nil, err
 	}
+
+	logger.Named("authz").CallerSkip(callerSkipCount).Warn(
+		context.Background(),
+		"Allow-all authorizer wired: every request is permitted (non-production only)",
+		logging.String("env", appCfg.Env()),
+	)
+
+	return authorizer, nil
 }

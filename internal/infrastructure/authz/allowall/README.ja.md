@@ -9,9 +9,13 @@
 - 実際の認可ポリシーが存在しない段階でも機能開発を進められるよう、`Authorizer` 依存を満たす。
 - `Authorize(...)` は subject / action / resource によらず常に `nil`（許可）を返す。
 
+## fail-closed な生成
+
+`New` は `*config.ApplicationConfig` を受け取り、**`local` / `ci` / `test` 以外では生成を拒否**して本番相当の環境ではエラーを返します。すべてを許可するスタブは危険なため、この前提条件は呼び出し側ではなくスタブ自身が担保します —— `provideAuthorizer` の配線を誤っても、本番で全許可ポリシーに到達することはありません。DI プロバイダはその拒否を起動失敗として表面化させます。
+
 ## 本番向けの差し替え
 
-DI プロバイダ（`internal/di/module/authz.go` の `provideAuthorizer`）は環境ゲート付きです。`allowall` は local / CI / test のみに配線し、本番相当の環境ではエラーを返すため、全許可ポリシーが本番に出荷されることはありません。RBAC / 外部ポリシーエンジン（OPA / Cedar）実装に差し替えてください。
+`allowall` を RBAC / 外部ポリシーエンジン（OPA / Cedar）実装に差し替え、本番相当の環境向けに `provideAuthorizer`（`internal/di/module/authz.go`）で配線してください。
 
 ## 注意点
 
