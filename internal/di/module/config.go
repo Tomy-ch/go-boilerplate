@@ -23,7 +23,6 @@ func ConfigModule() fx.Option {
 			config.NewObservabilityConfig,
 			config.NewSecurityConfig,
 			config.NewSecureCookieConfig,
-			config.NewAuthConfig,
 			config.NewWorkerConfig,
 			config.NewOutboxConfig,
 		),

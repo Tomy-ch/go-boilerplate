@@ -283,8 +283,6 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
-|`SetHeaderName`|`AuthConfig`|
-|`SetAllowedHeaderBearer`|`AuthConfig`|
 |`SetOutboxBatchSize`|`OutboxConfig`|
 |`SetOutboxEndpoint`|`OutboxConfig`|
 |`SetOutboxPollInterval`|`OutboxConfig`|

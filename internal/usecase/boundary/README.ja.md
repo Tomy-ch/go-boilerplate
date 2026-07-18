@@ -61,18 +61,19 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |型 / 関数|説明|
 |---|---|
 |`Authenticator`|`Credential` から `Authn` を生成するインターフェース|
-|`Authn`|認証結果（subject / id / provider / scopes / claims）|
-|`New(subject, provider, scopes, claims)`|`Authn` を生成（subject 空は `ErrUnauthenticatedSubjectMissing`）|
-|`Credential`|アクセストークンを保持する値オブジェクト|
-|`NewCredential(accessToken)`|`Credential` を生成（空トークンは `ErrTokenMissing`）|
+|`Authn`|認証結果（subject / userID / issuer / scopes / claims）|
+|`New(subject, issuer, scopes, claims)`|`Authn` を UserID 未解決の状態で生成（subject 空は `ErrUnauthenticatedSubjectMissing`）|
+|`WithUserID(userID)`|内部 UserID を解決した `Authn` の複製を返す|
+|`Credential`|認証スキームとトークンを保持する値オブジェクト|
+|`NewCredential(scheme, token)`|`Credential` を生成（空トークンは `ErrTokenMissing`）|
 
 エラー：
 
 |エラー|説明|
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|subject が空|
-|`ErrSubjectNotUUID`|subject が UUID として解釈できない|
-|`ErrTokenMissing`|アクセストークンが空|
+|`ErrUserIDUnresolved`|内部 UserID が未解決|
+|`ErrTokenMissing`|トークンが空|
 
 ### authz
 

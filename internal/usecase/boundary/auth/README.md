@@ -16,25 +16,28 @@ Provides interfaces and value objects for authentication.
 The identity core is Subject (token `sub`), Issuer (token issuer) and UserID (internal user id).
 
 - `Subject()` — returns the authenticated subject (token `sub`)
-- `HasUserID()` — returns true if subject was parseable as UUID
-- `UserID()` — returns the internal user UUID (error if not parseable)
+- `WithUserID()` — returns a copy with the internal UserID resolved (identity resolution is separate from authentication)
+- `HasUserID()` — returns true if the internal UserID has been resolved
+- `UserID()` — returns the internal user UUID (`ErrUserIDUnresolved` if unresolved)
 - `Issuer()` — returns the token issuer (e.g., `"mock"`, an IdP issuer)
 - `Scopes()` — returns scope list (optional)
 - `Claims()` — returns claims map (optional, for authorization / UI control)
+
+`New()` produces the authenticator result (subject + issuer) with the UserID **unresolved**; resolving the internal user is a separate concern (an `IdentityResolver`-equivalent), applied via `WithUserID()`.
 
 ## Errors
 
 |Error|Description|
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|Subject is empty (wraps `apperror.ErrUnauthenticated`)|
-|`ErrSubjectNotUUID`|Subject cannot be parsed as UUID (wraps `apperror.ErrValidation`)|
-|`ErrTokenMissing`|Token is empty (wraps `apperror.ErrInvalidArgument`)|
+|`ErrUserIDUnresolved`|Internal UserID is unresolved (wraps `apperror.ErrUnauthenticated`)|
+|`ErrTokenMissing`|Token is empty (wraps `apperror.ErrUnauthenticated`)|
 
 ## Design Intent
 
 - Represent the "authenticated" state with types
 - Push token parsing logic to the outer layer (Infrastructure)
-- Keep subject normalization (trim) and UUID conversion encapsulated
+- Separate authentication (subject/issuer extraction) from internal-user resolution (`WithUserID`)
 
 ## Implementation
 

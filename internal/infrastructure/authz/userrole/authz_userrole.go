@@ -22,7 +22,7 @@ func New(roleRepo user.RoleRepository) authzbd.Authorizer {
 
 // Authorize は、認証主体のロールとリソース所有権に基づき許可/拒否を判定します。
 // 管理者ロールを持つ場合は許可（nil）、非管理者はリソース所有者本人の場合のみ許可し、
-// それ以外は ErrForbidden（HTTP 403）を返します。認証主体を UUID として解釈できない場合も拒否します。
+// それ以外は ErrForbidden（HTTP 403）を返します。内部 UserID が未解決の場合も拒否します。
 func (a *authorizer) Authorize(
 	ctx context.Context,
 	authn *authbd.Authn,
@@ -33,7 +33,7 @@ func (a *authorizer) Authorize(
 		return authzbd.ErrForbidden
 	}
 
-	subjectID, err := authn.ID()
+	subjectID, err := authn.UserID()
 	if err != nil {
 		return authzbd.ErrForbidden
 	}
