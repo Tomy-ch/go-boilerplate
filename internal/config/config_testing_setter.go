@@ -170,26 +170,6 @@ func (s *SecurityConfig) SetCIDR(tb testing.TB, cidr *net.IPNet) {
 	tb.Cleanup(func() { s.cidr = prev })
 }
 
-// SetHeaderName は、テスト用に認証のヘッダ名を設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *AuthConfig) SetHeaderName(tb testing.TB, headerName string) {
-	tb.Helper()
-	prev := a.headerName
-	a.headerName = headerName
-	tb.Cleanup(func() { a.headerName = prev })
-}
-
-// SetAllowedHeaderBearer は、テスト用に認証の許可されたヘッダベアラーを設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool) {
-	tb.Helper()
-	prev := a.allowedHeaderBearer
-	a.allowedHeaderBearer = allowed
-	tb.Cleanup(func() { a.allowedHeaderBearer = prev })
-}
-
 // SetOutboxBatchSize は、テスト用に outbox relay の batch size を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。

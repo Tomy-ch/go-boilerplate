@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
@@ -18,14 +17,13 @@ const prefixBearer = "Bearer "
 
 // NewAuthenticator は、認証用のOpenAPIオプションを返します。
 func NewAuthenticator(
-	authCfg *config.AuthConfig,
 	authenticator authbd.Authenticator,
 ) openapi3filter.AuthenticationFunc {
 	return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 		req := input.RequestValidationInput.Request
 
 		// エラー変換は authExtractor に一本化。
-		authn, err := authExtractor(ctx, req, authCfg, authenticator)
+		authn, err := authExtractor(ctx, req, authenticator)
 		if err != nil {
 			return err
 		}
@@ -45,10 +43,9 @@ func NewAuthenticator(
 func authExtractor(
 	ctx context.Context,
 	req *http.Request,
-	authCfg *config.AuthConfig,
 	authenticator authbd.Authenticator,
 ) (*authbd.Authn, error) {
-	scheme, token := extractToken(req, authCfg)
+	scheme, token := extractBearerToken(req)
 	if token == "" {
 		//nolint:nilnil // トークン未提供を表す。呼び出し側で authn==nil を判定し未提供エラーへ変換するため意図的にnil,nilを返す
 		return nil, nil
@@ -67,23 +64,18 @@ func authExtractor(
 	return authn, nil
 }
 
-// extractToken は、authCfg.HeaderName() で設定された認証ヘッダーからスキームとトークンを抽出します。
-// ヘッダーが Authorization かつ Bearer 許可時のみ Bearer プレフィックスを検証して scheme に SchemeBearer を設定し、
-// それ以外はヘッダー値をそのまま token として返し scheme は空文字になります。
-func extractToken(r *http.Request, authCfg *config.AuthConfig) (string, string) {
-	if authCfg.HeaderName() == "" {
-		return "", ""
-	}
-
-	raw := strings.TrimSpace(r.Header.Get(authCfg.HeaderName()))
+// extractBearerToken は、Authorization ヘッダから Bearer トークンを抽出します。
+// Bearer トークンは RFC 6750 で Authorization ヘッダに固定されるため、ヘッダ名・スキームは可変にしない。
+// Authorization: Bearer <token> 形式のときだけ scheme=SchemeBearer と token を返し、
+// それ以外は scheme/token とも空を返します。
+func extractBearerToken(r *http.Request) (string, string) {
+	raw := strings.TrimSpace(r.Header.Get(echo.HeaderAuthorization))
 	if raw == "" {
 		return "", ""
 	}
-	if authCfg.AllowedHeaderBearer() && strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) {
-		if after, ok := strings.CutPrefix(raw, prefixBearer); ok {
-			return authbd.SchemeBearer, strings.TrimSpace(after)
-		}
+	after, ok := strings.CutPrefix(raw, prefixBearer)
+	if !ok {
 		return "", ""
 	}
-	return "", raw
+	return authbd.SchemeBearer, strings.TrimSpace(after)
 }

@@ -52,9 +52,14 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 		return nil, err
 	}
 
-	// 認証プリンシパルが取れなければ冪等性は発動しない（スコープキーに Subject を使うため、認証済みリクエストのみ対象とする）。
+	// スコープキーには内部 UserID を使うため、認証済みかつ UserID 解決済みのリクエストのみ対象とする。
+	// 認証プリンシパルが取れない、または UserID 未解決なら冪等性は発動せず素通しする（安全側）。
 	authn, ok := ctxhelper.GetAuthn(r.Context())
 	if !ok {
+		return next(ec, request)
+	}
+	userID, err := authn.UserID()
+	if err != nil {
 		return next(ec, request)
 	}
 
@@ -64,7 +69,7 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 	}
 
 	reqCtx := idempotencyuc.WithRequest(r.Context(), idempotencyuc.Request{
-		Scope:       authn.Subject(),
+		Scope:       userID.String(),
 		Key:         key,
 		Fingerprint: fp,
 		Method:      r.Method,
