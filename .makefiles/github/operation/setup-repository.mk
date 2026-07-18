@@ -144,7 +144,8 @@ setup-remove-sample-api:
 		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
 	else \
 		echo "🔧 再生成・整形・検証・DB 再構築を実行します..."; \
-		$(MAKE) gen-api gen-query fix lint db-init-local db-init-test; \
+		$(MAKE) db-local-reinit db-test-reinit; \
+		$(MAKE) gen-api gen-query fix lint; \
 		echo "✅ サンプルAPIの削除・再生成・検証が完了しました。"; \
 	fi
 # sample-api:end
