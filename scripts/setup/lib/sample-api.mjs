@@ -50,7 +50,7 @@ export const SAMPLE_DOMAINS = {
     description:
       "サンプル 認可基盤（user_roles テーブル + user_roles ベース Authorizer）。user サンプルに同梱削除される",
     paths: [
-      // Authorizer 実装（本番相当環境に配線。削除後は provideAuthorizer が fail-closed に戻る）
+      // Authorizer 実装（本番相当環境に配線。削除後は provideAuthorizer が deny-all 既定へ置換される）
       "internal/infrastructure/authz/userrole",
 
       "database/migrations/000005_create_roles.up.sql",
@@ -120,6 +120,7 @@ export const MARKER_FILES = [
   "internal/di/module/usecase.go",
   "internal/di/module/persistence.go",
   "internal/di/module/authz.go",
+  "internal/di/module/authz_test.go",
   "internal/di/module/job.go",
 ]
 
@@ -132,15 +133,67 @@ const BLOCK_BEGIN = /(?:\/\/|#)\s*sample-api:begin\b/
 const BLOCK_END = /(?:\/\/|#)\s*sample-api:end\b/
 const LINE_MARKER = /(?:\/\/|#)\s*sample-api:line\b/
 
+// replace マーカー: `replace-begin`〜`replace-with` の有効行（サンプル在時に生きるコード）を除去し、
+// `replace-with`〜`replace-end` の差し替え行（`// =` / `# =` でコメント化された退避コード）をアンコメントして残す。
+// 削除後にだけ有効化したい代替実装（例: サンプル Authorizer → deny-all 既定）を、単純な行/ブロック除去では
+// 表現できない「置換」として扱うための仕組み。退避コメントは `//` 直後にスペースを置く（gocritic 準拠）。
+const REPLACE_BEGIN = /(?:\/\/|#)\s*sample-api:replace-begin\b/
+const REPLACE_WITH = /(?:\/\/|#)\s*sample-api:replace-with\b/
+const REPLACE_END = /(?:\/\/|#)\s*sample-api:replace-end\b/
+// 差し替え行の退避コメント。先頭の空白（インデント）は保持し、`//`/`#` と `=` マーカー・直後の空白1つだけ剥がす。
+const REPLACE_CONTENT = /^(\s*)(?:\/\/|#)\s*=\s?(.*)$/
+
 // `sample-api:begin`〜`sample-api:end` で囲まれた行と、行末に `sample-api:line` を持つ行を除去する。
+// さらに `sample-api:replace-begin`/`replace-with`/`replace-end` による置換にも対応する。
 // ネストにも対応するため depth カウンターで管理し、対応の取れないマーカーは throw する。
 export function stripSampleMarkers(content) {
   const lines = content.split("\n")
   const out = []
   let depth = 0
   let removed = 0
+  // 0: 置換外 / 1: 有効側（除去中） / 2: 差し替え側（アンコメント中）
+  let replaceState = 0
 
   for (const line of lines) {
+    if (REPLACE_BEGIN.test(line)) {
+      if (replaceState !== 0) {
+        throw new Error("sample-api:replace ブロックは入れ子にできません。")
+      }
+      replaceState = 1
+      removed++
+      continue
+    }
+    if (REPLACE_WITH.test(line)) {
+      if (replaceState !== 1) {
+        throw new Error("sample-api:replace-with に対応する sample-api:replace-begin がありません。")
+      }
+      replaceState = 2
+      removed++
+      continue
+    }
+    if (REPLACE_END.test(line)) {
+      if (replaceState === 0) {
+        throw new Error("sample-api:replace-end に対応する sample-api:replace-begin がありません。")
+      }
+      replaceState = 0
+      removed++
+      continue
+    }
+    if (replaceState === 1) {
+      // 有効側（サンプル在時のコード）は除去する。
+      removed++
+      continue
+    }
+    if (replaceState === 2) {
+      // 差し替え側は退避コメントをアンコメントして残す。
+      const matched = REPLACE_CONTENT.exec(line)
+      if (matched === null) {
+        throw new Error(`sample-api:replace-with 〜 replace-end の行は //= または #= で始めてください: ${line}`)
+      }
+      out.push(matched[1] + matched[2])
+      continue
+    }
+
     if (BLOCK_BEGIN.test(line)) {
       depth++
       removed++
@@ -163,6 +216,9 @@ export function stripSampleMarkers(content) {
 
   if (depth > 0) {
     throw new Error("sample-api:begin に対応する sample-api:end が見つかりません。")
+  }
+  if (replaceState !== 0) {
+    throw new Error("sample-api:replace-begin に対応する sample-api:replace-end が見つかりません。")
   }
 
   return { content: out.join("\n"), removed }
