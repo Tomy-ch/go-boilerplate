@@ -30,12 +30,13 @@ Infrastructure["Infrastructure (authz implementation)"] -. implements .-> Bounda
 |Directory|Purpose|
 |---|---|
 |`allowall`|Allow-all stub for local / CI / test (grants everything)|
+|`userrole`|Sample `user_roles`-based RBAC Authorizer for production-like environments (admin ⇒ allow; otherwise resource-owner only). Part of the `user` sample and removed with it.|
 
-A real deployment replaces this with an RBAC / external policy-engine implementation.
+A real deployment replaces these with its own RBAC / external policy-engine implementation.
 
 ## Local / Staging / Production Implementation
 
-`allowall` is a **development-only stub**; it is wired only for `local` / `ci` / `test`. For `development` / `staging` / `production` you must add real implementations and wire them per environment (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2). The DI provider is **fail-closed**, so until you do, those environments refuse to start by design.
+`allowall` is a **development-only stub**; it is wired only for `local` / `ci` / `test`. For `development` / `staging` / `production` you must add real implementations and wire them per environment (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2). `provideAuthorizer` is **fail-closed**: any environment without a wired implementation falls through to the `default` branch and returns a startup error by design. While the `user` sample is present, the sample `userrole` implementation (backed by `user_roles`) serves `development` / `staging` / `production`; removing the sample reverts those environments to the fail-closed error until you wire your own.
 
 Suggested layout (mirrors `internal/infrastructure/auth/`):
 
@@ -52,7 +53,7 @@ A real `Authorizer` typically decides via:
 - RBAC (roles derived from `auth.Authn` claims / scopes)
 - an external policy engine (OPA / Cedar)
 
-Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding `case config.EnvDevelopment / EnvStaging / EnvProduction` branches that return your real implementation instead of the current `default` fail-closed error.
+Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding a `case config.EnvDevelopment / EnvStaging / EnvProduction` branch that returns your real implementation. Anything left unhandled falls through to the `default` branch, which returns the fail-closed error. (While the `user` sample is present, that `case` is occupied by the sample `userrole`, and it is removed together with the sample.)
 
 ## Registration to DI
 
