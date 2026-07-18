@@ -1,0 +1,114 @@
+name: Sample Removal Check
+
+# サンプル削除フロー（make setup-remove-sample-api）が最後まで壊れず完走し、削除後の
+# コアのみの状態でビルド・lint・テストが通り、削除ツール自身も自消滅することを検証する。
+# 実コマンドをそのまま docker compose stack 上で回すことで「ユーザーが実際に叩くコマンド」の
+# 動作を最高忠実度で確認する（DB は compose の database サービスを使い、tool runner も compose）。
+on:
+  # 初版は手動実行のみで実走検証する。green 化を確認後、下記 pull_request(paths) を有効化する。
+  workflow_dispatch:
+  # pull_request:
+  #   paths:
+  #     - '.github/workflows/sample-removal-check.yaml'
+  #     - 'scripts/setup/remove-sample-api.mjs'
+  #     - 'scripts/setup/lib/sample-api.mjs'
+  #     - '.makefiles/github/operation/setup-repository.mk'
+  #     - '.makefiles/database/start-up.mk'
+  #     - 'database/maintenance/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sample-removal-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      ENV: ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # 埋め込み用に ci env を materialize（他 CI と同様）。
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
+      # compose の database を起動し healthy まで待つ。
+      # 以降 make setup-remove-sample-api は node_tool_runner / go_tool_runner /
+      # database を同一 compose ネットワークで解決するため、DB 到達性の問題は起きない。
+      - name: Start database (compose)
+        run: |
+          set -euo pipefail
+          docker compose --profile database up -d database
+          for i in $(seq 1 30); do
+            if docker compose exec -T database pg_isready -U postgres >/dev/null 2>&1; then
+              echo "database is ready"
+              exit 0
+            fi
+            echo "waiting for database... ($i)"
+            sleep 2
+          done
+          echo "database did not become ready"
+          docker compose logs database || true
+          exit 1
+
+      # 削除前の状態（フルのサンプルスキーマ）を用意する。フレッシュ DB なので migrate-up + seed
+      # を直接実行する（db-init の migrate-down はフレッシュ DB では不要）。
+      - name: Initialize DB with full (pre-removal) schema
+        run: make db-local-migrate-up db-local-seed db-test-migrate-up db-test-seed
+
+      # 実コマンド。削除 → db-reinit(drop→migrate-up→seed) → gen-api/gen-query/fix/lint →
+      # ツール自消滅、までを 1 コマンドで完走する。
+      - name: Remove sample API (real command)
+        run: make setup-remove-sample-api
+
+      # ── 以降、削除後のコアのみの状態を検証 ──
+
+      - name: Verify build
+        run: go build ./...
+
+      - name: Verify lint
+        run: make lint
+
+      - name: Verify tests
+        run: make test
+
+      - name: Verify sample-removal tooling self-destructed
+        run: |
+          set -euo pipefail
+          # make ターゲットが消えていること
+          if make help 2>/dev/null | grep -q 'setup-remove-sample-api'; then
+            echo "FAIL: setup-remove-sample-api target still present"
+            exit 1
+          fi
+          # 削除スクリプト自身が消えていること
+          for f in scripts/setup/remove-sample-api.mjs scripts/setup/lib/sample-api.mjs; do
+            if [ -e "$f" ]; then
+              echo "FAIL: $f was not self-deleted"
+              exit 1
+            fi
+          done
+          echo "tooling self-destruct: OK"
+
+      - name: Verify no dangling sample references
+        run: |
+          set -euo pipefail
+          # コード側にサンプル識別子が残っていないこと（コメント/汎用語の誤検出を避けるため実装のみ）
+          if grep -rniE 'usercount|user_roles|prefecture' internal/ cmd/ --include='*.go' | grep -v '_test.go'; then
+            echo "FAIL: dangling sample references found"
+            exit 1
+          fi
+          echo "no dangling refs: OK"
+
+      - name: Show removal diff (for debugging)
+        if: always()
+        run: git status --short || true
