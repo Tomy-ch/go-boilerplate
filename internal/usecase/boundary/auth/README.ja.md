@@ -4,12 +4,21 @@
 
 認証に関するインターフェースと値オブジェクトを提供します。
 
+## Credential の詳細
+
+`Credential` は、受け取った認証情報をスキームに依存しない中立表現で保持します。
+
+- `Scheme()` — 認証スキームを返す（例: `"Bearer"`。`SchemeBearer` を参照）
+- `Token()` — トークンを返す
+
 ## Authn の詳細
 
-- `Subject()` — 認証主体（例: userID）を返す
-- `HasID()` — subject が UUID として解釈できた場合 true
-- `ID()` — UUID を返す（解釈できない場合はエラー）
-- `Provider()` — 認証プロバイダ名を返す（例: "mock", "google"）
+識別の中核は Subject（token の `sub`）・Issuer（トークン発行者）・UserID（内部ユーザー ID）です。
+
+- `Subject()` — 認証主体（token の `sub`）を返す
+- `HasUserID()` — subject を UUID として解釈できた場合 true
+- `UserID()` — 内部ユーザー UUID を返す（解釈できない場合はエラー）
+- `Issuer()` — トークン発行者を返す（例: `"mock"`、IdP の issuer）
 - `Scopes()` — スコープ一覧を返す（任意）
 - `Claims()` — クレーム map を返す（任意、認可・UI 制御用）
 
@@ -19,7 +28,7 @@
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|subject が空（`apperror.ErrUnauthenticated` をラップ）|
 |`ErrSubjectNotUUID`|subject が UUID として解釈不可（`apperror.ErrValidation` をラップ）|
-|`ErrTokenMissing`|アクセストークンが空（`apperror.ErrInvalidArgument` をラップ）|
+|`ErrTokenMissing`|トークンが空（`apperror.ErrInvalidArgument` をラップ）|
 
 ## 設計意図
 

@@ -92,7 +92,6 @@ func TestMockConfigForTest(t *testing.T) {
 					domain:   expectedSecureCookieDomain,
 				},
 				auth: AuthConfig{
-					cookieName:          expectedAuthCookieName,
 					headerName:          expectedAuthHeaderName,
 					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
@@ -209,7 +208,6 @@ func Test_mockLoader(t *testing.T) {
 					Domain:   expectedSecureCookieDomain,
 				},
 				Auth: Auth{
-					CookieName:          expectedAuthCookieName,
 					HeaderName:          expectedAuthHeaderName,
 					AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
@@ -285,7 +283,6 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))
 			assert.Equal(t, expectedSecureCookieDomain, os.Getenv("SECURE_COOKIE_DOMAIN"))
 			// Auth
-			assert.Equal(t, expectedAuthCookieName, os.Getenv("AUTH_COOKIE_NAME"))
 			assert.Equal(t, expectedAuthHeaderName, os.Getenv("AUTH_HEADER_NAME"))
 			assert.Equal(t, strconv.FormatBool(expectedAuthAllowedHeaderBearer), os.Getenv("AUTH_ALLOWED_HEADER_BEARER"))
 		})

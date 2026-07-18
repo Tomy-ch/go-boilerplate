@@ -118,7 +118,6 @@ var (
 	expectedSecureCookieSameSite = "Strict"
 	expectedSecureCookieDomain   = "localhost"
 	// auth
-	expectedAuthCookieName          = "auth_token"
 	expectedAuthHeaderName          = "Authorization"
 	expectedAuthAllowedHeaderBearer = true
 	// worker
@@ -222,7 +221,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 			domain:   expectedSecureCookieDomain,
 		},
 		auth: AuthConfig{
-			cookieName:          expectedAuthCookieName,
 			headerName:          expectedAuthHeaderName,
 			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
@@ -329,7 +327,6 @@ func mockLoader(tb testing.TB) Loader {
 			Domain:   expectedSecureCookieDomain,
 		},
 		Auth: Auth{
-			CookieName:          expectedAuthCookieName,
 			HeaderName:          expectedAuthHeaderName,
 			AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
@@ -403,7 +400,6 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
 	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
 	// Auth
-	t.Setenv("AUTH_COOKIE_NAME", expectedAuthCookieName)
 	t.Setenv("AUTH_HEADER_NAME", expectedAuthHeaderName)
 	t.Setenv("AUTH_ALLOWED_HEADER_BEARER", strconv.FormatBool(expectedAuthAllowedHeaderBearer))
 }

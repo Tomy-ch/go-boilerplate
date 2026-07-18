@@ -4,12 +4,21 @@ English | [日本語](README.ja.md)
 
 Provides interfaces and value objects for authentication.
 
+## Credential Details
+
+`Credential` is a scheme-neutral representation of the inbound credential.
+
+- `Scheme()` — returns the auth scheme (e.g., `"Bearer"`; see `SchemeBearer`)
+- `Token()` — returns the token
+
 ## Authn Details
 
-- `Subject()` — returns the authenticated subject (e.g., userID)
-- `HasID()` — returns true if subject was parseable as UUID
-- `ID()` — returns UUID (error if not parseable)
-- `Provider()` — returns the auth provider name (e.g., "mock", "google")
+The identity core is Subject (token `sub`), Issuer (token issuer) and UserID (internal user id).
+
+- `Subject()` — returns the authenticated subject (token `sub`)
+- `HasUserID()` — returns true if subject was parseable as UUID
+- `UserID()` — returns the internal user UUID (error if not parseable)
+- `Issuer()` — returns the token issuer (e.g., `"mock"`, an IdP issuer)
 - `Scopes()` — returns scope list (optional)
 - `Claims()` — returns claims map (optional, for authorization / UI control)
 
@@ -19,7 +28,7 @@ Provides interfaces and value objects for authentication.
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|Subject is empty (wraps `apperror.ErrUnauthenticated`)|
 |`ErrSubjectNotUUID`|Subject cannot be parsed as UUID (wraps `apperror.ErrValidation`)|
-|`ErrTokenMissing`|Access token is empty (wraps `apperror.ErrInvalidArgument`)|
+|`ErrTokenMissing`|Token is empty (wraps `apperror.ErrInvalidArgument`)|
 
 ## Design Intent
 
