@@ -31,7 +31,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("トークン文字列がそのまま Subject として返される", func(t *testing.T) {
+		t.Run("subjectがUUIDでない場合はUserID未解決のAuthnを返す", func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			authenticator := New()
@@ -42,6 +42,23 @@ func Test_authenticator_Authenticate(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "some-subject", authn.Subject())
 			assert.Equal(t, authbd.IssuerMock, authn.Issuer())
+			assert.False(t, authn.HasUserID())
+		})
+
+		t.Run("subjectがUUIDの場合はWithUserIDで内部UserID解決済みのAuthnを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			authenticator := New()
+			cred, err := authbd.NewCredential(authbd.SchemeBearer, "debug:550e8400-e29b-41d4-a716-446655440000")
+			require.NoError(t, err)
+
+			authn, err := authenticator.Authenticate(ctx, cred)
+			require.NoError(t, err)
+			assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", authn.Subject())
+			require.True(t, authn.HasUserID())
+			userID, err := authn.UserID()
+			require.NoError(t, err)
+			assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", userID.String())
 		})
 	})
 

@@ -20,10 +20,10 @@ import (
 func newAuthn(t *testing.T, subjectID uuid.UUID) *authbd.Authn {
 	t.Helper()
 
-	authn, err := authbd.New(subjectID.String(), authbd.ProviderMock, nil, nil)
+	authn, err := authbd.New(subjectID.String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 
-	return authn
+	return authn.WithUserID(subjectID)
 }
 
 func newRole(t *testing.T, code user.RoleCode, name string) *user.Role {
@@ -119,13 +119,13 @@ func Test_authorizer_Authorize(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
 
-		t.Run("認証主体が UUID でない場合、ロールを参照せず ErrForbidden を返す", func(t *testing.T) {
+		t.Run("内部 UserID が未解決の場合、ロールを参照せず ErrForbidden を返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			roleRepo := mock_user.NewMockRoleRepository(ctrl)
 
-			authn, err := authbd.New("not-a-uuid", authbd.ProviderMock, nil, nil)
+			authn, err := authbd.New("not-a-uuid", authbd.IssuerMock, nil, nil)
 			require.NoError(t, err)
 
 			auth := New(roleRepo)

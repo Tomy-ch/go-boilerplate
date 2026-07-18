@@ -16,6 +16,7 @@ import (
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	idempotencyuc "go-boilerplate/internal/usecase/idempotency"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,8 @@ const (
 	testPath = "/v1/resources"
 	// sentinel は、後段ハンドラが呼ばれたことを示す戻り値です。
 	sentinel = "SENTINEL"
+	// testUserID は、内部 UserID 解決済みの Authn を作るためのテスト用 UUID subject です。
+	testUserID = "550e8400-e29b-41d4-a716-446655440000"
 )
 
 type spyRequest struct {
@@ -40,12 +43,16 @@ type spyRequest struct {
 type strictHandlerFunc func(ec echo.Context, request any) (any, error)
 
 // newEcho は、テスト用の echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
-// withAuthn なら subject を持つ Authn を ctx に仕込みます。
+// withAuthn なら subject を持つ Authn を ctx に仕込みます。subject が UUID として解釈できる場合は
+// 内部 UserID も解決済みにします（冪等性スコープは内部 UserID を使うため）。
 func newEcho(key string, withAuthn bool, subject string) echo.Context {
 	ctx := context.Background()
 	if withAuthn {
 		ctx = ctxhelper.WithAuthn(ctx)
 		a, _ := auth.New(subject, "test", nil, nil)
+		if id, err := uuid.Parse(subject); err == nil {
+			a = a.WithUserID(id)
+		}
 		ctxhelper.SetAuthn(ctx, *a)
 	}
 	req := httptest.NewRequestWithContext(ctx, http.MethodPost, testPath, nil)
@@ -137,14 +144,31 @@ func Test_handle(t *testing.T) {
 			assert.Equal(t, sentinel, res)
 		})
 
-		t.Run("有効キー+認証ありなら Request を ctx に載せて後段へ渡す", func(t *testing.T) {
+		t.Run("認証ありでも内部UserID未解決なら冪等性は発動せず素通しする", func(t *testing.T) {
 			t.Parallel()
 			called := false
 			next := NextFunc(func(echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("key-abc", true, "user-9")
+			// subject が UUID でないため UserID は未解決。冪等性スコープを作れないので素通しする。
+			ec := newEcho("key-1", true, "not-a-uuid")
+
+			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
+
+			require.NoError(t, err)
+			assert.True(t, called)
+			assert.Equal(t, sentinel, res)
+		})
+
+		t.Run("有効キー+UserID解決済みなら Request を ctx に載せて後段へ渡す", func(t *testing.T) {
+			t.Parallel()
+			called := false
+			next := NextFunc(func(echo.Context, any) (any, error) {
+				called = true
+				return sentinel, nil
+			})
+			ec := newEcho("key-abc", true, testUserID)
 
 			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{Name: "alice"})
 			require.NoError(t, err)
@@ -173,7 +197,7 @@ func Test_handle(t *testing.T) {
 				func(context.Context) (string, error) { return "ok", nil })
 			require.NoError(t, runErr)
 
-			assert.Equal(t, "user-9", got.Scope)
+			assert.Equal(t, testUserID, got.Scope)
 			assert.Equal(t, "key-abc", got.Key)
 			assert.Equal(t, http.MethodPost, got.Method)
 			assert.Equal(t, testPath, got.Path)
@@ -221,7 +245,7 @@ func Test_handle(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("key-1", true, "user-1")
+			ec := newEcho("key-1", true, testUserID)
 
 			// chan は json.Marshal できず、弱い指紋を作らずエラーになる。
 			_, err := Middleware()(next, "PostUsers")(ec, make(chan int))

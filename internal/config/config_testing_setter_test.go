@@ -101,18 +101,6 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			assert.Equal(t, testCIDR, cfg.security.CIDR())
 		})
 
-		t.Run("認証ヘッダー名を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "X-TEST-AUTH"
-			cfg.auth.SetHeaderName(t, expected)
-			assert.Equal(t, expected, cfg.auth.HeaderName())
-		})
-
-		t.Run("Bearerヘッダー許可を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := true
-			cfg.auth.SetAllowedHeaderBearer(t, expected)
-			assert.Equal(t, expected, cfg.auth.AllowedHeaderBearer())
-		})
-
 		t.Run("outboxのbatch sizeを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
 			expected := 7
 			cfg.outbox.SetOutboxBatchSize(t, expected)
@@ -166,17 +154,6 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 
 				// 内側サブテスト終了時に Cleanup が発火し、元値へ戻る。
 				assert.Equal(t, original, cfg.server.Port())
-			})
-
-			t.Run("認証ヘッダー名が復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-				original := cfg.auth.HeaderName()
-
-				t.Run("一時的にヘッダー名を上書きする", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-					cfg.auth.SetHeaderName(t, "X-OVERRIDE")
-					assert.Equal(t, "X-OVERRIDE", cfg.auth.HeaderName())
-				})
-
-				assert.Equal(t, original, cfg.auth.HeaderName())
 			})
 		})
 	})
