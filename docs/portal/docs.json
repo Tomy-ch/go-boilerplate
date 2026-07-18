@@ -4872,6 +4872,13 @@
               "guideId": "go-upgrade"
             },
             {
+              "name": "Godoc Comment Conventions",
+              "path": "../maintenance/godoc-comment-conventions.md",
+              "lang": "en",
+              "source": "docs/maintenance/godoc-comment-conventions.md",
+              "guideId": "godoc-comment-conventions"
+            },
+            {
               "name": "Portal Manifest",
               "path": "../maintenance/portal-manifest.md",
               "lang": "en",
@@ -4891,6 +4898,13 @@
               "lang": "ja",
               "source": "docs/ja/maintenance/go-upgrade.ja.md",
               "guideId": "go-upgrade"
+            },
+            {
+              "name": "Godoc Comment Conventions",
+              "path": "../ja/maintenance/godoc-comment-conventions.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/maintenance/godoc-comment-conventions.ja.md",
+              "guideId": "godoc-comment-conventions"
             },
             {
               "name": "Portal Manifest",

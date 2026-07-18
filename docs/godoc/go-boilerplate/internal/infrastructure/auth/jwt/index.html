@@ -1,0 +1,231 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>jwt - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package jwt
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/auth/jwt&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package jwt は、固定公開鍵で access token（JWT）を検証する Authenticator 実装を提供します。
+</p><p>本実装はデファクト標準プロファイル（非対称署名 JWT・iss/aud/exp/nbf/sub・標準 scope）
+のみを一級で扱います。特定 IdP の方言（Cognito token_use / Azure scp / opaque token 等）は
+扱わず、README の拡張ポイントに委ねます。JWKS による動的鍵解決は別 Phase で置換します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+				
+				<dd><a href="#New">func New(params Params) (authbd.Authenticator, error)</a></dd>
+			
+			
+				
+				<dd><a href="#Params">type Params</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html">auth_jwt.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				
+				<pre>var (
+    <span class="comment">// ErrJWTAuthenticatorInvalidToken は、トークン検証に失敗した場合に返す認証エラーです。</span>
+    <span class="comment">// 検証失敗はすべてこのセンチネル（= apperror.ErrUnauthenticated）へ正規化し（fail-closed）、</span>
+    <span class="comment">// 原因（署名不一致 / exp / iss / aud / typ 等）はエラーチェーンに保持して運用側で切り分け可能にします。</span>
+    <span id="ErrJWTAuthenticatorInvalidToken">ErrJWTAuthenticatorInvalidToken</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;jwt authenticator: invalid token&#34;)
+
+    <span class="comment">// ErrJWTAuthenticatorInvalidPublicKey は、コンストラクタで公開鍵 PEM のパースに失敗した場合の設定エラーです。</span>
+    <span id="ErrJWTAuthenticatorInvalidPublicKey">ErrJWTAuthenticatorInvalidPublicKey</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;jwt authenticator: invalid public key&#34;)
+    <span class="comment">// ErrJWTAuthenticatorInvalidParams は、コンストラクタの必須パラメータが不足している場合の設定エラーです。</span>
+    <span id="ErrJWTAuthenticatorInvalidParams">ErrJWTAuthenticatorInvalidParams</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;jwt authenticator: invalid params&#34;)
+)</pre>
+			
+		
+		
+			
+			
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=3628:3681#L61">New</a>
+				<a class="permalink" href="#New">¶</a>
+				
+				
+			</h2>
+			<pre>func New(params <a href="#Params">Params</a>) (<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authenticator">Authenticator</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>New は JWT Authenticator のコンストラクタです。
+公開鍵 PEM のパース失敗・必須パラメータ不足は設定エラーとして返します（認証エラーとは区別）。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Params">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=2331:3240#L35">Params</a>
+				<a class="permalink" href="#Params">¶</a>
+				
+				
+			</h2>
+			<p>Params は、JWT Authenticator の検証パラメータです。
+
+			</p><pre>type Params struct {
+<span id="Params.PublicKeyPEM"></span>    <span class="comment">// PublicKeyPEM は署名検証に用いる RSA 公開鍵（PEM 形式）です（必須）。</span>
+    PublicKeyPEM <a href="../../../../../builtin/#string">string</a>
+<span id="Params.Issuer"></span>    <span class="comment">// Issuer は検証する iss クレームの期待値です（必須）。</span>
+    Issuer <a href="../../../../../builtin/#string">string</a>
+<span id="Params.Audience"></span>    <span class="comment">// Audience は検証する aud クレームの期待値です（必須。標準プロファイルでは aud 必須）。</span>
+    Audience <a href="../../../../../builtin/#string">string</a>
+<span id="Params.AllowedAlgs"></span>    <span class="comment">// AllowedAlgs は許可する署名アルゴリズムの allowlist です（空なら defaultAllowedAlgs）。</span>
+    AllowedAlgs []<a href="../../../../../builtin/#string">string</a>
+<span id="Params.Leeway"></span>    <span class="comment">// Leeway は exp / nbf 検証時のクロックずれ許容幅です（0 以下なら defaultLeeway）。</span>
+    Leeway <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+<span id="Params.ExpectedType"></span>    <span class="comment">// ExpectedType は typ ヘッダの期待値です（空なら typ 検証をスキップ。RFC 9068 なら &#34;at+jwt&#34;）。</span>
+    ExpectedType <a href="../../../../../builtin/#string">string</a>
+<span id="Params.Clock"></span>    <span class="comment">// Clock は exp / nbf 検証に用いる時刻源です（必須。テスト決定性のため注入）。</span>
+    Clock <a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>
