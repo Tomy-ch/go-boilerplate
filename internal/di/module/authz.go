@@ -6,12 +6,7 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/domain/user" // sample-api:line
 	"go-boilerplate/internal/infrastructure/authz/allowall"
-
-	// sample-api:replace-begin
-	"go-boilerplate/internal/infrastructure/authz/userrole"
-	// sample-api:replace-with
-	// = "go-boilerplate/internal/infrastructure/authz/denyall"
-	// sample-api:replace-end
+	"go-boilerplate/internal/infrastructure/authz/userrole" // sample-api:line
 	"go-boilerplate/internal/logging"
 
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"
@@ -47,9 +42,9 @@ func authzModule() fx.Option {
 
 // provideAuthorizer は、環境に対応した Authorizer を返します。
 // local / ci / test は全許可（allowall）の割り切り実装を配線します。
-// dev / stg / prd（本番相当）は本番向けの認可実装を配線します。
-// サンプルでは user_roles ベース、サンプル削除後は全拒否の deny-all 既定へ置換されます。 // sample-api:line
-// 未知の環境名は、誤った Authorizer を配線しないよう起動エラーにします。
+// dev / stg / prd（本番相当）はサンプルの user_roles ベース実装を配線します（サンプル削除で除去）。 // sample-api:line
+// 本番向けの認可実装が配線されていない環境（サンプル削除後の dev / stg / prd や未知の環境名）は、
+// 誤った Authorizer を配線しないよう起動エラーにします（fail-closed）。
 func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 	logger := p.Logger.Named("authz").CallerSkip(callerSkipCount)
 
@@ -62,8 +57,8 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 		)
 
 		return allowall.New(), nil
+	// sample-api:begin
 	case config.EnvDevelopment, config.EnvStaging, config.EnvProduction:
-		// sample-api:replace-begin
 		logger.Info(
 			context.Background(),
 			"user_roles-based authorizer wired",
@@ -71,15 +66,7 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 		)
 
 		return userrole.New(p.RoleRepo), nil
-		// sample-api:replace-with
-		// = logger.Warn(
-		// = context.Background(),
-		// = "deny-all authorizer wired: every request is denied until an authorizer is opted in (safe default)",
-		// = logging.String("env", p.AppCfg.Env()),
-		// = )
-		// =
-		// = return denyall.New(), nil
-		// sample-api:replace-end
+	// sample-api:end
 	default:
 		logger.Error(
 			context.Background(),
@@ -87,6 +74,6 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 			logging.String("env", p.AppCfg.Env()),
 		)
 
-		return nil, xerrors.New("unknown application environment: " + p.AppCfg.Env())
+		return nil, xerrors.New("no authorizer configured for environment: " + p.AppCfg.Env())
 	}
 }

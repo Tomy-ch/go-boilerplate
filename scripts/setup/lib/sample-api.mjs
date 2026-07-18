@@ -50,7 +50,7 @@ export const SAMPLE_DOMAINS = {
     description:
       "サンプル 認可基盤（user_roles テーブル + user_roles ベース Authorizer）。user サンプルに同梱削除される",
     paths: [
-      // Authorizer 実装（本番相当環境に配線。削除後は provideAuthorizer が deny-all 既定へ置換される）
+      // Authorizer 実装（本番相当環境に配線。削除時は provideAuthorizer の dev/stg/prd case ごと除去され、以後それらの環境は fail-closed 既定に戻る）
       "internal/infrastructure/authz/userrole",
 
       "database/migrations/000005_create_roles.up.sql",
@@ -146,7 +146,7 @@ const LINE_MARKER = /(?:\/\/|#|<!--)\s*sample-api:line\b/
 
 // replace マーカー: `replace-begin`〜`replace-with` の有効行（サンプル在時に生きるコード）を除去し、
 // `replace-with`〜`replace-end` の差し替え行（`// =` / `# =` でコメント化された退避コード）をアンコメントして残す。
-// 削除後にだけ有効化したい代替実装（例: サンプル Authorizer → deny-all 既定）を、単純な行/ブロック除去では
+// 削除後にだけ有効化したい代替コード（例: 削除後のみ有効な既定値やテストケース）を、単純な行/ブロック除去では
 // 表現できない「置換」として扱うための仕組み。退避コメントは `//` 直後にスペースを置く（gocritic 準拠）。
 const REPLACE_BEGIN = /(?:\/\/|#|<!--)\s*sample-api:replace-begin\b/
 const REPLACE_WITH = /(?:\/\/|#|<!--)\s*sample-api:replace-with\b/

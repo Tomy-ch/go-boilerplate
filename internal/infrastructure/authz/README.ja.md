@@ -38,7 +38,7 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 
 ## local / staging / production の実装
 
-`allowall` は **開発用スタブ**であり、配線されるのは `local` / `ci` / `test` のみです。`development` / `staging` / `production` では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。DI プロバイダは **fail-closed** であり、`Authorizer` 依存が供給されない場合、それらの環境は設計上起動を拒否します。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が提供され、これらの環境を本番相当として担います。サンプルを削除すると、自前の実装を配線するまで fail-closed エラーに戻ります。
+`allowall` は **開発用スタブ**であり、配線されるのは `local` / `ci` / `test` のみです。`development` / `staging` / `production` では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。`provideAuthorizer` は **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `development` / `staging` / `production` を担います。サンプルを削除すると、自前の実装を配線するまでこれらの環境は fail-closed エラーに戻ります。
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
@@ -55,7 +55,7 @@ internal/infrastructure/authz
 - RBAC（`auth.Authn` の claims / scopes から導いたロール）
 - 外部ポリシーエンジン（OPA / Cedar）
 
-各環境は `provideAuthorizer`（`internal/di/module/authz.go`）に `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加し、実実装を返すことで配線します。現在の `default` 分岐は、`RoleRepository` が供給されている場合はサンプル `userrole` を配線し、供給されていない場合は fail-closed エラーを返します。
+各環境は `provideAuthorizer`（`internal/di/module/authz.go`）に `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加し、実実装を返すことで配線します。どの `case` にも該当しない環境は `default` 分岐に落ち、fail-closed エラーを返します。（`user` サンプルが存在する間、その `case` はサンプル `userrole` が占めており、サンプルとともに削除されます。）
 
 ## DI への登録
 

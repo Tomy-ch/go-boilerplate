@@ -7,12 +7,7 @@ import (
 	"go-boilerplate/internal/domain/user"                // sample-api:line
 	mock_user "go-boilerplate/internal/domain/user/mock" // sample-api:line
 	"go-boilerplate/internal/infrastructure/authz/allowall"
-
-	// sample-api:replace-begin
-	"go-boilerplate/internal/infrastructure/authz/userrole"
-	// sample-api:replace-with
-	// = "go-boilerplate/internal/infrastructure/authz/denyall"
-	// sample-api:replace-end
+	"go-boilerplate/internal/infrastructure/authz/userrole" // sample-api:line
 	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/assert"
@@ -80,7 +75,7 @@ func Test_provideAuthorizer(t *testing.T) {
 			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 
-		// sample-api:replace-begin
+		// sample-api:begin
 		t.Run("本番相当環境でRoleRepoが供給される場合、user_rolesベースAuthorizerが提供されINFOが出る", func(t *testing.T) {
 			t.Parallel()
 
@@ -92,31 +87,35 @@ func Test_provideAuthorizer(t *testing.T) {
 			assert.Equal(t, userrole.New(roleRepo), authorizer)
 			assert.Len(t, logs.FilterMessage("user_roles-based authorizer wired").All(), 1)
 		})
-		// sample-api:replace-with
-		// = t.Run("本番相当環境ではdeny-all既定のAuthorizerが提供されWARNが出る", func(t *testing.T) {
-		// = t.Parallel()
-		// =
-		// = logger, logs := logging.NewObservedTestLogger(t)
-		// =
-		// = authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvProduction), Logger: logger})
-		// = require.NoError(t, err)
-		// = assert.Equal(t, denyall.New(), authorizer)
-		// = assert.Len(t, logs.FilterMessage("deny-all authorizer wired: every request is denied until an authorizer is opted in (safe default)").All(), 1)
-		// = })
-		// sample-api:replace-end
+		// sample-api:end
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("未知の環境名では全許可を配線せずエラーを返す", func(t *testing.T) {
-			t.Parallel()
+		// local / ci / test 以外で、対応する認可実装が配線されていない環境は
+		// すべて fail-closed（起動エラー）になること。
+		failClosedEnvs := []string{
+			// sample-api:replace-begin
+			"unknown-env",
+			// sample-api:replace-with
+			// = config.EnvDevelopment,
+			// = config.EnvStaging,
+			// = config.EnvProduction,
+			// = "unknown-env",
+			// sample-api:replace-end
+		}
 
-			logger := logging.NewTestLogger(t)
+		for _, env := range failClosedEnvs {
+			t.Run(env+"では認可を配線せずエラーを返す", func(t *testing.T) {
+				t.Parallel()
 
-			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, "unknown-env"), Logger: logger})
-			require.Error(t, err)
-			assert.Nil(t, authorizer)
-		})
+				logger := logging.NewTestLogger(t)
+
+				authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, env), Logger: logger})
+				require.Error(t, err)
+				assert.Nil(t, authorizer)
+			})
+		}
 	})
 }
