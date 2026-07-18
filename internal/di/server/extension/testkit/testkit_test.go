@@ -1,10 +1,12 @@
 package testkit_test
 
 import (
+	"context"
 	"testing"
 
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/testkit"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/fx"
@@ -18,8 +20,16 @@ func provideOnePre(name string) fx.Option {
 	))
 }
 
-// runIsolated は、*testing.T を要求するヘルパー fn を隔離した throwaway な testing.T で実行し、fn 内の require が
-// 失敗（FailNow → runtime.Goexit）したかどうかを返す。親テストへ失敗が伝播しないため、異常系の観測に用いる。
+// provideStopError は、OnStop で必ずエラーを返す fx モジュールを返す。
+func provideStopError() fx.Option {
+	return fx.Invoke(func(lc fx.Lifecycle) {
+		lc.Append(fx.Hook{
+			OnStop: func(context.Context) error { return xerrors.New("stop failure") },
+		})
+	})
+}
+
+// runIsolated は fn を隔離実行し、fn 内の require 失敗を親テストへ伝播させずに捕捉して返す（異常系の観測用）。
 func runIsolated(fn func(t *testing.T)) bool {
 	failed := make(chan bool, 1)
 	go func() {
@@ -88,6 +98,20 @@ func TestRequireProvidesOne(t *testing.T) {
 						func(string) extension.PreMiddleware { return extension.PreMiddleware{} },
 						fx.ResultTags(`group:"middlewares.pre"`),
 					)),
+				)
+			})
+
+			assert.True(t, failed)
+		})
+
+		t.Run("app.Stop が失敗する場合、検証が失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			// provide 件数は 1 で Start/Len は通過し、OnStop エラーで app.Stop のみ失敗する経路。
+			failed := runIsolated(func(it *testing.T) {
+				testkit.RequireProvidesOne[extension.PreMiddleware](it, "middlewares.pre",
+					provideOnePre("only"),
+					provideStopError(),
 				)
 			})
 
