@@ -111,6 +111,11 @@ export const SAMPLE_DOMAINS = {
       "database/migrations/000012_create_purchase_details.down.sql",
     ],
   },
+
+  sampleTooling: {
+    description: "サンプル削除ツール自身（削除完了後は不要）",
+    paths: ["scripts/setup/remove-sample-api.mjs", "scripts/setup/lib/sample-api.mjs"],
+  },
 }
 
 // サンプル行が残す行と混在するため、行単位でマーカー除去する共有ファイル。
@@ -122,24 +127,30 @@ export const MARKER_FILES = [
   "internal/di/module/authz.go",
   "internal/di/module/authz_test.go",
   "internal/di/module/job.go",
+  ".makefiles/github/operation/setup-repository.mk",
+  ".makefiles/README.md",
+  ".makefiles/README.ja.md",
+  "scripts/README.md",
+  "scripts/README.ja.md",
 ]
 
 // 削除後に再生成・整形・検証するための make ターゲット（順番に実行）。
 export const BUILD_STEPS = ["gen-api", "gen-query", "fix", "lint"]
 
-// マーカーはコメント（// または #）に書かれる前提。コメント記号を必須にして、
+// マーカーはコメント（// / # / <!-- のいずれか）に書かれる前提。コメント記号を必須にして、
 // 文字列リテラルやドキュメント本文中の同一トークンを誤って拾わないようにする。
-const BLOCK_BEGIN = /(?:\/\/|#)\s*sample-api:begin\b/
-const BLOCK_END = /(?:\/\/|#)\s*sample-api:end\b/
-const LINE_MARKER = /(?:\/\/|#)\s*sample-api:line\b/
+// markdown（<!-- ... -->）コメント行も対象に含める。
+const BLOCK_BEGIN = /(?:\/\/|#|<!--)\s*sample-api:begin\b/
+const BLOCK_END = /(?:\/\/|#|<!--)\s*sample-api:end\b/
+const LINE_MARKER = /(?:\/\/|#|<!--)\s*sample-api:line\b/
 
 // replace マーカー: `replace-begin`〜`replace-with` の有効行（サンプル在時に生きるコード）を除去し、
 // `replace-with`〜`replace-end` の差し替え行（`// =` / `# =` でコメント化された退避コード）をアンコメントして残す。
 // 削除後にだけ有効化したい代替実装（例: サンプル Authorizer → deny-all 既定）を、単純な行/ブロック除去では
 // 表現できない「置換」として扱うための仕組み。退避コメントは `//` 直後にスペースを置く（gocritic 準拠）。
-const REPLACE_BEGIN = /(?:\/\/|#)\s*sample-api:replace-begin\b/
-const REPLACE_WITH = /(?:\/\/|#)\s*sample-api:replace-with\b/
-const REPLACE_END = /(?:\/\/|#)\s*sample-api:replace-end\b/
+const REPLACE_BEGIN = /(?:\/\/|#|<!--)\s*sample-api:replace-begin\b/
+const REPLACE_WITH = /(?:\/\/|#|<!--)\s*sample-api:replace-with\b/
+const REPLACE_END = /(?:\/\/|#|<!--)\s*sample-api:replace-end\b/
 // 差し替え行の退避コメント。先頭の空白（インデント）は保持し、`//`/`#` と `=` マーカー・直後の空白1つだけ剥がす。
 const REPLACE_CONTENT = /^(\s*)(?:\/\/|#)\s*=\s?(.*)$/
 
