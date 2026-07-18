@@ -93,26 +93,16 @@ jobs:
       - name: Verify tests
         run: make test
 
-      - name: Verify sample-removal tooling self-destructed
+      - name: Verify sample removal (exact deletion + no dangling refs)
+        run: node scripts/setup/verify-sample-removal.mjs
+
+      - name: Verify verification tool self-destructed
         run: |
           set -euo pipefail
-          if make help 2>/dev/null | grep -q 'setup-remove-sample-api'; then
-            echo "FAIL: setup-remove-sample-api target still present"
-            exit 1
-          fi
-          for f in scripts/setup/remove-sample-api.mjs scripts/setup/lib/sample-api.mjs; do
+          for f in scripts/setup/verify-sample-removal.mjs scripts/setup/.sample-removal-snapshot.json; do
             if [ -e "$f" ]; then
               echo "FAIL: $f was not self-deleted"
               exit 1
             fi
           done
-          echo "tooling self-destruct: OK"
-
-      - name: Verify no dangling sample references
-        run: |
-          set -euo pipefail
-          if grep -rniE 'usercount|user_roles|prefecture' internal/ cmd/ --include='*.go' | grep -vE '_test\.go|\.gen\.go'; then
-            echo "FAIL: dangling sample references found"
-            exit 1
-          fi
-          echo "no dangling refs: OK"
+          echo "verification tool self-destruct: OK"
