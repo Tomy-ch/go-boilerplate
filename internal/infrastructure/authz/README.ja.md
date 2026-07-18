@@ -35,7 +35,7 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 
 ## local / staging / production の実装
 
-`allowall` は **開発用スタブ**であり、配線されるのは `local` / `ci` / `test` のみです。`development` / `staging` / `production` では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。DI プロバイダは **fail-closed** のため、実装するまでこれらの環境は設計上起動しません。
+`allowall` は **開発用スタブ**であり、すべてを許可するため `local` / `ci` / `test` に限定されます。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはなく、DI プロバイダはその拒否を起動失敗として表面化させるだけです。これらの環境では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
@@ -52,7 +52,7 @@ internal/infrastructure/authz
 - RBAC（`auth.Authn` の claims / scopes から導いたロール）
 - 外部ポリシーエンジン（OPA / Cedar）
 
-各環境は `provideAuthorizer`（`internal/di/module/authz.go`）で、現在の `default`（fail-closed エラー）の代わりに `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加して実実装を返すよう配線します。
+実実装を追加するには、`provideAuthorizer`（`internal/di/module/authz.go`）を拡張して `development` / `staging` / `production` で実実装を選ぶようにします —— 例えば `switch appCfg.Env()` でこれらの環境は実実装を返し、非本番のデフォルトとして自衛済みの `allowall.New(appCfg)` を残します。`allowall.New` が fail-closed なので、たとえその配線を誤っても本番相当の環境で全許可に到達することはありません。
 
 ## DI への登録
 
@@ -62,7 +62,7 @@ internal/infrastructure/authz
 internal/di/module/authz.go
 ```
 
-Usecase 層が依存するため `InfrastructureModule()` に含めており、**環境ゲート付き**であるため全許可スタブが本番相当の環境に配線されることはありません。
+Usecase 層が依存するため `InfrastructureModule()` に含めています。全許可スタブが本番相当の環境に配線されることはありません —— これはプロバイダだけでなく **`allowall.New` 自身が担保します**（fail-closed）。
 
 ## 設計方針
 

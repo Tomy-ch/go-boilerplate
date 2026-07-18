@@ -35,7 +35,7 @@ A real deployment replaces this with an RBAC / external policy-engine implementa
 
 ## Local / Staging / Production Implementation
 
-`allowall` is a **development-only stub**; it is wired only for `local` / `ci` / `test`. For `development` / `staging` / `production` you must add real implementations and wire them per environment (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2). The DI provider is **fail-closed**, so until you do, those environments refuse to start by design.
+`allowall` is a **development-only stub**; it grants everything, so it is restricted to `local` / `ci` / `test`. This restriction is enforced by the stub itself — `allowall.New` refuses to construct outside those environments (**fail-closed by construction**), so a wiring mistake cannot accidentally enable allow-all in `development` / `staging` / `production`; the DI provider merely surfaces that refusal as a startup failure. For those environments you must add real implementations and wire them per environment (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2).
 
 Suggested layout (mirrors `internal/infrastructure/auth/`):
 
@@ -52,7 +52,7 @@ A real `Authorizer` typically decides via:
 - RBAC (roles derived from `auth.Authn` claims / scopes)
 - an external policy engine (OPA / Cedar)
 
-Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding `case config.EnvDevelopment / EnvStaging / EnvProduction` branches that return your real implementation instead of the current `default` fail-closed error.
+To add a real implementation, extend `provideAuthorizer` (`internal/di/module/authz.go`) to select it for `development` / `staging` / `production` — e.g. a `switch appCfg.Env()` returning your implementation for those environments while keeping the self-guarded `allowall.New(appCfg)` as the non-production default. Because `allowall.New` is fail-closed, allow-all can never be reached in a production-like environment even if that wiring is wrong.
 
 ## Registration to DI
 
@@ -62,7 +62,7 @@ Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by 
 internal/di/module/authz.go
 ```
 
-It is included in `InfrastructureModule()` (the Usecase layer depends on it), and is **environment-gated** so the allow-all stub is never wired in production-like environments.
+It is included in `InfrastructureModule()` (the Usecase layer depends on it). The allow-all stub is never wired in production-like environments — this is **enforced by `allowall.New` itself** (fail-closed), not only by the provider.
 
 ## Design Policy
 
