@@ -21,23 +21,14 @@ var paramsStructRe = regexp.MustCompile(`^type (\w+)Params struct \{$`)
 // handlerMethodRe は、ハンドラのメソッド宣言 `func (recv) <Name>(` にマッチし Name を捕捉します。
 var handlerMethodRe = regexp.MustCompile(`^func \([^)]*\) (\w+)\(`)
 
-// TestIdempotencyCompleteness は、OpenAPI で Idempotency-Key ヘッダを宣言した操作
+// TestIdempotencyCompleteness は、OpenAPI で Idempotency-Key を宣言した操作
 // （= 生成コードの <Op>Params 型が IdempotencyKey フィールドを持つ操作）のハンドラが、
 // 必ず idempotency.Run 経由で処理していることを機械検証する完全性テストです。
+// OpenAPI のヘッダ宣言を source of truth とし、Run 呼び忘れのような silent な dedup 欠落を loud な失敗に変える。
 //
-// 冪等性は「変更系すべて」ではなく「Idempotency-Key を宣言した操作」に閉じる（PUT/DELETE は
-// HTTP 的に冪等で Run を要さない）ため、OpenAPI のヘッダ宣言を唯一のマーカー（source of truth）と
-// して扱う。middleware 登録済みで Run 呼び忘れ、のような silent な dedup 欠落を loud な失敗に変える。
-//
-// Idempotency-Key を宣言する操作は 0 件でも許容する（サンプル API 削除後は該当操作が無くなり得る）。
-// ただし検出ロジック自体が陳腐化して空振りしていないことは保証したいので、`<Op>Params struct` を
-// 生成コードから最低 1 件は検出できること（= 正規表現が生きていること）を別途 assert する。これは
-// IdempotencyKey フィールドの有無とは独立した健全性チェックで、コアの GetExchangeRatesParams が
-// 常に存在するため成立する。
-//
-// 本リポジトリは depguard で go/ast 等のツールチェーンパッケージを禁止するため、AST ではなく
-// gofmt 済みソースのテキスト走査で検出する（`type ...Params struct {` / `func (recv) Name(` は
-// gofmt により行頭固定なので、この走査は安定する）。
+// 対象操作は 0 件でも許容する（サンプル API 削除後は該当が無くなり得る）が、検出ロジックの空振りを
+// 防ぐため `<Op>Params struct` を最低 1 件検出できることを別途 assert する。depguard が go/ast を
+// 禁止するため、AST ではなく gofmt 済みソースのテキスト走査で検出する。
 func TestIdempotencyCompleteness(t *testing.T) {
 	t.Parallel()
 
