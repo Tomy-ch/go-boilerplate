@@ -9,27 +9,23 @@ OpenAPI authentication function that extracts a Bearer token from the `Authoriza
 ```mermaid
 flowchart TB
     Start["Request"]
-    Header{"HeaderName configured?"}
-    IsAuth{"Authorization header + AllowedHeaderBearer?"}
+    IsBearer{"Authorization: Bearer <token>?"}
     StripBearer["Strip 'Bearer ' prefix → scheme=Bearer"]
-    RawHeader["Use raw header value → scheme empty"]
-    NoToken["Token empty"]
+    NoToken["Token empty → ErrUnauthorizedTokenNotProvided"]
     Credential["NewCredential(scheme, token)"]
     Authenticate["authenticator.Authenticate(ctx, credential)"]
     StoreAuthn["ctxhelper.SetAuthn(req.Context(), authn)"]
 
-    Start --> Header
-    Header -- yes --> IsAuth
-    IsAuth -- yes --> StripBearer --> Credential
-    IsAuth -- no --> RawHeader --> Credential
-    Header -- no --> NoToken
+    Start --> IsBearer
+    IsBearer -- yes --> StripBearer --> Credential
+    IsBearer -- no --> NoToken
     Credential --> Authenticate --> StoreAuthn
 ```
 
 ### Extraction Rules
 
-1. **Header** — If `AuthConfig.HeaderName()` is set, extract from that header (default `Authorization`)
-2. **Bearer prefix** — If `AllowedHeaderBearer` is true and the header is `Authorization`, strip the `Bearer` prefix (including the trailing space); the credential scheme becomes `Bearer`
+1. **Header** — Extract from the fixed `Authorization` header. Bearer tokens are pinned to `Authorization` by RFC 6750, so the header name is not configurable
+2. **Bearer prefix** — Only `Authorization: Bearer <token>` is accepted; the `Bearer ` prefix is stripped and the credential scheme becomes `Bearer`. Any other form yields no token
 3. If no token is found, return `ErrUnauthorizedTokenNotProvided`
 
 ### Authentication Steps
@@ -66,5 +62,5 @@ flowchart LR
 ## Notes
 
 - Token extraction is header-only; cookies are not consulted (Bearer / Resource Server model)
-- Bearer prefix stripping only applies when `AllowedHeaderBearer` is true AND the header name is `Authorization`
+- Only the `Authorization: Bearer <token>` form is accepted (RFC 6750); non-Bearer schemes and custom header names are not supported
 - The `Authenticator` implementation is environment-specific (local mock, JWT, OAuth, etc.) and injected via DI
