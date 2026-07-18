@@ -127,7 +127,9 @@ jobs:
       - name: Verify no dangling sample references
         run: |
           set -euo pipefail
-          if grep -rniE 'usercount|user_roles|prefecture' internal/ cmd/ --include='*.go' | grep -v '_test.go'; then
+          # 生成物(*.gen.go)は CI では regen を省くため stale なサンプル struct が残る（実削除フローの
+          # gen で解消される）。テストと生成物を除外し、実コードの残留のみを検出する。
+          if grep -rniE 'usercount|user_roles|prefecture' internal/ cmd/ --include='*.go' | grep -vE '_test\.go|\.gen\.go'; then
             echo "FAIL: dangling sample references found"
             exit 1
           fi

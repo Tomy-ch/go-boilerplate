@@ -18,7 +18,7 @@ func newJobCommand() *cobra.Command {
 		Use:   "job",
 		Short: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。",
 		Long: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。ジョブ名と引数を指定して実行してください。\n" +
-			"例: job usercount --timeout 30s",
+			"例: job <job-name> --timeout 30s",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.SetUpConfig()
