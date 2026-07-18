@@ -9,27 +9,23 @@
 ```mermaid
 flowchart TB
     Start["リクエスト"]
-    Header{"HeaderName 設定あり?"}
-    IsAuth{"Authorization ヘッダー + AllowedHeaderBearer?"}
+    IsBearer{"Authorization: Bearer <token>?"}
     StripBearer["'Bearer ' プレフィックス除去 → scheme=Bearer"]
-    RawHeader["生のヘッダー値を使用 → scheme 空"]
-    NoToken["トークンなし"]
+    NoToken["トークンなし → ErrUnauthorizedTokenNotProvided"]
     Credential["NewCredential(scheme, token)"]
     Authenticate["authenticator.Authenticate(ctx, credential)"]
     StoreAuthn["ctxhelper.SetAuthn(req.Context(), authn)"]
 
-    Start --> Header
-    Header -- yes --> IsAuth
-    IsAuth -- yes --> StripBearer --> Credential
-    IsAuth -- no --> RawHeader --> Credential
-    Header -- no --> NoToken
+    Start --> IsBearer
+    IsBearer -- yes --> StripBearer --> Credential
+    IsBearer -- no --> NoToken
     Credential --> Authenticate --> StoreAuthn
 ```
 
 ### 抽出ルール
 
-1. **Header** — `AuthConfig.HeaderName()` が設定されている場合、そのヘッダーから抽出（デフォルト `Authorization`）
-2. **Bearer プレフィックス** — `AllowedHeaderBearer` が true でヘッダーが `Authorization` の場合、`Bearer` プレフィックス（末尾のスペース込み）を除去。credential のスキームは `Bearer` になる
+1. **Header** — 固定の `Authorization` ヘッダーから抽出。Bearer トークンは RFC 6750 で `Authorization` に固定されるため、ヘッダー名は可変にしない
+2. **Bearer プレフィックス** — `Authorization: Bearer <token>` 形式のみ受理。`Bearer ` プレフィックスを除去し credential のスキームは `Bearer` になる。それ以外の形式はトークンなしとして扱う
 3. トークンが取得できない場合は `ErrUnauthorizedTokenNotProvided` を返す
 
 ### 認証ステップ
@@ -66,5 +62,5 @@ flowchart LR
 ## 注意点
 
 - トークン抽出はヘッダーのみ。Cookie は参照しません（Bearer / リソースサーバーモデル）
-- Bearer プレフィックス除去は `AllowedHeaderBearer` が true かつヘッダー名が `Authorization` の場合のみ適用
+- `Authorization: Bearer <token>` 形式のみ受理（RFC 6750）。非 Bearer スキームやカスタムヘッダー名はサポートしない
 - `Authenticator` の実装は環境固有（ローカルモック、JWT、OAuth 等）で DI 経由で注入される

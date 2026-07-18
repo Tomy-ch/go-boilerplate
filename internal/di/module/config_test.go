@@ -33,7 +33,6 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 				dbConnCfg  *config.DBConnectionConfig
 				secCfg     *config.SecurityConfig
 				secCookie  *config.SecureCookieConfig
-				authCfg    *config.AuthConfig
 				workerCfg  *config.WorkerConfig
 				outboxCfg  *config.OutboxConfig
 				loc        *time.Location
@@ -44,7 +43,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 				// テスト対象: 実装側のモジュール
 				ConfigModule(),
 				fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg, &secCfg,
-					&secCookie, &authCfg, &workerCfg, &outboxCfg, &loc),
+					&secCookie, &workerCfg, &outboxCfg, &loc),
 				fx.NopLogger,
 			)
 
@@ -61,7 +60,6 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 			assert.Equal(t, config.NewDBConnectionConfig(cfg).MaxConns(), dbConnCfg.MaxConns())
 			assert.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
 			assert.Equal(t, config.NewSecureCookieConfig(cfg).Domain(), secCookie.Domain())
-			assert.Equal(t, config.NewAuthConfig(cfg).HeaderName(), authCfg.HeaderName())
 			assert.Equal(t, config.NewWorkerConfig(cfg).Concurrency(), workerCfg.Concurrency())
 			assert.Equal(t, config.NewOutboxConfig(cfg).Endpoint(), outboxCfg.Endpoint())
 		})

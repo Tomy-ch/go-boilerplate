@@ -91,10 +91,6 @@ func TestMockConfigForTest(t *testing.T) {
 					sameSite: expectedSecureCookieSameSite,
 					domain:   expectedSecureCookieDomain,
 				},
-				auth: AuthConfig{
-					headerName:          expectedAuthHeaderName,
-					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
-				},
 				worker: WorkerConfig{
 					concurrency:               expectedWorkerConcurrency,
 					maxInFlight:               expectedWorkerMaxInFlight,
@@ -207,10 +203,6 @@ func Test_mockLoader(t *testing.T) {
 					SameSite: expectedSecureCookieSameSite,
 					Domain:   expectedSecureCookieDomain,
 				},
-				Auth: Auth{
-					HeaderName:          expectedAuthHeaderName,
-					AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
-				},
 			}
 
 			actual := mockLoader(t)
@@ -282,9 +274,6 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 			assert.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))
 			assert.Equal(t, expectedSecureCookieDomain, os.Getenv("SECURE_COOKIE_DOMAIN"))
-			// Auth
-			assert.Equal(t, expectedAuthHeaderName, os.Getenv("AUTH_HEADER_NAME"))
-			assert.Equal(t, strconv.FormatBool(expectedAuthAllowedHeaderBearer), os.Getenv("AUTH_ALLOWED_HEADER_BEARER"))
 		})
 	})
 }

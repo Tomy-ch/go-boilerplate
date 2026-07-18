@@ -88,10 +88,6 @@ func TestNewConfig(t *testing.T) {
 					sameSite: expectedSecureCookieSameSite,
 					domain:   expectedSecureCookieDomain,
 				},
-				auth: AuthConfig{
-					headerName:          expectedAuthHeaderName,
-					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
-				},
 				worker: WorkerConfig{
 					concurrency:               expectedWorkerConcurrency,
 					maxInFlight:               expectedWorkerMaxInFlight,
@@ -226,15 +222,6 @@ func Test_validateConfig(t *testing.T) {
 
 			err := validateConfig(cfg)
 			require.ErrorIs(t, err, ErrEmptyAllowedOrigins)
-		})
-
-		t.Run("認証設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.Auth.HeaderName = "" // HeaderName が空
-
-			err := validateConfig(cfg)
-			require.ErrorIs(t, err, ErrAuthConfigMissing)
 		})
 
 		t.Run("メトリクス設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
@@ -695,33 +682,6 @@ func Test_validateSecurityConfig(t *testing.T) {
 
 			err := validateSecurityConfig(cfg.Security)
 			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
-		})
-	})
-}
-
-func Test_validateAuthConfig(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("HeaderNameが設定されている場合、エラーが返されないこと", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			err := validateAuthConfig(cfg.Auth)
-			require.NoError(t, err)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("HeaderNameが空の場合、エラーが返されること", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.Auth.HeaderName = "" // HeaderName が空
-
-			err := validateAuthConfig(cfg.Auth)
-			require.ErrorIs(t, err, ErrAuthConfigMissing)
 		})
 	})
 }

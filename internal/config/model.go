@@ -16,7 +16,6 @@ type Config struct {
 	dbconnection  DBConnectionConfig
 	security      SecurityConfig
 	secureCookie  SecureCookieConfig
-	auth          AuthConfig
 	worker        WorkerConfig
 	outbox        OutboxConfig
 }
@@ -111,12 +110,6 @@ type SecureCookieConfig struct {
 	secure   *bool
 	sameSite string
 	domain   string
-}
-
-// AuthConfig は、認証に使うヘッダー名・Bearer 許可の設定を保持します。
-type AuthConfig struct {
-	headerName          string
-	allowedHeaderBearer bool
 }
 
 // WorkerConfig は、worker engine の engine-core 設定（broker 非依存）を保持します。
@@ -376,15 +369,6 @@ func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
 
 // Domain は、Domain属性の強制設定を返します。
 func (s *SecureCookieConfig) Domain() string { return s.domain }
-
-// NewAuthConfig は、認証の設定を返します。
-func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
-
-// HeaderName は、認証に使用するヘッダー名を返します。
-func (a *AuthConfig) HeaderName() string { return a.headerName }
-
-// AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
-func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
 
 // NewWorkerConfig は、worker engine の設定を返します。
 func NewWorkerConfig(cfg *Config) *WorkerConfig { return &cfg.worker }

@@ -340,13 +340,13 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 			require.ErrorIs(t, err, ErrUnauthenticatedUser)
 		})
 
-		t.Run("認証subjectが不正でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
+		t.Run("内部UserIDが未解決でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
 			t.Parallel()
 			ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
 			s, _ := newServer(t)
 			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, authbd.ErrSubjectNotUUID)
+			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
 		})
 
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {

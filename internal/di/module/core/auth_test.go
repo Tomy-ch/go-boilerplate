@@ -26,7 +26,6 @@ func TestAuthnModule(t *testing.T) {
 			fx.Provide(func() *testing.T { return t }),
 			fx.Provide(config.MockConfigForTest),
 			fx.Provide(config.NewApplicationConfig),
-			fx.Provide(config.NewAuthConfig),
 			fx.Provide(logging.NewTestLogger),
 			AuthnModule(),
 			fx.Populate(&a),

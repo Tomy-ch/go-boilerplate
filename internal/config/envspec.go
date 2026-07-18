@@ -13,7 +13,6 @@ type Loader struct {
 	DBConnection  DBConnection    `envPrefix:"DBCONN_"`
 	Security      Security        `envPrefix:"SECURITY_"`
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
-	Auth          Auth            `envPrefix:"AUTH_"`
 	Worker        Worker          `envPrefix:"WORKER_"`
 	Outbox        Outbox          `envPrefix:"OUTBOX_"`
 }
@@ -136,10 +135,4 @@ type SecureCookie struct {
 	Secure   *bool  `env:"SECURE"`
 	SameSite string `env:"SAME_SITE"`
 	Domain   string `env:"DOMAIN"`
-}
-
-// Auth は認証に使うヘッダー名・Bearer 許可の設定を保持する。
-type Auth struct {
-	HeaderName          string `env:"HEADER_NAME,required"`
-	AllowedHeaderBearer bool   `env:"ALLOWED_HEADER_BEARER,required"`
 }
