@@ -29,15 +29,15 @@ func provideStopError() fx.Option {
 	})
 }
 
-// runIsolated は fn を隔離実行し、fn 内の require 失敗を親テストへ伝播させずに捕捉して返す（異常系の観測用）。
-func runIsolated(fn func(t *testing.T)) bool {
+// runIsolated は RequireProvidesOne を隔離実行し、内部の require 失敗を親テストへ伝播させずに捕捉して返す（異常系の観測用）。
+func runIsolated[T any](group string, opts ...fx.Option) bool {
 	failed := make(chan bool, 1)
 	go func() {
 		completed := false
 		defer func() { failed <- !completed }()
 
 		var isolated testing.T
-		fn(&isolated)
+		testkit.RequireProvidesOne[T](&isolated, group, opts...)
 		completed = true
 	}()
 
@@ -53,11 +53,9 @@ func TestRequireProvidesOne(t *testing.T) {
 		t.Run("グループに要素が1件だけ provide される場合、検証を通過する", func(t *testing.T) {
 			t.Parallel()
 
-			failed := runIsolated(func(t *testing.T) {
-				testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",
-					provideOnePre("only"),
-				)
-			})
+			failed := runIsolated[extension.PreMiddleware]("middlewares.pre",
+				provideOnePre("only"),
+			)
 
 			assert.False(t, failed)
 		})
@@ -69,9 +67,7 @@ func TestRequireProvidesOne(t *testing.T) {
 		t.Run("グループに要素が1件も provide されない場合、検証が失敗する", func(t *testing.T) {
 			t.Parallel()
 
-			failed := runIsolated(func(t *testing.T) {
-				testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre")
-			})
+			failed := runIsolated[extension.PreMiddleware]("middlewares.pre")
 
 			assert.True(t, failed)
 		})
@@ -79,12 +75,10 @@ func TestRequireProvidesOne(t *testing.T) {
 		t.Run("グループに要素が2件 provide される場合、検証が失敗する", func(t *testing.T) {
 			t.Parallel()
 
-			failed := runIsolated(func(t *testing.T) {
-				testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",
-					provideOnePre("first"),
-					provideOnePre("second"),
-				)
-			})
+			failed := runIsolated[extension.PreMiddleware]("middlewares.pre",
+				provideOnePre("first"),
+				provideOnePre("second"),
+			)
 
 			assert.True(t, failed)
 		})
@@ -92,14 +86,12 @@ func TestRequireProvidesOne(t *testing.T) {
 		t.Run("app.Start が依存不足で失敗する場合、検証が失敗する", func(t *testing.T) {
 			t.Parallel()
 
-			failed := runIsolated(func(t *testing.T) {
-				testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",
-					fx.Provide(fx.Annotate(
-						func(string) extension.PreMiddleware { return extension.PreMiddleware{} },
-						fx.ResultTags(`group:"middlewares.pre"`),
-					)),
-				)
-			})
+			failed := runIsolated[extension.PreMiddleware]("middlewares.pre",
+				fx.Provide(fx.Annotate(
+					func(string) extension.PreMiddleware { return extension.PreMiddleware{} },
+					fx.ResultTags(`group:"middlewares.pre"`),
+				)),
+			)
 
 			assert.True(t, failed)
 		})
@@ -108,12 +100,10 @@ func TestRequireProvidesOne(t *testing.T) {
 			t.Parallel()
 
 			// provide 件数は 1 で Start/Len は通過し、OnStop エラーで app.Stop のみ失敗する経路。
-			failed := runIsolated(func(t *testing.T) {
-				testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",
-					provideOnePre("only"),
-					provideStopError(),
-				)
-			})
+			failed := runIsolated[extension.PreMiddleware]("middlewares.pre",
+				provideOnePre("only"),
+				provideStopError(),
+			)
 
 			assert.True(t, failed)
 		})
