@@ -241,24 +241,22 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ## Comment Rules
 
-- Comments describe **What** and **Why**, never **How**:
-  - **What — the contract**: what a declaration does and the meaning of its inputs / outputs / errors. This is what callers rely on.
-  - **Why — non-obvious rationale**: the reason behind a decision that the code itself cannot convey (a constraint, an intent, a non-obvious trade-off). Encouraged when genuinely non-obvious.
-  - **How is left to the code**: do NOT narrate the step-by-step "how" or the implementation means. If What is stated, the implementation reads from the code.
-- A **What must be high quality**, not merely present (`revive` checks only presence / format):
-  - **Correct** — it matches the actual behavior. A What that lies about or has drifted from the code is worse than no comment — the highest-priority finding.
-  - **Sufficient** — it covers the non-obvious contract: error semantics, nil / zero-value behavior, units, boundaries, side effects. Do not omit what a caller cannot infer.
-  - **Substantive** — it adds information beyond the identifier; a pure restatement of the name is low-value. (For a genuinely trivial exported declaration a concise minimal What is acceptable — `revive` mandates the doc comment — so flag only when non-obvious information could and should have been stated.)
-- A **Why must be the good kind**:
-  - OK (non-obvious rationale / load-bearing constraint): `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count").
-  - NG (development 経緯 / meta): migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため`, `// 〜の登録は di 層が担う`, and other meta-organizational notes — these rot and belong in the PR / commit log, not the code.
-- OK (What): `// ReadFile は name のファイル内容全体を読み込んで返す`
-- NG (How / restatement / tautology):
-  - `// ReadFile は os.ReadFile を呼び出して…`（implementation means / How）
-  - restating the implementation steps; internal-representation notes (`// 内部表現は [16]byte`); tautologies (`// User は User です`)
-  - a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (rot; an unresolved, legitimate TODO is not flagged)
-- Enforcement split: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of comments on exported declarations. This **content** rule (What quality + good Why + no How) is semantic and cannot be linted — it is enforced by review: `local-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments (What correct / sufficient / substantive; Why non-obvious) and **flags** bad ones (How / 経緯 / restatement / tautology), then auto-fixes the confirmed findings.
-- **Language scope**: this content rule is **language-agnostic** — it applies to Go and non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). The Go examples above are illustrative, not a scope limit. Non-Go files are **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same standard — How narration, development 経緯, and redundant restatements are NG even in a build script or workflow file; the good Why (non-obvious rationale) and the load-bearing-constraint note stay.
+The authority for comments is the **godoc conventions** — the de-facto Go standard — not a
+bespoke taxonomy. A condensed local mirror lives at
+`docs/maintenance/godoc-comment-conventions.md` (read it instead of fetching the large
+upstream <https://go.dev/doc/comment>).
+
+- **Doc comments (exported declarations & package docs) follow the godoc conventions.** godoc renders doc comments for the **API consumer**, so a doc comment states the **caller-facing contract** — what the declaration does and the meaning of its inputs / outputs / errors — as a complete, `Name`-prefixed sentence. That contract is the necessary-and-sufficient content: write it, and no more.
+- **Anything godoc does not call for is noise** — it does not serve the consumer, so leave it out:
+  - **How / implementation means** — the code conveys it. NG `// ReadFile は os.ReadFile を呼び出して…`; OK `// ReadFile は name のファイル内容全体を読み込んで返す`.
+  - **Where it is called from** — call-site / registration notes coupled to organization: `// 〜の登録は di 層が担う`.
+  - **Change history / development 経緯** — migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため` — these rot and belong in the PR / commit log.
+  - **Restatement / tautology** — `// 内部表現は [16]byte`, `// User は User です`; or a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (an unresolved, legitimate TODO is not flagged).
+- **Correct outranks everything.** A doc comment that lies about or has drifted from the actual behavior is worse than no comment — the highest-priority finding.
+- **A non-obvious Why is the one addition godoc does not mandate but this repo keeps** — the reason behind a decision the code cannot convey (a load-bearing constraint / intent). OK: `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"). Include it only when genuinely non-obvious.
+- **In-function comments are outside godoc's purview.** Write one only when it is **non-obvious AND unclear without it**. The noise list above still applies; a non-obvious Why is the main legitimate case.
+- **Language scope**: godoc governs Go only, but this content standard is **language-agnostic** — it applies to non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). Non-Go is **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same bar — no How narration, no 経緯, no restatement; a non-obvious Why stays.
+- **Enforcement split**: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of doc comments on exported declarations. This **content** rule (godoc-conformant contract + non-obvious Why + no noise) is semantic and cannot be linted — it is enforced by review: `impl-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments and **flags** noise, then auto-fixes the confirmed findings.
 
 ## Documentation Rules
 

@@ -15,7 +15,7 @@ layer 別アーキ適合性チェックの統合スキル。scope に応じて 1
 以下の用途には使いません:
 
 - formatting / style — `make fix` / `make lint`
-- general code review — `/review` / `/ultrareview` / `local-review`
+- general code review — `/review` / `/ultrareview` / `impl-review`
 - spec validation — `verify-spec`
 
 ## アーキテクチャ: 並列 auditor サブエージェント

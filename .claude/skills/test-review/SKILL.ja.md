@@ -13,7 +13,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 使わない場面:
 
-- **実装コードのレビュー** → `code-review` / `local-review` / `arch-check`。
+- **実装コードのレビュー** → `code-review` / `impl-review` / `arch-check`。
 - **HTTP 統合テスト** (`internal/integration/` 配下) → 別 convention（`internal/integration/README.md` + `scaffold-integration-test`）。本スキルは同一パッケージ unit test 専用。
 - 修正の適用 → 本スキルはファイル編集しない。指摘後、user が `scaffold-test` 実行 or 手で編集する。
 
@@ -52,7 +52,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 - 質問: 「test-review の対象スコープを指定してください」
 - 選択肢（single-select）:
-  - 「変更ファイル (HEAD-vs-working tree, 推奨)」 — `git diff --name-only` で `*_test.go` 抽出（`local-review` / `code-review` と同じ振る舞い）。新規追加 (`--diff-filter=A`) も含める。
+  - 「変更ファイル (HEAD-vs-working tree, 推奨)」 — `git diff --name-only` で `*_test.go` 抽出（`impl-review` / `code-review` と同じ振る舞い）。新規追加 (`--diff-filter=A`) も含める。
   - 「ブランチ base 比較 (release/v1.x.y 以降の変更)」 — `git merge-base` で base 解決、その間に touched された `*_test.go`。 PR 単位で見たいとき。
   - 「特定パス / パッケージ (free-text)」 — user 指定。 ファイルでもディレクトリでも可。
   - 「キャンセル」。
@@ -223,7 +223,7 @@ severity マッピング:
 
 ## Chainability
 
-PR レビューフローで `code-review` / `local-review` / `arch-check` と並んで使う想定。 現状で他スキルを *chain in* する経路は持たない — user がレポートを読んで `scaffold-test`（再生成）or 手編集を判断する。 将来 PR レビュー orchestrator が `code-review` + `arch-check` + `test-review` を並列 fan out して結果統合する可能性はあるが、 まだ存在しない。
+PR レビューフローで `code-review` / `impl-review` / `arch-check` と並んで使う想定。 現状で他スキルを *chain in* する経路は持たない — user がレポートを読んで `scaffold-test`（再生成）or 手編集を判断する。 将来 PR レビュー orchestrator が `code-review` + `arch-check` + `test-review` を並列 fan out して結果統合する可能性はあるが、 まだ存在しない。
 
 将来そういう親から chain される場合、 親は最低限以下を渡す:
 
