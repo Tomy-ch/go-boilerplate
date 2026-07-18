@@ -1,10 +1,5 @@
 name: Sample Removal Check
 
-# サンプル削除フローが壊れず、削除後のコアのみの状態でビルド・lint・テストが通り、削除ツール
-# 自身も自消滅することを検証する。実行は repo の CI 慣習に合わせ「runner で直実行 + github サービス DB」
-# を基本にし、DB を要さないファイル削除だけを node_tool_runner コンテナで行う（削除スクリプトの node
-# 依存がコンテナイメージにのみ存在するため）。フレッシュ DB に対して「先に削除 → migrate-up」する
-# ことで、適用されるのは core migration だけになり、DB リセットは不要になる。
 on:
   workflow_dispatch:
   pull_request:
@@ -52,7 +47,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # golangci-lint / node を runner で直実行するため、go-lint.yaml と同様に mise で導入する。
       - name: Setup mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
@@ -63,9 +57,6 @@ jobs:
       - name: Install node & golangci-lint
         run: mise install node golangci-lint
 
-      # 削除スクリプトの node 依存(commander 等)は docker/tools/package.json に定義され、
-      # node_tool_runner イメージでは /app/scripts/node_modules へ install される。runner 直実行でも
-      # 同じ構成を再現する（Dockerfile と同じ package.json を scripts/ へ置いて npm ci）。
       - name: Install script node deps
         run: |
           cp docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc scripts/
@@ -82,23 +73,16 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
-      # サンプル削除の「ファイル削除 + マーカー除去 + ツール自消滅」を runner で直実行する
-      # （DB を触らないため docker compose は不要）。
       - name: Remove sample files (delete + strip markers + self-destruct)
         run: node scripts/setup/remove-sample-api.mjs
 
-      # マーカー除去でフィールド整列・インデントが崩れるため、実削除フロー同様に整形する
-      # （実コマンドは gen-api gen-query fix lint を連鎖する。CI では gen を省くため fix のみ）。
       - name: Format after removal (make fix)
         run: make fix
 
-      # フレッシュな test DB へ migrate-up。サンプル migration は既に消えているため core のみ適用される。
       - name: Migrate & seed core-only schema
         run: |
           go run ./cmd/ migrate-up --database "${DB}"
           go run ./cmd/ db-seed --database "${DB}"
-
-      # ── 削除後のコアのみの状態を検証 ──
 
       - name: Verify build
         run: go build ./...
@@ -127,8 +111,6 @@ jobs:
       - name: Verify no dangling sample references
         run: |
           set -euo pipefail
-          # 生成物(*.gen.go)は CI では regen を省くため stale なサンプル struct が残る（実削除フローの
-          # gen で解消される）。テストと生成物を除外し、実コードの残留のみを検出する。
           if grep -rniE 'usercount|user_roles|prefecture' internal/ cmd/ --include='*.go' | grep -vE '_test\.go|\.gen\.go'; then
             echo "FAIL: dangling sample references found"
             exit 1
