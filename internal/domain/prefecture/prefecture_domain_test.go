@@ -109,32 +109,68 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestPrefecture_Accessors(t *testing.T) {
+func TestPrefecture_ID(t *testing.T) {
 	t.Parallel()
 
-	id, err := uuid.New()
-	require.NoError(t, err)
-	name := "Osaka"
-	code := 27
-
-	prefecture, err := New(id, name, code)
-	require.NoError(t, err)
-
-	t.Run("IDメソッドは正しいIDを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, id, prefecture.ID())
+		t.Run("IDメソッドは正しいIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+			name := "Osaka"
+			code := 27
+
+			prefecture, err := New(id, name, code)
+			require.NoError(t, err)
+
+			assert.Equal(t, id, prefecture.ID())
+		})
 	})
+}
 
-	t.Run("Nameメソッドは正しい名前を返す", func(t *testing.T) {
+func TestPrefecture_Name(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, name, prefecture.Name())
+		t.Run("Nameメソッドは正しい名前を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+			name := "Osaka"
+			code := 27
+
+			prefecture, err := New(id, name, code)
+			require.NoError(t, err)
+
+			assert.Equal(t, name, prefecture.Name())
+		})
 	})
+}
 
-	t.Run("Codeメソッドは正しいコードを返す", func(t *testing.T) {
+func TestPrefecture_Code(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, code, prefecture.Code())
+		t.Run("Codeメソッドは正しいコードを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+			name := "Osaka"
+			code := 27
+
+			prefecture, err := New(id, name, code)
+			require.NoError(t, err)
+
+			assert.Equal(t, code, prefecture.Code())
+		})
 	})
 }

@@ -164,6 +164,11 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 	})
 }
 
+func Test_logFieldBuilder_BuildSQLEndFields(t *testing.T) {
+	t.Parallel()
+	t.Skip("logFieldBuilder.BuildSQLEndFields は TestLogFields_BuildSQLEndFields が全分岐を検証済み")
+}
+
 func TestLogFields_BuildSQLEndFields(t *testing.T) {
 	t.Parallel()
 

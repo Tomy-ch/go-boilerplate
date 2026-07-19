@@ -125,6 +125,42 @@ func TestWithCore(t *testing.T) {
 	})
 }
 
+func Test_levelGatedCore_Check(t *testing.T) {
+	t.Parallel()
+
+	newGatedCore := func(t *testing.T) (levelGatedCore, *bytes.Buffer) {
+		t.Helper()
+		var buf bytes.Buffer
+		enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+		inner := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+		return levelGatedCore{Core: inner, min: zapcore.WarnLevel}, &buf
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("min以上のレベルは自身をCheckedEntryへ追加し書き込みへ到達する", func(t *testing.T) {
+			t.Parallel()
+
+			gated, buf := newGatedCore(t)
+			ce := gated.Check(zapcore.Entry{Level: zapcore.ErrorLevel, Message: "hi"}, nil)
+
+			require.NotNil(t, ce)
+			ce.Write()
+			assert.Contains(t, buf.String(), "hi")
+		})
+
+		t.Run("min未満のレベルは追加せず受け取ったCheckedEntryをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			gated, _ := newGatedCore(t)
+			ce := gated.Check(zapcore.Entry{Level: zapcore.InfoLevel, Message: "hi"}, nil)
+
+			assert.Nil(t, ce)
+		})
+	})
+}
+
 func Test_levelGatedCore_With(t *testing.T) {
 	t.Parallel()
 

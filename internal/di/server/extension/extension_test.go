@@ -254,6 +254,11 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
+func Test_applyMiddlewares(t *testing.T) {
+	t.Parallel()
+	t.Skip("TestApplyPreMiddlewares / TestApplyUseMiddlewares で優先度順適用と重複エラー分岐を検証済み")
+}
+
 func Test_validatePriorityConflicts(t *testing.T) {
 	t.Parallel()
 

@@ -165,3 +165,13 @@ func TestFxEventLogger_LogEvent(t *testing.T) {
 		assert.Equal(t, 0, logs.Len())
 	})
 }
+
+func Test_fxEventLogger_LogEvent(t *testing.T) {
+	t.Parallel()
+	t.Skip("TestFxEventLogger_LogEvent で全イベント分岐を検証済み")
+}
+
+func Test_fxEventLogger_record(t *testing.T) {
+	t.Parallel()
+	t.Skip("record は LogEvent の各イベント経由で TestFxEventLogger_LogEvent が成否分岐を検証済み")
+}

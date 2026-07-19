@@ -152,84 +152,112 @@ func TestNewPageFrom1Based(t *testing.T) {
 	})
 }
 
-func TestPage_Getters(t *testing.T) {
+func TestPage_Limit(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Limitが正しい値を返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		page := &Page{
-			limit:  100,
-			offset: 200,
-		}
 
-		actual := page.Limit()
-		expected := 100
+		t.Run("Limitが正しい値を返す", func(t *testing.T) {
+			t.Parallel()
+			page := &Page{
+				limit:  100,
+				offset: 200,
+			}
 
-		assert.Equal(t, expected, actual)
+			actual := page.Limit()
+			expected := 100
+
+			assert.Equal(t, expected, actual)
+		})
 	})
+}
 
-	t.Run("Offsetが正しい値を返す", func(t *testing.T) {
+func TestPage_Offset(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		page := &Page{
-			limit:  100,
-			offset: 200,
-		}
 
-		actual := page.Offset()
-		expected := 200
+		t.Run("Offsetが正しい値を返す", func(t *testing.T) {
+			t.Parallel()
+			page := &Page{
+				limit:  100,
+				offset: 200,
+			}
 
-		assert.Equal(t, expected, actual)
+			actual := page.Offset()
+			expected := 200
+
+			assert.Equal(t, expected, actual)
+		})
 	})
+}
 
-	t.Run("Limit32が正しい値を返す", func(t *testing.T) {
+func TestPage_Limit32(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		page := &Page{
-			limit:  100,
-			offset: 200,
-		}
 
-		actual := page.Limit32()
-		expected := int32(100)
+		t.Run("Limit32が正しい値を返す", func(t *testing.T) {
+			t.Parallel()
+			page := &Page{
+				limit:  100,
+				offset: 200,
+			}
 
-		assert.Equal(t, expected, actual)
+			actual := page.Limit32()
+			expected := int32(100)
+
+			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("Limit32がmaxPerPageを超える場合はクランプされる", func(t *testing.T) {
+			t.Parallel()
+			page := &Page{
+				limit:  maxPerPage + 100,
+				offset: 0,
+			}
+
+			actual := page.Limit32()
+			expected := int32(maxPerPage)
+
+			assert.Equal(t, expected, actual)
+		})
 	})
+}
 
-	t.Run("Limit32がmaxPerPageを超える場合はクランプされる", func(t *testing.T) {
+func TestPage_Offset32(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		page := &Page{
-			limit:  maxPerPage + 100,
-			offset: 0,
-		}
 
-		actual := page.Limit32()
-		expected := int32(maxPerPage)
+		t.Run("Offset32が正しい値を返す", func(t *testing.T) {
+			t.Parallel()
+			page := &Page{
+				limit:  100,
+				offset: 200,
+			}
 
-		assert.Equal(t, expected, actual)
-	})
+			actual := page.Offset32()
+			expected := int32(200)
 
-	t.Run("Offset32が正しい値を返す", func(t *testing.T) {
-		t.Parallel()
-		page := &Page{
-			limit:  100,
-			offset: 200,
-		}
+			assert.Equal(t, expected, actual)
+		})
 
-		actual := page.Offset32()
-		expected := int32(200)
+		t.Run("Offset32が最大値を超える場合はクランプされる", func(t *testing.T) {
+			t.Parallel()
+			page := &Page{
+				limit:  0,
+				offset: maxPage*maxPerPage + 1000,
+			}
 
-		assert.Equal(t, expected, actual)
-	})
+			actual := page.Offset32()
+			expected := int32(maxPage * maxPerPage)
 
-	t.Run("Offset32が最大値を超える場合はクランプされる", func(t *testing.T) {
-		t.Parallel()
-		page := &Page{
-			limit:  0,
-			offset: maxPage*maxPerPage + 1000,
-		}
-
-		actual := page.Offset32()
-		expected := int32(maxPage * maxPerPage)
-
-		assert.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
+		})
 	})
 }

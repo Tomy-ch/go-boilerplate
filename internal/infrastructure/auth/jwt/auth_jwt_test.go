@@ -455,6 +455,62 @@ func Test_authenticator_Authenticate(t *testing.T) {
 	})
 }
 
+func Test_authenticator_keyFunc(t *testing.T) {
+	t.Parallel()
+
+	// keyFunc は a.keyResolver のみを使うため、鍵解決関数だけ差した authenticator で単体検証する。
+	const resolvedKey = "resolved-public-key"
+	a := &authenticator{
+		keyResolver: func(*jwtlib.Token) (any, error) { return resolvedKey, nil },
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("RS256 は keyResolver が解決した鍵を返す", func(t *testing.T) {
+			t.Parallel()
+			got, err := a.keyFunc(&jwtlib.Token{Method: jwtlib.SigningMethodRS256})
+			require.NoError(t, err)
+			assert.Equal(t, resolvedKey, got)
+		})
+
+		t.Run("PS256(RSA-PSS) も keyResolver が解決した鍵を返す", func(t *testing.T) {
+			t.Parallel()
+			got, err := a.keyFunc(&jwtlib.Token{Method: jwtlib.SigningMethodPS256})
+			require.NoError(t, err)
+			assert.Equal(t, resolvedKey, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// alg allowlist(WithValidMethods)は第 1 層。ここでは allowlist をすり抜けて keyFunc に
+		// 到達した場合の第 2 層(鍵種別不一致)の防御だけを直接検証する（鍵混同攻撃対策の regression）。
+		t.Run("HS256(対称鍵)は allowlist をすり抜けても鍵種別不一致で拒否する", func(t *testing.T) {
+			t.Parallel()
+			got, err := a.keyFunc(&jwtlib.Token{Method: jwtlib.SigningMethodHS256})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			assert.ErrorContains(t, err, "unexpected signing method type")
+		})
+
+		t.Run("ES256(ECDSA)は鍵種別不一致で拒否する", func(t *testing.T) {
+			t.Parallel()
+			got, err := a.keyFunc(&jwtlib.Token{Method: jwtlib.SigningMethodES256})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+		})
+
+		t.Run("alg=none は鍵種別不一致で拒否する", func(t *testing.T) {
+			t.Parallel()
+			got, err := a.keyFunc(&jwtlib.Token{Method: jwtlib.SigningMethodNone})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+		})
+	})
+}
+
 func TestNewWithKeyfunc(t *testing.T) {
 	t.Parallel()
 
@@ -490,6 +546,165 @@ func TestNewWithKeyfunc(t *testing.T) {
 			}, nil)
 			assert.Nil(t, a)
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+		})
+	})
+}
+
+// newKeyfunc は固定のダミー鍵を返す鍵解決関数です（buildAuthenticator 検証用）。
+func newKeyfunc() jwtlib.Keyfunc {
+	return func(*jwtlib.Token) (any, error) { return "dummy-key", nil }
+}
+
+func Test_buildAuthenticator(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("妥当なパラメータで authenticator を構築し expectedType / issuer を保持する", func(t *testing.T) {
+			t.Parallel()
+			a, err := buildAuthenticator(Params{
+				Issuer:       testIssuer,
+				Audience:     testAudience,
+				ExpectedType: " at+jwt ",
+				Clock:        testkit.NewMockClock(t, fixedNow),
+			}, newKeyfunc())
+			require.NoError(t, err)
+
+			impl, ok := a.(*authenticator)
+			require.True(t, ok)
+			assert.Equal(t, "at+jwt", impl.expectedType)
+			assert.Equal(t, testIssuer, impl.issuer)
+		})
+
+		t.Run("AllowedAlgs / Leeway 未指定でも既定値で構築できる", func(t *testing.T) {
+			t.Parallel()
+			a, err := buildAuthenticator(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, newKeyfunc())
+			require.NoError(t, err)
+			assert.NotNil(t, a)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("clock が nil の場合は設定エラーになる", func(t *testing.T) {
+			t.Parallel()
+			a, err := buildAuthenticator(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    nil,
+			}, newKeyfunc())
+			assert.Nil(t, a)
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+		})
+
+		t.Run("issuer が空の場合は設定エラーになる", func(t *testing.T) {
+			t.Parallel()
+			a, err := buildAuthenticator(Params{
+				Issuer:   "  ",
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, newKeyfunc())
+			assert.Nil(t, a)
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+		})
+
+		t.Run("audience が空の場合は設定エラーになる", func(t *testing.T) {
+			t.Parallel()
+			a, err := buildAuthenticator(Params{
+				Issuer:   testIssuer,
+				Audience: "  ",
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, newKeyfunc())
+			assert.Nil(t, a)
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+		})
+	})
+}
+
+func Test_authenticator_verifyType(t *testing.T) {
+	t.Parallel()
+
+	newToken := func(typ any) *jwtlib.Token {
+		tok := &jwtlib.Token{Header: map[string]any{}}
+		if typ != nil {
+			tok.Header["typ"] = typ
+		}
+		return tok
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("expectedType が空なら typ 検証をスキップして常に成功する", func(t *testing.T) {
+			t.Parallel()
+			a := &authenticator{expectedType: ""}
+			require.NoError(t, a.verifyType(newToken("anything")))
+		})
+
+		t.Run("typ が expectedType と大文字小文字を無視して一致すれば成功する", func(t *testing.T) {
+			t.Parallel()
+			a := &authenticator{expectedType: "at+jwt"}
+			require.NoError(t, a.verifyType(newToken("AT+JWT")))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("typ が expectedType と一致しない場合は無効トークンになる", func(t *testing.T) {
+			t.Parallel()
+			a := &authenticator{expectedType: "at+jwt"}
+			err := a.verifyType(newToken("JWT"))
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+		})
+
+		t.Run("typ ヘッダが無い場合は無効トークンになる", func(t *testing.T) {
+			t.Parallel()
+			a := &authenticator{expectedType: "at+jwt"}
+			err := a.verifyType(newToken(nil))
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+		})
+
+		t.Run("typ ヘッダが文字列型でない場合は無効トークンになる", func(t *testing.T) {
+			t.Parallel()
+			a := &authenticator{expectedType: "at+jwt"}
+			err := a.verifyType(newToken(123))
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+		})
+	})
+}
+
+func Test_extractScopes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スペース区切りの scope 文字列を []string へ分割する", func(t *testing.T) {
+			t.Parallel()
+			got := extractScopes(jwtlib.MapClaims{"scope": "read  write"})
+			assert.Equal(t, []string{"read", "write"}, got)
+		})
+
+		t.Run("scope クレームが無い場合は nil を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, extractScopes(jwtlib.MapClaims{}))
+		})
+
+		t.Run("scope クレームが文字列型でない場合は nil を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, extractScopes(jwtlib.MapClaims{"scope": []string{"read"}}))
+		})
+
+		t.Run("scope が空文字列の場合は空になる", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, extractScopes(jwtlib.MapClaims{"scope": "   "}))
 		})
 	})
 }

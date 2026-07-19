@@ -107,6 +107,22 @@ func TestNewNoopWorkerMetrics(t *testing.T) {
 	})
 }
 
+func TestNewNoopHTTPClientMetrics(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("no-op MeterProvider から HTTPClientMetrics を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			hm := NewNoopHTTPClientMetrics(t)
+			require.NotNil(t, hm)
+			assert.NotPanics(t, func() { hm.RecordRetry(context.Background(), "sample") })
+		})
+	})
+}
+
 func TestNewNoopOutboxMetrics(t *testing.T) {
 	t.Parallel()
 

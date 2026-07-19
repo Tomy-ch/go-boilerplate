@@ -184,6 +184,142 @@ func Test_breaker_allow_record(t *testing.T) {
 	})
 }
 
+func Test_breaker_allow(t *testing.T) {
+	t.Parallel()
+
+	base := time.Unix(1000, 0)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("closedは常にリクエストを通す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+
+			allowed, gen := b.allow(base)
+			assert.True(t, allowed)
+			assert.Equal(t, breakerClosed, b.currentState())
+			assert.Equal(t, b.generation, gen)
+		})
+
+		t.Run("openはOpenDuration経過でhalf-openへ遷移しプローブを通す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			recordClosedFailures(b, 4, base) // openへ倒す
+
+			allowed, _ := b.allow(base.Add(10 * time.Second)) // OpenDuration=10s 経過
+			assert.True(t, allowed)
+			assert.Equal(t, breakerHalfOpen, b.currentState())
+		})
+
+		t.Run("half-openはHalfOpenProbes件までプローブを通す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig()) // HalfOpenProbes=2
+			recordClosedFailures(b, 4, base)
+			now := base.Add(10 * time.Second)
+
+			allowed1, _ := b.allow(now) // 1件目
+			allowed2, _ := b.allow(now) // 2件目
+			assert.True(t, allowed1)
+			assert.True(t, allowed2)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("openはOpenDuration未経過なら通さずfail-fastする", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			recordClosedFailures(b, 4, base)
+
+			allowed, _ := b.allow(base) // 未経過
+			assert.False(t, allowed)
+		})
+
+		t.Run("half-openはHalfOpenProbesを超えるプローブを通さない", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig()) // HalfOpenProbes=2
+			recordClosedFailures(b, 4, base)
+			now := base.Add(10 * time.Second)
+
+			b.allow(now) // 1件目
+			b.allow(now) // 2件目
+			allowed3, _ := b.allow(now)
+			assert.False(t, allowed3) // 上限超過は通さない
+		})
+	})
+}
+
+func Test_breaker_record(t *testing.T) {
+	t.Parallel()
+
+	base := time.Unix(1000, 0)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("closedの成功失敗を集計し閾値到達でopenへ倒す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig()) // MinRequests=4, FailureThreshold=0.5
+			recordClosedFailures(b, 4, base)
+
+			assert.Equal(t, breakerOpen, b.currentState())
+		})
+
+		t.Run("half-openで失敗を記録するとopenへ戻る", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			recordClosedFailures(b, 4, base)
+			now := base.Add(10 * time.Second)
+
+			_, gen := b.allow(now)
+			b.record(false, now, gen)
+
+			assert.Equal(t, breakerOpen, b.currentState())
+		})
+
+		t.Run("half-openでHalfOpenProbes件成功するとclosedへ戻る", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig()) // HalfOpenProbes=2
+			recordClosedFailures(b, 4, base)
+			now := base.Add(10 * time.Second)
+
+			_, gen1 := b.allow(now)
+			b.record(true, now, gen1)
+			_, gen2 := b.allow(now)
+			b.record(true, now, gen2)
+
+			assert.Equal(t, breakerClosed, b.currentState())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("half-openで別エポックの遅延結果は無視する", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			recordClosedFailures(b, 4, base)
+			now := base.Add(10 * time.Second)
+
+			_, gen := b.allow(now)
+			b.record(false, now, gen-1) // 古いエポックの遅延結果
+
+			assert.Equal(t, breakerHalfOpen, b.currentState()) // 無視されopenへ倒れない
+		})
+	})
+}
+
 func Test_breaker_shouldOpen(t *testing.T) {
 	t.Parallel()
 

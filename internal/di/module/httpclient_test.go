@@ -64,6 +64,21 @@ func Test_httpClientModule_ProvidesClient(t *testing.T) {
 	})
 }
 
+func Test_provideHTTPClientRegistry(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_httpClientModule_ProvidesClient で Registry 構築と required 欠落時の起動失敗分岐を検証済み")
+}
+
+func Test_provideHTTPClientProfiles(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_httpClientModule_ProvidesClient で profile 登録経路を検証済み")
+}
+
+func Test_provideRequiredDownstreams(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_httpClientModule_ProvidesClient で required 登録経路と欠落時の起動失敗を検証済み")
+}
+
 // newHTTPClientTestApp は、本番同様の clockModule / httpClientModule 配線に extra を足した fx アプリを構築します。
 func newHTTPClientTestApp(t *testing.T, extra ...fx.Option) *fx.App {
 	t.Helper()

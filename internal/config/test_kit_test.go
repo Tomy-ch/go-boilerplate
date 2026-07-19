@@ -31,6 +31,21 @@ func TestNewTestLocation(t *testing.T) {
 	})
 }
 
+func Test_repoRoot(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("go.mod を含むリポジトリルートを返す", func(t *testing.T) {
+			t.Parallel()
+
+			root := repoRoot(t)
+			assert.FileExists(t, filepath.Join(root, "go.mod"))
+		})
+	})
+}
+
 func TestEnsureRepoRootAndEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 	// t.Setenv / t.Chdir でプロセス状態を書き換えるため Parallel は使用しない。
 	orig, err := os.Getwd()

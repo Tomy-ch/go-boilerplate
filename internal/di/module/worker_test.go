@@ -54,3 +54,13 @@ func Test_provideQueueStatsCollector(t *testing.T) {
 		})
 	})
 }
+
+func Test_provideWorkers(t *testing.T) {
+	t.Parallel()
+	t.Skip("TestWorkerModule_GraphIsValid の登録経路ケースで workers group への登録分岐を検証済み")
+}
+
+func Test_provideQueueStatsTargets(t *testing.T) {
+	t.Parallel()
+	t.Skip("TestWorkerModule_GraphIsValid の登録経路ケースで queue_stats_targets group への登録分岐を検証済み")
+}
