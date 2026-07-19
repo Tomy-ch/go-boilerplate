@@ -8,6 +8,12 @@ import (
 	"go-boilerplate/internal/infrastructure/auth/jwt"
 	"go-boilerplate/internal/infrastructure/auth/local"
 	"go-boilerplate/internal/infrastructure/httpclient"
+
+	// sample-api:replace-begin
+	"go-boilerplate/internal/infrastructure/auth/useridentity"
+	// sample-api:replace-with
+	// = "go-boilerplate/internal/infrastructure/auth/identity"
+	// sample-api:replace-end
 	"go-boilerplate/internal/logging"
 
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
@@ -37,12 +43,17 @@ type authenticatorParams struct {
 	HTTPClient httpclient.Client
 }
 
-// AuthnModule は、認証関連の依存関係（Authenticator と Auth コントローラ）を提供するfxモジュールを返します。
+// AuthnModule は、認証関連の依存関係（Authenticator・IdentityResolver・Auth コントローラ）を提供するfxモジュールを返します。
 func AuthnModule() fx.Option {
 	return fx.Module(
 		"core.authn",
 		fx.Provide(
 			provideAuthenticator,
+			// sample-api:replace-begin
+			useridentity.New,
+			// sample-api:replace-with
+			// = identity.New,
+			// sample-api:replace-end
 			auth.NewAuthenticator,
 		),
 	)

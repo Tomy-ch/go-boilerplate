@@ -45,7 +45,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 			assert.False(t, authn.HasUserID())
 		})
 
-		t.Run("subjectがUUIDの場合はWithUserIDで内部UserID解決済みのAuthnを返す", func(t *testing.T) {
+		t.Run("subjectがUUIDでもUserIDは解決せず未解決のAuthnを返す", func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			authenticator := New()
@@ -55,10 +55,8 @@ func Test_authenticator_Authenticate(t *testing.T) {
 			authn, err := authenticator.Authenticate(ctx, cred)
 			require.NoError(t, err)
 			assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", authn.Subject())
-			require.True(t, authn.HasUserID())
-			userID, err := authn.UserID()
-			require.NoError(t, err)
-			assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", userID.String())
+			assert.Equal(t, authbd.IssuerMock, authn.Issuer())
+			assert.False(t, authn.HasUserID())
 		})
 	})
 

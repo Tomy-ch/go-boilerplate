@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	jose "github.com/go-jose/go-jose/v4"
 	jwtlib "github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -21,15 +23,40 @@ import (
 	"go-boilerplate/internal/infrastructure/httpclient"
 	mock_httpclient "go-boilerplate/internal/infrastructure/httpclient/mock"
 	"go-boilerplate/internal/infrastructure/system"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/pkg/uuid"
 )
 
 const (
 	jwtTestIssuer      = "https://mock-auth.example.com"
 	jwtTestAudience    = "go-boilerplate-api"
-	jwtTestSubject     = "11111111-1111-1111-1111-111111111111"
+	jwtTestSubject     = "user-active"
 	jwtTestKID         = "mock-key-1"
 	jwtAccessTokenType = "at+jwt"
+
+	// jwtTestSubjectDeleted / jwtTestSubjectUnknown は IdentityResolver 段での失敗経路を検証するための subject。
+	jwtTestSubjectDeleted = "user-deleted"
+	jwtTestSubjectUnknown = "user-unknown"
+	// jwtTestResolvedUserID は stub resolver が subject を解決した内部 UserID。
+	jwtTestResolvedUserID = "22222222-2222-2222-2222-222222222222"
 )
+
+// stubIdentityResolver は、DB を用いずに IdentityResolver の配線（認証成功後の内部ユーザー解決）を
+// 検証するためのインメモリ実装。subject に応じて解決成功 / 削除済み / 未登録を返す。
+type stubIdentityResolver struct {
+	userID uuid.UUID
+}
+
+func (r stubIdentityResolver) Resolve(_ context.Context, authn *authbd.Authn) (*authbd.Authn, error) {
+	switch authn.Subject() {
+	case jwtTestSubjectDeleted:
+		return nil, authbd.ErrUserUnavailable
+	case jwtTestSubjectUnknown:
+		return nil, authbd.ErrIdentityNotFound
+	default:
+		return authn.WithUserID(r.userID), nil
+	}
+}
 
 // newJWTKey はテスト用の RSA 鍵ペアを生成する。
 func newJWTKey(t *testing.T) *rsa.PrivateKey {
@@ -111,7 +138,9 @@ func startJWTAuthServer(t *testing.T, key *rsa.PrivateKey) *Server {
 	}, client)
 	require.NoError(t, err)
 
-	authFunc := auth.NewAuthenticator(authenticator)
+	resolvedUserID, err := uuid.Parse(jwtTestResolvedUserID)
+	require.NoError(t, err)
+	authFunc := auth.NewAuthenticator(authenticator, stubIdentityResolver{userID: resolvedUserID})
 
 	e := echo.New()
 	UseAppErrorHandler(t, e)
@@ -130,8 +159,17 @@ func startJWTAuthServer(t *testing.T, key *rsa.PrivateKey) *Server {
 			return next(c)
 		}
 	})
+	// 解決済み UserID がハンドラまで伝播することを検証するため、Authn.UserID をレスポンスに載せる。
 	e.GET("/protected", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+		authn, ok := ctxhelper.GetAuthn(c.Request().Context())
+		if !ok {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "authn missing"})
+		}
+		userID, err := authn.UserID()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "user id unresolved"})
+		}
+		return c.JSON(http.StatusOK, map[string]string{"user_id": userID.String()})
 	})
 
 	return StartServer(t, e)
@@ -146,11 +184,15 @@ func TestJWTAuthIntegration(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("正当な access token を提示すると保護リソースへ到達できる", func(t *testing.T) {
+		t.Run("正当な access token を提示すると保護リソースへ到達し解決済み UserID が伝播する", func(t *testing.T) {
 			t.Parallel()
 			token := signAccessToken(t, key, jwtlib.SigningMethodRS256, jwtAccessTokenType, validAccessClaims())
 			res := srv.DoJSON(http.MethodGet, "/protected", nil, bearerHeader(token))
-			AssertJSONResponseType[map[string]string](t, res)
+			require.Equal(t, http.StatusOK, res.StatusCode)
+
+			var body map[string]string
+			require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+			assert.Equal(t, jwtTestResolvedUserID, body["user_id"])
 		})
 	})
 
@@ -227,6 +269,24 @@ func TestJWTAuthIntegration(t *testing.T) {
 		t.Run("alg=none の非対称署名なしトークンは401になる", func(t *testing.T) {
 			t.Parallel()
 			token := signAccessToken(t, key, jwtlib.SigningMethodNone, jwtAccessTokenType, validAccessClaims())
+			res := srv.DoJSON(http.MethodGet, "/protected", nil, bearerHeader(token))
+			AssertErrorResponse(t, res, http.StatusUnauthorized)
+		})
+
+		t.Run("削除済みユーザーの identity は検証を通っても401になる", func(t *testing.T) {
+			t.Parallel()
+			claims := validAccessClaims()
+			claims["sub"] = jwtTestSubjectDeleted
+			token := signAccessToken(t, key, jwtlib.SigningMethodRS256, jwtAccessTokenType, claims)
+			res := srv.DoJSON(http.MethodGet, "/protected", nil, bearerHeader(token))
+			AssertErrorResponse(t, res, http.StatusUnauthorized)
+		})
+
+		t.Run("未登録の identity は検証を通っても401になる", func(t *testing.T) {
+			t.Parallel()
+			claims := validAccessClaims()
+			claims["sub"] = jwtTestSubjectUnknown
+			token := signAccessToken(t, key, jwtlib.SigningMethodRS256, jwtAccessTokenType, claims)
 			res := srv.DoJSON(http.MethodGet, "/protected", nil, bearerHeader(token))
 			AssertErrorResponse(t, res, http.StatusUnauthorized)
 		})
