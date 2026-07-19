@@ -130,6 +130,14 @@ func New() (*Config, error) {
 			errorBackoff: cfg.Outbox.ErrorBackoff,
 			batchSize:    cfg.Outbox.BatchSize,
 		},
+		auth: AuthConfig{
+			issuer:            cfg.Auth.Issuer,
+			audience:          cfg.Auth.Audience,
+			jwksURL:           cfg.Auth.JWKSURL,
+			allowedAlgorithms: cfg.Auth.AllowedAlgorithms,
+			clockSkew:         cfg.Auth.ClockSkew,
+			jwksCacheTTL:      cfg.Auth.JWKSCacheTTL,
+		},
 	}, nil
 }
 

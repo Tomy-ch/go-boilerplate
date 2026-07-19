@@ -79,6 +79,12 @@ func TestConstructor(t *testing.T) {
 			outboxCfg := NewOutboxConfig(cfg)
 			assert.Same(t, &cfg.outbox, outboxCfg)
 		})
+
+		t.Run("認証設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
+			t.Parallel()
+			authCfg := NewAuthConfig(cfg)
+			assert.Same(t, &cfg.auth, authCfg)
+		})
 	})
 }
 
@@ -509,6 +515,41 @@ func TestGetterMethods(t *testing.T) {
 			t.Run("バッチサイズを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedOutboxBatchSize, outbox.BatchSize())
+			})
+		})
+
+		t.Run("認証設定", func(t *testing.T) {
+			t.Parallel()
+			auth := cfg.auth
+
+			t.Run("issuerを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedAuthIssuer, auth.Issuer())
+			})
+
+			t.Run("audienceを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedAuthAudience, auth.Audience())
+			})
+
+			t.Run("JWKS URLを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedAuthJWKSURL, auth.JWKSURL())
+			})
+
+			t.Run("許可アルゴリズムを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedAuthAllowedAlgorithms, auth.AllowedAlgorithms())
+			})
+
+			t.Run("クロックスキューを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedAuthClockSkew, auth.ClockSkew())
+			})
+
+			t.Run("JWKSキャッシュTTLを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedAuthJWKSCacheTTL, auth.JWKSCacheTTL())
 			})
 		})
 	})

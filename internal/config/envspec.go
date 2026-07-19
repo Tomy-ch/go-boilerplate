@@ -15,6 +15,17 @@ type Loader struct {
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
 	Worker        Worker          `envPrefix:"WORKER_"`
 	Outbox        Outbox          `envPrefix:"OUTBOX_"`
+	Auth          Auth            `envPrefix:"AUTH_"`
+}
+
+// Auth は access token（JWT）検証の設定を保持する。
+type Auth struct {
+	Issuer            string        `env:"ISSUER"             envDefault:""`
+	Audience          string        `env:"AUDIENCE"           envDefault:""`
+	JWKSURL           string        `env:"JWKS_URL"           envDefault:""`
+	AllowedAlgorithms []string      `env:"ALLOWED_ALGORITHMS" envDefault:"RS256" envSeparator:","`
+	ClockSkew         time.Duration `env:"CLOCK_SKEW"         envDefault:"60s"`
+	JWKSCacheTTL      time.Duration `env:"JWKS_CACHE_TTL"     envDefault:"5m"`
 }
 
 // Outbox は transactional outbox relay の設定を保持する。

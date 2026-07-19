@@ -113,6 +113,14 @@ func TestMockConfigForTest(t *testing.T) {
 					errorBackoff: expectedOutboxErrorBackoff,
 					batchSize:    expectedOutboxBatchSize,
 				},
+				auth: AuthConfig{
+					issuer:            expectedAuthIssuer,
+					audience:          expectedAuthAudience,
+					jwksURL:           expectedAuthJWKSURL,
+					allowedAlgorithms: expectedAuthAllowedAlgorithms,
+					clockSkew:         expectedAuthClockSkew,
+					jwksCacheTTL:      expectedAuthJWKSCacheTTL,
+				},
 			}
 
 			actual := MockConfigForTest(t)
