@@ -25,7 +25,7 @@ flowchart TB
 ### Extraction Rules
 
 1. **Header** — Extract from the fixed `Authorization` header. Bearer tokens are pinned to `Authorization` by RFC 6750, so the header name is not configurable
-2. **Bearer prefix** — Only `Authorization: Bearer <token>` is accepted; the `Bearer ` prefix is stripped and the credential scheme becomes `Bearer`. Any other form yields no token
+2. **Bearer prefix** — Only `Authorization: Bearer <token>` is accepted; the `Bearer` prefix is stripped and the credential scheme becomes `Bearer`. Any other form yields no token
 3. If no token is found, return `ErrUnauthorizedTokenNotProvided`
 
 ### Authentication Steps

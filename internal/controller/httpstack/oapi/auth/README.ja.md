@@ -25,7 +25,7 @@ flowchart TB
 ### 抽出ルール
 
 1. **Header** — 固定の `Authorization` ヘッダーから抽出。Bearer トークンは RFC 6750 で `Authorization` に固定されるため、ヘッダー名は可変にしない
-2. **Bearer プレフィックス** — `Authorization: Bearer <token>` 形式のみ受理。`Bearer ` プレフィックスを除去し credential のスキームは `Bearer` になる。それ以外の形式はトークンなしとして扱う
+2. **Bearer プレフィックス** — `Authorization: Bearer <token>` 形式のみ受理。`Bearer` プレフィックスを除去し credential のスキームは `Bearer` になる。それ以外の形式はトークンなしとして扱う
 3. トークンが取得できない場合は `ErrUnauthorizedTokenNotProvided` を返す
 
 ### 認証ステップ
