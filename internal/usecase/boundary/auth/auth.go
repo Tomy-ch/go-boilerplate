@@ -12,6 +12,8 @@ import (
 const (
 	// IssuerMock はモック認証の発行者（issuer）を示します。
 	IssuerMock = "mock"
+	// ProviderJWT は JWT 検証による認証プロバイダを示します。
+	ProviderJWT = "jwt"
 )
 
 // Authn は、認証結果を表します。

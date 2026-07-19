@@ -10,13 +10,13 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 - 新規 feature / endpoint を end-to-end で立ち上げる — アイデアしか無くても、2 spec（`domain.md` + `usecase.md`）+ OpenAPI YAML + SQL が用意済みでも。
 - コードを書く*前*に上流の設計フェーズ（曖昧点の明確化 → 既存パターンの探索 → アプローチの比較）を回したい。
-- 全層を同じ規約で構築し 1 つの統合レポートを得た上で、`local-review` / `arch-check` / `test-review` でレビューしたい。
+- 全層を同じ規約で構築し 1 つの統合レポートを得た上で、`impl-review` / `arch-check` / `test-review` でレビューしたい。
 
 以下の用途には使いません:
 
 - 既存の単一 layer の変更 — 該当 layer skill（`scaffold-domain` / `-infra-db` / `-usecase` / `-controller`）を単独実行。
 - 空の spec テンプレートだけの scaffold — それは `new-spec`。
-- 既存コードのレビューのみ — `local-review` / `arch-check` / `test-review` を直接実行。
+- 既存コードのレビューのみ — `impl-review` / `arch-check` / `test-review` を直接実行。
 
 ## 2 つのエントリモード（Phase 0 で自動判定）
 
@@ -213,7 +213,7 @@ cross-layer 統合（handler → usecase → domain → infra）が全体とし�
 
 scaffold + ランタイム確認は feature が*構築され起動する*ことを示す。このフェーズは*良いか*を判定する — 汎用 reviewer ではなくリポジトリ自身のレビュースキルを使う。これらはこのコードベースのルールを内包し、実装者とは別モデルで reviewer を走らせるため:
 
-- **`local-review`** — 新変更に対する敵対的な correctness / security / architecture / runtime-gap + コメント品質。
+- **`impl-review`** — 新変更に対する敵対的な correctness / security / architecture / runtime-gap + コメント品質。
 - **`arch-check`** — 触れた層の layer-compliance 監査（depguard レベルの境界、lean A 規約）。
 - **`test-review`** — 生成テストの品質（構造準拠 + 観点カバレッジ + 意味的強度）。
 
@@ -234,7 +234,7 @@ scaffold-endpoint 完了（feature: <feature>, mode: <A/B>）。
   ✓ scaffold-controller: <N> ファイル作成、coverage 100%
   ✓ make test: 全体 OK
   ✓ ランタイム動作確認: curl 到達 / 認証 / 主要異常系 / o11y トレース OK
-  ✓ 品質レビュー: local-review / arch-check / test-review 実施（指摘 <n> 件、対応方針: <...>）
+  ✓ 品質レビュー: impl-review / arch-check / test-review 実施（指摘 <n> 件、対応方針: <...>）
 
 次のアクション:
   - /commit で 変更をコミット
@@ -268,7 +268,7 @@ commit しない。push しない。
 - ✅ 実行した全フェーズ + 最終 `make test` を統合した最終レポートを surface。
 - ✅ 各 child skill が自身の確認を layer ごとに取る（judgment-heavy step で human-in-the-loop）。
 - ✅ ランタイム curl + o11y 確認（Phase 7）を実施 — `make test` だけでは DI / ミドルウェア / DB を通らない。
-- ✅ 品質レビュー（Phase 8）は汎用 reviewer でなく `local-review` / `arch-check` / `test-review` を再利用。
+- ✅ 品質レビュー（Phase 8）は汎用 reviewer でなく `impl-review` / `arch-check` / `test-review` を再利用。
 - ✅ 元に戻す手段が `make db-init` しかない破壊的 curl は実行前にユーザー確認。
 
 ## チェックリスト
@@ -278,7 +278,7 @@ commit しない。push しない。
 - [ ] `verify-spec` 実行、違反時は chain 中断（Phase 5）
 - [ ] `scaffold-domain` / `-infra-db` / `-usecase` / `-controller` 各々成功実行（または失敗時 chain 停止）（Phase 6）
 - [ ] 全 child 成功後に最終 `make fix` + `make test`; ランタイム curl / 認証 / 主要異常系 / o11y トレース確認（Phase 7）
-- [ ] 品質レビュー実行（`local-review` + `arch-check` + `test-review`）; 指摘 surface と対応判断（Phase 8）
+- [ ] 品質レビュー実行（`impl-review` + `arch-check` + `test-review`）; 指摘 surface と対応判断（Phase 8）
 - [ ] layer ごとのファイル数 + カバレッジを含む統合日本語サマリ（Phase 9）
 - [ ] commit / push なし
 - [ ] いずれの失敗時も書き込み済みファイルを自動 rollback していない

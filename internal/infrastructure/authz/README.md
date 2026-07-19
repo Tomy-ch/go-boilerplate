@@ -36,7 +36,7 @@ A real deployment replaces these with its own RBAC / external policy-engine impl
 
 ## Local / Staging / Production Implementation
 
-`allowall` is a **development-only stub**; it is wired only for `local` / `ci` / `test`. For `development` / `staging` / `production` you must add real implementations and wire them per environment (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2). `provideAuthorizer` is **fail-closed**: any environment without a wired implementation falls through to the `default` branch and returns a startup error by design. While the `user` sample is present, the sample `userrole` implementation (backed by `user_roles`) serves `development` / `staging` / `production`; removing the sample reverts those environments to the fail-closed error until you wire your own.
+`allowall` is a **development-only stub**; it grants everything, so it is wired only for `local` / `ci` / `test`. This restriction is enforced by the stub itself — `allowall.New` refuses to construct outside those environments (**fail-closed by construction**), so a wiring mistake cannot accidentally enable allow-all in `development` / `staging` / `production`. `provideAuthorizer` is **also fail-closed**: any environment without a wired implementation falls through to the `default` branch and returns a startup error by design. While the `user` sample is present, the sample `userrole` implementation (backed by `user_roles`) serves `development` / `staging` / `production`; removing the sample reverts those environments to the fail-closed error until you wire your own (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2).
 
 Suggested layout (mirrors `internal/infrastructure/auth/`):
 
@@ -53,7 +53,7 @@ A real `Authorizer` typically decides via:
 - RBAC (roles derived from `auth.Authn` claims / scopes)
 - an external policy engine (OPA / Cedar)
 
-Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding a `case config.EnvDevelopment / EnvStaging / EnvProduction` branch that returns your real implementation. Anything left unhandled falls through to the `default` branch, which returns the fail-closed error. (While the `user` sample is present, that `case` is occupied by the sample `userrole`, and it is removed together with the sample.)
+Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding a `case config.EnvDevelopment / EnvStaging / EnvProduction` branch that returns your real implementation, while keeping the self-guarded `allowall.New(appCfg)` for the non-production `local` / `ci` / `test` case. Anything left unhandled falls through to the `default` branch, which returns the fail-closed error. Because `allowall.New` is itself fail-closed, allow-all can never be reached in a production-like environment even if that wiring is wrong. (While the `user` sample is present, the production-like `case` is occupied by the sample `userrole`, and it is removed together with the sample.)
 
 ## Registration to DI
 
@@ -63,7 +63,7 @@ Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by 
 internal/di/module/authz.go
 ```
 
-It is included in `InfrastructureModule()` (the Usecase layer depends on it), and is **environment-gated** so the allow-all stub is never wired in production-like environments.
+It is included in `InfrastructureModule()` (the Usecase layer depends on it). The allow-all stub is never wired in production-like environments — this is **enforced by `allowall.New` itself** (fail-closed), not only by the provider.
 
 ## Design Policy
 

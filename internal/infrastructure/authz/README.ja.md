@@ -38,7 +38,7 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 
 ## local / staging / production の実装
 
-`allowall` は **開発用スタブ**であり、配線されるのは `local` / `ci` / `test` のみです。`development` / `staging` / `production` では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。`provideAuthorizer` は **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `development` / `staging` / `production` を担います。サンプルを削除すると、自前の実装を配線するまでこれらの環境は fail-closed エラーに戻ります。
+`allowall` は **開発用スタブ**であり、すべてを許可するため配線されるのは `local` / `ci` / `test` のみです。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはありません。さらに `provideAuthorizer` も **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `development` / `staging` / `production` を担います。サンプルを削除すると、自前の実装を配線するまでこれらの環境は fail-closed エラーに戻ります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
@@ -55,7 +55,7 @@ internal/infrastructure/authz
 - RBAC（`auth.Authn` の claims / scopes から導いたロール）
 - 外部ポリシーエンジン（OPA / Cedar）
 
-各環境は `provideAuthorizer`（`internal/di/module/authz.go`）に `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加し、実実装を返すことで配線します。どの `case` にも該当しない環境は `default` 分岐に落ち、fail-closed エラーを返します。（`user` サンプルが存在する間、その `case` はサンプル `userrole` が占めており、サンプルとともに削除されます。）
+各環境は `provideAuthorizer`（`internal/di/module/authz.go`）に `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加し、実実装を返すことで配線します。非本番の `local` / `ci` / `test` は自衛済みの `allowall.New(appCfg)` を残します。どの `case` にも該当しない環境は `default` 分岐に落ち、fail-closed エラーを返します。`allowall.New` 自体が fail-closed なので、たとえ配線を誤っても本番相当の環境で全許可に到達することはありません。（`user` サンプルが存在する間、本番相当の `case` はサンプル `userrole` が占めており、サンプルとともに削除されます。）
 
 ## DI への登録
 
@@ -65,7 +65,7 @@ internal/infrastructure/authz
 internal/di/module/authz.go
 ```
 
-Usecase 層が依存するため `InfrastructureModule()` に含めており、**環境ゲート付き**であるため全許可スタブが本番相当の環境に配線されることはありません。
+Usecase 層が依存するため `InfrastructureModule()` に含めています。全許可スタブが本番相当の環境に配線されることはありません —— これはプロバイダだけでなく **`allowall.New` 自身が担保します**（fail-closed）。
 
 ## 設計方針
 

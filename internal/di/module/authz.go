@@ -41,7 +41,8 @@ func authzModule() fx.Option {
 }
 
 // provideAuthorizer は、環境ごとに対応する Authorizer を選んで返します。
-// local / ci / test は全許可（allowall）の割り切り実装を配線します。
+// local / ci / test は全許可（allowall）の割り切り実装を配線します（allowall 自身が非本番環境
+// 以外での生成を fail-closed で拒否するため、配線ミスでも本番相当で全許可にはなりません）。
 // それ以外の環境は switch の case で個別に配線でき（環境ごとに実装が異なってよい）、対応する
 // case が無い環境は誤った Authorizer を配線しないよう default で起動エラーにします（fail-closed）。
 // サンプルでは dev / stg / prd に user_roles ベース実装を配線します（サンプル削除で除去）。 // sample-api:line
@@ -50,13 +51,24 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 
 	switch p.AppCfg.Env() {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
+		authorizer, err := allowall.New(p.AppCfg)
+		if err != nil {
+			logger.Error(
+				context.Background(),
+				"No authorizer configured for the current environment",
+				logging.String("env", p.AppCfg.Env()),
+			)
+
+			return nil, err
+		}
+
 		logger.Warn(
 			context.Background(),
 			"Allow-all authorizer wired: every request is permitted (non-production only)",
 			logging.String("env", p.AppCfg.Env()),
 		)
 
-		return allowall.New(), nil
+		return authorizer, nil
 	// sample-api:begin
 	case config.EnvDevelopment, config.EnvStaging, config.EnvProduction:
 		logger.Info(

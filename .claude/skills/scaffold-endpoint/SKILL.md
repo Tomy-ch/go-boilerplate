@@ -1,7 +1,7 @@
 ---
 name: scaffold-endpoint
 description: >-
-  End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev-style upstream design phases that turn that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (AskUserQuestion) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + domain.md + usecase.md for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** (backward-compatible fast path) — jump straight to the core when `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`local-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the upstream design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`local-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
+  End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev-style upstream design phases that turn that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (AskUserQuestion) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + domain.md + usecase.md for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** (backward-compatible fast path) — jump straight to the core when `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`impl-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the upstream design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`impl-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
 ---
 
 # Scaffold Endpoint
@@ -16,13 +16,13 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 
 - Starting a new feature / endpoint end-to-end — whether you have only an idea, or the 2 specs (`domain.md` + `usecase.md`) + OpenAPI YAML + SQL are already prepared.
 - You want the upstream design phases (clarify ambiguities → explore existing patterns → weigh approaches) *before* any code is written.
-- You want all layers built with the same conventions and one consolidated report, then reviewed by `local-review` / `arch-check` / `test-review`.
+- You want all layers built with the same conventions and one consolidated report, then reviewed by `impl-review` / `arch-check` / `test-review`.
 
 Do NOT use this skill for:
 
 - Modifying a single existing layer — run the specific layer skill (`scaffold-domain` / `-infra-db` / `-usecase` / `-controller`) standalone.
 - Only scaffolding empty spec templates — that is `new-spec`.
-- A review-only pass on existing code — run `local-review` / `arch-check` / `test-review` directly.
+- A review-only pass on existing code — run `impl-review` / `arch-check` / `test-review` directly.
 
 ## Two Entry Modes (auto-detected in Phase 0)
 
@@ -219,7 +219,7 @@ If any check fails, surface TODO + FB and stop (do NOT commit).
 
 The scaffold + runtime check proves the feature is *built and boots*. This phase judges whether it is *good* — using the repo's own review skills rather than a generic reviewer, because they encode this codebase's rules and run reviewers on a different model than the implementer:
 
-- **`local-review`** — adversarial correctness / security / architecture / runtime-gap + comment quality on the new change.
+- **`impl-review`** — adversarial correctness / security / architecture / runtime-gap + comment quality on the new change.
 - **`arch-check`** — layer-compliance audit across the touched layers (depguard-level boundaries, lean A conventions).
 - **`test-review`** — quality of the generated tests (structural compliance + viewpoint coverage + semantic strength).
 
@@ -240,7 +240,7 @@ scaffold-endpoint 完了（feature: <feature>, mode: <A/B>）。
   ✓ scaffold-controller: <N> ファイル作成、coverage 100%
   ✓ make test: 全体 OK
   ✓ ランタイム動作確認: curl 到達 / 認証 / 主要異常系 / o11y トレース OK
-  ✓ 品質レビュー: local-review / arch-check / test-review 実施（指摘 <n> 件、対応方針: <...>）
+  ✓ 品質レビュー: impl-review / arch-check / test-review 実施（指摘 <n> 件、対応方針: <...>）
 
 次のアクション:
   - /commit で 変更をコミット
@@ -274,7 +274,7 @@ Do NOT commit. Do NOT push.
 - ✅ Surface a consolidated final report covering every phase that ran + the final `make test`.
 - ✅ Let each child skill ask its own confirmation per layer (human-in-the-loop on judgment-heavy steps).
 - ✅ Run the runtime curl + o11y verification (Phase 7) — `make test` alone does not exercise DI / middleware / DB.
-- ✅ Reuse `local-review` / `arch-check` / `test-review` for the Quality Review (Phase 8), not a generic reviewer.
+- ✅ Reuse `impl-review` / `arch-check` / `test-review` for the Quality Review (Phase 8), not a generic reviewer.
 - ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`.
 
 ## Checklist
@@ -286,7 +286,7 @@ Before reporting completion, confirm:
 - [ ] `verify-spec` ran; chain aborted if any violation (Phase 5)
 - [ ] `scaffold-domain` / `-infra-db` / `-usecase` / `-controller` each ran successfully (or failed and chain halted) (Phase 6)
 - [ ] Final `make fix` + `make test` run after all child skills; runtime curl / auth / key error paths / o11y trace confirmed (Phase 7)
-- [ ] Quality Review ran (`local-review` + `arch-check` + `test-review`); findings surfaced and fix decision taken (Phase 8)
+- [ ] Quality Review ran (`impl-review` + `arch-check` + `test-review`); findings surfaced and fix decision taken (Phase 8)
 - [ ] Consolidated Japanese summary with per-layer file counts and coverage (Phase 9)
 - [ ] No commits / pushes
 - [ ] On any failure, this skill did NOT auto-rollback already-written files

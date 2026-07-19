@@ -37,13 +37,13 @@ verify → commit → record into the ledger and mod."
 When not to use:
 
 - Detection (review generation) itself → `full-verify`.
-- Diff/PR review → `local-review` / `/code-review`.
+- Diff/PR review → `impl-review` / `/code-review`.
 - A one-off commit task → `commit`.
 
 ## Positioning (Division of Labor with Other Skills)
 
 The "**application**" counterpart to `full-verify` (detection). Not the application of a diff review,
-but fixing the whole-verification md set by severity, ledger-driven. For diff scope use `local-review`
+but fixing the whole-verification md set by severity, ledger-driven. For diff scope use `impl-review`
 / `/code-review`; for one-off commits use `commit`; for layer conventions use `arch-check`. The commit
 mechanism itself is delegated to the `commit` skill (see 6.).
 

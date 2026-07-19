@@ -1,6 +1,6 @@
 # GitHub Actions の pin 対象 SHA（SSOT）。
 # make pin-actions-resolve で解決・make pin-actions-apply で workflow へ反映する。
-"actions/attest-build-provenance@v4.1.0" = "a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32"
+"actions/attest-build-provenance@v4.1.1" = "0f67c3f4856b2e3261c31976d6725780e5e4c373"
 "actions/attest-sbom@v4" = "c604332985a26aa8cf1bdc465b92731239ec6b9e"
 "actions/checkout@v7.0.0" = "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0"
 "actions/deploy-pages@v5" = "cd2ce8fcbc39b97be8ca5fce6e763baed58fa128"
@@ -10,7 +10,7 @@
 "actions/upload-pages-artifact@v5" = "fc324d3547104276b827a68afc52ff2a11cc49c9"
 "anchore/sbom-action@v0" = "e22c389904149dbc22b58101806040fa8d37a610"
 "aquasecurity/trivy-action@v0.36.0" = "ed142fd0673e97e23eac54620cfb913e5ce36c25"
-"docker/build-push-action@v7" = "f9f3042f7e2789586610d6e8b85c8f03e5195baf"
+"docker/build-push-action@v7" = "53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
 "docker/setup-buildx-action@v4" = "d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5"
 "github/codeql-action@v4" = "8aad20d150bbac5944a9f9d289da16a4b0d87c1e"
 "jdx/mise-action@v4.2.0" = "e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d"

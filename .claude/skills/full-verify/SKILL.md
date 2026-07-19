@@ -39,7 +39,7 @@ so the quality and format of findings stay consistent:
   follow.
 
 Output is in Japanese. Note this is for **whole-repository verification**, not diff review (for diffs
-use `local-review` / `/code-review`).
+use `impl-review` / `/code-review`).
 
 **The focus of verification is "implementation cleanliness" = readability, maintainability, and
 design straightforwardness.** Mechanical convention violations such as layer-boundary crossings,
@@ -59,7 +59,7 @@ in scope.
 
 When not to use:
 
-- Diff/PR-scoped review → `local-review` / `/code-review`.
+- Diff/PR-scoped review → `impl-review` / `/code-review`.
 - Compliance audit against this repository's layer conventions → `arch-check`.
 - Spec verification → `verify-spec`.
 - Applying fixes → this skill is read-only. It reports only; it does not fix.
@@ -67,7 +67,7 @@ When not to use:
 ## Positioning (Division of Labor with Other Skills)
 
 `full-verify` (whole, non-diff **detection**) → `full-apply` (**application**) form a pair. Use these
-two when you want to take an overview of the whole and fix it. For diff scope use `local-review`
+two when you want to take an overview of the whole and fix it. For diff scope use `impl-review`
 (adversarial, different model) / `/code-review`; for test quality use `test-review`; for layer
 convention compliance use `arch-check`; for spec verification use `verify-spec`.
 

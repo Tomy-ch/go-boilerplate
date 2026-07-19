@@ -211,7 +211,7 @@ EOF
 - **Body**: Optional. If present, leave one blank line after the title and wrap around 72 characters. Prefer "why" over "what".
 - **Language**: Japanese (per the output rule in `CLAUDE.md`).
 - **`Co-Authored-By` footer**: Required. Use `Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
-- **`Refs:` footer (review-applied commits only)**: when a commit applies a finding from `full-apply` / `local-review` / `code-review` (the change traces back to a review ledger), add a `Refs: <reviews-dir>/mod_*.md (<severity>)` line in the footer so the commit links to the finding. Omit it for ordinary commits.
+- **`Refs:` footer (review-applied commits only)**: when a commit applies a finding from `full-apply` / `impl-review` / `code-review` (the change traces back to a review ledger), add a `Refs: <reviews-dir>/mod_*.md (<severity>)` line in the footer so the commit links to the finding. Omit it for ordinary commits.
 - **HEREDOC**: Required (keeps the title + blank line + body + footer layout intact).
 - **`--no-verify`**: Required for every commit produced by this command. This is an explicit, command-scoped carve-out from the project-wide rule; the rationale is documented in Step 4 (lefthook is run once manually before push, not N times during the split).
 - **Never use `-a`, `git add -A`, or `git add .`.** Always stage files by name (avoids sweeping in `.env` or credentials).

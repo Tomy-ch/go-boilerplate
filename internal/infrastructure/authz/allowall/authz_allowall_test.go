@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/config"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/pkg/uuid"
@@ -15,13 +16,40 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
+	newAppCfg := func(t *testing.T, env string) *config.ApplicationConfig {
+		t.Helper()
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetApplicationEnv(t, env)
+
+		return appCfg
+	}
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Authorizerを生成する", func(t *testing.T) {
-			t.Parallel()
-			assert.NotNil(t, New())
-		})
+		// 全許可を許容する非本番環境。
+		for _, env := range []string{config.EnvLocal, config.EnvCI, config.EnvTest} {
+			t.Run(env+"環境ではAuthorizerを生成する", func(t *testing.T) {
+				t.Parallel()
+				authorizer, err := New(newAppCfg(t, env))
+				require.NoError(t, err)
+				assert.NotNil(t, authorizer)
+			})
+		}
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 本番相当の環境では生成を拒否し、危険な全許可が配線されないこと（fail-closed）。
+		for _, env := range []string{config.EnvDevelopment, config.EnvStaging, config.EnvProduction} {
+			t.Run(env+"環境では生成を拒否してエラーを返す", func(t *testing.T) {
+				t.Parallel()
+				authorizer, err := New(newAppCfg(t, env))
+				require.Error(t, err)
+				assert.Nil(t, authorizer)
+			})
+		}
 	})
 }
 
@@ -43,25 +71,25 @@ func Test_authorizer_Authorize(t *testing.T) {
 
 		t.Run("取得操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserGet, authzbd.NewResource("user", &ownerID))
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserGet, authzbd.NewResource("user", &ownerID))
 			require.NoError(t, err)
 		})
 
 		t.Run("更新操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserUpdate, authzbd.NewResource("user", &ownerID))
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserUpdate, authzbd.NewResource("user", &ownerID))
 			require.NoError(t, err)
 		})
 
 		t.Run("削除操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, authzbd.NewResource("user", &ownerID))
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, authzbd.NewResource("user", &ownerID))
 			require.NoError(t, err)
 		})
 
 		t.Run("resourceがnilでも許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, nil)
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, nil)
 			require.NoError(t, err)
 		})
 	})
