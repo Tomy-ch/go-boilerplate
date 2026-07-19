@@ -255,6 +255,38 @@ func Test_authExtractor(t *testing.T) {
 	})
 }
 
+func Test_infraErrorToHTTP(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ErrUnavailableは503の*echo.HTTPErrorへ変換され元エラーを保持する", func(t *testing.T) {
+			t.Parallel()
+			orig := xerrors.Wrap(apperror.ErrUnavailable, "db unavailable")
+
+			err := infraErrorToHTTP(orig)
+
+			var he *echo.HTTPError
+			require.ErrorAs(t, err, &he)
+			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("ErrUnavailable以外は500の*echo.HTTPErrorへ変換され元エラーを保持する", func(t *testing.T) {
+			t.Parallel()
+			orig := xerrors.Wrap(apperror.ErrInternal, "db down")
+
+			err := infraErrorToHTTP(orig)
+
+			var he *echo.HTTPError
+			require.ErrorAs(t, err, &he)
+			assert.Equal(t, http.StatusInternalServerError, he.Code)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}
+
 func Test_extractBearerToken(t *testing.T) {
 	t.Parallel()
 

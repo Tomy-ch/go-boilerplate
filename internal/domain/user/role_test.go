@@ -72,6 +72,42 @@ func TestNewRole(t *testing.T) {
 	})
 }
 
+func Test_RoleCode_valid(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("管理者コードの場合、true を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, RoleCodeAdmin.valid())
+		})
+
+		t.Run("一般コードの場合、true を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, RoleCodeGeneral.valid())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未知のコードの場合、false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, RoleCode(99).valid())
+		})
+
+		t.Run("ゼロ値の場合、false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, RoleCode(0).valid())
+		})
+	})
+}
+
 func TestRoles_HasAdmin(t *testing.T) {
 	t.Parallel()
 

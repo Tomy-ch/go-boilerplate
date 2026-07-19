@@ -46,3 +46,8 @@ func Test_provideJobs_AnnotatesIntoJobsGroup(t *testing.T) {
 
 	assert.Len(t, jobs, 2)
 }
+
+func Test_provideJobs(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_provideJobs_AnnotatesIntoJobsGroup で group 登録分岐を検証済み")
+}

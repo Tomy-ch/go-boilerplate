@@ -63,6 +63,87 @@ func TestEchoTestClient_BuildAndServe(t *testing.T) {
 	})
 }
 
+func TestEchoTestClient_Build(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("RequestURLモードではルータ解決でパスが設定される", func(t *testing.T) {
+			t.Parallel()
+			client := NewEchoTestClient(t, newEchoWithUserRoute()).
+				Method(http.MethodGet).
+				RequestURL("/users/456")
+
+			req, rec, c := client.Build()
+			require.NotNil(t, req)
+			require.NotNil(t, rec)
+			assert.Equal(t, "/users/:id", c.Path())
+			assert.Equal(t, "456", c.Param("id"))
+		})
+
+		t.Run("RoutePatternモードではSetPathとPathParamsが設定される", func(t *testing.T) {
+			t.Parallel()
+			client := NewEchoTestClient(t, echo.New()).
+				Method(http.MethodGet).
+				RoutePattern("/users/:id").
+				PathParams([]EchoTestParam{{Name: "id", Value: "123"}})
+
+			_, _, c := client.Build()
+			assert.Equal(t, "/users/:id", c.Path())
+			assert.Equal(t, "123", c.Param("id"))
+		})
+
+		t.Run("RoutePatternモードでPathParamsが無ければパラメータは設定されない", func(t *testing.T) {
+			t.Parallel()
+			client := NewEchoTestClient(t, echo.New()).
+				Method(http.MethodGet).
+				RoutePattern("/health")
+
+			_, _, c := client.Build()
+			assert.Equal(t, "/health", c.Path())
+			assert.Empty(t, c.ParamNames())
+		})
+	})
+}
+
+func TestEchoTestClient_buildRequest(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ヘッダとクエリパラメータが反映される", func(t *testing.T) {
+			t.Parallel()
+			client := NewEchoTestClient(t, echo.New()).
+				Method(http.MethodGet).
+				RoutePattern("/test").
+				Header("X-Test", "value").
+				QueryParams([]EchoTestParam{{Name: "foo", Value: "bar"}})
+
+			req, rec := client.buildRequest()
+			require.NotNil(t, req)
+			require.NotNil(t, rec)
+			assert.Equal(t, "value", req.Header.Get("X-Test"))
+			assert.Equal(t, "bar", req.URL.Query().Get("foo"))
+			assert.Equal(t, "/test", req.URL.Path)
+		})
+
+		t.Run("ボディが設定される", func(t *testing.T) {
+			t.Parallel()
+			client := NewEchoTestClient(t, echo.New()).
+				Method(http.MethodPost).
+				RoutePattern("/test").
+				RawBody(strings.NewReader("payload"), "text/plain")
+
+			req, _ := client.buildRequest()
+			got, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Equal(t, "payload", string(got))
+		})
+	})
+}
+
 func TestEchoTestClient_resolveTarget(t *testing.T) {
 	t.Parallel()
 

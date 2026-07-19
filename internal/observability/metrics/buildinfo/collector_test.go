@@ -198,6 +198,31 @@ func TestCollector_Collect(t *testing.T) {
 	})
 }
 
+func Test_register(t *testing.T) {
+	t.Parallel()
+	t.Skip("register は TestRegister が初回登録/重複無視/その他エラー返却の全分岐を検証済み")
+}
+
+func Test_normalize(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非空の値はそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "v1.5.0", normalize("v1.5.0"))
+		})
+
+		t.Run("空文字は unknown へ丸める", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, unknownValue, normalize(""))
+		})
+	})
+}
+
 func TestRegister(t *testing.T) {
 	t.Parallel()
 

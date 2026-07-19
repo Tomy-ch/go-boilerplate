@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestNewConfig(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			setEnvVarsForTesting(t)
@@ -706,4 +706,71 @@ func Test_buildStatusCodeSet(t *testing.T) {
 
 	actual := buildStatusCodeSet(codes)
 	assert.Equal(t, expected, actual)
+}
+
+func Test_parseCIDR(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("有効な CIDR の場合、解析済みの *net.IPNet を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := parseCIDR("192.168.0.0/16")
+			require.NoError(t, err)
+			require.NotNil(t, actual)
+			assert.Equal(t, "192.168.0.0/16", actual.String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("不正な CIDR の場合、ErrFailedToParseCIDR を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := parseCIDR("invalid_cidr")
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrFailedToParseCIDR)
+		})
+	})
+}
+
+func Test_validatePortRange(t *testing.T) {
+	t.Parallel()
+
+	sentinel := ErrInvalidPortRange
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最小ポートの場合、nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validatePortRange(MinPort, sentinel))
+		})
+
+		t.Run("最大ポートの場合、nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validatePortRange(MaxPort, sentinel))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最小ポート未満の場合、渡したエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorIs(t, validatePortRange(MinPort-1, sentinel), sentinel)
+		})
+
+		t.Run("最大ポート超過の場合、渡したエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorIs(t, validatePortRange(MaxPort+1, sentinel), sentinel)
+		})
+	})
 }

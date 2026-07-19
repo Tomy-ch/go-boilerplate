@@ -106,10 +106,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 ハードルール:
 
 1. **1 関数 / メソッド = 1 `TestXxx`**。 `Foo` → `func TestFoo(t *testing.T)`、`(*User).UpdateProfile` → `func TestUser_UpdateProfile(t *testing.T)`。 同一 subject に対する複数 `TestXxx` は絶対に作らない。
-2. **複数 subject を 1 `TestXxx` に束ねるのは例外**。 subagent またはユーザが提案した場合（例: 全 getter を `TestEntity_Accessors` で一括検証する）、`AskUserQuestion`:
-   - 質問: 「`<funcA>` / `<funcB>` / ... を 1 つの TestXxx にまとめる構成案ですが、原則は 1 関数 = 1 TestXxx です。束ねますか？」
-   - 選択肢: 「束ねる（理由を 1 行で）」 / 「別々に作る（推奨）」。
-   - 「束ねる」が選ばれた場合、1 行の rationale を取得し、束ねた `TestXxx` の直上に Go コメントとして残す。
+2. **複数 subject を 1 `TestXxx` に束ねない — 厳密 1:1、例外なし**。 全 getter を `TestEntity_Accessors` / `*_Getters` で一括検証するような統合テストは作らず、getter / accessor ごとに 1 つの `TestXxx` を用意する。 `AskUserQuestion` による束ねの分岐も rationale コメントによる免除も無い。 唯一の免除は、真にユニットテストを持つべきでない subject（分岐が公開呼び出し元 / 統合 / DI グラフテストで被覆される）で、その場合も規約どおりの名前の `TestXxx` を宣言し `t.Skip("<被覆テスト>")` を呼ぶ — allowlist は持たず、免除理由は `t.Skip` の文字列に残す。 `docs/testing-conventions.md` §1 に準拠し、`internal/architest`（`TestUnitTestMappingCompleteness`）が機械的に強制する。
 3. **最外殻 2 つの `t.Run` の name は 必ず literal の `正常系` / `異常系` の 2 文字のみ**。 prefix 形式 (`正常系_xxx` / `異常系_xxx`) は NG。
    - 使うのは `t.Run("正常系", ...)` と `t.Run("異常系", ...)` のみ。group name はリテラルの 2 文字であって、 case 名のプレフィックスではない。
    - **禁止パターン**: 最外殻に `t.Run("正常系_ユーザーが存在する場合", ...)` を書くこと。 `正常系_` / `異常系_` プレフィックスをサブケース名に付けるのも、 「グループ軸 (正常系/異常系)」と「ケース説明軸 (具体的に何を試すか)」を混同させる。
@@ -148,7 +145,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 - 生成予定の各 `TestXxx` と、その配下の 正常系 / 異常系 サブケースのリスト
 - 各 case を生んだ観点との対応理由
 - 提案テストファイル冒頭 ~20 行のプレビュー
-- 承認された例外（複数 subject 束ね）と保存された rationale
+- 分岐が他で被覆されるため skip-test（`TestXxx` + `t.Skip("<被覆テスト>")`）として出力した subject（被覆テスト名を明記）
 
 を提示してから `AskUserQuestion`:
 
@@ -235,13 +232,13 @@ chain モードでは以下をスキップ:
 - Step 2（test-perspective subagent）— `viewpoints` が非空のとき。
 - Step 4 の `AskUserQuestion`（親が feature 単位の承認を既に取得済み）— 監査用に 1 行サマリは表示する。
 
-ただし**複数 subject 束ね例外** の `AskUserQuestion` は chain モードでも必須（親が知らないルールなので）。（table-driven に例外は無い — 禁止であり常に逐次 `t.Run`。）
+厳密 1:1 ルール（束ね禁止、免除は named `TestXxx` + `t.Skip`）は chain モードでも同様 — 束ねは常に不許可なので確認を取る対象自体が無い。（table-driven にも例外は無い — 禁止であり常に逐次 `t.Run`。）
 
 ## 制約（サマリ）
 
 - ❌ 生成テストにコード言い換え／*なぜ*の説明コメントを足す — テストコメントは最小（振る舞いのみ）。ケースの意図は日本語 `t.Run` 名で表し、インラインコメントに書かない（godoc 以外で必須なのは `-race` 直列ブロック例外の理由コメントのみ）。
 - ❌ 同一関数 / メソッドに対する複数 `TestXxx`。
-- ❌ `AskUserQuestion` 承認なしの複数 subject 束ね（および rationale コメント無し）。
+- ❌ 複数 subject を 1 `TestXxx` に束ねる（厳密 1:1、例外なし。getter / accessor 含む）。他で被覆される subject も named `TestXxx` + `t.Skip("<被覆テスト>")` にする — 束ねない。
 - ❌ table-driven `for` ループ（禁止 — 常にケース毎の逐次 `t.Run` sibling で書く）。
 - ❌ 手書き mock（`<package>/mock/*_mock.go` を使う）。
 - ❌ subject ソースファイルの編集。
@@ -269,10 +266,10 @@ chain モードでは以下をスキップ:
 - [ ] 対象ファイル + 層が確定（standalone）または親 scaffold-* から受領（chain）した。
 - [ ] Step 1 で層 README + `docs/testing-conventions.md` + sibling test を読んだ。
 - [ ] Step 2 の test-perspective subagent を実行した（または親から `viewpoints` を受領）。
-- [ ] 各 `TestXxx` が単一 subject に対応している、または `AskUserQuestion` で例外承認 + rationale が記録されている。
+- [ ] 各 `TestXxx` が単一 subject に対応している（厳密 1:1、束ねなし）。他で被覆される subject は named `TestXxx` + `t.Skip("<被覆テスト>")` で出力している。
 - [ ] 最外殻 `t.Run` group の name が literal `正常系` / `異常系` （`正常系_xxx` 形式ではない）。 サブケース名にも `正常系_` / `異常系_` プレフィックスが含まれない。
 - [ ] 全 `t.Run` の冒頭で `t.Parallel()` を呼んでいる、または `-race` 例外の説明コメントが付いている。
-- [ ] `for` ループは生成していない、または `AskUserQuestion` で例外承認済み。
+- [ ] `for` ループ table は生成していない（禁止 — 常に逐次 `t.Run` sibling、例外なし）。
 - [ ] エラー系は `require.*`、終端値は `assert.*`。
 - [ ] mock は `<package>/mock/` 由来のみ。手書き mock を追加していない。
 - [ ] subject ソースは編集していない。

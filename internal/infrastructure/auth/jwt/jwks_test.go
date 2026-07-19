@@ -363,6 +363,162 @@ func Test_jwksResolver_keyfunc(t *testing.T) {
 	})
 }
 
+func Test_parseJWKSKeys(t *testing.T) {
+	t.Parallel()
+	// parseJWKSKeys は TestParseJWKSKeys が全分岐（kid 有無 / 非 RSA / 不正 JSON / 鍵ゼロ）を
+	// 直接呼び出しで網羅済みのため、専用テストは重複となる。命名規約充足のためのスキップ。
+	t.Skip("parseJWKSKeys は TestParseJWKSKeys が直接呼び出しで網羅している")
+}
+
+func Test_newJWKSResolver(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("cacheTTL が正なら指定値をそのまま保持する", func(t *testing.T) {
+			t.Parallel()
+			r := newJWKSResolver(stubJWKSClient(t, nil), jwksTestURL, time.Hour, newFakeClock(fixedNow))
+			assert.Equal(t, time.Hour, r.cacheTTL)
+		})
+
+		t.Run("cacheTTL が 0 以下なら既定 TTL が適用される", func(t *testing.T) {
+			t.Parallel()
+			r := newJWKSResolver(stubJWKSClient(t, nil), jwksTestURL, 0, newFakeClock(fixedNow))
+			assert.Equal(t, defaultJWKSCacheTTL, r.cacheTTL)
+		})
+	})
+}
+
+func Test_jwksResolver_lookup(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("鮮度内キャッシュに kid があれば対応する鍵を返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := newJWKSResolver(stubJWKSClient(t, nil), jwksTestURL, time.Hour, newFakeClock(fixedNow))
+			r.keys = map[string]any{testKID: &key.PublicKey}
+			r.fetchedAt = fixedNow
+
+			assert.Equal(t, &key.PublicKey, r.lookup(testKID))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("一度も取得していない（fetchedAt がゼロ値）場合は nil を返す", func(t *testing.T) {
+			t.Parallel()
+			r := newJWKSResolver(stubJWKSClient(t, nil), jwksTestURL, time.Hour, newFakeClock(fixedNow))
+			assert.Nil(t, r.lookup(testKID))
+		})
+
+		t.Run("TTL を超過して鮮度切れの場合は nil を返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			clk := newFakeClock(fixedNow)
+			r := newJWKSResolver(stubJWKSClient(t, nil), jwksTestURL, time.Hour, clk)
+			r.keys = map[string]any{testKID: &key.PublicKey}
+			r.fetchedAt = fixedNow
+			clk.advance(time.Hour + time.Minute)
+
+			assert.Nil(t, r.lookup(testKID))
+		})
+
+		t.Run("鮮度内でも未知の kid は nil を返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := newJWKSResolver(stubJWKSClient(t, nil), jwksTestURL, time.Hour, newFakeClock(fixedNow))
+			r.keys = map[string]any{testKID: &key.PublicKey}
+			r.fetchedAt = fixedNow
+
+			assert.Nil(t, r.lookup("unknown-kid"))
+		})
+	})
+}
+
+func Test_jwksResolver_refresh(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("取得成功時は keys / fetchedAt を更新する", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := newJWKSResolver(stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)), jwksTestURL, time.Hour, newFakeClock(fixedNow))
+
+			require.NoError(t, r.refresh())
+			assert.Equal(t, fixedNow, r.fetchedAt)
+			assert.Contains(t, r.keys, testKID)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("取得失敗時は原因を返し lastErr へ保持する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
+			r := newJWKSResolver(client, jwksTestURL, time.Hour, newFakeClock(fixedNow))
+
+			require.ErrorIs(t, r.refresh(), errBoom)
+			assert.True(t, r.fetchedAt.IsZero())
+		})
+
+		t.Run("cooldown 中の再取得は再fetchせず直近の失敗原因を伝播する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			// Times(1): 2 回目は cooldown で throttle され Do を呼ばない。
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
+			r := newJWKSResolver(client, jwksTestURL, time.Hour, newFakeClock(fixedNow))
+
+			require.ErrorIs(t, r.refresh(), errBoom)
+			require.ErrorIs(t, r.refresh(), errBoom)
+		})
+	})
+}
+
+func Test_jwksResolver_fetch(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("取得したレスポンスボディを kid→公開鍵へパースする", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := newJWKSResolver(stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)), jwksTestURL, time.Hour, newFakeClock(fixedNow))
+
+			keys, err := r.fetch()
+			require.NoError(t, err)
+			assert.Contains(t, keys, testKID)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("httpclient がエラーを返す場合はそのまま原因を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
+			r := newJWKSResolver(client, jwksTestURL, time.Hour, newFakeClock(fixedNow))
+
+			keys, err := r.fetch()
+			assert.Nil(t, keys)
+			require.ErrorIs(t, err, errBoom)
+		})
+	})
+}
+
 func newFakeClock(start time.Time) *fakeClock {
 	return &fakeClock{now: start}
 }

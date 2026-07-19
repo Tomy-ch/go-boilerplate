@@ -124,6 +124,28 @@ func newSampledContext() context.Context {
 	return trace.ContextWithSpanContext(context.Background(), sc)
 }
 
+func Test_conditionalPropagator_Inject(t *testing.T) {
+	t.Parallel()
+	t.Skip("conditionalPropagator.Inject は Test_conditionalPropagator が有効/無効/未設定の全分岐を検証済み")
+}
+
+func Test_newGuardedBaseTransport(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した dial control を DialContext に持つ transport を返す", func(t *testing.T) {
+			t.Parallel()
+
+			tr := newGuardedBaseTransport(permissiveDialControl)
+
+			require.NotNil(t, tr)
+			assert.NotNil(t, tr.DialContext)
+		})
+	})
+}
+
 func Test_conditionalPropagator(t *testing.T) {
 	t.Parallel()
 

@@ -324,6 +324,33 @@ func Test_cookieRewriteWriter_Unwrap(t *testing.T) {
 	})
 }
 
+func Test_cookieRewriteWriter_rewriteOrKeep(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き換え成功時は書き換え後の値を返す", func(t *testing.T) {
+			t.Parallel()
+			b := true
+			cfg := &SecurityCookie{applyToAll: true, forceHTTPOnly: &b}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			got := w.rewriteOrKeep("id=1; Path=/")
+			assert.Contains(t, got, "HttpOnly")
+		})
+
+		t.Run("書き換え失敗（空文字）時は元のrawを残す", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			// 不正な Cookie（'=' 無し）なので RewriteSetCookie は "" を返す
+			assert.Equal(t, "NoEquals", w.rewriteOrKeep("NoEquals"))
+		})
+	})
+}
+
 func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
 	t.Parallel()
 

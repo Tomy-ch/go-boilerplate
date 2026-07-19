@@ -12,6 +12,8 @@ import (
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
@@ -803,6 +805,219 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
 			require.ErrorIs(t, actualErr, apperror.ErrInternal)
 			require.Nil(t, actual)
+		})
+	})
+}
+
+func Test_usecase_authorizeUserAccess(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	id := uuid.NewTestFromSalt(t, "authorize_user_access")
+
+	authn, err := authbd.New("subject", "mock", nil, nil)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnが非nilで認可が許可された場合、nilが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), authn, authz.ActionUserGet, authz.NewResource("user", &id)).Return(nil)
+
+			uc := &usecase{authorizer: authorizer}
+
+			err := uc.authorizeUserAccess(ctx, authn, authz.ActionUserGet, id)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnがnilの場合、ErrUnauthenticatedが返り認可判定は行われない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+
+			uc := &usecase{authorizer: authorizer}
+
+			err := uc.authorizeUserAccess(ctx, nil, authz.ActionUserGet, id)
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("認可が拒否された場合、認可エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), authn, authz.ActionUserGet, authz.NewResource("user", &id)).Return(authz.ErrForbidden)
+
+			uc := &usecase{authorizer: authorizer}
+
+			err := uc.authorizeUserAccess(ctx, authn, authz.ActionUserGet, id)
+			require.ErrorIs(t, err, authz.ErrForbidden)
+		})
+	})
+}
+
+func Test_usecase_resolvePatchPrefecture(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	prefectureID := uuid.NewTestFromSalt(t, "resolve_patch_prefecture")
+
+	pftDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("名前指定がある場合、名前で解決した都道府県が返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			name := "prefecture_name"
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByName(gomock.Any(), name).Return(pftDomain, nil)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, &name, prefectureID)
+			require.NoError(t, err)
+			assert.Equal(t, pftDomain, actual)
+		})
+
+		t.Run("名前指定がない場合、既存IDで解決した都道府県が返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByID(gomock.Any(), prefectureID).Return(pftDomain, nil)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, nil, prefectureID)
+			require.NoError(t, err)
+			assert.Equal(t, pftDomain, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("名前指定がなく既存IDが解決できない場合、参照整合性破れが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByID(gomock.Any(), prefectureID).Return(nil, apperror.ErrNotFound)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, nil, prefectureID)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, errOrphanPrefecture)
+		})
+
+		t.Run("名前指定がなく既存ID解決で他のエラーが発生した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			expectedErr := testkit.ExpectedDBError()
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByID(gomock.Any(), prefectureID).Return(nil, expectedErr)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, nil, prefectureID)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, expectedErr)
+		})
+	})
+}
+
+func Test_usecase_toUserViews(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	prefectureID := uuid.NewTestFromSalt(t, "to_user_views_prefecture")
+
+	userDomain, err := user.New(
+		uuid.NewTestFromSalt(t, "to_user_views_user"),
+		"first_name", "last_name", "password", "user@example.com", "phone_number",
+		prefectureID, "city_name", "town_address", nil, "150-0001", now, now, nil,
+	)
+	require.NoError(t, err)
+
+	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全ユーザーの都道府県が解決できる場合、UserViewのリストが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			uc := &usecase{
+				tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.toUserViews(ctx, user.Users{userDomain})
+			require.NoError(t, err)
+			require.Len(t, actual, 1)
+			assert.Equal(t, prefectureDomain.Name(), actual[0].PrefectureName)
+			assert.Equal(t, userDomain.Email(), actual[0].Email)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("都道府県取得でエラーが発生した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			expectedErr := testkit.ExpectedDBError()
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(nil, expectedErr)
+
+			uc := &usecase{
+				tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.toUserViews(ctx, user.Users{userDomain})
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("ユーザーが参照する都道府県が解決できない場合、参照整合性破れが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
+
+			uc := &usecase{
+				tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.toUserViews(ctx, user.Users{userDomain})
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, errOrphanPrefecture)
 		})
 	})
 }

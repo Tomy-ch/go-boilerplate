@@ -169,6 +169,140 @@ func TestNewTracerProvider(t *testing.T) {
 	})
 }
 
+func Test_newSpanExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("http/protobuf 指定で HTTP exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolHTTP)
+
+			exp, err := newSpanExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+
+		t.Run("grpc 指定で gRPC exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
+
+			exp, err := newSpanExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未知のプロトコル指定はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, "invalid-protocol")
+
+			exp, err := newSpanExporter(context.Background(), obsCfg)
+
+			require.ErrorIs(t, err, errInvalidOTLPProtocol)
+			assert.Nil(t, exp)
+		})
+	})
+}
+
+func Test_newMetricExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("http/protobuf 指定で HTTP exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolHTTP)
+
+			exp, err := newMetricExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+
+		t.Run("grpc 指定で gRPC exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
+
+			exp, err := newMetricExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未知のプロトコル指定はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, "invalid-protocol")
+
+			exp, err := newMetricExporter(context.Background(), obsCfg)
+
+			require.ErrorIs(t, err, errInvalidOTLPProtocol)
+			assert.Nil(t, exp)
+		})
+	})
+}
+
+func Test_newMetricReader(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("exporter 構築成功なら PeriodicReader を返す", func(t *testing.T) {
+			t.Parallel()
+
+			reader, err := newMetricReader(context.Background(), newTestObsCfg(t))
+
+			require.NoError(t, err)
+			require.NotNil(t, reader)
+			require.NoError(t, reader.Shutdown(context.Background()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("exporter 構築失敗のエラーをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, "invalid-protocol")
+
+			reader, err := newMetricReader(context.Background(), obsCfg)
+
+			require.ErrorIs(t, err, errInvalidOTLPProtocol)
+			assert.Nil(t, reader)
+		})
+	})
+}
+
 func TestProvideTracerProvider(t *testing.T) {
 	t.Parallel()
 

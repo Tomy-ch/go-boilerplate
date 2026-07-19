@@ -14,7 +14,7 @@ canonical な参照テストは [`internal/domain/user/user_domain_test.go`](../
 
 ## 1. 構造
 
-- **1 つの関数 / メソッドにつき 1 つの `TestXxx`**。複数対象を 1 つのテスト関数に束ねる場合は、都度の明示的な正当化が必要。
+- **1 つの関数 / メソッドにつき 1 つの `TestXxx` — 厳密に 1:1、束ねない。** getter / accessor も同様: `*_Accessors` / `*_Getters` に束ねず、accessor ごとに 1 つの `TestXxx` を用意する。この 1:1 対応は、分岐を持つ関数 / メソッドについて `internal/architest`（`TestUnitTestMappingCompleteness`）が機械的に強制する。真にユニットテストを持つべきでない対象（分岐が公開呼び出し元 / 統合 / DI グラフテストで被覆される）も、規約どおりの名前の `TestXxx` を宣言し `t.Skip("<被覆テスト>")` を呼ぶこと。allowlist は持たず、除外理由はコードに残す。
 - すべての論理分岐を網羅する。
 - **最外の `t.Run` グループは literal な `正常系` / `異常系`** — `正常系_xxx` の prefix 形は使わない。その内側にさらに `t.Run` サブケースをネストする。
 
@@ -113,6 +113,6 @@ section 1〜9 はテストを *well-formed*(整形式)にするが、*meaningful
 - **内部への脆い結合** — 公開 API で足りるのに unexported フィールドを読む / `errors.Is` ではなくログ出力やエラーメッセージ *文字列* を assert する。
 - **over-mocking** — 実(純粋)実装の方がより多くを露わにできる協調オブジェクトを mock する / 実装を固定してしまう粒度の呼び出し回数マッチャ。
 - **time リテラル固定漏れ** — 固定 `baseTime` ではなくアサーション内で `time.Now()` を呼ぶ / システムクロックに依存する比較。
-- **責務クリープ** — 記録された rationale なしに 1 つの `TestXxx` が複数 subject を駆動する(section 1 違反でもある)。
+- **責務クリープ** — 1 つの `TestXxx` が複数 subject を駆動する(section 1 の 1:1 違反)。subject ごとに 1 つの `TestXxx` へ分解し、複数 subject を 1 テストに畳み込まない。
 - **helper 重複** — 3 つ以上の `TestXxx` にまたがり 5 行以上の fixture が重複しており、`t.Helper()` 付き helper にすべき。
 - **冗長なコメント** — コードを言い換える / *why* を語る inline コメント。ケースの意図はコメントではなく日本語の `t.Run` 名に持たせる([`rules.md`](rules.md) の Comment Rules 準拠)。
