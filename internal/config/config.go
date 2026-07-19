@@ -108,11 +108,6 @@ func New() (*Config, error) {
 			sameSite: cfg.SecureCookie.SameSite,
 			domain:   cfg.SecureCookie.Domain,
 		},
-		auth: AuthConfig{
-			cookieName:          cfg.Auth.CookieName,
-			headerName:          cfg.Auth.HeaderName,
-			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
-		},
 		worker: WorkerConfig{
 			concurrency:               cfg.Worker.Concurrency,
 			maxInFlight:               cfg.Worker.MaxInFlight,
@@ -161,10 +156,6 @@ func validateConfig(cfg Loader) error {
 	}
 
 	if err := validateSecurityConfig(cfg.Security); err != nil {
-		return err
-	}
-
-	if err := validateAuthConfig(cfg.Auth); err != nil {
 		return err
 	}
 
@@ -320,14 +311,6 @@ func parseCIDR(s string) (*net.IPNet, error) {
 		return nil, xerrors.Join(ErrFailedToParseCIDR, err)
 	}
 	return cidr, nil
-}
-
-// validateAuthConfig は、認証設定を検証します。
-func validateAuthConfig(authCfg Auth) error {
-	if authCfg.CookieName == "" && authCfg.HeaderName == "" {
-		return ErrAuthConfigMissing
-	}
-	return nil
 }
 
 // buildStatusCodeSet は、HTTPステータスコードのセットを構築します。

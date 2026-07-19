@@ -109,7 +109,7 @@ func newAuthenticatorWithLeeway(t *testing.T, pub *rsa.PublicKey, leeway time.Du
 // newCredential はトークン文字列から Credential を生成します。
 func newCredential(t *testing.T, token string) *authbd.Credential {
 	t.Helper()
-	cred, err := authbd.NewCredential(token)
+	cred, err := authbd.NewCredential(authbd.SchemeBearer, token)
 	require.NoError(t, err)
 	return cred
 }
@@ -209,7 +209,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
 			require.NoError(t, err)
 			assert.Equal(t, testSubject, authn.Subject())
-			assert.Equal(t, authbd.ProviderJWT, authn.Provider())
+			assert.Equal(t, authbd.ProviderJWT, authn.Issuer())
 			assert.Equal(t, testIssuer, authn.Claims()["iss"])
 		})
 

@@ -122,11 +122,6 @@ var (
 		errInvalidConfig,
 		"failed to parse CIDR",
 	)
-	// ErrAuthConfigMissing は、認証設定が不足していることに関するエラーを表します。
-	ErrAuthConfigMissing = xerrors.Wrap(
-		errInvalidConfig,
-		"invalid auth config, either cookie name or header name must be provided",
-	)
 	// ErrEmbeddedEnvMismatch は、production モードなのに非本番の env がバイナリへ埋め込まれている（materialize-env 忘れ）ことを示すエラーです。
 	ErrEmbeddedEnvMismatch = xerrors.Wrap(
 		errInvalidConfig,

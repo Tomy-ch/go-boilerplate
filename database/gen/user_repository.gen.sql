@@ -47,6 +47,17 @@ INSERT INTO users (
     sqlc.arg('updated_at')
 );
 
+-- === source: database/dml/repository/user/select_roles_by_user_id.sql ===
+-- name: GetUserRolesByUserID :many
+SELECT
+    r.id,
+    r.name,
+    r.code
+FROM user_roles AS ur
+INNER JOIN roles AS r ON ur.role_id = r.id
+WHERE ur.user_id = sqlc.arg('user_id_param')
+ORDER BY r.code;
+
 -- === source: database/dml/repository/user/select_user_by_id.sql ===
 -- name: GetUserByID :one
 SELECT sqlc.embed(u)

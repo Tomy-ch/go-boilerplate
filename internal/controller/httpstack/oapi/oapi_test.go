@@ -40,7 +40,7 @@ func TestMiddleware(t *testing.T) {
 			_ = handler(c)
 
 			// ミドルウェアが Authn スロットを仕込んでいることを確認（Set が成功し Get で読める）。
-			a, err := authbd.New("u1", authbd.ProviderMock, nil, nil)
+			a, err := authbd.New("u1", authbd.IssuerMock, nil, nil)
 			require.NoError(t, err)
 			require.True(t, ctxhelper.SetAuthn(c.Request().Context(), *a))
 

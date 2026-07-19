@@ -12,7 +12,7 @@ import (
 
 func newTestAuthn(t *testing.T, subject string) auth.Authn {
 	t.Helper()
-	a, err := auth.New(subject, auth.ProviderMock, nil, nil)
+	a, err := auth.New(subject, auth.IssuerMock, nil, nil)
 	require.NoError(t, err)
 	return *a
 }
@@ -47,7 +47,7 @@ func TestSetAuthn(t *testing.T) {
 			got, ok := GetAuthn(ctx)
 			assert.True(t, ok)
 			assert.Equal(t, want.Subject(), got.Subject())
-			assert.Equal(t, want.Provider(), got.Provider())
+			assert.Equal(t, want.Issuer(), got.Issuer())
 		})
 	})
 

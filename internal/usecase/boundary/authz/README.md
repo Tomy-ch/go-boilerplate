@@ -27,7 +27,7 @@ Provides interfaces and value objects for authorization (authz) — the counterp
 ### Convention: how a usecase receives the caller
 
 - A usecase method that performs **object-level authorization** (acts on a resource named by the request, e.g. `GetUser` / `UpdateUser` / `DeleteUser` keyed by a path `user_id`) takes the full `*auth.Authn` and calls `Authorizer.Authorize(...)` first.
-- A usecase method that only needs the **caller's own identity** as data (e.g. `CreateUser` / `ChangePassword`, which act on the authenticated user itself) takes a scalar `uuid.UUID` extracted in the controller (`authn.ID()`) instead — there is no separate object to authorize against.
+- A usecase method that only needs the **caller's own identity** as data (e.g. `CreateUser` / `ChangePassword`, which act on the authenticated user itself) takes a scalar `uuid.UUID` extracted in the controller (`authn.UserID()`) instead — there is no separate object to authorize against.
 
 ## Implementation
 

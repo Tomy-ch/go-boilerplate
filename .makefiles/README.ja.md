@@ -389,7 +389,7 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。 |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。 |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。 |
-| `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`gen-api` → `gen-query` → `fix` → `lint` を実行します。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。削除後は `make db-init-local db-init-test && make gen-query` で再構築し、削除済みテーブルが生成モデルに残らないようにします。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 |
+| `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`gen-api` → `gen-query` → `fix` → `lint` を実行します。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。削除後は `make db-init-local db-init-test && make gen-query` で再構築し、削除済みテーブルが生成モデルに残らないようにします。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
 
 ### リリースブランチ関連
 

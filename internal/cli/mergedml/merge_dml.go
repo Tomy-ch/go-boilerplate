@@ -229,7 +229,7 @@ func (g *Generator) buildCategorySQLFile(ctx context.Context, category, targetTy
 		return err
 	}
 
-	outName := fmt.Sprintf("%s_%s.gen.sql", category, targetType) // 例: prefecture_repository.gen.sql
+	outName := fmt.Sprintf("%s_%s.gen.sql", category, targetType) // 例: <category>_<type>.gen.sql
 	// 出力先も workDir 起点で統一し、相対/絶対の二系統を排除する。
 	dstPath := filepath.Join(g.workDir, g.genRootDir, outName)
 

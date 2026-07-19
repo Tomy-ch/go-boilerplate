@@ -1,0 +1,108 @@
+name: Sample Removal Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sample-removal-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      ENV: ci
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
+    services:
+      database:
+        image: postgres:18.3-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install node & golangci-lint
+        run: mise install node golangci-lint
+
+      - name: Install script node deps
+        run: |
+          cp docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc scripts/
+          npm ci --ignore-scripts --prefix scripts
+
+      - name: Setup DB
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
+
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
+      - name: Remove sample files (delete + strip markers + self-destruct)
+        run: node scripts/setup/remove-sample-api.mjs
+
+      - name: Format after removal (make fix)
+        run: make fix
+
+      - name: Migrate & seed core-only schema
+        run: |
+          go run ./cmd/ migrate-up --database "${DB}"
+          go run ./cmd/ db-seed --database "${DB}"
+
+      - name: Verify build
+        run: go build ./...
+
+      - name: Verify lint
+        run: make lint
+
+      - name: Verify tests
+        run: make test
+
+      - name: Verify sample removal (exact deletion + no dangling refs)
+        run: node scripts/setup/verify-sample-removal.mjs
+
+      - name: Verify verification tool self-destructed
+        run: |
+          set -euo pipefail
+          for f in scripts/setup/verify-sample-removal.mjs scripts/setup/.sample-removal-snapshot.json; do
+            if [ -e "$f" ]; then
+              echo "FAIL: $f was not self-deleted"
+              exit 1
+            fi
+          done
+          echo "verification tool self-destruct: OK"

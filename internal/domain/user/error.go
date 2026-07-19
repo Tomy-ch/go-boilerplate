@@ -31,6 +31,13 @@ var (
 	ErrInvalidPostalCode = xerrors.Wrap(errInvalid, "postal code failed")
 	// ErrInvalidUpdatedAt は、更新日時の検証に失敗した場合のエラーです。
 	ErrInvalidUpdatedAt = xerrors.Wrap(errInvalid, "updated at failed")
+
+	// ErrInvalidRoleID は、ロール ID の検証に失敗した場合のエラーです。
+	ErrInvalidRoleID = xerrors.Wrap(errInvalid, "role id failed")
+	// ErrInvalidRoleName は、ロール名の検証に失敗した場合のエラーです。
+	ErrInvalidRoleName = xerrors.Wrap(errInvalid, "role name failed")
+	// ErrInvalidRoleCode は、ロールコードの検証に失敗した場合のエラーです。
+	ErrInvalidRoleCode = xerrors.Wrap(errInvalid, "role code failed")
 	// ErrInvalidDeletedAt は、削除日時の検証に失敗した場合のエラーです。
 	ErrInvalidDeletedAt = xerrors.Wrap(errInvalid, "deleted at failed")
 

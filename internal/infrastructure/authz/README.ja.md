@@ -1,5 +1,7 @@
 # authz ディレクトリ
 
+[English](README.md) | 日本語
+
 `internal/infrastructure/authz` は **認可（authz）インフラストラクチャ** を提供します。`internal/infrastructure/auth`（認証）と対になる存在です。
 
 `Authorizer` の **実装** を格納します。その抽象は Usecase 層の Boundary として定義されます。
@@ -11,9 +13,9 @@ internal/usecase/boundary/authz
 ## 役割
 
 - `Authorizer` インターフェース（Policy Decision Point）の実装を提供する。
-- 認証主体がリソースに対して操作を実行してよいかを判定する。
+- 認証済みの主体がリソースに対して操作を実行してよいかを判定する。
 
-認証と異なり、認可は **アプリケーション状態に対するポリシー判断** です。この Boundary は **Usecase 層**（Policy Enforcement Point）から参照され、Usecase が `Authorize(...)` を呼び、拒否時に `apperror.ErrPermissionDenied`（403）を返します。
+認証と異なり、認可は **アプリケーション状態に対するポリシー判断** です。この Boundary は **Usecase 層**（Policy Enforcement Point）から利用され、Usecase が `Authorize(...)` を呼び出し、拒否時に `apperror.ErrPermissionDenied`（403）を返します。
 
 ## アーキテクチャ上の位置づけ
 
@@ -30,12 +32,13 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 |ディレクトリ|用途|
 |---|---|
 |`allowall`|local / CI / test 用の全許可スタブ（すべて許可）|
+|`userrole`|`user_roles` ベースの RBAC Authorizer サンプル。本番相当の環境向け（admin ⇒ 許可、それ以外はリソース所有者のみ許可）。`user` サンプルの一部であり、サンプル削除とともに削除される。|
 
-実運用では RBAC / 外部ポリシーエンジン実装へ差し替えます。
+実運用ではこれらを RBAC / 外部ポリシーエンジン実装へ差し替えます。
 
 ## local / staging / production の実装
 
-`allowall` は **開発用スタブ**であり、すべてを許可するため `local` / `ci` / `test` に限定されます。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはなく、DI プロバイダはその拒否を起動失敗として表面化させるだけです。これらの環境では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。
+`allowall` は **開発用スタブ**であり、すべてを許可するため配線されるのは `local` / `ci` / `test` のみです。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはありません。さらに `provideAuthorizer` も **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `development` / `staging` / `production` を担います。サンプルを削除すると、自前の実装を配線するまでこれらの環境は fail-closed エラーに戻ります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
@@ -52,7 +55,7 @@ internal/infrastructure/authz
 - RBAC（`auth.Authn` の claims / scopes から導いたロール）
 - 外部ポリシーエンジン（OPA / Cedar）
 
-実実装を追加するには、`provideAuthorizer`（`internal/di/module/authz.go`）を拡張して `development` / `staging` / `production` で実実装を選ぶようにします —— 例えば `switch appCfg.Env()` でこれらの環境は実実装を返し、非本番のデフォルトとして自衛済みの `allowall.New(appCfg)` を残します。`allowall.New` が fail-closed なので、たとえその配線を誤っても本番相当の環境で全許可に到達することはありません。
+各環境は `provideAuthorizer`（`internal/di/module/authz.go`）に `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加し、実実装を返すことで配線します。非本番の `local` / `ci` / `test` は自衛済みの `allowall.New(appCfg)` を残します。どの `case` にも該当しない環境は `default` 分岐に落ち、fail-closed エラーを返します。`allowall.New` 自体が fail-closed なので、たとえ配線を誤っても本番相当の環境で全許可に到達することはありません。（`user` サンプルが存在する間、本番相当の `case` はサンプル `userrole` が占めており、サンプルとともに削除されます。）
 
 ## DI への登録
 

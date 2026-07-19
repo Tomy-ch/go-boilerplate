@@ -58,7 +58,7 @@ func Test_authorizer_Authorize(t *testing.T) {
 
 	newAuthn := func(t *testing.T) *authbd.Authn {
 		t.Helper()
-		authn, err := authbd.New("11111111-1111-1111-1111-111111111111", authbd.ProviderMock, nil, nil)
+		authn, err := authbd.New("11111111-1111-1111-1111-111111111111", authbd.IssuerMock, nil, nil)
 		require.NoError(t, err)
 
 		return authn

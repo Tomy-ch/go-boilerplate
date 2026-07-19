@@ -14,6 +14,17 @@ import {
 
 const ROOT_WITH_SEP = ROOT_DIR.endsWith(path.sep) ? ROOT_DIR : ROOT_DIR + path.sep
 
+// 削除確認 mjs（verify-sample-removal.mjs）が git status と突き合わせる「登録済み削除対象」の
+// スナップショット出力先。manifest（sample-api.mjs）自身が削除対象で削除後は読めないため、
+// 削除時にここへ書き出す。削除確認 mjs は manifest に依存せずこの JSON だけで照合できる。
+const SNAPSHOT_PATH = path.join(ROOT_DIR, "scripts/setup/.sample-removal-snapshot.json")
+
+// 全ドメインの登録パスを列挙して照合用スナップショットへ書き出す。
+function writeSnapshot() {
+  const registeredPaths = Object.values(SAMPLE_DOMAINS).flatMap(def => def.paths)
+  fs.writeFileSync(SNAPSHOT_PATH, `${JSON.stringify({ registeredPaths }, null, 2)}\n`)
+}
+
 // manifest の追記ミス（`..`・空文字・絶対パス）で ROOT_DIR 外や ROOT_DIR 自体を
 // rmSync しないための安全策。dry-run でも検証されるよう削除前に必ず通す。
 function assertWithinRoot(absolutePath, relativePath) {
@@ -118,6 +129,8 @@ function run({ dryRun }) {
     )
     return
   }
+
+  writeSnapshot()
 
   console.log(
     `\n✅ 削除とマーカー除去が完了しました。\n   続けて再生成・整形・検証を行ってください: \`${buildHint}\`\n   （make setup-remove-sample-api 経由で実行した場合は自動で続行されます）`

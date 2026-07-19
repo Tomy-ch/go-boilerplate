@@ -68,12 +68,6 @@ func TestConstructor(t *testing.T) {
 			assert.Same(t, &cfg.secureCookie, secureCookieCfg)
 		})
 
-		t.Run("認証設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			authCfg := NewAuthConfig(cfg)
-			assert.Same(t, &cfg.auth, authCfg)
-		})
-
 		t.Run("worker設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			workerCfg := NewWorkerConfig(cfg)
@@ -415,26 +409,6 @@ func TestGetterMethods(t *testing.T) {
 			t.Run("ドメインを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
-			})
-		})
-
-		t.Run("認証設定", func(t *testing.T) {
-			t.Parallel()
-			auth := cfg.auth
-
-			t.Run("Cookie名を取得できる", func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, expectedAuthCookieName, auth.CookieName())
-			})
-
-			t.Run("ヘッダー名を取得できる", func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, expectedAuthHeaderName, auth.HeaderName())
-			})
-
-			t.Run("Bearerヘッダー許可を取得できる", func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
 			})
 		})
 

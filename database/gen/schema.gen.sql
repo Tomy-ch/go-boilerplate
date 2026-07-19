@@ -517,12 +517,75 @@ COMMENT ON COLUMN public.purchases.created_at IS '作成日時';
 --
 COMMENT ON COLUMN public.purchases.updated_at IS '更新日時';
 --
+-- Name: roles; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.roles (
+    id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    code smallint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+--
+-- Name: TABLE roles; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.roles IS 'ロール';
+--
+-- Name: COLUMN roles.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.roles.id IS 'ID';
+--
+-- Name: COLUMN roles.name; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.roles.name IS '名称';
+--
+-- Name: COLUMN roles.code; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.roles.code IS 'コード';
+--
+-- Name: COLUMN roles.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.roles.created_at IS '作成日時';
+--
+-- Name: COLUMN roles.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.roles.updated_at IS '更新日時';
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.schema_migrations (
     version bigint NOT NULL,
     dirty boolean NOT NULL
 );
+--
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.user_roles (
+    user_id uuid NOT NULL,
+    role_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+--
+-- Name: TABLE user_roles; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.user_roles IS 'ユーザロール';
+--
+-- Name: COLUMN user_roles.user_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_roles.user_id IS 'ユーザID';
+--
+-- Name: COLUMN user_roles.role_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_roles.role_id IS 'ロールID';
+--
+-- Name: COLUMN user_roles.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_roles.created_at IS '作成日時';
+--
+-- Name: COLUMN user_roles.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_roles.updated_at IS '更新日時';
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: -
 --
@@ -723,10 +786,30 @@ ALTER TABLE ONLY public.purchases
 ALTER TABLE ONLY public.purchases
     ADD CONSTRAINT purchases_id_primary PRIMARY KEY (id);
 --
+-- Name: roles roles_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_code_unique UNIQUE (code);
+--
+-- Name: roles roles_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_id_primary PRIMARY KEY (id);
+--
+-- Name: roles roles_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_name_unique UNIQUE (name);
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+--
+-- Name: user_roles user_roles_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_primary PRIMARY KEY (user_id, role_id);
 --
 -- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -787,6 +870,16 @@ ALTER TABLE ONLY public.purchases
 --
 ALTER TABLE ONLY public.purchases
     ADD CONSTRAINT purchases_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+--
+-- Name: user_roles user_roles_role_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_role_id_foreign FOREIGN KEY (role_id) REFERENCES public.roles(id);
+--
+-- Name: user_roles user_roles_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
 --
 -- Name: users users_prefecture_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

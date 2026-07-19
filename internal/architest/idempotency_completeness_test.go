@@ -21,17 +21,14 @@ var paramsStructRe = regexp.MustCompile(`^type (\w+)Params struct \{$`)
 // handlerMethodRe は、ハンドラのメソッド宣言 `func (recv) <Name>(` にマッチし Name を捕捉します。
 var handlerMethodRe = regexp.MustCompile(`^func \([^)]*\) (\w+)\(`)
 
-// TestIdempotencyCompleteness は、OpenAPI で Idempotency-Key ヘッダを宣言した操作
+// TestIdempotencyCompleteness は、OpenAPI で Idempotency-Key を宣言した操作
 // （= 生成コードの <Op>Params 型が IdempotencyKey フィールドを持つ操作）のハンドラが、
 // 必ず idempotency.Run 経由で処理していることを機械検証する完全性テストです。
+// OpenAPI のヘッダ宣言を source of truth とし、Run 呼び忘れのような silent な dedup 欠落を loud な失敗に変える。
 //
-// 冪等性は「変更系すべて」ではなく「Idempotency-Key を宣言した操作」に閉じる（PUT/DELETE は
-// HTTP 的に冪等で Run を要さない）ため、OpenAPI のヘッダ宣言を唯一のマーカー（source of truth）と
-// して扱う。middleware 登録済みで Run 呼び忘れ、のような silent な dedup 欠落を loud な失敗に変える。
-//
-// 本リポジトリは depguard で go/ast 等のツールチェーンパッケージを禁止するため、AST ではなく
-// gofmt 済みソースのテキスト走査で検出する（`type ...Params struct {` / `func (recv) Name(` は
-// gofmt により行頭固定なので、この走査は安定する）。
+// 対象操作は 0 件でも許容する（サンプル API 削除後は該当が無くなり得る）が、検出ロジックの空振りを
+// 防ぐため `<Op>Params struct` を最低 1 件検出できることを別途 assert する。depguard が go/ast を
+// 禁止するため、AST ではなく gofmt 済みソースのテキスト走査で検出する。
 func TestIdempotencyCompleteness(t *testing.T) {
 	t.Parallel()
 
@@ -39,6 +36,7 @@ func TestIdempotencyCompleteness(t *testing.T) {
 
 	marked := map[string]string{}    // operationID -> 宣言元ファイル（Idempotency-Key を宣言する操作）
 	wrapped := map[string]struct{}{} // idempotency.Run を呼ぶハンドラメソッド名
+	totalParamsSeen := 0             // 走査中に見た `<Op>Params struct` の総数（検出健全性の指標）
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -55,7 +53,7 @@ func TestIdempotencyCompleteness(t *testing.T) {
 		lines := strings.Split(string(src), "\n")
 
 		if strings.HasSuffix(path, ".gen.go") {
-			collectMarkedParams(lines, path, marked)
+			totalParamsSeen += collectMarkedParams(lines, path, marked)
 		} else {
 			collectRunWrapped(lines, wrapped)
 		}
@@ -64,8 +62,9 @@ func TestIdempotencyCompleteness(t *testing.T) {
 	require.NoError(t, err)
 
 	// マーカー検出ロジックが生成コードの命名変更等で陳腐化して空振りすると、完全性検証が
-	// 常に成功してしまう。少なくとも1件は検出できることを保証する。
-	require.NotEmpty(t, marked, "Idempotency-Key を宣言する操作が生成コードから1件も検出できない（マーカー検出の陳腐化を疑う）")
+	// 常に成功してしまう。IdempotencyKey の有無に依らず `<Op>Params struct` を最低 1 件は
+	// 検出できること（正規表現が生きていること）を保証する。marked が空（冪等操作 0 件）でも可。
+	require.Positive(t, totalParamsSeen, "生成コードから `<Op>Params struct` を1件も検出できない（正規表現の陳腐化を疑う）")
 
 	for op, file := range marked {
 		_, ok := wrapped[op]
@@ -85,12 +84,16 @@ func handlerRoot(t *testing.T) string {
 
 // collectMarkedParams は、`type <Op>Params struct {` ブロックが IdempotencyKey フィールドを
 // 含むとき Op を marked へ加えます。gofmt 済みソースでは閉じ括弧が行頭 `}` に現れる前提です。
-func collectMarkedParams(lines []string, file string, marked map[string]string) {
+// 戻り値は、IdempotencyKey の有無に依らず走査中に検出した `<Op>Params struct` の件数で、
+// 呼び出し側の検出健全性チェック（正規表現の陳腐化検出）に用います。
+func collectMarkedParams(lines []string, file string, marked map[string]string) int {
+	seen := 0
 	for i, line := range lines {
 		m := paramsStructRe.FindStringSubmatch(line)
 		if m == nil {
 			continue
 		}
+		seen++
 		op := m[1]
 		for _, body := range lines[i+1:] {
 			if body == "}" {
@@ -102,6 +105,7 @@ func collectMarkedParams(lines []string, file string, marked map[string]string) 
 			}
 		}
 	}
+	return seen
 }
 
 // collectRunWrapped は、メソッド宣言ブロック内に idempotency.Run 呼び出しがあるとき、その

@@ -126,14 +126,6 @@
 |SECURE_COOKIE_SAME_SITE|SameSite設定|string|Strict||
 |SECURE_COOKIE_DOMAIN|Cookieドメイン|string|example.com||
 
-### Auth
-
-|変数名|説明|型|例|備考|
-|---|---|---|---|---|
-|AUTH_COOKIE_NAME|認証Cookie名|string|auth_token||
-|AUTH_HEADER_NAME|ヘッダ名|string|Authorization||
-|AUTH_ALLOWED_HEADER_BEARER|Bearer許可|bool|true||
-
 ### Worker
 
 worker engine の engine-core 設定（broker 非依存）。

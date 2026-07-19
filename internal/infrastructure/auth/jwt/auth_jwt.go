@@ -119,7 +119,7 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 	}
 
 	claims := jwtlib.MapClaims{}
-	token, err := a.parser.ParseWithClaims(cred.AccessToken(), claims, a.keyFunc)
+	token, err := a.parser.ParseWithClaims(cred.Token(), claims, a.keyFunc)
 	if err != nil || !token.Valid {
 		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidToken, err)
 	}

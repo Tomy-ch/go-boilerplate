@@ -25,7 +25,7 @@ func TestMakeAvailableAuthn(t *testing.T) {
 			authn, ok := ctxhelper.GetAuthn(authCtx)
 			assert.True(t, ok)
 			assert.Equal(t, subject, authn.Subject())
-			assert.Equal(t, auth.ProviderMock, authn.Provider())
+			assert.Equal(t, auth.IssuerMock, authn.Issuer())
 		})
 	})
 }
