@@ -92,7 +92,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 - 生成 mock を駆動するサブテストは mock controller 経由で assert している扱い: `EXPECT()`（メソッドが呼ばれないことを示す意図的な *no-EXPECT* や `.Times(0)` を含む）がアサーション。`assert.*` / `require.*` 行が無いというだけで「アサーション無し」と指摘しない。
 - **table-driven `for` ループは違反**（`scaffold-test/SKILL.md` Rule 5）。`(input, expected)` 構造体スライスを `for _, tc := range cases { t.Run(...) }` で回すブロックは、可読性や `dupl` 回避を理由にしても指摘する。正しい形はケース毎の逐次 `t.Run` sibling（重複は許容）。長いゲッター/境界リストでも同様。
 - **subject 関数 ↔ `TestXxx` の 1:1 対応。** ここでの *subject* はペアになる本番ソース — バイナリにビルドされる非テスト・非生成の `.go` ファイル。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外（手書き `TestXxx` を期待しない）。両方向を確認:
-  - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数束ねる `TestXxx` は `scaffold-test/SKILL.md` 通り 1 行 rationale コメント必須。
+  - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数 subject を束ねる `TestXxx`（統合された `*_Accessors` / `*_Getters` 等）は 1:1 違反で、rationale コメントによる免除は無い。subject ごとに `TestXxx` を分解する。唯一の免除は分岐が他（公開呼び出し元 / 統合 / DI グラフ）で被覆される subject で、その場合も規約名の `TestXxx` を宣言し `t.Skip("<被覆テスト>")` を呼ぶ — 束ねは常に指摘し、決して受け入れない（`docs/testing-conventions.md` §1、`internal/architest` が強制）。
   - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は網羅ギャップ（その分岐は Lens 4 軸A でも surface する）。
 - mock は `<package>/mock/*_mock.go` から（手書き mock 禁止）。
 - 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`docs/testing-conventions.md` ルール）。
