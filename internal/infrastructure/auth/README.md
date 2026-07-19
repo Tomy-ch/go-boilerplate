@@ -2,8 +2,8 @@
 
 `internal/infrastructure/auth` is a directory that provides **Authentication Infrastructure**.
 
-This directory contains the **implementations of Authenticator** used by the application.  
-Implementations are **separated by verification method (local / jwt, etc.)**, and the DI layer selects which method to wire **per environment**.
+This directory contains the **implementations of the auth Boundary interfaces** (`Authenticator` and `IdentityResolver`) used by the application.  
+Authenticator implementations are **separated by verification method (local / jwt, etc.)**, and the DI layer selects which method to wire **per environment**.
 
 The abstraction interface for authentication is defined as a **Boundary in the Usecase layer**.
 
@@ -100,6 +100,13 @@ Here, the following are performed.
 - scope extraction (standard `scope` claim)
 
 IdP-specific dialects (Cognito `token_use`, Azure AD `scp`, opaque tokens, EC keys) are out of scope and documented as extension points. See `jwt/README.md` for details.
+
+## IdentityResolver Implementations
+
+Besides `Authenticator`, this directory also holds implementations of the `IdentityResolver` boundary (resolving an authenticated external identity — issuer + subject — to an internal user):
+
+- `identity` — the substrate default (`passthrough`) that leaves the internal UserID unresolved; wired when no user store is present.
+- `useridentity` — resolves the internal user from the `user_identities` table (sample; removed together with the user sample, after which DI falls back to `identity`).
 
 ## Registration to DI
 
