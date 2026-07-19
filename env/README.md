@@ -158,6 +158,19 @@ Settings for the transactional outbox relay.
 |OUTBOX_ERROR_BACKOFF|Wait after a relay batch returns an error|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|Pending rows claimed per poll|int|100|Code default `100`|
 
+### Auth (JWT)
+
+Access-token (JWT) verification settings. CI / test wire a non-signature stub; `local` / `development` wire the real JWKS-backed JWT authenticator (local development verifies the mock auth server) and fail closed at startup when `AUTH_ISSUER` / `AUTH_AUDIENCE` / `AUTH_JWKS_URL` are missing; the wiring decision lives in DI (`internal/di/module/core/auth.go`). The JWKS fetch goes through the `httpclient` substrate, so its HTTP timeout / retry / circuit breaker / budget come from the `jwks` downstream profile (`NewDownstreamProfile`), not an env var.
+
+|Variable Name|Description|Type|Example|Notes|
+|---|---|---|---|---|
+|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string||Code default empty. Set per environment that wires the JWT authenticator|
+|AUTH_AUDIENCE|Expected `aud` claim value|string||Code default empty. Required together with the issuer|
+|AUTH_JWKS_URL|JWKS endpoint URL used to fetch signing public keys|string||Code default empty. Internal service URL in compose (e.g. `http://mock_auth_server:4000/.well-known/jwks.json`)|
+|AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|[]string|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
+|AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|
+|AUTH_JWKS_CACHE_TTL|Cache lifetime for a fetched JWKS|duration|5m|Code default `5m`|
+
 ## Notes
 
 - The Example column shows values appropriate for local development. Production values typically differ for any Secret / CIDR / Cookie-domain / origin entries.

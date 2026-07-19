@@ -557,6 +557,10 @@ docker:
     dst: docs/portal/guides/docker-tools.md
   - src: docker/database/sql/README.md
     dst: docs/portal/guides/docker-database-sql.md
+  - src: docker/mock-auth-server/README.md
+    dst: docs/portal/guides/docker-mock-auth-server.md
+  - src: docker/mock-auth-server/fixtures/README.md
+    dst: docs/portal/guides/docker-mock-auth-server-fixtures.md
   # Japanese
   - src: docker/README.ja.md
     dst: docs/portal/guides/ja/docker.ja.md
@@ -566,6 +570,10 @@ docker:
     dst: docs/portal/guides/ja/docker-tools.ja.md
   - src: docker/database/sql/README.ja.md
     dst: docs/portal/guides/ja/docker-database-sql.ja.md
+  - src: docker/mock-auth-server/README.ja.md
+    dst: docs/portal/guides/ja/docker-mock-auth-server.ja.md
+  - src: docker/mock-auth-server/fixtures/README.ja.md
+    dst: docs/portal/guides/ja/docker-mock-auth-server-fixtures.ja.md
 
 scripts:
   # English
