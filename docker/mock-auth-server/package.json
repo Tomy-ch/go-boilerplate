@@ -1,0 +1,21 @@
+{
+  "name": "mock-auth-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mock OIDC auth server (JWT Test Provider) for local development.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
