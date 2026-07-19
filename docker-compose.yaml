@@ -21,6 +21,8 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      mock_auth_server:
+        condition: service_healthy
     profiles:
       - development
 
@@ -56,6 +58,29 @@ services:
       - "3200:3200" # Tempo API（任意・スクリプト確認用）
     profiles:
       - development
+
+  mock_auth_server: # 疑似 OIDC 認証サーバー（JWT Test Provider）
+    build:
+      context: .
+      dockerfile: docker/mock-auth-server/Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      # issuer はホスト OS / ブラウザから参照する URL。JWKS 取得はコンテナ名で内部解決する
+      # （Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/.well-known/jwks.json）。
+      OIDC_PORT: "4000"
+      OIDC_ISSUER: "http://localhost:4000"
+      OIDC_AUDIENCE: "go-boilerplate-api"
+      OIDC_CLIENT_ID: "go-boilerplate-client"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - auth
 
 # -------------------------------------
 # 補助サービス

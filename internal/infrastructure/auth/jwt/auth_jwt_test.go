@@ -454,3 +454,42 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		})
 	})
 }
+
+func TestNewWithKeyfunc(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("注入した鍵解決関数で正当なトークンを検証できる", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			a, err := NewWithKeyfunc(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, func(*jwtlib.Token) (any, error) { return &key.PublicKey, nil })
+			require.NoError(t, err)
+
+			token := signToken(t, key, jwtlib.SigningMethodRS256, "", validClaims())
+			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
+			require.NoError(t, err)
+			assert.Equal(t, testSubject, authn.Subject())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("鍵解決関数が nil の場合は設定エラーになる", func(t *testing.T) {
+			t.Parallel()
+			a, err := NewWithKeyfunc(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, nil)
+			assert.Nil(t, a)
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+		})
+	})
+}

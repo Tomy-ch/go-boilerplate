@@ -18,6 +18,7 @@ type Config struct {
 	secureCookie  SecureCookieConfig
 	worker        WorkerConfig
 	outbox        OutboxConfig
+	auth          AuthConfig
 }
 
 // OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
@@ -136,6 +137,17 @@ type OutboxConfig struct {
 	pollInterval time.Duration
 	errorBackoff time.Duration
 	batchSize    int
+}
+
+// AuthConfig は、access token（JWT）検証の設定を保持します。
+// Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator を配線せずスタブが使われます（配線判断は DI）。
+type AuthConfig struct {
+	issuer            string
+	audience          string
+	jwksURL           string
+	allowedAlgorithms []string
+	clockSkew         time.Duration
+	jwksCacheTTL      time.Duration
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -429,3 +441,26 @@ func (o *OutboxConfig) ErrorBackoff() time.Duration { return o.errorBackoff }
 
 // BatchSize は、1 回の poll で claim する pending 行数を返します。
 func (o *OutboxConfig) BatchSize() int { return o.batchSize }
+
+// NewAuthConfig は、認証（JWT 検証）の設定を返します。
+func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
+
+// Issuer は、検証する iss クレームの期待値を返します（空なら実 JWT authenticator を配線しない）。
+func (a *AuthConfig) Issuer() string { return a.issuer }
+
+// Audience は、検証する aud クレームの期待値を返します。
+func (a *AuthConfig) Audience() string { return a.audience }
+
+// JWKSURL は、公開鍵を取得する JWKS エンドポイント URL を返します。
+func (a *AuthConfig) JWKSURL() string { return a.jwksURL }
+
+// AllowedAlgorithms は、許可する署名アルゴリズムの allowlist を返します。
+func (a *AuthConfig) AllowedAlgorithms() []string {
+	return append([]string(nil), a.allowedAlgorithms...)
+}
+
+// ClockSkew は、exp / nbf 検証時のクロックずれ許容幅を返します。
+func (a *AuthConfig) ClockSkew() time.Duration { return a.clockSkew }
+
+// JWKSCacheTTL は、取得した JWKS をキャッシュする期間を返します。
+func (a *AuthConfig) JWKSCacheTTL() time.Duration { return a.jwksCacheTTL }

@@ -1,10 +1,10 @@
-# jwt（固定公開鍵による JWT 認証）
+# jwt（JWT 認証）
 
 [English](README.md) | 日本語
 
 > このファイルは canonical な [README.md](README.md) の日本語訳です。内容の更新は canonical 側で行い、本ファイルへ同期してください。
 
-このディレクトリは、**固定 RSA 公開鍵**でアクセストークン（JWT）を検証する `Authenticator` 実装を提供します。開発専用の `local` 実装に対する本番向けの対になる実装であり、**デファクト標準の検証コア**のみを扱います。
+このディレクトリは、アクセストークン（JWT）を検証する `Authenticator` 実装を提供します。署名鍵は**固定 RSA 公開鍵**（`New`）または **JWKS エンドポイントからの `kid` 動的解決**（`NewJWKS`）のいずれかで解決します。開発専用の `local` 実装に対する本番向けの対になる実装であり、**デファクト標準の検証コア**のみを扱います。
 
 ## 役割
 
@@ -27,7 +27,13 @@
 
 ## コンストラクタ
 
-`New(Params)` は `Authenticator`（または設定エラー）を返します。`Params` は検証パラメータ（公開鍵 PEM・issuer・audience・許可アルゴリズム・leeway・期待 typ・clock）を保持します。PEM が不正な場合や必須パラメータ（clock / issuer / audience）が欠けている場合は生成に失敗します。これらは認証エラーとは区別される設定エラーです。
+署名鍵は注入された `keyResolver` 経由で解決し、クレーム検証ロジックは全コンストラクタで共通です。
+
+- `New(Params)` — 固定 RSA 公開鍵。`Params` は検証パラメータ（公開鍵 PEM・issuer・audience・許可アルゴリズム・leeway・期待 typ・clock）を保持します。PEM が不正な場合に失敗します。
+- `NewJWKS(JWKSParams, httpclient.Client)` — JWKS エンドポイントからの動的鍵解決（`kid` 参照・TTL キャッシュ・遅延取得）。JWK Set のパースは [`github.com/go-jose/go-jose/v4`](https://github.com/go-jose/go-jose)、取得は resilient な `httpclient` substrate 経由（infrastructure 層は `net/http` 直 import 禁止）。HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、param には持ちません。`JWKSParams` は `Params` を埋め込み（PublicKeyPEM は不使用）、JWKS URL とキャッシュ TTL を追加します。取得は遅延（初回利用・cache miss 時）のため、バックグラウンド goroutine や lifecycle 束ねは不要です。
+- `NewWithKeyfunc(Params, keyResolver)` — 任意の `jwt.Keyfunc` を直接受ける下層の口（JWKS backed の解決やテストダブルの注入に使用）。
+
+必須パラメータ（clock / issuer / audience）が欠けている場合は生成に失敗します。これらは認証エラーとは区別される設定エラーです。
 
 ## エラーハンドリング
 
@@ -44,5 +50,5 @@
 
 ## 補足
 
-- JWKS による動的鍵解決はここでは扱わず、後続 Phase で固定公開鍵を置換します。
+- JWKS 鍵解決（`NewJWKS`）は固定鍵経路と同じ標準クレーム集合を検証し、異なるのは鍵ソースのみです。JWK パースは `go-jose/v4`、取得は `httpclient` substrate に委譲し、`kid` 参照と TTL キャッシュはパッケージ内に保持、その上で RSA 署名方式ガード（鍵混同防御）を適用します。複数 `kid` のローテーションは後続フェーズです。
 - 内部ユーザー ID の解決（`sub` → DB 経由のアプリケーションユーザー ID）は別関心事で、identity 解決 Phase が担います。本実装は検証済みだが未解決の `Authn` を返します。

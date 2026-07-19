@@ -200,7 +200,7 @@ substrate that all profiles depend on.
 |`module.ObservabilityModule()`|Tracer / meter / logger providers + shutdown hook (all profiles)|
 |`module.DatabaseModule()`|`*pgxpool.Pool`, tracer, tx manager, pool metrics + DB-close hook (all profiles)|
 |`module.SystemModule()`|Build info (all profiles)|
-|`module.InfrastructureModule()`|Aggregates `persistence` / `clock` / `httpclient` / `webapi` / `security` / `authz` (all profiles)|
+|`module.InfrastructureModule()`|Aggregates `persistence` / `clock` / `httpclient` / `webapi` / `auth` (JWKS profile) / `security` / `authz` (all profiles)|
 |`module.UsecaseModule()`|Usecase implementations incl. `idempotency` / `outbox` (all profiles)|
 |`module.ControllerModule()` + `core.*` + `server.*`|Full HTTP stack — **Server profile only**|
 

@@ -138,6 +138,14 @@ var (
 	expectedOutboxPollInterval = 1 * time.Second
 	expectedOutboxErrorBackoff = 5 * time.Second
 	expectedOutboxBatchSize    = 100
+
+	// auth（local/ci/test では実 JWT authenticator を配線しないため、issuer 等は既定の空値）
+	expectedAuthIssuer            = ""
+	expectedAuthAudience          = ""
+	expectedAuthJWKSURL           = ""
+	expectedAuthAllowedAlgorithms = []string{"RS256"}
+	expectedAuthClockSkew         = 60 * time.Second
+	expectedAuthJWKSCacheTTL      = 5 * time.Minute
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -238,6 +246,14 @@ func MockConfigForTest(tb testing.TB) *Config {
 			pollInterval: expectedOutboxPollInterval,
 			errorBackoff: expectedOutboxErrorBackoff,
 			batchSize:    expectedOutboxBatchSize,
+		},
+		auth: AuthConfig{
+			issuer:            expectedAuthIssuer,
+			audience:          expectedAuthAudience,
+			jwksURL:           expectedAuthJWKSURL,
+			allowedAlgorithms: expectedAuthAllowedAlgorithms,
+			clockSkew:         expectedAuthClockSkew,
+			jwksCacheTTL:      expectedAuthJWKSCacheTTL,
 		},
 	}
 }

@@ -158,6 +158,19 @@ transactional outbox relay の設定。
 |OUTBOX_ERROR_BACKOFF|relay バッチがエラーを返した後に待機する時間|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|1 回の poll で claim する pending 行数|int|100|Code default `100`|
 
+### Auth (JWT)
+
+access token（JWT）検証の設定。CI / test は署名検証なしのスタブを配線し、`local` / `development` は JWKS backed の実 JWT authenticator を配線する（ローカル開発は mock 認証サーバーを検証）。後者は `AUTH_ISSUER` / `AUTH_AUDIENCE` / `AUTH_JWKS_URL` が欠けていると起動時に fail-closed になる。配線判断は DI（`internal/di/module/core/auth.go`）が担う。JWKS 取得は `httpclient` substrate を通すため、HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、env 変数では持たない。
+
+|変数名|説明|型|例|備考|
+|---|---|---|---|---|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string||Code default は空。JWT authenticator を配線する環境で設定する|
+|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string||Code default は空。issuer と対で必須|
+|AUTH_JWKS_URL|署名公開鍵を取得する JWKS エンドポイント URL|string||Code default は空。compose では内部サービス URL（例 `http://mock_auth_server:4000/.well-known/jwks.json`）|
+|AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|[]string|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
+|AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
+|AUTH_JWKS_CACHE_TTL|取得した JWKS をキャッシュする期間|duration|5m|Code default `5m`|
+
 ## 補足
 
 - 例欄の値はローカル開発向け。本番では Secret / CIDR / Cookie ドメイン / origin 等は基本的に別の値になります
