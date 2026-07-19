@@ -1,0 +1,14 @@
+# markdownlint-cli2 の設定（ルールと実行設定を 1 ファイルに集約）。
+# ルール本体は config:、走査除外は ignores: に置く。
+
+config:
+  MD013: false # 行長は制限しない
+  MD033: false # インライン HTML を許可
+  MD041: false # 先頭行が H1 でなくてよい
+
+# Markdown ではないのに Markdown と誤認され誤検知されるファイルを lint 対象から除外する。
+ignores:
+  # gitleaks の無視リスト（# はコメント。見出し扱いで MD022 等を誤検知）。
+  - ".gitleaksignore"
+  # 拡張子なしのプレーンテキスト LICENSE（MD041/MD022 等を誤検知）。
+  - "LICENSE"
