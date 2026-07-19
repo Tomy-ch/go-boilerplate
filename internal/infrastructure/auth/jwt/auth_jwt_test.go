@@ -209,7 +209,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
 			require.NoError(t, err)
 			assert.Equal(t, testSubject, authn.Subject())
-			assert.Equal(t, authbd.ProviderJWT, authn.Issuer())
+			assert.Equal(t, testIssuer, authn.Issuer())
 			assert.Equal(t, testIssuer, authn.Claims()["iss"])
 		})
 

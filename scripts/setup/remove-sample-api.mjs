@@ -2,12 +2,8 @@ import fs from "node:fs"
 import path from "node:path"
 import { ROOT_DIR, newSetupCommand } from "./lib/runtime.mjs"
 import { toAbsolutePath, updateFile } from "./lib/file-utils.mjs"
-import {
-  SAMPLE_DOMAINS,
-  MARKER_FILES,
-  BUILD_STEPS,
-  stripSampleMarkers,
-} from "./lib/sample-api.mjs"
+import { SAMPLE_DOMAINS, MARKER_FILES, BUILD_STEPS } from "./lib/sample-manifest.mjs"
+import { stripSampleMarkers } from "./lib/sample-api.mjs"
 
 // 再生成・整形・検証（make gen-api / gen-query / fix / lint）は Go ツールチェーンが要るため
 // ここでは行わず、ホスト側の make ターゲット（setup-remove-sample-api）が担当する。
@@ -15,7 +11,7 @@ import {
 const ROOT_WITH_SEP = ROOT_DIR.endsWith(path.sep) ? ROOT_DIR : ROOT_DIR + path.sep
 
 // 削除確認 mjs（verify-sample-removal.mjs）が git status と突き合わせる「登録済み削除対象」の
-// スナップショット出力先。manifest（sample-api.mjs）自身が削除対象で削除後は読めないため、
+// スナップショット出力先。manifest（sample-manifest.mjs）自身が削除対象で削除後は読めないため、
 // 削除時にここへ書き出す。削除確認 mjs は manifest に依存せずこの JSON だけで照合できる。
 const SNAPSHOT_PATH = path.join(ROOT_DIR, "scripts/setup/.sample-removal-snapshot.json")
 
@@ -144,7 +140,7 @@ program
     "after",
     `
 動作:
-  1. manifest（scripts/setup/lib/sample-api.mjs）の宣言パスを丸ごと削除
+  1. manifest（scripts/setup/lib/sample-manifest.mjs）の宣言パスを丸ごと削除
   2. 共有ファイル（DI 4 ファイル + openapi.yaml）の sample-api マーカー行を除去
 
 削除後は ${BUILD_STEPS.map(s => `make ${s}`).join(" → ")} で再生成・整形・検証してください
@@ -153,7 +149,7 @@ program
 
 core 基盤の idempotency_keys（migration 000001）は削除しません（prefecture は user サンプルの依存ドメインとして削除対象）。
 共有生成物（*.gen.go / openapi.gen.yaml 等）は再生成に任せます。
-拡張時は sample-api.mjs の各ドメイン paths への追記とマーカー付与だけで対象に含まれます。`
+拡張時は sample-manifest.mjs の各ドメイン paths への追記とマーカー付与だけで対象に含まれます。`
   )
   .action(options => {
     try {

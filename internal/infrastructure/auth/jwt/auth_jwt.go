@@ -77,6 +77,7 @@ type authenticator struct {
 	parser       *jwtlib.Parser
 	keyResolver  jwtlib.Keyfunc
 	expectedType string
+	issuer       string
 }
 
 // New は固定 RSA 公開鍵で検証する JWT Authenticator を生成します。
@@ -149,6 +150,7 @@ func buildAuthenticator(params Params, keyResolver jwtlib.Keyfunc) (authbd.Authe
 		parser:       parser,
 		keyResolver:  keyResolver,
 		expectedType: strings.TrimSpace(params.ExpectedType),
+		issuer:       strings.TrimSpace(params.Issuer),
 	}, nil
 }
 
@@ -175,7 +177,8 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "subject missing")
 	}
 
-	return authbd.New(subject, authbd.ProviderJWT, extractScopes(claims), map[string]any(claims))
+	// issuer は parser が iss クレームを params.Issuer と一致検証済みのため、その期待値を採用する。
+	return authbd.New(subject, a.issuer, extractScopes(claims), map[string]any(claims))
 }
 
 // keyFunc は署名検証に用いる公開鍵を keyResolver 経由で返します。

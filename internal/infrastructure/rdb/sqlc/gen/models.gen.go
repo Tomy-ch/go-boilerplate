@@ -225,6 +225,22 @@ type SchemaMigrations struct {
 	Dirty   bool
 }
 
+// 外部ID連携
+type UserIdentities struct {
+	// ID
+	ID uuid.UUID
+	// ユーザID
+	UserID uuid.UUID
+	// トークン発行者（IdP issuer）
+	Issuer string
+	// 認証主体（token の sub）
+	Subject string
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 // ユーザロール
 type UserRoles struct {
 	// ユーザID

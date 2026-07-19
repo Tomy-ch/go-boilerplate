@@ -229,3 +229,33 @@ func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
 	s.domain = domain
 	tb.Cleanup(func() { s.domain = prev })
 }
+
+// SetAuthIssuer は、テスト用に認証の issuer を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *AuthConfig) SetAuthIssuer(tb testing.TB, issuer string) {
+	tb.Helper()
+	prev := a.issuer
+	a.issuer = issuer
+	tb.Cleanup(func() { a.issuer = prev })
+}
+
+// SetAuthAudience は、テスト用に認証の audience を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *AuthConfig) SetAuthAudience(tb testing.TB, audience string) {
+	tb.Helper()
+	prev := a.audience
+	a.audience = audience
+	tb.Cleanup(func() { a.audience = prev })
+}
+
+// SetAuthJWKSURL は、テスト用に認証の JWKS URL を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *AuthConfig) SetAuthJWKSURL(tb testing.TB, jwksURL string) {
+	tb.Helper()
+	prev := a.jwksURL
+	a.jwksURL = jwksURL
+	tb.Cleanup(func() { a.jwksURL = prev })
+}

@@ -558,6 +558,45 @@ CREATE TABLE public.schema_migrations (
     dirty boolean NOT NULL
 );
 --
+-- Name: user_identities; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.user_identities (
+    id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    issuer character varying(255) NOT NULL,
+    subject character varying(255) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+--
+-- Name: TABLE user_identities; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.user_identities IS '外部ID連携';
+--
+-- Name: COLUMN user_identities.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.id IS 'ID';
+--
+-- Name: COLUMN user_identities.user_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.user_id IS 'ユーザID';
+--
+-- Name: COLUMN user_identities.issuer; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.issuer IS 'トークン発行者（IdP issuer）';
+--
+-- Name: COLUMN user_identities.subject; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.subject IS '認証主体（token の sub）';
+--
+-- Name: COLUMN user_identities.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.created_at IS '作成日時';
+--
+-- Name: COLUMN user_identities.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.updated_at IS '更新日時';
+--
 -- Name: user_roles; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.user_roles (
@@ -806,6 +845,21 @@ ALTER TABLE ONLY public.roles
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
 --
+-- Name: user_identities user_identities_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_id_primary PRIMARY KEY (id);
+--
+-- Name: user_identities user_identities_issuer_subject_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_issuer_subject_unique UNIQUE (issuer, subject);
+--
+-- Name: user_identities user_identities_user_id_issuer_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_user_id_issuer_unique UNIQUE (user_id, issuer);
+--
 -- Name: user_roles user_roles_primary; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.user_roles
@@ -870,6 +924,11 @@ ALTER TABLE ONLY public.purchases
 --
 ALTER TABLE ONLY public.purchases
     ADD CONSTRAINT purchases_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+--
+-- Name: user_identities user_identities_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
 --
 -- Name: user_roles user_roles_role_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
