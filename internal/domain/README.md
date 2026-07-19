@@ -447,7 +447,9 @@ require.ErrorIs(t, err, ErrInvalidEmail)
 
 ### Getter contract test
 
-Target:
+One `TestXxx` **per getter** (`TestUser_ID`, `TestUser_Email`, …). Do **not** bundle getters into a single `*_Accessors` / `*_Getters` test (1:1 rule — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md) §1, enforced by `internal/architest`).
+
+Target (one dedicated test each):
 
 ```go
 func (u *User) ID() uuid.UUID
@@ -458,6 +460,8 @@ func (u *User) UpdatedAt() time.Time
 ```
 
 ### Immutable guarantee test
+
+For pointer / reference-returning getters, assert immutability **inside that getter's own `TestXxx`** (folded into e.g. `TestUser_Building`) — not as a separate bundled `TestImmutableAccessors`.
 
 Target:
 
