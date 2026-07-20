@@ -54,9 +54,15 @@ Consider QS instead of Repository when:
 - Paginated list retrieval
 - Full-text or keyword search
 - Queries requiring aggregation or grouping
-- Reads that don't need full Aggregate reconstruction
+- Reads whose natural shape is a projection wasteful to reconstruct as a full Aggregate
+  (a few columns from a heavy Aggregate, or a joined view)
 
-Conversely, simple queries like single retrieval by ID or count can remain in Repository.
+Conversely, **simple single-Aggregate reads stay in Repository** — fetch by ID, and simple
+filter / list / count by the Aggregate's own attributes (including an unfiltered full list such
+as `SELECT * FROM <table> ORDER BY ...`). Returning many rows, or mapping the result to a
+response DTO, does **not** by itself move a read to QS — only crossing Aggregates or the
+query-complexity cases above do. See
+[`docs/rules.md`](../../../../docs/rules.md) § "Repository / QueryService Rules".
 
 ## Role
 

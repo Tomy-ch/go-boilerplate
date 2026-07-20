@@ -1,0 +1,20 @@
+get:
+  operationId: GetPrefectures
+  tags:
+    - v1/prefectures
+  summary: 都道府県マスタ一覧の取得
+  description: |
+    都道府県マスタの全件を code 昇順で返します。
+    認証不要の公開エンドポイントであり、ページネーションは行いません（全 47 件を返します）。
+  security: []
+  responses:
+    '200':
+      description: 都道府県マスタの一覧（code 昇順）
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/prefecture/PrefecturesResponse.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'

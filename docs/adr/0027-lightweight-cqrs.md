@@ -55,8 +55,14 @@ three responsibilities:
 - Interface defined in the **usecase layer** (`internal/usecase/<aggregate>/query/`), not
   the domain — because the read model is a usecase concern, not an aggregate invariant.
 - Handles reads that cross aggregate boundaries, require multi-table JOINs, pagination,
-  full-text search, or return DTOs shaped per API response.
+  full-text search, or return a read-model projection that would be wasteful to reconstruct
+  as a full aggregate (a subset/reshape of a heavy aggregate, or a joined view).
 - Returns DTOs, not full domain entities.
+- A read is *not* a QueryService case merely because its result is returned as a DTO — every
+  read is eventually mapped to a response DTO. Simple single-aggregate reads (fetch by ID, and
+  filter / list / count by the aggregate's own attributes, including an unfiltered full list)
+  stay in Repository. Returning many rows is not "crossing aggregates"; crossing means spanning
+  *different* aggregates.
 - Implementation lives in `internal/infrastructure/rdb/query_service/<aggregate>/`.
 
 ### Command Service (command/write path)

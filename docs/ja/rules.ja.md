@@ -167,6 +167,17 @@ Infrastructure コンポーネントは
 - Repository に Aggregate 横断や集計・結合のクエリを書くこと
 - QueryService にドメインロジックを書くこと
 
+境界の明確化（よくある誤読）：
+
+- **「多数の行を返す」ことは「Aggregate 横断」ではない。** 1 つのテーブルの全行を列挙すること
+  （例: `SELECT * FROM prefectures ORDER BY code`）は単一 Aggregate の `一覧` であり Repository に留まる。
+  「Aggregate 横断」とは *異なる* Aggregate を結合・またぐことであり、1 つの Aggregate の複数行を返すことではない。
+- **「レスポンスが DTO である」ことは QueryService のトリガではない。** あらゆる読み取りは最終的にレスポンス
+  DTO へ写像される。読み取りを QueryService へ移すのは、full Aggregate として再構築するのが無駄になる
+  自然な形（重い Aggregate・結合・ページング）であって、API が DTO を返すという事実そのものではない。
+- Repository の読み取りは **ID 取得に限定されない**：Aggregate 自身の属性による単純なフィルタ・一覧・件数取得
+  （無フィルタの全件一覧を含む）は Repository に属する。
+
 ## DTO / 型境界ルール
 
 - OpenAPI の型を Usecase に渡してはいけない

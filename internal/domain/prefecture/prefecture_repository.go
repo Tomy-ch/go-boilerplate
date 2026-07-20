@@ -15,4 +15,6 @@ type Repository interface {
 	FindByIDs(ctx context.Context, ids []uuid.UUID) (Prefectures, error)
 	// FindByName は、都道府県名から都道府県を取得します。存在しない場合は NotFound を返します。
 	FindByName(ctx context.Context, name string) (*Prefecture, error)
+	// FindAll は、全都道府県を code 昇順で取得します。
+	FindAll(ctx context.Context) (Prefectures, error)
 }

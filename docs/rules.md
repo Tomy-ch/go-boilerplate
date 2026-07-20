@@ -181,6 +181,19 @@ Forbidden:
 - Writing cross-Aggregate or aggregation/join queries in Repository
 - Writing domain logic in QueryService
 
+Boundary clarifications (common misreads):
+
+- **"Returns many rows" is not "crosses Aggregates."** Listing every row of one table
+  (e.g. `SELECT * FROM prefectures ORDER BY code`) is a single-Aggregate `list` and stays in
+  Repository. "Cross-Aggregate" means joining or spanning *different* Aggregates, not returning
+  multiple rows of one.
+- **"The response is a DTO" is not a QueryService trigger.** Every read is eventually mapped to
+  a response DTO. What moves a read to QueryService is a natural shape that would be wasteful to
+  reconstruct as a full Aggregate (heavy Aggregate, joins, pagination) — not the mere fact that
+  the API returns a DTO.
+- Repository reads are **not limited to fetch-by-ID**: simple filter / list / count by the
+  Aggregate's own attributes — including an unfiltered full list — belong to Repository.
+
 ## DTO / Type Boundary Rules
 
 - Do not pass OpenAPI types to Usecase
