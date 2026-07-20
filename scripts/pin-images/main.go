@@ -2,17 +2,20 @@
 //
 //	resolve: docker/*/Dockerfile の FROM を走査し、image:tag を registry の現在 digest へ
 //	         解決して lockfile (docker/images-pin.toml) へ書き出す。
-//	apply:   lockfile を SSOT に各 FROM を `FROM image:tag@sha256:... [AS stage]` へ正規化する。
-//	check:   apply と同じ判定を書き換えなしで行い、drift があれば非ゼロ終了する（CI / hook 用）。
+//	apply:   lockfile を SSOT に各 FROM を `FROM image:tag@sha256:... [AS stage]` へ固定する。
+//	check:   apply と同じ判定を書き換えなしで行い、未固定/未登録/drift があれば非ゼロ終了する（CI / hook 用）。
 //
 // tag は版の SSOT として FROM 行に残し、digest を lock 側で管理する（tag 再割り当て攻撃の遮断）。
 //
 // supply-chain cooldown: --min-age-days 未満（＝公開直後）の digest は採用しない。
 // mutable tag は「N 日前に何を指していたか」を registry へ問えないため、step-back 先は
-// git tag のような版履歴ではなく自分の前回 lock。前回 lock が無い初回は tag のみへ残す（skip）。
+// git tag のような版履歴ではなく自分の前回 lock。前回 lock が無い初回は退行先が無く、
+// 出来立ての未検証 digest を掴む危険があるため、resolve は tag のまま残さず非ゼロ終了する
+// （緊急ブートストラップのみ --min-age-days=0 で明示採用）。
 //
-// apply は正規化型：lock に無い image（quarantine 中）は FROM から digest を剥がして tag のみへ戻す。
-// これにより「隔離が解けるまで tag 運用・解けたら pin」を冪等に表現する。
+// apply/check は fail-closed：管理対象の FROM は image:tag@sha256:... へ固定され、かつ lock(SSOT)
+// に登録済みでなければならない。lock 未登録の image は「未登録」、digest 無し（tag のみ）は
+// 「未固定」として非ゼロ終了する（tag のみ運用は一切許容しない）。
 package main
 
 import (
@@ -120,7 +123,7 @@ func resolve(root string, files []string, minAgeDays int) {
 
 	ctx := context.Background()
 	lock := map[string]string{}
-	var notes []string
+	var notes, skipped []string
 	for k, r := range keys {
 		digest, err := resolveDigest(ctx, r.key())
 		if err != nil {
@@ -131,6 +134,7 @@ func resolve(root string, files []string, minAgeDays int) {
 			notes = append(notes, note)
 		}
 		if use == "" {
+			skipped = append(skipped, k)
 			continue
 		}
 		lock[k] = use
@@ -145,6 +149,15 @@ func resolve(root string, files []string, minAgeDays int) {
 		log.Fatalf("❌ write lockfile: %v", err)
 	}
 	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
+
+	// 退行先の無い出来立て image（fresh + 既存ピン無し）は tag のまま残さず失敗させる。
+	// tag のみ運用を許すと未検証 digest を掴むため、check も同状態を弾く（fail-closed）。
+	if len(skipped) > 0 {
+		sort.Strings(skipped)
+		log.Fatalf("❌ 退行先の無い出来立て image は採用できません（%d 日未満・既存ピン無し）。"+
+			"aged 後に再実行するか、緊急時のみ --min-age-days=0 で明示採用してください: %s",
+			minAgeDays, strings.Join(skipped, ", "))
+	}
 }
 
 func collectKeys(files []string) map[string]imageRef {
@@ -263,36 +276,42 @@ func inspect(ctx context.Context, ref string, extra ...string) (string, error) {
 	return string(out), nil
 }
 
-// rewritePins は lock を元に FROM を正規化した内容を返す。lock に無い image は digest を剥がす。
-func rewritePins(data string, lock map[string]string) string {
-	return fromRe.ReplaceAllStringFunc(data, func(line string) string {
+// rewritePins は lock を元に FROM を digest 固定した内容と、lock 未登録の image キー一覧を返す。
+// lock に無い image は「未登録」として報告し、行は書き換えない（digest は剥がさない）。
+func rewritePins(data string, lock map[string]string) (string, []string) {
+	var missing []string
+	out := fromRe.ReplaceAllStringFunc(data, func(line string) string {
 		m := fromRe.FindStringSubmatch(line)
 		r, ok := parseFrom(m[2])
 		if !ok {
 			return line
 		}
-		ref := r.key()
-		if digest, found := lock[r.key()]; found {
-			ref += "@" + digest
+		digest, found := lock[r.key()]
+		if !found {
+			missing = append(missing, r.key())
+			return line
 		}
-		return m[1] + ref + m[3]
+		return m[1] + r.key() + "@" + digest + m[3]
 	})
+	return out, missing
 }
 
-// applyOrCheck は lockfile を SSOT に FROM を正規化する。dryRun=true は書き換えず drift を非ゼロ終了で報告する。
+// applyOrCheck は lockfile を SSOT に FROM を digest 固定する。dryRun=true は書き換えず
+// 未固定/未登録/drift を非ゼロ終了で報告する。tag のみへ戻す正規化はしない（fail-closed）。
 func applyOrCheck(root string, files []string, dryRun bool) {
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
 		log.Fatalf("❌ read lockfile（先に make pin-images-resolve を実行してください）: %v", err)
 	}
-	var drifted []string
+	var missing, drifted []string
 	changed := 0
 	for _, f := range files {
 		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
 		if err != nil {
 			log.Fatalf("❌ read %s: %v", f, err)
 		}
-		out := rewritePins(string(data), lock)
+		out, miss := rewritePins(string(data), lock)
+		missing = append(missing, miss...)
 		if out == string(data) {
 			continue
 		}
@@ -306,17 +325,22 @@ func applyOrCheck(root string, files []string, dryRun bool) {
 		changed++
 		log.Printf("  updated %s", rel(root, f))
 	}
-	report(drifted, dryRun, changed)
+	report(missing, drifted, dryRun, changed)
 }
 
-func report(drifted []string, dryRun bool, changed int) {
+func report(missing, drifted []string, dryRun bool, changed int) {
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		log.Fatalf("❌ lockfile に未登録の base image があります（make pin-images-resolve を実行してください）: %s",
+			strings.Join(uniq(missing), ", "))
+	}
 	if !dryRun {
-		log.Printf("✅ %d ファイルを正規化しました", changed)
+		log.Printf("✅ %d ファイルを固定しました", changed)
 		return
 	}
 	if len(drifted) > 0 {
 		sort.Strings(drifted)
-		log.Fatalf("❌ FROM が lockfile と一致しません（make pin-images-resolve && make pin-images-apply してコミットしてください）: %s",
+		log.Fatalf("❌ FROM が未固定か lockfile と不一致です（make pin-images-resolve && make pin-images-apply してコミットしてください）: %s",
 			strings.Join(drifted, ", "))
 	}
 	log.Printf("✅ 全 base image が lockfile 通りに固定されています")
@@ -358,4 +382,17 @@ func rel(root, p string) string {
 		return r
 	}
 	return p
+}
+
+// uniq はソート済みスライスから隣接重複を除く。
+func uniq(s []string) []string {
+	out := s[:0]
+	var prev string
+	for i, v := range s {
+		if i == 0 || v != prev {
+			out = append(out, v)
+		}
+		prev = v
+	}
+	return out
 }
