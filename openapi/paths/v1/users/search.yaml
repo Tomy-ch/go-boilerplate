@@ -4,6 +4,8 @@ get:
     - v1/users/search
   summary: ユーザー一覧の取得
   description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
+  security:
+    - BearerAuth: []
   parameters:
     - $ref: '../../../components/parameters/search/KeywordParam.yaml'
     - $ref: '../../../components/parameters/search/ActiveParam.yaml'

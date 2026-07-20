@@ -33,6 +33,8 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(string(BearerAuthScopes), []string{})
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetUsersParams
 	// ------------- Optional query parameter "active" -------------

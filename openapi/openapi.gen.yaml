@@ -28,6 +28,7 @@ servers:
     description: Staging server (replace with actual URL)
   - url: https://development.api.example.com
     description: Development server (replace with actual URL)
+security: []
 tags:
   - name: health
     description: ヘルスチェック（liveness）。
@@ -61,6 +62,7 @@ paths:
         - health
       summary: サーバーのヘルスチェック
       description: サーバーが正常に稼働しているかを確認するためのECSやALB向けのヘルスチェックエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーは正常に稼働しています。
@@ -75,6 +77,7 @@ paths:
         - healthz
       summary: サーバーのヘルスチェック
       description: サーバーが正常に稼働しているかを確認するためのEKS向けのヘルスチェックエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーは正常に稼働しています。
@@ -106,6 +109,7 @@ paths:
         - ready
       summary: サーバー全体のレディネスチェック
       description: サーバー全体がリクエストを受け付ける準備ができているかを確認するためのレディネスチェックエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーはリクエストを受け付ける準備ができています。
@@ -120,6 +124,7 @@ paths:
         - version
       summary: サーバーのバージョン情報を取得します。
       description: サーバーのバージョン情報を取得するためのエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーのバージョン情報を返します。
@@ -135,6 +140,7 @@ paths:
       tags:
         - internal/types/error-response
       operationId: GenerateErrorSchema
+      security: []
       responses:
         '200':
           description: このレスポンスの型を生成するためです。
@@ -149,6 +155,8 @@ paths:
         - v1/users
       summary: ユーザー一覧の取得
       description: ユーザーの一覧を取得します。ページネーションを指定できます。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/ActiveParam'
         - $ref: '#/components/parameters/PageParam'
@@ -383,6 +391,8 @@ paths:
         - v1/users/search
       summary: ユーザー一覧の取得
       description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/KeywordParam'
         - $ref: '#/components/parameters/ActiveParam'
@@ -464,6 +474,7 @@ paths:
       description: |
         base 通貨建ての amount を quote 通貨へ換算した結果を返します。
         外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+      security: []
       parameters:
         - name: base
           in: query

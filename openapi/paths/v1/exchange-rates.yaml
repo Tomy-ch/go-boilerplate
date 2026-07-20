@@ -6,6 +6,7 @@ get:
   description: |
     base 通貨建ての amount を quote 通貨へ換算した結果を返します。
     外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+  security: []
   parameters:
     - name: base
       in: query

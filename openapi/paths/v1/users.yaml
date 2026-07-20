@@ -4,6 +4,8 @@ get:
     - v1/users
   summary: ユーザー一覧の取得
   description: ユーザーの一覧を取得します。ページネーションを指定できます。
+  security:
+    - BearerAuth: []
   parameters:
     - $ref: '../../components/parameters/search/ActiveParam.yaml'
     - $ref: '../../components/parameters/pagination/PageParam.yaml'
