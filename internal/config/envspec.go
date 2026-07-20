@@ -25,7 +25,11 @@ type Auth struct {
 	JWKSURL           string        `env:"JWKS_URL"           envDefault:""`
 	AllowedAlgorithms []string      `env:"ALLOWED_ALGORITHMS" envDefault:"RS256" envSeparator:","`
 	ClockSkew         time.Duration `env:"CLOCK_SKEW"         envDefault:"60s"`
-	JWKSCacheTTL      time.Duration `env:"JWKS_CACHE_TTL"     envDefault:"5m"`
+	JWKSCacheTTL      time.Duration `env:"JWKS_CACHE_TTL"     envDefault:"1h"`
+	// JWKSDiscoveryTTL は OIDC discovery 文書の再取得間隔です（鍵キャッシュとは別軸）。
+	JWKSDiscoveryTTL time.Duration `env:"JWKS_DISCOVERY_TTL" envDefault:"24h"`
+	// JWKSUnknownKIDCooldown は未知 kid での JWKS 再取得の最小間隔です（DoS 抑止）。
+	JWKSUnknownKIDCooldown time.Duration `env:"JWKS_UNKNOWN_KID_COOLDOWN" envDefault:"60s"`
 }
 
 // Outbox は transactional outbox relay の設定を保持する。

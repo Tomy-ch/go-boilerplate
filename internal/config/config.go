@@ -131,12 +131,14 @@ func New() (*Config, error) {
 			batchSize:    cfg.Outbox.BatchSize,
 		},
 		auth: AuthConfig{
-			issuer:            cfg.Auth.Issuer,
-			audience:          cfg.Auth.Audience,
-			jwksURL:           cfg.Auth.JWKSURL,
-			allowedAlgorithms: cfg.Auth.AllowedAlgorithms,
-			clockSkew:         cfg.Auth.ClockSkew,
-			jwksCacheTTL:      cfg.Auth.JWKSCacheTTL,
+			issuer:             cfg.Auth.Issuer,
+			audience:           cfg.Auth.Audience,
+			jwksURL:            cfg.Auth.JWKSURL,
+			allowedAlgorithms:  cfg.Auth.AllowedAlgorithms,
+			clockSkew:          cfg.Auth.ClockSkew,
+			jwksCacheTTL:       cfg.Auth.JWKSCacheTTL,
+			discoveryTTL:       cfg.Auth.JWKSDiscoveryTTL,
+			unknownKidCooldown: cfg.Auth.JWKSUnknownKIDCooldown,
 		},
 	}, nil
 }

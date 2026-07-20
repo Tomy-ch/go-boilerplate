@@ -17,7 +17,7 @@ func TestMockConfigForTest(t *testing.T) {
 
 		t.Run("MockConfigForTest は、テスト用の Config を返す", func(t *testing.T) {
 			t.Parallel()
-			expected := &Config{
+			expected := &Config{ //nolint:dupl // 設定の網羅的リテラル比較のため TestNew 側と構造が重複するのは意図的
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
 				},
@@ -114,12 +114,14 @@ func TestMockConfigForTest(t *testing.T) {
 					batchSize:    expectedOutboxBatchSize,
 				},
 				auth: AuthConfig{
-					issuer:            expectedAuthIssuer,
-					audience:          expectedAuthAudience,
-					jwksURL:           expectedAuthJWKSURL,
-					allowedAlgorithms: expectedAuthAllowedAlgorithms,
-					clockSkew:         expectedAuthClockSkew,
-					jwksCacheTTL:      expectedAuthJWKSCacheTTL,
+					issuer:             expectedAuthIssuer,
+					audience:           expectedAuthAudience,
+					jwksURL:            expectedAuthJWKSURL,
+					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
+					clockSkew:          expectedAuthClockSkew,
+					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
+					discoveryTTL:       expectedAuthDiscoveryTTL,
+					unknownKidCooldown: expectedAuthUnknownKidCooldown,
 				},
 			}
 

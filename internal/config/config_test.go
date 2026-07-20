@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			setEnvVarsForTesting(t)
-			expected := &Config{
+			expected := &Config{ //nolint:dupl // 設定の網羅的リテラル比較のため MockConfigForTest 側と構造が重複するのは意図的
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
 				},
@@ -111,12 +111,14 @@ func TestNew(t *testing.T) {
 					batchSize:    expectedOutboxBatchSize,
 				},
 				auth: AuthConfig{
-					issuer:            expectedAuthIssuer,
-					audience:          expectedAuthAudience,
-					jwksURL:           expectedAuthJWKSURL,
-					allowedAlgorithms: expectedAuthAllowedAlgorithms,
-					clockSkew:         expectedAuthClockSkew,
-					jwksCacheTTL:      expectedAuthJWKSCacheTTL,
+					issuer:             expectedAuthIssuer,
+					audience:           expectedAuthAudience,
+					jwksURL:            expectedAuthJWKSURL,
+					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
+					clockSkew:          expectedAuthClockSkew,
+					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
+					discoveryTTL:       expectedAuthDiscoveryTTL,
+					unknownKidCooldown: expectedAuthUnknownKidCooldown,
 				},
 			}
 

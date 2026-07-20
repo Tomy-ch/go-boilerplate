@@ -140,12 +140,14 @@ var (
 	expectedOutboxBatchSize    = 100
 
 	// auth（local/ci/test では実 JWT authenticator を配線しないため、issuer 等は既定の空値）
-	expectedAuthIssuer            = ""
-	expectedAuthAudience          = ""
-	expectedAuthJWKSURL           = ""
-	expectedAuthAllowedAlgorithms = []string{"RS256"}
-	expectedAuthClockSkew         = 60 * time.Second
-	expectedAuthJWKSCacheTTL      = 5 * time.Minute
+	expectedAuthIssuer             = ""
+	expectedAuthAudience           = ""
+	expectedAuthJWKSURL            = ""
+	expectedAuthAllowedAlgorithms  = []string{"RS256"}
+	expectedAuthClockSkew          = 60 * time.Second
+	expectedAuthJWKSCacheTTL       = 1 * time.Hour
+	expectedAuthDiscoveryTTL       = 24 * time.Hour
+	expectedAuthUnknownKidCooldown = 60 * time.Second
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -248,12 +250,14 @@ func MockConfigForTest(tb testing.TB) *Config {
 			batchSize:    expectedOutboxBatchSize,
 		},
 		auth: AuthConfig{
-			issuer:            expectedAuthIssuer,
-			audience:          expectedAuthAudience,
-			jwksURL:           expectedAuthJWKSURL,
-			allowedAlgorithms: expectedAuthAllowedAlgorithms,
-			clockSkew:         expectedAuthClockSkew,
-			jwksCacheTTL:      expectedAuthJWKSCacheTTL,
+			issuer:             expectedAuthIssuer,
+			audience:           expectedAuthAudience,
+			jwksURL:            expectedAuthJWKSURL,
+			allowedAlgorithms:  expectedAuthAllowedAlgorithms,
+			clockSkew:          expectedAuthClockSkew,
+			jwksCacheTTL:       expectedAuthJWKSCacheTTL,
+			discoveryTTL:       expectedAuthDiscoveryTTL,
+			unknownKidCooldown: expectedAuthUnknownKidCooldown,
 		},
 	}
 }
