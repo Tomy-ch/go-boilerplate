@@ -4,6 +4,7 @@ get:
     - healthz
   summary: サーバーのヘルスチェック
   description: サーバーが正常に稼働しているかを確認するためのEKS向けのヘルスチェックエンドポイントです。
+  security: []
   responses:
     '200':
       description: サーバーは正常に稼働しています。

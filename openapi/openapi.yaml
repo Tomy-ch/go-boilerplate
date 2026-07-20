@@ -53,6 +53,8 @@ tags:
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
+# ここで設定した認証が全体で適用される。
+security: []
 paths:
   # Operation handlers
   /health:
