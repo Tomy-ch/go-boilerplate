@@ -134,3 +134,8 @@ func TestNewDB(t *testing.T) {
 		})
 	})
 }
+
+func Test_newDB(t *testing.T) {
+	t.Parallel()
+	t.Skip("TestNewDB / TestNewTracedDB（driver パッケージ）の実 DB テストでカバー")
+}

@@ -249,3 +249,101 @@ func Test_buildQueryAttrs(t *testing.T) {
 		})
 	})
 }
+
+func Test_queryNameFromContext(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("設定済みの query_name をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := WithQueryName(context.Background(), "user.find_by_id")
+			assert.Equal(t, "user.find_by_id", queryNameFromContext(ctx))
+		})
+
+		t.Run("未設定の場合はunknownに丸める", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, queryNameUnknown, queryNameFromContext(context.Background()))
+		})
+
+		t.Run("空文字が設定されている場合はunknownに丸める", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := WithQueryName(context.Background(), "")
+			assert.Equal(t, queryNameUnknown, queryNameFromContext(ctx))
+		})
+	})
+}
+
+func Test_firstSQLToken(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("先頭トークンを小文字で返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "select", firstSQLToken("SELECT 1"))
+		})
+
+		t.Run("先頭コメントと空白と括弧を取り除いた最初のトークンを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "update", firstSQLToken("-- name: X\n  ( UPDATE users SET x = 1"))
+		})
+
+		t.Run("セミコロンを区切りとみなす", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "begin", firstSQLToken("BEGIN;"))
+		})
+
+		t.Run("空文字は空文字を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, firstSQLToken(""))
+		})
+	})
+}
+
+func Test_stripLeadingSQLComments(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("先頭の行コメントを取り除く", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "SELECT 1", stripLeadingSQLComments("-- name: X\nSELECT 1"))
+		})
+
+		t.Run("先頭のブロックコメントを取り除く", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "UPDATE users", stripLeadingSQLComments("/* hint */ UPDATE users"))
+		})
+
+		t.Run("複数の先頭コメントを連続して取り除く", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "SELECT 1", stripLeadingSQLComments("-- a\n/* b */ SELECT 1"))
+		})
+
+		t.Run("コメントが無い場合はそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "SELECT 1", stripLeadingSQLComments("SELECT 1"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("閉じない行コメント(改行なし)は空文字を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, stripLeadingSQLComments("-- only a comment"))
+		})
+
+		t.Run("閉じないブロックコメントは空文字を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, stripLeadingSQLComments("/* unterminated"))
+		})
+	})
+}
