@@ -29,7 +29,6 @@ rules:
     assertions:
       casing: camelCase
   # クエリ / パスパラメータ名は camelCase（body フィールドと揃え、JS/TS フロント・生成 SDK と一致させる）。
-  # header パラメータは HTTP 慣習の Train-Case（例: Idempotency-Key）が正しく camelCase にできないため対象外にする。
   rule/parameter-names-camelCase:
     severity: error
     subject:
@@ -53,9 +52,6 @@ rules:
       property: operationId
     assertions:
       casing: PascalCase
-  # 全 operation は認証姿勢を明示宣言する（fail-open 防止）。
-  # security を省略すると root security（= []・公開）を継承して意図せず公開になり得るため、
-  # 認証必須は BearerAuth、公開は [] を各 operation に必ず明示させる。
   rule/require-explicit-security:
     severity: error
     subject:
