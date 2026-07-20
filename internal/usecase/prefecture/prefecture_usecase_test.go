@@ -70,6 +70,24 @@ func Test_usecase_ListPrefectures(t *testing.T) {
 				{ID: osakaID, Code: 27, Name: "大阪府"},
 			}, actual)
 		})
+
+		t.Run("取得結果が0件の場合、nilではない空のDTO一覧を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+
+			repo := mock_prefecture.NewMockRepository(ctrl)
+			repo.EXPECT().FindAll(gomock.Any()).Return(domainprefecture.Prefectures{}, nil).Times(1)
+
+			u := &usecase{tracer: lt, repo: repo}
+
+			actual, err := u.ListPrefectures(ctx)
+			require.NoError(t, err)
+			assert.NotNil(t, actual)
+			assert.Empty(t, actual)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

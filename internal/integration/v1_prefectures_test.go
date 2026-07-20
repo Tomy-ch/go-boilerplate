@@ -1,8 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
 	"testing"
 
@@ -15,7 +13,6 @@ import (
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -26,40 +23,26 @@ func TestV1Prefectures_Integration(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("GET /v1/prefectures が未認証でも全47件をcode昇順で返す", func(t *testing.T) {
+		t.Run("GET /v1/prefectures が未認証でも PrefectureResponse 一覧を返す", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			expected := make(prefectureuc.PrefectureDTOs, 47)
-			for i := range expected {
-				id, err := uuid.New()
-				require.NoError(t, err)
-				expected[i] = prefectureuc.PrefectureDTO{ID: id, Code: i + 1, Name: "都道府県"}
-			}
+			id, err := uuid.New()
+			require.NoError(t, err)
 
 			mockUC := mock_prefecture.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListPrefectures(gomock.Any()).Return(expected, nil)
+			mockUC.EXPECT().ListPrefectures(gomock.Any()).Return(
+				prefectureuc.PrefectureDTOs{{ID: id, Code: 1, Name: "都道府県"}}, nil,
+			)
 
 			prefectureshandler.BindHandler(e, tf, mockUC)
 
 			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/prefectures", nil, nil)
-
-			assert.Equal(t, http.StatusOK, actual.StatusCode)
-			assert.Contains(t, actual.Header.Get(echo.HeaderContentType), "application/json")
-
-			body, err := io.ReadAll(actual.Body)
-			require.NoError(t, err)
-
-			var got []gen.PrefectureResponse
-			require.NoError(t, json.Unmarshal(body, &got))
-			assert.Len(t, got, 47)
-			for i := 1; i < len(got); i++ {
-				assert.LessOrEqual(t, got[i-1].Code, got[i].Code)
-			}
+			AssertJSONResponseType[[]gen.PrefectureResponse](t, actual)
 		})
 	})
 

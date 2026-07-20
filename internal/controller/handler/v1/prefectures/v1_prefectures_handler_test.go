@@ -83,6 +83,7 @@ func Test_server_GetPrefectures(t *testing.T) {
 
 			actual, ok := resp.(gen.GetPrefectures200JSONResponse)
 			require.True(t, ok)
+			assert.NotNil(t, actual)
 			assert.Empty(t, actual)
 		})
 	})
@@ -96,8 +97,9 @@ func Test_server_GetPrefectures(t *testing.T) {
 			s, mockUC := newServer(t)
 			mockUC.EXPECT().ListPrefectures(gomock.Any()).Return(nil, apperror.ErrInternal)
 
-			_, err := s.GetPrefectures(context.Background(), gen.GetPrefecturesRequestObject{})
+			resp, err := s.GetPrefectures(context.Background(), gen.GetPrefecturesRequestObject{})
 			require.ErrorIs(t, err, apperror.ErrInternal)
+			require.Nil(t, resp)
 		})
 	})
 }
