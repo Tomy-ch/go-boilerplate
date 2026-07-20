@@ -68,6 +68,7 @@ func TestBindHandler(t *testing.T) {
 		http.MethodPut + " " + targetPath,
 		http.MethodPatch + " " + targetPath,
 		http.MethodDelete + " " + targetPath,
+		http.MethodGet + " /v1/users/me",
 		http.MethodPut + " /v1/users/me/password",
 	}
 
@@ -125,6 +126,71 @@ func Test_server_GetUsersDetail(t *testing.T) {
 			resp, err := s.GetUsersDetail(
 				testauth.MakeAvailableAuthn(context.Background(), t, subject),
 				gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)},
+			)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+	})
+}
+
+func Test_server_GetUsersMe(t *testing.T) {
+	t.Parallel()
+
+	dto := user.UserView{
+		FirstName: "Me", LastName: "Self", Email: "me@example.com", Phone: "09000000000",
+		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3", Building: new("B1"),
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("認証ユーザー自身の詳細が取得できる", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(dto, nil)
+
+			resp, err := s.GetUsersMe(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.GetUsersMeRequestObject{},
+			)
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.GetUsersMe200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, wantUserResponse(dto), gen.UserResponse(actual))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.GetUsersMe(context.Background(), gen.GetUsersMeRequestObject{})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
+		t.Run("内部UserIDが未解決でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
+			s, _ := newServer(t)
+
+			resp, err := s.GetUsersMe(ctx, gen.GetUsersMeRequestObject{})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
+		})
+
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(user.UserView{}, apperror.ErrNotFound)
+
+			resp, err := s.GetUsersMe(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.GetUsersMeRequestObject{},
 			)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrNotFound)

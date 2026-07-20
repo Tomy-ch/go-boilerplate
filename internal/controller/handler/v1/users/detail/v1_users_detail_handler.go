@@ -55,6 +55,28 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 	return gen.GetUsersDetail200JSONResponse(toUserResponse(dto)), nil
 }
 
+// GetUsersMe は、認証コンテキストの内部 UserID に該当するユーザー自身の詳細情報を取得します。
+func (s *server) GetUsersMe(ctx context.Context, _ gen.GetUsersMeRequestObject) (gen.GetUsersMeResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+	id, err := authn.UserID()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+	}
+
+	dto, err := s.uc.GetUser(ctx, &authn, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.GetUsersMe200JSONResponse(toUserResponse(dto)), nil
+}
+
 // PutUsersDetail は、指定されたUUIDに該当するユーザーのプロフィールを全て更新します（パスワードは含みません）。
 func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailRequestObject) (gen.PutUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)

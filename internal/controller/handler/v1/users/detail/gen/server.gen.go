@@ -16,6 +16,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// 認証ユーザー自身の取得
+	// (GET /v1/users/me)
+	GetUsersMe(ctx echo.Context) error
 	// 認証ユーザー自身のパスワード変更
 	// (PUT /v1/users/me/password)
 	PutUsersMePassword(ctx echo.Context) error
@@ -36,6 +39,17 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetUsersMe converts echo context to params.
+func (w *ServerInterfaceWrapper) GetUsersMe(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetUsersMe(ctx)
+	return err
 }
 
 // PutUsersMePassword converts echo context to params.
@@ -168,6 +182,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
+	router.GET(options.BaseURL+"/v1/users/me", wrapper.GetUsersMe, options.OperationMiddlewares["GetUsersMe"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/password", wrapper.PutUsersMePassword, options.OperationMiddlewares["PutUsersMePassword"]...)
 	router.DELETE(options.BaseURL+"/v1/users/:userId", wrapper.DeleteUsersDetail, options.OperationMiddlewares["DeleteUsersDetail"]...)
 	router.GET(options.BaseURL+"/v1/users/:userId", wrapper.GetUsersDetail, options.OperationMiddlewares["GetUsersDetail"]...)
@@ -191,6 +206,87 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 type Unauthorized401JSONResponse ErrorResponse
 
 type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
+
+type GetUsersMeRequestObject struct {
+}
+
+type GetUsersMeResponseObject interface {
+	VisitGetUsersMeResponse(w http.ResponseWriter) error
+}
+
+type GetUsersMe200JSONResponse UserResponse
+
+func (response GetUsersMe200JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersMe401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response GetUsersMe401JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersMe404JSONResponse struct{ NotFound404JSONResponse }
+
+func (response GetUsersMe404JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersMe500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response GetUsersMe500JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersMe503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response GetUsersMe503JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type PutUsersMePasswordRequestObject struct {
 	Body *PutUsersMePasswordJSONRequestBody
@@ -808,6 +904,9 @@ func (response PutUsersDetail503JSONResponse) VisitPutUsersDetailResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// 認証ユーザー自身の取得
+	// (GET /v1/users/me)
+	GetUsersMe(ctx context.Context, request GetUsersMeRequestObject) (GetUsersMeResponseObject, error)
 	// 認証ユーザー自身のパスワード変更
 	// (PUT /v1/users/me/password)
 	PutUsersMePassword(ctx context.Context, request PutUsersMePasswordRequestObject) (PutUsersMePasswordResponseObject, error)
@@ -835,6 +934,29 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// GetUsersMe operation middleware
+func (sh *strictHandler) GetUsersMe(ctx echo.Context) error {
+	var request GetUsersMeRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUsersMe(ctx.Request().Context(), request.(GetUsersMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUsersMe")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetUsersMeResponseObject); ok {
+		return validResponse.VisitGetUsersMeResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // PutUsersMePassword operation middleware

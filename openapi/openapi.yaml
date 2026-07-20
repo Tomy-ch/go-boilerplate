@@ -76,6 +76,8 @@ paths:
     $ref: './paths/v1/users.yaml'
   /v1/users/{userId}:
     $ref: './paths/v1/users/userId.yaml'
+  /v1/users/me:
+    $ref: './paths/v1/users/me.yaml'
   /v1/users/me/password:
     $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:

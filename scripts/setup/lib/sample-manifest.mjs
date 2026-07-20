@@ -15,6 +15,7 @@ export const SAMPLE_DOMAINS = {
       "internal/controller/job/usercount",
       "internal/integration/v1_users_test.go",
       "internal/integration/v1_users_detail_test.go",
+      "internal/integration/v1_users_me_test.go",
       "internal/integration/v1_users_search_test.go",
       "internal/integration/v1_users_feed_test.go",
 
