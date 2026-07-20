@@ -141,6 +141,53 @@ func Test_repository_FindByID(t *testing.T) {
 	})
 }
 
+func Test_repository_FindAll(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{
+		tracer: lt,
+		db:     testDB,
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全都道府県が47件code昇順で取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindAll(ctx)
+				require.NoError(t, err)
+				assert.Len(t, actual, 47)
+
+				for i := 1; i < len(actual); i++ {
+					assert.LessOrEqual(t, actual[i-1].Code(), actual[i].Code())
+				}
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			actual, err := repo.FindAll(ctx)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
 func Test_repository_FindByIDs(t *testing.T) {
 	t.Parallel()
 

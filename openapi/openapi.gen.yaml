@@ -47,6 +47,8 @@ tags:
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
     description: ユーザー検索（キーワード）。
+  - name: v1/prefectures
+    description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: internal/types/error-response
@@ -432,6 +434,27 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/prefectures:
+    get:
+      operationId: GetPrefectures
+      tags:
+        - v1/prefectures
+      summary: 都道府県マスタ一覧の取得
+      description: |
+        都道府県マスタの全件を code 昇順で返します。
+        認証不要の公開エンドポイントであり、ページネーションは行いません（全 47 件を返します）。
+      security: []
+      responses:
+        '200':
+          description: 都道府県マスタの一覧（code 昇順）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrefecturesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/exchange-rates:
     get:
       operationId: GetExchangeRates
@@ -765,6 +788,29 @@ components:
       $ref: '#/components/schemas/UserPatchRequest'
     ResponseV1ExchangeRate:
       $ref: '#/components/schemas/ExchangeRateResponse'
+    PrefectureResponse:
+      type: object
+      description: 都道府県マスタ 1 件分のレスポンスです。
+      required:
+        - id
+        - code
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 都道府県ID
+          example: 101caa1e-84e7-4ceb-9108-50d40b6be1a3
+        code:
+          type: integer
+          description: JIS X 0401 都道府県コード（1〜47）
+          example: 13
+        name:
+          type: string
+          description: 都道府県名
+          example: 東京都
+    ResponseV1Prefectures:
+      $ref: '#/components/schemas/PrefecturesResponse'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。
@@ -973,6 +1019,11 @@ components:
               description: 登録日時
               type: string
               format: date-time
+    PrefecturesResponse:
+      type: array
+      description: 都道府県マスタの一覧（code 昇順）。全件を返し、ページネーションは行いません。
+      items:
+        $ref: '#/components/schemas/PrefectureResponse'
     ExchangeRateResponse:
       type: object
       description: 為替換算結果のレスポンスです。

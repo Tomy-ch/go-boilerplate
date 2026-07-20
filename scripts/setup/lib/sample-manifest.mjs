@@ -83,18 +83,27 @@ export const SAMPLE_DOMAINS = {
   },
 
   prefecture: {
-    description: "サンプル 都道府県マスタ（user サンプルが住所で参照する依存ドメイン。日本固有データ）",
+    description: "サンプル 都道府県マスタ（user サンプルが住所で参照する依存ドメイン。日本固有データ。GET /v1/prefectures の一覧 API を含む）",
     paths: [
       "internal/domain/prefecture",
+      "internal/usecase/prefecture",
       "internal/infrastructure/rdb/repository/prefecture",
+      "internal/controller/handler/v1/prefectures",
+      "internal/integration/v1_prefectures_test.go",
       "database/dml/repository/prefecture",
 
       // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go",
       "database/gen/prefecture_repository.gen.sql",
 
+      "openapi/paths/v1/prefectures.yaml",
+      "openapi/components/responses/prefecture",
+      "openapi/components/schemas/PrefectureResponse.yaml",
+
       "database/migrations/000003_create_prefectures.up.sql",
       "database/migrations/000003_create_prefectures.down.sql",
+
+      "docs/spec/prefecture/usecase.md",
     ],
   },
 
