@@ -54,9 +54,15 @@ QS の導入は **軽量 CQRS（Command Query Responsibility Segregation）** �
 - ページネーション付きの一覧取得
 - 全文検索やキーワード検索
 - 集計・グルーピングが必要なクエリ
-- Aggregate の完全な再構成が不要な読み取り
+- 自然な形が projection であり、full Aggregate として再構成するのが無駄になる読み取り
+  （重い Aggregate から数カラムだけ、または結合ビュー）
 
-逆に、ID による単一取得や件数カウントなどの単純なクエリは Repository に留めて構いません。
+逆に、**単一 Aggregate の単純な読み取りは Repository に留めます** — ID による取得、および
+Aggregate 自身の属性による単純なフィルタ・一覧・件数取得（`SELECT * FROM <table> ORDER BY ...`
+のような無フィルタの全件一覧を含む）。多数の行を返すことや、結果をレスポンス DTO へ写像すること
+それ自体では QS に移す理由にはなりません — Aggregate を横断するか、上記の検索複雑性のケースに
+該当する場合のみ QS を使います。[`docs/rules.md`](../../../../docs/rules.md) の
+§ "Repository / QueryService Rules" を参照してください。
 
 ## 役割
 
