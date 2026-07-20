@@ -1,8 +1,7 @@
 # Prefecture — Usecase Spec
 
-> `GET /v1/prefectures`（都道府県マスタ一覧）のための forward spec。実装は未着手（issue #560）。
-> 読み取り全件一覧は単一集約・無フィルタ・無ページングの simple list であり、QueryService ではなく
-> domain `prefecture.Repository` の `FindAll` に委譲する（ADR-0027 / `docs/rules.md` の Repository 境界に準拠。判断根拠は issue #560 論点1）。
+> 全件一覧は単一集約・無フィルタ・無ページングの simple list であり、QueryService ではなく
+> domain `prefecture.Repository` の `FindAll` に委譲する（ADR-0027 / `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 

@@ -1,9 +1,8 @@
 # Prefecture — Domain Spec
 
-> 既存実装（`internal/domain/prefecture`）を spec 化したもの。手書き実装から逆生成した現状仕様。
-> `user` usecase 等の依存集約として参照されるほか、`GET /v1/prefectures`（都道府県マスタ一覧）用の
-> 一覧取得 usecase を新設する（usecase spec: `usecase.md`。issue #560）。全件一覧は QueryService ではなく
-> Repository の simple list として `FindAll` を追加する（ADR-0027 / `docs/rules.md` の Repository 境界に準拠）。
+> `user` usecase 等の依存集約として参照される。`GET /v1/prefectures`（一覧取得 usecase は `usecase.md`）の
+> 全件一覧は QueryService ではなく Repository の simple list（`FindAll`）として提供する（ADR-0027 /
+> `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 
