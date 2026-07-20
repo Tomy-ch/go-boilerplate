@@ -456,3 +456,37 @@ func Test_repository_CountByActive(t *testing.T) {
 		})
 	})
 }
+
+func Test_fetchListUsersRows(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_repository_FindByActive（active=nil 経路）の実 DB テストでカバー")
+}
+
+func Test_fetchListUsersRowsByActive(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_repository_FindByActive（active=true 経路）の実 DB テストでカバー")
+}
+
+func Test_fetchListUsersRowsByDeleted(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_repository_FindByActive（active=false 経路）の実 DB テストでカバー")
+}
+
+func Test_rowToUser(t *testing.T) {
+	t.Parallel()
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の検証失敗はErrInternalへ正規化され元の分類は露出しない", func(t *testing.T) {
+			t.Parallel()
+
+			// ゼロ値の行は ID が nil のため domain 構築が失敗する。
+			// 成功経路は Test_repository_FindByID / Test_repository_FindByActive の実 DB テストでカバー。
+			entity, err := rowToUser(gen.Users{})
+			require.Error(t, err)
+			require.Nil(t, entity)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}

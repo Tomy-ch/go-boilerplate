@@ -1,14 +1,18 @@
 package driver
 
 import (
+	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 )
 
 func TestNewTransactionManager(t *testing.T) {
@@ -56,4 +60,62 @@ func TestNewTransactionManager(t *testing.T) {
 			assert.Equal(t, defaultTxBackoffMax, txm.backoff.Max)
 		})
 	})
+}
+
+func Test_normalizeTxResult(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilはnilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, normalizeTxResult(nil))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("PgErrorはapperrorへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			got := normalizeTxResult(&pgconn.PgError{Code: "23505"})
+			require.ErrorIs(t, got, apperror.ErrConflict)
+		})
+
+		t.Run("接続不可エラー(08xxx)はapperrorへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			got := normalizeTxResult(&pgconn.PgError{Code: "08006"})
+			require.ErrorIs(t, got, apperror.ErrUnavailable)
+		})
+
+		t.Run("context.Canceledはapperrorへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			got := normalizeTxResult(context.Canceled)
+			require.ErrorIs(t, got, apperror.ErrCanceled)
+		})
+
+		t.Run("context.DeadlineExceededはapperrorへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			got := normalizeTxResult(context.DeadlineExceeded)
+			require.ErrorIs(t, got, apperror.ErrUnavailable)
+		})
+
+		t.Run("fnが返した非DBエラーは正規化せず素通しする", func(t *testing.T) {
+			t.Parallel()
+			appErr := xerrors.Wrap(apperror.ErrValidation, "boom")
+			got := normalizeTxResult(appErr)
+			require.ErrorIs(t, got, apperror.ErrValidation)
+		})
+	})
+}
+
+func Test_txManager_doOnce(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_txManager_Do（driver_test パッケージ）の実 DB / mock テストでカバー")
+}
+
+func Test_txManager_rollback(t *testing.T) {
+	t.Parallel()
+	t.Skip("Test_txManager_Do の「rollback失敗時はエラーログを出力し元のエラーを返す」ケースでカバー")
 }

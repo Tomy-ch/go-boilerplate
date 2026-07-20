@@ -196,3 +196,40 @@ func Test_statsProvider_QueueStats(t *testing.T) {
 		})
 	})
 }
+
+func Test_parseApproxCount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("数値文字列をint64へ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int64(42), parseApproxCount("42"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("空文字は0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int64(0), parseApproxCount(""))
+		})
+
+		t.Run("parse不能な文字列は0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int64(0), parseApproxCount("not-a-number"))
+		})
+	})
+}
+
+func Test_statsProvider_queueDepth(t *testing.T) {
+	t.Parallel()
+	t.Skip(
+		"statsProvider.queueDepth は stats_test.go の Test_statsProvider_QueueStats（visible/not_visible/delayed のparseとGetQueueAttributesエラー分岐）で網羅されている",
+	)
+}

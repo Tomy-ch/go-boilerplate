@@ -142,3 +142,42 @@ func insertInvalidRole(ctx context.Context, t *testing.T, db driver.DBTX, userID
 	)
 	require.NoError(t, err)
 }
+
+func Test_rowToRole(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("有効な行からロールエンティティを再構築する", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			role, err := rowToRole(id, "admin", int16(1))
+			require.NoError(t, err)
+			require.NotNil(t, role)
+			assert.Equal(t, id, role.ID())
+			assert.Equal(t, "admin", role.Name())
+			assert.True(t, role.IsAdmin())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の検証失敗はErrInternalへ正規化され元の分類は露出しない", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			// code=0 は未知のロールコードのため domain 構築が失敗する。
+			role, err := rowToRole(id, "admin", int16(0))
+			require.Error(t, err)
+			require.Nil(t, role)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}
