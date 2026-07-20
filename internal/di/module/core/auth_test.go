@@ -182,12 +182,11 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("JWKS URLが未設定なら構築に失敗しERRORを記録する", func(t *testing.T) {
+		t.Run("issuerとJWKS URLの両方が未設定なら構築に失敗しERRORを記録する", func(t *testing.T) {
 			t.Parallel()
 
 			logger, logs := logging.NewObservedTestLogger(t)
 			p := newAuthParams(t, config.EnvLocal, logger)
-			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 

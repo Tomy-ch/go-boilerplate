@@ -134,7 +134,8 @@ func startJWTAuthServer(t *testing.T, key *rsa.PrivateKey) *Server {
 			ExpectedType: jwtAccessTokenType,
 			Clock:        system.NewClock(),
 		},
-		JWKSURL: "http://jwks.example.test/keys.json",
+		JWKSURL:          "http://jwks.example.test/keys.json",
+		AllowInsecureURL: true,
 	}, client)
 	require.NoError(t, err)
 

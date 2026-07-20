@@ -99,8 +99,12 @@ func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (aut
 			ExpectedType: accessTokenType,
 			Clock:        p.Clock,
 		},
-		JWKSURL:  p.AuthCfg.JWKSURL(),
-		CacheTTL: p.AuthCfg.JWKSCacheTTL(),
+		JWKSURL:            p.AuthCfg.JWKSURL(),
+		CacheTTL:           p.AuthCfg.JWKSCacheTTL(),
+		DiscoveryTTL:       p.AuthCfg.DiscoveryTTL(),
+		UnknownKidCooldown: p.AuthCfg.UnknownKidCooldown(),
+		// local は疑似 provider（http）へ接続するため非 https を許容。それ以外の環境では https を強制する。
+		AllowInsecureURL: p.AppCfg.Env() == config.EnvLocal,
 	}, p.HTTPClient)
 	if err != nil {
 		logger.Error(
