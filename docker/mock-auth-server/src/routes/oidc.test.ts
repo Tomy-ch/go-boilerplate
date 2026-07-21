@@ -1,9 +1,18 @@
 // oidc.test.ts は Authorization Code Flow + PKCE を app.request（プロセス内）で e2e 検証する。
-import { test } from "node:test";
+import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "../router.ts";
 import { s256Challenge } from "../pkce.ts";
-import { sessionStore } from "../store.ts";
+import { codeStore, sessionStore } from "../store.ts";
+import { loadConfig } from "../config.ts";
+
+const ISSUER = loadConfig().issuer;
+
+// 揮発ストアは module singleton のため、テスト間の状態汚染を防ぐ。
+beforeEach(() => {
+  codeStore.clear();
+  sessionStore.clear();
+});
 
 const CLIENT_ID = "go-boilerplate-client";
 const REDIRECT_URI = "http://localhost:3000/api/auth/callback";
@@ -66,6 +75,7 @@ async function issueTokens(
     client_id: CLIENT_ID,
     code_verifier: VERIFIER,
   });
+  assert.equal(res.status, 200, `token endpoint returned ${res.status}`);
   return (await res.json()) as { access_token: string; id_token: string };
 }
 
@@ -84,18 +94,28 @@ test("正常系: authorize→token で access/id token を発行し claim が正
     code_verifier: VERIFIER,
   });
   assert.equal(res.status, 200);
-  const body = (await res.json()) as Record<string, string>;
+  const body = (await res.json()) as {
+    token_type: string;
+    access_token: string;
+    id_token: string;
+    expires_in: number;
+    scope: string;
+  };
   assert.equal(body.token_type, "Bearer");
-  assert.ok(body.access_token);
-  assert.ok(body.id_token);
+  assert.equal(typeof body.expires_in, "number");
+  assert.equal(body.scope, "openid profile");
 
   const [atHeader, atClaims] = body.access_token.split(".");
   assert.equal(decodeJwtPart(atHeader).typ, "at+jwt");
   assert.equal(decodeJwtPart(atHeader).kid, "mock-key-1");
+  assert.equal(decodeJwtPart(atClaims).sub, "user-john-doe");
+  assert.equal(decodeJwtPart(atClaims).iss, ISSUER);
   assert.equal(decodeJwtPart(atClaims).aud, "go-boilerplate-api");
   assert.equal(decodeJwtPart(atClaims).token_use, "access");
 
   const idClaims = decodeJwtPart(body.id_token.split(".")[1]);
+  assert.equal(idClaims.sub, "user-john-doe");
+  assert.equal(idClaims.iss, ISSUER);
   assert.equal(idClaims.aud, CLIENT_ID);
   assert.equal(idClaims.token_use, "id");
   assert.equal(idClaims.nonce, "nonce-123");
@@ -238,7 +258,6 @@ test("正常系: logout は post_logout_redirect_uri 未指定で 200 を返す"
 });
 
 test("正常系: bypass/session が session を作成し、logout(id_token_hint) が破棄する", async () => {
-  sessionStore.clear();
   const app = createApp();
   const created = await app.request("/bypass/session", {
     method: "POST",
@@ -251,4 +270,115 @@ test("正常系: bypass/session が session を作成し、logout(id_token_hint)
   const { id_token } = await issueTokens(app);
   await logoutRequest(app, { id_token_hint: id_token });
   assert.equal(sessionStore.size, 0);
+});
+
+// bypassToken は /bypass/token で指定 subject / profile の access token を取得する。
+async function bypassToken(
+  app: ReturnType<typeof createApp>,
+  subject: string,
+  profile: string,
+): Promise<string> {
+  const res = await app.request("/bypass/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subject, profile }),
+  });
+  assert.equal(res.status, 200);
+  return ((await res.json()) as { access_token: string }).access_token;
+}
+
+test("異常系: authorize は response_type!=code を 302 error redirect で拒否する", async () => {
+  const app = createApp();
+  const res = await app.request(
+    authorizePath({
+      response_type: "token",
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      scope: "openid",
+      code_challenge: CHALLENGE,
+      code_challenge_method: "S256",
+      state: "st",
+    }),
+  );
+  assert.equal(res.status, 302);
+  const location = new URL(res.headers.get("location") ?? "");
+  assert.equal(location.searchParams.get("error"), "unsupported_response_type");
+  assert.equal(location.searchParams.get("state"), "st");
+});
+
+test("異常系: authorize は scope 欠如を 302 error redirect で拒否する", async () => {
+  const app = createApp();
+  const res = await app.request(
+    authorizePath({
+      response_type: "code",
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      code_challenge: CHALLENGE,
+      code_challenge_method: "S256",
+    }),
+  );
+  assert.equal(res.status, 302);
+  assert.equal(new URL(res.headers.get("location") ?? "").searchParams.get("error"), "invalid_request");
+});
+
+test("異常系: authorize は code_challenge 欠如を 302 error redirect で拒否する", async () => {
+  const app = createApp();
+  const res = await app.request(
+    authorizePath({
+      response_type: "code",
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      scope: "openid",
+      code_challenge_method: "S256",
+    }),
+  );
+  assert.equal(res.status, 302);
+  assert.equal(new URL(res.headers.get("location") ?? "").searchParams.get("error"), "invalid_request");
+});
+
+test("異常系: authorize は許可外 scope を 302 invalid_scope で拒否する", async () => {
+  const app = createApp();
+  const res = await app.request(
+    authorizePath({
+      response_type: "code",
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      scope: "openid superuser",
+      code_challenge: CHALLENGE,
+      code_challenge_method: "S256",
+    }),
+  );
+  assert.equal(res.status, 302);
+  assert.equal(new URL(res.headers.get("location") ?? "").searchParams.get("error"), "invalid_scope");
+});
+
+test("異常系: token は authorization_code 以外の grant_type を 400 で拒否する", async () => {
+  const app = createApp();
+  const location = await issueCode(app);
+  const res = await tokenRequest(app, {
+    grant_type: "client_credentials",
+    code: location.searchParams.get("code") ?? "",
+    redirect_uri: REDIRECT_URI,
+    client_id: CLIENT_ID,
+    code_verifier: VERIFIER,
+  });
+  assert.equal(res.status, 400);
+  assert.equal(((await res.json()) as Record<string, string>).error, "unsupported_grant_type");
+});
+
+test("正常系: userinfo は fixture 外 subject に sub のみ返す", async () => {
+  const app = createApp();
+  const token = await bypassToken(app, "unknown-subject-xyz", "valid");
+  const res = await app.request("/oidc/userinfo", { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(res.status, 200);
+  const info = (await res.json()) as Record<string, unknown>;
+  assert.deepEqual(Object.keys(info), ["sub"]);
+  assert.equal(info.sub, "unknown-subject-xyz");
+});
+
+test("異常系: userinfo は期限切れ access token を 401 で拒否する", async () => {
+  const app = createApp();
+  const token = await bypassToken(app, "user-john-doe", "expired");
+  const res = await app.request("/oidc/userinfo", { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(res.status, 401);
 });

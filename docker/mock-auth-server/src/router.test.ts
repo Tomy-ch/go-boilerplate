@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "./router.ts";
+import { loadConfig } from "./config.ts";
 
 test("GET /health は 200 と {status:ok} を返す", async () => {
   const app = createApp();
@@ -15,9 +16,10 @@ test("GET /.well-known/openid-configuration は issuer/jwks_uri を不変で返�
   const res = await app.request("/.well-known/openid-configuration");
   assert.equal(res.status, 200);
   const doc = (await res.json()) as Record<string, unknown>;
-  assert.equal(doc.issuer, "http://localhost:4000");
-  assert.equal(doc.jwks_uri, "http://localhost:4000/.well-known/jwks.json");
-  assert.equal(doc.authorization_endpoint, "http://localhost:4000/oidc/authorize");
+  const cfg = loadConfig();
+  assert.equal(doc.issuer, cfg.issuer);
+  assert.equal(doc.jwks_uri, `${cfg.issuer}/.well-known/jwks.json`);
+  assert.equal(doc.authorization_endpoint, `${cfg.issuer}/oidc/authorize`);
   assert.deepEqual(doc.token_endpoint_auth_methods_supported, ["none"]);
 });
 
@@ -57,8 +59,9 @@ test("GET /admin/users は固定 User 一覧を返す", async () => {
   const app = createApp();
   const res = await app.request("/admin/users");
   assert.equal(res.status, 200);
-  const body = (await res.json()) as { users: unknown[] };
-  assert.ok(Array.isArray(body.users));
+  const body = (await res.json()) as { users: Array<{ subject: string }> };
+  assert.ok(body.users.length > 0);
+  assert.equal(typeof body.users[0].subject, "string");
 });
 
 test("dev-gate 無効時は /bypass/token ・ /admin/users を 404 で秘匿する", async () => {
