@@ -55,11 +55,35 @@ func jwksPublicJSON(t *testing.T, pub *rsa.PublicKey) []byte {
 	return raw
 }
 
-// signTokenWithKID は kid ヘッダを付けて RS256 で署名したトークン文字列を返します。
-func signTokenWithKID(t *testing.T, key *rsa.PrivateKey, kid string, claims jwtlib.MapClaims) string {
+// signTokenWithTestKID は testKID を kid ヘッダに付けて RS256 で署名したトークン文字列を返します。
+// jwksWithKey は、指定 kid の RSA 公開鍵 1 本の JWKS(JSON) を組み立てます。
+func jwksWithKey(t *testing.T, kid string, pub *rsa.PublicKey) []byte {
+	t.Helper()
+	set := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: pub, KeyID: kid, Use: "sig", Algorithm: "RS256"}}}
+	raw, err := json.Marshal(set)
+	require.NoError(t, err)
+	return raw
+}
+
+// jwksClientReturning は、Do 呼び出しごとに bodies を順に返す httpclient.Client です（末尾以降は最後を繰り返す）。
+func jwksClientReturning(t *testing.T, bodies ...[]byte) httpclient.Client {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	client := mock_httpclient.NewMockClient(ctrl)
+	call := 0
+	client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(context.Context, *httpclient.Request) (*httpclient.Response, error) {
+			b := bodies[min(call, len(bodies)-1)]
+			call++
+			return &httpclient.Response{StatusCode: 200, Body: b}, nil
+		}).AnyTimes()
+	return client
+}
+
+func signTokenWithTestKID(t *testing.T, key *rsa.PrivateKey, claims jwtlib.MapClaims) string {
 	t.Helper()
 	token := jwtlib.NewWithClaims(jwtlib.SigningMethodRS256, claims)
-	token.Header["kid"] = kid
+	token.Header["kid"] = testKID
 
 	signed, err := token.SignedString(key)
 	require.NoError(t, err)
@@ -102,7 +126,6 @@ func newJWKSAuthenticator(t *testing.T, jwks []byte) authbd.Authenticator {
 func TestNewDownstreamProfile(t *testing.T) {
 	t.Parallel()
 
-	// env 非依存の既定プロファイルを検証する（private 許可の env→bool 解決は DI 側 Test_allowPrivateNetworkForJWKSEnv）。
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -235,6 +258,18 @@ func TestParseJWKSKeys(t *testing.T) {
 			assert.Contains(t, keys, testKID)
 			assert.NotContains(t, keys, "ps-key")
 		})
+
+		t.Run("use / alg を宣言しない鍵も採用される", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			set := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: &key.PublicKey, KeyID: testKID}}}
+			raw, err := json.Marshal(set)
+			require.NoError(t, err)
+
+			keys, err := parseJWKSKeys(raw, testAllowedAlgs)
+			require.NoError(t, err)
+			assert.Contains(t, keys, testKID)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -281,7 +316,47 @@ func TestNewJWKS(t *testing.T) {
 			key := newRSAKey(t)
 			a := newJWKSAuthenticator(t, jwksPublicJSON(t, &key.PublicKey))
 
-			token := signTokenWithKID(t, key, testKID, validClaims())
+			token := signTokenWithTestKID(t, key, validClaims())
+			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
+			require.NoError(t, err)
+			assert.Equal(t, testSubject, authn.Subject())
+		})
+
+		t.Run("JWKSParams の AllowedAlgs / UnknownKidCooldown が resolver へ反映される", func(t *testing.T) {
+			t.Parallel()
+			a, err := NewJWKS(JWKSParams{
+				Params: Params{
+					Issuer:      testIssuer,
+					Audience:    testAudience,
+					AllowedAlgs: []string{"PS256"},
+					Clock:       testkit.NewMockClock(t, fixedNow),
+				},
+				JWKSURL:            "https://idp.example.test/keys.json",
+				UnknownKidCooldown: 30 * time.Second,
+			}, stubJWKSClient(t, nil))
+			require.NoError(t, err)
+
+			authn, ok := a.(*authenticator)
+			require.True(t, ok)
+			r, ok := authn.keyResolver.(*jwksResolver)
+			require.True(t, ok)
+			assert.Equal(t, []string{"PS256"}, r.allowedAlgs)
+			assert.Equal(t, 30*time.Second, r.cooldown)
+		})
+
+		t.Run("JWKSURL 未指定でも discovery 経由で鍵解決しトークンを検証できる", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			client := jwksClientReturning(t,
+				discoveryDoc(t, testIssuer, testIssuer+"/keys.json"),
+				jwksPublicJSON(t, &key.PublicKey),
+			)
+			a, err := NewJWKS(JWKSParams{
+				Params: Params{Issuer: testIssuer, Audience: testAudience, Clock: testkit.NewMockClock(t, fixedNow)},
+			}, client)
+			require.NoError(t, err)
+
+			token := signTokenWithTestKID(t, key, validClaims())
 			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
 			require.NoError(t, err)
 			assert.Equal(t, testSubject, authn.Subject())
@@ -318,13 +393,28 @@ func TestNewJWKS(t *testing.T) {
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
 		})
 
-		t.Run("JWKS に存在しない鍵で署名したトークンは拒否される", func(t *testing.T) {
+		t.Run("discovery が失敗する場合は無効トークンへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			// discovery 応答の issuer 不一致 → 解決失敗。
+			client := jwksClientReturning(t, discoveryDoc(t, "https://evil.example.test", testIssuer+"/keys.json"))
+			a, err := NewJWKS(JWKSParams{
+				Params: Params{Issuer: testIssuer, Audience: testAudience, Clock: testkit.NewMockClock(t, fixedNow)},
+			}, client)
+			require.NoError(t, err)
+
+			token := signTokenWithTestKID(t, key, validClaims())
+			_, err = a.Authenticate(context.Background(), newCredential(t, token))
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+		})
+
+		t.Run("kid は一致するが署名鍵が異なるトークンは拒否される", func(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
 			otherKey := newRSAKey(t)
 			a := newJWKSAuthenticator(t, jwksPublicJSON(t, &key.PublicKey))
 
-			token := signTokenWithKID(t, otherKey, testKID, validClaims())
+			token := signTokenWithTestKID(t, otherKey, validClaims())
 			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
 			assert.Nil(t, authn)
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
@@ -351,11 +441,11 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 
 			k1, err := r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err)
-			assert.NotNil(t, k1)
+			assert.Equal(t, &key.PublicKey, k1)
 
 			k2, err := r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err)
-			assert.NotNil(t, k2)
+			assert.Equal(t, &key.PublicKey, k2)
 		})
 
 		t.Run("キャッシュ TTL 経過後は再取得する", func(t *testing.T) {
@@ -376,6 +466,28 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			clk.advance(time.Hour + time.Minute)
 			_, err = r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err)
+		})
+
+		t.Run("鮮度内でも未知 kid は cooldown 経過後に再取得しローテ後の鍵を解決する", func(t *testing.T) {
+			t.Parallel()
+			keyA := newRSAKey(t)
+			keyB := newRSAKey(t)
+			clk := newFakeClock(fixedNow)
+			r := newJWKSResolver(
+				jwksClientReturning(t, jwksWithKey(t, testKID, &keyA.PublicKey), jwksWithKey(t, "kid-2", &keyB.PublicKey)),
+				staticURL(jwksTestURL),
+				time.Hour,
+				clk,
+			)
+
+			kA, err := r.ResolveKey(context.Background(), testKID)
+			require.NoError(t, err)
+			assert.Equal(t, &keyA.PublicKey, kA)
+
+			clk.advance(jwksRefreshCooldown + time.Second)
+			kB, err := r.ResolveKey(context.Background(), "kid-2")
+			require.NoError(t, err)
+			assert.Equal(t, &keyB.PublicKey, kB)
 		})
 	})
 
@@ -429,7 +541,38 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			clk.advance(jwksRefreshCooldown + time.Second)
 			k, err2 := r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err2)
-			assert.NotNil(t, k)
+			assert.Equal(t, &key.PublicKey, k)
+		})
+
+		t.Run("再取得に成功しても要求 kid が JWKS に無い場合は拒否する", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := newJWKSResolver(
+				stubJWKSClient(t, jwksWithKey(t, testKID, &key.PublicKey)),
+				staticURL(jwksTestURL),
+				time.Hour,
+				newFakeClock(fixedNow),
+			)
+
+			_, err := r.ResolveKey(context.Background(), "absent-kid")
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+		})
+
+		t.Run("直近取得が成功なら cooldown 中の未知 kid は再取得せず拒否する", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			// Times(1): 初回取得のみ。cooldown 中の未知 kid は再取得しない。
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+				Return(&httpclient.Response{StatusCode: 200, Body: jwksWithKey(t, testKID, &key.PublicKey)}, nil).
+				Times(1)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, newFakeClock(fixedNow))
+
+			_, err := r.ResolveKey(context.Background(), testKID)
+			require.NoError(t, err)
+			_, err = r.ResolveKey(context.Background(), "unknown-kid")
+			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 		})
 	})
 }
@@ -520,7 +663,12 @@ func Test_jwksResolver_refresh(t *testing.T) {
 		t.Run("取得成功時は keys / fetchedAt を更新する", func(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
-			r := newJWKSResolver(stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)), staticURL(jwksTestURL), time.Hour, newFakeClock(fixedNow))
+			r := newJWKSResolver(
+				stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)),
+				staticURL(jwksTestURL),
+				time.Hour,
+				newFakeClock(fixedNow),
+			)
 
 			require.NoError(t, r.refresh(context.Background()))
 			assert.Equal(t, fixedNow, r.fetchedAt)
@@ -559,7 +707,7 @@ func Test_jwksResolver_refresh(t *testing.T) {
 			key := newRSAKey(t)
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
-			// 1 回目は ctx キャンセル(apperror.ErrCanceled)、2 回目は成功。キャンセルは lastErr/lastAttempt を汚染しないため cooldown 内でも 2 回目が走る。
+			// 1 回目 ctx キャンセル → 2 回目成功の順で応答する。
 			firstFetch := client.EXPECT().Do(gomock.Any(), gomock.Any()).
 				Return(nil, xerrors.Wrap(apperror.ErrCanceled, "canceled")).Times(1)
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).
@@ -582,7 +730,12 @@ func Test_jwksResolver_fetch(t *testing.T) {
 		t.Run("取得したレスポンスボディを kid→公開鍵へパースする", func(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
-			r := newJWKSResolver(stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)), staticURL(jwksTestURL), time.Hour, newFakeClock(fixedNow))
+			r := newJWKSResolver(
+				stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)),
+				staticURL(jwksTestURL),
+				time.Hour,
+				newFakeClock(fixedNow),
+			)
 
 			keys, err := r.fetch(context.Background())
 			require.NoError(t, err)

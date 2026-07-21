@@ -76,7 +76,7 @@ func Test_provideAuthenticator(t *testing.T) {
 		t.Helper()
 		logger := logging.NewTestLogger(t)
 		authenticator, err := provideAuthenticator(newAuthParams(t, env, logger))
-		require.Error(t, err)
+		require.ErrorContains(t, err, env)
 		assert.Nil(t, authenticator)
 	}
 
@@ -177,6 +177,21 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 			assert.NotNil(t, authenticator)
 			assert.Len(t, logs.FilterMessage("JWKS JWT authenticator wired").All(), 1)
 		})
+
+		t.Run("local環境ではhttpのJWKS URLでも構築できる", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+			p := newAuthParams(t, config.EnvLocal, logger)
+			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
+			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
+			p.AuthCfg.SetAuthJWKSURL(t, "http://issuer.example.com/.well-known/jwks.json")
+			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
+
+			authenticator, err := provideJWKSAuthenticator(p, logger)
+			require.NoError(t, err)
+			assert.NotNil(t, authenticator)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -194,6 +209,21 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 			require.Error(t, err)
 			assert.Nil(t, authenticator)
 			assert.Len(t, logs.FilterMessage("Failed to wire JWKS JWT authenticator").All(), 1)
+		})
+
+		t.Run("development環境ではhttpのJWKS URLは設定エラーになる", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+			p := newAuthParams(t, config.EnvDevelopment, logger)
+			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
+			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
+			p.AuthCfg.SetAuthJWKSURL(t, "http://issuer.example.com/.well-known/jwks.json")
+			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
+
+			authenticator, err := provideJWKSAuthenticator(p, logger)
+			require.Error(t, err)
+			assert.Nil(t, authenticator)
 		})
 	})
 }

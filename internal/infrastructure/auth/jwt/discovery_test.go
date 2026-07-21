@@ -77,22 +77,22 @@ func Test_discoveryResolver_jwksURL(t *testing.T) {
 			assert.Equal(t, discoveryJWKSURI, u2)
 		})
 
-		t.Run("TTL 経過後は discovery を再取得する", func(t *testing.T) {
+		t.Run("TTL 経過後は discovery を再取得し jwks_uri を更新する", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			client := mock_httpclient.NewMockClient(ctrl)
-			client.EXPECT().Do(gomock.Any(), gomock.Any()).
-				Return(&httpclient.Response{StatusCode: 200, Body: discoveryDoc(t, discoveryIssuer, discoveryJWKSURI)}, nil).
-				Times(2)
 			clk := newFakeClock(fixedNow)
-			d := newHTTPSDiscovery(client, clk)
+			d := newHTTPSDiscovery(jwksClientReturning(t,
+				discoveryDoc(t, discoveryIssuer, discoveryIssuer+"/keys1.json"),
+				discoveryDoc(t, discoveryIssuer, discoveryIssuer+"/keys2.json"),
+			), clk)
 
-			_, err := d.jwksURL(context.Background())
+			u1, err := d.jwksURL(context.Background())
 			require.NoError(t, err)
+			assert.Equal(t, discoveryIssuer+"/keys1.json", u1)
 
 			clk.advance(time.Hour + time.Minute)
-			_, err = d.jwksURL(context.Background())
+			u2, err := d.jwksURL(context.Background())
 			require.NoError(t, err)
+			assert.Equal(t, discoveryIssuer+"/keys2.json", u2)
 		})
 	})
 }
@@ -147,6 +147,7 @@ func Test_discoveryResolver_refresh(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, discoveryJWKSURI, u)
 			assert.Equal(t, fixedNow, d.fetchedAt)
+			assert.Equal(t, discoveryJWKSURI, d.jwksURI)
 		})
 	})
 
@@ -188,7 +189,10 @@ func Test_discoveryResolver_fetch(t *testing.T) {
 
 		t.Run("issuer 不一致は拒否する", func(t *testing.T) {
 			t.Parallel()
-			d := newHTTPSDiscovery(stubJWKSClient(t, discoveryDoc(t, "https://evil.example.test", discoveryJWKSURI)), newFakeClock(fixedNow))
+			d := newHTTPSDiscovery(
+				stubJWKSClient(t, discoveryDoc(t, "https://evil.example.test", discoveryJWKSURI)),
+				newFakeClock(fixedNow),
+			)
 
 			_, err := d.fetch(context.Background())
 			require.ErrorIs(t, err, errDiscoveryIssuerMismatch)
@@ -204,10 +208,24 @@ func Test_discoveryResolver_fetch(t *testing.T) {
 
 		t.Run("jwks_uri が issuer と別オリジンなら拒否する", func(t *testing.T) {
 			t.Parallel()
-			d := newHTTPSDiscovery(stubJWKSClient(t, discoveryDoc(t, discoveryIssuer, "https://cdn.example.test/keys.json")), newFakeClock(fixedNow))
+			d := newHTTPSDiscovery(
+				stubJWKSClient(t, discoveryDoc(t, discoveryIssuer, "https://cdn.example.test/keys.json")),
+				newFakeClock(fixedNow),
+			)
 
 			_, err := d.fetch(context.Background())
 			require.ErrorIs(t, err, errDiscoveryUntrustedJWKS)
+		})
+
+		t.Run("discovery 応答の jwks_uri が http なら拒否する", func(t *testing.T) {
+			t.Parallel()
+			d := newHTTPSDiscovery(
+				stubJWKSClient(t, discoveryDoc(t, discoveryIssuer, "http://issuer.example.test/keys.json")),
+				newFakeClock(fixedNow),
+			)
+
+			_, err := d.fetch(context.Background())
+			require.ErrorIs(t, err, errDiscoveryInsecureURL)
 		})
 
 		t.Run("JSON が不正な場合は拒否する", func(t *testing.T) {
@@ -267,6 +285,18 @@ func Test_discoveryResolver_requireSameOrigin(t *testing.T) {
 			t.Parallel()
 			d := newHTTPSDiscovery(stubJWKSClient(t, nil), newFakeClock(fixedNow))
 			require.ErrorIs(t, d.requireSameOrigin("https://cdn.example.test/keys.json"), errDiscoveryUntrustedJWKS)
+		})
+
+		t.Run("同一ホストでもポートが異なれば拒否する", func(t *testing.T) {
+			t.Parallel()
+			d := newHTTPSDiscovery(stubJWKSClient(t, nil), newFakeClock(fixedNow))
+			require.ErrorIs(t, d.requireSameOrigin("https://issuer.example.test:8443/keys.json"), errDiscoveryUntrustedJWKS)
+		})
+
+		t.Run("scheme が異なれば拒否する", func(t *testing.T) {
+			t.Parallel()
+			d := newHTTPSDiscovery(stubJWKSClient(t, nil), newFakeClock(fixedNow))
+			require.ErrorIs(t, d.requireSameOrigin("http://issuer.example.test/keys.json"), errDiscoveryUntrustedJWKS)
 		})
 	})
 }

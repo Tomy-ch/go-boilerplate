@@ -571,14 +571,17 @@ func Test_buildJWKSURLProvider(t *testing.T) {
 			assert.Equal(t, "https://idp.example.test/keys.json", got)
 		})
 
-		t.Run("JWKSURL 未指定でも issuer があれば discovery 供給関数を返す", func(t *testing.T) {
+		t.Run("JWKSURL 未指定なら issuer からの discovery で jwks_uri を返す", func(t *testing.T) {
 			t.Parallel()
+			client := jwksClientReturning(t, discoveryDoc(t, testIssuer, testIssuer+"/keys.json"))
 			fn, err := buildJWKSURLProvider(JWKSParams{
-				Params:           Params{Issuer: testIssuer, Clock: testkit.NewMockClock(t, fixedNow)},
-				AllowInsecureURL: true,
-			}, stubJWKSClient(t, nil))
+				Params: Params{Issuer: testIssuer, Clock: testkit.NewMockClock(t, fixedNow)},
+			}, client)
 			require.NoError(t, err)
-			assert.NotNil(t, fn)
+
+			got, err := fn(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, testIssuer+"/keys.json", got)
 		})
 	})
 
@@ -606,6 +609,24 @@ func Test_buildJWKSURLProvider(t *testing.T) {
 			}, stubJWKSClient(t, nil))
 			assert.Nil(t, fn)
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+		})
+	})
+}
+
+func Test_fixedKeyResolver_ResolveKey(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("kid によらず保持する固定公開鍵を返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := fixedKeyResolver{key: &key.PublicKey}
+
+			got, err := r.ResolveKey(context.Background(), "any-kid")
+			require.NoError(t, err)
+			assert.Equal(t, &key.PublicKey, got)
 		})
 	})
 }

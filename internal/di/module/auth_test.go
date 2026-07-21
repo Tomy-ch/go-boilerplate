@@ -53,3 +53,23 @@ func Test_allowPrivateNetworkForJWKSEnv(t *testing.T) {
 		})
 	})
 }
+
+func Test_provideJWKSDownstreamProfile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非本番 env では private network を許可する profile を構築する", func(t *testing.T) {
+			t.Parallel()
+			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+			assert.True(t, provideJWKSDownstreamProfile(appCfg).Profile.AllowPrivateNetwork)
+		})
+
+		t.Run("それ以外の env では private network を許可しない profile を構築する", func(t *testing.T) {
+			t.Parallel()
+			appCfg := config.NewApplicationConfig(&config.Config{})
+			assert.False(t, provideJWKSDownstreamProfile(appCfg).Profile.AllowPrivateNetwork)
+		})
+	})
+}
