@@ -177,6 +177,19 @@ Infrastructure コンポーネントは
   自然な形（重い Aggregate・結合・ページング）であって、API が DTO を返すという事実そのものではない。
 - Repository の読み取りは **ID 取得に限定されない**：Aggregate 自身の属性による単純なフィルタ・一覧・件数取得
   （無フィルタの全件一覧を含む）は Repository に属する。
+- **Repository / QueryService の判別はストレージ非依存。** 基準はエンジン（RDB か NoSQL か）でも手法
+  （全文検索か）でもなく、*読み取り先が何か*：Aggregate 自身の正本（system of record）の状態で full Aggregate を
+  再構成できるなら Repository、正本から派生した写像 / read model（検索インデックス・別の検索ストア・非正規化 /
+  生成された検索列・Aggregate 横断の JOIN view）で Aggregate を再構成できないなら QueryService。document ストアを
+  Aggregate の正本として使う場合は全文検索を備えていても Repository、その正本から構築した Elasticsearch
+  インデックスは派生写像なので QueryService。
+- **「keyword / 全文検索 = QueryService」は典型例であって規則ではない。** Aggregate *自身* の列への素の `ILIKE`
+  は単一 Aggregate の Repository フィルタ。全文検索が QueryService になるのは、派生した検索射影（検索インデックス・
+  検索ストア・非正規化 / 生成された検索列）を読む場合に限る。
+- **別 Aggregate のフィールド解決は JOIN ではなく Usecase で行う。** 一覧に関連 Aggregate のデータ（例: 名称）を
+  付与するには、その Aggregate 自身の Repository（`FindByIDs`）で一括取得し Usecase 層でキー突合する。各読み取りは
+  単一 Aggregate の Repository read のまま保つ。平坦化した view を返す Aggregate 横断 SQL JOIN は Repository read
+  ではなく QueryService の read model。
 
 ## DTO / 型境界ルール
 
@@ -193,6 +206,22 @@ Infrastructure コンポーネントは
 
 - sqlc の生成型を Usecase / Domain に渡してはいけない
 - 必ず Domain Entity または DTO に変換する
+
+## パッケージ / ディレクトリ命名ルール
+
+- Go のパッケージ識別子は小文字 1 語で **アンダースコア禁止**（staticcheck ST1003）。
+- 多語アグリゲートは次の 2 形式のいずれか：
+  - **コンテキストによるネスト** — 1 つの境界づけられたコンテキストが複数のサブアグリゲート / マスタを
+    束ねる場合、コンテキストディレクトリ配下にネストする：`internal/<layer>/<context>/<sub>/`（package `<sub>`）。
+    例: `internal/domain/product/category`（package `category`）、`internal/domain/product/status`（package `status`）。
+  - **連結** — 束ねるコンテキストを持たない単独の多語アグリゲートは 1 語に連結する
+    （例: `useridentity`、`exchangerate`）。既存の連結パッケージは現状維持とし、コンテキストに 2 つ目の
+    サブアグリゲートが加わった時点でネストを優先する。
+- データベース DML と sqlc 生成物のディレクトリは、Go パッケージ構成とは独立に、**テーブル名準拠の snake_case**
+  を用いる（`product_category`、`user_identity`）。
+- Controller ハンドラのディレクトリは Go パッケージ構成ではなく **HTTP リソース（route）名**に一致させる
+  （`product-categories`、`prefectures`）。
+- 型名は同名パッケージ内でもアグリゲート名詞を保持してよい（`category.Category`、`prefecture.Prefecture`）。
 
 ## レイヤ責務ルール
 
