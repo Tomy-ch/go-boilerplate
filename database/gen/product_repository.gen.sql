@@ -6,15 +6,15 @@
 SELECT sqlc.embed(p)
 FROM products AS p
 WHERE p.published_at IS NOT NULL
-    AND (sqlc.narg('category_id')::uuid IS NULL OR p.category_id = sqlc.narg('category_id'))
-    AND (sqlc.narg('status_id')::uuid IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+    AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
-        sqlc.narg('keyword')::text IS NULL
+        sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
     )
     AND (
-        NOT sqlc.arg('has_after')::boolean
+        NOT sqlc.arg('has_after')::BOOLEAN
         OR p.published_at < sqlc.narg('after_published_at')
         OR (p.published_at = sqlc.narg('after_published_at') AND p.id < sqlc.narg('after_id'))
     )
@@ -27,15 +27,15 @@ LIMIT sqlc.arg('limit_param');
 SELECT sqlc.embed(p)
 FROM products AS p
 WHERE p.published_at IS NOT NULL
-    AND (sqlc.narg('category_id')::uuid IS NULL OR p.category_id = sqlc.narg('category_id'))
-    AND (sqlc.narg('status_id')::uuid IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+    AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
-        sqlc.narg('keyword')::text IS NULL
+        sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
     )
     AND (
-        NOT sqlc.arg('has_after')::boolean
+        NOT sqlc.arg('has_after')::BOOLEAN
         OR p.published_at > sqlc.narg('after_published_at')
         OR (p.published_at = sqlc.narg('after_published_at') AND p.id > sqlc.narg('after_id'))
     )

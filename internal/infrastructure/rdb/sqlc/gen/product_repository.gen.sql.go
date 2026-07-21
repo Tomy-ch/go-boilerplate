@@ -16,15 +16,15 @@ const listPublishedProductsAsc = `-- name: ListPublishedProductsAsc :many
 SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 FROM products AS p
 WHERE p.published_at IS NOT NULL
-    AND ($1::uuid IS NULL OR p.category_id = $1)
-    AND ($2::uuid IS NULL OR p.status_id = $2)
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
-        $3::text IS NULL
+        $3::TEXT IS NULL
         OR p.name ILIKE '%' || $3 || '%'
         OR p.description ILIKE '%' || $3 || '%'
     )
     AND (
-        NOT $4::boolean
+        NOT $4::BOOLEAN
         OR p.published_at > $5
         OR (p.published_at = $5 AND p.id > $6)
     )
@@ -52,15 +52,15 @@ type ListPublishedProductsAscRow struct {
 //	SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 //	FROM products AS p
 //	WHERE p.published_at IS NOT NULL
-//	    AND ($1::uuid IS NULL OR p.category_id = $1)
-//	    AND ($2::uuid IS NULL OR p.status_id = $2)
+//	    AND ($1::UUID IS NULL OR p.category_id = $1)
+//	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
-//	        $3::text IS NULL
+//	        $3::TEXT IS NULL
 //	        OR p.name ILIKE '%' || $3 || '%'
 //	        OR p.description ILIKE '%' || $3 || '%'
 //	    )
 //	    AND (
-//	        NOT $4::boolean
+//	        NOT $4::BOOLEAN
 //	        OR p.published_at > $5
 //	        OR (p.published_at = $5 AND p.id > $6)
 //	    )
@@ -110,15 +110,15 @@ const listPublishedProductsDesc = `-- name: ListPublishedProductsDesc :many
 SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 FROM products AS p
 WHERE p.published_at IS NOT NULL
-    AND ($1::uuid IS NULL OR p.category_id = $1)
-    AND ($2::uuid IS NULL OR p.status_id = $2)
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
-        $3::text IS NULL
+        $3::TEXT IS NULL
         OR p.name ILIKE '%' || $3 || '%'
         OR p.description ILIKE '%' || $3 || '%'
     )
     AND (
-        NOT $4::boolean
+        NOT $4::BOOLEAN
         OR p.published_at < $5
         OR (p.published_at = $5 AND p.id < $6)
     )
@@ -147,15 +147,15 @@ type ListPublishedProductsDescRow struct {
 //	SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 //	FROM products AS p
 //	WHERE p.published_at IS NOT NULL
-//	    AND ($1::uuid IS NULL OR p.category_id = $1)
-//	    AND ($2::uuid IS NULL OR p.status_id = $2)
+//	    AND ($1::UUID IS NULL OR p.category_id = $1)
+//	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
-//	        $3::text IS NULL
+//	        $3::TEXT IS NULL
 //	        OR p.name ILIKE '%' || $3 || '%'
 //	        OR p.description ILIKE '%' || $3 || '%'
 //	    )
 //	    AND (
-//	        NOT $4::boolean
+//	        NOT $4::BOOLEAN
 //	        OR p.published_at < $5
 //	        OR (p.published_at = $5 AND p.id < $6)
 //	    )
