@@ -1,9 +1,8 @@
 package module
 
 import (
-	userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user" // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"     // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/user"           // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture" // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/user"       // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
 	outboxsq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox"
@@ -28,10 +27,9 @@ func persistenceModule() fx.Option {
 		),
 		fx.Module("query_service",
 			fx.Provide(
-				// sample-api:begin
-				// サンプルのクエリサービス
-				userqs.New,
-				// sample-api:end
+			// sample-api:begin
+			// クエリサービスは、このサンプルでは用意しませんが、必要に応じてここに追加します。
+			// sample-api:end
 			),
 		),
 		fx.Module("command_service",
