@@ -411,3 +411,94 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 		})
 	})
 }
+
+func Test_usecase_toSearchResults(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	prefectureID := uuid.NewTestFromSalt(t, "to_search_results_prefecture")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全ユーザーの都道府県が解決できる場合、検索結果のリストが返る", func(t *testing.T) {
+			t.Parallel()
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+			prefectureDomain, err := prefecture.New(prefectureID, "Tokyo", 1)
+			require.NoError(t, err)
+
+			ctrl := gomock.NewController(t)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			u := &usecase{tracer: lt, pftRepo: pftRepo}
+
+			actual, err := u.toSearchResults(ctx, user.Users{userDomain})
+			require.NoError(t, err)
+
+			expected := UserSearchResults{
+				{
+					FirstName:      userDomain.FirstName(),
+					LastName:       userDomain.LastName(),
+					Email:          userDomain.Email(),
+					Phone:          userDomain.Phone(),
+					PostalCode:     userDomain.PostalCode(),
+					PrefectureName: prefectureDomain.Name(),
+					City:           userDomain.City(),
+					Street:         userDomain.Street(),
+					Building:       userDomain.Building(),
+					RegisteredAt:   userDomain.CreatedAt(),
+					DeletedAt:      userDomain.DeletedAt(),
+				},
+			}
+			assert.Equal(t, expected, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("都道府県取得でエラーが発生した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+
+			ctrl := gomock.NewController(t)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(nil, expectedErr)
+
+			u := &usecase{tracer: lt, pftRepo: pftRepo}
+
+			actual, err := u.toSearchResults(ctx, user.Users{userDomain})
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("ユーザーが参照する都道府県が解決できない場合、参照整合性破れが返る", func(t *testing.T) {
+			t.Parallel()
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+
+			ctrl := gomock.NewController(t)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{}, nil)
+
+			u := &usecase{tracer: lt, pftRepo: pftRepo}
+
+			actual, err := u.toSearchResults(ctx, user.Users{userDomain})
+			require.ErrorIs(t, err, errOrphanPrefecture)
+			require.Nil(t, actual)
+		})
+	})
+}
