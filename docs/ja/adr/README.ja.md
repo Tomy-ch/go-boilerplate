@@ -132,6 +132,8 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0095](0095-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
 | [0096](0096-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
 | [0097](0097-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
+| [0098](0098-exchange-rate-cache-gateway-decorator.ja.md) | 為替レート gateway を boundary 継ぎ目上の TTL decorator でキャッシュする | accepted |
+| [0099](0099-reference-amount-half-up-rounding.ja.md) | reference_amount は整数演算で計算し、丸めは 1 箇所で half-up する | accepted |
 
 フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
 Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。
