@@ -1,5 +1,5 @@
 // oidc.ts は OAuth2 / OIDC 標準エンドポイント（/oidc/*）を提供する。
-// authorize（Authorization Code Flow + PKCE S256）・token（code 単回消費 + PKCE 検証で access/id token 発行）・
+// authorize（Authorization Code Flow + PKCE S256）・token（code 単回消費 + PKCE 検証で access/id token 発行）。
 // userinfo（Bearer access token 必須・whitelist claim）・logout（RP-Initiated）を実装する。
 import { Hono } from "hono";
 import * as zod from "zod";
