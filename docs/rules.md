@@ -193,6 +193,23 @@ Boundary clarifications (common misreads):
   the API returns a DTO.
 - Repository reads are **not limited to fetch-by-ID**: simple filter / list / count by the
   Aggregate's own attributes — including an unfiltered full list — belong to Repository.
+- **The Repository / QueryService split is storage-agnostic.** The discriminator is not the
+  engine (RDB vs NoSQL) or the technique (full-text search), but *what the read targets*: the
+  Aggregate's own system-of-record state, from which the full Aggregate is reconstructable
+  (→ Repository), versus a derived projection / read model — a search index, a separate search
+  store, a denormalized / generated search column, or a cross-Aggregate JOIN view — from which
+  the Aggregate cannot be reconstructed (→ QueryService). A document store used as the
+  Aggregate's system of record stays Repository even when it offers full-text search; an
+  Elasticsearch index built from that store is QueryService because it is a derived projection.
+- **"Keyword / full-text search" is a typical QueryService instance, not the rule.** A plain
+  `ILIKE` on the Aggregate's *own* columns is a single-Aggregate Repository filter. Full-text
+  search becomes QueryService only when it reads a derived search projection (a search index, a
+  search store, or a denormalized / generated search column).
+- **Resolve another Aggregate's fields in the Usecase, not via a JOIN.** To attach a related
+  Aggregate's data (e.g. a name) to a list, batch-fetch it through its own Repository
+  (`FindByIDs`) and merge by key in the Usecase layer — keeping each read a single-Aggregate
+  Repository read. A cross-Aggregate SQL JOIN returning a flattened view is a QueryService read
+  model, not a Repository read.
 
 ## DTO / Type Boundary Rules
 
@@ -209,6 +226,24 @@ Boundary clarifications (common misreads):
 
 - Do not pass sqlc generated types to Usecase / Domain
 - Always convert to Domain Entity or DTO
+
+## Package / Directory Naming Rules
+
+- Go package identifiers are a single lowercase word with **no underscores** (staticcheck ST1003).
+- A multi-word aggregate uses one of two forms:
+  - **Context nesting** — when a bounded context groups several sub-aggregates / masters, nest
+    under the context directory: `internal/<layer>/<context>/<sub>/` with package `<sub>`
+    (e.g. `internal/domain/product/category` → package `category`,
+    `internal/domain/product/status` → package `status`).
+  - **Concatenation** — a standalone multi-word aggregate with no grouping context concatenates
+    into one word (e.g. `useridentity`, `exchangerate`). Existing concatenated packages stay
+    as-is; prefer context nesting once a context gains a second sub-aggregate.
+- Database DML and sqlc-generated directories use **snake_case matching the table name**
+  (`product_category`, `user_identity`), independent of the Go package layout.
+- Controller handler directories match the **HTTP resource (route) name**
+  (`product-categories`, `prefectures`), not the Go package layout.
+- Type names may keep the aggregate noun inside a same-named package
+  (`category.Category`, `prefecture.Prefecture`).
 
 ## Layer Responsibility Rules
 

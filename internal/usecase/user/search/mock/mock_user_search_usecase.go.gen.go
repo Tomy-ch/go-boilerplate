@@ -13,7 +13,6 @@ import (
 	context "context"
 	paging "go-boilerplate/internal/usecase/tools/paging"
 	search "go-boilerplate/internal/usecase/user/search"
-	query "go-boilerplate/internal/usecase/user/search/query"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -59,10 +58,10 @@ func (mr *MockUsecaseMockRecorder) CountUsersByKeyword(ctx, filter any) *gomock.
 }
 
 // ListUsersByKeyword mocks base method.
-func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Page) (query.UserSearchResults, error) {
+func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Page) (search.UserSearchResults, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsersByKeyword", ctx, filter, page)
-	ret0, _ := ret[0].(query.UserSearchResults)
+	ret0, _ := ret[0].(search.UserSearchResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
