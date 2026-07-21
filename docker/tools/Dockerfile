@@ -128,6 +128,7 @@ CMD []
 # NOTE: mise の pipx バックエンドが extras 構文（`sqlfluff[jinja]`）を受け付けないため、
 #       jinja extras 無しの素の sqlfluff を入れている。
 #       jinja テンプレートを SQL ファイルで使う場合は別途見直し。
+# pipx backend の実行系は mise.toml の pipx.uvx=true により uv（mise 管理版）へ固定。
 # ------------------------------
 FROM python:3.14.6-slim@sha256:d3400aa122fa42cf0af0dbe8ec3091b047eac5c8f7e3539f7135e86d855dc015 AS python_tools
 
@@ -138,7 +139,6 @@ RUN apt-get update \
         curl \
         git \
         make \
-        pipx \
     && rm -rf /var/lib/apt/lists/*
 
 # パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
@@ -156,7 +156,8 @@ WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install pipx:sqlfluff \
+RUN mise install uv \
+    && mise install pipx:sqlfluff \
     && rm -rf /root/.cache
 
 ENTRYPOINT []

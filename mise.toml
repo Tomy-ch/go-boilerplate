@@ -6,6 +6,10 @@
 # FROM タグ・関連 README へ伝播する。短い名前で解決できないツールは backend を明示する。
 min_version = "2026.6.0"
 
+[settings]
+# pipx backend を uv（uvx）で解決する。実行系を mise 管理の uv に固定し、環境ごとの pipx 差異を排除する。
+pipx.uvx = true
+
 [tools]
 # 言語ランタイム
 go = "1.26.5"
@@ -42,6 +46,8 @@ gitleaks = "8.30.1"
 "npm:@commitlint/cli" = "21.0.2"
 
 # Python ベース
+# uv は pipx backend の実行系（pipx.uvx=true）。ランナー同梱の pipx に依存せず mise 管理版で解決する。
+uv = "0.11.27"
 "pipx:sqlfluff" = "4.2.1"
 
 # Docker イメージのバージョン。[tools] は mise の解決対象専用のため [env] で宣言する。
