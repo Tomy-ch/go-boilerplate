@@ -1,6 +1,6 @@
 // server.ts は疑似 OIDC 認証サーバーの HTTP エントリポイント。
-// 提供範囲は署名・Claim 検証まで（A 範囲）: Discovery / JWKS / /health / /test/token（固定 User + A 異常系）。
-// Authorization Code Flow / Login UI / /userinfo / Key Rotation は後続フェーズ。
+// 提供範囲は署名・Claim 検証まで: Discovery / JWKS / /health / /bypass/token（固定 User + 異常系）/ /admin/users。
+// Authorization Code Flow / Login UI / /oidc/userinfo / Key Rotation は後続 Increment。
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,7 @@ const config: OidcConfig = {
   issuer: process.env.OIDC_ISSUER ?? "http://localhost:4000",
   audience: process.env.OIDC_AUDIENCE ?? "go-boilerplate-api",
   clientId: process.env.OIDC_CLIENT_ID ?? "go-boilerplate-client",
-  // testEndpointsEnabled は /test/* を有効にするか。本番相当では 'disabled' にして無効化する（受入条件5）。
+  // testEndpointsEnabled は /bypass/* ・ /admin/* を有効にするか。本番相当では 'disabled' にして無効化する。
   testEndpointsEnabled: (process.env.MOCK_AUTH_TEST_ENDPOINTS ?? "enabled") !== "disabled",
 };
 
@@ -38,16 +38,20 @@ const defaultSubject = users[0]?.subject ?? "user-example";
 // discoveryDocument は OIDC Discovery（/.well-known/openid-configuration）のレスポンス。
 function discoveryDocument() {
   return {
+    // issuer / jwks_uri は Go 側認証が依存する契約のため不変（バイト等価）に保つ。
     issuer: config.issuer,
     jwks_uri: `${config.issuer}/.well-known/jwks.json`,
-    authorization_endpoint: `${config.issuer}/authorize`,
-    token_endpoint: `${config.issuer}/token`,
+    authorization_endpoint: `${config.issuer}/oidc/authorize`,
+    token_endpoint: `${config.issuer}/oidc/token`,
+    userinfo_endpoint: `${config.issuer}/oidc/userinfo`,
+    end_session_endpoint: `${config.issuer}/oidc/logout`,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code"],
     subject_types_supported: ["public"],
     id_token_signing_alg_values_supported: [ALG],
     scopes_supported: ["openid", "profile", "email", "api.read", "api.write"],
-    token_endpoint_auth_methods_supported: ["client_secret_basic"],
+    // public client（PKCE）のみを許可するため none。
+    token_endpoint_auth_methods_supported: ["none"],
     code_challenge_methods_supported: ["S256"],
     claims_supported: ["sub", "iss", "aud", "exp", "iat", "nbf", "email", "name"],
   };
@@ -81,8 +85,9 @@ function readJSONBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
-// handleTestToken は POST /test/token を処理し、{subject, profile} から Token を発行する。
-async function handleTestToken(req: IncomingMessage, res: ServerResponse): Promise<void> {
+// handleBypassToken は POST /bypass/token を処理し、access token を発行する。
+// subject 省略時は defaultSubject、profile 省略時は "valid" を用いる。未知の profile は 400 を返す。
+async function handleBypassToken(req: IncomingMessage, res: ServerResponse): Promise<void> {
   let body: Record<string, unknown>;
   try {
     body = await readJSONBody(req);
@@ -123,17 +128,17 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     return;
   }
 
-  if (path.startsWith("/test/")) {
+  if (path.startsWith("/bypass/") || path.startsWith("/admin/")) {
     if (!config.testEndpointsEnabled) {
-      // 本番相当では /test/* を無効化する（受入条件5）。
+      // 本番相当では /bypass/* ・ /admin/* を無効化する。
       sendJSON(res, 404, { error: "not_found" });
       return;
     }
-    if (req.method === "POST" && path === "/test/token") {
-      void handleTestToken(req, res);
+    if (req.method === "POST" && path === "/bypass/token") {
+      void handleBypassToken(req, res);
       return;
     }
-    if (req.method === "GET" && path === "/test/users") {
+    if (req.method === "GET" && path === "/admin/users") {
       sendJSON(res, 200, { users });
       return;
     }
