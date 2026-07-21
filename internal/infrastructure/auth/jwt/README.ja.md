@@ -30,8 +30,8 @@
 署名鍵は注入された `keyResolver` 経由で解決し、クレーム検証ロジックは全コンストラクタで共通です。
 
 - `New(Params)` — 固定 RSA 公開鍵。`Params` は検証パラメータ（公開鍵 PEM・issuer・audience・許可アルゴリズム・leeway・期待 typ・clock）を保持します。PEM が不正な場合に失敗します。
-- `NewJWKS(JWKSParams, httpclient.Client)` — JWKS エンドポイントからの動的鍵解決（`kid` 参照・TTL キャッシュ・遅延取得）。JWK Set のパースは [`github.com/go-jose/go-jose/v4`](https://github.com/go-jose/go-jose)、取得は resilient な `httpclient` substrate 経由（infrastructure 層は `net/http` 直 import 禁止）。HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、param には持ちません。`JWKSParams` は `Params` を埋め込み（PublicKeyPEM は不使用）、JWKS URL とキャッシュ TTL を追加します。取得は遅延（初回利用・cache miss 時）のため、バックグラウンド goroutine や lifecycle 束ねは不要です。
-- `NewWithKeyfunc(Params, keyResolver)` — 任意の `jwt.Keyfunc` を直接受ける下層の口（JWKS backed の解決やテストダブルの注入に使用）。
+- `NewJWKS(JWKSParams, httpclient.Client)` — JWKS エンドポイントからの動的鍵解決（`kid` 参照・TTL キャッシュ・遅延取得）。JWK Set のパースは [`github.com/go-jose/go-jose/v4`](https://github.com/go-jose/go-jose)、取得は resilient な `httpclient` substrate 経由（infrastructure 層は `net/http` 直 import 禁止）。HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、param には持ちません。`JWKSParams` は `Params` を埋め込み（PublicKeyPEM は不使用）、JWKS URL・キャッシュ TTL・discovery TTL・未知 `kid` cooldown を追加します。JWKS URL が空の場合は issuer から OIDC discovery で `jwks_uri` を導出し（issuer 厳密一致 + https + 同一オリジン、独自 TTL でキャッシュ）、非空の場合はそれを override として使用します（split-horizon）。取得は遅延（初回利用・cache miss 時）のため、バックグラウンド goroutine や lifecycle 束ねは不要です。
+- `NewWithKeyResolver(Params, KeyResolver)` — 任意の `KeyResolver`（`ResolveKey(ctx, kid) (crypto.PublicKey, error)`、パッケージ内 interface）を直接受ける下層の口。鍵解決を JWT ライブラリから分離し `ctx` を取得まで伝搬します。`New` は固定鍵、`NewJWKS` は JWKS backed、テストはダブルを注入します。
 
 必須パラメータ（clock / issuer / audience）が欠けている場合は生成に失敗します。これらは認証エラーとは区別される設定エラーです。
 
@@ -50,5 +50,5 @@
 
 ## 補足
 
-- JWKS 鍵解決（`NewJWKS`）は固定鍵経路と同じ標準クレーム集合を検証し、異なるのは鍵ソースのみです。JWK パースは `go-jose/v4`、取得は `httpclient` substrate に委譲し、`kid` 参照と TTL キャッシュはパッケージ内に保持、その上で RSA 署名方式ガード（鍵混同防御）を適用します。複数 `kid` のローテーションは後続フェーズです。
+- JWKS 鍵解決（`NewJWKS`）は固定鍵経路と同じ標準クレーム集合を検証し、異なるのは鍵ソースのみです。JWK パースは `go-jose/v4`、取得は `httpclient` substrate に委譲し、`kid` 参照・TTL キャッシュ・未知 `kid` の再取得（cooldown で throttle）はパッケージ内に保持、その上で RSA 署名方式ガード（鍵混同防御）を適用します。JWK Set は署名鍵に絞り込み（`use=sig`・RSA・`kid` 一意 — 重複 `kid` は文書ごと不採用）、複数 `kid` を公開する JWKS（鍵ローテーション）に対応します。
 - 内部ユーザー ID の解決（`sub` → DB 経由のアプリケーションユーザー ID）は別関心事で、identity 解決 Phase が担います。本実装は検証済みだが未解決の `Authn` を返します。

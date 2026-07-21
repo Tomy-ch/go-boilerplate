@@ -1,7 +1,7 @@
 ---
 name: impl-review
 description: >-
-  Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap) — plus the dedicated `comment-reviewer` subagent for comment quality, each on a user-selected model (fable / sonnet / opus / haiku; default auto = a model ≠ the implementer) so reviewer ≠ implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other four lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
+  Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap / test-gap, where `test-gap` is a code-origin pass that reads the changed production source and flags reachable branches / whole changed symbols left untested or vacuously asserted — a high-signal subset that defers exhaustive per-symbol enumeration to `/test-review`) — plus the dedicated `comment-reviewer` subagent for comment quality, each on a user-selected model (fable / sonnet / opus / haiku; default auto = a model ≠ the implementer) so reviewer ≠ implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other five lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
 ---
 
 # Impl Review
@@ -21,7 +21,7 @@ Do NOT use this skill for:
 - Style / formatting — `make fix` / `make lint`.
 - Exhaustive layer-compliance auditing — `arch-check` (this skill's `architecture` lens flags only high-signal violations).
 - Spec validation — `verify-spec`.
-- Applying non-comment fixes — for the four code lenses this skill is read-only; it reports, the user fixes. (Exception: **comment-style findings are auto-applied** in Step 5.5 — verbose / narrating comments are actually fixed, not just reported.)
+- Applying non-comment fixes — for the five code lenses this skill is read-only; it reports, the user fixes. (Exception: **comment-style findings are auto-applied** in Step 5.5 — verbose / narrating comments are actually fixed, not just reported.)
 
 ## Core Idea — reviewer ≠ implementer
 
@@ -30,7 +30,7 @@ Bias reduction is the design constraint, not a nicety. Reviewers therefore run a
 - The reviewer agents (`adversarial-reviewer`, `comment-reviewer`, `review-verifier`) default to **`sonnet`** in their frontmatter, which differs from the usual Opus implementer.
 - **The reviewer model is chosen by the user in Step 0.** The options are `fable` (Fable 5) / `sonnet` / `opus` / `haiku`, plus an *auto* default that resolves to a model ≠ the session's implementer. Pass the chosen model to every reviewer subagent via the `Agent` tool's `model` parameter (it takes precedence over the agent file's `sonnet` default) — e.g. `opus` for depth, `haiku` for a cheap divergent pass, `fable` for a fresh independent perspective.
 - **The orchestrator MUST guarantee reviewer ≠ implementer.** If the user selects the same model as the session's implementer, warn that it undermines the different-model bias reduction and confirm before proceeding. Never silently let reviewer and implementer be the same model.
-- Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings. The single place this skill mutates source is Step 5.5, where the **orchestrator** (not a subagent) applies the verified comment-style fixes after user confirmation. The four code lenses are never auto-fixed.
+- Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings. The single place this skill mutates source is Step 5.5, where the **orchestrator** (not a subagent) applies the verified comment-style fixes after user confirmation. The five code lenses are never auto-fixed.
 
 ## Step 0 — Confirm Scope
 
@@ -77,6 +77,7 @@ model is passed to every `adversarial-reviewer` / `comment-reviewer` / `review-v
 - Detect which layers/areas are touched (`internal/controller/**`, `usecase`, `domain`, `infrastructure`, `pkg`, `openapi/**`, `database/**`).
 - Note whether any **endpoint** is touched (controller handler or `openapi/**`) — this decides whether Step 4 runs.
 - Note whether any **shared** OpenAPI component is edited (a `components/*` referenced by more than one operation) — this widens Step 4 to every consumer.
+- Note whether any **non-generated production `.go`** under `internal/**` / `pkg/**` is touched (exclude `*_test.go`, `*.gen.go`, `*.sql.go`, `*_mock.go`) — this decides whether the `test-gap` lens runs, and gives it the changed-symbol list to drive its code-origin enumeration.
 
 ## Step 2 — Fan-out Finders (different model, concurrent)
 
@@ -92,10 +93,13 @@ Spawn all finders concurrently (issue every `Agent` call in a single message). A
 | `security` | adversarial-reviewer | always (especially when a handler / auth / DTO / `openapi/**` is touched) |
 | `architecture` | adversarial-reviewer | always |
 | `runtime-gap` | adversarial-reviewer | when a controller / DI / `openapi/**` / `database/**` is touched |
+| `test-gap` | adversarial-reviewer | when the diff touches non-generated production `.go` under `internal/**` / `pkg/**` |
 | comment quality | **comment-reviewer** | when the diff adds / changes any code comment (almost always) |
 | type design | **type-design-reviewer** | when the diff touches domain types (`internal/domain/**/*.go`) |
 
 Each `adversarial-reviewer` prompt MUST include: the lens name + its definition, the base ref + changed-file list + the diff, and pointers to `CLAUDE.md` / the relevant `README.md` / OpenAPI spec / migrations.
+
+**`test-gap` lens definition** (this lens is *code-origin* — it reads the changed production source, not the test files): for each production symbol added or changed in the diff, enumerate its logical branches / error sentinels / boundary conditions / zero-value defenses, then check the paired `*_test.go` reaches each and *distinctly* asserts it (specific sentinel via `require.ErrorIs`, the distinguishing value/state — not just `require.Error` / `NoError`). Report two shapes: a production symbol changed in the diff with **no test at all**, and a reachable branch of a changed symbol left **untested or vacuously asserted**. This is a **high-signal subset** — impl-review flags the reachable gaps a test-file-first read misses on the *changed* code; it does NOT do exhaustive per-symbol enumeration across the package. When the change is test-heavy or the user wants the full two-axis matrix (Lens 4 branch×meaning + Lens 5 symbol completeness) over all subjects, defer to `/test-review`. Findings are read-only suggestions (never auto-fixed) and anchor to the subject line in the diff, so they post inline like the other code lenses.
 
 The `comment-reviewer` prompt MUST include: the base ref + changed-file list + the diff, the **line policy** (judge only comments on changed lines for a diff scope), and a pointer to `docs/rules.md` ("Comment Rules") as the authoritative policy it reads at runtime. The agent already encodes the all-languages-uniform standard (Go and non-Go alike — shell / `.mjs` / Dockerfile / Makefile / SQL / YAML; non-Go is higher-risk, not exempt) and the functional-directive / exported-doc-comment guards — do not re-specify or soften them here. Restrict the file list it sees to comment-bearing source files: exclude generated files (`**/*.gen.go`, `*_mock.go`, `**/openapi.gen.yaml`, `// Code generated ... DO NOT EDIT`), `vendor/**`, the deny list, and Markdown / docs prose (the Comment Rules govern source comments, not standalone documents).
 
@@ -126,7 +130,7 @@ Produce one Japanese report:
 ```text
 ## ローカルレビュー結果（reviewer: <model> / implementer: <model>）
 
-スコープ: <base>...HEAD（<N> files） / lens: correctness, security, architecture, runtime-gap, comment-style
+スコープ: <base>...HEAD（<N> files） / lens: correctness, security, architecture, runtime-gap, test-gap, comment-style
 ランタイム検証: 実施（curl/o11y）/ 対象外（エンドポイント変更なし）
 
 ### CONFIRMED（要対応）
@@ -146,7 +150,7 @@ Order by severity, CONFIRMED before PLAUSIBLE. Always state what runtime checks 
 
 ## Step 5.5 — Apply Comment Fixes (default; skip with `--no-apply`)
 
-This is the one place the skill mutates source. Apply the verified **comment quality** findings (CONFIRMED, plus any PLAUSIBLE the user opts in) yourself — the `comment-reviewer` subagent never edits. The four code lenses are NOT auto-fixed here; they go to Step 6.
+This is the one place the skill mutates source. Apply the verified **comment quality** findings (CONFIRMED, plus any PLAUSIBLE the user opts in) yourself — the `comment-reviewer` subagent never edits. The five code lenses are NOT auto-fixed here; they go to Step 6.
 
 Confirm once before editing:
 
@@ -169,7 +173,7 @@ If `--no-apply`, skip this step and instead let the comment findings flow into S
 
 ## Step 6 — Post Findings as Inline PR Comments (default; opt out with `--no-comment`)
 
-By default, after Step 5.5, post the surviving **CONFIRMED + PLAUSIBLE** findings **from the four code lenses** (correctness / security / architecture / runtime-gap) to the branch's PR as **inline review comments** — one per finding, anchored to its `path:line`, instead of a single wall-of-text comment. **Never post REFUTED.** Comment quality findings are NOT posted here — they were applied in Step 5.5 (unless `--no-apply` was given, in which case include them in this post). The Step 5 local report is still produced regardless; this step is additive.
+By default, after Step 5.5, post the surviving **CONFIRMED + PLAUSIBLE** findings **from the five code lenses** (correctness / security / architecture / runtime-gap / test-gap) to the branch's PR as **inline review comments** — one per finding, anchored to its `path:line`, instead of a single wall-of-text comment. **Never post REFUTED.** Comment quality findings are NOT posted here — they were applied in Step 5.5 (unless `--no-apply` was given, in which case include them in this post). The Step 5 local report is still produced regardless; this step is additive.
 
 Skip this step entirely when:
 
@@ -227,15 +231,15 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 ## Do / Do NOT
 
 - ✅ Guarantee reviewer model ≠ implementer model (user selects it in Step 0; warn + confirm if they pick the implementer's model).
-- ✅ Run finders concurrently (one message, multiple `Agent` calls): the four code lenses via `adversarial-reviewer`, comment quality via `comment-reviewer`.
+- ✅ Run finders concurrently (one message, multiple `Agent` calls): the five code lenses via `adversarial-reviewer`, comment quality via `comment-reviewer`.
 - ✅ Independently verify every finding before reporting; drop REFUTED.
 - ✅ Run the runtime stage for touched endpoints; widen to all consumers on a shared-schema edit.
 - ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`.
 - ✅ Apply comment quality findings in Step 5.5 after one confirmation (delete / rewrite-to-behavior), then `make fix` + `make lint`; skip with `--no-apply`.
-- ✅ By default, post the four code lenses' CONFIRMED + PLAUSIBLE findings to the branch's PR as inline review comments (Step 6); suppress with `--no-comment` or when no open PR exists.
+- ✅ By default, post the five code lenses' CONFIRMED + PLAUSIBLE findings to the branch's PR as inline review comments (Step 6); suppress with `--no-comment` or when no open PR exists.
 - ✅ Confirm once before posting to the PR (outward action); anchor each comment to its `path:line`, fold off-diff findings into the review summary.
 - ❌ Post REFUTED findings, or use `REQUEST_CHANGES` / `APPROVE` — the posted review is advisory `COMMENT` only.
-- ❌ Auto-fix the four code lenses — those are reported, the user fixes. Only comment quality is auto-applied (Step 5.5).
+- ❌ Auto-fix the five code lenses — those are reported, the user fixes. Only comment quality is auto-applied (Step 5.5).
 - ❌ In Step 5.5, delete a functional directive (`//go:generate` etc.) or an exported-decl doc comment (rewrite it); touch generated files / Markdown / the deny list; or auto-commit.
 - ❌ Let a reviewer run on the same model as the implementer.
 - ❌ Report speculative style nits as findings, or pad the list to look thorough.
@@ -244,9 +248,9 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 
 - [ ] Scope confirmed via `AskUserQuestion`; base ref resolved.
 - [ ] Reviewer model selected in Step 0 and verified ≠ implementer model (warn + confirm if same).
-- [ ] Finders fanned out concurrently: 4 code lenses (`adversarial-reviewer`) + comment quality (`comment-reviewer`).
+- [ ] Finders fanned out concurrently: 5 code lenses (`adversarial-reviewer`) + comment quality (`comment-reviewer`).
 - [ ] Every finding independently verified; REFUTED dropped (count kept).
 - [ ] Runtime curl + o11y done for touched endpoints (shared-schema → all consumers); destructive curls confirmed.
 - [ ] Single Japanese report: CONFIRMED → PLAUSIBLE, comment findings in their own subsection, runtime coverage stated.
 - [ ] Unless `--no-apply`: comment findings applied in Step 5.5 (functional directives untouched, exported doc comments rewritten not deleted), then `make fix` + `make lint`; no auto-commit.
-- [ ] Unless `--no-comment` / no PR: confirmed once, then posted the 4 code lenses' CONFIRMED + PLAUSIBLE as inline PR comments (off-diff → summary body); REFUTED excluded; `event: COMMENT`.
+- [ ] Unless `--no-comment` / no PR: confirmed once, then posted the 5 code lenses' CONFIRMED + PLAUSIBLE as inline PR comments (off-diff → summary body); REFUTED excluded; `event: COMMENT`.

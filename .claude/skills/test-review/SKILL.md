@@ -1,7 +1,7 @@
 ---
 name: test-review
 description: >-
-  Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `docs/testing-conventions.md` + the target layer's README `Test Strategy` / `Testing strategy` section + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out four `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap / branch × meaning completeness** (reads the subject source itself and builds a per-function two-axis matrix — Axis A 分岐網羅: every branch has a covering case; Axis B 意味網羅: each covered branch's case asserts that branch's distinctive outcome, not just that it executed — surfacing uncovered branches and covered-but-vacuously-asserted branches separately). Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable; designed to slot into a PR review flow alongside `code-review` / `impl-review` / `arch-check`.
+  Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `docs/testing-conventions.md` + the target layer's README `Test Strategy` / `Testing strategy` section + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out five `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap / branch × meaning completeness** (code-origin: reads the subject source itself and builds a per-function two-axis matrix — Axis A 分岐網羅: every branch has a covering case; Axis B 意味網羅: each covered branch's case asserts that branch's distinctive outcome, not just that it executed — surfacing uncovered branches and covered-but-vacuously-asserted branches separately); (5) **subject symbol completeness** (code-origin: builds the subject's public-symbol table and flags every symbol — getter / accessor / provider / env-gate helper included — that has no `TestXxx` at all, the reachable-but-untested code a test-file-first read cannot see; owns "symbol has zero test" so Lens 1 reverse / Lens 4 do not double-report). Lenses 4 and 5 are the two **code-origin (subject-driven)** finders; 1–3 are test-file / README-driven. Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable; designed to slot into a PR review flow alongside `code-review` / `impl-review` / `arch-check`.
 ---
 
 # Test Review
@@ -36,7 +36,7 @@ Do NOT use this skill for:
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` (Test Strategy)
   - For `pkg/**`, see `scaffold-test/SKILL.md` — `pkg/README.md` intentionally has no Test Strategy section; viewpoints come from sibling tests + per-package sub-`pkg/<name>/README.md`. **No gap warning for pkg.**
 - The target `*_test.go` file(s).
-- The corresponding subject source file(s) (`<subject>.go` paired with `<subject>_test.go`) — required for the viewpoint-gap lens to know what is and isn't tested.
+- The corresponding subject source file(s) (`<subject>.go` paired with `<subject>_test.go`) — required for the two code-origin lenses (Lens 4 branch × meaning, Lens 5 subject-symbol completeness) to know what is and isn't tested.
 - Sibling test files in the same package — secondary reference for established conventions.
 
 **Writes**:
@@ -65,7 +65,7 @@ Do NOT use this skill for:
 
 After resolution, build the target list. If no `*_test.go` files are in scope, stop with a friendly message — no tests to review.
 
-For each target test file, also resolve its **subject source file** (same package, basename without `_test`). Required for the viewpoint-gap lens.
+For each target test file, also resolve its **subject source file** (same package, basename without `_test`). Required for the two code-origin lenses (Lens 4 / Lens 5).
 
 ## Step 1. Read Layer Context
 
@@ -80,9 +80,11 @@ For every target test file:
 
 If any layer README has no Test Strategy section in a place where one is expected (i.e. `internal/<layer>/` other than `pkg/`), note it for the report — it surfaces as a documentation gap, but does not block the review.
 
-## Step 2. Fan Out Four Adversarial Reviewers
+## Step 2. Fan Out Five Adversarial Reviewers
 
-Spawn four `adversarial-reviewer` subagents (`subagent_type: adversarial-reviewer`) **in parallel**, each on `sonnet` by default (so reviewer ≠ an Opus implementer; the orchestrator may override the model to keep reviewer ≠ implementer).
+Spawn five `adversarial-reviewer` subagents (`subagent_type: adversarial-reviewer`) **in parallel**, each on `sonnet` by default (so reviewer ≠ an Opus implementer; the orchestrator may override the model to keep reviewer ≠ implementer).
+
+Two of the five are **code-origin (subject-driven)** — they start from the subject source, not the test file, so a code element that has no test at all still enters their field of view: **Lens 5** (does a convention-named `TestXxx` exist for every subject symbol?) and **Lens 4** (within a tested function, is every branch reached and distinctly asserted?). The other three (Lens 1 / 2 / 3) start from the test file or the README. The code-origin pair is what catches reachable-but-untested code that a test-file-first read structurally cannot see.
 
 Each subagent receives the same Step 1 context bundle (layer README, `docs/testing-conventions.md`, `scaffold-test/SKILL.md`, target test file, subject source file, sibling tests) but a different lens prompt:
 
@@ -99,7 +101,7 @@ Audits mechanical rule adherence — these are the hard rules surfaced by `scaff
 - **Table-driven `for`-loop tests are a violation** (`scaffold-test/SKILL.md` Rule 5) — a `for _, tc := range cases { t.Run(...) }` block over a slice of `(input, expected)` structs must be flagged, regardless of readability or `dupl` justification. The required form is sequential `t.Run` siblings, one per case (accept the repetition). This applies even to long getter / boundary lists.
 - **1:1 mapping between subject functions and `TestXxx`.** The *subject* is the paired production source — the non-test, non-generated `.go` file that the binary is built from; `*.gen.go` / `*.sql.go` / `*_mock.go` and test-only helpers are out of scope (no hand-written `TestXxx` expected). Check BOTH directions:
   - *forward*: each `TestXxx` covers exactly one subject function / method — a `TestXxx` bundling multiple subjects (e.g. a unified `*_Accessors` / `*_Getters`) is a 1:1 violation, with no rationale-comment exemption. Decompose into one `TestXxx` per subject. The only exemption is a subject whose branches are covered elsewhere (public caller / integration / DI-graph): it still declares its convention-named `TestXxx` and calls `t.Skip("<covering test>")` — flag a bundle, never accept it (per `docs/testing-conventions.md` §1, enforced by `internal/architest`).
-  - *reverse*: each subject function / method maps to exactly one `TestXxx`. A subject split across multiple `TestXxx` (e.g. `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`, or a `Test_foo` / `TestFoo_foo` naming-variant pair) is a finding → consolidate into a single `TestXxx` whose `正常系` / `異常系` groups absorb the variants (Rule 7). A public subject function with NO `TestXxx` at all is a coverage gap (its branches also surface in Lens 4 Axis A).
+  - *reverse*: each subject function / method maps to exactly one `TestXxx`. A subject split across multiple `TestXxx` (e.g. `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`, or a `Test_foo` / `TestFoo_foo` naming-variant pair) is a finding → consolidate into a single `TestXxx` whose `正常系` / `異常系` groups absorb the variants (Rule 7). A public subject function with NO `TestXxx` at all is **owned by Lens 5** (subject-symbol completeness) — this lens flags only the *shape* of the `TestXxx` that already exist (naming variants, bundling, split), not the absence of one; leave "symbol has zero test" to Lens 5 so the two do not double-report.
 - Mocks come from `<package>/mock/*_mock.go` — no hand-written mocks.
 - No imports of `internal/` from `pkg/**` test files; no infrastructure imports from `internal/domain/**` test files; etc. (architectural rules in `docs/testing-conventions.md`).
 
@@ -125,6 +127,8 @@ Output: a list of findings with `file:line`, the §10 anti-pattern violated, and
 
 Reads the subject source file itself and builds, **per function / method**, a two-axis completeness matrix. Code coverage ≠ meaningful coverage: a branch can be executed by a case that asserts nothing about what makes that branch distinct, and isolating that gap is the point of this lens. Run both axes for every subject — a branch is only "done" when it is both reached (Axis A) and distinctly asserted (Axis B).
 
+**Division from Lens 5**: Lens 4 audits *within* a symbol that already has a `TestXxx` — which of its branches are reached and meaningfully asserted. "The symbol has no test at all" is **Lens 5's** finding, not Lens 4's; when Lens 5 has already flagged a zero-test symbol, do not also enumerate all of its uncovered branches here (that is one gap, not N). Lens 4's branch findings apply to symbols whose test exists but is incomplete.
+
 **Axis A — branch enumeration (分岐網羅)**: every logical branch in the subject is reached by at least one case.
 
 - Every conditional branch (positive / negative) has at least one `t.Run` case.
@@ -148,6 +152,20 @@ A branch that IS covered but whose case does not distinctly assert its outcome i
 
 Output: per subject, (1) uncovered branches with proposed `t.Run` case names (Axis A → 追加検討), and (2) covered-but-vacuously-asserted branches with the missing distinctive assertion (Axis B → 再考), each citing the subject branch `file:line` and the covering test case.
 
+### Lens 5: Subject Symbol Completeness (code-origin)
+
+Starts from the **subject source, not the test file** — the same origin as Lens 4, but at the coarser *symbol* granularity. Its single job is to answer, for the subject's complete public-symbol table, "does a test even exist for this?" A test-file-first read (Lens 1) can only judge the `TestXxx` it finds; a symbol with zero tests is invisible to it. This lens exists precisely because that blind spot is how reachable-but-untested code slips through — it enumerates the code first, then checks the tests against it, so absence is a positive finding rather than a silent nothing.
+
+Procedure:
+
+1. **Build the subject symbol table.** From the paired `<subject>.go` (non-generated, non-`*_test.go`), list every symbol that the layer's convention expects a `TestXxx` for: exported funcs / methods / constructors, and unexported package-level funcs that carry branching logic the layer tests directly (the layer README's Test Strategy + `docs/testing-conventions.md` §1 define the expectation; `*.gen.go` / `*.sql.go` / `*_mock.go` and test-only helpers are out of scope). Getters / accessors / provider funcs / env-gate helpers count — they are exactly the low-visibility symbols that get skipped.
+2. **Match each symbol to a `TestXxx`.** A symbol is *satisfied* when a convention-named `TestXxx` targets it, OR when it declares its convention-named `TestXxx` that calls `t.Skip("<covering test>")` naming a real covering test (public caller / integration / DI-graph) per `docs/testing-conventions.md` §1.
+3. **Flag every unsatisfied symbol** as a **シンボル未カバー** finding → severity **補完推奨** (a whole code element has no test — a structural coverage hole, distinct from Lens 4's *within-function* branch gaps). Cite the subject `symbol @ file:line` and propose the `TestXxx` name (and its `正常系` / `異常系` skeleton). Attach the same **criticality (1-10)** production-impact score as Lens 4 Axis A and order by it descending — a fully-untested auth/authz or persistence symbol outranks an untested trivial getter.
+
+Hand-off to Lens 4: once Lens 5 has flagged a symbol as entirely untested, Lens 4 does NOT additionally enumerate that symbol's branches (one "no test" gap, not N branch gaps). Lens 4 picks up only symbols that Lens 5 considers satisfied but partially covered.
+
+Output: the list of subject symbols with no test (or a `t.Skip` lacking a real covering test), each with `symbol @ file:line`, proposed `TestXxx`, and criticality.
+
 ## Step 3. Verify Each Finding
 
 Each surviving finding goes to an independent `review-verifier` subagent (`subagent_type: review-verifier`) on `sonnet`. The verifier:
@@ -168,7 +186,7 @@ Produce a single Japanese report. Recommended structure:
 # Test Review レポート
 
 対象: <スコープ + ファイル一覧>
-レンズ: 構造準拠 / 観点カバレッジ / 意味的品質 / 観点ギャップ
+レンズ: 構造準拠 / 観点カバレッジ / 意味的品質 / 観点ギャップ(branch×meaning) / シンボル網羅
 verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィルタ済み)
 
 ## サマリ
@@ -194,6 +212,13 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
   - 詳細: <one-sentence why>
   - verifier: CONFIRMED / PLAUSIBLE
 
+## シンボル網羅（補完推奨）
+- <file> に対して subject <subject path> から導出（criticality 降順）:
+  - シンボル未カバー: <symbol @ subject file:line>（対応 TestXxx 皆無）
+  - criticality: <1-10> — 未検証で壊れた場合のリグレッション: <一文>
+  - 提案: func Test<Symbol>(t *testing.T) — 正常系 / 異常系 の骨子
+  - verifier: CONFIRMED / PLAUSIBLE
+
 ## 観点ギャップ: 分岐網羅（追加検討）
 - <file> に対して subject <subject path> から導出（criticality 降順）:
   - 分岐未カバー: <subject file:line の分岐>
@@ -215,7 +240,7 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
 Severity mapping:
 
 - **修正必須** (Structural Compliance lens): rule violations against `docs/testing-conventions.md` / `scaffold-test/SKILL.md` — these are hard rules. CONFIRMED → 修正必須; PLAUSIBLE → 確認推奨.
-- **補完推奨** (Viewpoint Coverage lens): README declares a viewpoint that is not exercised. CONFIRMED → 補完推奨; PLAUSIBLE → 確認推奨.
+- **補完推奨** (Viewpoint Coverage lens + Subject Symbol Completeness lens): README declares a viewpoint that is not exercised, OR a subject symbol has no `TestXxx` at all. CONFIRMED → 補完推奨; PLAUSIBLE → 確認推奨.
 - **再考** (Semantic Quality lens + Viewpoint Gap Axis B): the test compiles and passes but reveals little — a weak assertion, or a branch that is covered yet does not distinctly assert its outcome. CONFIRMED → 再考; PLAUSIBLE → 補強候補.
 - **追加検討** (Viewpoint Gap Axis A): proactive suggestion for an uncovered branch found by subject inspection. CONFIRMED → 追加検討; PLAUSIBLE → 提案.
 
@@ -250,7 +275,8 @@ When chained from such an orchestrator in the future, the parent passes a contex
 - ✅ Default scope is changed files; alternative scopes selectable.
 - ✅ Final report in Japanese, grouped by lens with severity tags.
 - ✅ Surface `pkg/` as an intentional "no Test Strategy" layer, never as a documentation gap.
-- ✅ criticality (1-10) は Axis A の 追加検討 finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
+- ✅ criticality (1-10) は Lens 4 Axis A（追加検討）と Lens 5（補完推奨・シンボル未カバー）の finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
+- ✅ コード起点は2レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが1つも無いシンボル」は Lens 5 が所管し、Lens 1 reverse / Lens 4 とは二重報告しない。
 
 ## Checklist
 
@@ -259,7 +285,8 @@ Before reporting completion, confirm:
 - [ ] Scope was resolved (changed files / base diff / explicit paths).
 - [ ] Each target `*_test.go` has its subject source file located.
 - [ ] Layer README + `docs/testing-conventions.md` + `scaffold-test/SKILL.md` + sibling tests were read in Step 1.
-- [ ] All four lenses ran (in parallel).
+- [ ] All five lenses ran (in parallel).
+- [ ] Lens 5 built the subject symbol table and flagged every symbol with no `TestXxx` (→ 補完推奨), before Lens 4 branch analysis — the two code-origin lenses did not double-report a zero-test symbol.
 - [ ] Lens 4 ran both axes per subject — Axis A 分岐網羅 (uncovered branches → 追加検討) and Axis B 意味網羅 (covered-but-vacuously-asserted branches → 再考).
 - [ ] Every finding from every lens went through `review-verifier` (unless `skip_verifier: true`).
 - [ ] REFUTED findings were dropped; CONFIRMED / PLAUSIBLE were kept.

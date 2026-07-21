@@ -1012,6 +1012,30 @@ func TestAuthConfig_JWKSCacheTTL(t *testing.T) {
 	})
 }
 
+func TestAuthConfig_DiscoveryTTL(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("discovery TTL を取得できる", func(t *testing.T) {
+			t.Parallel()
+			auth := MockConfigForTest(t).auth
+			assert.Equal(t, expectedAuthDiscoveryTTL, auth.DiscoveryTTL())
+		})
+	})
+}
+
+func TestAuthConfig_UnknownKidCooldown(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("未知 kid cooldown を取得できる", func(t *testing.T) {
+			t.Parallel()
+			auth := MockConfigForTest(t).auth
+			assert.Equal(t, expectedAuthUnknownKidCooldown, auth.UnknownKidCooldown())
+		})
+	})
+}
+
 func TestApplicationConfig_IsProductionMode(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

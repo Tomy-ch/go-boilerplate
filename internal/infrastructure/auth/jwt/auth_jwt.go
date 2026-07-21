@@ -7,6 +7,7 @@ package jwt
 
 import (
 	"context"
+	"crypto"
 	"strings"
 	"time"
 
@@ -65,19 +66,45 @@ type Params struct {
 type JWKSParams struct {
 	Params
 
-	// JWKSURL は公開鍵を取得する JWKS エンドポイント URL です（必須）。
+	// JWKSURL は公開鍵を取得する JWKS エンドポイント URL です（override）。
+	// 空の場合は Issuer から OIDC discovery で jwks_uri を導出します。
 	JWKSURL string
 	// CacheTTL は取得した JWKS を再取得するまでの間隔です（0 以下は既定 defaultJWKSCacheTTL）。
 	CacheTTL time.Duration
+	// DiscoveryTTL は discovery 文書を再取得するまでの間隔です（0 以下は既定 defaultDiscoveryTTL）。
+	// JWKSURL を明示した場合は discovery を行わないため未使用です。
+	DiscoveryTTL time.Duration
+	// AllowInsecureURL は discovery URL / jwks_uri に http（非 https）を許容するかです（疑似 provider へ接続する非本番環境用）。
+	AllowInsecureURL bool
+	// UnknownKidCooldown は未知 kid での JWKS 再取得の最小間隔です（0 以下は既定 jwksRefreshCooldown）。
+	UnknownKidCooldown time.Duration
+}
+
+// KeyResolver は、kid に対応する署名検証用公開鍵を解決します。
+// 固定公開鍵と JWKS 動的解決を同一インターフェースで差し替え可能にし、ctx を検証経路まで
+// 伝搬させるための infra 内 seam です（jwtlib.Keyfunc が ctx を取れないことへの対処）。
+type KeyResolver interface {
+	// ResolveKey は、kid に対応する署名検証用公開鍵を返します。
+	ResolveKey(ctx context.Context, kid string) (crypto.PublicKey, error)
+}
+
+// fixedKeyResolver は、kid を無視して固定の公開鍵を返す KeyResolver です。
+type fixedKeyResolver struct {
+	key crypto.PublicKey
 }
 
 // authenticator は JWT を検証する Authenticator です。
 // 署名鍵の解決は keyResolver に委ね、固定公開鍵と JWKS の双方を同一の検証ロジックで扱います。
 type authenticator struct {
 	parser       *jwtlib.Parser
-	keyResolver  jwtlib.Keyfunc
+	keyResolver  KeyResolver
 	expectedType string
 	issuer       string
+}
+
+// ResolveKey は、kid によらず保持する固定公開鍵を返します。
+func (r fixedKeyResolver) ResolveKey(context.Context, string) (crypto.PublicKey, error) {
+	return r.key, nil
 }
 
 // New は固定 RSA 公開鍵で検証する JWT Authenticator を生成します。
@@ -88,12 +115,12 @@ func New(params Params) (authbd.Authenticator, error) {
 		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidPublicKey, err)
 	}
 
-	return buildAuthenticator(params, func(*jwtlib.Token) (any, error) { return publicKey, nil })
+	return buildAuthenticator(params, fixedKeyResolver{key: publicKey})
 }
 
-// NewWithKeyfunc は、与えられた鍵解決関数で検証する JWT Authenticator を生成します（PublicKeyPEM は不使用）。
+// NewWithKeyResolver は、与えられた KeyResolver で検証する JWT Authenticator を生成します（PublicKeyPEM は不使用）。
 // JWKS backed の鍵解決を注入するために使用します。
-func NewWithKeyfunc(params Params, keyResolver jwtlib.Keyfunc) (authbd.Authenticator, error) {
+func NewWithKeyResolver(params Params, keyResolver KeyResolver) (authbd.Authenticator, error) {
 	if keyResolver == nil {
 		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidParams, "key resolver is required")
 	}
@@ -102,21 +129,54 @@ func NewWithKeyfunc(params Params, keyResolver jwtlib.Keyfunc) (authbd.Authentic
 }
 
 // NewJWKS は、JWKS エンドポイントから kid で公開鍵を解決する JWT Authenticator を生成します。
-// JWKS の取得は httpclient substrate（timeout / retry / breaker / budget / o11y）に委ね、遅延取得します。
+// JWKSURL を明示した場合はそれを直接用い、空の場合は Issuer から OIDC discovery で jwks_uri を導出します。
+// JWKS / discovery の取得は httpclient substrate（timeout / retry / breaker / budget / o11y）に委ね、遅延取得します。
 func NewJWKS(params JWKSParams, client httpclient.Client) (authbd.Authenticator, error) {
-	if strings.TrimSpace(params.JWKSURL) == "" {
-		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidParams, "jwks url is required")
-	}
 	if client == nil {
 		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidParams, "http client is required")
 	}
 
-	resolver := newJWKSResolver(client, params.JWKSURL, params.CacheTTL, params.Clock)
-	return NewWithKeyfunc(params.Params, resolver.keyfunc)
+	urlFn, err := buildJWKSURLProvider(params, client)
+	if err != nil {
+		return nil, err
+	}
+
+	resolver := newJWKSResolver(client, urlFn, params.CacheTTL, params.Clock)
+	if len(params.AllowedAlgs) > 0 {
+		resolver.allowedAlgs = params.AllowedAlgs
+	}
+	if params.UnknownKidCooldown > 0 {
+		resolver.cooldown = params.UnknownKidCooldown
+	}
+	return NewWithKeyResolver(params.Params, resolver)
+}
+
+// buildJWKSURLProvider は、JWKS URL の供給関数を返します。
+// JWKSURL を明示した場合は静的にそれを返し（discovery / same-origin をスキップ、split-horizon を温存）、
+// 空の場合は Issuer から discovery で jwks_uri を導出する解決器を返します。
+func buildJWKSURLProvider(params JWKSParams, client httpclient.Client) (func(context.Context) (string, error), error) {
+	if url := strings.TrimSpace(params.JWKSURL); url != "" {
+		// override は same-origin を免除するが、https は環境ゲート（AllowInsecureURL）で構築時に強制する。
+		if err := requireSecureURL(url, params.AllowInsecureURL); err != nil {
+			return nil, xerrors.Join(ErrJWTAuthenticatorInvalidParams, err)
+		}
+		return func(context.Context) (string, error) { return url, nil }, nil
+	}
+
+	if strings.TrimSpace(params.Issuer) == "" {
+		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidParams, "either jwks url or issuer is required")
+	}
+
+	// issuer 由来の discovery URL のスキームも構築時に検証し、設定ミスを起動時 fail-fast にする。
+	discovery := newDiscoveryResolver(client, params.Issuer, params.DiscoveryTTL, params.Clock, params.AllowInsecureURL)
+	if err := requireSecureURL(discovery.discoveryURL, params.AllowInsecureURL); err != nil {
+		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidParams, err)
+	}
+	return discovery.jwksURL, nil
 }
 
 // buildAuthenticator は共通の検証パラメータを検証して authenticator を生成します。
-func buildAuthenticator(params Params, keyResolver jwtlib.Keyfunc) (authbd.Authenticator, error) {
+func buildAuthenticator(params Params, keyResolver KeyResolver) (authbd.Authenticator, error) {
 	if params.Clock == nil {
 		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidParams, "clock is required")
 	}
@@ -157,13 +217,13 @@ func buildAuthenticator(params Params, keyResolver jwtlib.Keyfunc) (authbd.Authe
 // Authenticate は access token（JWT）を検証し、検証済みの Authn を返します。
 // cred が nil の場合は無効トークンとして扱います。
 // 検証失敗はすべて ErrJWTAuthenticatorInvalidToken（= apperror.ErrUnauthenticated）へ正規化します。
-func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential) (*authbd.Authn, error) {
+func (a *authenticator) Authenticate(ctx context.Context, cred *authbd.Credential) (*authbd.Authn, error) {
 	if cred == nil {
 		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "credential is nil")
 	}
 
 	claims := jwtlib.MapClaims{}
-	token, err := a.parser.ParseWithClaims(cred.Token(), claims, a.keyFunc)
+	token, err := a.parser.ParseWithClaims(cred.Token(), claims, a.keyFunc(ctx))
 	if err != nil || !token.Valid {
 		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidToken, err)
 	}
@@ -181,15 +241,18 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 	return authbd.New(subject, a.issuer, extractScopes(claims), map[string]any(claims))
 }
 
-// keyFunc は署名検証に用いる公開鍵を keyResolver 経由で返します。
+// keyFunc は、ctx を捕捉した jwtlib.Keyfunc を返します。署名検証に用いる公開鍵を KeyResolver 経由で解決します。
 // 解決する鍵は RSA 公開鍵であるため、RSA 系（RS* / PS*）以外の署名方式は
 // alg allowlist をすり抜けても鍵種別不一致として拒否します（鍵混同の防御）。
-func (a *authenticator) keyFunc(token *jwtlib.Token) (any, error) {
-	switch token.Method.(type) {
-	case *jwtlib.SigningMethodRSA, *jwtlib.SigningMethodRSAPSS:
-		return a.keyResolver(token)
-	default:
-		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "unexpected signing method type")
+func (a *authenticator) keyFunc(ctx context.Context) jwtlib.Keyfunc {
+	return func(token *jwtlib.Token) (any, error) {
+		switch token.Method.(type) {
+		case *jwtlib.SigningMethodRSA, *jwtlib.SigningMethodRSAPSS:
+			kid, _ := token.Header["kid"].(string)
+			return a.keyResolver.ResolveKey(ctx, kid)
+		default:
+			return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "unexpected signing method type")
+		}
 	}
 }
 

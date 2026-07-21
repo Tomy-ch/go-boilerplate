@@ -142,12 +142,14 @@ type OutboxConfig struct {
 // AuthConfig は、access token（JWT）検証の設定を保持します。
 // Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator を配線せずスタブが使われます（配線判断は DI）。
 type AuthConfig struct {
-	issuer            string
-	audience          string
-	jwksURL           string
-	allowedAlgorithms []string
-	clockSkew         time.Duration
-	jwksCacheTTL      time.Duration
+	issuer             string
+	audience           string
+	jwksURL            string
+	allowedAlgorithms  []string
+	clockSkew          time.Duration
+	jwksCacheTTL       time.Duration
+	discoveryTTL       time.Duration
+	unknownKidCooldown time.Duration
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -464,3 +466,9 @@ func (a *AuthConfig) ClockSkew() time.Duration { return a.clockSkew }
 
 // JWKSCacheTTL は、取得した JWKS をキャッシュする期間を返します。
 func (a *AuthConfig) JWKSCacheTTL() time.Duration { return a.jwksCacheTTL }
+
+// DiscoveryTTL は、OIDC discovery 文書の再取得間隔を返します。
+func (a *AuthConfig) DiscoveryTTL() time.Duration { return a.discoveryTTL }
+
+// UnknownKidCooldown は、未知 kid での JWKS 再取得の最小間隔を返します。
+func (a *AuthConfig) UnknownKidCooldown() time.Duration { return a.unknownKidCooldown }
