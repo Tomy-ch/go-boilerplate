@@ -21,6 +21,8 @@ oapi-codegen = "2.7.0"
 sqlc = "1.31.1"
 golangci-lint = "2.12.2"
 actionlint = "1.7.12"
+# actionlint が run スクリプトを検査するために PATH 上で参照する（同梱ではなく別バイナリ）
+shellcheck = "0.11.0"
 lefthook = "2.1.8"
 air = "1.65.3"
 golines = "0.13.0"
