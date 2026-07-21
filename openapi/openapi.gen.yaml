@@ -50,6 +50,8 @@ tags:
     description: ユーザー検索（キーワード）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/product-categories
+    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: internal/types/error-response
@@ -489,6 +491,27 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/product-categories:
+    get:
+      operationId: GetProductCategories
+      tags:
+        - v1/product-categories
+      summary: 商品カテゴリマスタ一覧の取得
+      description: |
+        商品カテゴリマスタの全件を sort_key 昇順で返します。
+        認証不要の公開エンドポイントであり、ページネーションは行いません（全件を返します）。
+      security: []
+      responses:
+        '200':
+          description: 商品カテゴリマスタの一覧（sort_key 昇順）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCategoriesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/exchange-rates:
     get:
       operationId: GetExchangeRates
@@ -846,6 +869,34 @@ components:
           example: 東京都
     ResponseV1Prefectures:
       $ref: '#/components/schemas/PrefecturesResponse'
+    ProductCategoryResponse:
+      type: object
+      description: 商品カテゴリマスタ 1 件分のレスポンスです。
+      required:
+        - id
+        - code
+        - name
+        - sort_key
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品カテゴリID
+          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
+        code:
+          type: integer
+          description: 商品カテゴリコード
+          example: 1
+        name:
+          type: string
+          description: 商品カテゴリ名
+          example: 電子機器
+        sort_key:
+          type: integer
+          description: 表示順
+          example: 1
+    ResponseV1ProductCategories:
+      $ref: '#/components/schemas/ProductCategoriesResponse'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。
@@ -1059,6 +1110,11 @@ components:
       description: 都道府県マスタの一覧（code 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/PrefectureResponse'
+    ProductCategoriesResponse:
+      type: array
+      description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
+      items:
+        $ref: '#/components/schemas/ProductCategoryResponse'
     ExchangeRateResponse:
       type: object
       description: 為替換算結果のレスポンスです。
