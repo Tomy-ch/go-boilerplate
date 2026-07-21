@@ -44,22 +44,22 @@ jobs:
         id: meta_version
         run: |
           VERSION=$(git describe --tags --abbrev=0 --first-parent 2>/dev/null || echo "none")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Get build date
         id: meta_date
         run: |
-          echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Define build environment
         id: meta_env
         run: |
           if [[ "${{ github.ref_name }}" == "production" ]]; then
-            echo "app_env=prd" >> $GITHUB_OUTPUT
+            echo "app_env=prd" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.ref_name }}" == "staging" ]]; then
-            echo "app_env=stg" >> $GITHUB_OUTPUT
+            echo "app_env=stg" >> "$GITHUB_OUTPUT"
           else
-            echo "app_env=dev" >> $GITHUB_OUTPUT
+            echo "app_env=dev" >> "$GITHUB_OUTPUT"
           fi
 
       # WARN: 署名 / attestation は後段すべてこの meta_registry を参照する（ghcr.io はハードコードしていない）。
@@ -69,7 +69,7 @@ jobs:
         run: |
           echo "Note: Please modify this section according to your environment"
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "registry=ghcr.io/$OWNER" >> $GITHUB_OUTPUT
+          echo "registry=ghcr.io/$OWNER" >> "$GITHUB_OUTPUT"
 
       - name: Generate image tags
         id: meta_tags

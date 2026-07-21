@@ -130,6 +130,8 @@ jobs:
             echo "No differences in database output were found." > "$out"
             exit 0
           fi
+          # 通知メッセージ内の `make ...` はリテラル表示（展開させない）ため SC2016 を無効化
+          # shellcheck disable=SC2016
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in database output have been detected" >> "$GITHUB_OUTPUT"
             printf '%s\n' 'データベース生成コマンド（例: `make gen` / `make gen-query`）をローカルで実行し、変更をコミットしてください。' > "$out"
@@ -137,6 +139,8 @@ jobs:
             echo "title=## ⚠️ DB 生成物のドリフトを検知（SQL source 未変更）" >> "$GITHUB_OUTPUT"
             printf '%s\n' '本 PR では SQL source が変更されていないため、generator 側（sqlc バージョン差・base 側の古い生成物 等）のドリフトの可能性があります。`make gen-query` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
           fi
+          # ファイル名を markdown コード表示にする `%s` はリテラル（展開させない）ため SC2016 を無効化
+          # shellcheck disable=SC2016
           {
             echo ""
             while IFS= read -r f; do

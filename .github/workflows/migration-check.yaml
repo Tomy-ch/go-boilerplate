@@ -56,8 +56,8 @@ jobs:
 
           echo "▶ pair check" >> $RESULT_FILE
 
-          UP=$(ls database/migrations/*.up.sql | xargs -n1 basename | cut -d'_' -f1 | sort)
-          DOWN=$(ls database/migrations/*.down.sql | xargs -n1 basename | cut -d'_' -f1 | sort)
+          UP=$(for f in database/migrations/*.up.sql; do basename "$f"; done | cut -d'_' -f1 | sort)
+          DOWN=$(for f in database/migrations/*.down.sql; do basename "$f"; done | cut -d'_' -f1 | sort)
 
           DIFF=$(diff <(echo "$UP") <(echo "$DOWN"))
 

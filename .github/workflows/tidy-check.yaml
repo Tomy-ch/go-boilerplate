@@ -75,6 +75,6 @@ jobs:
         run: |
           code='${{ steps.tidy.outputs.exit_code }}'
           if [ "$code" != "0" ]; then
-            echo "::error::go.mod/go.sum show differences after running `go mod tidy`"
+            echo "::error::go.mod/go.sum show differences after running \`go mod tidy\`"
             exit 1
           fi

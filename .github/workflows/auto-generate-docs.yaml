@@ -104,7 +104,7 @@ jobs:
 
       - name: Fix permissions
         run: |
-          sudo chown -R $USER:$USER docs internal openapi
+          sudo chown -R "$USER:$USER" docs internal openapi
 
       # 材料化した env/.env は生成物ではないため、コミット判定の対象から外す。
       - name: Restore embedded env
@@ -132,9 +132,9 @@ jobs:
           # ノイズ除去後に、コミットすべき差分が残っているかで PR 作成可否を判定する。
           git add -A
           if git diff --cached --quiet; then
-            echo "has_diff=false" >> $GITHUB_OUTPUT
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
           else
-            echo "has_diff=true" >> $GITHUB_OUTPUT
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create PR
