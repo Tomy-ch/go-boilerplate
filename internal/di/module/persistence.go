@@ -3,6 +3,7 @@ package module
 import (
 	userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user" // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"     // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/product"        // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/user"           // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
@@ -23,6 +24,7 @@ func persistenceModule() fx.Option {
 				user.New,
 				user.NewRoleRepository,
 				prefecture.New,
+				product.New,
 				// sample-api:end
 			),
 		),
