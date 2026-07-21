@@ -6,6 +6,7 @@ on:
       - '.github/workflows/sql-lint.yaml'
       - '**/*.sql'
       - '**/*.sqlfluff'
+      - 'mise.toml'
   workflow_dispatch:
 
 permissions:
@@ -26,8 +27,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Build python tool container
-        run: docker compose build python_tool_runner
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        run: mise install uv
+
+      - name: Install sqlfluff
+        run: mise install pipx:sqlfluff
 
       - name: Run SQL lint
         id: lint
@@ -37,7 +48,7 @@ jobs:
           set +e
           status=success
           for cat in migrations dml seed; do
-            make "sql-lint-${cat}" 2>&1 | tee "/tmp/sqlfluff_${cat}.log"
+            make "sql-lint-${cat}-ci" 2>&1 | tee "/tmp/sqlfluff_${cat}.log"
             code=${PIPESTATUS[0]}
             echo "exit_code_${cat}=${code}" >> "$GITHUB_OUTPUT"
             [ "$code" = "0" ] || status=failure

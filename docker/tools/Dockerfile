@@ -32,6 +32,7 @@ RUN mise install aqua:golang-migrate/migrate \
     && mise install sqlc \
     && mise install aqua:aquasecurity/trivy \
     && mise install actionlint \
+    && mise install shellcheck \
     && mise install hadolint \
     && mise install gitleaks \
     && mise install go:golang.org/x/tools/cmd/godoc \
@@ -44,13 +45,14 @@ RUN mkdir /out \
     && cp "$(mise which sqlc)" /out/ \
     && cp "$(mise which trivy)" /out/ \
     && cp "$(mise which actionlint)" /out/ \
+    && cp "$(mise which shellcheck)" /out/ \
     && cp "$(mise which hadolint)" /out/ \
     && cp "$(mise which gitleaks)" /out/ \
     && cp "$(mise which godoc)" /out/ \
     && cp "$(mise which godoc-static)" /out/
 
 # ------------------------------
-# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
+# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / shellcheck / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
 FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS go_tools
@@ -128,6 +130,7 @@ CMD []
 # NOTE: mise の pipx バックエンドが extras 構文（`sqlfluff[jinja]`）を受け付けないため、
 #       jinja extras 無しの素の sqlfluff を入れている。
 #       jinja テンプレートを SQL ファイルで使う場合は別途見直し。
+# pipx backend の実行系は mise.toml の pipx.uvx=true により uv（mise 管理版）へ固定。
 # ------------------------------
 FROM python:3.14.6-slim@sha256:d3400aa122fa42cf0af0dbe8ec3091b047eac5c8f7e3539f7135e86d855dc015 AS python_tools
 
@@ -138,7 +141,6 @@ RUN apt-get update \
         curl \
         git \
         make \
-        pipx \
     && rm -rf /var/lib/apt/lists/*
 
 # パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
@@ -156,7 +158,8 @@ WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install pipx:sqlfluff \
+RUN mise install uv \
+    && mise install pipx:sqlfluff \
     && rm -rf /root/.cache
 
 ENTRYPOINT []

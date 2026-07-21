@@ -76,6 +76,8 @@ jobs:
             echo "No differences in OpenAPI generated output were detected." > "$out"
             exit 0
           fi
+          # 通知メッセージ内の `make ...` はリテラル表示（展開させない）ため SC2016 を無効化
+          # shellcheck disable=SC2016
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
             printf '%s\n' '`make gen-bundle-oapi && make gen-api-docs` をローカルで実行し、変更をコミットしてください。' > "$out"
@@ -83,6 +85,8 @@ jobs:
             echo "title=## ⚠️ OpenAPI 生成物のドリフトを検知（openapi/ 未変更）" >> "$GITHUB_OUTPUT"
             printf '%s\n' '本 PR では `openapi/` 配下が変更されていないため、generator 側のドリフト（非決定的出力・依存バージョン差・base 側の古い生成物 等）の可能性があります。`make gen-bundle-oapi && make gen-api-docs` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
           fi
+          # ファイル名を markdown コード表示にする `%s` はリテラル（展開させない）ため SC2016 を無効化
+          # shellcheck disable=SC2016
           {
             echo ""
             while IFS= read -r f; do
