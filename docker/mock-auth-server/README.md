@@ -16,7 +16,7 @@ It is intentionally implemented in **TypeScript on Node.js (a different runtime 
 | POST | `/bypass/token` | Issue a token — `{subject, profile}` → `{access_token, token_type, expires_in}` |
 | GET | `/admin/users` | List the fixed user fixtures |
 
-`/bypass/*` and `/admin/*` are **test/dev-only endpoints**. Set `MOCK_AUTH_TEST_ENDPOINTS=disabled` to make them return `404` in production-like modes. The full OIDC surface (`/oidc/authorize` · `/oidc/token` · `/oidc/userinfo` · `/oidc/logout`) is defined in `openapi/` and implemented in later increments.
+`/bypass/*` and `/admin/*` are **test/dev-only endpoints**. Set `MOCK_AUTH_DEV_ENDPOINTS=disabled` to make them return `404` in production-like modes. The full OIDC surface (`/oidc/authorize` · `/oidc/token` · `/oidc/userinfo` · `/oidc/logout`) is defined in `openapi/` and implemented in later increments.
 
 ## Token Profiles (`/bypass/token`)
 
@@ -61,7 +61,7 @@ The Go API points `AUTH_ISSUER` at the host URL (`http://localhost:4000`) and `A
 | `OIDC_ISSUER` | `http://localhost:4000` | `iss` claim / OIDC issuer (host-resolvable URL) |
 | `OIDC_AUDIENCE` | `go-boilerplate-api` | `aud` claim for access tokens |
 | `OIDC_CLIENT_ID` | `go-boilerplate-client` | `client_id` claim / ID Token audience |
-| `MOCK_AUTH_TEST_ENDPOINTS` | `enabled` | `disabled` turns `/bypass/*` · `/admin/*` into `404` |
+| `MOCK_AUTH_DEV_ENDPOINTS` | `enabled` | `disabled` turns `/bypass/*` · `/admin/*` into `404` |
 
 ## Not Yet Implemented
 

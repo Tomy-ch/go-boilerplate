@@ -18,7 +18,7 @@ Token 発行側と検証側が同一ライブラリ由来の誤りを共有し�
 | POST | `/bypass/token` | Token 発行 — `{subject, profile}` → `{access_token, token_type, expires_in}` |
 | GET | `/admin/users` | 固定 User Fixture の一覧 |
 
-`/bypass/*` ・ `/admin/*` は**テスト / dev 専用**。`MOCK_AUTH_TEST_ENDPOINTS=disabled` で本番相当モードでは `404` を返す。OIDC の全表面（`/oidc/authorize` ・ `/oidc/token` ・ `/oidc/userinfo` ・ `/oidc/logout`）は `openapi/` に定義済みで、後続の Increment で実装する。
+`/bypass/*` ・ `/admin/*` は**テスト / dev 専用**。`MOCK_AUTH_DEV_ENDPOINTS=disabled` で本番相当モードでは `404` を返す。OIDC の全表面（`/oidc/authorize` ・ `/oidc/token` ・ `/oidc/userinfo` ・ `/oidc/logout`）は `openapi/` に定義済みで、後続の Increment で実装する。
 
 ## Token Profile（`/bypass/token`）
 
@@ -63,7 +63,7 @@ Go API は `AUTH_ISSUER` にホスト URL（`http://localhost:4000`）、`AUTH_J
 | `OIDC_ISSUER` | `http://localhost:4000` | `iss` クレーム / OIDC issuer（ホストから解決可能な URL） |
 | `OIDC_AUDIENCE` | `go-boilerplate-api` | access token の `aud` クレーム |
 | `OIDC_CLIENT_ID` | `go-boilerplate-client` | `client_id` クレーム / ID Token の audience |
-| `MOCK_AUTH_TEST_ENDPOINTS` | `enabled` | `disabled` で `/bypass/*` ・ `/admin/*` を `404` にする |
+| `MOCK_AUTH_DEV_ENDPOINTS` | `enabled` | `disabled` で `/bypass/*` ・ `/admin/*` を `404` にする |
 
 ## 未実装
 
