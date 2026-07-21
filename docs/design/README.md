@@ -30,6 +30,7 @@ Two invariants underpin all of them:
 | [outbox.md](outbox.md) | Transactional outbox | reliable event publication via the outbox pattern | [outbox](../../internal/usecase/boundary/outbox/README.md) |
 | [idempotency.md](idempotency.md) | Idempotency | the `Idempotency-Key` subsystem and its GC job | [idempotency](../../internal/usecase/idempotency/README.md) |
 | [observability.md](observability.md) | Observability | the cross-cutting traces / metrics / logs substrate | [observability](../../internal/observability/README.md) |
+| [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider (`mock-auth-server`) | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
 
 ## Reading order
 
@@ -37,4 +38,4 @@ The documents are independent, but they read naturally as **entry points → rel
 
 1. **Entry points** — [rest](rest.md) (sync), [worker](worker.md) (async), [job](job.md) (CLI / scheduled)
 2. **Reliability subsystems** — [outbox](outbox.md), [idempotency](idempotency.md)
-3. **Cross-cutting** — [observability](observability.md)
+3. **Cross-cutting** — [observability](observability.md), [auth](auth.md)
