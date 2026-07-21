@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/controller/handler/ready"
 	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate" // sample-api:line
 	prefectureshandler "go-boilerplate/internal/controller/handler/v1/prefectures"   // sample-api:line
+	productshandler "go-boilerplate/internal/controller/handler/v1/products"         // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users"                            // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/detail"                     // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/feed"                       // sample-api:line
@@ -33,6 +34,7 @@ func ControllerModule() fx.Option {
 			search.BindHandler,
 			exchangeratehandler.BindHandler,
 			prefectureshandler.BindHandler,
+			productshandler.BindHandler,
 			// sample-api:end
 		),
 	)
