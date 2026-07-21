@@ -27,6 +27,43 @@ Token 発行側と検証側が同一ライブラリ由来の誤りを共有し�
 
 `/bypass/*` ・ `/admin/*` は**dev 専用**: `MOCK_AUTH_DEV_ENDPOINTS=disabled` で `404` を返す。さらに **`NODE_ENV=production` では server が即時終了する**（本番で動かしてはならない）。登録クライアント（`fixtures/clients.json`）は public + PKCE 必須で、`redirect_uri` / `post_logout_redirect_uri` は完全一致で照合する。
 
+## フロー
+
+### Authorization Code Flow + PKCE（標準的なログイン利用ケース）
+
+```mermaid
+sequenceDiagram
+    participant C as Client (RP)
+    participant M as mock-auth-server
+    C->>M: GET /oidc/authorize (client_id, redirect_uri, scope, code_challenge=S256, state, nonce)
+    Note over M: client_id / redirect_uri 完全一致・scope 部分集合 → code 発行
+    M-->>C: 302 redirect_uri?code&state  (code: 発行・単回・TTL 60s)
+    C->>M: POST /oidc/token (code, code_verifier, redirect_uri, client_id)
+    Note over M: code 単回 consume + PKCE S256 検証 + client_id/redirect_uri 一致
+    M-->>C: 200 access_token (typ=at+jwt) + id_token (nonce)  (code: 消費済)
+    C->>M: GET /oidc/userinfo (Authorization: Bearer access_token)
+    Note over M: 署名/iss/aud/exp + typ=at+jwt 検証（id_token は拒否）
+    M-->>C: 200 { sub, email, ... }（whitelist）
+    C->>M: POST /oidc/logout (id_token_hint, post_logout_redirect_uri, state)
+    Note over M: session(subject) 破棄 + post_logout_redirect_uri 完全一致
+    M-->>C: 302 post_logout_redirect_uri?state  (session: 破棄)
+```
+
+### テスト / bypass 利用ケース（dev-gate 限定）
+
+- **フローを経ずにトークン発行**: `POST /bypass/token {subject, profile}` → access token（異常系 Profile で否定テスト用トークンも）。Go API や `/oidc/userinfo` に直接投入できる。
+- **UI を経ずに session 作成**: `POST /bypass/session {subject}` → `{session_id}`（session: 作成）。後で `/oidc/logout`（`id_token_hint` の subject 一致）や `/admin/reset` で破棄する。
+
+### 状態ライフサイクル
+
+| 状態 | 作成 | 消費 / 破棄 | TTL |
+| --- | --- | --- | --- |
+| 認可コード | `/oidc/authorize` | `/oidc/token`（単回）または期限切れ | 60s |
+| session | `/oidc/authorize`（ログイン）・`/bypass/session` | `/oidc/logout`（subject 単位）・`/admin/reset` | 1h |
+| access / id token | `/oidc/token`・`/bypass/token` | 期限切れ（stateless・非保存） | 300s |
+
+`/admin/reset` は揮発ストア（code / session）を初期化する。固定鍵と fixture はプロセス再起動でのみ初期化される。
+
 ## トークン Profile（`/bypass/token`）
 
 再現性のため、異常系は **固定 Profile**（任意 Claim 注入 API ではない）として提供する。Go API は `valid` を受理し、すべての異常系を `401` で拒否することを期待する。

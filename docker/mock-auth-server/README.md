@@ -25,6 +25,43 @@ It is intentionally implemented in **TypeScript on Node.js (a different runtime 
 
 `/bypass/*` and `/admin/*` are **dev-only endpoints**: set `MOCK_AUTH_DEV_ENDPOINTS=disabled` to make them return `404`. The server also **refuses to start when `NODE_ENV=production`** (this mock must never run in production). Registered clients (`fixtures/clients.json`) are public + PKCE-required; `redirect_uri` / `post_logout_redirect_uri` are matched exactly.
 
+## Flows
+
+### Authorization Code Flow + PKCE (the standard login use case)
+
+```mermaid
+sequenceDiagram
+    participant C as Client (RP)
+    participant M as mock-auth-server
+    C->>M: GET /oidc/authorize (client_id, redirect_uri, scope, code_challenge=S256, state, nonce)
+    Note over M: exact-match client_id / redirect_uri, subset scope → mint code
+    M-->>C: 302 redirect_uri?code&state  (code: issued, single-use, TTL 60s)
+    C->>M: POST /oidc/token (code, code_verifier, redirect_uri, client_id)
+    Note over M: consume code (single-use) + verify PKCE S256 + match client_id/redirect_uri
+    M-->>C: 200 access_token (typ=at+jwt) + id_token (nonce)  (code: consumed)
+    C->>M: GET /oidc/userinfo (Authorization: Bearer access_token)
+    Note over M: verify signature/iss/aud/exp + typ=at+jwt (reject id_token)
+    M-->>C: 200 { sub, email, ... } (whitelist)
+    C->>M: POST /oidc/logout (id_token_hint, post_logout_redirect_uri, state)
+    Note over M: destroy session(subject) + exact-match post_logout_redirect_uri
+    M-->>C: 302 post_logout_redirect_uri?state  (session: destroyed)
+```
+
+### Test / bypass use cases (dev-gate only)
+
+- **Issue a token without the flow**: `POST /bypass/token {subject, profile}` → an access token (or an anomaly token for negative testing). Feed it straight to the Go API or `/oidc/userinfo`.
+- **Create a session without a UI**: `POST /bypass/session {subject}` → `{session_id}` (session: created). Destroyed later by `/oidc/logout` (matching `id_token_hint` subject) or `/admin/reset`.
+
+### State lifecycle
+
+| State | Created by | Consumed / destroyed by | TTL |
+| --- | --- | --- | --- |
+| Authorization code | `/oidc/authorize` | `/oidc/token` (single-use) or expiry | 60s |
+| Session | `/oidc/authorize` (login) · `/bypass/session` | `/oidc/logout` (by subject) · `/admin/reset` | 1h |
+| Access / ID token | `/oidc/token` · `/bypass/token` | expiry (stateless; not stored) | 300s |
+
+`/admin/reset` clears the volatile stores (code / session); the fixed key and fixtures are reset only by a process restart.
+
 ## Token Profiles (`/bypass/token`)
 
 Anomalies are provided as **fixed profiles** (not an arbitrary-claim-injection API) for reproducibility. The Go API is expected to accept `valid` and reject every anomaly with `401`.
