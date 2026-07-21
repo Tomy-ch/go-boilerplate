@@ -26,7 +26,7 @@
 | `given_name` | string | 名 |
 | `family_name` | string | 姓 |
 | `name` | string | 表示名 |
-| `status` | string | `active` / `deleted` / `unregistered`（Phase 5-B 以降で使用） |
+| `status` | string | `active` / `deleted` / `unregistered`（未使用） |
 
 ### ユーザーの登録
 

@@ -1,5 +1,5 @@
 // tokens.ts は、固定 Profile 方式で access token / id token を発行する。
-// 任意 Claim 注入 API にはせず、再現性のため異常系を固定 Profile として提供する（要件書 §9 の A 範囲）。
+// 任意 Claim 注入 API にはせず、再現性のため異常系を固定 Profile として提供する。
 import { SignJWT } from "jose";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { signingKey, KID, ALG } from "./keys.ts";
@@ -8,7 +8,7 @@ import type { Claims, OidcConfig } from "./types.ts";
 // SignKey は jose の SignJWT.sign が受理する鍵型（CryptoKey / KeyObject / Uint8Array 等）を導出する。
 type SignKey = Parameters<SignJWT["sign"]>[0];
 
-// ACCESS_TTL_SECONDS は access token の有効期間（要件書 §5 の access_token_ttl=300s）。
+// ACCESS_TTL_SECONDS は access token の有効期間（300 秒）。
 const ACCESS_TTL_SECONDS = 300;
 // ACCESS_SCOPE は Client に許された API 用途を表す標準 scope（Role とは別軸）。
 const ACCESS_SCOPE = "openid profile email api.read api.write";
@@ -20,7 +20,7 @@ const { privateKey: wrongSigningKey } = generateKeyPairSync("rsa", { modulusLeng
 // symmetricSecret は unsupported-algorithm（HS256）プロファイル用の対称鍵。
 const symmetricSecret = new TextEncoder().encode("mock-auth-server-unsupported-alg-secret");
 
-// PROFILES は A 範囲でサポートする Token Profile の一覧。
+// PROFILES は bypass/token がサポートする Token Profile の一覧。
 export const PROFILES: readonly string[] = [
   "valid",
   "expired",
@@ -33,7 +33,7 @@ export const PROFILES: readonly string[] = [
   "id-token",
 ];
 
-// baseAccessClaims は正常な access token の標準クレーム（要件書 §13）を組み立てる。
+// baseAccessClaims は正常な access token の標準クレームを組み立てる。
 function baseAccessClaims(config: OidcConfig, subject: string, now: number): Claims {
   return {
     iss: config.issuer,
