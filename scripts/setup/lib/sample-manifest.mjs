@@ -111,8 +111,8 @@ export const SAMPLE_DOMAINS = {
   product: {
     description: "サンプル 商品ドメイン（product_statuses は GET /v1/product-statuses の一覧 API を含む Go 層まで実装済。product_categories / products は DB スタブのみ）",
     paths: [
-      "internal/domain/productstatus",
-      "internal/usecase/productstatus",
+      "internal/domain/product/status",
+      "internal/usecase/product/status",
       "internal/infrastructure/rdb/repository/productstatus",
       "internal/controller/handler/v1/product-statuses",
       "internal/integration/v1_product_statuses_test.go",

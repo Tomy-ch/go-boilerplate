@@ -1,4 +1,4 @@
-package productstatus
+package status
 
 const (
 	minNameLength = 1

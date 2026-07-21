@@ -1,5 +1,5 @@
-// Package productstatus は、商品ステータスマスタドメインを定義します。ID・名称・コード・表示順（sortKey）の不変条件を持つ ProductStatus エンティティと Repository インターフェースを提供します。
-package productstatus
+// Package status は、商品ステータスマスタドメインを定義します。ID・名称・コード・表示順（sortKey）の不変条件を持つ Status エンティティと Repository インターフェースを提供します。
+package status
 
 import (
 	"fmt"
@@ -9,11 +9,11 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// ProductStatuses は、ProductStatus エンティティのスライス型です。
-type ProductStatuses []*ProductStatus
+// Statuses は、Status エンティティのスライス型です。
+type Statuses []*Status
 
-// ProductStatus は、商品ステータスを表すドメインエンティティです。
-type ProductStatus struct {
+// Status は、商品ステータスを表すドメインエンティティです。
+type Status struct {
 	id      uuid.UUID
 	name    string
 	code    int
@@ -28,7 +28,7 @@ func New(
 	name string,
 	code int,
 	sortKey int,
-) (*ProductStatus, error) {
+) (*Status, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
@@ -48,7 +48,7 @@ func New(
 		)
 	}
 
-	return &ProductStatus{
+	return &Status{
 		id:      id,
 		name:    name,
 		code:    code,
@@ -57,13 +57,13 @@ func New(
 }
 
 // ID は、商品ステータスのIDを返します。
-func (p *ProductStatus) ID() uuid.UUID { return p.id }
+func (p *Status) ID() uuid.UUID { return p.id }
 
 // Name は、商品ステータス名を返します。
-func (p *ProductStatus) Name() string { return p.name }
+func (p *Status) Name() string { return p.name }
 
 // Code は、商品ステータスコードを返します。
-func (p *ProductStatus) Code() int { return p.code }
+func (p *Status) Code() int { return p.code }
 
 // SortKey は、商品ステータスの表示順を返します。
-func (p *ProductStatus) SortKey() int { return p.sortKey }
+func (p *Status) SortKey() int { return p.sortKey }

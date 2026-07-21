@@ -6,10 +6,10 @@ import (
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/outbox"
-	prefectureuc "go-boilerplate/internal/usecase/prefecture"       // sample-api:line
-	productstatusuc "go-boilerplate/internal/usecase/productstatus" // sample-api:line
-	"go-boilerplate/internal/usecase/user"                          // sample-api:line
-	"go-boilerplate/internal/usecase/user/search"                   // sample-api:line
+	prefectureuc "go-boilerplate/internal/usecase/prefecture" // sample-api:line
+	statusuc "go-boilerplate/internal/usecase/product/status" // sample-api:line
+	"go-boilerplate/internal/usecase/user"                    // sample-api:line
+	"go-boilerplate/internal/usecase/user/search"             // sample-api:line
 
 	"go.uber.org/fx"
 )
@@ -36,7 +36,7 @@ func UsecaseModule() fx.Option {
 			search.New,
 			exchangerateuc.New,
 			prefectureuc.New,
-			productstatusuc.New,
+			statusuc.New,
 			// sample-api:end
 		),
 	)

@@ -9,18 +9,18 @@ import (
 
 	"go-boilerplate/internal/controller/handler/v1/product-statuses/gen"
 	"go-boilerplate/internal/observability"
-	productstatusuc "go-boilerplate/internal/usecase/productstatus"
+	statusuc "go-boilerplate/internal/usecase/product/status"
 
 	"github.com/labstack/echo/v4"
 )
 
 type server struct {
 	tracer observability.LayerTracer
-	uc     productstatusuc.Usecase
+	uc     statusuc.Usecase
 }
 
 // BindHandler は、商品ステータスマスタ一覧のハンドラを Echo に登録します。
-func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productstatusuc.Usecase) {
+func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc statusuc.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
 		uc:     uc,
@@ -34,7 +34,7 @@ func (s *server) GetProductStatuses(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	list, err := s.uc.ListProductStatuses(ctx)
+	list, err := s.uc.ListStatuses(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (s *server) GetProductStatuses(
 }
 
 // toProductStatusResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
-func toProductStatusResponse(dto productstatusuc.ProductStatusDTO) gen.ProductStatusResponse {
+func toProductStatusResponse(dto statusuc.StatusDTO) gen.ProductStatusResponse {
 	return gen.ProductStatusResponse{
 		Id:      dto.ID.ToPrimitive(),
 		Code:    dto.Code,

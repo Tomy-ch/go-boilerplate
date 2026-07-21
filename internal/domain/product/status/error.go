@@ -1,4 +1,4 @@
-package productstatus
+package status
 
 import (
 	"go-boilerplate/internal/apperror"

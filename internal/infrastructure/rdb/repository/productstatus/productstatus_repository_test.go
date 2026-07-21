@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/productstatus"
+	"go-boilerplate/internal/domain/product/status"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -52,7 +52,7 @@ func Test_repository_FindAll(t *testing.T) {
 			require.NoError(t, err)
 
 			txm.WithinTx(func(ctx context.Context) {
-				expectedReviewing, err := productstatus.New(reviewingID, "検討中", 8, 1)
+				expectedReviewing, err := status.New(reviewingID, "検討中", 8, 1)
 				require.NoError(t, err)
 
 				actual, err := repo.FindAll(ctx)
@@ -116,7 +116,7 @@ func Test_repository_FindAll(t *testing.T) {
 				actual, err := repo.FindAll(ctx)
 				assert.Nil(t, actual)
 				require.ErrorIs(t, err, apperror.ErrInternal)
-				require.NotErrorIs(t, err, productstatus.ErrInvalidSortKey)
+				require.NotErrorIs(t, err, status.ErrInvalidSortKey)
 			})
 		})
 	})

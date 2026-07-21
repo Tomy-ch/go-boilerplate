@@ -8,8 +8,8 @@ import (
 	productstatuseshandler "go-boilerplate/internal/controller/handler/v1/product-statuses"
 	"go-boilerplate/internal/controller/handler/v1/product-statuses/gen"
 	"go-boilerplate/internal/observability"
-	productstatusuc "go-boilerplate/internal/usecase/productstatus"
-	mock_productstatus "go-boilerplate/internal/usecase/productstatus/mock"
+	statusuc "go-boilerplate/internal/usecase/product/status"
+	mock_status "go-boilerplate/internal/usecase/product/status/mock"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -33,9 +33,9 @@ func TestV1ProductStatuses_Integration(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			mockUC := mock_productstatus.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProductStatuses(gomock.Any()).Return(
-				productstatusuc.ProductStatusDTOs{{ID: id, Code: 8, Name: "検討中", SortKey: 1}}, nil,
+			mockUC := mock_status.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListStatuses(gomock.Any()).Return(
+				statusuc.StatusDTOs{{ID: id, Code: 8, Name: "検討中", SortKey: 1}}, nil,
 			)
 
 			productstatuseshandler.BindHandler(e, tf, mockUC)
@@ -57,8 +57,8 @@ func TestV1ProductStatuses_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			mockUC := mock_productstatus.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProductStatuses(gomock.Any()).Return(nil, apperror.ErrInternal)
+			mockUC := mock_status.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListStatuses(gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			productstatuseshandler.BindHandler(e, tf, mockUC)
 

@@ -1,4 +1,4 @@
-package productstatus
+package status
 
 import (
 	"strings"
@@ -22,10 +22,10 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("有効な値の場合、ProductStatusエンティティが生成される", func(t *testing.T) {
+		t.Run("有効な値の場合、Statusエンティティが生成される", func(t *testing.T) {
 			t.Parallel()
 
-			expected := &ProductStatus{
+			expected := &Status{
 				id:      expectedUUID,
 				name:    expectedName,
 				code:    expectedCode,
@@ -148,7 +148,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestProductStatus_ID(t *testing.T) {
+func TestStatus_ID(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -160,15 +160,15 @@ func TestProductStatus_ID(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			productStatus, err := New(id, "在庫切れ", 2, 6)
+			status, err := New(id, "在庫切れ", 2, 6)
 			require.NoError(t, err)
 
-			assert.Equal(t, id, productStatus.ID())
+			assert.Equal(t, id, status.ID())
 		})
 	})
 }
 
-func TestProductStatus_Name(t *testing.T) {
+func TestStatus_Name(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -180,15 +180,15 @@ func TestProductStatus_Name(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			productStatus, err := New(id, "在庫切れ", 2, 6)
+			status, err := New(id, "在庫切れ", 2, 6)
 			require.NoError(t, err)
 
-			assert.Equal(t, "在庫切れ", productStatus.Name())
+			assert.Equal(t, "在庫切れ", status.Name())
 		})
 	})
 }
 
-func TestProductStatus_Code(t *testing.T) {
+func TestStatus_Code(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -200,15 +200,15 @@ func TestProductStatus_Code(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			productStatus, err := New(id, "在庫切れ", 2, 6)
+			status, err := New(id, "在庫切れ", 2, 6)
 			require.NoError(t, err)
 
-			assert.Equal(t, 2, productStatus.Code())
+			assert.Equal(t, 2, status.Code())
 		})
 	})
 }
 
-func TestProductStatus_SortKey(t *testing.T) {
+func TestStatus_SortKey(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -220,10 +220,10 @@ func TestProductStatus_SortKey(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			productStatus, err := New(id, "在庫切れ", 2, 6)
+			status, err := New(id, "在庫切れ", 2, 6)
 			require.NoError(t, err)
 
-			assert.Equal(t, 6, productStatus.SortKey())
+			assert.Equal(t, 6, status.SortKey())
 		})
 	})
 }

@@ -1,11 +1,11 @@
-package productstatus
+package status
 
 import (
 	"context"
 	"testing"
 
-	domainproductstatus "go-boilerplate/internal/domain/productstatus"
-	mock_productstatus "go-boilerplate/internal/domain/productstatus/mock"
+	domainstatus "go-boilerplate/internal/domain/product/status"
+	mock_status "go-boilerplate/internal/domain/product/status/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/pkg/uuid"
@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		tf := observability.NewNoopTracerFactory(t)
-		repo := mock_productstatus.NewMockRepository(ctrl)
+		repo := mock_status.NewMockRepository(ctrl)
 
 		expected := &usecase{
 			tracer: tf.Usecase(),
@@ -35,7 +35,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func Test_usecase_ListProductStatuses(t *testing.T) {
+func Test_usecase_ListStatuses(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -54,21 +54,21 @@ func Test_usecase_ListProductStatuses(t *testing.T) {
 			require.NoError(t, err)
 
 			// sortKey 昇順（検討中 sortKey=1, 在庫あり sortKey=5）でリポジトリが返す想定。
-			reviewing, err := domainproductstatus.New(reviewingID, "検討中", 8, 1)
+			reviewing, err := domainstatus.New(reviewingID, "検討中", 8, 1)
 			require.NoError(t, err)
-			inStock, err := domainproductstatus.New(inStockID, "在庫あり", 1, 5)
+			inStock, err := domainstatus.New(inStockID, "在庫あり", 1, 5)
 			require.NoError(t, err)
 
-			repo := mock_productstatus.NewMockRepository(ctrl)
+			repo := mock_status.NewMockRepository(ctrl)
 			repo.EXPECT().FindAll(gomock.Any()).Return(
-				domainproductstatus.ProductStatuses{reviewing, inStock}, nil,
+				domainstatus.Statuses{reviewing, inStock}, nil,
 			).Times(1)
 
 			u := &usecase{tracer: lt, repo: repo}
 
-			actual, err := u.ListProductStatuses(ctx)
+			actual, err := u.ListStatuses(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, ProductStatusDTOs{
+			assert.Equal(t, StatusDTOs{
 				{ID: reviewingID, Code: 8, Name: "検討中", SortKey: 1},
 				{ID: inStockID, Code: 1, Name: "在庫あり", SortKey: 5},
 			}, actual)
@@ -81,12 +81,12 @@ func Test_usecase_ListProductStatuses(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockUsecaseLayerTracer(t)
 
-			repo := mock_productstatus.NewMockRepository(ctrl)
-			repo.EXPECT().FindAll(gomock.Any()).Return(domainproductstatus.ProductStatuses{}, nil).Times(1)
+			repo := mock_status.NewMockRepository(ctrl)
+			repo.EXPECT().FindAll(gomock.Any()).Return(domainstatus.Statuses{}, nil).Times(1)
 
 			u := &usecase{tracer: lt, repo: repo}
 
-			actual, err := u.ListProductStatuses(ctx)
+			actual, err := u.ListStatuses(ctx)
 			require.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Empty(t, actual)
@@ -105,12 +105,12 @@ func Test_usecase_ListProductStatuses(t *testing.T) {
 
 			expectedErr := testkit.ExpectedDBError()
 
-			repo := mock_productstatus.NewMockRepository(ctrl)
+			repo := mock_status.NewMockRepository(ctrl)
 			repo.EXPECT().FindAll(gomock.Any()).Return(nil, expectedErr).Times(1)
 
 			u := &usecase{tracer: lt, repo: repo}
 
-			actual, err := u.ListProductStatuses(ctx)
+			actual, err := u.ListStatuses(ctx)
 			require.ErrorIs(t, err, expectedErr)
 			assert.Nil(t, actual)
 		})

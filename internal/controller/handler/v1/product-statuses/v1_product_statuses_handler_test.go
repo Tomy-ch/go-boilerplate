@@ -9,8 +9,8 @@ import (
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/handler/v1/product-statuses/gen"
 	"go-boilerplate/internal/observability"
-	productstatusuc "go-boilerplate/internal/usecase/productstatus"
-	mock_productstatus "go-boilerplate/internal/usecase/productstatus/mock"
+	statusuc "go-boilerplate/internal/usecase/product/status"
+	mock_status "go-boilerplate/internal/usecase/product/status/mock"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -21,9 +21,9 @@ import (
 
 const targetPath = "/v1/product-statuses"
 
-func newServer(t *testing.T) (*server, *mock_productstatus.MockUsecase) {
+func newServer(t *testing.T) (*server, *mock_status.MockUsecase) {
 	t.Helper()
-	mockUC := mock_productstatus.NewMockUsecase(gomock.NewController(t))
+	mockUC := mock_status.NewMockUsecase(gomock.NewController(t))
 	return &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}, mockUC
 }
 
@@ -32,7 +32,7 @@ func TestBindHandler(t *testing.T) {
 
 	e := echo.New()
 	tf := observability.NewNoopTracerFactory(t)
-	mockUC := mock_productstatus.NewMockUsecase(gomock.NewController(t))
+	mockUC := mock_status.NewMockUsecase(gomock.NewController(t))
 
 	BindHandler(e, tf, mockUC)
 
@@ -55,7 +55,7 @@ func Test_server_GetProductStatuses(t *testing.T) {
 			require.NoError(t, err)
 
 			s, mockUC := newServer(t)
-			mockUC.EXPECT().ListProductStatuses(gomock.Any()).Return(productstatusuc.ProductStatusDTOs{
+			mockUC.EXPECT().ListStatuses(gomock.Any()).Return(statusuc.StatusDTOs{
 				{ID: reviewingID, Code: 8, Name: "検討中", SortKey: 1},
 				{ID: inStockID, Code: 1, Name: "在庫あり", SortKey: 5},
 			}, nil)
@@ -76,7 +76,7 @@ func Test_server_GetProductStatuses(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)
-			mockUC.EXPECT().ListProductStatuses(gomock.Any()).Return(productstatusuc.ProductStatusDTOs{}, nil)
+			mockUC.EXPECT().ListStatuses(gomock.Any()).Return(statusuc.StatusDTOs{}, nil)
 
 			resp, err := s.GetProductStatuses(context.Background(), gen.GetProductStatusesRequestObject{})
 			require.NoError(t, err)
@@ -95,7 +95,7 @@ func Test_server_GetProductStatuses(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)
-			mockUC.EXPECT().ListProductStatuses(gomock.Any()).Return(nil, apperror.ErrInternal)
+			mockUC.EXPECT().ListStatuses(gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetProductStatuses(context.Background(), gen.GetProductStatusesRequestObject{})
 			require.ErrorIs(t, err, apperror.ErrInternal)
