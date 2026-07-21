@@ -1,6 +1,6 @@
 // oidc.ts は OAuth2 / OIDC 標準エンドポイント（/oidc/*）を提供する。
-// authorize（Authorization Code Flow + PKCE）と token（code 単回消費 + PKCE S256 検証）を実装する。
-// userinfo / logout は後続 Increment で実装する（契約は openapi/ に定義済みのため 501 = 定義済み・未実装）。
+// authorize（Authorization Code Flow + PKCE S256）・token（code 単回消費 + PKCE 検証で access/id token 発行）・
+// userinfo（Bearer access token 必須・whitelist claim）・logout（RP-Initiated）を実装する。
 import { Hono } from "hono";
 import * as zod from "zod";
 import { randomBytes } from "node:crypto";
@@ -59,6 +59,11 @@ oidcRoutes.get("/oidc/authorize", (c) => {
   }
   if (q.code_challenge_method !== "S256") {
     return redirectError("invalid_request", "code_challenge_method must be S256");
+  }
+  // 要求 scope はクライアントに許可された scope の部分集合でなければならない（scope 昇格の防止）。
+  const requestedScopes = q.scope.split(" ").filter((s) => s !== "");
+  if (!requestedScopes.every((s) => client.scopes.includes(s))) {
+    return redirectError("invalid_scope", "requested scope is not allowed for this client");
   }
 
   const code = randomBytes(32).toString("base64url");
@@ -119,7 +124,7 @@ oidcRoutes.post("/oidc/token", async (c) => {
   }
 
   const accessToken = await issueAccessToken(config, record.subject, record.scope);
-  const idToken = await issueIdToken(config, record.subject, record.nonce);
+  const idToken = await issueIdToken(config, record.subject, record.nonce, record.clientId);
   logEvent("token_issued", { client_id: record.clientId, subject: record.subject, kid: KID });
 
   return c.json({

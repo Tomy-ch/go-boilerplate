@@ -49,12 +49,12 @@ function baseAccessClaims(config: OidcConfig, subject: string, now: number): Cla
   };
 }
 
-// idTokenClaims は ID Token のクレーム（aud=client_id / token_use=id）を組み立てる。
-function idTokenClaims(config: OidcConfig, subject: string, now: number): Claims {
+// idTokenClaims は ID Token のクレーム（aud=認可を要求した client_id / token_use=id）を組み立てる。
+function idTokenClaims(config: OidcConfig, subject: string, now: number, clientId: string = config.clientId): Claims {
   return {
     iss: config.issuer,
     sub: subject,
-    aud: config.clientId,
+    aud: clientId,
     iat: now,
     exp: now + ACCESS_TTL_SECONDS,
     token_use: "id",
@@ -117,10 +117,16 @@ export function issueAccessToken(config: OidcConfig, subject: string, scope?: st
   return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
 }
 
-// issueIdToken は OIDC の ID Token を発行する（typ=JWT / aud=client_id）。nonce を指定すると反映する。
-export function issueIdToken(config: OidcConfig, subject: string, nonce?: string): Promise<string> {
+// issueIdToken は OIDC の ID Token を発行する（typ=JWT）。aud には認可を要求した clientId を用い、
+// nonce を指定すると反映する。clientId 省略時は config.clientId。
+export function issueIdToken(
+  config: OidcConfig,
+  subject: string,
+  nonce?: string,
+  clientId: string = config.clientId,
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  const claims = idTokenClaims(config, subject, now);
+  const claims = idTokenClaims(config, subject, now, clientId);
   if (nonce !== undefined && nonce !== "") {
     claims.nonce = nonce;
   }
@@ -135,6 +141,7 @@ export async function verifyAccessToken(config: OidcConfig, token: string): Prom
     audience: config.audience,
     algorithms: [ALG],
     typ: ACCESS_TOKEN_TYPE,
+    requiredClaims: ["sub"],
   });
   return payload;
 }
