@@ -19,3 +19,8 @@ export const users = loadUsers(usersPath);
 
 // defaultSubject は subject 省略時のフォールバック。サンプル固有名を焼き込まないためデータ側から導出する。
 export const defaultSubject = users[0]?.subject ?? "user-example";
+
+// findUser は subject に一致する User を返す（無ければ undefined）。
+export function findUser(subject: string): User | undefined {
+  return users.find((u) => u.subject === subject);
+}

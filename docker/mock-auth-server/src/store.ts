@@ -70,6 +70,15 @@ export class TTLStore<T> {
     this.entries.delete(key);
   }
 
+  // deleteWhere は述語に一致する値を持つエントリを全て破棄する（logout の subject 一括破棄等）。
+  deleteWhere(predicate: (value: T) => boolean): void {
+    for (const [key, entry] of this.entries) {
+      if (predicate(entry.value)) {
+        this.entries.delete(key);
+      }
+    }
+  }
+
   // sweep は期限切れエントリを回収する（メモリ回収）。
   sweep(): void {
     const t = this.now();

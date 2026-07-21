@@ -1,8 +1,8 @@
 // tokens.ts は、固定 Profile 方式で access token / id token を発行する。
 // 任意 Claim 注入 API にはせず、再現性のため異常系を固定 Profile として提供する。
-import { SignJWT } from "jose";
+import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
-import { signingKey, KID, ALG } from "./keys.ts";
+import { signingKey, KID, ALG, publicKey } from "./keys.ts";
 import type { Claims, OidcConfig } from "./types.ts";
 
 // SignKey は jose の SignJWT.sign が受理する鍵型（CryptoKey / KeyObject / Uint8Array 等）を導出する。
@@ -125,6 +125,28 @@ export function issueIdToken(config: OidcConfig, subject: string, nonce?: string
     claims.nonce = nonce;
   }
   return sign(claims, signingKey, ALG, "JWT");
+}
+
+// verifyAccessToken は access token を検証する。typ=at+jwt でないもの（ID Token 等）は拒否し、
+// 署名・iss・aud・alg・有効期限を検証する。成功時 payload を返し、失敗時は例外を投げる。
+export async function verifyAccessToken(config: OidcConfig, token: string): Promise<Claims> {
+  const { payload } = await jwtVerify(token, publicKey, {
+    issuer: config.issuer,
+    audience: config.audience,
+    algorithms: [ALG],
+    typ: ACCESS_TOKEN_TYPE,
+  });
+  return payload;
+}
+
+// subjectFromToken は token を検証せず sub を取り出す（logout の id_token_hint からの subject 抽出用）。
+export function subjectFromToken(token: string): string | undefined {
+  try {
+    const sub = decodeJwt(token).sub;
+    return typeof sub === "string" ? sub : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export { ACCESS_TTL_SECONDS };

@@ -5,10 +5,16 @@ import { Hono } from "hono";
 import * as zod from "zod";
 import { randomBytes } from "node:crypto";
 import { config } from "../config.ts";
-import { findClient } from "../clients.ts";
-import { defaultSubject } from "../users.ts";
-import { codeStore } from "../store.ts";
-import { issueAccessToken, issueIdToken, ACCESS_TTL_SECONDS } from "../tokens.ts";
+import { clients, findClient } from "../clients.ts";
+import { defaultSubject, findUser } from "../users.ts";
+import { codeStore, sessionStore } from "../store.ts";
+import {
+  issueAccessToken,
+  issueIdToken,
+  verifyAccessToken,
+  subjectFromToken,
+  ACCESS_TTL_SECONDS,
+} from "../tokens.ts";
 import { KID } from "../keys.ts";
 import { verifyS256 } from "../pkce.ts";
 import { logEvent } from "../log.ts";
@@ -125,6 +131,65 @@ oidcRoutes.post("/oidc/token", async (c) => {
   });
 });
 
-// userinfo / logout は後続 Increment で実装する。
-oidcRoutes.get("/oidc/userinfo", (c) => c.json({ error: "not_implemented" }, 501));
-oidcRoutes.post("/oidc/logout", (c) => c.json({ error: "not_implemented" }, 501));
+// GET /oidc/userinfo — Bearer access token を必須とし、対応 subject の claim を whitelist で返す。
+// ID Token（typ != at+jwt）は verifyAccessToken の typ 検証で拒否される。
+oidcRoutes.get("/oidc/userinfo", async (c) => {
+  const authz = c.req.header("authorization") ?? "";
+  const match = /^Bearer (.+)$/.exec(authz);
+  if (match === null) {
+    return c.json({ error: "invalid_token", error_description: "missing bearer access token" }, 401);
+  }
+
+  let subject: string;
+  try {
+    const payload = await verifyAccessToken(config, match[1]);
+    subject = typeof payload.sub === "string" ? payload.sub : "";
+  } catch {
+    logEvent("oidc_error", { endpoint: "userinfo", error: "invalid_token" });
+    return c.json({ error: "invalid_token", error_description: "access token verification failed" }, 401);
+  }
+
+  // sub は必須。fixture に User があれば whitelist フィールドも返す（additionalProperties:false）。
+  const user = findUser(subject);
+  if (user === undefined) {
+    return c.json({ sub: subject });
+  }
+  return c.json({
+    sub: user.subject,
+    email: user.email,
+    email_verified: true,
+    given_name: user.given_name,
+    family_name: user.family_name,
+    name: user.name,
+  });
+});
+
+// POST /oidc/logout — RP-Initiated Logout。id_token_hint の subject の session を破棄し、
+// post_logout_redirect_uri が登録済みなら 302（state 反映）、未指定なら 200、未登録なら 400。
+oidcRoutes.post("/oidc/logout", async (c) => {
+  const form = await c.req.parseBody();
+  const idTokenHint = typeof form.id_token_hint === "string" ? form.id_token_hint : undefined;
+  const postLogout = typeof form.post_logout_redirect_uri === "string" ? form.post_logout_redirect_uri : undefined;
+  const state = typeof form.state === "string" ? form.state : undefined;
+
+  if (idTokenHint !== undefined) {
+    const subject = subjectFromToken(idTokenHint);
+    if (subject !== undefined) {
+      sessionStore.deleteWhere((s) => s.subject === subject);
+    }
+  }
+  logEvent("logout", {});
+
+  if (postLogout === undefined) {
+    return c.json({ status: "logged_out" });
+  }
+  const registered = clients.some((cl) => cl.post_logout_redirect_uris.includes(postLogout));
+  if (!registered) {
+    return c.json({ error: "invalid_request", error_description: "unregistered post_logout_redirect_uri" }, 400);
+  }
+  const url = new URL(postLogout);
+  if (state !== undefined) {
+    url.searchParams.set("state", state);
+  }
+  return c.redirect(url.toString(), 302);
+});

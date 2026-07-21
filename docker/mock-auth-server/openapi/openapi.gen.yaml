@@ -244,6 +244,19 @@ paths:
                 state:
                   type: string
       responses:
+        '200':
+          description: post_logout_redirect_uri 未指定時のログアウト完了
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - logged_out
         '302':
           description: post_logout_redirect_uri への redirect
           headers:

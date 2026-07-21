@@ -16,9 +16,12 @@ const privateKeyPem = readFileSync(privateKeyPath, "utf8");
 // signingKey は access token / id token の署名に用いる秘密鍵。
 export const signingKey = await importPKCS8(privateKeyPem, ALG);
 
+// publicKey は access token 検証（userinfo）に用いる公開鍵。
+export const publicKey = createPublicKey(privateKeyPem);
+
 // publicJwk は JWKS で公開する公開鍵（秘密情報を含まない）。
 const publicJwk = {
-  ...(await exportJWK(createPublicKey(privateKeyPem))),
+  ...(await exportJWK(publicKey)),
   kid: KID,
   use: "sig",
   alg: ALG,
