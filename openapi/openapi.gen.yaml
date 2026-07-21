@@ -52,6 +52,8 @@ tags:
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/product-categories
     description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products
+    description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: internal/types/error-response
@@ -512,6 +514,39 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products:
+    get:
+      operationId: GetProducts
+      tags:
+        - v1/products
+      summary: 商品一覧の取得
+      description: |
+        公開済みの商品を cursor ページネーションで取得します。認証不要の公開エンドポイントです。
+        既定では公開日時の降順（publishedAt DESC, id DESC）で並び、sort=publishedAt で昇順に切り替えられます。
+        categoryId / statusId でフィルタ、keyword で商品名・説明の部分一致検索ができます。
+        公開日時が未設定（未公開）の商品は返しません。ステータスによる可視範囲の絞り込みは今後対応予定です。
+        price は USD セント単位の整数です。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CursorAfterParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+        - $ref: '#/components/parameters/CategoryIdParam'
+        - $ref: '#/components/parameters/StatusIdParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: cursor ページネーションで取得した公開商品一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/exchange-rates:
     get:
       operationId: GetExchangeRates
@@ -637,6 +672,38 @@ components:
         type: string
         format: uuid
         example: 123e4567-e89b-12d3-a456-426614174000
+    CategoryIdParam:
+      name: categoryId
+      in: query
+      description: 商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+      required: false
+      schema:
+        type: string
+        format: uuid
+        example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
+    StatusIdParam:
+      name: statusId
+      in: query
+      description: 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+      required: false
+      schema:
+        type: string
+        format: uuid
+        example: 093170fb-83a2-4864-a2b3-53236eaf3597
+    SortParam:
+      name: sort
+      in: query
+      description: |
+        並び順。`-publishedAt`（既定）は公開日時の降順、`publishedAt` は公開日時の昇順です。
+        いずれも同一公開日時の商品は ID で安定ソートします。
+      required: false
+      schema:
+        type: string
+        enum:
+          - '-publishedAt'
+          - publishedAt
+        default: '-publishedAt'
+        example: '-publishedAt'
   securitySchemes:
     BearerAuth:
       type: http
@@ -897,6 +964,78 @@ components:
           example: 1
     ResponseV1ProductCategories:
       $ref: '#/components/schemas/ProductCategoriesResponse'
+    ProductResponse:
+      type: object
+      description: 商品情報のレスポンススキーマ
+      required:
+        - id
+        - name
+        - description
+        - price
+        - quantity
+        - stockWarningThreshold
+        - statusId
+        - categoryId
+        - publishedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        name:
+          type: string
+          description: 商品名
+          maxLength: 255
+          example: ワイヤレスイヤホン
+        description:
+          type: string
+          nullable: true
+          description: 商品説明。未設定の場合は null です。
+          example: ノイズキャンセリング対応の Bluetooth イヤホン
+        price:
+          type: integer
+          format: int32
+          description: 価格。USD セント単位の整数で表します（例 1999 は 19.99 ドル相当）。
+          example: 1999
+        quantity:
+          type: integer
+          format: int32
+          description: 在庫数
+          example: 100
+        stockWarningThreshold:
+          type: integer
+          format: int32
+          nullable: true
+          description: 在庫警告閾値。未設定の場合は null です。
+          example: 10
+        statusId:
+          type: string
+          format: uuid
+          description: 商品ステータスID。名称は商品ステータスマスタ API で解決します。
+          example: 093170fb-83a2-4864-a2b3-53236eaf3597
+        categoryId:
+          type: string
+          format: uuid
+          description: 商品カテゴリID。名称は商品カテゴリマスタ API で解決します。
+          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
+        publishedAt:
+          type: string
+          format: date-time
+          description: 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
+          example: '2026-01-01T00:00:00Z'
+    ProductListResponse:
+      description: 商品一覧（cursor ページネーション）のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - products
+          properties:
+            products:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProductResponse'
+        - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。

@@ -2,20 +2,46 @@ package search
 
 import (
 	"context"
-	"strings"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/prefecture"
+	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
+	"go-boilerplate/internal/domain/user"
+	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
-	"go-boilerplate/internal/usecase/user/search/query"
-	mock_query "go-boilerplate/internal/usecase/user/search/query/mock"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+// newSearchTestUser は、検索テスト用のユーザーエンティティを生成するヘルパーです。
+func newSearchTestUser(t *testing.T, prefectureID uuid.UUID, createdAt time.Time) *user.User {
+	t.Helper()
+	u, err := user.New(
+		uuid.NewTestFromSalt(t, "search_user_domain"),
+		"Grace",
+		"Lee",
+		"password",
+		"grace.lee@example.com",
+		"090-1234-5678",
+		prefectureID,
+		"city_name",
+		"town_address",
+		nil,
+		"150-0001",
+		createdAt,
+		createdAt,
+		nil,
+	)
+	require.NoError(t, err)
+	return u
+}
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -25,13 +51,15 @@ func TestNew(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		tf := observability.NewNoopTracerFactory(t)
-		userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+		userRepo := mock_user.NewMockRepository(ctrl)
+		pftRepo := mock_prefecture.NewMockRepository(ctrl)
 
 		expected := &usecase{
-			tracer: tf.Usecase(),
-			userQS: userQS,
+			tracer:   tf.Usecase(),
+			userRepo: userRepo,
+			pftRepo:  pftRepo,
 		}
-		actual := New(tf, userQS)
+		actual := New(tf, userRepo, pftRepo)
 
 		assert.Equal(t, expected, actual)
 	})
@@ -42,10 +70,17 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	keyword := "Grace Lee"
+	keywords := []string{"Grace", "Lee"}
+	active := new(true)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("キーワードでユーザーを検索できること", func(t *testing.T) {
+
+		t.Run("キーワードでユーザーを検索でき、都道府県名を解決した結果が返る", func(t *testing.T) {
 			t.Parallel()
 
 			page := 1
@@ -53,43 +88,41 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
-			expected := query.UserSearchResults{
-				{
-					FirstName:      "Grace",
-					LastName:       "Lee",
-					Email:          "grace.lee@example.com",
-					Phone:          "090-1234-5678",
-					PostalCode:     "123-456-7890",
-					PrefectureName: "",
-				},
-			}
-
-			keyword := "Grace Lee"
-			active := new(true)
-
-			keywords := strings.Split(keyword, " ")
-
-			searchFilter := &query.UserSearchFilter{
-				Active:   active,
-				Keywords: keywords,
-			}
+			userDomain := newSearchTestUser(t, prefectureID, now)
+			prefectureDomain, err := prefecture.New(prefectureID, "Tokyo", 1)
+			require.NoError(t, err)
 
 			ctrl := gomock.NewController(t)
-			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
-			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(expected, nil)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().
+				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
+				Return(user.Users{userDomain}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			qs := &usecase{
-				tracer: lt,
-				userQS: userQS,
-			}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
 
-			filter := &SearchParams{
-				Keyword: new(keyword),
-				Active:  active,
-			}
-
-			actual, err := qs.ListUsersByKeyword(ctx, filter, p)
+			filter := &SearchParams{Keyword: new(keyword), Active: active}
+			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
 			require.NoError(t, err)
+
+			expected := UserSearchResults{
+				{
+					FirstName:      userDomain.FirstName(),
+					LastName:       userDomain.LastName(),
+					Email:          userDomain.Email(),
+					Phone:          userDomain.Phone(),
+					PostalCode:     userDomain.PostalCode(),
+					PrefectureName: prefectureDomain.Name(),
+					City:           userDomain.City(),
+					Street:         userDomain.Street(),
+					Building:       userDomain.Building(),
+					RegisteredAt:   userDomain.CreatedAt(),
+					DeletedAt:      userDomain.DeletedAt(),
+				},
+			}
 			assert.Equal(t, expected, actual)
 		})
 	})
@@ -97,7 +130,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("キーワードでの検索時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
+		t.Run("ユーザー検索時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 			expectedErr := testkit.ExpectedDBError()
 
@@ -106,32 +139,74 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
-			keyword := "Grace Lee"
-			active := new(true)
-
-			keywords := strings.Split(keyword, " ")
-
-			searchFilter := &query.UserSearchFilter{
-				Active:   active,
-				Keywords: keywords,
-			}
-
 			ctrl := gomock.NewController(t)
-			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
-			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().
+				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
+				Return(nil, expectedErr)
 
-			uc := &usecase{
-				tracer: lt,
-				userQS: userQS,
-			}
+			uc := &usecase{tracer: lt, userRepo: userRepo}
 
-			filter := &SearchParams{
-				Keyword: new(keyword),
-				Active:  active,
-			}
-
+			filter := &SearchParams{Keyword: new(keyword), Active: active}
 			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
 			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("都道府県取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+
+			page := 1
+			perPage := 100
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
+			require.NoError(t, err)
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+
+			ctrl := gomock.NewController(t)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().
+				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
+				Return(user.Users{userDomain}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(nil, expectedErr)
+
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			filter := &SearchParams{Keyword: new(keyword), Active: active}
+			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("ユーザーの都道府県が解決できない場合、ErrInternal が返される", func(t *testing.T) {
+			t.Parallel()
+
+			page := 1
+			perPage := 100
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
+			require.NoError(t, err)
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+
+			ctrl := gomock.NewController(t)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().
+				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
+				Return(user.Users{userDomain}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{}, nil)
+
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			filter := &SearchParams{Keyword: new(keyword), Active: active}
+			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
+			require.ErrorIs(t, err, apperror.ErrInternal)
 			require.Nil(t, actual)
 		})
 
@@ -163,42 +238,29 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 func Test_usecase_CountUsersByKeyword(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+	keyword := "Grace Lee"
+	keywords := []string{"Grace", "Lee"}
+	active := new(true)
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("キーワードに基づくユーザー数の取得が正常に実行されること", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
 			ctrl := gomock.NewController(t)
-			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+			userRepo := mock_user.NewMockRepository(ctrl)
 			tf := observability.NewNoopTracerFactory(t)
 
-			u := &usecase{
-				tracer: tf.Usecase(),
-				userQS: userQS,
-			}
-
 			expectedCount := int64(10)
-
-			active := new(true)
-			keyword := "Grace Lee"
-			keywords := strings.Split(keyword, " ")
-
-			searchFilter := &query.UserSearchFilter{
-				Active:   active,
-				Keywords: keywords,
-			}
-
-			userQS.EXPECT().
-				CountByFilter(gomock.Any(), searchFilter).
+			userRepo.EXPECT().
+				CountByKeyword(gomock.Any(), keywords, active).
 				Return(expectedCount, nil)
 
-			filter := &SearchParams{
-				Active:  active,
-				Keyword: new(keyword),
-			}
+			u := &usecase{tracer: tf.Usecase(), userRepo: userRepo}
 
+			filter := &SearchParams{Active: active, Keyword: new(keyword)}
 			actualCount, err := u.CountUsersByKeyword(ctx, filter)
 			require.NoError(t, err)
 			assert.Equal(t, expectedCount, actualCount)
@@ -208,39 +270,21 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("キーワードに基づくユーザー数の取得時にエラーが発生した場合、エラーが返されること", func(t *testing.T) {
+		t.Run("ユーザー数の取得時にエラーが発生した場合、エラーが返されること", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
 			ctrl := gomock.NewController(t)
-			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+			userRepo := mock_user.NewMockRepository(ctrl)
 			tf := observability.NewNoopTracerFactory(t)
 
-			u := &usecase{
-				tracer: tf.Usecase(),
-				userQS: userQS,
-			}
-
 			expectedErr := testkit.ExpectedDBError()
-
-			active := new(true)
-			keyword := "Grace Lee"
-			keywords := strings.Split(keyword, " ")
-
-			searchFilter := &query.UserSearchFilter{
-				Active:   active,
-				Keywords: keywords,
-			}
-
-			userQS.EXPECT().
-				CountByFilter(gomock.Any(), searchFilter).
+			userRepo.EXPECT().
+				CountByKeyword(gomock.Any(), keywords, active).
 				Return(int64(0), expectedErr)
 
-			filter := &SearchParams{
-				Active:  active,
-				Keyword: new(keyword),
-			}
+			u := &usecase{tracer: tf.Usecase(), userRepo: userRepo}
 
+			filter := &SearchParams{Active: active, Keyword: new(keyword)}
 			actualCount, err := u.CountUsersByKeyword(ctx, filter)
 			require.ErrorIs(t, err, expectedErr)
 			assert.Equal(t, int64(0), actualCount)
@@ -261,36 +305,52 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	keyword := "Grace Lee"
+	keywords := []string{"Grace", "Lee"}
+	active := new(true)
+
 	page := 1
 	perPage := 100
 	p, err := paging.NewPageFrom1Based(&page, &perPage)
 	require.NoError(t, err)
 
-	active := new(true)
-	keyword := "Grace Lee"
-	keywords := strings.Split(keyword, " ")
-	searchFilter := &query.UserSearchFilter{Active: active, Keywords: keywords}
 	filter := &SearchParams{Keyword: new(keyword), Active: active}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
+
 		t.Run("一覧と総件数をまとめて取得できること", func(t *testing.T) {
 			t.Parallel()
 
-			results := query.UserSearchResults{
-				{FirstName: "Grace", LastName: "Lee", Email: "grace.lee@example.com"},
-			}
+			userDomain := newSearchTestUser(t, prefectureID, now)
+			prefectureDomain, err := prefecture.New(prefectureID, "Tokyo", 1)
+			require.NoError(t, err)
 
 			ctrl := gomock.NewController(t)
-			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
-			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(results, nil)
-			userQS.EXPECT().CountByFilter(gomock.Any(), searchFilter).Return(int64(1), nil)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().
+				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
+				Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().
+				CountByKeyword(gomock.Any(), keywords, active).
+				Return(int64(1), nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), userQS: userQS}
+			u := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
 
 			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
 			require.NoError(t, err)
-			assert.Equal(t, &UserSearchListView{Items: results, Total: 1}, actual)
+			require.NotNil(t, actual)
+			require.Len(t, actual.Items, 1)
+			assert.Equal(t, int64(1), actual.Total)
+			assert.Equal(t, prefectureDomain.Name(), actual.Items[0].PrefectureName)
 		})
 	})
 
@@ -302,10 +362,12 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 			expectedErr := testkit.ExpectedDBError()
 
 			ctrl := gomock.NewController(t)
-			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
-			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().
+				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
+				Return(nil, expectedErr)
 
-			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), userQS: userQS}
+			u := &usecase{tracer: lt, userRepo: userRepo}
 
 			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
 			require.ErrorIs(t, err, expectedErr)
@@ -316,16 +378,24 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 			t.Parallel()
 			expectedErr := testkit.ExpectedDBError()
 
-			results := query.UserSearchResults{
-				{FirstName: "Grace", LastName: "Lee"},
-			}
+			userDomain := newSearchTestUser(t, prefectureID, now)
+			prefectureDomain, err := prefecture.New(prefectureID, "Tokyo", 1)
+			require.NoError(t, err)
 
 			ctrl := gomock.NewController(t)
-			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
-			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(results, nil)
-			userQS.EXPECT().CountByFilter(gomock.Any(), searchFilter).Return(int64(0), expectedErr)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().
+				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
+				Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().
+				CountByKeyword(gomock.Any(), keywords, active).
+				Return(int64(0), expectedErr)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), userQS: userQS}
+			u := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
 
 			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
 			require.ErrorIs(t, err, expectedErr)
@@ -337,6 +407,97 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
 			actual, err := u.ListUsersByKeywordWithTotal(ctx, nil, p)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
+		})
+	})
+}
+
+func Test_usecase_toSearchResults(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	prefectureID := uuid.NewTestFromSalt(t, "to_search_results_prefecture")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全ユーザーの都道府県が解決できる場合、検索結果のリストが返る", func(t *testing.T) {
+			t.Parallel()
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+			prefectureDomain, err := prefecture.New(prefectureID, "Tokyo", 1)
+			require.NoError(t, err)
+
+			ctrl := gomock.NewController(t)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			u := &usecase{tracer: lt, pftRepo: pftRepo}
+
+			actual, err := u.toSearchResults(ctx, user.Users{userDomain})
+			require.NoError(t, err)
+
+			expected := UserSearchResults{
+				{
+					FirstName:      userDomain.FirstName(),
+					LastName:       userDomain.LastName(),
+					Email:          userDomain.Email(),
+					Phone:          userDomain.Phone(),
+					PostalCode:     userDomain.PostalCode(),
+					PrefectureName: prefectureDomain.Name(),
+					City:           userDomain.City(),
+					Street:         userDomain.Street(),
+					Building:       userDomain.Building(),
+					RegisteredAt:   userDomain.CreatedAt(),
+					DeletedAt:      userDomain.DeletedAt(),
+				},
+			}
+			assert.Equal(t, expected, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("都道府県取得でエラーが発生した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+
+			ctrl := gomock.NewController(t)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(nil, expectedErr)
+
+			u := &usecase{tracer: lt, pftRepo: pftRepo}
+
+			actual, err := u.toSearchResults(ctx, user.Users{userDomain})
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("ユーザーが参照する都道府県が解決できない場合、参照整合性破れが返る", func(t *testing.T) {
+			t.Parallel()
+
+			userDomain := newSearchTestUser(t, prefectureID, now)
+
+			ctrl := gomock.NewController(t)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().
+				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
+				Return(prefecture.Prefectures{}, nil)
+
+			u := &usecase{tracer: lt, pftRepo: pftRepo}
+
+			actual, err := u.toSearchResults(ctx, user.Users{userDomain})
+			require.ErrorIs(t, err, errOrphanPrefecture)
 			require.Nil(t, actual)
 		})
 	})

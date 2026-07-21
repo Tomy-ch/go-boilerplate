@@ -1,0 +1,59 @@
+type: object
+description: 商品情報のレスポンススキーマ
+required:
+  - id
+  - name
+  - description
+  - price
+  - quantity
+  - stockWarningThreshold
+  - statusId
+  - categoryId
+  - publishedAt
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 商品ID
+    example: "b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"
+  name:
+    type: string
+    description: 商品名
+    maxLength: 255
+    example: "ワイヤレスイヤホン"
+  description:
+    type: string
+    nullable: true
+    description: 商品説明。未設定の場合は null です。
+    example: "ノイズキャンセリング対応の Bluetooth イヤホン"
+  price:
+    type: integer
+    format: int32
+    description: 価格。USD セント単位の整数で表します（例 1999 は 19.99 ドル相当）。
+    example: 1999
+  quantity:
+    type: integer
+    format: int32
+    description: 在庫数
+    example: 100
+  stockWarningThreshold:
+    type: integer
+    format: int32
+    nullable: true
+    description: 在庫警告閾値。未設定の場合は null です。
+    example: 10
+  statusId:
+    type: string
+    format: uuid
+    description: 商品ステータスID。名称は商品ステータスマスタ API で解決します。
+    example: "093170fb-83a2-4864-a2b3-53236eaf3597"
+  categoryId:
+    type: string
+    format: uuid
+    description: 商品カテゴリID。名称は商品カテゴリマスタ API で解決します。
+    example: "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
+  publishedAt:
+    type: string
+    format: date-time
+    description: 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
+    example: "2026-01-01T00:00:00Z"
