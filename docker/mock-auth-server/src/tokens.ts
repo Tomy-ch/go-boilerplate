@@ -106,4 +106,25 @@ export function issueToken(config: OidcConfig, subject: string, profile: string)
   }
 }
 
+// issueAccessToken は Authorization Code Flow の access token を発行する（typ=at+jwt）。
+// scope を指定すると付与済み scope として反映する。
+export function issueAccessToken(config: OidcConfig, subject: string, scope?: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const claims = baseAccessClaims(config, subject, now);
+  if (scope !== undefined && scope !== "") {
+    claims.scope = scope;
+  }
+  return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+}
+
+// issueIdToken は OIDC の ID Token を発行する（typ=JWT / aud=client_id）。nonce を指定すると反映する。
+export function issueIdToken(config: OidcConfig, subject: string, nonce?: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const claims = idTokenClaims(config, subject, now);
+  if (nonce !== undefined && nonce !== "") {
+    claims.nonce = nonce;
+  }
+  return sign(claims, signingKey, ALG, "JWT");
+}
+
 export { ACCESS_TTL_SECONDS };
