@@ -30,8 +30,8 @@ type ProductStatusResponse struct {
 	// Name 商品ステータス名
 	Name string `json:"name"`
 
-	// SortKey 表示順（sort_key 昇順で一覧を並べる。code とは非連動）
-	SortKey int `json:"sort_key"`
+	// SortKey 表示順（sortKey 昇順で一覧を並べる。code とは非連動）
+	SortKey int `json:"sortKey"`
 }
 
 // ProductStatusesResponse 商品ステータスマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
