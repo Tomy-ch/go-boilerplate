@@ -109,8 +109,26 @@ export const SAMPLE_DOMAINS = {
   },
 
   product: {
-    description: "サンプル 商品ドメイン（GET /v1/products の公開商品一覧 API。cursor + フィルタ + keyword + sort）",
+    description: "サンプル 商品ドメイン（GET /v1/product-categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉）",
     paths: [
+      "internal/domain/product/category",
+      "internal/usecase/product/category",
+      "internal/infrastructure/rdb/repository/product_category",
+      "internal/controller/handler/v1/product-categories",
+      "internal/integration/v1_product_categories_test.go",
+      "database/dml/repository/product_category",
+
+      // サンプル専用の生成物は再生成で復活しないため明示削除する
+      "internal/infrastructure/rdb/sqlc/gen/product_category_repository.gen.sql.go",
+      "database/gen/product_category_repository.gen.sql",
+
+      "openapi/paths/v1/product-categories.yaml",
+      "openapi/components/responses/product-category",
+      "openapi/components/schemas/ProductCategoryResponse.yaml",
+
+      "docs/spec/product-category/domain.md",
+      "docs/spec/product-category/usecase.md",
+
       "internal/domain/product",
       "internal/usecase/product",
       "internal/infrastructure/rdb/repository/product",
@@ -118,7 +136,6 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_products_test.go",
       "database/dml/repository/product",
 
-      // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go",
       "database/gen/product_repository.gen.sql",
 

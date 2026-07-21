@@ -49,6 +49,8 @@ tags:
     description: ユーザー検索（キーワード）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/product-categories
+    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
   - name: v1/exchange-rates
@@ -88,6 +90,8 @@ paths:
     $ref: './paths/v1/users/feed.yaml'
   /v1/prefectures:
     $ref: './paths/v1/prefectures.yaml'
+  /v1/product-categories:
+    $ref: './paths/v1/product-categories.yaml'
   /v1/products:
     $ref: './paths/v1/products.yaml'
   /v1/exchange-rates:
@@ -164,6 +168,10 @@ components:
       $ref: './components/schemas/PrefectureResponse.yaml'
     ResponseV1Prefectures:
       $ref: './components/responses/prefecture/PrefecturesResponse.yaml'
+    ProductCategoryResponse:
+      $ref: './components/schemas/ProductCategoryResponse.yaml'
+    ResponseV1ProductCategories:
+      $ref: './components/responses/product-category/ProductCategoriesResponse.yaml'
     ProductResponse:
       $ref: './components/schemas/ProductResponse.yaml'
     ProductListResponse:
