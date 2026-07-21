@@ -34,15 +34,40 @@ func (s *server) GetExchangeRates(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	converted, err := s.uc.Convert(ctx, request.Params.Base, request.Params.Quote, request.Params.Amount)
+	var displayCurrency *string
+	if request.Params.DisplayCurrency != nil {
+		dc := string(*request.Params.DisplayCurrency)
+		displayCurrency = &dc
+	}
+
+	result, err := s.uc.Convert(ctx, exchangerateuc.ConvertInput{
+		Base:            request.Params.Base,
+		Quote:           request.Params.Quote,
+		Amount:          request.Params.Amount,
+		DisplayCurrency: displayCurrency,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return gen.GetExchangeRates200JSONResponse(gen.ExchangeRateResponse{
-		Base:      request.Params.Base,
-		Quote:     request.Params.Quote,
-		Amount:    request.Params.Amount,
-		Converted: converted,
+		Base:            request.Params.Base,
+		Quote:           request.Params.Quote,
+		Amount:          request.Params.Amount,
+		Converted:       result.Converted,
+		ReferenceAmount: toReferenceAmount(result.Reference),
 	}), nil
+}
+
+// toReferenceAmount は、usecase の参考換算額を API レスポンス DTO へ変換します。degrade 時は nil です。
+func toReferenceAmount(r *exchangerateuc.ReferenceAmount) *gen.ReferenceAmount {
+	if r == nil {
+		return nil
+	}
+	return &gen.ReferenceAmount{
+		Currency: r.Currency,
+		Amount:   r.Amount,
+		Rate:     r.Rate,
+		RateDate: r.RateDate,
+	}
 }

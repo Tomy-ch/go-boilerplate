@@ -5,6 +5,7 @@ required:
   - quote
   - amount
   - converted
+  - reference_amount
 properties:
   base:
     type: string
@@ -24,3 +25,10 @@ properties:
     format: double
     description: 換算後の金額
     example: 15050
+  reference_amount:
+    nullable: true
+    allOf:
+      - $ref: '../../schemas/exchange-rates/ReferenceAmount.yaml'
+    description: |
+      表示通貨での参考換算額。`display_currency` 未指定時、およびレート取得失敗による
+      degrade 時は null になります。
