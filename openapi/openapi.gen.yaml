@@ -876,7 +876,7 @@ components:
         - id
         - code
         - name
-        - sort_key
+        - sortKey
       properties:
         id:
           type: string
@@ -891,7 +891,7 @@ components:
           type: string
           description: 商品カテゴリ名
           example: 電子機器
-        sort_key:
+        sortKey:
           type: integer
           description: 表示順
           example: 1

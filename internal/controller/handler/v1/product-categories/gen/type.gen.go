@@ -34,7 +34,7 @@ type ProductCategoryResponse struct {
 	Name string `json:"name"`
 
 	// SortKey 表示順
-	SortKey int `json:"sort_key"`
+	SortKey int `json:"sortKey"`
 }
 
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
