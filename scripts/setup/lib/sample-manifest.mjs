@@ -109,8 +109,26 @@ export const SAMPLE_DOMAINS = {
   },
 
   product: {
-    description: "サンプル 商品ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
+    description: "サンプル 商品ドメイン（商品カテゴリマスタは GET /v1/product-categories の一覧 API を含む。products はまだ DB スタブのみ）",
     paths: [
+      "internal/domain/product_category",
+      "internal/usecase/product_category",
+      "internal/infrastructure/rdb/repository/product_category",
+      "internal/controller/handler/v1/product-categories",
+      "internal/integration/v1_product_categories_test.go",
+      "database/dml/repository/product_category",
+
+      // サンプル専用の生成物は再生成で復活しないため明示削除する
+      "internal/infrastructure/rdb/sqlc/gen/product_category_repository.gen.sql.go",
+      "database/gen/product_category_repository.gen.sql",
+
+      "openapi/paths/v1/product-categories.yaml",
+      "openapi/components/responses/product-category",
+      "openapi/components/schemas/ProductCategoryResponse.yaml",
+
+      "docs/spec/product-category/domain.md",
+      "docs/spec/product-category/usecase.md",
+
       "database/migrations/000008_create_product_statuses.up.sql",
       "database/migrations/000008_create_product_statuses.down.sql",
       "database/migrations/000009_create_product_categories.up.sql",
