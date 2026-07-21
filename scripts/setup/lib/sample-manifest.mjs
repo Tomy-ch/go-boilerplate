@@ -111,8 +111,8 @@ export const SAMPLE_DOMAINS = {
   product: {
     description: "サンプル 商品ドメイン（商品カテゴリマスタは GET /v1/product-categories の一覧 API を含む。products はまだ DB スタブのみ）",
     paths: [
-      "internal/domain/product_category",
-      "internal/usecase/product_category",
+      "internal/domain/product/category",
+      "internal/usecase/product/category",
       "internal/infrastructure/rdb/repository/product_category",
       "internal/controller/handler/v1/product-categories",
       "internal/integration/v1_product_categories_test.go",

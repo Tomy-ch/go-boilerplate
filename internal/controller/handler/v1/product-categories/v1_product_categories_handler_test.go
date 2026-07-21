@@ -9,8 +9,8 @@ import (
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/handler/v1/product-categories/gen"
 	"go-boilerplate/internal/observability"
-	productcategoryuc "go-boilerplate/internal/usecase/product_category"
-	mock_product_category "go-boilerplate/internal/usecase/product_category/mock"
+	categoryuc "go-boilerplate/internal/usecase/product/category"
+	mock_category "go-boilerplate/internal/usecase/product/category/mock"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -21,9 +21,9 @@ import (
 
 const targetPath = "/v1/product-categories"
 
-func newServer(t *testing.T) (*server, *mock_product_category.MockUsecase) {
+func newServer(t *testing.T) (*server, *mock_category.MockUsecase) {
 	t.Helper()
-	mockUC := mock_product_category.NewMockUsecase(gomock.NewController(t))
+	mockUC := mock_category.NewMockUsecase(gomock.NewController(t))
 	return &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}, mockUC
 }
 
@@ -32,7 +32,7 @@ func TestBindHandler(t *testing.T) {
 
 	e := echo.New()
 	tf := observability.NewNoopTracerFactory(t)
-	mockUC := mock_product_category.NewMockUsecase(gomock.NewController(t))
+	mockUC := mock_category.NewMockUsecase(gomock.NewController(t))
 
 	BindHandler(e, tf, mockUC)
 
@@ -55,7 +55,7 @@ func Test_server_GetProductCategories(t *testing.T) {
 			require.NoError(t, err)
 
 			s, mockUC := newServer(t)
-			mockUC.EXPECT().ListProductCategories(gomock.Any()).Return(productcategoryuc.ProductCategoryDTOs{
+			mockUC.EXPECT().ListCategories(gomock.Any()).Return(categoryuc.CategoryDTOs{
 				{ID: electronicsID, Code: 1, Name: "電子機器", SortKey: 1},
 				{ID: booksID, Code: 2, Name: "書籍", SortKey: 2},
 			}, nil)
@@ -76,7 +76,7 @@ func Test_server_GetProductCategories(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)
-			mockUC.EXPECT().ListProductCategories(gomock.Any()).Return(productcategoryuc.ProductCategoryDTOs{}, nil)
+			mockUC.EXPECT().ListCategories(gomock.Any()).Return(categoryuc.CategoryDTOs{}, nil)
 
 			resp, err := s.GetProductCategories(context.Background(), gen.GetProductCategoriesRequestObject{})
 			require.NoError(t, err)
@@ -95,7 +95,7 @@ func Test_server_GetProductCategories(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)
-			mockUC.EXPECT().ListProductCategories(gomock.Any()).Return(nil, apperror.ErrInternal)
+			mockUC.EXPECT().ListCategories(gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetProductCategories(context.Background(), gen.GetProductCategoriesRequestObject{})
 			require.ErrorIs(t, err, apperror.ErrInternal)

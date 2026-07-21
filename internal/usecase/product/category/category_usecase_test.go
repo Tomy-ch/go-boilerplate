@@ -1,11 +1,11 @@
-package productcategory
+package category
 
 import (
 	"context"
 	"testing"
 
-	domainproductcategory "go-boilerplate/internal/domain/product_category"
-	mock_product_category "go-boilerplate/internal/domain/product_category/mock"
+	domaincategory "go-boilerplate/internal/domain/product/category"
+	mock_category "go-boilerplate/internal/domain/product/category/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/pkg/uuid"
@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		tf := observability.NewNoopTracerFactory(t)
-		repo := mock_product_category.NewMockRepository(ctrl)
+		repo := mock_category.NewMockRepository(ctrl)
 
 		expected := &usecase{
 			tracer: tf.Usecase(),
@@ -35,7 +35,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func Test_usecase_ListProductCategories(t *testing.T) {
+func Test_usecase_ListCategories(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -53,19 +53,19 @@ func Test_usecase_ListProductCategories(t *testing.T) {
 			booksID, err := uuid.Parse("b39be992-fe5a-4b4c-9f98-e695f0f5101e")
 			require.NoError(t, err)
 
-			electronics, err := domainproductcategory.New(electronicsID, "電子機器", 1, 1)
+			electronics, err := domaincategory.New(electronicsID, "電子機器", 1, 1)
 			require.NoError(t, err)
-			books, err := domainproductcategory.New(booksID, "書籍", 2, 2)
+			books, err := domaincategory.New(booksID, "書籍", 2, 2)
 			require.NoError(t, err)
 
-			repo := mock_product_category.NewMockRepository(ctrl)
-			repo.EXPECT().FindAll(gomock.Any()).Return(domainproductcategory.ProductCategories{electronics, books}, nil).Times(1)
+			repo := mock_category.NewMockRepository(ctrl)
+			repo.EXPECT().FindAll(gomock.Any()).Return(domaincategory.Categories{electronics, books}, nil).Times(1)
 
 			u := &usecase{tracer: lt, repo: repo}
 
-			actual, err := u.ListProductCategories(ctx)
+			actual, err := u.ListCategories(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, ProductCategoryDTOs{
+			assert.Equal(t, CategoryDTOs{
 				{ID: electronicsID, Code: 1, Name: "電子機器", SortKey: 1},
 				{ID: booksID, Code: 2, Name: "書籍", SortKey: 2},
 			}, actual)
@@ -78,12 +78,12 @@ func Test_usecase_ListProductCategories(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockUsecaseLayerTracer(t)
 
-			repo := mock_product_category.NewMockRepository(ctrl)
-			repo.EXPECT().FindAll(gomock.Any()).Return(domainproductcategory.ProductCategories{}, nil).Times(1)
+			repo := mock_category.NewMockRepository(ctrl)
+			repo.EXPECT().FindAll(gomock.Any()).Return(domaincategory.Categories{}, nil).Times(1)
 
 			u := &usecase{tracer: lt, repo: repo}
 
-			actual, err := u.ListProductCategories(ctx)
+			actual, err := u.ListCategories(ctx)
 			require.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Empty(t, actual)
@@ -102,12 +102,12 @@ func Test_usecase_ListProductCategories(t *testing.T) {
 
 			expectedErr := testkit.ExpectedDBError()
 
-			repo := mock_product_category.NewMockRepository(ctrl)
+			repo := mock_category.NewMockRepository(ctrl)
 			repo.EXPECT().FindAll(gomock.Any()).Return(nil, expectedErr).Times(1)
 
 			u := &usecase{tracer: lt, repo: repo}
 
-			actual, err := u.ListProductCategories(ctx)
+			actual, err := u.ListCategories(ctx)
 			require.ErrorIs(t, err, expectedErr)
 			assert.Nil(t, actual)
 		})

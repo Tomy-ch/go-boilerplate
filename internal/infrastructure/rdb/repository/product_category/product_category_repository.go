@@ -1,10 +1,10 @@
-// Package productcategory は、商品カテゴリリポジトリ（productcategory.Repository）の RDB 実装を提供します。
+// Package productcategory は、商品カテゴリリポジトリ（category.Repository）の RDB 実装を提供します。
 package productcategory
 
 import (
 	"context"
 
-	productcategory "go-boilerplate/internal/domain/product_category"
+	"go-boilerplate/internal/domain/product/category"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
@@ -17,11 +17,11 @@ type repository struct {
 	tracer observability.LayerTracer
 }
 
-// New は、productcategory.Repository の RDB 実装を生成して返します。
+// New は、category.Repository の RDB 実装を生成して返します。
 func New(
 	db driver.DatabaseDriver,
 	tf observability.TracerFactory,
-) productcategory.Repository {
+) category.Repository {
 	return &repository{
 		db:     db,
 		tracer: tf.Infra(),
@@ -29,7 +29,7 @@ func New(
 }
 
 // FindAll は、全商品カテゴリエンティティを sortKey 昇順で取得します。
-func (r *repository) FindAll(ctx context.Context) (productcategory.ProductCategories, error) {
+func (r *repository) FindAll(ctx context.Context) (category.Categories, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -39,7 +39,7 @@ func (r *repository) FindAll(ctx context.Context) (productcategory.ProductCatego
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	categories := make(productcategory.ProductCategories, len(rows))
+	categories := make(category.Categories, len(rows))
 	for i, row := range rows {
 		categoryEntity, err := rowToProductCategory(row.ID, row.Name, row.Code, row.SortKey)
 		if err != nil {
@@ -53,8 +53,8 @@ func (r *repository) FindAll(ctx context.Context) (productcategory.ProductCatego
 
 // rowToProductCategory は、DB 行の値からドメインエンティティを再構築します。
 // 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
-func rowToProductCategory(id uuid.UUID, name string, code, sortKey int16) (*productcategory.ProductCategory, error) {
-	entity, err := productcategory.New(id, name, int(code), int(sortKey))
+func rowToProductCategory(id uuid.UUID, name string, code, sortKey int16) (*category.Category, error) {
+	entity, err := category.New(id, name, int(code), int(sortKey))
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}

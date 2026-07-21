@@ -8,8 +8,8 @@ import (
 	productcategorieshandler "go-boilerplate/internal/controller/handler/v1/product-categories"
 	"go-boilerplate/internal/controller/handler/v1/product-categories/gen"
 	"go-boilerplate/internal/observability"
-	productcategoryuc "go-boilerplate/internal/usecase/product_category"
-	mock_product_category "go-boilerplate/internal/usecase/product_category/mock"
+	categoryuc "go-boilerplate/internal/usecase/product/category"
+	mock_category "go-boilerplate/internal/usecase/product/category/mock"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -33,9 +33,9 @@ func TestV1ProductCategories_Integration(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			mockUC := mock_product_category.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProductCategories(gomock.Any()).Return(
-				productcategoryuc.ProductCategoryDTOs{{ID: id, Code: 1, Name: "商品カテゴリ", SortKey: 1}}, nil,
+			mockUC := mock_category.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListCategories(gomock.Any()).Return(
+				categoryuc.CategoryDTOs{{ID: id, Code: 1, Name: "商品カテゴリ", SortKey: 1}}, nil,
 			)
 
 			productcategorieshandler.BindHandler(e, tf, mockUC)
@@ -57,8 +57,8 @@ func TestV1ProductCategories_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			mockUC := mock_product_category.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProductCategories(gomock.Any()).Return(nil, apperror.ErrInternal)
+			mockUC := mock_category.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListCategories(gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			productcategorieshandler.BindHandler(e, tf, mockUC)
 

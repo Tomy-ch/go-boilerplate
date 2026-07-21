@@ -1,6 +1,6 @@
-// Package productcategory は、商品カテゴリドメインを定義します。名称・コード・表示順（sortKey）の
-// 不変条件を持つ ProductCategory エンティティと Repository インターフェースを提供します。
-package productcategory
+// Package category は、商品カテゴリドメインを定義します。名称・コード・表示順（sortKey）の
+// 不変条件を持つ Category エンティティと Repository インターフェースを提供します。
+package category
 
 import (
 	"fmt"
@@ -10,11 +10,11 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// ProductCategories は、ProductCategory エンティティのスライス型です。
-type ProductCategories []*ProductCategory
+// Categories は、Category エンティティのスライス型です。
+type Categories []*Category
 
-// ProductCategory は、商品カテゴリを表すドメインエンティティです。
-type ProductCategory struct {
+// Category は、商品カテゴリを表すドメインエンティティです。
+type Category struct {
 	id      uuid.UUID
 	name    string
 	code    int
@@ -29,7 +29,7 @@ func New(
 	name string,
 	code int,
 	sortKey int,
-) (*ProductCategory, error) {
+) (*Category, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
@@ -49,7 +49,7 @@ func New(
 		)
 	}
 
-	return &ProductCategory{
+	return &Category{
 		id:      id,
 		name:    name,
 		code:    code,
@@ -58,13 +58,13 @@ func New(
 }
 
 // ID は、商品カテゴリのIDを返します。
-func (c *ProductCategory) ID() uuid.UUID { return c.id }
+func (c *Category) ID() uuid.UUID { return c.id }
 
 // Name は、商品カテゴリ名を返します。
-func (c *ProductCategory) Name() string { return c.name }
+func (c *Category) Name() string { return c.name }
 
 // Code は、商品カテゴリコードを返します。
-func (c *ProductCategory) Code() int { return c.code }
+func (c *Category) Code() int { return c.code }
 
 // SortKey は、商品カテゴリの表示順を返します。
-func (c *ProductCategory) SortKey() int { return c.sortKey }
+func (c *Category) SortKey() int { return c.sortKey }

@@ -1,4 +1,4 @@
-package productcategory
+package category
 
 import (
 	"strings"
@@ -22,10 +22,10 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("有効な値の場合、ProductCategoryエンティティが生成される", func(t *testing.T) {
+		t.Run("有効な値の場合、Categoryエンティティが生成される", func(t *testing.T) {
 			t.Parallel()
 
-			expected := &ProductCategory{
+			expected := &Category{
 				id:      expectedUUID,
 				name:    expectedName,
 				code:    expectedCode,
@@ -148,7 +148,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestProductCategory_ID(t *testing.T) {
+func TestCategory_ID(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestProductCategory_ID(t *testing.T) {
 	})
 }
 
-func TestProductCategory_Name(t *testing.T) {
+func TestCategory_Name(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -188,7 +188,7 @@ func TestProductCategory_Name(t *testing.T) {
 	})
 }
 
-func TestProductCategory_Code(t *testing.T) {
+func TestCategory_Code(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -208,7 +208,7 @@ func TestProductCategory_Code(t *testing.T) {
 	})
 }
 
-func TestProductCategory_SortKey(t *testing.T) {
+func TestCategory_SortKey(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
