@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node src/server.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node --test \"src/**/*.test.ts\"",
     "lint:oapi": "redocly lint openapi/openapi.yaml",
     "gen:bundle": "redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml",
     "gen:zod": "orval --config orval.config.ts",
@@ -18,6 +19,8 @@
     "gen:check": "npm run gen && git diff --exit-code -- openapi/openapi.gen.yaml src/generated"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.14",
+    "hono": "^4.12.31",
     "jose": "^5.9.6",
     "zod": "^4.4.3"
   },
