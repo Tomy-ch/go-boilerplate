@@ -6,6 +6,12 @@ import { config } from "./config.ts";
 import { users } from "./users.ts";
 import { sweepAll } from "./store.ts";
 
+// この疑似 provider は本番で動かさない。本番モードでは即時終了する。
+if (process.env.NODE_ENV === "production") {
+  console.error(JSON.stringify({ msg: "mock-auth-server must not run in production", node_env: "production" }));
+  process.exit(1);
+}
+
 const app = createApp();
 
 serve({ fetch: app.fetch, port: config.port }, (info) => {

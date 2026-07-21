@@ -3,7 +3,7 @@ post:
   tags:
     - admin
   summary: 揮発ストアのリセット
-  description: 発行済み code / session 等の揮発ストアを初期化する。fixture（users / clients）は再読込する。dev-gate 限定。
+  description: 発行済み code / session の揮発ストアを初期化する。fixture（users / clients）はプロセス再起動で初期化され、本エンドポイントでは再読込しない。dev-gate 限定。
   security: []
   responses:
     '200':
