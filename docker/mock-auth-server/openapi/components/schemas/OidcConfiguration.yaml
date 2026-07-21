@@ -1,0 +1,106 @@
+type: object
+description: >
+  OIDC Discovery 文書（OIDC Discovery）。issuer / jwks_uri は Go 側認証が依存する契約であり不変に保つ。
+  endpoint URL は /oidc/* を指す。
+required:
+  - issuer
+  - jwks_uri
+  - authorization_endpoint
+  - token_endpoint
+  - response_types_supported
+  - subject_types_supported
+  - id_token_signing_alg_values_supported
+  - code_challenge_methods_supported
+properties:
+  issuer:
+    type: string
+    format: uri
+    description: 発行者識別子。token の iss と厳密一致する（不変）。
+    example: http://localhost:4000
+  jwks_uri:
+    type: string
+    format: uri
+    description: JWK Set の URL（不変）。
+    example: http://localhost:4000/.well-known/jwks.json
+  authorization_endpoint:
+    type: string
+    format: uri
+    example: http://localhost:4000/oidc/authorize
+  token_endpoint:
+    type: string
+    format: uri
+    example: http://localhost:4000/oidc/token
+  userinfo_endpoint:
+    type: string
+    format: uri
+    example: http://localhost:4000/oidc/userinfo
+  end_session_endpoint:
+    type: string
+    format: uri
+    example: http://localhost:4000/oidc/logout
+  response_types_supported:
+    type: array
+    items:
+      type: string
+    example:
+      - code
+  grant_types_supported:
+    type: array
+    items:
+      type: string
+    example:
+      - authorization_code
+  subject_types_supported:
+    type: array
+    items:
+      type: string
+    example:
+      - public
+  id_token_signing_alg_values_supported:
+    type: array
+    description: 署名アルゴリズムは RS256 のみ。alg=none は発行しない。
+    items:
+      type: string
+      enum:
+        - RS256
+    example:
+      - RS256
+  scopes_supported:
+    type: array
+    items:
+      type: string
+    example:
+      - openid
+      - profile
+      - email
+  token_endpoint_auth_methods_supported:
+    type: array
+    description: public client（PKCE）のみを許可するため none。
+    items:
+      type: string
+      enum:
+        - none
+    example:
+      - none
+  code_challenge_methods_supported:
+    type: array
+    description: PKCE は S256 のみ。plain は許可しない。
+    items:
+      type: string
+      enum:
+        - S256
+    example:
+      - S256
+  claims_supported:
+    type: array
+    items:
+      type: string
+    example:
+      - sub
+      - iss
+      - aud
+      - exp
+      - iat
+      - nbf
+      - email
+      - name

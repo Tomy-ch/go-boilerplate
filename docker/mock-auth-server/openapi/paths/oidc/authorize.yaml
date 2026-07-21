@@ -1,0 +1,70 @@
+get:
+  operationId: OidcAuthorize
+  tags:
+    - oidc
+  summary: 認可リクエスト（Authorization Code Flow + PKCE S256）
+  description: >
+    client_id / redirect_uri を完全一致で検証する。両者が不正でリダイレクト不能な場合のみ 400（JSON）、
+    それ以外の不正は redirect_uri へ 302 の error redirect（state を反映）で返す。成功時は code を付与して 302。
+  security: []
+  parameters:
+    - name: response_type
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          - code
+    - name: client_id
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: redirect_uri
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uri
+    - name: scope
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: state
+      in: query
+      required: false
+      schema:
+        type: string
+    - name: nonce
+      in: query
+      required: false
+      schema:
+        type: string
+    - name: code_challenge
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: code_challenge_method
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          - S256
+  responses:
+    '302':
+      description: code 発行、または redirect_uri への OAuth error redirect
+      headers:
+        Location:
+          required: true
+          schema:
+            type: string
+            format: uri
+    '400':
+      description: client_id / redirect_uri が不正でリダイレクト不能な場合
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/OAuthError.yaml'

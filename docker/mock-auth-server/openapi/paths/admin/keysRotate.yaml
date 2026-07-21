@@ -1,0 +1,16 @@
+post:
+  operationId: AdminRotateKeys
+  tags:
+    - admin
+  summary: 署名鍵ローテーション（未実装スタブ）
+  description: >
+    署名鍵のローテーション契約のみを定義する。実ローテーションは #605(#585-C) で実装するため、
+    本 PBI では 501 Not Implemented を返す。dev-gate 限定。
+  security: []
+  responses:
+    '501':
+      description: 未実装（契約のみ）
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/OAuthError.yaml'

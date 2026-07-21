@@ -1,0 +1,22 @@
+post:
+  operationId: AdminReset
+  tags:
+    - admin
+  summary: 揮発ストアのリセット
+  description: 発行済み code / session 等の揮発ストアを初期化する。fixture（users / clients）は再読込する。dev-gate 限定。
+  security: []
+  responses:
+    '200':
+      description: リセット完了
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                type: string
+                enum:
+                  - reset
+                example: reset
