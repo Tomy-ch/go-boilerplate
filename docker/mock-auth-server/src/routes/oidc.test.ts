@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "../router.ts";
 import { s256Challenge } from "../pkce.ts";
+import { sessionStore } from "../store.ts";
 
 const CLIENT_ID = "go-boilerplate-client";
 const REDIRECT_URI = "http://localhost:3000/api/auth/callback";
@@ -43,6 +44,29 @@ async function tokenRequest(app: ReturnType<typeof createApp>, form: Record<stri
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(form).toString(),
   });
+}
+
+async function logoutRequest(app: ReturnType<typeof createApp>, form: Record<string, string>): Promise<Response> {
+  return app.request("/oidc/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(form).toString(),
+  });
+}
+
+// issueTokens は authorize→token を通し access_token / id_token を取り出す（subject は defaultSubject）。
+async function issueTokens(
+  app: ReturnType<typeof createApp>,
+): Promise<{ access_token: string; id_token: string }> {
+  const location = await issueCode(app);
+  const res = await tokenRequest(app, {
+    grant_type: "authorization_code",
+    code: location.searchParams.get("code") ?? "",
+    redirect_uri: REDIRECT_URI,
+    client_id: CLIENT_ID,
+    code_verifier: VERIFIER,
+  });
+  return (await res.json()) as { access_token: string; id_token: string };
 }
 
 test("正常系: authorize→token で access/id token を発行し claim が正しい", async () => {
@@ -153,4 +177,78 @@ test("異常系: token で redirect_uri 不一致は 400 invalid_grant で拒否
     code_verifier: VERIFIER,
   });
   assert.equal(res.status, 400);
+});
+
+test("正常系: userinfo は Bearer access token で whitelist フィールドのみ返す", async () => {
+  const app = createApp();
+  const { access_token } = await issueTokens(app);
+  const res = await app.request("/oidc/userinfo", {
+    headers: { authorization: `Bearer ${access_token}` },
+  });
+  assert.equal(res.status, 200);
+  const info = (await res.json()) as Record<string, unknown>;
+  assert.equal(info.sub, "user-john-doe");
+  assert.equal(info.email, "john.doe@example.com");
+  assert.equal(info.email_verified, true);
+  assert.equal(info.name, "John Doe");
+  assert.deepEqual(
+    Object.keys(info).sort(),
+    ["email", "email_verified", "family_name", "given_name", "name", "sub"],
+  );
+});
+
+test("異常系: userinfo は ID Token を 401 で拒否する", async () => {
+  const app = createApp();
+  const { id_token } = await issueTokens(app);
+  const res = await app.request("/oidc/userinfo", {
+    headers: { authorization: `Bearer ${id_token}` },
+  });
+  assert.equal(res.status, 401);
+});
+
+test("異常系: userinfo は Bearer 欠如を 401 で拒否する", async () => {
+  const app = createApp();
+  const res = await app.request("/oidc/userinfo");
+  assert.equal(res.status, 401);
+});
+
+test("正常系: logout は登録済み post_logout_redirect_uri へ 302（state 反映）", async () => {
+  const app = createApp();
+  const res = await logoutRequest(app, {
+    post_logout_redirect_uri: "http://localhost:3000",
+    state: "logout-state",
+  });
+  assert.equal(res.status, 302);
+  const location = new URL(res.headers.get("location") ?? "");
+  assert.equal(location.origin, "http://localhost:3000");
+  assert.equal(location.searchParams.get("state"), "logout-state");
+});
+
+test("異常系: logout は未登録 post_logout_redirect_uri を 400 で拒否する", async () => {
+  const app = createApp();
+  const res = await logoutRequest(app, { post_logout_redirect_uri: "http://evil.example.com" });
+  assert.equal(res.status, 400);
+});
+
+test("正常系: logout は post_logout_redirect_uri 未指定で 200 を返す", async () => {
+  const app = createApp();
+  const res = await logoutRequest(app, {});
+  assert.equal(res.status, 200);
+  assert.equal(((await res.json()) as Record<string, string>).status, "logged_out");
+});
+
+test("正常系: bypass/session が session を作成し、logout(id_token_hint) が破棄する", async () => {
+  sessionStore.clear();
+  const app = createApp();
+  const created = await app.request("/bypass/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subject: "user-john-doe" }),
+  });
+  assert.equal(created.status, 200);
+  assert.equal(sessionStore.size, 1);
+
+  const { id_token } = await issueTokens(app);
+  await logoutRequest(app, { id_token_hint: id_token });
+  assert.equal(sessionStore.size, 0);
 });
