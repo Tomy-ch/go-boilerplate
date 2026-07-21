@@ -49,6 +49,8 @@ tags:
     description: ユーザー検索（キーワード）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products
+    description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: internal/types/error-response
@@ -86,6 +88,8 @@ paths:
     $ref: './paths/v1/users/feed.yaml'
   /v1/prefectures:
     $ref: './paths/v1/prefectures.yaml'
+  /v1/products:
+    $ref: './paths/v1/products.yaml'
   /v1/exchange-rates:
     $ref: './paths/v1/exchange-rates.yaml'
   # sample-api:end
@@ -109,6 +113,12 @@ components:
       $ref: './components/parameters/search/ActiveParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
+    CategoryIdParam:
+      $ref: './components/parameters/product/CategoryIdParam.yaml'
+    StatusIdParam:
+      $ref: './components/parameters/product/StatusIdParam.yaml'
+    SortParam:
+      $ref: './components/parameters/product/SortParam.yaml'
     # sample-api:end
   securitySchemes:
     BearerAuth:
@@ -154,4 +164,8 @@ components:
       $ref: './components/schemas/PrefectureResponse.yaml'
     ResponseV1Prefectures:
       $ref: './components/responses/prefecture/PrefecturesResponse.yaml'
+    ProductResponse:
+      $ref: './components/schemas/ProductResponse.yaml'
+    ProductListResponse:
+      $ref: './components/responses/products/ProductListResponse.yaml'
     # sample-api:end
