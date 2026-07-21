@@ -49,6 +49,8 @@ tags:
     description: ユーザー検索（キーワード）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/product-statuses
+    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: internal/types/error-response
@@ -86,6 +88,8 @@ paths:
     $ref: './paths/v1/users/feed.yaml'
   /v1/prefectures:
     $ref: './paths/v1/prefectures.yaml'
+  /v1/product-statuses:
+    $ref: './paths/v1/product-statuses.yaml'
   /v1/exchange-rates:
     $ref: './paths/v1/exchange-rates.yaml'
   # sample-api:end
@@ -154,4 +158,8 @@ components:
       $ref: './components/schemas/PrefectureResponse.yaml'
     ResponseV1Prefectures:
       $ref: './components/responses/prefecture/PrefecturesResponse.yaml'
+    ProductStatusResponse:
+      $ref: './components/schemas/ProductStatusResponse.yaml'
+    ResponseV1ProductStatuses:
+      $ref: './components/responses/product-status/ProductStatusesResponse.yaml'
     # sample-api:end
