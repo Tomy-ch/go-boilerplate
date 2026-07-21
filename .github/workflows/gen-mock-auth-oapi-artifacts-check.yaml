@@ -34,6 +34,9 @@ jobs:
       - name: Run Mock-Auth OpenAPI Bundle + zod codegen
         run: make gen-mock-auth-oapi
 
+      - name: Run Mock-Auth OpenAPI Redoc docs
+        run: make gen-mock-auth-oapi-docs
+
       - name: Detect generated changes (file list)
         id: gen_diff
         shell: bash
