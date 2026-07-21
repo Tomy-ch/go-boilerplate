@@ -9,10 +9,17 @@
   },
   "scripts": {
     "start": "node src/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint:oapi": "redocly lint openapi/openapi.yaml",
+    "gen:bundle": "redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml",
+    "gen:zod": "orval --config orval.config.ts",
+    "gen:docs": "redocly build-docs openapi/openapi.yaml --output openapi/docs/index.html",
+    "gen": "npm run gen:bundle && npm run gen:zod",
+    "gen:check": "npm run gen && git diff --exit-code -- openapi/openapi.gen.yaml src/generated"
   },
   "dependencies": {
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
