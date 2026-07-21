@@ -9,6 +9,7 @@ import (
 	prefectureuc "go-boilerplate/internal/usecase/prefecture"     // sample-api:line
 	productuc "go-boilerplate/internal/usecase/product"           // sample-api:line
 	categoryuc "go-boilerplate/internal/usecase/product/category" // sample-api:line
+	statusuc "go-boilerplate/internal/usecase/product/status"     // sample-api:line
 	"go-boilerplate/internal/usecase/user"                        // sample-api:line
 	"go-boilerplate/internal/usecase/user/search"                 // sample-api:line
 
@@ -37,6 +38,7 @@ func UsecaseModule() fx.Option {
 			search.New,
 			exchangerateuc.New,
 			prefectureuc.New,
+			statusuc.New,
 			categoryuc.New,
 			productuc.New,
 			// sample-api:end

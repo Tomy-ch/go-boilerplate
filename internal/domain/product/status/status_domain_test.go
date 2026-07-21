@@ -1,0 +1,229 @@
+package status
+
+import (
+	"strings"
+	"testing"
+
+	"go-boilerplate/pkg/uuid"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	expectedUUID, err := uuid.New()
+	require.NoError(t, err)
+	expectedName := "在庫あり"
+	expectedCode := 1
+	expectedSortKey := 5
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("有効な値の場合、Statusエンティティが生成される", func(t *testing.T) {
+			t.Parallel()
+
+			expected := &Status{
+				id:      expectedUUID,
+				name:    expectedName,
+				code:    expectedCode,
+				sortKey: expectedSortKey,
+			}
+
+			actual, err := New(expectedUUID, expectedName, expectedCode, expectedSortKey)
+			require.NoError(t, err)
+			assert.Equal(t, expected.id, actual.id)
+			assert.Equal(t, expected.name, actual.name)
+			assert.Equal(t, expected.code, actual.code)
+			assert.Equal(t, expected.sortKey, actual.sortKey)
+		})
+
+		t.Run("コードが最小値ちょうど(1)の場合、生成される", func(t *testing.T) {
+			t.Parallel()
+			actual, err := New(expectedUUID, expectedName, minCode, expectedSortKey)
+			require.NoError(t, err)
+			assert.Equal(t, minCode, actual.code)
+		})
+
+		t.Run("コードが最大値ちょうど(32767)の場合、生成される", func(t *testing.T) {
+			t.Parallel()
+			actual, err := New(expectedUUID, expectedName, maxCode, expectedSortKey)
+			require.NoError(t, err)
+			assert.Equal(t, maxCode, actual.code)
+		})
+
+		t.Run("表示順が最小値ちょうど(1)の場合、生成される", func(t *testing.T) {
+			t.Parallel()
+			actual, err := New(expectedUUID, expectedName, expectedCode, minSortKey)
+			require.NoError(t, err)
+			assert.Equal(t, minSortKey, actual.sortKey)
+		})
+
+		t.Run("表示順が最大値ちょうど(32767)の場合、生成される", func(t *testing.T) {
+			t.Parallel()
+			actual, err := New(expectedUUID, expectedName, expectedCode, maxSortKey)
+			require.NoError(t, err)
+			assert.Equal(t, maxSortKey, actual.sortKey)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("IDがゼロ値の場合、ErrInvalidIDエラーが返される", func(t *testing.T) {
+			t.Parallel()
+
+			res, err := New(uuid.UUID{}, expectedName, expectedCode, expectedSortKey)
+			require.Nil(t, res)
+			require.ErrorIs(t, err, ErrInvalidID)
+		})
+
+		t.Run("無効な商品ステータス名の場合、ErrInvalidNameエラーが返される", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("文字数が最小値未満の場合", func(t *testing.T) {
+				t.Parallel()
+
+				invalidName := strings.Repeat("字", minNameLength-1)
+				res, err := New(expectedUUID, invalidName, expectedCode, expectedSortKey)
+				require.Nil(t, res)
+				require.ErrorIs(t, err, ErrInvalidName)
+			})
+
+			t.Run("文字数が最大値超過の場合", func(t *testing.T) {
+				t.Parallel()
+
+				invalidName := strings.Repeat("字", maxNameLength+1)
+				res, err := New(expectedUUID, invalidName, expectedCode, expectedSortKey)
+				require.Nil(t, res)
+				require.ErrorIs(t, err, ErrInvalidName)
+			})
+		})
+
+		t.Run("無効なコードの場合、ErrInvalidCodeエラーが返される", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("コードが最小値未満の場合", func(t *testing.T) {
+				t.Parallel()
+
+				invalidCode := minCode - 1
+				res, err := New(expectedUUID, expectedName, invalidCode, expectedSortKey)
+				require.Nil(t, res)
+				require.ErrorIs(t, err, ErrInvalidCode)
+			})
+
+			t.Run("コードが最大値超過の場合", func(t *testing.T) {
+				t.Parallel()
+
+				invalidCode := maxCode + 1
+				res, err := New(expectedUUID, expectedName, invalidCode, expectedSortKey)
+				require.Nil(t, res)
+				require.ErrorIs(t, err, ErrInvalidCode)
+			})
+		})
+
+		t.Run("無効な表示順の場合、ErrInvalidSortKeyエラーが返される", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("表示順が最小値未満の場合", func(t *testing.T) {
+				t.Parallel()
+
+				invalidSortKey := minSortKey - 1
+				res, err := New(expectedUUID, expectedName, expectedCode, invalidSortKey)
+				require.Nil(t, res)
+				require.ErrorIs(t, err, ErrInvalidSortKey)
+			})
+
+			t.Run("表示順が最大値超過の場合", func(t *testing.T) {
+				t.Parallel()
+
+				invalidSortKey := maxSortKey + 1
+				res, err := New(expectedUUID, expectedName, expectedCode, invalidSortKey)
+				require.Nil(t, res)
+				require.ErrorIs(t, err, ErrInvalidSortKey)
+			})
+		})
+	})
+}
+
+func TestStatus_ID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("IDメソッドは正しいIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			status, err := New(id, "在庫切れ", 2, 6)
+			require.NoError(t, err)
+
+			assert.Equal(t, id, status.ID())
+		})
+	})
+}
+
+func TestStatus_Name(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Nameメソッドは正しい名前を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			status, err := New(id, "在庫切れ", 2, 6)
+			require.NoError(t, err)
+
+			assert.Equal(t, "在庫切れ", status.Name())
+		})
+	})
+}
+
+func TestStatus_Code(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Codeメソッドは正しいコードを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			status, err := New(id, "在庫切れ", 2, 6)
+			require.NoError(t, err)
+
+			assert.Equal(t, 2, status.Code())
+		})
+	})
+}
+
+func TestStatus_SortKey(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("SortKeyメソッドは正しい表示順を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			status, err := New(id, "在庫切れ", 2, 6)
+			require.NoError(t, err)
+
+			assert.Equal(t, 6, status.SortKey())
+		})
+	})
+}

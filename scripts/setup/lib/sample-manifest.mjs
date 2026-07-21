@@ -109,8 +109,26 @@ export const SAMPLE_DOMAINS = {
   },
 
   product: {
-    description: "サンプル 商品ドメイン（GET /v1/product-categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉）",
+    description: "サンプル 商品ドメイン（GET /v1/product-statuses 商品ステータスマスタ一覧 / GET /v1/product-categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉）",
     paths: [
+      "internal/domain/product/status",
+      "internal/usecase/product/status",
+      "internal/infrastructure/rdb/repository/productstatus",
+      "internal/controller/handler/v1/product-statuses",
+      "internal/integration/v1_product_statuses_test.go",
+      "database/dml/repository/product_status",
+
+      // サンプル専用の生成物は再生成で復活しないため明示削除する
+      "internal/infrastructure/rdb/sqlc/gen/product_status_repository.gen.sql.go",
+      "database/gen/product_status_repository.gen.sql",
+
+      "openapi/paths/v1/product-statuses.yaml",
+      "openapi/components/responses/product-status",
+      "openapi/components/schemas/ProductStatusResponse.yaml",
+
+      "docs/spec/product-status/domain.md",
+      "docs/spec/product-status/usecase.md",
+
       "internal/domain/product/category",
       "internal/usecase/product/category",
       "internal/infrastructure/rdb/repository/product_category",
@@ -118,7 +136,6 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_product_categories_test.go",
       "database/dml/repository/product_category",
 
-      // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/product_category_repository.gen.sql.go",
       "database/gen/product_category_repository.gen.sql",
 

@@ -4,6 +4,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                       // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/product"                          // sample-api:line
 	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category" // sample-api:line
+	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"  // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/user"                             // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
@@ -24,6 +25,7 @@ func persistenceModule() fx.Option {
 				user.New,
 				user.NewRoleRepository,
 				prefecture.New,
+				productstatusrepo.New,
 				productcategory.New,
 				product.New,
 				// sample-api:end
