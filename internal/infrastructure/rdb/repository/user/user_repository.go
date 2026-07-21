@@ -47,13 +47,11 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 			OffsetParam: offset,
 			LimitParam:  limit,
 		})
-	case !*active:
+	default:
 		return fetchListUsersRowsByDeleted(ctx, db, &gen.ListDeletedUsersParams{
 			OffsetParam: offset,
 			LimitParam:  limit,
 		})
-	default:
-		panic("unreachable: invalid active")
 	}
 }
 
@@ -114,7 +112,7 @@ func (r *repository) SearchByKeyword(ctx context.Context, keywords []string, act
 			return nil, pgerror.NormalizeError(err)
 		}
 		return rowsToUsers(rows, func(r *gen.SearchActiveUsersRow) gen.Users { return r.Users })
-	case !*active:
+	default:
 		rows, err := db.SearchDeletedUsers(ctx, &gen.SearchDeletedUsersParams{
 			PatternsParam: tokens,
 			LimitParam:    limit,
@@ -124,8 +122,6 @@ func (r *repository) SearchByKeyword(ctx context.Context, keywords []string, act
 			return nil, pgerror.NormalizeError(err)
 		}
 		return rowsToUsers(rows, func(r *gen.SearchDeletedUsersRow) gen.Users { return r.Users })
-	default:
-		panic("unreachable: invalid active")
 	}
 }
 
@@ -296,10 +292,8 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 		count, err = db.CountUsers(ctx)
 	case *active:
 		count, err = db.CountActiveUsers(ctx)
-	case !*active:
-		count, err = db.CountDeletedUsers(ctx)
 	default:
-		panic("unreachable: invalid active")
+		count, err = db.CountDeletedUsers(ctx)
 	}
 
 	if err != nil {
@@ -328,10 +322,8 @@ func (r *repository) CountByKeyword(ctx context.Context, keywords []string, acti
 		count, err = db.CountSearchUsers(ctx, tokens)
 	case *active:
 		count, err = db.CountSearchActiveUsers(ctx, tokens)
-	case !*active:
-		count, err = db.CountSearchDeletedUsers(ctx, tokens)
 	default:
-		panic("unreachable: invalid active")
+		count, err = db.CountSearchDeletedUsers(ctx, tokens)
 	}
 
 	if err != nil {
