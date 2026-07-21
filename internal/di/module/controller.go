@@ -5,14 +5,14 @@ import (
 	"go-boilerplate/internal/controller/handler/healthz"
 	"go-boilerplate/internal/controller/handler/metrics"
 	"go-boilerplate/internal/controller/handler/ready"
-	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate" // sample-api:line
-	prefectureshandler "go-boilerplate/internal/controller/handler/v1/prefectures" // sample-api:line
+	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate"            // sample-api:line
+	prefectureshandler "go-boilerplate/internal/controller/handler/v1/prefectures"              // sample-api:line
 	productcategorieshandler "go-boilerplate/internal/controller/handler/v1/product-categories" // sample-api:line
-	productshandler "go-boilerplate/internal/controller/handler/v1/products" // sample-api:line
-	"go-boilerplate/internal/controller/handler/v1/users" // sample-api:line
-	"go-boilerplate/internal/controller/handler/v1/users/detail" // sample-api:line
-	"go-boilerplate/internal/controller/handler/v1/users/feed" // sample-api:line
-	"go-boilerplate/internal/controller/handler/v1/users/search" // sample-api:line
+	productshandler "go-boilerplate/internal/controller/handler/v1/products"                    // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users"                                       // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/detail"                                // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/feed"                                  // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/search"                                // sample-api:line
 	"go-boilerplate/internal/controller/handler/version"
 
 	"go.uber.org/fx"

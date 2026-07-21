@@ -1,10 +1,10 @@
 package module
 
 import (
-	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture" // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                       // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/product"                          // sample-api:line
 	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category" // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/product" // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/user" // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/user"                             // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
 	outboxsq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox"
