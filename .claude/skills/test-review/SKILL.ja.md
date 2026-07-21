@@ -30,7 +30,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md`（Test Strategy）
   - `pkg/**` については `scaffold-test/SKILL.md` 参照 — `pkg/README.md` は意図的に Test Strategy 節を持たず、sibling tests + `pkg/<name>/README.md` から観点派生。**pkg では gap 警告を出さない**。
 - 対象 `*_test.go`。
-- 対応する subject ソース (`<subject>.go` / `<subject>_test.go` 対）— 観点ギャップ lens で「何が test されていないか」を判定するために必須。
+- 対応する subject ソース (`<subject>.go` / `<subject>_test.go` 対）— コード起点 2 レンズ（Lens 4 分岐×意味 / Lens 5 シンボル網羅）で「何が test されていないか」を判定するために必須。
 - 同一パッケージの sibling test（成立済みの conventions の参考）。
 
 **書く**:
@@ -59,7 +59,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 解決後、対象ファイルリストを構築。スコープ内に `*_test.go` がなければ穏便に停止（レビュー対象なし）。
 
-各 test ファイルについて **subject ソース**（同パッケージ・basename `_test` 抜き）も解決。観点ギャップ lens に必須。
+各 test ファイルについて **subject ソース**（同パッケージ・basename `_test` 抜き）も解決。コード起点 2 レンズ（Lens 4 / Lens 5）に必須。
 
 ## Step 1. 層コンテキスト読み込み
 
@@ -74,9 +74,11 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 `internal/<layer>/` で Test Strategy 節が期待されているのに無い場合は report に notes として記録（pkg は除外、警告ではなく documentation gap として）。
 
-## Step 2. 4 つの adversarial reviewer を fan out
+## Step 2. 5 つの adversarial reviewer を fan out
 
-`adversarial-reviewer` subagent を 4 つ、**並列**起動 (`subagent_type: adversarial-reviewer`)。 既定で `sonnet`（Opus 実装者 ≠ reviewer を保つ。orchestrator がモデルを上書きして reviewer ≠ implementer を維持してもよい）。
+`adversarial-reviewer` subagent を 5 つ、**並列**起動 (`subagent_type: adversarial-reviewer`)。 既定で `sonnet`（Opus 実装者 ≠ reviewer を保つ。orchestrator がモデルを上書きして reviewer ≠ implementer を維持してもよい）。
+
+5 つのうち 2 つは **コード起点（subject 駆動）** — test ファイルではなく subject ソースから出発するため、「テストが 1 つも無いコード要素」も視界に入る: **Lens 5**（各 subject シンボルに規約名 `TestXxx` が存在するか）と **Lens 4**（テスト済み関数の中で各分岐が到達され固有 assert されているか）。残る 3 つ（Lens 1 / 2 / 3）は test ファイル起点 / README 起点。到達可能なのに未テストのコードは、test ファイル起点の読みでは構造的に見えず、このコード起点ペアが拾う。
 
 各 subagent は Step 1 の context bundle（層 README / `docs/testing-conventions.md` / `scaffold-test/SKILL.md` / 対象 test / subject / sibling tests）を共通で受け取り、レンズだけ違う prompt を受ける。
 
@@ -93,7 +95,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 - **table-driven `for` ループは違反**（`scaffold-test/SKILL.md` Rule 5）。`(input, expected)` 構造体スライスを `for _, tc := range cases { t.Run(...) }` で回すブロックは、可読性や `dupl` 回避を理由にしても指摘する。正しい形はケース毎の逐次 `t.Run` sibling（重複は許容）。長いゲッター/境界リストでも同様。
 - **subject 関数 ↔ `TestXxx` の 1:1 対応。** ここでの *subject* はペアになる本番ソース — バイナリにビルドされる非テスト・非生成の `.go` ファイル。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外（手書き `TestXxx` を期待しない）。両方向を確認:
   - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数 subject を束ねる `TestXxx`（統合された `*_Accessors` / `*_Getters` 等）は 1:1 違反で、rationale コメントによる免除は無い。subject ごとに `TestXxx` を分解する。唯一の免除は分岐が他（公開呼び出し元 / 統合 / DI グラフ）で被覆される subject で、その場合も規約名の `TestXxx` を宣言し `t.Skip("<被覆テスト>")` を呼ぶ — 束ねは常に指摘し、決して受け入れない（`docs/testing-conventions.md` §1、`internal/architest` が強制）。
-  - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は網羅ギャップ（その分岐は Lens 4 軸A でも surface する）。
+  - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は **Lens 5（シンボル網羅）の所管** — 本レンズは既に存在する `TestXxx` の *形*（命名ゆらぎ / 束ね / 分裂）だけを指摘し、存在しないこと自体は Lens 5 に委ねて二重報告しない。
 - mock は `<package>/mock/*_mock.go` から（手書き mock 禁止）。
 - 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`docs/testing-conventions.md` ルール）。
 
@@ -119,6 +121,8 @@ Output: `file:line` + 違反した §10 アンチパターン + 「なぜ弱い 
 
 subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の網羅マトリクスを構築する。 カバレッジ ≠ 意味のあるカバレッジ: ある分岐が「その分岐固有の何か」を一切 assert しないケースで実行されているだけのことがあり、その穴を切り分けるのが本 lens の目的。 各 subject で両軸を走らせる — 分岐は「到達済み (軸A)」かつ「固有に assert 済み (軸B)」で初めて完了。
 
+**Lens 5 との棲み分け**: Lens 4 は既に `TestXxx` を持つシンボルの*内側*を監査する — どの分岐が到達され意味づけ assert されているか。「シンボルにテストが 1 つも無い」は **Lens 5** の finding であって Lens 4 のものではない。 Lens 5 が既にゼロテストのシンボルを挙げている場合、その全分岐をここで列挙し直さない（それは N 個ではなく 1 個のギャップ）。 Lens 4 の分岐 finding は、テストは存在するが不完全なシンボルに適用する。
+
 **軸A — 分岐網羅**: subject の各論理分岐が最低 1 件のケースで到達されているか。
 
 - 各条件分岐（ポジ / ネガ）に最低 1 件の `t.Run` ケースがあるか。
@@ -142,6 +146,20 @@ subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の�
 
 Output: subject ごとに、(1) 未カバー分岐 + 提案 `t.Run` ケース名（軸A → 追加検討）、(2) カバー済みだが意味未検証の分岐 + 不足している区別アサーション（軸B → 再考）。 各々 subject 分岐の `file:line` とカバーしている test ケースを引用。
 
+### Lens 5: シンボル網羅 (コード起点)
+
+**test ファイルではなく subject ソース**から出発する — Lens 4 と同じ起点だが、粒度は粗い*シンボル*単位。 その唯一の仕事は、subject の完全な公開シンボル表に対して「そもそもこれにテストが存在するか」を答えること。 test ファイル起点の読み（Lens 1）は見つけた `TestXxx` しか判定できず、テストゼロのシンボルは不可視。 本レンズはまさにその盲点 — 到達可能なのに未テストのコードがすり抜ける経路 — を潰すために存在する。 先にコードを列挙し、それに対してテストを突き合わせるので、不在が「沈黙」ではなく積極的な finding になる。
+
+手順:
+
+1. **subject シンボル表を構築する。** ペアの `<subject>.go`（非生成・非 `*_test.go`）から、その層の規約が `TestXxx` を期待する全シンボルを列挙: 公開 func / メソッド / コンストラクタ、および層が直接テストする分岐ロジックを持つパッケージレベルの非公開 func（期待は層 README の Test Strategy + `docs/testing-conventions.md` §1 が定義。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外）。 getter / accessor / provider func / env ゲートヘルパも数える — これらこそ見落とされやすい低可視性シンボル。
+2. **各シンボルを `TestXxx` に対応付ける。** シンボルが*充足*なのは、規約名の `TestXxx` がそれを対象にしている場合、または規約名の `TestXxx` を宣言しつつ実在の被覆テスト（公開呼び出し元 / 統合 / DI グラフ）を名指す `t.Skip("<被覆テスト>")` を呼んでいる場合（`docs/testing-conventions.md` §1）。
+3. **充足しない全シンボルを** **シンボル未カバー** finding として挙げる → severity **補完推奨**（コード要素まるごとテストが無い — Lens 4 の*関数内*分岐ギャップとは別の構造的カバレッジ穴）。 subject `symbol @ file:line` を引用し `TestXxx` 名（と `正常系` / `異常系` 骨子）を提案。 Lens 4 軸A と同じ **criticality（1-10）** 本番影響スコアを付し降順に並べる — 完全に未テストの認証・認可 / 永続化シンボルは、未テストの些末な getter より上位。
+
+Lens 4 への引き継ぎ: Lens 5 があるシンボルを「まるごと未テスト」と挙げたら、Lens 4 はそのシンボルの分岐を追加列挙しない（「テスト無し」ギャップは 1 個であって N 個ではない）。 Lens 4 は Lens 5 が充足と見なしたが部分的にしかカバーされていないシンボルだけを拾う。
+
+Output: テストが無い（または実在の被覆テストを欠く `t.Skip` の）subject シンボルのリスト。 各々 `symbol @ file:line` / 提案 `TestXxx` / criticality。
+
 ## Step 3. 各 finding を検証
 
 生き残った各 finding を独立した `review-verifier` subagent (`subagent_type: review-verifier`、 sonnet) に渡す。 verifier は:
@@ -162,7 +180,7 @@ REFUTED は report から落とす（合計件数だけ summary に残す → no
 # Test Review レポート
 
 対象: <スコープ + ファイル一覧>
-レンズ: 構造準拠 / 観点カバレッジ / 意味的品質 / 観点ギャップ
+レンズ: 構造準拠 / 観点カバレッジ / 意味的品質 / 観点ギャップ(branch×meaning) / シンボル網羅
 verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィルタ済み)
 
 ## サマリ
@@ -188,6 +206,13 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
   - 詳細: <one-sentence why>
   - verifier: CONFIRMED / PLAUSIBLE
 
+## シンボル網羅（補完推奨）
+- <file> に対して subject <subject path> から導出（criticality 降順）:
+  - シンボル未カバー: <symbol @ subject file:line>（対応 TestXxx 皆無）
+  - criticality: <1-10> — 未検証で壊れた場合のリグレッション: <一文>
+  - 提案: func Test<Symbol>(t *testing.T) — 正常系 / 異常系 の骨子
+  - verifier: CONFIRMED / PLAUSIBLE
+
 ## 観点ギャップ: 分岐網羅（追加検討）
 - <file> に対して subject <subject path> から導出（criticality 降順）:
   - 分岐未カバー: <subject file:line の分岐>
@@ -209,7 +234,7 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
 severity マッピング:
 
 - **修正必須** （構造準拠）: `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のハードルール違反。 CONFIRMED → 修正必須 / PLAUSIBLE → 確認推奨。
-- **補完推奨** （観点カバレッジ）: README で宣言されているのに exercise されていない観点。 CONFIRMED → 補完推奨 / PLAUSIBLE → 確認推奨。
+- **補完推奨** （観点カバレッジ + シンボル網羅）: README で宣言されているのに exercise されていない観点、または subject シンボルに `TestXxx` が 1 つも無い。 CONFIRMED → 補完推奨 / PLAUSIBLE → 確認推奨。
 - **再考** （意味的品質 + 観点ギャップ 軸B）: pass はするが意味が薄い — 弱アサーション、または分岐はカバーされているが固有 outcome を区別 assert していない。 CONFIRMED → 再考 / PLAUSIBLE → 補強候補。
 - **追加検討** （観点ギャップ 軸A）: subject 検査から派生する未カバー分岐の proactive 提案。 CONFIRMED → 追加検討 / PLAUSIBLE → 提案。
 
@@ -244,7 +269,8 @@ PR レビューフローで `code-review` / `impl-review` / `arch-check` と並�
 - ✅ スコープ既定: 変更ファイル。 他選択肢あり。
 - ✅ 最終レポートは日本語、 lens 別グルーピング、 severity tag。
 - ✅ `pkg/` は意図的に「Test Strategy 節なし」層として扱い、 documentation gap として警告しない。
-- ✅ criticality (1-10) は Axis A の 追加検討 finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
+- ✅ criticality (1-10) は Lens 4 軸A（追加検討）と Lens 5（補完推奨・シンボル未カバー）の finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
+- ✅ コード起点は 2 レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが 1 つも無いシンボル」は Lens 5 が所管し、Lens 1 逆方向 / Lens 4 とは二重報告しない。
 
 ## チェックリスト
 
@@ -253,7 +279,8 @@ PR レビューフローで `code-review` / `impl-review` / `arch-check` と並�
 - [ ] スコープ解決済み（変更ファイル / base diff / 明示パス）。
 - [ ] 各対象 `*_test.go` に対し subject ソースが解決済み。
 - [ ] Step 1 で 層 README + `docs/testing-conventions.md` + `scaffold-test/SKILL.md` + sibling tests を読んだ。
-- [ ] 4 レンズが（並列で）走った。
+- [ ] 5 レンズが（並列で）走った。
+- [ ] Lens 5 は subject シンボル表を構築し、`TestXxx` が 1 つも無いシンボルを（→ 補完推奨）Lens 4 の分岐分析より前に挙げた — コード起点 2 レンズがゼロテストのシンボルを二重報告していない。
 - [ ] Lens 4 は subject ごとに両軸を走らせた — 軸A 分岐網羅（未カバー分岐 → 追加検討）/ 軸B 意味網羅（カバー済みだが意味未検証 → 再考）。
 - [ ] 各 finding が `review-verifier` を通過した（`skip_verifier: true` 親指定以外）。
 - [ ] REFUTED は落とし、 CONFIRMED / PLAUSIBLE のみ残した。
