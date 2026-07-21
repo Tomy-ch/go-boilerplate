@@ -13,7 +13,6 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_query "go-boilerplate/internal/usecase/user/search/mock"
-	"go-boilerplate/internal/usecase/user/search/query"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -31,7 +30,7 @@ func newServer(t *testing.T) (*server, *mock_query.MockUsecase) {
 }
 
 // wantSearchItem は、本番の変換とは独立な検証用オラクル（フィールド取り違え検出）。
-func wantSearchItem(r *query.UserSearchResult) gen.UsersSearchResponseItem {
+func wantSearchItem(r *usecase_search.UserSearchResult) gen.UsersSearchResponseItem {
 	return gen.UsersSearchResponseItem{
 		FirstName:    r.FirstName,
 		LastName:     r.LastName,
@@ -86,7 +85,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		exec := func(t *testing.T, dtos query.UserSearchResults, total int64) {
+		exec := func(t *testing.T, dtos usecase_search.UserSearchResults, total int64) {
 			t.Helper()
 
 			wantUsers := make([]gen.UsersSearchResponseItem, len(dtos))
@@ -120,13 +119,13 @@ func Test_server_GetUsersSearch(t *testing.T) {
 
 		t.Run("複数ユーザーが存在する場合、検索結果が返る", func(t *testing.T) {
 			t.Parallel()
-			dtos := query.UserSearchResults{
-				&query.UserSearchResult{
+			dtos := usecase_search.UserSearchResults{
+				&usecase_search.UserSearchResult{
 					FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "090-0000-0001",
 					PostalCode: "123-0001", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1",
 					Building: new("B1"), RegisteredAt: t1,
 				},
-				&query.UserSearchResult{
+				&usecase_search.UserSearchResult{
 					FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "090-0000-0002",
 					PostalCode: "123-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2-2",
 					RegisteredAt: t2,
@@ -137,7 +136,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 
 		t.Run("0件の場合、空の検索結果が返る", func(t *testing.T) {
 			t.Parallel()
-			exec(t, query.UserSearchResults{}, 0)
+			exec(t, usecase_search.UserSearchResults{}, 0)
 		})
 
 		t.Run("Keyword/Activeが未指定の場合、空のSearchParamsで呼び出される", func(t *testing.T) {
@@ -155,7 +154,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
 				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
 					gotFilter = f
-					return &usecase_search.UserSearchListView{Items: query.UserSearchResults{}, Total: 0}, nil
+					return &usecase_search.UserSearchListView{Items: usecase_search.UserSearchResults{}, Total: 0}, nil
 				})
 
 			resp, err := s.GetUsersSearch(context.Background(), noFilterParams)

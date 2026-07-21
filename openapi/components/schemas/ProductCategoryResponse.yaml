@@ -1,0 +1,25 @@
+type: object
+description: 商品カテゴリマスタ 1 件分のレスポンスです。
+required:
+  - id
+  - code
+  - name
+  - sortKey
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 商品カテゴリID
+    example: "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
+  code:
+    type: integer
+    description: 商品カテゴリコード
+    example: 1
+  name:
+    type: string
+    description: 商品カテゴリ名
+    example: "電子機器"
+  sortKey:
+    type: integer
+    description: 表示順
+    example: 1

@@ -1,0 +1,11 @@
+description: 商品一覧（cursor ページネーション）のレスポンススキーマ
+allOf:
+- type: object
+  required:
+    - products
+  properties:
+    products:
+      type: array
+      items:
+        $ref: '../../schemas/ProductResponse.yaml'
+- $ref: '../../schemas/CursorPaginationMetadataResponse.yaml'

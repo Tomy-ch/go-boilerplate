@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
@@ -46,13 +47,11 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 			OffsetParam: offset,
 			LimitParam:  limit,
 		})
-	case !*active:
+	default:
 		return fetchListUsersRowsByDeleted(ctx, db, &gen.ListDeletedUsersParams{
 			OffsetParam: offset,
 			LimitParam:  limit,
 		})
-	default:
-		panic("unreachable: invalid active")
 	}
 }
 
@@ -81,6 +80,62 @@ func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit
 		return nil, pgerror.NormalizeError(err)
 	}
 	return rowsToUsers(rows, func(r *gen.ListUsersFeedAfterRow) gen.Users { return r.Users })
+}
+
+// SearchByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得します。
+// active=nil で全件、true でアクティブのみ、false で削除済みのみを対象とします。keywords が空の場合は全ユーザーを対象とします。
+func (r *repository) SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	tokens := buildLikeTokens(keywords)
+	db := gen.New(driver.New(ctx, r.db))
+
+	switch {
+	case active == nil:
+		rows, err := db.SearchUsers(ctx, &gen.SearchUsersParams{
+			PatternsParam: tokens,
+			LimitParam:    limit,
+			OffsetParam:   offset,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToUsers(rows, func(r *gen.SearchUsersRow) gen.Users { return r.Users })
+	case *active:
+		rows, err := db.SearchActiveUsers(ctx, &gen.SearchActiveUsersParams{
+			PatternsParam: tokens,
+			LimitParam:    limit,
+			OffsetParam:   offset,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToUsers(rows, func(r *gen.SearchActiveUsersRow) gen.Users { return r.Users })
+	default:
+		rows, err := db.SearchDeletedUsers(ctx, &gen.SearchDeletedUsersParams{
+			PatternsParam: tokens,
+			LimitParam:    limit,
+			OffsetParam:   offset,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToUsers(rows, func(r *gen.SearchDeletedUsersRow) gen.Users { return r.Users })
+	}
+}
+
+// buildLikeTokens は、キーワードを部分一致の LIKE パターンへ変換します。空の場合は全件マッチの ["%"] を返します。
+func buildLikeTokens(keywords []string) []string {
+	if len(keywords) == 0 {
+		return []string{"%"}
+	}
+	tokens := make([]string, len(keywords))
+	for i, kw := range keywords {
+		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
+		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
+	}
+	return tokens
 }
 
 // rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
@@ -237,10 +292,38 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 		count, err = db.CountUsers(ctx)
 	case *active:
 		count, err = db.CountActiveUsers(ctx)
-	case !*active:
-		count, err = db.CountDeletedUsers(ctx)
 	default:
-		panic("unreachable: invalid active")
+		count, err = db.CountDeletedUsers(ctx)
+	}
+
+	if err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+
+	return count, nil
+}
+
+// CountByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返します。
+// active / keywords の意味は SearchByKeyword と同じです。
+func (r *repository) CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	tokens := buildLikeTokens(keywords)
+	db := gen.New(driver.New(ctx, r.db))
+
+	var (
+		count int64
+		err   error
+	)
+
+	switch {
+	case active == nil:
+		count, err = db.CountSearchUsers(ctx, tokens)
+	case *active:
+		count, err = db.CountSearchActiveUsers(ctx, tokens)
+	default:
+		count, err = db.CountSearchDeletedUsers(ctx, tokens)
 	}
 
 	if err != nil {

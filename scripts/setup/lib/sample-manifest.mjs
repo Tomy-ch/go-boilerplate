@@ -109,7 +109,7 @@ export const SAMPLE_DOMAINS = {
   },
 
   product: {
-    description: "サンプル 商品ドメイン（product_statuses は GET /v1/product-statuses の一覧 API を含む Go 層まで実装済。product_categories / products は DB スタブのみ）",
+    description: "サンプル 商品ドメイン（GET /v1/product-statuses 商品ステータスマスタ一覧 / GET /v1/product-categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉）",
     paths: [
       "internal/domain/product/status",
       "internal/usecase/product/status",
@@ -128,6 +128,40 @@ export const SAMPLE_DOMAINS = {
 
       "docs/spec/product-status/domain.md",
       "docs/spec/product-status/usecase.md",
+
+      "internal/domain/product/category",
+      "internal/usecase/product/category",
+      "internal/infrastructure/rdb/repository/product_category",
+      "internal/controller/handler/v1/product-categories",
+      "internal/integration/v1_product_categories_test.go",
+      "database/dml/repository/product_category",
+
+      "internal/infrastructure/rdb/sqlc/gen/product_category_repository.gen.sql.go",
+      "database/gen/product_category_repository.gen.sql",
+
+      "openapi/paths/v1/product-categories.yaml",
+      "openapi/components/responses/product-category",
+      "openapi/components/schemas/ProductCategoryResponse.yaml",
+
+      "docs/spec/product-category/domain.md",
+      "docs/spec/product-category/usecase.md",
+
+      "internal/domain/product",
+      "internal/usecase/product",
+      "internal/infrastructure/rdb/repository/product",
+      "internal/controller/handler/v1/products",
+      "internal/integration/v1_products_test.go",
+      "database/dml/repository/product",
+
+      "internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go",
+      "database/gen/product_repository.gen.sql",
+
+      "openapi/paths/v1/products.yaml",
+      "openapi/components/parameters/product",
+      "openapi/components/responses/products",
+      "openapi/components/schemas/ProductResponse.yaml",
+
+      "docs/spec/product",
 
       "database/migrations/000008_create_product_statuses.up.sql",
       "database/migrations/000008_create_product_statuses.down.sql",

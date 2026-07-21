@@ -1,0 +1,26 @@
+package product
+
+import (
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/xerrors"
+)
+
+var (
+	errInvalid = xerrors.Wrap(apperror.ErrValidation, "invalid product")
+	// ErrInvalidID は、商品 ID の検証に失敗した場合のエラーです。
+	ErrInvalidID = xerrors.Wrap(errInvalid, "id failed")
+	// ErrInvalidName は、商品名の検証に失敗した場合のエラーです。
+	ErrInvalidName = xerrors.Wrap(errInvalid, "name failed")
+	// ErrInvalidPrice は、価格の検証に失敗した場合のエラーです。
+	ErrInvalidPrice = xerrors.Wrap(errInvalid, "price failed")
+	// ErrInvalidQuantity は、在庫数の検証に失敗した場合のエラーです。
+	ErrInvalidQuantity = xerrors.Wrap(errInvalid, "quantity failed")
+	// ErrInvalidStockWarningThreshold は、在庫警告閾値の検証に失敗した場合のエラーです。
+	ErrInvalidStockWarningThreshold = xerrors.Wrap(errInvalid, "stockWarningThreshold failed")
+	// ErrInvalidStatusID は、商品ステータス ID の検証に失敗した場合のエラーです。
+	ErrInvalidStatusID = xerrors.Wrap(errInvalid, "statusID failed")
+	// ErrInvalidCategoryID は、商品カテゴリ ID の検証に失敗した場合のエラーです。
+	ErrInvalidCategoryID = xerrors.Wrap(errInvalid, "categoryID failed")
+	// ErrInvalidPublishedAt は、公開日時の検証に失敗した場合のエラーです。
+	ErrInvalidPublishedAt = xerrors.Wrap(errInvalid, "publishedAt failed")
+)

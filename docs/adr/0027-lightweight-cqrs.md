@@ -63,6 +63,17 @@ three responsibilities:
   filter / list / count by the aggregate's own attributes, including an unfiltered full list)
   stay in Repository. Returning many rows is not "crossing aggregates"; crossing means spanning
   *different* aggregates.
+- The split is **storage-agnostic**: what decides Repository vs QueryService is whether the read
+  targets the aggregate's system-of-record state (the full aggregate is reconstructable →
+  Repository) or a derived projection / read model — a search index, a separate search store, a
+  denormalized / generated search column, or a cross-aggregate JOIN view (the aggregate cannot be
+  reconstructed → QueryService). Full-text search is a *typical* QueryService case because it
+  usually rides on a derived search projection, not because "search" is inherently a read-side
+  concern; a plain filter on the aggregate's own columns stays in Repository.
+- Cross-aggregate field resolution (e.g. attaching a related aggregate's name to a list) is done
+  in the **usecase layer** by batch-fetching the related aggregate through its own Repository
+  (`FindByIDs`) and merging by key — keeping each read a single-aggregate Repository read —
+  rather than via a QueryService SQL JOIN.
 - Implementation lives in `internal/infrastructure/rdb/query_service/<aggregate>/`.
 
 ### Command Service (command/write path)

@@ -1,0 +1,13 @@
+name: sort
+in: query
+description: |
+  並び順。`-publishedAt`（既定）は公開日時の降順、`publishedAt` は公開日時の昇順です。
+  いずれも同一公開日時の商品は ID で安定ソートします。
+required: false
+schema:
+  type: string
+  enum:
+    - "-publishedAt"
+    - publishedAt
+  default: "-publishedAt"
+  example: "-publishedAt"
