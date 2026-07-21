@@ -1,7 +1,7 @@
 // config.ts は環境変数から provider の実行時設定を読み込む。
 import type { OidcConfig } from "./types.ts";
 
-// loadConfig は環境変数（既定は process.env）から設定を組み立てる。テストは env を差し替えて注入できる。
+// loadConfig は env（既定は process.env）から OidcConfig を組み立てる。
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): OidcConfig {
   return {
     port: Number(env.OIDC_PORT ?? "4000"),

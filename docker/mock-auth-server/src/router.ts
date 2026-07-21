@@ -17,7 +17,8 @@ export function createApp(opts: { devEndpointsEnabled?: boolean } = {}): Hono {
   app.route("/", wellKnownRoutes);
   app.route("/", oidcRoutes);
 
-  // /bypass ・ /admin は dev-gate 配下（無効時は 404 で存在を秘匿）。use はマウント前に登録する。
+  // /bypass ・ /admin は dev-gate 配下（無効時は 404 で存在を秘匿）。
+  // Hono は use をルート登録より前に置かないとそのルートに適用されないため、route の前に use する。
   app.use("/bypass/*", devGate(devEnabled));
   app.use("/admin/*", devGate(devEnabled));
   app.route("/", bypassRoutes);

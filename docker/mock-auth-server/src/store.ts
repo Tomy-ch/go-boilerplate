@@ -1,6 +1,6 @@
 // store.ts は認可コードとログインセッションの揮発ストア。
 // いずれも TTL 付きで、期限切れは参照時に lazy 失効し、sweep でまとめて回収する。
-// 認可コードは take による単回使用（consume で無効化）を想定する。
+// 認可コードは take による単回使用（取得と同時に削除）を想定する。
 
 // CodeRecord は認可コードに紐づく発行時コンテキスト（token endpoint での検証に使う）。
 export interface CodeRecord {
