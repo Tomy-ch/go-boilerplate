@@ -52,18 +52,27 @@ type conditionalPropagator struct {
 	inner propagation.TextMapPropagator
 }
 
-// spanQueryRedactionKey は、span 記録用に URL から一時退避したクエリ文字列を運ぶ ctx キーです。
+// spanQueryRedactionKey は、span 記録用に URL から一時退避した機密構成要素を運ぶ ctx キーです。
 type spanQueryRedactionKey struct{}
 
-// spanURLRedactingRoundTripper は、otelhttp が span の url.full へ記録する URL からクエリ文字列を除去します。
-// otelhttp は url.full を req.URL.String() から算出するため、otelhttp へ渡す直前にクエリを ctx へ退避して URL から
-// 取り除き（span にはクエリなしで記録される）、実送信直前に queryRestoringRoundTripper が復元します。
-// httpclient のエラーメッセージ redaction（redactURL）と同じく、クエリは機密になり得るため既定で全除去します。
+// redactedURLParts は、span 記録のために URL から一時退避する機密になり得る構成要素です。
+// フラグメントは実 HTTP リクエストには送出されませんが、url.full には現れるため退避対象に含めます。
+type redactedURLParts struct {
+	rawQuery    string
+	fragment    string
+	rawFragment string
+}
+
+// spanURLRedactingRoundTripper は、otelhttp が span の url.full へ記録する URL からクエリ・フラグメントを除去します。
+// otelhttp は url.full を req.URL.String() から算出するため、otelhttp へ渡す直前にこれらを ctx へ退避して URL から
+// 取り除き（span には現れなくなる）、実送信直前に queryRestoringRoundTripper が復元します。
+// クエリ・フラグメントは機密になり得るため既定で全除去します（httpclient のエラーメッセージ redaction＝redactURL と同方針）。
+// userinfo は otelhttp が url.full 算出時に別途除去するため、ここでは扱いません。
 type spanURLRedactingRoundTripper struct {
 	inner http.RoundTripper
 }
 
-// queryRestoringRoundTripper は、span 記録のために除去したクエリを実送信直前に URL へ復元する base transport です。
+// queryRestoringRoundTripper は、span 記録のために除去した機密構成要素を実送信直前に URL へ復元する base transport です。
 // otelhttp は復元前に url.full を記録済みのため、ここでの復元は span へ影響しません。
 type queryRestoringRoundTripper struct {
 	base http.RoundTripper
@@ -80,9 +89,13 @@ func NewHTTPClientTransport(tp trace.TracerProvider, propagator propagation.Text
 
 // newHTTPClientTransport は、dial control を差し替え可能にした内部コンストラクタです。
 //
-// transport チェーンは外側から redact(query退避) → otelhttp(span生成) → restore(query復元) → guardedBase の順です。
-// otelhttp は span の url.full を req.URL.String() から算出しクエリ込みで記録するため、otelhttp へ渡す前に
-// クエリを退避・除去し、実送信直前に復元することで span からのみクエリを落とします（実リクエストは無改変）。
+// transport チェーンは外側から redact(退避) → otelhttp(span生成) → restore(復元) → guardedBase の順です。
+// otelhttp は span の url.full を req.URL.String() から算出しクエリ・フラグメント込みで記録するため、otelhttp へ
+// 渡す前にこれらを退避・除去し、実送信直前に復元することで span からのみ落とします（実リクエストは無改変）。
+//
+// 不変条件: otelhttp の base には URL をエラーメッセージへ整形しない素の RoundTripper（*http.Transport）を渡します。
+// エラー時 otelhttp は span へ err.Error() を記録するため、base が *url.Error（URL 込み）を返す層（例: http.Client
+// でのラップ）だと復元後のクエリがエラー span へ漏れます。この境界を跨ぐ RoundTripper を挟む改修は避けてください。
 func newHTTPClientTransport(
 	tp trace.TracerProvider, propagator propagation.TextMapPropagator, control dialControl,
 ) *HTTPClientTransport {
@@ -95,21 +108,30 @@ func newHTTPClientTransport(
 	return &HTTPClientTransport{rt: spanURLRedactingRoundTripper{inner: rt}}
 }
 
-// RoundTrip は、クエリを ctx へ退避し URL から除去した clone を otelhttp へ渡します。
+// RoundTrip は、クエリ・フラグメントを ctx へ退避し URL から除去した clone を otelhttp へ渡します。
 func (rt spanURLRedactingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if req.URL == nil || req.URL.RawQuery == "" {
+	if req.URL == nil || (req.URL.RawQuery == "" && req.URL.Fragment == "" && req.URL.RawFragment == "") {
 		return rt.inner.RoundTrip(req)
 	}
-	// caller の Request を破壊しないよう clone してから、実クエリを ctx へ退避し URL から除去する。
-	cloned := req.Clone(context.WithValue(req.Context(), spanQueryRedactionKey{}, req.URL.RawQuery))
+	// http.RoundTripper は呼び出し元の Request を変更してはならないため clone する。
+	parts := redactedURLParts{
+		rawQuery:    req.URL.RawQuery,
+		fragment:    req.URL.Fragment,
+		rawFragment: req.URL.RawFragment,
+	}
+	cloned := req.Clone(context.WithValue(req.Context(), spanQueryRedactionKey{}, parts))
 	cloned.URL.RawQuery = ""
+	cloned.URL.Fragment = ""
+	cloned.URL.RawFragment = ""
 	return rt.inner.RoundTrip(cloned)
 }
 
-// RoundTrip は、退避済みクエリがあれば URL へ復元してから base へ委譲します。
+// RoundTrip は、退避済みの機密構成要素があれば URL へ復元してから base へ委譲します。
 func (rt queryRestoringRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if q, ok := req.Context().Value(spanQueryRedactionKey{}).(string); ok && q != "" && req.URL != nil {
-		req.URL.RawQuery = q
+	if parts, ok := req.Context().Value(spanQueryRedactionKey{}).(redactedURLParts); ok && req.URL != nil {
+		req.URL.RawQuery = parts.rawQuery
+		req.URL.Fragment = parts.fragment
+		req.URL.RawFragment = parts.rawFragment
 	}
 	return rt.base.RoundTrip(req)
 }
