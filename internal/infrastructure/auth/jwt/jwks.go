@@ -67,7 +67,7 @@ type jwksResolver struct {
 
 	// negative は「取得済みの現世代で不在が確定した kid」の集合です（不在 kid の再取得連打を抑止）。
 	// 現世代（fetchedAt から cacheTTL 以内）でのみ有効で、公開鍵集合が変わる取得成功でクリアします。
-	// これにより回転で追加された kid の初回取得はブロックせず、確定的に不在な kid の再問い合わせだけを抑えます。
+	// これにより、回転で新規追加された kid は negative に載らないため次の取得で解決でき、確定的に不在な kid の再問い合わせだけを抑えます。
 	negative map[string]struct{}
 }
 
@@ -133,7 +133,8 @@ func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.Publi
 }
 
 // negativelyCached は、現世代（鮮度内）で kid が不在確定として記録済みかを返します。
-// キャッシュが空 / 期限切れのときは false を返し、必ず再取得へ進ませます（退役後の再評価・回転追加の取りこぼし防止）。
+// キャッシュが空 / 期限切れのとき、および kid が negative に未記録のときも false を返します。
+// false は「再取得で解決を試みるべき」を意味し kid の存在は保証しません（退役後の再評価・回転追加の取りこぼし防止）。
 func (r *jwksResolver) negativelyCached(kid string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -144,7 +145,9 @@ func (r *jwksResolver) negativelyCached(kid string) bool {
 	return ok
 }
 
-// recordAbsent は、現世代で不在が確定した kid を negative へ記録します（鮮度外なら記録しません）。
+// recordAbsent は、現世代で不在が確定した kid を negative へ記録します。
+// 鮮度外（fetchedAt ゼロ / cacheTTL 超過）では記録しません — 次の世代交代で negative がクリアされるまで残り、
+// その間に回転追加された kid を誤って拒否し続けるためです。
 func (r *jwksResolver) recordAbsent(kid string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
