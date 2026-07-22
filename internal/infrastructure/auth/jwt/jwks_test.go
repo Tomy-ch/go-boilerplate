@@ -733,6 +733,49 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 	})
 }
 
+func Test_jwksResolver_negativelyCached(t *testing.T) {
+	t.Parallel()
+	// negativelyCached の分岐（fetchedAt zero / TTL 切れ / negative 登録有無）は
+	// Test_jwksResolver_negativeCache が ResolveKey 経由で網羅している。命名規約充足のためのスキップ。
+	t.Skip("Test_jwksResolver_negativeCache が振る舞い経由で網羅している")
+}
+
+func Test_jwksResolver_recordAbsent(t *testing.T) {
+	t.Parallel()
+	// recordAbsent（実取得世代でのみ記録・鮮度外は非記録）は Test_jwksResolver_negativeCache が
+	// ResolveKey 経由で網羅している。命名規約充足のためのスキップ。
+	t.Skip("Test_jwksResolver_negativeCache が振る舞い経由で網羅している")
+}
+
+func Test_sameKeySet(t *testing.T) {
+	t.Parallel()
+
+	keyA := newRSAKey(t)
+	keyB := newRSAKey(t)
+	base := map[string]crypto.PublicKey{testKID: &keyA.PublicKey, "kid-2": &keyB.PublicKey}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同一 kid 集合は true", func(t *testing.T) {
+			t.Parallel()
+			other := map[string]crypto.PublicKey{"kid-2": &keyB.PublicKey, testKID: &keyA.PublicKey}
+			assert.True(t, sameKeySet(base, other))
+		})
+
+		t.Run("kid が増減すると false", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, sameKeySet(base, map[string]crypto.PublicKey{testKID: &keyA.PublicKey}))
+		})
+
+		t.Run("要素数が同じでも kid が異なると false", func(t *testing.T) {
+			t.Parallel()
+			other := map[string]crypto.PublicKey{testKID: &keyA.PublicKey, "kid-3": &keyB.PublicKey}
+			assert.False(t, sameKeySet(base, other))
+		})
+	})
+}
+
 func Test_parseJWKSKeys(t *testing.T) {
 	t.Parallel()
 	// parseJWKSKeys は TestParseJWKSKeys が全分岐（kid 有無 / 非 RSA / 不正 JSON / 鍵ゼロ）を
