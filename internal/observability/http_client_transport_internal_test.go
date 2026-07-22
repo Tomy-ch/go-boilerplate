@@ -2,13 +2,30 @@ package observability
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// captureRoundTripper は、委譲先へ渡された Request を捕捉するテスト用 RoundTripper です。
+type captureRoundTripper struct {
+	gotReq *http.Request
+}
+
+// capturingSpanExporter は、終了した span を捕捉するテスト用 SpanExporter です。
+type capturingSpanExporter struct {
+	mu    sync.Mutex
+	spans []sdktrace.ReadOnlySpan
+}
 
 func Test_guardedDialControl(t *testing.T) {
 	t.Parallel()
@@ -204,6 +221,175 @@ func Test_conditionalPropagator(t *testing.T) {
 			carrier := propagation.MapCarrier{}
 			prop.Inject(ctx, carrier)
 			assert.Empty(t, carrier.Get("traceparent"))
+		})
+	})
+}
+
+func (c *captureRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.gotReq = req
+	return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Header: make(http.Header)}, nil
+}
+
+func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クエリをctxへ退避しinnerへ渡すURLからは除去する", func(t *testing.T) {
+			t.Parallel()
+
+			captured := &captureRoundTripper{}
+			rt := spanURLRedactingRoundTripper{inner: captured}
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, "https://example.com/search?token=secret&postalCode=1000001", nil)
+			require.NoError(t, err)
+
+			_, err = rt.RoundTrip(req)
+
+			require.NoError(t, err)
+			// inner（otelhttp）へ渡る URL はクエリ無し＝span の url.full にクエリが乗らない。
+			assert.Empty(t, captured.gotReq.URL.RawQuery)
+			// 実クエリは ctx に退避され、後段の復元に使える。
+			assert.Equal(t, "token=secret&postalCode=1000001", captured.gotReq.Context().Value(spanQueryRedactionKey{}))
+			// caller の Request は破壊しない。
+			assert.Equal(t, "token=secret&postalCode=1000001", req.URL.RawQuery)
+		})
+
+		t.Run("クエリが無いRequestはそのままinnerへ渡す", func(t *testing.T) {
+			t.Parallel()
+
+			captured := &captureRoundTripper{}
+			rt := spanURLRedactingRoundTripper{inner: captured}
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, "https://example.com/search", nil)
+			require.NoError(t, err)
+
+			_, err = rt.RoundTrip(req)
+
+			require.NoError(t, err)
+			assert.Empty(t, captured.gotReq.URL.RawQuery)
+			assert.Nil(t, captured.gotReq.Context().Value(spanQueryRedactionKey{}))
+		})
+	})
+}
+
+func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("退避済みクエリを実送信前にURLへ復元する", func(t *testing.T) {
+			t.Parallel()
+
+			captured := &captureRoundTripper{}
+			rt := queryRestoringRoundTripper{base: captured}
+			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, "token=secret&postalCode=1000001")
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.com/search", nil)
+			require.NoError(t, err)
+
+			_, err = rt.RoundTrip(req)
+
+			require.NoError(t, err)
+			assert.Equal(t, "token=secret&postalCode=1000001", captured.gotReq.URL.RawQuery)
+		})
+
+		t.Run("退避クエリが無ければURLを変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			captured := &captureRoundTripper{}
+			rt := queryRestoringRoundTripper{base: captured}
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, "https://example.com/search", nil)
+			require.NoError(t, err)
+
+			_, err = rt.RoundTrip(req)
+
+			require.NoError(t, err)
+			assert.Empty(t, captured.gotReq.URL.RawQuery)
+		})
+	})
+}
+
+func (e *capturingSpanExporter) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.spans = append(e.spans, spans...)
+	return nil
+}
+
+func (e *capturingSpanExporter) Shutdown(context.Context) error { return nil }
+
+func (e *capturingSpanExporter) clientSpanURLFull(t *testing.T) string {
+	t.Helper()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, s := range e.spans {
+		if s.SpanKind() != trace.SpanKindClient {
+			continue
+		}
+		for _, attr := range s.Attributes() {
+			if attr.Key == attribute.Key("url.full") {
+				return attr.Value.AsString()
+			}
+		}
+	}
+	t.Fatal("client span with url.full attribute not found")
+	return ""
+}
+
+func Test_newHTTPClientTransport_redactsQueryFromSpanButPreservesRequest(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("span_url_fullはクエリ無し_実リクエストはクエリを保持する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				mu         sync.Mutex
+				gotRawQ    string
+				serverPath string
+			)
+			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				gotRawQ = r.URL.RawQuery
+				serverPath = r.URL.Path
+				mu.Unlock()
+			}))
+			defer srv.Close()
+
+			exporter := &capturingSpanExporter{}
+			tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+			defer func() { _ = tp.Shutdown(context.Background()) }()
+
+			transport := newHTTPClientTransport(tp, NewTextMapPropagator(), permissiveDialControl)
+			httpClient := &http.Client{Transport: transport.RoundTripper()}
+
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, srv.URL+"/search?token=secret&postalCode=1000001", nil)
+			require.NoError(t, err)
+
+			resp, err := httpClient.Do(req)
+			require.NoError(t, err)
+			_, _ = io.Copy(io.Discard, resp.Body)
+			require.NoError(t, resp.Body.Close()) // otelhttp は body close で span を終了する
+			require.NoError(t, tp.ForceFlush(context.Background()))
+
+			// 実リクエストにはクエリがそのまま届く（復元が効いている）。
+			mu.Lock()
+			assert.Equal(t, "token=secret&postalCode=1000001", gotRawQ)
+			assert.Equal(t, "/search", serverPath)
+			mu.Unlock()
+
+			// span の url.full にはクエリが乗らない（機微情報の漏洩を防ぐ）。
+			urlFull := exporter.clientSpanURLFull(t)
+			assert.NotContains(t, urlFull, "token")
+			assert.NotContains(t, urlFull, "secret")
+			assert.NotContains(t, urlFull, "postalCode")
+			assert.Equal(t, srv.URL+"/search", urlFull)
 		})
 	})
 }

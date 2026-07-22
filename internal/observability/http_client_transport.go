@@ -52,6 +52,23 @@ type conditionalPropagator struct {
 	inner propagation.TextMapPropagator
 }
 
+// spanQueryRedactionKey は、span 記録用に URL から一時退避したクエリ文字列を運ぶ ctx キーです。
+type spanQueryRedactionKey struct{}
+
+// spanURLRedactingRoundTripper は、otelhttp が span の url.full へ記録する URL からクエリ文字列を除去します。
+// otelhttp は url.full を req.URL.String() から算出するため、otelhttp へ渡す直前にクエリを ctx へ退避して URL から
+// 取り除き（span にはクエリなしで記録される）、実送信直前に queryRestoringRoundTripper が復元します。
+// httpclient のエラーメッセージ redaction（redactURL）と同じく、クエリは機密になり得るため既定で全除去します。
+type spanURLRedactingRoundTripper struct {
+	inner http.RoundTripper
+}
+
+// queryRestoringRoundTripper は、span 記録のために除去したクエリを実送信直前に URL へ復元する base transport です。
+// otelhttp は復元前に url.full を記録済みのため、ここでの復元は span へ影響しません。
+type queryRestoringRoundTripper struct {
+	base http.RoundTripper
+}
+
 // NewHTTPClientTransport は、SSRF ガード付き base transport を otelhttp で計装した outbound transport を生成します。
 //
 // HTTP span 生成は自動化し、traceparent/baggage の outgoing inject は ContextWithTracePropagation の
@@ -62,16 +79,39 @@ func NewHTTPClientTransport(tp trace.TracerProvider, propagator propagation.Text
 }
 
 // newHTTPClientTransport は、dial control を差し替え可能にした内部コンストラクタです。
+//
+// transport チェーンは外側から redact(query退避) → otelhttp(span生成) → restore(query復元) → guardedBase の順です。
+// otelhttp は span の url.full を req.URL.String() から算出しクエリ込みで記録するため、otelhttp へ渡す前に
+// クエリを退避・除去し、実送信直前に復元することで span からのみクエリを落とします（実リクエストは無改変）。
 func newHTTPClientTransport(
 	tp trace.TracerProvider, propagator propagation.TextMapPropagator, control dialControl,
 ) *HTTPClientTransport {
 	rt := otelhttp.NewTransport(
-		newGuardedBaseTransport(control),
+		queryRestoringRoundTripper{base: newGuardedBaseTransport(control)},
 		otelhttp.WithTracerProvider(tp),
 		otelhttp.WithMeterProvider(metricnoop.NewMeterProvider()),
 		otelhttp.WithPropagators(conditionalPropagator{inner: propagator}),
 	)
-	return &HTTPClientTransport{rt: rt}
+	return &HTTPClientTransport{rt: spanURLRedactingRoundTripper{inner: rt}}
+}
+
+// RoundTrip は、クエリを ctx へ退避し URL から除去した clone を otelhttp へ渡します。
+func (rt spanURLRedactingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL == nil || req.URL.RawQuery == "" {
+		return rt.inner.RoundTrip(req)
+	}
+	// caller の Request を破壊しないよう clone してから、実クエリを ctx へ退避し URL から除去する。
+	cloned := req.Clone(context.WithValue(req.Context(), spanQueryRedactionKey{}, req.URL.RawQuery))
+	cloned.URL.RawQuery = ""
+	return rt.inner.RoundTrip(cloned)
+}
+
+// RoundTrip は、退避済みクエリがあれば URL へ復元してから base へ委譲します。
+func (rt queryRestoringRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if q, ok := req.Context().Value(spanQueryRedactionKey{}).(string); ok && q != "" && req.URL != nil {
+		req.URL.RawQuery = q
+	}
+	return rt.base.RoundTrip(req)
 }
 
 // RoundTripper は、ラップしている http.RoundTripper を返します。
