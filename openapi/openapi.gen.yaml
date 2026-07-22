@@ -5,7 +5,7 @@ info:
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
-  version: 2.1.0
+  version: 2.2.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
     It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.

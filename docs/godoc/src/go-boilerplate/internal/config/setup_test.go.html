@@ -65,7 +65,7 @@
 <span id="L8" class="ln">     8  </span>)
 <span id="L9" class="ln">     9  </span>
 <span id="L10" class="ln">    10  </span><span class="comment">//nolint:paralleltest // SetUpConfig は os.Setenv でグローバル環境を変更するため並列化不可</span>
-<span id="L11" class="ln">    11  </span>func TestSetUpConfig_Succeeds(t *testing.T) {
+<span id="L11" class="ln">    11  </span>func TestSetUpConfig(t *testing.T) {
 <span id="L12" class="ln">    12  </span>	restoreEnvAfterTest(t)
 <span id="L13" class="ln">    13  </span>
 <span id="L14" class="ln">    14  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {

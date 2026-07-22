@@ -135,6 +135,16 @@
                                                 <td class="constraint detail">purchases_user_id_foreign</td>
                                                 <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
                                             </tr>
+                                            <tr>
+                                                <td title="user_identities.user_id references users.id via user_identities_user_id_foreign"><a href='user_identities.html'>user_identities</a><span class='relatedKey'>.user_id</span></td>
+                                                <td class="constraint detail">user_identities_user_id_foreign</td>
+                                                <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td title="user_roles.user_id references users.id via user_roles_user_id_foreign"><a href='user_roles.html'>user_roles</a><span class='relatedKey'>.user_id</span></td>
+                                                <td class="constraint detail">user_roles_user_id_foreign</td>
+                                                <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
+                                            </tr>
                                         </table>
                                     </td>
                                     <td>
@@ -457,19 +467,24 @@
                                 <div class="tab-content no-padding">
                                     <div class="chart tab-pane active" id="oneDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="oneDegreeRelationshipsDiagram" name="oneDegreeRelationshipsDiagram">
-<area shape="rect" id="node1" href="purchases.html" target="_top" title="purchases" alt="" coords="639,5,852,211">
-<area shape="rect" id="node2" href="users.html" target="_top" title="users" alt="" coords="247,61,595,571">
-<area shape="rect" id="node3" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,240,203,416">
+<area shape="rect" id="node1" href="purchases.html" target="_top" title="purchases" alt="" coords="646,5,859,211">
+<area shape="rect" id="node2" href="users.html" target="_top" title="users" alt="" coords="247,255,595,764">
+<area shape="rect" id="node5" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,433,203,609">
+<area shape="rect" id="node3" href="user_identities.html" target="_top" title="user_identities" alt="" coords="639,228,867,433">
+<area shape="rect" id="node4" href="user_roles.html" target="_top" title="user_roles" alt="" coords="661,451,845,597">
 </map>
                                         <a name='diagram'><img id="oneDegreeImg" src="../diagrams/tables/users.1degree.png" usemap="#oneDegreeRelationshipsDiagram" class="diagram" border="0" align="left"></a>
                                     </div>
                                     <div class="chart tab-pane " id="twodegreesDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="twoDegreesRelationshipsDiagram" name="twoDegreesRelationshipsDiagram">
-<area shape="rect" id="node1" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="896,199,1144,287">
-<area shape="rect" id="node2" href="purchases.html" target="_top" title="purchases" alt="" coords="639,196,852,401">
-<area shape="rect" id="node3" href="purchase_statuses.html" target="_top" title="purchase_statuses" alt="" coords="288,532,553,620">
-<area shape="rect" id="node4" href="users.html" target="_top" title="users" alt="" coords="247,5,595,515">
-<area shape="rect" id="node5" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,184,203,360">
+<area shape="rect" id="node1" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="911,8,1159,96">
+<area shape="rect" id="node2" href="purchases.html" target="_top" title="purchases" alt="" coords="646,5,859,211">
+<area shape="rect" id="node3" href="purchase_statuses.html" target="_top" title="purchase_statuses" alt="" coords="288,96,553,184">
+<area shape="rect" id="node4" href="users.html" target="_top" title="users" alt="" coords="247,228,595,737">
+<area shape="rect" id="node8" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,407,203,583">
+<area shape="rect" id="node5" href="user_identities.html" target="_top" title="user_identities" alt="" coords="639,228,867,433">
+<area shape="rect" id="node6" href="user_roles.html" target="_top" title="user_roles" alt="" coords="661,573,845,720">
+<area shape="rect" id="node7" href="roles.html" target="_top" title="roles" alt="" coords="355,755,487,843">
 </map>
                                         <a name='diagram'><img id="twodegreesDegreeImg" src="../diagrams/tables/users.2degrees.png" usemap="#twoDegreesRelationshipsDiagram" class="diagram" border="0" align="left"></a>
                                     </div>

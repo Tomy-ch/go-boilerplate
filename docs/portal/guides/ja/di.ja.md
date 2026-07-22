@@ -206,7 +206,7 @@ internal/di
 |`module.ObservabilityModule()`|Tracer / meter / logger providers + shutdown hook（全プロファイル）|
 |`module.DatabaseModule()`|`*pgxpool.Pool`・tracer・tx manager・pool metrics + DB-close hook（全プロファイル）|
 |`module.SystemModule()`|ビルド情報（全プロファイル）|
-|`module.InfrastructureModule()`|`persistence` / `clock` / `httpclient` / `webapi` / `security` / `authz` を集約（全プロファイル）|
+|`module.InfrastructureModule()`|`persistence` / `clock` / `httpclient` / `webapi` / `auth`（JWKS profile）/ `security` / `authz` を集約（全プロファイル）|
 |`module.UsecaseModule()`|`idempotency` / `outbox` を含む usecase 実装（全プロファイル）|
 |`module.ControllerModule()` + `core.*` + `server.*`|HTTP スタック全体 — **Server プロファイルのみ**|
 
