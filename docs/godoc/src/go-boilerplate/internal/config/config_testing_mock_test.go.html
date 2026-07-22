@@ -74,7 +74,7 @@
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>		t.Run(&#34;MockConfigForTest は、テスト用の Config を返す&#34;, func(t *testing.T) {
 <span id="L19" class="ln">    19  </span>			t.Parallel()
-<span id="L20" class="ln">    20  </span>			expected := &amp;Config{
+<span id="L20" class="ln">    20  </span>			expected := &amp;Config{ <span class="comment">//nolint:dupl // 設定の網羅的リテラル比較のため TestNew 側と構造が重複するのは意図的</span>
 <span id="L21" class="ln">    21  </span>				os: OperatingSystemConfig{
 <span id="L22" class="ln">    22  </span>					timezone: expectedOSTimeZone,
 <span id="L23" class="ln">    23  </span>				},
@@ -148,127 +148,127 @@
 <span id="L91" class="ln">    91  </span>					sameSite: expectedSecureCookieSameSite,
 <span id="L92" class="ln">    92  </span>					domain:   expectedSecureCookieDomain,
 <span id="L93" class="ln">    93  </span>				},
-<span id="L94" class="ln">    94  </span>				auth: AuthConfig{
-<span id="L95" class="ln">    95  </span>					cookieName:          expectedAuthCookieName,
-<span id="L96" class="ln">    96  </span>					headerName:          expectedAuthHeaderName,
-<span id="L97" class="ln">    97  </span>					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
-<span id="L98" class="ln">    98  </span>				},
-<span id="L99" class="ln">    99  </span>				worker: WorkerConfig{
-<span id="L100" class="ln">   100  </span>					concurrency:               expectedWorkerConcurrency,
-<span id="L101" class="ln">   101  </span>					maxInFlight:               expectedWorkerMaxInFlight,
-<span id="L102" class="ln">   102  </span>					batchSize:                 expectedWorkerBatchSize,
-<span id="L103" class="ln">   103  </span>					extendInterval:            expectedWorkerExtendInterval,
-<span id="L104" class="ln">   104  </span>					drainTimeout:              expectedWorkerDrainTimeout,
-<span id="L105" class="ln">   105  </span>					receiveCountWarnThreshold: expectedWorkerReceiveCountWarnThreshold,
-<span id="L106" class="ln">   106  </span>					circuitFailureThreshold:   expectedWorkerCircuitFailureThreshold,
-<span id="L107" class="ln">   107  </span>					circuitOpenBackoffInitial: expectedWorkerCircuitOpenBackoffInitial,
-<span id="L108" class="ln">   108  </span>					circuitOpenBackoffMax:     expectedWorkerCircuitOpenBackoffMax,
-<span id="L109" class="ln">   109  </span>					circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
-<span id="L110" class="ln">   110  </span>					healthListenAddr:          expectedWorkerHealthListenAddr,
-<span id="L111" class="ln">   111  </span>					progressStaleAfter:        expectedWorkerProgressStaleAfter,
-<span id="L112" class="ln">   112  </span>					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
-<span id="L113" class="ln">   113  </span>					nackBackoffMax:            expectedWorkerNackBackoffMax,
-<span id="L114" class="ln">   114  </span>				},
-<span id="L115" class="ln">   115  </span>				outbox: OutboxConfig{
-<span id="L116" class="ln">   116  </span>					endpoint:     expectedOutboxEndpoint,
-<span id="L117" class="ln">   117  </span>					pollInterval: expectedOutboxPollInterval,
-<span id="L118" class="ln">   118  </span>					errorBackoff: expectedOutboxErrorBackoff,
-<span id="L119" class="ln">   119  </span>					batchSize:    expectedOutboxBatchSize,
-<span id="L120" class="ln">   120  </span>				},
-<span id="L121" class="ln">   121  </span>			}
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span>			actual := MockConfigForTest(t)
-<span id="L124" class="ln">   124  </span>
-<span id="L125" class="ln">   125  </span>			assert.Equal(t, expected, actual)
-<span id="L126" class="ln">   126  </span>		})
-<span id="L127" class="ln">   127  </span>	})
-<span id="L128" class="ln">   128  </span>}
+<span id="L94" class="ln">    94  </span>				worker: WorkerConfig{
+<span id="L95" class="ln">    95  </span>					concurrency:               expectedWorkerConcurrency,
+<span id="L96" class="ln">    96  </span>					maxInFlight:               expectedWorkerMaxInFlight,
+<span id="L97" class="ln">    97  </span>					batchSize:                 expectedWorkerBatchSize,
+<span id="L98" class="ln">    98  </span>					extendInterval:            expectedWorkerExtendInterval,
+<span id="L99" class="ln">    99  </span>					drainTimeout:              expectedWorkerDrainTimeout,
+<span id="L100" class="ln">   100  </span>					receiveCountWarnThreshold: expectedWorkerReceiveCountWarnThreshold,
+<span id="L101" class="ln">   101  </span>					circuitFailureThreshold:   expectedWorkerCircuitFailureThreshold,
+<span id="L102" class="ln">   102  </span>					circuitOpenBackoffInitial: expectedWorkerCircuitOpenBackoffInitial,
+<span id="L103" class="ln">   103  </span>					circuitOpenBackoffMax:     expectedWorkerCircuitOpenBackoffMax,
+<span id="L104" class="ln">   104  </span>					circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
+<span id="L105" class="ln">   105  </span>					healthListenAddr:          expectedWorkerHealthListenAddr,
+<span id="L106" class="ln">   106  </span>					progressStaleAfter:        expectedWorkerProgressStaleAfter,
+<span id="L107" class="ln">   107  </span>					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
+<span id="L108" class="ln">   108  </span>					nackBackoffMax:            expectedWorkerNackBackoffMax,
+<span id="L109" class="ln">   109  </span>				},
+<span id="L110" class="ln">   110  </span>				outbox: OutboxConfig{
+<span id="L111" class="ln">   111  </span>					endpoint:     expectedOutboxEndpoint,
+<span id="L112" class="ln">   112  </span>					pollInterval: expectedOutboxPollInterval,
+<span id="L113" class="ln">   113  </span>					errorBackoff: expectedOutboxErrorBackoff,
+<span id="L114" class="ln">   114  </span>					batchSize:    expectedOutboxBatchSize,
+<span id="L115" class="ln">   115  </span>				},
+<span id="L116" class="ln">   116  </span>				auth: AuthConfig{
+<span id="L117" class="ln">   117  </span>					issuer:             expectedAuthIssuer,
+<span id="L118" class="ln">   118  </span>					audience:           expectedAuthAudience,
+<span id="L119" class="ln">   119  </span>					jwksURL:            expectedAuthJWKSURL,
+<span id="L120" class="ln">   120  </span>					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
+<span id="L121" class="ln">   121  </span>					clockSkew:          expectedAuthClockSkew,
+<span id="L122" class="ln">   122  </span>					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
+<span id="L123" class="ln">   123  </span>					discoveryTTL:       expectedAuthDiscoveryTTL,
+<span id="L124" class="ln">   124  </span>					unknownKidCooldown: expectedAuthUnknownKidCooldown,
+<span id="L125" class="ln">   125  </span>				},
+<span id="L126" class="ln">   126  </span>			}
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>			actual := MockConfigForTest(t)
 <span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span>func Test_mockLoader(t *testing.T) {
-<span id="L131" class="ln">   131  </span>	t.Parallel()
-<span id="L132" class="ln">   132  </span>
-<span id="L133" class="ln">   133  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L134" class="ln">   134  </span>		t.Parallel()
-<span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>		t.Run(&#34;mockLoader は、テスト用の Loader を返す&#34;, func(t *testing.T) {
-<span id="L137" class="ln">   137  </span>			t.Parallel()
-<span id="L138" class="ln">   138  </span>			expected := Loader{
-<span id="L139" class="ln">   139  </span>				OS: OperatingSystem{
-<span id="L140" class="ln">   140  </span>					Timezone: expectedOSTimeZone,
-<span id="L141" class="ln">   141  </span>				},
-<span id="L142" class="ln">   142  </span>				App: Application{
-<span id="L143" class="ln">   143  </span>					Env:             expectedApplicationEnv,
-<span id="L144" class="ln">   144  </span>					Name:            expectedApplicationName,
-<span id="L145" class="ln">   145  </span>					Mode:            expectedApplicationMode,
-<span id="L146" class="ln">   146  </span>					LogLevel:        expectedApplicationLogLevel,
-<span id="L147" class="ln">   147  </span>					ShutdownTimeout: expectedAppShutdownTimeout,
-<span id="L148" class="ln">   148  </span>				},
-<span id="L149" class="ln">   149  </span>				Server: Server{
-<span id="L150" class="ln">   150  </span>					Host:              expectedServerHost,
-<span id="L151" class="ln">   151  </span>					Port:              expectedServerPort,
-<span id="L152" class="ln">   152  </span>					ReadHeaderTimeout: expectedServerReadHeaderTimeout,
-<span id="L153" class="ln">   153  </span>					ReadTimeout:       expectedServerReadTimeout,
-<span id="L154" class="ln">   154  </span>					WriteTimeout:      expectedServerWriteTimeout,
-<span id="L155" class="ln">   155  </span>					IdleTimeout:       expectedServerIdleTimeout,
-<span id="L156" class="ln">   156  </span>					BodyLimitMB:       expectedServerBodyLimitMB,
-<span id="L157" class="ln">   157  </span>					RequestTimeout:    expectedServerRequestTimeout,
-<span id="L158" class="ln">   158  </span>				},
-<span id="L159" class="ln">   159  </span>				Metrics: Metrics{
-<span id="L160" class="ln">   160  </span>					Host:     expectedMetricsHost,
-<span id="L161" class="ln">   161  </span>					Port:     expectedMetricsPort,
-<span id="L162" class="ln">   162  </span>					UserName: expectedMetricsUserName,
-<span id="L163" class="ln">   163  </span>					Password: expectedMetricsPassword,
-<span id="L164" class="ln">   164  </span>				},
-<span id="L165" class="ln">   165  </span>				Observability: Observability{
-<span id="L166" class="ln">   166  </span>					TracesExporter:    expectedObservabilityTracesExporter,
-<span id="L167" class="ln">   167  </span>					MetricsExporter:   expectedObservabilityMetricsExporter,
-<span id="L168" class="ln">   168  </span>					LogsExporter:      expectedObservabilityLogsExporter,
-<span id="L169" class="ln">   169  </span>					OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
-<span id="L170" class="ln">   170  </span>					OTLPProtocol:      expectedObservabilityOTLPProtocol,
-<span id="L171" class="ln">   171  </span>					MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
-<span id="L172" class="ln">   172  </span>					TargetStatusCodes: expectedObservabilityTargetStatusCodes,
-<span id="L173" class="ln">   173  </span>				},
-<span id="L174" class="ln">   174  </span>				Database: Database{
-<span id="L175" class="ln">   175  </span>					Host:                   expectedDBHost,
-<span id="L176" class="ln">   176  </span>					Port:                   expectedDBPort,
-<span id="L177" class="ln">   177  </span>					User:                   expectedDBUser,
-<span id="L178" class="ln">   178  </span>					Password:               expectedDBPassword,
-<span id="L179" class="ln">   179  </span>					Name:                   expectedDBName,
-<span id="L180" class="ln">   180  </span>					SSLMode:                expectedDBSSLMode,
-<span id="L181" class="ln">   181  </span>					PingTimeout:            expectedDBPingTimeout,
-<span id="L182" class="ln">   182  </span>					SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
-<span id="L183" class="ln">   183  </span>					StatementTimeout:       expectedDBStatementTimeout,
-<span id="L184" class="ln">   184  </span>					LockTimeout:            expectedDBLockTimeout,
-<span id="L185" class="ln">   185  </span>					TxMaxRetries:           expectedDBTxMaxRetries,
-<span id="L186" class="ln">   186  </span>					TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
-<span id="L187" class="ln">   187  </span>					TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
-<span id="L188" class="ln">   188  </span>				},
-<span id="L189" class="ln">   189  </span>				DBConnection: DBConnection{
-<span id="L190" class="ln">   190  </span>					MaxConns:    expectedDBMaxConnsInt32,
-<span id="L191" class="ln">   191  </span>					MinConns:    expectedDBMinConnsInt32,
-<span id="L192" class="ln">   192  </span>					MaxLifetime: expectedDBMaxLifetime,
-<span id="L193" class="ln">   193  </span>					MaxIdleTime: expectedDBMaxIdleTime,
-<span id="L194" class="ln">   194  </span>				},
-<span id="L195" class="ln">   195  </span>				Security: Security{
-<span id="L196" class="ln">   196  </span>					AllowedOrigins:        strings.Split(expectedAllowedOrigins, &#34;,&#34;),
-<span id="L197" class="ln">   197  </span>					CIDR:                  expectedCIDRStr,
-<span id="L198" class="ln">   198  </span>					ContentTypeNosniff:    expectedContentTypeNosniff,
-<span id="L199" class="ln">   199  </span>					XFrameOptions:         expectedXFrameOptions,
-<span id="L200" class="ln">   200  </span>					HSTSMaxAge:            expectedHSTSMaxAge,
-<span id="L201" class="ln">   201  </span>					HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
-<span id="L202" class="ln">   202  </span>					HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
-<span id="L203" class="ln">   203  </span>					ReferrerPolicy:        expectedReferrerPolicy,
-<span id="L204" class="ln">   204  </span>					BcryptCost:            expectedBcryptCost,
-<span id="L205" class="ln">   205  </span>				},
-<span id="L206" class="ln">   206  </span>				SecureCookie: SecureCookie{
-<span id="L207" class="ln">   207  </span>					Secure:   expectedSecureCookieSecure,
-<span id="L208" class="ln">   208  </span>					SameSite: expectedSecureCookieSameSite,
-<span id="L209" class="ln">   209  </span>					Domain:   expectedSecureCookieDomain,
+<span id="L130" class="ln">   130  </span>			assert.Equal(t, expected, actual)
+<span id="L131" class="ln">   131  </span>		})
+<span id="L132" class="ln">   132  </span>	})
+<span id="L133" class="ln">   133  </span>}
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>func Test_mockLoader(t *testing.T) {
+<span id="L136" class="ln">   136  </span>	t.Parallel()
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L139" class="ln">   139  </span>		t.Parallel()
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span>		t.Run(&#34;mockLoader は、テスト用の Loader を返す&#34;, func(t *testing.T) {
+<span id="L142" class="ln">   142  </span>			t.Parallel()
+<span id="L143" class="ln">   143  </span>			expected := Loader{
+<span id="L144" class="ln">   144  </span>				OS: OperatingSystem{
+<span id="L145" class="ln">   145  </span>					Timezone: expectedOSTimeZone,
+<span id="L146" class="ln">   146  </span>				},
+<span id="L147" class="ln">   147  </span>				App: Application{
+<span id="L148" class="ln">   148  </span>					Env:             expectedApplicationEnv,
+<span id="L149" class="ln">   149  </span>					Name:            expectedApplicationName,
+<span id="L150" class="ln">   150  </span>					Mode:            expectedApplicationMode,
+<span id="L151" class="ln">   151  </span>					LogLevel:        expectedApplicationLogLevel,
+<span id="L152" class="ln">   152  </span>					ShutdownTimeout: expectedAppShutdownTimeout,
+<span id="L153" class="ln">   153  </span>				},
+<span id="L154" class="ln">   154  </span>				Server: Server{
+<span id="L155" class="ln">   155  </span>					Host:              expectedServerHost,
+<span id="L156" class="ln">   156  </span>					Port:              expectedServerPort,
+<span id="L157" class="ln">   157  </span>					ReadHeaderTimeout: expectedServerReadHeaderTimeout,
+<span id="L158" class="ln">   158  </span>					ReadTimeout:       expectedServerReadTimeout,
+<span id="L159" class="ln">   159  </span>					WriteTimeout:      expectedServerWriteTimeout,
+<span id="L160" class="ln">   160  </span>					IdleTimeout:       expectedServerIdleTimeout,
+<span id="L161" class="ln">   161  </span>					BodyLimitMB:       expectedServerBodyLimitMB,
+<span id="L162" class="ln">   162  </span>					RequestTimeout:    expectedServerRequestTimeout,
+<span id="L163" class="ln">   163  </span>				},
+<span id="L164" class="ln">   164  </span>				Metrics: Metrics{
+<span id="L165" class="ln">   165  </span>					Host:     expectedMetricsHost,
+<span id="L166" class="ln">   166  </span>					Port:     expectedMetricsPort,
+<span id="L167" class="ln">   167  </span>					UserName: expectedMetricsUserName,
+<span id="L168" class="ln">   168  </span>					Password: expectedMetricsPassword,
+<span id="L169" class="ln">   169  </span>				},
+<span id="L170" class="ln">   170  </span>				Observability: Observability{
+<span id="L171" class="ln">   171  </span>					TracesExporter:    expectedObservabilityTracesExporter,
+<span id="L172" class="ln">   172  </span>					MetricsExporter:   expectedObservabilityMetricsExporter,
+<span id="L173" class="ln">   173  </span>					LogsExporter:      expectedObservabilityLogsExporter,
+<span id="L174" class="ln">   174  </span>					OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
+<span id="L175" class="ln">   175  </span>					OTLPProtocol:      expectedObservabilityOTLPProtocol,
+<span id="L176" class="ln">   176  </span>					MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
+<span id="L177" class="ln">   177  </span>					TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+<span id="L178" class="ln">   178  </span>				},
+<span id="L179" class="ln">   179  </span>				Database: Database{
+<span id="L180" class="ln">   180  </span>					Host:                   expectedDBHost,
+<span id="L181" class="ln">   181  </span>					Port:                   expectedDBPort,
+<span id="L182" class="ln">   182  </span>					User:                   expectedDBUser,
+<span id="L183" class="ln">   183  </span>					Password:               expectedDBPassword,
+<span id="L184" class="ln">   184  </span>					Name:                   expectedDBName,
+<span id="L185" class="ln">   185  </span>					SSLMode:                expectedDBSSLMode,
+<span id="L186" class="ln">   186  </span>					PingTimeout:            expectedDBPingTimeout,
+<span id="L187" class="ln">   187  </span>					SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+<span id="L188" class="ln">   188  </span>					StatementTimeout:       expectedDBStatementTimeout,
+<span id="L189" class="ln">   189  </span>					LockTimeout:            expectedDBLockTimeout,
+<span id="L190" class="ln">   190  </span>					TxMaxRetries:           expectedDBTxMaxRetries,
+<span id="L191" class="ln">   191  </span>					TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+<span id="L192" class="ln">   192  </span>					TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
+<span id="L193" class="ln">   193  </span>				},
+<span id="L194" class="ln">   194  </span>				DBConnection: DBConnection{
+<span id="L195" class="ln">   195  </span>					MaxConns:    expectedDBMaxConnsInt32,
+<span id="L196" class="ln">   196  </span>					MinConns:    expectedDBMinConnsInt32,
+<span id="L197" class="ln">   197  </span>					MaxLifetime: expectedDBMaxLifetime,
+<span id="L198" class="ln">   198  </span>					MaxIdleTime: expectedDBMaxIdleTime,
+<span id="L199" class="ln">   199  </span>				},
+<span id="L200" class="ln">   200  </span>				Security: Security{
+<span id="L201" class="ln">   201  </span>					AllowedOrigins:        strings.Split(expectedAllowedOrigins, &#34;,&#34;),
+<span id="L202" class="ln">   202  </span>					CIDR:                  expectedCIDRStr,
+<span id="L203" class="ln">   203  </span>					ContentTypeNosniff:    expectedContentTypeNosniff,
+<span id="L204" class="ln">   204  </span>					XFrameOptions:         expectedXFrameOptions,
+<span id="L205" class="ln">   205  </span>					HSTSMaxAge:            expectedHSTSMaxAge,
+<span id="L206" class="ln">   206  </span>					HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
+<span id="L207" class="ln">   207  </span>					HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
+<span id="L208" class="ln">   208  </span>					ReferrerPolicy:        expectedReferrerPolicy,
+<span id="L209" class="ln">   209  </span>					BcryptCost:            expectedBcryptCost,
 <span id="L210" class="ln">   210  </span>				},
-<span id="L211" class="ln">   211  </span>				Auth: Auth{
-<span id="L212" class="ln">   212  </span>					CookieName:          expectedAuthCookieName,
-<span id="L213" class="ln">   213  </span>					HeaderName:          expectedAuthHeaderName,
-<span id="L214" class="ln">   214  </span>					AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+<span id="L211" class="ln">   211  </span>				SecureCookie: SecureCookie{
+<span id="L212" class="ln">   212  </span>					Secure:   expectedSecureCookieSecure,
+<span id="L213" class="ln">   213  </span>					SameSite: expectedSecureCookieSameSite,
+<span id="L214" class="ln">   214  </span>					Domain:   expectedSecureCookieDomain,
 <span id="L215" class="ln">   215  </span>				},
 <span id="L216" class="ln">   216  </span>			}
 <span id="L217" class="ln">   217  </span>
@@ -341,14 +341,10 @@
 <span id="L284" class="ln">   284  </span>			assert.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv(&#34;SECURE_COOKIE_SECURE&#34;))
 <span id="L285" class="ln">   285  </span>			assert.Equal(t, expectedSecureCookieSameSite, os.Getenv(&#34;SECURE_COOKIE_SAME_SITE&#34;))
 <span id="L286" class="ln">   286  </span>			assert.Equal(t, expectedSecureCookieDomain, os.Getenv(&#34;SECURE_COOKIE_DOMAIN&#34;))
-<span id="L287" class="ln">   287  </span>			<span class="comment">// Auth</span>
-<span id="L288" class="ln">   288  </span>			assert.Equal(t, expectedAuthCookieName, os.Getenv(&#34;AUTH_COOKIE_NAME&#34;))
-<span id="L289" class="ln">   289  </span>			assert.Equal(t, expectedAuthHeaderName, os.Getenv(&#34;AUTH_HEADER_NAME&#34;))
-<span id="L290" class="ln">   290  </span>			assert.Equal(t, strconv.FormatBool(expectedAuthAllowedHeaderBearer), os.Getenv(&#34;AUTH_ALLOWED_HEADER_BEARER&#34;))
-<span id="L291" class="ln">   291  </span>		})
-<span id="L292" class="ln">   292  </span>	})
-<span id="L293" class="ln">   293  </span>}
-<span id="L294" class="ln">   294  </span>
+<span id="L287" class="ln">   287  </span>		})
+<span id="L288" class="ln">   288  </span>	})
+<span id="L289" class="ln">   289  </span>}
+<span id="L290" class="ln">   290  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/config_testing_mock_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

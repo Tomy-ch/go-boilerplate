@@ -216,6 +216,25 @@
             <column ascending="true" name="code"/>
          </index>
       </table>
+      <table name="roles" remarks="ロール" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="role_id" foreignKey="user_roles_role_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="user_roles"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="コード" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="3" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="roles_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="roles_code_unique" unique="true">
+            <column ascending="true" name="code"/>
+         </index>
+         <index name="roles_name_unique" unique="true">
+            <column ascending="true" name="name"/>
+         </index>
+      </table>
       <table name="schema_migrations" remarks="" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="version" nullable="false" remarks="" size="19" type="int8" typeCode="-5"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="dirty" nullable="false" remarks="" size="1" type="bool" typeCode="-7"/>
@@ -224,9 +243,49 @@
             <column ascending="true" name="version"/>
          </index>
       </table>
+      <table name="user_identities" remarks="外部ID連携" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="user_id" nullable="false" remarks="ユーザID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="user_identities_user_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="users"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="issuer" nullable="false" remarks="トークン発行者（IdP issuer）" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="subject" nullable="false" remarks="認証主体（token の sub）" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="user_identities_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="user_identities_issuer_subject_unique" unique="true">
+            <column ascending="true" name="issuer"/>
+            <column ascending="true" name="subject"/>
+         </index>
+         <index name="user_identities_user_id_issuer_unique" unique="true">
+            <column ascending="true" name="user_id"/>
+            <column ascending="true" name="issuer"/>
+         </index>
+      </table>
+      <table name="user_roles" remarks="ユーザロール" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="user_id" nullable="false" remarks="ユーザID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="user_roles_user_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="users"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="role_id" nullable="false" remarks="ロールID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="user_roles_role_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="roles"/>
+         </column>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="2" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="3" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="user_id" sequenceNumberInPK="1"/>
+         <primaryKey column="role_id" sequenceNumberInPK="2"/>
+         <index name="user_roles_primary" unique="true">
+            <column ascending="true" name="user_id"/>
+            <column ascending="true" name="role_id"/>
+         </index>
+      </table>
       <table name="users" remarks="ユーザ" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
             <child column="user_id" foreignKey="purchases_user_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchases"/>
+            <child column="user_id" foreignKey="user_identities_user_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="user_identities"/>
+            <child column="user_id" foreignKey="user_roles_user_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="user_roles"/>
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="first_name" nullable="false" remarks="名前" size="100" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="last_name" nullable="false" remarks="苗字" size="100" type="varchar" typeCode="12"/>

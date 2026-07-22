@@ -78,112 +78,119 @@
 <span id="L21" class="ln">    21  </span><span class="comment">// handlerMethodRe は、ハンドラのメソッド宣言 `func (recv) &lt;Name&gt;(` にマッチし Name を捕捉します。</span>
 <span id="L22" class="ln">    22  </span>var handlerMethodRe = regexp.MustCompile(`^func \([^)]*\) (\w+)\(`)
 <span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span><span class="comment">// TestIdempotencyCompleteness は、OpenAPI で Idempotency-Key ヘッダを宣言した操作</span>
+<span id="L24" class="ln">    24  </span><span class="comment">// TestIdempotencyCompleteness は、OpenAPI で Idempotency-Key を宣言した操作</span>
 <span id="L25" class="ln">    25  </span><span class="comment">// （= 生成コードの &lt;Op&gt;Params 型が IdempotencyKey フィールドを持つ操作）のハンドラが、</span>
 <span id="L26" class="ln">    26  </span><span class="comment">// 必ず idempotency.Run 経由で処理していることを機械検証する完全性テストです。</span>
-<span id="L27" class="ln">    27  </span><span class="comment">//</span>
-<span id="L28" class="ln">    28  </span><span class="comment">// 冪等性は「変更系すべて」ではなく「Idempotency-Key を宣言した操作」に閉じる（PUT/DELETE は</span>
-<span id="L29" class="ln">    29  </span><span class="comment">// HTTP 的に冪等で Run を要さない）ため、OpenAPI のヘッダ宣言を唯一のマーカー（source of truth）と</span>
-<span id="L30" class="ln">    30  </span><span class="comment">// して扱う。middleware 登録済みで Run 呼び忘れ、のような silent な dedup 欠落を loud な失敗に変える。</span>
-<span id="L31" class="ln">    31  </span><span class="comment">//</span>
-<span id="L32" class="ln">    32  </span><span class="comment">// 本リポジトリは depguard で go/ast 等のツールチェーンパッケージを禁止するため、AST ではなく</span>
-<span id="L33" class="ln">    33  </span><span class="comment">// gofmt 済みソースのテキスト走査で検出する（`type ...Params struct {` / `func (recv) Name(` は</span>
-<span id="L34" class="ln">    34  </span><span class="comment">// gofmt により行頭固定なので、この走査は安定する）。</span>
-<span id="L35" class="ln">    35  </span>func TestIdempotencyCompleteness(t *testing.T) {
-<span id="L36" class="ln">    36  </span>	t.Parallel()
-<span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>	root := handlerRoot(t)
-<span id="L39" class="ln">    39  </span>
-<span id="L40" class="ln">    40  </span>	marked := map[string]string{}    <span class="comment">// operationID -&gt; 宣言元ファイル（Idempotency-Key を宣言する操作）</span>
-<span id="L41" class="ln">    41  </span>	wrapped := map[string]struct{}{} <span class="comment">// idempotency.Run を呼ぶハンドラメソッド名</span>
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
-<span id="L44" class="ln">    44  </span>		if walkErr != nil {
-<span id="L45" class="ln">    45  </span>			return walkErr
-<span id="L46" class="ln">    46  </span>		}
-<span id="L47" class="ln">    47  </span>		if d.IsDir() || !strings.HasSuffix(path, &#34;.go&#34;) || strings.HasSuffix(path, &#34;_test.go&#34;) {
-<span id="L48" class="ln">    48  </span>			return nil
-<span id="L49" class="ln">    49  </span>		}
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span>		src, readErr := pkgfs.OS{}.ReadFile(path)
-<span id="L52" class="ln">    52  </span>		if readErr != nil {
-<span id="L53" class="ln">    53  </span>			return readErr
-<span id="L54" class="ln">    54  </span>		}
-<span id="L55" class="ln">    55  </span>		lines := strings.Split(string(src), &#34;\n&#34;)
-<span id="L56" class="ln">    56  </span>
-<span id="L57" class="ln">    57  </span>		if strings.HasSuffix(path, &#34;.gen.go&#34;) {
-<span id="L58" class="ln">    58  </span>			collectMarkedParams(lines, path, marked)
-<span id="L59" class="ln">    59  </span>		} else {
-<span id="L60" class="ln">    60  </span>			collectRunWrapped(lines, wrapped)
-<span id="L61" class="ln">    61  </span>		}
-<span id="L62" class="ln">    62  </span>		return nil
-<span id="L63" class="ln">    63  </span>	})
-<span id="L64" class="ln">    64  </span>	require.NoError(t, err)
-<span id="L65" class="ln">    65  </span>
-<span id="L66" class="ln">    66  </span>	<span class="comment">// マーカー検出ロジックが生成コードの命名変更等で陳腐化して空振りすると、完全性検証が</span>
-<span id="L67" class="ln">    67  </span>	<span class="comment">// 常に成功してしまう。少なくとも1件は検出できることを保証する。</span>
-<span id="L68" class="ln">    68  </span>	require.NotEmpty(t, marked, &#34;Idempotency-Key を宣言する操作が生成コードから1件も検出できない（マーカー検出の陳腐化を疑う）&#34;)
-<span id="L69" class="ln">    69  </span>
-<span id="L70" class="ln">    70  </span>	for op, file := range marked {
-<span id="L71" class="ln">    71  </span>		_, ok := wrapped[op]
-<span id="L72" class="ln">    72  </span>		assert.Truef(t, ok,
-<span id="L73" class="ln">    73  </span>			&#34;操作 %s は Idempotency-Key を宣言している（%s）が、ハンドラが idempotency.Run を呼んでいない&#34;, op, file)
-<span id="L74" class="ln">    74  </span>	}
-<span id="L75" class="ln">    75  </span>}
-<span id="L76" class="ln">    76  </span>
-<span id="L77" class="ln">    77  </span><span class="comment">// handlerRoot は、本テストファイルから見た internal/controller/handler の絶対パスを返します。</span>
-<span id="L78" class="ln">    78  </span>func handlerRoot(t *testing.T) string {
-<span id="L79" class="ln">    79  </span>	t.Helper()
-<span id="L80" class="ln">    80  </span>	_, thisFile, _, ok := runtime.Caller(0)
-<span id="L81" class="ln">    81  </span>	require.True(t, ok)
-<span id="L82" class="ln">    82  </span>	<span class="comment">// internal/architest/&lt;file&gt; から internal/controller/handler を辿る。</span>
-<span id="L83" class="ln">    83  </span>	return filepath.Join(filepath.Dir(thisFile), &#34;..&#34;, &#34;controller&#34;, &#34;handler&#34;)
-<span id="L84" class="ln">    84  </span>}
-<span id="L85" class="ln">    85  </span>
-<span id="L86" class="ln">    86  </span><span class="comment">// collectMarkedParams は、`type &lt;Op&gt;Params struct {` ブロックが IdempotencyKey フィールドを</span>
-<span id="L87" class="ln">    87  </span><span class="comment">// 含むとき Op を marked へ加えます。gofmt 済みソースでは閉じ括弧が行頭 `}` に現れる前提です。</span>
-<span id="L88" class="ln">    88  </span>func collectMarkedParams(lines []string, file string, marked map[string]string) {
-<span id="L89" class="ln">    89  </span>	for i, line := range lines {
-<span id="L90" class="ln">    90  </span>		m := paramsStructRe.FindStringSubmatch(line)
-<span id="L91" class="ln">    91  </span>		if m == nil {
-<span id="L92" class="ln">    92  </span>			continue
-<span id="L93" class="ln">    93  </span>		}
-<span id="L94" class="ln">    94  </span>		op := m[1]
-<span id="L95" class="ln">    95  </span>		for _, body := range lines[i+1:] {
-<span id="L96" class="ln">    96  </span>			if body == &#34;}&#34; {
-<span id="L97" class="ln">    97  </span>				break
-<span id="L98" class="ln">    98  </span>			}
-<span id="L99" class="ln">    99  </span>			if strings.Contains(body, &#34;IdempotencyKey&#34;) {
-<span id="L100" class="ln">   100  </span>				marked[op] = file
-<span id="L101" class="ln">   101  </span>				break
-<span id="L102" class="ln">   102  </span>			}
-<span id="L103" class="ln">   103  </span>		}
-<span id="L104" class="ln">   104  </span>	}
-<span id="L105" class="ln">   105  </span>}
-<span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span><span class="comment">// collectRunWrapped は、メソッド宣言ブロック内に idempotency.Run 呼び出しがあるとき、その</span>
-<span id="L108" class="ln">   108  </span><span class="comment">// メソッド名を wrapped へ加えます。ブロックは行頭 `func ` から次の行頭 `func ` までとします。</span>
-<span id="L109" class="ln">   109  </span><span class="comment">//</span>
-<span id="L110" class="ln">   110  </span><span class="comment">// 検出は import 別名なしの直接呼び出し `idempotency.Run(` に限る。別名 import（`idem.Run(` 等）や</span>
-<span id="L111" class="ln">   111  </span><span class="comment">// 変数へ束ねてからの間接呼び出しは検出できない。現行ハンドラは直接呼び出しのみのため問題ないが、</span>
-<span id="L112" class="ln">   112  </span><span class="comment">// この規約から外れると完全性検証が偽陰性になりうる点に注意。</span>
-<span id="L113" class="ln">   113  </span>func collectRunWrapped(lines []string, wrapped map[string]struct{}) {
-<span id="L114" class="ln">   114  </span>	currentMethod := &#34;&#34;
-<span id="L115" class="ln">   115  </span>	for _, line := range lines {
-<span id="L116" class="ln">   116  </span>		if m := handlerMethodRe.FindStringSubmatch(line); m != nil {
-<span id="L117" class="ln">   117  </span>			currentMethod = m[1]
-<span id="L118" class="ln">   118  </span>			continue
-<span id="L119" class="ln">   119  </span>		}
-<span id="L120" class="ln">   120  </span>		if strings.HasPrefix(line, &#34;func &#34;) {
-<span id="L121" class="ln">   121  </span>			currentMethod = &#34;&#34; <span class="comment">// メソッド以外の関数宣言に入ったらリセット</span>
-<span id="L122" class="ln">   122  </span>			continue
-<span id="L123" class="ln">   123  </span>		}
-<span id="L124" class="ln">   124  </span>		if currentMethod != &#34;&#34; &amp;&amp; strings.Contains(line, &#34;idempotency.Run(&#34;) {
-<span id="L125" class="ln">   125  </span>			wrapped[currentMethod] = struct{}{}
+<span id="L27" class="ln">    27  </span><span class="comment">// OpenAPI のヘッダ宣言を source of truth とし、Run 呼び忘れのような silent な dedup 欠落を loud な失敗に変える。</span>
+<span id="L28" class="ln">    28  </span><span class="comment">//</span>
+<span id="L29" class="ln">    29  </span><span class="comment">// 対象操作は 0 件でも許容する（サンプル API 削除後は該当が無くなり得る）が、検出ロジックの空振りを</span>
+<span id="L30" class="ln">    30  </span><span class="comment">// 防ぐため、param 検出用の正規表現が既知の生成形にマッチすることを別途 assert する。depguard が</span>
+<span id="L31" class="ln">    31  </span><span class="comment">// go/ast を禁止するため、AST ではなく gofmt 済みソースのテキスト走査で検出する。</span>
+<span id="L32" class="ln">    32  </span>func TestIdempotencyCompleteness(t *testing.T) {
+<span id="L33" class="ln">    33  </span>	t.Parallel()
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>	root := handlerRoot(t)
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>	marked := map[string]string{}    <span class="comment">// operationID -&gt; 宣言元ファイル（Idempotency-Key を宣言する操作）</span>
+<span id="L38" class="ln">    38  </span>	wrapped := map[string]struct{}{} <span class="comment">// idempotency.Run を呼ぶハンドラメソッド名</span>
+<span id="L39" class="ln">    39  </span>	totalParamsSeen := 0             <span class="comment">// 走査中に見た `&lt;Op&gt;Params struct` の総数（検出健全性の指標）</span>
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span>	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+<span id="L42" class="ln">    42  </span>		if walkErr != nil {
+<span id="L43" class="ln">    43  </span>			return walkErr
+<span id="L44" class="ln">    44  </span>		}
+<span id="L45" class="ln">    45  </span>		if d.IsDir() || !strings.HasSuffix(path, &#34;.go&#34;) || strings.HasSuffix(path, &#34;_test.go&#34;) {
+<span id="L46" class="ln">    46  </span>			return nil
+<span id="L47" class="ln">    47  </span>		}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>		src, readErr := pkgfs.OS{}.ReadFile(path)
+<span id="L50" class="ln">    50  </span>		if readErr != nil {
+<span id="L51" class="ln">    51  </span>			return readErr
+<span id="L52" class="ln">    52  </span>		}
+<span id="L53" class="ln">    53  </span>		lines := strings.Split(string(src), &#34;\n&#34;)
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>		if strings.HasSuffix(path, &#34;.gen.go&#34;) {
+<span id="L56" class="ln">    56  </span>			totalParamsSeen += collectMarkedParams(lines, path, marked)
+<span id="L57" class="ln">    57  </span>		} else {
+<span id="L58" class="ln">    58  </span>			collectRunWrapped(lines, wrapped)
+<span id="L59" class="ln">    59  </span>		}
+<span id="L60" class="ln">    60  </span>		return nil
+<span id="L61" class="ln">    61  </span>	})
+<span id="L62" class="ln">    62  </span>	require.NoError(t, err)
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	<span class="comment">// マーカー検出ロジックが生成コードの命名変更等で陳腐化して空振りすると、完全性検証が</span>
+<span id="L65" class="ln">    65  </span>	<span class="comment">// 常に成功してしまう。これを防ぐため、param 検出の正規表現が既知の生成形にマッチすることを</span>
+<span id="L66" class="ln">    66  </span>	<span class="comment">// 直接検証する。サンプル API を全削除すると param を持つ操作は 0 件になり得る（totalParamsSeen==0）</span>
+<span id="L67" class="ln">    67  </span>	<span class="comment">// ため、リポジトリ走査の件数ではなく正規表現の自己検査で陳腐化を検出する。</span>
+<span id="L68" class="ln">    68  </span>	t.Logf(&#34;param 構造体の検出数: %d（サンプル全削除後は 0 になり得る）&#34;, totalParamsSeen)
+<span id="L69" class="ln">    69  </span>	require.NotEmpty(t, paramsStructRe.FindStringSubmatch(&#34;type XxxParams struct {&#34;),
+<span id="L70" class="ln">    70  </span>		&#34;paramsStructRe が `&lt;Op&gt;Params struct {` 形にマッチしない（正規表現の陳腐化を疑う）&#34;)
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>	for op, file := range marked {
+<span id="L73" class="ln">    73  </span>		_, ok := wrapped[op]
+<span id="L74" class="ln">    74  </span>		assert.Truef(t, ok,
+<span id="L75" class="ln">    75  </span>			&#34;操作 %s は Idempotency-Key を宣言している（%s）が、ハンドラが idempotency.Run を呼んでいない&#34;, op, file)
+<span id="L76" class="ln">    76  </span>	}
+<span id="L77" class="ln">    77  </span>}
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span><span class="comment">// handlerRoot は、本テストファイルから見た internal/controller/handler の絶対パスを返します。</span>
+<span id="L80" class="ln">    80  </span>func handlerRoot(t *testing.T) string {
+<span id="L81" class="ln">    81  </span>	t.Helper()
+<span id="L82" class="ln">    82  </span>	_, thisFile, _, ok := runtime.Caller(0)
+<span id="L83" class="ln">    83  </span>	require.True(t, ok)
+<span id="L84" class="ln">    84  </span>	<span class="comment">// internal/architest/&lt;file&gt; から internal/controller/handler を辿る。</span>
+<span id="L85" class="ln">    85  </span>	return filepath.Join(filepath.Dir(thisFile), &#34;..&#34;, &#34;controller&#34;, &#34;handler&#34;)
+<span id="L86" class="ln">    86  </span>}
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span><span class="comment">// collectMarkedParams は、`type &lt;Op&gt;Params struct {` ブロックが IdempotencyKey フィールドを</span>
+<span id="L89" class="ln">    89  </span><span class="comment">// 含むとき Op を marked へ加えます。gofmt 済みソースでは閉じ括弧が行頭 `}` に現れる前提です。</span>
+<span id="L90" class="ln">    90  </span><span class="comment">// 戻り値は、IdempotencyKey の有無に依らず走査中に検出した `&lt;Op&gt;Params struct` の件数で、</span>
+<span id="L91" class="ln">    91  </span><span class="comment">// 呼び出し側の検出健全性チェック（正規表現の陳腐化検出）に用います。</span>
+<span id="L92" class="ln">    92  </span>func collectMarkedParams(lines []string, file string, marked map[string]string) int {
+<span id="L93" class="ln">    93  </span>	seen := 0
+<span id="L94" class="ln">    94  </span>	for i, line := range lines {
+<span id="L95" class="ln">    95  </span>		m := paramsStructRe.FindStringSubmatch(line)
+<span id="L96" class="ln">    96  </span>		if m == nil {
+<span id="L97" class="ln">    97  </span>			continue
+<span id="L98" class="ln">    98  </span>		}
+<span id="L99" class="ln">    99  </span>		seen++
+<span id="L100" class="ln">   100  </span>		op := m[1]
+<span id="L101" class="ln">   101  </span>		for _, body := range lines[i+1:] {
+<span id="L102" class="ln">   102  </span>			if body == &#34;}&#34; {
+<span id="L103" class="ln">   103  </span>				break
+<span id="L104" class="ln">   104  </span>			}
+<span id="L105" class="ln">   105  </span>			if strings.Contains(body, &#34;IdempotencyKey&#34;) {
+<span id="L106" class="ln">   106  </span>				marked[op] = file
+<span id="L107" class="ln">   107  </span>				break
+<span id="L108" class="ln">   108  </span>			}
+<span id="L109" class="ln">   109  </span>		}
+<span id="L110" class="ln">   110  </span>	}
+<span id="L111" class="ln">   111  </span>	return seen
+<span id="L112" class="ln">   112  </span>}
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span><span class="comment">// collectRunWrapped は、メソッド宣言ブロック内に idempotency.Run 呼び出しがあるとき、その</span>
+<span id="L115" class="ln">   115  </span><span class="comment">// メソッド名を wrapped へ加えます。ブロックは行頭 `func ` から次の行頭 `func ` までとします。</span>
+<span id="L116" class="ln">   116  </span><span class="comment">//</span>
+<span id="L117" class="ln">   117  </span><span class="comment">// 検出は import 別名なしの直接呼び出し `idempotency.Run(` に限る。別名 import（`idem.Run(` 等）や</span>
+<span id="L118" class="ln">   118  </span><span class="comment">// 変数へ束ねてからの間接呼び出しは検出できない。現行ハンドラは直接呼び出しのみのため問題ないが、</span>
+<span id="L119" class="ln">   119  </span><span class="comment">// この規約から外れると完全性検証が偽陰性になりうる点に注意。</span>
+<span id="L120" class="ln">   120  </span>func collectRunWrapped(lines []string, wrapped map[string]struct{}) {
+<span id="L121" class="ln">   121  </span>	currentMethod := &#34;&#34;
+<span id="L122" class="ln">   122  </span>	for _, line := range lines {
+<span id="L123" class="ln">   123  </span>		if m := handlerMethodRe.FindStringSubmatch(line); m != nil {
+<span id="L124" class="ln">   124  </span>			currentMethod = m[1]
+<span id="L125" class="ln">   125  </span>			continue
 <span id="L126" class="ln">   126  </span>		}
-<span id="L127" class="ln">   127  </span>	}
-<span id="L128" class="ln">   128  </span>}
-<span id="L129" class="ln">   129  </span>
+<span id="L127" class="ln">   127  </span>		if strings.HasPrefix(line, &#34;func &#34;) {
+<span id="L128" class="ln">   128  </span>			currentMethod = &#34;&#34; <span class="comment">// メソッド以外の関数宣言に入ったらリセット</span>
+<span id="L129" class="ln">   129  </span>			continue
+<span id="L130" class="ln">   130  </span>		}
+<span id="L131" class="ln">   131  </span>		if currentMethod != &#34;&#34; &amp;&amp; strings.Contains(line, &#34;idempotency.Run(&#34;) {
+<span id="L132" class="ln">   132  </span>			wrapped[currentMethod] = struct{}{}
+<span id="L133" class="ln">   133  </span>		}
+<span id="L134" class="ln">   134  </span>	}
+<span id="L135" class="ln">   135  </span>}
+<span id="L136" class="ln">   136  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/architest/idempotency_completeness_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

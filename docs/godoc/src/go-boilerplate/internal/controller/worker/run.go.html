@@ -325,100 +325,108 @@
 <span id="L268" class="ln">   268  </span>		r.e.met.Retried(ctx)
 <span id="L269" class="ln">   269  </span>		r.e.log.Named(&#34;worker.process&#34;).Warn(ctx, &#34;retryable failure, nacked&#34;, fields...)
 <span id="L270" class="ln">   270  </span>	case catPermanent:
-<span id="L271" class="ln">   271  </span>		r.routePermanent(ctx, m, err) <span class="comment">// A5</span>
-<span id="L272" class="ln">   272  </span>		r.cb.onSuccess()
-<span id="L273" class="ln">   273  </span>		r.e.met.DLQ(ctx)
-<span id="L274" class="ln">   274  </span>		r.e.log.Named(&#34;worker.process&#34;).Warn(ctx, &#34;permanent failure, routed to dead-letter&#34;, fields...)
-<span id="L275" class="ln">   275  </span>	case catFatal:
-<span id="L276" class="ln">   276  </span>		r.e.log.Named(&#34;worker.process&#34;).Error(ctx, &#34;fatal failure, stopping engine&#34;, fields...)
-<span id="L277" class="ln">   277  </span>		r.triggerFatal(err) <span class="comment">// A5（Fatal）</span>
-<span id="L278" class="ln">   278  </span>	}
-<span id="L279" class="ln">   279  </span>}
-<span id="L280" class="ln">   280  </span>
-<span id="L281" class="ln">   281  </span><span class="comment">// routePermanent は、Permanent を FailureHandler へ退避してから Ack します（退避失敗時は Ack しない）。</span>
-<span id="L282" class="ln">   282  </span>func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) {
-<span id="L283" class="ln">   283  </span>	if r.failure != nil {
-<span id="L284" class="ln">   284  </span>		if err := r.failure.Fail(ctx, m, cause); err != nil {
-<span id="L285" class="ln">   285  </span>			r.logErr(ctx, &#34;worker.failure&#34;, &#34;failure handler error&#34;, err)
-<span id="L286" class="ln">   286  </span>			return
-<span id="L287" class="ln">   287  </span>		}
-<span id="L288" class="ln">   288  </span>	}
-<span id="L289" class="ln">   289  </span>	r.ack(ctx, m)
-<span id="L290" class="ln">   290  </span>}
-<span id="L291" class="ln">   291  </span>
-<span id="L292" class="ln">   292  </span>func (r *run) ack(ctx context.Context, m worker.Message) {
-<span id="L293" class="ln">   293  </span>	if err := r.consumer.Ack(ctx, m); err != nil {
-<span id="L294" class="ln">   294  </span>		r.logErr(ctx, &#34;worker.ack&#34;, &#34;ack error&#34;, err)
+<span id="L271" class="ln">   271  </span>		if ferr := r.routePermanent(ctx, m, err); ferr != nil { <span class="comment">// A5</span>
+<span id="L272" class="ln">   272  </span>			<span class="comment">// dead-letter 退避に失敗した。実際には退避できていないため DLQ 計上・成功ログは出さず、</span>
+<span id="L273" class="ln">   273  </span>			<span class="comment">// Ack もしない（暗黙の再配送へ委ねる）。退避先障害は下流失敗として circuit へ計上する。</span>
+<span id="L274" class="ln">   274  </span>			r.cb.onFailure()
+<span id="L275" class="ln">   275  </span>			r.e.log.Named(&#34;worker.process&#34;).Error(ctx, &#34;permanent failure, dead-letter routing failed&#34;, fields...)
+<span id="L276" class="ln">   276  </span>			return
+<span id="L277" class="ln">   277  </span>		}
+<span id="L278" class="ln">   278  </span>		r.cb.onSuccess()
+<span id="L279" class="ln">   279  </span>		r.e.met.DLQ(ctx)
+<span id="L280" class="ln">   280  </span>		r.e.log.Named(&#34;worker.process&#34;).Warn(ctx, &#34;permanent failure, routed to dead-letter&#34;, fields...)
+<span id="L281" class="ln">   281  </span>	case catFatal:
+<span id="L282" class="ln">   282  </span>		r.e.log.Named(&#34;worker.process&#34;).Error(ctx, &#34;fatal failure, stopping engine&#34;, fields...)
+<span id="L283" class="ln">   283  </span>		r.triggerFatal(err) <span class="comment">// A5（Fatal）</span>
+<span id="L284" class="ln">   284  </span>	}
+<span id="L285" class="ln">   285  </span>}
+<span id="L286" class="ln">   286  </span>
+<span id="L287" class="ln">   287  </span><span class="comment">// routePermanent は、Permanent を FailureHandler へ退避してから Ack します。</span>
+<span id="L288" class="ln">   288  </span><span class="comment">// 退避に失敗した場合は Ack せず、その error を返します（呼び出し元が circuit / ログを分岐する）。</span>
+<span id="L289" class="ln">   289  </span>func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) error {
+<span id="L290" class="ln">   290  </span>	if r.failure != nil {
+<span id="L291" class="ln">   291  </span>		if err := r.failure.Fail(ctx, m, cause); err != nil {
+<span id="L292" class="ln">   292  </span>			r.logErr(ctx, &#34;worker.failure&#34;, &#34;failure handler error&#34;, err)
+<span id="L293" class="ln">   293  </span>			return err
+<span id="L294" class="ln">   294  </span>		}
 <span id="L295" class="ln">   295  </span>	}
-<span id="L296" class="ln">   296  </span>}
-<span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span><span class="comment">// nack は、retryable 失敗時に per-message 再配送 backoff（指数 + full jitter）を計算し、</span>
-<span id="L299" class="ln">   299  </span><span class="comment">// その遅延つきで再配送します。policy は engine が持ち、adapter が native 機構で honor します。</span>
-<span id="L300" class="ln">   300  </span>func (r *run) nack(ctx context.Context, m worker.Message) {
-<span id="L301" class="ln">   301  </span>	d := r.nackBackoff(m.ReceiveCount)
-<span id="L302" class="ln">   302  </span>	if err := r.consumer.NackWithBackoff(ctx, m, d); err != nil {
-<span id="L303" class="ln">   303  </span>		r.logErr(ctx, &#34;worker.nack&#34;, &#34;nack error&#34;, err)
-<span id="L304" class="ln">   304  </span>	}
-<span id="L305" class="ln">   305  </span>}
-<span id="L306" class="ln">   306  </span>
-<span id="L307" class="ln">   307  </span><span class="comment">// nackBackoff は、ReceiveCount（1 起算）に対する再配送遅延を返します。</span>
-<span id="L308" class="ln">   308  </span><span class="comment">// 指数 backoff を full jitter で散らし、同時失敗の thundering herd を避けます。</span>
-<span id="L309" class="ln">   309  </span>func (r *run) nackBackoff(receiveCount int) time.Duration {
-<span id="L310" class="ln">   310  </span>	<span class="comment">// ReceiveCount は 1 起算、backoff.Duration は 0 起算。</span>
-<span id="L311" class="ln">   311  </span>	attempt := max(0, receiveCount-1)
-<span id="L312" class="ln">   312  </span>	return retry.Full(r.e.set.nackBackoff().Duration(attempt))
+<span id="L296" class="ln">   296  </span>	r.ack(ctx, m)
+<span id="L297" class="ln">   297  </span>	return nil
+<span id="L298" class="ln">   298  </span>}
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>func (r *run) ack(ctx context.Context, m worker.Message) {
+<span id="L301" class="ln">   301  </span>	if err := r.consumer.Ack(ctx, m); err != nil {
+<span id="L302" class="ln">   302  </span>		r.logErr(ctx, &#34;worker.ack&#34;, &#34;ack error&#34;, err)
+<span id="L303" class="ln">   303  </span>	}
+<span id="L304" class="ln">   304  </span>}
+<span id="L305" class="ln">   305  </span>
+<span id="L306" class="ln">   306  </span><span class="comment">// nack は、retryable 失敗時に per-message 再配送 backoff（指数 + full jitter）を計算し、</span>
+<span id="L307" class="ln">   307  </span><span class="comment">// その遅延つきで再配送します。policy は engine が持ち、adapter が native 機構で honor します。</span>
+<span id="L308" class="ln">   308  </span>func (r *run) nack(ctx context.Context, m worker.Message) {
+<span id="L309" class="ln">   309  </span>	d := r.nackBackoff(m.ReceiveCount)
+<span id="L310" class="ln">   310  </span>	if err := r.consumer.NackWithBackoff(ctx, m, d); err != nil {
+<span id="L311" class="ln">   311  </span>		r.logErr(ctx, &#34;worker.nack&#34;, &#34;nack error&#34;, err)
+<span id="L312" class="ln">   312  </span>	}
 <span id="L313" class="ln">   313  </span>}
 <span id="L314" class="ln">   314  </span>
-<span id="L315" class="ln">   315  </span><span class="comment">// onPollError は、Receive の失敗をサーキットへ反映します（broker 到達不能など）。</span>
-<span id="L316" class="ln">   316  </span>func (r *run) onPollError(ctx context.Context, err error) {
-<span id="L317" class="ln">   317  </span>	r.e.met.PollError(ctx)
-<span id="L318" class="ln">   318  </span>	r.logErr(ctx, &#34;worker.poll&#34;, &#34;receive error&#34;, err)
-<span id="L319" class="ln">   319  </span>	r.cb.onFailure()
-<span id="L320" class="ln">   320  </span>}
-<span id="L321" class="ln">   321  </span>
-<span id="L322" class="ln">   322  </span><span class="comment">// warnIfPoison は、再配送回数が閾値以上のとき warn します（A7。無限ループは IaC の DLQ で打ち切る）。</span>
-<span id="L323" class="ln">   323  </span>func (r *run) warnIfPoison(ctx context.Context, m worker.Message) {
-<span id="L324" class="ln">   324  </span>	th := r.e.set.ReceiveCountWarnThreshold
-<span id="L325" class="ln">   325  </span>	if th &lt;= 0 || m.ReceiveCount &lt; th {
-<span id="L326" class="ln">   326  </span>		return
-<span id="L327" class="ln">   327  </span>	}
-<span id="L328" class="ln">   328  </span>	r.e.log.Named(&#34;worker.poison&#34;).Warn(ctx, &#34;receive count threshold reached&#34;, msgFields(r.name, m)...)
-<span id="L329" class="ln">   329  </span>}
-<span id="L330" class="ln">   330  </span>
-<span id="L331" class="ln">   331  </span><span class="comment">// triggerFatal は、Fatal を記録して engine を停止（ctx キャンセル）します。ログは handleResult が出します。</span>
-<span id="L332" class="ln">   332  </span>func (r *run) triggerFatal(err error) {
-<span id="L333" class="ln">   333  </span>	r.fatalMu.Lock()
-<span id="L334" class="ln">   334  </span>	if r.fatal == nil {
-<span id="L335" class="ln">   335  </span>		r.fatal = err
-<span id="L336" class="ln">   336  </span>	}
-<span id="L337" class="ln">   337  </span>	r.fatalMu.Unlock()
-<span id="L338" class="ln">   338  </span>	r.cancel()
-<span id="L339" class="ln">   339  </span>}
-<span id="L340" class="ln">   340  </span>
-<span id="L341" class="ln">   341  </span>func (r *run) fatalErr() error {
-<span id="L342" class="ln">   342  </span>	r.fatalMu.Lock()
-<span id="L343" class="ln">   343  </span>	defer r.fatalMu.Unlock()
-<span id="L344" class="ln">   344  </span>	return r.fatal
-<span id="L345" class="ln">   345  </span>}
-<span id="L346" class="ln">   346  </span>
-<span id="L347" class="ln">   347  </span>func (r *run) logErr(ctx context.Context, name, msg string, err error) {
-<span id="L348" class="ln">   348  </span>	r.e.log.Named(name).Error(ctx, msg, logging.Error(logging.ErrorKey, err))
-<span id="L349" class="ln">   349  </span>}
-<span id="L350" class="ln">   350  </span>
-<span id="L351" class="ln">   351  </span><span class="comment">// drain は、in-flight の完了を DrainTimeout まで待ちます（C1。未完は Ack されず再配送へ）。</span>
-<span id="L352" class="ln">   352  </span>func (r *run) drain() {
-<span id="L353" class="ln">   353  </span>	done := make(chan struct{})
-<span id="L354" class="ln">   354  </span>	go func() {
-<span id="L355" class="ln">   355  </span>		r.wg.Wait()
-<span id="L356" class="ln">   356  </span>		close(done)
-<span id="L357" class="ln">   357  </span>	}()
+<span id="L315" class="ln">   315  </span><span class="comment">// nackBackoff は、ReceiveCount（1 起算）に対する再配送遅延を返します。</span>
+<span id="L316" class="ln">   316  </span><span class="comment">// 指数 backoff を full jitter で散らし、同時失敗の thundering herd を避けます。</span>
+<span id="L317" class="ln">   317  </span>func (r *run) nackBackoff(receiveCount int) time.Duration {
+<span id="L318" class="ln">   318  </span>	<span class="comment">// ReceiveCount は 1 起算、backoff.Duration は 0 起算。</span>
+<span id="L319" class="ln">   319  </span>	attempt := max(0, receiveCount-1)
+<span id="L320" class="ln">   320  </span>	return retry.Full(r.e.set.nackBackoff().Duration(attempt))
+<span id="L321" class="ln">   321  </span>}
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span><span class="comment">// onPollError は、Receive の失敗をサーキットへ反映します（broker 到達不能など）。</span>
+<span id="L324" class="ln">   324  </span>func (r *run) onPollError(ctx context.Context, err error) {
+<span id="L325" class="ln">   325  </span>	r.e.met.PollError(ctx)
+<span id="L326" class="ln">   326  </span>	r.logErr(ctx, &#34;worker.poll&#34;, &#34;receive error&#34;, err)
+<span id="L327" class="ln">   327  </span>	r.cb.onFailure()
+<span id="L328" class="ln">   328  </span>}
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span><span class="comment">// warnIfPoison は、再配送回数が閾値以上のとき warn します（A7。無限ループは IaC の DLQ で打ち切る）。</span>
+<span id="L331" class="ln">   331  </span>func (r *run) warnIfPoison(ctx context.Context, m worker.Message) {
+<span id="L332" class="ln">   332  </span>	th := r.e.set.ReceiveCountWarnThreshold
+<span id="L333" class="ln">   333  </span>	if th &lt;= 0 || m.ReceiveCount &lt; th {
+<span id="L334" class="ln">   334  </span>		return
+<span id="L335" class="ln">   335  </span>	}
+<span id="L336" class="ln">   336  </span>	r.e.log.Named(&#34;worker.poison&#34;).Warn(ctx, &#34;receive count threshold reached&#34;, msgFields(r.name, m)...)
+<span id="L337" class="ln">   337  </span>}
+<span id="L338" class="ln">   338  </span>
+<span id="L339" class="ln">   339  </span><span class="comment">// triggerFatal は、Fatal を記録して engine を停止（ctx キャンセル）します。ログは handleResult が出します。</span>
+<span id="L340" class="ln">   340  </span>func (r *run) triggerFatal(err error) {
+<span id="L341" class="ln">   341  </span>	r.fatalMu.Lock()
+<span id="L342" class="ln">   342  </span>	if r.fatal == nil {
+<span id="L343" class="ln">   343  </span>		r.fatal = err
+<span id="L344" class="ln">   344  </span>	}
+<span id="L345" class="ln">   345  </span>	r.fatalMu.Unlock()
+<span id="L346" class="ln">   346  </span>	r.cancel()
+<span id="L347" class="ln">   347  </span>}
+<span id="L348" class="ln">   348  </span>
+<span id="L349" class="ln">   349  </span>func (r *run) fatalErr() error {
+<span id="L350" class="ln">   350  </span>	r.fatalMu.Lock()
+<span id="L351" class="ln">   351  </span>	defer r.fatalMu.Unlock()
+<span id="L352" class="ln">   352  </span>	return r.fatal
+<span id="L353" class="ln">   353  </span>}
+<span id="L354" class="ln">   354  </span>
+<span id="L355" class="ln">   355  </span>func (r *run) logErr(ctx context.Context, name, msg string, err error) {
+<span id="L356" class="ln">   356  </span>	r.e.log.Named(name).Error(ctx, msg, logging.Error(logging.ErrorKey, err))
+<span id="L357" class="ln">   357  </span>}
 <span id="L358" class="ln">   358  </span>
-<span id="L359" class="ln">   359  </span>	select {
-<span id="L360" class="ln">   360  </span>	case &lt;-done:
-<span id="L361" class="ln">   361  </span>	case &lt;-time.After(r.e.set.DrainTimeout):
-<span id="L362" class="ln">   362  </span>	}
-<span id="L363" class="ln">   363  </span>}
-<span id="L364" class="ln">   364  </span>
+<span id="L359" class="ln">   359  </span><span class="comment">// drain は、in-flight の完了を DrainTimeout まで待ちます（C1。未完は Ack されず再配送へ）。</span>
+<span id="L360" class="ln">   360  </span>func (r *run) drain() {
+<span id="L361" class="ln">   361  </span>	done := make(chan struct{})
+<span id="L362" class="ln">   362  </span>	go func() {
+<span id="L363" class="ln">   363  </span>		r.wg.Wait()
+<span id="L364" class="ln">   364  </span>		close(done)
+<span id="L365" class="ln">   365  </span>	}()
+<span id="L366" class="ln">   366  </span>
+<span id="L367" class="ln">   367  </span>	select {
+<span id="L368" class="ln">   368  </span>	case &lt;-done:
+<span id="L369" class="ln">   369  </span>	case &lt;-time.After(r.e.set.DrainTimeout):
+<span id="L370" class="ln">   370  </span>	}
+<span id="L371" class="ln">   371  </span>}
+<span id="L372" class="ln">   372  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/controller/worker/run.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

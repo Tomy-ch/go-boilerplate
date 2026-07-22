@@ -286,7 +286,7 @@
 <span id="L229" class="ln">   229  </span>		return err
 <span id="L230" class="ln">   230  </span>	}
 <span id="L231" class="ln">   231  </span>
-<span id="L232" class="ln">   232  </span>	outName := fmt.Sprintf(&#34;%s_%s.gen.sql&#34;, category, targetType) <span class="comment">// 例: prefecture_repository.gen.sql</span>
+<span id="L232" class="ln">   232  </span>	outName := fmt.Sprintf(&#34;%s_%s.gen.sql&#34;, category, targetType) <span class="comment">// 例: &lt;category&gt;_&lt;type&gt;.gen.sql</span>
 <span id="L233" class="ln">   233  </span>	<span class="comment">// 出力先も workDir 起点で統一し、相対/絶対の二系統を排除する。</span>
 <span id="L234" class="ln">   234  </span>	dstPath := filepath.Join(g.workDir, g.genRootDir, outName)
 <span id="L235" class="ln">   235  </span>

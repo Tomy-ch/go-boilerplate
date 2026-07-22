@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span>
 <span id="L13" class="ln">    13  </span>func newTestAuthn(t *testing.T, subject string) auth.Authn {
 <span id="L14" class="ln">    14  </span>	t.Helper()
-<span id="L15" class="ln">    15  </span>	a, err := auth.New(subject, auth.ProviderMock, nil, nil)
+<span id="L15" class="ln">    15  </span>	a, err := auth.New(subject, auth.IssuerMock, nil, nil)
 <span id="L16" class="ln">    16  </span>	require.NoError(t, err)
 <span id="L17" class="ln">    17  </span>	return *a
 <span id="L18" class="ln">    18  </span>}
@@ -104,7 +104,7 @@
 <span id="L47" class="ln">    47  </span>			got, ok := GetAuthn(ctx)
 <span id="L48" class="ln">    48  </span>			assert.True(t, ok)
 <span id="L49" class="ln">    49  </span>			assert.Equal(t, want.Subject(), got.Subject())
-<span id="L50" class="ln">    50  </span>			assert.Equal(t, want.Provider(), got.Provider())
+<span id="L50" class="ln">    50  </span>			assert.Equal(t, want.Issuer(), got.Issuer())
 <span id="L51" class="ln">    51  </span>		})
 <span id="L52" class="ln">    52  </span>	})
 <span id="L53" class="ln">    53  </span>

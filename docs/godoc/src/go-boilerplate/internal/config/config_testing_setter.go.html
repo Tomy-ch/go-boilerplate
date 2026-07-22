@@ -227,86 +227,96 @@
 <span id="L170" class="ln">   170  </span>	tb.Cleanup(func() { s.cidr = prev })
 <span id="L171" class="ln">   171  </span>}
 <span id="L172" class="ln">   172  </span>
-<span id="L173" class="ln">   173  </span><span class="comment">// SetHeaderName は、テスト用に認証のヘッダ名を設定します。</span>
+<span id="L173" class="ln">   173  </span><span class="comment">// SetOutboxBatchSize は、テスト用に outbox relay の batch size を設定します。</span>
 <span id="L174" class="ln">   174  </span><span class="comment">//</span>
 <span id="L175" class="ln">   175  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L176" class="ln">   176  </span>func (a *AuthConfig) SetHeaderName(tb testing.TB, headerName string) {
+<span id="L176" class="ln">   176  </span>func (o *OutboxConfig) SetOutboxBatchSize(tb testing.TB, batchSize int) {
 <span id="L177" class="ln">   177  </span>	tb.Helper()
-<span id="L178" class="ln">   178  </span>	prev := a.headerName
-<span id="L179" class="ln">   179  </span>	a.headerName = headerName
-<span id="L180" class="ln">   180  </span>	tb.Cleanup(func() { a.headerName = prev })
+<span id="L178" class="ln">   178  </span>	prev := o.batchSize
+<span id="L179" class="ln">   179  </span>	o.batchSize = batchSize
+<span id="L180" class="ln">   180  </span>	tb.Cleanup(func() { o.batchSize = prev })
 <span id="L181" class="ln">   181  </span>}
 <span id="L182" class="ln">   182  </span>
-<span id="L183" class="ln">   183  </span><span class="comment">// SetAllowedHeaderBearer は、テスト用に認証の許可されたヘッダベアラーを設定します。</span>
+<span id="L183" class="ln">   183  </span><span class="comment">// SetOutboxPollInterval は、テスト用に outbox relay の poll 間隔を設定します。</span>
 <span id="L184" class="ln">   184  </span><span class="comment">//</span>
 <span id="L185" class="ln">   185  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L186" class="ln">   186  </span>func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool) {
+<span id="L186" class="ln">   186  </span>func (o *OutboxConfig) SetOutboxPollInterval(tb testing.TB, pollInterval time.Duration) {
 <span id="L187" class="ln">   187  </span>	tb.Helper()
-<span id="L188" class="ln">   188  </span>	prev := a.allowedHeaderBearer
-<span id="L189" class="ln">   189  </span>	a.allowedHeaderBearer = allowed
-<span id="L190" class="ln">   190  </span>	tb.Cleanup(func() { a.allowedHeaderBearer = prev })
+<span id="L188" class="ln">   188  </span>	prev := o.pollInterval
+<span id="L189" class="ln">   189  </span>	o.pollInterval = pollInterval
+<span id="L190" class="ln">   190  </span>	tb.Cleanup(func() { o.pollInterval = prev })
 <span id="L191" class="ln">   191  </span>}
 <span id="L192" class="ln">   192  </span>
-<span id="L193" class="ln">   193  </span><span class="comment">// SetOutboxBatchSize は、テスト用に outbox relay の batch size を設定します。</span>
+<span id="L193" class="ln">   193  </span><span class="comment">// SetOutboxErrorBackoff は、テスト用に outbox relay のエラー時待機時間を設定します。</span>
 <span id="L194" class="ln">   194  </span><span class="comment">//</span>
 <span id="L195" class="ln">   195  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L196" class="ln">   196  </span>func (o *OutboxConfig) SetOutboxBatchSize(tb testing.TB, batchSize int) {
+<span id="L196" class="ln">   196  </span>func (o *OutboxConfig) SetOutboxErrorBackoff(tb testing.TB, errorBackoff time.Duration) {
 <span id="L197" class="ln">   197  </span>	tb.Helper()
-<span id="L198" class="ln">   198  </span>	prev := o.batchSize
-<span id="L199" class="ln">   199  </span>	o.batchSize = batchSize
-<span id="L200" class="ln">   200  </span>	tb.Cleanup(func() { o.batchSize = prev })
+<span id="L198" class="ln">   198  </span>	prev := o.errorBackoff
+<span id="L199" class="ln">   199  </span>	o.errorBackoff = errorBackoff
+<span id="L200" class="ln">   200  </span>	tb.Cleanup(func() { o.errorBackoff = prev })
 <span id="L201" class="ln">   201  </span>}
 <span id="L202" class="ln">   202  </span>
-<span id="L203" class="ln">   203  </span><span class="comment">// SetOutboxPollInterval は、テスト用に outbox relay の poll 間隔を設定します。</span>
+<span id="L203" class="ln">   203  </span><span class="comment">// SetOutboxEndpoint は、テスト用に outbox relay の送信先エンドポイントを設定します。</span>
 <span id="L204" class="ln">   204  </span><span class="comment">//</span>
 <span id="L205" class="ln">   205  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L206" class="ln">   206  </span>func (o *OutboxConfig) SetOutboxPollInterval(tb testing.TB, pollInterval time.Duration) {
+<span id="L206" class="ln">   206  </span>func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string) {
 <span id="L207" class="ln">   207  </span>	tb.Helper()
-<span id="L208" class="ln">   208  </span>	prev := o.pollInterval
-<span id="L209" class="ln">   209  </span>	o.pollInterval = pollInterval
-<span id="L210" class="ln">   210  </span>	tb.Cleanup(func() { o.pollInterval = prev })
+<span id="L208" class="ln">   208  </span>	prev := o.endpoint
+<span id="L209" class="ln">   209  </span>	o.endpoint = endpoint
+<span id="L210" class="ln">   210  </span>	tb.Cleanup(func() { o.endpoint = prev })
 <span id="L211" class="ln">   211  </span>}
 <span id="L212" class="ln">   212  </span>
-<span id="L213" class="ln">   213  </span><span class="comment">// SetOutboxErrorBackoff は、テスト用に outbox relay のエラー時待機時間を設定します。</span>
+<span id="L213" class="ln">   213  </span><span class="comment">// SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。</span>
 <span id="L214" class="ln">   214  </span><span class="comment">//</span>
 <span id="L215" class="ln">   215  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L216" class="ln">   216  </span>func (o *OutboxConfig) SetOutboxErrorBackoff(tb testing.TB, errorBackoff time.Duration) {
+<span id="L216" class="ln">   216  </span>func (s *SecureCookieConfig) SetSameSite(tb testing.TB, sameSite string) {
 <span id="L217" class="ln">   217  </span>	tb.Helper()
-<span id="L218" class="ln">   218  </span>	prev := o.errorBackoff
-<span id="L219" class="ln">   219  </span>	o.errorBackoff = errorBackoff
-<span id="L220" class="ln">   220  </span>	tb.Cleanup(func() { o.errorBackoff = prev })
+<span id="L218" class="ln">   218  </span>	prev := s.sameSite
+<span id="L219" class="ln">   219  </span>	s.sameSite = sameSite
+<span id="L220" class="ln">   220  </span>	tb.Cleanup(func() { s.sameSite = prev })
 <span id="L221" class="ln">   221  </span>}
 <span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span><span class="comment">// SetOutboxEndpoint は、テスト用に outbox relay の送信先エンドポイントを設定します。</span>
+<span id="L223" class="ln">   223  </span><span class="comment">// SetDomain は、テスト用にセキュアクッキーの Domain 強制値を設定します。</span>
 <span id="L224" class="ln">   224  </span><span class="comment">//</span>
 <span id="L225" class="ln">   225  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L226" class="ln">   226  </span>func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string) {
+<span id="L226" class="ln">   226  </span>func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
 <span id="L227" class="ln">   227  </span>	tb.Helper()
-<span id="L228" class="ln">   228  </span>	prev := o.endpoint
-<span id="L229" class="ln">   229  </span>	o.endpoint = endpoint
-<span id="L230" class="ln">   230  </span>	tb.Cleanup(func() { o.endpoint = prev })
+<span id="L228" class="ln">   228  </span>	prev := s.domain
+<span id="L229" class="ln">   229  </span>	s.domain = domain
+<span id="L230" class="ln">   230  </span>	tb.Cleanup(func() { s.domain = prev })
 <span id="L231" class="ln">   231  </span>}
 <span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span><span class="comment">// SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。</span>
+<span id="L233" class="ln">   233  </span><span class="comment">// SetAuthIssuer は、テスト用に認証の issuer を設定します。</span>
 <span id="L234" class="ln">   234  </span><span class="comment">//</span>
 <span id="L235" class="ln">   235  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L236" class="ln">   236  </span>func (s *SecureCookieConfig) SetSameSite(tb testing.TB, sameSite string) {
+<span id="L236" class="ln">   236  </span>func (a *AuthConfig) SetAuthIssuer(tb testing.TB, issuer string) {
 <span id="L237" class="ln">   237  </span>	tb.Helper()
-<span id="L238" class="ln">   238  </span>	prev := s.sameSite
-<span id="L239" class="ln">   239  </span>	s.sameSite = sameSite
-<span id="L240" class="ln">   240  </span>	tb.Cleanup(func() { s.sameSite = prev })
+<span id="L238" class="ln">   238  </span>	prev := a.issuer
+<span id="L239" class="ln">   239  </span>	a.issuer = issuer
+<span id="L240" class="ln">   240  </span>	tb.Cleanup(func() { a.issuer = prev })
 <span id="L241" class="ln">   241  </span>}
 <span id="L242" class="ln">   242  </span>
-<span id="L243" class="ln">   243  </span><span class="comment">// SetDomain は、テスト用にセキュアクッキーの Domain 強制値を設定します。</span>
+<span id="L243" class="ln">   243  </span><span class="comment">// SetAuthAudience は、テスト用に認証の audience を設定します。</span>
 <span id="L244" class="ln">   244  </span><span class="comment">//</span>
 <span id="L245" class="ln">   245  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L246" class="ln">   246  </span>func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
+<span id="L246" class="ln">   246  </span>func (a *AuthConfig) SetAuthAudience(tb testing.TB, audience string) {
 <span id="L247" class="ln">   247  </span>	tb.Helper()
-<span id="L248" class="ln">   248  </span>	prev := s.domain
-<span id="L249" class="ln">   249  </span>	s.domain = domain
-<span id="L250" class="ln">   250  </span>	tb.Cleanup(func() { s.domain = prev })
+<span id="L248" class="ln">   248  </span>	prev := a.audience
+<span id="L249" class="ln">   249  </span>	a.audience = audience
+<span id="L250" class="ln">   250  </span>	tb.Cleanup(func() { a.audience = prev })
 <span id="L251" class="ln">   251  </span>}
 <span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span><span class="comment">// SetAuthJWKSURL は、テスト用に認証の JWKS URL を設定します。</span>
+<span id="L254" class="ln">   254  </span><span class="comment">//</span>
+<span id="L255" class="ln">   255  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
+<span id="L256" class="ln">   256  </span>func (a *AuthConfig) SetAuthJWKSURL(tb testing.TB, jwksURL string) {
+<span id="L257" class="ln">   257  </span>	tb.Helper()
+<span id="L258" class="ln">   258  </span>	prev := a.jwksURL
+<span id="L259" class="ln">   259  </span>	a.jwksURL = jwksURL
+<span id="L260" class="ln">   260  </span>	tb.Cleanup(func() { a.jwksURL = prev })
+<span id="L261" class="ln">   261  </span>}
+<span id="L262" class="ln">   262  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

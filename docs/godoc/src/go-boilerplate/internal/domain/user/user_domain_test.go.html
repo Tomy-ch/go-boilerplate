@@ -747,522 +747,805 @@
 <span id="L690" class="ln">   690  </span>	})
 <span id="L691" class="ln">   691  </span>}
 <span id="L692" class="ln">   692  </span>
-<span id="L693" class="ln">   693  </span>func TestUser_Accessors(t *testing.T) {
-<span id="L694" class="ln">   694  </span>	t.Parallel()
-<span id="L695" class="ln">   695  </span>	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L696" class="ln">   696  </span>
-<span id="L697" class="ln">   697  </span>	id := uuid.NewTestFromSalt(t, &#34;user&#34;)
-<span id="L698" class="ln">   698  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture&#34;)
-<span id="L699" class="ln">   699  </span>	firstName := &#34;John&#34;
-<span id="L700" class="ln">   700  </span>	lastName := &#34;Doe&#34;
-<span id="L701" class="ln">   701  </span>	passwordHash := &#34;hashed_password&#34;
-<span id="L702" class="ln">   702  </span>	email := &#34;john.doe@example.com&#34;
-<span id="L703" class="ln">   703  </span>	phone := &#34;1234567890&#34;
-<span id="L704" class="ln">   704  </span>	city := &#34;Shibuya&#34;
-<span id="L705" class="ln">   705  </span>	street := &#34;1-2-3&#34;
-<span id="L706" class="ln">   706  </span>	postalCode := &#34;150-0001&#34;
-<span id="L707" class="ln">   707  </span>	building := new(&#34;Building A&#34;)
-<span id="L708" class="ln">   708  </span>	createdAt := baseTime
-<span id="L709" class="ln">   709  </span>	updatedAt := baseTime.Add(time.Hour)
-<span id="L710" class="ln">   710  </span>	deletedAt := new(updatedAt.Add(time.Minute))
+<span id="L693" class="ln">   693  </span><span class="comment">// newAccessorUser は、全フィールドが非ゼロ（building / deletedAt も非nil）の有効なユーザーを生成する</span>
+<span id="L694" class="ln">   694  </span><span class="comment">// ゲッター検証用のテストヘルパー。</span>
+<span id="L695" class="ln">   695  </span>func newAccessorUser(t *testing.T) *User {
+<span id="L696" class="ln">   696  </span>	t.Helper()
+<span id="L697" class="ln">   697  </span>	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L698" class="ln">   698  </span>	u, err := New(
+<span id="L699" class="ln">   699  </span>		uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L700" class="ln">   700  </span>		&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john.doe@example.com&#34;, &#34;1234567890&#34;,
+<span id="L701" class="ln">   701  </span>		uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L702" class="ln">   702  </span>		&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
+<span id="L703" class="ln">   703  </span>		baseTime, baseTime.Add(time.Hour), new(baseTime.Add(time.Hour).Add(time.Minute)),
+<span id="L704" class="ln">   704  </span>	)
+<span id="L705" class="ln">   705  </span>	require.NoError(t, err)
+<span id="L706" class="ln">   706  </span>	return u
+<span id="L707" class="ln">   707  </span>}
+<span id="L708" class="ln">   708  </span>
+<span id="L709" class="ln">   709  </span>func TestUser_ID(t *testing.T) {
+<span id="L710" class="ln">   710  </span>	t.Parallel()
 <span id="L711" class="ln">   711  </span>
-<span id="L712" class="ln">   712  </span>	expected, err := New(
-<span id="L713" class="ln">   713  </span>		id,
-<span id="L714" class="ln">   714  </span>		firstName,
-<span id="L715" class="ln">   715  </span>		lastName,
-<span id="L716" class="ln">   716  </span>		passwordHash,
-<span id="L717" class="ln">   717  </span>		email,
-<span id="L718" class="ln">   718  </span>		phone,
-<span id="L719" class="ln">   719  </span>		prefectureID,
-<span id="L720" class="ln">   720  </span>		city,
-<span id="L721" class="ln">   721  </span>		street,
-<span id="L722" class="ln">   722  </span>		building,
-<span id="L723" class="ln">   723  </span>		postalCode,
-<span id="L724" class="ln">   724  </span>		createdAt,
-<span id="L725" class="ln">   725  </span>		updatedAt,
-<span id="L726" class="ln">   726  </span>		deletedAt,
-<span id="L727" class="ln">   727  </span>	)
-<span id="L728" class="ln">   728  </span>	require.NoError(t, err)
+<span id="L712" class="ln">   712  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L713" class="ln">   713  </span>		t.Parallel()
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span>		t.Run(&#34;保存したIDを返す&#34;, func(t *testing.T) {
+<span id="L716" class="ln">   716  </span>			t.Parallel()
+<span id="L717" class="ln">   717  </span>			u := newAccessorUser(t)
+<span id="L718" class="ln">   718  </span>
+<span id="L719" class="ln">   719  </span>			assert.Equal(t, u.id, u.ID())
+<span id="L720" class="ln">   720  </span>		})
+<span id="L721" class="ln">   721  </span>	})
+<span id="L722" class="ln">   722  </span>}
+<span id="L723" class="ln">   723  </span>
+<span id="L724" class="ln">   724  </span>func TestUser_FirstName(t *testing.T) {
+<span id="L725" class="ln">   725  </span>	t.Parallel()
+<span id="L726" class="ln">   726  </span>
+<span id="L727" class="ln">   727  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L728" class="ln">   728  </span>		t.Parallel()
 <span id="L729" class="ln">   729  </span>
-<span id="L730" class="ln">   730  </span>	t.Run(&#34;IDメソッドが保存した文字列をuuid.UUIDに変換した値を返す&#34;, func(t *testing.T) {
-<span id="L731" class="ln">   731  </span>		t.Parallel()
-<span id="L732" class="ln">   732  </span>
-<span id="L733" class="ln">   733  </span>		actual := expected.ID()
-<span id="L734" class="ln">   734  </span>		assert.Equal(t, expected.id, actual)
-<span id="L735" class="ln">   735  </span>	})
-<span id="L736" class="ln">   736  </span>
-<span id="L737" class="ln">   737  </span>	t.Run(&#34;FirstNameメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L738" class="ln">   738  </span>		t.Parallel()
-<span id="L739" class="ln">   739  </span>
-<span id="L740" class="ln">   740  </span>		actual := expected.FirstName()
-<span id="L741" class="ln">   741  </span>		assert.Equal(t, expected.firstName, actual)
-<span id="L742" class="ln">   742  </span>	})
-<span id="L743" class="ln">   743  </span>
-<span id="L744" class="ln">   744  </span>	t.Run(&#34;LastNameメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L745" class="ln">   745  </span>		t.Parallel()
-<span id="L746" class="ln">   746  </span>
-<span id="L747" class="ln">   747  </span>		actual := expected.LastName()
-<span id="L748" class="ln">   748  </span>		assert.Equal(t, expected.lastName, actual)
-<span id="L749" class="ln">   749  </span>	})
-<span id="L750" class="ln">   750  </span>
-<span id="L751" class="ln">   751  </span>	t.Run(&#34;PasswordHashメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L752" class="ln">   752  </span>		t.Parallel()
+<span id="L730" class="ln">   730  </span>		t.Run(&#34;保存した名前を返す&#34;, func(t *testing.T) {
+<span id="L731" class="ln">   731  </span>			t.Parallel()
+<span id="L732" class="ln">   732  </span>			u := newAccessorUser(t)
+<span id="L733" class="ln">   733  </span>
+<span id="L734" class="ln">   734  </span>			assert.Equal(t, u.firstName, u.FirstName())
+<span id="L735" class="ln">   735  </span>		})
+<span id="L736" class="ln">   736  </span>	})
+<span id="L737" class="ln">   737  </span>}
+<span id="L738" class="ln">   738  </span>
+<span id="L739" class="ln">   739  </span>func TestUser_LastName(t *testing.T) {
+<span id="L740" class="ln">   740  </span>	t.Parallel()
+<span id="L741" class="ln">   741  </span>
+<span id="L742" class="ln">   742  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L743" class="ln">   743  </span>		t.Parallel()
+<span id="L744" class="ln">   744  </span>
+<span id="L745" class="ln">   745  </span>		t.Run(&#34;保存した名字を返す&#34;, func(t *testing.T) {
+<span id="L746" class="ln">   746  </span>			t.Parallel()
+<span id="L747" class="ln">   747  </span>			u := newAccessorUser(t)
+<span id="L748" class="ln">   748  </span>
+<span id="L749" class="ln">   749  </span>			assert.Equal(t, u.lastName, u.LastName())
+<span id="L750" class="ln">   750  </span>		})
+<span id="L751" class="ln">   751  </span>	})
+<span id="L752" class="ln">   752  </span>}
 <span id="L753" class="ln">   753  </span>
-<span id="L754" class="ln">   754  </span>		actual := expected.PasswordHash()
-<span id="L755" class="ln">   755  </span>		assert.Equal(t, expected.passwordHash, actual)
-<span id="L756" class="ln">   756  </span>	})
-<span id="L757" class="ln">   757  </span>
-<span id="L758" class="ln">   758  </span>	t.Run(&#34;Emailメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L759" class="ln">   759  </span>		t.Parallel()
-<span id="L760" class="ln">   760  </span>
-<span id="L761" class="ln">   761  </span>		actual := expected.Email()
-<span id="L762" class="ln">   762  </span>		assert.Equal(t, expected.email.Value(), actual)
-<span id="L763" class="ln">   763  </span>	})
-<span id="L764" class="ln">   764  </span>
-<span id="L765" class="ln">   765  </span>	t.Run(&#34;Phoneメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L766" class="ln">   766  </span>		t.Parallel()
-<span id="L767" class="ln">   767  </span>
-<span id="L768" class="ln">   768  </span>		actual := expected.Phone()
-<span id="L769" class="ln">   769  </span>		assert.Equal(t, expected.phone, actual)
-<span id="L770" class="ln">   770  </span>	})
+<span id="L754" class="ln">   754  </span>func TestUser_PasswordHash(t *testing.T) {
+<span id="L755" class="ln">   755  </span>	t.Parallel()
+<span id="L756" class="ln">   756  </span>
+<span id="L757" class="ln">   757  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L758" class="ln">   758  </span>		t.Parallel()
+<span id="L759" class="ln">   759  </span>
+<span id="L760" class="ln">   760  </span>		t.Run(&#34;保存したパスワードハッシュを返す&#34;, func(t *testing.T) {
+<span id="L761" class="ln">   761  </span>			t.Parallel()
+<span id="L762" class="ln">   762  </span>			u := newAccessorUser(t)
+<span id="L763" class="ln">   763  </span>
+<span id="L764" class="ln">   764  </span>			assert.Equal(t, u.passwordHash, u.PasswordHash())
+<span id="L765" class="ln">   765  </span>		})
+<span id="L766" class="ln">   766  </span>	})
+<span id="L767" class="ln">   767  </span>}
+<span id="L768" class="ln">   768  </span>
+<span id="L769" class="ln">   769  </span>func TestUser_Email(t *testing.T) {
+<span id="L770" class="ln">   770  </span>	t.Parallel()
 <span id="L771" class="ln">   771  </span>
-<span id="L772" class="ln">   772  </span>	t.Run(&#34;PrefectureIDメソッドが保存した文字列をuuid.UUIDに変換した値を返す&#34;, func(t *testing.T) {
+<span id="L772" class="ln">   772  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L773" class="ln">   773  </span>		t.Parallel()
 <span id="L774" class="ln">   774  </span>
-<span id="L775" class="ln">   775  </span>		actual := expected.PrefectureID()
-<span id="L776" class="ln">   776  </span>		assert.Equal(t, expected.prefectureID, actual)
-<span id="L777" class="ln">   777  </span>	})
+<span id="L775" class="ln">   775  </span>		t.Run(&#34;保存したメールアドレスを返す&#34;, func(t *testing.T) {
+<span id="L776" class="ln">   776  </span>			t.Parallel()
+<span id="L777" class="ln">   777  </span>			u := newAccessorUser(t)
 <span id="L778" class="ln">   778  </span>
-<span id="L779" class="ln">   779  </span>	t.Run(&#34;Cityメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L780" class="ln">   780  </span>		t.Parallel()
-<span id="L781" class="ln">   781  </span>
-<span id="L782" class="ln">   782  </span>		actual := expected.City()
-<span id="L783" class="ln">   783  </span>		assert.Equal(t, expected.city, actual)
-<span id="L784" class="ln">   784  </span>	})
-<span id="L785" class="ln">   785  </span>
-<span id="L786" class="ln">   786  </span>	t.Run(&#34;Streetメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L787" class="ln">   787  </span>		t.Parallel()
-<span id="L788" class="ln">   788  </span>
-<span id="L789" class="ln">   789  </span>		actual := expected.Street()
-<span id="L790" class="ln">   790  </span>		assert.Equal(t, expected.street, actual)
-<span id="L791" class="ln">   791  </span>	})
-<span id="L792" class="ln">   792  </span>
-<span id="L793" class="ln">   793  </span>	t.Run(&#34;Buildingメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L794" class="ln">   794  </span>		t.Parallel()
-<span id="L795" class="ln">   795  </span>
-<span id="L796" class="ln">   796  </span>		actual := expected.Building()
-<span id="L797" class="ln">   797  </span>		assert.Equal(t, expected.building, actual)
-<span id="L798" class="ln">   798  </span>	})
-<span id="L799" class="ln">   799  </span>
-<span id="L800" class="ln">   800  </span>	t.Run(&#34;PostalCodeメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L801" class="ln">   801  </span>		t.Parallel()
-<span id="L802" class="ln">   802  </span>
-<span id="L803" class="ln">   803  </span>		actual := expected.PostalCode()
-<span id="L804" class="ln">   804  </span>		assert.Equal(t, expected.postalCode.Value(), actual)
-<span id="L805" class="ln">   805  </span>	})
-<span id="L806" class="ln">   806  </span>
-<span id="L807" class="ln">   807  </span>	t.Run(&#34;DeletedAtメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L808" class="ln">   808  </span>		t.Parallel()
-<span id="L809" class="ln">   809  </span>
-<span id="L810" class="ln">   810  </span>		actual := expected.DeletedAt()
-<span id="L811" class="ln">   811  </span>		assert.Equal(t, expected.deletedAt, actual)
-<span id="L812" class="ln">   812  </span>	})
+<span id="L779" class="ln">   779  </span>			assert.Equal(t, u.email.Value(), u.Email())
+<span id="L780" class="ln">   780  </span>		})
+<span id="L781" class="ln">   781  </span>	})
+<span id="L782" class="ln">   782  </span>}
+<span id="L783" class="ln">   783  </span>
+<span id="L784" class="ln">   784  </span>func TestUser_Phone(t *testing.T) {
+<span id="L785" class="ln">   785  </span>	t.Parallel()
+<span id="L786" class="ln">   786  </span>
+<span id="L787" class="ln">   787  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L788" class="ln">   788  </span>		t.Parallel()
+<span id="L789" class="ln">   789  </span>
+<span id="L790" class="ln">   790  </span>		t.Run(&#34;保存した電話番号を返す&#34;, func(t *testing.T) {
+<span id="L791" class="ln">   791  </span>			t.Parallel()
+<span id="L792" class="ln">   792  </span>			u := newAccessorUser(t)
+<span id="L793" class="ln">   793  </span>
+<span id="L794" class="ln">   794  </span>			assert.Equal(t, u.phone, u.Phone())
+<span id="L795" class="ln">   795  </span>		})
+<span id="L796" class="ln">   796  </span>	})
+<span id="L797" class="ln">   797  </span>}
+<span id="L798" class="ln">   798  </span>
+<span id="L799" class="ln">   799  </span>func TestUser_PrefectureID(t *testing.T) {
+<span id="L800" class="ln">   800  </span>	t.Parallel()
+<span id="L801" class="ln">   801  </span>
+<span id="L802" class="ln">   802  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L803" class="ln">   803  </span>		t.Parallel()
+<span id="L804" class="ln">   804  </span>
+<span id="L805" class="ln">   805  </span>		t.Run(&#34;保存した都道府県IDを返す&#34;, func(t *testing.T) {
+<span id="L806" class="ln">   806  </span>			t.Parallel()
+<span id="L807" class="ln">   807  </span>			u := newAccessorUser(t)
+<span id="L808" class="ln">   808  </span>
+<span id="L809" class="ln">   809  </span>			assert.Equal(t, u.prefectureID, u.PrefectureID())
+<span id="L810" class="ln">   810  </span>		})
+<span id="L811" class="ln">   811  </span>	})
+<span id="L812" class="ln">   812  </span>}
 <span id="L813" class="ln">   813  </span>
-<span id="L814" class="ln">   814  </span>	t.Run(&#34;CreatedAtメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L815" class="ln">   815  </span>		t.Parallel()
+<span id="L814" class="ln">   814  </span>func TestUser_City(t *testing.T) {
+<span id="L815" class="ln">   815  </span>	t.Parallel()
 <span id="L816" class="ln">   816  </span>
-<span id="L817" class="ln">   817  </span>		actual := expected.CreatedAt()
-<span id="L818" class="ln">   818  </span>		assert.Equal(t, expected.createdAt, actual)
-<span id="L819" class="ln">   819  </span>	})
-<span id="L820" class="ln">   820  </span>
-<span id="L821" class="ln">   821  </span>	t.Run(&#34;UpdatedAtメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L822" class="ln">   822  </span>		t.Parallel()
+<span id="L817" class="ln">   817  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L818" class="ln">   818  </span>		t.Parallel()
+<span id="L819" class="ln">   819  </span>
+<span id="L820" class="ln">   820  </span>		t.Run(&#34;保存した市区町村名を返す&#34;, func(t *testing.T) {
+<span id="L821" class="ln">   821  </span>			t.Parallel()
+<span id="L822" class="ln">   822  </span>			u := newAccessorUser(t)
 <span id="L823" class="ln">   823  </span>
-<span id="L824" class="ln">   824  </span>		actual := expected.UpdatedAt()
-<span id="L825" class="ln">   825  </span>		assert.Equal(t, expected.updatedAt, actual)
+<span id="L824" class="ln">   824  </span>			assert.Equal(t, u.city, u.City())
+<span id="L825" class="ln">   825  </span>		})
 <span id="L826" class="ln">   826  </span>	})
-<span id="L827" class="ln">   827  </span>
-<span id="L828" class="ln">   828  </span>	t.Run(&#34;FullNameメソッドが保存した正しい値を返す&#34;, func(t *testing.T) {
-<span id="L829" class="ln">   829  </span>		t.Parallel()
-<span id="L830" class="ln">   830  </span>
-<span id="L831" class="ln">   831  </span>		actual := expected.FullName()
-<span id="L832" class="ln">   832  </span>		assert.Equal(t, expected.firstName+&#34; &#34;+expected.lastName, actual)
-<span id="L833" class="ln">   833  </span>	})
+<span id="L827" class="ln">   827  </span>}
+<span id="L828" class="ln">   828  </span>
+<span id="L829" class="ln">   829  </span>func TestUser_Street(t *testing.T) {
+<span id="L830" class="ln">   830  </span>	t.Parallel()
+<span id="L831" class="ln">   831  </span>
+<span id="L832" class="ln">   832  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L833" class="ln">   833  </span>		t.Parallel()
 <span id="L834" class="ln">   834  </span>
-<span id="L835" class="ln">   835  </span>	t.Run(&#34;buildingとdeletedAtがnilの場合、BuildingメソッドとDeletedAtメソッドがnilを返す&#34;, func(t *testing.T) {
-<span id="L836" class="ln">   836  </span>		t.Parallel()
-<span id="L837" class="ln">   837  </span>
-<span id="L838" class="ln">   838  </span>		user, err := New(
-<span id="L839" class="ln">   839  </span>			id,
-<span id="L840" class="ln">   840  </span>			firstName,
-<span id="L841" class="ln">   841  </span>			lastName,
-<span id="L842" class="ln">   842  </span>			passwordHash,
-<span id="L843" class="ln">   843  </span>			email,
-<span id="L844" class="ln">   844  </span>			phone,
-<span id="L845" class="ln">   845  </span>			prefectureID,
-<span id="L846" class="ln">   846  </span>			city,
-<span id="L847" class="ln">   847  </span>			street,
-<span id="L848" class="ln">   848  </span>			nil,
-<span id="L849" class="ln">   849  </span>			postalCode,
-<span id="L850" class="ln">   850  </span>			createdAt,
-<span id="L851" class="ln">   851  </span>			updatedAt,
-<span id="L852" class="ln">   852  </span>			nil,
-<span id="L853" class="ln">   853  </span>		)
-<span id="L854" class="ln">   854  </span>		require.NoError(t, err)
-<span id="L855" class="ln">   855  </span>
-<span id="L856" class="ln">   856  </span>		assert.Nil(t, user.Building())
-<span id="L857" class="ln">   857  </span>		assert.Nil(t, user.DeletedAt())
-<span id="L858" class="ln">   858  </span>	})
-<span id="L859" class="ln">   859  </span>}
-<span id="L860" class="ln">   860  </span>
-<span id="L861" class="ln">   861  </span><span class="comment">//nolint:tparallel // 共有ポインタをmutateして検証するため一部サブテストを並列化不可</span>
-<span id="L862" class="ln">   862  </span>func TestImmutableAccessors(t *testing.T) {
-<span id="L863" class="ln">   863  </span>	t.Parallel()
-<span id="L864" class="ln">   864  </span>	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L865" class="ln">   865  </span>
-<span id="L866" class="ln">   866  </span>	id := uuid.NewTestFromSalt(t, &#34;user&#34;)
-<span id="L867" class="ln">   867  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture&#34;)
-<span id="L868" class="ln">   868  </span>	firstName := &#34;John&#34;
-<span id="L869" class="ln">   869  </span>	lastName := &#34;Doe&#34;
-<span id="L870" class="ln">   870  </span>	passwordHash := &#34;hashed_password&#34;
-<span id="L871" class="ln">   871  </span>	email := &#34;john.doe@example.com&#34;
-<span id="L872" class="ln">   872  </span>	phone := &#34;1234567890&#34;
-<span id="L873" class="ln">   873  </span>	city := &#34;Shibuya&#34;
-<span id="L874" class="ln">   874  </span>	street := &#34;1-2-3&#34;
-<span id="L875" class="ln">   875  </span>	postalCode := &#34;150-0001&#34;
-<span id="L876" class="ln">   876  </span>	building := new(&#34;Building A&#34;)
-<span id="L877" class="ln">   877  </span>	createdAt := baseTime
-<span id="L878" class="ln">   878  </span>	updatedAt := baseTime.Add(time.Hour)
-<span id="L879" class="ln">   879  </span>	deletedAt := new(updatedAt.Add(time.Minute))
-<span id="L880" class="ln">   880  </span>	<span class="comment">// 共有ポインタ building / deletedAt を直接 mutate して不変性を検証するため、</span>
-<span id="L881" class="ln">   881  </span>	<span class="comment">// 同じポインタを読む deletedAt ブロックと並列実行すると -race で競合する。意図的に直列化する。</span>
-<span id="L882" class="ln">   882  </span>	t.Run(&#34;buildingのポインタの場合&#34;, func(t *testing.T) {
-<span id="L883" class="ln">   883  </span>		user, err := New(
-<span id="L884" class="ln">   884  </span>			id,
-<span id="L885" class="ln">   885  </span>			firstName,
-<span id="L886" class="ln">   886  </span>			lastName,
-<span id="L887" class="ln">   887  </span>			passwordHash,
-<span id="L888" class="ln">   888  </span>			email,
-<span id="L889" class="ln">   889  </span>			phone,
-<span id="L890" class="ln">   890  </span>			prefectureID,
-<span id="L891" class="ln">   891  </span>			city,
-<span id="L892" class="ln">   892  </span>			street,
-<span id="L893" class="ln">   893  </span>			building,
-<span id="L894" class="ln">   894  </span>			postalCode,
-<span id="L895" class="ln">   895  </span>			createdAt,
-<span id="L896" class="ln">   896  </span>			updatedAt,
-<span id="L897" class="ln">   897  </span>			deletedAt,
-<span id="L898" class="ln">   898  </span>		)
-<span id="L899" class="ln">   899  </span>		require.NoError(t, err)
+<span id="L835" class="ln">   835  </span>		t.Run(&#34;保存した番地を返す&#34;, func(t *testing.T) {
+<span id="L836" class="ln">   836  </span>			t.Parallel()
+<span id="L837" class="ln">   837  </span>			u := newAccessorUser(t)
+<span id="L838" class="ln">   838  </span>
+<span id="L839" class="ln">   839  </span>			assert.Equal(t, u.street, u.Street())
+<span id="L840" class="ln">   840  </span>		})
+<span id="L841" class="ln">   841  </span>	})
+<span id="L842" class="ln">   842  </span>}
+<span id="L843" class="ln">   843  </span>
+<span id="L844" class="ln">   844  </span>func TestUser_Building(t *testing.T) {
+<span id="L845" class="ln">   845  </span>	t.Parallel()
+<span id="L846" class="ln">   846  </span>
+<span id="L847" class="ln">   847  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L848" class="ln">   848  </span>		t.Parallel()
+<span id="L849" class="ln">   849  </span>
+<span id="L850" class="ln">   850  </span>		t.Run(&#34;保存した建物名を返す&#34;, func(t *testing.T) {
+<span id="L851" class="ln">   851  </span>			t.Parallel()
+<span id="L852" class="ln">   852  </span>			u := newAccessorUser(t)
+<span id="L853" class="ln">   853  </span>
+<span id="L854" class="ln">   854  </span>			assert.Equal(t, u.building, u.Building())
+<span id="L855" class="ln">   855  </span>		})
+<span id="L856" class="ln">   856  </span>
+<span id="L857" class="ln">   857  </span>		t.Run(&#34;buildingがnilの場合、nilを返す&#34;, func(t *testing.T) {
+<span id="L858" class="ln">   858  </span>			t.Parallel()
+<span id="L859" class="ln">   859  </span>			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L860" class="ln">   860  </span>			u, err := New(
+<span id="L861" class="ln">   861  </span>				uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L862" class="ln">   862  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john.doe@example.com&#34;, &#34;1234567890&#34;,
+<span id="L863" class="ln">   863  </span>				uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L864" class="ln">   864  </span>				&#34;Shibuya&#34;, &#34;1-2-3&#34;, nil, &#34;150-0001&#34;,
+<span id="L865" class="ln">   865  </span>				baseTime, baseTime.Add(time.Hour), nil,
+<span id="L866" class="ln">   866  </span>			)
+<span id="L867" class="ln">   867  </span>			require.NoError(t, err)
+<span id="L868" class="ln">   868  </span>
+<span id="L869" class="ln">   869  </span>			assert.Nil(t, u.Building())
+<span id="L870" class="ln">   870  </span>		})
+<span id="L871" class="ln">   871  </span>
+<span id="L872" class="ln">   872  </span>		<span class="comment">// 共有ポインタ building を直接 mutate して不変性を検証するため、</span>
+<span id="L873" class="ln">   873  </span>		<span class="comment">// 同じポインタを読むサブテスト同士を並列実行すると -race で競合する。意図的に直列化する。</span>
+<span id="L874" class="ln">   874  </span>		t.Run(&#34;返り値を変更しても内部状態は不変&#34;, func(t *testing.T) {
+<span id="L875" class="ln">   875  </span>			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L876" class="ln">   876  </span>			building := new(&#34;Building A&#34;)
+<span id="L877" class="ln">   877  </span>			user, err := New(
+<span id="L878" class="ln">   878  </span>				uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L879" class="ln">   879  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john.doe@example.com&#34;, &#34;1234567890&#34;,
+<span id="L880" class="ln">   880  </span>				uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L881" class="ln">   881  </span>				&#34;Shibuya&#34;, &#34;1-2-3&#34;, building, &#34;150-0001&#34;,
+<span id="L882" class="ln">   882  </span>				baseTime, baseTime.Add(time.Hour), new(baseTime.Add(time.Hour).Add(time.Minute)),
+<span id="L883" class="ln">   883  </span>			)
+<span id="L884" class="ln">   884  </span>			require.NoError(t, err)
+<span id="L885" class="ln">   885  </span>
+<span id="L886" class="ln">   886  </span>			t.Run(&#34;buildingのポインタを変更しても、ユーザーのbuildingが変更されていないことを確認する&#34;, func(t *testing.T) {
+<span id="L887" class="ln">   887  </span>				t.Parallel()
+<span id="L888" class="ln">   888  </span>
+<span id="L889" class="ln">   889  </span>				original := *building
+<span id="L890" class="ln">   890  </span>
+<span id="L891" class="ln">   891  </span>				<span class="comment">// buildingの値を変更</span>
+<span id="L892" class="ln">   892  </span>				*building = &#34;Building B&#34;
+<span id="L893" class="ln">   893  </span>
+<span id="L894" class="ln">   894  </span>				assert.NotEqual(t, *building, *user.Building())
+<span id="L895" class="ln">   895  </span>				assert.Equal(t, original, *user.Building())
+<span id="L896" class="ln">   896  </span>			})
+<span id="L897" class="ln">   897  </span>
+<span id="L898" class="ln">   898  </span>			t.Run(&#34;Buildingメソッドの返り値のポインタを変更しても、ユーザーのbuildingが変更されていないことを確認する&#34;, func(t *testing.T) {
+<span id="L899" class="ln">   899  </span>				t.Parallel()
 <span id="L900" class="ln">   900  </span>
-<span id="L901" class="ln">   901  </span>		t.Run(&#34;buildingのポインタを変更しても、ユーザーのbuildingが変更されていないことを確認する&#34;, func(t *testing.T) {
-<span id="L902" class="ln">   902  </span>			t.Parallel()
-<span id="L903" class="ln">   903  </span>
-<span id="L904" class="ln">   904  </span>			original := *building
-<span id="L905" class="ln">   905  </span>
-<span id="L906" class="ln">   906  </span>			<span class="comment">// buildingの値を変更</span>
-<span id="L907" class="ln">   907  </span>			*building = &#34;Building B&#34;
-<span id="L908" class="ln">   908  </span>
-<span id="L909" class="ln">   909  </span>			assert.NotEqual(t, *building, *user.Building())
-<span id="L910" class="ln">   910  </span>			assert.Equal(t, original, *user.Building())
-<span id="L911" class="ln">   911  </span>		})
-<span id="L912" class="ln">   912  </span>
-<span id="L913" class="ln">   913  </span>		t.Run(&#34;Buildingメソッドの返り値のポインタを変更しても、ユーザーのbuildingが変更されていないことを確認する&#34;, func(t *testing.T) {
-<span id="L914" class="ln">   914  </span>			t.Parallel()
-<span id="L915" class="ln">   915  </span>
-<span id="L916" class="ln">   916  </span>			original := *user.Building()
-<span id="L917" class="ln">   917  </span>
-<span id="L918" class="ln">   918  </span>			<span class="comment">// Buildingメソッドの返り値のポインタを変更</span>
-<span id="L919" class="ln">   919  </span>			actualBuilding := user.Building()
-<span id="L920" class="ln">   920  </span>			*actualBuilding = &#34;Building B&#34;
-<span id="L921" class="ln">   921  </span>
-<span id="L922" class="ln">   922  </span>			assert.NotEqual(t, *actualBuilding, *user.Building())
-<span id="L923" class="ln">   923  </span>			assert.Equal(t, original, *user.Building())
-<span id="L924" class="ln">   924  </span>		})
-<span id="L925" class="ln">   925  </span>	})
-<span id="L926" class="ln">   926  </span>
-<span id="L927" class="ln">   927  </span>	<span class="comment">// building ブロックと同じ共有ポインタを mutate するため、同様に直列実行する。</span>
-<span id="L928" class="ln">   928  </span>	t.Run(&#34;deletedAtのポインタの場合&#34;, func(t *testing.T) {
-<span id="L929" class="ln">   929  </span>		user, err := New(
-<span id="L930" class="ln">   930  </span>			id,
-<span id="L931" class="ln">   931  </span>			firstName,
-<span id="L932" class="ln">   932  </span>			lastName,
-<span id="L933" class="ln">   933  </span>			passwordHash,
-<span id="L934" class="ln">   934  </span>			email,
-<span id="L935" class="ln">   935  </span>			phone,
-<span id="L936" class="ln">   936  </span>			prefectureID,
-<span id="L937" class="ln">   937  </span>			city,
-<span id="L938" class="ln">   938  </span>			street,
-<span id="L939" class="ln">   939  </span>			building,
-<span id="L940" class="ln">   940  </span>			postalCode,
-<span id="L941" class="ln">   941  </span>			createdAt,
-<span id="L942" class="ln">   942  </span>			updatedAt,
-<span id="L943" class="ln">   943  </span>			deletedAt,
-<span id="L944" class="ln">   944  </span>		)
-<span id="L945" class="ln">   945  </span>		require.NoError(t, err)
-<span id="L946" class="ln">   946  </span>
-<span id="L947" class="ln">   947  </span>		t.Run(&#34;deletedAtのポインタを変更しても、ユーザーのdeletedAtが変更されていないことを確認する&#34;, func(t *testing.T) {
-<span id="L948" class="ln">   948  </span>			t.Parallel()
-<span id="L949" class="ln">   949  </span>
-<span id="L950" class="ln">   950  </span>			original := *deletedAt
-<span id="L951" class="ln">   951  </span>
-<span id="L952" class="ln">   952  </span>			<span class="comment">// deletedAtの値を変更</span>
-<span id="L953" class="ln">   953  </span>			*deletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L954" class="ln">   954  </span>
-<span id="L955" class="ln">   955  </span>			assert.NotEqual(t, *deletedAt, *user.DeletedAt())
-<span id="L956" class="ln">   956  </span>			assert.Equal(t, original, *user.DeletedAt())
-<span id="L957" class="ln">   957  </span>		})
-<span id="L958" class="ln">   958  </span>		t.Run(&#34;DeletedAtメソッドの返り値のポインタを変更しても、ユーザーのdeletedAtが変更されていないことを確認する&#34;, func(t *testing.T) {
-<span id="L959" class="ln">   959  </span>			t.Parallel()
-<span id="L960" class="ln">   960  </span>
-<span id="L961" class="ln">   961  </span>			original := *user.DeletedAt()
-<span id="L962" class="ln">   962  </span>
-<span id="L963" class="ln">   963  </span>			<span class="comment">// DeletedAtメソッドの返り値のポインタを変更</span>
-<span id="L964" class="ln">   964  </span>			actualDeletedAt := user.DeletedAt()
-<span id="L965" class="ln">   965  </span>			*actualDeletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L966" class="ln">   966  </span>
-<span id="L967" class="ln">   967  </span>			assert.NotEqual(t, *actualDeletedAt, *user.DeletedAt())
-<span id="L968" class="ln">   968  </span>			assert.Equal(t, original, *user.DeletedAt())
-<span id="L969" class="ln">   969  </span>		})
-<span id="L970" class="ln">   970  </span>	})
-<span id="L971" class="ln">   971  </span>}
-<span id="L972" class="ln">   972  </span>
-<span id="L973" class="ln">   973  </span><span class="comment">// newValidUser は、削除されていない有効なユーザーと基準時刻を返すテストヘルパー。</span>
-<span id="L974" class="ln">   974  </span>func newValidUser(t *testing.T) (*User, time.Time) {
-<span id="L975" class="ln">   975  </span>	t.Helper()
-<span id="L976" class="ln">   976  </span>	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L977" class="ln">   977  </span>	u, err := New(
-<span id="L978" class="ln">   978  </span>		uuid.NewTestFromSalt(t, &#34;user&#34;),
-<span id="L979" class="ln">   979  </span>		&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
-<span id="L980" class="ln">   980  </span>		uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
-<span id="L981" class="ln">   981  </span>		&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
-<span id="L982" class="ln">   982  </span>		base, base, nil,
-<span id="L983" class="ln">   983  </span>	)
-<span id="L984" class="ln">   984  </span>	require.NoError(t, err)
-<span id="L985" class="ln">   985  </span>	return u, base
-<span id="L986" class="ln">   986  </span>}
+<span id="L901" class="ln">   901  </span>				original := *user.Building()
+<span id="L902" class="ln">   902  </span>
+<span id="L903" class="ln">   903  </span>				<span class="comment">// Buildingメソッドの返り値のポインタを変更</span>
+<span id="L904" class="ln">   904  </span>				actualBuilding := user.Building()
+<span id="L905" class="ln">   905  </span>				*actualBuilding = &#34;Building B&#34;
+<span id="L906" class="ln">   906  </span>
+<span id="L907" class="ln">   907  </span>				assert.NotEqual(t, *actualBuilding, *user.Building())
+<span id="L908" class="ln">   908  </span>				assert.Equal(t, original, *user.Building())
+<span id="L909" class="ln">   909  </span>			})
+<span id="L910" class="ln">   910  </span>		})
+<span id="L911" class="ln">   911  </span>	})
+<span id="L912" class="ln">   912  </span>}
+<span id="L913" class="ln">   913  </span>
+<span id="L914" class="ln">   914  </span>func TestUser_PostalCode(t *testing.T) {
+<span id="L915" class="ln">   915  </span>	t.Parallel()
+<span id="L916" class="ln">   916  </span>
+<span id="L917" class="ln">   917  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L918" class="ln">   918  </span>		t.Parallel()
+<span id="L919" class="ln">   919  </span>
+<span id="L920" class="ln">   920  </span>		t.Run(&#34;保存した郵便番号を返す&#34;, func(t *testing.T) {
+<span id="L921" class="ln">   921  </span>			t.Parallel()
+<span id="L922" class="ln">   922  </span>			u := newAccessorUser(t)
+<span id="L923" class="ln">   923  </span>
+<span id="L924" class="ln">   924  </span>			assert.Equal(t, u.postalCode.Value(), u.PostalCode())
+<span id="L925" class="ln">   925  </span>		})
+<span id="L926" class="ln">   926  </span>	})
+<span id="L927" class="ln">   927  </span>}
+<span id="L928" class="ln">   928  </span>
+<span id="L929" class="ln">   929  </span>func TestUser_DeletedAt(t *testing.T) {
+<span id="L930" class="ln">   930  </span>	t.Parallel()
+<span id="L931" class="ln">   931  </span>
+<span id="L932" class="ln">   932  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L933" class="ln">   933  </span>		t.Parallel()
+<span id="L934" class="ln">   934  </span>
+<span id="L935" class="ln">   935  </span>		t.Run(&#34;保存した削除日時を返す&#34;, func(t *testing.T) {
+<span id="L936" class="ln">   936  </span>			t.Parallel()
+<span id="L937" class="ln">   937  </span>			u := newAccessorUser(t)
+<span id="L938" class="ln">   938  </span>
+<span id="L939" class="ln">   939  </span>			assert.Equal(t, u.deletedAt, u.DeletedAt())
+<span id="L940" class="ln">   940  </span>		})
+<span id="L941" class="ln">   941  </span>
+<span id="L942" class="ln">   942  </span>		t.Run(&#34;deletedAtがnilの場合、nilを返す&#34;, func(t *testing.T) {
+<span id="L943" class="ln">   943  </span>			t.Parallel()
+<span id="L944" class="ln">   944  </span>			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L945" class="ln">   945  </span>			u, err := New(
+<span id="L946" class="ln">   946  </span>				uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L947" class="ln">   947  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john.doe@example.com&#34;, &#34;1234567890&#34;,
+<span id="L948" class="ln">   948  </span>				uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L949" class="ln">   949  </span>				&#34;Shibuya&#34;, &#34;1-2-3&#34;, nil, &#34;150-0001&#34;,
+<span id="L950" class="ln">   950  </span>				baseTime, baseTime.Add(time.Hour), nil,
+<span id="L951" class="ln">   951  </span>			)
+<span id="L952" class="ln">   952  </span>			require.NoError(t, err)
+<span id="L953" class="ln">   953  </span>
+<span id="L954" class="ln">   954  </span>			assert.Nil(t, u.DeletedAt())
+<span id="L955" class="ln">   955  </span>		})
+<span id="L956" class="ln">   956  </span>
+<span id="L957" class="ln">   957  </span>		<span class="comment">// 共有ポインタ deletedAt を直接 mutate して不変性を検証するため、</span>
+<span id="L958" class="ln">   958  </span>		<span class="comment">// 同じポインタを読むサブテスト同士を並列実行すると -race で競合する。意図的に直列化する。</span>
+<span id="L959" class="ln">   959  </span>		t.Run(&#34;返り値を変更しても内部状態は不変&#34;, func(t *testing.T) {
+<span id="L960" class="ln">   960  </span>			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L961" class="ln">   961  </span>			deletedAt := new(baseTime.Add(time.Hour).Add(time.Minute))
+<span id="L962" class="ln">   962  </span>			user, err := New(
+<span id="L963" class="ln">   963  </span>				uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L964" class="ln">   964  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john.doe@example.com&#34;, &#34;1234567890&#34;,
+<span id="L965" class="ln">   965  </span>				uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L966" class="ln">   966  </span>				&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
+<span id="L967" class="ln">   967  </span>				baseTime, baseTime.Add(time.Hour), deletedAt,
+<span id="L968" class="ln">   968  </span>			)
+<span id="L969" class="ln">   969  </span>			require.NoError(t, err)
+<span id="L970" class="ln">   970  </span>
+<span id="L971" class="ln">   971  </span>			t.Run(&#34;deletedAtのポインタを変更しても、ユーザーのdeletedAtが変更されていないことを確認する&#34;, func(t *testing.T) {
+<span id="L972" class="ln">   972  </span>				t.Parallel()
+<span id="L973" class="ln">   973  </span>
+<span id="L974" class="ln">   974  </span>				original := *deletedAt
+<span id="L975" class="ln">   975  </span>
+<span id="L976" class="ln">   976  </span>				<span class="comment">// deletedAtの値を変更</span>
+<span id="L977" class="ln">   977  </span>				*deletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L978" class="ln">   978  </span>
+<span id="L979" class="ln">   979  </span>				assert.NotEqual(t, *deletedAt, *user.DeletedAt())
+<span id="L980" class="ln">   980  </span>				assert.Equal(t, original, *user.DeletedAt())
+<span id="L981" class="ln">   981  </span>			})
+<span id="L982" class="ln">   982  </span>
+<span id="L983" class="ln">   983  </span>			t.Run(&#34;DeletedAtメソッドの返り値のポインタを変更しても、ユーザーのdeletedAtが変更されていないことを確認する&#34;, func(t *testing.T) {
+<span id="L984" class="ln">   984  </span>				t.Parallel()
+<span id="L985" class="ln">   985  </span>
+<span id="L986" class="ln">   986  </span>				original := *user.DeletedAt()
 <span id="L987" class="ln">   987  </span>
-<span id="L988" class="ln">   988  </span><span class="comment">// newUserWithUpdatedAt は、createdAt=base・updatedAt=base+offset のユーザーを生成します（単調性検証用）。</span>
-<span id="L989" class="ln">   989  </span>func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time) {
-<span id="L990" class="ln">   990  </span>	t.Helper()
-<span id="L991" class="ln">   991  </span>	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L992" class="ln">   992  </span>	u, err := New(
-<span id="L993" class="ln">   993  </span>		uuid.NewTestFromSalt(t, &#34;user&#34;),
-<span id="L994" class="ln">   994  </span>		&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
-<span id="L995" class="ln">   995  </span>		uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
-<span id="L996" class="ln">   996  </span>		&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
-<span id="L997" class="ln">   997  </span>		base, base.Add(offset), nil,
-<span id="L998" class="ln">   998  </span>	)
-<span id="L999" class="ln">   999  </span>	require.NoError(t, err)
-<span id="L1000" class="ln">  1000  </span>	return u, base
-<span id="L1001" class="ln">  1001  </span>}
-<span id="L1002" class="ln">  1002  </span>
-<span id="L1003" class="ln">  1003  </span>func TestUser_UpdateProfile(t *testing.T) {
-<span id="L1004" class="ln">  1004  </span>	t.Parallel()
-<span id="L1005" class="ln">  1005  </span>
-<span id="L1006" class="ln">  1006  </span>	newPrefID := uuid.NewTestFromSalt(t, &#34;prefecture2&#34;)
-<span id="L1007" class="ln">  1007  </span>
-<span id="L1008" class="ln">  1008  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L1009" class="ln">  1009  </span>		t.Parallel()
-<span id="L1010" class="ln">  1010  </span>
-<span id="L1011" class="ln">  1011  </span>		t.Run(&#34;全フィールドと更新日時が置き換わる&#34;, func(t *testing.T) {
-<span id="L1012" class="ln">  1012  </span>			t.Parallel()
-<span id="L1013" class="ln">  1013  </span>			u, base := newValidUser(t)
-<span id="L1014" class="ln">  1014  </span>			newUpdatedAt := base.Add(time.Hour)
-<span id="L1015" class="ln">  1015  </span>
-<span id="L1016" class="ln">  1016  </span>			err := u.UpdateProfile(&#34;Jane&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
-<span id="L1017" class="ln">  1017  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, new(&#34;Tower&#34;), &#34;200-0002&#34;, newUpdatedAt)
-<span id="L1018" class="ln">  1018  </span>			require.NoError(t, err)
+<span id="L988" class="ln">   988  </span>				<span class="comment">// DeletedAtメソッドの返り値のポインタを変更</span>
+<span id="L989" class="ln">   989  </span>				actualDeletedAt := user.DeletedAt()
+<span id="L990" class="ln">   990  </span>				*actualDeletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L991" class="ln">   991  </span>
+<span id="L992" class="ln">   992  </span>				assert.NotEqual(t, *actualDeletedAt, *user.DeletedAt())
+<span id="L993" class="ln">   993  </span>				assert.Equal(t, original, *user.DeletedAt())
+<span id="L994" class="ln">   994  </span>			})
+<span id="L995" class="ln">   995  </span>		})
+<span id="L996" class="ln">   996  </span>	})
+<span id="L997" class="ln">   997  </span>}
+<span id="L998" class="ln">   998  </span>
+<span id="L999" class="ln">   999  </span>func TestUser_CreatedAt(t *testing.T) {
+<span id="L1000" class="ln">  1000  </span>	t.Parallel()
+<span id="L1001" class="ln">  1001  </span>
+<span id="L1002" class="ln">  1002  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1003" class="ln">  1003  </span>		t.Parallel()
+<span id="L1004" class="ln">  1004  </span>
+<span id="L1005" class="ln">  1005  </span>		t.Run(&#34;保存した作成日時を返す&#34;, func(t *testing.T) {
+<span id="L1006" class="ln">  1006  </span>			t.Parallel()
+<span id="L1007" class="ln">  1007  </span>			u := newAccessorUser(t)
+<span id="L1008" class="ln">  1008  </span>
+<span id="L1009" class="ln">  1009  </span>			assert.Equal(t, u.createdAt, u.CreatedAt())
+<span id="L1010" class="ln">  1010  </span>		})
+<span id="L1011" class="ln">  1011  </span>	})
+<span id="L1012" class="ln">  1012  </span>}
+<span id="L1013" class="ln">  1013  </span>
+<span id="L1014" class="ln">  1014  </span>func TestUser_UpdatedAt(t *testing.T) {
+<span id="L1015" class="ln">  1015  </span>	t.Parallel()
+<span id="L1016" class="ln">  1016  </span>
+<span id="L1017" class="ln">  1017  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1018" class="ln">  1018  </span>		t.Parallel()
 <span id="L1019" class="ln">  1019  </span>
-<span id="L1020" class="ln">  1020  </span>			assert.Equal(t, &#34;Jane&#34;, u.firstName)
-<span id="L1021" class="ln">  1021  </span>			assert.Equal(t, &#34;Smith&#34;, u.lastName)
-<span id="L1022" class="ln">  1022  </span>			assert.Equal(t, &#34;jane@example.com&#34;, u.email.Value())
-<span id="L1023" class="ln">  1023  </span>			assert.Equal(t, &#34;0987654321&#34;, u.phone)
-<span id="L1024" class="ln">  1024  </span>			assert.Equal(t, newPrefID, u.prefectureID)
-<span id="L1025" class="ln">  1025  </span>			assert.Equal(t, &#34;Minato&#34;, u.city)
-<span id="L1026" class="ln">  1026  </span>			assert.Equal(t, &#34;4-5-6&#34;, u.street)
-<span id="L1027" class="ln">  1027  </span>			require.NotNil(t, u.building)
-<span id="L1028" class="ln">  1028  </span>			assert.Equal(t, &#34;Tower&#34;, *u.building)
-<span id="L1029" class="ln">  1029  </span>			assert.Equal(t, &#34;200-0002&#34;, u.postalCode.Value())
-<span id="L1030" class="ln">  1030  </span>			assert.Equal(t, newUpdatedAt, u.updatedAt)
-<span id="L1031" class="ln">  1031  </span>		})
-<span id="L1032" class="ln">  1032  </span>	})
-<span id="L1033" class="ln">  1033  </span>
-<span id="L1034" class="ln">  1034  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L1035" class="ln">  1035  </span>		t.Parallel()
-<span id="L1036" class="ln">  1036  </span>
-<span id="L1037" class="ln">  1037  </span>		t.Run(&#34;単一フィールドが不正な場合、そのフィールド識別子のみが付与される&#34;, func(t *testing.T) {
-<span id="L1038" class="ln">  1038  </span>			t.Parallel()
-<span id="L1039" class="ln">  1039  </span>			u, base := newValidUser(t)
-<span id="L1040" class="ln">  1040  </span>
-<span id="L1041" class="ln">  1041  </span>			err := u.UpdateProfile(&#34;&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
-<span id="L1042" class="ln">  1042  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(time.Hour))
-<span id="L1043" class="ln">  1043  </span>			require.ErrorIs(t, err, ErrInvalidFirstName)
-<span id="L1044" class="ln">  1044  </span>			meta, ok := apperror.MetaFrom(err)
-<span id="L1045" class="ln">  1045  </span>			require.True(t, ok)
-<span id="L1046" class="ln">  1046  </span>			assert.Equal(t, []string{FieldFirstName}, meta.Details())
-<span id="L1047" class="ln">  1047  </span>		})
-<span id="L1048" class="ln">  1048  </span>
-<span id="L1049" class="ln">  1049  </span>		t.Run(&#34;複数フィールドが同時に不正な場合、全フィールドのエラーと識別子が収集される&#34;, func(t *testing.T) {
-<span id="L1050" class="ln">  1050  </span>			t.Parallel()
-<span id="L1051" class="ln">  1051  </span>			u, base := newValidUser(t)
-<span id="L1052" class="ln">  1052  </span>
-<span id="L1053" class="ln">  1053  </span>			err := u.UpdateProfile(&#34;&#34;, &#34;Smith&#34;, strings.Repeat(&#34;e&#34;, maxEmailLength+1), &#34;0987654321&#34;,
-<span id="L1054" class="ln">  1054  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(time.Hour))
-<span id="L1055" class="ln">  1055  </span>			require.ErrorIs(t, err, ErrInvalidFirstName)
-<span id="L1056" class="ln">  1056  </span>			require.ErrorIs(t, err, ErrInvalidEmail)
-<span id="L1057" class="ln">  1057  </span>			require.ErrorIs(t, err, apperror.ErrValidation)
-<span id="L1058" class="ln">  1058  </span>			meta, ok := apperror.MetaFrom(err)
-<span id="L1059" class="ln">  1059  </span>			require.True(t, ok)
-<span id="L1060" class="ln">  1060  </span>			assert.Equal(t, []string{FieldFirstName, FieldEmail}, meta.Details())
-<span id="L1061" class="ln">  1061  </span>		})
-<span id="L1062" class="ln">  1062  </span>
-<span id="L1063" class="ln">  1063  </span>		t.Run(&#34;updatedAtがcreatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
-<span id="L1064" class="ln">  1064  </span>			t.Parallel()
-<span id="L1065" class="ln">  1065  </span>			u, base := newValidUser(t)
-<span id="L1066" class="ln">  1066  </span>
-<span id="L1067" class="ln">  1067  </span>			err := u.UpdateProfile(&#34;Jane&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
-<span id="L1068" class="ln">  1068  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(-time.Hour))
-<span id="L1069" class="ln">  1069  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-<span id="L1070" class="ln">  1070  </span>		})
-<span id="L1071" class="ln">  1071  </span>
-<span id="L1072" class="ln">  1072  </span>		t.Run(&#34;updatedAtが現在のupdatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
-<span id="L1073" class="ln">  1073  </span>			t.Parallel()
-<span id="L1074" class="ln">  1074  </span>			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
-<span id="L1075" class="ln">  1075  </span>
-<span id="L1076" class="ln">  1076  </span>			<span class="comment">// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される</span>
-<span id="L1077" class="ln">  1077  </span>			err := u.UpdateProfile(&#34;Jane&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
-<span id="L1078" class="ln">  1078  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(time.Hour))
-<span id="L1079" class="ln">  1079  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-<span id="L1080" class="ln">  1080  </span>		})
+<span id="L1020" class="ln">  1020  </span>		t.Run(&#34;保存した更新日時を返す&#34;, func(t *testing.T) {
+<span id="L1021" class="ln">  1021  </span>			t.Parallel()
+<span id="L1022" class="ln">  1022  </span>			u := newAccessorUser(t)
+<span id="L1023" class="ln">  1023  </span>
+<span id="L1024" class="ln">  1024  </span>			assert.Equal(t, u.updatedAt, u.UpdatedAt())
+<span id="L1025" class="ln">  1025  </span>		})
+<span id="L1026" class="ln">  1026  </span>	})
+<span id="L1027" class="ln">  1027  </span>}
+<span id="L1028" class="ln">  1028  </span>
+<span id="L1029" class="ln">  1029  </span>func TestUser_FullName(t *testing.T) {
+<span id="L1030" class="ln">  1030  </span>	t.Parallel()
+<span id="L1031" class="ln">  1031  </span>
+<span id="L1032" class="ln">  1032  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1033" class="ln">  1033  </span>		t.Parallel()
+<span id="L1034" class="ln">  1034  </span>
+<span id="L1035" class="ln">  1035  </span>		t.Run(&#34;名前と名字を空白で連結した値を返す&#34;, func(t *testing.T) {
+<span id="L1036" class="ln">  1036  </span>			t.Parallel()
+<span id="L1037" class="ln">  1037  </span>			u := newAccessorUser(t)
+<span id="L1038" class="ln">  1038  </span>
+<span id="L1039" class="ln">  1039  </span>			assert.Equal(t, u.firstName+&#34; &#34;+u.lastName, u.FullName())
+<span id="L1040" class="ln">  1040  </span>		})
+<span id="L1041" class="ln">  1041  </span>	})
+<span id="L1042" class="ln">  1042  </span>}
+<span id="L1043" class="ln">  1043  </span>
+<span id="L1044" class="ln">  1044  </span><span class="comment">// newValidUser は、削除されていない有効なユーザーと基準時刻を返すテストヘルパー。</span>
+<span id="L1045" class="ln">  1045  </span>func newValidUser(t *testing.T) (*User, time.Time) {
+<span id="L1046" class="ln">  1046  </span>	t.Helper()
+<span id="L1047" class="ln">  1047  </span>	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L1048" class="ln">  1048  </span>	u, err := New(
+<span id="L1049" class="ln">  1049  </span>		uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L1050" class="ln">  1050  </span>		&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
+<span id="L1051" class="ln">  1051  </span>		uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L1052" class="ln">  1052  </span>		&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
+<span id="L1053" class="ln">  1053  </span>		base, base, nil,
+<span id="L1054" class="ln">  1054  </span>	)
+<span id="L1055" class="ln">  1055  </span>	require.NoError(t, err)
+<span id="L1056" class="ln">  1056  </span>	return u, base
+<span id="L1057" class="ln">  1057  </span>}
+<span id="L1058" class="ln">  1058  </span>
+<span id="L1059" class="ln">  1059  </span><span class="comment">// newUserWithUpdatedAt は、createdAt=base・updatedAt=base+offset のユーザーを生成します（単調性検証用）。</span>
+<span id="L1060" class="ln">  1060  </span>func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time) {
+<span id="L1061" class="ln">  1061  </span>	t.Helper()
+<span id="L1062" class="ln">  1062  </span>	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L1063" class="ln">  1063  </span>	u, err := New(
+<span id="L1064" class="ln">  1064  </span>		uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L1065" class="ln">  1065  </span>		&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
+<span id="L1066" class="ln">  1066  </span>		uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L1067" class="ln">  1067  </span>		&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
+<span id="L1068" class="ln">  1068  </span>		base, base.Add(offset), nil,
+<span id="L1069" class="ln">  1069  </span>	)
+<span id="L1070" class="ln">  1070  </span>	require.NoError(t, err)
+<span id="L1071" class="ln">  1071  </span>	return u, base
+<span id="L1072" class="ln">  1072  </span>}
+<span id="L1073" class="ln">  1073  </span>
+<span id="L1074" class="ln">  1074  </span>func TestUser_UpdateProfile(t *testing.T) {
+<span id="L1075" class="ln">  1075  </span>	t.Parallel()
+<span id="L1076" class="ln">  1076  </span>
+<span id="L1077" class="ln">  1077  </span>	newPrefID := uuid.NewTestFromSalt(t, &#34;prefecture2&#34;)
+<span id="L1078" class="ln">  1078  </span>
+<span id="L1079" class="ln">  1079  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1080" class="ln">  1080  </span>		t.Parallel()
 <span id="L1081" class="ln">  1081  </span>
-<span id="L1082" class="ln">  1082  </span>		t.Run(&#34;論理削除済みユーザーは更新できない&#34;, func(t *testing.T) {
+<span id="L1082" class="ln">  1082  </span>		t.Run(&#34;全フィールドと更新日時が置き換わる&#34;, func(t *testing.T) {
 <span id="L1083" class="ln">  1083  </span>			t.Parallel()
 <span id="L1084" class="ln">  1084  </span>			u, base := newValidUser(t)
-<span id="L1085" class="ln">  1085  </span>			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+<span id="L1085" class="ln">  1085  </span>			newUpdatedAt := base.Add(time.Hour)
 <span id="L1086" class="ln">  1086  </span>
 <span id="L1087" class="ln">  1087  </span>			err := u.UpdateProfile(&#34;Jane&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
-<span id="L1088" class="ln">  1088  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(2*time.Hour))
-<span id="L1089" class="ln">  1089  </span>			require.ErrorIs(t, err, ErrAlreadyDeleted)
-<span id="L1090" class="ln">  1090  </span>		})
-<span id="L1091" class="ln">  1091  </span>	})
-<span id="L1092" class="ln">  1092  </span>}
-<span id="L1093" class="ln">  1093  </span>
-<span id="L1094" class="ln">  1094  </span>func TestUser_ChangePassword(t *testing.T) {
-<span id="L1095" class="ln">  1095  </span>	t.Parallel()
-<span id="L1096" class="ln">  1096  </span>
-<span id="L1097" class="ln">  1097  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L1098" class="ln">  1098  </span>		t.Parallel()
-<span id="L1099" class="ln">  1099  </span>
-<span id="L1100" class="ln">  1100  </span>		t.Run(&#34;パスワードハッシュと更新日時が置き換わる&#34;, func(t *testing.T) {
-<span id="L1101" class="ln">  1101  </span>			t.Parallel()
-<span id="L1102" class="ln">  1102  </span>			u, base := newValidUser(t)
-<span id="L1103" class="ln">  1103  </span>			newUpdatedAt := base.Add(time.Hour)
+<span id="L1088" class="ln">  1088  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, new(&#34;Tower&#34;), &#34;200-0002&#34;, newUpdatedAt)
+<span id="L1089" class="ln">  1089  </span>			require.NoError(t, err)
+<span id="L1090" class="ln">  1090  </span>
+<span id="L1091" class="ln">  1091  </span>			assert.Equal(t, &#34;Jane&#34;, u.firstName)
+<span id="L1092" class="ln">  1092  </span>			assert.Equal(t, &#34;Smith&#34;, u.lastName)
+<span id="L1093" class="ln">  1093  </span>			assert.Equal(t, &#34;jane@example.com&#34;, u.email.Value())
+<span id="L1094" class="ln">  1094  </span>			assert.Equal(t, &#34;0987654321&#34;, u.phone)
+<span id="L1095" class="ln">  1095  </span>			assert.Equal(t, newPrefID, u.prefectureID)
+<span id="L1096" class="ln">  1096  </span>			assert.Equal(t, &#34;Minato&#34;, u.city)
+<span id="L1097" class="ln">  1097  </span>			assert.Equal(t, &#34;4-5-6&#34;, u.street)
+<span id="L1098" class="ln">  1098  </span>			require.NotNil(t, u.building)
+<span id="L1099" class="ln">  1099  </span>			assert.Equal(t, &#34;Tower&#34;, *u.building)
+<span id="L1100" class="ln">  1100  </span>			assert.Equal(t, &#34;200-0002&#34;, u.postalCode.Value())
+<span id="L1101" class="ln">  1101  </span>			assert.Equal(t, newUpdatedAt, u.updatedAt)
+<span id="L1102" class="ln">  1102  </span>		})
+<span id="L1103" class="ln">  1103  </span>	})
 <span id="L1104" class="ln">  1104  </span>
-<span id="L1105" class="ln">  1105  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, newUpdatedAt)
-<span id="L1106" class="ln">  1106  </span>			require.NoError(t, err)
-<span id="L1107" class="ln">  1107  </span>			assert.Equal(t, &#34;new_hashed_password&#34;, u.passwordHash)
-<span id="L1108" class="ln">  1108  </span>			assert.Equal(t, newUpdatedAt, u.updatedAt)
-<span id="L1109" class="ln">  1109  </span>		})
-<span id="L1110" class="ln">  1110  </span>	})
+<span id="L1105" class="ln">  1105  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1106" class="ln">  1106  </span>		t.Parallel()
+<span id="L1107" class="ln">  1107  </span>
+<span id="L1108" class="ln">  1108  </span>		t.Run(&#34;単一フィールドが不正な場合、そのフィールド識別子のみが付与される&#34;, func(t *testing.T) {
+<span id="L1109" class="ln">  1109  </span>			t.Parallel()
+<span id="L1110" class="ln">  1110  </span>			u, base := newValidUser(t)
 <span id="L1111" class="ln">  1111  </span>
-<span id="L1112" class="ln">  1112  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L1113" class="ln">  1113  </span>		t.Parallel()
-<span id="L1114" class="ln">  1114  </span>
-<span id="L1115" class="ln">  1115  </span>		t.Run(&#34;パスワードハッシュが不正な場合、エラーを返す&#34;, func(t *testing.T) {
-<span id="L1116" class="ln">  1116  </span>			t.Parallel()
-<span id="L1117" class="ln">  1117  </span>			u, base := newValidUser(t)
-<span id="L1118" class="ln">  1118  </span>
-<span id="L1119" class="ln">  1119  </span>			err := u.ChangePassword(&#34;&#34;, base.Add(time.Hour))
-<span id="L1120" class="ln">  1120  </span>			require.ErrorIs(t, err, ErrInvalidPasswordHash)
-<span id="L1121" class="ln">  1121  </span>		})
-<span id="L1122" class="ln">  1122  </span>
-<span id="L1123" class="ln">  1123  </span>		t.Run(&#34;updatedAtがcreatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
-<span id="L1124" class="ln">  1124  </span>			t.Parallel()
-<span id="L1125" class="ln">  1125  </span>			u, base := newValidUser(t)
-<span id="L1126" class="ln">  1126  </span>
-<span id="L1127" class="ln">  1127  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, base.Add(-time.Hour))
-<span id="L1128" class="ln">  1128  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-<span id="L1129" class="ln">  1129  </span>		})
-<span id="L1130" class="ln">  1130  </span>
-<span id="L1131" class="ln">  1131  </span>		t.Run(&#34;updatedAtが現在のupdatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
-<span id="L1132" class="ln">  1132  </span>			t.Parallel()
-<span id="L1133" class="ln">  1133  </span>			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
-<span id="L1134" class="ln">  1134  </span>
-<span id="L1135" class="ln">  1135  </span>			<span class="comment">// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される</span>
-<span id="L1136" class="ln">  1136  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, base.Add(time.Hour))
-<span id="L1137" class="ln">  1137  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-<span id="L1138" class="ln">  1138  </span>		})
-<span id="L1139" class="ln">  1139  </span>
-<span id="L1140" class="ln">  1140  </span>		t.Run(&#34;論理削除済みユーザーはパスワード変更できない&#34;, func(t *testing.T) {
-<span id="L1141" class="ln">  1141  </span>			t.Parallel()
-<span id="L1142" class="ln">  1142  </span>			u, base := newValidUser(t)
-<span id="L1143" class="ln">  1143  </span>			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
-<span id="L1144" class="ln">  1144  </span>
-<span id="L1145" class="ln">  1145  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, base.Add(2*time.Hour))
-<span id="L1146" class="ln">  1146  </span>			require.ErrorIs(t, err, ErrAlreadyDeleted)
-<span id="L1147" class="ln">  1147  </span>		})
-<span id="L1148" class="ln">  1148  </span>	})
-<span id="L1149" class="ln">  1149  </span>}
-<span id="L1150" class="ln">  1150  </span>
-<span id="L1151" class="ln">  1151  </span>func TestUser_MarkAsDeleted(t *testing.T) {
-<span id="L1152" class="ln">  1152  </span>	t.Parallel()
-<span id="L1153" class="ln">  1153  </span>
-<span id="L1154" class="ln">  1154  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L1155" class="ln">  1155  </span>		t.Parallel()
-<span id="L1156" class="ln">  1156  </span>
-<span id="L1157" class="ln">  1157  </span>		t.Run(&#34;deletedAtが設定される&#34;, func(t *testing.T) {
-<span id="L1158" class="ln">  1158  </span>			t.Parallel()
-<span id="L1159" class="ln">  1159  </span>			u, base := newValidUser(t)
-<span id="L1160" class="ln">  1160  </span>			deletedAt := base.Add(time.Hour)
-<span id="L1161" class="ln">  1161  </span>
-<span id="L1162" class="ln">  1162  </span>			err := u.MarkAsDeleted(deletedAt)
-<span id="L1163" class="ln">  1163  </span>			require.NoError(t, err)
-<span id="L1164" class="ln">  1164  </span>			require.NotNil(t, u.deletedAt)
-<span id="L1165" class="ln">  1165  </span>			assert.Equal(t, deletedAt, *u.deletedAt)
-<span id="L1166" class="ln">  1166  </span>			<span class="comment">// 論理削除時に updatedAt も削除時刻へ追従する</span>
-<span id="L1167" class="ln">  1167  </span>			assert.Equal(t, deletedAt, u.updatedAt)
-<span id="L1168" class="ln">  1168  </span>		})
-<span id="L1169" class="ln">  1169  </span>	})
+<span id="L1112" class="ln">  1112  </span>			err := u.UpdateProfile(&#34;&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
+<span id="L1113" class="ln">  1113  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(time.Hour))
+<span id="L1114" class="ln">  1114  </span>			require.ErrorIs(t, err, ErrInvalidFirstName)
+<span id="L1115" class="ln">  1115  </span>			meta, ok := apperror.MetaFrom(err)
+<span id="L1116" class="ln">  1116  </span>			require.True(t, ok)
+<span id="L1117" class="ln">  1117  </span>			assert.Equal(t, []string{FieldFirstName}, meta.Details())
+<span id="L1118" class="ln">  1118  </span>		})
+<span id="L1119" class="ln">  1119  </span>
+<span id="L1120" class="ln">  1120  </span>		t.Run(&#34;複数フィールドが同時に不正な場合、全フィールドのエラーと識別子が収集される&#34;, func(t *testing.T) {
+<span id="L1121" class="ln">  1121  </span>			t.Parallel()
+<span id="L1122" class="ln">  1122  </span>			u, base := newValidUser(t)
+<span id="L1123" class="ln">  1123  </span>
+<span id="L1124" class="ln">  1124  </span>			err := u.UpdateProfile(&#34;&#34;, &#34;Smith&#34;, strings.Repeat(&#34;e&#34;, maxEmailLength+1), &#34;0987654321&#34;,
+<span id="L1125" class="ln">  1125  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(time.Hour))
+<span id="L1126" class="ln">  1126  </span>			require.ErrorIs(t, err, ErrInvalidFirstName)
+<span id="L1127" class="ln">  1127  </span>			require.ErrorIs(t, err, ErrInvalidEmail)
+<span id="L1128" class="ln">  1128  </span>			require.ErrorIs(t, err, apperror.ErrValidation)
+<span id="L1129" class="ln">  1129  </span>			meta, ok := apperror.MetaFrom(err)
+<span id="L1130" class="ln">  1130  </span>			require.True(t, ok)
+<span id="L1131" class="ln">  1131  </span>			assert.Equal(t, []string{FieldFirstName, FieldEmail}, meta.Details())
+<span id="L1132" class="ln">  1132  </span>		})
+<span id="L1133" class="ln">  1133  </span>
+<span id="L1134" class="ln">  1134  </span>		t.Run(&#34;updatedAtがcreatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L1135" class="ln">  1135  </span>			t.Parallel()
+<span id="L1136" class="ln">  1136  </span>			u, base := newValidUser(t)
+<span id="L1137" class="ln">  1137  </span>
+<span id="L1138" class="ln">  1138  </span>			err := u.UpdateProfile(&#34;Jane&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
+<span id="L1139" class="ln">  1139  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(-time.Hour))
+<span id="L1140" class="ln">  1140  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+<span id="L1141" class="ln">  1141  </span>		})
+<span id="L1142" class="ln">  1142  </span>
+<span id="L1143" class="ln">  1143  </span>		t.Run(&#34;updatedAtが現在のupdatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L1144" class="ln">  1144  </span>			t.Parallel()
+<span id="L1145" class="ln">  1145  </span>			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
+<span id="L1146" class="ln">  1146  </span>
+<span id="L1147" class="ln">  1147  </span>			<span class="comment">// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される</span>
+<span id="L1148" class="ln">  1148  </span>			err := u.UpdateProfile(&#34;Jane&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
+<span id="L1149" class="ln">  1149  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(time.Hour))
+<span id="L1150" class="ln">  1150  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+<span id="L1151" class="ln">  1151  </span>		})
+<span id="L1152" class="ln">  1152  </span>
+<span id="L1153" class="ln">  1153  </span>		t.Run(&#34;論理削除済みユーザーは更新できない&#34;, func(t *testing.T) {
+<span id="L1154" class="ln">  1154  </span>			t.Parallel()
+<span id="L1155" class="ln">  1155  </span>			u, base := newValidUser(t)
+<span id="L1156" class="ln">  1156  </span>			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+<span id="L1157" class="ln">  1157  </span>
+<span id="L1158" class="ln">  1158  </span>			err := u.UpdateProfile(&#34;Jane&#34;, &#34;Smith&#34;, &#34;jane@example.com&#34;, &#34;0987654321&#34;,
+<span id="L1159" class="ln">  1159  </span>				newPrefID, &#34;Minato&#34;, &#34;4-5-6&#34;, nil, &#34;200-0002&#34;, base.Add(2*time.Hour))
+<span id="L1160" class="ln">  1160  </span>			require.ErrorIs(t, err, ErrAlreadyDeleted)
+<span id="L1161" class="ln">  1161  </span>		})
+<span id="L1162" class="ln">  1162  </span>	})
+<span id="L1163" class="ln">  1163  </span>}
+<span id="L1164" class="ln">  1164  </span>
+<span id="L1165" class="ln">  1165  </span>func TestUser_ChangePassword(t *testing.T) {
+<span id="L1166" class="ln">  1166  </span>	t.Parallel()
+<span id="L1167" class="ln">  1167  </span>
+<span id="L1168" class="ln">  1168  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1169" class="ln">  1169  </span>		t.Parallel()
 <span id="L1170" class="ln">  1170  </span>
-<span id="L1171" class="ln">  1171  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L1172" class="ln">  1172  </span>		t.Parallel()
-<span id="L1173" class="ln">  1173  </span>
-<span id="L1174" class="ln">  1174  </span>		t.Run(&#34;既に削除済みの場合、ErrAlreadyDeletedを返す&#34;, func(t *testing.T) {
-<span id="L1175" class="ln">  1175  </span>			t.Parallel()
-<span id="L1176" class="ln">  1176  </span>			u, base := newValidUser(t)
-<span id="L1177" class="ln">  1177  </span>			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
-<span id="L1178" class="ln">  1178  </span>
-<span id="L1179" class="ln">  1179  </span>			err := u.MarkAsDeleted(base.Add(2 * time.Hour))
-<span id="L1180" class="ln">  1180  </span>			require.ErrorIs(t, err, ErrAlreadyDeleted)
-<span id="L1181" class="ln">  1181  </span>		})
+<span id="L1171" class="ln">  1171  </span>		t.Run(&#34;パスワードハッシュと更新日時が置き換わる&#34;, func(t *testing.T) {
+<span id="L1172" class="ln">  1172  </span>			t.Parallel()
+<span id="L1173" class="ln">  1173  </span>			u, base := newValidUser(t)
+<span id="L1174" class="ln">  1174  </span>			newUpdatedAt := base.Add(time.Hour)
+<span id="L1175" class="ln">  1175  </span>
+<span id="L1176" class="ln">  1176  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, newUpdatedAt)
+<span id="L1177" class="ln">  1177  </span>			require.NoError(t, err)
+<span id="L1178" class="ln">  1178  </span>			assert.Equal(t, &#34;new_hashed_password&#34;, u.passwordHash)
+<span id="L1179" class="ln">  1179  </span>			assert.Equal(t, newUpdatedAt, u.updatedAt)
+<span id="L1180" class="ln">  1180  </span>		})
+<span id="L1181" class="ln">  1181  </span>	})
 <span id="L1182" class="ln">  1182  </span>
-<span id="L1183" class="ln">  1183  </span>		t.Run(&#34;deletedAtがcreatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
-<span id="L1184" class="ln">  1184  </span>			t.Parallel()
-<span id="L1185" class="ln">  1185  </span>			u, base := newValidUser(t)
-<span id="L1186" class="ln">  1186  </span>
-<span id="L1187" class="ln">  1187  </span>			err := u.MarkAsDeleted(base.Add(-time.Hour))
-<span id="L1188" class="ln">  1188  </span>			require.ErrorIs(t, err, ErrInvalidDeletedAt)
-<span id="L1189" class="ln">  1189  </span>		})
-<span id="L1190" class="ln">  1190  </span>
-<span id="L1191" class="ln">  1191  </span>		t.Run(&#34;deletedAtがupdatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
-<span id="L1192" class="ln">  1192  </span>			t.Parallel()
-<span id="L1193" class="ln">  1193  </span>			base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L1194" class="ln">  1194  </span>			u, err := New(
-<span id="L1195" class="ln">  1195  </span>				uuid.NewTestFromSalt(t, &#34;user&#34;),
-<span id="L1196" class="ln">  1196  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
-<span id="L1197" class="ln">  1197  </span>				uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
-<span id="L1198" class="ln">  1198  </span>				&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
-<span id="L1199" class="ln">  1199  </span>				base, base.Add(2*time.Hour), nil,
-<span id="L1200" class="ln">  1200  </span>			)
-<span id="L1201" class="ln">  1201  </span>			require.NoError(t, err)
-<span id="L1202" class="ln">  1202  </span>
-<span id="L1203" class="ln">  1203  </span>			err = u.MarkAsDeleted(base.Add(time.Hour))
-<span id="L1204" class="ln">  1204  </span>			require.ErrorIs(t, err, ErrInvalidDeletedAt)
-<span id="L1205" class="ln">  1205  </span>		})
-<span id="L1206" class="ln">  1206  </span>	})
-<span id="L1207" class="ln">  1207  </span>}
-<span id="L1208" class="ln">  1208  </span>
+<span id="L1183" class="ln">  1183  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1184" class="ln">  1184  </span>		t.Parallel()
+<span id="L1185" class="ln">  1185  </span>
+<span id="L1186" class="ln">  1186  </span>		t.Run(&#34;パスワードハッシュが不正な場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L1187" class="ln">  1187  </span>			t.Parallel()
+<span id="L1188" class="ln">  1188  </span>			u, base := newValidUser(t)
+<span id="L1189" class="ln">  1189  </span>
+<span id="L1190" class="ln">  1190  </span>			err := u.ChangePassword(&#34;&#34;, base.Add(time.Hour))
+<span id="L1191" class="ln">  1191  </span>			require.ErrorIs(t, err, ErrInvalidPasswordHash)
+<span id="L1192" class="ln">  1192  </span>		})
+<span id="L1193" class="ln">  1193  </span>
+<span id="L1194" class="ln">  1194  </span>		t.Run(&#34;updatedAtがcreatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L1195" class="ln">  1195  </span>			t.Parallel()
+<span id="L1196" class="ln">  1196  </span>			u, base := newValidUser(t)
+<span id="L1197" class="ln">  1197  </span>
+<span id="L1198" class="ln">  1198  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, base.Add(-time.Hour))
+<span id="L1199" class="ln">  1199  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+<span id="L1200" class="ln">  1200  </span>		})
+<span id="L1201" class="ln">  1201  </span>
+<span id="L1202" class="ln">  1202  </span>		t.Run(&#34;updatedAtが現在のupdatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L1203" class="ln">  1203  </span>			t.Parallel()
+<span id="L1204" class="ln">  1204  </span>			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
+<span id="L1205" class="ln">  1205  </span>
+<span id="L1206" class="ln">  1206  </span>			<span class="comment">// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される</span>
+<span id="L1207" class="ln">  1207  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, base.Add(time.Hour))
+<span id="L1208" class="ln">  1208  </span>			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+<span id="L1209" class="ln">  1209  </span>		})
+<span id="L1210" class="ln">  1210  </span>
+<span id="L1211" class="ln">  1211  </span>		t.Run(&#34;論理削除済みユーザーはパスワード変更できない&#34;, func(t *testing.T) {
+<span id="L1212" class="ln">  1212  </span>			t.Parallel()
+<span id="L1213" class="ln">  1213  </span>			u, base := newValidUser(t)
+<span id="L1214" class="ln">  1214  </span>			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+<span id="L1215" class="ln">  1215  </span>
+<span id="L1216" class="ln">  1216  </span>			err := u.ChangePassword(&#34;new_hashed_password&#34;, base.Add(2*time.Hour))
+<span id="L1217" class="ln">  1217  </span>			require.ErrorIs(t, err, ErrAlreadyDeleted)
+<span id="L1218" class="ln">  1218  </span>		})
+<span id="L1219" class="ln">  1219  </span>	})
+<span id="L1220" class="ln">  1220  </span>}
+<span id="L1221" class="ln">  1221  </span>
+<span id="L1222" class="ln">  1222  </span>func Test_User_ensureNotDeleted(t *testing.T) {
+<span id="L1223" class="ln">  1223  </span>	t.Parallel()
+<span id="L1224" class="ln">  1224  </span>
+<span id="L1225" class="ln">  1225  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1226" class="ln">  1226  </span>		t.Parallel()
+<span id="L1227" class="ln">  1227  </span>
+<span id="L1228" class="ln">  1228  </span>		t.Run(&#34;削除されていない場合、nil を返す&#34;, func(t *testing.T) {
+<span id="L1229" class="ln">  1229  </span>			t.Parallel()
+<span id="L1230" class="ln">  1230  </span>			u, _ := newValidUser(t)
+<span id="L1231" class="ln">  1231  </span>
+<span id="L1232" class="ln">  1232  </span>			require.NoError(t, u.ensureNotDeleted())
+<span id="L1233" class="ln">  1233  </span>		})
+<span id="L1234" class="ln">  1234  </span>	})
+<span id="L1235" class="ln">  1235  </span>
+<span id="L1236" class="ln">  1236  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1237" class="ln">  1237  </span>		t.Parallel()
+<span id="L1238" class="ln">  1238  </span>
+<span id="L1239" class="ln">  1239  </span>		t.Run(&#34;論理削除済みの場合、ErrAlreadyDeleted を返す&#34;, func(t *testing.T) {
+<span id="L1240" class="ln">  1240  </span>			t.Parallel()
+<span id="L1241" class="ln">  1241  </span>			u, base := newValidUser(t)
+<span id="L1242" class="ln">  1242  </span>			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+<span id="L1243" class="ln">  1243  </span>
+<span id="L1244" class="ln">  1244  </span>			require.ErrorIs(t, u.ensureNotDeleted(), ErrAlreadyDeleted)
+<span id="L1245" class="ln">  1245  </span>		})
+<span id="L1246" class="ln">  1246  </span>	})
+<span id="L1247" class="ln">  1247  </span>}
+<span id="L1248" class="ln">  1248  </span>
+<span id="L1249" class="ln">  1249  </span>func Test_User_ensureUpdatedAt(t *testing.T) {
+<span id="L1250" class="ln">  1250  </span>	t.Parallel()
+<span id="L1251" class="ln">  1251  </span>
+<span id="L1252" class="ln">  1252  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1253" class="ln">  1253  </span>		t.Parallel()
+<span id="L1254" class="ln">  1254  </span>
+<span id="L1255" class="ln">  1255  </span>		t.Run(&#34;現在の updatedAt 以降の場合、nil を返す&#34;, func(t *testing.T) {
+<span id="L1256" class="ln">  1256  </span>			t.Parallel()
+<span id="L1257" class="ln">  1257  </span>			u, base := newValidUser(t)
+<span id="L1258" class="ln">  1258  </span>
+<span id="L1259" class="ln">  1259  </span>			require.NoError(t, u.ensureUpdatedAt(base.Add(time.Hour)))
+<span id="L1260" class="ln">  1260  </span>		})
+<span id="L1261" class="ln">  1261  </span>
+<span id="L1262" class="ln">  1262  </span>		t.Run(&#34;現在の updatedAt と等しい場合、nil を返す&#34;, func(t *testing.T) {
+<span id="L1263" class="ln">  1263  </span>			t.Parallel()
+<span id="L1264" class="ln">  1264  </span>			u, base := newValidUser(t)
+<span id="L1265" class="ln">  1265  </span>
+<span id="L1266" class="ln">  1266  </span>			require.NoError(t, u.ensureUpdatedAt(base))
+<span id="L1267" class="ln">  1267  </span>		})
+<span id="L1268" class="ln">  1268  </span>	})
+<span id="L1269" class="ln">  1269  </span>
+<span id="L1270" class="ln">  1270  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1271" class="ln">  1271  </span>		t.Parallel()
+<span id="L1272" class="ln">  1272  </span>
+<span id="L1273" class="ln">  1273  </span>		t.Run(&#34;createdAt より前の場合、ErrInvalidUpdatedAt を返す&#34;, func(t *testing.T) {
+<span id="L1274" class="ln">  1274  </span>			t.Parallel()
+<span id="L1275" class="ln">  1275  </span>			u, base := newValidUser(t)
+<span id="L1276" class="ln">  1276  </span>
+<span id="L1277" class="ln">  1277  </span>			require.ErrorIs(t, u.ensureUpdatedAt(base.Add(-time.Hour)), ErrInvalidUpdatedAt)
+<span id="L1278" class="ln">  1278  </span>		})
+<span id="L1279" class="ln">  1279  </span>
+<span id="L1280" class="ln">  1280  </span>		t.Run(&#34;現在の updatedAt より前の場合、ErrInvalidUpdatedAt を返す&#34;, func(t *testing.T) {
+<span id="L1281" class="ln">  1281  </span>			t.Parallel()
+<span id="L1282" class="ln">  1282  </span>			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
+<span id="L1283" class="ln">  1283  </span>
+<span id="L1284" class="ln">  1284  </span>			<span class="comment">// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反となる</span>
+<span id="L1285" class="ln">  1285  </span>			require.ErrorIs(t, u.ensureUpdatedAt(base.Add(time.Hour)), ErrInvalidUpdatedAt)
+<span id="L1286" class="ln">  1286  </span>		})
+<span id="L1287" class="ln">  1287  </span>	})
+<span id="L1288" class="ln">  1288  </span>}
+<span id="L1289" class="ln">  1289  </span>
+<span id="L1290" class="ln">  1290  </span>func Test_validateDeletedAt(t *testing.T) {
+<span id="L1291" class="ln">  1291  </span>	t.Parallel()
+<span id="L1292" class="ln">  1292  </span>
+<span id="L1293" class="ln">  1293  </span>	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L1294" class="ln">  1294  </span>	updatedAt := base.Add(time.Hour)
+<span id="L1295" class="ln">  1295  </span>
+<span id="L1296" class="ln">  1296  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1297" class="ln">  1297  </span>		t.Parallel()
+<span id="L1298" class="ln">  1298  </span>
+<span id="L1299" class="ln">  1299  </span>		t.Run(&#34;createdAt / updatedAt 以降の場合、nil を返す&#34;, func(t *testing.T) {
+<span id="L1300" class="ln">  1300  </span>			t.Parallel()
+<span id="L1301" class="ln">  1301  </span>
+<span id="L1302" class="ln">  1302  </span>			require.NoError(t, validateDeletedAt(updatedAt.Add(time.Minute), base, updatedAt))
+<span id="L1303" class="ln">  1303  </span>		})
+<span id="L1304" class="ln">  1304  </span>
+<span id="L1305" class="ln">  1305  </span>		t.Run(&#34;updatedAt と等しい場合、nil を返す&#34;, func(t *testing.T) {
+<span id="L1306" class="ln">  1306  </span>			t.Parallel()
+<span id="L1307" class="ln">  1307  </span>
+<span id="L1308" class="ln">  1308  </span>			require.NoError(t, validateDeletedAt(updatedAt, base, updatedAt))
+<span id="L1309" class="ln">  1309  </span>		})
+<span id="L1310" class="ln">  1310  </span>	})
+<span id="L1311" class="ln">  1311  </span>
+<span id="L1312" class="ln">  1312  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1313" class="ln">  1313  </span>		t.Parallel()
+<span id="L1314" class="ln">  1314  </span>
+<span id="L1315" class="ln">  1315  </span>		t.Run(&#34;createdAt より前の場合、ErrInvalidDeletedAt を返す&#34;, func(t *testing.T) {
+<span id="L1316" class="ln">  1316  </span>			t.Parallel()
+<span id="L1317" class="ln">  1317  </span>
+<span id="L1318" class="ln">  1318  </span>			require.ErrorIs(t, validateDeletedAt(base.Add(-time.Minute), base, updatedAt), ErrInvalidDeletedAt)
+<span id="L1319" class="ln">  1319  </span>		})
+<span id="L1320" class="ln">  1320  </span>
+<span id="L1321" class="ln">  1321  </span>		t.Run(&#34;updatedAt より前の場合、ErrInvalidDeletedAt を返す&#34;, func(t *testing.T) {
+<span id="L1322" class="ln">  1322  </span>			t.Parallel()
+<span id="L1323" class="ln">  1323  </span>
+<span id="L1324" class="ln">  1324  </span>			<span class="comment">// createdAt 以降だが updatedAt より前の削除時刻は拒否される</span>
+<span id="L1325" class="ln">  1325  </span>			require.ErrorIs(t, validateDeletedAt(base.Add(time.Minute), base, updatedAt), ErrInvalidDeletedAt)
+<span id="L1326" class="ln">  1326  </span>		})
+<span id="L1327" class="ln">  1327  </span>	})
+<span id="L1328" class="ln">  1328  </span>}
+<span id="L1329" class="ln">  1329  </span>
+<span id="L1330" class="ln">  1330  </span>func Test_validatePasswordHash(t *testing.T) {
+<span id="L1331" class="ln">  1331  </span>	t.Parallel()
+<span id="L1332" class="ln">  1332  </span>
+<span id="L1333" class="ln">  1333  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1334" class="ln">  1334  </span>		t.Parallel()
+<span id="L1335" class="ln">  1335  </span>
+<span id="L1336" class="ln">  1336  </span>		t.Run(&#34;範囲内の場合、nil を返す&#34;, func(t *testing.T) {
+<span id="L1337" class="ln">  1337  </span>			t.Parallel()
+<span id="L1338" class="ln">  1338  </span>
+<span id="L1339" class="ln">  1339  </span>			require.NoError(t, validatePasswordHash(&#34;hashed_password&#34;))
+<span id="L1340" class="ln">  1340  </span>		})
+<span id="L1341" class="ln">  1341  </span>	})
+<span id="L1342" class="ln">  1342  </span>
+<span id="L1343" class="ln">  1343  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1344" class="ln">  1344  </span>		t.Parallel()
+<span id="L1345" class="ln">  1345  </span>
+<span id="L1346" class="ln">  1346  </span>		t.Run(&#34;最小値未満の場合、ErrInvalidPasswordHash を返す&#34;, func(t *testing.T) {
+<span id="L1347" class="ln">  1347  </span>			t.Parallel()
+<span id="L1348" class="ln">  1348  </span>
+<span id="L1349" class="ln">  1349  </span>			require.ErrorIs(t, validatePasswordHash(strings.Repeat(&#34;a&#34;, minLength-1)), ErrInvalidPasswordHash)
+<span id="L1350" class="ln">  1350  </span>		})
+<span id="L1351" class="ln">  1351  </span>
+<span id="L1352" class="ln">  1352  </span>		t.Run(&#34;最大値を超える場合、ErrInvalidPasswordHash を返す&#34;, func(t *testing.T) {
+<span id="L1353" class="ln">  1353  </span>			t.Parallel()
+<span id="L1354" class="ln">  1354  </span>
+<span id="L1355" class="ln">  1355  </span>			require.ErrorIs(t, validatePasswordHash(strings.Repeat(&#34;a&#34;, maxPasswordHashLength+1)), ErrInvalidPasswordHash)
+<span id="L1356" class="ln">  1356  </span>		})
+<span id="L1357" class="ln">  1357  </span>	})
+<span id="L1358" class="ln">  1358  </span>}
+<span id="L1359" class="ln">  1359  </span>
+<span id="L1360" class="ln">  1360  </span>func Test_validateProfileFields(t *testing.T) {
+<span id="L1361" class="ln">  1361  </span>	t.Parallel()
+<span id="L1362" class="ln">  1362  </span>
+<span id="L1363" class="ln">  1363  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture&#34;)
+<span id="L1364" class="ln">  1364  </span>
+<span id="L1365" class="ln">  1365  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1366" class="ln">  1366  </span>		t.Parallel()
+<span id="L1367" class="ln">  1367  </span>
+<span id="L1368" class="ln">  1368  </span>		t.Run(&#34;全フィールドが正しい場合、VO を返しエラーは nil&#34;, func(t *testing.T) {
+<span id="L1369" class="ln">  1369  </span>			t.Parallel()
+<span id="L1370" class="ln">  1370  </span>
+<span id="L1371" class="ln">  1371  </span>			emailVO, postalCodeVO, err := validateProfileFields(
+<span id="L1372" class="ln">  1372  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
+<span id="L1373" class="ln">  1373  </span>				prefectureID, &#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
+<span id="L1374" class="ln">  1374  </span>			)
+<span id="L1375" class="ln">  1375  </span>			require.NoError(t, err)
+<span id="L1376" class="ln">  1376  </span>			assert.Equal(t, &#34;john@example.com&#34;, emailVO.Value())
+<span id="L1377" class="ln">  1377  </span>			assert.Equal(t, &#34;150-0001&#34;, postalCodeVO.Value())
+<span id="L1378" class="ln">  1378  </span>		})
+<span id="L1379" class="ln">  1379  </span>
+<span id="L1380" class="ln">  1380  </span>		t.Run(&#34;building が nil の場合でも、VO を返しエラーは nil&#34;, func(t *testing.T) {
+<span id="L1381" class="ln">  1381  </span>			t.Parallel()
+<span id="L1382" class="ln">  1382  </span>
+<span id="L1383" class="ln">  1383  </span>			_, _, err := validateProfileFields(
+<span id="L1384" class="ln">  1384  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
+<span id="L1385" class="ln">  1385  </span>				prefectureID, &#34;Shibuya&#34;, &#34;1-2-3&#34;, nil, &#34;150-0001&#34;,
+<span id="L1386" class="ln">  1386  </span>			)
+<span id="L1387" class="ln">  1387  </span>			require.NoError(t, err)
+<span id="L1388" class="ln">  1388  </span>		})
+<span id="L1389" class="ln">  1389  </span>	})
+<span id="L1390" class="ln">  1390  </span>
+<span id="L1391" class="ln">  1391  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1392" class="ln">  1392  </span>		t.Parallel()
+<span id="L1393" class="ln">  1393  </span>
+<span id="L1394" class="ln">  1394  </span>		t.Run(&#34;単一フィールドが不正な場合、そのフィールド識別子のみが付与される&#34;, func(t *testing.T) {
+<span id="L1395" class="ln">  1395  </span>			t.Parallel()
+<span id="L1396" class="ln">  1396  </span>
+<span id="L1397" class="ln">  1397  </span>			_, _, err := validateProfileFields(
+<span id="L1398" class="ln">  1398  </span>				&#34;&#34;, &#34;Doe&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
+<span id="L1399" class="ln">  1399  </span>				prefectureID, &#34;Shibuya&#34;, &#34;1-2-3&#34;, nil, &#34;150-0001&#34;,
+<span id="L1400" class="ln">  1400  </span>			)
+<span id="L1401" class="ln">  1401  </span>			require.ErrorIs(t, err, ErrInvalidFirstName)
+<span id="L1402" class="ln">  1402  </span>			meta, ok := apperror.MetaFrom(err)
+<span id="L1403" class="ln">  1403  </span>			require.True(t, ok)
+<span id="L1404" class="ln">  1404  </span>			assert.Equal(t, []string{FieldFirstName}, meta.Details())
+<span id="L1405" class="ln">  1405  </span>		})
+<span id="L1406" class="ln">  1406  </span>
+<span id="L1407" class="ln">  1407  </span>		t.Run(&#34;building が範囲外の場合、ErrInvalidBuilding を返す&#34;, func(t *testing.T) {
+<span id="L1408" class="ln">  1408  </span>			t.Parallel()
+<span id="L1409" class="ln">  1409  </span>
+<span id="L1410" class="ln">  1410  </span>			_, _, err := validateProfileFields(
+<span id="L1411" class="ln">  1411  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
+<span id="L1412" class="ln">  1412  </span>				prefectureID, &#34;Shibuya&#34;, &#34;1-2-3&#34;, new(strings.Repeat(&#34;建&#34;, maxBuildingLength+1)), &#34;150-0001&#34;,
+<span id="L1413" class="ln">  1413  </span>			)
+<span id="L1414" class="ln">  1414  </span>			require.ErrorIs(t, err, ErrInvalidBuilding)
+<span id="L1415" class="ln">  1415  </span>		})
+<span id="L1416" class="ln">  1416  </span>
+<span id="L1417" class="ln">  1417  </span>		t.Run(&#34;複数フィールドが同時に不正な場合、全フィールドのエラーと識別子が収集される&#34;, func(t *testing.T) {
+<span id="L1418" class="ln">  1418  </span>			t.Parallel()
+<span id="L1419" class="ln">  1419  </span>
+<span id="L1420" class="ln">  1420  </span>			_, _, err := validateProfileFields(
+<span id="L1421" class="ln">  1421  </span>				&#34;&#34;, &#34;Doe&#34;, strings.Repeat(&#34;e&#34;, maxEmailLength+1), &#34;1234567890&#34;,
+<span id="L1422" class="ln">  1422  </span>				prefectureID, &#34;Shibuya&#34;, &#34;1-2-3&#34;, nil, &#34;150-0001&#34;,
+<span id="L1423" class="ln">  1423  </span>			)
+<span id="L1424" class="ln">  1424  </span>			require.ErrorIs(t, err, ErrInvalidFirstName)
+<span id="L1425" class="ln">  1425  </span>			require.ErrorIs(t, err, ErrInvalidEmail)
+<span id="L1426" class="ln">  1426  </span>			require.ErrorIs(t, err, apperror.ErrValidation)
+<span id="L1427" class="ln">  1427  </span>			meta, ok := apperror.MetaFrom(err)
+<span id="L1428" class="ln">  1428  </span>			require.True(t, ok)
+<span id="L1429" class="ln">  1429  </span>			assert.Equal(t, []string{FieldFirstName, FieldEmail}, meta.Details())
+<span id="L1430" class="ln">  1430  </span>		})
+<span id="L1431" class="ln">  1431  </span>	})
+<span id="L1432" class="ln">  1432  </span>}
+<span id="L1433" class="ln">  1433  </span>
+<span id="L1434" class="ln">  1434  </span>func TestUser_MarkAsDeleted(t *testing.T) {
+<span id="L1435" class="ln">  1435  </span>	t.Parallel()
+<span id="L1436" class="ln">  1436  </span>
+<span id="L1437" class="ln">  1437  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1438" class="ln">  1438  </span>		t.Parallel()
+<span id="L1439" class="ln">  1439  </span>
+<span id="L1440" class="ln">  1440  </span>		t.Run(&#34;deletedAtが設定される&#34;, func(t *testing.T) {
+<span id="L1441" class="ln">  1441  </span>			t.Parallel()
+<span id="L1442" class="ln">  1442  </span>			u, base := newValidUser(t)
+<span id="L1443" class="ln">  1443  </span>			deletedAt := base.Add(time.Hour)
+<span id="L1444" class="ln">  1444  </span>
+<span id="L1445" class="ln">  1445  </span>			err := u.MarkAsDeleted(deletedAt)
+<span id="L1446" class="ln">  1446  </span>			require.NoError(t, err)
+<span id="L1447" class="ln">  1447  </span>			require.NotNil(t, u.deletedAt)
+<span id="L1448" class="ln">  1448  </span>			assert.Equal(t, deletedAt, *u.deletedAt)
+<span id="L1449" class="ln">  1449  </span>			<span class="comment">// 論理削除時に updatedAt も削除時刻へ追従する</span>
+<span id="L1450" class="ln">  1450  </span>			assert.Equal(t, deletedAt, u.updatedAt)
+<span id="L1451" class="ln">  1451  </span>		})
+<span id="L1452" class="ln">  1452  </span>	})
+<span id="L1453" class="ln">  1453  </span>
+<span id="L1454" class="ln">  1454  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1455" class="ln">  1455  </span>		t.Parallel()
+<span id="L1456" class="ln">  1456  </span>
+<span id="L1457" class="ln">  1457  </span>		t.Run(&#34;既に削除済みの場合、ErrAlreadyDeletedを返す&#34;, func(t *testing.T) {
+<span id="L1458" class="ln">  1458  </span>			t.Parallel()
+<span id="L1459" class="ln">  1459  </span>			u, base := newValidUser(t)
+<span id="L1460" class="ln">  1460  </span>			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+<span id="L1461" class="ln">  1461  </span>
+<span id="L1462" class="ln">  1462  </span>			err := u.MarkAsDeleted(base.Add(2 * time.Hour))
+<span id="L1463" class="ln">  1463  </span>			require.ErrorIs(t, err, ErrAlreadyDeleted)
+<span id="L1464" class="ln">  1464  </span>		})
+<span id="L1465" class="ln">  1465  </span>
+<span id="L1466" class="ln">  1466  </span>		t.Run(&#34;deletedAtがcreatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L1467" class="ln">  1467  </span>			t.Parallel()
+<span id="L1468" class="ln">  1468  </span>			u, base := newValidUser(t)
+<span id="L1469" class="ln">  1469  </span>
+<span id="L1470" class="ln">  1470  </span>			err := u.MarkAsDeleted(base.Add(-time.Hour))
+<span id="L1471" class="ln">  1471  </span>			require.ErrorIs(t, err, ErrInvalidDeletedAt)
+<span id="L1472" class="ln">  1472  </span>		})
+<span id="L1473" class="ln">  1473  </span>
+<span id="L1474" class="ln">  1474  </span>		t.Run(&#34;deletedAtがupdatedAtより前の場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L1475" class="ln">  1475  </span>			t.Parallel()
+<span id="L1476" class="ln">  1476  </span>			base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L1477" class="ln">  1477  </span>			u, err := New(
+<span id="L1478" class="ln">  1478  </span>				uuid.NewTestFromSalt(t, &#34;user&#34;),
+<span id="L1479" class="ln">  1479  </span>				&#34;John&#34;, &#34;Doe&#34;, &#34;hashed_password&#34;, &#34;john@example.com&#34;, &#34;1234567890&#34;,
+<span id="L1480" class="ln">  1480  </span>				uuid.NewTestFromSalt(t, &#34;prefecture&#34;),
+<span id="L1481" class="ln">  1481  </span>				&#34;Shibuya&#34;, &#34;1-2-3&#34;, new(&#34;Building A&#34;), &#34;150-0001&#34;,
+<span id="L1482" class="ln">  1482  </span>				base, base.Add(2*time.Hour), nil,
+<span id="L1483" class="ln">  1483  </span>			)
+<span id="L1484" class="ln">  1484  </span>			require.NoError(t, err)
+<span id="L1485" class="ln">  1485  </span>
+<span id="L1486" class="ln">  1486  </span>			err = u.MarkAsDeleted(base.Add(time.Hour))
+<span id="L1487" class="ln">  1487  </span>			require.ErrorIs(t, err, ErrInvalidDeletedAt)
+<span id="L1488" class="ln">  1488  </span>		})
+<span id="L1489" class="ln">  1489  </span>	})
+<span id="L1490" class="ln">  1490  </span>}
+<span id="L1491" class="ln">  1491  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/domain/user/user_domain_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

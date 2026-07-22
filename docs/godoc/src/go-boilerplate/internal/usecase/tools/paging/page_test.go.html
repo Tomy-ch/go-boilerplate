@@ -209,88 +209,116 @@
 <span id="L152" class="ln">   152  </span>	})
 <span id="L153" class="ln">   153  </span>}
 <span id="L154" class="ln">   154  </span>
-<span id="L155" class="ln">   155  </span>func TestPage_Getters(t *testing.T) {
+<span id="L155" class="ln">   155  </span>func TestPage_Limit(t *testing.T) {
 <span id="L156" class="ln">   156  </span>	t.Parallel()
 <span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span>	t.Run(&#34;Limitが正しい値を返す&#34;, func(t *testing.T) {
+<span id="L158" class="ln">   158  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L159" class="ln">   159  </span>		t.Parallel()
-<span id="L160" class="ln">   160  </span>		page := &amp;Page{
-<span id="L161" class="ln">   161  </span>			limit:  100,
-<span id="L162" class="ln">   162  </span>			offset: 200,
-<span id="L163" class="ln">   163  </span>		}
-<span id="L164" class="ln">   164  </span>
-<span id="L165" class="ln">   165  </span>		actual := page.Limit()
-<span id="L166" class="ln">   166  </span>		expected := 100
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>		t.Run(&#34;Limitが正しい値を返す&#34;, func(t *testing.T) {
+<span id="L162" class="ln">   162  </span>			t.Parallel()
+<span id="L163" class="ln">   163  </span>			page := &amp;Page{
+<span id="L164" class="ln">   164  </span>				limit:  100,
+<span id="L165" class="ln">   165  </span>				offset: 200,
+<span id="L166" class="ln">   166  </span>			}
 <span id="L167" class="ln">   167  </span>
-<span id="L168" class="ln">   168  </span>		assert.Equal(t, expected, actual)
-<span id="L169" class="ln">   169  </span>	})
+<span id="L168" class="ln">   168  </span>			actual := page.Limit()
+<span id="L169" class="ln">   169  </span>			expected := 100
 <span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>	t.Run(&#34;Offsetが正しい値を返す&#34;, func(t *testing.T) {
-<span id="L172" class="ln">   172  </span>		t.Parallel()
-<span id="L173" class="ln">   173  </span>		page := &amp;Page{
-<span id="L174" class="ln">   174  </span>			limit:  100,
-<span id="L175" class="ln">   175  </span>			offset: 200,
-<span id="L176" class="ln">   176  </span>		}
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>		actual := page.Offset()
-<span id="L179" class="ln">   179  </span>		expected := 200
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span>		assert.Equal(t, expected, actual)
-<span id="L182" class="ln">   182  </span>	})
-<span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span>	t.Run(&#34;Limit32が正しい値を返す&#34;, func(t *testing.T) {
-<span id="L185" class="ln">   185  </span>		t.Parallel()
-<span id="L186" class="ln">   186  </span>		page := &amp;Page{
-<span id="L187" class="ln">   187  </span>			limit:  100,
-<span id="L188" class="ln">   188  </span>			offset: 200,
-<span id="L189" class="ln">   189  </span>		}
-<span id="L190" class="ln">   190  </span>
-<span id="L191" class="ln">   191  </span>		actual := page.Limit32()
-<span id="L192" class="ln">   192  </span>		expected := int32(100)
-<span id="L193" class="ln">   193  </span>
-<span id="L194" class="ln">   194  </span>		assert.Equal(t, expected, actual)
-<span id="L195" class="ln">   195  </span>	})
+<span id="L171" class="ln">   171  </span>			assert.Equal(t, expected, actual)
+<span id="L172" class="ln">   172  </span>		})
+<span id="L173" class="ln">   173  </span>	})
+<span id="L174" class="ln">   174  </span>}
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>func TestPage_Offset(t *testing.T) {
+<span id="L177" class="ln">   177  </span>	t.Parallel()
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L180" class="ln">   180  </span>		t.Parallel()
+<span id="L181" class="ln">   181  </span>
+<span id="L182" class="ln">   182  </span>		t.Run(&#34;Offsetが正しい値を返す&#34;, func(t *testing.T) {
+<span id="L183" class="ln">   183  </span>			t.Parallel()
+<span id="L184" class="ln">   184  </span>			page := &amp;Page{
+<span id="L185" class="ln">   185  </span>				limit:  100,
+<span id="L186" class="ln">   186  </span>				offset: 200,
+<span id="L187" class="ln">   187  </span>			}
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>			actual := page.Offset()
+<span id="L190" class="ln">   190  </span>			expected := 200
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>			assert.Equal(t, expected, actual)
+<span id="L193" class="ln">   193  </span>		})
+<span id="L194" class="ln">   194  </span>	})
+<span id="L195" class="ln">   195  </span>}
 <span id="L196" class="ln">   196  </span>
-<span id="L197" class="ln">   197  </span>	t.Run(&#34;Limit32がmaxPerPageを超える場合はクランプされる&#34;, func(t *testing.T) {
-<span id="L198" class="ln">   198  </span>		t.Parallel()
-<span id="L199" class="ln">   199  </span>		page := &amp;Page{
-<span id="L200" class="ln">   200  </span>			limit:  maxPerPage + 100,
-<span id="L201" class="ln">   201  </span>			offset: 0,
-<span id="L202" class="ln">   202  </span>		}
-<span id="L203" class="ln">   203  </span>
-<span id="L204" class="ln">   204  </span>		actual := page.Limit32()
-<span id="L205" class="ln">   205  </span>		expected := int32(maxPerPage)
-<span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>		assert.Equal(t, expected, actual)
-<span id="L208" class="ln">   208  </span>	})
+<span id="L197" class="ln">   197  </span>func TestPage_Limit32(t *testing.T) {
+<span id="L198" class="ln">   198  </span>	t.Parallel()
+<span id="L199" class="ln">   199  </span>
+<span id="L200" class="ln">   200  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L201" class="ln">   201  </span>		t.Parallel()
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span>		t.Run(&#34;Limit32が正しい値を返す&#34;, func(t *testing.T) {
+<span id="L204" class="ln">   204  </span>			t.Parallel()
+<span id="L205" class="ln">   205  </span>			page := &amp;Page{
+<span id="L206" class="ln">   206  </span>				limit:  100,
+<span id="L207" class="ln">   207  </span>				offset: 200,
+<span id="L208" class="ln">   208  </span>			}
 <span id="L209" class="ln">   209  </span>
-<span id="L210" class="ln">   210  </span>	t.Run(&#34;Offset32が正しい値を返す&#34;, func(t *testing.T) {
-<span id="L211" class="ln">   211  </span>		t.Parallel()
-<span id="L212" class="ln">   212  </span>		page := &amp;Page{
-<span id="L213" class="ln">   213  </span>			limit:  100,
-<span id="L214" class="ln">   214  </span>			offset: 200,
-<span id="L215" class="ln">   215  </span>		}
-<span id="L216" class="ln">   216  </span>
-<span id="L217" class="ln">   217  </span>		actual := page.Offset32()
-<span id="L218" class="ln">   218  </span>		expected := int32(200)
-<span id="L219" class="ln">   219  </span>
-<span id="L220" class="ln">   220  </span>		assert.Equal(t, expected, actual)
-<span id="L221" class="ln">   221  </span>	})
+<span id="L210" class="ln">   210  </span>			actual := page.Limit32()
+<span id="L211" class="ln">   211  </span>			expected := int32(100)
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>			assert.Equal(t, expected, actual)
+<span id="L214" class="ln">   214  </span>		})
+<span id="L215" class="ln">   215  </span>
+<span id="L216" class="ln">   216  </span>		t.Run(&#34;Limit32がmaxPerPageを超える場合はクランプされる&#34;, func(t *testing.T) {
+<span id="L217" class="ln">   217  </span>			t.Parallel()
+<span id="L218" class="ln">   218  </span>			page := &amp;Page{
+<span id="L219" class="ln">   219  </span>				limit:  maxPerPage + 100,
+<span id="L220" class="ln">   220  </span>				offset: 0,
+<span id="L221" class="ln">   221  </span>			}
 <span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>	t.Run(&#34;Offset32が最大値を超える場合はクランプされる&#34;, func(t *testing.T) {
-<span id="L224" class="ln">   224  </span>		t.Parallel()
-<span id="L225" class="ln">   225  </span>		page := &amp;Page{
-<span id="L226" class="ln">   226  </span>			limit:  0,
-<span id="L227" class="ln">   227  </span>			offset: maxPage*maxPerPage + 1000,
-<span id="L228" class="ln">   228  </span>		}
-<span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span>		actual := page.Offset32()
-<span id="L231" class="ln">   231  </span>		expected := int32(maxPage * maxPerPage)
-<span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span>		assert.Equal(t, expected, actual)
-<span id="L234" class="ln">   234  </span>	})
-<span id="L235" class="ln">   235  </span>}
+<span id="L223" class="ln">   223  </span>			actual := page.Limit32()
+<span id="L224" class="ln">   224  </span>			expected := int32(maxPerPage)
+<span id="L225" class="ln">   225  </span>
+<span id="L226" class="ln">   226  </span>			assert.Equal(t, expected, actual)
+<span id="L227" class="ln">   227  </span>		})
+<span id="L228" class="ln">   228  </span>	})
+<span id="L229" class="ln">   229  </span>}
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span>func TestPage_Offset32(t *testing.T) {
+<span id="L232" class="ln">   232  </span>	t.Parallel()
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L235" class="ln">   235  </span>		t.Parallel()
 <span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>		t.Run(&#34;Offset32が正しい値を返す&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>			t.Parallel()
+<span id="L239" class="ln">   239  </span>			page := &amp;Page{
+<span id="L240" class="ln">   240  </span>				limit:  100,
+<span id="L241" class="ln">   241  </span>				offset: 200,
+<span id="L242" class="ln">   242  </span>			}
+<span id="L243" class="ln">   243  </span>
+<span id="L244" class="ln">   244  </span>			actual := page.Offset32()
+<span id="L245" class="ln">   245  </span>			expected := int32(200)
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>			assert.Equal(t, expected, actual)
+<span id="L248" class="ln">   248  </span>		})
+<span id="L249" class="ln">   249  </span>
+<span id="L250" class="ln">   250  </span>		t.Run(&#34;Offset32が最大値を超える場合はクランプされる&#34;, func(t *testing.T) {
+<span id="L251" class="ln">   251  </span>			t.Parallel()
+<span id="L252" class="ln">   252  </span>			page := &amp;Page{
+<span id="L253" class="ln">   253  </span>				limit:  0,
+<span id="L254" class="ln">   254  </span>				offset: maxPage*maxPerPage + 1000,
+<span id="L255" class="ln">   255  </span>			}
+<span id="L256" class="ln">   256  </span>
+<span id="L257" class="ln">   257  </span>			actual := page.Offset32()
+<span id="L258" class="ln">   258  </span>			expected := int32(maxPage * maxPerPage)
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>			assert.Equal(t, expected, actual)
+<span id="L261" class="ln">   261  </span>		})
+<span id="L262" class="ln">   262  </span>	})
+<span id="L263" class="ln">   263  </span>}
+<span id="L264" class="ln">   264  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/tools/paging/page_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

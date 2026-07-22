@@ -182,312 +182,348 @@
 <span id="L125" class="ln">   125  </span>	})
 <span id="L126" class="ln">   126  </span>}
 <span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>func Test_levelGatedCore_With(t *testing.T) {
+<span id="L128" class="ln">   128  </span>func Test_levelGatedCore_Check(t *testing.T) {
 <span id="L129" class="ln">   129  </span>	t.Parallel()
 <span id="L130" class="ln">   130  </span>
-<span id="L131" class="ln">   131  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L132" class="ln">   132  </span>		t.Parallel()
-<span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>		t.Run(&#34;minを保持しつつ内側coreへフィールドを伝播した新coreを返す&#34;, func(t *testing.T) {
-<span id="L135" class="ln">   135  </span>			t.Parallel()
-<span id="L136" class="ln">   136  </span>
-<span id="L137" class="ln">   137  </span>			var buf bytes.Buffer
-<span id="L138" class="ln">   138  </span>			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: &#34;msg&#34;})
-<span id="L139" class="ln">   139  </span>			inner := zapcore.NewCore(enc, zapcore.AddSync(&amp;buf), zapcore.DebugLevel)
-<span id="L140" class="ln">   140  </span>			gated := levelGatedCore{Core: inner, min: zapcore.WarnLevel}
+<span id="L131" class="ln">   131  </span>	newGatedCore := func(t *testing.T) (levelGatedCore, *bytes.Buffer) {
+<span id="L132" class="ln">   132  </span>		t.Helper()
+<span id="L133" class="ln">   133  </span>		var buf bytes.Buffer
+<span id="L134" class="ln">   134  </span>		enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: &#34;msg&#34;})
+<span id="L135" class="ln">   135  </span>		inner := zapcore.NewCore(enc, zapcore.AddSync(&amp;buf), zapcore.DebugLevel)
+<span id="L136" class="ln">   136  </span>		return levelGatedCore{Core: inner, min: zapcore.WarnLevel}, &amp;buf
+<span id="L137" class="ln">   137  </span>	}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L140" class="ln">   140  </span>		t.Parallel()
 <span id="L141" class="ln">   141  </span>
-<span id="L142" class="ln">   142  </span>			got := gated.With([]zapcore.Field{zap.String(&#34;svc&#34;, &#34;demo&#34;)})
-<span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>			gc, ok := got.(levelGatedCore)
-<span id="L145" class="ln">   145  </span>			require.True(t, ok)
-<span id="L146" class="ln">   146  </span>			assert.Equal(t, zapcore.WarnLevel, gc.min)
-<span id="L147" class="ln">   147  </span>			assert.False(t, gc.Enabled(zapcore.InfoLevel))
-<span id="L148" class="ln">   148  </span>			assert.True(t, gc.Enabled(zapcore.WarnLevel))
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>			require.NoError(t, gc.Write(zapcore.Entry{Level: zapcore.WarnLevel, Message: &#34;hi&#34;}, nil))
-<span id="L151" class="ln">   151  </span>			var m map[string]any
-<span id="L152" class="ln">   152  </span>			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), &#34;\n&#34;), &amp;m))
-<span id="L153" class="ln">   153  </span>			assert.Equal(t, &#34;demo&#34;, m[&#34;svc&#34;])
-<span id="L154" class="ln">   154  </span>		})
-<span id="L155" class="ln">   155  </span>	})
-<span id="L156" class="ln">   156  </span>}
-<span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span>func Test_logger_CallerSkip(t *testing.T) {
-<span id="L159" class="ln">   159  </span>	t.Parallel()
-<span id="L160" class="ln">   160  </span>
-<span id="L161" class="ln">   161  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L162" class="ln">   162  </span>		t.Parallel()
+<span id="L142" class="ln">   142  </span>		t.Run(&#34;min以上のレベルは自身をCheckedEntryへ追加し書き込みへ到達する&#34;, func(t *testing.T) {
+<span id="L143" class="ln">   143  </span>			t.Parallel()
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span>			gated, buf := newGatedCore(t)
+<span id="L146" class="ln">   146  </span>			ce := gated.Check(zapcore.Entry{Level: zapcore.ErrorLevel, Message: &#34;hi&#34;}, nil)
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>			require.NotNil(t, ce)
+<span id="L149" class="ln">   149  </span>			ce.Write()
+<span id="L150" class="ln">   150  </span>			assert.Contains(t, buf.String(), &#34;hi&#34;)
+<span id="L151" class="ln">   151  </span>		})
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>		t.Run(&#34;min未満のレベルは追加せず受け取ったCheckedEntryをそのまま返す&#34;, func(t *testing.T) {
+<span id="L154" class="ln">   154  </span>			t.Parallel()
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>			gated, _ := newGatedCore(t)
+<span id="L157" class="ln">   157  </span>			ce := gated.Check(zapcore.Entry{Level: zapcore.InfoLevel, Message: &#34;hi&#34;}, nil)
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>			assert.Nil(t, ce)
+<span id="L160" class="ln">   160  </span>		})
+<span id="L161" class="ln">   161  </span>	})
+<span id="L162" class="ln">   162  </span>}
 <span id="L163" class="ln">   163  </span>
-<span id="L164" class="ln">   164  </span>		t.Run(&#34;AddCallerSkipオプション適用済みのLoggerを返す&#34;, func(t *testing.T) {
-<span id="L165" class="ln">   165  </span>			t.Parallel()
+<span id="L164" class="ln">   164  </span>func Test_levelGatedCore_With(t *testing.T) {
+<span id="L165" class="ln">   165  </span>	t.Parallel()
 <span id="L166" class="ln">   166  </span>
-<span id="L167" class="ln">   167  </span>			log := zap.NewNop()
-<span id="L168" class="ln">   168  </span>			baseLogger := &amp;logger{log: log}
+<span id="L167" class="ln">   167  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L168" class="ln">   168  </span>		t.Parallel()
 <span id="L169" class="ln">   169  </span>
-<span id="L170" class="ln">   170  </span>			skip := 3
-<span id="L171" class="ln">   171  </span>			expected := &amp;logger{
-<span id="L172" class="ln">   172  </span>				log: log.WithOptions(zap.AddCallerSkip(skip)),
-<span id="L173" class="ln">   173  </span>			}
-<span id="L174" class="ln">   174  </span>			actual := baseLogger.CallerSkip(skip)
-<span id="L175" class="ln">   175  </span>			assert.Equal(t, expected, actual)
-<span id="L176" class="ln">   176  </span>		})
+<span id="L170" class="ln">   170  </span>		t.Run(&#34;minを保持しつつ内側coreへフィールドを伝播した新coreを返す&#34;, func(t *testing.T) {
+<span id="L171" class="ln">   171  </span>			t.Parallel()
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>			var buf bytes.Buffer
+<span id="L174" class="ln">   174  </span>			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: &#34;msg&#34;})
+<span id="L175" class="ln">   175  </span>			inner := zapcore.NewCore(enc, zapcore.AddSync(&amp;buf), zapcore.DebugLevel)
+<span id="L176" class="ln">   176  </span>			gated := levelGatedCore{Core: inner, min: zapcore.WarnLevel}
 <span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>		t.Run(&#34;extractがCallerSkip後のLoggerへ伝播する&#34;, func(t *testing.T) {
-<span id="L179" class="ln">   179  </span>			t.Parallel()
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span>			base, called := newExtractSpyLogger(t)
-<span id="L182" class="ln">   182  </span>
-<span id="L183" class="ln">   183  </span>			child, ok := base.CallerSkip(1).(*logger)
-<span id="L184" class="ln">   184  </span>			require.True(t, ok)
-<span id="L185" class="ln">   185  </span>			require.NotNil(t, child.extract)
-<span id="L186" class="ln">   186  </span>			child.extract(context.Background())
-<span id="L187" class="ln">   187  </span>			assert.True(t, *called)
-<span id="L188" class="ln">   188  </span>		})
-<span id="L189" class="ln">   189  </span>	})
-<span id="L190" class="ln">   190  </span>}
-<span id="L191" class="ln">   191  </span>
-<span id="L192" class="ln">   192  </span>func Test_logger_Named(t *testing.T) {
-<span id="L193" class="ln">   193  </span>	t.Parallel()
-<span id="L194" class="ln">   194  </span>
-<span id="L195" class="ln">   195  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L196" class="ln">   196  </span>		t.Parallel()
-<span id="L197" class="ln">   197  </span>
-<span id="L198" class="ln">   198  </span>		t.Run(&#34;Named適用済みのLoggerを返す&#34;, func(t *testing.T) {
-<span id="L199" class="ln">   199  </span>			t.Parallel()
-<span id="L200" class="ln">   200  </span>
-<span id="L201" class="ln">   201  </span>			log := zap.NewNop()
-<span id="L202" class="ln">   202  </span>			baseLogger := &amp;logger{log: log}
-<span id="L203" class="ln">   203  </span>			name := &#34;testLogger&#34;
-<span id="L204" class="ln">   204  </span>
-<span id="L205" class="ln">   205  </span>			expected := &amp;logger{
-<span id="L206" class="ln">   206  </span>				log: log.Named(name),
-<span id="L207" class="ln">   207  </span>			}
-<span id="L208" class="ln">   208  </span>			actual := baseLogger.Named(name)
-<span id="L209" class="ln">   209  </span>			assert.Equal(t, expected, actual)
-<span id="L210" class="ln">   210  </span>		})
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span>		t.Run(&#34;extractが子Loggerへ伝播する&#34;, func(t *testing.T) {
-<span id="L213" class="ln">   213  </span>			t.Parallel()
-<span id="L214" class="ln">   214  </span>
-<span id="L215" class="ln">   215  </span>			base, called := newExtractSpyLogger(t)
+<span id="L178" class="ln">   178  </span>			got := gated.With([]zapcore.Field{zap.String(&#34;svc&#34;, &#34;demo&#34;)})
+<span id="L179" class="ln">   179  </span>
+<span id="L180" class="ln">   180  </span>			gc, ok := got.(levelGatedCore)
+<span id="L181" class="ln">   181  </span>			require.True(t, ok)
+<span id="L182" class="ln">   182  </span>			assert.Equal(t, zapcore.WarnLevel, gc.min)
+<span id="L183" class="ln">   183  </span>			assert.False(t, gc.Enabled(zapcore.InfoLevel))
+<span id="L184" class="ln">   184  </span>			assert.True(t, gc.Enabled(zapcore.WarnLevel))
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>			require.NoError(t, gc.Write(zapcore.Entry{Level: zapcore.WarnLevel, Message: &#34;hi&#34;}, nil))
+<span id="L187" class="ln">   187  </span>			var m map[string]any
+<span id="L188" class="ln">   188  </span>			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), &#34;\n&#34;), &amp;m))
+<span id="L189" class="ln">   189  </span>			assert.Equal(t, &#34;demo&#34;, m[&#34;svc&#34;])
+<span id="L190" class="ln">   190  </span>		})
+<span id="L191" class="ln">   191  </span>	})
+<span id="L192" class="ln">   192  </span>}
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>func Test_logger_CallerSkip(t *testing.T) {
+<span id="L195" class="ln">   195  </span>	t.Parallel()
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L198" class="ln">   198  </span>		t.Parallel()
+<span id="L199" class="ln">   199  </span>
+<span id="L200" class="ln">   200  </span>		t.Run(&#34;AddCallerSkipオプション適用済みのLoggerを返す&#34;, func(t *testing.T) {
+<span id="L201" class="ln">   201  </span>			t.Parallel()
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span>			log := zap.NewNop()
+<span id="L204" class="ln">   204  </span>			baseLogger := &amp;logger{log: log}
+<span id="L205" class="ln">   205  </span>
+<span id="L206" class="ln">   206  </span>			skip := 3
+<span id="L207" class="ln">   207  </span>			expected := &amp;logger{
+<span id="L208" class="ln">   208  </span>				log: log.WithOptions(zap.AddCallerSkip(skip)),
+<span id="L209" class="ln">   209  </span>			}
+<span id="L210" class="ln">   210  </span>			actual := baseLogger.CallerSkip(skip)
+<span id="L211" class="ln">   211  </span>			assert.Equal(t, expected, actual)
+<span id="L212" class="ln">   212  </span>		})
+<span id="L213" class="ln">   213  </span>
+<span id="L214" class="ln">   214  </span>		t.Run(&#34;extractがCallerSkip後のLoggerへ伝播する&#34;, func(t *testing.T) {
+<span id="L215" class="ln">   215  </span>			t.Parallel()
 <span id="L216" class="ln">   216  </span>
-<span id="L217" class="ln">   217  </span>			child, ok := base.Named(&#34;child&#34;).(*logger)
-<span id="L218" class="ln">   218  </span>			require.True(t, ok)
-<span id="L219" class="ln">   219  </span>			require.NotNil(t, child.extract)
-<span id="L220" class="ln">   220  </span>			child.extract(context.Background())
-<span id="L221" class="ln">   221  </span>			assert.True(t, *called)
-<span id="L222" class="ln">   222  </span>		})
-<span id="L223" class="ln">   223  </span>	})
-<span id="L224" class="ln">   224  </span>}
-<span id="L225" class="ln">   225  </span>
-<span id="L226" class="ln">   226  </span>func Test_logger_convertFields(t *testing.T) {
-<span id="L227" class="ln">   227  </span>	t.Parallel()
-<span id="L228" class="ln">   228  </span>
-<span id="L229" class="ln">   229  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L230" class="ln">   230  </span>		t.Parallel()
-<span id="L231" class="ln">   231  </span>
-<span id="L232" class="ln">   232  </span>		t.Run(&#34;各Fieldコンストラクタが対応するzap.Fieldへ変換される&#34;, func(t *testing.T) {
-<span id="L233" class="ln">   233  </span>			t.Parallel()
-<span id="L234" class="ln">   234  </span>
-<span id="L235" class="ln">   235  </span>			log := zap.NewNop()
-<span id="L236" class="ln">   236  </span>			l := &amp;logger{log: log}
-<span id="L237" class="ln">   237  </span>
-<span id="L238" class="ln">   238  </span>			expectedString := &#34;value1&#34;
-<span id="L239" class="ln">   239  </span>			expectedStrings := []string{&#34;one&#34;, &#34;two&#34;, &#34;three&#34;}
-<span id="L240" class="ln">   240  </span>			expectedInt := 42
-<span id="L241" class="ln">   241  </span>			expectedInt64 := int64(100)
-<span id="L242" class="ln">   242  </span>			expectedFloat64 := 3.14
-<span id="L243" class="ln">   243  </span>			expectedBool := true
-<span id="L244" class="ln">   244  </span>			expectedError := xerrors.New(&#34;boom&#34;)
-<span id="L245" class="ln">   245  </span>			expectedAny := &#34;value7&#34;
-<span id="L246" class="ln">   246  </span>
-<span id="L247" class="ln">   247  </span>			fields := []*Field{
-<span id="L248" class="ln">   248  </span>				String(&#34;key1&#34;, expectedString),
-<span id="L249" class="ln">   249  </span>				Strings(&#34;key1s&#34;, expectedStrings),
-<span id="L250" class="ln">   250  </span>				Int(&#34;key2&#34;, expectedInt),
-<span id="L251" class="ln">   251  </span>				Int64(&#34;key3&#34;, expectedInt64),
-<span id="L252" class="ln">   252  </span>				Float64(&#34;key4&#34;, expectedFloat64),
-<span id="L253" class="ln">   253  </span>				Bool(&#34;key5&#34;, expectedBool),
-<span id="L254" class="ln">   254  </span>				Error(&#34;key6&#34;, expectedError),
-<span id="L255" class="ln">   255  </span>				Any(&#34;key7&#34;, expectedAny),
-<span id="L256" class="ln">   256  </span>			}
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>			expected := []zap.Field{
-<span id="L259" class="ln">   259  </span>				zap.String(&#34;key1&#34;, expectedString),
-<span id="L260" class="ln">   260  </span>				zap.Strings(&#34;key1s&#34;, expectedStrings),
-<span id="L261" class="ln">   261  </span>				zap.Int(&#34;key2&#34;, expectedInt),
-<span id="L262" class="ln">   262  </span>				zap.Int64(&#34;key3&#34;, expectedInt64),
-<span id="L263" class="ln">   263  </span>				zap.Float64(&#34;key4&#34;, expectedFloat64),
-<span id="L264" class="ln">   264  </span>				zap.Bool(&#34;key5&#34;, expectedBool),
-<span id="L265" class="ln">   265  </span>				zap.NamedError(&#34;key6&#34;, expectedError),
-<span id="L266" class="ln">   266  </span>				zap.Any(&#34;key7&#34;, expectedAny),
-<span id="L267" class="ln">   267  </span>			}
-<span id="L268" class="ln">   268  </span>			actual := l.convertFields(fields)
-<span id="L269" class="ln">   269  </span>			assert.Equal(t, expected, actual)
-<span id="L270" class="ln">   270  </span>		})
-<span id="L271" class="ln">   271  </span>
-<span id="L272" class="ln">   272  </span>		t.Run(&#34;未知のkindはdefault分岐でzap.Anyへ変換される&#34;, func(t *testing.T) {
-<span id="L273" class="ln">   273  </span>			t.Parallel()
-<span id="L274" class="ln">   274  </span>
-<span id="L275" class="ln">   275  </span>			log := zap.NewNop()
-<span id="L276" class="ln">   276  </span>			l := &amp;logger{log: log}
-<span id="L277" class="ln">   277  </span>
-<span id="L278" class="ln">   278  </span>			fields := []*Field{{key: &#34;unknown&#34;, kind: fieldUnknown}}
-<span id="L279" class="ln">   279  </span>
-<span id="L280" class="ln">   280  </span>			expected := []zap.Field{
-<span id="L281" class="ln">   281  </span>				zap.Any(&#34;unknown&#34;, nil),
-<span id="L282" class="ln">   282  </span>			}
-<span id="L283" class="ln">   283  </span>			actual := l.convertFields(fields)
-<span id="L284" class="ln">   284  </span>			assert.Equal(t, expected, actual)
-<span id="L285" class="ln">   285  </span>		})
-<span id="L286" class="ln">   286  </span>	})
-<span id="L287" class="ln">   287  </span>}
-<span id="L288" class="ln">   288  </span>
-<span id="L289" class="ln">   289  </span><span class="comment">// newBufLogger は、書き込み内容を検証可能なバッファ付き logger を生成する。</span>
-<span id="L290" class="ln">   290  </span>func newBufLogger() (*logger, *bytes.Buffer) {
-<span id="L291" class="ln">   291  </span>	var buf bytes.Buffer
-<span id="L292" class="ln">   292  </span>	enc := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-<span id="L293" class="ln">   293  </span>	core := zapcore.NewCore(enc, zapcore.AddSync(&amp;buf), zapcore.DebugLevel)
-<span id="L294" class="ln">   294  </span>	return &amp;logger{log: zap.New(core)}, &amp;buf
-<span id="L295" class="ln">   295  </span>}
-<span id="L296" class="ln">   296  </span>
-<span id="L297" class="ln">   297  </span>func Test_logger_Debug(t *testing.T) {
-<span id="L298" class="ln">   298  </span>	t.Parallel()
-<span id="L299" class="ln">   299  </span>
-<span id="L300" class="ln">   300  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L301" class="ln">   301  </span>		t.Parallel()
-<span id="L302" class="ln">   302  </span>
-<span id="L303" class="ln">   303  </span>		t.Run(&#34;Debugレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
-<span id="L304" class="ln">   304  </span>			t.Parallel()
-<span id="L305" class="ln">   305  </span>
-<span id="L306" class="ln">   306  </span>			l, buf := newBufLogger()
-<span id="L307" class="ln">   307  </span>			l.Debug(context.Background(), &#34;debug message&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L308" class="ln">   308  </span>
-<span id="L309" class="ln">   309  </span>			out := buf.String()
-<span id="L310" class="ln">   310  </span>			assert.Contains(t, out, &#34;debug message&#34;)
-<span id="L311" class="ln">   311  </span>			assert.Contains(t, out, &#34;key&#34;)
-<span id="L312" class="ln">   312  </span>			assert.Contains(t, out, &#34;value&#34;)
-<span id="L313" class="ln">   313  </span>		})
-<span id="L314" class="ln">   314  </span>	})
-<span id="L315" class="ln">   315  </span>}
-<span id="L316" class="ln">   316  </span>
-<span id="L317" class="ln">   317  </span>func Test_logger_Info(t *testing.T) {
-<span id="L318" class="ln">   318  </span>	t.Parallel()
-<span id="L319" class="ln">   319  </span>
-<span id="L320" class="ln">   320  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L321" class="ln">   321  </span>		t.Parallel()
-<span id="L322" class="ln">   322  </span>
-<span id="L323" class="ln">   323  </span>		t.Run(&#34;Infoレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
-<span id="L324" class="ln">   324  </span>			t.Parallel()
-<span id="L325" class="ln">   325  </span>
-<span id="L326" class="ln">   326  </span>			l, buf := newBufLogger()
-<span id="L327" class="ln">   327  </span>			l.Info(context.Background(), &#34;info message&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L328" class="ln">   328  </span>
-<span id="L329" class="ln">   329  </span>			out := buf.String()
-<span id="L330" class="ln">   330  </span>			assert.Contains(t, out, &#34;info message&#34;)
-<span id="L331" class="ln">   331  </span>			assert.Contains(t, out, &#34;key&#34;)
-<span id="L332" class="ln">   332  </span>			assert.Contains(t, out, &#34;value&#34;)
-<span id="L333" class="ln">   333  </span>		})
-<span id="L334" class="ln">   334  </span>	})
-<span id="L335" class="ln">   335  </span>}
-<span id="L336" class="ln">   336  </span>
-<span id="L337" class="ln">   337  </span>func Test_logger_Warn(t *testing.T) {
-<span id="L338" class="ln">   338  </span>	t.Parallel()
-<span id="L339" class="ln">   339  </span>
-<span id="L340" class="ln">   340  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L341" class="ln">   341  </span>		t.Parallel()
-<span id="L342" class="ln">   342  </span>
-<span id="L343" class="ln">   343  </span>		t.Run(&#34;Warnレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
-<span id="L344" class="ln">   344  </span>			t.Parallel()
-<span id="L345" class="ln">   345  </span>
-<span id="L346" class="ln">   346  </span>			l, buf := newBufLogger()
-<span id="L347" class="ln">   347  </span>			l.Warn(context.Background(), &#34;warn message&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L348" class="ln">   348  </span>
-<span id="L349" class="ln">   349  </span>			out := buf.String()
-<span id="L350" class="ln">   350  </span>			assert.Contains(t, out, &#34;warn message&#34;)
-<span id="L351" class="ln">   351  </span>			assert.Contains(t, out, &#34;key&#34;)
-<span id="L352" class="ln">   352  </span>			assert.Contains(t, out, &#34;value&#34;)
-<span id="L353" class="ln">   353  </span>		})
-<span id="L354" class="ln">   354  </span>	})
-<span id="L355" class="ln">   355  </span>}
-<span id="L356" class="ln">   356  </span>
-<span id="L357" class="ln">   357  </span>func Test_logger_Error(t *testing.T) {
-<span id="L358" class="ln">   358  </span>	t.Parallel()
-<span id="L359" class="ln">   359  </span>
-<span id="L360" class="ln">   360  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L361" class="ln">   361  </span>		t.Parallel()
-<span id="L362" class="ln">   362  </span>
-<span id="L363" class="ln">   363  </span>		t.Run(&#34;Errorレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
-<span id="L364" class="ln">   364  </span>			t.Parallel()
-<span id="L365" class="ln">   365  </span>
-<span id="L366" class="ln">   366  </span>			l, buf := newBufLogger()
-<span id="L367" class="ln">   367  </span>			l.Error(context.Background(), &#34;error message&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L368" class="ln">   368  </span>
-<span id="L369" class="ln">   369  </span>			out := buf.String()
-<span id="L370" class="ln">   370  </span>			assert.Contains(t, out, &#34;error message&#34;)
-<span id="L371" class="ln">   371  </span>			assert.Contains(t, out, &#34;key&#34;)
-<span id="L372" class="ln">   372  </span>			assert.Contains(t, out, &#34;value&#34;)
-<span id="L373" class="ln">   373  </span>		})
-<span id="L374" class="ln">   374  </span>	})
-<span id="L375" class="ln">   375  </span>}
-<span id="L376" class="ln">   376  </span>
-<span id="L377" class="ln">   377  </span>func Test_logger_injectTrace(t *testing.T) {
-<span id="L378" class="ln">   378  </span>	t.Parallel()
-<span id="L379" class="ln">   379  </span>
-<span id="L380" class="ln">   380  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L381" class="ln">   381  </span>		t.Parallel()
-<span id="L382" class="ln">   382  </span>
-<span id="L383" class="ln">   383  </span>		t.Run(&#34;extractorがtrueを返すとtrace_idとspan_idが正しいキーで先頭2要素に注入される&#34;, func(t *testing.T) {
-<span id="L384" class="ln">   384  </span>			t.Parallel()
-<span id="L385" class="ln">   385  </span>
-<span id="L386" class="ln">   386  </span>			l := &amp;logger{
-<span id="L387" class="ln">   387  </span>				log: zap.NewNop(),
-<span id="L388" class="ln">   388  </span>				extract: func(context.Context) (string, string, bool) {
-<span id="L389" class="ln">   389  </span>					return &#34;trace-abc&#34;, &#34;span-xyz&#34;, true
-<span id="L390" class="ln">   390  </span>				},
-<span id="L391" class="ln">   391  </span>			}
+<span id="L217" class="ln">   217  </span>			base, called := newExtractSpyLogger(t)
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>			child, ok := base.CallerSkip(1).(*logger)
+<span id="L220" class="ln">   220  </span>			require.True(t, ok)
+<span id="L221" class="ln">   221  </span>			require.NotNil(t, child.extract)
+<span id="L222" class="ln">   222  </span>			child.extract(context.Background())
+<span id="L223" class="ln">   223  </span>			assert.True(t, *called)
+<span id="L224" class="ln">   224  </span>		})
+<span id="L225" class="ln">   225  </span>	})
+<span id="L226" class="ln">   226  </span>}
+<span id="L227" class="ln">   227  </span>
+<span id="L228" class="ln">   228  </span>func Test_logger_Named(t *testing.T) {
+<span id="L229" class="ln">   229  </span>	t.Parallel()
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L232" class="ln">   232  </span>		t.Parallel()
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>		t.Run(&#34;Named適用済みのLoggerを返す&#34;, func(t *testing.T) {
+<span id="L235" class="ln">   235  </span>			t.Parallel()
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>			log := zap.NewNop()
+<span id="L238" class="ln">   238  </span>			baseLogger := &amp;logger{log: log}
+<span id="L239" class="ln">   239  </span>			name := &#34;testLogger&#34;
+<span id="L240" class="ln">   240  </span>
+<span id="L241" class="ln">   241  </span>			expected := &amp;logger{
+<span id="L242" class="ln">   242  </span>				log: log.Named(name),
+<span id="L243" class="ln">   243  </span>			}
+<span id="L244" class="ln">   244  </span>			actual := baseLogger.Named(name)
+<span id="L245" class="ln">   245  </span>			assert.Equal(t, expected, actual)
+<span id="L246" class="ln">   246  </span>		})
+<span id="L247" class="ln">   247  </span>
+<span id="L248" class="ln">   248  </span>		t.Run(&#34;extractが子Loggerへ伝播する&#34;, func(t *testing.T) {
+<span id="L249" class="ln">   249  </span>			t.Parallel()
+<span id="L250" class="ln">   250  </span>
+<span id="L251" class="ln">   251  </span>			base, called := newExtractSpyLogger(t)
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>			child, ok := base.Named(&#34;child&#34;).(*logger)
+<span id="L254" class="ln">   254  </span>			require.True(t, ok)
+<span id="L255" class="ln">   255  </span>			require.NotNil(t, child.extract)
+<span id="L256" class="ln">   256  </span>			child.extract(context.Background())
+<span id="L257" class="ln">   257  </span>			assert.True(t, *called)
+<span id="L258" class="ln">   258  </span>		})
+<span id="L259" class="ln">   259  </span>	})
+<span id="L260" class="ln">   260  </span>}
+<span id="L261" class="ln">   261  </span>
+<span id="L262" class="ln">   262  </span>func Test_logger_convertFields(t *testing.T) {
+<span id="L263" class="ln">   263  </span>	t.Parallel()
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L266" class="ln">   266  </span>		t.Parallel()
+<span id="L267" class="ln">   267  </span>
+<span id="L268" class="ln">   268  </span>		t.Run(&#34;各Fieldコンストラクタが対応するzap.Fieldへ変換される&#34;, func(t *testing.T) {
+<span id="L269" class="ln">   269  </span>			t.Parallel()
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>			log := zap.NewNop()
+<span id="L272" class="ln">   272  </span>			l := &amp;logger{log: log}
+<span id="L273" class="ln">   273  </span>
+<span id="L274" class="ln">   274  </span>			expectedString := &#34;value1&#34;
+<span id="L275" class="ln">   275  </span>			expectedStrings := []string{&#34;one&#34;, &#34;two&#34;, &#34;three&#34;}
+<span id="L276" class="ln">   276  </span>			expectedInt := 42
+<span id="L277" class="ln">   277  </span>			expectedInt64 := int64(100)
+<span id="L278" class="ln">   278  </span>			expectedFloat64 := 3.14
+<span id="L279" class="ln">   279  </span>			expectedBool := true
+<span id="L280" class="ln">   280  </span>			expectedError := xerrors.New(&#34;boom&#34;)
+<span id="L281" class="ln">   281  </span>			expectedAny := &#34;value7&#34;
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span>			fields := []*Field{
+<span id="L284" class="ln">   284  </span>				String(&#34;key1&#34;, expectedString),
+<span id="L285" class="ln">   285  </span>				Strings(&#34;key1s&#34;, expectedStrings),
+<span id="L286" class="ln">   286  </span>				Int(&#34;key2&#34;, expectedInt),
+<span id="L287" class="ln">   287  </span>				Int64(&#34;key3&#34;, expectedInt64),
+<span id="L288" class="ln">   288  </span>				Float64(&#34;key4&#34;, expectedFloat64),
+<span id="L289" class="ln">   289  </span>				Bool(&#34;key5&#34;, expectedBool),
+<span id="L290" class="ln">   290  </span>				Error(&#34;key6&#34;, expectedError),
+<span id="L291" class="ln">   291  </span>				Any(&#34;key7&#34;, expectedAny),
+<span id="L292" class="ln">   292  </span>			}
+<span id="L293" class="ln">   293  </span>
+<span id="L294" class="ln">   294  </span>			expected := []zap.Field{
+<span id="L295" class="ln">   295  </span>				zap.String(&#34;key1&#34;, expectedString),
+<span id="L296" class="ln">   296  </span>				zap.Strings(&#34;key1s&#34;, expectedStrings),
+<span id="L297" class="ln">   297  </span>				zap.Int(&#34;key2&#34;, expectedInt),
+<span id="L298" class="ln">   298  </span>				zap.Int64(&#34;key3&#34;, expectedInt64),
+<span id="L299" class="ln">   299  </span>				zap.Float64(&#34;key4&#34;, expectedFloat64),
+<span id="L300" class="ln">   300  </span>				zap.Bool(&#34;key5&#34;, expectedBool),
+<span id="L301" class="ln">   301  </span>				zap.NamedError(&#34;key6&#34;, expectedError),
+<span id="L302" class="ln">   302  </span>				zap.Any(&#34;key7&#34;, expectedAny),
+<span id="L303" class="ln">   303  </span>			}
+<span id="L304" class="ln">   304  </span>			actual := l.convertFields(fields)
+<span id="L305" class="ln">   305  </span>			assert.Equal(t, expected, actual)
+<span id="L306" class="ln">   306  </span>		})
+<span id="L307" class="ln">   307  </span>
+<span id="L308" class="ln">   308  </span>		t.Run(&#34;未知のkindはdefault分岐でzap.Anyへ変換される&#34;, func(t *testing.T) {
+<span id="L309" class="ln">   309  </span>			t.Parallel()
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>			log := zap.NewNop()
+<span id="L312" class="ln">   312  </span>			l := &amp;logger{log: log}
+<span id="L313" class="ln">   313  </span>
+<span id="L314" class="ln">   314  </span>			fields := []*Field{{key: &#34;unknown&#34;, kind: fieldUnknown}}
+<span id="L315" class="ln">   315  </span>
+<span id="L316" class="ln">   316  </span>			expected := []zap.Field{
+<span id="L317" class="ln">   317  </span>				zap.Any(&#34;unknown&#34;, nil),
+<span id="L318" class="ln">   318  </span>			}
+<span id="L319" class="ln">   319  </span>			actual := l.convertFields(fields)
+<span id="L320" class="ln">   320  </span>			assert.Equal(t, expected, actual)
+<span id="L321" class="ln">   321  </span>		})
+<span id="L322" class="ln">   322  </span>	})
+<span id="L323" class="ln">   323  </span>}
+<span id="L324" class="ln">   324  </span>
+<span id="L325" class="ln">   325  </span><span class="comment">// newBufLogger は、書き込み内容を検証可能なバッファ付き logger を生成する。</span>
+<span id="L326" class="ln">   326  </span>func newBufLogger() (*logger, *bytes.Buffer) {
+<span id="L327" class="ln">   327  </span>	var buf bytes.Buffer
+<span id="L328" class="ln">   328  </span>	enc := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+<span id="L329" class="ln">   329  </span>	core := zapcore.NewCore(enc, zapcore.AddSync(&amp;buf), zapcore.DebugLevel)
+<span id="L330" class="ln">   330  </span>	return &amp;logger{log: zap.New(core)}, &amp;buf
+<span id="L331" class="ln">   331  </span>}
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span>func Test_logger_Debug(t *testing.T) {
+<span id="L334" class="ln">   334  </span>	t.Parallel()
+<span id="L335" class="ln">   335  </span>
+<span id="L336" class="ln">   336  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L337" class="ln">   337  </span>		t.Parallel()
+<span id="L338" class="ln">   338  </span>
+<span id="L339" class="ln">   339  </span>		t.Run(&#34;Debugレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
+<span id="L340" class="ln">   340  </span>			t.Parallel()
+<span id="L341" class="ln">   341  </span>
+<span id="L342" class="ln">   342  </span>			l, buf := newBufLogger()
+<span id="L343" class="ln">   343  </span>			l.Debug(context.Background(), &#34;debug message&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L344" class="ln">   344  </span>
+<span id="L345" class="ln">   345  </span>			out := buf.String()
+<span id="L346" class="ln">   346  </span>			assert.Contains(t, out, &#34;debug message&#34;)
+<span id="L347" class="ln">   347  </span>			assert.Contains(t, out, &#34;key&#34;)
+<span id="L348" class="ln">   348  </span>			assert.Contains(t, out, &#34;value&#34;)
+<span id="L349" class="ln">   349  </span>		})
+<span id="L350" class="ln">   350  </span>	})
+<span id="L351" class="ln">   351  </span>}
+<span id="L352" class="ln">   352  </span>
+<span id="L353" class="ln">   353  </span>func Test_logger_Info(t *testing.T) {
+<span id="L354" class="ln">   354  </span>	t.Parallel()
+<span id="L355" class="ln">   355  </span>
+<span id="L356" class="ln">   356  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L357" class="ln">   357  </span>		t.Parallel()
+<span id="L358" class="ln">   358  </span>
+<span id="L359" class="ln">   359  </span>		t.Run(&#34;Infoレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
+<span id="L360" class="ln">   360  </span>			t.Parallel()
+<span id="L361" class="ln">   361  </span>
+<span id="L362" class="ln">   362  </span>			l, buf := newBufLogger()
+<span id="L363" class="ln">   363  </span>			l.Info(context.Background(), &#34;info message&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L364" class="ln">   364  </span>
+<span id="L365" class="ln">   365  </span>			out := buf.String()
+<span id="L366" class="ln">   366  </span>			assert.Contains(t, out, &#34;info message&#34;)
+<span id="L367" class="ln">   367  </span>			assert.Contains(t, out, &#34;key&#34;)
+<span id="L368" class="ln">   368  </span>			assert.Contains(t, out, &#34;value&#34;)
+<span id="L369" class="ln">   369  </span>		})
+<span id="L370" class="ln">   370  </span>	})
+<span id="L371" class="ln">   371  </span>}
+<span id="L372" class="ln">   372  </span>
+<span id="L373" class="ln">   373  </span>func Test_logger_Warn(t *testing.T) {
+<span id="L374" class="ln">   374  </span>	t.Parallel()
+<span id="L375" class="ln">   375  </span>
+<span id="L376" class="ln">   376  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L377" class="ln">   377  </span>		t.Parallel()
+<span id="L378" class="ln">   378  </span>
+<span id="L379" class="ln">   379  </span>		t.Run(&#34;Warnレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
+<span id="L380" class="ln">   380  </span>			t.Parallel()
+<span id="L381" class="ln">   381  </span>
+<span id="L382" class="ln">   382  </span>			l, buf := newBufLogger()
+<span id="L383" class="ln">   383  </span>			l.Warn(context.Background(), &#34;warn message&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L384" class="ln">   384  </span>
+<span id="L385" class="ln">   385  </span>			out := buf.String()
+<span id="L386" class="ln">   386  </span>			assert.Contains(t, out, &#34;warn message&#34;)
+<span id="L387" class="ln">   387  </span>			assert.Contains(t, out, &#34;key&#34;)
+<span id="L388" class="ln">   388  </span>			assert.Contains(t, out, &#34;value&#34;)
+<span id="L389" class="ln">   389  </span>		})
+<span id="L390" class="ln">   390  </span>	})
+<span id="L391" class="ln">   391  </span>}
 <span id="L392" class="ln">   392  </span>
-<span id="L393" class="ln">   393  </span>			got := l.injectTrace(context.Background(), []*Field{String(&#34;key&#34;, &#34;value&#34;)})
-<span id="L394" class="ln">   394  </span>
-<span id="L395" class="ln">   395  </span>			require.Len(t, got, 3)
-<span id="L396" class="ln">   396  </span>			assert.Equal(t, String(TraceIDKey, &#34;trace-abc&#34;), got[0])
-<span id="L397" class="ln">   397  </span>			assert.Equal(t, String(SpanIDKey, &#34;span-xyz&#34;), got[1])
-<span id="L398" class="ln">   398  </span>			assert.Equal(t, String(&#34;key&#34;, &#34;value&#34;), got[2])
-<span id="L399" class="ln">   399  </span>		})
-<span id="L400" class="ln">   400  </span>
-<span id="L401" class="ln">   401  </span>		t.Run(&#34;extractorがnilならtraceは注入されずそのまま出力される&#34;, func(t *testing.T) {
-<span id="L402" class="ln">   402  </span>			t.Parallel()
-<span id="L403" class="ln">   403  </span>
-<span id="L404" class="ln">   404  </span>			l, buf := newBufLogger()
-<span id="L405" class="ln">   405  </span>			l.Info(context.Background(), &#34;no extractor&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L406" class="ln">   406  </span>
-<span id="L407" class="ln">   407  </span>			out := buf.String()
-<span id="L408" class="ln">   408  </span>			assert.Contains(t, out, &#34;no extractor&#34;)
-<span id="L409" class="ln">   409  </span>			assert.Contains(t, out, &#34;value&#34;)
-<span id="L410" class="ln">   410  </span>			assert.NotContains(t, out, TraceIDKey)
-<span id="L411" class="ln">   411  </span>		})
-<span id="L412" class="ln">   412  </span>	})
-<span id="L413" class="ln">   413  </span>
-<span id="L414" class="ln">   414  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L415" class="ln">   415  </span>		t.Parallel()
-<span id="L416" class="ln">   416  </span>
-<span id="L417" class="ln">   417  </span>		t.Run(&#34;extractorがfalseを返すとtraceは注入されない&#34;, func(t *testing.T) {
-<span id="L418" class="ln">   418  </span>			t.Parallel()
-<span id="L419" class="ln">   419  </span>
-<span id="L420" class="ln">   420  </span>			l, buf := newBufLogger()
-<span id="L421" class="ln">   421  </span>			l.extract = func(context.Context) (string, string, bool) {
-<span id="L422" class="ln">   422  </span>				return &#34;&#34;, &#34;&#34;, false
-<span id="L423" class="ln">   423  </span>			}
-<span id="L424" class="ln">   424  </span>			l.Info(context.Background(), &#34;gated trace&#34;, String(&#34;key&#34;, &#34;value&#34;))
-<span id="L425" class="ln">   425  </span>
-<span id="L426" class="ln">   426  </span>			out := buf.String()
-<span id="L427" class="ln">   427  </span>			assert.Contains(t, out, &#34;gated trace&#34;)
-<span id="L428" class="ln">   428  </span>			assert.Contains(t, out, &#34;value&#34;)
-<span id="L429" class="ln">   429  </span>			assert.NotContains(t, out, TraceIDKey)
-<span id="L430" class="ln">   430  </span>		})
-<span id="L431" class="ln">   431  </span>	})
-<span id="L432" class="ln">   432  </span>}
-<span id="L433" class="ln">   433  </span>
+<span id="L393" class="ln">   393  </span>func Test_logger_Error(t *testing.T) {
+<span id="L394" class="ln">   394  </span>	t.Parallel()
+<span id="L395" class="ln">   395  </span>
+<span id="L396" class="ln">   396  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L397" class="ln">   397  </span>		t.Parallel()
+<span id="L398" class="ln">   398  </span>
+<span id="L399" class="ln">   399  </span>		t.Run(&#34;Errorレベルでメッセージとフィールドが出力される&#34;, func(t *testing.T) {
+<span id="L400" class="ln">   400  </span>			t.Parallel()
+<span id="L401" class="ln">   401  </span>
+<span id="L402" class="ln">   402  </span>			l, buf := newBufLogger()
+<span id="L403" class="ln">   403  </span>			l.Error(context.Background(), &#34;error message&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L404" class="ln">   404  </span>
+<span id="L405" class="ln">   405  </span>			out := buf.String()
+<span id="L406" class="ln">   406  </span>			assert.Contains(t, out, &#34;error message&#34;)
+<span id="L407" class="ln">   407  </span>			assert.Contains(t, out, &#34;key&#34;)
+<span id="L408" class="ln">   408  </span>			assert.Contains(t, out, &#34;value&#34;)
+<span id="L409" class="ln">   409  </span>		})
+<span id="L410" class="ln">   410  </span>	})
+<span id="L411" class="ln">   411  </span>}
+<span id="L412" class="ln">   412  </span>
+<span id="L413" class="ln">   413  </span>func Test_logger_injectTrace(t *testing.T) {
+<span id="L414" class="ln">   414  </span>	t.Parallel()
+<span id="L415" class="ln">   415  </span>
+<span id="L416" class="ln">   416  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L417" class="ln">   417  </span>		t.Parallel()
+<span id="L418" class="ln">   418  </span>
+<span id="L419" class="ln">   419  </span>		t.Run(&#34;extractorがtrueを返すとtrace_idとspan_idが正しいキーで先頭2要素に注入される&#34;, func(t *testing.T) {
+<span id="L420" class="ln">   420  </span>			t.Parallel()
+<span id="L421" class="ln">   421  </span>
+<span id="L422" class="ln">   422  </span>			l := &amp;logger{
+<span id="L423" class="ln">   423  </span>				log: zap.NewNop(),
+<span id="L424" class="ln">   424  </span>				extract: func(context.Context) (string, string, bool) {
+<span id="L425" class="ln">   425  </span>					return &#34;trace-abc&#34;, &#34;span-xyz&#34;, true
+<span id="L426" class="ln">   426  </span>				},
+<span id="L427" class="ln">   427  </span>			}
+<span id="L428" class="ln">   428  </span>
+<span id="L429" class="ln">   429  </span>			got := l.injectTrace(context.Background(), []*Field{String(&#34;key&#34;, &#34;value&#34;)})
+<span id="L430" class="ln">   430  </span>
+<span id="L431" class="ln">   431  </span>			require.Len(t, got, 3)
+<span id="L432" class="ln">   432  </span>			assert.Equal(t, String(TraceIDKey, &#34;trace-abc&#34;), got[0])
+<span id="L433" class="ln">   433  </span>			assert.Equal(t, String(SpanIDKey, &#34;span-xyz&#34;), got[1])
+<span id="L434" class="ln">   434  </span>			assert.Equal(t, String(&#34;key&#34;, &#34;value&#34;), got[2])
+<span id="L435" class="ln">   435  </span>		})
+<span id="L436" class="ln">   436  </span>
+<span id="L437" class="ln">   437  </span>		t.Run(&#34;extractorがnilならtraceは注入されずそのまま出力される&#34;, func(t *testing.T) {
+<span id="L438" class="ln">   438  </span>			t.Parallel()
+<span id="L439" class="ln">   439  </span>
+<span id="L440" class="ln">   440  </span>			l, buf := newBufLogger()
+<span id="L441" class="ln">   441  </span>			l.Info(context.Background(), &#34;no extractor&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L442" class="ln">   442  </span>
+<span id="L443" class="ln">   443  </span>			out := buf.String()
+<span id="L444" class="ln">   444  </span>			assert.Contains(t, out, &#34;no extractor&#34;)
+<span id="L445" class="ln">   445  </span>			assert.Contains(t, out, &#34;value&#34;)
+<span id="L446" class="ln">   446  </span>			assert.NotContains(t, out, TraceIDKey)
+<span id="L447" class="ln">   447  </span>		})
+<span id="L448" class="ln">   448  </span>	})
+<span id="L449" class="ln">   449  </span>
+<span id="L450" class="ln">   450  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L451" class="ln">   451  </span>		t.Parallel()
+<span id="L452" class="ln">   452  </span>
+<span id="L453" class="ln">   453  </span>		t.Run(&#34;extractorがfalseを返すとtraceは注入されない&#34;, func(t *testing.T) {
+<span id="L454" class="ln">   454  </span>			t.Parallel()
+<span id="L455" class="ln">   455  </span>
+<span id="L456" class="ln">   456  </span>			l, buf := newBufLogger()
+<span id="L457" class="ln">   457  </span>			l.extract = func(context.Context) (string, string, bool) {
+<span id="L458" class="ln">   458  </span>				return &#34;&#34;, &#34;&#34;, false
+<span id="L459" class="ln">   459  </span>			}
+<span id="L460" class="ln">   460  </span>			l.Info(context.Background(), &#34;gated trace&#34;, String(&#34;key&#34;, &#34;value&#34;))
+<span id="L461" class="ln">   461  </span>
+<span id="L462" class="ln">   462  </span>			out := buf.String()
+<span id="L463" class="ln">   463  </span>			assert.Contains(t, out, &#34;gated trace&#34;)
+<span id="L464" class="ln">   464  </span>			assert.Contains(t, out, &#34;value&#34;)
+<span id="L465" class="ln">   465  </span>			assert.NotContains(t, out, TraceIDKey)
+<span id="L466" class="ln">   466  </span>		})
+<span id="L467" class="ln">   467  </span>	})
+<span id="L468" class="ln">   468  </span>}
+<span id="L469" class="ln">   469  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/logging/logger_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -97,7 +97,7 @@
 <span id="L40" class="ln">    40  </span>			_ = handler(c)
 <span id="L41" class="ln">    41  </span>
 <span id="L42" class="ln">    42  </span>			<span class="comment">// ミドルウェアが Authn スロットを仕込んでいることを確認（Set が成功し Get で読める）。</span>
-<span id="L43" class="ln">    43  </span>			a, err := authbd.New(&#34;u1&#34;, authbd.ProviderMock, nil, nil)
+<span id="L43" class="ln">    43  </span>			a, err := authbd.New(&#34;u1&#34;, authbd.IssuerMock, nil, nil)
 <span id="L44" class="ln">    44  </span>			require.NoError(t, err)
 <span id="L45" class="ln">    45  </span>			require.True(t, ctxhelper.SetAuthn(c.Request().Context(), *a))
 <span id="L46" class="ln">    46  </span>

@@ -104,7 +104,7 @@
 			
 			
 				
-				<dd><a href="#New">func New() authzbd.Authorizer</a></dd>
+				<dd><a href="#New">func New(appCfg *config.ApplicationConfig) (authzbd.Authorizer, error)</a></dd>
 			
 			
 			
@@ -133,13 +133,17 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/authz/allowall/authz_allowall.go.html?s=491:520#L5">New</a>
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/authz/allowall/authz_allowall.go.html?s=1079:1149#L14">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
 			</h2>
-			<pre>func New() <a href="../../../../../go-boilerplate/internal/usecase/boundary/authz/">authzbd</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a></pre>
+			<pre>func New(appCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>) (<a href="../../../../../go-boilerplate/internal/usecase/boundary/authz/">authzbd</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 			<p>New は、全許可 Authorizer のコンストラクタです。
+</p><p>全許可はすべてのリクエストを無条件に通すため、本番相当の環境で誤って配線されると認可が
+事実上無効になる危険があります。この安全保証を呼び出し側（DI 配線）の正しさに委ねると、
+配線ミス一つで破れてしまうため、危険な実装である allowall 自身が前提条件として担保します。
+非本番環境（local / ci / test）以外では生成を拒否してエラーを返します（fail-closed）。
 
 			
 			

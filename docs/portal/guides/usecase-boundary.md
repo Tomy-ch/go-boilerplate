@@ -61,18 +61,19 @@ Provides interfaces and value objects for authentication.
 |Type / Function|Description|
 |---|---|
 |`Authenticator`|Interface to generate `Authn` from `Credential`|
-|`Authn`|Authentication result (subject / id / provider / scopes / claims)|
-|`New(subject, provider, scopes, claims)`|Create `Authn` (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
-|`Credential`|Value object holding access token|
-|`NewCredential(accessToken)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
+|`Authn`|Authentication result (subject / userID / issuer / scopes / claims)|
+|`New(subject, issuer, scopes, claims)`|Create `Authn` with the UserID unresolved (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
+|`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved|
+|`Credential`|Value object holding the auth scheme + token|
+|`NewCredential(scheme, token)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
 
 Errors:
 
 |Error|Description|
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|Subject is empty|
-|`ErrSubjectNotUUID`|Subject cannot be parsed as UUID|
-|`ErrTokenMissing`|Access token is empty|
+|`ErrUserIDUnresolved`|Internal UserID is unresolved|
+|`ErrTokenMissing`|Token is empty|
 
 ### authz
 

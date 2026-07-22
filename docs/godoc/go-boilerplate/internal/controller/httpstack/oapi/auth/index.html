@@ -106,7 +106,7 @@
 			
 			
 				
-				<dd><a href="#NewAuthenticator">func NewAuthenticator(authCfg *config.AuthConfig, authenticator authbd.Authenticator) openapi3filter.AuthenticationFunc</a></dd>
+				<dd><a href="#NewAuthenticator">func NewAuthenticator(authenticator authbd.Authenticator, resolver authbd.IdentityResolver) openapi3filter.AuthenticationFunc</a></dd>
 			
 			
 			
@@ -154,14 +154,14 @@
 		
 			
 			
-			<h2 id="NewAuthenticator">func <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go.html?s=470:594#L10">NewAuthenticator</a>
+			<h2 id="NewAuthenticator">func <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go.html?s=502:632#L11">NewAuthenticator</a>
 				<a class="permalink" href="#NewAuthenticator">¶</a>
 				
 				
 			</h2>
 			<pre>func NewAuthenticator(
-    authCfg *<a href="../../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../../go-boilerplate/internal/config/#AuthConfig">AuthConfig</a>,
     authenticator <a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authenticator">Authenticator</a>,
+    resolver <a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/#IdentityResolver">IdentityResolver</a>,
 ) <a href="../../../../../../github.com/getkin/kin-openapi/openapi3filter/">openapi3filter</a>.<a href="../../../../../../github.com/getkin/kin-openapi/openapi3filter/#AuthenticationFunc">AuthenticationFunc</a></pre>
 			<p>NewAuthenticator は、認証用のOpenAPIオプションを返します。
 

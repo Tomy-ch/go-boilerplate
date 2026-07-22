@@ -75,7 +75,7 @@
 <span id="L18" class="ln">    18  </span>		Use:   &#34;job&#34;,
 <span id="L19" class="ln">    19  </span>		Short: &#34;job &lt;job-name&gt; [args...] コマンドは、指定されたジョブを実行します。&#34;,
 <span id="L20" class="ln">    20  </span>		Long: &#34;job &lt;job-name&gt; [args...] コマンドは、指定されたジョブを実行します。ジョブ名と引数を指定して実行してください。\n&#34; +
-<span id="L21" class="ln">    21  </span>			&#34;例: job usercount --timeout 30s&#34;,
+<span id="L21" class="ln">    21  </span>			&#34;例: job &lt;job-name&gt; --timeout 30s&#34;,
 <span id="L22" class="ln">    22  </span>		Args: cobra.MinimumNArgs(1),
 <span id="L23" class="ln">    23  </span>		RunE: func(cmd *cobra.Command, args []string) error {
 <span id="L24" class="ln">    24  </span>			cfg, err := config.SetUpConfig()
