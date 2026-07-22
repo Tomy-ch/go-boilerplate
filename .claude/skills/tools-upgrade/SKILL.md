@@ -135,7 +135,7 @@ If any of `go` / `node` / `python` was updated, run `make sync-versions`. This p
 
 If only non-runtime tools were updated, skip `make sync-versions`.
 
-### 6.5. Re-pin Base Image Digests if a Runtime Changed
+### 7. Re-pin Base Image Digests if a Runtime Changed
 
 If step 6 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `pin-images` skill's job, chained here):
 
@@ -147,7 +147,7 @@ make pin-images-check
 
 The just-published runtime image is normally inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown, so `pin-images-apply` strips the stale digest and leaves the `FROM` on the tag only (quarantined) — `pin-images-check` accepts that. Report it and note that `/pin-images` should be re-run once the image ages. Skip this step entirely when step 6 was skipped (no runtime change → no tag change → digests still valid).
 
-### 7. Verify
+### 8. Verify
 
 ```sh
 make lint
@@ -156,7 +156,7 @@ make test
 
 Report the result table to the user (OK / FAIL per command). Do NOT automatically roll back on failure — the user decides whether to amend, revert, or proceed.
 
-### 8. Final Report
+### 9. Final Report
 
 Summarize:
 

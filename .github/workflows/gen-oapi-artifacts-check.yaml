@@ -80,17 +80,17 @@ jobs:
           # shellcheck disable=SC2016
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '`make gen-bundle-oapi && make gen-api-docs` をローカルで実行し、変更をコミットしてください。' > "$out"
+            printf '%s\n' "Run \`make gen-bundle-oapi && make gen-api-docs\` locally and commit the changes." > "$out"
           else
-            echo "title=## ⚠️ OpenAPI 生成物のドリフトを検知（openapi/ 未変更）" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '本 PR では `openapi/` 配下が変更されていないため、generator 側のドリフト（非決定的出力・依存バージョン差・base 側の古い生成物 等）の可能性があります。`make gen-bundle-oapi && make gen-api-docs` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+            echo "title=## ⚠️ Drift in OpenAPI generated output detected (openapi/ unchanged)" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR does not modify anything under \`openapi/\`, so this may be generator-side drift (non-deterministic output, dependency version differences, stale generated artifacts on the base, etc.). Run \`make gen-bundle-oapi && make gen-api-docs\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
           # ファイル名を markdown コード表示にする `%s` はリテラル（展開させない）ため SC2016 を無効化
           # shellcheck disable=SC2016
           {
             echo ""
             while IFS= read -r f; do
-              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
             done < /tmp/changed_files.txt
           } >> "$out"
 

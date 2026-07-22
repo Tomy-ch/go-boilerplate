@@ -1,10 +1,10 @@
 pre-commit:
   parallel: true
   commands:
-    lint:
+    go-lint:
       glob: "*.go"
       run: make lint
-    test:
+    go-test:
       glob: "*.go"
       run: make test-cached
     sql-lint:
@@ -18,6 +18,14 @@ pre-commit:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
       run: make actions-lint
+    oapi-lint:
+      glob:
+        - "openapi/**/*.yaml"
+      run: make lint-oapi
+    mock-auth-oapi-lint:
+      glob:
+        - "docker/mock-auth-server/openapi/**/*.yaml"
+      run: make lint-mock-auth-oapi
     docker-lint:
       glob:
         - "docker/**/Dockerfile"

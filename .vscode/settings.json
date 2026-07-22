@@ -34,10 +34,11 @@
   },
 
   "material-icon-theme.folders.associations": {
-    "testkit": "test",
+    "mock-auth-server": "secure",
     "actions": "gh-workflows",
     "internal": "private",
     "apperror": "error",
+    "testkit": "test",
     "ctxhelper": "context",
     "httpstack": "middleware",
     "di": "interceptor",

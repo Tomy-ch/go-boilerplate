@@ -113,7 +113,7 @@ make tidy-lib
 
 （内部で `go mod tidy` と `go mod vendor` を実行）
 
-### 5.5. （任意）Go モジュール依存の更新
+### 6. （任意）Go モジュール依存の更新
 
 Go ランタイムのアップグレードは依存ライブラリをまとめて更新する好機でもある。**更新するかをユーザーに確認**し、回答に従って実行する。
 
@@ -136,23 +136,23 @@ make tidy-lib          # go mod tidy + go mod vendor を再実行
 
 補足: 本リポジトリは（実 DB を使う infrastructure テストを含む）厚い test + lint を備えており、グリーンならマイナー/パッチ更新は高い信頼度を持つ。ただし保証ではない。DB ドライバ・OpenTelemetry・Web フレームワークのようなランタイム挙動が効くコア依存は、グリーンでも CHANGELOG に目を通すこと。
 
-### 6. Go ツールの再インストール
+### 7. Go ツールの再インストール
 
 ```sh
 make install-tools
 ```
 
-### 7. CI 自動検知の確認
+### 8. CI 自動検知の確認
 
 `.github/workflows` 配下の workflow は `actions/setup-go` の `go-version-file: go.mod` を使用している。ステップ 3 で `go.mod` が書き換わるため、workflow 側の編集は不要。
 
 もし Go バージョンを文字列リテラルで直接書いている workflow ファイルがあれば、それは `<TARGET_VERSION>` に手で揃えること。
 
-### 8. Dockerfile / README 同期確認
+### 9. Dockerfile / README 同期確認
 
 ステップ 3 で Dockerfile の `FROM` タグおよび `docker/**/README.md` の image 参照は書き換え済み。手動編集は不要。
 
-### 8.5. base image digest pin の再固定
+### 10. base image digest pin の再固定
 
 ステップ 3 は `FROM golang:` の**タグ**を変えたが、以前 pin した `@sha256:...` digest は**旧** Go イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先するため、ビルドは旧イメージを黙って pull する）。digest が新タグに追従するよう registry から再 pin する。これは `pin-images` スキルの役目（姉妹関係によりここで chain）:
 
@@ -164,7 +164,7 @@ make pin-images-check
 
 新しい Go イメージは公開直後のため通常 `PIN_IMAGES_MIN_AGE_DAYS`（既定 14 日）の cooldown 内にあり **quarantine** される: `pin-images-apply` は stale な digest を剥がして `FROM` を tag のみに戻し、`pin-images-check` はそれを許容する。ユーザーに報告し、新イメージが窓を越えて古くなったら `/pin-images` を再実行して digest pin を復活させるべき旨を伝える。詳細は `pin-images` スキル参照。
 
-### 9. Docker コンテナの再ビルド
+### 11. Docker コンテナの再ビルド
 
 Go バージョンアップでは base image タグが変わるため、新しいイメージを確実に pull・再ビルドできるよう `-clean`（`--no-cache --pull`）バリアントを使う:
 
@@ -173,25 +173,25 @@ make serve-build-clean
 make tool-runners-build-clean
 ```
 
-### 10. コード生成の再実行
+### 12. コード生成の再実行
 
 ```sh
 make gen
 ```
 
-### 11. テストの実行
+### 13. テストの実行
 
 ```sh
 make test
 ```
 
-### 12. lint の実行
+### 14. lint の実行
 
 ```sh
 make lint
 ```
 
-### 13. 最終確認
+### 15. 最終確認
 
 以下が全て成功することを確認する。
 
