@@ -132,15 +132,15 @@ jobs:
           fi
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in database output have been detected" >> "$GITHUB_OUTPUT"
-            printf '%s\n' 'データベース生成コマンド（例: `make gen` / `make gen-query`）をローカルで実行し、変更をコミットしてください。' > "$out"
+            printf '%s\n' "Run the database generation command (e.g. \`make gen\` / \`make gen-query\`) locally and commit the changes." > "$out"
           else
-            echo "title=## ⚠️ DB 生成物のドリフトを検知（SQL source 未変更）" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '本 PR では SQL source が変更されていないため、generator 側（sqlc バージョン差・base 側の古い生成物 等）のドリフトの可能性があります。`make gen-query` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+            echo "title=## ⚠️ Drift in DB generated output detected (SQL source unchanged)" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR does not modify any SQL source, so this may be generator-side drift (sqlc version differences, stale generated artifacts on the base, etc.). Run \`make gen-query\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
           {
             echo ""
             while IFS= read -r f; do
-              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
             done < /tmp/changed_files.txt
           } >> "$out"
 

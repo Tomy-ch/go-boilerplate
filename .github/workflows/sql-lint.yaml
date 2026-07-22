@@ -71,7 +71,7 @@ jobs:
             if [ "$(category_code "$cat")" = "0" ]; then
               printf -- '- ✅ %s\n' "$cat" >> "$out"
             else
-              printf -- '- ❌ %s のディレクトリの SQL をローカルで修正し、差分をコミットしてください。\n' "$cat" >> "$out"
+              printf -- '- ❌ Fix the SQL under the %s directory locally and commit the diff.\n' "$cat" >> "$out"
             fi
           done
           echo "" >> "$out"
