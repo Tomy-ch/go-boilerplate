@@ -10,5 +10,6 @@ secret-scan:
 
 # -----CI内で実行するコマンド群-----
 # --redact: 検出値をログ/PRコメントに出さない（漏洩二次被害の防止）
+# --no-color: 非TTY（CI / lefthook ログ）で ANSI エスケープが化けないよう色付けを無効化する
 secret-scan-ci:
-	gitleaks dir . --no-banner --redact
+	gitleaks dir . --no-banner --redact --no-color
