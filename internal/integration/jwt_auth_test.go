@@ -139,6 +139,14 @@ func startJWTAuthServer(t *testing.T, key *rsa.PrivateKey) *Server {
 	}, client)
 	require.NoError(t, err)
 
+	return newProtectedServer(t, authenticator)
+}
+
+// newProtectedServer は、与えた authenticator を auth ミドルウェアへ配線した保護付き Echo（GET /protected）を起動する。
+// Bearer 抽出 → Credential → Authenticate → IdentityResolver → 401/200 の HTTP 境界経路を実検証するための土台。
+func newProtectedServer(t *testing.T, authenticator authbd.Authenticator) *Server {
+	t.Helper()
+
 	resolvedUserID, err := uuid.Parse(jwtTestResolvedUserID)
 	require.NoError(t, err)
 	authFunc := auth.NewAuthenticator(authenticator, stubIdentityResolver{userID: resolvedUserID})
