@@ -302,6 +302,8 @@ paths:
                     - missing-subject
                     - invalid-signature
                     - unsupported-algorithm
+                    - unknown-kid
+                    - old-key
                     - id-token
       responses:
         '200':
@@ -400,13 +402,25 @@ paths:
       operationId: AdminRotateKeys
       tags:
         - admin
-      summary: 署名鍵ローテーション（未実装スタブ）
+      summary: 署名鍵ローテーション
       description: |
-        署名鍵のローテーション契約のみを定義する。実ローテーションは #605(#585-C) で実装するため、 本 PBI では 501 Not Implemented を返す。dev-gate 限定。
+        宣言的操作（add-key / promote / retire）で provider の署名鍵状態を遷移する。 JWKS の公開集合と現署名鍵を分離管理し、新旧 Token の並行検証・旧鍵退役を再現する。 Phase1 への復帰は POST /admin/reset。dev-gate 限定。
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyRotationRequest'
       responses:
-        '501':
-          description: 未実装（契約のみ）
+        '200':
+          description: 操作後の鍵状態
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyState'
+        '400':
+          description: 不正な操作（未知 / 退役不能 kid・不正遷移・不正リクエスト）
           content:
             application/json:
               schema:
@@ -580,7 +594,7 @@ components:
     Jwks:
       type: object
       description: |
-        JSON Web Key Set（RFC 7517）。公開鍵のみを含む。Go 側の署名検証が依存する契約であり、 鍵（kid=mock-key-1 / RS256）はバイト等価で不変に保つ。
+        JSON Web Key Set（RFC 7517）。公開鍵のみを含む。Go 側の署名検証が依存する契約。 公開集合は鍵ローテーション（POST /admin/keys/rotate）で変化する（初期は kid=mock-key-1 / RS256 の 1 本）。
       required:
         - keys
       properties:
@@ -615,6 +629,46 @@ components:
                 type: string
                 description: RSA exponent（base64url）。
                 example: AQAB
+    KeyRotationRequest:
+      type: object
+      description: |
+        署名鍵ローテーションの宣言的操作。action で鍵ライフサイクル操作を、kid で対象鍵を指定する。 Phase 遷移（Phase1: [a] → Phase2: [a,b]/署名b → Phase3: [b]）は操作を連ねて表現する。
+      required:
+        - action
+        - kid
+      properties:
+        action:
+          type: string
+          description: |
+            鍵ライフサイクル操作。add-key=公開集合へ追加（署名鍵は不変）/ promote=署名鍵へ昇格（公開済みが前提）/ retire=公開集合から退役（現署名鍵は退役不可）。
+          enum:
+            - add-key
+            - promote
+            - retire
+          example: add-key
+        kid:
+          type: string
+          description: 操作対象の鍵 ID。
+          example: mock-key-2
+    KeyState:
+      type: object
+      description: 鍵ローテーション操作後の鍵状態（現署名鍵 / 公開集合）。
+      required:
+        - signing_kid
+        - published_kids
+      properties:
+        signing_kid:
+          type: string
+          description: 現在の署名鍵 ID（published_kids に含まれる）。
+          example: mock-key-2
+        published_kids:
+          type: array
+          description: JWKS で公開中の鍵 ID の集合。
+          items:
+            type: string
+          example:
+            - mock-key-1
+            - mock-key-2
     UserInfo:
       type: object
       description: |

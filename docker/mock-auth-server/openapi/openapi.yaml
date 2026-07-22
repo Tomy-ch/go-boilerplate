@@ -69,6 +69,10 @@ components:
       $ref: './components/schemas/OidcConfiguration.yaml'
     Jwks:
       $ref: './components/schemas/Jwks.yaml'
+    KeyRotationRequest:
+      $ref: './components/schemas/KeyRotationRequest.yaml'
+    KeyState:
+      $ref: './components/schemas/KeyState.yaml'
     UserInfo:
       $ref: './components/schemas/UserInfo.yaml'
     AdminUsersResponse:

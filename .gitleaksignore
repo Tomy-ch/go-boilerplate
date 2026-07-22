@@ -4,3 +4,8 @@
 # mock-auth-server の固定 RSA 署名鍵は、ローカル開発専用の疑似 OIDC provider が JWT 署名に使う
 # 意図的なサンプル鍵で秘密情報ではない（発行 Token の再現性のため固定しリポジトリで管理する）。
 docker/mock-auth-server/keys/mock-key-1.pem:private-key:1
+docker/mock-auth-server/keys/mock-key-2.pem:private-key:1
+docker/mock-auth-server/keys/mock-key-retired.pem:private-key:1
+# 同じ固定署名鍵の公開部を Go 側ローテーション統合テストが //go:embed で取り込むためのコピー。
+internal/integration/testdata/keys/mock-key-1.pem:private-key:1
+internal/integration/testdata/keys/mock-key-2.pem:private-key:1

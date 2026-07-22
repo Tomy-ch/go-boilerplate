@@ -14,7 +14,7 @@ Token 発行側と検証側が同一ライブラリ由来の誤りを共有し�
 | --- | --- | --- |
 | GET | `/health` | 死活確認 — `{"status":"ok"}` |
 | GET | `/.well-known/openid-configuration` | OIDC Discovery ドキュメント |
-| GET | `/.well-known/jwks.json` | JWKS（公開鍵のみ: `kty=RSA` `alg=RS256` `use=sig` `kid=mock-key-1`） |
+| GET | `/.well-known/jwks.json` | JWKS（公開鍵のみ: `kty=RSA` `alg=RS256` `use=sig`。公開集合は鍵ローテーションで変化する） |
 | GET | `/oidc/authorize` | 認可エンドポイント（Code Flow + PKCE S256）— `302` で `code`、または error `redirect` / `400` |
 | POST | `/oidc/token` | トークンエンドポイント（`authorization_code` + PKCE）— `access_token` + `id_token` を発行 |
 | GET | `/oidc/userinfo` | UserInfo（Bearer access token・whitelist claim）。ID Token は `401` で拒否 |
@@ -22,8 +22,8 @@ Token 発行側と検証側が同一ライブラリ由来の誤りを共有し�
 | POST | `/bypass/token` | 固定 Profile でトークン発行 — `{subject, profile}` → `{access_token, ...}` |
 | POST | `/bypass/session` | session を直接作成 — `{subject}` → `{session_id, subject}` |
 | GET | `/admin/users` | 固定 User Fixture の一覧 |
-| POST | `/admin/reset` | 揮発ストア（code / session）の初期化 |
-| POST | `/admin/keys/rotate` | 鍵ローテーション — 契約のみで `501` |
+| POST | `/admin/reset` | 揮発ストア（code / session）と鍵ストア（Phase 1 へ戻す）の初期化 |
+| POST | `/admin/keys/rotate` | 鍵ローテーション — 宣言的 `{action, kid}` → 遷移後の鍵状態 |
 
 `/bypass/*` ・ `/admin/*` は**dev 専用**: `MOCK_AUTH_DEV_ENDPOINTS=disabled` で `404` を返す。さらに **`NODE_ENV=production` では server が即時終了する**（本番で動かしてはならない）。登録クライアント（`fixtures/clients.json`）は public + PKCE 必須で、`redirect_uri` / `post_logout_redirect_uri` は完全一致で照合する。
 
@@ -62,7 +62,7 @@ sequenceDiagram
 | session | `/oidc/authorize`（ログイン）・`/bypass/session` | `/oidc/logout`（subject 単位）・`/admin/reset` | 1h |
 | access / id token | `/oidc/token`・`/bypass/token` | 期限切れ（stateless・非保存） | 300s |
 
-`/admin/reset` は揮発ストア（code / session）を初期化する。固定鍵と fixture はプロセス再起動でのみ初期化される。
+`/admin/reset` は揮発ストア（code / session）を初期化し、鍵ストアを Phase 1 へ戻す（[鍵ローテーション](#鍵ローテーション)を参照）。鍵素材そのもの（固定 PEM）と fixture はプロセス再起動でのみ初期化される。
 
 ## トークン Profile（`/bypass/token`）
 
@@ -78,15 +78,38 @@ sequenceDiagram
 | `missing-subject` | `sub` なし | 401 |
 | `invalid-signature` | JWKS に無い鍵で署名（`kid` は同一） | 401 |
 | `unsupported-algorithm` | `HS256`（対称鍵・RS256 allowlist 外） | 401 |
+| `unknown-kid` | 有効な署名だが JWKS に無い `kid` | 401 |
+| `old-key` | 退役鍵で署名（`kid` は JWKS に一度も載らない） | 401 |
 | `id-token` | `token_use=id`、`aud=<client_id>`、`typ` が `at+jwt` でない | 401 |
 
 `valid` の access token の Claim はデファクト標準 Profile に従う: `iss` / `sub` / `aud` / `exp` / `iat` / `nbf` / `jti` / `client_id` / `token_use=access` / `scope`。access token は `typ=at+jwt` ヘッダ（RFC 9068）を持ち、Go 検証側はこれで ID Token の誤用を拒否する。
 
 ## 鍵 & Fixture
 
-- `keys/mock-key-1.pem` — **固定 RSA 秘密鍵**（再起動しても不変。発行トークンが再現可能）。`kid=mock-key-1`。
+- `keys/*.pem` — **固定 RSA 秘密鍵**（再起動しても不変。発行トークンが再現可能）。`mock-key-1`（初期署名鍵）と `mock-key-2` が回転プールを構成し、`mock-key-retired` は `old-key` profile 用で JWKS には一度も載らない。鍵ストアは起動時にこれらをロードし、揮発するのは状態（どの鍵を公開 / 署名するか）のみ。
+- `fixtures/jwks/phase{1,2,3}.json` — 各ローテーション Phase で鍵ストアが公開する **golden JWKS**。Go 側のローテーション統合テストと共有し、双方が同一バイトをパースする。`npm run gen:jwks` で再生成する。
 - `fixtures/users.json` — サンプルユーザー（Subject / Email / 名前。`status` は未使用）。ファイルが無くても mock は動作する（`/bypass/token` は任意の `subject` を受理）。`fixtures/README.md` を参照。
 - `fixtures/clients.json` — 登録済み OAuth クライアント（public client・PKCE 必須・許可する `redirect_uris` / `post_logout_redirect_uris`）。
+
+## 鍵ローテーション
+
+鍵ストアは **公開集合**（JWKS で公開する鍵）と **単一の署名鍵** を分離管理し、Go API をローテーションする IdP に対して検証できるようにする。`POST /admin/keys/rotate` は宣言的な `{action, kid}` を受け取り、遷移後の `{signing_kid, published_kids}` を返す:
+
+| `action` | 効果 |
+| --- | --- |
+| `add-key` | `kid` を公開集合へ追加（署名鍵は不変）。プール内の鍵のみ回転可能 |
+| `promote` | `kid` を署名鍵に切替（公開済みが前提） |
+| `retire` | `kid` を公開集合から退役（現署名鍵は退役不可） |
+
+これらを連ねると 3 つの Phase を再現できる（`POST /admin/reset` で Phase 1 へ戻る）:
+
+```text
+Phase 1  JWKS: [mock-key-1]              署名: mock-key-1   （初期）
+Phase 2  JWKS: [mock-key-1, mock-key-2]  署名: mock-key-2   （add-key + promote mock-key-2）
+Phase 3  JWKS: [mock-key-2]              署名: mock-key-2   （retire mock-key-1）
+```
+
+これは実 IdP の一方通行の鍵ライフサイクルではなく、**固定鍵プール上の可逆な状態制御面**である: 退役したプール鍵は再追加でき、2 鍵を無限にループできる（任意回数のローテーションを固定 PEM から駆動できる）。到達可能な状態はすべて正当な JWKS（公開集合は空にならず常に署名鍵を含む）であり、Go 側は経路ではなく結果の `(公開集合, 署名鍵)` のみを観測する。「退役鍵が拒否される」ケースはローテーションが一方通行であることに依存**しない** — JWKS に一度も載らない専用鍵 `mock-key-retired` で署名する `old-key` profile が独立に担保する。
 
 ## 使い方
 
@@ -113,8 +136,10 @@ Go API は `AUTH_ISSUER` をホスト URL（`http://localhost:4000`）に、`AUT
 
 ## OpenAPI & コード生成
 
-HTTP 表面は `openapi/` で OpenAPI-first に定義し（`openapi/openapi.gen.yaml` にバンドル）、`src/generated/schemas.ts` に [orval](https://orval.dev/) 生成の zod スキーマを持つ。`make gen-mock-auth-oapi` で再生成し、両生成物は commit・CI で drift 検知する。
+HTTP 表面は `openapi/` で OpenAPI-first に定義し（`openapi/openapi.gen.yaml` にバンドル）、`src/generated/schemas.ts` に [orval](https://orval.dev/) 生成の zod スキーマを持つ。両者は `make gen-mock-auth-oapi` で再生成し、commit・CI で drift 検知する。
+
+golden JWKS（`fixtures/jwks/phase{1,2,3}.json` と `internal/integration/testdata/jwks/` 配下のコピー）は `npm run gen:jwks` で別途再生成する（鍵ストアを import するため `node_modules` を要し、コンテナで走る `gen` ステップからは外している）。PEM が固定のためほとんど変化せず、正しさは drift 検知ではなくテストで担保する — provider の `keys.test.ts` が各 Phase を `keyStore.jwks()` と一致検証し、Go のローテーション統合テストが埋め込みコピーを共有 PEM で署名検証する。
 
 ## 未実装
 
-複数 `kid` の鍵ローテーション（`/admin/keys/rotate` は `501` スタブ）、および Role / `user_identities` / deleted・unknown user の扱い。
+Role / `user_identities` / deleted・unknown user の扱い。

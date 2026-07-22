@@ -1,8 +1,9 @@
 // tokens.ts は、固定 Profile 方式で access token / id token を発行する。
 // 任意 Claim 注入 API にはせず、再現性のため異常系を固定 Profile として提供する。
-import { SignJWT, jwtVerify, decodeJwt } from "jose";
+// 署名鍵は keyStore（現署名鍵）から都度取得するため、鍵ローテーション後は新署名鍵で発行される。
+import { SignJWT, jwtVerify, decodeJwt, createLocalJWKSet } from "jose";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
-import { signingKey, KID, ALG, publicKey } from "./keys.ts";
+import { keyStore, ALG, RETIRED_KID } from "./keys.ts";
 import type { Claims, OidcConfig } from "./types.ts";
 
 // SignKey は jose の SignJWT.sign が受理する鍵型（CryptoKey / KeyObject / Uint8Array 等）を導出する。
@@ -14,6 +15,8 @@ const ACCESS_TTL_SECONDS = 300;
 const ACCESS_SCOPE = "openid profile email api.read api.write";
 // ACCESS_TOKEN_TYPE は access token の typ ヘッダ（RFC 9068）。Go 側はこの typ で ID Token 誤用を拒否する。
 const ACCESS_TOKEN_TYPE = "at+jwt";
+// UNKNOWN_KID は unknown-kid profile が付す、JWKS に存在しない kid。Go 側は鍵解決に失敗し拒否する。
+const UNKNOWN_KID = "unknown-kid";
 
 // wrongSigningKey は invalid-signature プロファイル用の、JWKS に載らない別 RSA 鍵。
 const { privateKey: wrongSigningKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -30,6 +33,8 @@ export const PROFILES: readonly string[] = [
   "missing-subject",
   "invalid-signature",
   "unsupported-algorithm",
+  "unknown-kid",
+  "old-key",
   "id-token",
 ];
 
@@ -63,46 +68,59 @@ function idTokenClaims(config: OidcConfig, subject: string, now: number, clientI
   };
 }
 
-// sign は指定の署名鍵・alg・typ でクレームに署名する。
-function sign(claims: Claims, key: SignKey, alg: string, typ: string): Promise<string> {
-  return new SignJWT(claims).setProtectedHeader({ alg, kid: KID, typ }).sign(key);
+// sign は指定の署名鍵・alg・typ・kid でクレームに署名する。
+function sign(claims: Claims, key: SignKey, alg: string, typ: string, kid: string): Promise<string> {
+  return new SignJWT(claims).setProtectedHeader({ alg, kid, typ }).sign(key);
+}
+
+// signWithCurrent は現署名鍵で署名する（正常系の共通経路）。
+function signWithCurrent(claims: Claims, typ: string): Promise<string> {
+  const { signingKey, kid } = keyStore.signing();
+  return sign(claims, signingKey, ALG, typ, kid);
 }
 
 // issueToken は subject と profile から Token 文字列を発行する。未知の profile は valid 扱い。
 export function issueToken(config: OidcConfig, subject: string, profile: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const claims = baseAccessClaims(config, subject, now);
+  const currentKid = keyStore.signing().kid;
 
   switch (profile) {
     case "expired":
       claims.iat = now - 2 * ACCESS_TTL_SECONDS;
       claims.nbf = now - 2 * ACCESS_TTL_SECONDS;
       claims.exp = now - ACCESS_TTL_SECONDS;
-      return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+      return signWithCurrent(claims, ACCESS_TOKEN_TYPE);
     case "not-yet-valid":
       claims.nbf = now + ACCESS_TTL_SECONDS;
-      return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+      return signWithCurrent(claims, ACCESS_TOKEN_TYPE);
     case "wrong-issuer":
       claims.iss = "https://evil.example.com";
-      return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+      return signWithCurrent(claims, ACCESS_TOKEN_TYPE);
     case "wrong-audience":
       claims.aud = "wrong-audience";
-      return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+      return signWithCurrent(claims, ACCESS_TOKEN_TYPE);
     case "missing-subject":
       delete claims.sub;
-      return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+      return signWithCurrent(claims, ACCESS_TOKEN_TYPE);
     case "invalid-signature":
       // JWKS に載らない別鍵で署名（kid は正規のまま）。Go 側は署名検証で拒否する。
-      return sign(claims, wrongSigningKey, ALG, ACCESS_TOKEN_TYPE);
+      return sign(claims, wrongSigningKey, ALG, ACCESS_TOKEN_TYPE, currentKid);
     case "unsupported-algorithm":
       // 許可外の対称鍵アルゴリズム（HS256）。Go 側は alg allowlist で拒否する。
-      return sign(claims, symmetricSecret, "HS256", ACCESS_TOKEN_TYPE);
+      return sign(claims, symmetricSecret, "HS256", ACCESS_TOKEN_TYPE, currentKid);
+    case "unknown-kid":
+      // JWKS に存在しない kid で署名（署名自体は現鍵で有効）。Go 側は鍵解決に失敗し拒否する。
+      return sign(claims, keyStore.signing().signingKey, ALG, ACCESS_TOKEN_TYPE, UNKNOWN_KID);
+    case "old-key":
+      // JWKS に一度も載らない退役鍵で署名。Go 側は kid を解決できず拒否する（退役鍵拒否の再現）。
+      return sign(claims, keyStore.material(RETIRED_KID).signingKey, ALG, ACCESS_TOKEN_TYPE, RETIRED_KID);
     case "id-token":
       // token_use=id / aud=client_id / typ!=at+jwt。Go 側は typ と aud の両方で拒否する。
-      return sign(idTokenClaims(config, subject, now), signingKey, ALG, "JWT");
+      return signWithCurrent(idTokenClaims(config, subject, now), "JWT");
     case "valid":
     default:
-      return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+      return signWithCurrent(claims, ACCESS_TOKEN_TYPE);
   }
 }
 
@@ -114,7 +132,7 @@ export function issueAccessToken(config: OidcConfig, subject: string, scope?: st
   if (scope !== undefined && scope !== "") {
     claims.scope = scope;
   }
-  return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+  return signWithCurrent(claims, ACCESS_TOKEN_TYPE);
 }
 
 // issueIdToken は OIDC の ID Token を発行する（typ=JWT）。aud には認可を要求した clientId を用い、
@@ -130,13 +148,15 @@ export function issueIdToken(
   if (nonce !== undefined && nonce !== "") {
     claims.nonce = nonce;
   }
-  return sign(claims, signingKey, ALG, "JWT");
+  return signWithCurrent(claims, "JWT");
 }
 
 // verifyAccessToken は access token を検証する。typ=at+jwt でないもの（ID Token 等）は拒否し、
-// 署名・iss・aud・alg・有効期限を検証する。成功時 payload を返し、失敗時は例外を投げる。
+// 署名（現在公開中の JWKS の kid で解決）・iss・aud・alg・有効期限を検証する。
+// 成功時 payload を返し、失敗時は例外を投げる。
 export async function verifyAccessToken(config: OidcConfig, token: string): Promise<Claims> {
-  const { payload } = await jwtVerify(token, publicKey, {
+  const jwks = createLocalJWKSet(keyStore.jwks());
+  const { payload } = await jwtVerify(token, jwks, {
     issuer: config.issuer,
     audience: config.audience,
     algorithms: [ALG],

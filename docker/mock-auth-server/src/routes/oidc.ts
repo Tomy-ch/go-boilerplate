@@ -15,7 +15,7 @@ import {
   subjectFromToken,
   ACCESS_TTL_SECONDS,
 } from "../tokens.ts";
-import { KID } from "../keys.ts";
+import { keyStore } from "../keys.ts";
 import { verifyS256 } from "../pkce.ts";
 import { logEvent } from "../log.ts";
 
@@ -125,7 +125,7 @@ oidcRoutes.post("/oidc/token", async (c) => {
 
   const accessToken = await issueAccessToken(config, record.subject, record.scope);
   const idToken = await issueIdToken(config, record.subject, record.nonce, record.clientId);
-  logEvent("token_issued", { client_id: record.clientId, subject: record.subject, kid: KID });
+  logEvent("token_issued", { client_id: record.clientId, subject: record.subject, kid: keyStore.signing().kid });
 
   return c.json({
     access_token: accessToken,
