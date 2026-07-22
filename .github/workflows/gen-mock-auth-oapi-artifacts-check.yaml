@@ -73,7 +73,6 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
-          # shellcheck disable=SC2016  # backticks are literal Markdown in the PR comment strings
           set -euo pipefail
           out=/tmp/gen-mock-auth-oapi-comment.md
           if [ "${{ steps.gen_diff.outputs.has_diff }}" != "true" ]; then
@@ -83,15 +82,15 @@ jobs:
           fi
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in mock-auth OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '`make gen-mock-auth-oapi` をローカルで実行し、変更をコミットしてください。' > "$out"
+            printf '%s\n' "\`make gen-mock-auth-oapi\` をローカルで実行し、変更をコミットしてください。" > "$out"
           else
             echo "title=## ⚠️ mock-auth OpenAPI 生成物のドリフトを検知（source 未変更）" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '本 PR では `docker/mock-auth-server/` 配下が変更されていないため、generator 側のドリフト（非決定的出力・依存バージョン差 等）の可能性があります。`make gen-mock-auth-oapi` をローカル実行してコミットしてください。' > "$out"
+            printf '%s\n' "本 PR では \`docker/mock-auth-server/\` 配下が変更されていないため、generator 側のドリフト（非決定的出力・依存バージョン差 等）の可能性があります。\`make gen-mock-auth-oapi\` をローカル実行してコミットしてください。" > "$out"
           fi
           {
             echo ""
             while IFS= read -r f; do
-              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
             done < /tmp/changed_files.txt
           } >> "$out"
 
