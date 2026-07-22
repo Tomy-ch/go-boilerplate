@@ -208,6 +208,24 @@ export const SAMPLE_DOMAINS = {
     ],
   },
 
+  address: {
+    description: "サンプル 郵便番号住所補完 API（GET /v1/addresses。外部 gateway 経由の zipcloud lookup + prefecture_id 変換 + degrade〈外部障害時 200 + 空候補〉）",
+    paths: [
+      "internal/usecase/address",
+      "internal/usecase/boundary/address",
+      "internal/infrastructure/webapi/address",
+      "internal/controller/handler/v1/addresses",
+      "internal/integration/v1_addresses_test.go",
+
+      "openapi/paths/v1/addresses.yaml",
+      "openapi/components/parameters/address",
+      "openapi/components/responses/addresses",
+      "openapi/components/schemas/addresses",
+
+      "docs/spec/address/usecase.md",
+    ],
+  },
+
   sampleTooling: {
     description: "サンプル削除ツール自身（削除完了後は不要）",
     paths: [

@@ -57,6 +57,8 @@ tags:
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
+  - name: v1/addresses
+    description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 # ここで設定した認証が全体で適用される。
@@ -100,6 +102,8 @@ paths:
     $ref: './paths/v1/products.yaml'
   /v1/exchange-rates:
     $ref: './paths/v1/exchange-rates.yaml'
+  /v1/addresses:
+    $ref: './paths/v1/addresses.yaml'
   # sample-api:end
 components:
   parameters:
@@ -127,6 +131,8 @@ components:
       $ref: './components/parameters/product/StatusIdParam.yaml'
     SortParam:
       $ref: './components/parameters/product/SortParam.yaml'
+    PostalCodeParam:
+      $ref: './components/parameters/address/PostalCodeParam.yaml'
     # sample-api:end
   securitySchemes:
     BearerAuth:
@@ -184,4 +190,8 @@ components:
       $ref: './components/schemas/ProductResponse.yaml'
     ProductListResponse:
       $ref: './components/responses/products/ProductListResponse.yaml'
+    AddressCandidate:
+      $ref: './components/schemas/addresses/AddressCandidate.yaml'
+    ResponseV1Addresses:
+      $ref: './components/responses/addresses/AddressCandidatesResponse.yaml'
     # sample-api:end
