@@ -268,7 +268,13 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 		r.e.met.Retried(ctx)
 		r.e.log.Named("worker.process").Warn(ctx, "retryable failure, nacked", fields...)
 	case catPermanent:
-		r.routePermanent(ctx, m, err) // A5
+		if ferr := r.routePermanent(ctx, m, err); ferr != nil { // A5
+			// dead-letter 退避に失敗した。実際には退避できていないため DLQ 計上・成功ログは出さず、
+			// Ack もしない（暗黙の再配送へ委ねる）。退避先障害は下流失敗として circuit へ計上する。
+			r.cb.onFailure()
+			r.e.log.Named("worker.process").Error(ctx, "permanent failure, dead-letter routing failed", fields...)
+			return
+		}
 		r.cb.onSuccess()
 		r.e.met.DLQ(ctx)
 		r.e.log.Named("worker.process").Warn(ctx, "permanent failure, routed to dead-letter", fields...)
@@ -278,15 +284,17 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 	}
 }
 
-// routePermanent は、Permanent を FailureHandler へ退避してから Ack します（退避失敗時は Ack しない）。
-func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) {
+// routePermanent は、Permanent を FailureHandler へ退避してから Ack します。
+// 退避に失敗した場合は Ack せず、その error を返します（呼び出し元が circuit / ログを分岐する）。
+func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) error {
 	if r.failure != nil {
 		if err := r.failure.Fail(ctx, m, cause); err != nil {
 			r.logErr(ctx, "worker.failure", "failure handler error", err)
-			return
+			return err
 		}
 	}
 	r.ack(ctx, m)
+	return nil
 }
 
 func (r *run) ack(ctx context.Context, m worker.Message) {

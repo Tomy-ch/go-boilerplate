@@ -20,4 +20,7 @@ type Rate struct {
 	Quote string
 	// Value は、Base 1 単位あたりの Quote 換算値です。
 	Value float64
+	// Date は、レートの基準日（外部レートサービスの公表日、例 "2026-07-21"）です。
+	// 外部レスポンスに date が含まれない場合は空文字になります。
+	Date string
 }

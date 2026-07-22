@@ -598,11 +598,25 @@ paths:
         - name: amount
           in: query
           required: true
-          description: 換算する金額（base 通貨建て）
+          description: |
+            換算する金額（base 通貨建て）。これは換算の入力倍率であり、保存されるマネー値ではないため
+            float（double）で受け付けます。保存値および reference_amount の内部計算は整数で行います。
           schema:
             type: number
             format: double
+            minimum: 0
             example: 100
+        - name: displayCurrency
+          in: query
+          required: false
+          description: |
+            指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
+            現状は JPY のみサポートします。
+          schema:
+            type: string
+            enum:
+              - JPY
+            example: JPY
       responses:
         '200':
           description: 換算結果を返します。
@@ -1310,6 +1324,37 @@ components:
       description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
+    ReferenceAmount:
+      type: object
+      nullable: true
+      description: |
+        表示通貨での参考換算額です。`displayCurrency` 指定時のみ算出し、非永続で返します。
+        保存値はあくまで USD セント整数であり、本フィールドは参考表示専用です。
+        レート取得に失敗した場合は degrade として null を返します。
+      required:
+        - currency
+        - amount
+        - rate
+        - rateDate
+      properties:
+        currency:
+          type: string
+          description: 参考換算額の通貨コード
+          example: JPY
+        amount:
+          type: integer
+          format: int64
+          description: 参考換算額。通貨の最小単位（JPY は円）の丸め後整数です。
+          example: 15050
+        rate:
+          type: number
+          format: double
+          description: 換算に用いたレート（base 1 単位あたりの表示通貨換算値）
+          example: 150.5
+        rateDate:
+          type: string
+          description: レートの基準日（外部レートサービスの公表日）
+          example: '2026-07-21'
     ExchangeRateResponse:
       type: object
       description: 為替換算結果のレスポンスです。
@@ -1318,6 +1363,7 @@ components:
         - quote
         - amount
         - converted
+        - referenceAmount
       properties:
         base:
           type: string
@@ -1337,6 +1383,8 @@ components:
           format: double
           description: 換算後の金額
           example: 15050
+        referenceAmount:
+          $ref: '#/components/schemas/ReferenceAmount'
   responses:
     BadRequest400:
       description: リクエストが不正です。

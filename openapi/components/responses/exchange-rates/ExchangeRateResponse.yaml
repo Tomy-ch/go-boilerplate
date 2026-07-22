@@ -5,6 +5,7 @@ required:
   - quote
   - amount
   - converted
+  - referenceAmount
 properties:
   base:
     type: string
@@ -24,3 +25,5 @@ properties:
     format: double
     description: 換算後の金額
     example: 15050
+  referenceAmount:
+    $ref: '../../schemas/exchange-rates/ReferenceAmount.yaml'

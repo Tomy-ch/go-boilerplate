@@ -53,6 +53,13 @@ func (w *ServerInterfaceWrapper) GetExchangeRates(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter amount: %s", err))
 	}
 
+	// ------------- Optional query parameter "displayCurrency" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "displayCurrency", ctx.QueryParams(), &params.DisplayCurrency, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter displayCurrency: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetExchangeRates(ctx, params)
 	return err

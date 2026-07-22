@@ -25,11 +25,25 @@ get:
     - name: amount
       in: query
       required: true
-      description: 換算する金額（base 通貨建て）
+      description: |
+        換算する金額（base 通貨建て）。これは換算の入力倍率であり、保存されるマネー値ではないため
+        float（double）で受け付けます。保存値および reference_amount の内部計算は整数で行います。
       schema:
         type: number
         format: double
+        minimum: 0
         example: 100
+    - name: displayCurrency
+      in: query
+      required: false
+      description: |
+        指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
+        現状は JPY のみサポートします。
+      schema:
+        type: string
+        enum:
+          - JPY
+        example: JPY
   responses:
     '200':
       description: 換算結果を返します。

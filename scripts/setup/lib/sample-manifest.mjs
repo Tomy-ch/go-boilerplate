@@ -190,6 +190,24 @@ export const SAMPLE_DOMAINS = {
     ],
   },
 
+  exchangeRate: {
+    description: "サンプル 為替レート換算 API（GET /v1/exchange-rates。外部 gateway + TTL キャッシュ decorator + reference_amount + degrade）",
+    paths: [
+      "internal/usecase/exchangerate",
+      "internal/usecase/boundary/exchangerate",
+      "internal/infrastructure/webapi/exchangerate",
+      "internal/controller/handler/v1/exchangerate",
+      "internal/integration/v1_exchange_rates_test.go",
+
+      "openapi/paths/v1/exchange-rates.yaml",
+      "openapi/components/responses/exchange-rates",
+      "openapi/components/schemas/exchange-rates",
+
+      // internal/usecase/tools/money は paging/search と同様の汎用 usecase ツールであり
+      // サンプル削除対象に含めない（後続 purchases も再利用する恒久ヘルパ）。
+    ],
+  },
+
   sampleTooling: {
     description: "サンプル削除ツール自身（削除完了後は不要）",
     paths: [
@@ -206,6 +224,7 @@ export const MARKER_FILES = [
   "internal/di/module/core/auth.go",
   "internal/di/module/controller.go",
   "internal/di/module/usecase.go",
+  "internal/di/module/webapi.go",
   "internal/di/module/persistence.go",
   "internal/di/module/authz.go",
   "internal/di/module/authz_test.go",

@@ -30,6 +30,7 @@ type gateway struct {
 // rateResponse は、外部 API の JSON レスポンスの形を表します。
 type rateResponse struct {
 	Rate float64 `json:"rate"`
+	Date string  `json:"date"`
 }
 
 // NewDownstreamProfile は、外部為替サービス向けの resilient プロファイルを返します。
@@ -82,5 +83,5 @@ func (g *gateway) GetRate(ctx context.Context, base, quote string) (*boundary.Ra
 		return nil, xerrors.Wrap(apperror.ErrUnavailable, "exchangerate response has non-positive rate")
 	}
 
-	return &boundary.Rate{Base: base, Quote: quote, Value: body.Rate}, nil
+	return &boundary.Rate{Base: base, Quote: quote, Value: body.Rate, Date: body.Date}, nil
 }
