@@ -41,11 +41,7 @@ func authzModule() fx.Option {
 }
 
 // provideAuthorizer は、環境ごとに対応する Authorizer を選んで返します。
-// ci / test（サンプル削除時は local も）は全許可（allowall）の割り切り実装を配線します（allowall 自身が
-// 非本番環境以外での生成を fail-closed で拒否するため、配線ミスでも本番相当で全許可にはなりません）。
-// それ以外の環境は switch の case で個別に配線でき（環境ごとに実装が異なってよい）、対応する
-// case が無い環境は誤った Authorizer を配線しないよう default で起動エラーにします（fail-closed）。
-// サンプルでは local / dev / stg / prd に user_roles ベース実装を配線します（local は実 authN と対で end-to-end を成立させ、サンプル削除で local は allowall へ戻る）。 // sample-api:line
+// 環境ごとに switch の case で個別に配線でき、対応する case が無い環境は誤った Authorizer を配線しないよう default で起動エラーにします（fail-closed）。
 func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 	logger := p.Logger.Named("authz").CallerSkip(callerSkipCount)
 
