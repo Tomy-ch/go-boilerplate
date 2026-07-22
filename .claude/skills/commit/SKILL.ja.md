@@ -6,7 +6,7 @@
 
 このコマンドは作業ツリーの未コミット変更を分析し、適切な粒度とプロジェクトのプレフィックス規約に沿った 1 つ以上の git コミットを生成する。コミットメッセージはすべて `CLAUDE.md` に従い日本語で書く。
 
-このコマンドは各コミットで意図的に lefthook をバイパスする（`git commit --no-verify`）。これは、複数コミットへの分割中に pre-commit チェック（`make lint` / `make test` / `make sql-lint` / migration チェック）が N 回発火するのを避けるためである。代わりに、全コミットが成功した後、Step 6 で lefthook 定義の各 `pre-commit` コマンドと `make fix` を 1 回の検証パスとして直接実行する。`lefthook run pre-commit` 自体を呼ばないのは、staged が何もないとき（このコマンドが全てをステージ・コミットした後がまさにその状態）lefthook が登録コマンドをスキップするためである。
+このコマンドは各コミットで意図的に lefthook をバイパスする（`git commit --no-verify`）。これは、複数コミットへの分割中に pre-commit チェック（`make lint` / `make test` / `make sql-lint` / migration チェック）が N 回発火するのを避けるためである。代わりに、全コミットが成功した後、Step 6 で pre-commit フック全体を `lefthook run pre-commit --force` で 1 回実行し、`make fix` を加えて検証パスとする。`--force` が肝である: このコマンドが全てをステージ・コミットした後は作業ツリーが clean なため、素の `lefthook run pre-commit` は全コマンドをスキップする（「no matching staged files」）— `--force` はそれでもフックを実行する。本物のフックを回すことでゲートは `.lefthook.yaml` と同期し、コマンドは並列実行される。
 
 ## Step 0. 自動フォーマット
 
@@ -69,7 +69,7 @@ gh pr view --json number,state,mergedAt,baseRefName,headRefName,url 2>/dev/null
     - 「このブランチのまま続ける」 — ユーザーがマージ済みブランチへのコミットを受け入れる場合は、現在のブランチのまま続行する。
 - **`state` が `CLOSED`**（マージされずクローズ）→ ブロックはしないが、一度ユーザーに知らせて（ブランチの PR はクローズ済み）続行する。
 
-`.lefthook.yaml`（あれば）を読み、`pre-commit:` のコマンドエントリ一覧を抽出する。この一覧は 2 か所で使う: (a) 分割中にスキップされる内容をユーザーに知らせるため Step 4 で表示、(b) コミット後の検証ゲートとして Step 6 で直接実行。`.lefthook.yaml` が無い場合はその旨を記録して続行する（Step 6 は `make fix` のみの実行にフォールバックする）。
+`.lefthook.yaml`（あれば）を読み、`pre-commit:` のコマンドエントリ一覧を抽出する。この一覧は、分割中にスキップされる内容をユーザーに知らせるため Step 4 で表示する。Step 6 では `lefthook run pre-commit --force` でフック全体を再実行する。`.lefthook.yaml` が無い場合はその旨を記録して続行する（Step 6 は `make fix` のみの実行にフォールバックする）。
 
 `$ARGUMENTS` をパースする:
 
@@ -154,12 +154,12 @@ git diff --name-only
 
 ### lefthook 通知
 
-分割の提案とあわせて、コミットフェーズ中は **スキップ** されるが Step 6 で検証ゲートとして **直接実行** される lefthook コマンドを表示する。`.lefthook.yaml` から動的に読む（この一覧は設定であり、ハードコードしない）。現在の設定が lint/test/sql-lint/migration チェックを定義している場合の出力例:
+分割の提案とあわせて、コミットフェーズ中は **スキップ** されるが Step 6 で `lefthook run pre-commit --force` により **まとめて再実行** される lefthook コマンドを表示する。`.lefthook.yaml` から動的に読む（この一覧は設定であり、ハードコードしない）。現在の設定が lint/test/sql-lint/migration チェックを定義している場合の出力例:
 
 ```txt
 This command will run `git commit --no-verify` on every commit.
 The following lefthook pre-commit commands will be SKIPPED during commits but
-EXECUTED automatically in Step 6 (verification) after all commits succeed:
+re-run together in Step 6 via `lefthook run pre-commit --force` after all commits succeed:
   - lint                    (make lint)
   - test                    (make test)
   - sql-lint                (make sql-lint)
@@ -227,33 +227,24 @@ EOF
 
 ## Step 6. 検証
 
-全コミットが成功した後、(a) `.lefthook.yaml` の `pre-commit:` `commands:` で定義された各コマンドと (b) 最終フォーマットパスとしての `make fix` から成る検証ゲートを実行する。`lefthook run pre-commit` 自体は実行しない — staged が何もないとき（コミット後の状態）lefthook は登録コマンドをスキップし、「no matching staged files」と報告して何も検査せず終了するためである。代わりに各コマンドを直接実行する。
+全コミットが成功した後、pre-commit フック全体を `lefthook run pre-commit --force` で 1 回実行し、続いて最終フォーマットパスとして `make fix` を実行する。`--force` フラグが肝である: コミットは `--no-verify` で作成され作業ツリーは clean なため、素の `lefthook run pre-commit` は全コマンドをスキップする（「no matching staged files」）; `--force` は staged に関わらずフック全体を実行する。手で列挙したコマンド一覧ではなく本物のフックを回すことで、このゲートは `.lefthook.yaml` と同期し（新規追加の `pre-commit` コマンドも自動で拾う）、lefthook が並列（`parallel: true`）で実行するため順次再実行よりはるかに速い。
 
 ### 手順
 
-1. `.lefthook.yaml` を再読し、`pre-commit.commands.*.run` の値を列挙する。`.lefthook.yaml` が無ければこのステップをスキップする。
-2. 各コマンドを **順次** 実行する（並列より出力が明確で、失敗時にどのステップが失敗したか分かる）。各々について終了ステータスと出力の短い末尾を記録する。
-3. lefthook 定義の全コマンドが終わったら `make fix` を実行する。`make fix` が追跡ファイルを変更したら、その diff をユーザーに提示する — コミット状態が完全にフォーマットされていなかったことを示すので、それらの修正をステージ・コミットするかはユーザーが判断する。
-4. 結果を表形式でユーザーに要約する:
-
-   ```txt
-   検証コマンドの実行結果:
-     - make lint                                                       → OK / FAIL
-     - make test                                                       → OK / FAIL
-     - make sql-lint                                                   → OK / FAIL
-     - make check-migration-up-version check-migration-down-version    → OK / FAIL
-     - make check-migration-up-gap check-migration-down-gap            → OK / FAIL
-     - make fix                                                        → no changes / changes detected
-   ```
-
-5. いずれかのコマンドが **失敗** したら、失敗サマリ（終了コード + 出力末尾）を報告して停止する。コミットはロールバックしない — 失敗は情報提供であり、fix-up コミットを足すか amend するかはユーザーが判断する。ユーザーに明示的に伝える:
+1. `lefthook run pre-commit --force` を実行する。`pre-commit.commands.*` の全コマンドを作業ツリー（コミット状態を反映）に対して実行し、いずれかが失敗すれば非 0 で終了する。`.lefthook.yaml` が無い、または `lefthook` 未インストールなら手順 3 へ飛び（`make fix` のみ実行）、その旨を記録する。
+2. lefthook のコマンド別サマリ（各コマンドを ✔️ / ❌ と所要時間で列挙）を読む。
+3. `make fix` を実行する。追跡ファイルを変更したら、その diff をユーザーに提示する — コミット状態が完全にフォーマットされていなかったことを示すので、それらの修正をステージ・コミットするかはユーザーが判断する。
+4. 結果をユーザーに要約する: lefthook の成否サマリ（または lefthook が使えなかった旨）と、`make fix` が変更を生んだか。
+5. `lefthook run pre-commit --force` が非 0 で終了したら（いずれかのコマンドが失敗）、失敗したコマンド（lefthook サマリ由来）を報告して停止する。コミットはロールバックしない — 失敗は情報提供であり、fix-up コミットを足すか amend するかはユーザーが判断する。ユーザーに明示的に伝える:
 
    ```txt
    検証で失敗があります。push 前に修正してください。
-   失敗したコマンド: <name> (<command>)
+   失敗したコマンド: <lefthook が ❌ を出したコマンド名>
    ```
 
-6. 全コマンドが **成功** し `make fix` が変更を生まなかったら、Step 7 へ進む。
+6. lefthook が成功し `make fix` が変更を生まなかったら、Step 7 へ進む。
+
+> 本 repo の `pre-commit` コマンドはツリー全体を対象とする `make` ターゲットなので、`--force`（空 / `{all_files}` セットを渡す）でも正しく走る。将来 `{staged_files}` テンプレートに依存するコマンドが入ったら再検討すること — `--force` はファイルを渡さないため。
 
 ### 検証のスキップ
 
@@ -305,8 +296,8 @@ EOF
 - ✅ Step 1 で安全なロールバック用に `ORIGINAL_HEAD` を保存
 - ✅ Step 1 で、現在ブランチの PR がマージ済みか検出（`gh pr view`）し、コミット前に base から新ブランチを切ることを推奨（`gh` が使えない場合はグレースフルに劣化）
 - ✅ 失敗時は `AskUserQuestion` で `git reset --mixed <ORIGINAL_HEAD>` を提案
-- ✅ Step 6 は lefthook 定義の各コマンド + `make fix` を直接実行（`lefthook run pre-commit` は使わない）
-- ❌ `lefthook run pre-commit` を呼ばない — staged が無いとき（コミット後の状態）コマンドをスキップするため
+- ✅ Step 6 は pre-commit フック全体を `lefthook run pre-commit --force` + `make fix` で実行する
+- ✅ Step 6 の `lefthook run pre-commit` には必ず `--force` を付ける — 付けないと clean なコミット後ツリーに対し lefthook が全コマンドをスキップするため
 
 ## チェックリスト
 
@@ -324,6 +315,6 @@ EOF
 - [ ] 各コミットで `--no-verify` を使い、HEREDOC で渡した
 - [ ] `git add` はファイルを明示指定（`-A` / `.` なし）
 - [ ] 生成物をソース変更と同居させた
-- [ ] Step 6 の検証が lefthook 定義の各コマンド + `make fix` を実行した（または明示的にスキップした）
+- [ ] Step 6 の検証が `lefthook run pre-commit --force` + `make fix` を実行した（または lefthook / `.lefthook.yaml` が使えず `make fix` のみにフォールバックした）
 - [ ] 検証結果（OK / FAIL / no changes）をユーザーに提示した
 - [ ] 自動 push を行わなかった

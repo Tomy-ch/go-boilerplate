@@ -134,7 +134,7 @@ GitHub Releases 系は `gh api` を優先する（`GITHUB_TOKEN` 経由で認証
 
 非ランタイムのツールだけが更新された場合は `make sync-versions` は不要。
 
-### 6.5. ランタイムが変わったら base image digest を再固定
+### 7. ランタイムが変わったら base image digest を再固定
 
 ステップ 6 で `make sync-versions` が走った（＝`go` / `node` / `python` bump で `FROM` の**タグ**が変わった）場合、以前 pin した `@sha256:...` digest は**旧**イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先）。registry から再 pin する（`pin-images` スキルの役目、ここで chain）:
 
@@ -146,7 +146,7 @@ make pin-images-check
 
 公開直後のランタイムイメージは通常 `PIN_IMAGES_MIN_AGE_DAYS` の cooldown 内なので、`pin-images-apply` は stale な digest を剥がして `FROM` を tag のみに戻す（quarantine）——`pin-images-check` はそれを許容する。その旨を報告し、イメージが古くなったら `/pin-images` を再実行すべきことを伝える。ステップ 6 をスキップした場合（ランタイム変更なし → タグ変更なし → digest は有効）は本ステップも丸ごとスキップする。
 
-### 7. 検証
+### 8. 検証
 
 ```sh
 make lint
@@ -155,7 +155,7 @@ make test
 
 結果テーブル（OK / FAIL）をユーザーに報告する。失敗しても自動ロールバックはしない — どう扱うか（修正コミット追加 / revert / そのまま）はユーザーが判断する。
 
-### 8. 最終レポート
+### 9. 最終レポート
 
 以下をまとめて報告する。
 
