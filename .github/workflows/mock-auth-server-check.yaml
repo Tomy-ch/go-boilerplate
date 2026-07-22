@@ -1,10 +1,5 @@
 name: Mock-Auth Server Check
 
-# mock-auth-server（疑似 OIDC provider）の型チェック・テストと、golden JWKS のドリフト検知を行う。
-# golden JWKS 生成（gen:jwks）は鍵ストア（jose）を import するため node_tool_runner コンテナでは解決できず、
-# 既存の "Generated Mock-Auth OpenAPI Artifacts Check"（openapi bundle + zod）とは別ジョブとして、
-# provider の node_modules を持つ環境で回す。
-
 on:
   pull_request:
     paths:
@@ -58,6 +53,6 @@ jobs:
           if ! git diff --exit-code -- \
             docker/mock-auth-server/fixtures/jwks \
             internal/integration/testdata/jwks; then
-            echo "::error::golden JWKS が最新ではありません。'npm run gen:jwks'（docker/mock-auth-server 配下）を実行して差分をコミットしてください。"
+            echo "::error::golden JWKS is out of date. Run 'npm run gen:jwks' in docker/mock-auth-server and commit the diff."
             exit 1
           fi
