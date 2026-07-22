@@ -1,7 +1,7 @@
 // wellKnown.ts は OIDC Discovery（/.well-known/openid-configuration）と JWKS を提供する。
 import { Hono } from "hono";
 import { config } from "../config.ts";
-import { jwks, ALG } from "../keys.ts";
+import { keyStore, ALG } from "../keys.ts";
 
 // discoveryDocument は OIDC Discovery 文書を組み立てる。
 // issuer / jwks_uri は Go 側認証が依存する契約のため不変（バイト等価）に保つ。
@@ -28,4 +28,5 @@ function discoveryDocument() {
 export const wellKnownRoutes = new Hono();
 
 wellKnownRoutes.get("/.well-known/openid-configuration", (c) => c.json(discoveryDocument()));
-wellKnownRoutes.get("/.well-known/jwks.json", (c) => c.json(jwks));
+// JWKS は現在の公開集合から都度組み立てる（鍵ローテーションを反映）。
+wellKnownRoutes.get("/.well-known/jwks.json", (c) => c.json(keyStore.jwks()));

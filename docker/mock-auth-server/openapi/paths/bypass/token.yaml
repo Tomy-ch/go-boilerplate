@@ -29,6 +29,8 @@ post:
                 - missing-subject
                 - invalid-signature
                 - unsupported-algorithm
+                - unknown-kid
+                - old-key
                 - id-token
   responses:
     '200':

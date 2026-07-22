@@ -1,0 +1,22 @@
+type: object
+description: >
+  署名鍵ローテーションの宣言的操作。action で鍵ライフサイクル操作を、kid で対象鍵を指定する。
+  Phase 遷移（Phase1: [a] → Phase2: [a,b]/署名b → Phase3: [b]）は操作を連ねて表現する。
+required:
+  - action
+  - kid
+properties:
+  action:
+    type: string
+    description: >
+      鍵ライフサイクル操作。add-key=公開集合へ追加（署名鍵は不変）/ promote=署名鍵へ昇格（公開済みが前提）/
+      retire=公開集合から退役（現署名鍵は退役不可）。
+    enum:
+      - add-key
+      - promote
+      - retire
+    example: add-key
+  kid:
+    type: string
+    description: 操作対象の鍵 ID。
+    example: mock-key-2

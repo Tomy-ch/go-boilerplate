@@ -58,7 +58,7 @@ export const getJwksResponse = zod.object({
   "n": zod.string().describe('RSA modulus（base64url）。'),
   "e": zod.string().describe('RSA exponent（base64url）。')
 })).describe('署名検証用の公開鍵一覧。')
-}).describe('JSON Web Key Set（RFC 7517）。公開鍵のみを含む。Go 側の署名検証が依存する契約であり、 鍵（kid=mock-key-1 \/ RS256）はバイト等価で不変に保つ。\n')
+}).describe('JSON Web Key Set（RFC 7517）。公開鍵のみを含む。Go 側の署名検証が依存する契約。 公開集合は鍵ローテーション（POST \/admin\/keys\/rotate）で変化する（初期は kid=mock-key-1 \/ RS256 の 1 本）。\n')
 
 
 /**
@@ -124,7 +124,7 @@ export const oidcLogoutResponse = zod.object({
  */
 export const bypassTokenBody = zod.object({
   "subject": zod.string().optional().describe('発行対象の subject。省略時は fixture 先頭。'),
-  "profile": zod.enum(['valid', 'expired', 'not-yet-valid', 'wrong-issuer', 'wrong-audience', 'missing-subject', 'invalid-signature', 'unsupported-algorithm', 'id-token']).optional().describe('発行 Profile。異常系を固定 Profile として選択する。')
+  "profile": zod.enum(['valid', 'expired', 'not-yet-valid', 'wrong-issuer', 'wrong-audience', 'missing-subject', 'invalid-signature', 'unsupported-algorithm', 'unknown-kid', 'old-key', 'id-token']).optional().describe('発行 Profile。異常系を固定 Profile として選択する。')
 })
 
 export const bypassTokenResponse = zod.object({
@@ -174,3 +174,19 @@ export const adminListUsersResponse = zod.object({
 export const adminResetResponse = zod.object({
   "status": zod.enum(['reset'])
 })
+
+
+/**
+ * 宣言的操作（add-key / promote / retire）で provider の署名鍵状態を遷移する。 JWKS の公開集合と現署名鍵を分離管理し、新旧 Token の並行検証・旧鍵退役を再現する。 Phase1 への復帰は POST /admin/reset。dev-gate 限定。
+
+ * @summary 署名鍵ローテーション
+ */
+export const adminRotateKeysBody = zod.object({
+  "action": zod.enum(['add-key', 'promote', 'retire']).describe('鍵ライフサイクル操作。add-key=公開集合へ追加（署名鍵は不変）\/ promote=署名鍵へ昇格（公開済みが前提）\/ retire=公開集合から退役（現署名鍵は退役不可）。\n'),
+  "kid": zod.string().describe('操作対象の鍵 ID。')
+}).describe('署名鍵ローテーションの宣言的操作。action で鍵ライフサイクル操作を、kid で対象鍵を指定する。 Phase 遷移（Phase1: [a] → Phase2: [a,b]\/署名b → Phase3: [b]）は操作を連ねて表現する。\n')
+
+export const adminRotateKeysResponse = zod.object({
+  "signing_kid": zod.string().describe('現在の署名鍵 ID（published_kids に含まれる）。'),
+  "published_kids": zod.array(zod.string()).describe('JWKS で公開中の鍵 ID の集合。')
+}).describe('鍵ローテーション操作後の鍵状態（現署名鍵 \/ 公開集合）。')
