@@ -430,8 +430,9 @@ func Test_run_routePermanent(t *testing.T) {
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 			r := newRun(newTestEngine(t, baseSettings(), w), w)
 
-			r.routePermanent(context.Background(), bw.Message{ID: "a"}, cause)
+			err := r.routePermanent(context.Background(), bw.Message{ID: "a"}, cause)
 
+			require.NoError(t, err)
 			assert.Equal(t, []string{"a"}, f.AckedIDs())
 		})
 	})
@@ -439,19 +440,21 @@ func Test_run_routePermanent(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("FailureHandler が失敗した場合は Ack しない", func(t *testing.T) {
+		t.Run("FailureHandler が失敗した場合は Ack せずその error を返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			fh := mock_worker.NewMockFailureHandler(ctrl)
-			fh.EXPECT().Fail(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New("failure boom"))
+			boom := xerrors.New("failure boom")
+			fh.EXPECT().Fail(gomock.Any(), gomock.Any(), gomock.Any()).Return(boom)
 
 			f := testkit.NewFake()
 			w := testWorker{name: "w", cons: f, failure: fh, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 			r := newRun(newTestEngine(t, baseSettings(), w), w)
 
-			r.routePermanent(context.Background(), bw.Message{ID: "a"}, cause)
+			err := r.routePermanent(context.Background(), bw.Message{ID: "a"}, cause)
 
+			require.ErrorIs(t, err, boom)
 			assert.Empty(t, f.AckedIDs())
 		})
 	})
@@ -860,9 +863,55 @@ func Test_run_startHeartbeat(t *testing.T) {
 
 func Test_run_handleResult(t *testing.T) {
 	t.Parallel()
-	t.Skip(
-		"Handle 結果の Ack/Nack/Permanent/Fatal 振り分けは engine 統合テスト TestEngine_Run/engineRunAcksOnSuccess・engineRunRetryableNacked・engineRunPermanentGoesToFailureHandler・engineRunFatalStopsEngine でカバー",
-	)
+
+	// Ack/Nack/Fatal の基本振り分けは engine 統合テスト（engineRunAcksOnSuccess 等）でカバーする。
+	// ここでは Fake が Fail エラーを注入できず circuit 状態も engine から観測しにくい
+	// 「Permanent の dead-letter 退避成否による circuit / Ack 分岐」に絞って検証する。
+	permErr := xerrors.Wrap(apperror.ErrPermanent, "bad message")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Permanentは退避成功でAckしcircuitをOpenしない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			set := baseSettings()
+			set.CircuitFailureThreshold = 1
+			w := testWorker{name: "w", cons: f, failure: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, set, w), w)
+
+			r.handleResult(context.Background(), bw.Message{ID: "a"}, permErr)
+
+			assert.Equal(t, []string{"a"}, f.AckedIDs())
+			assert.Empty(t, f.NackedIDs())
+			assert.Equal(t, phaseClosed, r.cb.phaseNow())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Permanentは退避失敗でAckせずcircuitへ失敗計上する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			fh := mock_worker.NewMockFailureHandler(ctrl)
+			fh.EXPECT().Fail(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New("dead-letter store down"))
+
+			f := testkit.NewFake()
+			set := baseSettings()
+			set.CircuitFailureThreshold = 1 // 1 度の退避失敗で Open へ遷移させる
+			w := testWorker{name: "w", cons: f, failure: fh, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, set, w), w)
+
+			r.handleResult(context.Background(), bw.Message{ID: "a"}, permErr)
+
+			assert.Empty(t, f.AckedIDs())  // 退避できていないので Ack しない
+			assert.Empty(t, f.NackedIDs()) // Nack もしない（暗黙の再配送へ委ねる）
+			assert.Equal(t, phaseOpen, r.cb.phaseNow())
+		})
+	})
 }
 
 func Test_run_ack(t *testing.T) {
