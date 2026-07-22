@@ -13,7 +13,7 @@
 
 パラメータ・フィールドは OAuth2(RFC 6749) / PKCE(RFC 7636) / RFC 9068 / OIDC Core に従い snake_case。
 
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 1.0.0
  */
 import * as zod from 'zod';
 
@@ -38,12 +38,12 @@ export const getOpenidConfigurationResponse = zod.object({
   "response_types_supported": zod.array(zod.string()),
   "grant_types_supported": zod.array(zod.string()).optional(),
   "subject_types_supported": zod.array(zod.string()),
-  "id_token_signing_alg_values_supported": zod.array(zod.string()),
+  "id_token_signing_alg_values_supported": zod.array(zod.enum(['RS256'])).describe('署名アルゴリズムは RS256 のみ。alg=none は発行しない。'),
   "scopes_supported": zod.array(zod.string()).optional(),
-  "token_endpoint_auth_methods_supported": zod.array(zod.string()).optional().describe('public client（PKCE）のみを許可するため none。'),
-  "code_challenge_methods_supported": zod.array(zod.string()).optional(),
+  "token_endpoint_auth_methods_supported": zod.array(zod.enum(['none'])).optional().describe('public client（PKCE）のみを許可するため none。'),
+  "code_challenge_methods_supported": zod.array(zod.enum(['S256'])).describe('PKCE は S256 のみ。plain は許可しない。'),
   "claims_supported": zod.array(zod.string()).optional()
-}).describe('OIDC Discovery 文書（OIDC Discovery §3）。issuer \/ jwks_uri は Go 側認証が依存する契約であり不変に保つ。 endpoint URL は \/oidc\/\* を指す。\n')
+}).describe('OIDC Discovery 文書（OIDC Discovery）。issuer \/ jwks_uri は Go 側認証が依存する契約であり不変に保つ。 endpoint URL は \/oidc\/\* を指す。\n')
 
 
 /**
@@ -84,12 +84,12 @@ export const oidcAuthorizeQueryParams = zod.object({
  * @summary トークンエンドポイント（authorization_code + PKCE 検証）
  */
 export const oidcTokenResponse = zod.object({
-  "access_token": zod.string().describe('RS256 署名の JWT アクセストークン（typ=at+jwt）。'),
+  "access_token": zod.string().describe('RS256 署名の JWT アクセストークン（正常時は typ=at+jwt）。\/bypass\/token の異常系 Profile （id-token \/ wrong-issuer 等）ではこのフィールドに typ \/ aud \/ exp \/ 署名が意図的に改変された トークンが入る（Go 側検証の試験用）。\n'),
   "token_type": zod.enum(['Bearer']).describe('トークン種別。常に Bearer。'),
   "expires_in": zod.number().describe('access_token の有効期間（秒）。'),
   "scope": zod.string().optional().describe('付与されたスコープ（スペース区切り）。'),
   "id_token": zod.string().optional().describe('OIDC ID Token（openid スコープ時のみ）。')
-}).describe('トークンレスポンス（RFC 6749 §5.1 \/ OIDC Core §3.1.3.3）。access_token は RFC 9068（typ=at+jwt）、 id_token は OIDC の ID Token。bypass 経路では固定 Profile の access_token を返す。\n')
+}).describe('トークンレスポンス（RFC 6749 \/ OIDC Core）。access_token は RFC 9068（typ=at+jwt）、 id_token は OIDC の ID Token。bypass 経路では固定 Profile の access_token を返す。\n')
 
 
 /**
@@ -104,7 +104,17 @@ export const oidcUserinfoResponse = zod.object({
   "given_name": zod.string().optional(),
   "family_name": zod.string().optional(),
   "name": zod.string().optional()
-}).describe('UserInfo レスポンス（OIDC Core §5.3）。返却フィールドは whitelist に限定し、 additionalProperties: false で余剰クレームの漏洩を防ぐ。\n')
+}).describe('UserInfo レスポンス（OIDC Core）。返却フィールドは whitelist に限定し、 additionalProperties: false で余剰クレームの漏洩を防ぐ。\n')
+
+
+/**
+ * session を破棄し、post_logout_redirect_uri が登録済みなら 302 で戻す（state 反映）。 未登録の redirect や不正時は 400。
+
+ * @summary ログアウト（RP-Initiated Logout）
+ */
+export const oidcLogoutResponse = zod.object({
+  "status": zod.enum(['logged_out'])
+})
 
 
 /**
@@ -118,12 +128,12 @@ export const bypassTokenBody = zod.object({
 })
 
 export const bypassTokenResponse = zod.object({
-  "access_token": zod.string().describe('RS256 署名の JWT アクセストークン（typ=at+jwt）。'),
+  "access_token": zod.string().describe('RS256 署名の JWT アクセストークン（正常時は typ=at+jwt）。\/bypass\/token の異常系 Profile （id-token \/ wrong-issuer 等）ではこのフィールドに typ \/ aud \/ exp \/ 署名が意図的に改変された トークンが入る（Go 側検証の試験用）。\n'),
   "token_type": zod.enum(['Bearer']).describe('トークン種別。常に Bearer。'),
   "expires_in": zod.number().describe('access_token の有効期間（秒）。'),
   "scope": zod.string().optional().describe('付与されたスコープ（スペース区切り）。'),
   "id_token": zod.string().optional().describe('OIDC ID Token（openid スコープ時のみ）。')
-}).describe('トークンレスポンス（RFC 6749 §5.1 \/ OIDC Core §3.1.3.3）。access_token は RFC 9068（typ=at+jwt）、 id_token は OIDC の ID Token。bypass 経路では固定 Profile の access_token を返す。\n')
+}).describe('トークンレスポンス（RFC 6749 \/ OIDC Core）。access_token は RFC 9068（typ=at+jwt）、 id_token は OIDC の ID Token。bypass 経路では固定 Profile の access_token を返す。\n')
 
 
 /**
@@ -154,11 +164,11 @@ export const adminListUsersResponse = zod.object({
   "name": zod.string(),
   "status": zod.string().describe('fixture 上の状態（active \/ deleted 等）。')
 })).describe('登録済みの疑似ユーザー一覧。')
-}).describe('固定 User Fixture の一覧（運用補助）。旧 GET \/test\/users の移行先。')
+}).describe('固定 User Fixture の一覧（運用補助）。')
 
 
 /**
- * 発行済み code / session 等の揮発ストアを初期化する。fixture（users / clients）は再読込する。dev-gate 限定。
+ * 発行済み code / session の揮発ストアを初期化する。fixture（users / clients）はプロセス再起動で初期化され、本エンドポイントでは再読込しない。dev-gate 限定。
  * @summary 揮発ストアのリセット
  */
 export const adminResetResponse = zod.object({
