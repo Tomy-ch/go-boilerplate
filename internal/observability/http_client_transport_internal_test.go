@@ -3,10 +3,14 @@ package observability
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
+
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,9 +20,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// errTestRoundTrip は、委譲先 RoundTripper のエラー伝播を検証するためのセンチネルです。
+var errTestRoundTrip = xerrors.New("round trip failed")
+
 // captureRoundTripper は、委譲先へ渡された Request を捕捉するテスト用 RoundTripper です。
+// err を設定するとそのエラーを返し、委譲先のエラーがそのまま伝播することを検証できます。
 type captureRoundTripper struct {
 	gotReq *http.Request
+	err    error
 }
 
 // capturingSpanExporter は、終了した span を捕捉するテスト用 SpanExporter です。
@@ -227,6 +236,9 @@ func Test_conditionalPropagator(t *testing.T) {
 
 func (c *captureRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	c.gotReq = req
+	if c.err != nil {
+		return nil, c.err
+	}
 	return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Header: make(http.Header)}, nil
 }
 
@@ -236,27 +248,32 @@ func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("クエリをctxへ退避しinnerへ渡すURLからは除去する", func(t *testing.T) {
+		t.Run("クエリとフラグメントをctxへ退避しinnerへ渡すURLからは除去する", func(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
 			rt := spanURLRedactingRoundTripper{inner: captured}
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "https://example.com/search?token=secret&postalCode=1000001", nil)
+				context.Background(), http.MethodGet, "https://example.com/search?token=secret&postalCode=1000001#sess=abc", nil)
 			require.NoError(t, err)
 
 			_, err = rt.RoundTrip(req)
 
 			require.NoError(t, err)
-			// inner（otelhttp）へ渡る URL はクエリ無し＝span の url.full にクエリが乗らない。
+			// inner（otelhttp）へ渡る URL はクエリ・フラグメント無し＝span の url.full にどちらも乗らない。
 			assert.Empty(t, captured.gotReq.URL.RawQuery)
-			// 実クエリは ctx に退避され、後段の復元に使える。
-			assert.Equal(t, "token=secret&postalCode=1000001", captured.gotReq.Context().Value(spanQueryRedactionKey{}))
+			assert.Empty(t, captured.gotReq.URL.Fragment)
+			// 実クエリ・フラグメントは ctx に退避され、後段の復元に使える。
+			parts, ok := captured.gotReq.Context().Value(spanQueryRedactionKey{}).(redactedURLParts)
+			require.True(t, ok)
+			assert.Equal(t, "token=secret&postalCode=1000001", parts.rawQuery)
+			assert.Equal(t, "sess=abc", parts.fragment)
 			// caller の Request は破壊しない。
 			assert.Equal(t, "token=secret&postalCode=1000001", req.URL.RawQuery)
+			assert.Equal(t, "sess=abc", req.URL.Fragment)
 		})
 
-		t.Run("クエリが無いRequestはそのままinnerへ渡す", func(t *testing.T) {
+		t.Run("クエリもフラグメントも無いRequestはそのままinnerへ渡す", func(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
@@ -271,6 +288,39 @@ func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
 			assert.Empty(t, captured.gotReq.URL.RawQuery)
 			assert.Nil(t, captured.gotReq.Context().Value(spanQueryRedactionKey{}))
 		})
+
+		t.Run("URLがnilならそのままinnerへ渡しpanicしない", func(t *testing.T) {
+			t.Parallel()
+
+			captured := &captureRoundTripper{}
+			rt := spanURLRedactingRoundTripper{inner: captured}
+			req := &http.Request{Method: http.MethodGet, Header: make(http.Header)}
+
+			_, err := rt.RoundTrip(req.WithContext(context.Background()))
+
+			require.NoError(t, err)
+			assert.Nil(t, captured.gotReq.URL)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("innerのエラーをそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			wantErr := errTestRoundTrip
+			captured := &captureRoundTripper{err: wantErr}
+			rt := spanURLRedactingRoundTripper{inner: captured}
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, "https://example.com/search?token=secret", nil)
+			require.NoError(t, err)
+
+			resp, err := rt.RoundTrip(req)
+
+			require.ErrorIs(t, err, wantErr)
+			assert.Nil(t, resp)
+		})
 	})
 }
 
@@ -280,12 +330,13 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("退避済みクエリを実送信前にURLへ復元する", func(t *testing.T) {
+		t.Run("退避済みクエリとフラグメントを実送信前にURLへ復元する", func(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
 			rt := queryRestoringRoundTripper{base: captured}
-			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, "token=secret&postalCode=1000001")
+			parts := redactedURLParts{rawQuery: "token=secret&postalCode=1000001", fragment: "sess=abc"}
+			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, parts)
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.com/search", nil)
 			require.NoError(t, err)
 
@@ -293,9 +344,10 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, "token=secret&postalCode=1000001", captured.gotReq.URL.RawQuery)
+			assert.Equal(t, "sess=abc", captured.gotReq.URL.Fragment)
 		})
 
-		t.Run("退避クエリが無ければURLを変更しない", func(t *testing.T) {
+		t.Run("退避値が無ければURLを変更しない", func(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
@@ -309,6 +361,40 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, captured.gotReq.URL.RawQuery)
 		})
+
+		t.Run("URLがnilなら復元せずそのままbaseへ渡しpanicしない", func(t *testing.T) {
+			t.Parallel()
+
+			captured := &captureRoundTripper{}
+			rt := queryRestoringRoundTripper{base: captured}
+			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, redactedURLParts{rawQuery: "token=secret"})
+			req := (&http.Request{Method: http.MethodGet, Header: make(http.Header)}).WithContext(ctx)
+
+			_, err := rt.RoundTrip(req)
+
+			require.NoError(t, err)
+			assert.Nil(t, captured.gotReq.URL)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("baseのエラーをそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			wantErr := errTestRoundTrip
+			captured := &captureRoundTripper{err: wantErr}
+			rt := queryRestoringRoundTripper{base: captured}
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, "https://example.com/search", nil)
+			require.NoError(t, err)
+
+			resp, err := rt.RoundTrip(req)
+
+			require.ErrorIs(t, err, wantErr)
+			assert.Nil(t, resp)
+		})
 	})
 }
 
@@ -321,22 +407,43 @@ func (e *capturingSpanExporter) ExportSpans(_ context.Context, spans []sdktrace.
 
 func (e *capturingSpanExporter) Shutdown(context.Context) error { return nil }
 
-func (e *capturingSpanExporter) clientSpanURLFull(t *testing.T) string {
+func (e *capturingSpanExporter) clientSpan(t *testing.T) sdktrace.ReadOnlySpan {
 	t.Helper()
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	for _, s := range e.spans {
-		if s.SpanKind() != trace.SpanKindClient {
-			continue
-		}
-		for _, attr := range s.Attributes() {
-			if attr.Key == attribute.Key("url.full") {
-				return attr.Value.AsString()
-			}
+		if s.SpanKind() == trace.SpanKindClient {
+			return s
 		}
 	}
-	t.Fatal("client span with url.full attribute not found")
+	t.Fatal("client span not found")
+	return nil
+}
+
+func (e *capturingSpanExporter) clientSpanURLFull(t *testing.T) string {
+	t.Helper()
+	for _, attr := range e.clientSpan(t).Attributes() {
+		if attr.Key == attribute.Key("url.full") {
+			return attr.Value.AsString()
+		}
+	}
+	t.Fatal("client span has no url.full attribute")
 	return ""
+}
+
+// clientSpanText は、client span から漏洩検査対象となる文字列（status 説明 + span 名 + 全属性値）を集めます。
+func (e *capturingSpanExporter) clientSpanText(t *testing.T) string {
+	t.Helper()
+	s := e.clientSpan(t)
+	var sb strings.Builder
+	sb.WriteString(s.Name())
+	sb.WriteString(" ")
+	sb.WriteString(s.Status().Description)
+	for _, attr := range s.Attributes() {
+		sb.WriteString(" ")
+		sb.WriteString(attr.Value.String())
+	}
+	return sb.String()
 }
 
 func Test_newHTTPClientTransport_redactsQueryFromSpanButPreservesRequest(t *testing.T) {
@@ -345,7 +452,7 @@ func Test_newHTTPClientTransport_redactsQueryFromSpanButPreservesRequest(t *test
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("span_url_fullはクエリ無し_実リクエストはクエリを保持する", func(t *testing.T) {
+		t.Run("span_url_fullはクエリ_フラグメント無し_実リクエストはクエリを保持する", func(t *testing.T) {
 			t.Parallel()
 
 			var (
@@ -369,7 +476,7 @@ func Test_newHTTPClientTransport_redactsQueryFromSpanButPreservesRequest(t *test
 			httpClient := &http.Client{Transport: transport.RoundTripper()}
 
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, srv.URL+"/search?token=secret&postalCode=1000001", nil)
+				context.Background(), http.MethodGet, srv.URL+"/search?token=secret&postalCode=1000001#sess=abc", nil)
 			require.NoError(t, err)
 
 			resp, err := httpClient.Do(req)
@@ -378,18 +485,51 @@ func Test_newHTTPClientTransport_redactsQueryFromSpanButPreservesRequest(t *test
 			require.NoError(t, resp.Body.Close()) // otelhttp は body close で span を終了する
 			require.NoError(t, tp.ForceFlush(context.Background()))
 
-			// 実リクエストにはクエリがそのまま届く（復元が効いている）。
+			// 実リクエストにはクエリがそのまま届く（復元が効いている。フラグメントは HTTP では送出されない）。
 			mu.Lock()
 			assert.Equal(t, "token=secret&postalCode=1000001", gotRawQ)
 			assert.Equal(t, "/search", serverPath)
 			mu.Unlock()
 
-			// span の url.full にはクエリが乗らない（機微情報の漏洩を防ぐ）。
+			// span の url.full にはクエリもフラグメントも乗らない（機微情報の漏洩を防ぐ）。
 			urlFull := exporter.clientSpanURLFull(t)
 			assert.NotContains(t, urlFull, "token")
 			assert.NotContains(t, urlFull, "secret")
 			assert.NotContains(t, urlFull, "postalCode")
+			assert.NotContains(t, urlFull, "sess")
 			assert.Equal(t, srv.URL+"/search", urlFull)
+		})
+
+		t.Run("接続失敗時もエラーspanにクエリが乗らない", func(t *testing.T) {
+			t.Parallel()
+
+			// 即座に閉じるリスナーへ接続させ、transport 層のエラー（*net.OpError）を発生させる。
+			// otelhttp は err.Error() を span status へ記録するため、そこにクエリが漏れないことを検証する。
+			ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			addr := ln.Addr().String()
+			require.NoError(t, ln.Close())
+
+			exporter := &capturingSpanExporter{}
+			tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+			defer func() { _ = tp.Shutdown(context.Background()) }()
+
+			transport := newHTTPClientTransport(tp, NewTextMapPropagator(), permissiveDialControl)
+			httpClient := &http.Client{Transport: transport.RoundTripper()}
+
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, "http://"+addr+"/search?token=secret&postalCode=1000001", nil)
+			require.NoError(t, err)
+
+			resp, err := httpClient.Do(req)
+			require.Error(t, err)
+			assert.Nil(t, resp)
+			require.NoError(t, tp.ForceFlush(context.Background()))
+
+			leakText := exporter.clientSpanText(t)
+			assert.NotContains(t, leakText, "token")
+			assert.NotContains(t, leakText, "secret")
+			assert.NotContains(t, leakText, "postalCode")
 		})
 	})
 }
