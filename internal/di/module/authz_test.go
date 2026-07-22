@@ -42,19 +42,31 @@ func Test_provideAuthorizer(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("ローカル環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
+		// sample-api:replace-begin
+		t.Run("ローカル環境ではuser_rolesベースAuthorizerが提供されINFOが出る", func(t *testing.T) {
 			t.Parallel()
 
 			logger, logs := logging.NewObservedTestLogger(t)
+			roleRepo := mock_user.NewMockRoleRepository(gomock.NewController(t))
 
-			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger})
+			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger, RoleRepo: roleRepo})
 			require.NoError(t, err)
-			expected, err := allowall.New(newAppCfg(t, config.EnvLocal))
-			require.NoError(t, err)
-			assert.Equal(t, expected, authorizer)
-			// 全許可スタブ配線時に WARN で注意喚起されること。
-			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
+			assert.Equal(t, userrole.New(roleRepo), authorizer)
+			// サンプル在時は local も実 authN と対で user_roles ベース authZ を配線し INFO を出す。
+			assert.Len(t, logs.FilterMessage("user_roles-based authorizer wired").All(), 1)
 		})
+		// sample-api:replace-with
+		// = t.Run("ローカル環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
+		// = 	t.Parallel()
+		// = 	logger, logs := logging.NewObservedTestLogger(t)
+		// = 	authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger})
+		// = 	require.NoError(t, err)
+		// = 	expected, err := allowall.New(newAppCfg(t, config.EnvLocal))
+		// = 	require.NoError(t, err)
+		// = 	assert.Equal(t, expected, authorizer)
+		// = 	assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
+		// = })
+		// sample-api:replace-end
 
 		t.Run("CI環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
 			t.Parallel()
