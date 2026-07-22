@@ -1,0 +1,45 @@
+post:
+  operationId: BypassToken
+  tags:
+    - bypass
+  summary: 固定 Profile での access token 発行（テスト用）
+  description: >
+    Authorization Code Flow を経ずに、subject と固定 Profile から access token を直接発行する。
+    異常系 Profile（expired / wrong-issuer 等）で Go 側検証を試験する。dev-gate 限定。旧 POST /test/token の移行先。
+  security: []
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            subject:
+              type: string
+              description: 発行対象の subject。省略時は fixture 先頭。
+            profile:
+              type: string
+              description: 発行 Profile。異常系を固定 Profile として選択する。
+              enum:
+                - valid
+                - expired
+                - not-yet-valid
+                - wrong-issuer
+                - wrong-audience
+                - missing-subject
+                - invalid-signature
+                - unsupported-algorithm
+                - id-token
+  responses:
+    '200':
+      description: 発行した access token
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/TokenResponse.yaml'
+    '400':
+      description: 未知の Profile 等
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/OAuthError.yaml'

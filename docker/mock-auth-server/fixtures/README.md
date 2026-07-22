@@ -24,7 +24,7 @@ works even if this file is missing or empty (users are treated as `[]`).
 | `given_name` | string | Given name |
 | `family_name` | string | Family name |
 | `name` | string | Display name |
-| `status` | string | `active` / `deleted` / `unregistered` (used from Phase 5-B onward) |
+| `status` | string | `active` / `deleted` / `unregistered` (not yet consumed) |
 
 ### Registering a user
 

@@ -1,0 +1,109 @@
+name: Generated Mock-Auth OpenAPI Artifacts Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/gen-mock-auth-oapi-artifacts-check.yaml'
+      - 'docker/mock-auth-server/openapi/**/*.yaml'
+      - 'docker/mock-auth-server/orval.config.ts'
+      - 'docker/mock-auth-server/package.json'
+      - 'docker/mock-auth-server/package-lock.json'
+      - 'docker/tools/package.json'
+      - 'docker/tools/package-lock.json'
+      - 'docker/tools/Dockerfile'
+      - 'mise.toml'
+      - '.makefiles/openapi/mock-auth.mk'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-mock-auth-oapi-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      ENV: ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Run Mock-Auth OpenAPI Bundle + zod codegen
+        run: make gen-mock-auth-oapi
+
+      - name: Run Mock-Auth OpenAPI Redoc docs
+        run: make gen-mock-auth-oapi-docs
+
+      - name: Detect generated changes (file list)
+        id: gen_diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          files="$(git diff --cached --name-only)"
+          if [ -n "$files" ]; then
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "$files" > /tmp/changed_files.txt
+          else
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+            : > /tmp/changed_files.txt
+          fi
+
+      - name: Detect source modifications in this PR
+        id: source_mod
+        if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
+          if echo "$changed" | grep -qE '^docker/mock-auth-server/'; then
+            echo "source_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build PR comment body
+        id: comment
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/gen-mock-auth-oapi-comment.md
+          if [ "${{ steps.gen_diff.outputs.has_diff }}" != "true" ]; then
+            echo "title=## ✅ No differences in mock-auth OpenAPI generated output were detected" >> "$GITHUB_OUTPUT"
+            echo "No differences in mock-auth OpenAPI generated output were detected." > "$out"
+            exit 0
+          fi
+          if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
+            echo "title=## 🧾 Differences in mock-auth OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "\`make gen-mock-auth-oapi\` をローカルで実行し、変更をコミットしてください。" > "$out"
+          else
+            echo "title=## ⚠️ mock-auth OpenAPI 生成物のドリフトを検知（source 未変更）" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "本 PR では \`docker/mock-auth-server/\` 配下が変更されていないため、generator 側のドリフト（非決定的出力・依存バージョン差 等）の可能性があります。\`make gen-mock-auth-oapi\` をローカル実行してコミットしてください。" > "$out"
+          fi
+          {
+            echo ""
+            while IFS= read -r f; do
+              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
+            done < /tmp/changed_files.txt
+          } >> "$out"
+
+      - name: Comment generated artifacts result on PR
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- generated-mock-auth-oapi-artifacts-filelist -->'
+          title: ${{ steps.comment.outputs.title }}
+          body-file: /tmp/gen-mock-auth-oapi-comment.md
+
+      - name: Fail if diff exists
+        if: steps.gen_diff.outputs.has_diff == 'true'
+        run: exit 1

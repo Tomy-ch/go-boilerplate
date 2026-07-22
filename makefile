@@ -40,6 +40,7 @@ include .makefiles/go/sqlc.mk
 include .makefiles/docs/gen.mk
 # OpenAPI関連
 include .makefiles/openapi/gen.mk
+include .makefiles/openapi/mock-auth.mk
 # SQL関連
 include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk

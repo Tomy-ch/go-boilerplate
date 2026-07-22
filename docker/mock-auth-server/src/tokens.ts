@@ -1,14 +1,14 @@
 // tokens.ts は、固定 Profile 方式で access token / id token を発行する。
-// 任意 Claim 注入 API にはせず、再現性のため異常系を固定 Profile として提供する（要件書 §9 の A 範囲）。
-import { SignJWT } from "jose";
+// 任意 Claim 注入 API にはせず、再現性のため異常系を固定 Profile として提供する。
+import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
-import { signingKey, KID, ALG } from "./keys.ts";
+import { signingKey, KID, ALG, publicKey } from "./keys.ts";
 import type { Claims, OidcConfig } from "./types.ts";
 
 // SignKey は jose の SignJWT.sign が受理する鍵型（CryptoKey / KeyObject / Uint8Array 等）を導出する。
 type SignKey = Parameters<SignJWT["sign"]>[0];
 
-// ACCESS_TTL_SECONDS は access token の有効期間（要件書 §5 の access_token_ttl=300s）。
+// ACCESS_TTL_SECONDS は access token の有効期間（300 秒）。
 const ACCESS_TTL_SECONDS = 300;
 // ACCESS_SCOPE は Client に許された API 用途を表す標準 scope（Role とは別軸）。
 const ACCESS_SCOPE = "openid profile email api.read api.write";
@@ -20,7 +20,7 @@ const { privateKey: wrongSigningKey } = generateKeyPairSync("rsa", { modulusLeng
 // symmetricSecret は unsupported-algorithm（HS256）プロファイル用の対称鍵。
 const symmetricSecret = new TextEncoder().encode("mock-auth-server-unsupported-alg-secret");
 
-// PROFILES は A 範囲でサポートする Token Profile の一覧。
+// PROFILES は bypass/token がサポートする Token Profile の一覧。
 export const PROFILES: readonly string[] = [
   "valid",
   "expired",
@@ -33,7 +33,7 @@ export const PROFILES: readonly string[] = [
   "id-token",
 ];
 
-// baseAccessClaims は正常な access token の標準クレーム（要件書 §13）を組み立てる。
+// baseAccessClaims は正常な access token の標準クレームを組み立てる。
 function baseAccessClaims(config: OidcConfig, subject: string, now: number): Claims {
   return {
     iss: config.issuer,
@@ -49,12 +49,12 @@ function baseAccessClaims(config: OidcConfig, subject: string, now: number): Cla
   };
 }
 
-// idTokenClaims は ID Token のクレーム（aud=client_id / token_use=id）を組み立てる。
-function idTokenClaims(config: OidcConfig, subject: string, now: number): Claims {
+// idTokenClaims は ID Token のクレーム（aud=認可を要求した client_id / token_use=id）を組み立てる。
+function idTokenClaims(config: OidcConfig, subject: string, now: number, clientId: string = config.clientId): Claims {
   return {
     iss: config.issuer,
     sub: subject,
-    aud: config.clientId,
+    aud: clientId,
     iat: now,
     exp: now + ACCESS_TTL_SECONDS,
     token_use: "id",
@@ -103,6 +103,56 @@ export function issueToken(config: OidcConfig, subject: string, profile: string)
     case "valid":
     default:
       return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+  }
+}
+
+// issueAccessToken は Authorization Code Flow の access token を発行する（typ=at+jwt）。
+// scope を指定すると付与済み scope として反映する。
+export function issueAccessToken(config: OidcConfig, subject: string, scope?: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const claims = baseAccessClaims(config, subject, now);
+  if (scope !== undefined && scope !== "") {
+    claims.scope = scope;
+  }
+  return sign(claims, signingKey, ALG, ACCESS_TOKEN_TYPE);
+}
+
+// issueIdToken は OIDC の ID Token を発行する（typ=JWT）。aud には認可を要求した clientId を用い、
+// nonce を指定すると反映する。clientId 省略時は config.clientId。
+export function issueIdToken(
+  config: OidcConfig,
+  subject: string,
+  nonce?: string,
+  clientId: string = config.clientId,
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const claims = idTokenClaims(config, subject, now, clientId);
+  if (nonce !== undefined && nonce !== "") {
+    claims.nonce = nonce;
+  }
+  return sign(claims, signingKey, ALG, "JWT");
+}
+
+// verifyAccessToken は access token を検証する。typ=at+jwt でないもの（ID Token 等）は拒否し、
+// 署名・iss・aud・alg・有効期限を検証する。成功時 payload を返し、失敗時は例外を投げる。
+export async function verifyAccessToken(config: OidcConfig, token: string): Promise<Claims> {
+  const { payload } = await jwtVerify(token, publicKey, {
+    issuer: config.issuer,
+    audience: config.audience,
+    algorithms: [ALG],
+    typ: ACCESS_TOKEN_TYPE,
+    requiredClaims: ["sub"],
+  });
+  return payload;
+}
+
+// subjectFromToken は token を検証せず sub を取り出す（logout の id_token_hint からの subject 抽出用）。
+export function subjectFromToken(token: string): string | undefined {
+  try {
+    const sub = decodeJwt(token).sub;
+    return typeof sub === "string" ? sub : undefined;
+  } catch {
+    return undefined;
   }
 }
 

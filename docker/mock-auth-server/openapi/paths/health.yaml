@@ -1,0 +1,13 @@
+get:
+  operationId: GetHealth
+  tags:
+    - health
+  summary: ヘルスチェック
+  security: []
+  responses:
+    '200':
+      description: 稼働中
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/HealthStatus.yaml'
