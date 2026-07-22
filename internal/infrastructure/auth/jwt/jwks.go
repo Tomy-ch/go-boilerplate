@@ -58,12 +58,17 @@ type jwksResolver struct {
 	// fetchMu は取得を直列化し、同時に高々 1 回だけ HTTP させます（stampede 防止）。
 	fetchMu sync.Mutex
 
-	// mu は keys / fetchedAt / lastAttempt / lastErr を保護します（取得の HTTP I/O 中は保持しません）。
+	// mu は keys / fetchedAt / lastAttempt / lastErr / negative を保護します（取得の HTTP I/O 中は保持しません）。
 	mu          sync.RWMutex
 	keys        map[string]crypto.PublicKey
 	fetchedAt   time.Time
 	lastAttempt time.Time
 	lastErr     error
+
+	// negative は「取得済みの現世代で不在が確定した kid」の集合です（不在 kid の再取得連打を抑止）。
+	// 現世代（fetchedAt から cacheTTL 以内）でのみ有効で、公開鍵集合が変わる取得成功でクリアします。
+	// これにより回転で追加された kid の初回取得はブロックせず、確定的に不在な kid の再問い合わせだけを抑えます。
+	negative map[string]struct{}
 }
 
 // NewDownstreamProfile は、JWKS/discovery 取得向けの httpclient resilient プロファイルを返します。
@@ -108,13 +113,48 @@ func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.Publi
 	if key := r.lookup(kid); key != nil {
 		return key, nil
 	}
-	if err := r.refresh(ctx); err != nil {
+	// 現世代で不在が確定済みの kid は再取得せず即座に拒否する（再取得連打の抑止）。
+	if r.negativelyCached(kid) {
+		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "kid known-absent in current JWKS")
+	}
+	fetched, err := r.refresh(ctx)
+	if err != nil {
 		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidToken, err)
 	}
 	if key := r.lookup(kid); key != nil {
 		return key, nil
 	}
+	// 実際に取得した世代でのみ不在を確定する。cooldown で未取得（throttle）のときに記録すると、
+	// その後 cooldown が明けても cacheTTL 満了まで再取得がブロックされ、回転追加の kid を取りこぼす。
+	if fetched {
+		r.recordAbsent(kid)
+	}
 	return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "no matching JWKS key for kid")
+}
+
+// negativelyCached は、現世代（鮮度内）で kid が不在確定として記録済みかを返します。
+// キャッシュが空 / 期限切れのときは false を返し、必ず再取得へ進ませます（退役後の再評価・回転追加の取りこぼし防止）。
+func (r *jwksResolver) negativelyCached(kid string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.fetchedAt.IsZero() || r.clk.Now().Sub(r.fetchedAt) >= r.cacheTTL {
+		return false
+	}
+	_, ok := r.negative[kid]
+	return ok
+}
+
+// recordAbsent は、現世代で不在が確定した kid を negative へ記録します（鮮度外なら記録しません）。
+func (r *jwksResolver) recordAbsent(kid string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.fetchedAt.IsZero() || r.clk.Now().Sub(r.fetchedAt) >= r.cacheTTL {
+		return
+	}
+	if r.negative == nil {
+		r.negative = map[string]struct{}{}
+	}
+	r.negative[kid] = struct{}{}
 }
 
 // lookup は、鮮度内のキャッシュから kid に対応する鍵を返します（無ければ nil）。
@@ -128,7 +168,9 @@ func (r *jwksResolver) lookup(kid string) crypto.PublicKey {
 }
 
 // refresh は、cooldown を尊重して JWKS を再取得します。HTTP I/O 中は mu を保持しません。
-func (r *jwksResolver) refresh(ctx context.Context) error {
+// 第 1 戻り値は実際に HTTP 取得を行ったかを表し、cooldown 中の throttle・ctx キャンセルでは false になります
+// （呼び出し元が「取得済み世代での不在確定」と「未取得」を区別し、後者を negative へ誤記録しないため）。
+func (r *jwksResolver) refresh(ctx context.Context) (bool, error) {
 	r.fetchMu.Lock()
 	defer r.fetchMu.Unlock()
 
@@ -139,7 +181,7 @@ func (r *jwksResolver) refresh(ctx context.Context) error {
 	if throttled {
 		// cooldown 中は再取得せず直近取得の結果を伝播する。
 		// 直近が失敗なら原因を返し（インフラ障害を「無効トークン」と誤認させない）、成功なら nil。
-		return lastErr
+		return false, lastErr
 	}
 
 	keys, err := r.fetch(ctx)
@@ -147,7 +189,7 @@ func (r *jwksResolver) refresh(ctx context.Context) error {
 	// 呼び出し元 ctx のキャンセルは共有キャッシュ（lastErr/lastAttempt）へ載せない。
 	// 1 リクエストの切断が cooldown 中の全リクエストへ「無効トークン」として波及するのを防ぐ。
 	if err != nil && xerrors.Is(err, apperror.ErrCanceled) {
-		return err
+		return false, err
 	}
 
 	now := r.clk.Now()
@@ -155,12 +197,30 @@ func (r *jwksResolver) refresh(ctx context.Context) error {
 	r.lastAttempt = now
 	r.lastErr = err
 	if err == nil {
+		// 公開鍵集合が変わった取得成功では、不在確定（negative）を破棄して再評価する（回転追加の取りこぼし防止）。
+		// 集合が不変なら negative は現世代の判断として保持する（同一 bogus kid の再取得抑止を維持）。
+		if !sameKeySet(r.keys, keys) {
+			r.negative = nil
+		}
 		r.keys = keys
 		r.fetchedAt = now
 	}
 	r.mu.Unlock()
 
-	return err
+	return true, err
+}
+
+// sameKeySet は、2 つの鍵マップが同一の kid 集合を持つかを返します。
+func sameKeySet(a, b map[string]crypto.PublicKey) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for kid := range a {
+		if _, ok := b[kid]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // fetch は、httpclient substrate 経由で JWKS を取得し、kid→公開鍵のマップへ変換します。
