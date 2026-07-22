@@ -70,7 +70,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 			}, actual)
 		})
 
-		t.Run("display_currency指定時はreference_amountを詰め替える", func(t *testing.T) {
+		t.Run("displayCurrency指定時はreferenceAmountを詰め替える", func(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)
@@ -107,7 +107,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 			}, *actual.ReferenceAmount)
 		})
 
-		t.Run("degrade時はreference_amountがnullになる", func(t *testing.T) {
+		t.Run("degrade時はreferenceAmountがnullになる", func(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)

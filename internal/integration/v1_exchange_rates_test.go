@@ -41,7 +41,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
 		})
 
-		t.Run("display_currency=JPY 指定でも 200 で ExchangeRateResponse を返す", func(t *testing.T) {
+		t.Run("displayCurrency=JPY 指定でも 200 で ExchangeRateResponse を返す", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -62,7 +62,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet,
-				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&display_currency=JPY", nil, nil,
+				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&displayCurrency=JPY", nil, nil,
 			)
 			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
 		})
@@ -84,7 +84,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet,
-				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&display_currency=JPY", nil, nil,
+				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&displayCurrency=JPY", nil, nil,
 			)
 			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
 		})

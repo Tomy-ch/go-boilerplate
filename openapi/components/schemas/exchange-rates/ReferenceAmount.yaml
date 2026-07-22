@@ -1,14 +1,14 @@
 type: object
 nullable: true
 description: |
-  表示通貨での参考換算額です。`display_currency` 指定時のみ算出し、非永続で返します。
+  表示通貨での参考換算額です。`displayCurrency` 指定時のみ算出し、非永続で返します。
   保存値はあくまで USD セント整数であり、本フィールドは参考表示専用です。
   レート取得に失敗した場合は degrade として null を返します。
 required:
   - currency
   - amount
   - rate
-  - rate_date
+  - rateDate
 properties:
   currency:
     type: string
@@ -24,7 +24,7 @@ properties:
     format: double
     description: 換算に用いたレート（base 1 単位あたりの表示通貨換算値）
     example: 150.5
-  rate_date:
+  rateDate:
     type: string
     description: レートの基準日（外部レートサービスの公表日）
     example: "2026-07-21"

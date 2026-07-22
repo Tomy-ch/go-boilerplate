@@ -57,7 +57,7 @@ func Test_usecase_Convert(t *testing.T) {
 			assert.Nil(t, got.Reference)
 		})
 
-		t.Run("display_currency指定時は参考換算額を整数で返す", func(t *testing.T) {
+		t.Run("displayCurrency指定時は参考換算額を整数で返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)

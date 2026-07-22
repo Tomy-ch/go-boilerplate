@@ -92,7 +92,7 @@ func (u *usecase) Convert(ctx context.Context, in ConvertInput) (*ConvertResult,
 }
 
 // BuildReferenceAmount は、レートと base 最小単位額から参考換算額を組み立てます。
-// reference_amount の組み立てを 1 箇所へ集約し、後続 API（purchases 等）から再利用します。
+// referenceAmount の組み立てを 1 箇所へ集約し、後続 API（purchases 等）から再利用します。
 func BuildReferenceAmount(rate *boundary.Rate, amountMinor int64) *ReferenceAmount {
 	return &ReferenceAmount{
 		Currency: rate.Quote,

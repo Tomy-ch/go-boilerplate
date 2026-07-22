@@ -33,11 +33,11 @@ get:
         format: double
         minimum: 0
         example: 100
-    - name: display_currency
+    - name: displayCurrency
       in: query
       required: false
       description: |
-        指定時のみ、その通貨での参考換算額を reference_amount として返します（非永続）。
+        指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
         現状は JPY のみサポートします。
       schema:
         type: string

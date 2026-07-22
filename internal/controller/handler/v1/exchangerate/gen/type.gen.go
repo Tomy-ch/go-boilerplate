@@ -44,12 +44,13 @@ type ExchangeRateResponse struct {
 	// Quote 換算先の通貨コード
 	Quote string `json:"quote"`
 
-	// ReferenceAmount 表示通貨での参考換算額。`display_currency` 未指定時、およびレート取得失敗による
-	// degrade 時は null になります。
-	ReferenceAmount *ReferenceAmount `json:"reference_amount"`
+	// ReferenceAmount 表示通貨での参考換算額です。`displayCurrency` 指定時のみ算出し、非永続で返します。
+	// 保存値はあくまで USD セント整数であり、本フィールドは参考表示専用です。
+	// レート取得に失敗した場合は degrade として null を返します。
+	ReferenceAmount *ReferenceAmount `json:"referenceAmount"`
 }
 
-// ReferenceAmount 表示通貨での参考換算額です。`display_currency` 指定時のみ算出し、非永続で返します。
+// ReferenceAmount 表示通貨での参考換算額です。`displayCurrency` 指定時のみ算出し、非永続で返します。
 // 保存値はあくまで USD セント整数であり、本フィールドは参考表示専用です。
 // レート取得に失敗した場合は degrade として null を返します。
 type ReferenceAmount struct {
@@ -63,7 +64,7 @@ type ReferenceAmount struct {
 	Rate float64 `json:"rate"`
 
 	// RateDate レートの基準日（外部レートサービスの公表日）
-	RateDate string `json:"rate_date"`
+	RateDate string `json:"rateDate"`
 }
 
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
@@ -93,9 +94,9 @@ type GetExchangeRatesParams struct {
 	// float（double）で受け付けます。保存値および reference_amount の内部計算は整数で行います。
 	Amount float64 `form:"amount" json:"amount"`
 
-	// DisplayCurrency 指定時のみ、その通貨での参考換算額を reference_amount として返します（非永続）。
+	// DisplayCurrency 指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
 	// 現状は JPY のみサポートします。
-	DisplayCurrency *GetExchangeRatesParamsDisplayCurrency `form:"display_currency,omitempty" json:"display_currency,omitempty"`
+	DisplayCurrency *GetExchangeRatesParamsDisplayCurrency `form:"displayCurrency,omitempty" json:"displayCurrency,omitempty"`
 }
 
 // GetExchangeRatesParamsDisplayCurrency defines parameters for GetExchangeRates.

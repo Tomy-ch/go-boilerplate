@@ -40,7 +40,7 @@ only to `Repository`. The subject differs; the seam principle is identical.
 The TTL is a fixed `const rateTTL = 24 * time.Hour`, not an environment/config value. Because
 the source updates daily, 24h is a value whose rationale can be stated. Crossing the ECB
 publication time (≈16:00 CET) may serve a rate up to ~24h old; this is acceptable because the
-cached value feeds only a **non-persistent reference display**, and its `rate_date` is exposed
+cached value feeds only a **non-persistent reference display**, and its `rateDate` is exposed
 on the response so callers can judge freshness.
 
 ## Consequences
@@ -58,7 +58,7 @@ on the response so callers can judge freshness.
 - The Gateway-boundary read of ADR-0096 is an extension of its Repository-scoped wording; the
   reasoning is recorded here so the extension is explicit, not implicit.
 - A fixed 24h TTL can serve a stale rate across the daily publication boundary; mitigated by
-  exposing `rate_date` and by the reference being advisory only.
+  exposing `rateDate` and by the reference being advisory only.
 
 ### Neutral Consequences
 
