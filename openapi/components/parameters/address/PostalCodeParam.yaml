@@ -1,0 +1,12 @@
+name: postalCode
+in: query
+required: true
+description: |
+  検索対象の郵便番号。ハイフンあり（`123-4567`）・なし（`1234567`）の両方を受け付けます。
+  ハイフン除去の正規化は handler が行い、内層（usecase / gateway）へは 7 桁の数字列を渡します。
+schema:
+  type: string
+  pattern: '^[0-9]{3}-?[0-9]{4}$'
+  minLength: 7
+  maxLength: 8
+  example: "100-0001"
