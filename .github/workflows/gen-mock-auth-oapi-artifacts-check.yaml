@@ -73,6 +73,7 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
+          # shellcheck disable=SC2016  # backticks are literal Markdown in the PR comment strings
           set -euo pipefail
           out=/tmp/gen-mock-auth-oapi-comment.md
           if [ "${{ steps.gen_diff.outputs.has_diff }}" != "true" ]; then
