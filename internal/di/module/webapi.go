@@ -2,6 +2,7 @@ package module
 
 import (
 	"go-boilerplate/internal/infrastructure/httpclient"                          // sample-api:line
+	addressext "go-boilerplate/internal/infrastructure/webapi/address"           // sample-api:line
 	exchangerateext "go-boilerplate/internal/infrastructure/webapi/exchangerate" // sample-api:line
 	"go-boilerplate/internal/observability"                                      // sample-api:line
 	"go-boilerplate/internal/usecase/boundary/clock"                             // sample-api:line
@@ -16,12 +17,16 @@ func webapiModule() fx.Option {
 		fx.Provide(
 			exchangerateext.NewEndpoint,      // sample-api:line
 			provideCachedExchangeRateGateway, // sample-api:line
+			addressext.NewEndpoint,           // sample-api:line
+			addressext.New,                   // sample-api:line
 		),
 		provideHTTPClientProfiles(
 			exchangerateext.NewDownstreamProfile, // sample-api:line
+			addressext.NewDownstreamProfile,      // sample-api:line
 		),
 		provideRequiredDownstreams(
 			exchangerateext.RequiredDownstream, // sample-api:line
+			addressext.RequiredDownstream,      // sample-api:line
 		),
 	)
 }

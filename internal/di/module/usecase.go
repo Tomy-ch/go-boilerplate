@@ -2,6 +2,7 @@ package module
 
 import (
 	"go-boilerplate/internal/observability"
+	addressuc "go-boilerplate/internal/usecase/address"           // sample-api:line
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate" // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
@@ -37,6 +38,7 @@ func UsecaseModule() fx.Option {
 			user.New,
 			search.New,
 			exchangerateuc.New,
+			addressuc.New,
 			prefectureuc.New,
 			statusuc.New,
 			categoryuc.New,
