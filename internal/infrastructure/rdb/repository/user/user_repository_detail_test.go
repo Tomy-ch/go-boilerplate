@@ -127,7 +127,7 @@ func Test_repository_Update(t *testing.T) {
 				// DB に存在しない ID のエンティティ
 				u, err := user.New(
 					uuid.NewTestFromSalt(t, "missing-update"),
-					"X", "Y", "hashed_password", "missing-update@example.com", "09000000000",
+					"X", "Y", "missing-update@example.com", "09000000000",
 					prefID, "City", "Street", nil, "100-0001", now, now, nil,
 				)
 				require.NoError(t, err)

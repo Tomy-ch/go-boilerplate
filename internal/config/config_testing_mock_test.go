@@ -17,7 +17,7 @@ func TestMockConfigForTest(t *testing.T) {
 
 		t.Run("MockConfigForTest は、テスト用の Config を返す", func(t *testing.T) {
 			t.Parallel()
-			expected := &Config{ //nolint:dupl // 設定の網羅的リテラル比較のため TestNew 側と構造が重複するのは意図的
+			expected := &Config{
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
 				},
@@ -84,7 +84,6 @@ func TestMockConfigForTest(t *testing.T) {
 					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 					referrerPolicy:        expectedReferrerPolicy,
-					bcryptCost:            expectedBcryptCost,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
@@ -206,7 +205,6 @@ func Test_mockLoader(t *testing.T) {
 					HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
 					HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 					ReferrerPolicy:        expectedReferrerPolicy,
-					BcryptCost:            expectedBcryptCost,
 				},
 				SecureCookie: SecureCookie{
 					Secure:   expectedSecureCookieSecure,
@@ -279,7 +277,6 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 			assert.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 			assert.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
-			assert.Equal(t, strconv.Itoa(expectedBcryptCost), os.Getenv("SECURITY_BCRYPT_COST"))
 			// Secure Cookie
 			assert.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 			assert.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))

@@ -42,7 +42,7 @@ tags:
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
-    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+    description: 単一ユーザー（取得・更新・部分更新・削除）。
   - name: v1/users/feed
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
@@ -55,6 +55,8 @@ tags:
     description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/detail
+    description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: v1/addresses
@@ -88,8 +90,6 @@ paths:
     $ref: './paths/v1/users/userId.yaml'
   /v1/users/me:
     $ref: './paths/v1/users/me.yaml'
-  /v1/users/me/password:
-    $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
   /v1/users/feed:
@@ -102,6 +102,8 @@ paths:
     $ref: './paths/v1/product-categories.yaml'
   /v1/products:
     $ref: './paths/v1/products.yaml'
+  /v1/products/{productId}:
+    $ref: './paths/v1/products/productId.yaml'
   /v1/exchange-rates:
     $ref: './paths/v1/exchange-rates.yaml'
   /v1/addresses:

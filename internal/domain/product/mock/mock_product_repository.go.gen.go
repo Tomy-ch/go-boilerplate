@@ -12,6 +12,7 @@ package mock_product
 import (
 	context "context"
 	product "go-boilerplate/internal/domain/product"
+	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -39,6 +40,21 @@ func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
+}
+
+// FindPublishedByID mocks base method.
+func (m *MockRepository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindPublishedByID", ctx, id)
+	ret0, _ := ret[0].(*product.Product)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindPublishedByID indicates an expected call of FindPublishedByID.
+func (mr *MockRepositoryMockRecorder) FindPublishedByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPublishedByID", reflect.TypeOf((*MockRepository)(nil).FindPublishedByID), ctx, id)
 }
 
 // FindPublishedList mocks base method.

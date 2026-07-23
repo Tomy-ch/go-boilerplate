@@ -69,7 +69,6 @@ func TestBindHandler(t *testing.T) {
 		http.MethodPatch + " " + targetPath,
 		http.MethodDelete + " " + targetPath,
 		http.MethodGet + " /v1/users/me",
-		http.MethodPut + " /v1/users/me/password",
 	}
 
 	assert.Len(t, e.Routes(), len(expected))
@@ -363,69 +362,6 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 			)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInternal)
-		})
-	})
-}
-
-func Test_server_PutUsersMePassword(t *testing.T) {
-	t.Parallel()
-
-	const subject = "11111111-1111-1111-1111-111111111111"
-	body := &gen.PutUsersMePasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
-		CurrentPassword: "current_password",
-		NewPassword:     "new_valid_password",
-	}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("認証ユーザーのパスワード変更が成功する場合_204が返る", func(t *testing.T) {
-			t.Parallel()
-			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-			s, mockApp := newServer(t)
-			mockApp.EXPECT().
-				ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
-				Return(nil)
-
-			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-			require.NoError(t, err)
-
-			_, ok := resp.(gen.PutUsersMePassword204Response)
-			assert.True(t, ok)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("認証情報がない場合_エラーが返る", func(t *testing.T) {
-			t.Parallel()
-			s, _ := newServer(t)
-			resp, err := s.PutUsersMePassword(context.Background(), gen.PutUsersMePasswordRequestObject{Body: body})
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
-		})
-
-		t.Run("内部UserIDが未解決でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
-			t.Parallel()
-			ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
-			s, _ := newServer(t)
-			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
-		})
-
-		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
-			t.Parallel()
-			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-			s, mockApp := newServer(t)
-			mockApp.EXPECT().
-				ChangePassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(apperror.ErrValidation)
-
-			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 	})
 }

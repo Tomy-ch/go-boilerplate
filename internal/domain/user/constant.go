@@ -1,23 +1,17 @@
 package user
 
 const (
-	minLength             = 1
-	maxFirstNameLength    = 100
-	maxLastNameLength     = 100
-	maxPasswordHashLength = 255
-	maxEmailLength        = 100
-	maxPhoneLength        = 20
-	maxCityLength         = 100
-	maxStreetLength       = 255
-	maxBuildingLength     = 255
+	minLength          = 1
+	maxFirstNameLength = 100
+	maxLastNameLength  = 100
+	maxEmailLength     = 100
+	maxPhoneLength     = 20
+	maxCityLength      = 100
+	maxStreetLength    = 255
+	maxBuildingLength  = 255
 
 	minRoleNameLength = 1
 	maxRoleNameLength = 100
-
-	// MaxRawPasswordLength は、平文パスワードの最大文字数です。
-	MaxRawPasswordLength = 64
-	// MinRawPasswordLength は、平文パスワードの最小文字数です。
-	MinRawPasswordLength = 8
 )
 
 // プロフィール系フィールドの識別子。検証失敗時に apperror.Meta の Details として

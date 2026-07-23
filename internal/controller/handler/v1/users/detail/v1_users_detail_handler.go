@@ -77,7 +77,7 @@ func (s *server) GetUsersMe(ctx context.Context, _ gen.GetUsersMeRequestObject) 
 	return gen.GetUsersMe200JSONResponse(toUserResponse(dto)), nil
 }
 
-// PutUsersDetail は、指定されたUUIDに該当するユーザーのプロフィールを全て更新します（パスワードは含みません）。
+// PutUsersDetail は、指定されたUUIDに該当するユーザーのプロフィールを全て更新します。
 func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailRequestObject) (gen.PutUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -109,7 +109,7 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 	return gen.PutUsersDetail200JSONResponse(toUserResponse(res)), nil
 }
 
-// PatchUsersDetail は、指定されたUUIDに該当するユーザーの情報を部分的に更新します（パスワードは更新しません）。
+// PatchUsersDetail は、指定されたUUIDに該当するユーザーの情報を部分的に更新します。
 func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDetailRequestObject) (gen.PatchUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -139,27 +139,6 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 	}
 
 	return gen.PatchUsersDetail200JSONResponse(toUserResponse(res)), nil
-}
-
-// PutUsersMePassword は、認証ユーザー自身のパスワードを変更します（現パスワード照合あり）。
-func (s *server) PutUsersMePassword(ctx context.Context, request gen.PutUsersMePasswordRequestObject) (gen.PutUsersMePasswordResponseObject, error) {
-	ctx, endSpan := s.tracer.Start(ctx)
-	defer endSpan()
-
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
-	}
-	id, err := authn.UserID()
-	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
-	}
-
-	if err := s.uc.ChangePassword(ctx, id, request.Body.CurrentPassword, request.Body.NewPassword); err != nil {
-		return nil, err
-	}
-
-	return gen.PutUsersMePassword204Response{}, nil
 }
 
 // DeleteUsersDetail は、指定されたUUIDに該当するユーザーを論理削除します。

@@ -20,7 +20,6 @@ func TestNew(t *testing.T) {
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture")
 	firstName := "John"
 	lastName := "Doe"
-	passwordHash := "hashed_password"
 	email := "john.doe@example.com"
 	phone := "1234567890"
 	city := "Shibuya"
@@ -40,7 +39,6 @@ func TestNew(t *testing.T) {
 				id,
 				firstName,
 				lastName,
-				passwordHash,
 				email,
 				phone,
 				prefectureID,
@@ -57,7 +55,6 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, id, actual.id)
 			assert.Equal(t, firstName, actual.firstName)
 			assert.Equal(t, lastName, actual.lastName)
-			assert.Equal(t, passwordHash, actual.passwordHash)
 			assert.Equal(t, email, actual.email.Value())
 			assert.Equal(t, phone, actual.phone)
 			assert.Equal(t, prefectureID, actual.prefectureID)
@@ -77,7 +74,6 @@ func TestNew(t *testing.T) {
 				id,
 				firstName,
 				lastName,
-				passwordHash,
 				email,
 				phone,
 				prefectureID,
@@ -103,7 +99,6 @@ func TestNew(t *testing.T) {
 				uuid.UUID{},
 				firstName,
 				lastName,
-				passwordHash,
 				email,
 				phone,
 				prefectureID,
@@ -129,7 +124,6 @@ func TestNew(t *testing.T) {
 					id,
 					strings.Repeat("名", minLength-1),
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -152,7 +146,6 @@ func TestNew(t *testing.T) {
 					id,
 					strings.Repeat("名", maxFirstNameLength+1),
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -179,7 +172,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					strings.Repeat("姓", minLength-1),
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -202,7 +194,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					strings.Repeat("姓", maxLastNameLength+1),
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -219,56 +210,6 @@ func TestNew(t *testing.T) {
 				require.ErrorIs(t, err, ErrInvalidLastName)
 			})
 		})
-		t.Run("passwordが範囲外の場合、エラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			t.Run("passwordの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
-				t.Parallel()
-				actual, err := New(
-					id,
-					firstName,
-					lastName,
-					strings.Repeat("a", minLength-1),
-					email,
-					phone,
-					prefectureID,
-					city,
-					street,
-					building,
-					postalCode,
-					createdAt,
-					updatedAt,
-					deletedAt,
-				)
-
-				assert.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPasswordHash)
-			})
-
-			t.Run("passwordの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
-				t.Parallel()
-				actual, err := New(
-					id,
-					firstName,
-					lastName,
-					strings.Repeat("a", maxPasswordHashLength+1),
-					email,
-					phone,
-					prefectureID,
-					city,
-					street,
-					building,
-					postalCode,
-					createdAt,
-					updatedAt,
-					deletedAt,
-				)
-
-				assert.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPasswordHash)
-			})
-		})
-
 		t.Run("emailが範囲外の場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -278,7 +219,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					strings.Repeat("a", minLength-1),
 					phone,
 					prefectureID,
@@ -301,7 +241,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					strings.Repeat("a", maxEmailLength+1),
 					phone,
 					prefectureID,
@@ -324,7 +263,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					"not-an-email",
 					phone,
 					prefectureID,
@@ -351,7 +289,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					strings.Repeat("1", minLength-1),
 					prefectureID,
@@ -374,7 +311,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					strings.Repeat("1", maxPhoneLength+1),
 					prefectureID,
@@ -401,7 +337,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -424,7 +359,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -451,7 +385,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -474,7 +407,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -501,7 +433,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -524,7 +455,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -551,7 +481,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -574,7 +503,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -598,7 +526,6 @@ func TestNew(t *testing.T) {
 				id,
 				firstName,
 				lastName,
-				passwordHash,
 				email,
 				phone,
 				uuid.UUID{},
@@ -621,7 +548,6 @@ func TestNew(t *testing.T) {
 				id,
 				firstName,
 				lastName,
-				passwordHash,
 				email,
 				phone,
 				prefectureID,
@@ -647,7 +573,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -670,7 +595,6 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					passwordHash,
 					email,
 					phone,
 					prefectureID,
@@ -697,7 +621,7 @@ func newAccessorUser(t *testing.T) *User {
 	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	u, err := New(
 		uuid.NewTestFromSalt(t, "user"),
-		"John", "Doe", "hashed_password", "john.doe@example.com", "1234567890",
+		"John", "Doe", "john.doe@example.com", "1234567890",
 		uuid.NewTestFromSalt(t, "prefecture"),
 		"Shibuya", "1-2-3", new("Building A"), "150-0001",
 		baseTime, baseTime.Add(time.Hour), new(baseTime.Add(time.Hour).Add(time.Minute)),
@@ -747,21 +671,6 @@ func TestUser_LastName(t *testing.T) {
 			u := newAccessorUser(t)
 
 			assert.Equal(t, u.lastName, u.LastName())
-		})
-	})
-}
-
-func TestUser_PasswordHash(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("保存したパスワードハッシュを返す", func(t *testing.T) {
-			t.Parallel()
-			u := newAccessorUser(t)
-
-			assert.Equal(t, u.passwordHash, u.PasswordHash())
 		})
 	})
 }
@@ -859,7 +768,7 @@ func TestUser_Building(t *testing.T) {
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			u, err := New(
 				uuid.NewTestFromSalt(t, "user"),
-				"John", "Doe", "hashed_password", "john.doe@example.com", "1234567890",
+				"John", "Doe", "john.doe@example.com", "1234567890",
 				uuid.NewTestFromSalt(t, "prefecture"),
 				"Shibuya", "1-2-3", nil, "150-0001",
 				baseTime, baseTime.Add(time.Hour), nil,
@@ -876,7 +785,7 @@ func TestUser_Building(t *testing.T) {
 			building := new("Building A")
 			user, err := New(
 				uuid.NewTestFromSalt(t, "user"),
-				"John", "Doe", "hashed_password", "john.doe@example.com", "1234567890",
+				"John", "Doe", "john.doe@example.com", "1234567890",
 				uuid.NewTestFromSalt(t, "prefecture"),
 				"Shibuya", "1-2-3", building, "150-0001",
 				baseTime, baseTime.Add(time.Hour), new(baseTime.Add(time.Hour).Add(time.Minute)),
@@ -944,7 +853,7 @@ func TestUser_DeletedAt(t *testing.T) {
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			u, err := New(
 				uuid.NewTestFromSalt(t, "user"),
-				"John", "Doe", "hashed_password", "john.doe@example.com", "1234567890",
+				"John", "Doe", "john.doe@example.com", "1234567890",
 				uuid.NewTestFromSalt(t, "prefecture"),
 				"Shibuya", "1-2-3", nil, "150-0001",
 				baseTime, baseTime.Add(time.Hour), nil,
@@ -961,7 +870,7 @@ func TestUser_DeletedAt(t *testing.T) {
 			deletedAt := new(baseTime.Add(time.Hour).Add(time.Minute))
 			user, err := New(
 				uuid.NewTestFromSalt(t, "user"),
-				"John", "Doe", "hashed_password", "john.doe@example.com", "1234567890",
+				"John", "Doe", "john.doe@example.com", "1234567890",
 				uuid.NewTestFromSalt(t, "prefecture"),
 				"Shibuya", "1-2-3", new("Building A"), "150-0001",
 				baseTime, baseTime.Add(time.Hour), deletedAt,
@@ -1047,7 +956,7 @@ func newValidUser(t *testing.T) (*User, time.Time) {
 	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	u, err := New(
 		uuid.NewTestFromSalt(t, "user"),
-		"John", "Doe", "hashed_password", "john@example.com", "1234567890",
+		"John", "Doe", "john@example.com", "1234567890",
 		uuid.NewTestFromSalt(t, "prefecture"),
 		"Shibuya", "1-2-3", new("Building A"), "150-0001",
 		base, base, nil,
@@ -1062,7 +971,7 @@ func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time)
 	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	u, err := New(
 		uuid.NewTestFromSalt(t, "user"),
-		"John", "Doe", "hashed_password", "john@example.com", "1234567890",
+		"John", "Doe", "john@example.com", "1234567890",
 		uuid.NewTestFromSalt(t, "prefecture"),
 		"Shibuya", "1-2-3", new("Building A"), "150-0001",
 		base, base.Add(offset), nil,
@@ -1117,6 +1026,18 @@ func TestUser_UpdateProfile(t *testing.T) {
 			assert.Equal(t, []string{FieldFirstName}, meta.Details())
 		})
 
+		t.Run("prefectureIDがゼロ値の場合、ErrInvalidPrefectureIDが返される", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+
+			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
+				uuid.UUID{}, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidPrefectureID)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldPrefectureID}, meta.Details())
+		})
+
 		t.Run("複数フィールドが同時に不正な場合、全フィールドのエラーと識別子が収集される", func(t *testing.T) {
 			t.Parallel()
 			u, base := newValidUser(t)
@@ -1157,63 +1078,6 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
 				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(2*time.Hour))
-			require.ErrorIs(t, err, ErrAlreadyDeleted)
-		})
-	})
-}
-
-func TestUser_ChangePassword(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("パスワードハッシュと更新日時が置き換わる", func(t *testing.T) {
-			t.Parallel()
-			u, base := newValidUser(t)
-			newUpdatedAt := base.Add(time.Hour)
-
-			err := u.ChangePassword("new_hashed_password", newUpdatedAt)
-			require.NoError(t, err)
-			assert.Equal(t, "new_hashed_password", u.passwordHash)
-			assert.Equal(t, newUpdatedAt, u.updatedAt)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("パスワードハッシュが不正な場合、エラーを返す", func(t *testing.T) {
-			t.Parallel()
-			u, base := newValidUser(t)
-
-			err := u.ChangePassword("", base.Add(time.Hour))
-			require.ErrorIs(t, err, ErrInvalidPasswordHash)
-		})
-
-		t.Run("updatedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
-			t.Parallel()
-			u, base := newValidUser(t)
-
-			err := u.ChangePassword("new_hashed_password", base.Add(-time.Hour))
-			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-		})
-
-		t.Run("updatedAtが現在のupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
-			t.Parallel()
-			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
-
-			// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される
-			err := u.ChangePassword("new_hashed_password", base.Add(time.Hour))
-			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-		})
-
-		t.Run("論理削除済みユーザーはパスワード変更できない", func(t *testing.T) {
-			t.Parallel()
-			u, base := newValidUser(t)
-			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
-
-			err := u.ChangePassword("new_hashed_password", base.Add(2*time.Hour))
 			require.ErrorIs(t, err, ErrAlreadyDeleted)
 		})
 	})
@@ -1323,36 +1187,6 @@ func Test_validateDeletedAt(t *testing.T) {
 
 			// createdAt 以降だが updatedAt より前の削除時刻は拒否される
 			require.ErrorIs(t, validateDeletedAt(base.Add(time.Minute), base, updatedAt), ErrInvalidDeletedAt)
-		})
-	})
-}
-
-func Test_validatePasswordHash(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("範囲内の場合、nil を返す", func(t *testing.T) {
-			t.Parallel()
-
-			require.NoError(t, validatePasswordHash("hashed_password"))
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("最小値未満の場合、ErrInvalidPasswordHash を返す", func(t *testing.T) {
-			t.Parallel()
-
-			require.ErrorIs(t, validatePasswordHash(strings.Repeat("a", minLength-1)), ErrInvalidPasswordHash)
-		})
-
-		t.Run("最大値を超える場合、ErrInvalidPasswordHash を返す", func(t *testing.T) {
-			t.Parallel()
-
-			require.ErrorIs(t, validatePasswordHash(strings.Repeat("a", maxPasswordHashLength+1)), ErrInvalidPasswordHash)
 		})
 	})
 }
@@ -1476,7 +1310,7 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 			base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			u, err := New(
 				uuid.NewTestFromSalt(t, "user"),
-				"John", "Doe", "hashed_password", "john@example.com", "1234567890",
+				"John", "Doe", "john@example.com", "1234567890",
 				uuid.NewTestFromSalt(t, "prefecture"),
 				"Shibuya", "1-2-3", new("Building A"), "150-0001",
 				base, base.Add(2*time.Hour), nil,

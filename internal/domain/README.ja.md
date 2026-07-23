@@ -228,7 +228,7 @@ return apperror.WithDetails(xerrors.Join(errs...), fields...)
 
 フィールド識別子は API リクエストのプロパティ名と一致するドメイン定数
 （`FieldEmail = "email"`）で、理由文はラップしたエラーメッセージ側に残す（ログ専用）。
-サーバ内部の不変条件（id・タイムスタンプ・パスワードハッシュ）は first-error return の
+サーバ内部の不変条件（id・タイムスタンプ）は first-error return の
 まま — ユーザーが修正できる入力ではないため。
 
 ### 不変条件（Domain Invariant）
@@ -539,7 +539,6 @@ func newTestUser(t *testing.T)*User {
         id,
         "John",
         "Doe",
-        "hashed_password",
         "john@example.com",
         "1234567890",
         prefectureID,
@@ -614,20 +613,15 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 package user
 
 const (
-    minLength             = 1
-    maxFirstNameLength    = 100
-    maxLastNameLength     = 100
-    maxPasswordHashLength = 255
-    maxEmailLength        = 100
-    maxPhoneLength        = 20
-    maxCityLength         = 100
-    maxStreetLength       = 255
-    maxBuildingLength     = 255
-    maxPostalCodeLength   = 8
-
-    // 値オブジェクト RawPassword の文字数境界
-    MaxRawPasswordLength = 64
-    MinRawPasswordLength = 8
+    minLength           = 1
+    maxFirstNameLength  = 100
+    maxLastNameLength   = 100
+    maxEmailLength      = 100
+    maxPhoneLength      = 20
+    maxCityLength       = 100
+    maxStreetLength     = 255
+    maxBuildingLength   = 255
+    maxPostalCodeLength = 8
 )
 ```
 
@@ -646,7 +640,6 @@ var (
     ErrInvalidID           = xerrors.Wrap(errInvalid, "id failed")
     ErrInvalidFirstName    = xerrors.Wrap(errInvalid, "first name failed")
     ErrInvalidLastName     = xerrors.Wrap(errInvalid, "last name failed")
-    ErrInvalidPasswordHash = xerrors.Wrap(errInvalid, "password hash failed")
     ErrInvalidEmail        = xerrors.Wrap(errInvalid, "email failed")
     ErrInvalidPhone        = xerrors.Wrap(errInvalid, "phone failed")
     ErrInvalidPrefectureID = xerrors.Wrap(errInvalid, "prefecture id failed")
@@ -657,12 +650,8 @@ var (
     ErrInvalidUpdatedAt    = xerrors.Wrap(errInvalid, "updated at failed")
     ErrInvalidDeletedAt    = xerrors.Wrap(errInvalid, "deleted at failed")
 
-    // 値オブジェクト RawPassword 固有の検証エラー（errInvalid を経由しない）
-    ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
-
     // ビジネスルール違反
-    ErrAlreadyDeleted          = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
-    ErrCurrentPasswordMismatch = xerrors.Wrap(apperror.ErrValidation, "current password does not match")
+    ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
 )
 ```
 
@@ -686,7 +675,6 @@ type User struct {
     id           uuid.UUID
     firstName    string
     lastName     string
-    passwordHash string
     email        string
     phone        string
     prefectureID uuid.UUID
@@ -704,7 +692,6 @@ func New(
     id uuid.UUID,
     firstName string,
     lastName string,
-    passwordHash string,
     email string,
     phone string,
     prefectureID uuid.UUID,
@@ -721,9 +708,6 @@ func New(
     }
     // フィールド検証（New / UpdateProfile で共有）
     if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
-        return nil, err
-    }
-    if err := validatePasswordHash(passwordHash); err != nil {
         return nil, err
     }
     if updatedAt.Before(createdAt) {
@@ -751,7 +735,7 @@ func (u *User) Building() *string { return ptr.Copy(u.building) }
 func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
 // 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
-// ビジネスロジック（振る舞い）: プロフィール一括更新（パスワードは対象外）
+// ビジネスロジック（振る舞い）: プロフィール一括更新
 func (u *User) UpdateProfile(
     firstName, lastName, email, phone string,
     prefectureID uuid.UUID,
@@ -776,8 +760,7 @@ func (u *User) UpdateProfile(
 }
 
 // 振る舞いの兄弟（UpdateProfile と同じ ensure → 検証 → 置換 の idiom）。シグネチャのみ示す。
-func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error // パスワードハッシュ更新
-func (u *User) MarkAsDeleted(deletedAt time.Time) error                       // 論理削除（既に削除済みなら ErrAlreadyDeleted）
+func (u *User) MarkAsDeleted(deletedAt time.Time) error // 論理削除（既に削除済みなら ErrAlreadyDeleted）
 
 // 不変条件ガード（例示）: updatedAt は createdAt 以降かつ単調非減少
 func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
@@ -813,7 +796,6 @@ func validateProfileFields(
     }
     return nil
 }
-func validatePasswordHash(passwordHash string) error                   // maxPasswordHashLength で検証
 func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // createdAt / updatedAt 以降
 ```
 

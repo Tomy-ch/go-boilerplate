@@ -38,7 +38,6 @@ INSERT INTO users (
     id,
     first_name,
     last_name,
-    password_hash,
     email,
     phone,
     prefecture_id,
@@ -53,7 +52,6 @@ INSERT INTO users (
     sqlc.arg('id'),
     sqlc.arg('first_name'),
     sqlc.arg('last_name'),
-    sqlc.arg('password_hash'),
     sqlc.arg('email'),
     sqlc.arg('phone'),
     sqlc.arg('prefecture_id'),
@@ -154,7 +152,6 @@ UPDATE users
 SET
     first_name = sqlc.arg('first_name'),
     last_name = sqlc.arg('last_name'),
-    password_hash = sqlc.arg('password_hash'),
     email = sqlc.arg('email'),
     phone = sqlc.arg('phone'),
     prefecture_id = sqlc.arg('prefecture_id'),

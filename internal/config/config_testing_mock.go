@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -112,7 +110,6 @@ var (
 	expectedHSTSExcludeSubdomains = false
 	expectedHSTSPreloadEnabled    = false
 	expectedReferrerPolicy        = "no-referrer"
-	expectedBcryptCost            = bcrypt.MinCost
 	// secure cookie
 	expectedSecureCookieSecure   = new(true)
 	expectedSecureCookieSameSite = "Strict"
@@ -220,7 +217,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
-			bcryptCost:            expectedBcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   expectedSecureCookieSecure,
@@ -332,7 +328,6 @@ func mockLoader(tb testing.TB) Loader {
 			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
-			BcryptCost:            expectedBcryptCost,
 		},
 		SecureCookie: SecureCookie{
 			Secure:   expectedSecureCookieSecure,
@@ -403,7 +398,6 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
 	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
 	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
-	t.Setenv("SECURITY_BCRYPT_COST", strconv.Itoa(expectedBcryptCost))
 	// Secure Cookie
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)

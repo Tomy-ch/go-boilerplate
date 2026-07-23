@@ -240,6 +240,89 @@ func Test_repository_FindPublishedList(t *testing.T) {
 	})
 }
 
+func Test_repository_FindPublishedByID(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	publishedID := "ffffffff-0000-4000-8000-000000000001"
+	unpublishedID := "ffffffff-0000-4000-8000-000000000002"
+	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開中の商品をIDで取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, publishedID, probeKeyword+"-PUB", ptr.To("説明"), 1999, statusInStock, categoryElectronics, ptr.To(base))
+
+				got, err := repo.FindPublishedByID(ctx, mustParse(t, publishedID))
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, mustParse(t, publishedID), got.ID())
+				require.NotNil(t, got.Description())
+				assert.Equal(t, "説明", *got.Description())
+				assert.Equal(t, 1999, got.Price())
+				assert.Equal(t, 10, got.Quantity())
+				assert.Nil(t, got.StockWarningThreshold())
+				// DB は timestamptz をローカルタイムゾーンで返すため、格納した瞬間の一致で比較する。
+				assert.True(t, base.Equal(got.PublishedAt()))
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未存在のIDはNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := repo.FindPublishedByID(ctx, uuid.NewTestFromSalt(t, "find_published_by_id_missing"))
+				require.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+
+		t.Run("非公開(published_atがNULL)の商品はNotFoundを返し存在を秘匿する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				// published_at が NULL の行は公開述語に合致しないため、未存在と同じ NotFound が返る（存在秘匿）。
+				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+"-UNPUB", nil, 1999, statusInStock, categoryElectronics, nil)
+
+				got, err := repo.FindPublishedByID(ctx, mustParse(t, unpublishedID))
+				require.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+
+		t.Run("不正な行(価格が負数)が取得されるとデータ不整合としてErrInternalを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				invalidID := "ffffffff-0000-4000-8000-000000000003"
+				// price=-1 はドメイン不変条件違反(再構築エラー)を誘発する。公開述語を通すため published_at は設定する。
+				insertProduct(ctx, t, drv, invalidID, probeKeyword+"-BADPRICE", nil, -1, statusInStock, categoryElectronics, ptr.To(base))
+
+				got, err := repo.FindPublishedByID(ctx, mustParse(t, invalidID))
+				require.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+				require.NotErrorIs(t, err, domainproduct.ErrInvalidPrice)
+			})
+		})
+	})
+}
+
 func Test_int32PtrToIntPtr(t *testing.T) {
 	t.Parallel()
 

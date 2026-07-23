@@ -48,7 +48,6 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
-|`security`|`Hasher`|パスワードのハッシュ化・比較|`internal/infrastructure/security/`|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|broker 非依存の worker seam（pull-ack）|`internal/infrastructure/queue/sqs/`|
 
@@ -162,17 +161,6 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |`Publisher`|メッセージを publish 先へ送る境界|
 |`Publish(ctx, m)`|`m` を publish 先へ送る。失敗時はエラーを返し relay の次 poll で再送（at-least-once）|
 |`Message`|outbox 行から構築する publish 先非依存のメッセージ封筒（`net/http` 等の型を露出しない）|
-
-### security
-
-```go
-type Hasher interface {
-    Hash(password string) (string, error)
-    Compare(hash, password string) (bool, error)
-}
-```
-
-パスワードのハッシュ化と比較。bcrypt 等の実装詳細を Usecase から隠蔽。
 
 ### tx
 
