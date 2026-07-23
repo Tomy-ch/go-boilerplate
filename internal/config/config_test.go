@@ -7,14 +7,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			setEnvVarsForTesting(t)
-			expected := &Config{ //nolint:dupl // 設定の網羅的リテラル比較のため MockConfigForTest 側と構造が重複するのは意図的
+			expected := &Config{
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
 				},
@@ -81,7 +80,6 @@ func TestNew(t *testing.T) {
 					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 					referrerPolicy:        expectedReferrerPolicy,
-					bcryptCost:            expectedBcryptCost,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
@@ -644,28 +642,6 @@ func Test_validateSecurityConfig(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("BcryptCostが無効な場合", func(t *testing.T) {
-			t.Parallel()
-
-			t.Run("BcryptCostがbcrypt.MinCost未満の場合", func(t *testing.T) {
-				t.Parallel()
-				cfg := mockLoader(t)
-				cfg.Security.BcryptCost = bcrypt.MinCost - 1 // 無効なBcryptCost
-
-				err := validateSecurityConfig(cfg.Security)
-				require.ErrorIs(t, err, ErrInvalidBcryptCost)
-			})
-
-			t.Run("BcryptCostがbcrypt.MaxCostを超えている場合", func(t *testing.T) {
-				t.Parallel()
-				cfg := mockLoader(t)
-				cfg.Security.BcryptCost = bcrypt.MaxCost + 1 // 無効なBcryptCost
-
-				err := validateSecurityConfig(cfg.Security)
-				require.ErrorIs(t, err, ErrInvalidBcryptCost)
-			})
-		})
-
 		t.Run("AllowedOriginsが空の場合", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)

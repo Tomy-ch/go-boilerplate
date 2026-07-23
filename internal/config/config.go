@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
-	"golang.org/x/crypto/bcrypt"
 
 	"go-boilerplate/pkg/xerrors"
 )
@@ -101,7 +100,6 @@ func New() (*Config, error) {
 			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
 			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
 			referrerPolicy:        cfg.Security.ReferrerPolicy,
-			bcryptCost:            cfg.Security.BcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   cfg.SecureCookie.Secure,
@@ -293,10 +291,6 @@ func validateDBConnectionConfig(dbConnCfg DBConnection) error {
 func validateSecurityConfig(secCfg Security) error {
 	if len(secCfg.AllowedOrigins) == 0 {
 		return ErrEmptyAllowedOrigins
-	}
-
-	if secCfg.BcryptCost < bcrypt.MinCost || bcrypt.MaxCost < secCfg.BcryptCost {
-		return ErrInvalidBcryptCost
 	}
 
 	for _, origin := range secCfg.AllowedOrigins {

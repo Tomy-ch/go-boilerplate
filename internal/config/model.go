@@ -93,7 +93,7 @@ type DBConnectionConfig struct {
 	maxIdleTime time.Duration
 }
 
-// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー・bcrypt コスト等のセキュリティ設定を保持します。
+// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー等のセキュリティ設定を保持します。
 type SecurityConfig struct {
 	allowedOrigins        []string
 	cidr                  *net.IPNet
@@ -103,7 +103,6 @@ type SecurityConfig struct {
 	hstsExcludeSubdomains bool
 	hstsPreloadEnabled    bool
 	referrerPolicy        string
-	bcryptCost            int
 }
 
 // SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。
@@ -362,9 +361,6 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
-
-// BcryptCost は、bcryptのコストを返します。
-func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
 
 // NewSecureCookieConfig は、セキュアクッキーの設定を返します。
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
