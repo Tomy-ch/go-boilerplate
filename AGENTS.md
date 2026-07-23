@@ -85,6 +85,18 @@ AI agents MUST NOT:
   through its current caller, extract the logic into a testable unit and cover every branch rather
   than deleting it. Never drop a meaningful safeguard just because it is currently unreached — make
   it testable and add the regression test.
+- **Coverage % is a proxy, not the goal**: a test's worth is the contract it locks against
+  regression, not the number it moves. A meaningful test can add 0 % (e.g. exercising an empty
+  no-op default — an `{}` body has zero coverable statements, so its `0.0%` is a Go display artifact,
+  NOT a gap). Do NOT chase whole-function `0.0%` that are empty/no-statement bodies, and do NOT
+  delete a test that verifies a real contract just because it doesn't raise coverage. Conversely,
+  code run only to hit lines with no meaningful assertion is coverage theater — that IS meaningless.
+- **A test is meaningful only if** the contract it protects (correctness / invariant / boundary /
+  safety) (1) can actually regress, (2) is not already locked elsewhere, and (3) is owned by that
+  layer. The meaningless-test forms are the inverses: **wrong semantics** (tautology, asserting an
+  incidental implementation detail, or coverage-only), **redundant duplication** (same path verified
+  2×/3× across layers with no new viewpoint; re-testing a dependency / generated code), or **wrong
+  layer** (verifying a concern the layer does not own).
 
 ## AI Modification Scope
 
