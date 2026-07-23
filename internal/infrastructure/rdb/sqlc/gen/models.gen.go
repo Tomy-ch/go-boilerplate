@@ -7,6 +7,7 @@ package gen
 import (
 	"time"
 
+	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 )
 
@@ -121,7 +122,7 @@ type Products struct {
 	// 説明
 	Description *string
 	// 価格
-	Price int32
+	Price decimal.Decimal
 	// 在庫数
 	Quantity int32
 	// 在庫警告閾値
@@ -149,7 +150,7 @@ type PurchaseDetails struct {
 	// 数量
 	Quantity int32
 	// 単価
-	UnitPrice int32
+	UnitPrice decimal.Decimal
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -183,13 +184,13 @@ type Purchases struct {
 	// 購入ステータスID
 	StatusID uuid.UUID
 	// 小計金額
-	SubtotalAmount int32
+	SubtotalAmount int64
 	// 税金額
-	TaxAmount int32
+	TaxAmount int64
 	// 配送料
-	ShippingFee int32
+	ShippingFee int64
 	// 合計金額
-	TotalAmount int32
+	TotalAmount int64
 	// 注文日時
 	OrderedAt time.Time
 	// 支払日時

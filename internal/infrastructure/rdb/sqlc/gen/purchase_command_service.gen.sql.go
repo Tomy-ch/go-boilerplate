@@ -8,6 +8,7 @@ package gen
 import (
 	"context"
 
+	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 )
 
@@ -73,10 +74,10 @@ type InsertPurchaseParams struct {
 	Code           string
 	UserID         uuid.UUID
 	StatusCode     int16
-	SubtotalAmount int32
-	TaxAmount      int32
-	ShippingFee    int32
-	TotalAmount    int32
+	SubtotalAmount int64
+	TaxAmount      int64
+	ShippingFee    int64
+	TotalAmount    int64
 }
 
 // === source: database/dml/command_service/purchase/insert_purchase.sql ===
@@ -140,7 +141,7 @@ type InsertPurchaseDetailParams struct {
 	PurchaseID uuid.UUID
 	ProductID  uuid.UUID
 	Quantity   int32
-	UnitPrice  int32
+	UnitPrice  decimal.Decimal
 }
 
 // === source: database/dml/command_service/purchase/insert_purchase_detail.sql ===
@@ -183,7 +184,7 @@ FOR UPDATE
 
 type LockProductsForUpdateRow struct {
 	ID       uuid.UUID
-	Price    int32
+	Price    decimal.Decimal
 	Quantity int32
 }
 
