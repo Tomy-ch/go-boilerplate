@@ -1,8 +1,9 @@
-// Package main は Dockerfile の `FROM` base image を不変の digest へ固定するツール。
+// Package main は Dockerfile の `FROM` base image と docker compose の `image:` を
+// 不変の digest へ固定するツール。
 //
-//	resolve: docker/*/Dockerfile の FROM を走査し、image:tag を registry の現在 digest へ
-//	         解決して lockfile (docker/images-pin.toml) へ書き出す。
-//	apply:   lockfile を SSOT に各 FROM を `FROM image:tag@sha256:... [AS stage]` へ固定する。
+//	resolve: docker/*/Dockerfile の FROM と docker-compose*.yaml の image: を走査し、
+//	         image:tag を registry の現在 digest へ解決して lockfile (docker/images-pin.toml) へ書き出す。
+//	apply:   lockfile を SSOT に各参照を `image:tag@sha256:...` へ固定する（FROM は AS stage を保持）。
 //	check:   apply と同じ判定を書き換えなしで行い、未固定/未登録/drift があれば非ゼロ終了する（CI / hook 用）。
 //
 // tag は版の SSOT として FROM 行に残し、digest を lock 側で管理する（tag 再割り当て攻撃の遮断）。
@@ -47,10 +48,19 @@ const (
 var (
 	// FROM [--platform=...] <ref> [AS <stage>]
 	fromRe = regexp.MustCompile(`(?m)^(FROM[ \t]+)(?:--platform=\S+[ \t]+)?(\S+)([ \t]+(?i:AS)[ \t]+\S+)?[ \t]*$`)
+	// docker compose service の `image: <ref>`。FROM と同じ prefix/ref/suffix の 3 グループ構成に
+	// して rewritePins を共用する。suffix は末尾空白と行末コメントを取り込み保持する。
+	composeImageRe = regexp.MustCompile(`(?m)^([ \t]+image:[ \t]+)(\S+)([ \t]*(?:#.*)?)$`)
 	// lockfile 行: "image:tag" = "sha256:..."
 	lockRe   = regexp.MustCompile(`^"([^"]+)"\s*=\s*"(sha256:[0-9a-f]+)"`)
 	digestRe = regexp.MustCompile(`(?m)^Digest:[ \t]+(sha256:[0-9a-f]+)`)
 )
+
+// target は走査対象のファイルと、その参照行を捕捉する正規表現（prefix/ref/suffix の 3 グループ）。
+type target struct {
+	path string
+	re   *regexp.Regexp
+}
 
 // imageRef は FROM が参照する registry image 1 件。key は image:tag。
 type imageRef struct {
@@ -69,7 +79,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ getwd: %v", err)
 	}
-	files, err := targetFiles(root)
+	targets, err := targetFiles(root)
 	if err != nil {
 		log.Fatalf("❌ %v", err)
 	}
@@ -78,28 +88,39 @@ func main() {
 		fs := flag.NewFlagSet("resolve", flag.ExitOnError)
 		minAge := fs.Int("min-age-days", 0, "N 日未満の新しすぎる digest は quarantine（0 で無効）")
 		_ = fs.Parse(os.Args[2:])
-		resolve(root, files, *minAge)
+		resolve(root, targets, *minAge)
 	case "apply":
-		applyOrCheck(root, files, false)
+		applyOrCheck(root, targets, false)
 	case "check":
-		applyOrCheck(root, files, true)
+		applyOrCheck(root, targets, true)
 	default:
 		log.Fatalf("❌ usage: pin-images <resolve|apply|check>")
 	}
 }
 
-func targetFiles(root string) ([]string, error) {
-	files, err := filepath.Glob(filepath.Join(root, "docker/*/Dockerfile"))
+func targetFiles(root string) ([]target, error) {
+	dockerfiles, err := filepath.Glob(filepath.Join(root, "docker/*/Dockerfile"))
 	if err != nil {
 		return nil, xerrors.Wrap(err, "glob docker/*/Dockerfile")
 	}
-	sort.Strings(files)
-	return files, nil
+	compose, err := filepath.Glob(filepath.Join(root, "docker-compose*.yaml"))
+	if err != nil {
+		return nil, xerrors.Wrap(err, "glob docker-compose*.yaml")
+	}
+	var targets []target
+	for _, f := range dockerfiles {
+		targets = append(targets, target{path: f, re: fromRe})
+	}
+	for _, f := range compose {
+		targets = append(targets, target{path: f, re: composeImageRe})
+	}
+	sort.Slice(targets, func(i, j int) bool { return targets[i].path < targets[j].path })
+	return targets, nil
 }
 
-// parseFrom は FROM の ref を image:tag へ分解する。第2戻り値が false なら対象外
+// parseRef は FROM / compose image の ref を image:tag へ分解する。第2戻り値が false なら対象外
 // （tag 無し＝ビルドステージ参照 / scratch、あるいは registry port を tag と誤認する形）。
-func parseFrom(ref string) (imageRef, bool) {
+func parseRef(ref string) (imageRef, bool) {
 	name, _, _ := strings.Cut(ref, "@") // 既存の @digest を捨てる
 	image, tag, ok := lastColonSplit(name)
 	if !ok || tag == "" || strings.Contains(tag, "/") {
@@ -117,8 +138,8 @@ func lastColonSplit(s string) (string, string, bool) {
 	return s[:i], s[i+1:], true
 }
 
-func resolve(root string, files []string, minAgeDays int) {
-	keys := collectKeys(files)
+func resolve(root string, targets []target, minAgeDays int) {
+	keys := collectKeys(targets)
 	existing, _ := readLock(filepath.Join(root, lockFile)) // 無ければ空
 
 	ctx := context.Background()
@@ -160,15 +181,15 @@ func resolve(root string, files []string, minAgeDays int) {
 	}
 }
 
-func collectKeys(files []string) map[string]imageRef {
+func collectKeys(targets []target) map[string]imageRef {
 	keys := map[string]imageRef{}
-	for _, f := range files {
-		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
+	for _, t := range targets {
+		data, err := os.ReadFile(t.path)
 		if err != nil {
-			log.Fatalf("❌ read %s: %v", f, err)
+			log.Fatalf("❌ read %s: %v", t.path, err)
 		}
-		for _, m := range fromRe.FindAllStringSubmatch(string(data), -1) {
-			if r, ok := parseFrom(m[2]); ok {
+		for _, m := range t.re.FindAllStringSubmatch(string(data), -1) {
+			if r, ok := parseRef(m[2]); ok {
 				keys[r.key()] = r
 			}
 		}
@@ -278,11 +299,11 @@ func inspect(ctx context.Context, ref string, extra ...string) (string, error) {
 
 // rewritePins は lock を元に FROM を digest 固定した内容と、lock 未登録の image キー一覧を返す。
 // lock に無い image は「未登録」として報告し、行は書き換えない（digest は剥がさない）。
-func rewritePins(data string, lock map[string]string) (string, []string) {
+func rewritePins(data string, re *regexp.Regexp, lock map[string]string) (string, []string) {
 	var missing []string
-	out := fromRe.ReplaceAllStringFunc(data, func(line string) string {
-		m := fromRe.FindStringSubmatch(line)
-		r, ok := parseFrom(m[2])
+	out := re.ReplaceAllStringFunc(data, func(line string) string {
+		m := re.FindStringSubmatch(line)
+		r, ok := parseRef(m[2])
 		if !ok {
 			return line
 		}
@@ -298,32 +319,32 @@ func rewritePins(data string, lock map[string]string) (string, []string) {
 
 // applyOrCheck は lockfile を SSOT に FROM を digest 固定する。dryRun=true は書き換えず
 // 未固定/未登録/drift を非ゼロ終了で報告する。tag のみへ戻す正規化はしない（fail-closed）。
-func applyOrCheck(root string, files []string, dryRun bool) {
+func applyOrCheck(root string, targets []target, dryRun bool) {
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
 		log.Fatalf("❌ read lockfile（先に make pin-images-resolve を実行してください）: %v", err)
 	}
 	var missing, drifted []string
 	changed := 0
-	for _, f := range files {
-		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
+	for _, t := range targets {
+		data, err := os.ReadFile(t.path)
 		if err != nil {
-			log.Fatalf("❌ read %s: %v", f, err)
+			log.Fatalf("❌ read %s: %v", t.path, err)
 		}
-		out, miss := rewritePins(string(data), lock)
+		out, miss := rewritePins(string(data), t.re, lock)
 		missing = append(missing, miss...)
 		if out == string(data) {
 			continue
 		}
 		if dryRun {
-			drifted = append(drifted, rel(root, f))
+			drifted = append(drifted, rel(root, t.path))
 			continue
 		}
-		if err := os.WriteFile(f, []byte(out), filePerm); err != nil { //nolint:gosec // Dockerfile 権限
-			log.Fatalf("❌ write %s: %v", f, err)
+		if err := os.WriteFile(t.path, []byte(out), filePerm); err != nil { //nolint:gosec // 管理対象ファイル権限
+			log.Fatalf("❌ write %s: %v", t.path, err)
 		}
 		changed++
-		log.Printf("  updated %s", rel(root, f))
+		log.Printf("  updated %s", rel(root, t.path))
 	}
 	report(missing, drifted, dryRun, changed)
 }
@@ -340,7 +361,7 @@ func report(missing, drifted []string, dryRun bool, changed int) {
 	}
 	if len(drifted) > 0 {
 		sort.Strings(drifted)
-		log.Fatalf("❌ FROM が未固定か lockfile と不一致です（make pin-images-resolve && make pin-images-apply してコミットしてください）: %s",
+		log.Fatalf("❌ image 参照が未固定か lockfile と不一致です（make pin-images-resolve && make pin-images-apply してコミットしてください）: %s",
 			strings.Join(drifted, ", "))
 	}
 	log.Printf("✅ 全 base image が lockfile 通りに固定されています")
@@ -353,8 +374,8 @@ func writeLock(path string, lock map[string]string) error {
 	}
 	sort.Strings(keys)
 	var b strings.Builder
-	b.WriteString("# Docker base image の pin 対象 digest（SSOT）。\n")
-	b.WriteString("# make pin-images-resolve で解決・make pin-images-apply で Dockerfile へ反映する。\n")
+	b.WriteString("# Docker base image / docker compose image の pin 対象 digest（SSOT）。\n")
+	b.WriteString("# make pin-images-resolve で解決・make pin-images-apply で Dockerfile / docker-compose へ反映する。\n")
 	for _, k := range keys {
 		fmt.Fprintf(&b, "%q = %q\n", k, lock[k])
 	}
