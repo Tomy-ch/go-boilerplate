@@ -13,7 +13,8 @@ DB を起動する。これにより「別 worktree が 5432 を握っていて 
   `make` が `-include` して `DB_HOST_PORT` / `COMPOSE_PROJECT_NAME` を全ターゲットへ伝播する。
 - **割り当てるホスト公開ポート**（スロット N、既定）:
   - `DB_HOST_PORT` = `5432+N`（DB。host 実行の `go test` 接続先。`internal/config` のテスト設定が参照）
-  - `API_HOST_PORT` = `8080+N`（`make serve` の API。ホストから curl する先）
+  - `API_HOST_PORT` = `8080+N`（`make serve` の API。ホストから curl する先。この帯 8080–8087 と被らないよう
+    `sql_editor` / `docs_viewer` は 7000 番台へ退避済み）
   - `MOCK_AUTH_HOST_PORT` = `4000+N`（`make serve` の mock 認証サーバー）
   - これにより複数 worktree で `make serve` を同時起動し、各 API を別ポートで curl できる。
     o11y / dlv / pprof は現状ずらしていない（並列で o11y も要る場合は別途拡張）。
