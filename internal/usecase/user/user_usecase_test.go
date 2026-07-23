@@ -348,7 +348,7 @@ func Test_usecase_CreateUser(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 		})
 
-		t.Run("ユーザードメインの生成に失敗した場合、エラーが返される", func(t *testing.T) {
+		t.Run("FirstNameが空でドメイン生成に失敗した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
@@ -372,6 +372,32 @@ func Test_usecase_CreateUser(t *testing.T) {
 			actual, err := uc.CreateUser(ctx, createDTO)
 			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidFirstName)
+		})
+
+		t.Run("UserIDがゼロ値でドメイン生成に失敗した場合、ErrInvalidIDが返される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			createDTO := newCreateDTO(userDomain, prefectureName)
+			createDTO.UserID = uuid.UUID{} // 呼出元の配線ミス等でゼロ UUID が渡ると New が ErrInvalidID を返す
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByName(
+				gomock.Any(),
+				prefectureName,
+			).Return(pftDomain, nil)
+
+			uc := &usecase{
+				tracer:  lt,
+				txm:     mockTxManager,
+				clock:   clock,
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.CreateUser(ctx, createDTO)
+			assert.Equal(t, UserView{}, actual)
+			require.ErrorIs(t, err, user.ErrInvalidID)
 		})
 
 		t.Run("ユーザー作成に失敗した場合、エラーが返される", func(t *testing.T) {
@@ -400,6 +426,30 @@ func Test_usecase_CreateUser(t *testing.T) {
 				clock:    clock,
 				userRepo: userRepo,
 				pftRepo:  pftRepo,
+			}
+
+			actual, err := uc.CreateUser(ctx, createDTO)
+			assert.Equal(t, UserView{}, actual)
+			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("トランザクションの実行に失敗した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			expectedErr := testkit.ExpectedDBError()
+
+			createDTO := newCreateDTO(userDomain, prefectureName)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			// tx.Manager 自体が失敗する経路（接続断等）。fn は実行されないため repo 呼び出しはない。
+			txm := mock_tx.NewMockManager(ctrl)
+			txm.EXPECT().Do(gomock.Any(), gomock.Any()).Return(expectedErr)
+
+			uc := &usecase{
+				tracer: lt,
+				txm:    txm,
+				clock:  clock,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)

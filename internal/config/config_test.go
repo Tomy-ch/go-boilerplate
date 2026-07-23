@@ -638,6 +638,15 @@ func Test_validateSecurityConfig(t *testing.T) {
 			err := validateSecurityConfig(cfg.Security)
 			require.NoError(t, err)
 		})
+
+		t.Run("localhost以外でもHTTPSは許可されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Security.AllowedOrigins = []string{"https://example.com"} // 非ループバックでも HTTPS なら許可
+
+			err := validateSecurityConfig(cfg.Security)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

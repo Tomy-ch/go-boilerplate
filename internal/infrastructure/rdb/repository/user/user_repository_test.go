@@ -351,9 +351,20 @@ func Test_repository_Create(t *testing.T) {
 				createErr := repo.Create(ctx, userEntity)
 				require.NoError(t, createErr)
 
-				user, err := gen.New(driver.New(ctx, db)).GetUserByID(ctx, userEntity.ID())
+				row, err := gen.New(driver.New(ctx, db)).GetUserByID(ctx, userEntity.ID())
 				require.NoError(t, err)
-				assert.Equal(t, userEntity.ID(), user.Users.ID)
+				// 各列の往復を確認し、INSERT のパラメータバインドずれ（例: 列削除に伴う $n オフセット誤り）を検知する。
+				got := row.Users
+				assert.Equal(t, userEntity.ID(), got.ID)
+				assert.Equal(t, userEntity.FirstName(), got.FirstName)
+				assert.Equal(t, userEntity.LastName(), got.LastName)
+				assert.Equal(t, userEntity.Email(), got.Email)
+				assert.Equal(t, userEntity.Phone(), got.Phone)
+				assert.Equal(t, userEntity.PrefectureID(), got.PrefectureID)
+				assert.Equal(t, userEntity.City(), got.City)
+				assert.Equal(t, userEntity.Street(), got.Street)
+				assert.Equal(t, userEntity.Building(), got.Building)
+				assert.Equal(t, userEntity.PostalCode(), got.PostalCode)
 			})
 		})
 	})

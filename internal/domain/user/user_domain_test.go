@@ -1026,6 +1026,18 @@ func TestUser_UpdateProfile(t *testing.T) {
 			assert.Equal(t, []string{FieldFirstName}, meta.Details())
 		})
 
+		t.Run("prefectureIDがゼロ値の場合、ErrInvalidPrefectureIDが返される", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+
+			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
+				uuid.UUID{}, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidPrefectureID)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldPrefectureID}, meta.Details())
+		})
+
 		t.Run("複数フィールドが同時に不正な場合、全フィールドのエラーと識別子が収集される", func(t *testing.T) {
 			t.Parallel()
 			u, base := newValidUser(t)
