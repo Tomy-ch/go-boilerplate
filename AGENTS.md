@@ -74,6 +74,18 @@ AI agents MUST NOT:
 - Modify generated files
 - Introduce new architectural patterns without instruction
 
+## YAGNI vs Regression Safeguards
+
+- **Functional YAGNI applies to production code**: do NOT add speculative features, config, or code
+  paths that no caller exercises. Unreached "might-need-it-later" code is dead weight — untested,
+  coverage-dragging, and prone to rot.
+- **Deliberate regression safeguards are the encouraged exception**: a defensive branch/guard whose
+  purpose is to catch a future mistake (e.g. mapping the right value per environment, refusing a
+  dangerous operation) SHOULD be kept and **actively locked down with a test**. If it is unreachable
+  through its current caller, extract the logic into a testable unit and cover every branch rather
+  than deleting it. Never drop a meaningful safeguard just because it is currently unreached — make
+  it testable and add the regression test.
+
 ## AI Modification Scope
 
 AI agents may modify code only in these directories unless explicitly instructed otherwise:
