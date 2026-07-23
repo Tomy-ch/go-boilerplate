@@ -46,12 +46,12 @@ func Test_repoRoot(t *testing.T) {
 	})
 }
 
-func TestEnsureRepoRootAndEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+func TestEnsureRepoRootAndEnv(t *testing.T) {
 	// t.Setenv / t.Chdir でプロセス状態を書き換えるため Parallel は使用しない。
 	orig, err := os.Getwd()
 	require.NoError(t, err)
 
-	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+	t.Run("正常系", func(t *testing.T) {
 		t.Run("リポジトリルートへ移動し対象 env の値を環境変数へ設定する", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			EnsureRepoRootAndEnv(t, TestingEnvValue)
 
@@ -60,6 +60,25 @@ func TestEnsureRepoRootAndEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/
 			assert.FileExists(t, filepath.Join(cwd, "go.mod"))
 			// env/.env.<env> の値が環境変数へ反映される。
 			assert.Equal(t, TestingEnvValue, os.Getenv("APP_ENV"))
+		})
+
+		t.Run("ci 環境で DB_NAME_TEST が設定されていれば DB_NAME をそれへ上書きする", func(t *testing.T) {
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			EnsureRepoRootAndEnv(t, TestingEnvValue)
+
+			assert.Equal(t, "wt9_test", os.Getenv("DB_NAME"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("deploy 系 env では DB_NAME_TEST を無視し .env.<env> の DB_NAME を維持する", func(t *testing.T) {
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			EnsureRepoRootAndEnv(t, EnvDevelopment)
+
+			// env/.env.dev の DB_NAME がそのまま残り、wt9_test へは上書きされない。
+			assert.NotEqual(t, "wt9_test", os.Getenv("DB_NAME"))
 		})
 	})
 
