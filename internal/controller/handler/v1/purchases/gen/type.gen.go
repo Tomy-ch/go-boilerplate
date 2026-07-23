@@ -87,9 +87,9 @@ type PurchaseDetailResponse struct {
 	// Quantity 購入数量
 	Quantity int32 `json:"quantity"`
 
-	// UnitPrice 購入時点の単価スナップショット。USD セント単位の整数です（例 1999 は 19.99 ドル相当）。
+	// UnitPrice 購入時点の単価スナップショット。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "800.00"）。
 	// 購入成立後に商品価格が変わっても本値は不変です。
-	UnitPrice int32 `json:"unitPrice"`
+	UnitPrice string `json:"unitPrice"`
 }
 
 // PurchaseResponse 購入情報のレスポンススキーマ。金額（subtotalAmount / taxAmount / shippingFee / totalAmount /
@@ -113,19 +113,19 @@ type PurchaseResponse struct {
 	ReferenceAmount *ReferenceAmount `json:"referenceAmount"`
 
 	// ShippingFee 送料。USD セント単位の整数です。
-	ShippingFee int32 `json:"shippingFee"`
+	ShippingFee int64 `json:"shippingFee"`
 
 	// StatusId 購入ステータスID。作成直後は「未処理」です。名称は購入ステータスマスタで解決します。
 	StatusId openapi_types.UUID `json:"statusId"`
 
 	// SubtotalAmount 小計。明細（単価×数量）の合計。USD セント単位の整数です。
-	SubtotalAmount int32 `json:"subtotalAmount"`
+	SubtotalAmount int64 `json:"subtotalAmount"`
 
 	// TaxAmount 税額（国内消費税）。USD セント単位の整数です。
-	TaxAmount int32 `json:"taxAmount"`
+	TaxAmount int64 `json:"taxAmount"`
 
 	// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
-	TotalAmount int32 `json:"totalAmount"`
+	TotalAmount int64 `json:"totalAmount"`
 
 	// UserId 購入したユーザーのID
 	UserId openapi_types.UUID `json:"userId"`
@@ -149,8 +149,8 @@ type ReferenceAmount struct {
 	// Currency 参考換算額の通貨コード
 	Currency string `json:"currency"`
 
-	// Rate 換算に用いたレート（base 1 単位あたりの表示通貨換算値）
-	Rate float64 `json:"rate"`
+	// Rate 換算に用いたレート（base 1 単位あたりの表示通貨換算値）。正確な十進量を保つため decimal 文字列で表します。
+	Rate string `json:"rate"`
 
 	// RateDate レートの基準日（外部レートサービスの公表日）
 	RateDate string `json:"rateDate"`

@@ -11,16 +11,17 @@ import (
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
 
-// ProductView は、商品 1 件分のユースケース出力 DTO です。price は USD セント単位の整数です。
+// ProductView は、商品 1 件分のユースケース出力 DTO です。Price はサブセント精度を保持する価格スケールの十進量です。
 type ProductView struct {
 	ID                    uuid.UUID
 	Name                  string
 	Description           *string
-	Price                 int
+	Price                 decimal.Decimal
 	Quantity              int
 	StockWarningThreshold *int
 	StatusID              uuid.UUID
@@ -145,7 +146,7 @@ func toProductView(p *product.Product) ProductView {
 		ID:                    p.ID(),
 		Name:                  p.Name(),
 		Description:           p.Description(),
-		Price:                 p.Price(),
+		Price:                 p.Price().Decimal(),
 		Quantity:              p.Quantity(),
 		StockWarningThreshold: p.StockWarningThreshold(),
 		StatusID:              p.StatusID(),

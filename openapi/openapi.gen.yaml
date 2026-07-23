@@ -599,13 +599,13 @@ paths:
           in: query
           required: true
           description: |
-            換算する金額（base 通貨建て）。これは換算の入力倍率であり、保存されるマネー値ではないため
-            float（double）で受け付けます。保存値および reference_amount の内部計算は整数で行います。
+            換算する金額（base 通貨建て）。正確な十進量を保つため decimal 文字列で受け付けます。
+            JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。
           schema:
-            type: number
-            format: double
-            minimum: 0
-            example: 100
+            type: string
+            maxLength: 40
+            pattern: ^\d{1,20}(\.\d{1,18})?$
+            example: '100'
         - name: displayCurrency
           in: query
           required: false
@@ -1163,10 +1163,10 @@ components:
           description: 商品説明。未設定の場合は null です。
           example: ノイズキャンセリング対応の Bluetooth イヤホン
         price:
-          type: integer
-          format: int32
-          description: 価格。USD セント単位の整数で表します（例 1999 は 19.99 ドル相当）。
-          example: 1999
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+          example: '19.99'
         quantity:
           type: integer
           format: int32
@@ -1275,22 +1275,22 @@ components:
           example: a66c996c-86b2-41d8-9bdd-9b685fb7c47d
         subtotalAmount:
           type: integer
-          format: int32
+          format: int64
           description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
           example: 160000
         taxAmount:
           type: integer
-          format: int32
+          format: int64
           description: 税額（国内消費税）。USD セント単位の整数です。
           example: 16000
         shippingFee:
           type: integer
-          format: int32
+          format: int64
           description: 送料。USD セント単位の整数です。
           example: 500
         totalAmount:
           type: integer
-          format: int32
+          format: int64
           description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
           example: 176500
         details:
@@ -1324,12 +1324,12 @@ components:
           description: 購入数量
           example: 2
         unitPrice:
-          type: integer
-          format: int32
+          type: string
+          pattern: ^\d+(\.\d+)?$
           description: |
-            購入時点の単価スナップショット。USD セント単位の整数です（例 1999 は 19.99 ドル相当）。
+            購入時点の単価スナップショット。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "800.00"）。
             購入成立後に商品価格が変わっても本値は不変です。
-          example: 80000
+          example: '800.00'
     PurchaseDetailInput:
       type: object
       description: 購入明細の入力。購入する商品IDと数量の組です。
@@ -1565,10 +1565,10 @@ components:
           description: 参考換算額。通貨の最小単位（JPY は円）の丸め後整数です。
           example: 15050
         rate:
-          type: number
-          format: double
-          description: 換算に用いたレート（base 1 単位あたりの表示通貨換算値）
-          example: 150.5
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 換算に用いたレート（base 1 単位あたりの表示通貨換算値）。正確な十進量を保つため decimal 文字列で表します。
+          example: '150.5'
         rateDate:
           type: string
           description: レートの基準日（外部レートサービスの公表日）
@@ -1592,15 +1592,15 @@ components:
           description: 換算先の通貨コード
           example: JPY
         amount:
-          type: number
-          format: double
-          description: 換算元の金額
-          example: 100
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 換算元の金額。正確な十進量を保つため decimal 文字列で表します。
+          example: '100'
         converted:
-          type: number
-          format: double
-          description: 換算後の金額
-          example: 15050
+          type: string
+          pattern: ^-?\d+(\.\d+)?$
+          description: 換算後の金額。正確な十進量を保つため decimal 文字列で表します。
+          example: '15050'
         referenceAmount:
           $ref: '#/components/schemas/ReferenceAmount'
     AddressCandidatesResponse:

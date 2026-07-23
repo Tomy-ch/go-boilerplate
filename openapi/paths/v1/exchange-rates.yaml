@@ -26,13 +26,14 @@ get:
       in: query
       required: true
       description: |
-        換算する金額（base 通貨建て）。これは換算の入力倍率であり、保存されるマネー値ではないため
-        float（double）で受け付けます。保存値および reference_amount の内部計算は整数で行います。
+        換算する金額（base 通貨建て）。正確な十進量を保つため decimal 文字列で受け付けます。
+        JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。
       schema:
-        type: number
-        format: double
-        minimum: 0
-        example: 100
+        type: string
+        # 桁数を有界にし、巨大入力による big.Int 十進解析（O(n^2)）を用いた未認証 DoS を防ぐ。
+        maxLength: 40
+        pattern: '^\d{1,20}(\.\d{1,18})?$'
+        example: "100"
     - name: displayCurrency
       in: query
       required: false

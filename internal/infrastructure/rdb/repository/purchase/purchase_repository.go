@@ -4,6 +4,7 @@ package purchase
 import (
 	"context"
 
+	"go-boilerplate/internal/domain/kernel/money"
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
@@ -48,7 +49,11 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 	details := make([]purchase.PurchaseDetail, len(detailRows))
 	for i, dr := range detailRows {
 		d := dr.PurchaseDetails
-		details[i] = purchase.NewPurchaseDetail(d.ID, d.ProductID, int(d.Quantity), int(d.UnitPrice))
+		unitPrice, perr := money.NewPrice(d.UnitPrice)
+		if perr != nil {
+			return nil, pgerror.NormalizeReconstructError(perr)
+		}
+		details[i] = purchase.NewPurchaseDetail(d.ID, d.ProductID, int(d.Quantity), unitPrice)
 	}
 
 	p := row.Purchases

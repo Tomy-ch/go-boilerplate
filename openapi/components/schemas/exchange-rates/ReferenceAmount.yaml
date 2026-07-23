@@ -20,10 +20,10 @@ properties:
     description: 参考換算額。通貨の最小単位（JPY は円）の丸め後整数です。
     example: 15050
   rate:
-    type: number
-    format: double
-    description: 換算に用いたレート（base 1 単位あたりの表示通貨換算値）
-    example: 150.5
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: 換算に用いたレート（base 1 単位あたりの表示通貨換算値）。正確な十進量を保つため decimal 文字列で表します。
+    example: "150.5"
   rateDate:
     type: string
     description: レートの基準日（外部レートサービスの公表日）

@@ -1,11 +1,17 @@
 // Package purchase は、購入ドメインを定義します。購入（Purchase）集約と明細（PurchaseDetail）を持ち、
-// 金額計算・売り越し検証・単価スナップショットの不変条件を保持します。金額はすべて USD セント単位の整数です。
+// 金額計算・売り越し検証・単価スナップショットの不変条件を保持します。
+//
+// 金額は 2 スケールモデル（ADR-0101 / ADR-0102）で扱います。単価（unit_price）はドル主単位のサブセント可 decimal
+// （価格スケール）を money.Price で保持し、決済額（小計・税・送料・合計）は整数セント（決済スケール）で保持します。
+// 価格スケールから決済スケールへの丸めは切り捨てで、New 内の 1 箇所（小計算出）に集約します。
 package purchase
 
 import (
 	"fmt"
 	"time"
 
+	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -20,22 +26,22 @@ type DetailInput struct {
 	Quantity int
 }
 
-// LockedProduct は、在庫ロック取得直後の商品スナップショットです。Price は単価スナップショットの元値です。
+// LockedProduct は、在庫ロック取得直後の商品スナップショットです。Price は単価スナップショットの元値（価格スケール）です。
 type LockedProduct struct {
 	id       uuid.UUID
-	price    int
+	price    money.Price
 	quantity int
 }
 
-// PurchaseDetail は、購入明細を表す値オブジェクトです。UnitPrice は購入時点の単価スナップショットです。
+// PurchaseDetail は、購入明細を表す値オブジェクトです。UnitPrice は購入時点の単価スナップショット（価格スケール）です。
 type PurchaseDetail struct {
 	id        uuid.UUID
 	productID uuid.UUID
 	quantity  int
-	unitPrice int
+	unitPrice money.Price
 }
 
-// Purchase は、購入を表すドメイン集約です。金額はすべて USD セント単位の整数で保持します。
+// Purchase は、購入を表すドメイン集約です。決済額（小計・税・送料・合計）は整数セント（決済スケール）で保持します。
 type Purchase struct {
 	id             uuid.UUID
 	code           string
@@ -49,13 +55,13 @@ type Purchase struct {
 	orderedAt      time.Time
 }
 
-// NewLockedProduct は、ロック済み商品スナップショットを生成します。
-func NewLockedProduct(id uuid.UUID, price, quantity int) LockedProduct {
+// NewLockedProduct は、ロック済み商品スナップショットを生成します。price は価格スケール（ドル decimal）です。
+func NewLockedProduct(id uuid.UUID, price money.Price, quantity int) LockedProduct {
 	return LockedProduct{id: id, price: price, quantity: quantity}
 }
 
-// NewPurchaseDetail は、永続化済みの明細を再構築します（Repository の読み出しで使用）。
-func NewPurchaseDetail(id, productID uuid.UUID, quantity, unitPrice int) PurchaseDetail {
+// NewPurchaseDetail は、永続化済みの明細を再構築します（Repository の読み出しで使用）。unitPrice は価格スケール（ドル decimal）です。
+func NewPurchaseDetail(id, productID uuid.UUID, quantity int, unitPrice money.Price) PurchaseDetail {
 	return PurchaseDetail{id: id, productID: productID, quantity: quantity, unitPrice: unitPrice}
 }
 
@@ -91,7 +97,8 @@ func New(
 
 	seen := make(map[uuid.UUID]struct{}, len(inputs))
 	details := make([]PurchaseDetail, 0, len(inputs))
-	subtotal := 0
+	// 小計は価格スケール（ドル decimal）で正確に積算し、最後に決済スケール（整数セント）へ切り捨てる。
+	subtotalDollars := decimal.FromInt(0)
 	for _, in := range inputs {
 		if in.ID.IsNil() {
 			return nil, xerrors.Wrap(ErrInvalidID, "detail id is required")
@@ -121,9 +128,15 @@ func New(
 			quantity:  in.Quantity,
 			unitPrice: l.price,
 		})
-		subtotal += l.price * in.Quantity
+		subtotalDollars = subtotalDollars.Add(l.price.Decimal().Mul(decimal.FromInt(int64(in.Quantity))))
 	}
 
+	// 決済スケールへの丸め（切り捨て）はこの 1 箇所のみ。以降の税・合計は整数セントで計算する。
+	subtotalCents, err := subtotalDollars.Truncate(minorUnitDigits).ToScaledInt64(minorUnitDigits)
+	if err != nil {
+		return nil, xerrors.Wrap(ErrInvalidAmount, "subtotal exceeds the settlement range: "+err.Error())
+	}
+	subtotal := int(subtotalCents)
 	tax := subtotal * taxRatePercent / percentDivisor
 	shipping := shippingFeeCents
 	total := subtotal + tax + shipping
@@ -193,8 +206,8 @@ func Reconstruct(
 // ID は、商品 ID を返します。
 func (l LockedProduct) ID() uuid.UUID { return l.id }
 
-// Price は、単価（USD セント）を返します。
-func (l LockedProduct) Price() int { return l.price }
+// Price は、単価（価格スケール・ドル decimal）を返します。
+func (l LockedProduct) Price() money.Price { return l.price }
 
 // Quantity は、ロック時点の在庫数を返します。
 func (l LockedProduct) Quantity() int { return l.quantity }
@@ -208,8 +221,8 @@ func (d PurchaseDetail) ProductID() uuid.UUID { return d.productID }
 // Quantity は、購入数量を返します。
 func (d PurchaseDetail) Quantity() int { return d.quantity }
 
-// UnitPrice は、単価スナップショット（USD セント）を返します。
-func (d PurchaseDetail) UnitPrice() int { return d.unitPrice }
+// UnitPrice は、単価スナップショット（価格スケール・ドル decimal）を返します。
+func (d PurchaseDetail) UnitPrice() money.Price { return d.unitPrice }
 
 // ID は、購入 ID を返します。
 func (p *Purchase) ID() uuid.UUID { return p.id }

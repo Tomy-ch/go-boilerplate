@@ -32,14 +32,14 @@ type ErrorResponse struct {
 
 // ExchangeRateResponse 為替換算結果のレスポンスです。
 type ExchangeRateResponse struct {
-	// Amount 換算元の金額
-	Amount float64 `json:"amount"`
+	// Amount 換算元の金額。正確な十進量を保つため decimal 文字列で表します。
+	Amount string `json:"amount"`
 
 	// Base 換算元の通貨コード
 	Base string `json:"base"`
 
-	// Converted 換算後の金額
-	Converted float64 `json:"converted"`
+	// Converted 換算後の金額。正確な十進量を保つため decimal 文字列で表します。
+	Converted string `json:"converted"`
 
 	// Quote 換算先の通貨コード
 	Quote string `json:"quote"`
@@ -60,8 +60,8 @@ type ReferenceAmount struct {
 	// Currency 参考換算額の通貨コード
 	Currency string `json:"currency"`
 
-	// Rate 換算に用いたレート（base 1 単位あたりの表示通貨換算値）
-	Rate float64 `json:"rate"`
+	// Rate 換算に用いたレート（base 1 単位あたりの表示通貨換算値）。正確な十進量を保つため decimal 文字列で表します。
+	Rate string `json:"rate"`
 
 	// RateDate レートの基準日（外部レートサービスの公表日）
 	RateDate string `json:"rateDate"`
@@ -90,9 +90,9 @@ type GetExchangeRatesParams struct {
 	// Quote 換算先の通貨コード
 	Quote string `form:"quote" json:"quote"`
 
-	// Amount 換算する金額（base 通貨建て）。これは換算の入力倍率であり、保存されるマネー値ではないため
-	// float（double）で受け付けます。保存値および reference_amount の内部計算は整数で行います。
-	Amount float64 `form:"amount" json:"amount"`
+	// Amount 換算する金額（base 通貨建て）。正確な十進量を保つため decimal 文字列で受け付けます。
+	// JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。
+	Amount string `form:"amount" json:"amount"`
 
 	// DisplayCurrency 指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
 	// 現状は JPY のみサポートします。

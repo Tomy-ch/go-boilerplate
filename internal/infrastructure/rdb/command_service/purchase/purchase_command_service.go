@@ -5,6 +5,7 @@ package purchase
 import (
 	"context"
 
+	"go-boilerplate/internal/domain/kernel/money"
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
@@ -43,7 +44,11 @@ func (c *commandService) LockProducts(ctx context.Context, productIDs []uuid.UUI
 
 	locked := make([]purchase.LockedProduct, len(rows))
 	for i, row := range rows {
-		locked[i] = purchase.NewLockedProduct(row.ID, int(row.Price), int(row.Quantity))
+		price, perr := money.NewPrice(row.Price)
+		if perr != nil {
+			return nil, pgerror.NormalizeReconstructError(perr)
+		}
+		locked[i] = purchase.NewLockedProduct(row.ID, price, int(row.Quantity))
 	}
 	return locked, nil
 }
@@ -75,10 +80,10 @@ func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchas
 		Code:           p.Code(),
 		UserID:         p.UserID(),
 		StatusCode:     toInt16(p.StatusCode()),
-		SubtotalAmount: toInt32(p.SubtotalAmount()),
-		TaxAmount:      toInt32(p.TaxAmount()),
-		ShippingFee:    toInt32(p.ShippingFee()),
-		TotalAmount:    toInt32(p.TotalAmount()),
+		SubtotalAmount: int64(p.SubtotalAmount()),
+		TaxAmount:      int64(p.TaxAmount()),
+		ShippingFee:    int64(p.ShippingFee()),
+		TotalAmount:    int64(p.TotalAmount()),
 	}); err != nil {
 		return pgerror.NormalizeError(err)
 	}
@@ -89,7 +94,7 @@ func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchas
 			PurchaseID: p.ID(),
 			ProductID:  d.ProductID(),
 			Quantity:   toInt32(d.Quantity()),
-			UnitPrice:  toInt32(d.UnitPrice()),
+			UnitPrice:  d.UnitPrice().Decimal(),
 		}); err != nil {
 			return pgerror.NormalizeError(err)
 		}

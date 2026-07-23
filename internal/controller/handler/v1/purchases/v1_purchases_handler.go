@@ -88,7 +88,7 @@ func toPurchaseResponse(v purchaseuc.PurchaseView) gen.PurchaseResponse {
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
 			Quantity:  toInt32(d.Quantity),
-			UnitPrice: toInt32(d.UnitPrice),
+			UnitPrice: d.UnitPrice.String(),
 		}
 	}
 
@@ -97,10 +97,10 @@ func toPurchaseResponse(v purchaseuc.PurchaseView) gen.PurchaseResponse {
 		Code:            v.Code,
 		UserId:          v.UserID.ToPrimitive(),
 		StatusId:        v.StatusID.ToPrimitive(),
-		SubtotalAmount:  toInt32(v.SubtotalAmount),
-		TaxAmount:       toInt32(v.TaxAmount),
-		ShippingFee:     toInt32(v.ShippingFee),
-		TotalAmount:     toInt32(v.TotalAmount),
+		SubtotalAmount:  int64(v.SubtotalAmount),
+		TaxAmount:       int64(v.TaxAmount),
+		ShippingFee:     int64(v.ShippingFee),
+		TotalAmount:     int64(v.TotalAmount),
 		Details:         details,
 		OrderedAt:       v.OrderedAt,
 		ReferenceAmount: toReferenceAmount(v.ReferenceAmount),
@@ -115,7 +115,7 @@ func toReferenceAmount(r *purchaseuc.ReferenceAmountView) *gen.ReferenceAmount {
 	return &gen.ReferenceAmount{
 		Currency: r.Currency,
 		Amount:   r.Amount,
-		Rate:     r.Rate,
+		Rate:     r.Rate.String(),
 		RateDate: r.RateDate,
 	}
 }
