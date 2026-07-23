@@ -1,0 +1,22 @@
+# DB スロットプール利用時の `make serve` 用 override（docker-compose.yaml に重ねる）。
+# 共有 DB（固定プロジェクト gobp-shared・ホスト 5432）を host-gateway 経由で参照し、app コンテナだけを
+# per-worktree プロジェクト（gobp-wt-N）に分離して並列 serve を可能にする。server.mk が
+# `.gobp-db-slot` 検出時に自動適用する。
+#
+# プール serve では観測系（observability の 3000/4317/4318/3200）を起動対象から外すため、app からの
+# OTLP エクスポートは best-effort（配信先が無ければ送信は失敗するが serve は継続）。dlv(2345)/pprof(6060)
+# は固定ポートで複数 api_server と衝突するため、プール serve では publish しない（API ポートのみ公開）。
+services:
+  api_server:
+    # dlv/pprof の固定ポート publish を落とし、API ポート（スロット毎）だけを公開する。
+    ports: !override
+      - "${API_HOST_PORT:-8080}:8080"
+    # database への依存を外す（自前 DB を起動させない）。mock_auth のみ待つ。
+    depends_on: !override
+      mock_auth_server:
+        condition: service_healthy
+    # 共有 DB(gobp-shared) をホスト公開ポート 5432 経由で参照。DB_NAME は自 worktree の local DB。
+    # loader.go は実行時注入の環境変数を優先するため、埋め込み env/.env の値より優先される。
+    environment:
+      DB_HOST: host.docker.internal
+      DB_NAME: ${DB_NAME_LOCAL:-local}

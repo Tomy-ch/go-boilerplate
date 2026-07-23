@@ -9,8 +9,16 @@
 
 serve:
 	@echo "🔄 開発環境を起動します。"
+ifneq ($(wildcard .gobp-db-slot),)
+	@echo "  （DB スロットプール: 共有 DB を参照し、app コンテナを $(SERVE_PROJECT) に分離して起動）"
+	@COMPOSE_PROJECT_NAME=gobp-shared docker compose --profile database up -d --wait database
+	@COMPOSE_PROJECT_NAME=$(SERVE_PROJECT) docker compose -f docker-compose.yaml -f docker-compose.pool.yaml \
+		--profile development up -d api_server mock_auth_server
+	@echo "✅ 起動完了。API: http://localhost:$(API_HOST_PORT)（o11y/dlv/pprof はプール serve では非分離）"
+else
 	@docker compose --profile development up -d
 	@echo "✅ 開発環境の起動が完了しました。Grafana: http://localhost:3000"
+endif
 
 serve-build:
 	@echo "🧰 ビルド後、開発環境を起動します。"
