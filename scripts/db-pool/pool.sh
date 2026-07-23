@@ -60,10 +60,12 @@ foreign_busy() {
 }
 
 # スロットのコンテナを起動（compose プロジェクト分離 + ホストポート割当）。
+# --wait で healthcheck 完了まで待つ。フレッシュな volume は postgres 初期化前に
+# 後続の reinit（psql）が走ると connection refused になるため、ここで待ち切る。
 up_slot() {
   local slot="$1"
   COMPOSE_PROJECT_NAME="$(project_of "$slot")" DB_HOST_PORT="$(port_of "$slot")" \
-    docker compose --profile database up -d database >&2
+    docker compose --profile database up -d --wait database >&2
 }
 
 # .gobp-db-slot を worktree ルートへ書き出す（make が -include で読む KEY=VALUE 形式）。

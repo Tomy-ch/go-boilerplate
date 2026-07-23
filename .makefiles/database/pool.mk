@@ -20,7 +20,9 @@ endif
 db-acquire:
 	@bash scripts/db-pool/pool.sh acquire
 	@echo "🔄 取得したスロットのスキーマを作り直します..."
-	@set -a; . ./.gobp-db-slot; set +a; $(MAKE) db-local-reinit db-test-reinit
+	@# local と test は共通 prerequisite db-reinit を持つため 1 つの make 呼び出しにまとめると
+	@# db-reinit が 1 度しか実行されず test 側がスキップされる。個別の make 呼び出しに分ける。
+	@set -a; . ./.gobp-db-slot; set +a; $(MAKE) db-local-reinit && $(MAKE) db-test-reinit
 	@bash scripts/db-pool/pool.sh heartbeat
 	@echo "✅ DB スロットを取得しました。以降の make（test / db-init など）は同一スロットを使います。"
 
