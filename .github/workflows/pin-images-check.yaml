@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'docker/*/Dockerfile'
+      - 'docker-compose*.yaml'
       - 'docker/images-pin.toml'
       - 'scripts/pin-images/**'
       - '.makefiles/docker/pin.mk'
