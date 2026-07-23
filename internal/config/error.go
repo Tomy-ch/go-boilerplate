@@ -5,8 +5,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/xerrors"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -32,11 +30,6 @@ var (
 	)
 	// ErrEmptyAllowedOrigins は、許可されたオリジンが空であってはならないことを示すエラーです。
 	ErrEmptyAllowedOrigins = xerrors.Wrap(errInvalidConfig, "allowed origins must not be empty")
-	// ErrInvalidBcryptCost は、無効な bcrypt コストに関するエラーを表します。
-	ErrInvalidBcryptCost = xerrors.Wrap(
-		errInvalidConfig,
-		fmt.Sprintf("invalid bcrypt cost, must be between %d and %d", bcrypt.MinCost, bcrypt.MaxCost),
-	)
 	// ErrHTTPOnlyAllowedForLocalhost は、HTTP スキームが localhost（127.0.0.1 含む）以外のオリジンに使用されたことを示す検証エラーです。
 	ErrHTTPOnlyAllowedForLocalhost = xerrors.Wrap(
 		errInvalidConfig,

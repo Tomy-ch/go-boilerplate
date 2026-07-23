@@ -13,8 +13,6 @@ var (
 	ErrInvalidFirstName = xerrors.Wrap(errInvalid, "first name failed")
 	// ErrInvalidLastName は、姓の検証に失敗した場合のエラーです。
 	ErrInvalidLastName = xerrors.Wrap(errInvalid, "last name failed")
-	// ErrInvalidPasswordHash は、パスワードハッシュの検証に失敗した場合のエラーです。
-	ErrInvalidPasswordHash = xerrors.Wrap(errInvalid, "password hash failed")
 	// ErrInvalidEmail は、メールアドレスの検証に失敗した場合のエラーです。
 	ErrInvalidEmail = xerrors.Wrap(errInvalid, "email failed")
 	// ErrInvalidPhone は、電話番号の検証に失敗した場合のエラーです。
@@ -41,14 +39,6 @@ var (
 	// ErrInvalidDeletedAt は、削除日時の検証に失敗した場合のエラーです。
 	ErrInvalidDeletedAt = xerrors.Wrap(errInvalid, "deleted at failed")
 
-	// ErrInvalidRawPassword は、RawPassword 値オブジェクト固有の検証エラーです。
-	// ErrInvalidID 等の User フィールド検証エラーとは独立した系統であり、errors.Is(err, ErrInvalidID) 等では一致しません。
-	ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
-
 	// ErrAlreadyDeleted は、既に論理削除済みのユーザーを再度削除しようとした場合のエラーです。
 	ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
-
-	// ErrCurrentPasswordMismatch は、パスワード変更時に現在のパスワードが一致しない場合のエラーです。
-	// 認証失敗・権限不足ではなく意味的な入力検証失敗に該当するため、ErrValidation を wraps します。
-	ErrCurrentPasswordMismatch = xerrors.Wrap(apperror.ErrValidation, "current password does not match")
 )

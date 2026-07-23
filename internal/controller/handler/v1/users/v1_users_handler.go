@@ -87,8 +87,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	}
 
 	createParams := &user.CreateParamsDTO{
-		UserID:      userID,
-		RawPassword: request.Body.Password,
+		UserID: userID,
 		UpdateProfileParams: user.UpdateProfileParams{
 			FirstName:      request.Body.FirstName,
 			LastName:       request.Body.LastName,

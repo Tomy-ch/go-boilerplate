@@ -1,4 +1,4 @@
-// Package user は、ユーザードメインを定義します。User エンティティ（論理削除・パスワード変更・プロフィール更新）・RawPassword 値オブジェクト・FeedCursor 値オブジェクト・Repository インターフェースを提供します。
+// Package user は、ユーザードメインを定義します。User エンティティ（論理削除・プロフィール更新）・FeedCursor 値オブジェクト・Repository インターフェースを提供します。
 package user
 
 import (
@@ -19,7 +19,6 @@ type User struct {
 	id           uuid.UUID
 	firstName    string
 	lastName     string
-	passwordHash string
 	email        Email
 	phone        string
 	prefectureID uuid.UUID
@@ -38,7 +37,6 @@ func New(
 	id uuid.UUID,
 	firstName string,
 	lastName string,
-	passwordHash string,
 	email string,
 	phone string,
 	prefectureID uuid.UUID,
@@ -59,10 +57,6 @@ func New(
 		return nil, err
 	}
 
-	if err := validatePasswordHash(passwordHash); err != nil {
-		return nil, err
-	}
-
 	if updatedAt.Before(createdAt) {
 		return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
 	}
@@ -77,7 +71,6 @@ func New(
 		id:           id,
 		firstName:    firstName,
 		lastName:     lastName,
-		passwordHash: passwordHash,
 		email:        emailVO,
 		phone:        phone,
 		prefectureID: prefectureID,
@@ -99,9 +92,6 @@ func (u *User) FirstName() string { return u.firstName }
 
 // LastName は、ユーザーの名字を返します。
 func (u *User) LastName() string { return u.lastName }
-
-// PasswordHash は、ユーザーのパスワードハッシュを返します。
-func (u *User) PasswordHash() string { return u.passwordHash }
 
 // Email は、ユーザーのメールアドレスを返します。
 func (u *User) Email() string { return u.email.Value() }
@@ -137,7 +127,7 @@ func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 func (u *User) FullName() string { return u.firstName + " " + u.lastName }
 
 // UpdateProfile は、プロフィール（氏名・連絡先・住所・都道府県ID）と更新日時を一括で置き換えます。
-// パスワードは変更しません。各フィールドは New と同じ不変条件で検証します。論理削除済みユーザーには ErrAlreadyDeleted を返します。
+// 各フィールドは New と同じ不変条件で検証します。論理削除済みユーザーには ErrAlreadyDeleted を返します。
 func (u *User) UpdateProfile(
 	firstName, lastName, email, phone string,
 	prefectureID uuid.UUID,
@@ -166,23 +156,6 @@ func (u *User) UpdateProfile(
 	u.street = street
 	u.building = ptr.Copy(building)
 	u.postalCode = postalCodeVO
-	u.updatedAt = updatedAt
-	return nil
-}
-
-// ChangePassword は、パスワードハッシュと更新日時を置き換えます。論理削除済みユーザーには ErrAlreadyDeleted を返します。updatedAt は現在値以降（単調非減少）である必要があり、違反時は ErrInvalidUpdatedAt を返します。
-func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error {
-	if err := u.ensureNotDeleted(); err != nil {
-		return err
-	}
-	if err := validatePasswordHash(passwordHash); err != nil {
-		return err
-	}
-	if err := u.ensureUpdatedAt(updatedAt); err != nil {
-		return err
-	}
-
-	u.passwordHash = passwordHash
 	u.updatedAt = updatedAt
 	return nil
 }
@@ -291,12 +264,4 @@ func validateProfileFields(
 		return Email{}, PostalCode{}, apperror.WithDetails(xerrors.Join(errs...), fields...)
 	}
 	return emailVO, postalCodeVO, nil
-}
-
-// validatePasswordHash は、パスワードハッシュの不変条件を検証します。
-func validatePasswordHash(passwordHash string) error {
-	if ok, msg := stringkit.ValidateInRange(passwordHash, minLength, maxPasswordHashLength); !ok {
-		return xerrors.Wrap(ErrInvalidPasswordHash, msg)
-	}
-	return nil
 }

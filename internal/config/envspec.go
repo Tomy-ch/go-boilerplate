@@ -132,7 +132,7 @@ type DBConnection struct {
 }
 
 // Security は CORS 許可オリジン・CIDR 制限・セキュリティヘッダー（HSTS・X-Frame-Options 等）・
-// Referrer Policy および bcrypt コストパラメータを保持する。
+// Referrer Policy を保持する。
 type Security struct {
 	AllowedOrigins        []string      `env:"ALLOWED_ORIGINS,required"         envSeparator:","`
 	CIDR                  string        `env:"CIDR,required"`
@@ -142,7 +142,6 @@ type Security struct {
 	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
 	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
 	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
-	BcryptCost            int           `env:"BCRYPT_COST,required"`
 }
 
 // SecureCookie はセキュアクッキーの属性（Secure / SameSite / Domain）の上書き設定を保持する。

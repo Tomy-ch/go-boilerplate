@@ -116,7 +116,6 @@ This directory is the canonical reference for every environment variable read by
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|Exclude subdomains|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|Enable preload|bool|false||
 |SECURITY_REFERRER_POLICY|Referrer control|string|no-referrer||
-|SECURITY_BCRYPT_COST|bcrypt cost|int|12||
 
 ### Cookie
 

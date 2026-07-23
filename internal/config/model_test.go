@@ -688,18 +688,6 @@ func TestSecurityConfig_ReferrerPolicy(t *testing.T) {
 	})
 }
 
-func TestSecurityConfig_BcryptCost(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("bcryptコストを取得できる", func(t *testing.T) {
-			t.Parallel()
-			security := MockConfigForTest(t).security
-			assert.Equal(t, expectedBcryptCost, security.BcryptCost())
-		})
-	})
-}
-
 func TestSecureCookieConfig_SameSite(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

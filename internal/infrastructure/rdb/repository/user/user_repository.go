@@ -145,7 +145,6 @@ func rowToUser(u gen.Users) (*user.User, error) {
 		u.ID,
 		u.FirstName,
 		u.LastName,
-		u.PasswordHash,
 		u.Email,
 		u.Phone,
 		u.PrefectureID,
@@ -219,7 +218,6 @@ func (r *repository) Create(ctx context.Context, u *user.User) error {
 		ID:           u.ID(),
 		FirstName:    u.FirstName(),
 		LastName:     u.LastName(),
-		PasswordHash: u.PasswordHash(),
 		Email:        u.Email(),
 		Phone:        u.Phone(),
 		PrefectureID: u.PrefectureID(),
@@ -259,7 +257,6 @@ func (r *repository) Update(ctx context.Context, u *user.User) error {
 	rows, err := db.UpdateUser(ctx, &gen.UpdateUserParams{
 		FirstName:    u.FirstName(),
 		LastName:     u.LastName(),
-		PasswordHash: u.PasswordHash(),
 		Email:        u.Email(),
 		Phone:        u.Phone(),
 		PrefectureID: u.PrefectureID(),

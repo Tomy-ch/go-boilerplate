@@ -21,7 +21,7 @@ flowchart TB
     Usecase["Usecase (Application Service)"]
     Domain1["Domain (Business Rule)"]
     Repo["Repository (Persistence)"]
-    Boundary["Boundary (Tx / Clock / Security / Auth)"]
+    Boundary["Boundary (Tx / Clock / Auth)"]
     Domain2["Domain (Re-evaluation / Composition)"]
     DTO_out["DTO (Output)"]
 
@@ -115,7 +115,7 @@ Domain と Usecase の責務は次のように分離されます。
 ```mermaid
 flowchart TB
     A["ユーザー名の制約"]
-    B["パスワード形式ルール"]
+    B["メール形式ルール"]
     C["状態遷移"]
 ```
 
@@ -125,9 +125,8 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A["パスワードをハッシュ化"]
-    B["トランザクション内で実行"]
-    C["都道府県情報を取得"]
+    A["トランザクション内で実行"]
+    B["都道府県情報を取得"]
 ```
 
 これらは **Usecase 層に実装します。**
@@ -153,7 +152,6 @@ Usecase はこれらの **interface のみ参照**し、実装は Infrastructure
 
 - `Transaction Manager`
 - `Clock`
-- `Security (PasswordHasher 等)`
 - `Auth Context`
 - `Messaging / EventPublisher`
 - `Observability`
@@ -241,7 +239,6 @@ Infrastructure --> BoundaryInterface
 - `CreateUser`
 - `UpdateUser`
 - `DeleteUser`
-- `ChangePassword`
 
 特徴
 
@@ -375,7 +372,6 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    hasher security.Hasher,
     userRepo user.Repository,
     userQS query.UserQueryService,
 ) Usecase {
@@ -383,7 +379,6 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        hasher:    hasher,
         userRepo:  userRepo,
         userQS:    userQS,
     }
@@ -395,7 +390,7 @@ func New(
 - 戻り値は **interface（Usecase定義）**
 - 依存はすべて引数で受け取る（new禁止）
 - Repository / QueryService は interface 経由で受け取る
-- Boundary（tx / clock / security 等）も interface で受け取る
+- Boundary（tx / clock 等）も interface で受け取る
 
 ### DI の流れ
 
@@ -486,7 +481,7 @@ flowchart TB
 ### 呼び出せる層
 
 - Domain（エンティティ/ドメインサービス/Repositoryインタフェース）
-- Boundary（tx / clock / security / auth 等）
+- Boundary（tx / clock / auth 等）
 - QueryService（必要な場合）
 
 ### 呼び出せない層
@@ -548,7 +543,6 @@ ctrl := gomock.NewController(t)
 
 userRepo := mock_user.NewMockRepository(ctrl)
 clock := mock_clock.NewMockClock(ctrl)
-hasher := mock_security.NewMockHasher(ctrl)
 ```
 
 ### テスト対象
@@ -587,7 +581,6 @@ TestListUsers
 
 例：
 
-- Password hash error
 - Repository error
 - Domain validation error
 - Prefecture lookup error
@@ -737,8 +730,7 @@ type UserMutableFields struct {
 }
 
 type CreateUserParamsDTO struct {
-    UserID   uuid.UUID
-    Password string
+    UserID uuid.UUID
 
     UserMutableFields
 }
@@ -749,7 +741,6 @@ type usecase struct {
     tracer    observability.LayerTracer
     txm       tx.Manager
     clock     clock.Clock
-    hasher    security.Hasher
     userRepo  user.Repository
     pftRepo   prefecture.Repository
     userQS    query.UserQueryService
@@ -770,7 +761,6 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    hasher security.Hasher,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
     userQueryService query.UserQueryService,
@@ -779,7 +769,6 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        hasher:    hasher,
         userRepo:  userRepo,
         pftRepo:   prefectureRepo,
         userQS:    userQueryService,
@@ -875,24 +864,13 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 
     // 時刻の取得はUsecase層で一元管理するルールに従う
     now := u.clock.Now()
-    // パスワードのハッシュ化などはDomain層で定義したルールを呼び出す
-    rawPassword, err := user.NewRawPassword(dto.RawPassword)
-    if err != nil {
-        return MutableFields{}, err
-    }
-
-    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるhasherを使う
-    passwordHash, err := u.hasher.Hash(rawPassword.Value())
-    if err != nil {
-        return MutableFields{}, err
-    }
 
     var (
         userEntity *user.User
         pftDomain  *prefecture.Entity
     )
     // トランザクションの開始と終了をTxManagerに任せる
-    err = u.txm.Do(ctx, func(ctx context.Context) error {
+    err := u.txm.Do(ctx, func(ctx context.Context) error {
         var err error
         pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
         if err != nil {
@@ -903,7 +881,6 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
             dto.UserID,
             dto.FirstName,
             dto.LastName,
-            passwordHash,
             dto.Email,
             dto.Phone,
             pftDomain.ID(),

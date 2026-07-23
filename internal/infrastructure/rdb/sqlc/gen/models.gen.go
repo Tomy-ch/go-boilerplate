@@ -261,8 +261,6 @@ type Users struct {
 	FirstName string
 	// 苗字
 	LastName string
-	// パスワードハッシュ
-	PasswordHash string
 	// メールアドレス
 	Email string
 	// 電話番号

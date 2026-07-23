@@ -53,9 +53,9 @@ type PaginationMetadataResponse struct {
 }
 
 // UserBaseInputRequest ユーザー情報の基本入力スキーマ。
-// allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
-// JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
-// additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
+// POST / PUT / PATCH は allOf でこのスキーマを継承し required リストのみを兄弟スキーマで足す
+// （新規プロパティは追加しない）ため、この基底に additionalProperties: false を置いても
+// 兄弟の追加プロパティと衝突せず、未知フィールドを全 consumer で一律に拒否できる。
 type UserBaseInputRequest struct {
 	// Building 建物名・部屋番号
 	Building *string `json:"building,omitempty"`
@@ -134,9 +134,6 @@ type UsersPostRequest struct {
 
 	// LastName 苗字
 	LastName string `json:"lastName"`
-
-	// Password ユーザーのパスワード
-	Password string `json:"password"`
 
 	// Phone 電話番号
 	Phone string `json:"phone"`

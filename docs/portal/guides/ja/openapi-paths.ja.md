@@ -23,8 +23,8 @@ paths/
     └── users/
         ├── userId.yaml     # /v1/users/{userId}
         ├── search.yaml     # /v1/users/search
-        └── me/             # /v1/users/me/...（プレフィックスのみ）
-            └── password.yaml  # /v1/users/me/password
+        ├── feed.yaml       # /v1/users/feed
+        └── me.yaml         # /v1/users/me
 ```
 
 ## エンドポイントのカテゴリ
@@ -48,7 +48,7 @@ paths/
 ```text
 /v1/users             → users.yaml
 /v1/users/{userId}    → users/userId.yaml
-/v1/users/me/password → users/me/password.yaml
+/v1/users/me          → users/me.yaml
 /v1/users/search      → users/search.yaml
 ```
 
@@ -74,7 +74,7 @@ paths/
 |要素|規則|例|
 |---|---|---|
 |ファイル名|URL セグメントに一致（小文字）／パスパラメータファイルは param の `camelCase` 名に一致|`search.yaml`, `userId.yaml`|
-|ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/users/me/password` → `v1/users/me/password.yaml`|
+|ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/users/search` → `v1/users/search.yaml`|
 |leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`users.yaml` ＋ `users/`|
 |パスパラメータ|param の `camelCase` 名に一致するファイル名（波括弧なし）|`{userId}` → `userId.yaml`|
 |operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`GetUsers`, `PostUsers`|
@@ -87,7 +87,7 @@ paths/
 ```text
 paths/v1/users.yaml             → handler/v1/users/
 paths/v1/users/userId.yaml      → handler/v1/users/detail/
-paths/v1/users/me/password.yaml → handler/v1/users/detail/
+paths/v1/users/me.yaml          → handler/v1/users/detail/
 paths/v1/users/search.yaml      → handler/v1/users/search/
 ```
 

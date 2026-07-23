@@ -4,7 +4,7 @@
 
 ## 役割
 
-Infrastructure 層は、**外部技術（DB・外部API・認証・セキュリティ等）へのアクセス実装**を担う層です。
+Infrastructure 層は、**外部技術（DB・外部API・認証等）へのアクセス実装**を担う層です。
 
 この層は以下の責務を持ちます。
 
@@ -80,7 +80,7 @@ Infrastructure 層では以下の可観測性を提供します。
 
 主に driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span、ログ出力はクエリ失敗とスロークエリのみ）で実現します。
 
-driver 層のトレーサーに加え、各 I/O コンポーネント（Repository / QueryService / SystemQuery / 外部 gateway / queue / publisher）は public メソッドごとにアプリケーション層の span を発行します。具体的には `observability.LayerTracer` フィールドをコンストラクタで `tf.Infra()` から初期化し、各メソッド先頭で `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()` を書きます。実 I/O を持たない純粋なメモリ内コンポーネント（例: パスワードハッシュ化）は対象外です。
+driver 層のトレーサーに加え、各 I/O コンポーネント（Repository / QueryService / SystemQuery / 外部 gateway / queue / publisher）は public メソッドごとにアプリケーション層の span を発行します。具体的には `observability.LayerTracer` フィールドをコンストラクタで `tf.Infra()` から初期化し、各メソッド先頭で `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()` を書きます。実 I/O を持たない純粋なメモリ内コンポーネントは対象外です。
 
 ## 禁止事項
 
@@ -111,7 +111,6 @@ flowchart TB
     Pub["publisher/"]
     Queue["queue/"]
     RDB["rdb/"]
-    Sec["security/"]
     Sys["system/"]
     Web["webapi/"]
 
@@ -121,7 +120,6 @@ flowchart TB
     Root --> Pub
     Root --> Queue
     Root --> RDB
-    Root --> Sec
     Root --> Sys
     Root --> Web
 ```
@@ -136,7 +134,6 @@ flowchart TB
 |`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|—|
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
-|`security/`|パスワードハッシュ化（bcrypt）|Usecase boundary|[README](security/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
 |`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|—|
 
@@ -160,7 +157,7 @@ flowchart TB
 
 ### 1. 技術詳細のカプセル化
 
-DB / API / 認証 / セキュリティ  
+DB / API / 認証  
 → Infrastructure に閉じ込める
 
 ### 2. 依存関係の逆転

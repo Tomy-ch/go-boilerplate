@@ -43,7 +43,7 @@ tags:
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
-    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+    description: 単一ユーザー（取得・更新・部分更新・削除）。
   - name: v1/users/feed
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
@@ -380,40 +380,6 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '404':
           $ref: '#/components/responses/NotFound404'
-        '500':
-          $ref: '#/components/responses/InternalServerError500'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/users/me/password:
-    put:
-      operationId: PutUsersMePassword
-      tags:
-        - v1/users/detail
-      summary: 認証ユーザー自身のパスワード変更
-      description: 認証中のユーザー自身のパスワードを変更します。現在のパスワードを照合し、一致した場合のみ更新します。
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserPasswordPutRequest'
-      responses:
-        '204':
-          description: パスワードの変更に成功しました
-        '400':
-          $ref: '#/components/responses/BadRequest400'
-        '401':
-          $ref: '#/components/responses/Unauthorized401'
-        '404':
-          $ref: '#/components/responses/NotFound404'
-        '422':
-          description: 現在のパスワードが一致しません。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -863,9 +829,10 @@ components:
     UserBaseInputRequest:
       description: |
         ユーザー情報の基本入力スキーマ。
-        allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
-        JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
-        additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
+        POST / PUT / PATCH は allOf でこのスキーマを継承し required リストのみを兄弟スキーマで足す
+        （新規プロパティは追加しない）ため、この基底に additionalProperties: false を置いても
+        兄弟の追加プロパティと衝突せず、未知フィールドを全 consumer で一律に拒否できる。
+      additionalProperties: false
       properties:
         firstName:
           description: 名前
@@ -1351,19 +1318,10 @@ components:
       description: ユーザー情報の新規作成
       allOf:
         - $ref: '#/components/schemas/UserBaseInputRequest'
-        - properties:
-            password:
-              description: ユーザーのパスワード
-              type: string
-              format: password
-              minLength: 8
-              maxLength: 64
-              example: P@ssw0rd!
-          required:
+        - required:
             - firstName
             - lastName
             - email
-            - password
             - phone
             - prefecture
             - city
@@ -1388,27 +1346,6 @@ components:
             - city
             - street
             - building
-    UserPasswordPutRequest:
-      description: ユーザーのパスワード変更（現パスワード照合あり）
-      additionalProperties: false
-      properties:
-        currentPassword:
-          description: 現在のパスワード（照合用）
-          type: string
-          format: password
-          minLength: 8
-          maxLength: 64
-          example: P@ssw0rd!
-        newPassword:
-          description: 新しいパスワード
-          type: string
-          format: password
-          minLength: 8
-          maxLength: 64
-          example: N3wP@ssw0rd!
-      required:
-        - currentPassword
-        - newPassword
     UsersSearchResponseItem:
       description: 検索条件に基づいて取得したユーザー情報
       allOf:

@@ -21,9 +21,7 @@
 - RBAC / 認可モデル
 - セッション管理
 - パスワードポリシー
-  - サンプル実装は提供。拡張可能な設計を採用。
-    - インターフェイス：[internal/usecase/boundary/security/encrypt_hasher.go](../../internal/usecase/boundary/security/encrypt_hasher.go)
-    - サンプル実装：[internal/infrastructure/security/bcrypt_hasher.go](../../internal/infrastructure/security/bcrypt_hasher.go)
+  - リポジトリ内のクレデンシャルストアは提供しない：認証は外部の OIDC / JWT (Bearer) IdP に委譲されるため、本サービスはパスワードを一切保持しない。[docs/design/auth.md](../design/auth.ja.md) を参照。
 - データ保持ポリシー
   - 論理削除はサンプルで提供
 - PII保存時の暗号化
