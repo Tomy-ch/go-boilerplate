@@ -12,6 +12,7 @@ package mock_product
 import (
 	context "context"
 	product "go-boilerplate/internal/usecase/product"
+	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -39,6 +40,21 @@ func NewMockUsecase(ctrl *gomock.Controller) *MockUsecase {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
+}
+
+// GetProduct mocks base method.
+func (m *MockUsecase) GetProduct(ctx context.Context, id uuid.UUID) (product.ProductView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProduct", ctx, id)
+	ret0, _ := ret[0].(product.ProductView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProduct indicates an expected call of GetProduct.
+func (mr *MockUsecaseMockRecorder) GetProduct(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProduct", reflect.TypeOf((*MockUsecase)(nil).GetProduct), ctx, id)
 }
 
 // ListProducts mocks base method.

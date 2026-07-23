@@ -85,6 +85,14 @@ fields:
     params.AfterPublishedAt / AfterID が非 nil の場合、その keyset 境界より次ページ側の行のみを返す。
     取得件数は params.Limit で上限を課す（hasNext 判定のため usecase は limit+1 を渡す）。
 
+- name: FindPublishedByID
+  signature: FindPublishedByID(ctx context.Context, id uuid.UUID) (*Product, error)
+  behavior: |
+    ID から公開中（published_at 非 NULL）の単一商品を取得する。
+    公開述語は FindPublishedList と同一（published_at 非 NULL）で、一覧と詳細の可視範囲を一致させる。
+    未存在・非公開はいずれも取得失敗を NotFound として返し、未ログイン経路へ商品の存在を秘匿する。
+    可視性判断は SQL に閉じ、usecase / controller には分岐を置かない（ADR-0027: 単一集約の ID fetch は Repository）。
+
 # ListParams（domain の read クエリ条件。不透明カーソルは持たず、境界を primitive で受け取る）
 - struct: ListParams
   fields:

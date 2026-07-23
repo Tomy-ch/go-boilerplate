@@ -56,6 +56,8 @@ tags:
     description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/detail
+    description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: v1/addresses
@@ -538,6 +540,34 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/{productId}:
+    get:
+      operationId: GetProductsDetail
+      tags:
+        - v1/products/detail
+      summary: 単一商品の取得
+      description: |
+        指定された UUID に該当する公開済み商品の詳細情報を取得します。認証不要の公開エンドポイントです。
+        公開日時が未設定（未公開）の商品、および存在しない商品はいずれも 404 を返し、存在を秘匿します。
+        price は USD セント単位の整数です。statusId / categoryId の名称はマスタ API で解決します。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '200':
+          description: 公開済み商品の詳細取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/exchange-rates:
     get:
       operationId: GetExchangeRates
@@ -749,6 +779,15 @@ components:
         minLength: 7
         maxLength: 8
         example: 100-0001
+    ProductIdParam:
+      name: productId
+      in: path
+      required: true
+      description: 商品のUUID
+      schema:
+        type: string
+        format: uuid
+        example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
   securitySchemes:
     BearerAuth:
       type: http

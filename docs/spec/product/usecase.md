@@ -19,6 +19,8 @@ name: Usecase
 methods:
   - name: ListProducts
     signature: ListProducts(ctx context.Context, params ListProductsParams) (*ProductListView, error)
+  - name: GetProduct
+    signature: GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
 ```
 
 ## DTOs
@@ -71,7 +73,7 @@ methods:
 
 ```yaml
 - tracer              # observability.TracerFactory -> LayerTracer
-- product_repository  # domain/product.Repository（FindPublishedList で公開商品を keyset 取得）
+- product_repository  # domain/product.Repository（FindPublishedList で公開商品を keyset 取得 / FindPublishedByID で公開商品を単件取得）
 ```
 
 ## Workflow
@@ -94,4 +96,17 @@ errors:
   - Cursor が nil の場合は apperror.ErrInvalidArgument
   - カーソル復号失敗時は apperror.ErrInvalidArgument（decodeProductCursor 由来）
   - product_repository.FindPublishedList のエラーをそのまま伝播する
+```
+
+### GetProduct
+
+```yaml
+tx_required: false
+steps:
+  - product_repository.FindPublishedByID で公開中の単一商品を取得する（未存在・非公開はいずれも NotFound）
+  - Product を ProductView（ID / Name / Description / Price / Quantity / StockWarningThreshold / StatusID / CategoryID / PublishedAt）へ写像する
+calls:
+  - product_repository.FindPublishedByID
+errors:
+  - product_repository.FindPublishedByID のエラーをそのまま伝播する（未存在・非公開は apperror.ErrNotFound → 404）
 ```
