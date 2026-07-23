@@ -1,10 +1,12 @@
 package module
 
 import (
+	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"        // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                       // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/product"                          // sample-api:line
 	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category" // sample-api:line
 	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"  // sample-api:line
+	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase"            // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/user"                             // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
@@ -28,6 +30,7 @@ func persistenceModule() fx.Option {
 				productstatusrepo.New,
 				productcategory.New,
 				product.New,
+				purchaserepo.New,
 				// sample-api:end
 			),
 		),
@@ -40,9 +43,10 @@ func persistenceModule() fx.Option {
 		),
 		fx.Module("command_service",
 			fx.Provide(
-			// sample-api:begin
-			// コマンドサービスは、このサンプルでは用意しませんが、必要に応じてここに追加します。
-			// sample-api:end
+				// sample-api:begin
+				// サンプルのコマンドサービス（購入の原子的書き込み）
+				purchasecmd.New,
+				// sample-api:end
 			),
 		),
 		fx.Module("system_cqrs",
