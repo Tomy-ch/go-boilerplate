@@ -41,8 +41,8 @@ PostgreSQL データベース、オブザーバビリティスタック、ドキ
 
 | サービス | イメージ / Dockerfile | ポート | 説明 |
 | --- | --- | --- | --- |
-| `docs_viewer` | `docker/document/Dockerfile` ターゲット `document_viewer` | 8082 | `docs/` を配信する nginx。`/portal/` にポータル |
-| `sql_editor` | `sosedoff/pgweb` | 8081 | Web SQL エディター |
+| `docs_viewer` | `docker/document/Dockerfile` ターゲット `document_viewer` | 7001 | `docs/` を配信する nginx。`/portal/` にポータル |
+| `sql_editor` | `sosedoff/pgweb` | 7000 | Web SQL エディター |
 
 （軽量な **`database`** プロファイルも存在する — `database` + `sql_editor` のみ — `api_server` /
 observability スタックなしで DB に対して作業する用途。複数のサービスが 2 つ以上のプロファイルタグを持つ。）

@@ -8,7 +8,9 @@ services:
       dockerfile: docker/server/Dockerfile
       target: tooling
     ports:
-      - "8080:8080"   # APIポート
+      # API ポートは DB スロットプール（scripts/db-pool）が worktree 毎に割り当てる（既定 8080）。
+      # 複数 worktree で同時に make serve するための分離。コンテナ内部は常に 8080。
+      - "${API_HOST_PORT:-8080}:8080"   # APIポート
       - "2345:2345"   # デバッグ(dlv)ポート
       - "6060:6060"   # メトリクス(pprof)ポート
     volumes:
@@ -29,6 +31,8 @@ services:
   database: # PostgreSQLデータベース
     image: postgres:18.3-bookworm
     ports:
+      # DB コンテナは全 worktree 共有の単一インスタンス（ホスト 5432 固定）。worktree の
+      # 並列化は per-worktree のデータベース（wt<N>_local / wt<N>_test）で行う（scripts/db-pool）。
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql
@@ -64,7 +68,8 @@ services:
       context: .
       dockerfile: docker/mock-auth-server/Dockerfile
     ports:
-      - "4000:4000"
+      # mock 認証サーバーのホスト公開ポートもスロット毎に割り当てる（既定 4000、内部は常に 4000）。
+      - "${MOCK_AUTH_HOST_PORT:-4000}:4000"
     environment:
       # issuer はホスト OS / ブラウザから参照する URL。JWKS 取得はコンテナ名で内部解決する
       # （Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/.well-known/jwks.json）。
@@ -94,7 +99,8 @@ services:
       dockerfile: docker/document/Dockerfile
       target: document_viewer
     ports:
-      - "8082:80"
+      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 80）。
+      - "7001:80"
     volumes:
       - ./docs:/usr/share/nginx/html:ro
     profiles:
@@ -103,7 +109,8 @@ services:
   sql_editor:
     image: sosedoff/pgweb:latest
     ports:
-      - "8081:8081"
+      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 8081）。
+      - "7000:8081"
     environment:
       DATABASE_URL: postgres://postgres:postgres-password@database:5432/local?sslmode=disable
     depends_on:

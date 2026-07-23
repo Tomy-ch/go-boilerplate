@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,6 +35,26 @@ func EnsureRepoRootAndEnv(t *testing.T, env string) {
 	require.NoError(t, err)
 	for k, v := range kv {
 		t.Setenv(k, v)
+	}
+
+	setWorktreeDBName(t, env)
+}
+
+// setWorktreeDBName は、DB スロットプール利用時に対象 env の DB_NAME を自 worktree のデータベースへ
+// 上書きする。local は DB_NAME_LOCAL（wt<N>_local）、ci/test は DB_NAME_TEST（wt<N>_test）。deploy 系
+// env では本番 DB を誤指しないよう無視する（IsLocalClassEnv）。未使用時は .env.<env> の値のまま。
+func setWorktreeDBName(t *testing.T, env string) {
+	t.Helper()
+	switch {
+	case env == EnvLocal && IsLocalClassEnv(env):
+		if v := os.Getenv("DB_NAME_LOCAL"); v != "" {
+			t.Setenv("DB_NAME", v)
+		}
+	case IsLocalClassEnv(env):
+		t.Setenv("DB_NAME", testDBName())
+	case os.Getenv("DB_NAME_TEST") != "" || os.Getenv("DB_NAME_LOCAL") != "":
+		fmt.Fprintf(os.Stderr,
+			"[config] 警告: env=%q は local/test 系でないため、DB スロットプールの向き先変更を無視します\n", env)
 	}
 }
 

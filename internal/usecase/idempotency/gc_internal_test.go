@@ -1,6 +1,7 @@
 package idempotency
 
 import (
+	"context"
 	"testing"
 
 	mock_idempotencyuc "go-boilerplate/internal/usecase/idempotency/mock"
@@ -8,6 +9,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
+
+func Test_nopGCMetrics(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("GCMetrics 未配線時の no-op 実装は全カウンタを安全に呼べる", func(t *testing.T) {
+			t.Parallel()
+
+			// GCMetrics 未配線 → dispatcher が返す no-op 実装で全カウンタが安全に呼べることを固定する。
+			m := (&gcUsecase{}).metrics()
+			ctx := context.Background()
+
+			assert.NotPanics(t, func() {
+				m.IncExpiredCleanup(ctx, 3)
+				m.IncExpiredCleanupFailure(ctx)
+			})
+		})
+	})
+}
 
 func Test_gcUsecase_metrics(t *testing.T) {
 	t.Parallel()

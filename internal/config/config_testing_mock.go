@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,6 +13,10 @@ import (
 const (
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
+	// testDBHostPort は、共有 DB のホスト公開ポート（テスト接続先・固定）です。
+	testDBHostPort = 5432
+	// defaultTestDBName は、DB スロットプール未使用時のテスト用データベース既定名です。
+	defaultTestDBName = "test"
 )
 
 // 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
@@ -64,12 +69,14 @@ var (
 	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
 	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
 	// database
-	expectedDBDriver                      = "pgx"
-	expectedDBHost                        = "localhost"
-	expectedDBPort                        = 5432
-	expectedDBUser                        = "postgres"
-	expectedDBPassword                    = "postgres-password"
-	expectedDBName                        = "test"
+	expectedDBDriver = "pgx"
+	expectedDBHost   = "localhost"
+	// worktree の分離はポートではなくデータベース名（DB_NAME_TEST）で行うため、接続ポートは固定。
+	expectedDBPort     = testDBHostPort
+	expectedDBUser     = "postgres"
+	expectedDBPassword = "postgres-password"
+	// DB 名は worktree 毎に変わるため testDBName() で解決する（詳細はその doc）。
+	expectedDBName                        = testDBName()
 	expectedDBSSLMode                     = "disable"
 	expectedDBPingTimeoutCount            = 5
 	expectedDBPingTimeoutStr              = fmt.Sprintf("%ds", expectedDBPingTimeoutCount)
@@ -402,4 +409,27 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
 	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
+}
+
+// testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST が
+// あればそれを、無ければ既定の "test" を返します。DB スロットプール利用時は
+// make が DB_NAME_TEST を各 worktree のテスト用データベース（wt<N>_test）へ設定するため、共有 DB
+// (localhost:5432) 内の自 worktree DB へ繋ぎます。
+//
+// testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST があればそれを、
+// 無ければ既定の "test" を返します。DB スロットプール利用時は make が DB_NAME_TEST を各 worktree の
+// テスト用データベース（wt<N>_test）へ設定するため、共有 DB 内の自 worktree DB へ繋ぎます。ただし
+// deploy 系 env では本番 DB を誤指しないよう DB_NAME_TEST を無視します（IsLocalClassEnv、未設定は許可）。
+func testDBName() string {
+	v := os.Getenv("DB_NAME_TEST")
+	if v == "" {
+		return defaultTestDBName
+	}
+	if env := os.Getenv("APP_ENV"); env != "" && !IsLocalClassEnv(env) {
+		fmt.Fprintf(os.Stderr,
+			"[config] 警告: APP_ENV=%q は local/test 系でないため、DB スロットプールの DB_NAME_TEST=%q を無視します\n",
+			env, v)
+		return defaultTestDBName
+	}
+	return v
 }

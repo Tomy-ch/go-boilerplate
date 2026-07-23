@@ -21,6 +21,12 @@ Files are executed in **ascending order of their numeric prefix** (e.g., `001-..
 
 Execution is handled automatically by PostgreSQL's `docker-entrypoint-initdb.d` mechanism on first container startup.
 
+These scripts create/extension-init only the fixed `local` / `test` databases. The DB worktree
+pool (`cmd/db-slot`, core `internal/cli/dbslot`) creates its per-worktree databases
+(`wt<N>_local` / `wt<N>_test`) dynamically **after** startup, so it bootstraps the same extensions
+and timezone itself — keep this setup in sync with `internal/cli/dbslot` (`PgxAdmin.SetupDatabase`).
+See `docs/maintenance/db-worktree-pool.md`.
+
 ## What Belongs Here
 
 - Database creation (`CREATE DATABASE`)

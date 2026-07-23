@@ -33,8 +33,8 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 
 |サービス|Dockerfile / Image|ポート|説明|
 |---|---|---|---|
-|`docs_viewer`|`docker/document/Dockerfile`|8082|ドキュメントポータル（nginx）|
-|`sql_editor`|`sosedoff/pgweb`|8081|Web SQL エディタ|
+|`docs_viewer`|`docker/document/Dockerfile`|7001|ドキュメントポータル（nginx）|
+|`sql_editor`|`sosedoff/pgweb`|7000|Web SQL エディタ|
 
 ### ツールランナー（profile: `generate`）
 
@@ -91,7 +91,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 - ベースイメージ: `nginx:1.29-otel`
 - `docs/` ディレクトリ全体をボリュームマウント
 - ポータルアプリは `/portal/` で提供
-- `http://localhost:8082/` にアクセスすると `/portal/` にリダイレクト
+- `http://localhost:7001/` にアクセスすると `/portal/` にリダイレクト
 
 ## database
 

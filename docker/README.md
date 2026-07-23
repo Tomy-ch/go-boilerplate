@@ -33,8 +33,8 @@ The following table maps services defined in docker-compose.yaml to their corres
 
 |Service|Dockerfile / Image|Port|Description|
 |---|---|---|---|
-|`docs_viewer`|`docker/document/Dockerfile`|8082|Documentation portal (nginx)|
-|`sql_editor`|`sosedoff/pgweb`|8081|Web SQL editor|
+|`docs_viewer`|`docker/document/Dockerfile`|7001|Documentation portal (nginx)|
+|`sql_editor`|`sosedoff/pgweb`|7000|Web SQL editor|
 
 ### Tool Runners (profile: `generate`)
 
@@ -91,7 +91,7 @@ Container for the documentation portal.
 - Base image: `nginx:1.29-otel`
 - Volume mounts the entire `docs/` directory
 - Portal app is served at `/portal/`
-- Accessing `http://localhost:8082/` redirects to `/portal/`
+- Accessing `http://localhost:7001/` redirects to `/portal/`
 
 ## database
 

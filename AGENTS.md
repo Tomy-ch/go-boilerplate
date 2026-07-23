@@ -74,6 +74,30 @@ AI agents MUST NOT:
 - Modify generated files
 - Introduce new architectural patterns without instruction
 
+## YAGNI vs Regression Safeguards
+
+- **Functional YAGNI applies to production code**: do NOT add speculative features, config, or code
+  paths that no caller exercises. Unreached "might-need-it-later" code is dead weight — untested,
+  coverage-dragging, and prone to rot.
+- **Deliberate regression safeguards are the encouraged exception**: a defensive branch/guard whose
+  purpose is to catch a future mistake (e.g. mapping the right value per environment, refusing a
+  dangerous operation) SHOULD be kept and **actively locked down with a test**. If it is unreachable
+  through its current caller, extract the logic into a testable unit and cover every branch rather
+  than deleting it. Never drop a meaningful safeguard just because it is currently unreached — make
+  it testable and add the regression test.
+- **Coverage % is a proxy, not the goal**: a test's worth is the contract it locks against
+  regression, not the number it moves. A meaningful test can add 0 % (e.g. exercising an empty
+  no-op default — an `{}` body has zero coverable statements, so its `0.0%` is a Go display artifact,
+  NOT a gap). Do NOT chase whole-function `0.0%` that are empty/no-statement bodies, and do NOT
+  delete a test that verifies a real contract just because it doesn't raise coverage. Conversely,
+  code run only to hit lines with no meaningful assertion is coverage theater — that IS meaningless.
+- **A test is meaningful only if** the contract it protects (correctness / invariant / boundary /
+  safety) (1) can actually regress, (2) is not already locked elsewhere, and (3) is owned by that
+  layer. The meaningless-test forms are the inverses: **wrong semantics** (tautology, asserting an
+  incidental implementation detail, or coverage-only), **redundant duplication** (same path verified
+  2×/3× across layers with no new viewpoint; re-testing a dependency / generated code), or **wrong
+  layer** (verifying a concern the layer does not own).
+
 ## AI Modification Scope
 
 AI agents may modify code only in these directories unless explicitly instructed otherwise:
@@ -166,6 +190,17 @@ Run / DB:
 - `make db-init` — migrate + seed both the local and test DBs (prerequisite for DB-backed tests)
 - `make new-migrate-<name>` — scaffold a new migration (`.up.sql` / `.down.sql`)
 - `make job NAME=<job> ARGS="<args>"` — run an application job
+
+**Working in a `git worktree` (DB + serve isolation):** a single shared Postgres (fixed compose
+project `gobp-shared`, host 5432) is shared by all worktrees; each leases a slot = its own
+databases (`wt<N>_local` / `wt<N>_test`) inside that instance. Before DB-backed tasks or `make serve`
+in a worktree, `make db-acquire` to lease a slot (creates + rebuilds `wt<N>_local` / `wt<N>_test`,
+propagates `DB_NAME_LOCAL` / `DB_NAME_TEST` / `API_HOST_PORT` `8080+N` / `MOCK_AUTH_HOST_PORT` `4000+N`),
+then `make test` connects to `wt<N>_test` on localhost:5432, `make serve` isolates the app in
+`gobp-wt-N` (curl `localhost:$API_HOST_PORT`) against the shared DB, and `make db-release` when done —
+do NOT start a duplicate DB stack or hijack another checkout's containers. Without `db-acquire`,
+targets default to `local` / `test` on 5432 / 8080 / 4000 (single-stack, unchanged).
+Details: `docs/maintenance/db-worktree-pool.md`.
 
 ## Protected Documentation
 

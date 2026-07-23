@@ -9,8 +9,20 @@
 
 serve:
 	@echo "🔄 開発環境を起動します。"
-	@docker compose --profile development up -d
-	@echo "✅ 開発環境の起動が完了しました。Grafana: http://localhost:3000"
+	@# 判定はレシピ内シェルで実行時に行う（ifeq/wildcard は parse 時評価で、`make db-acquire serve` の
+	@# チェーン時に acquire がファイルを作る前に分岐が確定し serve が非プール側へ誤分岐するため）。
+	@if [ -f .gobp-db-slot ]; then \
+		set -a; . ./.gobp-db-slot; set +a; \
+		echo "  （DB スロットプール: 共有 DB $$COMPOSE_PROJECT_NAME を参照し、app を $$SERVE_PROJECT に分離）"; \
+		COMPOSE_PROJECT_NAME="$$COMPOSE_PROJECT_NAME" docker compose --profile database up -d --wait database; \
+		COMPOSE_PROJECT_NAME="$$SERVE_PROJECT" docker compose -f docker-compose.yaml -f docker-compose.pool.yaml \
+			--profile development up -d api_server mock_auth_server; \
+		go run ./cmd/ db-slot heartbeat; \
+		echo "✅ 起動完了。API: http://localhost:$$API_HOST_PORT（o11y/dlv/pprof はプール serve では非分離）"; \
+	else \
+		docker compose --profile development up -d; \
+		echo "✅ 開発環境の起動が完了しました。Grafana: http://localhost:3000"; \
+	fi
 
 serve-build:
 	@echo "🧰 ビルド後、開発環境を起動します。"
