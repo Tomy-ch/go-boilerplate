@@ -88,6 +88,38 @@ func TestEnsureRepoRootAndEnv(t *testing.T) {
 	assert.Equal(t, orig, cwdAfter)
 }
 
+func Test_setWorktreeDBName(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("local 環境は DB_NAME_LOCAL へ上書きする", func(t *testing.T) {
+			t.Setenv("DB_NAME_LOCAL", "wt9_local")
+
+			setWorktreeDBName(t, EnvLocal)
+
+			assert.Equal(t, "wt9_local", os.Getenv("DB_NAME"))
+		})
+
+		t.Run("ci 環境は DB_NAME_TEST へ上書きする", func(t *testing.T) {
+			t.Setenv("APP_ENV", EnvCI)
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			setWorktreeDBName(t, EnvCI)
+
+			assert.Equal(t, "wt9_test", os.Getenv("DB_NAME"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("deploy 系 env は DB_NAME を上書きしない", func(t *testing.T) {
+			t.Setenv("DB_NAME", "prd_db")
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			setWorktreeDBName(t, EnvProduction)
+
+			assert.Equal(t, "prd_db", os.Getenv("DB_NAME"))
+		})
+	})
+}
+
 func Test_testDBName(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("ci 環境では DB_NAME_TEST を尊重する", func(t *testing.T) {
