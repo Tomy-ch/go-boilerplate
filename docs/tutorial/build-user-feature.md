@@ -128,8 +128,10 @@ files. These are the human-authored intent the inner layers will implement.
 **Why first:** in lean A the domain and usecase implementations are validated against these
 specs (`/verify-spec`), and the spec's Entity field table is the soft contract checked
 against the SQL migration. Writing them first gives every later step a target. The Entity
-section, for example, fixes that `prefectureID` is held as an ID reference only and that
-`passwordHash` — never a plaintext password — is the persisted credential.
+section, for example, fixes that `prefectureID` is held as an ID reference only. The `User`
+aggregate holds no credential of its own: authentication is delegated to an external OIDC
+provider, and the mapping from a token's `(issuer, subject)` to an internal user is owned by
+the separate `user_identities` table (see [`docs/design/auth.md`](../design/auth.md)).
 
 **Verify:** none yet (Markdown). If you have the skills, `/verify-spec user` checks format +
 cross-references.
@@ -145,9 +147,9 @@ cross-references.
 
 **Files:**
 
-- `openapi/paths/v1/users.yaml` (list + create), `openapi/paths/v1/users/user_id.yaml`
-  (get/put/patch/delete), `openapi/paths/v1/users/me/password.yaml`,
-  `openapi/paths/v1/users/search.yaml`.
+- `openapi/paths/v1/users.yaml` (list + create), `openapi/paths/v1/users/userId.yaml`
+  (get/put/patch/delete), `openapi/paths/v1/users/me.yaml` (authenticated self-retrieval),
+  `openapi/paths/v1/users/search.yaml`, `openapi/paths/v1/users/feed.yaml`.
 - `openapi/components/schemas/{UserBaseInputRequest,UserResponse}.yaml`, plus the
   `requests/`, `responses/`, and `parameters/` fragments for users and search.
 - `openapi/openapi.yaml` — the root document that `$ref`s the above. The sample entries here
@@ -223,8 +225,9 @@ methods, value objects, sentinel errors, constants, and the Repository interface
 - `user_domain.go` — the `User` struct + `New(...)` constructor + getters + behavior methods.
 - `constant.go` — `min*/max*` length bounds derived from the spec's field constraints.
 - `error.go` — `ErrInvalid<Field>` sentinels + `ErrAlreadyDeleted` etc.
-- `raw_password.go` — the `RawPassword` value object (length-validated plaintext, hashed in
-  an outer layer).
+- `email.go` / `postal_code.go` — value objects (`Email` / `PostalCode`) that validate their
+  raw string in a factory (`NewEmail` / `NewPostalCode`) and expose it via `Value()`, so an
+  invalid form can never be constructed.
 - `user_repository.go` — the Repository interface, carrying a `//go:generate mockgen`
   directive (→ `mock/`).
 - `*_test.go` — invariants, behavior methods, VO boundaries.
@@ -254,9 +257,9 @@ func New(id uuid.UUID, firstName /* … */ string, /* … */ ) (*User, error) {
 }
 ```
 
-Mutations are methods that re-check invariants (e.g. `UpdateProfile`, `ChangePassword`,
-`MarkAsDeleted` — each calls `ensureNotDeleted` first). Read the real file: it is the
-canonical template for any future aggregate.
+Mutations are methods that re-check invariants (e.g. `UpdateProfile`, `MarkAsDeleted` — each
+calls `ensureNotDeleted` first). Read the real file: it is the canonical template for any
+future aggregate.
 
 **Verify:**
 
@@ -340,20 +343,20 @@ go test ./internal/infrastructure/rdb/repository/user/... \
 
 - **Return DTOs, never domain entities.** Map `*user.User` → `UserView` before returning.
 - **Time and transactions come through boundaries**, not the stdlib: `u.clock.Now()` (not
-  `time.Now()`), `u.txm.Do(ctx, fn)` for transaction boundaries, `u.encrypter.Hash(...)` for
-  password hashing. Determinism and testability depend on this.
+  `time.Now()`) for the current time, `u.txm.Do(ctx, fn)` for transaction boundaries. Every
+  non-deterministic or external dependency arrives as a `boundary/` interface. Determinism and
+  testability depend on this.
 - **The usecase owns the transaction boundary**; the domain knows nothing about `tx`.
 - **Orchestrate, don't re-implement rules.** Calling a domain behavior method is fine;
   encoding a new invariant here is not — that belongs in the domain.
 
-Shape of a write use case — obtain time, hash, then run inside a transaction:
+Shape of a write use case — obtain time from the clock boundary, then run inside a transaction:
 
 ```go
 // shape only — see user_usecase.go for the real body
 func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
  ctx, endSpan := u.tracer.Start(ctx); defer endSpan()
  now := u.clock.Now()                                   // boundary, not time.Now()
- hash, err := u.encrypter.Hash(dto.RawPassword)         // boundary
  // … u.txm.Do(ctx, func(ctx) { user.New(...now...); u.repo.Create(...) }) …
  return toUserView(entity /* … */), nil                 // DTO out
 }

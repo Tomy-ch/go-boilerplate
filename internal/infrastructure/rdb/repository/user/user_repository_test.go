@@ -226,12 +226,11 @@ func Test_repository_FindByActive(t *testing.T) {
 					drv := driver.New(ctx, db)
 					_, execErr := drv.Exec(ctx,
 						"INSERT INTO users "+
-							"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code) "+
-							"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+							"(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code) "+
+							"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
 						"07e5b6d3-0000-4000-8000-000000000000",
 						"Tx",
 						"",
-						"$2a$10$dummy",
 						"tx-insert@example.com",
 						"000-000-0000",
 						"a03aaec4-3bd6-4bfb-8e47-2fbfa026d344",
@@ -254,12 +253,11 @@ func Test_repository_FindByActive(t *testing.T) {
 					drv := driver.New(ctx, db)
 					_, execErr := drv.Exec(ctx,
 						"INSERT INTO users "+
-							"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code) "+
-							"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+							"(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code) "+
+							"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
 						"07e5b6d3-0000-4000-8000-000000000000",
 						"Tx",
 						"",
-						"$2a$10$dummy",
 						"tx-insert@example.com",
 						"000-000-0000",
 						"a03aaec4-3bd6-4bfb-8e47-2fbfa026d344",
@@ -282,12 +280,11 @@ func Test_repository_FindByActive(t *testing.T) {
 					drv := driver.New(ctx, db)
 					_, execErr := drv.Exec(ctx,
 						"INSERT INTO users "+
-							"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code, deleted_at) "+
-							"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+							"(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code, deleted_at) "+
+							"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
 						"07e5b6d3-0000-4000-8000-000000000000",
 						"Tx",
 						"",
-						"$2a$10$dummy",
 						"tx-insert@example.com",
 						"000-000-0000",
 						"a03aaec4-3bd6-4bfb-8e47-2fbfa026d344",
@@ -338,7 +335,6 @@ func Test_repository_Create(t *testing.T) {
 					userID,
 					"Alice",
 					"Smith",
-					"password",
 					"alice.smith@example.com",
 					"555-555-5555",
 					prefectureID,
@@ -379,7 +375,6 @@ func Test_repository_Create(t *testing.T) {
 					userID,
 					"John",
 					"Doe",
-					"password",
 					"john.doe@example.com",
 					"555-555-5555",
 					prefectureID,

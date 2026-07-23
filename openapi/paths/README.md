@@ -23,8 +23,8 @@ paths/
     └── users/
         ├── userId.yaml     # /v1/users/{userId}
         ├── search.yaml     # /v1/users/search
-        └── me/             # /v1/users/me/... (prefix only)
-            └── password.yaml  # /v1/users/me/password
+        ├── feed.yaml       # /v1/users/feed
+        └── me.yaml         # /v1/users/me
 ```
 
 ## Endpoint Categories
@@ -48,7 +48,7 @@ Business API endpoints following a **URL versioning strategy**.
 ```text
 /v1/users             → users.yaml
 /v1/users/{userId}    → users/userId.yaml
-/v1/users/me/password → users/me/password.yaml
+/v1/users/me          → users/me.yaml
 /v1/users/search      → users/search.yaml
 ```
 
@@ -74,7 +74,7 @@ When introducing breaking changes, create a new `v2/` directory alongside `v1/`.
 |Element|Convention|Example|
 |---|---|---|
 |File name|Match the URL segment (lowercase); path-parameter files match the param's `camelCase` name|`search.yaml`, `userId.yaml`|
-|Directory layout|Mirror the URL path (one file per path item)|`/v1/users/me/password` → `v1/users/me/password.yaml`|
+|Directory layout|Mirror the URL path (one file per path item)|`/v1/users/search` → `v1/users/search.yaml`|
 |Leaf vs. parent|Leaf = flat `<segment>.yaml`; endpoint-with-children = `<segment>.yaml` beside `<segment>/`|`users.yaml` + `users/`|
 |Path parameter|File name matches the param's `camelCase` name (no braces)|`{userId}` → `userId.yaml`|
 |operationId|`{HTTPMethod}{Resource}` (PascalCase, verb-first)|`GetUsers`, `PostUsers`|
@@ -87,7 +87,7 @@ Path definitions correspond to handler implementations:
 ```text
 paths/v1/users.yaml             → handler/v1/users/
 paths/v1/users/userId.yaml      → handler/v1/users/detail/
-paths/v1/users/me/password.yaml → handler/v1/users/detail/
+paths/v1/users/me.yaml          → handler/v1/users/detail/
 paths/v1/users/search.yaml      → handler/v1/users/search/
 ```
 

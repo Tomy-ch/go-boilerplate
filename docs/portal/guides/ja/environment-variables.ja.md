@@ -116,7 +116,6 @@
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|サブドメイン除外|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|preload有効|bool|false||
 |SECURITY_REFERRER_POLICY|referrer制御|string|no-referrer||
-|SECURITY_BCRYPT_COST|bcryptコスト|int|12||
 
 ### Cookie
 

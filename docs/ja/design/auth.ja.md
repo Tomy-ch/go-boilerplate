@@ -36,9 +36,38 @@
 
 ---
 
-## 2. 状態遷移
+## 2. ユーザーの有効性と失格（誰が・どう無効化するか）
 
-### 2.1 RS のトークン検証 — 通常パス
+認証（IdP が呼び出し元が *誰か* を表明）と、**この系での有効性**（そのユーザーがここで今も有効なメンバーか）は**別の軸**である。リクエストが通るのは**両方**成立するときのみ — RS が**毎リクエスト**評価する論理 AND:
+
+> **実効アクセス = ( トークン検証 — IdP 側 ) AND ( この系で有効: `deleted_at IS NULL` + roles 許可 — RS 側 )**
+
+構造的に妥当な JWT でも十分でない理由がこれ。Provider の削除済みユーザー fixture（Charlie / Frank）は完全に妥当・正しく署名されたトークンを持つが拒否される — **「JWT 有効 ≠ この系で利用可能」**。
+
+どの無効化を誰が持つか:
+
+| 無効化 | 所有者 | 効果 | 配置（本リポジトリ） |
+| --- | --- | --- | --- |
+| **アカウント無効化**（もう認証できない） | IdP | *新規*トークンの発行を止める。既発行 JWT は `exp` まで有効なまま | 外部 IdP — mock には**無い**（アカウント lifecycle を持たないトークン stub） |
+| **メンバーシップ無効化**（`deleted_at`: 退会 / BAN） | この RS | トークンに関係なく毎リクエスト拒否 | `useridentity` resolver → `401` |
+| **認可**（roles） | この RS | アクションごとに許可 / 拒否 | `user_roles` + authorizer |
+
+誤解されやすい点:
+
+- **実行時の横断クエリは無い。** JWT + JWKS では RS は AND を**ローカル**に評価する: IdP 側の項は JWT そのもの（*キャッシュ済み* JWKS で署名検証 — IdP への毎リクエスト通信は無い）、有効性の項はこのサービス自身の `deleted_at` / roles。RS はリクエスト時に IdP にも他サービスにも「削除状態」を問い合わせない。（毎リクエストで IdP を参照するのは opaque token の **introspection** — 本スタックが採らない別設計。）
+- **グローバルでなくサービスごと。** 各 Resource Server が自分の `deleted_at` を所有する。サービス A で退会したユーザーがサービス B では有効たりうる。RS が polling する共有「削除状態」サービスは無く、IdP がアプリ横断のメンバーシップを集約することもない。
+- **stateless の帰結 → だから RS がローカルに見る。** JWT は自己完結のため、IdP のアカウント無効化は既発行トークンを失効させない（`exp` まで受理される）。毎リクエストの `deleted_at` 検査が、トークン寿命に依らない *即時* 失効を与える。
+
+無効性を *立てる* provisioning の 2 経路 — 上記の enforcement（*読む*だけ）とは別:
+
+- **アプリ主導**（退会 / BAN）: このサービスが自分の `deleted_at` を立てる（soft-delete、`update_user.sql`）。これが主たる実行時経路。これを駆動する退会エンドポイントは別 PBI。
+- **IdP 主導**（deprovisioning）: 実 IdP がユーザーを無効化し、それをここへ反映したい場合は、このサービスの deactivate 経路を呼ぶ**薄い ingress アダプタ**（SCIM / webhook 受け口、またはイベント consumer）を足す。mock はそのイベントを発行せず、伝播プロトコルは IdP 依存のため、**この seam は意図的に未実装**のまま — enforcement 側（`deleted_at` を尊重する `useridentity` resolver）は、何がそれを立てても消費できる状態にある。IdP が *トリガ* し、RS が *enforce* する。
+
+---
+
+## 3. 状態遷移
+
+### 3.1 RS のトークン検証 — 通常パス
 
 ```mermaid
 sequenceDiagram
@@ -64,7 +93,7 @@ sequenceDiagram
     MW-->>C: → handler（業務ロジック）
 ```
 
-### 2.2 RS のトークン検証 — 異常パス（すべて `401` に正規化）
+### 3.2 RS のトークン検証 — 異常パス（すべて `401` に正規化）
 
 ```mermaid
 flowchart TD
@@ -85,7 +114,7 @@ flowchart TD
 
 Provider の **異常系 bypass Profile**（`expired` / `wrong-issuer` / `wrong-audience` / `missing-subject` / `invalid-signature` / `unsupported-algorithm` / `id-token`）は、まさにこれら RS の各 `401` 分岐をテストで決定的に駆動するために存在する。
 
-### 2.3 Provider の Authorization Code Flow + PKCE — 通常パス
+### 3.3 Provider の Authorization Code Flow + PKCE — 通常パス
 
 ```mermaid
 sequenceDiagram
@@ -103,7 +132,7 @@ sequenceDiagram
     M-->>C: 302 post_logout_redirect_uri?state（session 破棄）
 ```
 
-### 2.4 Provider — 異常 / エラーパス
+### 3.4 Provider — 異常 / エラーパス
 
 ```mermaid
 flowchart TD
@@ -124,7 +153,7 @@ flowchart TD
 
 ---
 
-## 3. 実装配置
+## 4. 実装配置
 
 | 観点 | 配置 |
 | --- | --- |
@@ -141,7 +170,7 @@ flowchart TD
 
 ---
 
-## 4. インテグレーターが実装すること
+## 5. インテグレーターが実装すること
 
 1. **config で RS を IdP に向ける。** `AUTH_ISSUER`（token の `iss` と一致必須）・`AUTH_AUDIENCE`・`AUTH_JWKS_URL`（IdP の `jwks_uri`）。ローカルでは `env/.env` がこれらを `mock-auth-server` に向け、`AUTH_JWKS_URL` は split-horizon でコンテナ内部ホストを指す。任意: `AUTH_ALLOWED_ALGORITHMS`（既定 `RS256`）・`AUTH_CLOCK_SKEW`（`60s`）・`AUTH_JWKS_CACHE_TTL`（`5m`）。
 2. **mock を実 IdP に差し替える**のは上記 env 値の変更のみ — JWKS + claim 契約はバイト等価なので Go 変更は不要。`iss` はホスト解決可能に、`AUTH_JWKS_URL` は API コンテナから到達可能に保つ。
@@ -152,7 +181,7 @@ flowchart TD
 
 ---
 
-## 5. 用語解説
+## 6. 用語解説
 
 | 用語 | 意味 |
 | --- | --- |

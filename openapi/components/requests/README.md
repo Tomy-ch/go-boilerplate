@@ -7,15 +7,16 @@ English | [日本語](README.ja.md)
 ## Role boundary vs `schemas/`
 
 - `schemas/` — small, reusable building blocks (e.g. `UserBaseInputRequest.yaml`).
-- `requests/` — the **per-endpoint** shape, usually composing a base block via `allOf` and adding operation-specific fields.
+- `requests/` — the **per-endpoint** shape, usually composing a base block via `allOf` and adding operation-specific constraints (e.g. a `required` list).
 
 ```yaml
 # requests/users/UsersPostRequest.yaml
 allOf:
   - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - properties:
-      password:        # field specific to "create user"
-        type: string
+  - required:          # fields mandatory for "create user"
+      - firstName
+      - lastName
+      - email
 ```
 
 ## Directory Contents
@@ -23,10 +24,9 @@ allOf:
 ```text
 requests/
 └── users/
-    ├── UsersPostRequest.yaml      # Create user (base + password)
+    ├── UsersPostRequest.yaml      # Create user (base + required fields)
     ├── UserPutRequest.yaml        # Full update (all fields required)
-    ├── UserPatchRequest.yaml      # Partial update (base, fields optional)
-    └── UserPasswordPutRequest.yaml # Password change (current + new)
+    └── UserPatchRequest.yaml      # Partial update (base, fields optional)
 ```
 
 > `users/` is a **sample implementation**. Mirror its structure for your own resources.

@@ -27,7 +27,7 @@
 ### 規約: usecase が呼出元をどう受け取るか
 
 - リクエストで指定されたリソースに対する **オブジェクトレベル認可** を行う usecase メソッド（パスの `user_id` を対象にする `GetUser` / `UpdateUser` / `DeleteUser` 等）は、`*auth.Authn` 全体を受け取り先頭で `Authorizer.Authorize(...)` を呼ぶ。
-- **呼出元自身の identity** のみをデータとして必要とするメソッド（認証ユーザー自身に作用する `CreateUser` / `ChangePassword` 等）は、controller 側で抽出したスカラ `uuid.UUID`（`authn.UserID()`）を受け取る — 認可対象となる別オブジェクトが無いため。
+- **呼出元自身の identity** のみをデータとして必要とするメソッド（認証ユーザー自身に作用する `CreateUser` 等）は、controller 側で抽出したスカラ `uuid.UUID`（`authn.UserID()`）を受け取る — 認可対象となる別オブジェクトが無いため。
 
 ## 実装
 

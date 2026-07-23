@@ -36,9 +36,38 @@ Design principles (invariants):
 
 ---
 
-## 2. State transitions
+## 2. User validity & deactivation (who invalidates, and how)
 
-### 2.1 RS token verification — normal path
+Authentication (the IdP asserts *who* the caller is) and **validity in this system** (whether that user is still an active member *here*) are **separate axes**. A request is honored only when **both** hold — a logical AND that the RS evaluates on **every** request:
+
+> **effective access = ( token verifies — IdP side ) AND ( user is valid here: `deleted_at IS NULL` + roles permit — RS side )**
+
+This is why a structurally valid JWT is not sufficient. The provider's deleted-user fixtures (Charlie / Frank) carry perfectly valid, correctly-signed tokens yet are rejected — **"valid JWT ≠ usable in this system."**
+
+Who owns which invalidation:
+
+| Invalidation | Owner | Effect | Where (this repo) |
+| --- | --- | --- | --- |
+| **Account deactivation** (can no longer authenticate) | IdP | stops issuing *new* tokens; already-issued JWTs stay valid until `exp` | external IdP — the mock has **none** (it is a token stub with no account lifecycle) |
+| **Membership invalidation** (`deleted_at`: withdrawn / banned) | this RS | rejected per-request regardless of token | `useridentity` resolver → `401` |
+| **Authorization** (roles) | this RS | allow / deny per action | `user_roles` + authorizer |
+
+The parts most often misread:
+
+- **No runtime cross-query.** With JWT + JWKS the RS evaluates the AND **locally**: the IdP-side term is the JWT itself (signature checked against the *cached* JWKS — no per-request call to the IdP), and the validity term is this service's own `deleted_at` / roles. The RS never asks the IdP — nor any other service — for "deletion state" at request time. (A model that *does* consult the IdP per request is token **introspection** for opaque tokens — a different design this stack does not use.)
+- **Per-service, not global.** Each Resource Server owns its own `deleted_at`. A user withdrawn from service A can still be valid in service B; there is no shared "deletion-state" service that RSs poll, and the IdP does not aggregate per-app membership.
+- **Stateless caveat → why the RS must check locally.** Because a JWT is self-contained, an IdP account deactivation does **not** invalidate tokens already issued; they remain acceptable until `exp`. The per-request `deleted_at` check is what provides *immediate* revocation, independent of token lifetime.
+
+Two provisioning paths *set* invalidity — distinct from the enforcement above, which only *reads* it:
+
+- **App-initiated** (withdrawal / ban): this service sets its own `deleted_at` (soft-delete, `update_user.sql`). This is the primary runtime path; the withdrawal endpoint that drives it is a separate PBI.
+- **IdP-initiated** (deprovisioning): when a real IdP disables a user and that must be reflected here, add a **thin ingress adapter** (a SCIM / webhook receiver, or an event consumer) that calls this service's deactivate path. The mock emits no such events and the propagation protocol is IdP-specific, so **this seam is intentionally left unbuilt** — the enforcement side (the `useridentity` resolver honoring `deleted_at`) is already ready to consume whatever sets it. The IdP *triggers*; the RS *enforces*.
+
+---
+
+## 3. State transitions
+
+### 3.1 RS token verification — normal path
 
 ```mermaid
 sequenceDiagram
@@ -64,7 +93,7 @@ sequenceDiagram
     MW-->>C: → handler (business logic)
 ```
 
-### 2.2 RS token verification — error paths (all normalize to `401`)
+### 3.2 RS token verification — error paths (all normalize to `401`)
 
 ```mermaid
 flowchart TD
@@ -85,7 +114,7 @@ flowchart TD
 
 The provider's **anomaly bypass profiles** (`expired` / `wrong-issuer` / `wrong-audience` / `missing-subject` / `invalid-signature` / `unsupported-algorithm` / `unknown-kid` / `old-key` / `id-token`) exist precisely to drive each of these RS `401` branches deterministically in tests — `unknown-kid` (a `kid` absent from the JWKS) and `old-key` (a retired key) both drive the "`kid` resolvable?" branch.
 
-### 2.3 Provider Authorization Code Flow + PKCE — normal path
+### 3.3 Provider Authorization Code Flow + PKCE — normal path
 
 ```mermaid
 sequenceDiagram
@@ -103,7 +132,7 @@ sequenceDiagram
     M-->>C: 302 post_logout_redirect_uri?state (session destroyed)
 ```
 
-### 2.4 Provider — error / abnormal paths
+### 3.4 Provider — error / abnormal paths
 
 ```mermaid
 flowchart TD
@@ -122,7 +151,7 @@ flowchart TD
     U1 -- yes --> UOK["200 whitelist claims"]
 ```
 
-### 2.5 Key rotation (JWKS phases)
+### 3.5 Key rotation (JWKS phases)
 
 The provider separates the **published set** (keys served in the JWKS) from the **single signing key**, so a rotation can be replayed and the RS verified against it. `POST /admin/keys/rotate` takes a declarative `{action, kid}` (`add-key` / `promote` / `retire`); `POST /admin/reset` returns to Phase 1. Chaining the actions reproduces the classic three phases:
 
@@ -143,7 +172,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 
 ---
 
-## 3. Implementation locations
+## 4. Implementation locations
 
 | Aspect | Location |
 | --- | --- |
@@ -160,7 +189,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 
 ---
 
-## 4. What an integrator implements
+## 5. What an integrator implements
 
 1. **Point the RS at an IdP via config.** `AUTH_ISSUER` (must equal the token's `iss`), `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` (the IdP's `jwks_uri` — optional; leave it empty to derive `jwks_uri` from the issuer via OIDC discovery, see the note below). Locally, `env/.env` sets `AUTH_JWKS_URL` explicitly at the container-internal host per split-horizon. Optional knobs: `AUTH_ALLOWED_ALGORITHMS` (default `RS256`), `AUTH_CLOCK_SKEW` (`60s`), `AUTH_JWKS_CACHE_TTL` (`1h`).
 2. **Swap the mock for a real IdP** by changing only those env values — the JWKS + claim contract is byte-equal, so no Go change is required. Keep `iss` host-resolvable and `AUTH_JWKS_URL` reachable from the API container.
@@ -171,7 +200,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 
 ---
 
-## 5. Glossary
+## 6. Glossary
 
 | Term | Meaning |
 | --- | --- |

@@ -100,30 +100,6 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			AssertJSONResponseType[detailgen.UserResponse](t, actual)
 		})
 
-		t.Run("PUT /v1/users/me/passwordがパスワード変更を行い204を返す", func(t *testing.T) {
-			t.Parallel()
-			e := echo.New()
-			ctrl := gomock.NewController(t)
-			tf := observability.NewNoopTracerFactory(t)
-
-			uid := uuid.NewTestFromSalt(t, "me-password")
-			mockApp := mock_user.NewMockUsecase(ctrl)
-			mockApp.EXPECT().
-				ChangePassword(gomock.Any(), uid, "current_password", "new_valid_password").
-				Return(nil)
-
-			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uid)
-
-			body := &detailgen.PutUsersMePasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
-				CurrentPassword: "current_password",
-				NewPassword:     "new_valid_password",
-			}
-
-			actual := StartServer(t, e).DoJSON(http.MethodPut, "/v1/users/me/password", body, headers)
-			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
-		})
-
 		t.Run("DELETE /v1/users/{userId}が削除を行い204を返す", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()

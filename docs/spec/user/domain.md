@@ -1,13 +1,13 @@
 # User — Domain Spec
 
 > 既存実装（`internal/domain/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの更新・論理削除を追記したもの。
-> 追記分は scaffold の入力となる目標仕様（FindByID / Update + UpdateProfile / ChangePassword / MarkAsDeleted）。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一する方針。
+> 追記分は scaffold の入力となる目標仕様（FindByID / Update + UpdateProfile / MarkAsDeleted）。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一する方針。
 
 ## Overview
 
 ユーザー集約は、アカウントの基本情報（氏名・認証情報・連絡先）と住所情報（都道府県・市区町村・番地・建物・郵便番号）を保持するドメインの中核エンティティ。生成時に全フィールドの形式・長さ・必須を検証し、不変条件を満たさない `User` は構築できない。
 
-都道府県は ID 参照（`prefectureID`）のみを保持し、表示名は別集約（`prefecture`）から解決する。パスワードは平文を保持せず、検証済みのハッシュ（`passwordHash`）のみを保持する。平文パスワードは値オブジェクト `RawPassword` で長さ検証されたうえで、外側のレイヤーでハッシュ化される。
+都道府県は ID 参照（`prefectureID`）のみを保持し、表示名は別集約（`prefecture`）から解決する。認証は外部の OIDC/JWT に委譲し、`User` はパスワード等の認証情報を保持しない。
 
 ## Entity
 
@@ -28,11 +28,6 @@ fields:
     required: true
     min_length: 1
     max_length: 100
-  - name: passwordHash
-    type: string
-    required: true
-    min_length: 1
-    max_length: 255
   - name: email
     type: Email               # 値オブジェクト（長さ + local@domain 形式を factory で検証）
     required: true
@@ -97,14 +92,9 @@ fields:
   description: |
     プロフィール（氏名・連絡先・住所・都道府県ID）と updatedAt を一括で置き換える。
     各フィールドは New と同じ不変条件で検証する（長さ範囲 / prefectureID 非 nil /
-    building は非 nil 時のみ検証 / updatedAt >= createdAt）。パスワードは変更しない。
+    building は非 nil 時のみ検証 / updatedAt >= createdAt）。
     PUT は全フィールド指定、PATCH は load した現在値に provided フィールドをマージした
     フルセットを渡して呼ぶ（usecase 側でマージ）。
-- name: ChangePassword
-  signature: ChangePassword(passwordHash string, updatedAt time.Time) error
-  description: |
-    パスワードハッシュと updatedAt を置き換える。passwordHash は New と同じ長さ範囲で検証。
-    PUT のみ使用（PATCH では password を更新しない）。
 - name: MarkAsDeleted
   signature: MarkAsDeleted(deletedAt time.Time) error
   description: |
@@ -115,13 +105,6 @@ fields:
 ## Value Objects
 
 ```yaml
-- name: RawPassword
-  underlying_type: string
-  validation: 長さが MinRawPasswordLength(8) 以上 MaxRawPasswordLength(64) 以下。違反時 ErrInvalidRawPassword
-  factory: NewRawPassword
-  methods:
-    - name: Value
-      returns: string
 - name: Email
   underlying_type: string
   validation: 長さが 1 以上 100 以下、かつ local@domain 形式（ドメインにドットを含む）。違反時 ErrInvalidEmail
@@ -161,7 +144,7 @@ fields:
 - name: Update
   signature: Update(ctx context.Context, user *User) error
   behavior: |
-    ID をキーに mutable フィールド（氏名・連絡先・住所・prefectureID・passwordHash）と
+    ID をキーに mutable フィールド（氏名・連絡先・住所・prefectureID）と
     updatedAt / deletedAt を更新する。PUT / PATCH / DELETE（論理削除）すべてが
     load → ドメインメソッドで変更 → 本メソッドで永続化、という共通経路で利用する。
 ```
