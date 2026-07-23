@@ -28,7 +28,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productuc.Usec
 	}, nil))
 }
 
-// GetProductsDetail は、指定された UUID に該当する公開済み商品の詳細情報を取得します。認証不要の公開エンドポイントです。
+// GetProductsDetail は、指定された UUID に該当する公開済み商品の詳細情報を取得します。
 // 未存在・非公開はいずれもユースケースが NotFound を返し、404 で存在を秘匿します。
 func (s *server) GetProductsDetail(ctx context.Context, request gen.GetProductsDetailRequestObject) (gen.GetProductsDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
@@ -44,7 +44,6 @@ func (s *server) GetProductsDetail(ctx context.Context, request gen.GetProductsD
 	return gen.GetProductsDetail200JSONResponse(toProductResponse(dto)), nil
 }
 
-// toProductResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
 func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
 	return gen.ProductResponse{
 		Id:                    dto.ID.ToPrimitive(),

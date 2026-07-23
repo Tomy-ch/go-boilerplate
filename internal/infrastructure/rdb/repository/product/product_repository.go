@@ -71,7 +71,7 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 }
 
 // FindPublishedByID は、ID から公開中（published_at 非 NULL）の単一商品を取得します。
-// 非公開・未存在はいずれも SQL の該当なし（sql.ErrNoRows）に落ち、NotFound へ正規化して返します。
+// 非公開・未存在はいずれも NotFound を返します（存在秘匿）。
 func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
