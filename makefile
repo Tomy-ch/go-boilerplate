@@ -14,6 +14,7 @@ include .makefiles/database/dml-merge.mk
 include .makefiles/database/seed.mk
 include .makefiles/database/fix.mk
 include .makefiles/database/gen.mk
+include .makefiles/database/pool.mk
 # Application関連
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk

@@ -29,7 +29,9 @@ services:
   database: # PostgreSQLデータベース
     image: postgres:18.3-bookworm
     ports:
-      - "5432:5432"
+      # ホスト公開ポートは DB スロットプール（scripts/db-pool）が worktree 毎に割り当てる。
+      # 単独利用時の既定は 5432。コンテナ内部は常に 5432。
+      - "${DB_HOST_PORT:-5432}:5432"
     volumes:
       - pg_data:/var/lib/postgresql
       - ./docker/database/sql:/docker-entrypoint-initdb.d:ro
