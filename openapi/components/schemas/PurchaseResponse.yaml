@@ -1,0 +1,68 @@
+type: object
+description: |
+  購入情報のレスポンススキーマ。金額（subtotalAmount / taxAmount / shippingFee / totalAmount /
+  明細 unitPrice）はすべて USD セント単位の整数です。
+required:
+  - id
+  - code
+  - userId
+  - statusId
+  - subtotalAmount
+  - taxAmount
+  - shippingFee
+  - totalAmount
+  - details
+  - orderedAt
+  - referenceAmount
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 購入ID
+    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  code:
+    type: string
+    description: 購入コード（UUIDv7 文字列・一意）
+    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  userId:
+    type: string
+    format: uuid
+    description: 購入したユーザーのID
+    example: "550e8400-e29b-41d4-a716-446655440000"
+  statusId:
+    type: string
+    format: uuid
+    description: 購入ステータスID。作成直後は「未処理」です。名称は購入ステータスマスタで解決します。
+    example: "a66c996c-86b2-41d8-9bdd-9b685fb7c47d"
+  subtotalAmount:
+    type: integer
+    format: int32
+    description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+    example: 160000
+  taxAmount:
+    type: integer
+    format: int32
+    description: 税額（国内消費税）。USD セント単位の整数です。
+    example: 16000
+  shippingFee:
+    type: integer
+    format: int32
+    description: 送料。USD セント単位の整数です。
+    example: 500
+  totalAmount:
+    type: integer
+    format: int32
+    description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+    example: 176500
+  details:
+    type: array
+    description: 購入明細の配列
+    items:
+      $ref: './PurchaseDetailResponse.yaml'
+  orderedAt:
+    type: string
+    format: date-time
+    description: 注文日時
+    example: "2026-07-23T00:00:00Z"
+  referenceAmount:
+    $ref: './exchange-rates/ReferenceAmount.yaml'

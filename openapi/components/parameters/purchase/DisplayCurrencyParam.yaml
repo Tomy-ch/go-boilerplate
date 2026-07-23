@@ -1,0 +1,11 @@
+name: displayCurrency
+in: query
+description: |
+  指定時のみ、購入合計金額（totalAmount）のその通貨での参考換算額を referenceAmount として返します（非永続）。
+  現状は JPY のみサポートします。レート取得に失敗した場合は referenceAmount = null で degrade し、購入自体は成立させます。
+required: false
+schema:
+  type: string
+  enum:
+    - JPY
+  example: JPY

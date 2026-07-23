@@ -1,0 +1,14 @@
+type: object
+description: |
+  購入作成リクエスト。明細（商品IDと数量）の配列を受け取ります。
+  明細は 1 件以上必須で、同一 productId の重複は許可しません（いずれも 422）。
+required:
+  - details
+properties:
+  details:
+    type: array
+    description: |
+      購入明細の配列。1 件以上必須で、同一 productId の重複は不可です。
+      空配列・重複はドメインで検証し 422 を返します（スキーマでは制約せず単一の検証責務に集約）。
+    items:
+      $ref: '../../schemas/PurchaseDetailInput.yaml'
