@@ -6,6 +6,9 @@ set -euo pipefail
 
 POOL_DIR="${GOBP_DB_POOL_DIR:-${TMPDIR:-/tmp}/gobp-db-pool}"
 BASE_PORT="${GOBP_DB_POOL_BASE:-5432}"
+# make serve の並列化用: API サーバー / mock 認証サーバーのホスト公開ポートもスロット毎にずらす。
+API_BASE_PORT="${GOBP_API_POOL_BASE:-8080}"
+MOCK_AUTH_BASE_PORT="${GOBP_MOCK_AUTH_POOL_BASE:-4000}"
 MAX_SLOTS="${GOBP_DB_POOL_MAX:-8}"
 TTL_SECONDS="${GOBP_DB_POOL_TTL:-1800}"
 
@@ -15,6 +18,8 @@ SLOT_FILE="$ROOT/.gobp-db-slot"
 now() { date +%s; }
 lock_dir() { echo "$POOL_DIR/slot-$1.lock"; }
 port_of() { echo $((BASE_PORT + $1)); }
+api_port_of() { echo $((API_BASE_PORT + $1)); }
+mock_auth_port_of() { echo $((MOCK_AUTH_BASE_PORT + $1)); }
 project_of() { echo "gobp-db-slot-$1"; }
 
 log() { echo "[db-pool] $*" >&2; }
@@ -42,13 +47,16 @@ is_stale() {
   [ $(( $(now) - hb )) -gt "$TTL_SECONDS" ]
 }
 
-# ポートが「自分のスロット以外」に占有されているか（foreign busy）。
+# スロットのいずれかのホスト公開ポート（DB / API）が「自分のスロット以外」に占有されているか。
 foreign_busy() {
-  local slot="$1" port; port="$(port_of "$slot")"
-  local names; names="$(docker ps --filter "publish=$port" --format '{{.Names}}' 2>/dev/null || true)"
-  [ -z "$names" ] && return 1
-  echo "$names" | grep -q "^$(project_of "$slot")-" && return 1
-  return 0
+  local slot="$1" port names
+  for port in "$(port_of "$slot")" "$(api_port_of "$slot")"; do
+    names="$(docker ps --filter "publish=$port" --format '{{.Names}}' 2>/dev/null || true)"
+    [ -z "$names" ] && continue
+    echo "$names" | grep -q "^$(project_of "$slot")-" && continue
+    return 0
+  done
+  return 1
 }
 
 # スロットのコンテナを起動（compose プロジェクト分離 + ホストポート割当）。
@@ -61,11 +69,13 @@ up_slot() {
 # .gobp-db-slot を worktree ルートへ書き出す（make が -include で読む KEY=VALUE 形式）。
 write_slot_file() {
   local slot="$1"
-  # DB_HOST_PORT = ホスト公開ポート（compose の publish と host 実行 go test の接続先）。
-  # コンテナ内部の接続ポートは常に 5432（env/.env の DB_PORT）なので、ここには書かない。
+  # *_HOST_PORT = ホスト公開ポート（compose の publish と host 側からの接続先）。
+  # コンテナ内部ポートは常に固定（DB=5432 / API=8080 / mock_auth=4000）なので、ここには書かない。
   {
     echo "SLOT=$slot"
     echo "DB_HOST_PORT=$(port_of "$slot")"
+    echo "API_HOST_PORT=$(api_port_of "$slot")"
+    echo "MOCK_AUTH_HOST_PORT=$(mock_auth_port_of "$slot")"
     echo "COMPOSE_PROJECT_NAME=$(project_of "$slot")"
   } >"$SLOT_FILE"
 }
@@ -79,6 +89,7 @@ cmd_acquire() {
     local d; d="$(lock_dir "$cur")"
     if [ -d "$d" ] && [ "$(meta_get "$d" owner)" = "$ROOT" ]; then
       write_meta "$d" "$cur"
+      write_slot_file "$cur"
       up_slot "$cur"
       log "reuse slot $cur (port $(port_of "$cur"))"
       cat "$SLOT_FILE"
@@ -133,7 +144,7 @@ cmd_heartbeat() {
 
 cmd_status() {
   mkdir -p "$POOL_DIR"
-  printf '%-5s %-6s %-10s %-9s %s\n' SLOT PORT STATE AGE OWNER
+  printf '%-5s %-6s %-6s %-10s %-9s %s\n' SLOT DB API STATE AGE OWNER
   local slot d state age owner hb
   for slot in $(seq 0 $((MAX_SLOTS - 1))); do
     d="$(lock_dir "$slot")"
@@ -145,7 +156,7 @@ cmd_status() {
       state="free"; owner="-"; age="-"
     fi
     docker ps --filter "publish=$(port_of "$slot")" --format '{{.Names}}' 2>/dev/null | grep -q "^$(project_of "$slot")-" && state="$state,up"
-    printf '%-5s %-6s %-10s %-9s %s\n' "$slot" "$(port_of "$slot")" "$state" "$age" "$owner"
+    printf '%-5s %-6s %-6s %-10s %-9s %s\n' "$slot" "$(port_of "$slot")" "$(api_port_of "$slot")" "$state" "$age" "$owner"
   done
 }
 

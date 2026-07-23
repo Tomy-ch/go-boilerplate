@@ -4,13 +4,15 @@
 .PHONY: db-pool-status ## DB スロットプールの占有状況を表示する
 
 # worktree が保持中のスロット定義（scripts/db-pool が書き出す KEY=VALUE）。
-# 存在すれば DB_HOST_PORT / COMPOSE_PROJECT_NAME を取り込み、docker compose（ホスト公開ポート・
-# プロジェクト分離）と host 実行の go test（接続ポート）へ伝播させる。未取得なら既定（ホスト 5432 /
-# ディレクトリ由来プロジェクト）で従来どおり動作する。
-# 注: コンテナ内部の接続ポート DB_PORT（既定 5432、env/.env 由来）は export しない。export すると
-# go_tool_runner 内のアプリが内部 5432 ではなくホスト公開ポートへ繋ぎに行き接続不能になる。
+# 存在すれば各 *_HOST_PORT / COMPOSE_PROJECT_NAME を取り込み、docker compose（ホスト公開ポート・
+# プロジェクト分離、make serve の API/mock_auth ポート含む）と host 実行の go test（接続ポート）へ
+# 伝播させる。未取得なら既定（ホスト 5432 / 8080 / 4000 / ディレクトリ由来プロジェクト）で従来動作。
+# 注: コンテナ内部の接続ポート（DB_PORT=5432 等、env/.env 由来）は export しない。export すると
+# コンテナ内アプリが内部ポートではなくホスト公開ポートへ繋ぎに行き接続不能になる。
 -include .gobp-db-slot
 export DB_HOST_PORT
+export API_HOST_PORT
+export MOCK_AUTH_HOST_PORT
 ifneq ($(COMPOSE_PROJECT_NAME),)
 export COMPOSE_PROJECT_NAME
 endif

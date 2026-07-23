@@ -8,7 +8,9 @@ services:
       dockerfile: docker/server/Dockerfile
       target: tooling
     ports:
-      - "8080:8080"   # APIポート
+      # API ポートは DB スロットプール（scripts/db-pool）が worktree 毎に割り当てる（既定 8080）。
+      # 複数 worktree で同時に make serve するための分離。コンテナ内部は常に 8080。
+      - "${API_HOST_PORT:-8080}:8080"   # APIポート
       - "2345:2345"   # デバッグ(dlv)ポート
       - "6060:6060"   # メトリクス(pprof)ポート
     volumes:
@@ -66,7 +68,8 @@ services:
       context: .
       dockerfile: docker/mock-auth-server/Dockerfile
     ports:
-      - "4000:4000"
+      # mock 認証サーバーのホスト公開ポートもスロット毎に割り当てる（既定 4000、内部は常に 4000）。
+      - "${MOCK_AUTH_HOST_PORT:-4000}:4000"
     environment:
       # issuer はホスト OS / ブラウザから参照する URL。JWKS 取得はコンテナ名で内部解決する
       # （Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/.well-known/jwks.json）。
