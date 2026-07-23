@@ -1,6 +1,7 @@
 package dbslot
 
 import (
+	"os"
 	"strconv"
 	"sync"
 	"testing"
@@ -104,6 +105,17 @@ func TestRegistry_IsStale(t *testing.T) {
 			r := newTestRegistry(t, "/w/a", time.Unix(1000, 0))
 			assert.True(t, r.IsStale(5))
 		})
+
+		t.Run("heartbeat 欠落 meta（他 owner）は stale 扱い", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRegistry(t, "/w/me", time.Unix(1000, 0))
+			require.True(t, r.TryAcquireFresh(1))
+			// heartbeat を持たない他 owner の meta を直接書く。
+			require.NoError(t, os.WriteFile(r.metaPath(1), []byte("owner=/w/other\nbranch=b\nslot=1\n"), 0o600))
+
+			assert.True(t, r.IsStale(1))
+		})
 	})
 }
 
@@ -152,6 +164,17 @@ func TestRegistry_TryReclaim(t *testing.T) {
 			wg.Wait()
 
 			assert.Equal(t, 1, wins)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("対象スロットが存在しなければ false（先取り/消失）", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRegistry(t, "/w/a", time.Unix(1000, 0))
+			assert.False(t, r.TryReclaim(7))
 		})
 	})
 }
