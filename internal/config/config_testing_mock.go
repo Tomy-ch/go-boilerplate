@@ -13,8 +13,10 @@ import (
 const (
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
-	// defaultTestDBPort は、DB スロットプール未使用時のテスト用 DB 既定ポートです。
+	// defaultTestDBPort は、共有 DB のホスト公開ポート（テスト接続先）です。
 	defaultTestDBPort = 5432
+	// defaultTestDBName は、DB スロットプール未使用時のテスト用データベース既定名です。
+	defaultTestDBName = "test"
 )
 
 // 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
@@ -69,12 +71,14 @@ var (
 	// database
 	expectedDBDriver = "pgx"
 	expectedDBHost   = "localhost"
-	// expectedDBPort は既定 5432。DB スロットプール（scripts/db-pool）利用時は
-	// make が DB_PORT を各 worktree のスロットポートへ設定するため、それを尊重する。
-	expectedDBPort                        = testDBPort()
-	expectedDBUser                        = "postgres"
-	expectedDBPassword                    = "postgres-password"
-	expectedDBName                        = "test"
+	// expectedDBPort は共有 DB のホスト公開ポート 5432 固定。DB スロットプール（scripts/db-pool）
+	// 利用時も worktree の分離はポートではなくデータベース名（DB_NAME_TEST）で行うため一定。
+	expectedDBPort     = defaultTestDBPort
+	expectedDBUser     = "postgres"
+	expectedDBPassword = "postgres-password"
+	// expectedDBName は既定 "test"。DB スロットプール利用時は make が DB_NAME_TEST を各 worktree の
+	// テスト用データベース（wt<N>_test）へ設定するため、それを尊重して共有 DB 内の自 worktree DB へ繋ぐ。
+	expectedDBName                        = testDBName()
 	expectedDBSSLMode                     = "disable"
 	expectedDBPingTimeoutCount            = 5
 	expectedDBPingTimeoutStr              = fmt.Sprintf("%ds", expectedDBPingTimeoutCount)
@@ -409,15 +413,13 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
 }
 
-// testDBPort は、ホストから見たテスト用 DB の接続ポートを返します。環境変数 DB_HOST_PORT が
-// あればそれを、無ければ defaultTestDBPort を返します。DB スロットプール（scripts/db-pool）利用時は
-// make が DB_HOST_PORT を各 worktree のスロット公開ポートへ設定します（コンテナ内部の DB_PORT は
-// 常に 5432 で、そちらは go_tool_runner 内の接続にのみ使われます）。
-func testDBPort() int {
-	if v := os.Getenv("DB_HOST_PORT"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil {
-			return p
-		}
+// testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST が
+// あればそれを、無ければ既定の "test" を返します。DB スロットプール（scripts/db-pool）利用時は
+// make が DB_NAME_TEST を各 worktree のテスト用データベース（wt<N>_test）へ設定するため、共有 DB
+// (localhost:5432) 内の自 worktree DB へ繋ぎます。
+func testDBName() string {
+	if v := os.Getenv("DB_NAME_TEST"); v != "" {
+		return v
 	}
-	return defaultTestDBPort
+	return defaultTestDBName
 }

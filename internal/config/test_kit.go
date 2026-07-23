@@ -35,6 +35,11 @@ func EnsureRepoRootAndEnv(t *testing.T, env string) {
 	for k, v := range kv {
 		t.Setenv(k, v)
 	}
+
+	// DB スロットプール利用時は、対象環境の DB_NAME をこの worktree のテスト用データベース
+	// （wt<N>_test）へ上書きする。MockConfigForTest と同じく共有 DB(localhost:5432) 内の自
+	// worktree DB へ繋ぐ。未使用時は既定 "test" を返すため .env.<env> の値と一致し無害。
+	t.Setenv("DB_NAME", testDBName())
 }
 
 // repoRoot は、go.mod を上方向に探索してリポジトリルートを返します。
