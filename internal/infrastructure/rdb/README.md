@@ -200,6 +200,20 @@ See details below.
 
 [system_cqrs directory README](system_cqrs/README.md)
 
+## command_service
+
+`command_service` implements a **CommandService** — the write-side counterpart of QueryService
+(interface in the Usecase layer, implementation here). It is reserved for multi-aggregate writes
+that require single-transaction atomicity (see [ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md)
+/ [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)); the first implementation
+is `command_service/purchase` (stock lock + decrement + purchase / detail INSERT — see
+[ADR-0100](../../../docs/adr/0100-purchase-stock-lock-and-amount-contract.md)).
+
+A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
+the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events
+(that is a Usecase responsibility, `system_cqrs` category). Its methods take the decided Domain
+aggregate and normalize every sqlc error with `pgerror.NormalizeError`.
+
 ## testkit
 
 `testkit` is a **utility for testing using RDB**.
@@ -259,7 +273,7 @@ and failures (Error).
 
 ### 7. Test Strategy (Integration-based)
 
-Repository / QueryService tests are executed with:
+Repository / QueryService / CommandService tests are executed with:
 
 real DB + rollback
 
@@ -270,5 +284,14 @@ Each Repository / QueryService test verifies:
 - SQL execution paths — every query / branch the method dispatches
 - `pgerror.NormalizeError` application on every sqlc return (raw `pg` / connection errors → `apperror`)
 - row → entity conversion (column → field mapping, NULL handling)
+
+A CommandService test additionally verifies:
+
+- the atomic write effect on every touched table (e.g. stock decremented, purchase / detail rows
+  inserted, `status_id` resolved from a business code) via post-write `SELECT`
+- the fail-closed guard (e.g. defensive `WHERE quantity >= :qty` → 0 rows → `ErrConflict`) using a
+  stale lock value so the domain check passes but the DB predicate rejects
+- constraint-violation normalization (`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`,
+  unique `23505` → `ErrConflict`)
 
 Concurrency / lock contention cannot be reproduced with the default `testkit` helper: its `WithinTx` serializes transactions (a single tx rolled back at the end). A branch that only fires under genuinely concurrent connections — e.g. `Claim`'s `lock_timeout` `55P03` (lock_not_available) — needs a dedicated integration test that runs two independent `TransactionManager.Do` calls (two connections / transactions) so one holds the row lock while the other times out.
