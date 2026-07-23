@@ -254,9 +254,9 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | --- | --- | --- |
 | `make docker-lint` | `docker/*/Dockerfile` を hadolint で lint します。 | `go_tool_runner` コンテナ内で `make docker-lint-ci` を呼び出します。 |
 | `make docker-lint-ci` | `hadolint docker/*/Dockerfile` を直接実行します。 | CI 用ターゲット。無効化ルールは `.hadolint.yaml`。 |
-| `make pin-images-resolve` | 各 `FROM` の `image:tag` を現在の digest へ解決し `docker/images-pin.toml` lockfile を更新します。 | `PIN_IMAGES_MIN_AGE_DAYS`（既定 14；0 で無効）日未満の digest は quarantine。registry アクセス（`docker`）が必要。 |
-| `make pin-images-apply` | lockfile を元に `FROM` を `image:tag@sha256:...` へ固定します（quarantine 中の image は tag のまま）。 | なし |
-| `make pin-images-check` | `FROM` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit gate。 |
+| `make pin-images-resolve` | `docker/*/Dockerfile` の `FROM` と `docker-compose*.yaml` の `image:` の `image:tag` を現在の digest へ解決し `docker/images-pin.toml` lockfile を更新します。 | `PIN_IMAGES_MIN_AGE_DAYS`（既定 14；0 で無効）日未満の digest は quarantine。registry アクセス（`docker`）が必要。 |
+| `make pin-images-apply` | lockfile を元に `FROM` / compose `image:` を `image:tag@sha256:...` へ固定します（quarantine 中の image は tag のまま）。 | なし |
+| `make pin-images-check` | `FROM` / compose `image:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit gate。 |
 
 ## `.makefiles/openapi` 系
 

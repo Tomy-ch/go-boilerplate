@@ -29,7 +29,7 @@ services:
       - development
 
   database: # PostgreSQLデータベース
-    image: postgres:18.3-bookworm
+    image: postgres:18.3-bookworm@sha256:80630f83606d8db77d30b3851b16a9f78be2d0d4dda6f7b82a1fdca5ebe3acba
     ports:
       # DB コンテナは全 worktree 共有の単一インスタンス（ホスト 5432 固定）。worktree の
       # 並列化は per-worktree のデータベース（wt<N>_local / wt<N>_test）で行う（scripts/db-pool）。
@@ -54,7 +54,7 @@ services:
       - tools
 
   observability:
-    image: grafana/otel-lgtm:0.28.0
+    image: grafana/otel-lgtm:0.28.0@sha256:10f48eb2f8670134df542177bb19536c55421b089e43f9dfc2a27d4c078204d8
     ports:
       - "3000:3000" # Grafana UI
       - "4317:4317" # OTLP gRPC
@@ -107,7 +107,7 @@ services:
       - tools
 
   sql_editor:
-    image: sosedoff/pgweb:latest
+    image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
     ports:
       # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 8081）。
       - "7000:8081"
@@ -121,7 +121,7 @@ services:
       - database
 
   er_diagram_generator: # ER図生成ツール
-    image: schemaspy/schemaspy:latest
+    image: schemaspy/schemaspy:7.0.2@sha256:c8f98116a5cfe4b00b379eeb23b2022cdea4c9192cbccb843a75049e752479b7
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5433:3000"
