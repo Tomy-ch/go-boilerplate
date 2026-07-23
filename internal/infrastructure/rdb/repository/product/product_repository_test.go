@@ -267,7 +267,11 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, got)
 				assert.Equal(t, mustParse(t, publishedID), got.ID())
+				require.NotNil(t, got.Description())
+				assert.Equal(t, "説明", *got.Description())
 				assert.Equal(t, 1999, got.Price())
+				assert.Equal(t, 10, got.Quantity())
+				assert.Nil(t, got.StockWarningThreshold())
 				// DB は timestamptz をローカルタイムゾーンで返すため、格納した瞬間の一致で比較する。
 				assert.True(t, base.Equal(got.PublishedAt()))
 			})
@@ -292,12 +296,28 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				// published_at=NULL の行は公開述語(published_at IS NOT NULL)で取得失敗に落ち、未存在と同じ NotFound になる。
+				// published_at が NULL の行は公開述語に合致しないため、未存在と同じ NotFound が返る（存在秘匿）。
 				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+"-UNPUB", nil, 1999, statusInStock, categoryElectronics, nil)
 
 				got, err := repo.FindPublishedByID(ctx, mustParse(t, unpublishedID))
 				require.Nil(t, got)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+
+		t.Run("不正な行(価格が負数)が取得されるとデータ不整合としてErrInternalを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				invalidID := "ffffffff-0000-4000-8000-000000000003"
+				// price=-1 はドメイン不変条件違反(再構築エラー)を誘発する。公開述語を通すため published_at は設定する。
+				insertProduct(ctx, t, drv, invalidID, probeKeyword+"-BADPRICE", nil, -1, statusInStock, categoryElectronics, ptr.To(base))
+
+				got, err := repo.FindPublishedByID(ctx, mustParse(t, invalidID))
+				require.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+				require.NotErrorIs(t, err, domainproduct.ErrInvalidPrice)
 			})
 		})
 	})

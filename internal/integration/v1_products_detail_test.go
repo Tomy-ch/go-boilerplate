@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	responsegen "go-boilerplate/internal/controller/error/response/gen"
 	productsdetail "go-boilerplate/internal/controller/handler/v1/products/detail"
 	productsdetailgen "go-boilerplate/internal/controller/handler/v1/products/detail/gen"
 	"go-boilerplate/internal/observability"
@@ -87,12 +88,15 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 		t.Run("未存在と非公開の 404 はレスポンス body が区別できない（存在秘匿）", func(t *testing.T) {
 			t.Parallel()
 
-			// 未存在・非公開はいずれも Usecase が同じ apperror.ErrNotFound を返す（可視性判断は SQL 層に閉じる）。
-			// ハンドラ経路が両者を同一の 404 body へ落とすことで、未ログイン利用者へ商品の存在を秘匿する。
+			// ハンドラ経路が未存在・非公開の NotFound を同一の Code/Message に落とすことを検証する
+			// （未ログイン利用者へ商品の存在を秘匿する）。非公開が SQL 述語で未存在と同一の取得失敗に
+			// 落ちること自体は infra 層の DB テスト（Test_repository_FindPublishedByID）が担保する。
+			// requestId は各リクエストで変わりうるため body 全体ではなく Code/Message のみ比較する。
 			missingBody := doNotFoundProductDetail(t, productDetailMissingPath)
 			unpublishedBody := doNotFoundProductDetail(t, productDetailUnpublishedID)
 
-			assert.Equal(t, missingBody, unpublishedBody)
+			assert.Equal(t, missingBody.Code, unpublishedBody.Code)
+			assert.Equal(t, missingBody.Message, unpublishedBody.Message)
 		})
 
 		t.Run("Usecase が ErrInternal を返すと 500 を返す", func(t *testing.T) {
@@ -114,8 +118,8 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 	})
 }
 
-// doNotFoundProductDetail は、GetProduct が NotFound を返す状況で指定パスへ GET し、404 の body を返します。
-func doNotFoundProductDetail(t *testing.T, path string) any {
+// doNotFoundProductDetail は、GetProduct が NotFound を返す状況で指定パスへ GET し、404 のエラーボディを返します。
+func doNotFoundProductDetail(t *testing.T, path string) responsegen.ErrorResponseWithDetails {
 	t.Helper()
 
 	e := echo.New()
