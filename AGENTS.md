@@ -167,11 +167,13 @@ Run / DB:
 - `make new-migrate-<name>` — scaffold a new migration (`.up.sql` / `.down.sql`)
 - `make job NAME=<job> ARGS="<args>"` — run an application job
 
-**Working in a `git worktree` (DB isolation):** the DB container publishes a fixed host port, so
-worktrees cannot share it. Before DB-backed tasks in a worktree, `make db-acquire` to lease a
-per-port slot from the DB pool (isolated compose project + port `5432+N`, schema rebuilt for the
-branch), and `make db-release` when done — do NOT start a duplicate stack or hijack another
-checkout's DB. Without `db-acquire`, DB targets default to host 5432 (single-stack, unchanged).
+**Working in a `git worktree` (DB + serve isolation):** the DB / API / mock-auth containers publish
+fixed host ports, so worktrees cannot share them. Before DB-backed tasks or `make serve` in a
+worktree, `make db-acquire` to lease a per-port slot (isolated compose project + `DB_HOST_PORT`
+`5432+N` / `API_HOST_PORT` `8080+N` / `MOCK_AUTH_HOST_PORT` `4000+N`, schema rebuilt for the
+branch), then `make test` / `make serve` reuse that slot (curl `localhost:$API_HOST_PORT`), and
+`make db-release` when done — do NOT start a duplicate stack or hijack another checkout's containers.
+Without `db-acquire`, targets default to 5432 / 8080 / 4000 (single-stack, unchanged).
 Details: `docs/maintenance/db-worktree-pool.md`.
 
 ## Protected Documentation
