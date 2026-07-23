@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testTxAdvisoryLockKey は、テスト tx を共有 DB 内で全プロセス横断に直列化するための advisory lock キー。
+// go test は各パッケージを別プロセスで並列実行するため、プロセス内 txLock だけでは CASCADE TRUNCATE
+// 同士が FK 関連テーブルのロックを交差させて deadlock しうる。advisory lock（DB 単位）で防ぐ。
+const testTxAdvisoryLockKey = 8_246_913
+
 var errRollbackForTest = xerrors.New("rollback for test")
 
 var (
@@ -35,6 +40,7 @@ type TransactionRunner interface {
 // testTxRunner はテスト用のトランザクションランナーを表します。
 type testTxRunner struct {
 	inner tx.Manager
+	db    driver.DatabaseDriver
 	t     *testing.T
 }
 
@@ -49,11 +55,13 @@ func NewTestTransactionRunner(t *testing.T) TransactionRunner {
 	t.Helper()
 	testLogger := logging.NewTestLogger(t)
 
+	db := getTestDB(t)
 	dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
-	innerTxm := driver.NewTransactionManager(getTestDB(t), dbCfg, testLogger, system.NewSleeper())
+	innerTxm := driver.NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
 
 	runner := &testTxRunner{
 		inner: innerTxm,
+		db:    db,
 		t:     t,
 	}
 
@@ -76,6 +84,12 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 	baseCtx := context.Background()
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
+		// 共有 DB を並列パッケージプロセス間で直列化する（tx 終了で自動解放）。プロセス内 txLock は
+		// 別プロセスの CASCADE TRUNCATE と競合するロック交差を防げないため advisory lock で補う。
+		if _, lockErr := driver.New(txCtx, t.db).
+			Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", testTxAdvisoryLockKey); lockErr != nil {
+			return lockErr
+		}
 		fn(txCtx)
 		return errRollbackForTest
 	})
