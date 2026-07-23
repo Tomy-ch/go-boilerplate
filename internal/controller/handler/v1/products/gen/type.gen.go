@@ -90,8 +90,8 @@ type ProductResponse struct {
 	// Name 商品名
 	Name string `json:"name"`
 
-	// Price 価格。USD セント単位の整数で表します（例 1999 は 19.99 ドル相当）。
-	Price int32 `json:"price"`
+	// Price 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+	Price string `json:"price"`
 
 	// PublishedAt 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
 	PublishedAt time.Time `json:"publishedAt"`

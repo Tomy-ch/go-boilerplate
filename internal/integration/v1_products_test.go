@@ -13,6 +13,7 @@ import (
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	"go-boilerplate/internal/usecase/tools/paging"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
@@ -31,7 +32,7 @@ func TestV1Products_Integration(t *testing.T) {
 			ID:          uuid.NewTestFromSalt(t, "integration_product"),
 			Name:        "商品",
 			Description: ptr.To("説明"),
-			Price:       1999,
+			Price:       decimaltestkit.MustParse(t, "19.99"),
 			Quantity:    100,
 			StatusID:    uuid.NewTestFromSalt(t, "integration_status"),
 			CategoryID:  uuid.NewTestFromSalt(t, "integration_category"),

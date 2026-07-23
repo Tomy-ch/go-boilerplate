@@ -11,6 +11,8 @@ import (
 	"go-boilerplate/internal/observability"
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate"
 	mock_exchangerate "go-boilerplate/internal/usecase/exchangerate/mock"
+	"go-boilerplate/pkg/decimal"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -50,11 +52,11 @@ func Test_server_GetExchangeRates(t *testing.T) {
 
 			s, mockUC := newServer(t)
 			mockUC.EXPECT().
-				Convert(gomock.Any(), exchangerateuc.ConvertInput{Base: "USD", Quote: "JPY", Amount: 100}).
-				Return(&exchangerateuc.ConvertResult{Converted: 15050}, nil)
+				Convert(gomock.Any(), exchangerateuc.ConvertInput{Base: "USD", Quote: "JPY", Amount: decimaltestkit.MustParse(t, "100")}).
+				Return(&exchangerateuc.ConvertResult{Converted: decimal.FromInt(15050)}, nil)
 
 			resp, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
-				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: 100},
+				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: "100"},
 			})
 
 			require.NoError(t, err)
@@ -65,8 +67,8 @@ func Test_server_GetExchangeRates(t *testing.T) {
 			assert.Equal(t, gen.GetExchangeRates200JSONResponse{
 				Base:      "USD",
 				Quote:     "JPY",
-				Amount:    100,
-				Converted: 15050,
+				Amount:    "100",
+				Converted: "15050",
 			}, actual)
 		})
 
@@ -78,13 +80,13 @@ func Test_server_GetExchangeRates(t *testing.T) {
 				Convert(gomock.Any(), exchangerateuc.ConvertInput{
 					Base:            "USD",
 					Quote:           "JPY",
-					Amount:          100,
+					Amount:          decimaltestkit.MustParse(t, "100"),
 					DisplayCurrency: new("JPY"),
 				}).
 				Return(&exchangerateuc.ConvertResult{
-					Converted: 15050,
+					Converted: decimal.FromInt(15050),
 					Reference: &exchangerateuc.ReferenceAmount{
-						Currency: "JPY", Amount: 15050, Rate: 150.5, RateDate: "2026-07-21",
+						Currency: "JPY", Amount: 15050, Rate: decimaltestkit.MustParse(t, "150.5"), RateDate: "2026-07-21",
 					},
 				}, nil)
 
@@ -92,7 +94,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 				Params: gen.GetExchangeRatesParams{
 					Base:            "USD",
 					Quote:           "JPY",
-					Amount:          100,
+					Amount:          "100",
 					DisplayCurrency: new(gen.JPY),
 				},
 			})
@@ -103,7 +105,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 			require.True(t, ok)
 			require.NotNil(t, actual.ReferenceAmount)
 			assert.Equal(t, gen.ReferenceAmount{
-				Currency: "JPY", Amount: 15050, Rate: 150.5, RateDate: "2026-07-21",
+				Currency: "JPY", Amount: 15050, Rate: "150.5", RateDate: "2026-07-21",
 			}, *actual.ReferenceAmount)
 		})
 
@@ -113,11 +115,11 @@ func Test_server_GetExchangeRates(t *testing.T) {
 			s, mockUC := newServer(t)
 			mockUC.EXPECT().
 				Convert(gomock.Any(), gomock.Any()).
-				Return(&exchangerateuc.ConvertResult{Converted: 15050, Reference: nil}, nil)
+				Return(&exchangerateuc.ConvertResult{Converted: decimal.FromInt(15050), Reference: nil}, nil)
 
 			resp, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
 				Params: gen.GetExchangeRatesParams{
-					Base: "USD", Quote: "JPY", Amount: 100, DisplayCurrency: new(gen.JPY),
+					Base: "USD", Quote: "JPY", Amount: "100", DisplayCurrency: new(gen.JPY),
 				},
 			})
 
@@ -132,6 +134,18 @@ func Test_server_GetExchangeRates(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("amountが十進として不正な場合は検証エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			s, _ := newServer(t)
+
+			_, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
+				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: "abc"},
+			})
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
 		t.Run("usecaseのエラーをそのまま伝播する", func(t *testing.T) {
 			t.Parallel()
 
@@ -141,7 +155,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 				Return(nil, apperror.ErrUnavailable)
 
 			_, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
-				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: 100},
+				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: "100"},
 			})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -159,12 +173,12 @@ func Test_toReferenceAmount(t *testing.T) {
 			t.Parallel()
 
 			actual := toReferenceAmount(&exchangerateuc.ReferenceAmount{
-				Currency: "JPY", Amount: 15050, Rate: 150.5, RateDate: "2026-07-21",
+				Currency: "JPY", Amount: 15050, Rate: decimaltestkit.MustParse(t, "150.5"), RateDate: "2026-07-21",
 			})
 
 			require.NotNil(t, actual)
 			assert.Equal(t, gen.ReferenceAmount{
-				Currency: "JPY", Amount: 15050, Rate: 150.5, RateDate: "2026-07-21",
+				Currency: "JPY", Amount: 15050, Rate: "150.5", RateDate: "2026-07-21",
 			}, *actual)
 		})
 

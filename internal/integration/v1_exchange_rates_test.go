@@ -10,6 +10,8 @@ import (
 	"go-boilerplate/internal/observability"
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate"
 	mock_exchangerate "go-boilerplate/internal/usecase/exchangerate/mock"
+	"go-boilerplate/pkg/decimal"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/mock/gomock"
@@ -30,8 +32,8 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 
 			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
-				Convert(gomock.Any(), exchangerateuc.ConvertInput{Base: "USD", Quote: "JPY", Amount: 100}).
-				Return(&exchangerateuc.ConvertResult{Converted: 15050}, nil)
+				Convert(gomock.Any(), exchangerateuc.ConvertInput{Base: "USD", Quote: "JPY", Amount: decimaltestkit.MustParse(t, "100")}).
+				Return(&exchangerateuc.ConvertResult{Converted: decimal.FromInt(15050)}, nil)
 
 			exchangeratehandler.BindHandler(e, tf, mockUC)
 
@@ -52,9 +54,9 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			mockUC.EXPECT().
 				Convert(gomock.Any(), gomock.Any()).
 				Return(&exchangerateuc.ConvertResult{
-					Converted: 15050,
+					Converted: decimal.FromInt(15050),
 					Reference: &exchangerateuc.ReferenceAmount{
-						Currency: "JPY", Amount: 15050, Rate: 150.5, RateDate: "2026-07-21",
+						Currency: "JPY", Amount: 15050, Rate: decimaltestkit.MustParse(t, "150.5"), RateDate: "2026-07-21",
 					},
 				}, nil)
 
@@ -78,7 +80,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
 				Convert(gomock.Any(), gomock.Any()).
-				Return(&exchangerateuc.ConvertResult{Converted: 15050, Reference: nil}, nil)
+				Return(&exchangerateuc.ConvertResult{Converted: decimal.FromInt(15050), Reference: nil}, nil)
 
 			exchangeratehandler.BindHandler(e, tf, mockUC)
 

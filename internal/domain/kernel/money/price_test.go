@@ -1,0 +1,110 @@
+package money
+
+import (
+	"testing"
+
+	"go-boilerplate/pkg/decimal"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewPrice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("サブセント精度の非負値を受理する", func(t *testing.T) {
+			t.Parallel()
+			p, err := NewPrice(decimaltestkit.MustParse(t, "19.995"))
+			require.NoError(t, err)
+			assert.Equal(t, "19.995", p.String())
+		})
+
+		t.Run("ゼロを受理する", func(t *testing.T) {
+			t.Parallel()
+			p, err := NewPrice(decimal.FromInt(0))
+			require.NoError(t, err)
+			assert.Equal(t, "0", p.String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("負値は ErrNegativePrice を返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := NewPrice(decimaltestkit.MustParse(t, "-0.01"))
+			require.ErrorIs(t, err, ErrNegativePrice)
+		})
+	})
+}
+
+func TestPrice_Decimal(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("保持している十進量を返す", func(t *testing.T) {
+			t.Parallel()
+			p, err := NewPrice(decimaltestkit.MustParse(t, "19.99"))
+			require.NoError(t, err)
+			assert.True(t, p.Decimal().Equal(decimaltestkit.MustParse(t, "19.99")))
+		})
+	})
+}
+
+func TestPrice_String(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("十進文字列を返す", func(t *testing.T) {
+			t.Parallel()
+			p, err := NewPrice(decimaltestkit.MustParse(t, "1234.5"))
+			require.NoError(t, err)
+			assert.Equal(t, "1234.5", p.String())
+		})
+	})
+}
+
+func TestPrice_ToMinorUnit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("セント精度へ丸めた決済スケール整数を返す", func(t *testing.T) {
+			t.Parallel()
+			p, err := NewPrice(decimaltestkit.MustParse(t, "19.995"))
+			require.NoError(t, err)
+			minor, err := p.ToMinorUnit(2)
+			require.NoError(t, err)
+			assert.Equal(t, int64(2000), minor)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("int64 範囲外は ErrOverflow を返す", func(t *testing.T) {
+			t.Parallel()
+			p, err := NewPrice(decimaltestkit.MustParse(t, "92233720368547758.08"))
+			require.NoError(t, err)
+			_, err = p.ToMinorUnit(2)
+			require.ErrorIs(t, err, decimal.ErrOverflow)
+		})
+
+		t.Run("最小単位の桁数が負の場合は ErrInvalidMinorUnit を返す", func(t *testing.T) {
+			t.Parallel()
+			p, err := NewPrice(decimaltestkit.MustParse(t, "19.99"))
+			require.NoError(t, err)
+			_, err = p.ToMinorUnit(-1)
+			require.ErrorIs(t, err, ErrInvalidMinorUnit)
+		})
+	})
+}

@@ -44,6 +44,7 @@
 |---|---|---|
 |`backoff`|指数バックオフの待機時間算出（純粋・時刻/乱数非依存）|なし|
 |`datetime`|日時パース|標準ライブラリ `time`|
+|`decimal`|exact-decimal 値オブジェクト（金額 / レート）|`github.com/shopspring/decimal`|
 |`envutil`|環境変数の一時上書き（テスト補助）|標準ライブラリ `os`|
 |`exec`|外部コマンド実行（インターフェース + モック）|標準ライブラリ `os/exec`|
 |`fnmeta`|関数 / パッケージ名の抽出|なし|
@@ -83,6 +84,21 @@
 |`ParseCustomLayout`|任意のレイアウトによるパース|
 
 すべての関数に `ToLocation` バリアント（例: `ParseRFC3339ToLocation`）があり、タイムゾーンを指定したパースが可能です。
+
+### decimal
+
+`github.com/shopspring/decimal` をラップした exact-decimal 値オブジェクトです。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は `internal/domain/kernel/money` が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
+
+|シンボル|説明|
+|---|---|
+|`Parse` / `FromInt`|十進文字列 / `int64` から生成|
+|`Add` / `Sub` / `Mul` / `Neg` / `DivRound`|正確な十進算術|
+|`RoundHalfAwayFromZero` / `Truncate`|指定桁での丸め|
+|`ToScaledInt64(n)`|n 桁で丸め `10^n` を掛けて最小単位 `int64` を返す（範囲外は `ErrOverflow`）|
+|`Cmp` / `Equal` / `Sign` / `IsZero` / `IsNegative`|比較・検査|
+|`MarshalJSON` / `UnmarshalJSON`|JSON 文字列のワイヤ表現（復元時は JSON number も受理）|
+|`Scan` / `Value`|`NUMERIC` DB 境界（`sql.Scanner` / `driver.Valuer`）|
+|`MustParse`（テスト専用）|テスト用のパニック付きパース|
 
 ### envutil
 

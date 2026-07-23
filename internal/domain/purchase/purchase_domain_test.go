@@ -5,11 +5,21 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/kernel/money"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mustPrice は、テスト用に十進文字列（ドル）から非負の money.Price を構築します。
+func mustPrice(t *testing.T, s string) money.Price {
+	t.Helper()
+	p, err := money.NewPrice(decimaltestkit.MustParse(t, s))
+	require.NoError(t, err)
+	return p
+}
 
 // validNewArgs は、New の有効な入力（id / code / userID / 明細入力 / ロック済み在庫）を返すテストヘルパーです。
 func validNewArgs(t *testing.T) (uuid.UUID, string, uuid.UUID, []DetailInput, []LockedProduct) {
@@ -23,8 +33,8 @@ func validNewArgs(t *testing.T) (uuid.UUID, string, uuid.UUID, []DetailInput, []
 		{ID: uuid.NewTestFromSalt(t, "detail_b"), ProductID: productB, Quantity: 1},
 	}
 	locked := []LockedProduct{
-		NewLockedProduct(productA, 80000, 20),
-		NewLockedProduct(productB, 1500, 10),
+		NewLockedProduct(productA, mustPrice(t, "800"), 20),
+		NewLockedProduct(productB, mustPrice(t, "15"), 10),
 	}
 	return id, "purchase-code-001", userID, inputs, locked
 }
@@ -66,8 +76,8 @@ func TestNew(t *testing.T) {
 			details := actual.Details()
 			assert.Equal(t, inputs[0].ProductID, details[0].ProductID())
 			assert.Equal(t, 2, details[0].Quantity())
-			assert.Equal(t, 80000, details[0].UnitPrice())
-			assert.Equal(t, 1500, details[1].UnitPrice())
+			assert.Equal(t, "800", details[0].UnitPrice().String())
+			assert.Equal(t, "15", details[1].UnitPrice().String())
 		})
 
 		t.Run("税額は切り捨てで丸められる", func(t *testing.T) {
@@ -76,13 +86,29 @@ func TestNew(t *testing.T) {
 			id := uuid.NewTestFromSalt(t, "p_round")
 			userID := uuid.NewTestFromSalt(t, "u_round")
 			productID := uuid.NewTestFromSalt(t, "prod_round")
-			// subtotal=105 → tax=105*10/100=10.5 → 切り捨て 10
+			// unit_price=$1.05 → subtotal=105セント → tax=105*10/100=10.5 → 切り捨て 10
 			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_round"), ProductID: productID, Quantity: 1}}
-			locked := []LockedProduct{NewLockedProduct(productID, 105, 5)}
+			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "1.05"), 5)}
 
 			actual, err := New(id, "code-round", userID, inputs, locked)
 			require.NoError(t, err)
 			assert.Equal(t, 10, actual.TaxAmount())
+		})
+
+		t.Run("サブセント単価は小計算出時に決済スケール(整数セント)へ切り捨てられる", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "p_subcent")
+			userID := uuid.NewTestFromSalt(t, "u_subcent")
+			productID := uuid.NewTestFromSalt(t, "prod_subcent")
+			// unit_price=$1.005（サブセント）× 3 = $3.015 → 切り捨てで 301 セント
+			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_subcent"), ProductID: productID, Quantity: 3}}
+			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "1.005"), 5)}
+
+			actual, err := New(id, "code-subcent", userID, inputs, locked)
+			require.NoError(t, err)
+			assert.Equal(t, 301, actual.SubtotalAmount())
+			assert.Equal(t, "1.005", actual.Details()[0].UnitPrice().String())
 		})
 
 		t.Run("数量が最小値(1)の場合でも購入を生成する", func(t *testing.T) {
@@ -92,7 +118,7 @@ func TestNew(t *testing.T) {
 			userID := uuid.NewTestFromSalt(t, "u_min")
 			productID := uuid.NewTestFromSalt(t, "prod_min")
 			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_min"), ProductID: productID, Quantity: minQuantity}}
-			locked := []LockedProduct{NewLockedProduct(productID, 1000, 1)}
+			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "10"), 1)}
 
 			actual, err := New(id, "code-min", userID, inputs, locked)
 			require.NoError(t, err)
@@ -121,7 +147,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			_, code, userID, inputs, locked := validNewArgs(t)
 			actual, err := New(uuid.UUID{}, code, userID, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
@@ -129,7 +155,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			id, _, userID, inputs, locked := validNewArgs(t)
 			actual, err := New(id, "", userID, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCode)
 		})
 
@@ -137,7 +163,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			id, code, _, inputs, locked := validNewArgs(t)
 			actual, err := New(id, code, uuid.UUID{}, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidUserID)
 		})
 
@@ -145,7 +171,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			id, code, userID, _, locked := validNewArgs(t)
 			actual, err := New(id, code, userID, nil, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrEmptyDetails)
 		})
 
@@ -154,7 +180,7 @@ func TestNew(t *testing.T) {
 			id, code, userID, inputs, locked := validNewArgs(t)
 			inputs[0].Quantity = 0
 			actual, err := New(id, code, userID, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidQuantity)
 		})
 
@@ -163,7 +189,7 @@ func TestNew(t *testing.T) {
 			id, code, userID, inputs, locked := validNewArgs(t)
 			inputs[0].ID = uuid.UUID{}
 			actual, err := New(id, code, userID, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
@@ -172,7 +198,7 @@ func TestNew(t *testing.T) {
 			id, code, userID, inputs, locked := validNewArgs(t)
 			inputs[1].ProductID = inputs[0].ProductID
 			actual, err := New(id, code, userID, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrDuplicateProductID)
 		})
 
@@ -180,9 +206,9 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			id, code, userID, inputs, _ := validNewArgs(t)
 			// productB のロックを欠く
-			locked := []LockedProduct{NewLockedProduct(inputs[0].ProductID, 80000, 20)}
+			locked := []LockedProduct{NewLockedProduct(inputs[0].ProductID, mustPrice(t, "800"), 20)}
 			actual, err := New(id, code, userID, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrProductNotFound)
 		})
 
@@ -191,13 +217,27 @@ func TestNew(t *testing.T) {
 			id, code, userID, inputs, _ := validNewArgs(t)
 			inputs[0].Quantity = 999
 			locked := []LockedProduct{
-				NewLockedProduct(inputs[0].ProductID, 80000, 20),
-				NewLockedProduct(inputs[1].ProductID, 1500, 10),
+				NewLockedProduct(inputs[0].ProductID, mustPrice(t, "800"), 20),
+				NewLockedProduct(inputs[1].ProductID, mustPrice(t, "15"), 10),
 			}
 			actual, err := New(id, code, userID, inputs, locked)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInsufficientStock)
 			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+
+		t.Run("単価が巨大で小計が決済スケール(int64)を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
+			t.Parallel()
+			id := uuid.NewTestFromSalt(t, "p_overflow")
+			userID := uuid.NewTestFromSalt(t, "u_overflow")
+			productID := uuid.NewTestFromSalt(t, "prod_overflow")
+			// $92233720368547758.08 × 100 = 9223372036854775808 セント（MaxInt64 超）
+			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_overflow"), ProductID: productID, Quantity: 1}}
+			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "92233720368547758.08"), 5)}
+
+			actual, err := New(id, "code-overflow", userID, inputs, locked)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
 	})
 }
@@ -211,7 +251,7 @@ func TestReconstruct(t *testing.T) {
 		userID := uuid.NewTestFromSalt(t, "rc_user")
 		statusID := uuid.NewTestFromSalt(t, "rc_status")
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "rc_d1"), uuid.NewTestFromSalt(t, "rc_p1"), 2, 80000),
+			NewPurchaseDetail(uuid.NewTestFromSalt(t, "rc_d1"), uuid.NewTestFromSalt(t, "rc_p1"), 2, mustPrice(t, "800")),
 		}
 		orderedAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
 		return id, "rc-code", userID, statusID, details, orderedAt
@@ -236,7 +276,7 @@ func TestReconstruct(t *testing.T) {
 			assert.Equal(t, orderedAt, actual.OrderedAt())
 			require.Len(t, actual.Details(), 1)
 			assert.Equal(t, details[0].ProductID(), actual.Details()[0].ProductID())
-			assert.Equal(t, details[0].UnitPrice(), actual.Details()[0].UnitPrice())
+			assert.True(t, details[0].UnitPrice().Decimal().Equal(actual.Details()[0].UnitPrice().Decimal()))
 		})
 	})
 
@@ -247,7 +287,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, _, details, orderedAt := valid(t)
 			actual, err := Reconstruct(id, code, userID, uuid.UUID{}, 160000, 16000, 500, 176500, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
 
@@ -255,7 +295,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			actual, err := Reconstruct(id, code, userID, statusID, -1, 16000, 500, 176500, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
 
@@ -263,7 +303,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, _, orderedAt := valid(t)
 			actual, err := Reconstruct(id, code, userID, statusID, 160000, 16000, 500, 176500, nil, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrEmptyDetails)
 		})
 
@@ -271,7 +311,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			_, code, userID, statusID, details, orderedAt := valid(t)
 			actual, err := Reconstruct(uuid.UUID{}, code, userID, statusID, 160000, 16000, 500, 176500, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
@@ -279,7 +319,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, _, userID, statusID, details, orderedAt := valid(t)
 			actual, err := Reconstruct(id, "", userID, statusID, 160000, 16000, 500, 176500, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCode)
 		})
 
@@ -287,7 +327,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, _, statusID, details, orderedAt := valid(t)
 			actual, err := Reconstruct(id, code, uuid.UUID{}, statusID, 160000, 16000, 500, 176500, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidUserID)
 		})
 
@@ -295,7 +335,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			actual, err := Reconstruct(id, code, userID, statusID, 160000, -1, 500, 176500, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
 
@@ -303,7 +343,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			actual, err := Reconstruct(id, code, userID, statusID, 160000, 16000, -1, 176500, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
 
@@ -311,8 +351,44 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			actual, err := Reconstruct(id, code, userID, statusID, 160000, 16000, 500, -1, details, orderedAt)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
+		})
+	})
+}
+
+func TestLockedProduct_Price(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロック時のサブセント価格スナップショットを返す", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewLockedProduct(uuid.NewTestFromSalt(t, "lp_price"), mustPrice(t, "19.995"), 5)
+			assert.Equal(t, "19.995", l.Price().String())
+			assert.True(t, l.Price().Decimal().Equal(decimaltestkit.MustParse(t, "19.995")))
+		})
+	})
+}
+
+func TestPurchaseDetail_UnitPrice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細のサブセント単価スナップショットを返す", func(t *testing.T) {
+			t.Parallel()
+
+			d := NewPurchaseDetail(
+				uuid.NewTestFromSalt(t, "pd_id"),
+				uuid.NewTestFromSalt(t, "pd_product"),
+				2, mustPrice(t, "1.005"),
+			)
+			assert.Equal(t, "1.005", d.UnitPrice().String())
+			assert.True(t, d.UnitPrice().Decimal().Equal(decimaltestkit.MustParse(t, "1.005")))
 		})
 	})
 }

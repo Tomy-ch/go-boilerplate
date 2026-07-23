@@ -7,9 +7,12 @@ package exchangerate
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/v1/exchangerate/gen"
 	"go-boilerplate/internal/observability"
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate"
+	"go-boilerplate/pkg/decimal"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 )
@@ -40,10 +43,15 @@ func (s *server) GetExchangeRates(
 		displayCurrency = &dc
 	}
 
+	amount, err := decimal.Parse(request.Params.Amount)
+	if err != nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "amount must be a decimal string")
+	}
+
 	result, err := s.uc.Convert(ctx, exchangerateuc.ConvertInput{
 		Base:            request.Params.Base,
 		Quote:           request.Params.Quote,
-		Amount:          request.Params.Amount,
+		Amount:          amount,
 		DisplayCurrency: displayCurrency,
 	})
 	if err != nil {
@@ -53,8 +61,8 @@ func (s *server) GetExchangeRates(
 	return gen.GetExchangeRates200JSONResponse(gen.ExchangeRateResponse{
 		Base:            request.Params.Base,
 		Quote:           request.Params.Quote,
-		Amount:          request.Params.Amount,
-		Converted:       result.Converted,
+		Amount:          amount.String(),
+		Converted:       result.Converted.String(),
 		ReferenceAmount: toReferenceAmount(result.Reference),
 	}), nil
 }
@@ -67,7 +75,7 @@ func toReferenceAmount(r *exchangerateuc.ReferenceAmount) *gen.ReferenceAmount {
 	return &gen.ReferenceAmount{
 		Currency: r.Currency,
 		Amount:   r.Amount,
-		Rate:     r.Rate,
+		Rate:     r.Rate.String(),
 		RateDate: r.RateDate,
 	}
 }

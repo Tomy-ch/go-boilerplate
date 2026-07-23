@@ -5,10 +5,13 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/kernel/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/decimal"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -22,6 +25,14 @@ const (
 	seedUserID         = "550e8400-e29b-41d4-a716-446655440000"
 	seedUnprocessedSID = "a66c996c-86b2-41d8-9bdd-9b685fb7c47d"
 )
+
+// mustPrice は、テスト用に十進文字列（ドル）から非負の money.Price を構築します。
+func mustPrice(t *testing.T, s string) money.Price {
+	t.Helper()
+	p, err := money.NewPrice(decimaltestkit.MustParse(t, s))
+	require.NoError(t, err)
+	return p
+}
 
 func mustParse(t *testing.T, s string) uuid.UUID {
 	t.Helper()
@@ -65,8 +76,55 @@ func Test_commandService_LockProducts(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, locked, 1)
 				assert.Equal(t, pid, locked[0].ID())
-				assert.Equal(t, 80000, locked[0].Price())
+				assert.Equal(t, "80000", locked[0].Price().String())
 				assert.Equal(t, 20, locked[0].Quantity())
+			})
+		})
+
+		t.Run("サブセント単価をNUMERIC精度を保ったままロックする", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				pid := mustParse(t, "c1000000-0000-4000-8000-0000000000aa")
+				// price=19.995（サブセント）を NUMERIC 列へ直接挿入し、価格スケールの往復を検証する。
+				_, err := drv.Exec(ctx,
+					"INSERT INTO products "+
+						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,NOW())",
+					pid, "subcent-"+pid.String(), nil, "19.995", 20, nil, seedStatusInStock, seedCategory,
+				)
+				require.NoError(t, err)
+
+				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
+				require.NoError(t, err)
+				require.Len(t, locked, 1)
+				assert.Equal(t, "19.995", locked[0].Price().String())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("負値の価格は再構築不能としてErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				pid := mustParse(t, "c1000000-0000-4000-8000-0000000000bb")
+				// NUMERIC 列は負値を格納できるが、money.Price は非負不変条件を持つ。
+				// 格納行からの Price 再構築失敗が ErrInternal へ正規化されることを検証する。
+				_, err := drv.Exec(ctx,
+					"INSERT INTO products "+
+						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,NOW())",
+					pid, "neg-"+pid.String(), nil, "-1", 20, nil, seedStatusInStock, seedCategory,
+				)
+				require.NoError(t, err)
+
+				_, err = svc.LockProducts(ctx, []uuid.UUID{pid})
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 	})
@@ -123,11 +181,11 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				assert.Equal(t, entity.ShippingFee(), shipping)
 				assert.Equal(t, entity.TotalAmount(), total)
 
-				var unitPrice int
+				var unitPrice decimal.Decimal
 				require.NoError(t, drv.QueryRow(ctx,
 					"SELECT unit_price FROM purchase_details WHERE purchase_id=$1", entity.ID(),
 				).Scan(&unitPrice))
-				assert.Equal(t, 80000, unitPrice)
+				assert.Equal(t, "80000", unitPrice.String())
 			})
 		})
 	})
@@ -143,7 +201,7 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				pid := mustParse(t, "c3000000-0000-4000-8000-000000000001")
 				// 実在庫は 1 だが、古いロック値（20）で集約を作り防御 UPDATE の 0 行検知を検証する。
 				insertTestProduct(ctx, t, drv, pid, 80000, 1)
-				stale := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, 80000, 20)}
+				stale := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 
 				entity := newPurchase(t, userID, pid, 2, stale)
 				err := svc.CreatePurchase(ctx, entity)
@@ -175,8 +233,8 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				require.NoError(t, err)
 				// 古いロック値で両方を通し、2 件目の減算で 0 行検知させる。
 				stale := []domainpurchase.LockedProduct{
-					domainpurchase.NewLockedProduct(pid1, 80000, 20),
-					domainpurchase.NewLockedProduct(pid2, 1500, 20),
+					domainpurchase.NewLockedProduct(pid1, mustPrice(t, "80000"), 20),
+					domainpurchase.NewLockedProduct(pid2, mustPrice(t, "1500"), 20),
 				}
 				entity, err := domainpurchase.New(id, code.String(), userID, []domainpurchase.DetailInput{
 					{ID: d1, ProductID: pid1, Quantity: 1},
@@ -197,7 +255,7 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
 
 				missingUser := mustParse(t, "c5000000-0000-4000-8000-0000000000ff")
-				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, 80000, 20)}
+				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 				entity := newPurchase(t, missingUser, pid, 1, locked)
 
 				require.ErrorIs(t, svc.CreatePurchase(ctx, entity), apperror.ErrInvalidArgument)

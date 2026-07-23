@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS purchase_details (
     purchase_id UUID NOT NULL,
     product_id UUID NOT NULL,
     quantity INTEGER NOT NULL,
-    unit_price INTEGER NOT NULL,
+    unit_price NUMERIC NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT purchase_details_id_primary PRIMARY KEY (id),

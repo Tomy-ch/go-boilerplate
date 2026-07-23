@@ -16,9 +16,9 @@ properties:
     description: 購入数量
     example: 2
   unitPrice:
-    type: integer
-    format: int32
+    type: string
+    pattern: '^\d+(\.\d+)?$'
     description: |
-      購入時点の単価スナップショット。USD セント単位の整数です（例 1999 は 19.99 ドル相当）。
+      購入時点の単価スナップショット。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "800.00"）。
       購入成立後に商品価格が変わっても本値は不変です。
-    example: 80000
+    example: "800.00"

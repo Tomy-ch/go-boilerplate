@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
@@ -35,7 +36,7 @@ func newTestPurchaseView(t *testing.T) purchaseuc.PurchaseView {
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "h_prod"), Quantity: 2, UnitPrice: 80000},
+			{ProductID: uuid.NewTestFromSalt(t, "h_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
@@ -121,7 +122,12 @@ func Test_server_PostPurchases(t *testing.T) {
 			userID := uuid.NewTestFromSalt(t, "h_user_dc")
 			productID := uuid.NewTestFromSalt(t, "h_prod_dc")
 			view := newTestPurchaseView(t)
-			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{Currency: "JPY", Amount: 26475, Rate: 150.5, RateDate: "2026-07-21"}
+			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{
+				Currency: "JPY",
+				Amount:   26475,
+				Rate:     decimaltestkit.MustParse(t, "150.5"),
+				RateDate: "2026-07-21",
+			}
 			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, params purchaseuc.CreatePurchaseParams) (purchaseuc.PurchaseView, error) {
 					require.NotNil(t, params.DisplayCurrency)
@@ -217,15 +223,15 @@ func Test_toPurchaseResponse(t *testing.T) {
 			assert.Equal(t, view.Code, actual.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), actual.UserId)
 			assert.Equal(t, view.StatusID.ToPrimitive(), actual.StatusId)
-			assert.Equal(t, int32(160000), actual.SubtotalAmount)
-			assert.Equal(t, int32(16000), actual.TaxAmount)
-			assert.Equal(t, int32(500), actual.ShippingFee)
-			assert.Equal(t, int32(176500), actual.TotalAmount)
+			assert.Equal(t, int64(160000), actual.SubtotalAmount)
+			assert.Equal(t, int64(16000), actual.TaxAmount)
+			assert.Equal(t, int64(500), actual.ShippingFee)
+			assert.Equal(t, int64(176500), actual.TotalAmount)
 			assert.Equal(t, view.OrderedAt, actual.OrderedAt)
 			require.Len(t, actual.Details, 1)
 			assert.Equal(t, view.Details[0].ProductID.ToPrimitive(), actual.Details[0].ProductId)
 			assert.Equal(t, int32(2), actual.Details[0].Quantity)
-			assert.Equal(t, int32(80000), actual.Details[0].UnitPrice)
+			assert.Equal(t, "800", actual.Details[0].UnitPrice)
 			assert.Nil(t, actual.ReferenceAmount)
 		})
 
@@ -233,12 +239,17 @@ func Test_toPurchaseResponse(t *testing.T) {
 			t.Parallel()
 
 			view := newTestPurchaseView(t)
-			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{Currency: "JPY", Amount: 26475, Rate: 150.5, RateDate: "2026-07-21"}
+			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{
+				Currency: "JPY",
+				Amount:   26475,
+				Rate:     decimaltestkit.MustParse(t, "150.5"),
+				RateDate: "2026-07-21",
+			}
 			actual := toPurchaseResponse(view)
 			require.NotNil(t, actual.ReferenceAmount)
 			assert.Equal(t, "JPY", actual.ReferenceAmount.Currency)
 			assert.Equal(t, int64(26475), actual.ReferenceAmount.Amount)
-			assert.InDelta(t, 150.5, actual.ReferenceAmount.Rate, 0.001)
+			assert.Equal(t, "150.5", actual.ReferenceAmount.Rate)
 			assert.Equal(t, "2026-07-21", actual.ReferenceAmount.RateDate)
 		})
 	})
@@ -257,7 +268,9 @@ func Test_toReferenceAmount(t *testing.T) {
 
 		t.Run("値がある場合はレスポンス型へ変換する", func(t *testing.T) {
 			t.Parallel()
-			actual := toReferenceAmount(&purchaseuc.ReferenceAmountView{Currency: "JPY", Amount: 15050, Rate: 150.5, RateDate: "2026-07-21"})
+			actual := toReferenceAmount(
+				&purchaseuc.ReferenceAmountView{Currency: "JPY", Amount: 15050, Rate: decimaltestkit.MustParse(t, "150.5"), RateDate: "2026-07-21"},
+			)
 			require.NotNil(t, actual)
 			assert.Equal(t, int64(15050), actual.Amount)
 			assert.Equal(t, "2026-07-21", actual.RateDate)

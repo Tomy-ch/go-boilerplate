@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"go-boilerplate/internal/domain/kernel/money"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
@@ -88,11 +89,15 @@ func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*prod
 // rowToProduct は、sqlc が返す Products 行をドメインエンティティへ変換します。
 // 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToProduct(p gen.Products) (*product.Product, error) {
+	price, err := money.NewPrice(p.Price)
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
 	entity, err := product.New(
 		p.ID,
 		p.Name,
 		p.Description,
-		int(p.Price),
+		price,
 		int(p.Quantity),
 		int32PtrToIntPtr(p.StockWarningThreshold),
 		p.StatusID,

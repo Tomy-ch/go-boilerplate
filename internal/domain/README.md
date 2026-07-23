@@ -52,6 +52,13 @@ Examples:
 - Decimal → `pkg/decimal`
 - Error → `pkg/xerrors`
 
+- A domain package must **not** import another aggregate (enforced by depguard: `internal/domain/`
+  is denied). Business-semantic value objects shared across aggregates — e.g. `money.Price`, which
+  cannot live in `pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
+  [`internal/domain/kernel`](kernel/README.md), which every domain package may import. Admission to
+  the kernel is deliberately narrow (see its README); it is not a `shared` / `common` junk drawer.
+  Rationale: [ADR-0104](../../docs/adr/0104-domain-shared-kernel.md).
+
 ## Domain boundaries
 
 The Domain layer is a layer that **expresses business rules and state transitions**.

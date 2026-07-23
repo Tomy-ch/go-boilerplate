@@ -53,6 +53,13 @@ touches `dead`, and replay never touches `published`.
   and `Headers` (propagated to the external endpoint). Do **not** put sensitive
   headers (`Authorization` / `Cookie`) in `Headers` — they are sent verbatim
   to the external endpoint.
+- **Where to build `Payload` — keep it out of the usecase body.** The caller owns
+  the marshaling, but the versioned event contract (its struct, JSON field names,
+  and `EventType` constant) must live in a **dedicated event unit** (its own package
+  / function) that the usecase merely calls. Inlining the wire representation into
+  the usecase method re-introduces a fat usecase and couples the orchestration to a
+  serialization format; isolating it keeps the usecase a thin orchestrator and gives
+  the event contract a single, testable home.
 
 ### relay — `RelayUsecase`
 

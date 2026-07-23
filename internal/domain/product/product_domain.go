@@ -1,11 +1,13 @@
 // Package product は、商品ドメインを定義します。名称・価格・在庫などの不変条件を持つ Product エンティティと、
-// 公開商品の cursor 一覧取得を含む Repository インターフェースを提供します。price は USD セント単位の整数です。
+// 公開商品の cursor 一覧取得を含む Repository インターフェースを提供します。price はサブセント精度を保持する
+// 価格スケール（Decimal）の値オブジェクト money.Price で保持します。
 package product
 
 import (
 	"fmt"
 	"time"
 
+	"go-boilerplate/internal/domain/kernel/money"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/stringkit"
 	"go-boilerplate/pkg/uuid"
@@ -15,12 +17,12 @@ import (
 // Products は、Product エンティティのスライス型です。
 type Products []*Product
 
-// Product は、商品を表すドメインエンティティです。price は USD セント単位の整数で保持します。
+// Product は、商品を表すドメインエンティティです。price はサブセント精度を保持する money.Price で保持します。
 type Product struct {
 	id                    uuid.UUID
 	name                  string
 	description           *string
-	price                 int
+	price                 money.Price
 	quantity              int
 	stockWarningThreshold *int
 	statusID              uuid.UUID
@@ -28,14 +30,14 @@ type Product struct {
 	publishedAt           time.Time
 }
 
-// New は、商品エンティティの検証と生成を行います。
-// price / quantity は 0 以上、stockWarningThreshold は指定時 0 以上である必要があります。
+// New は、商品エンティティの検証と生成を行います。price は非負の money.Price（非負検証は Price VO が担保）、
+// quantity は 0 以上、stockWarningThreshold は指定時 0 以上である必要があります。
 // id / statusID / categoryID が nil、name が長さ制約外、publishedAt がゼロ値の場合はそれぞれ検証エラーを返します。
 func New(
 	id uuid.UUID,
 	name string,
 	description *string,
-	price int,
+	price money.Price,
 	quantity int,
 	stockWarningThreshold *int,
 	statusID uuid.UUID,
@@ -47,9 +49,6 @@ func New(
 	}
 	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
 		return nil, xerrors.Wrap(ErrInvalidName, msg)
-	}
-	if price < minPrice {
-		return nil, xerrors.Wrap(ErrInvalidPrice, fmt.Sprintf("price must be %d or greater, got %d", minPrice, price))
 	}
 	if quantity < minQuantity {
 		return nil, xerrors.Wrap(ErrInvalidQuantity, fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, quantity))
@@ -92,8 +91,8 @@ func (p *Product) Name() string { return p.name }
 // Description は、商品説明を返します。未設定の場合は nil です。
 func (p *Product) Description() *string { return ptr.Copy(p.description) }
 
-// Price は、価格（USD セント単位の整数）を返します。
-func (p *Product) Price() int { return p.price }
+// Price は、価格（サブセント精度を保持する money.Price）を返します。
+func (p *Product) Price() money.Price { return p.price }
 
 // Quantity は、在庫数を返します。
 func (p *Product) Quantity() int { return p.quantity }

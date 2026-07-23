@@ -17,6 +17,7 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -37,7 +38,7 @@ func purchaseViewFixture(t *testing.T) purchaseuc.PurchaseView {
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "int_prod"), Quantity: 2, UnitPrice: 80000},
+			{ProductID: uuid.NewTestFromSalt(t, "int_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
@@ -125,7 +126,12 @@ func TestV1Purchases_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			view := purchaseViewFixture(t)
-			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{Currency: "JPY", Amount: 26475, Rate: 150.5, RateDate: "2026-07-21"}
+			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{
+				Currency: "JPY",
+				Amount:   26475,
+				Rate:     decimaltestkit.MustParse(t, "150.5"),
+				RateDate: "2026-07-21",
+			}
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(view, nil)
 

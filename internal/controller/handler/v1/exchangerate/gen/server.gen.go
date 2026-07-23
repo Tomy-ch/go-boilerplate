@@ -48,7 +48,7 @@ func (w *ServerInterfaceWrapper) GetExchangeRates(ctx echo.Context) error {
 
 	// ------------- Required query parameter "amount" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "amount", ctx.QueryParams(), &params.Amount, runtime.BindQueryParameterOptions{Type: "number", Format: "double"})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "amount", ctx.QueryParams(), &params.Amount, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter amount: %s", err))
 	}

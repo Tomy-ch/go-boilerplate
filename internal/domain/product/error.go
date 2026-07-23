@@ -11,8 +11,6 @@ var (
 	ErrInvalidID = xerrors.Wrap(errInvalid, "id failed")
 	// ErrInvalidName は、商品名の検証に失敗した場合のエラーです。
 	ErrInvalidName = xerrors.Wrap(errInvalid, "name failed")
-	// ErrInvalidPrice は、価格の検証に失敗した場合のエラーです。
-	ErrInvalidPrice = xerrors.Wrap(errInvalid, "price failed")
 	// ErrInvalidQuantity は、在庫数の検証に失敗した場合のエラーです。
 	ErrInvalidQuantity = xerrors.Wrap(errInvalid, "quantity failed")
 	// ErrInvalidStockWarningThreshold は、在庫警告閾値の検証に失敗した場合のエラーです。

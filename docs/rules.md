@@ -31,6 +31,16 @@ flowchart LR
 
 **The domain layer must always be the most independent layer.**
 
+### Domain shared kernel
+
+A domain package must **not** import another aggregate (`internal/domain/` is denied by depguard).
+Business-semantic value objects shared across aggregates — e.g. `money.Price`, which cannot live in
+`pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
+[`internal/domain/kernel`](../internal/domain/kernel/README.md), which every domain package may
+import (depguard allows `internal/domain/kernel`). Admission to the kernel is deliberately narrow
+(value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README); it is not
+a `shared` / `common` junk drawer. Rationale: [ADR-0104](adr/0104-domain-shared-kernel.md).
+
 ### Rationale
 
 This rule prevents the domain model from depending on frameworks or infrastructure.

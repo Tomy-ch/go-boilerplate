@@ -27,10 +27,12 @@ properties:
     description: 商品説明。未設定の場合は null です。
     example: "ノイズキャンセリング対応の Bluetooth イヤホン"
   price:
-    type: integer
-    format: int32
-    description: 価格。USD セント単位の整数で表します（例 1999 は 19.99 ドル相当）。
-    example: 1999
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: >-
+      価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。
+      JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+    example: "19.99"
   quantity:
     type: integer
     format: int32

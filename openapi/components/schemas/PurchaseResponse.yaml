@@ -36,22 +36,22 @@ properties:
     example: "a66c996c-86b2-41d8-9bdd-9b685fb7c47d"
   subtotalAmount:
     type: integer
-    format: int32
+    format: int64
     description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
     example: 160000
   taxAmount:
     type: integer
-    format: int32
+    format: int64
     description: 税額（国内消費税）。USD セント単位の整数です。
     example: 16000
   shippingFee:
     type: integer
-    format: int32
+    format: int64
     description: 送料。USD セント単位の整数です。
     example: 500
   totalAmount:
     type: integer
-    format: int32
+    format: int64
     description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
     example: 176500
   details:

@@ -1,11 +1,11 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package purchase は、購入の作成ユースケースを提供します。金額はすべて USD セント単位の整数です。
+// Package purchase は、購入の作成ユースケースを提供します。単価は価格スケール（ドル decimal）、
+// 決済額は決済スケール（整数セント）で扱います（ADR-0101 / ADR-0102）。
 package purchase
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"go-boilerplate/internal/domain/purchase"
@@ -14,6 +14,8 @@ import (
 	"go-boilerplate/internal/usecase/exchangerate"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/purchase/command"
+	"go-boilerplate/internal/usecase/purchase/event"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -21,12 +23,12 @@ import (
 const (
 	// baseCurrency は、購入金額の基軸通貨です。金額は本通貨のセント整数で保持します。
 	baseCurrency = "USD"
-	// eventTypeCreated は、購入作成の outbox イベント種別（version 込み）です。
-	eventTypeCreated = "purchase.created.v1"
 	// aggregateType は、outbox の集約種別です。
 	aggregateType = "purchase"
 	// centsPerBaseUnit は、基軸通貨（USD）1 単位あたりのセント数です。参考換算の入力金額へ換算します。
 	centsPerBaseUnit = 100
+	// minorUnitDigits は、基軸通貨（USD）の最小単位の小数桁数です（セント = 小数 2 桁）。
+	minorUnitDigits = 2
 )
 
 // DetailParam は、購入明細の入力（商品 ID と数量）です。
@@ -45,18 +47,18 @@ type CreatePurchaseParams struct {
 	DisplayCurrency *string
 }
 
-// PurchaseDetailView は、購入明細のユースケース出力 DTO です。
+// PurchaseDetailView は、購入明細のユースケース出力 DTO です。UnitPrice は価格スケール（ドル decimal）です。
 type PurchaseDetailView struct {
 	ProductID uuid.UUID
 	Quantity  int
-	UnitPrice int
+	UnitPrice decimal.Decimal
 }
 
 // ReferenceAmountView は、参考換算額のユースケース出力 DTO です（非永続）。
 type ReferenceAmountView struct {
 	Currency string
 	Amount   int64
-	Rate     float64
+	Rate     decimal.Decimal
 	RateDate string
 }
 
@@ -154,14 +156,14 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return cerr
 		}
 
-		payload, perr := buildCreatedPayload(entity)
+		payload, perr := event.BuildCreated(entity)
 		if perr != nil {
 			return perr
 		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   purchaseID.String(),
-			EventType:     eventTypeCreated,
+			EventType:     event.TypeCreated,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -189,10 +191,12 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 // referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。
 // 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
 func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
+	// 決済スケール（整数セント）の合計を価格スケール（ドル decimal）へ戻して換算入力にする。
+	amount := decimal.FromInt(int64(totalCents)).DivRound(decimal.FromInt(centsPerBaseUnit), minorUnitDigits)
 	res, err := u.xr.Convert(ctx, exchangerate.ConvertInput{
 		Base:            baseCurrency,
 		Quote:           displayCurrency,
-		Amount:          float64(totalCents) / float64(centsPerBaseUnit),
+		Amount:          amount,
 		DisplayCurrency: &displayCurrency,
 	})
 	if err != nil || res.Reference == nil {
@@ -214,7 +218,7 @@ func toPurchaseView(p *purchase.Purchase) PurchaseView {
 		views[i] = PurchaseDetailView{
 			ProductID: d.ProductID(),
 			Quantity:  d.Quantity(),
-			UnitPrice: d.UnitPrice(),
+			UnitPrice: d.UnitPrice().Decimal(),
 		}
 	}
 	return PurchaseView{
@@ -229,50 +233,4 @@ func toPurchaseView(p *purchase.Purchase) PurchaseView {
 		Details:        views,
 		OrderedAt:      p.OrderedAt(),
 	}
-}
-
-// buildCreatedPayload は、purchase.created.v1 の自己完結 snapshot payload を組み立てます（ADR-0043）。
-func buildCreatedPayload(p *purchase.Purchase) ([]byte, error) {
-	type detail struct {
-		ProductID string `json:"productId"`
-		Quantity  int    `json:"quantity"`
-		UnitPrice int    `json:"unitPrice"`
-	}
-	type event struct {
-		PurchaseID     string   `json:"purchaseId"`
-		Code           string   `json:"code"`
-		UserID         string   `json:"userId"`
-		StatusCode     int      `json:"statusCode"`
-		SubtotalAmount int      `json:"subtotalAmount"`
-		TaxAmount      int      `json:"taxAmount"`
-		ShippingFee    int      `json:"shippingFee"`
-		TotalAmount    int      `json:"totalAmount"`
-		Details        []detail `json:"details"`
-	}
-
-	src := p.Details()
-	details := make([]detail, len(src))
-	for i, d := range src {
-		details[i] = detail{
-			ProductID: d.ProductID().String(),
-			Quantity:  d.Quantity(),
-			UnitPrice: d.UnitPrice(),
-		}
-	}
-
-	payload, err := json.Marshal(event{
-		PurchaseID:     p.ID().String(),
-		Code:           p.Code(),
-		UserID:         p.UserID().String(),
-		StatusCode:     p.StatusCode(),
-		SubtotalAmount: p.SubtotalAmount(),
-		TaxAmount:      p.TaxAmount(),
-		ShippingFee:    p.ShippingFee(),
-		TotalAmount:    p.TotalAmount(),
-		Details:        details,
-	})
-	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to encode purchase.created payload")
-	}
-	return payload, nil
 }

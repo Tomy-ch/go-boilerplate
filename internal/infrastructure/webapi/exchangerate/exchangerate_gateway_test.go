@@ -64,7 +64,7 @@ func Test_gateway_GetRate(t *testing.T) {
 			require.NotNil(t, rate)
 			assert.Equal(t, "USD", rate.Base)
 			assert.Equal(t, "JPY", rate.Quote)
-			assert.InEpsilon(t, 150.5, rate.Value, 1e-9)
+			assert.Equal(t, "150.5", rate.Value.String())
 			assert.Equal(t, "2026-07-21", rate.Date)
 		})
 	})

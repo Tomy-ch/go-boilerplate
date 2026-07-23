@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS products (
     id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    price INTEGER NOT NULL,
+    price NUMERIC NOT NULL,
     quantity INTEGER NOT NULL,
     stock_warning_threshold INTEGER,
     status_id UUID NOT NULL,

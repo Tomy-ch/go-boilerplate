@@ -40,7 +40,7 @@ methods:
     - name: Ascending
       type: bool
 - name: ProductView
-  description: 商品 1 件分の usecase 出力 DTO。domain エンティティ Product から写像する。price は USD セント整数。
+  description: 商品 1 件分の usecase 出力 DTO。domain エンティティ Product から写像する。Price は価格スケールの十進量（pkg/decimal.Decimal）で、controller が decimal 文字列へ整形する。
   fields:
     - name: ID
       type: uuid.UUID
@@ -49,7 +49,7 @@ methods:
     - name: Description
       type: "*string"
     - name: Price
-      type: int
+      type: decimal.Decimal
     - name: Quantity
       type: int
     - name: StockWarningThreshold

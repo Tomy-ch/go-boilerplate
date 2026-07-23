@@ -58,7 +58,7 @@ func Test_decodeProductCursor(t *testing.T) {
 
 			actual, decErr := decodeProductCursor(cursor)
 			require.ErrorIs(t, decErr, apperror.ErrInvalidArgument)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 		})
 
 		t.Run("published_atがRFC3339Nanoでない場合はErrInvalidArgumentを返す", func(t *testing.T) {
@@ -69,7 +69,7 @@ func Test_decodeProductCursor(t *testing.T) {
 
 			actual, decErr := decodeProductCursor(cursor)
 			require.ErrorIs(t, decErr, apperror.ErrInvalidArgument)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 		})
 
 		t.Run("idがUUIDでない場合はErrInvalidArgumentを返す", func(t *testing.T) {
@@ -80,7 +80,7 @@ func Test_decodeProductCursor(t *testing.T) {
 
 			actual, decErr := decodeProductCursor(cursor)
 			require.ErrorIs(t, decErr, apperror.ErrInvalidArgument)
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 		})
 	})
 }
@@ -97,7 +97,7 @@ func Test_encodeProductCursor(t *testing.T) {
 			id := uuid.NewTestFromSalt(t, "encode_product_cursor_id")
 			publishedAt := time.Date(2026, time.March, 4, 5, 6, 7, 800000000, time.UTC)
 			last, err := product.New(
-				id, "商品名", ptr.To("説明"), 500, 3, ptr.To(1),
+				id, "商品名", ptr.To("説明"), mustPrice(t, "5.00"), 3, ptr.To(1),
 				uuid.NewTestFromSalt(t, "encode_status"), uuid.NewTestFromSalt(t, "encode_category"), publishedAt,
 			)
 			require.NoError(t, err)

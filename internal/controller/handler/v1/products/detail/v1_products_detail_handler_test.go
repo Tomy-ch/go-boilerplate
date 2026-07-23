@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
@@ -34,7 +35,7 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		ID:                    uuid.NewTestFromSalt(t, salt),
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
-		Price:                 1999,
+		Price:                 decimaltestkit.MustParse(t, "19.99"),
 		Quantity:              100,
 		StockWarningThreshold: ptr.To(10),
 		StatusID:              uuid.NewTestFromSalt(t, salt+"_status"),
@@ -46,7 +47,7 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 // wantProductResponse は、本番 toProductResponse とは独立な検証用オラクル（フィールド取り違え検出）。
 func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 	//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
-	price, quantity := int32(dto.Price), int32(dto.Quantity)
+	quantity := int32(dto.Quantity)
 	var threshold *int32
 	if dto.StockWarningThreshold != nil {
 		//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
@@ -57,7 +58,7 @@ func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		Id:                    dto.ID.ToPrimitive(),
 		Name:                  dto.Name,
 		Description:           dto.Description,
-		Price:                 price,
+		Price:                 dto.Price.String(),
 		Quantity:              quantity,
 		StockWarningThreshold: threshold,
 		StatusId:              dto.StatusID.ToPrimitive(),
@@ -138,7 +139,7 @@ func Test_server_GetProductsDetail(t *testing.T) {
 				context.Background(),
 				gen.GetProductsDetailRequestObject{ProductId: dto.ID.ToPrimitive()},
 			)
-			require.Nil(t, resp)
+			assert.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 	})

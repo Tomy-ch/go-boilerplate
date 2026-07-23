@@ -2,23 +2,23 @@
 
 English | [日本語](README.ja.md)
 
-Provides money arithmetic helpers for the Usecase tier. Money is held as **minor-unit
-integers** (e.g. USD cents, JPY yen) to avoid `float` accumulation error; the rounding method
-is an application convention fixed by ADR.
+Provides the money-settlement **policy** for the Usecase tier. The exact arithmetic, rounding,
+and minor-unit scaling mechanism lives in [`pkg/decimal`](../../../../pkg/decimal/README.md);
+this package only chooses *which* minor-unit digit count and *which* rounding mode a settlement
+amount is reduced to.
 
 ## Public API
 
-- `ApplyRateHalfUp(amountMinor int64, rate float64, scale int64) int64` — applies `rate` to a
-  minor-unit integer and divides by `scale` (the fixed-point scale used to derive `amountMinor`;
-  100 when the amount was cent-scaled), rounding **half-away-from-zero** at the final division.
-  The rate is mapped to a 10^6 fixed-point integer and the intermediate product is computed with
-  `math/big`, so the `int64` multiplication cannot overflow; rounding happens exactly once.
-  `amountMinor` / `rate` may be any sign (negatives round away from zero); `scale` must be
-  a positive integer (`<= 0` panics via division by zero).
+- `ApplyRateHalfUp(amount, rate decimal.Decimal, minorUnitDigits int32) (int64, error)` — computes
+  `amount × rate` exactly, then rounds to `minorUnitDigits` **half-away-from-zero** and scales to
+  the settlement-scale `int64` (`decimal.ToScaledInt64`). Rounding happens exactly once, at this
+  single settlement boundary; there is no `float` on the path, so no accumulation error. Returns
+  an error when the minor-unit integer exceeds `int64`.
 
 ## Design policy
 
 - Rounding is centralized here so the policy cannot drift across call sites; callers never round.
 - The half-up method and the single-rounding-point rule are recorded in
-  [ADR-0099](../../../../docs/adr/0099-reference-amount-half-up-rounding.md).
-- No infrastructure dependencies; a mechanical transformation only.
+  [ADR-0103](../../../../docs/adr/0103-decimal-half-up-rounding.md) (which supersedes ADR-0099).
+- The generic decimal mechanism is [`pkg/decimal`](../../../../pkg/decimal/README.md); this
+  package holds only the policy (`minorUnitDigits`, half-up), no infrastructure dependency.
