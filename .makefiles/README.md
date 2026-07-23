@@ -254,9 +254,9 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container, a
 | --- | --- | --- |
 | `make docker-lint` | Lints `docker/*/Dockerfile` with hadolint. | Invokes `make docker-lint-ci` inside the `go_tool_runner` container. |
 | `make docker-lint-ci` | Runs `hadolint docker/*/Dockerfile` directly. | CI target. Ignored rules are in `.hadolint.yaml`. |
-| `make pin-images-resolve` | Resolves each `FROM` `image:tag` to its current digest and updates the `docker/images-pin.toml` lockfile. | Quarantines digests younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14; 0 disables). Needs registry access (`docker`). |
-| `make pin-images-apply` | Pins `FROM` to `image:tag@sha256:...` from the lockfile (quarantined images stay tag-only). | None |
-| `make pin-images-check` | Verifies `FROM` are pinned per the lockfile (no write). | CI / pre-commit gate. |
+| `make pin-images-resolve` | Resolves each `FROM` and `docker-compose*.yaml` `image:` `image:tag` to its current digest and updates the `docker/images-pin.toml` lockfile. | Quarantines digests younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14; 0 disables). Needs registry access (`docker`). |
+| `make pin-images-apply` | Pins `FROM` / compose `image:` to `image:tag@sha256:...` from the lockfile (quarantined images stay tag-only). | None |
+| `make pin-images-check` | Verifies `FROM` / compose `image:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
 
 ## `.makefiles/openapi` group
 
