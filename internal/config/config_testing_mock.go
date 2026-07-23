@@ -13,8 +13,8 @@ import (
 const (
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
-	// defaultTestDBPort は、共有 DB のホスト公開ポート（テスト接続先）です。
-	defaultTestDBPort = 5432
+	// testDBHostPort は、共有 DB のホスト公開ポート（テスト接続先・固定）です。
+	testDBHostPort = 5432
 	// defaultTestDBName は、DB スロットプール未使用時のテスト用データベース既定名です。
 	defaultTestDBName = "test"
 )
@@ -71,13 +71,11 @@ var (
 	// database
 	expectedDBDriver = "pgx"
 	expectedDBHost   = "localhost"
-	// expectedDBPort は共有 DB のホスト公開ポート 5432 固定。DB スロットプール（scripts/db-pool）
-	// 利用時も worktree の分離はポートではなくデータベース名（DB_NAME_TEST）で行うため一定。
-	expectedDBPort     = defaultTestDBPort
+	// worktree の分離はポートではなくデータベース名（DB_NAME_TEST）で行うため、接続ポートは固定。
+	expectedDBPort     = testDBHostPort
 	expectedDBUser     = "postgres"
 	expectedDBPassword = "postgres-password"
-	// expectedDBName は既定 "test"。DB スロットプール利用時は make が DB_NAME_TEST を各 worktree の
-	// テスト用データベース（wt<N>_test）へ設定するため、それを尊重して共有 DB 内の自 worktree DB へ繋ぐ。
+	// DB 名は worktree 毎に変わるため testDBName() で解決する（詳細はその doc）。
 	expectedDBName                        = testDBName()
 	expectedDBSSLMode                     = "disable"
 	expectedDBPingTimeoutCount            = 5
@@ -414,12 +412,14 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 }
 
 // testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST が
-// あればそれを、無ければ既定の "test" を返します。DB スロットプール（scripts/db-pool）利用時は
+// あればそれを、無ければ既定の "test" を返します。DB スロットプール利用時は
 // make が DB_NAME_TEST を各 worktree のテスト用データベース（wt<N>_test）へ設定するため、共有 DB
 // (localhost:5432) 内の自 worktree DB へ繋ぎます。
 //
-// testDBName は、テスト用データベース名（DB_NAME_TEST、既定 "test"）を返します。deploy 系 env では
-// 本番 DB を誤指しないよう DB_NAME_TEST を無視する（IsLocalClassEnv、APP_ENV 未設定は許可）。
+// testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST があればそれを、
+// 無ければ既定の "test" を返します。DB スロットプール利用時は make が DB_NAME_TEST を各 worktree の
+// テスト用データベース（wt<N>_test）へ設定するため、共有 DB 内の自 worktree DB へ繋ぎます。ただし
+// deploy 系 env では本番 DB を誤指しないよう DB_NAME_TEST を無視します（IsLocalClassEnv、未設定は許可）。
 func testDBName() string {
 	v := os.Getenv("DB_NAME_TEST")
 	if v == "" {
