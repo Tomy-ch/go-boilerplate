@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testTxAdvisoryLockKey は、テスト tx を共有 DB 内で全プロセス横断に直列化するための advisory lock キー。
-// go test は各パッケージを別プロセスで並列実行するため、プロセス内 txLock だけでは CASCADE TRUNCATE
-// 同士が FK 関連テーブルのロックを交差させて deadlock しうる。advisory lock（DB 単位）で防ぐ。
+// testTxAdvisoryLockKey は、テスト tx を DB 単位で全プロセス横断に直列化する advisory lock キー。
+// go test はパッケージ毎に別プロセスで走り、プロセス内 txLock だけでは別プロセスの CASCADE TRUNCATE
+// 同士が deadlock しうるため補う。
 const testTxAdvisoryLockKey = 8_246_913
 
 var errRollbackForTest = xerrors.New("rollback for test")
@@ -83,14 +83,11 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
 		q := driver.New(txCtx, testDB)
-		// advisory lock 待ちは lock_timeout(既定 10s) の対象で、高負荷で待ちが超過すると 55P03 が
-		// IsRetryableTxError 対象外のまま無関係に失敗する。取得の間だけ tx スコープで lock_timeout を
-		// 無効化する（直列化により後続のテーブルロック競合は起きないため、この tx で待ちが詰まる懸念はない）。
+		// advisory lock 待ちは lock_timeout(10s) の対象で、高負荷で超過すると 55P03（非リトライ）で
+		// 落ちる。取得の間だけ無効化する（直列化ゆえテーブルロック競合は起きず待ち詰まりの懸念はない）。
 		if _, lockErr := q.Exec(txCtx, "SET LOCAL lock_timeout = 0"); lockErr != nil {
 			return lockErr
 		}
-		// 共有 DB を並列パッケージプロセス間で直列化する（tx 終了で自動解放）。プロセス内 txLock は
-		// 別プロセスの CASCADE TRUNCATE と競合するロック交差を防げないため advisory lock で補う。
 		if _, lockErr := q.Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", testTxAdvisoryLockKey); lockErr != nil {
 			return lockErr
 		}

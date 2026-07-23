@@ -37,11 +37,8 @@ func EnsureRepoRootAndEnv(t *testing.T, env string) {
 		t.Setenv(k, v)
 	}
 
-	// DB スロットプール利用時は、対象環境の DB_NAME をこの worktree のデータベースへ上書きする。
-	// local 環境は wt<N>_local（DB_NAME_LOCAL）、ci/test 環境は wt<N>_test（DB_NAME_TEST）を指す。
-	// MockConfigForTest と同じく共有 DB(localhost:5432) 内の自 worktree DB へ繋ぐ。未使用時は既定
-	// "local"/"test" を返すため .env.<env> の値と一致し無害。動的向き先変更は local / ci / test 系の
-	// env に限定し（IsLocalClassEnv）、deploy 系では warning を出して無視する。
+	// プール利用時は DB_NAME を自 worktree の DB へ上書きする（local は DB_NAME_LOCAL、ci/test は
+	// DB_NAME_TEST）。deploy 系 env では無視する（IsLocalClassEnv）。未使用時は .env.<env> の値のまま。
 	switch {
 	case env == EnvLocal && IsLocalClassEnv(env):
 		if v := os.Getenv("DB_NAME_LOCAL"); v != "" {

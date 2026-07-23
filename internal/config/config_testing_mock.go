@@ -418,9 +418,8 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 // make が DB_NAME_TEST を各 worktree のテスト用データベース（wt<N>_test）へ設定するため、共有 DB
 // (localhost:5432) 内の自 worktree DB へ繋ぎます。
 //
-// 動的向き先変更は local / ci / test 系の env でのみ有効（判定は IsLocalClassEnv）。APP_ENV 未設定は
-// ローカル素の go test 実行とみなし許可する。deploy 系（dev/stg/prd）で DB_NAME_TEST が紛れ込んでいる
-// 場合は、本番 DB を誤って指さないよう warning を出して握りつぶす（既定 "test" へフォールバック）。
+// testDBName は、テスト用データベース名（DB_NAME_TEST、既定 "test"）を返します。deploy 系 env では
+// 本番 DB を誤指しないよう DB_NAME_TEST を無視する（IsLocalClassEnv、APP_ENV 未設定は許可）。
 func testDBName() string {
 	v := os.Getenv("DB_NAME_TEST")
 	if v == "" {

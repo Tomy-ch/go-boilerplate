@@ -9,10 +9,8 @@
 
 serve:
 	@echo "🔄 開発環境を起動します。"
-	@# .gobp-db-slot の有無はレシピ内シェルで実行時に判定する（ifeq/wildcard は make の parse 時評価で、
-	@# `make db-acquire serve` のように同一起動でチェーンすると acquire がファイルを作る前に分岐が確定し、
-	@# serve が誤って非プール分岐へ落ちるため）。プール利用時は共有 DB（COMPOSE_PROJECT_NAME 由来）を参照し、
-	@# app コンテナだけ SERVE_PROJECT に分離して起動する。
+	@# 判定はレシピ内シェルで実行時に行う（ifeq/wildcard は parse 時評価で、`make db-acquire serve` の
+	@# チェーン時に acquire がファイルを作る前に分岐が確定し serve が非プール側へ誤分岐するため）。
 	@if [ -f .gobp-db-slot ]; then \
 		set -a; . ./.gobp-db-slot; set +a; \
 		echo "  （DB スロットプール: 共有 DB $$COMPOSE_PROJECT_NAME を参照し、app を $$SERVE_PROJECT に分離）"; \

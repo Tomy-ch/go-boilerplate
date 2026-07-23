@@ -54,7 +54,7 @@ func (p *Pool) Acquire(ctx context.Context) error {
 		return p.finishAcquire(ctx, slot, "reuse")
 	}
 
-	// スロット走査（fresh / reclaim の判定と取得）を flock で直列化し、二重リースを根絶する。
+	// flock で走査を直列化し二重リースを防ぐ。
 	unlock, err := p.reg.Lock()
 	if err != nil {
 		return err
@@ -64,9 +64,8 @@ func (p *Pool) Acquire(ctx context.Context) error {
 	for slot := 1; slot <= p.reg.MaxSlots(); slot++ {
 		switch {
 		case p.reg.TryAcquireFresh(slot):
-			// 新規取得（原子的）。
 		case p.reg.IsStale(slot):
-			// stale 回収。稼働中接続があれば（heartbeat 漏れの保険）破壊を避けて skip。
+			// 稼働中の DB があれば（heartbeat 漏れの保険）reclaim で破壊しないよう skip。
 			n, err := p.admin.ActiveConnections(ctx, dbLocal(slot), dbTest(slot))
 			if err != nil {
 				return err
@@ -96,8 +95,7 @@ func (p *Pool) Release(ctx context.Context) error {
 		p.logf("no slot held by this worktree")
 		return nil
 	}
-	// このスロットで make serve した app コンテナ（gobp-wt-N）を停止する。放置すると次の再割当て後、
-	// reinit された DB を孤児 api_server が掴む。
+	// serve した app コンテナを停止する（放置すると再割当て・reinit 後の DB を孤児が掴む）。
 	_ = p.comp.DownServe(ctx, serveProject(slot))
 	p.reg.Release(slot)
 	_ = os.Remove(p.slotFilePath())
@@ -148,8 +146,8 @@ func (p *Pool) logf(format string, a ...any) {
 
 func (p *Pool) slotFilePath() string { return filepath.Join(p.cfg.Root, ".gobp-db-slot") }
 
-// ensureLocalEnv は、deploy 系 env（dev/stg/prd）での実行を拒否します。pool は DB を作成/破棄する
-// dev/test 専用ツールであり、本番相当環境で動かしてはならないため（APP_ENV 未設定はローカル開発とみなし許可）。
+// ensureLocalEnv は、deploy 系 env（dev/stg/prd）での実行を拒否します（DB を作成/破棄する dev/test 専用
+// ツールのため。APP_ENV 未設定はローカル開発とみなし許可）。
 func (p *Pool) ensureLocalEnv() error {
 	if p.cfg.APPEnv != "" && !config.IsLocalClassEnv(p.cfg.APPEnv) {
 		return xerrors.New(fmt.Sprintf(

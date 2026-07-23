@@ -19,13 +19,11 @@ import (
 )
 
 const (
-	// dirPerm は、レジストリ / ロックディレクトリのパーミッション（ユーザー専有）。
-	dirPerm = 0o700
-	// filePerm は、meta / lock ファイルのパーミッション（ユーザー専有）。
-	filePerm = 0o600
+	dirPerm  = 0o700 // レジストリ / ロックディレクトリ（ユーザー専有）
+	filePerm = 0o600 // meta / lock ファイル（ユーザー専有）
 )
 
-// reclaimSeq は、回収時の一時名を一意にするためのカウンタ（同一プロセス内の goroutine 間衝突回避）。
+// reclaimSeq は、回収時の一時名を一意にするためのカウンタ（プロセス内 goroutine 間の衝突回避）。
 var reclaimSeq atomic.Int64
 
 // Meta は、スロットのリース保持者情報です。
@@ -37,14 +35,13 @@ type Meta struct {
 }
 
 // Registry は、ホスト上のロックディレクトリでスロットのリースを管理します。
-// os.Mkdir の原子性で新規取得と stale 回収の双方を排他し、二重リースを防ぎます。
 type Registry struct {
-	dir      string           // リースレジストリのルート（例: ~/.cache/gobp-db-pool）
-	owner    string           // 自 worktree の絶対パス
-	branch   string           // 自 worktree の現在ブランチ
-	ttl      time.Duration    // heartbeat 失効までの猶予
-	maxSlots int              // スロット数
-	now      func() time.Time // テスト用に時刻を差し替え可能にする
+	dir      string
+	owner    string // 自 worktree の絶対パス
+	branch   string
+	ttl      time.Duration // heartbeat 失効までの猶予
+	maxSlots int
+	now      func() time.Time // テストで差し替え可能
 }
 
 // NewRegistry は Registry を生成します。now が nil の場合は time.Now を使います。
@@ -55,9 +52,8 @@ func NewRegistry(dir, owner, branch string, ttl time.Duration, maxSlots int, now
 	return &Registry{dir: dir, owner: owner, branch: branch, ttl: ttl, maxSlots: maxSlots, now: now}
 }
 
-// Lock は、スロット走査中の取得（fresh / reclaim）を全プロセス・全 goroutine 横断で直列化する
-// アドバイザリロック（flock）を取得します。fresh mkdir と reclaim rename の間の隙間で二重取得が起きる
-// のを根本的に防ぎます。戻り値の関数で解放します。EnsureDir 後に呼ぶこと。
+// Lock は、acquire 走査を全プロセス・goroutine 横断で直列化する flock を取得します（戻り値で解放）。
+// fresh mkdir と reclaim rename の隙間で起きる二重取得を防ぐため。EnsureDir 後に呼ぶこと。
 func (r *Registry) Lock() (func(), error) {
 	f, err := os.OpenFile(filepath.Join(r.dir, ".scan.lock"), os.O_CREATE|os.O_RDWR, filePerm)
 	if err != nil {
@@ -73,7 +69,7 @@ func (r *Registry) Lock() (func(), error) {
 	}, nil
 }
 
-// EnsureDir は、レジストリを用意します。symlink は先読み攻撃対策として拒否し、0700 に制限します。
+// EnsureDir は、レジストリを用意します。symlink は先読み攻撃対策として拒否します。
 func (r *Registry) EnsureDir() error {
 	if fi, err := os.Lstat(r.dir); err == nil && fi.Mode()&os.ModeSymlink != 0 {
 		return xerrors.New(fmt.Sprintf("pool dir %q is a symlink; set GOBP_DB_POOL_DIR to a safe path", r.dir))
@@ -93,15 +89,13 @@ func (r *Registry) TryAcquireFresh(slot int) bool {
 	return os.Mkdir(r.lockDir(slot), dirPerm) == nil
 }
 
-// TryReclaim は、stale なスロットを原子的に回収します。既存ロックディレクトリを一意名へ rename して
-// 「占有権」を原子的に奪い（rename の source は一度しか成功しないため、同時に狙う別プロセス/goroutine の
-// うち勝者は1つだけ）、その後に作り直します。rename に失敗＝先取りされた場合は false を返します。
-// 単純な rm→mkdir は各実行が互いの mkdir を消して全員成功しうるため使わない。
+// TryReclaim は、stale スロットを rename で原子的に奪って作り直します（勝者は1つ、負けは false）。
+// rename の source は一度しか成功しないのが要点。rm→mkdir は互いの mkdir を消して全員成功しうる。
 func (r *Registry) TryReclaim(slot int) bool {
 	d := r.lockDir(slot)
 	tmp := fmt.Sprintf("%s.claim.%d.%d", d, os.Getpid(), reclaimSeq.Add(1))
 	if os.Rename(d, tmp) != nil {
-		return false // 別プロセス/goroutine が先に回収した（source が既に消えた）
+		return false // 先取りされた
 	}
 	_ = os.RemoveAll(tmp)
 	return os.Mkdir(d, dirPerm) == nil
@@ -113,7 +107,7 @@ func (r *Registry) Exists(slot int) bool {
 	return err == nil && fi.IsDir()
 }
 
-// WriteMeta は、スロットの meta を 0600 で書き出します。
+// WriteMeta は、スロットの meta を書き出します。
 func (r *Registry) WriteMeta(slot int) error {
 	m := fmt.Sprintf("owner=%s\nheartbeat=%d\nbranch=%s\nslot=%d\n",
 		r.owner, r.now().Unix(), r.branch, slot)
@@ -161,8 +155,7 @@ func (r *Registry) OwnedBySelf(slot int) bool {
 	return ok && m.Owner == r.owner
 }
 
-// IsStale は、他 worktree のリースが heartbeat TTL を超過しているかを返します。
-// 自分の保持スロットは stale 扱いにしません（誤って自 DB を回収しないため）。
+// IsStale は、他 worktree のリースが heartbeat TTL を超過しているかを返します（自分の保持は常に非 stale）。
 func (r *Registry) IsStale(slot int) bool {
 	m, ok := r.ReadMeta(slot)
 	if !ok {

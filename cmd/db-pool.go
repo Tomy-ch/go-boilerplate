@@ -22,7 +22,6 @@ const (
 )
 
 // newDBPoolCommand は、worktree 並列開発用の DB スロットプールを操作するコマンドを生成します。
-// 単一共有 Postgres 上の per-worktree データベース（wt<N>_local/test）をリースします。
 // 詳細は docs/maintenance/db-worktree-pool.md。
 func newDBPoolCommand() *cobra.Command {
 	cmd := &cobra.Command{

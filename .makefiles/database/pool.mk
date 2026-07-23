@@ -3,17 +3,11 @@
 .PHONY: db-release ## 保持中の DB スロットを解放する（データベースは warm 保持）
 .PHONY: db-pool-status ## DB スロットプールの占有状況を表示する
 
-# worktree が保持中のスロット定義（scripts/db-pool が書き出す KEY=VALUE）。存在すれば取り込む。
-# - COMPOSE_PROJECT_NAME=共有 DB プロジェクト（gobp-shared）。export は make プロセス全体に効くため、
-#   docker compose を呼ぶ全ターゲット（DB ツーリング migrate/seed/psql/gen だけでなく lint/gen 等の
-#   tool_runner 系も）がこのプロジェクトに紐づく。tool_runner はソースを焼き込まないため実害はないが、
-#   DB ツーリングが共有 DB コンテナ（ホスト 5432）を確実に指すのが本来の目的。serve は server.mk が
-#   SERVE_PROJECT で上書きし、app コンテナだけ worktree 毎に分離する。
-# - DB_NAME_LOCAL / DB_NAME_TEST = この worktree のデータベース名（wt<N>_local / wt<N>_test）。
-#   実際にこれを読むのは db-acquire の reinit（$$DB_NAME_*）と host 実行の go test（DB_NAME_TEST）のみ。
-#   db-init / db-migrate-up 等の既存 DB ターゲットは今も DB=local・test を直書きするため DB 名を切り替えない
-#   （＝プール取得後に手で db-init すると共有 DB の local/test を触る点に注意。作り直しは db-acquire を使う）。
-# 未取得なら既定（既定プロジェクト / DB 名 local・test / ホスト 8080・4000）で従来動作（opt-in）。
+# スロット定義（db-pool が書き出す KEY=VALUE）。COMPOSE_PROJECT_NAME=gobp-shared は docker compose を
+# 呼ぶ全ターゲットに効き DB ツーリングを共有 DB へ向ける（serve は server.mk が SERVE_PROJECT で上書き）。
+# DB_NAME_LOCAL/TEST を読むのは db-acquire の reinit と host 実行の go test のみで、db-init/db-migrate-up は
+# 今も DB=local/test 直書き（取得後に手で db-init すると共有 DB の local/test を触る点に注意）。
+# 未取得なら従来動作（opt-in）。
 -include .gobp-db-slot
 export DB_NAME_LOCAL
 export DB_NAME_TEST

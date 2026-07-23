@@ -21,8 +21,8 @@ type DBAdmin interface {
 	ActiveConnections(ctx context.Context, names ...string) (int, error)
 }
 
-// PgxAdmin は、pgx でホストから共有 DB(localhost:5432 既定) へ接続する DBAdmin 実装です。
-// CREATE DATABASE / pg_stat_activity は maintenance DB(postgres) へ、timezone/拡張は対象 DB へ接続します。
+// PgxAdmin は、pgx でホストから共有 DB へ接続する DBAdmin 実装です。
+// CREATE DATABASE / pg_stat_activity は maintenance DB へ、timezone/拡張は対象 DB へ接続します。
 type PgxAdmin struct {
 	host, user, password, maintenanceDB string
 	port                                int
@@ -49,7 +49,7 @@ func (a *PgxAdmin) EnsureDatabase(ctx context.Context, name string) error {
 	if exists {
 		return nil
 	}
-	// CREATE DATABASE は識別子をパラメータ化できず tx 内でも実行できないため、識別子を安全に引用する。
+	// CREATE DATABASE は識別子をパラメータ化できないため安全に引用する。
 	if _, err := conn.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
 		return xerrors.Wrap(err, "failed to create database "+name)
 	}
