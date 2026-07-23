@@ -47,6 +47,7 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 |---|---|---|
 |`backoff`|Exponential backoff duration (pure, clock/randomness-free)|None|
 |`datetime`|Date/time parsing|Standard library `time`|
+|`decimal`|Exact-decimal value object (money / rate)|`github.com/shopspring/decimal`|
 |`envutil`|Environment variable override (test helper)|Standard library `os`|
 |`exec`|External command execution (interface + mock)|Standard library `os/exec`|
 |`fnmeta`|Function / package name extraction|None|
@@ -86,6 +87,21 @@ Key functions
 |`ParseCustomLayout`|Parse with an arbitrary layout|
 
 All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for parsing with a specified timezone.
+
+### decimal
+
+An exact-decimal value object wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/kernel/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+
+|Symbol|Description|
+|---|---|
+|`Parse` / `FromInt`|Construct from a decimal string / `int64`|
+|`Add` / `Sub` / `Mul` / `Neg` / `DivRound`|Exact decimal arithmetic|
+|`RoundHalfAwayFromZero` / `Truncate`|Rounding at a given number of places|
+|`ToScaledInt64(n)`|Round to `n` places, scale by `10^n`, and return the minor-unit `int64` (or `ErrOverflow`)|
+|`Cmp` / `Equal` / `Sign` / `IsZero` / `IsNegative`|Comparison and inspection|
+|`MarshalJSON` / `UnmarshalJSON`|JSON string wire representation (accepts JSON number on decode)|
+|`Scan` / `Value`|`NUMERIC` database boundary (`sql.Scanner` / `driver.Valuer`)|
+|`MustParse` (test only)|Panic-on-error parse for tests|
 
 ### envutil
 
