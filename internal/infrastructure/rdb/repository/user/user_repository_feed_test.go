@@ -21,12 +21,11 @@ func insertFeedUser(ctx context.Context, t *testing.T, db driver.DBTX, id string
 	t.Helper()
 	_, err := db.Exec(ctx,
 		"INSERT INTO users "+
-			"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code, created_at, updated_at) "+
-			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
+			"(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code, created_at, updated_at) "+
+			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
 		id,
 		"Feed",
 		"User",
-		"$2a$08$dummydummydummydummydummydummydummydummydummydummydu",
 		"feed-"+id+"@example.com",
 		"000-000-0000",
 		"a03aaec4-3bd6-4bfb-8e47-2fbfa026d344", // 既存 seed の都道府県ID
@@ -45,12 +44,11 @@ func insertInvalidFeedUser(ctx context.Context, t *testing.T, db driver.DBTX, id
 	t.Helper()
 	_, err := db.Exec(ctx,
 		"INSERT INTO users "+
-			"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code, created_at, updated_at) "+
-			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
+			"(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code, created_at, updated_at) "+
+			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
 		id,
 		"Feed",
 		"", // last_name 空 = ドメイン不変条件違反(再構築エラー)を誘発する。
-		"$2a$08$dummydummydummydummydummydummydummydummydummydummydu",
 		"feed-"+id+"@example.com",
 		"000-000-0000",
 		"a03aaec4-3bd6-4bfb-8e47-2fbfa026d344",

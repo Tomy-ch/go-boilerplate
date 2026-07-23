@@ -27,7 +27,6 @@ func newSearchTestUser(t *testing.T, prefectureID uuid.UUID, createdAt time.Time
 		uuid.NewTestFromSalt(t, "search_user_domain"),
 		"Grace",
 		"Lee",
-		"password",
 		"grace.lee@example.com",
 		"090-1234-5678",
 		prefectureID,
