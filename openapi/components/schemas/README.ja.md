@@ -57,7 +57,7 @@ properties:
 |フォルダ|格納するもの|例|
 |---|---|---|
 |`schemas/`|基底・再利用スキーマ＋セキュリティスキーム|`UserResponse.yaml`, `ErrorResponse.yaml`, `PaginationMetadataResponse.yaml`|
-|`requests/`|エンドポイントの**リクエストボディ**スキーマ（多くは `allOf` で基底を合成）|`UsersPostRequest.yaml` = `UserBaseInputRequest` ＋ `password`|
+|`requests/`|エンドポイントの**リクエストボディ**スキーマ（多くは `allOf` で基底を合成）|`UsersPostRequest.yaml` = `UserBaseInputRequest` ＋ `required` リスト|
 |`responses/`|エンドポイントの**レスポンスボディ**スキーマ（多くは `allOf` で基底を合成）|`UsersResponse.yaml` = `UserResponse[]` ＋ ページネーションメタ|
 
 目安：再利用できる小さな部品は `schemas/`、それを合成したエンドポイント固有の形は `requests/` / `responses/`。詳細は [`requests/README.ja.md`](../requests/README.ja.md) と [`responses/README.ja.md`](../responses/README.ja.md) を参照。
@@ -133,7 +133,7 @@ content:
 
 これらは厳密には OpenAPI の**レスポンスオブジェクト**（plain schema が持てない `description` ＋ `content` を持つ）で、エラー定義をまとめるため `ErrorResponse` の隣に置いています。
 各ファイルを `#/components/responses/<ファイル名>` へホイストし、`oapi-codegen` がそれを `<ファイル名>JSONResponse` という Go 型にします。
-したがって**ファイル名は有効な Go 識別子（Pascal の理由句 ＋ HTTP コードのサフィックス。数字始まりは不可）**である必要があります。description がオペレーション固有の場合（例：`422`「現在のパスワードが一致しません」）のみ **inline** で残します。
+したがって**ファイル名は有効な Go 識別子（Pascal の理由句 ＋ HTTP コードのサフィックス。数字始まりは不可）**である必要があります。description がオペレーション固有の場合（＝そのオペレーションだけで意味を持ち共有できない文言のとき）のみ **inline** で残します。
 
 **全集合（`apperror` 1種につき1つ）。** すべてのフラグメントを用意しておき、エンドポイントが必要になった瞬間に `$ref` できる状態にしています。パスには**そのオペレーションが実際に返しうるステータスだけ**を宣言します（`internal/controller/error/response/http_error.go` ＋ `internal/infrastructure/rdb/pgerror` から導出）：
 

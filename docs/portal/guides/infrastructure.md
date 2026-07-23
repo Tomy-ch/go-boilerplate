@@ -4,7 +4,7 @@ English | [日本語](README.ja.md)
 
 ## Role
 
-The Infrastructure layer is responsible for **implementing access to external technologies (DB, external APIs, authentication, security, etc.)**.
+The Infrastructure layer is responsible for **implementing access to external technologies (DB, external APIs, authentication, etc.)**.
 
 This layer has the following responsibilities.
 
@@ -80,7 +80,7 @@ The Infrastructure layer provides the following observability.
 
 Mainly implemented by a pgx query tracer wired at the driver connection level (`otelpgx` spans, with log output limited to query failures and slow queries).
 
-In addition to the driver-level tracer, every I/O component (Repository / QueryService / SystemQuery / external gateways / queue / publisher) opens an application-level span per public method: it holds an `observability.LayerTracer` field initialized from `tf.Infra()` in its constructor, and each method begins with `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()`. Pure in-memory components with no real I/O (e.g. password hashing) are exempt.
+In addition to the driver-level tracer, every I/O component (Repository / QueryService / SystemQuery / external gateways / queue / publisher) opens an application-level span per public method: it holds an `observability.LayerTracer` field initialized from `tf.Infra()` in its constructor, and each method begins with `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()`. Pure in-memory components with no real I/O are exempt.
 
 ## Prohibited Practices
 
@@ -111,7 +111,6 @@ flowchart TB
     Pub["publisher/"]
     Queue["queue/"]
     RDB["rdb/"]
-    Sec["security/"]
     Sys["system/"]
     Web["webapi/"]
 
@@ -121,7 +120,6 @@ flowchart TB
     Root --> Pub
     Root --> Queue
     Root --> RDB
-    Root --> Sec
     Root --> Sys
     Root --> Web
 ```
@@ -136,7 +134,6 @@ flowchart TB
 |`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|—|
 |`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
-|`security/`|Password hashing (bcrypt)|Usecase boundary|[README](security/README.md)|
 |`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
 |`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|—|
 
@@ -160,7 +157,7 @@ flowchart TB
 
 ### 1. Encapsulation of Technical Details
 
-DB / API / authentication / security  
+DB / API / authentication  
 → encapsulated in Infrastructure
 
 ### 2. Dependency Inversion

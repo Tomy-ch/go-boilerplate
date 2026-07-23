@@ -57,7 +57,7 @@ They are split across three folders **by role**, not by kind:
 |Folder|Holds|Example|
 |---|---|---|
 |`schemas/`|Base & reusable schemas + security schemes|`UserResponse.yaml`, `ErrorResponse.yaml`, `PaginationMetadataResponse.yaml`|
-|`requests/`|Endpoint **request-body** schemas (usually compose a base via `allOf`)|`UsersPostRequest.yaml` = `UserBaseInputRequest` + `password`|
+|`requests/`|Endpoint **request-body** schemas (usually compose a base via `allOf`)|`UsersPostRequest.yaml` = `UserBaseInputRequest` + a `required` list|
 |`responses/`|Endpoint **response-body** schemas (usually compose a base via `allOf`)|`UsersResponse.yaml` = `UserResponse[]` + pagination metadata|
 
 Rule of thumb: a small reusable building block lives in `schemas/`; the per-endpoint shape that composes those blocks lives in `requests/` or `responses/`. See [`requests/README.md`](../requests/README.md) and [`responses/README.md`](../responses/README.md).
@@ -132,7 +132,7 @@ content:
       $ref: '../ErrorResponse.yaml'
 ```
 
-These are technically OpenAPI **response objects** (they carry `description` + `content`, which a plain schema cannot), kept here next to `ErrorResponse` so all error definitions live together. `redocly bundle` hoists each into `#/components/responses/<FileName>`, which `oapi-codegen` turns into a `<FileName>JSONResponse` Go type — so **the file name must be a valid Go identifier (PascalReason + HTTP-code suffix, never a bare number)**. Keep a status **inline** only when its description is operation-specific (e.g. `422` "current password does not match").
+These are technically OpenAPI **response objects** (they carry `description` + `content`, which a plain schema cannot), kept here next to `ErrorResponse` so all error definitions live together. `redocly bundle` hoists each into `#/components/responses/<FileName>`, which `oapi-codegen` turns into a `<FileName>JSONResponse` Go type — so **the file name must be a valid Go identifier (PascalReason + HTTP-code suffix, never a bare number)**. Keep a status **inline** only when its description is operation-specific (i.e. the wording is meaningful only for that one operation and cannot be shared).
 
 **The full set (one per `apperror` kind).** Every fragment exists so it is ready to `$ref` the moment an endpoint needs it. A path declares **only the statuses that operation can actually produce** (derived from `internal/controller/error/response/http_error.go` + `internal/infrastructure/rdb/pgerror`):
 

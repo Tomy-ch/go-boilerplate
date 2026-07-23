@@ -31,9 +31,7 @@
 - RBAC / authorization model
 - Session management
 - Password policy  
-  - A sample implementation is provided, designed to be extensible  
-    - Interface: [internal/usecase/boundary/security/encrypt_hasher.go](../../internal/usecase/boundary/security/encrypt_hasher.go)  
-    - Sample implementation: [internal/infrastructure/security/bcrypt_hasher.go](../../internal/infrastructure/security/bcrypt_hasher.go)
+  - No in-repo credential store is provided: authentication is delegated to an external OIDC / JWT (Bearer) IdP, so this service holds no passwords. See [docs/design/auth.md](../design/auth.md).
 - Data retention policy  
   - Soft delete is provided as a sample
 - Encryption for PII storage

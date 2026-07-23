@@ -3734,13 +3734,6 @@
               "guideId": "infrastructure-rdb-testkit"
             },
             {
-              "name": "Infrastructure Security",
-              "path": "./guides/infrastructure-security.md",
-              "lang": "en",
-              "source": "internal/infrastructure/security/README.md",
-              "guideId": "infrastructure-security"
-            },
-            {
               "name": "Infrastructure System",
               "path": "./guides/infrastructure-system.md",
               "lang": "en",
@@ -3809,13 +3802,6 @@
               "lang": "ja",
               "source": "internal/infrastructure/rdb/testkit/README.ja.md",
               "guideId": "infrastructure-rdb-testkit"
-            },
-            {
-              "name": "Infrastructure Security",
-              "path": "./guides/ja/infrastructure-security.ja.md",
-              "lang": "ja",
-              "source": "internal/infrastructure/security/README.ja.md",
-              "guideId": "infrastructure-security"
             },
             {
               "name": "Infrastructure System",
@@ -3949,7 +3935,7 @@
               ]
             },
             {
-              "title": "Auth & Security",
+              "title": "Auth",
               "items": [
                 {
                   "name": "Infrastructure Auth",
@@ -3964,20 +3950,6 @@
                   "lang": "ja",
                   "source": "internal/infrastructure/auth/README.ja.md",
                   "guideId": "infrastructure-auth"
-                },
-                {
-                  "name": "Infrastructure Security",
-                  "path": "./guides/infrastructure-security.md",
-                  "lang": "en",
-                  "source": "internal/infrastructure/security/README.md",
-                  "guideId": "infrastructure-security"
-                },
-                {
-                  "name": "Infrastructure Security",
-                  "path": "./guides/ja/infrastructure-security.ja.md",
-                  "lang": "ja",
-                  "source": "internal/infrastructure/security/README.ja.md",
-                  "guideId": "infrastructure-security"
                 }
               ]
             },

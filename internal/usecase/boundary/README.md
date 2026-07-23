@@ -48,7 +48,6 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
-|`security`|`Hasher`|Password hashing and comparison|`internal/infrastructure/security/`|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|
 
@@ -162,17 +161,6 @@ Outbound publish boundary for domain events plus a substrate-agnostic message en
 |`Publisher`|Boundary that sends a message to its destination|
 |`Publish(ctx, m)`|Send `m` to the destination; on failure returns an error and the relay re-sends on its next poll (at-least-once)|
 |`Message`|Substrate-agnostic message envelope built from an outbox row (exposes no `net/http` types)|
-
-### security
-
-```go
-type Hasher interface {
-    Hash(password string) (string, error)
-    Compare(hash, password string) (bool, error)
-}
-```
-
-Password hashing and comparison. Hides implementation details (e.g., bcrypt) from Usecase.
 
 ### tx
 

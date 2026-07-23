@@ -55,7 +55,7 @@ ADR-0039 を不変に保つための3つの制約:
 
 支持する変更: `user.validateProfileFields` は**全**プロフィールフィールドを検証し、
 フィールドごとのセンチネルエラーを結合（`xerrors.Join`）した上で、収集したフィールド識別子を
-`WithDetails` で付与する。サーバ内部の不変条件（id / updatedAt / deletedAt / passwordHash）は
+`WithDetails` で付与する。サーバ内部の不変条件（id / updatedAt / deletedAt）は
 first-error return のまま — ユーザーが修正できる入力ではないため。副次効果として
 `POST /v1/users`（作成）でも不正フィールドが `details` に載るようになる。これは意図された改善。
 

@@ -23,7 +23,7 @@ Domain call
     ↓
 Repository
     ↓
-(Optional) Boundary call (Tx / Clock / Security / Auth etc.)
+(Optional) Boundary call (Tx / Clock / Auth etc.)
     ↓
 Domain call
     ↓
@@ -113,7 +113,7 @@ Domain and Usecase responsibilities are separated as follows:
 
 ```txt
 Username constraints
-Password format rules
+Email format rules
 State transitions
 ```
 
@@ -122,7 +122,6 @@ These belong to the **Domain layer**.
 ### Examples of Application Policy
 
 ```txt
-Hash password when creating a user
 Execute user creation inside a transaction
 Fetch prefecture information when retrieving user list
 ```
@@ -149,7 +148,6 @@ Usecase references **only interfaces**, and implementations are provided by Infr
 ```txt
 Transaction Manager
 Clock
-Security (PasswordHasher etc.)
 Auth Context
 Messaging / EventPublisher
 Observability
@@ -242,7 +240,6 @@ Examples:
 CreateUser
 UpdateUser
 DeleteUser
-ChangePassword
 ```
 
 Characteristics:
@@ -377,7 +374,7 @@ still matches the sentinel.
 ### Allowed dependencies
 
 - Domain (entities / domain services / repository interfaces)
-- Boundary (tx / clock / security / auth etc.)
+- Boundary (tx / clock / auth etc.)
 - QueryService (if needed)
 
 ### Forbidden dependencies
@@ -434,7 +431,6 @@ ctrl := gomock.NewController(t)
 
 userRepo := mock_user.NewMockRepository(ctrl)
 clock := mock_clock.NewMockClock(ctrl)
-hasher := mock_security.NewMockHasher(ctrl)
 ```
 
 ### Test targets
@@ -617,8 +613,7 @@ type UserMutableFields struct {
 }
 
 type CreateUserParamsDTO struct {
-    UserID   uuid.UUID
-    Password string
+    UserID uuid.UUID
 
     UserMutableFields
 }
@@ -628,7 +623,6 @@ type usecase struct {
     tracer    observability.LayerTracer
     txm       tx.Manager
     clock     clock.Clock
-    hasher    security.Hasher
     userRepo  user.Repository
     pftRepo   prefecture.Repository
     userQS    query.UserQueryService
@@ -651,7 +645,6 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    hasher security.Hasher,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
     userQueryService query.UserQueryService,
@@ -660,7 +653,6 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        hasher:    hasher,
         userRepo:  userRepo,
         pftRepo:   prefectureRepo,
         userQS:    userQueryService,
@@ -758,25 +750,13 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
     // Time acquisition follows the rule that time is centrally managed in the Usecase layer
     now := u.clock.Now()
 
-    // Password validation rules are defined in the Domain layer
-    rawPassword, err := user.NewRawPassword(dto.RawPassword)
-    if err != nil {
-        return MutableFields{}, err
-    }
-
-    // Password hashing is a security rule, so the Boundary hasher is used
-    passwordHash, err := u.hasher.Hash(rawPassword.Value())
-    if err != nil {
-        return MutableFields{}, err
-    }
-
     var (
         userEntity *user.User
         pftDomain  *prefecture.Entity
     )
 
     // Transaction start and end are delegated to TxManager
-    err = u.txm.Do(ctx, func(ctx context.Context) error {
+    err := u.txm.Do(ctx, func(ctx context.Context) error {
 
         var err error
 
@@ -789,7 +769,6 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
             dto.UserID,
             dto.FirstName,
             dto.LastName,
-            passwordHash,
             dto.Email,
             dto.Phone,
             pftDomain.ID(),
