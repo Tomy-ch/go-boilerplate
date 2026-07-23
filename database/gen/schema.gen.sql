@@ -632,7 +632,6 @@ CREATE TABLE public.users (
     id uuid NOT NULL,
     first_name character varying(100) NOT NULL,
     last_name character varying(100) NOT NULL,
-    password_hash character varying(255) NOT NULL,
     email character varying(100) NOT NULL,
     phone character varying(20) NOT NULL,
     prefecture_id uuid NOT NULL,
@@ -661,10 +660,6 @@ COMMENT ON COLUMN public.users.first_name IS '名前';
 -- Name: COLUMN users.last_name; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.users.last_name IS '苗字';
---
--- Name: COLUMN users.password_hash; Type: COMMENT; Schema: public; Owner: -
---
-COMMENT ON COLUMN public.users.password_hash IS 'パスワードハッシュ';
 --
 -- Name: COLUMN users.email; Type: COMMENT; Schema: public; Owner: -
 --
