@@ -53,6 +53,12 @@ stateDiagram-v2
   本文 JSON）、`Headers`（外部エンドポイントへ伝搬）。`Headers` に
   `Authorization` / `Cookie` 等の機微ヘッダを入れてはいけません。そのまま外部
   エンドポイントへ送出されます。
+- **`Payload` の構築場所 — usecase 本体には書かない。** marshal は呼び出し側の
+  責務ですが、版付きのイベント契約（struct・JSON フィールド名・`EventType` 定数）は
+  **専用のイベント単位**（独立したパッケージ / 関数）に定義し、usecase からはそれを
+  呼ぶだけにします。ワイヤ表現を usecase メソッドへインライン展開すると fat usecase
+  が再発し、orchestration がシリアライズ形式へ結合します。分離すれば usecase は薄い
+  orchestrator のままで、イベント契約も単一のテスト可能な置き場所を持てます。
 
 ### relay — `RelayUsecase`
 

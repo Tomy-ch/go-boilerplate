@@ -6,7 +6,7 @@
 
 ## Overview
 
-商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の ID 参照（ステータス ID・カテゴリ ID）、および公開日時を保持するドメインエンティティ。`price` は USD セント単位の整数で保持する（小数を持たない）。生成時に必須・長さ・非負の不変条件を検証し、違反する `Product` は構築できない。
+商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の ID 参照（ステータス ID・カテゴリ ID）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負は VO が担保。2 スケールモデルは ADR-0101）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
 
 一覧取得は「公開済み（`publishedAt` 非 NULL）の商品を `(publishedAt, id)` の keyset ページネーションで返す」read-only な集約読み取りであり、すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0027 / `docs/rules.md` の Repository 境界に準拠）。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
 
@@ -30,9 +30,8 @@ fields:
     type: "*string"
     required: false         # nil 許容（説明未設定）
   - name: price
-    type: int               # USD セント単位の整数
-    required: true
-    min: 0                  # 負数は ErrInvalidPrice
+    type: money.Price       # 価格スケール（サブセント可の Decimal）を内包する VO。DB は無指定 NUMERIC
+    required: true          # 非負は money.NewPrice が担保（負値は money.ErrNegativePrice）
   - name: quantity
     type: int
     required: true
@@ -69,7 +68,9 @@ fields:
 ## Value Objects
 
 ```yaml
-# 値オブジェクトは導入しない（price は USD セント整数、分類は ID 参照）。
+# price は money.Price VO（internal/domain/kernel/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
+# 内包し、決済スケール（最小単位整数）への変換 policy（ToMinorUnit）を所有する。器の正確な十進量は
+# pkg/decimal.Decimal（ADR-0102）。分類は ID 参照のまま VO を持たない。
 ```
 
 ## Repository Methods

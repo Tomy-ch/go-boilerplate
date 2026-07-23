@@ -13,9 +13,13 @@ type Gateway interface {
 type Rate struct {
     Base  string
     Quote string
-    Value float64
+    Value decimal.Decimal
 }
 ```
+
+`Value` is an exact `pkg/decimal.Decimal`, not a `float64`: the rate is a multiplier on the
+money path and a float would corrupt it at ingest ([ADR-0102](../../../../docs/adr/0102-exact-decimal-pkg-wrap.md) /
+[ADR-0103](../../../../docs/adr/0103-decimal-half-up-rounding.md)).
 
 ## Why Abstract?
 
