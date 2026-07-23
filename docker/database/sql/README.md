@@ -22,9 +22,10 @@ Files are executed in **ascending order of their numeric prefix** (e.g., `001-..
 Execution is handled automatically by PostgreSQL's `docker-entrypoint-initdb.d` mechanism on first container startup.
 
 These scripts create/extension-init only the fixed `local` / `test` databases. The DB worktree
-pool (`scripts/db-pool`) creates its per-worktree databases (`wt<N>_local` / `wt<N>_test`)
-dynamically **after** startup, so it bootstraps the same extensions itself — keep the extension
-set here in sync with `scripts/db-pool/pool.sh`. See `docs/maintenance/db-worktree-pool.md`.
+pool (`cmd/db-pool`, core `internal/cli/dbpool`) creates its per-worktree databases
+(`wt<N>_local` / `wt<N>_test`) dynamically **after** startup, so it bootstraps the same extensions
+and timezone itself — keep this setup in sync with `internal/cli/dbpool` (`PgxAdmin.SetupDatabase`).
+See `docs/maintenance/db-worktree-pool.md`.
 
 ## What Belongs Here
 
