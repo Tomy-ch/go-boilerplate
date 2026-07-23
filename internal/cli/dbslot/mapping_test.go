@@ -243,6 +243,13 @@ func TestPool_Heartbeat(t *testing.T) {
 			_, ok := pool.reg.ReadMeta(1)
 			assert.True(t, ok)
 		})
+
+		t.Run("スロット未保持なら何もしない", func(t *testing.T) {
+			t.Parallel()
+
+			pool, _, _ := newMockPool(t, t.TempDir(), "")
+			require.NoError(t, pool.Heartbeat())
+		})
 	})
 }
 
@@ -266,6 +273,40 @@ func TestPool_Status(t *testing.T) {
 			assert.Contains(t, s, "SLOT")
 			assert.Contains(t, s, "wt1_local")
 			assert.Contains(t, s, "free")
+		})
+
+		t.Run("保持中スロットは in-use / owner を表示する", func(t *testing.T) {
+			t.Parallel()
+
+			var out bytes.Buffer
+			ctrl := gomock.NewController(t)
+			reg := NewRegistry(t.TempDir(), "/w/self", "b", 30*time.Minute, 8, func() time.Time { return time.Unix(1_000_000, 0) })
+			require.True(t, reg.TryAcquireFresh(1))
+			require.NoError(t, reg.WriteMeta(1))
+			cfg := Config{Root: "/w/self", SharedProject: "gobp-shared", APIBasePort: 8080, MockAuthBase: 4000}
+			p := NewPool(reg, mock_dbslot.NewMockDBAdmin(ctrl), mock_dbslot.NewMockCompose(ctrl), cfg, &out, &out)
+
+			require.NoError(t, p.Status())
+			s := out.String()
+			assert.Contains(t, s, "in-use")
+			assert.Contains(t, s, "/w/self")
+		})
+
+		t.Run("TTL 超過の他 owner リースは stale を表示する", func(t *testing.T) {
+			t.Parallel()
+
+			var out bytes.Buffer
+			ctrl := gomock.NewController(t)
+			reg := NewRegistry(t.TempDir(), "/w/me", "b", 30*time.Minute, 8, func() time.Time { return time.Unix(1_000_000, 0) })
+			// 別 owner が古い heartbeat で保持中 → 自分から見て stale。
+			other := NewRegistry(reg.dir, "/w/other", "b", 30*time.Minute, 8, func() time.Time { return time.Unix(1, 0) })
+			require.True(t, other.TryAcquireFresh(1))
+			require.NoError(t, other.WriteMeta(1))
+			cfg := Config{Root: "/w/me", SharedProject: "gobp-shared", APIBasePort: 8080, MockAuthBase: 4000}
+			p := NewPool(reg, mock_dbslot.NewMockDBAdmin(ctrl), mock_dbslot.NewMockCompose(ctrl), cfg, &out, &out)
+
+			require.NoError(t, p.Status())
+			assert.Contains(t, out.String(), "stale")
 		})
 	})
 }
