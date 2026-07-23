@@ -68,3 +68,44 @@ func TestEnsureRepoRootAndEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/
 	require.NoError(t, err)
 	assert.Equal(t, orig, cwdAfter)
 }
+
+func Test_testDBName(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("ci 環境では DB_NAME_TEST を尊重する", func(t *testing.T) {
+			t.Setenv("APP_ENV", EnvCI)
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			assert.Equal(t, "wt9_test", testDBName())
+		})
+
+		t.Run("APP_ENV 未設定でも DB_NAME_TEST を尊重する", func(t *testing.T) {
+			t.Setenv("APP_ENV", "")
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			assert.Equal(t, "wt9_test", testDBName())
+		})
+
+		t.Run("DB_NAME_TEST 未設定なら既定 test を返す", func(t *testing.T) {
+			t.Setenv("APP_ENV", EnvCI)
+			t.Setenv("DB_NAME_TEST", "")
+
+			assert.Equal(t, defaultTestDBName, testDBName())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("prd 環境では DB_NAME_TEST を無視して既定 test へフォールバックする", func(t *testing.T) {
+			t.Setenv("APP_ENV", EnvProduction)
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			assert.Equal(t, defaultTestDBName, testDBName())
+		})
+
+		t.Run("stg 環境でも DB_NAME_TEST を無視する", func(t *testing.T) {
+			t.Setenv("APP_ENV", EnvStaging)
+			t.Setenv("DB_NAME_TEST", "wt9_test")
+
+			assert.Equal(t, defaultTestDBName, testDBName())
+		})
+	})
+}

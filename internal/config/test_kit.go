@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +40,13 @@ func EnsureRepoRootAndEnv(t *testing.T, env string) {
 	// DB スロットプール利用時は、対象環境の DB_NAME をこの worktree のテスト用データベース
 	// （wt<N>_test）へ上書きする。MockConfigForTest と同じく共有 DB(localhost:5432) 内の自
 	// worktree DB へ繋ぐ。未使用時は既定 "test" を返すため .env.<env> の値と一致し無害。
-	t.Setenv("DB_NAME", testDBName())
+	// 動的向き先変更は local / ci / test 系の env に限定し、deploy 系では warning を出して無視する。
+	if isPoolRedirectEligible(env) {
+		t.Setenv("DB_NAME", testDBName())
+	} else if os.Getenv("DB_NAME_TEST") != "" {
+		fmt.Fprintf(os.Stderr,
+			"[config] 警告: env=%q は local/test 系でないため、DB スロットプールの DB_NAME_TEST を無視します\n", env)
+	}
 }
 
 // repoRoot は、go.mod を上方向に探索してリポジトリルートを返します。

@@ -417,9 +417,30 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 // あればそれを、無ければ既定の "test" を返します。DB スロットプール（scripts/db-pool）利用時は
 // make が DB_NAME_TEST を各 worktree のテスト用データベース（wt<N>_test）へ設定するため、共有 DB
 // (localhost:5432) 内の自 worktree DB へ繋ぎます。
+//
+// 動的向き先変更は local / ci / test 系の env でのみ有効。deploy 系（dev/stg/prd）で DB_NAME_TEST が
+// 紛れ込んでいる場合は、本番 DB を誤って指さないよう warning を出して握りつぶす（既定 "test" へフォールバック）。
 func testDBName() string {
-	if v := os.Getenv("DB_NAME_TEST"); v != "" {
-		return v
+	v := os.Getenv("DB_NAME_TEST")
+	if v == "" {
+		return defaultTestDBName
 	}
-	return defaultTestDBName
+	if env := os.Getenv("APP_ENV"); env != "" && !isPoolRedirectEligible(env) {
+		fmt.Fprintf(os.Stderr,
+			"[config] 警告: APP_ENV=%q は local/test 系でないため、DB スロットプールの DB_NAME_TEST=%q を無視します\n",
+			env, v)
+		return defaultTestDBName
+	}
+	return v
+}
+
+// isPoolRedirectEligible は、DB スロットプールの動的向き先変更を許可してよい env かを返します。
+// local / ci / test でのみ許可し、deploy 系（dev/stg/prd）や未知ラベルでは拒否します（deny 型）。
+func isPoolRedirectEligible(env string) bool {
+	switch env {
+	case EnvLocal, EnvCI, EnvTest:
+		return true
+	default:
+		return false
+	}
 }
