@@ -155,6 +155,8 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../src/go-boilerplate/internal/di/module/auth.go.html">auth.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/di/module/authz.go.html">authz.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/clock.go.html">clock.go</a>
@@ -218,7 +220,7 @@
 		
 			
 			
-			</p><h2 id="ControllerModule">func <a href="../../../../src/go-boilerplate/internal/di/module/controller.go.html?s=918:951#L9">ControllerModule</a>
+			</p><h2 id="ControllerModule">func <a href="../../../../src/go-boilerplate/internal/di/module/controller.go.html?s=1533:1566#L14">ControllerModule</a>
 				<a class="permalink" href="#ControllerModule">¶</a>
 				
 				
@@ -246,14 +248,14 @@
 		
 			
 			
-			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=393:430#L1">InfrastructureModule</a>
+			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=417:454#L1">InfrastructureModule</a>
 				<a class="permalink" href="#InfrastructureModule">¶</a>
 				
 				
 			</h2>
 			<pre>func InfrastructureModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
 			<p>InfrastructureModule は、全プロセス共通のインフラストラクチャ層の依存関係を集約して提供するfx.Moduleです。
-含む concern は永続化 / clock / HTTP client / webapi gateway / security / authz です。
+含む concern は永続化 / clock / HTTP client / webapi gateway / auth（JWKS profile）/ security / authz です。
 outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で提供します。
 
 			
@@ -335,7 +337,7 @@ relay 以外のプロセスへ漏れないよう共有 InfrastructureModule で�
 		
 			
 			
-			</p><h2 id="UsecaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html?s=531:561#L6">UsecaseModule</a>
+			</p><h2 id="UsecaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html?s=973:1003#L11">UsecaseModule</a>
 				<a class="permalink" href="#UsecaseModule">¶</a>
 				
 				

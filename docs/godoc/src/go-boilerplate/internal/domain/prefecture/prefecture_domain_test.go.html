@@ -166,36 +166,72 @@
 <span id="L109" class="ln">   109  </span>	})
 <span id="L110" class="ln">   110  </span>}
 <span id="L111" class="ln">   111  </span>
-<span id="L112" class="ln">   112  </span>func TestPrefecture_Accessors(t *testing.T) {
+<span id="L112" class="ln">   112  </span>func TestPrefecture_ID(t *testing.T) {
 <span id="L113" class="ln">   113  </span>	t.Parallel()
 <span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>	id, err := uuid.New()
-<span id="L116" class="ln">   116  </span>	require.NoError(t, err)
-<span id="L117" class="ln">   117  </span>	name := &#34;Osaka&#34;
-<span id="L118" class="ln">   118  </span>	code := 27
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>	prefecture, err := New(id, name, code)
-<span id="L121" class="ln">   121  </span>	require.NoError(t, err)
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span>	t.Run(&#34;IDメソッドは正しいIDを返す&#34;, func(t *testing.T) {
-<span id="L124" class="ln">   124  </span>		t.Parallel()
+<span id="L115" class="ln">   115  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L116" class="ln">   116  </span>		t.Parallel()
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span>		t.Run(&#34;IDメソッドは正しいIDを返す&#34;, func(t *testing.T) {
+<span id="L119" class="ln">   119  </span>			t.Parallel()
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>			id, err := uuid.New()
+<span id="L122" class="ln">   122  </span>			require.NoError(t, err)
+<span id="L123" class="ln">   123  </span>			name := &#34;Osaka&#34;
+<span id="L124" class="ln">   124  </span>			code := 27
 <span id="L125" class="ln">   125  </span>
-<span id="L126" class="ln">   126  </span>		assert.Equal(t, id, prefecture.ID())
-<span id="L127" class="ln">   127  </span>	})
+<span id="L126" class="ln">   126  </span>			prefecture, err := New(id, name, code)
+<span id="L127" class="ln">   127  </span>			require.NoError(t, err)
 <span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span>	t.Run(&#34;Nameメソッドは正しい名前を返す&#34;, func(t *testing.T) {
-<span id="L130" class="ln">   130  </span>		t.Parallel()
-<span id="L131" class="ln">   131  </span>
-<span id="L132" class="ln">   132  </span>		assert.Equal(t, name, prefecture.Name())
-<span id="L133" class="ln">   133  </span>	})
-<span id="L134" class="ln">   134  </span>
-<span id="L135" class="ln">   135  </span>	t.Run(&#34;Codeメソッドは正しいコードを返す&#34;, func(t *testing.T) {
-<span id="L136" class="ln">   136  </span>		t.Parallel()
-<span id="L137" class="ln">   137  </span>
-<span id="L138" class="ln">   138  </span>		assert.Equal(t, code, prefecture.Code())
-<span id="L139" class="ln">   139  </span>	})
-<span id="L140" class="ln">   140  </span>}
-<span id="L141" class="ln">   141  </span>
+<span id="L129" class="ln">   129  </span>			assert.Equal(t, id, prefecture.ID())
+<span id="L130" class="ln">   130  </span>		})
+<span id="L131" class="ln">   131  </span>	})
+<span id="L132" class="ln">   132  </span>}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>func TestPrefecture_Name(t *testing.T) {
+<span id="L135" class="ln">   135  </span>	t.Parallel()
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L138" class="ln">   138  </span>		t.Parallel()
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>		t.Run(&#34;Nameメソッドは正しい名前を返す&#34;, func(t *testing.T) {
+<span id="L141" class="ln">   141  </span>			t.Parallel()
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span>			id, err := uuid.New()
+<span id="L144" class="ln">   144  </span>			require.NoError(t, err)
+<span id="L145" class="ln">   145  </span>			name := &#34;Osaka&#34;
+<span id="L146" class="ln">   146  </span>			code := 27
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>			prefecture, err := New(id, name, code)
+<span id="L149" class="ln">   149  </span>			require.NoError(t, err)
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>			assert.Equal(t, name, prefecture.Name())
+<span id="L152" class="ln">   152  </span>		})
+<span id="L153" class="ln">   153  </span>	})
+<span id="L154" class="ln">   154  </span>}
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>func TestPrefecture_Code(t *testing.T) {
+<span id="L157" class="ln">   157  </span>	t.Parallel()
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>		t.Parallel()
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>		t.Run(&#34;Codeメソッドは正しいコードを返す&#34;, func(t *testing.T) {
+<span id="L163" class="ln">   163  </span>			t.Parallel()
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>			id, err := uuid.New()
+<span id="L166" class="ln">   166  </span>			require.NoError(t, err)
+<span id="L167" class="ln">   167  </span>			name := &#34;Osaka&#34;
+<span id="L168" class="ln">   168  </span>			code := 27
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>			prefecture, err := New(id, name, code)
+<span id="L171" class="ln">   171  </span>			require.NoError(t, err)
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>			assert.Equal(t, code, prefecture.Code())
+<span id="L174" class="ln">   174  </span>		})
+<span id="L175" class="ln">   175  </span>	})
+<span id="L176" class="ln">   176  </span>}
+<span id="L177" class="ln">   177  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

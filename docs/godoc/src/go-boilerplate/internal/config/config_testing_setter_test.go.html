@@ -158,87 +158,64 @@
 <span id="L101" class="ln">   101  </span>			assert.Equal(t, testCIDR, cfg.security.CIDR())
 <span id="L102" class="ln">   102  </span>		})
 <span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>		t.Run(&#34;認証ヘッダー名を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L105" class="ln">   105  </span>			expected := &#34;X-TEST-AUTH&#34;
-<span id="L106" class="ln">   106  </span>			cfg.auth.SetHeaderName(t, expected)
-<span id="L107" class="ln">   107  </span>			assert.Equal(t, expected, cfg.auth.HeaderName())
+<span id="L104" class="ln">   104  </span>		t.Run(&#34;outboxのbatch sizeを設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L105" class="ln">   105  </span>			expected := 7
+<span id="L106" class="ln">   106  </span>			cfg.outbox.SetOutboxBatchSize(t, expected)
+<span id="L107" class="ln">   107  </span>			assert.Equal(t, expected, cfg.outbox.BatchSize())
 <span id="L108" class="ln">   108  </span>		})
 <span id="L109" class="ln">   109  </span>
-<span id="L110" class="ln">   110  </span>		t.Run(&#34;Bearerヘッダー許可を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L111" class="ln">   111  </span>			expected := true
-<span id="L112" class="ln">   112  </span>			cfg.auth.SetAllowedHeaderBearer(t, expected)
-<span id="L113" class="ln">   113  </span>			assert.Equal(t, expected, cfg.auth.AllowedHeaderBearer())
+<span id="L110" class="ln">   110  </span>		t.Run(&#34;outboxのエンドポイントを設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L111" class="ln">   111  </span>			expected := &#34;http://test-relay:8080&#34;
+<span id="L112" class="ln">   112  </span>			cfg.outbox.SetOutboxEndpoint(t, expected)
+<span id="L113" class="ln">   113  </span>			assert.Equal(t, expected, cfg.outbox.Endpoint())
 <span id="L114" class="ln">   114  </span>		})
 <span id="L115" class="ln">   115  </span>
-<span id="L116" class="ln">   116  </span>		t.Run(&#34;outboxのbatch sizeを設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L117" class="ln">   117  </span>			expected := 7
-<span id="L118" class="ln">   118  </span>			cfg.outbox.SetOutboxBatchSize(t, expected)
-<span id="L119" class="ln">   119  </span>			assert.Equal(t, expected, cfg.outbox.BatchSize())
+<span id="L116" class="ln">   116  </span>		t.Run(&#34;outboxのpoll間隔を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L117" class="ln">   117  </span>			expected := 3 * time.Second
+<span id="L118" class="ln">   118  </span>			cfg.outbox.SetOutboxPollInterval(t, expected)
+<span id="L119" class="ln">   119  </span>			assert.Equal(t, expected, cfg.outbox.PollInterval())
 <span id="L120" class="ln">   120  </span>		})
 <span id="L121" class="ln">   121  </span>
-<span id="L122" class="ln">   122  </span>		t.Run(&#34;outboxのエンドポイントを設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L123" class="ln">   123  </span>			expected := &#34;http://test-relay:8080&#34;
-<span id="L124" class="ln">   124  </span>			cfg.outbox.SetOutboxEndpoint(t, expected)
-<span id="L125" class="ln">   125  </span>			assert.Equal(t, expected, cfg.outbox.Endpoint())
+<span id="L122" class="ln">   122  </span>		t.Run(&#34;outboxのエラー時待機時間を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L123" class="ln">   123  </span>			expected := 9 * time.Second
+<span id="L124" class="ln">   124  </span>			cfg.outbox.SetOutboxErrorBackoff(t, expected)
+<span id="L125" class="ln">   125  </span>			assert.Equal(t, expected, cfg.outbox.ErrorBackoff())
 <span id="L126" class="ln">   126  </span>		})
 <span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>		t.Run(&#34;outboxのpoll間隔を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L129" class="ln">   129  </span>			expected := 3 * time.Second
-<span id="L130" class="ln">   130  </span>			cfg.outbox.SetOutboxPollInterval(t, expected)
-<span id="L131" class="ln">   131  </span>			assert.Equal(t, expected, cfg.outbox.PollInterval())
+<span id="L128" class="ln">   128  </span>		t.Run(&#34;worker health listener アドレスを設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L129" class="ln">   129  </span>			expected := &#34;127.0.0.1:0&#34;
+<span id="L130" class="ln">   130  </span>			cfg.worker.SetHealthListenAddr(t, expected)
+<span id="L131" class="ln">   131  </span>			assert.Equal(t, expected, cfg.worker.HealthListenAddr())
 <span id="L132" class="ln">   132  </span>		})
 <span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>		t.Run(&#34;outboxのエラー時待機時間を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L135" class="ln">   135  </span>			expected := 9 * time.Second
-<span id="L136" class="ln">   136  </span>			cfg.outbox.SetOutboxErrorBackoff(t, expected)
-<span id="L137" class="ln">   137  </span>			assert.Equal(t, expected, cfg.outbox.ErrorBackoff())
+<span id="L134" class="ln">   134  </span>		t.Run(&#34;セキュアクッキーの SameSite を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L135" class="ln">   135  </span>			expected := &#34;Lax&#34;
+<span id="L136" class="ln">   136  </span>			cfg.secureCookie.SetSameSite(t, expected)
+<span id="L137" class="ln">   137  </span>			assert.Equal(t, expected, cfg.secureCookie.SameSite())
 <span id="L138" class="ln">   138  </span>		})
 <span id="L139" class="ln">   139  </span>
-<span id="L140" class="ln">   140  </span>		t.Run(&#34;worker health listener アドレスを設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L141" class="ln">   141  </span>			expected := &#34;127.0.0.1:0&#34;
-<span id="L142" class="ln">   142  </span>			cfg.worker.SetHealthListenAddr(t, expected)
-<span id="L143" class="ln">   143  </span>			assert.Equal(t, expected, cfg.worker.HealthListenAddr())
+<span id="L140" class="ln">   140  </span>		t.Run(&#34;セキュアクッキーの Domain を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L141" class="ln">   141  </span>			expected := &#34;example.test&#34;
+<span id="L142" class="ln">   142  </span>			cfg.secureCookie.SetDomain(t, expected)
+<span id="L143" class="ln">   143  </span>			assert.Equal(t, expected, cfg.secureCookie.Domain())
 <span id="L144" class="ln">   144  </span>		})
 <span id="L145" class="ln">   145  </span>
-<span id="L146" class="ln">   146  </span>		t.Run(&#34;セキュアクッキーの SameSite を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L147" class="ln">   147  </span>			expected := &#34;Lax&#34;
-<span id="L148" class="ln">   148  </span>			cfg.secureCookie.SetSameSite(t, expected)
-<span id="L149" class="ln">   149  </span>			assert.Equal(t, expected, cfg.secureCookie.SameSite())
-<span id="L150" class="ln">   150  </span>		})
-<span id="L151" class="ln">   151  </span>
-<span id="L152" class="ln">   152  </span>		t.Run(&#34;セキュアクッキーの Domain を設定して取得できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L153" class="ln">   153  </span>			expected := &#34;example.test&#34;
-<span id="L154" class="ln">   154  </span>			cfg.secureCookie.SetDomain(t, expected)
-<span id="L155" class="ln">   155  </span>			assert.Equal(t, expected, cfg.secureCookie.Domain())
-<span id="L156" class="ln">   156  </span>		})
-<span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span>		t.Run(&#34;クリーンアップ後に元の値へ復元される&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L159" class="ln">   159  </span>			t.Run(&#34;サーバーポートが復元される&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L160" class="ln">   160  </span>				original := cfg.server.Port()
+<span id="L146" class="ln">   146  </span>		t.Run(&#34;クリーンアップ後に元の値へ復元される&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L147" class="ln">   147  </span>			t.Run(&#34;サーバーポートが復元される&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L148" class="ln">   148  </span>				original := cfg.server.Port()
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span>				t.Run(&#34;一時的にポートを上書きする&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
+<span id="L151" class="ln">   151  </span>					cfg.server.SetServerPort(t, original+1)
+<span id="L152" class="ln">   152  </span>					assert.Equal(t, original+1, cfg.server.Port())
+<span id="L153" class="ln">   153  </span>				})
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>				<span class="comment">// 内側サブテスト終了時に Cleanup が発火し、元値へ戻る。</span>
+<span id="L156" class="ln">   156  </span>				assert.Equal(t, original, cfg.server.Port())
+<span id="L157" class="ln">   157  </span>			})
+<span id="L158" class="ln">   158  </span>		})
+<span id="L159" class="ln">   159  </span>	})
+<span id="L160" class="ln">   160  </span>}
 <span id="L161" class="ln">   161  </span>
-<span id="L162" class="ln">   162  </span>				t.Run(&#34;一時的にポートを上書きする&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L163" class="ln">   163  </span>					cfg.server.SetServerPort(t, original+1)
-<span id="L164" class="ln">   164  </span>					assert.Equal(t, original+1, cfg.server.Port())
-<span id="L165" class="ln">   165  </span>				})
-<span id="L166" class="ln">   166  </span>
-<span id="L167" class="ln">   167  </span>				<span class="comment">// 内側サブテスト終了時に Cleanup が発火し、元値へ戻る。</span>
-<span id="L168" class="ln">   168  </span>				assert.Equal(t, original, cfg.server.Port())
-<span id="L169" class="ln">   169  </span>			})
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>			t.Run(&#34;認証ヘッダー名が復元される&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L172" class="ln">   172  </span>				original := cfg.auth.HeaderName()
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span>				t.Run(&#34;一時的にヘッダー名を上書きする&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // 共有状態のため並列化不可</span>
-<span id="L175" class="ln">   175  </span>					cfg.auth.SetHeaderName(t, &#34;X-OVERRIDE&#34;)
-<span id="L176" class="ln">   176  </span>					assert.Equal(t, &#34;X-OVERRIDE&#34;, cfg.auth.HeaderName())
-<span id="L177" class="ln">   177  </span>				})
-<span id="L178" class="ln">   178  </span>
-<span id="L179" class="ln">   179  </span>				assert.Equal(t, original, cfg.auth.HeaderName())
-<span id="L180" class="ln">   180  </span>			})
-<span id="L181" class="ln">   181  </span>		})
-<span id="L182" class="ln">   182  </span>	})
-<span id="L183" class="ln">   183  </span>}
-<span id="L184" class="ln">   184  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/config_testing_setter_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

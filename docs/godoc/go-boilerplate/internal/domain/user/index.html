@@ -169,6 +169,44 @@
 				
 			
 				
+				<dd><a href="#Role">type Role</a></dd>
+				
+					
+					<dd>    <a href="#NewRole">func NewRole(id uuid.UUID, name string, code int) (*Role, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Role.Code">func (r *Role) Code() RoleCode</a></dd>
+				
+					
+					<dd>    <a href="#Role.ID">func (r *Role) ID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#Role.IsAdmin">func (r *Role) IsAdmin() bool</a></dd>
+				
+					
+					<dd>    <a href="#Role.Name">func (r *Role) Name() string</a></dd>
+				
+			
+				
+				<dd><a href="#RoleCode">type RoleCode</a></dd>
+				
+				
+			
+				
+				<dd><a href="#RoleRepository">type RoleRepository</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Roles">type Roles</a></dd>
+				
+				
+					
+					<dd>    <a href="#Roles.HasAdmin">func (rs Roles) HasAdmin() bool</a></dd>
+				
+			
+				
 				<dd><a href="#User">type User</a></dd>
 				
 					
@@ -256,6 +294,10 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html">raw_password.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html">role.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/user/role_repository.go.html">role_repository.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html">user_domain.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html">user_feed.go</a>
@@ -339,6 +381,13 @@
     <span id="ErrInvalidPostalCode">ErrInvalidPostalCode</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;postal code failed&#34;)
     <span class="comment">// ErrInvalidUpdatedAt は、更新日時の検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidUpdatedAt">ErrInvalidUpdatedAt</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;updated at failed&#34;)
+
+    <span class="comment">// ErrInvalidRoleID は、ロール ID の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidRoleID">ErrInvalidRoleID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;role id failed&#34;)
+    <span class="comment">// ErrInvalidRoleName は、ロール名の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidRoleName">ErrInvalidRoleName</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;role name failed&#34;)
+    <span class="comment">// ErrInvalidRoleCode は、ロールコードの検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidRoleCode">ErrInvalidRoleCode</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;role code failed&#34;)
     <span class="comment">// ErrInvalidDeletedAt は、削除日時の検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidDeletedAt">ErrInvalidDeletedAt</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;deleted at failed&#34;)
 
@@ -605,7 +654,7 @@
 		
 			
 			
-			</p><h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_repository.go.html?s=292:1761#L1">Repository</a>
+			</p><h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_repository.go.html?s=292:2538#L1">Repository</a>
 				<a class="permalink" href="#Repository">¶</a>
 				
 				
@@ -619,6 +668,12 @@
     <span class="comment">// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。</span>
     <span class="comment">// after=nil の場合は先頭ページを返し、それ以外は after が表す境界より後ろ（より過去）の行を返します。</span>
     FindFeed(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, after *<a href="#FeedCursor">FeedCursor</a>, limit <a href="../../../../builtin/#int32">int32</a>) (<a href="#Users">Users</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// SearchByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得します。</span>
+    <span class="comment">// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。keywords が空の場合は全ユーザーを対象とします。</span>
+    SearchByKeyword(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, keywords []<a href="../../../../builtin/#string">string</a>, active *<a href="../../../../builtin/#bool">bool</a>, limit, offset <a href="../../../../builtin/#int32">int32</a>) (<a href="#Users">Users</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// CountByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返します。</span>
+    <span class="comment">// active / keywords の意味は SearchByKeyword と同じです。</span>
+    CountByKeyword(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, keywords []<a href="../../../../builtin/#string">string</a>, active *<a href="../../../../builtin/#bool">bool</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound を返します。</span>
     FindByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#User">User</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// Create は、ユーザーを作成します。</span>
@@ -645,7 +700,195 @@
 		
 			
 			
-			<h2 id="User">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=637:971#L8">User</a>
+			<h2 id="Role">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=622:686#L15">Role</a>
+				<a class="permalink" href="#Role">¶</a>
+				
+				
+			</h2>
+			<p>Role は、ユーザーに割り当てられるロールを表すドメインエンティティです。
+
+			</p><pre>type Role struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewRole">func <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1324:1394#L44">NewRole</a>
+					<a class="permalink" href="#NewRole">¶</a>
+					
+					
+				</h3>
+				<pre>func NewRole(
+    id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>,
+    name <a href="../../../../builtin/#string">string</a>,
+    code <a href="../../../../builtin/#int">int</a>,
+) (*<a href="#Role">Role</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>NewRole は、ロールエンティティの検証と生成を行います。id が nil の場合は ErrInvalidRoleID、
+名前長違反の場合は ErrInvalidRoleName、未知の code の場合は ErrInvalidRoleCode を返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Role.Code">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=2062:2092#L74">Code</a>
+					<a class="permalink" href="#Role.Code">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Role">Role</a>) Code() <a href="#RoleCode">RoleCode</a></pre>
+				<p>Code は、ロールコードを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Role.ID">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1871:1900#L68">ID</a>
+					<a class="permalink" href="#Role.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Role">Role</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、ロールのIDを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Role.IsAdmin">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=2178:2207#L77">IsAdmin</a>
+					<a class="permalink" href="#Role.IsAdmin">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Role">Role</a>) IsAdmin() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsAdmin は、管理者ロールかどうかを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Role.Name">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1963:1991#L71">Name</a>
+					<a class="permalink" href="#Role.Name">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Role">Role</a>) Name() <a href="../../../../builtin/#string">string</a></pre>
+				<p>Name は、ロール名を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="RoleCode">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=409:426#L9">RoleCode</a>
+				<a class="permalink" href="#RoleCode">¶</a>
+				
+				
+			</h2>
+			<p>RoleCode は、ロールを識別するコード値です（roles.code に対応）。
+
+			</p><pre>type RoleCode <a href="../../../../builtin/#int">int</a></pre>
+
+			
+				
+				<pre>const (
+    <span class="comment">// RoleCodeAdmin は、管理者ロールのコードです。</span>
+    <span id="RoleCodeAdmin">RoleCodeAdmin</span> <a href="#RoleCode">RoleCode</a> = 1
+    <span class="comment">// RoleCodeGeneral は、一般ロールのコードです。</span>
+    <span id="RoleCodeGeneral">RoleCodeGeneral</span> <a href="#RoleCode">RoleCode</a> = 2
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="RoleRepository">type <a href="../../../../src/go-boilerplate/internal/domain/user/role_repository.go.html?s=320:530#L1">RoleRepository</a>
+				<a class="permalink" href="#RoleRepository">¶</a>
+				
+				
+			</h2>
+			<p>RoleRepository は、ユーザーに割り当てられたロールの取得を定義するドメインリポジトリインターフェースです。
+
+			</p><pre>type RoleRepository interface {
+    <span class="comment">// FindRolesByUserID は、指定ユーザーに割り当てられた全ロールを取得します。</span>
+    FindRolesByUserID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, userID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#Roles">Roles</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Roles">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=494:512#L12">Roles</a>
+				<a class="permalink" href="#Roles">¶</a>
+				
+				
+			</h2>
+			<p>Roles は、Role エンティティのスライス型です。
+
+			</p><pre>type Roles []*<a href="#Role">Role</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="Roles.HasAdmin">func (Roles) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=965:996#L32">HasAdmin</a>
+					<a class="permalink" href="#Roles.HasAdmin">¶</a>
+					
+					
+				</h3>
+				<pre>func (rs <a href="#Roles">Roles</a>) HasAdmin() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>HasAdmin は、管理者ロールを含むかどうかを返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="User">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=637:971#L8">User</a>
 				<a class="permalink" href="#User">¶</a>
 				
 				

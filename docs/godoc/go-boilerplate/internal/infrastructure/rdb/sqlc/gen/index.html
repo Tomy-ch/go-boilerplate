@@ -150,6 +150,11 @@
 				
 			
 				
+				<dd><a href="#GetPrefectureDomainAllRow">type GetPrefectureDomainAllRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#GetPrefectureDomainByIDRow">type GetPrefectureDomainByIDRow</a></dd>
 				
 				
@@ -165,7 +170,22 @@
 				
 			
 				
+				<dd><a href="#GetProductCategoryDomainAllRow">type GetProductCategoryDomainAllRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GetProductStatusDomainAllRow">type GetProductStatusDomainAllRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#GetUserByIDRow">type GetUserByIDRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GetUserRolesByUserIDRow">type GetUserRolesByUserIDRow</a></dd>
 				
 				
 			
@@ -201,6 +221,26 @@
 			
 				
 				<dd><a href="#ListDeletedUsersRow">type ListDeletedUsersRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListPublishedProductsAscParams">type ListPublishedProductsAscParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListPublishedProductsAscRow">type ListPublishedProductsAscRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListPublishedProductsDescParams">type ListPublishedProductsDescParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListPublishedProductsDescRow">type ListPublishedProductsDescRow</a></dd>
 				
 				
 			
@@ -324,6 +364,9 @@
 					<dd>    <a href="#Queries.GetIdempotencyKey">func (q *Queries) GetIdempotencyKey(ctx context.Context, arg *GetIdempotencyKeyParams) (*GetIdempotencyKeyRow, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.GetPrefectureDomainAll">func (q *Queries) GetPrefectureDomainAll(ctx context.Context) ([]*GetPrefectureDomainAllRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.GetPrefectureDomainByID">func (q *Queries) GetPrefectureDomainByID(ctx context.Context, idParam uuid.UUID) (*GetPrefectureDomainByIDRow, error)</a></dd>
 				
 					
@@ -333,7 +376,16 @@
 					<dd>    <a href="#Queries.GetPrefectureDomainByName">func (q *Queries) GetPrefectureDomainByName(ctx context.Context, nameParam string) (*GetPrefectureDomainByNameRow, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.GetProductCategoryDomainAll">func (q *Queries) GetProductCategoryDomainAll(ctx context.Context) ([]*GetProductCategoryDomainAllRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.GetProductStatusDomainAll">func (q *Queries) GetProductStatusDomainAll(ctx context.Context) ([]*GetProductStatusDomainAllRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.GetUserByID">func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetUserByIDRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.GetUserRolesByUserID">func (q *Queries) GetUserRolesByUserID(ctx context.Context, userIDParam uuid.UUID) ([]*GetUserRolesByUserIDRow, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.InsertOutbox">func (q *Queries) InsertOutbox(ctx context.Context, arg *InsertOutboxParams) (*InsertOutboxRow, error)</a></dd>
@@ -343,6 +395,12 @@
 				
 					
 					<dd>    <a href="#Queries.ListDeletedUsers">func (q *Queries) ListDeletedUsers(ctx context.Context, arg *ListDeletedUsersParams) ([]*ListDeletedUsersRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListPublishedProductsAsc">func (q *Queries) ListPublishedProductsAsc(ctx context.Context, arg *ListPublishedProductsAscParams) ([]*ListPublishedProductsAscRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListPublishedProductsDesc">func (q *Queries) ListPublishedProductsDesc(ctx context.Context, arg *ListPublishedProductsDescParams) ([]*ListPublishedProductsDescRow, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.ListUsers">func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListUsersRow, error)</a></dd>
@@ -369,6 +427,9 @@
 					<dd>    <a href="#Queries.ReplayDeadOutbox">func (q *Queries) ReplayDeadOutbox(ctx context.Context, messageID *uuid.UUID) (int64, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.ResolveUserByIdentity">func (q *Queries) ResolveUserByIdentity(ctx context.Context, arg *ResolveUserByIdentityParams) (*ResolveUserByIdentityRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.SearchActiveUsers">func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersParams) ([]*SearchActiveUsersRow, error)</a></dd>
 				
 					
@@ -382,6 +443,21 @@
 				
 					
 					<dd>    <a href="#Queries.WithTx">func (q *Queries) WithTx(tx pgx.Tx) *Queries</a></dd>
+				
+			
+				
+				<dd><a href="#ResolveUserByIdentityParams">type ResolveUserByIdentityParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ResolveUserByIdentityRow">type ResolveUserByIdentityRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Roles">type Roles</a></dd>
+				
 				
 			
 				
@@ -425,6 +501,16 @@
 				
 			
 				
+				<dd><a href="#UserIdentities">type UserIdentities</a></dd>
+				
+				
+			
+				
+				<dd><a href="#UserRoles">type UserRoles</a></dd>
+				
+				
+			
+				
 				<dd><a href="#Users">type Users</a></dd>
 				
 				
@@ -454,7 +540,13 @@
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html">prefecture_repository.gen.sql.go</a>
 			
-				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html">user_query_service.gen.sql.go</a>
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_category_repository.gen.sql.go.html">product_category_repository.gen.sql.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html">product_repository.gen.sql.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_status_repository.gen.sql.go.html">product_status_repository.gen.sql.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_identity_repository.gen.sql.go.html">user_identity_repository.gen.sql.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html">user_repository.gen.sql.go</a>
 			
@@ -562,7 +654,7 @@
 		
 			
 			
-			<h2 id="CreateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=1697:2015#L90">CreateUserParams</a>
+			<h2 id="CreateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=3336:3654#L148">CreateUserParams</a>
 				<a class="permalink" href="#CreateUserParams">¶</a>
 				
 				
@@ -731,7 +823,34 @@
 		
 			
 			
-			<h2 id="GetPrefectureDomainByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=334:417#L13">GetPrefectureDomainByIDRow</a>
+			<h2 id="GetPrefectureDomainAllRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=337:419#L13">GetPrefectureDomainAllRow</a>
+				<a class="permalink" href="#GetPrefectureDomainAllRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetPrefectureDomainAllRow struct {
+<span id="GetPrefectureDomainAllRow.ID"></span>    ID   <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="GetPrefectureDomainAllRow.Name"></span>    Name <a href="../../../../../../builtin/#string">string</a>
+<span id="GetPrefectureDomainAllRow.Code"></span>    Code <a href="../../../../../../builtin/#int16">int16</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetPrefectureDomainByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=1258:1341#L56">GetPrefectureDomainByIDRow</a>
 				<a class="permalink" href="#GetPrefectureDomainByIDRow">¶</a>
 				
 				
@@ -758,7 +877,7 @@
 		
 			
 			
-			<h2 id="GetPrefectureDomainByIDsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=1062:1146#L44">GetPrefectureDomainByIDsRow</a>
+			<h2 id="GetPrefectureDomainByIDsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=1986:2070#L87">GetPrefectureDomainByIDsRow</a>
 				<a class="permalink" href="#GetPrefectureDomainByIDsRow">¶</a>
 				
 				
@@ -785,7 +904,7 @@
 		
 			
 			
-			<h2 id="GetPrefectureDomainByNameRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=2064:2149#L88">GetPrefectureDomainByNameRow</a>
+			<h2 id="GetPrefectureDomainByNameRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=2988:3073#L131">GetPrefectureDomainByNameRow</a>
 				<a class="permalink" href="#GetPrefectureDomainByNameRow">¶</a>
 				
 				
@@ -812,7 +931,63 @@
 		
 			
 			
-			<h2 id="GetUserByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=3141:3184#L164">GetUserByIDRow</a>
+			<h2 id="GetProductCategoryDomainAllRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_category_repository.gen.sql.go.html?s=386:497#L14">GetProductCategoryDomainAllRow</a>
+				<a class="permalink" href="#GetProductCategoryDomainAllRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetProductCategoryDomainAllRow struct {
+<span id="GetProductCategoryDomainAllRow.ID"></span>    ID      <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="GetProductCategoryDomainAllRow.Name"></span>    Name    <a href="../../../../../../builtin/#string">string</a>
+<span id="GetProductCategoryDomainAllRow.Code"></span>    Code    <a href="../../../../../../builtin/#int16">int16</a>
+<span id="GetProductCategoryDomainAllRow.SortKey"></span>    SortKey <a href="../../../../../../builtin/#int16">int16</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetProductStatusDomainAllRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_status_repository.gen.sql.go.html?s=378:487#L14">GetProductStatusDomainAllRow</a>
+				<a class="permalink" href="#GetProductStatusDomainAllRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetProductStatusDomainAllRow struct {
+<span id="GetProductStatusDomainAllRow.ID"></span>    ID      <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="GetProductStatusDomainAllRow.Name"></span>    Name    <a href="../../../../../../builtin/#string">string</a>
+<span id="GetProductStatusDomainAllRow.Code"></span>    Code    <a href="../../../../../../builtin/#int16">int16</a>
+<span id="GetProductStatusDomainAllRow.SortKey"></span>    SortKey <a href="../../../../../../builtin/#int16">int16</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetUserByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4780:4823#L222">GetUserByIDRow</a>
 				<a class="permalink" href="#GetUserByIDRow">¶</a>
 				
 				
@@ -820,6 +995,33 @@
 			
 			<pre>type GetUserByIDRow struct {
 <span id="GetUserByIDRow.Users"></span>    Users <a href="#Users">Users</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetUserRolesByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=5905:5985#L266">GetUserRolesByUserIDRow</a>
+				<a class="permalink" href="#GetUserRolesByUserIDRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetUserRolesByUserIDRow struct {
+<span id="GetUserRolesByUserIDRow.ID"></span>    ID   <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="GetUserRolesByUserIDRow.Name"></span>    Name <a href="../../../../../../builtin/#string">string</a>
+<span id="GetUserRolesByUserIDRow.Code"></span>    Code <a href="../../../../../../builtin/#int16">int16</a>
 }
 </pre>
 
@@ -941,7 +1143,7 @@
 		
 			
 			
-			<h2 id="ListActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4395:4470#L205">ListActiveUsersParams</a>
+			<h2 id="ListActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7101:7176#L310">ListActiveUsersParams</a>
 				<a class="permalink" href="#ListActiveUsersParams">¶</a>
 				
 				
@@ -967,7 +1169,7 @@
 		
 			
 			
-			<h2 id="ListActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4472:4519#L210">ListActiveUsersRow</a>
+			<h2 id="ListActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7178:7225#L315">ListActiveUsersRow</a>
 				<a class="permalink" href="#ListActiveUsersRow">¶</a>
 				
 				
@@ -992,7 +1194,7 @@
 		
 			
 			
-			<h2 id="ListDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=6022:6098#L265">ListDeletedUsersParams</a>
+			<h2 id="ListDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=8728:8804#L370">ListDeletedUsersParams</a>
 				<a class="permalink" href="#ListDeletedUsersParams">¶</a>
 				
 				
@@ -1018,7 +1220,7 @@
 		
 			
 			
-			<h2 id="ListDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=6100:6148#L270">ListDeletedUsersRow</a>
+			<h2 id="ListDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=8806:8854#L375">ListDeletedUsersRow</a>
 				<a class="permalink" href="#ListDeletedUsersRow">¶</a>
 				
 				
@@ -1043,7 +1245,119 @@
 		
 			
 			
-			<h2 id="ListUsersFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9300:9414#L387">ListUsersFeedAfterParams</a>
+			<h2 id="ListPublishedProductsAscParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=862:1097#L25">ListPublishedProductsAscParams</a>
+				<a class="permalink" href="#ListPublishedProductsAscParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListPublishedProductsAscParams struct {
+<span id="ListPublishedProductsAscParams.CategoryID"></span>    CategoryID       *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListPublishedProductsAscParams.StatusID"></span>    StatusID         *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListPublishedProductsAscParams.Keyword"></span>    Keyword          *<a href="../../../../../../builtin/#string">string</a>
+<span id="ListPublishedProductsAscParams.HasAfter"></span>    HasAfter         <a href="../../../../../../builtin/#bool">bool</a>
+<span id="ListPublishedProductsAscParams.AfterPublishedAt"></span>    AfterPublishedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListPublishedProductsAscParams.AfterID"></span>    AfterID          *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListPublishedProductsAscParams.LimitParam"></span>    LimitParam       <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListPublishedProductsAscRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=1099:1161#L35">ListPublishedProductsAscRow</a>
+				<a class="permalink" href="#ListPublishedProductsAscRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListPublishedProductsAscRow struct {
+<span id="ListPublishedProductsAscRow.Products"></span>    Products <a href="#Products">Products</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListPublishedProductsDescParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=3707:3943#L119">ListPublishedProductsDescParams</a>
+				<a class="permalink" href="#ListPublishedProductsDescParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListPublishedProductsDescParams struct {
+<span id="ListPublishedProductsDescParams.CategoryID"></span>    CategoryID       *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListPublishedProductsDescParams.StatusID"></span>    StatusID         *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListPublishedProductsDescParams.Keyword"></span>    Keyword          *<a href="../../../../../../builtin/#string">string</a>
+<span id="ListPublishedProductsDescParams.HasAfter"></span>    HasAfter         <a href="../../../../../../builtin/#bool">bool</a>
+<span id="ListPublishedProductsDescParams.AfterPublishedAt"></span>    AfterPublishedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListPublishedProductsDescParams.AfterID"></span>    AfterID          *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListPublishedProductsDescParams.LimitParam"></span>    LimitParam       <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListPublishedProductsDescRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=3945:4008#L129">ListPublishedProductsDescRow</a>
+				<a class="permalink" href="#ListPublishedProductsDescRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListPublishedProductsDescRow struct {
+<span id="ListPublishedProductsDescRow.Products"></span>    Products <a href="#Products">Products</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListUsersFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12006:12120#L492">ListUsersFeedAfterParams</a>
 				<a class="permalink" href="#ListUsersFeedAfterParams">¶</a>
 				
 				
@@ -1070,7 +1384,7 @@
 		
 			
 			
-			<h2 id="ListUsersFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9416:9466#L393">ListUsersFeedAfterRow</a>
+			<h2 id="ListUsersFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12122:12172#L498">ListUsersFeedAfterRow</a>
 				<a class="permalink" href="#ListUsersFeedAfterRow">¶</a>
 				
 				
@@ -1095,7 +1409,7 @@
 		
 			
 			
-			<h2 id="ListUsersFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11187:11237#L452">ListUsersFeedFirstRow</a>
+			<h2 id="ListUsersFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=13893:13943#L557">ListUsersFeedFirstRow</a>
 				<a class="permalink" href="#ListUsersFeedFirstRow">¶</a>
 				
 				
@@ -1120,7 +1434,7 @@
 		
 			
 			
-			<h2 id="ListUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7617:7686#L324">ListUsersParams</a>
+			<h2 id="ListUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=10323:10392#L429">ListUsersParams</a>
 				<a class="permalink" href="#ListUsersParams">¶</a>
 				
 				
@@ -1146,7 +1460,7 @@
 		
 			
 			
-			<h2 id="ListUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7688:7729#L329">ListUsersRow</a>
+			<h2 id="ListUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=10394:10435#L434">ListUsersRow</a>
 				<a class="permalink" href="#ListUsersRow">¶</a>
 				
 				
@@ -1683,7 +1997,7 @@ WHERE u.deleted_at IS NOT NULL
 				
 			
 				
-				<h3 id="Queries.CountSearchActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=467:567#L15">CountSearchActiveUsers</a>
+				<h3 id="Queries.CountSearchActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=1302:1402#L54">CountSearchActiveUsers</a>
 					<a class="permalink" href="#Queries.CountSearchActiveUsers">¶</a>
 					
 					
@@ -1701,7 +2015,7 @@ WHERE u.search_text ILIKE ANY($1::TEXT [])
 				
 			
 				
-				<h3 id="Queries.CountSearchDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=1032:1133#L35">CountSearchDeletedUsers</a>
+				<h3 id="Queries.CountSearchDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=1867:1968#L74">CountSearchDeletedUsers</a>
 					<a class="permalink" href="#Queries.CountSearchDeletedUsers">¶</a>
 					
 					
@@ -1719,13 +2033,13 @@ WHERE u.search_text ILIKE ANY($1::TEXT [])
 				
 			
 				
-				<h3 id="Queries.CountSearchUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=1566:1660#L53">CountSearchUsers</a>
+				<h3 id="Queries.CountSearchUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=2399:2493#L92">CountSearchUsers</a>
 					<a class="permalink" href="#Queries.CountSearchUsers">¶</a>
 					
 					
 				</h3>
 				<pre>func (q *<a href="#Queries">Queries</a>) CountSearchUsers(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, patternsParam []<a href="../../../../../../builtin/#string">string</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
-				<p>=== source: database/dml/query_service/user/count_user_by_keyword.sql ===
+				<p>=== source: database/dml/repository/user/count_users_by_keyword.sql ===
 </p><pre>SELECT COUNT(*)
 FROM users AS u
 WHERE u.search_text ILIKE ANY($1::TEXT [])
@@ -1736,7 +2050,7 @@ WHERE u.search_text ILIKE ANY($1::TEXT [])
 				
 			
 				
-				<h3 id="Queries.CountUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=1155:1219#L50">CountUsers</a>
+				<h3 id="Queries.CountUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=2794:2858#L108">CountUsers</a>
 					<a class="permalink" href="#Queries.CountUsers">¶</a>
 					
 					
@@ -1752,7 +2066,7 @@ FROM users
 				
 			
 				
-				<h3 id="Queries.CreateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=2497:2575#L138">CreateUser</a>
+				<h3 id="Queries.CreateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4136:4214#L196">CreateUser</a>
 					<a class="permalink" href="#Queries.CreateUser">¶</a>
 					
 					
@@ -1882,7 +2196,27 @@ WHERE scope = $1
 				
 			
 				
-				<h3 id="Queries.GetPrefectureDomainByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=600:718#L27">GetPrefectureDomainByID</a>
+				<h3 id="Queries.GetPrefectureDomainAll">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=605:704#L27">GetPrefectureDomainAll</a>
+					<a class="permalink" href="#Queries.GetPrefectureDomainAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) GetPrefectureDomainAll(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) ([]*<a href="#GetPrefectureDomainAllRow">GetPrefectureDomainAllRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/prefecture/select_all_prefectures.sql ===
+</p><pre>SELECT
+    p.id,
+    p.name,
+    p.code
+FROM prefectures AS p
+ORDER BY p.code ASC
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.GetPrefectureDomainByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=1524:1642#L70">GetPrefectureDomainByID</a>
 					<a class="permalink" href="#Queries.GetPrefectureDomainByID">¶</a>
 					
 					
@@ -1902,7 +2236,7 @@ WHERE p.id = $1
 				
 			
 				
-				<h3 id="Queries.GetPrefectureDomainByIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=1363:1488#L59">GetPrefectureDomainByIDs</a>
+				<h3 id="Queries.GetPrefectureDomainByIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=2287:2412#L102">GetPrefectureDomainByIDs</a>
 					<a class="permalink" href="#Queries.GetPrefectureDomainByIDs">¶</a>
 					
 					
@@ -1923,7 +2257,7 @@ ORDER BY p.code
 				
 			
 				
-				<h3 id="Queries.GetPrefectureDomainByName">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=2336:2457#L102">GetPrefectureDomainByName</a>
+				<h3 id="Queries.GetPrefectureDomainByName">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html?s=3260:3381#L145">GetPrefectureDomainByName</a>
 					<a class="permalink" href="#Queries.GetPrefectureDomainByName">¶</a>
 					
 					
@@ -1943,7 +2277,49 @@ WHERE p.name = $1
 				
 			
 				
-				<h3 id="Queries.GetUserByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=3525:3623#L174">GetUserByID</a>
+				<h3 id="Queries.GetProductCategoryDomainAll">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_category_repository.gen.sql.go.html?s=732:841#L30">GetProductCategoryDomainAll</a>
+					<a class="permalink" href="#Queries.GetProductCategoryDomainAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) GetProductCategoryDomainAll(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) ([]*<a href="#GetProductCategoryDomainAllRow">GetProductCategoryDomainAllRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/product_category/select_all_product_categories.sql ===
+</p><pre>SELECT
+    pc.id,
+    pc.name,
+    pc.code,
+    pc.sort_key
+FROM product_categories AS pc
+ORDER BY pc.sort_key ASC
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.GetProductStatusDomainAll">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_status_repository.gen.sql.go.html?s=716:821#L30">GetProductStatusDomainAll</a>
+					<a class="permalink" href="#Queries.GetProductStatusDomainAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) GetProductStatusDomainAll(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) ([]*<a href="#GetProductStatusDomainAllRow">GetProductStatusDomainAllRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/product_status/select_all_product_statuses.sql ===
+</p><pre>SELECT
+    ps.id,
+    ps.name,
+    ps.code,
+    ps.sort_key
+FROM product_statuses AS ps
+ORDER BY ps.sort_key ASC
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.GetUserByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=5164:5262#L232">GetUserByID</a>
 					<a class="permalink" href="#Queries.GetUserByID">¶</a>
 					
 					
@@ -1954,6 +2330,28 @@ WHERE p.name = $1
 FROM users AS u
 WHERE u.id = $1
     AND u.deleted_at IS NULL
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.GetUserRolesByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=6233:6351#L282">GetUserRolesByUserID</a>
+					<a class="permalink" href="#Queries.GetUserRolesByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) GetUserRolesByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userIDParam <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) ([]*<a href="#GetUserRolesByUserIDRow">GetUserRolesByUserIDRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/user/select_roles_by_user_id.sql ===
+</p><pre>SELECT
+    r.id,
+    r.name,
+    r.code
+FROM user_roles AS ur
+INNER JOIN roles AS r ON ur.role_id = r.id
+WHERE ur.user_id = $1
+ORDER BY r.code
 </pre>
 
 				
@@ -1986,7 +2384,7 @@ RETURNING id, message_id
 				
 			
 				
-				<h3 id="Queries.ListActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4840:4953#L221">ListActiveUsers</a>
+				<h3 id="Queries.ListActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7546:7659#L326">ListActiveUsers</a>
 					<a class="permalink" href="#Queries.ListActiveUsers">¶</a>
 					
 					
@@ -2005,7 +2403,7 @@ LIMIT $2 OFFSET $1
 				
 			
 				
-				<h3 id="Queries.ListDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=6474:6590#L281">ListDeletedUsers</a>
+				<h3 id="Queries.ListDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9180:9296#L386">ListDeletedUsers</a>
 					<a class="permalink" href="#Queries.ListDeletedUsers">¶</a>
 					
 					
@@ -2024,7 +2422,72 @@ LIMIT $2 OFFSET $1
 				
 			
 				
-				<h3 id="Queries.ListUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=8066:8161#L339">ListUsers</a>
+				<h3 id="Queries.ListPublishedProductsAsc">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=2090:2230#L59">ListPublishedProductsAsc</a>
+					<a class="permalink" href="#Queries.ListPublishedProductsAsc">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListPublishedProductsAsc(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListPublishedProductsAscParams">ListPublishedProductsAscParams</a>) ([]*<a href="#ListPublishedProductsAscRow">ListPublishedProductsAscRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より未来へ絞り込みます。
+</p><pre>SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+FROM products AS p
+WHERE p.published_at IS NOT NULL
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::TEXT IS NULL
+        OR p.name ILIKE &#39;%&#39; || $3 || &#39;%&#39;
+        OR p.description ILIKE &#39;%&#39; || $3 || &#39;%&#39;
+    )
+    AND (
+        NOT $4::BOOLEAN
+        OR p.published_at &gt; $5
+        OR (p.published_at = $5 AND p.id &gt; $6)
+    )
+ORDER BY p.published_at ASC, p.id ASC
+LIMIT $7
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListPublishedProductsDesc">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=5012:5155#L154">ListPublishedProductsDesc</a>
+					<a class="permalink" href="#Queries.ListPublishedProductsDesc">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListPublishedProductsDesc(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListPublishedProductsDescParams">ListPublishedProductsDescParams</a>) ([]*<a href="#ListPublishedProductsDescRow">ListPublishedProductsDescRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/product/select_products.sql ===
+公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より過去へ絞り込みます。
+</p><pre>SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+FROM products AS p
+WHERE p.published_at IS NOT NULL
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::TEXT IS NULL
+        OR p.name ILIKE &#39;%&#39; || $3 || &#39;%&#39;
+        OR p.description ILIKE &#39;%&#39; || $3 || &#39;%&#39;
+    )
+    AND (
+        NOT $4::BOOLEAN
+        OR p.published_at &lt; $5
+        OR (p.published_at = $5 AND p.id &lt; $6)
+    )
+ORDER BY p.published_at DESC, p.id DESC
+LIMIT $7
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=10772:10867#L444">ListUsers</a>
 					<a class="permalink" href="#Queries.ListUsers">¶</a>
 					
 					
@@ -2042,7 +2505,7 @@ LIMIT $2 OFFSET $1
 				
 			
 				
-				<h3 id="Queries.ListUsersFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9970:10092#L408">ListUsersFeedAfter</a>
+				<h3 id="Queries.ListUsersFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12676:12798#L513">ListUsersFeedAfter</a>
 					<a class="permalink" href="#Queries.ListUsersFeedAfter">¶</a>
 					
 					
@@ -2065,7 +2528,7 @@ LIMIT $3
 				
 			
 				
-				<h3 id="Queries.ListUsersFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11610:11719#L463">ListUsersFeedFirst</a>
+				<h3 id="Queries.ListUsersFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=14316:14425#L568">ListUsersFeedFirst</a>
 					<a class="permalink" href="#Queries.ListUsersFeedFirst">¶</a>
 					
 					
@@ -2190,18 +2653,36 @@ WHERE status = &#39;dead&#39;
 				
 			
 				
-				<h3 id="Queries.SearchActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=2923:3042#L94">SearchActiveUsers</a>
+				<h3 id="Queries.ResolveUserByIdentity">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_identity_repository.gen.sql.go.html?s=843:972#L34">ResolveUserByIdentity</a>
+					<a class="permalink" href="#Queries.ResolveUserByIdentity">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ResolveUserByIdentity(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ResolveUserByIdentityParams">ResolveUserByIdentityParams</a>) (*<a href="#ResolveUserByIdentityRow">ResolveUserByIdentityRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/user_identity/resolve_user_by_identity.sql ===
+</p><pre>SELECT
+    u.id,
+    u.deleted_at
+FROM user_identities AS ui
+INNER JOIN users AS u ON ui.user_id = u.id
+WHERE ui.issuer = $1
+    AND ui.subject = $2
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.SearchActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=16052:16171#L631">SearchActiveUsers</a>
 					<a class="permalink" href="#Queries.SearchActiveUsers">¶</a>
 					
 					
 				</h3>
 				<pre>func (q *<a href="#Queries">Queries</a>) SearchActiveUsers(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#SearchActiveUsersParams">SearchActiveUsersParams</a>) ([]*<a href="#SearchActiveUsersRow">SearchActiveUsersRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>SearchActiveUsers
-</p><pre>SELECT
-    p.name AS prefecture_name,
-    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+</p><pre>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 WHERE u.search_text ILIKE ANY($1::TEXT [])
     AND u.deleted_at IS NULL
 ORDER BY u.created_at DESC
@@ -2213,18 +2694,15 @@ LIMIT $3 OFFSET $2
 				
 			
 				
-				<h3 id="Queries.SearchDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=4960:5082#L165">SearchDeletedUsers</a>
+				<h3 id="Queries.SearchDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=17848:17970#L694">SearchDeletedUsers</a>
 					<a class="permalink" href="#Queries.SearchDeletedUsers">¶</a>
 					
 					
 				</h3>
 				<pre>func (q *<a href="#Queries">Queries</a>) SearchDeletedUsers(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#SearchDeletedUsersParams">SearchDeletedUsersParams</a>) ([]*<a href="#SearchDeletedUsersRow">SearchDeletedUsersRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>SearchDeletedUsers
-</p><pre>SELECT
-    p.name AS prefecture_name,
-    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+</p><pre>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 WHERE u.search_text ILIKE ANY($1::TEXT [])
     AND u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
@@ -2236,18 +2714,15 @@ LIMIT $3 OFFSET $2
 				
 			
 				
-				<h3 id="Queries.SearchUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=6963:7064#L234">SearchUsers</a>
+				<h3 id="Queries.SearchUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=19607:19708#L755">SearchUsers</a>
 					<a class="permalink" href="#Queries.SearchUsers">¶</a>
 					
 					
 				</h3>
 				<pre>func (q *<a href="#Queries">Queries</a>) SearchUsers(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#SearchUsersParams">SearchUsersParams</a>) ([]*<a href="#SearchUsersRow">SearchUsersRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
-				<p>=== source: database/dml/query_service/user/select_users_by_keyword.sql ===
-</p><pre>SELECT
-    p.name AS prefecture_name,
-    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+				<p>=== source: database/dml/repository/user/select_users_by_keyword.sql ===
+</p><pre>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 WHERE u.search_text ILIKE ANY($1::TEXT [])
 ORDER BY u.created_at DESC
 LIMIT $3 OFFSET $2
@@ -2258,7 +2733,7 @@ LIMIT $3 OFFSET $2
 				
 			
 				
-				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=13512:13599#L552">UpdateUser</a>
+				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=21520:21607#L844">UpdateUser</a>
 					<a class="permalink" href="#Queries.UpdateUser">¶</a>
 					
 					
@@ -2302,7 +2777,94 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=3990:4051#L199">SchemaMigrations</a>
+			<h2 id="ResolveUserByIdentityParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_identity_repository.gen.sql.go.html?s=412:497#L15">ResolveUserByIdentityParams</a>
+				<a class="permalink" href="#ResolveUserByIdentityParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ResolveUserByIdentityParams struct {
+<span id="ResolveUserByIdentityParams.IssuerParam"></span>    IssuerParam  <a href="../../../../../../builtin/#string">string</a>
+<span id="ResolveUserByIdentityParams.SubjectParam"></span>    SubjectParam <a href="../../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ResolveUserByIdentityRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_identity_repository.gen.sql.go.html?s=499:582#L20">ResolveUserByIdentityRow</a>
+				<a class="permalink" href="#ResolveUserByIdentityRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ResolveUserByIdentityRow struct {
+<span id="ResolveUserByIdentityRow.ID"></span>    ID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ResolveUserByIdentityRow.DeletedAt"></span>    DeletedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Roles">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4003:4171#L200">Roles</a>
+				<a class="permalink" href="#Roles">¶</a>
+				
+				
+			</h2>
+			<p>ロール
+
+			</p><pre>type Roles struct {
+<span id="Roles.ID"></span>    <span class="comment">// ID</span>
+    ID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 名称</span>
+<span id="Roles.Name"></span>    Name <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// コード</span>
+<span id="Roles.Code"></span>    Code <a href="../../../../../../builtin/#int16">int16</a>
+    <span class="comment">// 作成日時</span>
+<span id="Roles.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 更新日時</span>
+<span id="Roles.UpdatedAt"></span>    UpdatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4173:4234#L213">SchemaMigrations</a>
 				<a class="permalink" href="#SchemaMigrations">¶</a>
 				
 				
@@ -2328,7 +2890,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SearchActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=2266:2371#L72">SearchActiveUsersParams</a>
+			<h2 id="SearchActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=15525:15630#L613">SearchActiveUsersParams</a>
 				<a class="permalink" href="#SearchActiveUsersParams">¶</a>
 				
 				
@@ -2355,15 +2917,14 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SearchActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=2373:2454#L78">SearchActiveUsersRow</a>
+			<h2 id="SearchActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=15632:15681#L619">SearchActiveUsersRow</a>
 				<a class="permalink" href="#SearchActiveUsersRow">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type SearchActiveUsersRow struct {
-<span id="SearchActiveUsersRow.PrefectureName"></span>    PrefectureName <a href="../../../../../../builtin/#string">string</a>
-<span id="SearchActiveUsersRow.Users"></span>    Users          <a href="#Users">Users</a>
+<span id="SearchActiveUsersRow.Users"></span>    Users <a href="#Users">Users</a>
 }
 </pre>
 
@@ -2381,7 +2942,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SearchDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=4296:4402#L143">SearchDeletedUsersParams</a>
+			<h2 id="SearchDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=17314:17420#L676">SearchDeletedUsersParams</a>
 				<a class="permalink" href="#SearchDeletedUsersParams">¶</a>
 				
 				
@@ -2408,15 +2969,14 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SearchDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=4404:4486#L149">SearchDeletedUsersRow</a>
+			<h2 id="SearchDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=17422:17472#L682">SearchDeletedUsersRow</a>
 				<a class="permalink" href="#SearchDeletedUsersRow">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type SearchDeletedUsersRow struct {
-<span id="SearchDeletedUsersRow.PrefectureName"></span>    PrefectureName <a href="../../../../../../builtin/#string">string</a>
-<span id="SearchDeletedUsersRow.Users"></span>    Users          <a href="#Users">Users</a>
+<span id="SearchDeletedUsersRow.Users"></span>    Users <a href="#Users">Users</a>
 }
 </pre>
 
@@ -2434,7 +2994,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SearchUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=6292:6391#L213">SearchUsersParams</a>
+			<h2 id="SearchUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=19069:19168#L738">SearchUsersParams</a>
 				<a class="permalink" href="#SearchUsersParams">¶</a>
 				
 				
@@ -2461,15 +3021,14 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SearchUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=6393:6468#L219">SearchUsersRow</a>
+			<h2 id="SearchUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=19170:19213#L744">SearchUsersRow</a>
 				<a class="permalink" href="#SearchUsersRow">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type SearchUsersRow struct {
-<span id="SearchUsersRow.PrefectureName"></span>    PrefectureName <a href="../../../../../../builtin/#string">string</a>
-<span id="SearchUsersRow.Users"></span>    Users          <a href="#Users">Users</a>
+<span id="SearchUsersRow.Users"></span>    Users <a href="#Users">Users</a>
 }
 </pre>
 
@@ -2487,7 +3046,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12779:13098#L518">UpdateUserParams</a>
+			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=20787:21106#L810">UpdateUserParams</a>
 				<a class="permalink" href="#UpdateUserParams">¶</a>
 				
 				
@@ -2524,7 +3083,77 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4066:4623#L205">Users</a>
+			<h2 id="UserIdentities">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4254:4524#L219">UserIdentities</a>
+				<a class="permalink" href="#UserIdentities">¶</a>
+				
+				
+			</h2>
+			<p>外部ID連携
+
+			</p><pre>type UserIdentities struct {
+<span id="UserIdentities.ID"></span>    <span class="comment">// ID</span>
+    ID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// ユーザID</span>
+<span id="UserIdentities.UserID"></span>    UserID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// トークン発行者（IdP issuer）</span>
+<span id="UserIdentities.Issuer"></span>    Issuer <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 認証主体（token の sub）</span>
+<span id="UserIdentities.Subject"></span>    Subject <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 作成日時</span>
+<span id="UserIdentities.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 更新日時</span>
+<span id="UserIdentities.UpdatedAt"></span>    UpdatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UserRoles">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4548:4717#L235">UserRoles</a>
+				<a class="permalink" href="#UserRoles">¶</a>
+				
+				
+			</h2>
+			<p>ユーザロール
+
+			</p><pre>type UserRoles struct {
+    <span class="comment">// ユーザID</span>
+<span id="UserRoles.UserID"></span>    UserID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// ロールID</span>
+<span id="UserRoles.RoleID"></span>    RoleID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 作成日時</span>
+<span id="UserRoles.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 更新日時</span>
+<span id="UserRoles.UpdatedAt"></span>    UpdatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4732:5289#L247">Users</a>
 				<a class="permalink" href="#Users">¶</a>
 				
 				

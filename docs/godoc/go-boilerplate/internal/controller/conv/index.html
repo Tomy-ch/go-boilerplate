@@ -114,6 +114,9 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 				
 				<dd><a href="#UUID">func UUID(p openapi_types.UUID) uuid.UUID</a></dd>
 			
+				
+				<dd><a href="#UUIDPtr">func UUIDPtr(p *openapi_types.UUID) *uuid.UUID</a></dd>
+			
 			
 			
 			</dl>
@@ -179,6 +182,21 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			<pre>func UUID(p <a href="../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../github.com/oapi-codegen/runtime/types/#UUID">UUID</a>) <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
 			<p>UUID は、OpenAPI 生成の UUID（path / query パラメータ）をドメインの uuid.UUID へ変換します。
 openapi_types.UUID は検証済みの 16 バイト UUID 値型であり、変換は無条件に成功します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="UUIDPtr">func <a href="../../../../src/go-boilerplate/internal/controller/conv/uuid.go.html?s=1003:1049#L10">UUIDPtr</a>
+				<a class="permalink" href="#UUIDPtr">¶</a>
+				
+				
+			</h2>
+			<pre>func UUIDPtr(p *<a href="../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../github.com/oapi-codegen/runtime/types/#UUID">UUID</a>) *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+			<p>UUIDPtr は、任意指定（nullable）の UUID クエリパラメータをドメインの *uuid.UUID へ変換します。
+nil の場合はそのまま nil を返し、指定された場合のみ変換します。
 
 			
 			

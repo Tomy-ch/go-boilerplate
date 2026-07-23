@@ -198,7 +198,7 @@
 <span id="L141" class="ln">   141  </span>	})
 <span id="L142" class="ln">   142  </span>}
 <span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>func Test_repository_FindByIDs(t *testing.T) {
+<span id="L144" class="ln">   144  </span>func Test_repository_FindAll(t *testing.T) {
 <span id="L145" class="ln">   145  </span>	t.Parallel()
 <span id="L146" class="ln">   146  </span>
 <span id="L147" class="ln">   147  </span>	testDB := testkit.NewTestDB(t)
@@ -214,89 +214,228 @@
 <span id="L157" class="ln">   157  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L158" class="ln">   158  </span>		t.Parallel()
 <span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>		t.Run(&#34;有効な都道府県ID一覧の場合、都道府県エンティティ一覧が取得できる&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>		t.Run(&#34;全都道府県が47件code昇順で取得できる&#34;, func(t *testing.T) {
 <span id="L161" class="ln">   161  </span>			t.Parallel()
 <span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span>			prefectureID1, err := uuid.Parse(&#34;101caa1e-84e7-4ceb-9108-50d40b6be1a3&#34;)
+<span id="L163" class="ln">   163  </span>			tokyoID, err := uuid.Parse(&#34;101caa1e-84e7-4ceb-9108-50d40b6be1a3&#34;)
 <span id="L164" class="ln">   164  </span>			require.NoError(t, err)
-<span id="L165" class="ln">   165  </span>			prefectureID2, err := uuid.Parse(&#34;d647fc85-ff46-4530-88cb-198f4a68a9d7&#34;)
-<span id="L166" class="ln">   166  </span>			require.NoError(t, err)
-<span id="L167" class="ln">   167  </span>
-<span id="L168" class="ln">   168  </span>			expectedIDs := []uuid.UUID{
-<span id="L169" class="ln">   169  </span>				prefectureID1,
-<span id="L170" class="ln">   170  </span>				prefectureID2,
-<span id="L171" class="ln">   171  </span>			}
-<span id="L172" class="ln">   172  </span>			expectedNames := []string{
-<span id="L173" class="ln">   173  </span>				&#34;東京都&#34;,
-<span id="L174" class="ln">   174  </span>				&#34;大阪府&#34;,
-<span id="L175" class="ln">   175  </span>			}
-<span id="L176" class="ln">   176  </span>			expectedCodes := []int{
-<span id="L177" class="ln">   177  </span>				8,
-<span id="L178" class="ln">   178  </span>				27,
-<span id="L179" class="ln">   179  </span>			}
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L182" class="ln">   182  </span>				expected := make(prefecture.Prefectures, len(expectedIDs))
-<span id="L183" class="ln">   183  </span>				ids := make([]uuid.UUID, len(expectedIDs))
-<span id="L184" class="ln">   184  </span>				for i := range expectedIDs {
-<span id="L185" class="ln">   185  </span>					e, err := prefecture.New(
-<span id="L186" class="ln">   186  </span>						expectedIDs[i],
-<span id="L187" class="ln">   187  </span>						expectedNames[i],
-<span id="L188" class="ln">   188  </span>						expectedCodes[i],
-<span id="L189" class="ln">   189  </span>					)
-<span id="L190" class="ln">   190  </span>					require.NoError(t, err)
-<span id="L191" class="ln">   191  </span>					expected[i] = e
-<span id="L192" class="ln">   192  </span>
-<span id="L193" class="ln">   193  </span>					ids[i] = expectedIDs[i]
-<span id="L194" class="ln">   194  </span>				}
-<span id="L195" class="ln">   195  </span>
-<span id="L196" class="ln">   196  </span>				actual, err := repo.FindByIDs(ctx, ids)
-<span id="L197" class="ln">   197  </span>				require.NoError(t, err)
-<span id="L198" class="ln">   198  </span>				assert.Equal(t, expected, actual)
-<span id="L199" class="ln">   199  </span>			})
-<span id="L200" class="ln">   200  </span>		})
-<span id="L201" class="ln">   201  </span>	})
-<span id="L202" class="ln">   202  </span>
-<span id="L203" class="ln">   203  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L204" class="ln">   204  </span>		t.Parallel()
-<span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化される&#34;, func(t *testing.T) {
-<span id="L207" class="ln">   207  </span>			t.Parallel()
-<span id="L208" class="ln">   208  </span>
-<span id="L209" class="ln">   209  </span>			id, err := uuid.Parse(&#34;101caa1e-84e7-4ceb-9108-50d40b6be1a3&#34;)
-<span id="L210" class="ln">   210  </span>			require.NoError(t, err)
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span>			ctx, cancel := context.WithCancel(context.Background())
-<span id="L213" class="ln">   213  </span>			cancel()
-<span id="L214" class="ln">   214  </span>
-<span id="L215" class="ln">   215  </span>			actual, err := repo.FindByIDs(ctx, []uuid.UUID{id})
-<span id="L216" class="ln">   216  </span>			assert.Nil(t, actual)
-<span id="L217" class="ln">   217  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
-<span id="L218" class="ln">   218  </span>		})
-<span id="L219" class="ln">   219  </span>
-<span id="L220" class="ln">   220  </span>		t.Run(&#34;取得行のドメイン化に失敗した場合、データ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
-<span id="L221" class="ln">   221  </span>			t.Parallel()
-<span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L224" class="ln">   224  </span>				invalidID, err := uuid.Parse(&#34;00000000-0000-0000-0000-0000000000ff&#34;)
-<span id="L225" class="ln">   225  </span>				require.NoError(t, err)
-<span id="L226" class="ln">   226  </span>
-<span id="L227" class="ln">   227  </span>				<span class="comment">// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。</span>
-<span id="L228" class="ln">   228  </span>				_, execErr := driver.New(ctx, testDB).Exec(ctx,
-<span id="L229" class="ln">   229  </span>					&#34;INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)&#34;,
-<span id="L230" class="ln">   230  </span>					invalidID, &#34;テスト無効県&#34;, 99,
-<span id="L231" class="ln">   231  </span>				)
-<span id="L232" class="ln">   232  </span>				require.NoError(t, execErr)
-<span id="L233" class="ln">   233  </span>
-<span id="L234" class="ln">   234  </span>				actual, err := repo.FindByIDs(ctx, []uuid.UUID{invalidID})
-<span id="L235" class="ln">   235  </span>				assert.Nil(t, actual)
-<span id="L236" class="ln">   236  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L237" class="ln">   237  </span>				require.NotErrorIs(t, err, prefecture.ErrInvalidCode)
-<span id="L238" class="ln">   238  </span>			})
-<span id="L239" class="ln">   239  </span>		})
-<span id="L240" class="ln">   240  </span>	})
-<span id="L241" class="ln">   241  </span>}
-<span id="L242" class="ln">   242  </span>
+<span id="L165" class="ln">   165  </span>
+<span id="L166" class="ln">   166  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L167" class="ln">   167  </span>				expectedTokyo, err := prefecture.New(tokyoID, &#34;東京都&#34;, 8)
+<span id="L168" class="ln">   168  </span>				require.NoError(t, err)
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>				actual, err := repo.FindAll(ctx)
+<span id="L171" class="ln">   171  </span>				require.NoError(t, err)
+<span id="L172" class="ln">   172  </span>				assert.Len(t, actual, 47)
+<span id="L173" class="ln">   173  </span>
+<span id="L174" class="ln">   174  </span>				<span class="comment">// code は UNIQUE のため厳密昇順が正。</span>
+<span id="L175" class="ln">   175  </span>				for i := 1; i &lt; len(actual); i++ {
+<span id="L176" class="ln">   176  </span>					assert.Less(t, actual[i-1].Code(), actual[i].Code())
+<span id="L177" class="ln">   177  </span>				}
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>				var actualTokyo *prefecture.Prefecture
+<span id="L180" class="ln">   180  </span>				for _, p := range actual {
+<span id="L181" class="ln">   181  </span>					if p.ID() == tokyoID {
+<span id="L182" class="ln">   182  </span>						actualTokyo = p
+<span id="L183" class="ln">   183  </span>						break
+<span id="L184" class="ln">   184  </span>					}
+<span id="L185" class="ln">   185  </span>				}
+<span id="L186" class="ln">   186  </span>				require.NotNil(t, actualTokyo)
+<span id="L187" class="ln">   187  </span>				assert.Equal(t, expectedTokyo, actualTokyo)
+<span id="L188" class="ln">   188  </span>			})
+<span id="L189" class="ln">   189  </span>		})
+<span id="L190" class="ln">   190  </span>
+<span id="L191" class="ln">   191  </span>		t.Run(&#34;テーブルが空の場合、nilではない空一覧を返す&#34;, func(t *testing.T) {
+<span id="L192" class="ln">   192  </span>			t.Parallel()
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L195" class="ln">   195  </span>				<span class="comment">// prefectures を参照する依存行（users など）ごと空にする（tx はロールバックされる）。</span>
+<span id="L196" class="ln">   196  </span>				_, execErr := driver.New(ctx, testDB).Exec(ctx, &#34;TRUNCATE prefectures CASCADE&#34;)
+<span id="L197" class="ln">   197  </span>				require.NoError(t, execErr)
+<span id="L198" class="ln">   198  </span>
+<span id="L199" class="ln">   199  </span>				actual, err := repo.FindAll(ctx)
+<span id="L200" class="ln">   200  </span>				require.NoError(t, err)
+<span id="L201" class="ln">   201  </span>				assert.NotNil(t, actual)
+<span id="L202" class="ln">   202  </span>				assert.Empty(t, actual)
+<span id="L203" class="ln">   203  </span>			})
+<span id="L204" class="ln">   204  </span>		})
+<span id="L205" class="ln">   205  </span>	})
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L208" class="ln">   208  </span>		t.Parallel()
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化される&#34;, func(t *testing.T) {
+<span id="L211" class="ln">   211  </span>			t.Parallel()
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L214" class="ln">   214  </span>			cancel()
+<span id="L215" class="ln">   215  </span>
+<span id="L216" class="ln">   216  </span>			actual, err := repo.FindAll(ctx)
+<span id="L217" class="ln">   217  </span>			assert.Nil(t, actual)
+<span id="L218" class="ln">   218  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L219" class="ln">   219  </span>		})
+<span id="L220" class="ln">   220  </span>
+<span id="L221" class="ln">   221  </span>		t.Run(&#34;取得行のドメイン化に失敗した場合、データ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
+<span id="L222" class="ln">   222  </span>			t.Parallel()
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L225" class="ln">   225  </span>				invalidID, err := uuid.Parse(&#34;00000000-0000-0000-0000-0000000000fe&#34;)
+<span id="L226" class="ln">   226  </span>				require.NoError(t, err)
+<span id="L227" class="ln">   227  </span>
+<span id="L228" class="ln">   228  </span>				<span class="comment">// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。</span>
+<span id="L229" class="ln">   229  </span>				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+<span id="L230" class="ln">   230  </span>					&#34;INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)&#34;,
+<span id="L231" class="ln">   231  </span>					invalidID, &#34;テスト無効県&#34;, 99,
+<span id="L232" class="ln">   232  </span>				)
+<span id="L233" class="ln">   233  </span>				require.NoError(t, execErr)
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>				actual, err := repo.FindAll(ctx)
+<span id="L236" class="ln">   236  </span>				assert.Nil(t, actual)
+<span id="L237" class="ln">   237  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L238" class="ln">   238  </span>				require.NotErrorIs(t, err, prefecture.ErrInvalidCode)
+<span id="L239" class="ln">   239  </span>			})
+<span id="L240" class="ln">   240  </span>		})
+<span id="L241" class="ln">   241  </span>	})
+<span id="L242" class="ln">   242  </span>}
+<span id="L243" class="ln">   243  </span>
+<span id="L244" class="ln">   244  </span>func Test_repository_FindByIDs(t *testing.T) {
+<span id="L245" class="ln">   245  </span>	t.Parallel()
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>	testDB := testkit.NewTestDB(t)
+<span id="L248" class="ln">   248  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L249" class="ln">   249  </span>
+<span id="L250" class="ln">   250  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	repo := &amp;repository{
+<span id="L253" class="ln">   253  </span>		tracer: lt,
+<span id="L254" class="ln">   254  </span>		db:     testDB,
+<span id="L255" class="ln">   255  </span>	}
+<span id="L256" class="ln">   256  </span>
+<span id="L257" class="ln">   257  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L258" class="ln">   258  </span>		t.Parallel()
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>		t.Run(&#34;有効な都道府県ID一覧の場合、都道府県エンティティ一覧が取得できる&#34;, func(t *testing.T) {
+<span id="L261" class="ln">   261  </span>			t.Parallel()
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>			prefectureID1, err := uuid.Parse(&#34;101caa1e-84e7-4ceb-9108-50d40b6be1a3&#34;)
+<span id="L264" class="ln">   264  </span>			require.NoError(t, err)
+<span id="L265" class="ln">   265  </span>			prefectureID2, err := uuid.Parse(&#34;d647fc85-ff46-4530-88cb-198f4a68a9d7&#34;)
+<span id="L266" class="ln">   266  </span>			require.NoError(t, err)
+<span id="L267" class="ln">   267  </span>
+<span id="L268" class="ln">   268  </span>			expectedIDs := []uuid.UUID{
+<span id="L269" class="ln">   269  </span>				prefectureID1,
+<span id="L270" class="ln">   270  </span>				prefectureID2,
+<span id="L271" class="ln">   271  </span>			}
+<span id="L272" class="ln">   272  </span>			expectedNames := []string{
+<span id="L273" class="ln">   273  </span>				&#34;東京都&#34;,
+<span id="L274" class="ln">   274  </span>				&#34;大阪府&#34;,
+<span id="L275" class="ln">   275  </span>			}
+<span id="L276" class="ln">   276  </span>			expectedCodes := []int{
+<span id="L277" class="ln">   277  </span>				8,
+<span id="L278" class="ln">   278  </span>				27,
+<span id="L279" class="ln">   279  </span>			}
+<span id="L280" class="ln">   280  </span>
+<span id="L281" class="ln">   281  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L282" class="ln">   282  </span>				expected := make(prefecture.Prefectures, len(expectedIDs))
+<span id="L283" class="ln">   283  </span>				ids := make([]uuid.UUID, len(expectedIDs))
+<span id="L284" class="ln">   284  </span>				for i := range expectedIDs {
+<span id="L285" class="ln">   285  </span>					e, err := prefecture.New(
+<span id="L286" class="ln">   286  </span>						expectedIDs[i],
+<span id="L287" class="ln">   287  </span>						expectedNames[i],
+<span id="L288" class="ln">   288  </span>						expectedCodes[i],
+<span id="L289" class="ln">   289  </span>					)
+<span id="L290" class="ln">   290  </span>					require.NoError(t, err)
+<span id="L291" class="ln">   291  </span>					expected[i] = e
+<span id="L292" class="ln">   292  </span>
+<span id="L293" class="ln">   293  </span>					ids[i] = expectedIDs[i]
+<span id="L294" class="ln">   294  </span>				}
+<span id="L295" class="ln">   295  </span>
+<span id="L296" class="ln">   296  </span>				actual, err := repo.FindByIDs(ctx, ids)
+<span id="L297" class="ln">   297  </span>				require.NoError(t, err)
+<span id="L298" class="ln">   298  </span>				assert.Equal(t, expected, actual)
+<span id="L299" class="ln">   299  </span>			})
+<span id="L300" class="ln">   300  </span>		})
+<span id="L301" class="ln">   301  </span>	})
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L304" class="ln">   304  </span>		t.Parallel()
+<span id="L305" class="ln">   305  </span>
+<span id="L306" class="ln">   306  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化される&#34;, func(t *testing.T) {
+<span id="L307" class="ln">   307  </span>			t.Parallel()
+<span id="L308" class="ln">   308  </span>
+<span id="L309" class="ln">   309  </span>			id, err := uuid.Parse(&#34;101caa1e-84e7-4ceb-9108-50d40b6be1a3&#34;)
+<span id="L310" class="ln">   310  </span>			require.NoError(t, err)
+<span id="L311" class="ln">   311  </span>
+<span id="L312" class="ln">   312  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L313" class="ln">   313  </span>			cancel()
+<span id="L314" class="ln">   314  </span>
+<span id="L315" class="ln">   315  </span>			actual, err := repo.FindByIDs(ctx, []uuid.UUID{id})
+<span id="L316" class="ln">   316  </span>			assert.Nil(t, actual)
+<span id="L317" class="ln">   317  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L318" class="ln">   318  </span>		})
+<span id="L319" class="ln">   319  </span>
+<span id="L320" class="ln">   320  </span>		t.Run(&#34;取得行のドメイン化に失敗した場合、データ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
+<span id="L321" class="ln">   321  </span>			t.Parallel()
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L324" class="ln">   324  </span>				invalidID, err := uuid.Parse(&#34;00000000-0000-0000-0000-0000000000ff&#34;)
+<span id="L325" class="ln">   325  </span>				require.NoError(t, err)
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>				<span class="comment">// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。</span>
+<span id="L328" class="ln">   328  </span>				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+<span id="L329" class="ln">   329  </span>					&#34;INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)&#34;,
+<span id="L330" class="ln">   330  </span>					invalidID, &#34;テスト無効県&#34;, 99,
+<span id="L331" class="ln">   331  </span>				)
+<span id="L332" class="ln">   332  </span>				require.NoError(t, execErr)
+<span id="L333" class="ln">   333  </span>
+<span id="L334" class="ln">   334  </span>				actual, err := repo.FindByIDs(ctx, []uuid.UUID{invalidID})
+<span id="L335" class="ln">   335  </span>				assert.Nil(t, actual)
+<span id="L336" class="ln">   336  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L337" class="ln">   337  </span>				require.NotErrorIs(t, err, prefecture.ErrInvalidCode)
+<span id="L338" class="ln">   338  </span>			})
+<span id="L339" class="ln">   339  </span>		})
+<span id="L340" class="ln">   340  </span>	})
+<span id="L341" class="ln">   341  </span>}
+<span id="L342" class="ln">   342  </span>
+<span id="L343" class="ln">   343  </span>func Test_rowToPrefecture(t *testing.T) {
+<span id="L344" class="ln">   344  </span>	t.Parallel()
+<span id="L345" class="ln">   345  </span>
+<span id="L346" class="ln">   346  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L347" class="ln">   347  </span>		t.Parallel()
+<span id="L348" class="ln">   348  </span>
+<span id="L349" class="ln">   349  </span>		t.Run(&#34;有効な行からエンティティを再構築する&#34;, func(t *testing.T) {
+<span id="L350" class="ln">   350  </span>			t.Parallel()
+<span id="L351" class="ln">   351  </span>
+<span id="L352" class="ln">   352  </span>			id, err := uuid.New()
+<span id="L353" class="ln">   353  </span>			require.NoError(t, err)
+<span id="L354" class="ln">   354  </span>
+<span id="L355" class="ln">   355  </span>			entity, err := rowToPrefecture(id, &#34;東京都&#34;, int16(13))
+<span id="L356" class="ln">   356  </span>			require.NoError(t, err)
+<span id="L357" class="ln">   357  </span>			require.NotNil(t, entity)
+<span id="L358" class="ln">   358  </span>			assert.Equal(t, id, entity.ID())
+<span id="L359" class="ln">   359  </span>			assert.Equal(t, &#34;東京都&#34;, entity.Name())
+<span id="L360" class="ln">   360  </span>			assert.Equal(t, 13, entity.Code())
+<span id="L361" class="ln">   361  </span>		})
+<span id="L362" class="ln">   362  </span>	})
+<span id="L363" class="ln">   363  </span>
+<span id="L364" class="ln">   364  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L365" class="ln">   365  </span>		t.Parallel()
+<span id="L366" class="ln">   366  </span>
+<span id="L367" class="ln">   367  </span>		t.Run(&#34;再構築時の検証失敗はErrInternalへ正規化され元の分類は露出しない&#34;, func(t *testing.T) {
+<span id="L368" class="ln">   368  </span>			t.Parallel()
+<span id="L369" class="ln">   369  </span>
+<span id="L370" class="ln">   370  </span>			id, err := uuid.New()
+<span id="L371" class="ln">   371  </span>			require.NoError(t, err)
+<span id="L372" class="ln">   372  </span>
+<span id="L373" class="ln">   373  </span>			<span class="comment">// code=0 は JIS 範囲(1〜47)外のため domain 構築が失敗する。</span>
+<span id="L374" class="ln">   374  </span>			entity, err := rowToPrefecture(id, &#34;東京都&#34;, int16(0))
+<span id="L375" class="ln">   375  </span>			require.Error(t, err)
+<span id="L376" class="ln">   376  </span>			require.Nil(t, entity)
+<span id="L377" class="ln">   377  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L378" class="ln">   378  </span>		})
+<span id="L379" class="ln">   379  </span>	})
+<span id="L380" class="ln">   380  </span>}
+<span id="L381" class="ln">   381  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/prefecture/prefecture_repository_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

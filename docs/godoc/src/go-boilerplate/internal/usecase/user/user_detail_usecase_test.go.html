@@ -99,7 +99,7 @@
 <span id="L42" class="ln">    42  </span><span class="comment">// newTestAuthn は、テスト用の認証主体（Authn）を返します。</span>
 <span id="L43" class="ln">    43  </span>func newTestAuthn(t *testing.T) *authbd.Authn {
 <span id="L44" class="ln">    44  </span>	t.Helper()
-<span id="L45" class="ln">    45  </span>	authn, err := authbd.New(uuid.NewTestFromSalt(t, &#34;caller&#34;).String(), authbd.ProviderMock, nil, nil)
+<span id="L45" class="ln">    45  </span>	authn, err := authbd.New(uuid.NewTestFromSalt(t, &#34;caller&#34;).String(), authbd.IssuerMock, nil, nil)
 <span id="L46" class="ln">    46  </span>	require.NoError(t, err)
 <span id="L47" class="ln">    47  </span>	return authn
 <span id="L48" class="ln">    48  </span>}
@@ -650,7 +650,7 @@
 <span id="L593" class="ln">   593  </span>	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
 <span id="L594" class="ln">   594  </span>	id := uuid.NewTestFromSalt(t, &#34;user&#34;)
 <span id="L595" class="ln">   595  </span>	prefID := uuid.NewTestFromSalt(t, &#34;prefecture&#34;)
-<span id="L596" class="ln">   596  </span>	authn, err := authbd.New(id.String(), authbd.ProviderMock, nil, nil)
+<span id="L596" class="ln">   596  </span>	authn, err := authbd.New(id.String(), authbd.IssuerMock, nil, nil)
 <span id="L597" class="ln">   597  </span>	require.NoError(t, err)
 <span id="L598" class="ln">   598  </span>
 <span id="L599" class="ln">   599  </span>	allowAuthorizer := func(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {

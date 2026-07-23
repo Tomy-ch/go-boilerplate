@@ -1,0 +1,388 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>jwt - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package jwt
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/auth/jwt&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package jwt は、access token（JWT）を検証する Authenticator 実装を提供します。
+</p><p>署名鍵は固定 RSA 公開鍵（New）と JWKS エンドポイントからの動的解決（NewJWKS）の両方に対応します。
+本実装はデファクト標準プロファイル（非対称署名 JWT・iss/aud/exp/nbf/sub・標準 scope）のみを一級で扱います。
+特定 IdP の方言（Cognito token_use / Azure scp / opaque token 等）は扱わず、README の拡張ポイントに委ねます。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+				
+				<dd><a href="#New">func New(params Params) (authbd.Authenticator, error)</a></dd>
+			
+				
+				<dd><a href="#NewDownstreamProfile">func NewDownstreamProfile(allowPrivateNetwork bool) httpclient.DownstreamProfile</a></dd>
+			
+				
+				<dd><a href="#NewJWKS">func NewJWKS(params JWKSParams, client httpclient.Client) (authbd.Authenticator, error)</a></dd>
+			
+				
+				<dd><a href="#NewWithKeyResolver">func NewWithKeyResolver(params Params, keyResolver KeyResolver) (authbd.Authenticator, error)</a></dd>
+			
+				
+				<dd><a href="#RequiredDownstream">func RequiredDownstream() httpclient.Downstream</a></dd>
+			
+			
+				
+				<dd><a href="#JWKSParams">type JWKSParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#KeyResolver">type KeyResolver</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Params">type Params</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html">auth_jwt.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/discovery.go.html">discovery.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html">jwks.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				
+				<pre>var (
+    <span class="comment">// ErrJWTAuthenticatorInvalidToken は、トークン検証に失敗した場合に返す認証エラーです。</span>
+    <span class="comment">// 検証失敗はすべてこのセンチネル（= apperror.ErrUnauthenticated）へ正規化し（fail-closed）、</span>
+    <span class="comment">// 原因（署名不一致 / exp / iss / aud / typ 等）はエラーチェーンに保持して運用側で切り分け可能にします。</span>
+    <span id="ErrJWTAuthenticatorInvalidToken">ErrJWTAuthenticatorInvalidToken</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;jwt authenticator: invalid token&#34;)
+
+    <span class="comment">// ErrJWTAuthenticatorInvalidPublicKey は、コンストラクタで公開鍵 PEM のパースに失敗した場合の設定エラーです。</span>
+    <span id="ErrJWTAuthenticatorInvalidPublicKey">ErrJWTAuthenticatorInvalidPublicKey</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;jwt authenticator: invalid public key&#34;)
+    <span class="comment">// ErrJWTAuthenticatorInvalidParams は、コンストラクタの必須パラメータが不足している場合の設定エラーです。</span>
+    <span id="ErrJWTAuthenticatorInvalidParams">ErrJWTAuthenticatorInvalidParams</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;jwt authenticator: invalid params&#34;)
+)</pre>
+			
+		
+		
+			
+			
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=5941:5994#L102">New</a>
+				<a class="permalink" href="#New">¶</a>
+				
+				
+			</h2>
+			<pre>func New(params <a href="#Params">Params</a>) (<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authenticator">Authenticator</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>New は固定 RSA 公開鍵で検証する JWT Authenticator を生成します。
+公開鍵 PEM のパース失敗・必須パラメータ不足は設定エラーとして返します（認証エラーとは区別）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=4078:4158#L68">NewDownstreamProfile</a>
+				<a class="permalink" href="#NewDownstreamProfile">¶</a>
+				
+				
+			</h2>
+			<pre>func NewDownstreamProfile(allowPrivateNetwork <a href="../../../../../builtin/#bool">bool</a>) <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#DownstreamProfile">DownstreamProfile</a></pre>
+			<p>NewDownstreamProfile は、JWKS/discovery 取得向けの httpclient resilient プロファイルを返します。
+外部 IdP へ内部相関 ID を漏らさないよう trace は伝搬しません。
+allowPrivateNetwork は private 網宛て接続の可否で、環境に応じた解決は DI が行います（infra は env を知らない）。
+認証ホットパス向けに全体タイムアウト・試行回数・応答上限を substrate 既定より絞ります。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewJWKS">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=7115:7202#L124">NewJWKS</a>
+				<a class="permalink" href="#NewJWKS">¶</a>
+				
+				
+			</h2>
+			<pre>func NewJWKS(params <a href="#JWKSParams">JWKSParams</a>, client <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#Client">Client</a>) (<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authenticator">Authenticator</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>NewJWKS は、JWKS エンドポイントから kid で公開鍵を解決する JWT Authenticator を生成します。
+JWKSURL を明示した場合はそれを直接用い、空の場合は Issuer から OIDC discovery で jwks_uri を導出します。
+JWKS / discovery の取得は httpclient substrate（timeout / retry / breaker / budget / o11y）に委ね、遅延取得します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewWithKeyResolver">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=6452:6545#L113">NewWithKeyResolver</a>
+				<a class="permalink" href="#NewWithKeyResolver">¶</a>
+				
+				
+			</h2>
+			<pre>func NewWithKeyResolver(params <a href="#Params">Params</a>, keyResolver <a href="#KeyResolver">KeyResolver</a>) (<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authenticator">Authenticator</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>NewWithKeyResolver は、与えられた KeyResolver で検証する JWT Authenticator を生成します（PublicKeyPEM は不使用）。
+JWKS backed の鍵解決を注入するために使用します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=4637:4684#L80">RequiredDownstream</a>
+				<a class="permalink" href="#RequiredDownstream">¶</a>
+				
+				
+			</h2>
+			<pre>func RequiredDownstream() <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#Downstream">Downstream</a></pre>
+			<p>RequiredDownstream は、JWKS 取得に用いる Downstream を返します。
+required_downstreams へ供給することで、起動失敗になることを保証します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="JWKSParams">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=3577:4528#L56">JWKSParams</a>
+				<a class="permalink" href="#JWKSParams">¶</a>
+				
+				
+			</h2>
+			<p>JWKSParams は、JWKS backed の JWT Authenticator の構築パラメータです。
+署名検証パラメータ（Params）に加えて JWKS 取得の設定を持ちます。PublicKeyPEM は使用しません。
+
+			</p><pre>type JWKSParams struct {
+    <a href="#Params">Params</a>
+
+<span id="JWKSParams.JWKSURL"></span>    <span class="comment">// JWKSURL は公開鍵を取得する JWKS エンドポイント URL です（override）。</span>
+    <span class="comment">// 空の場合は Issuer から OIDC discovery で jwks_uri を導出します。</span>
+    JWKSURL <a href="../../../../../builtin/#string">string</a>
+<span id="JWKSParams.CacheTTL"></span>    <span class="comment">// CacheTTL は取得した JWKS を再取得するまでの間隔です（0 以下は既定 defaultJWKSCacheTTL）。</span>
+    CacheTTL <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+<span id="JWKSParams.DiscoveryTTL"></span>    <span class="comment">// DiscoveryTTL は discovery 文書を再取得するまでの間隔です（0 以下は既定 defaultDiscoveryTTL）。</span>
+    <span class="comment">// JWKSURL を明示した場合は discovery を行わないため未使用です。</span>
+    DiscoveryTTL <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+<span id="JWKSParams.AllowInsecureURL"></span>    <span class="comment">// AllowInsecureURL は discovery URL / jwks_uri に http（非 https）を許容するかです（疑似 provider へ接続する非本番環境用）。</span>
+    AllowInsecureURL <a href="../../../../../builtin/#bool">bool</a>
+<span id="JWKSParams.UnknownKidCooldown"></span>    <span class="comment">// UnknownKidCooldown は未知 kid での JWKS 再取得の最小間隔です（0 以下は既定 jwksRefreshCooldown）。</span>
+    UnknownKidCooldown <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="KeyResolver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=4859:5043#L76">KeyResolver</a>
+				<a class="permalink" href="#KeyResolver">¶</a>
+				
+				
+			</h2>
+			<p>KeyResolver は、kid に対応する署名検証用公開鍵を解決します。
+固定公開鍵と JWKS 動的解決を同一インターフェースで差し替え可能にし、ctx を検証経路まで
+伝搬させるための infra 内 seam です（jwtlib.Keyfunc が ctx を取れないことへの対処）。
+
+			</p><pre>type KeyResolver interface {
+    <span class="comment">// ResolveKey は、kid に対応する署名検証用公開鍵を返します。</span>
+    ResolveKey(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, kid <a href="../../../../../builtin/#string">string</a>) (<a href="../../../../../crypto/">crypto</a>.<a href="../../../../../crypto/#PublicKey">PublicKey</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Params">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=2447:3356#L37">Params</a>
+				<a class="permalink" href="#Params">¶</a>
+				
+				
+			</h2>
+			<p>Params は、JWT Authenticator の検証パラメータです。
+
+			</p><pre>type Params struct {
+<span id="Params.PublicKeyPEM"></span>    <span class="comment">// PublicKeyPEM は署名検証に用いる RSA 公開鍵（PEM 形式）です（必須）。</span>
+    PublicKeyPEM <a href="../../../../../builtin/#string">string</a>
+<span id="Params.Issuer"></span>    <span class="comment">// Issuer は検証する iss クレームの期待値です（必須）。</span>
+    Issuer <a href="../../../../../builtin/#string">string</a>
+<span id="Params.Audience"></span>    <span class="comment">// Audience は検証する aud クレームの期待値です（必須。標準プロファイルでは aud 必須）。</span>
+    Audience <a href="../../../../../builtin/#string">string</a>
+<span id="Params.AllowedAlgs"></span>    <span class="comment">// AllowedAlgs は許可する署名アルゴリズムの allowlist です（空なら defaultAllowedAlgs）。</span>
+    AllowedAlgs []<a href="../../../../../builtin/#string">string</a>
+<span id="Params.Leeway"></span>    <span class="comment">// Leeway は exp / nbf 検証時のクロックずれ許容幅です（0 以下なら defaultLeeway）。</span>
+    Leeway <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+<span id="Params.ExpectedType"></span>    <span class="comment">// ExpectedType は typ ヘッダの期待値です（空なら typ 検証をスキップ。RFC 9068 なら &#34;at+jwt&#34;）。</span>
+    ExpectedType <a href="../../../../../builtin/#string">string</a>
+<span id="Params.Clock"></span>    <span class="comment">// Clock は exp / nbf 検証に用いる時刻源です（必須。テスト決定性のため注入）。</span>
+    Clock <a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

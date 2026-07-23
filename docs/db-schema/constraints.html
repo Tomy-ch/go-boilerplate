@@ -80,7 +80,7 @@
                     <div class="box box-primary">
                         <div class="box-header with-border">
                             <i class="ion ion-key"></i>
-                            <h3 class="box-title">7 Foreign Key Constraints</h3>
+                            <h3 class="box-title">10 Foreign Key Constraints</h3>
                             <div class="box-tools pull-right">
                                 <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
                                 <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
@@ -104,36 +104,18 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td>products_category_id_foreign</td>
+                                        <td>user_identities_user_id_foreign</td>
                                         <td>
                                             <table border='0' cellspacing='0' cellpadding='0'>
                                                 <tr>
-                                                    <td><a href='tables/products.html'>products</a><span>.category_id</span></td>
+                                                    <td><a href='tables/user_identities.html'>user_identities</a><span>.user_id</span></td>
                                                 </tr>
                                             </table>
                                         </td>
                                         <td>
                                             <table border='0' cellspacing='0' cellpadding='0'>
                                                 <tr>
-                                                    <td><a href='tables/product_categories.html'>product_categories</a><span>.id</span></td>
-                                                </tr>
-                                            </table>
-                                        </td>
-                                        <td><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>Restrict delete</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>products_status_id_foreign</td>
-                                        <td>
-                                            <table border='0' cellspacing='0' cellpadding='0'>
-                                                <tr>
-                                                    <td><a href='tables/products.html'>products</a><span>.status_id</span></td>
-                                                </tr>
-                                            </table>
-                                        </td>
-                                        <td>
-                                            <table border='0' cellspacing='0' cellpadding='0'>
-                                                <tr>
-                                                    <td><a href='tables/product_statuses.html'>product_statuses</a><span>.id</span></td>
+                                                    <td><a href='tables/users.html'>users</a><span>.id</span></td>
                                                 </tr>
                                             </table>
                                         </td>
@@ -170,6 +152,78 @@
                                             <table border='0' cellspacing='0' cellpadding='0'>
                                                 <tr>
                                                     <td><a href='tables/products.html'>products</a><span>.id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>Restrict delete</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>user_roles_role_id_foreign</td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/user_roles.html'>user_roles</a><span>.role_id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/roles.html'>roles</a><span>.id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>Restrict delete</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>user_roles_user_id_foreign</td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/user_roles.html'>user_roles</a><span>.user_id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/users.html'>users</a><span>.id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>Restrict delete</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>products_category_id_foreign</td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/products.html'>products</a><span>.category_id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/product_categories.html'>product_categories</a><span>.id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>Restrict delete</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>products_status_id_foreign</td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/products.html'>products</a><span>.status_id</span></td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <td>
+                                            <table border='0' cellspacing='0' cellpadding='0'>
+                                                <tr>
+                                                    <td><a href='tables/product_statuses.html'>product_statuses</a><span>.id</span></td>
                                                 </tr>
                                             </table>
                                         </td>
@@ -259,14 +313,14 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td><a href='tables/outbox.html'>outbox</a></td>
-                                        <td>outbox_status_check</td>
-                                        <td>(status &#61; ANY (ARRAY[&#39;pending&#39;::text, &#39;published&#39;::text, &#39;dead&#39;::text]))</td>
-                                    </tr>
-                                    <tr>
                                         <td><a href='tables/idempotency_keys.html'>idempotency_keys</a></td>
                                         <td>idempotency_keys_status_check</td>
                                         <td>(status &#61; ANY (ARRAY[&#39;claimed&#39;::text, &#39;completed&#39;::text]))</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href='tables/outbox.html'>outbox</a></td>
+                                        <td>outbox_status_check</td>
+                                        <td>(status &#61; ANY (ARRAY[&#39;pending&#39;::text, &#39;published&#39;::text, &#39;dead&#39;::text]))</td>
                                     </tr>
                                 </tbody>
                             </table>

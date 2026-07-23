@@ -1,10 +1,13 @@
 schema_migrations
 outbox
 idempotency_keys
+user_roles
 purchase_details
+user_identities
 purchases
 products
 users
+roles
 purchase_statuses
 product_statuses
 product_categories

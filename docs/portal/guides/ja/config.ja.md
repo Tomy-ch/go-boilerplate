@@ -284,8 +284,6 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |`SetHealthListenAddr`|`WorkerConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
-|`SetHeaderName`|`AuthConfig`|
-|`SetAllowedHeaderBearer`|`AuthConfig`|
 |`SetOutboxBatchSize`|`OutboxConfig`|
 |`SetOutboxEndpoint`|`OutboxConfig`|
 |`SetSameSite`|`SecureCookieConfig`|
