@@ -1,4 +1,4 @@
-package dbpool
+package dbslot
 
 import (
 	"bytes"
@@ -8,10 +8,12 @@ import (
 	"testing"
 	"time"
 
+	mock_dbslot "go-boilerplate/internal/cli/dbslot/mock"
 	"go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestNewRegistry(t *testing.T) {
@@ -169,7 +171,7 @@ func TestPool_ensureLocalEnv(t *testing.T) {
 			t.Parallel()
 
 			for _, env := range []string{config.EnvLocal, config.EnvCI, config.EnvTest, ""} {
-				p := newTestPool(t, t.TempDir(), env, &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{})
+				p, _, _ := newMockPool(t, t.TempDir(), env)
 				assert.NoError(t, p.ensureLocalEnv())
 			}
 		})
@@ -182,7 +184,7 @@ func TestPool_ensureLocalEnv(t *testing.T) {
 			t.Parallel()
 
 			for _, env := range []string{config.EnvDevelopment, config.EnvStaging, config.EnvProduction} {
-				p := newTestPool(t, t.TempDir(), env, &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{})
+				p, _, _ := newMockPool(t, t.TempDir(), env)
 				assert.Error(t, p.ensureLocalEnv())
 			}
 		})
@@ -200,7 +202,7 @@ func TestPool_heldSlot(t *testing.T) {
 
 			root := t.TempDir()
 			require.NoError(t, os.WriteFile(filepath.Join(root, ".gobp-db-slot"), []byte("SLOT=3\nDB_NAME_TEST=wt3_test\n"), 0o600))
-			p := newTestPool(t, root, "", &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{})
+			p, _, _ := newMockPool(t, root, "")
 
 			slot, ok := p.heldSlot()
 			assert.True(t, ok)
@@ -214,7 +216,7 @@ func TestPool_heldSlot(t *testing.T) {
 		t.Run(".gobp-db-slot が無ければ false", func(t *testing.T) {
 			t.Parallel()
 
-			p := newTestPool(t, t.TempDir(), "", &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{})
+			p, _, _ := newMockPool(t, t.TempDir(), "")
 			_, ok := p.heldSlot()
 			assert.False(t, ok)
 		})
@@ -231,12 +233,14 @@ func TestPool_Heartbeat(t *testing.T) {
 			t.Parallel()
 
 			root := t.TempDir()
-			p := newTestPool(t, root, "", &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{})
-			require.NoError(t, p.Acquire(context.Background()))
+			pool, admin, comp := newMockPool(t, root, "")
+			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+			expectSlotDBs(admin, "1")
+			require.NoError(t, pool.Acquire(context.Background()))
 
 			// heartbeat 更新でエラーにならず、meta が読める状態を維持する。
-			require.NoError(t, p.Heartbeat())
-			_, ok := p.reg.ReadMeta(1)
+			require.NoError(t, pool.Heartbeat())
+			_, ok := pool.reg.ReadMeta(1)
 			assert.True(t, ok)
 		})
 	})
@@ -252,9 +256,10 @@ func TestPool_Status(t *testing.T) {
 			t.Parallel()
 
 			var out bytes.Buffer
+			ctrl := gomock.NewController(t)
 			reg := NewRegistry(t.TempDir(), "/w/a", "b", 30*time.Minute, 8, func() time.Time { return time.Unix(1000, 0) })
 			cfg := Config{Root: "/w/a", SharedProject: "gobp-shared", APIBasePort: 8080, MockAuthBase: 4000}
-			p := NewPool(reg, &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{}, cfg, &out, &out)
+			p := NewPool(reg, mock_dbslot.NewMockDBAdmin(ctrl), mock_dbslot.NewMockCompose(ctrl), cfg, &out, &out)
 
 			require.NoError(t, p.Status())
 			s := out.String()

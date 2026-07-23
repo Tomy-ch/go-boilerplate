@@ -1,4 +1,4 @@
-# db-pool
+# db-slot
 
 [English](README.md) | 日本語
 
@@ -9,10 +9,10 @@
 ## コマンド
 
 ```text
-db-pool acquire     # 空きスロットをリースし wt<N> DB を作成/設定して .gobp-db-slot を書き出す
-db-pool release     # スロットの serve コンテナを停止しリースを解放（DB は warm 保持）
-db-pool heartbeat   # 保持スロットのリース heartbeat を更新
-db-pool status      # スロット占有状況を表示
+db-slot acquire     # 空きスロットをリースし wt<N> DB を作成/設定して .gobp-db-slot を書き出す
+db-slot release     # スロットの serve コンテナを停止しリースを解放（DB は warm 保持）
+db-slot heartbeat   # 保持スロットのリース heartbeat を更新
+db-slot status      # スロット占有状況を表示
 ```
 
 通常は make ラッパ（`make db-acquire` / `db-release` / `db-pool-status`）を使う。`db-acquire` はリースした DB のスキーマ再構築も行う。

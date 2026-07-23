@@ -1,4 +1,4 @@
-package dbpool
+package dbslot
 
 import (
 	"context"
@@ -141,7 +141,7 @@ func (p *Pool) Status() error {
 }
 
 func (p *Pool) logf(format string, a ...any) {
-	_, _ = fmt.Fprintf(p.logw, "[db-pool] "+format+"\n", a...)
+	_, _ = fmt.Fprintf(p.logw, "[db-slot] "+format+"\n", a...)
 }
 
 func (p *Pool) slotFilePath() string { return filepath.Join(p.cfg.Root, ".gobp-db-slot") }
@@ -151,7 +151,7 @@ func (p *Pool) slotFilePath() string { return filepath.Join(p.cfg.Root, ".gobp-d
 func (p *Pool) ensureLocalEnv() error {
 	if p.cfg.APPEnv != "" && !config.IsLocalClassEnv(p.cfg.APPEnv) {
 		return xerrors.New(fmt.Sprintf(
-			"db-pool refuses to run: APP_ENV=%q is not a local/ci/test environment", p.cfg.APPEnv))
+			"db-slot refuses to run: APP_ENV=%q is not a local/ci/test environment", p.cfg.APPEnv))
 	}
 	return nil
 }

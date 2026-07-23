@@ -1,4 +1,4 @@
-# db-pool
+# db-slot
 
 English | [日本語](README.ja.md)
 
@@ -9,10 +9,10 @@ Runs on the **host** (not in a tool-runner container): it manages host-filesyste
 ## Commands
 
 ```text
-db-pool acquire     # lease a free slot, create/setup wt<N> DBs, write .gobp-db-slot
-db-pool release     # stop the slot's serve containers, drop the lease (DBs left warm)
-db-pool heartbeat   # refresh the held slot's lease heartbeat
-db-pool status      # print slot occupancy
+db-slot acquire     # lease a free slot, create/setup wt<N> DBs, write .gobp-db-slot
+db-slot release     # stop the slot's serve containers, drop the lease (DBs left warm)
+db-slot heartbeat   # refresh the held slot's lease heartbeat
+db-slot status      # print slot occupancy
 ```
 
 Prefer the make wrappers (`make db-acquire` / `db-release` / `db-pool-status`) — `db-acquire` also rebuilds the schema of the leased DBs.

@@ -1,4 +1,4 @@
-package dbpool
+package dbslot
 
 import (
 	"strconv"

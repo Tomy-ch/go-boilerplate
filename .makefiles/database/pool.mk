@@ -19,7 +19,7 @@ export COMPOSE_PROJECT_NAME
 endif
 
 db-acquire:
-	@go run ./cmd/ db-pool acquire
+	@go run ./cmd/ db-slot acquire
 	@echo "🔄 取得したスロットのデータベースを作り直します..."
 	@# DB 名は .gobp-db-slot を実行時に source して得る（$(...) の make 変数は parse 時評価で、
 	@# 初回取得時はまだファイルが無く空になるため、シェル変数 $$DB_NAME_* を使う）。
@@ -27,11 +27,11 @@ db-acquire:
 	@# db-reinit が 1 度しか実行されない。個別の make 呼び出しに分け、各 worktree DB を作り直す。
 	@set -a; . ./.gobp-db-slot; set +a; \
 		$(MAKE) db-reinit DB=$$DB_NAME_LOCAL && $(MAKE) db-reinit DB=$$DB_NAME_TEST
-	@go run ./cmd/ db-pool heartbeat
+	@go run ./cmd/ db-slot heartbeat
 	@echo "✅ DB スロットを取得しました。make test は自 worktree DB(wt<N>_test)、make serve は共有 DB の wt<N>_local を使います。"
 
 db-release:
-	@go run ./cmd/ db-pool release
+	@go run ./cmd/ db-slot release
 
 db-pool-status:
-	@go run ./cmd/ db-pool status
+	@go run ./cmd/ db-slot status

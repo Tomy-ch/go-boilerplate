@@ -1,4 +1,4 @@
-package dbpool
+package dbslot
 
 import (
 	"context"
@@ -9,62 +9,30 @@ import (
 	"testing"
 	"time"
 
+	mock_dbslot "go-boilerplate/internal/cli/dbslot/mock"
 	"go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-type fakeAdmin struct {
-	ensured  []string
-	setup    []string
-	activeBy map[string]int
-}
-
-type fakeCompose struct {
-	upProject    string
-	downProjects []string
-}
-
-func (f *fakeAdmin) EnsureDatabase(_ context.Context, name string) error {
-	f.ensured = append(f.ensured, name)
-	return nil
-}
-
-func (f *fakeAdmin) SetupDatabase(_ context.Context, name string) error {
-	f.setup = append(f.setup, name)
-	return nil
-}
-
-func (f *fakeAdmin) ActiveConnections(_ context.Context, names ...string) (int, error) {
-	sum := 0
-	for _, n := range names {
-		sum += f.activeBy[n]
-	}
-	return sum, nil
-}
-
-func (f *fakeCompose) UpSharedDB(_ context.Context, project string) error {
-	f.upProject = project
-	return nil
-}
-
-func (f *fakeCompose) DownServe(_ context.Context, project string) error {
-	f.downProjects = append(f.downProjects, project)
-	return nil
-}
-
-func newTestPool(t *testing.T, owner, appEnv string, admin DBAdmin, comp Compose) *Pool {
+func newMockPool(t *testing.T, root, appEnv string) (*Pool, *mock_dbslot.MockDBAdmin, *mock_dbslot.MockCompose) {
 	t.Helper()
-	reg := NewRegistry(t.TempDir(), owner, "branch", 30*time.Minute, 8, func() time.Time { return time.Unix(1000, 0) })
-	cfg := Config{
-		Root:          owner,
-		SharedProject: "gobp-shared",
-		APIBasePort:   8080,
-		MockAuthBase:  4000,
-		APPEnv:        appEnv,
-	}
-	return NewPool(reg, admin, comp, cfg, io.Discard, io.Discard)
+	ctrl := gomock.NewController(t)
+	admin := mock_dbslot.NewMockDBAdmin(ctrl)
+	comp := mock_dbslot.NewMockCompose(ctrl)
+	reg := NewRegistry(t.TempDir(), root, "branch", 30*time.Minute, 8, func() time.Time { return time.Unix(1_000_000, 0) })
+	cfg := Config{Root: root, SharedProject: "gobp-shared", APIBasePort: 8080, MockAuthBase: 4000, APPEnv: appEnv}
+	return NewPool(reg, admin, comp, cfg, io.Discard, io.Discard), admin, comp
+}
+
+// expectSlotDBs は、指定スロットの DB 作成/設定呼び出しを期待に登録する。
+func expectSlotDBs(admin *mock_dbslot.MockDBAdmin, slot string) {
+	admin.EXPECT().EnsureDatabase(gomock.Any(), "wt"+slot+"_local").Return(nil)
+	admin.EXPECT().SetupDatabase(gomock.Any(), "wt"+slot+"_local").Return(nil)
+	admin.EXPECT().EnsureDatabase(gomock.Any(), "wt"+slot+"_test").Return(nil)
+	admin.EXPECT().SetupDatabase(gomock.Any(), "wt"+slot+"_test").Return(nil)
 }
 
 func TestPool_Acquire(t *testing.T) {
@@ -77,15 +45,11 @@ func TestPool_Acquire(t *testing.T) {
 			t.Parallel()
 
 			root := t.TempDir()
-			admin := &fakeAdmin{activeBy: map[string]int{}}
-			comp := &fakeCompose{}
-			pool := newTestPool(t, root, "", admin, comp)
+			pool, admin, comp := newMockPool(t, root, "")
+			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+			expectSlotDBs(admin, "1")
 
 			require.NoError(t, pool.Acquire(context.Background()))
-
-			assert.Equal(t, "gobp-shared", comp.upProject)
-			assert.Equal(t, []string{"wt1_local", "wt1_test"}, admin.ensured)
-			assert.Equal(t, []string{"wt1_local", "wt1_test"}, admin.setup)
 
 			b, err := os.ReadFile(filepath.Join(root, ".gobp-db-slot")) //nolint:gosec // テスト内の固定パス
 			require.NoError(t, err)
@@ -102,10 +66,11 @@ func TestPool_Acquire(t *testing.T) {
 			t.Parallel()
 
 			root := t.TempDir()
-			// 他 worktree が slot1 を古い heartbeat で保持し、かつ wt1_local に接続が生きている状態。
-			admin := &fakeAdmin{activeBy: map[string]int{"wt1_local": 1}}
-			comp := &fakeCompose{}
-			pool := newTestPool(t, root, "", admin, comp)
+			pool, admin, comp := newMockPool(t, root, "")
+			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+			// slot1 は稼働中接続ありで skip、slot2 を取得する。
+			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(1, nil)
+			expectSlotDBs(admin, "2")
 
 			// slot1 を別 owner の stale リースにする。
 			other := NewRegistry(pool.reg.dir, "/w/other", "b", 30*time.Minute, 8,
@@ -117,7 +82,6 @@ func TestPool_Acquire(t *testing.T) {
 
 			b, err := os.ReadFile(filepath.Join(root, ".gobp-db-slot")) //nolint:gosec // テスト内の固定パス
 			require.NoError(t, err)
-			// slot1 は接続ありで skip され、slot2 が取得される。
 			assert.Contains(t, string(b), "SLOT=2")
 		})
 	})
@@ -128,7 +92,8 @@ func TestPool_Acquire(t *testing.T) {
 		t.Run("deploy 系 env（prd）では実行を拒否する", func(t *testing.T) {
 			t.Parallel()
 
-			pool := newTestPool(t, t.TempDir(), config.EnvProduction, &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{})
+			// deploy 系は EnsureDir/UpSharedDB より前に弾かれるため mock 呼び出しは発生しない。
+			pool, _, _ := newMockPool(t, t.TempDir(), config.EnvProduction)
 
 			err := pool.Acquire(context.Background())
 			require.Error(t, err)
@@ -147,14 +112,14 @@ func TestPool_Release(t *testing.T) {
 			t.Parallel()
 
 			root := t.TempDir()
-			admin := &fakeAdmin{activeBy: map[string]int{}}
-			comp := &fakeCompose{}
-			pool := newTestPool(t, root, "", admin, comp)
-			require.NoError(t, pool.Acquire(context.Background()))
+			pool, admin, comp := newMockPool(t, root, "")
+			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+			expectSlotDBs(admin, "1")
+			comp.EXPECT().DownServe(gomock.Any(), "gobp-wt-1").Return(nil)
 
+			require.NoError(t, pool.Acquire(context.Background()))
 			require.NoError(t, pool.Release(context.Background()))
 
-			assert.Equal(t, []string{"gobp-wt-1"}, comp.downProjects)
 			_, err := os.Stat(filepath.Join(root, ".gobp-db-slot"))
 			assert.True(t, os.IsNotExist(err))
 		})
@@ -165,7 +130,9 @@ func TestPool_slotFileHasNoTrailingSpace(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	pool := newTestPool(t, root, "", &fakeAdmin{activeBy: map[string]int{}}, &fakeCompose{})
+	pool, admin, comp := newMockPool(t, root, "")
+	comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+	expectSlotDBs(admin, "1")
 	require.NoError(t, pool.Acquire(context.Background()))
 
 	b, err := os.ReadFile(filepath.Join(root, ".gobp-db-slot")) //nolint:gosec // テスト内の固定パス

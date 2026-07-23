@@ -1,8 +1,8 @@
-// Package dbpool は、複数の git worktree が単一共有 Postgres を per-worktree のデータベース
+// Package dbslot は、複数の git worktree が単一共有 Postgres を per-worktree のデータベース
 // （wt<N>_local / wt<N>_test）として貸し借りする DB スロットプールのコアロジックを提供します。
-// リース（ロックディレクトリ）管理・stale 回収・DB 作成・compose 起動を担い、cmd/db-pool.go から
+// リース（ロックディレクトリ）管理・stale 回収・DB 作成・compose 起動を担い、cmd/db-slot.go から
 // 実依存を配線して呼び出します。詳細は docs/maintenance/db-worktree-pool.md。
-package dbpool
+package dbslot
 
 import (
 	"bufio"

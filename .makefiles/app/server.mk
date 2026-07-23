@@ -17,7 +17,7 @@ serve:
 		COMPOSE_PROJECT_NAME="$$COMPOSE_PROJECT_NAME" docker compose --profile database up -d --wait database; \
 		COMPOSE_PROJECT_NAME="$$SERVE_PROJECT" docker compose -f docker-compose.yaml -f docker-compose.pool.yaml \
 			--profile development up -d api_server mock_auth_server; \
-		go run ./cmd/ db-pool heartbeat; \
+		go run ./cmd/ db-slot heartbeat; \
 		echo "✅ 起動完了。API: http://localhost:$$API_HOST_PORT（o11y/dlv/pprof はプール serve では非分離）"; \
 	else \
 		docker compose --profile development up -d; \
