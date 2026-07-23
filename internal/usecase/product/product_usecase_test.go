@@ -237,3 +237,52 @@ func Test_usecase_ListProducts(t *testing.T) {
 		})
 	})
 }
+
+func Test_usecase_GetProduct(t *testing.T) {
+	t.Parallel()
+
+	published := time.Date(2026, time.January, 10, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開商品を取得しProductViewへ写像して返す", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+
+			p := newTestProduct(t, "get_product", published)
+			repo.EXPECT().FindPublishedByID(gomock.Any(), p.ID()).Return(p, nil)
+
+			u := &usecase{tracer: lt, repo: repo}
+			actual, err := u.GetProduct(context.Background(), p.ID())
+			require.NoError(t, err)
+			assert.Equal(t, p.ID(), actual.ID)
+			assert.Equal(t, p.Name(), actual.Name)
+			assert.Equal(t, p.Price(), actual.Price)
+			assert.Equal(t, p.StatusID(), actual.StatusID)
+			assert.Equal(t, p.CategoryID(), actual.CategoryID)
+			assert.Equal(t, p.PublishedAt(), actual.PublishedAt)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Repositoryが未存在・非公開でNotFoundを返す場合_そのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+
+			id := uuid.NewTestFromSalt(t, "get_product_missing")
+			repo.EXPECT().FindPublishedByID(gomock.Any(), id).Return(nil, apperror.ErrNotFound)
+
+			u := &usecase{tracer: lt, repo: repo}
+			actual, err := u.GetProduct(context.Background(), id)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+			assert.Equal(t, ProductView{}, actual)
+		})
+	})
+}
