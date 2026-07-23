@@ -42,6 +42,12 @@ This ADR covers only the authoritative, stored money.
    the stored money path. `unit_price` is a snapshot of the locked `products.price` taken at purchase
    time and is immutable to later price changes (the essence of the CommandService positive example).
 
+   > **Revised in part by [ADR-0101](0101-two-scale-money-model.md):** the *pricing-scale* columns
+   > (`products.price`, `purchase_details.unit_price`) became exact decimal (USD major unit, sub-cent
+   > capable). The *settlement-scale* amounts (`purchases.{subtotal,tax,shipping_fee,total}`) keep the
+   > integer-USD-cents contract decided here. This ADR's stock-locking, truncation-at-the-settlement-
+   > boundary (point 3), and CommandService (point 6) decisions are unchanged.
+
 3. **Domain money rounding is truncation, in one place.** `subtotal = Σ unit_price × quantity`,
    `tax = subtotal × taxRate` (truncated), `shipping_fee = constant`, `total = subtotal + tax + shipping`.
    Rounding happens once inside the domain money computation and is **truncation** for stored amounts.

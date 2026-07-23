@@ -1,7 +1,8 @@
 ---
-status: accepted
+status: superseded
 date: 2026-07-22
 deciders: [maintainers]
+superseded-by: 0103
 tags: [architecture]
 ---
 
@@ -9,7 +10,7 @@ tags: [architecture]
 
 ## Status
 
-accepted
+superseded by [ADR-0103](0103-decimal-half-up-rounding.md)
 
 ## Context
 
