@@ -34,4 +34,7 @@ type Repository interface {
 	// 並び順は (published_at, id) で、params.Ascending により昇順／降順を切り替えます。
 	// params.CategoryID / StatusID / Keyword が指定された場合は該当条件で絞り込みます。
 	FindPublishedList(ctx context.Context, params ListParams) (Products, error)
+	// FindPublishedByID は、ID から公開中（published_at が非 NULL）の単一商品を取得します。
+	// 未存在・非公開のいずれも NotFound を返します（未ログイン経路への存在秘匿）。
+	FindPublishedByID(ctx context.Context, id uuid.UUID) (*Product, error)
 }

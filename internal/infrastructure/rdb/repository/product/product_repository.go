@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/uuid"
 )
 
 type repository struct {
@@ -67,6 +68,21 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		return nil, pgerror.NormalizeError(err)
 	}
 	return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescRow) gen.Products { return row.Products })
+}
+
+// FindPublishedByID は、ID から公開中（published_at 非 NULL）の単一商品を取得します。
+// 非公開・未存在はいずれも SQL の該当なし（sql.ErrNoRows）に落ち、NotFound へ正規化して返します。
+func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	row, err := db.GetPublishedProductByID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return rowToProduct(row.Products)
 }
 
 // rowToProduct は、sqlc が返す Products 行をドメインエンティティへ変換します。
