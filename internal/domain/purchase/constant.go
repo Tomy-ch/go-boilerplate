@@ -1,0 +1,20 @@
+package purchase
+
+const (
+	// StatusCodeUnprocessed は、購入作成直後に設定される「未処理」ステータスのコードです。
+	// ステータスの UUID はドメインに焼き込まず、永続化時に code から解決します（seed との二重管理を避けるため）。
+	StatusCodeUnprocessed = 1
+
+	// taxRatePercent は、国内消費税率（パーセント）です。sample の placeholder であり、
+	// 要件化した時点で config / マスタへ移します（ADR-0100）。
+	taxRatePercent = 10
+
+	// shippingFeeCents は、固定送料（USD セント）です。sample の placeholder です（ADR-0100）。
+	shippingFeeCents = 500
+
+	// percentDivisor は、パーセント計算の除数です（taxRatePercent を百分率として扱うため）。
+	percentDivisor = 100
+
+	// minQuantity は、明細 1 件あたりの最小購入数量です。
+	minQuantity = 1
+)

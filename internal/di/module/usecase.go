@@ -11,6 +11,7 @@ import (
 	productuc "go-boilerplate/internal/usecase/product"           // sample-api:line
 	categoryuc "go-boilerplate/internal/usecase/product/category" // sample-api:line
 	statusuc "go-boilerplate/internal/usecase/product/status"     // sample-api:line
+	purchaseuc "go-boilerplate/internal/usecase/purchase"         // sample-api:line
 	"go-boilerplate/internal/usecase/user"                        // sample-api:line
 	"go-boilerplate/internal/usecase/user/search"                 // sample-api:line
 
@@ -43,6 +44,7 @@ func UsecaseModule() fx.Option {
 			statusuc.New,
 			categoryuc.New,
 			productuc.New,
+			purchaseuc.New,
 			// sample-api:end
 		),
 	)

@@ -1,0 +1,16 @@
+type: object
+description: 購入明細の入力。購入する商品IDと数量の組です。
+required:
+  - productId
+  - quantity
+properties:
+  productId:
+    type: string
+    format: uuid
+    description: 購入する商品のID
+    example: "5266f905-1af4-477a-bc7c-e69729e22a2b"
+  quantity:
+    type: integer
+    format: int32
+    description: 購入数量。1 以上の整数です（0 以下はドメインで検証し 422 を返します）。
+    example: 2

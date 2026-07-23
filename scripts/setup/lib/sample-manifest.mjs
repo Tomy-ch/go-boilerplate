@@ -181,14 +181,39 @@ export const SAMPLE_DOMAINS = {
   },
 
   order: {
-    description: "サンプル 注文ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
+    description: "サンプル 購入 API（POST /v1/purchases・CommandService 正例。フルスタック）",
     paths: [
+      // DB スキーマ（既存スタブ）
       "database/migrations/000011_create_purchase_statuses.up.sql",
       "database/migrations/000011_create_purchase_statuses.down.sql",
       "database/migrations/000012_create_purchases.up.sql",
       "database/migrations/000012_create_purchases.down.sql",
       "database/migrations/000013_create_purchase_details.up.sql",
       "database/migrations/000013_create_purchase_details.down.sql",
+      // Go 各層
+      "internal/domain/purchase",
+      "internal/usecase/purchase",
+      "internal/infrastructure/rdb/command_service/purchase",
+      "internal/infrastructure/rdb/repository/purchase",
+      "internal/controller/handler/v1/purchases",
+      "internal/integration/v1_purchases_test.go",
+      // DML
+      "database/dml/command_service/purchase",
+      "database/dml/repository/purchase",
+      // 生成物（sqlc。openapi.yaml / DI 各ファイルの登録はマーカーで除去される）
+      "internal/infrastructure/rdb/sqlc/gen/purchase_command_service.gen.sql.go",
+      "internal/infrastructure/rdb/sqlc/gen/purchase_repository.gen.sql.go",
+      "database/gen/purchase_command_service.gen.sql",
+      "database/gen/purchase_repository.gen.sql",
+      // OpenAPI
+      "openapi/paths/v1/purchases.yaml",
+      "openapi/components/requests/purchases",
+      "openapi/components/parameters/purchase",
+      "openapi/components/schemas/PurchaseResponse.yaml",
+      "openapi/components/schemas/PurchaseDetailResponse.yaml",
+      "openapi/components/schemas/PurchaseDetailInput.yaml",
+      // spec
+      "docs/spec/purchase",
     ],
   },
 

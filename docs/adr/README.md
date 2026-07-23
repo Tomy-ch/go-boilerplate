@@ -143,6 +143,7 @@ do X") are tagged `setup-review`.
 | [0097](0097-outbox-relay-hardening-delegated.md) | Delegate outbox-relay duplicate-window hardening (multi-layer lease redesign) to production copies | accepted (exclusion) |
 | [0098](0098-exchange-rate-cache-gateway-decorator.md) | Cache the exchange-rate gateway with a TTL decorator on the boundary seam | accepted |
 | [0099](0099-reference-amount-half-up-rounding.md) | referenceAmount is computed in integers with half-up rounding at a single point | accepted |
+| [0100](0100-purchase-stock-lock-and-amount-contract.md) | Purchase creation locks stock with SELECT FOR UPDATE and computes money as integer USD cents | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).
