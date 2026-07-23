@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,6 +13,8 @@ import (
 const (
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
+	// defaultTestDBPort は、DB スロットプール未使用時のテスト用 DB 既定ポートです。
+	defaultTestDBPort = 5432
 )
 
 // 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
@@ -64,9 +67,11 @@ var (
 	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
 	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
 	// database
-	expectedDBDriver                      = "pgx"
-	expectedDBHost                        = "localhost"
-	expectedDBPort                        = 5432
+	expectedDBDriver = "pgx"
+	expectedDBHost   = "localhost"
+	// expectedDBPort は既定 5432。DB スロットプール（scripts/db-pool）利用時は
+	// make が DB_PORT を各 worktree のスロットポートへ設定するため、それを尊重する。
+	expectedDBPort                        = testDBPort()
 	expectedDBUser                        = "postgres"
 	expectedDBPassword                    = "postgres-password"
 	expectedDBName                        = "test"
@@ -402,4 +407,17 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
 	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
+}
+
+// testDBPort は、ホストから見たテスト用 DB の接続ポートを返します。環境変数 DB_HOST_PORT が
+// あればそれを、無ければ defaultTestDBPort を返します。DB スロットプール（scripts/db-pool）利用時は
+// make が DB_HOST_PORT を各 worktree のスロット公開ポートへ設定します（コンテナ内部の DB_PORT は
+// 常に 5432 で、そちらは go_tool_runner 内の接続にのみ使われます）。
+func testDBPort() int {
+	if v := os.Getenv("DB_HOST_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			return p
+		}
+	}
+	return defaultTestDBPort
 }
