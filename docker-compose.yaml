@@ -99,7 +99,8 @@ services:
       dockerfile: docker/document/Dockerfile
       target: document_viewer
     ports:
-      - "8082:80"
+      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 80）。
+      - "7001:80"
     volumes:
       - ./docs:/usr/share/nginx/html:ro
     profiles:
@@ -108,7 +109,8 @@ services:
   sql_editor:
     image: sosedoff/pgweb:latest
     ports:
-      - "8081:8081"
+      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 8081）。
+      - "7000:8081"
     environment:
       DATABASE_URL: postgres://postgres:postgres-password@database:5432/local?sslmode=disable
     depends_on:
