@@ -710,10 +710,11 @@ func Test_client_Do_Timeout(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			profile := httpclient.DefaultProfile()
-			profile.PerAttemptTimeout = 20 * time.Millisecond
-			// overall とリトライを打ち切り要因から外し、per-attempt タイムアウト単独の打ち切りを分離検証する
+			// per-attempt は接続確立に十分な余裕を持たせる（短すぎるとサーバ到達前に発火し hits=0 で
+			// フレークする）。overall とは大きく離し、per-attempt 単独の打ち切りを経過時間で分離検証する
 			// （overall で打ち切られる構成だと per-attempt を外しても同じ ErrUnavailable が返り区別できない）。
-			profile.OverallTimeout = 2 * time.Second
+			profile.PerAttemptTimeout = 200 * time.Millisecond
+			profile.OverallTimeout = 5 * time.Second
 			profile.MaxAttempts = 1
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"slow": profile})
 
@@ -725,8 +726,9 @@ func Test_client_Do_Timeout(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
 			assert.Equal(t, int32(1), hits.Load())
-			// per-attempt(20ms) が打ち切り要因であることを、overall(2s) より大幅に短い経過時間で確認する。
-			assert.Less(t, elapsed, 500*time.Millisecond)
+			// per-attempt(200ms) が打ち切り要因であることを、overall(5s) より大幅に短い経過時間で確認する
+			// （上限は per-attempt の 10 倍・overall の半分未満に取り、負荷変動に耐える）。
+			assert.Less(t, elapsed, 2*time.Second)
 		})
 	})
 }
