@@ -223,7 +223,6 @@ func Test_server_PostUsers(t *testing.T) {
 					City:       "Shibuya",
 					Street:     "1-1-1",
 					Building:   new("Building"),
-					Password:   "secret",
 				},
 			}
 
@@ -265,7 +264,6 @@ func Test_server_PostUsers(t *testing.T) {
 
 			expectedParams := &user.CreateParamsDTO{
 				UserID:              userID,
-				RawPassword:         req.Body.Password,
 				UpdateProfileParams: wantParams,
 			}
 			assert.Equal(t, expectedParams, gotParams)
@@ -291,7 +289,6 @@ func Test_server_PostUsers(t *testing.T) {
 					FirstName: "A",
 					LastName:  "B",
 					Email:     types.Email("err@example.com"),
-					Password:  "pw",
 				},
 			}
 
@@ -317,7 +314,6 @@ func Test_server_PostUsers(t *testing.T) {
 					FirstName: "A",
 					LastName:  "B",
 					Email:     types.Email("err@example.com"),
-					Password:  "pw",
 				},
 			}
 
@@ -343,7 +339,6 @@ func Test_server_PostUsers(t *testing.T) {
 					FirstName: "A",
 					LastName:  "B",
 					Email:     types.Email("err@example.com"),
-					Password:  "pw",
 				},
 			}
 

@@ -42,7 +42,7 @@ tags:
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
-    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+    description: 単一ユーザー（取得・更新・部分更新・削除）。
   - name: v1/users/feed
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
@@ -86,8 +86,6 @@ paths:
     $ref: './paths/v1/users/userId.yaml'
   /v1/users/me:
     $ref: './paths/v1/users/me.yaml'
-  /v1/users/me/password:
-    $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
   /v1/users/feed:

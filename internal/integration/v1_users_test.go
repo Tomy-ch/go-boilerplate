@@ -76,7 +76,6 @@ func TestV1Users_Integration(t *testing.T) {
 					City:       "Shibuya",
 					Street:     "1-1-1",
 					Building:   new("Building"),
-					Password:   "secret",
 				},
 			}
 
@@ -122,7 +121,6 @@ func TestV1Users_Integration(t *testing.T) {
 					City:       "Shibuya",
 					Street:     "1-1-1",
 					Building:   new("Building"),
-					Password:   "secret",
 				},
 			}
 
