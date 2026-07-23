@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/kernel/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
@@ -215,7 +217,7 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{Limit: -1, Ascending: false})
-				require.Nil(t, actual)
+				assert.Nil(t, actual)
 				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
@@ -232,9 +234,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
 					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword),
 				})
-				require.Nil(t, actual)
+				assert.Nil(t, actual)
 				require.ErrorIs(t, err, apperror.ErrInternal)
-				require.NotErrorIs(t, err, domainproduct.ErrInvalidPrice)
+				require.NotErrorIs(t, err, money.ErrNegativePrice)
 			})
 		})
 	})
@@ -269,7 +271,7 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 				assert.Equal(t, mustParse(t, publishedID), got.ID())
 				require.NotNil(t, got.Description())
 				assert.Equal(t, "説明", *got.Description())
-				assert.Equal(t, 1999, got.Price())
+				assert.Equal(t, "1999", got.Price().String())
 				assert.Equal(t, 10, got.Quantity())
 				assert.Nil(t, got.StockWarningThreshold())
 				// DB は timestamptz をローカルタイムゾーンで返すため、格納した瞬間の一致で比較する。
@@ -286,7 +288,7 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.FindPublishedByID(ctx, uuid.NewTestFromSalt(t, "find_published_by_id_missing"))
-				require.Nil(t, got)
+				assert.Nil(t, got)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
 		})
@@ -300,7 +302,7 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+"-UNPUB", nil, 1999, statusInStock, categoryElectronics, nil)
 
 				got, err := repo.FindPublishedByID(ctx, mustParse(t, unpublishedID))
-				require.Nil(t, got)
+				assert.Nil(t, got)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
 		})
@@ -315,9 +317,9 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 				insertProduct(ctx, t, drv, invalidID, probeKeyword+"-BADPRICE", nil, -1, statusInStock, categoryElectronics, ptr.To(base))
 
 				got, err := repo.FindPublishedByID(ctx, mustParse(t, invalidID))
-				require.Nil(t, got)
+				assert.Nil(t, got)
 				require.ErrorIs(t, err, apperror.ErrInternal)
-				require.NotErrorIs(t, err, domainproduct.ErrInvalidPrice)
+				require.NotErrorIs(t, err, money.ErrNegativePrice)
 			})
 		})
 	})
@@ -361,7 +363,7 @@ func Test_rowToProduct(t *testing.T) {
 				ID:                    id,
 				Name:                  "商品",
 				Description:           ptr.To("説明"),
-				Price:                 1999,
+				Price:                 decimal.FromInt(1999),
 				Quantity:              100,
 				StockWarningThreshold: ptr.To(int32(10)),
 				StatusID:              statusID,
@@ -371,7 +373,7 @@ func Test_rowToProduct(t *testing.T) {
 			got, err := rowToProduct(row)
 			require.NoError(t, err)
 			assert.Equal(t, id, got.ID())
-			assert.Equal(t, 1999, got.Price())
+			assert.Equal(t, "1999", got.Price().String())
 			assert.Equal(t, publishedAt, got.PublishedAt())
 		})
 	})
@@ -384,14 +386,14 @@ func Test_rowToProduct(t *testing.T) {
 			row := gen.Products{
 				ID:          id,
 				Name:        "商品",
-				Price:       -1,
+				Price:       decimal.FromInt(-1),
 				Quantity:    100,
 				StatusID:    statusID,
 				CategoryID:  categoryID,
 				PublishedAt: ptr.To(publishedAt),
 			}
 			got, err := rowToProduct(row)
-			require.Nil(t, got)
+			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 	})

@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/kernel/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	mock_product "go-boilerplate/internal/domain/product/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
@@ -19,13 +21,21 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// mustPrice は、テスト用に十進文字列から非負の money.Price を構築します。
+func mustPrice(t *testing.T, s string) money.Price {
+	t.Helper()
+	p, err := money.NewPrice(decimaltestkit.MustParse(t, s))
+	require.NoError(t, err)
+	return p
+}
+
 func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainproduct.Product {
 	t.Helper()
 	p, err := domainproduct.New(
 		uuid.NewTestFromSalt(t, salt),
 		"商品-"+salt,
 		ptr.To("説明-"+salt),
-		1000,
+		mustPrice(t, "10.00"),
 		5,
 		ptr.To(2),
 		uuid.NewTestFromSalt(t, salt+"_status"),
@@ -200,7 +210,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: nil})
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
@@ -217,7 +227,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: cursor})
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
@@ -261,7 +271,7 @@ func Test_usecase_GetProduct(t *testing.T) {
 			assert.Equal(t, p.ID(), actual.ID)
 			assert.Equal(t, p.Name(), actual.Name)
 			assert.Equal(t, p.Description(), actual.Description)
-			assert.Equal(t, p.Price(), actual.Price)
+			assert.True(t, p.Price().Decimal().Equal(actual.Price))
 			assert.Equal(t, p.Quantity(), actual.Quantity)
 			assert.Equal(t, p.StockWarningThreshold(), actual.StockWarningThreshold)
 			assert.Equal(t, p.StatusID(), actual.StatusID)

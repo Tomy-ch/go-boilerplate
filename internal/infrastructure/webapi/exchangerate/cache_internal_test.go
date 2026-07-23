@@ -7,6 +7,7 @@ import (
 
 	"go-boilerplate/internal/usecase/boundary/clock/testkit"
 	boundary "go-boilerplate/internal/usecase/boundary/exchangerate"
+	"go-boilerplate/pkg/decimal"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,7 @@ func Test_cacheGateway_store(t *testing.T) {
 	t.Parallel()
 
 	start := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
-	rate := &boundary.Rate{Base: "USD", Quote: "JPY", Value: 1}
+	rate := &boundary.Rate{Base: "USD", Quote: "JPY", Value: decimal.FromInt(1)}
 
 	newCG := func() *cacheGateway {
 		return &cacheGateway{

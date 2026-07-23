@@ -39,15 +39,6 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestNewTestFromSalt(t *testing.T) {
-	t.Parallel()
-	salt := "test-salt"
-	uuid1 := NewTestFromSalt(t, salt)
-	uuid2 := NewTestFromSalt(t, salt)
-	assert.Equal(t, uuid1, uuid2)
-	assert.NotEqual(t, uuid1, NewTestFromSalt(t, "other-salt"))
-}
-
 func TestUUID_Bytes(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()

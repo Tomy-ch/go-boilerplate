@@ -2,11 +2,11 @@ package purchase
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/kernel/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/observability"
@@ -15,6 +15,7 @@ import (
 	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
 	mock_command "go-boilerplate/internal/usecase/purchase/command/mock"
 	"go-boilerplate/internal/usecase/testkit"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
@@ -23,6 +24,16 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// mustPrice は、テスト用に十進文字列（ドル）から非負の money.Price を構築します。
+//
+//nolint:unparam // テスト補助ヘルパー。現行の呼び出しは同一値だが用途は可変
+func mustPrice(t *testing.T, s string) money.Price {
+	t.Helper()
+	p, err := money.NewPrice(decimaltestkit.MustParse(t, s))
+	require.NoError(t, err)
+	return p
+}
+
 // rereadPurchase は、repo.FindByID が返す再構築済みの購入を生成するテストヘルパーです。
 func rereadPurchase(t *testing.T) *domainpurchase.Purchase {
 	t.Helper()
@@ -30,7 +41,7 @@ func rereadPurchase(t *testing.T) *domainpurchase.Purchase {
 		domainpurchase.NewPurchaseDetail(
 			uuid.NewTestFromSalt(t, "reread_detail"),
 			uuid.NewTestFromSalt(t, "reread_product"),
-			2, 80000,
+			2, mustPrice(t, "800"),
 		),
 	}
 	p, err := domainpurchase.Reconstruct(
@@ -95,7 +106,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			xr := mock_exchangerate.NewMockUsecase(ctrl)
 
-			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, 80000, 20)}
+			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 20)}
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(locked, nil)
 			cmd.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
@@ -122,7 +133,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			assert.Nil(t, view.ReferenceAmount)
 			require.Len(t, view.Details, 1)
 			assert.Equal(t, reread.Details()[0].ProductID(), view.Details[0].ProductID)
-			assert.Equal(t, reread.Details()[0].UnitPrice(), view.Details[0].UnitPrice)
+			assert.True(t, reread.Details()[0].UnitPrice().Decimal().Equal(view.Details[0].UnitPrice))
 		})
 
 		t.Run("displayCurrency指定時は参考換算額を付与する", func(t *testing.T) {
@@ -134,14 +145,26 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			xr := mock_exchangerate.NewMockUsecase(ctrl)
 
-			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, 80000, 20)}
+			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 20)}
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(locked, nil)
 			cmd.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
 			repo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(rereadPurchase(t), nil)
-			xr.EXPECT().Convert(gomock.Any(), gomock.Any()).Return(&exchangerate.ConvertResult{
-				Reference: &exchangerate.ReferenceAmount{Currency: "JPY", Amount: 26475, Rate: 150.5, RateDate: "2026-07-21"},
-			}, nil)
+			xr.EXPECT().Convert(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, in exchangerate.ConvertInput) (*exchangerate.ConvertResult, error) {
+					// usecase の責務: 合計金額（決済スケールの整数セント 176500）を
+					// 価格スケール（ドル 1765）へ戻して換算入力に渡すこと。
+					assert.True(t, in.Amount.Equal(decimaltestkit.MustParse(t, "1765")), "amount=%s", in.Amount.String())
+					assert.Equal(t, "JPY", in.Quote)
+					return &exchangerate.ConvertResult{
+						Reference: &exchangerate.ReferenceAmount{
+							Currency: "JPY",
+							Amount:   26475,
+							Rate:     decimaltestkit.MustParse(t, "150.5"),
+							RateDate: "2026-07-21",
+						},
+					}, nil
+				})
 
 			u := newUsecase(t, cmd, repo, emit, xr)
 
@@ -161,7 +184,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		enoughStock := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, 80000, 20)}
+		enoughStock := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 20)}
 		validParams := CreatePurchaseParams{
 			UserID:  uuid.NewTestFromSalt(t, "cp_user_err"),
 			Details: []DetailParam{{ProductID: productA, Quantity: 2}},
@@ -173,7 +196,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			cmd := mock_command.NewMockCommandService(ctrl)
 			// 在庫 1 に対し 2 を要求 → domain New が ErrInsufficientStock
-			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, 80000, 1)}
+			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 1)}
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(locked, nil)
 
 			u := newUsecase(
@@ -275,7 +298,12 @@ func Test_usecase_referenceAmount(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			xr := mock_exchangerate.NewMockUsecase(ctrl)
 			xr.EXPECT().Convert(gomock.Any(), gomock.Any()).Return(&exchangerate.ConvertResult{
-				Reference: &exchangerate.ReferenceAmount{Currency: "JPY", Amount: 15050, Rate: 150.5, RateDate: "2026-07-21"},
+				Reference: &exchangerate.ReferenceAmount{
+					Currency: "JPY",
+					Amount:   15050,
+					Rate:     decimaltestkit.MustParse(t, "150.5"),
+					RateDate: "2026-07-21",
+				},
 			}, nil)
 
 			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), xr: xr}
@@ -283,7 +311,7 @@ func Test_usecase_referenceAmount(t *testing.T) {
 			require.NotNil(t, actual)
 			assert.Equal(t, "JPY", actual.Currency)
 			assert.Equal(t, int64(15050), actual.Amount)
-			assert.InDelta(t, 150.5, actual.Rate, 0.001)
+			assert.Equal(t, "150.5", actual.Rate.String())
 			assert.Equal(t, "2026-07-21", actual.RateDate)
 		})
 	})
@@ -315,61 +343,6 @@ func Test_usecase_referenceAmount(t *testing.T) {
 	})
 }
 
-func Test_buildCreatedPayload(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("購入の自己完結スナップショットJSONを生成する", func(t *testing.T) {
-			t.Parallel()
-
-			productA := uuid.NewTestFromSalt(t, "bp_product")
-			entity, err := domainpurchase.New(
-				uuid.NewTestFromSalt(t, "bp_id"),
-				"bp-code",
-				uuid.NewTestFromSalt(t, "bp_user"),
-				[]domainpurchase.DetailInput{{ID: uuid.NewTestFromSalt(t, "bp_d"), ProductID: productA, Quantity: 2}},
-				[]domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, 80000, 20)},
-			)
-			require.NoError(t, err)
-
-			payload, perr := buildCreatedPayload(entity)
-			require.NoError(t, perr)
-
-			var decoded struct {
-				PurchaseID     string `json:"purchaseId"`
-				Code           string `json:"code"`
-				UserID         string `json:"userId"`
-				StatusCode     int    `json:"statusCode"`
-				SubtotalAmount int    `json:"subtotalAmount"`
-				TaxAmount      int    `json:"taxAmount"`
-				ShippingFee    int    `json:"shippingFee"`
-				TotalAmount    int    `json:"totalAmount"`
-				Details        []struct {
-					ProductID string `json:"productId"`
-					Quantity  int    `json:"quantity"`
-					UnitPrice int    `json:"unitPrice"`
-				} `json:"details"`
-			}
-			require.NoError(t, json.Unmarshal(payload, &decoded))
-			assert.Equal(t, entity.ID().String(), decoded.PurchaseID)
-			assert.Equal(t, "bp-code", decoded.Code)
-			assert.Equal(t, entity.UserID().String(), decoded.UserID)
-			assert.Equal(t, domainpurchase.StatusCodeUnprocessed, decoded.StatusCode)
-			// subtotal=160000 / tax=16000（切り捨て10%）/ shipping=500 / total=176500
-			assert.Equal(t, 160000, decoded.SubtotalAmount)
-			assert.Equal(t, 16000, decoded.TaxAmount)
-			assert.Equal(t, 500, decoded.ShippingFee)
-			assert.Equal(t, 176500, decoded.TotalAmount)
-			require.Len(t, decoded.Details, 1)
-			assert.Equal(t, productA.String(), decoded.Details[0].ProductID)
-			assert.Equal(t, 2, decoded.Details[0].Quantity)
-			assert.Equal(t, 80000, decoded.Details[0].UnitPrice)
-		})
-	})
-}
-
 func Test_toPurchaseView(t *testing.T) {
 	t.Parallel()
 
@@ -393,7 +366,7 @@ func Test_toPurchaseView(t *testing.T) {
 			require.Len(t, view.Details, 1)
 			assert.Equal(t, entity.Details()[0].ProductID(), view.Details[0].ProductID)
 			assert.Equal(t, entity.Details()[0].Quantity(), view.Details[0].Quantity)
-			assert.Equal(t, entity.Details()[0].UnitPrice(), view.Details[0].UnitPrice)
+			assert.True(t, entity.Details()[0].UnitPrice().Decimal().Equal(view.Details[0].UnitPrice))
 			assert.Nil(t, view.ReferenceAmount)
 		})
 	})

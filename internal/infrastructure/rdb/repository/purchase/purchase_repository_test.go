@@ -84,7 +84,7 @@ func Test_repository_FindByID(t *testing.T) {
 				assert.Equal(t, 176500, got.TotalAmount())
 				require.Len(t, got.Details(), 1)
 				assert.Equal(t, productID, got.Details()[0].ProductID())
-				assert.Equal(t, 80000, got.Details()[0].UnitPrice())
+				assert.Equal(t, "80000", got.Details()[0].UnitPrice().String())
 			})
 		})
 	})
@@ -130,6 +130,49 @@ func Test_repository_FindByID(t *testing.T) {
 				_, err = drv.Exec(ctx,
 					"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5)",
 					detailID, purchaseID, productID, 2, 80000,
+				)
+				require.NoError(t, err)
+
+				_, ferr := repo.FindByID(ctx, purchaseID)
+				require.ErrorIs(t, ferr, apperror.ErrInternal)
+			})
+		})
+
+		t.Run("明細の単価が負値の場合はErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				productID := mustParse(t, "d3000000-0000-4000-8000-000000000001")
+				_, err := drv.Exec(
+					ctx,
+					"INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
+					productID,
+					"purchase-repo-negprice",
+					nil,
+					80000,
+					20,
+					nil,
+					seedStatusInStock,
+					seedCategory,
+				)
+				require.NoError(t, err)
+
+				purchaseID, err := uuid.New()
+				require.NoError(t, err)
+				_, err = drv.Exec(ctx,
+					"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount) "+
+						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+					purchaseID, "repo-negprice", mustParse(t, seedUserID), mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
+				)
+				require.NoError(t, err)
+				detailID, err := uuid.New()
+				require.NoError(t, err)
+				// unit_price=-1 は money.Price の非負不変条件（ErrNegativePrice）に違反する破損行。
+				_, err = drv.Exec(ctx,
+					"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5::numeric)",
+					detailID, purchaseID, productID, 2, "-1",
 				)
 				require.NoError(t, err)
 

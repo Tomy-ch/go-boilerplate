@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/clock/testkit"
 	boundary "go-boilerplate/internal/usecase/boundary/exchangerate"
 	mock_exchangerate "go-boilerplate/internal/usecase/boundary/exchangerate/mock"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func Test_cacheGateway_GetRate(t *testing.T) {
 			// 2 回要求しても inner（＝実 HTTP gateway 相当）の呼び出しは 1 回だけであることを検証する。
 			inner.EXPECT().
 				GetRate(gomock.Any(), "USD", "JPY").
-				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: 150.5, Date: "2026-07-21"}, nil).
+				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: decimaltestkit.MustParse(t, "150.5"), Date: "2026-07-21"}, nil).
 				Times(1)
 
 			// step を進めない（Sleep を呼ばない）ので時刻は TTL 内に留まる。
@@ -57,7 +58,7 @@ func Test_cacheGateway_GetRate(t *testing.T) {
 			inner := mock_exchangerate.NewMockGateway(ctrl)
 			inner.EXPECT().
 				GetRate(gomock.Any(), "USD", "JPY").
-				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: 150.5}, nil).
+				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: decimaltestkit.MustParse(t, "150.5")}, nil).
 				Times(2)
 
 			// Sleep 1 回で 25h 進み、24h TTL を跨いで失効する。
@@ -80,11 +81,11 @@ func Test_cacheGateway_GetRate(t *testing.T) {
 			inner := mock_exchangerate.NewMockGateway(ctrl)
 			inner.EXPECT().
 				GetRate(gomock.Any(), "USD", "JPY").
-				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: 150.5}, nil).
+				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: decimaltestkit.MustParse(t, "150.5")}, nil).
 				Times(1)
 			inner.EXPECT().
 				GetRate(gomock.Any(), "USD", "EUR").
-				Return(&boundary.Rate{Base: "USD", Quote: "EUR", Value: 0.92}, nil).
+				Return(&boundary.Rate{Base: "USD", Quote: "EUR", Value: decimaltestkit.MustParse(t, "0.92")}, nil).
 				Times(1)
 
 			cached := exchangerate.NewCache(inner, testkit.NewStepClock(clockStart, 0))
@@ -106,7 +107,7 @@ func Test_cacheGateway_GetRate(t *testing.T) {
 			// TOCTOU で inner が複数回呼ばれうるため回数は固定しない。
 			inner.EXPECT().
 				GetRate(gomock.Any(), "USD", "JPY").
-				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: 150.5}, nil).
+				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: decimaltestkit.MustParse(t, "150.5")}, nil).
 				AnyTimes()
 
 			cached := exchangerate.NewCache(inner, testkit.NewStepClock(clockStart, 0))
@@ -127,7 +128,7 @@ func Test_cacheGateway_GetRate(t *testing.T) {
 			for i := range n {
 				require.NoError(t, errs[i])
 				require.NotNil(t, rates[i])
-				assert.InEpsilon(t, 150.5, rates[i].Value, 1e-9)
+				assert.Equal(t, "150.5", rates[i].Value.String())
 			}
 		})
 	})
