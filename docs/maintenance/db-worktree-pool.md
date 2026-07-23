@@ -12,13 +12,13 @@
   （ホスト 5432）。worktree はディレクトリ毎に compose の既定プロジェクト名が変わるため、共有 DB は
   明示の固定名（`GOBP_DB_SHARED_PROJECT`）に固定する。
 - **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 8 = wt1〜wt8）。
-- **実装** = ホスト実行の Go CLI `cmd/db-pool`（コアは `internal/cli/dbpool`）。リース判定・DB 作成・
-  compose 起動をテスト可能な形で担う。make ターゲットは `go run ./cmd/ db-pool <sub>` を呼ぶ。
+- **実装** = ホスト実行の Go CLI `cmd/db-slot`（コアは `internal/cli/dbslot`）。リース判定・DB 作成・
+  compose 起動をテスト可能な形で担う。make ターゲットは `go run ./cmd/ db-slot <sub>` を呼ぶ。
 - **リース** = ホスト上のロックディレクトリ `${GOBP_DB_POOL_DIR:-~/.cache/gobp-db-pool}/slot-N.lock`。
   新規取得は `os.Mkdir` の原子性、stale 回収は `rename` で原子的に占有権を奪い、acquire の走査全体を
   `flock` で直列化するため、2 worktree が同一スロットを二重リースしない。`meta`（owner / heartbeat /
   branch）は `0600`、symlink を向いた pool dir は先読み攻撃対策として拒否する。
-- **実行環境ガード** = `APP_ENV` が deploy 系（dev/stg/prd）のとき db-pool は実行を拒否する（DB を
+- **実行環境ガード** = `APP_ENV` が deploy 系（dev/stg/prd）のとき db-slot は実行を拒否する（DB を
   作成/破棄するため dev/test 専用）。`internal/config` のテスト設定も同様に deploy 系では DB_NAME 上書きを
   無視する。
 - **占有情報** = acquire が worktree ルートに `.gobp-db-slot`（gitignore）を書き出す。`make` が
@@ -75,4 +75,4 @@ make db-release      # スロットを解放（データベースは warm 保持
 - **プール serve の制約**: observability(3000/4317/4318/3200) と dlv/pprof(2345/6060) は固定ポートで、
   プール serve では observability を起動対象から外す（OTLP は best-effort）。dlv/pprof は publish しない。
 - API 帯 8080–8087 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
-- `docker/`・`scripts/`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。
+- `docker/`・`internal/cli/dbslot`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。
