@@ -109,7 +109,7 @@ export const SAMPLE_DOMAINS = {
   },
 
   product: {
-    description: "サンプル 商品ドメイン（GET /v1/product-statuses 商品ステータスマスタ一覧 / GET /v1/product-categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉）",
+    description: "サンプル 商品ドメイン（GET /v1/product-statuses 商品ステータスマスタ一覧 / GET /v1/product-categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉 / GET /v1/products/{productId} 公開商品詳細〈未存在・非公開は 404 秘匿〉）",
     paths: [
       "internal/domain/product/status",
       "internal/usecase/product/status",
@@ -151,12 +151,14 @@ export const SAMPLE_DOMAINS = {
       "internal/infrastructure/rdb/repository/product",
       "internal/controller/handler/v1/products",
       "internal/integration/v1_products_test.go",
+      "internal/integration/v1_products_detail_test.go",
       "database/dml/repository/product",
 
       "internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go",
       "database/gen/product_repository.gen.sql",
 
       "openapi/paths/v1/products.yaml",
+      "openapi/paths/v1/products/productId.yaml",
       "openapi/components/parameters/product",
       "openapi/components/responses/products",
       "openapi/components/schemas/ProductResponse.yaml",
