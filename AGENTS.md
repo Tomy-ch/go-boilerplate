@@ -167,13 +167,15 @@ Run / DB:
 - `make new-migrate-<name>` — scaffold a new migration (`.up.sql` / `.down.sql`)
 - `make job NAME=<job> ARGS="<args>"` — run an application job
 
-**Working in a `git worktree` (DB + serve isolation):** the DB / API / mock-auth containers publish
-fixed host ports, so worktrees cannot share them. Before DB-backed tasks or `make serve` in a
-worktree, `make db-acquire` to lease a per-port slot (isolated compose project + `DB_HOST_PORT`
-`5432+N` / `API_HOST_PORT` `8080+N` / `MOCK_AUTH_HOST_PORT` `4000+N`, schema rebuilt for the
-branch), then `make test` / `make serve` reuse that slot (curl `localhost:$API_HOST_PORT`), and
-`make db-release` when done — do NOT start a duplicate stack or hijack another checkout's containers.
-Without `db-acquire`, targets default to 5432 / 8080 / 4000 (single-stack, unchanged).
+**Working in a `git worktree` (DB + serve isolation):** a single shared Postgres (fixed compose
+project `gobp-shared`, host 5432) is shared by all worktrees; each leases a slot = its own
+databases (`wt<N>_local` / `wt<N>_test`) inside that instance. Before DB-backed tasks or `make serve`
+in a worktree, `make db-acquire` to lease a slot (creates + rebuilds `wt<N>_local` / `wt<N>_test`,
+propagates `DB_NAME_LOCAL` / `DB_NAME_TEST` / `API_HOST_PORT` `8080+N` / `MOCK_AUTH_HOST_PORT` `4000+N`),
+then `make test` connects to `wt<N>_test` on localhost:5432, `make serve` isolates the app in
+`gobp-wt-N` (curl `localhost:$API_HOST_PORT`) against the shared DB, and `make db-release` when done —
+do NOT start a duplicate DB stack or hijack another checkout's containers. Without `db-acquire`,
+targets default to `local` / `test` on 5432 / 8080 / 4000 (single-stack, unchanged).
 Details: `docs/maintenance/db-worktree-pool.md`.
 
 ## Protected Documentation

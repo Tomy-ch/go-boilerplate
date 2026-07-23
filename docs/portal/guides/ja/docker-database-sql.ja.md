@@ -21,6 +21,11 @@ PostgreSQL コンテナの起動時に `docker-entrypoint-initdb.d` 経由で実
 
 PostgreSQL の `docker-entrypoint-initdb.d` の仕組みにより、コンテナ初回起動時に自動実行されます。
 
+これらのスクリプトは固定の `local` / `test` データベースのみを作成・拡張初期化します。DB worktree
+プール（`scripts/db-pool`）は per-worktree のデータベース（`wt<N>_local` / `wt<N>_test`）を起動**後**に
+動的作成するため、同じ拡張を自身でブートストラップします。ここの拡張セットは `scripts/db-pool/pool.sh`
+と同期させてください。詳細は `docs/maintenance/db-worktree-pool.md` を参照。
+
 ## ここに置くもの
 
 - データベース作成（`CREATE DATABASE`）
