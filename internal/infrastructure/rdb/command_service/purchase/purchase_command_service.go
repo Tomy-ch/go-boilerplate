@@ -1,0 +1,110 @@
+// Package purchase は、購入 CommandService（command.CommandService）の RDB 実装を提供します。
+// 在庫減算・購入・明細の書き込みを、渡された ctx のトランザクション内で原子的に実行します（本リポジトリ初の CommandService 実装）。
+package purchase
+
+import (
+	"context"
+
+	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/purchase/command"
+	"go-boilerplate/pkg/uuid"
+)
+
+type commandService struct {
+	db     driver.DatabaseDriver
+	tracer observability.LayerTracer
+}
+
+// New は、purchase の CommandService の RDB 実装を生成して返します。
+func New(
+	db driver.DatabaseDriver,
+	tf observability.TracerFactory,
+) command.CommandService {
+	return &commandService{
+		db:     db,
+		tracer: tf.Infra(),
+	}
+}
+
+// LockProducts は、指定商品を ID 昇順に悲観ロック（FOR UPDATE）し、価格・在庫を返します。
+func (c *commandService) LockProducts(ctx context.Context, productIDs []uuid.UUID) ([]purchase.LockedProduct, error) {
+	ctx, endSpan := c.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, c.db))
+	rows, err := db.LockProductsForUpdate(ctx, productIDs)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	locked := make([]purchase.LockedProduct, len(rows))
+	for i, row := range rows {
+		locked[i] = purchase.NewLockedProduct(row.ID, int(row.Price), int(row.Quantity))
+	}
+	return locked, nil
+}
+
+// CreatePurchase は、在庫減算・purchases INSERT・purchase_details INSERT を渡された tx 内で原子的に実行します。
+// 在庫減算は防御的に売り越しを弾き、更新 0 行の場合は ErrInsufficientStock（409）を返します。
+func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
+	ctx, endSpan := c.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, c.db))
+	details := p.Details()
+
+	for _, d := range details {
+		affected, err := db.DecrementProductStock(ctx, &gen.DecrementProductStockParams{
+			QuantityParam:  toInt32(d.Quantity()),
+			ProductIDParam: d.ProductID(),
+		})
+		if err != nil {
+			return pgerror.NormalizeError(err)
+		}
+		if affected == 0 {
+			return purchase.ErrInsufficientStock
+		}
+	}
+
+	if err := db.InsertPurchase(ctx, &gen.InsertPurchaseParams{
+		ID:             p.ID(),
+		Code:           p.Code(),
+		UserID:         p.UserID(),
+		StatusCode:     toInt16(p.StatusCode()),
+		SubtotalAmount: toInt32(p.SubtotalAmount()),
+		TaxAmount:      toInt32(p.TaxAmount()),
+		ShippingFee:    toInt32(p.ShippingFee()),
+		TotalAmount:    toInt32(p.TotalAmount()),
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	for _, d := range details {
+		if err := db.InsertPurchaseDetail(ctx, &gen.InsertPurchaseDetailParams{
+			ID:         d.ID(),
+			PurchaseID: p.ID(),
+			ProductID:  d.ProductID(),
+			Quantity:   toInt32(d.Quantity()),
+			UnitPrice:  toInt32(d.UnitPrice()),
+		}); err != nil {
+			return pgerror.NormalizeError(err)
+		}
+	}
+	return nil
+}
+
+// toInt32 は、ドメインの int を sqlc の int32（DB INTEGER 列）へ変換します。
+func toInt32(v int) int32 {
+	//nolint:gosec // G115: 値は int32 の DB 列（quantity / unit_price / *_amount）由来で範囲に収まります
+	return int32(v)
+}
+
+// toInt16 は、ドメインの int を sqlc の int16（DB SMALLINT 列）へ変換します。
+func toInt16(v int) int16 {
+	//nolint:gosec // G115: 値は purchase_statuses.code（SMALLINT）由来で範囲に収まります
+	return int16(v)
+}
