@@ -145,5 +145,14 @@ func Test_readImagePart(t *testing.T) {
 			_, err := readImagePart(newImageMultipartReader(t, "other", pngBytes))
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
+
+		t.Run("不正なmultipartはErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// コロンを欠くヘッダ行は multipart.Reader が EOF 以外のエラーを返す。
+			reader := multipart.NewReader(bytes.NewBufferString("--B\r\nBadHeader\r\n\r\n"), "B")
+			_, err := readImagePart(reader)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
 	})
 }

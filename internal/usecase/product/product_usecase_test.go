@@ -194,6 +194,26 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 
 			require.ErrorIs(t, err, apperror.ErrPayloadTooLarge)
 		})
+
+		t.Run("storageへの格納が失敗した場合はエラーをそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			storage := mock_objectstorage.NewMockStorage(ctrl)
+
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			storage.EXPECT().
+				Put(gomock.Any(), gomock.Any()).
+				Return(objectstorage.Path(""), apperror.ErrUnavailable)
+
+			u := &usecase{tracer: lt, authorizer: authorizer, storage: storage, maxUploadBytes: 1024}
+			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+				UploadProductImageParams{ContentType: "image/png", Data: pngData})
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
 	})
 }
 
