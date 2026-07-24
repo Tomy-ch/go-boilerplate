@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Boilerplate Go API
+  title: Go Boilerplate API
   termsOfService: https://github.com/Tomy-ch/go-boilerplate-echo-oapi-sqlc
   contact:
     name: TomyC258460
