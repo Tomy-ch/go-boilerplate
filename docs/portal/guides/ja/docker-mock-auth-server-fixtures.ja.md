@@ -48,7 +48,7 @@
 `users.json` を中立な既定内容（汎用ユーザー 1 件）で（再）生成するには:
 
 ```sh
-node scripts/setup/reset-mock-auth-users.mjs
+make reset-mock-auth-users-ci
 # または tool runner 経由:
-docker compose run --rm node_tool_runner node scripts/setup/reset-mock-auth-users.mjs
+make reset-mock-auth-users
 ```

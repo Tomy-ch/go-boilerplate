@@ -46,7 +46,7 @@ Add an entry to the array:
 To (re)generate `users.json` with a neutral default (a single generic user), run:
 
 ```sh
-node scripts/setup/reset-mock-auth-users.mjs
+make reset-mock-auth-users-ci
 # or, via the tool runner:
-docker compose run --rm node_tool_runner node scripts/setup/reset-mock-auth-users.mjs
+make reset-mock-auth-users
 ```
