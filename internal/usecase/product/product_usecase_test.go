@@ -37,6 +37,10 @@ func mustPrice(t *testing.T, s string) money.Price {
 
 func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainproduct.Product {
 	t.Helper()
+	status, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, salt+"_status"), "在庫あり")
+	require.NoError(t, err)
+	category, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, salt+"_category"), "電子機器")
+	require.NoError(t, err)
 	p, err := domainproduct.New(
 		uuid.NewTestFromSalt(t, salt),
 		"商品-"+salt,
@@ -44,8 +48,8 @@ func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainpro
 		mustPrice(t, "10.00"),
 		5,
 		ptr.To(2),
-		uuid.NewTestFromSalt(t, salt+"_status"),
-		uuid.NewTestFromSalt(t, salt+"_category"),
+		status,
+		category,
 		publishedAt,
 	)
 	require.NoError(t, err)
@@ -419,8 +423,10 @@ func Test_usecase_GetProduct(t *testing.T) {
 			assert.True(t, p.Price().Decimal().Equal(actual.Price))
 			assert.Equal(t, p.Quantity(), actual.Quantity)
 			assert.Equal(t, p.StockWarningThreshold(), actual.StockWarningThreshold)
-			assert.Equal(t, p.StatusID(), actual.StatusID)
-			assert.Equal(t, p.CategoryID(), actual.CategoryID)
+			assert.Equal(t, p.Status().ID(), actual.StatusID)
+			assert.Equal(t, p.Status().Name(), actual.StatusName)
+			assert.Equal(t, p.Category().ID(), actual.CategoryID)
+			assert.Equal(t, p.Category().Name(), actual.CategoryName)
 			assert.Equal(t, p.PublishedAt(), actual.PublishedAt)
 		})
 	})

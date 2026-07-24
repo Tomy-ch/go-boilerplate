@@ -30,7 +30,8 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 		return purchaseuc.PurchaseSummaryView{
 			Code:        "int-code",
 			TotalAmount: 176500,
-			Status:      "完了",
+			StatusID:    uuid.NewTestFromSalt(t, "int_status"),
+			StatusName:  "完了",
 			OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		}
 	}

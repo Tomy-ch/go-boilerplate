@@ -184,10 +184,12 @@ func Test_repository_FindFeedByUserID(t *testing.T) {
 				got, err := repo.FindFeedByUserID(ctx, mustParse(owner), purchase.ListFeedParams{Limit: 10})
 				require.NoError(t, err)
 				require.Len(t, got, 2)
-				// ordered_at 降順: 完了(base) → 未処理(base-1h)。
+				// ordered_at 降順: 完了(base) → 未処理(base-1h)。ステータス ID / 名称ともに JOIN で解決される。
+				assert.Equal(t, mustParse(statusCompletedID), got[0].StatusID)
 				assert.Equal(t, statusCompletedName, got[0].StatusName)
 				assert.Equal(t, 176500, got[0].TotalAmount)
 				assert.Equal(t, "code-"+tieHigh, got[0].Code)
+				assert.Equal(t, mustParse(statusUnprocessedID), got[1].StatusID)
 				assert.Equal(t, statusUnprocessedName, got[1].StatusName)
 			})
 		})

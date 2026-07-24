@@ -22,19 +22,35 @@ func mustPrice(t *testing.T, s string) money.Price {
 	return p
 }
 
-func validProductArgs(t *testing.T) (uuid.UUID, string, *string, money.Price, int, *int, uuid.UUID, uuid.UUID, time.Time) {
+// mustStatusRef は、テスト用に有効な商品ステータス参照を構築します。
+func mustStatusRef(t *testing.T, salt, name string) StatusRef {
+	t.Helper()
+	ref, err := NewStatusRef(uuid.NewTestFromSalt(t, salt), name)
+	require.NoError(t, err)
+	return ref
+}
+
+// mustCategoryRef は、テスト用に有効な商品カテゴリ参照を構築します。
+func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
+	t.Helper()
+	ref, err := NewCategoryRef(uuid.NewTestFromSalt(t, salt), name)
+	require.NoError(t, err)
+	return ref
+}
+
+func validProductArgs(t *testing.T) (uuid.UUID, string, *string, money.Price, int, *int, StatusRef, CategoryRef, time.Time) {
 	t.Helper()
 	id := uuid.NewTestFromSalt(t, "product_id")
-	statusID := uuid.NewTestFromSalt(t, "product_status_id")
-	categoryID := uuid.NewTestFromSalt(t, "product_category_id")
+	status := mustStatusRef(t, "product_status_id", "在庫あり")
+	category := mustCategoryRef(t, "product_category_id", "電子機器")
 	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
-	return id, "ワイヤレスイヤホン", ptr.To("ノイズキャンセリング対応"), mustPrice(t, "19.99"), 100, ptr.To(10), statusID, categoryID, publishedAt
+	return id, "ワイヤレスイヤホン", ptr.To("ノイズキャンセリング対応"), mustPrice(t, "19.99"), 100, ptr.To(10), status, category, publishedAt
 }
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	id, name, description, price, quantity, threshold, statusID, categoryID, publishedAt := validProductArgs(t)
+	id, name, description, price, quantity, threshold, status, category, publishedAt := validProductArgs(t)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -42,7 +58,7 @@ func TestNew(t *testing.T) {
 		t.Run("全フィールドが有効な場合、Productエンティティが生成される", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := New(id, name, description, price, quantity, threshold, statusID, categoryID, publishedAt)
+			actual, err := New(id, name, description, price, quantity, threshold, status, category, publishedAt)
 			require.NoError(t, err)
 			assert.Equal(t, id, actual.ID())
 			assert.Equal(t, name, actual.Name())
@@ -50,15 +66,15 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, price, actual.Price())
 			assert.Equal(t, quantity, actual.Quantity())
 			assert.Equal(t, threshold, actual.StockWarningThreshold())
-			assert.Equal(t, statusID, actual.StatusID())
-			assert.Equal(t, categoryID, actual.CategoryID())
+			assert.Equal(t, status, actual.Status())
+			assert.Equal(t, category, actual.Category())
 			assert.Equal(t, publishedAt, actual.PublishedAt())
 		})
 
 		t.Run("descriptionとstockWarningThresholdがnilでも生成される", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := New(id, name, nil, price, quantity, nil, statusID, categoryID, publishedAt)
+			actual, err := New(id, name, nil, price, quantity, nil, status, category, publishedAt)
 			require.NoError(t, err)
 			assert.Nil(t, actual.Description())
 			assert.Nil(t, actual.StockWarningThreshold())
@@ -67,7 +83,7 @@ func TestNew(t *testing.T) {
 		t.Run("priceとquantityが0でも生成される", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := New(id, name, description, mustPrice(t, "0"), minQuantity, ptr.To(minThreshold), statusID, categoryID, publishedAt)
+			actual, err := New(id, name, description, mustPrice(t, "0"), minQuantity, ptr.To(minThreshold), status, category, publishedAt)
 			require.NoError(t, err)
 			assert.Equal(t, "0", actual.Price().String())
 			assert.Equal(t, minQuantity, actual.Quantity())
@@ -79,56 +95,56 @@ func TestNew(t *testing.T) {
 
 		t.Run("IDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(uuid.UUID{}, name, description, price, quantity, threshold, statusID, categoryID, publishedAt)
+			actual, err := New(uuid.UUID{}, name, description, price, quantity, threshold, status, category, publishedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
 		t.Run("nameが空の場合、ErrInvalidNameを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, "", description, price, quantity, threshold, statusID, categoryID, publishedAt)
+			actual, err := New(id, "", description, price, quantity, threshold, status, category, publishedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidName)
 		})
 
 		t.Run("nameが最大長を超える場合、ErrInvalidNameを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, strings.Repeat("あ", maxNameLength+1), description, price, quantity, threshold, statusID, categoryID, publishedAt)
+			actual, err := New(id, strings.Repeat("あ", maxNameLength+1), description, price, quantity, threshold, status, category, publishedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidName)
 		})
 
 		t.Run("quantityが負数の場合、ErrInvalidQuantityを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, name, description, price, minQuantity-1, threshold, statusID, categoryID, publishedAt)
+			actual, err := New(id, name, description, price, minQuantity-1, threshold, status, category, publishedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidQuantity)
 		})
 
 		t.Run("stockWarningThresholdが負数の場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, name, description, price, quantity, ptr.To(minThreshold-1), statusID, categoryID, publishedAt)
+			actual, err := New(id, name, description, price, quantity, ptr.To(minThreshold-1), status, category, publishedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStockWarningThreshold)
 		})
 
-		t.Run("statusIDがゼロ値の場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
+		t.Run("statusがゼロ値の場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, name, description, price, quantity, threshold, uuid.UUID{}, categoryID, publishedAt)
+			actual, err := New(id, name, description, price, quantity, threshold, StatusRef{}, category, publishedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
 
-		t.Run("categoryIDがゼロ値の場合、ErrInvalidCategoryIDを返す", func(t *testing.T) {
+		t.Run("categoryがゼロ値の場合、ErrInvalidCategoryIDを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, name, description, price, quantity, threshold, statusID, uuid.UUID{}, publishedAt)
+			actual, err := New(id, name, description, price, quantity, threshold, status, CategoryRef{}, publishedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCategoryID)
 		})
 
 		t.Run("publishedAtがゼロ値の場合、ErrInvalidPublishedAtを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, name, description, price, quantity, threshold, statusID, categoryID, time.Time{})
+			actual, err := New(id, name, description, price, quantity, threshold, status, category, time.Time{})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidPublishedAt)
 		})
@@ -144,8 +160,8 @@ func TestProduct_Price(t *testing.T) {
 		t.Run("サブセント精度を保持した価格スナップショットを返す", func(t *testing.T) {
 			t.Parallel()
 
-			id, name, description, _, quantity, threshold, statusID, categoryID, publishedAt := validProductArgs(t)
-			p, err := New(id, name, description, mustPrice(t, "19.995"), quantity, threshold, statusID, categoryID, publishedAt)
+			id, name, description, _, quantity, threshold, status, category, publishedAt := validProductArgs(t)
+			p, err := New(id, name, description, mustPrice(t, "19.995"), quantity, threshold, status, category, publishedAt)
 			require.NoError(t, err)
 			assert.Equal(t, "19.995", p.Price().String())
 			assert.True(t, p.Price().Decimal().Equal(decimaltestkit.MustParse(t, "19.995")))

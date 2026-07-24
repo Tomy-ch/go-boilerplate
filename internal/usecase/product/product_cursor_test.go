@@ -96,9 +96,13 @@ func Test_encodeProductCursor(t *testing.T) {
 
 			id := uuid.NewTestFromSalt(t, "encode_product_cursor_id")
 			publishedAt := time.Date(2026, time.March, 4, 5, 6, 7, 800000000, time.UTC)
+			status, err := product.NewStatusRef(uuid.NewTestFromSalt(t, "encode_status"), "在庫あり")
+			require.NoError(t, err)
+			category, err := product.NewCategoryRef(uuid.NewTestFromSalt(t, "encode_category"), "電子機器")
+			require.NoError(t, err)
 			last, err := product.New(
 				id, "商品名", ptr.To("説明"), mustPrice(t, "5.00"), 3, ptr.To(1),
-				uuid.NewTestFromSalt(t, "encode_status"), uuid.NewTestFromSalt(t, "encode_category"), publishedAt,
+				status, category, publishedAt,
 			)
 			require.NoError(t, err)
 

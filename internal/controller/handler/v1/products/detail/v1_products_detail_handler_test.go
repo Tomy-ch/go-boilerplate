@@ -39,7 +39,9 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		Quantity:              100,
 		StockWarningThreshold: ptr.To(10),
 		StatusID:              uuid.NewTestFromSalt(t, salt+"_status"),
+		StatusName:            "在庫あり",
 		CategoryID:            uuid.NewTestFromSalt(t, salt+"_category"),
+		CategoryName:          "電子機器",
 		PublishedAt:           time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC),
 	}
 }
@@ -61,9 +63,15 @@ func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		Price:                 dto.Price.String(),
 		Quantity:              quantity,
 		StockWarningThreshold: threshold,
-		StatusId:              dto.StatusID.ToPrimitive(),
-		CategoryId:            dto.CategoryID.ToPrimitive(),
-		PublishedAt:           dto.PublishedAt,
+		Status: gen.ProductStatusRef{
+			Id:   dto.StatusID.ToPrimitive(),
+			Name: dto.StatusName,
+		},
+		Category: gen.ProductCategoryRef{
+			Id:   dto.CategoryID.ToPrimitive(),
+			Name: dto.CategoryName,
+		},
+		PublishedAt: dto.PublishedAt,
 	}
 }
 

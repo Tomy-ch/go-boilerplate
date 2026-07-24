@@ -21,11 +21,13 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func newTestSummaryView() purchaseuc.PurchaseSummaryView {
+func newTestSummaryView(t *testing.T) purchaseuc.PurchaseSummaryView {
+	t.Helper()
 	return purchaseuc.PurchaseSummaryView{
 		Code:        "h-code",
 		TotalAmount: 176500,
-		Status:      "完了",
+		StatusID:    uuid.NewTestFromSalt(t, "h_status"),
+		StatusName:  "完了",
 		OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
 }
@@ -44,7 +46,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
 			userID := uuid.NewTestFromSalt(t, "get_user")
-			view := newTestSummaryView()
+			view := newTestSummaryView(t)
 			nextCursor := "next-opaque-cursor"
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, uid uuid.UUID, _ *paging.Cursor) (*purchaseuc.PurchaseListView, error) {
@@ -61,7 +63,7 @@ func Test_server_GetPurchases(t *testing.T) {
 				Items: []gen.PurchaseSummaryResponse{{
 					Code:        "h-code",
 					TotalAmount: 176500,
-					Status:      "完了",
+					Status:      gen.PurchaseStatusRef{Id: view.StatusID.ToPrimitive(), Name: "完了"},
 					OrderedAt:   view.OrderedAt,
 				}},
 				NextCursor: &nextCursor,
