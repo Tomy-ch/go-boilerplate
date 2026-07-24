@@ -56,3 +56,18 @@ func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockRepository)(nil).FindByID), ctx, id)
 }
+
+// FindFeedByUserID mocks base method.
+func (m *MockRepository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params purchase.ListFeedParams) ([]purchase.FeedItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindFeedByUserID", ctx, userID, params)
+	ret0, _ := ret[0].([]purchase.FeedItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindFeedByUserID indicates an expected call of FindFeedByUserID.
+func (mr *MockRepositoryMockRecorder) FindFeedByUserID(ctx, userID, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeedByUserID", reflect.TypeOf((*MockRepository)(nil).FindFeedByUserID), ctx, userID, params)
+}

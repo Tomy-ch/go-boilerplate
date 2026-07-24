@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
+	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -82,6 +83,9 @@ type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫減算・購入作成・明細作成・outbox 発行を単一 tx で
 	// 原子的に行い、売り越しは 409 で成立させません。DisplayCurrency 指定時は参考換算額を付与します。
 	CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
+	// GetPurchases は、認証主体（userID）の購入履歴を注文日時降順（cursor ページネーション）で取得します。
+	// 一覧は概要（code / totalAmount / status / orderedAt）のみを返し、他ユーザーの購入は返しません。
+	GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error)
 }
 
 // usecase は、Usecase の実装です。

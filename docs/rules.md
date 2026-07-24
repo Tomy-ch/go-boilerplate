@@ -182,13 +182,16 @@ Examples:
 > Rationale: [ADR-0027](adr/0027-lightweight-cqrs.md), [ADR-0028](adr/0028-system-cqrs-dml-category.md).
 
 - Repository handles Aggregate persistence and simple reads of a single Aggregate
-  (fetch by ID, and simple filter / list / count by the Aggregate's own attributes).
-- QueryService handles reads that cross Aggregates or require high query complexity
-  (multi-table joins, aggregation, keyword/full-text search, dedicated read models) -- CQRS read side.
+  (fetch by ID, and simple filter / list / count by the Aggregate's own attributes), **including a
+  uniquely-determined JOIN to a context-nested reference master** (see boundary clarifications).
+- QueryService handles reads that cross *independent* Aggregates or require high query complexity
+  (multi-table joins across independent Aggregates, aggregation, keyword/full-text search, dedicated
+  read models) -- CQRS read side.
 
 Forbidden:
 
-- Writing cross-Aggregate or aggregation/join queries in Repository
+- Writing join / aggregation queries across *independent* Aggregates in Repository — **exempt**: a
+  uniquely-determined JOIN to a context-nested reference master (a child sub-domain lookup, see below)
 - Writing domain logic in QueryService
 
 Boundary clarifications (common misreads):
@@ -215,11 +218,27 @@ Boundary clarifications (common misreads):
   `ILIKE` on the Aggregate's *own* columns is a single-Aggregate Repository filter. Full-text
   search becomes QueryService only when it reads a derived search projection (a search index, a
   search store, or a denormalized / generated search column).
-- **Resolve another Aggregate's fields in the Usecase, not via a JOIN.** To attach a related
-  Aggregate's data (e.g. a name) to a list, batch-fetch it through its own Repository
-  (`FindByIDs`) and merge by key in the Usecase layer — keeping each read a single-Aggregate
-  Repository read. A cross-Aggregate SQL JOIN returning a flattened view is a QueryService read
-  model, not a Repository read.
+- **Independent Aggregates: resolve their fields in the Usecase, not via a JOIN.** To attach a
+  *separate* Aggregate's data — one with its own top-level domain and an independent transactional
+  lifecycle (e.g. a prefecture name; `internal/domain/prefecture`) — to a list, batch-fetch it
+  through its own Repository (`FindByIDs`) and merge by key in the Usecase layer, keeping each read
+  a single-Aggregate Repository read. A JOIN spanning two *independent* Aggregates returns a
+  flattened view and is a QueryService read model, not a Repository read.
+- **A reference-master JOIN stays a single-Aggregate Repository read.** A *reference master* —
+  fixed / standing lookup data (an enum-like table such as `purchase_statuses` / `product_statuses`)
+  with no independent write / transactional lifecycle, reached through a mandatory,
+  uniquely-determined FK — is part of the owning Aggregate's semantic set, not a foreign Aggregate.
+  Projecting such a master's display attribute (e.g. the status *name*) by JOINing it into the
+  owner's list / read is a single-Aggregate Repository read — **not** a cross-Aggregate JOIN — and
+  does **not** require a QueryService or a usecase-layer merge. **The criterion is the joined data's
+  *nature*, not how it is modeled in Go.** Whether the master also has its own domain sub-package is
+  irrelevant: `internal/domain/product/status` exists only because products expose a master-list
+  endpoint, whereas `purchases` resolves its status purely by JOIN into a `StatusName string` with no
+  Go type of its own — both qualify equally. Discriminator: an *independent* Aggregate (its own
+  transactional lifecycle, typically its own top-level domain, e.g. `internal/domain/prefecture`)
+  MUST be resolved by a usecase-layer `FindByIDs` merge, never a Repository JOIN; a *fixed reference
+  master* reached by a mandatory uniquely-determined FK MAY be JOINed in the owner's Repository. The
+  merge form remains valid for a reference master too; the JOIN is simply not forbidden.
 
 ## DTO / Type Boundary Rules
 

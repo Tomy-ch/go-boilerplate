@@ -16,6 +16,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// 購入履歴一覧の取得
+	// (GET /v1/purchases)
+	GetPurchases(ctx echo.Context, params GetPurchasesParams) error
 	// 購入の作成
 	// (POST /v1/purchases)
 	PostPurchases(ctx echo.Context, params PostPurchasesParams) error
@@ -24,6 +27,33 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetPurchases converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPurchases(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPurchasesParams
+	// ------------- Optional query parameter "after" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "after", ctx.QueryParams(), &params.After, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after: %s", err))
+	}
+
+	// ------------- Optional query parameter "first" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "first", ctx.QueryParams(), &params.First, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter first: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetPurchases(ctx, params)
+	return err
 }
 
 // PostPurchases converts echo context to params.
@@ -110,6 +140,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
+	router.GET(options.BaseURL+"/v1/purchases", wrapper.GetPurchases, options.OperationMiddlewares["GetPurchases"]...)
 	router.POST(options.BaseURL+"/v1/purchases", wrapper.PostPurchases, options.OperationMiddlewares["PostPurchases"]...)
 
 }
@@ -125,6 +156,88 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 type Unauthorized401JSONResponse ErrorResponse
 
 type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
+
+type GetPurchasesRequestObject struct {
+	Params GetPurchasesParams
+}
+
+type GetPurchasesResponseObject interface {
+	VisitGetPurchasesResponse(w http.ResponseWriter) error
+}
+
+type GetPurchases200JSONResponse PurchaseListResponse
+
+func (response GetPurchases200JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPurchases400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetPurchases400JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPurchases401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response GetPurchases401JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPurchases500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response GetPurchases500JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPurchases503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response GetPurchases503JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type PostPurchasesRequestObject struct {
 	Params PostPurchasesParams
@@ -241,6 +354,9 @@ func (response PostPurchases503JSONResponse) VisitPostPurchasesResponse(w http.R
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// 購入履歴一覧の取得
+	// (GET /v1/purchases)
+	GetPurchases(ctx context.Context, request GetPurchasesRequestObject) (GetPurchasesResponseObject, error)
 	// 購入の作成
 	// (POST /v1/purchases)
 	PostPurchases(ctx context.Context, request PostPurchasesRequestObject) (PostPurchasesResponseObject, error)
@@ -256,6 +372,31 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// GetPurchases operation middleware
+func (sh *strictHandler) GetPurchases(ctx echo.Context, params GetPurchasesParams) error {
+	var request GetPurchasesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPurchases(ctx.Request().Context(), request.(GetPurchasesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPurchases")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetPurchasesResponseObject); ok {
+		return validResponse.VisitGetPurchasesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // PostPurchases operation middleware

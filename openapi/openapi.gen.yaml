@@ -700,6 +700,38 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
   /v1/purchases:
+    get:
+      operationId: GetPurchases
+      tags:
+        - v1/purchases
+      summary: 購入履歴一覧の取得
+      description: |
+        認証主体（自分）の購入履歴を cursor ページネーションで取得します。認証必須です。
+        注文日時の降順（orderedAt DESC, id DESC）で安定して並び、前ページのレスポンスに含まれる
+        nextCursor を after に渡して次ページを取得します（無限スクロール）。
+        一覧は概要（code / totalAmount / status / orderedAt）のみを返し、明細は含みません。
+        他ユーザーの購入は返しません（所有権フィルタで閉じるため、対象がなければ空一覧です）。
+        totalAmount は USD セント単位の整数です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CursorAfterParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+      responses:
+        '200':
+          description: cursor ページネーションで取得した自分の購入履歴一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
     post:
       operationId: PostPurchases
       tags:
@@ -1361,6 +1393,48 @@ components:
           example: '2026-07-23T00:00:00Z'
         referenceAmount:
           $ref: '#/components/schemas/ReferenceAmount'
+    PurchaseSummaryResponse:
+      type: object
+      description: |
+        購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
+        （明細は購入詳細 API で取得します）。status は購入ステータスマスタの名称で解決済みです。
+      required:
+        - code
+        - totalAmount
+        - status
+        - orderedAt
+      properties:
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        status:
+          type: string
+          description: 購入ステータスの名称（購入ステータスマスタで解決済み）。
+          example: 完了
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+    PurchaseListResponse:
+      description: 購入履歴一覧（cursor ページネーション）のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - items
+          properties:
+            items:
+              type: array
+              description: 購入履歴の概要一覧（注文日時の降順）。購入がない場合は空配列です。
+              items:
+                $ref: '#/components/schemas/PurchaseSummaryResponse'
+        - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
     PurchaseDetailResponse:
       type: object
       description: 購入明細のレスポンス。unitPrice は購入時点の価格スナップショットです。
