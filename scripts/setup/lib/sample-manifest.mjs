@@ -148,6 +148,8 @@ export const SAMPLE_DOMAINS = {
 
       "internal/domain/product",
       "internal/usecase/product",
+      "internal/usecase/boundary/objectstorage",
+      "internal/infrastructure/objectstorage",
       "internal/infrastructure/rdb/repository/product",
       "internal/controller/handler/v1/products",
       "internal/integration/v1_products_test.go",
@@ -159,9 +161,12 @@ export const SAMPLE_DOMAINS = {
 
       "openapi/paths/v1/products.yaml",
       "openapi/paths/v1/products/productId.yaml",
+      "openapi/paths/v1/products/images.yaml",
       "openapi/components/parameters/product",
+      "openapi/components/requests/products",
       "openapi/components/responses/products",
       "openapi/components/schemas/ProductResponse.yaml",
+      "openapi/components/schemas/ProductImageResponse.yaml",
 
       "docs/spec/product",
 

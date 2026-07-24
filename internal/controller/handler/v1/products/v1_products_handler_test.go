@@ -98,9 +98,13 @@ func TestBindHandler(t *testing.T) {
 	BindHandler(e, tf, mockApp)
 
 	routes := e.Routes()
-	require.Len(t, routes, 1)
-	assert.Equal(t, http.MethodGet, routes[0].Method)
-	assert.Equal(t, targetPath, routes[0].Path)
+	require.Len(t, routes, 2)
+	methodByPath := make(map[string]string, len(routes))
+	for _, r := range routes {
+		methodByPath[r.Path] = r.Method
+	}
+	assert.Equal(t, http.MethodGet, methodByPath[targetPath])
+	assert.Equal(t, http.MethodPost, methodByPath[targetPath+"/images"])
 }
 
 func Test_server_GetProducts(t *testing.T) {

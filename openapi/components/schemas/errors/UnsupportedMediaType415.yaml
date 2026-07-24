@@ -1,0 +1,5 @@
+description: サポートされていないファイル形式です。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

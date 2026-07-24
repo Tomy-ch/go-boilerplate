@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -19,6 +20,9 @@ type ServerInterface interface {
 	// 商品一覧の取得
 	// (GET /v1/products)
 	GetProducts(ctx echo.Context, params GetProductsParams) error
+	// 商品画像のアップロード
+	// (POST /v1/products/images)
+	PostProductsImages(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -79,6 +83,17 @@ func (w *ServerInterfaceWrapper) GetProducts(ctx echo.Context) error {
 	return err
 }
 
+// PostProductsImages converts echo context to params.
+func (w *ServerInterfaceWrapper) PostProductsImages(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostProductsImages(ctx)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -127,14 +142,25 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.GET(options.BaseURL+"/v1/products", wrapper.GetProducts, options.OperationMiddlewares["GetProducts"]...)
+	router.POST(options.BaseURL+"/v1/products/images", wrapper.PostProductsImages, options.OperationMiddlewares["PostProductsImages"]...)
 
 }
 
 type BadRequest400JSONResponse ErrorResponse
 
+type Forbidden403JSONResponse ErrorResponse
+
 type InternalServerError500JSONResponse ErrorResponse
 
+type PayloadTooLarge413JSONResponse ErrorResponse
+
 type ServiceUnavailable503JSONResponse ErrorResponse
+
+type Unauthorized401JSONResponse ErrorResponse
+
+type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
+
+type UnsupportedMediaType415JSONResponse ErrorResponse
 
 type GetProductsRequestObject struct {
 	Params GetProductsParams
@@ -204,11 +230,156 @@ func (response GetProducts503JSONResponse) VisitGetProductsResponse(w http.Respo
 	return err
 }
 
+type PostProductsImagesRequestObject struct {
+	Body *multipart.Reader
+}
+
+type PostProductsImagesResponseObject interface {
+	VisitPostProductsImagesResponse(w http.ResponseWriter) error
+}
+
+type PostProductsImages201JSONResponse ProductImageResponse
+
+func (response PostProductsImages201JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response PostProductsImages400JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response PostProductsImages401JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response PostProductsImages403JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages413JSONResponse struct{ PayloadTooLarge413JSONResponse }
+
+func (response PostProductsImages413JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(413)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages415JSONResponse struct {
+	UnsupportedMediaType415JSONResponse
+}
+
+func (response PostProductsImages415JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(415)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages422JSONResponse struct {
+	UnprocessableEntity422JSONResponse
+}
+
+func (response PostProductsImages422JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response PostProductsImages500JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response PostProductsImages503JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// 商品一覧の取得
 	// (GET /v1/products)
 	GetProducts(ctx context.Context, request GetProductsRequestObject) (GetProductsResponseObject, error)
+	// 商品画像のアップロード
+	// (POST /v1/products/images)
+	PostProductsImages(ctx context.Context, request PostProductsImagesRequestObject) (PostProductsImagesResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
@@ -242,6 +413,35 @@ func (sh *strictHandler) GetProducts(ctx echo.Context, params GetProductsParams)
 		return err
 	} else if validResponse, ok := response.(GetProductsResponseObject); ok {
 		return validResponse.VisitGetProductsResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostProductsImages operation middleware
+func (sh *strictHandler) PostProductsImages(ctx echo.Context) error {
+	var request PostProductsImagesRequestObject
+
+	if reader, err := ctx.Request().MultipartReader(); err != nil {
+		return err
+	} else {
+		request.Body = reader
+	}
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostProductsImages(ctx.Request().Context(), request.(PostProductsImagesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostProductsImages")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostProductsImagesResponseObject); ok {
+		return validResponse.VisitPostProductsImagesResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

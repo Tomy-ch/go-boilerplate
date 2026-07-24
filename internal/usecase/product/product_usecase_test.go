@@ -2,6 +2,7 @@ package product
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,11 @@ import (
 	domainproduct "go-boilerplate/internal/domain/product"
 	mock_product "go-boilerplate/internal/domain/product/mock"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
+	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
+	"go-boilerplate/internal/usecase/boundary/objectstorage"
+	mock_objectstorage "go-boilerplate/internal/usecase/boundary/objectstorage/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
@@ -64,11 +70,130 @@ func TestNew(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		tf := observability.NewNoopTracerFactory(t)
 		repo := mock_product.NewMockRepository(ctrl)
+		storage := mock_objectstorage.NewMockStorage(ctrl)
+		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 
-		expected := &usecase{tracer: tf.Usecase(), repo: repo}
-		actual := New(repo, tf)
+		expected := &usecase{tracer: tf.Usecase(), repo: repo, storage: storage, authorizer: authorizer, maxUploadBytes: 5242880}
+		actual := New(repo, storage, authorizer, 5242880, tf)
 
 		assert.Equal(t, expected, actual)
+	})
+}
+
+func Test_usecase_UploadProductImage(t *testing.T) {
+	t.Parallel()
+
+	pngData := []byte("\x89PNG\r\n\x1a\n dummy image bytes")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("adminが有効な画像をアップロードし格納パスを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			storage := mock_objectstorage.NewMockStorage(ctrl)
+
+			authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductImageUpload, gomock.Any()).
+				Return(nil)
+			storage.EXPECT().Put(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, obj objectstorage.PutObject) (objectstorage.Path, error) {
+					assert.True(t, strings.HasPrefix(obj.Key, "products/"))
+					assert.True(t, strings.HasSuffix(obj.Key, ".png"))
+					assert.Equal(t, "image/png", obj.ContentType)
+					assert.Equal(t, pngData, obj.Body)
+					return objectstorage.Path(obj.Key), nil
+				})
+
+			u := &usecase{tracer: lt, authorizer: authorizer, storage: storage, maxUploadBytes: 1024}
+			view, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+				UploadProductImageParams{ContentType: "image/png", Data: pngData})
+
+			require.NoError(t, err)
+			assert.True(t, strings.HasPrefix(view.Path, "products/"))
+			assert.True(t, strings.HasSuffix(view.Path, ".png"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnがnilの場合は認証エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			u := &usecase{tracer: lt, maxUploadBytes: 1024}
+
+			_, err := u.UploadProductImage(context.Background(), nil,
+				UploadProductImageParams{ContentType: "image/png", Data: pngData})
+
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("認可が拒否された場合は権限エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(authz.ErrForbidden)
+
+			u := &usecase{tracer: lt, authorizer: authorizer, maxUploadBytes: 1024}
+			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+				UploadProductImageParams{ContentType: "image/png", Data: pngData})
+
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
+		t.Run("空データは検証エラー(422)を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+			u := &usecase{tracer: lt, authorizer: authorizer, maxUploadBytes: 1024}
+			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+				UploadProductImageParams{ContentType: "image/png", Data: nil})
+
+			require.ErrorIs(t, err, apperror.ErrValidation)
+		})
+
+		t.Run("非対応Content-Typeは415を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+			u := &usecase{tracer: lt, authorizer: authorizer, maxUploadBytes: 1024}
+			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+				UploadProductImageParams{ContentType: "image/gif", Data: pngData})
+
+			require.ErrorIs(t, err, apperror.ErrUnsupportedMediaType)
+		})
+
+		t.Run("サイズ超過は413を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+			u := &usecase{tracer: lt, authorizer: authorizer, maxUploadBytes: 4}
+			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+				UploadProductImageParams{ContentType: "image/png", Data: pngData})
+
+			require.ErrorIs(t, err, apperror.ErrPayloadTooLarge)
+		})
 	})
 }
 
