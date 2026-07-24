@@ -1,3 +1,35 @@
+get:
+  operationId: GetPurchases
+  tags:
+    - v1/purchases
+  summary: 購入履歴一覧の取得
+  description: |
+    認証主体（自分）の購入履歴を cursor ページネーションで取得します。認証必須です。
+    注文日時の降順（orderedAt DESC, id DESC）で安定して並び、前ページのレスポンスに含まれる
+    nextCursor を after に渡して次ページを取得します（無限スクロール）。
+    一覧は概要（code / totalAmount / status / orderedAt）のみを返し、明細は含みません。
+    他ユーザーの購入は返しません（所有権フィルタで閉じるため、対象がなければ空一覧です）。
+    totalAmount は USD セント単位の整数です。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../components/parameters/pagination/CursorAfterParam.yaml'
+    - $ref: '../../components/parameters/pagination/CursorFirstParam.yaml'
+  responses:
+    '200':
+      description: cursor ページネーションで取得した自分の購入履歴一覧
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/purchases/PurchaseListResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
 post:
   operationId: PostPurchases
   tags:

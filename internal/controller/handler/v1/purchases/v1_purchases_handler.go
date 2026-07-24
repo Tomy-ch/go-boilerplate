@@ -16,6 +16,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
+	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -37,6 +38,52 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 		uc:     uc,
 		idem:   idem,
 	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
+}
+
+// GetPurchases は、認証主体（自分）の購入履歴を注文日時降順（cursor ページネーション）で取得します。認証必須です。
+func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesRequestObject) (gen.GetPurchasesResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+	userID, err := authn.UserID()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+	}
+
+	cursor, err := paging.NewCursor(request.Params.After, request.Params.First)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := s.uc.GetPurchases(ctx, userID, cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]gen.PurchaseSummaryResponse, len(list.Items))
+	for i, v := range list.Items {
+		items[i] = toPurchaseSummaryResponse(v)
+	}
+
+	return gen.GetPurchases200JSONResponse(gen.PurchaseListResponse{
+		Items:      items,
+		NextCursor: list.NextCursor,
+		HasNext:    list.NextCursor != nil,
+	}), nil
+}
+
+// toPurchaseSummaryResponse は、購入履歴一覧のユースケース DTO を HTTP レスポンスへ変換します。
+func toPurchaseSummaryResponse(v purchaseuc.PurchaseSummaryView) gen.PurchaseSummaryResponse {
+	return gen.PurchaseSummaryResponse{
+		Code:        v.Code,
+		TotalAmount: int64(v.TotalAmount),
+		Status:      v.Status,
+		OrderedAt:   v.OrderedAt,
+	}
 }
 
 // PostPurchases は、明細から購入を作成します。認証必須で、idempotency.Run を通して最外トランザクションを開始します。

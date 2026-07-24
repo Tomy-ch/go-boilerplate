@@ -204,6 +204,10 @@ components:
       $ref: './components/responses/addresses/AddressCandidatesResponse.yaml'
     PurchaseResponse:
       $ref: './components/schemas/PurchaseResponse.yaml'
+    PurchaseSummaryResponse:
+      $ref: './components/schemas/PurchaseSummaryResponse.yaml'
+    PurchaseListResponse:
+      $ref: './components/responses/purchases/PurchaseListResponse.yaml'
     PurchaseDetailResponse:
       $ref: './components/schemas/PurchaseDetailResponse.yaml'
     PurchaseDetailInput:

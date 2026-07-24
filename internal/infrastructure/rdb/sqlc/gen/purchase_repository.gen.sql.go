@@ -7,6 +7,7 @@ package gen
 
 import (
 	"context"
+	"time"
 
 	uuid "go-boilerplate/pkg/uuid"
 )
@@ -84,6 +85,157 @@ func (q *Queries) ListPurchaseDetailsByPurchaseID(ctx context.Context, purchaseI
 			&i.PurchaseDetails.UnitPrice,
 			&i.PurchaseDetails.CreatedAt,
 			&i.PurchaseDetails.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurchasesFeedAfter = `-- name: ListPurchasesFeedAfter :many
+SELECT
+    p.id,
+    p.code,
+    p.total_amount,
+    p.ordered_at,
+    ps.name AS status_name
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE p.user_id = $1
+    AND (
+        p.ordered_at < $2
+        OR (p.ordered_at = $2 AND p.id < $3)
+    )
+ORDER BY p.ordered_at DESC, p.id DESC
+LIMIT $4
+`
+
+type ListPurchasesFeedAfterParams struct {
+	UserID         uuid.UUID
+	AfterOrderedAt time.Time
+	AfterID        uuid.UUID
+	LimitParam     int32
+}
+
+type ListPurchasesFeedAfterRow struct {
+	ID          uuid.UUID
+	Code        string
+	TotalAmount int64
+	OrderedAt   time.Time
+	StatusName  string
+}
+
+// (ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す。境界は直前ページ末尾行の
+// (ordered_at, id) で、ordered_at 同値は id で安定にタイブレークする。
+//
+//	SELECT
+//	    p.id,
+//	    p.code,
+//	    p.total_amount,
+//	    p.ordered_at,
+//	    ps.name AS status_name
+//	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE p.user_id = $1
+//	    AND (
+//	        p.ordered_at < $2
+//	        OR (p.ordered_at = $2 AND p.id < $3)
+//	    )
+//	ORDER BY p.ordered_at DESC, p.id DESC
+//	LIMIT $4
+func (q *Queries) ListPurchasesFeedAfter(ctx context.Context, arg *ListPurchasesFeedAfterParams) ([]*ListPurchasesFeedAfterRow, error) {
+	rows, err := q.db.Query(ctx, listPurchasesFeedAfter,
+		arg.UserID,
+		arg.AfterOrderedAt,
+		arg.AfterID,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPurchasesFeedAfterRow
+	for rows.Next() {
+		var i ListPurchasesFeedAfterRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.TotalAmount,
+			&i.OrderedAt,
+			&i.StatusName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurchasesFeedFirst = `-- name: ListPurchasesFeedFirst :many
+SELECT
+    p.id,
+    p.code,
+    p.total_amount,
+    p.ordered_at,
+    ps.name AS status_name
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE p.user_id = $1
+ORDER BY p.ordered_at DESC, p.id DESC
+LIMIT $2
+`
+
+type ListPurchasesFeedFirstParams struct {
+	UserID     uuid.UUID
+	LimitParam int32
+}
+
+type ListPurchasesFeedFirstRow struct {
+	ID          uuid.UUID
+	Code        string
+	TotalAmount int64
+	OrderedAt   time.Time
+	StatusName  string
+}
+
+// === source: database/dml/repository/purchase/select_purchases_feed.sql ===
+// 指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する。
+// ステータス名は購入ステータスマスタとの結合で解決する（購入集約に属する固定参照マスタへの
+// 一意な等結合であり、単一集約の read）。一覧は概要のみで明細は含まない。
+//
+//	SELECT
+//	    p.id,
+//	    p.code,
+//	    p.total_amount,
+//	    p.ordered_at,
+//	    ps.name AS status_name
+//	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE p.user_id = $1
+//	ORDER BY p.ordered_at DESC, p.id DESC
+//	LIMIT $2
+func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchasesFeedFirstParams) ([]*ListPurchasesFeedFirstRow, error) {
+	rows, err := q.db.Query(ctx, listPurchasesFeedFirst, arg.UserID, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPurchasesFeedFirstRow
+	for rows.Next() {
+		var i ListPurchasesFeedFirstRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.TotalAmount,
+			&i.OrderedAt,
+			&i.StatusName,
 		); err != nil {
 			return nil, err
 		}
