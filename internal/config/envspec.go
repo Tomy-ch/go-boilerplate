@@ -95,7 +95,7 @@ type Server struct {
 	ReadTimeout       time.Duration `env:"READ_TIMEOUT"        envDefault:"10s"`
 	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT"       envDefault:"65s"`
 	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT"        envDefault:"60s"`
-	BodyLimitMB       int           `env:"BODY_LIMIT_MB"       envDefault:"5"`
+	BodyLimitMB       int           `env:"BODY_LIMIT_MB"       envDefault:"6"`
 	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT"     envDefault:"60s"`
 }
 
