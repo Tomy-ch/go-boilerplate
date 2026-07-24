@@ -16,6 +16,10 @@ var (
 	ErrConflict = xerrors.New("conflict")
 	// ErrValidation は検証が失敗した場合に使用します。
 	ErrValidation = xerrors.New("validation error")
+	// ErrUnsupportedMediaType はサポートされていない Content-Type / メディア形式の場合に使用します。
+	ErrUnsupportedMediaType = xerrors.New("unsupported media type")
+	// ErrPayloadTooLarge はリクエストペイロードが許容サイズを超える場合に使用します。
+	ErrPayloadTooLarge = xerrors.New("payload too large")
 	// ErrTooManyRequests はリクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
 	// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。
@@ -49,6 +53,8 @@ var appErrors = []error{
 	ErrNotFound,
 	ErrConflict,
 	ErrValidation,
+	ErrUnsupportedMediaType,
+	ErrPayloadTooLarge,
 	ErrTooManyRequests,
 	ErrCanceled,
 	ErrInternal,
