@@ -13,7 +13,6 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// formFieldImage は、multipart で画像を受け取るフォームフィールド名です。
 const formFieldImage = "image"
 
 // ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。

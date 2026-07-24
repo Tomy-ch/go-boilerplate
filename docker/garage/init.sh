@@ -18,13 +18,11 @@ if garage -c "$CONFIG" layout show 2>/dev/null | grep -q "No nodes currently hav
   garage -c "$CONFIG" layout apply --version 1
 fi
 
-# バケット（既存なら無視）。
 garage -c "$CONFIG" bucket create "$BUCKET" 2>/dev/null || true
 
 # 固定アクセスキー（既存なら import は失敗するため無視）。
 garage -c "$CONFIG" key import --yes -n "$KEY_NAME" "$ACCESS_KEY" "$SECRET_KEY" 2>/dev/null || true
 
-# バケットへの read/write 許可。
 garage -c "$CONFIG" bucket allow --read --write "$BUCKET" --key "$ACCESS_KEY"
 
 echo "garage provisioning done: bucket=${BUCKET} access_key=${ACCESS_KEY}"
