@@ -1,10 +1,10 @@
 package module
 
 import (
-	"go-boilerplate/internal/config"                                         // sample-api:line
-	s3storage "go-boilerplate/internal/infrastructure/objectstorage/s3"      // sample-api:line
-	"go-boilerplate/internal/observability"                                  // sample-api:line
-	objectstoragebd "go-boilerplate/internal/usecase/boundary/objectstorage" // sample-api:line
+	"go-boilerplate/internal/config"
+	s3storage "go-boilerplate/internal/infrastructure/objectstorage/s3"
+	"go-boilerplate/internal/observability"
+	objectstoragebd "go-boilerplate/internal/usecase/boundary/objectstorage"
 
 	"go.uber.org/fx"
 )
@@ -13,14 +13,13 @@ import (
 func objectStorageModule() fx.Option {
 	return fx.Module("objectstorage",
 		fx.Provide(
-			provideObjectStorage, // sample-api:line
+			provideObjectStorage,
 		),
 	)
 }
 
 // provideObjectStorage は、config から S3 アダプタを構築し boundary.Storage を返します。
 // 中立境界の背後を S3 実装に隔離し、endpoint / 資格情報の差し替えだけで Garage・MinIO・本番 S3 に接続します。
-// sample-api:begin
 func provideObjectStorage(cfg *config.ObjectStorageConfig, tf observability.TracerFactory) objectstoragebd.Storage {
 	return s3storage.New(s3storage.Config{
 		Endpoint:        cfg.Endpoint(),
@@ -31,5 +30,3 @@ func provideObjectStorage(cfg *config.ObjectStorageConfig, tf observability.Trac
 		UsePathStyle:    cfg.UsePathStyle(),
 	}, tf)
 }
-
-// sample-api:end

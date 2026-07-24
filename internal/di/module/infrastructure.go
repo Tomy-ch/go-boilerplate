@@ -13,7 +13,7 @@ func InfrastructureModule() fx.Option {
 		clockModule(),
 		httpClientModule(),
 		webapiModule(),
-		objectStorageModule(),
+		objectStorageModule(), // sample-api:line
 		authModule(),
 		authzModule(),
 	)
