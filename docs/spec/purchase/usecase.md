@@ -16,6 +16,8 @@ interface: Usecase
 methods:
   - name: CreatePurchase
     signature: CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
+  - name: GetPurchases   # GET /v1/purchases（購入履歴一覧・cursor）。詳細は「## GET 一覧（購入履歴）」
+    signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error)
 ```
 
 ## DTOs
@@ -82,6 +84,45 @@ output:
   errors:
     - ErrInsufficientStock → 409（売り越し）
     - ErrEmptyDetails / ErrDuplicateProductID / ErrInvalidQuantity / ErrProductNotFound → 422
+```
+
+## GET 一覧（購入履歴・cursor）
+
+`GET /v1/purchases`。認証主体（`userID`）の購入履歴を注文日時降順で cursor（keyset）ページネーション取得する読み取り経路。
+一覧は概要のみ（明細を含まない）。ステータス名は購入ステータスマスタとの JOIN で解決する（単一集約 Repository read。
+購入ステータスは購入集約に属する固定参照マスタで独立集約ではないため、[ADR-0027] の子参照マスタ例外に該当し QS ではなく Repository で JOIN する）。
+
+```yaml
+input:
+  - userID: uuid.UUID          # #583 が解決する認証主体の内部ユーザー ID（所有権フィルタ）
+  - cursor: "*paging.Cursor"   # first（件数上限）+ after（不透明カーソル）
+
+output:
+  struct: PurchaseListView
+  fields:
+    - name: Items
+      type: "[]PurchaseSummaryView"   # { Code string; TotalAmount int(USD セント); Status string(名称); OrderedAt time.Time }
+    - name: NextCursor
+      type: "*string"                 # 最終ページは nil
+
+cursor:
+  boundary: purchaseCursor        # (orderedAt, id) の複合 keyset。usecase 層 private（domain へ持ち込まない）
+  keys: [ordered_at(RFC3339Nano), id(UUID)]
+
+dependencies:
+  - purchase.Repository            # FindFeedByUserID（所有権フィルタ + 子マスタ JOIN、[]FeedItem を返す）
+  - tools/paging                   # Cursor（decode/encode・件数ポリシー）
+
+workflow:
+  tx_required: false               # read-only
+  steps:
+    - cursor を decode し keyset 境界（ordered_at, id）へ解釈（不正は ErrInvalidArgument → 400）
+    - repo.FindFeedByUserID(userID, Limit+1) で所有者の購入を注文日時降順に取得
+    - 取得件数 > limit なら hasNext=true とし末尾を切り詰め、末尾行から nextCursor を encode
+    - PurchaseSummaryView へ写像（他ユーザーの購入は SQL の所有権フィルタで空扱い）
+  errors:
+    - ErrInvalidArgument → 400（不正 cursor）
+    - 未認証は controller で 401（Authn 不在）
 ```
 
 ## Notes

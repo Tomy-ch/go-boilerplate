@@ -70,10 +70,21 @@ three responsibilities:
   reconstructed → QueryService). Full-text search is a *typical* QueryService case because it
   usually rides on a derived search projection, not because "search" is inherently a read-side
   concern; a plain filter on the aggregate's own columns stays in Repository.
-- Cross-aggregate field resolution (e.g. attaching a related aggregate's name to a list) is done
-  in the **usecase layer** by batch-fetching the related aggregate through its own Repository
-  (`FindByIDs`) and merging by key — keeping each read a single-aggregate Repository read —
-  rather than via a QueryService SQL JOIN.
+- Field resolution across *independent* aggregates (e.g. attaching a separate top-level aggregate's
+  name — a prefecture — to a list) is done in the **usecase layer** by batch-fetching the related
+  aggregate through its own Repository (`FindByIDs`) and merging by key — keeping each read a
+  single-aggregate Repository read — rather than via a QueryService SQL JOIN.
+- **Reference-master clarification**: a *reference master* — fixed / standing lookup data (an
+  enum-like table such as `purchase_statuses` / `product_statuses`) with no independent write /
+  transactional lifecycle, reached through a mandatory, uniquely-determined FK — is part of the
+  owning aggregate's semantic set, not a foreign aggregate. Projecting its display attribute (e.g. a
+  status *name*) by JOINing it into the owner's read is a single-aggregate **Repository** read, not a
+  cross-aggregate JOIN, and needs neither a QueryService nor a usecase merge. The criterion is the
+  joined data's *nature*, not its Go modeling: a master resolved purely by JOIN with no domain type
+  of its own qualifies just as one that also has a sub-package (`internal/domain/product/status`
+  exists only for a master-list endpoint). The cross-aggregate merge rule above applies only to
+  *independent* aggregates (own transactional lifecycle). See `docs/rules.md` § "Repository /
+  QueryService Rules" for the discriminator.
 - Implementation lives in `internal/infrastructure/rdb/query_service/<aggregate>/`.
 
 ### Command Service (command/write path)

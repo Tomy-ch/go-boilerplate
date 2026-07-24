@@ -94,6 +94,15 @@ fields:
   behavior: |
     ID から購入を明細込みで取得し Reconstruct で再構築する。存在しない場合は NotFound。
     書き込み後のドメイン整合の再検証とレスポンスの取得元に用いる。
+- name: FindFeedByUserID
+  signature: FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
+  behavior: |
+    指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で keyset ページネーション取得する
+    （GET /v1/purchases 一覧の取得元）。ステータス名は購入ステータスマスタとの JOIN で解決する
+    （購入ステータスは購入集約に属する固定参照マスタで、[ADR-0027] の子参照マスタ例外により単一集約の
+    Repository read。QS ではない）。params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返す。
+    返す FeedItem は書き込み集約 Purchase とは別の読み取りモデル（Code / TotalAmount(USD セント) /
+    StatusName / OrderedAt / ID）。不透明カーソルの符号化・復号は usecase 層の責務。
 ```
 
 ## Notes
