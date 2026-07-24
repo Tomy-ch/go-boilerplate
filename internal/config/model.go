@@ -19,6 +19,7 @@ type Config struct {
 	worker        WorkerConfig
 	outbox        OutboxConfig
 	auth          AuthConfig
+	objectStorage ObjectStorageConfig
 }
 
 // OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
@@ -149,6 +150,18 @@ type AuthConfig struct {
 	jwksCacheTTL       time.Duration
 	discoveryTTL       time.Duration
 	unknownKidCooldown time.Duration
+}
+
+// ObjectStorageConfig は、S3 互換オブジェクトストレージ（ローカルは Garage）の接続設定と
+// アップロード上限を保持します。
+type ObjectStorageConfig struct {
+	endpoint        string
+	region          string
+	bucket          string
+	accessKeyID     string
+	secretAccessKey string
+	usePathStyle    bool
+	maxUploadBytes  int64
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -468,3 +481,27 @@ func (a *AuthConfig) DiscoveryTTL() time.Duration { return a.discoveryTTL }
 
 // UnknownKidCooldown は、未知 kid での JWKS 再取得の最小間隔を返します。
 func (a *AuthConfig) UnknownKidCooldown() time.Duration { return a.unknownKidCooldown }
+
+// NewObjectStorageConfig は、オブジェクトストレージの設定を返します。
+func NewObjectStorageConfig(cfg *Config) *ObjectStorageConfig { return &cfg.objectStorage }
+
+// Endpoint は、S3 互換エンドポイント URL を返します（空なら SDK 既定のエンドポイント解決に委ねます）。
+func (o *ObjectStorageConfig) Endpoint() string { return o.endpoint }
+
+// Region は、署名に用いるリージョンを返します。
+func (o *ObjectStorageConfig) Region() string { return o.region }
+
+// Bucket は、オブジェクトを格納するバケット名を返します。
+func (o *ObjectStorageConfig) Bucket() string { return o.bucket }
+
+// AccessKeyID は、静的資格情報のアクセスキー ID を返します。
+func (o *ObjectStorageConfig) AccessKeyID() string { return o.accessKeyID }
+
+// SecretAccessKey は、静的資格情報のシークレットアクセスキーを返します。
+func (o *ObjectStorageConfig) SecretAccessKey() string { return o.secretAccessKey }
+
+// UsePathStyle は、path-style アクセスを使うかどうかを返します（Garage / MinIO は true）。
+func (o *ObjectStorageConfig) UsePathStyle() bool { return o.usePathStyle }
+
+// MaxUploadBytes は、アップロード可能な最大バイト数を返します。
+func (o *ObjectStorageConfig) MaxUploadBytes() int64 { return o.maxUploadBytes }

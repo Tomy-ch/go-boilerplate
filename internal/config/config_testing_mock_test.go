@@ -17,6 +17,7 @@ func TestMockConfigForTest(t *testing.T) {
 
 		t.Run("MockConfigForTest は、テスト用の Config を返す", func(t *testing.T) {
 			t.Parallel()
+			//nolint:dupl // Config の全フィールドを網羅比較するための構造体リテラルであり、production 側期待値との重複は不可避
 			expected := &Config{
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
@@ -121,6 +122,15 @@ func TestMockConfigForTest(t *testing.T) {
 					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
 					discoveryTTL:       expectedAuthDiscoveryTTL,
 					unknownKidCooldown: expectedAuthUnknownKidCooldown,
+				},
+				objectStorage: ObjectStorageConfig{
+					endpoint:        expectedObjectStorageEndpoint,
+					region:          expectedObjectStorageRegion,
+					bucket:          expectedObjectStorageBucket,
+					accessKeyID:     expectedObjectStorageAccessKeyID,
+					secretAccessKey: expectedObjectStorageSecretAccessKey,
+					usePathStyle:    expectedObjectStorageUsePathStyle,
+					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
 				},
 			}
 

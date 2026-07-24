@@ -152,9 +152,22 @@ var (
 	expectedAuthJWKSCacheTTL       = 1 * time.Hour
 	expectedAuthDiscoveryTTL       = 24 * time.Hour
 	expectedAuthUnknownKidCooldown = 60 * time.Second
+
+	// object storage（Endpoint は空文字＝SDK 既定解決の意味を持つため空。他は required,notEmpty のため実値）
+	expectedObjectStorageEndpoint                = ""
+	expectedObjectStorageRegion                  = "us-east-1"
+	expectedObjectStorageBucket                  = "test-bucket"
+	expectedObjectStorageAccessKeyID             = "test-access-key"
+	expectedObjectStorageSecretAccessKey         = "test-secret-key"
+	expectedObjectStorageUsePathStyle            = true
+	expectedObjectStorageUsePathStyleStr         = strconv.FormatBool(expectedObjectStorageUsePathStyle)
+	expectedObjectStorageMaxUploadBytes    int64 = 5242880
+	expectedObjectStorageMaxUploadBytesStr       = strconv.FormatInt(expectedObjectStorageMaxUploadBytes, 10)
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
+//
+//nolint:dupl // Config の全フィールドを網羅比較するための構造体リテラルであり、テスト側期待値との重複は不可避
 func MockConfigForTest(tb testing.TB) *Config {
 	tb.Helper()
 	return &Config{
@@ -261,6 +274,15 @@ func MockConfigForTest(tb testing.TB) *Config {
 			jwksCacheTTL:       expectedAuthJWKSCacheTTL,
 			discoveryTTL:       expectedAuthDiscoveryTTL,
 			unknownKidCooldown: expectedAuthUnknownKidCooldown,
+		},
+		objectStorage: ObjectStorageConfig{
+			endpoint:        expectedObjectStorageEndpoint,
+			region:          expectedObjectStorageRegion,
+			bucket:          expectedObjectStorageBucket,
+			accessKeyID:     expectedObjectStorageAccessKeyID,
+			secretAccessKey: expectedObjectStorageSecretAccessKey,
+			usePathStyle:    expectedObjectStorageUsePathStyle,
+			maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
 		},
 	}
 }
@@ -409,6 +431,14 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
 	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
+	// Object Storage
+	t.Setenv("OBJECT_STORAGE_ENDPOINT", expectedObjectStorageEndpoint)
+	t.Setenv("OBJECT_STORAGE_REGION", expectedObjectStorageRegion)
+	t.Setenv("OBJECT_STORAGE_BUCKET", expectedObjectStorageBucket)
+	t.Setenv("OBJECT_STORAGE_ACCESS_KEY_ID", expectedObjectStorageAccessKeyID)
+	t.Setenv("OBJECT_STORAGE_SECRET_ACCESS_KEY", expectedObjectStorageSecretAccessKey)
+	t.Setenv("OBJECT_STORAGE_USE_PATH_STYLE", expectedObjectStorageUsePathStyleStr)
+	t.Setenv("OBJECT_STORAGE_MAX_UPLOAD_BYTES", expectedObjectStorageMaxUploadBytesStr)
 }
 
 // testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST が

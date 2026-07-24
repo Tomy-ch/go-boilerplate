@@ -1,0 +1,21 @@
+# ローカル開発用 Garage（S3 互換オブジェクトストレージ）単一ノード設定。
+# 本番設定ではなく make serve の S3 バックエンド。テストは gofakes3（in-process）を使う。
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "garage:3901"
+# ローカル専用の固定 RPC secret（64桁 hex・機密ではなくローカルネットワーク内のみ）。
+rpc_secret = "1f2e3d4c5b6a798877665544332211000f1e2d3c4b5a69788796a5b4c3d2e1f0"
+
+[s3_api]
+s3_region = "us-east-1"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "[::]:3903"
+admin_token = "gobp-local-admin-token"

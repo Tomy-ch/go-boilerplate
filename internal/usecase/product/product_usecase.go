@@ -1,6 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package product は、商品の参照ユースケースを提供します。
+// Package product は、商品の参照ユースケースと商品画像アップロードユースケースを提供します。
 package product
 
 import (
@@ -10,6 +10,9 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
+	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
@@ -51,25 +54,40 @@ type ListProductsParams struct {
 	Ascending bool
 }
 
-// Usecase は、商品の参照ユースケースを定義します。
+// Usecase は、商品の参照ユースケースと画像アップロードユースケースを定義します。
 type Usecase interface {
 	// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。
 	ListProducts(ctx context.Context, params ListProductsParams) (*ProductListView, error)
 	// GetProduct は、ID から公開中の単一商品を取得します。未存在・非公開はいずれも NotFound を返します（存在秘匿）。
 	GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
+	// UploadProductImage は、admin が商品画像をアップロードし、格納先のオブジェクトパスを返します。
+	// 非 admin は 403、非対応形式は 415、サイズ超過は 413、空データは 422 を返します。
+	UploadProductImage(ctx context.Context, authn *auth.Authn, params UploadProductImageParams) (ProductImageView, error)
 }
 
 // usecase は、Usecase の実装です。
 type usecase struct {
-	tracer observability.LayerTracer
-	repo   product.Repository
+	tracer         observability.LayerTracer
+	repo           product.Repository
+	storage        objectstorage.Storage
+	authorizer     authz.Authorizer
+	maxUploadBytes int64
 }
 
-// New は、商品の参照ユースケースを生成します。
-func New(repo product.Repository, tf observability.TracerFactory) Usecase {
+// New は、商品の参照・画像アップロードユースケースを生成します。
+func New(
+	repo product.Repository,
+	storage objectstorage.Storage,
+	authorizer authz.Authorizer,
+	maxUploadBytes int64,
+	tf observability.TracerFactory,
+) Usecase {
 	return &usecase{
-		tracer: tf.Usecase(),
-		repo:   repo,
+		tracer:         tf.Usecase(),
+		repo:           repo,
+		storage:        storage,
+		authorizer:     authorizer,
+		maxUploadBytes: maxUploadBytes,
 	}
 }
 

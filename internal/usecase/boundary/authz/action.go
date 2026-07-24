@@ -7,6 +7,8 @@ const (
 	ActionUserUpdate Action = "user:update"
 	// ActionUserDelete は、ユーザー削除操作を表します。
 	ActionUserDelete Action = "user:delete"
+	// ActionProductImageUpload は、商品画像のアップロード操作（admin）を表します。
+	ActionProductImageUpload Action = "product:image:upload"
 )
 
 // Action は、認可対象の操作を表す値オブジェクトです（例: "user:delete"）。

@@ -1,9 +1,13 @@
 package module
 
 import (
+	"go-boilerplate/internal/config"                       // sample-api:line
+	domainproduct "go-boilerplate/internal/domain/product" // sample-api:line
 	"go-boilerplate/internal/observability"
-	addressuc "go-boilerplate/internal/usecase/address"           // sample-api:line
-	exchangerateuc "go-boilerplate/internal/usecase/exchangerate" // sample-api:line
+	addressuc "go-boilerplate/internal/usecase/address"                      // sample-api:line
+	authzbd "go-boilerplate/internal/usecase/boundary/authz"                 // sample-api:line
+	objectstoragebd "go-boilerplate/internal/usecase/boundary/objectstorage" // sample-api:line
+	exchangerateuc "go-boilerplate/internal/usecase/exchangerate"            // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/outbox"
@@ -43,9 +47,23 @@ func UsecaseModule() fx.Option {
 			prefectureuc.New,
 			statusuc.New,
 			categoryuc.New,
-			productuc.New,
+			provideProductUsecase,
 			purchaseuc.New,
 			// sample-api:end
 		),
 	)
 }
+
+// sample-api:begin
+// provideProductUsecase は、商品ユースケースを object storage / authz / アップロード上限（config 由来）とともに構築します。
+func provideProductUsecase(
+	repo domainproduct.Repository,
+	storage objectstoragebd.Storage,
+	authorizer authzbd.Authorizer,
+	cfg *config.ObjectStorageConfig,
+	tf observability.TracerFactory,
+) productuc.Usecase {
+	return productuc.New(repo, storage, authorizer, cfg.MaxUploadBytes(), tf)
+}
+
+// sample-api:end

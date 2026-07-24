@@ -11,6 +11,7 @@ package mock_product
 
 import (
 	context "context"
+	auth "go-boilerplate/internal/usecase/boundary/auth"
 	product "go-boilerplate/internal/usecase/product"
 	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
@@ -70,4 +71,19 @@ func (m *MockUsecase) ListProducts(ctx context.Context, params product.ListProdu
 func (mr *MockUsecaseMockRecorder) ListProducts(ctx, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProducts", reflect.TypeOf((*MockUsecase)(nil).ListProducts), ctx, params)
+}
+
+// UploadProductImage mocks base method.
+func (m *MockUsecase) UploadProductImage(ctx context.Context, authn *auth.Authn, params product.UploadProductImageParams) (product.ProductImageView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UploadProductImage", ctx, authn, params)
+	ret0, _ := ret[0].(product.ProductImageView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UploadProductImage indicates an expected call of UploadProductImage.
+func (mr *MockUsecaseMockRecorder) UploadProductImage(ctx, authn, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadProductImage", reflect.TypeOf((*MockUsecase)(nil).UploadProductImage), ctx, authn, params)
 }

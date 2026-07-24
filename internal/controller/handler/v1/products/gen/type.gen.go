@@ -9,6 +9,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
+)
+
 // Defines values for SortParam.
 const (
 	SortParamMinusPublishedAt SortParam = "-publishedAt"
@@ -64,6 +68,35 @@ type ErrorResponse struct {
 
 	// RequestId リクエストID
 	RequestId string `json:"requestId"`
+}
+
+// ErrorResponseWithDetails 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type ErrorResponseWithDetails struct {
+	// Code 機械的に処理可能なエラーコード
+	Code string `json:"code"`
+
+	// Details エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
+	Details *[]string `json:"details,omitempty"`
+
+	// Message 人間が読めるエラーメッセージ
+	Message string `json:"message"`
+
+	// RequestId リクエストID
+	RequestId string `json:"requestId"`
+}
+
+// ProductImagePostRequest 商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
+// 対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
+type ProductImagePostRequest struct {
+	// Image アップロードする画像ファイル（png / jpeg / webp）。
+	Image openapi_types.File `json:"image"`
+}
+
+// ProductImageResponse 画像アップロード結果。格納されたオブジェクトのパスを返します。
+// 表示 URL はフロントが配信ベース URL とこのパスから組み立てます（backend はフル URL を保持しません）。
+type ProductImageResponse struct {
+	// ImagePath 格納されたオブジェクトのパス（オブジェクトキー）。
+	ImagePath string `json:"imagePath"`
 }
 
 // ProductListResponse defines model for ProductListResponse.
@@ -127,11 +160,26 @@ type StatusIdParam = openapi_types.UUID
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
 
+// Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Forbidden403 = ErrorResponse
+
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
 
+// PayloadTooLarge413 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type PayloadTooLarge413 = ErrorResponse
+
 // ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ServiceUnavailable503 = ErrorResponse
+
+// Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Unauthorized401 = ErrorResponse
+
+// UnprocessableEntity422 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type UnprocessableEntity422 = ErrorResponseWithDetails
+
+// UnsupportedMediaType415 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type UnsupportedMediaType415 = ErrorResponse
 
 // basicAuthContextKey is the context key for BasicAuth security scheme
 type basicAuthContextKey string
@@ -163,3 +211,6 @@ type GetProductsParams struct {
 
 // GetProductsParamsSort defines parameters for GetProducts.
 type GetProductsParamsSort string
+
+// PostProductsImagesMultipartRequestBody defines body for PostProductsImages for multipart/form-data ContentType.
+type PostProductsImagesMultipartRequestBody = ProductImagePostRequest

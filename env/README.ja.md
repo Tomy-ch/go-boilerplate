@@ -52,7 +52,7 @@
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s|Code default `10s`|
 |SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|Code default `65s`。SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
 |SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s|Code default `60s`|
-|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|5|Code default `5`。Pre middleware。OpenAPI 検証がボディを読む前に適用|
+|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|6|Code default `6`。Pre middleware。OpenAPI 検証がボディを読む前に適用。`OBJECT_STORAGE_MAX_UPLOAD_BYTES`（＋ multipart オーバーヘッド）を上回る値に保つこと。下回るとエンドポイント側のアップロード上限が到達不能になる|
 |SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|Code default `60s`。停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics
@@ -171,6 +171,20 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |AUTH_JWKS_CACHE_TTL|取得した JWKS をキャッシュする期間|duration|1h|Code default `1h`|
 |AUTH_JWKS_DISCOVERY_TTL|OIDC discovery 文書をキャッシュする期間（鍵キャッシュとは別軸）|duration|24h|Code default `24h`。jwks_uri を discovery で導出する場合のみ使用|
 |AUTH_JWKS_UNKNOWN_KID_COOLDOWN|未知 `kid` での JWKS 再取得の最小間隔（DoS 抑止）|duration|60s|Code default `60s`|
+
+### Object Storage
+
+アップロード資産（商品画像）用の S3 互換オブジェクトストレージ。usecase は vendor 中立の `objectstorage.Storage` 境界に依存し、infrastructure 実装は S3 アダプタ（AWS SDK v2 S3）。`local` は Garage コンテナへ接続し、deploy 環境は `OBJECT_STORAGE_ENDPOINT` を空にして AWS S3 を対象にする。アダプタは S3 だが env 名は vendor 中立に保つ。値は環境ごとに宣言（code default を持たない）し、資格情報はデプロイ時に注入する。
+
+|変数名|説明|型|例|備考|
+|---|---|---|---|---|
+|OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。`local` は Garage の compose サービス、deploy は空|
+|OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`|
+|OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`|
+|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。デプロイ時に注入|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。デプロイ時に注入|
+|OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`|
+|OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない|
 
 ## 補足
 

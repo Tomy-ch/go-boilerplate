@@ -570,6 +570,48 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/images:
+    post:
+      operationId: PostProductsImages
+      tags:
+        - v1/products
+      summary: 商品画像のアップロード
+      description: |
+        admin が商品画像をアップロードし、格納先のパスを取得します。認証必須（admin のみ・非 admin は 403）。
+        返却された imagePath を商品作成 / 更新の imagePath に渡します。表示 URL はフロントが配信ベース URL と
+        組み立てます。対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です
+        （超過は 413、非対応形式は 415、空ファイル等は 422）。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductImagePostRequest'
+      responses:
+        '201':
+          description: 画像のアップロードに成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge413'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType415'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/exchange-rates:
     get:
       operationId: GetExchangeRates
@@ -1237,6 +1279,20 @@ components:
               items:
                 $ref: '#/components/schemas/ProductResponse'
         - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    ProductImageResponse:
+      type: object
+      description: |
+        画像アップロード結果。格納されたオブジェクトのパスを返します。
+        表示 URL はフロントが配信ベース URL とこのパスから組み立てます（backend はフル URL を保持しません）。
+      required:
+        - imagePath
+      properties:
+        imagePath:
+          type: string
+          description: 格納されたオブジェクトのパス（オブジェクトキー）。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+    RequestPostV1ProductImages:
+      $ref: '#/components/schemas/ProductImagePostRequest'
     AddressCandidate:
       type: object
       description: |
@@ -1616,6 +1672,18 @@ components:
       description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
+    ProductImagePostRequest:
+      type: object
+      description: |
+        商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
+        対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
+      required:
+        - image
+      properties:
+        image:
+          type: string
+          format: binary
+          description: アップロードする画像ファイル（png / jpeg / webp）。
     ReferenceAmount:
       type: object
       nullable: true
@@ -1758,6 +1826,18 @@ components:
             $ref: '#/components/schemas/ErrorResponseWithDetails'
     NotFound404:
       description: 指定されたリソースが存在しません。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PayloadTooLarge413:
+      description: ファイルサイズが大きすぎます。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnsupportedMediaType415:
+      description: サポートされていないファイル形式です。
       content:
         application/json:
           schema:

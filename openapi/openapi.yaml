@@ -104,6 +104,8 @@ paths:
     $ref: './paths/v1/products.yaml'
   /v1/products/{productId}:
     $ref: './paths/v1/products/productId.yaml'
+  /v1/products/images:
+    $ref: './paths/v1/products/images.yaml'
   /v1/exchange-rates:
     $ref: './paths/v1/exchange-rates.yaml'
   /v1/addresses:
@@ -198,6 +200,10 @@ components:
       $ref: './components/schemas/ProductResponse.yaml'
     ProductListResponse:
       $ref: './components/responses/products/ProductListResponse.yaml'
+    ProductImageResponse:
+      $ref: './components/schemas/ProductImageResponse.yaml'
+    RequestPostV1ProductImages:
+      $ref: './components/requests/products/ProductImagePostRequest.yaml'
     AddressCandidate:
       $ref: './components/schemas/addresses/AddressCandidate.yaml'
     ResponseV1Addresses:

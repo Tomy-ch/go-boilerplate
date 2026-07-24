@@ -25,6 +25,10 @@ services:
         condition: service_healthy
       mock_auth_server:
         condition: service_healthy
+      garage:
+        condition: service_healthy
+      garage_init:
+        condition: service_completed_successfully
     profiles:
       - development
 
@@ -88,6 +92,49 @@ services:
     profiles:
       - development
       - auth
+
+  garage: # S3 互換オブジェクトストレージ（ローカル開発用。テストは gofakes3 in-process を使う）
+    build:
+      context: .
+      dockerfile: docker/garage/Dockerfile
+    entrypoint: ["/usr/local/bin/garage", "-c", "/etc/garage.toml", "server"]
+    ports:
+      - "3900:3900" # S3 API
+      - "3903:3903" # Admin API
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/garage", "-c", "/etc/garage.toml", "status"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - tools
+
+  garage_init: # Garage の初期プロビジョニング（レイアウト / バケット / アクセスキー・冪等・one-shot）
+    build:
+      context: .
+      dockerfile: docker/garage/Dockerfile
+    entrypoint: ["/bin/sh", "/usr/local/bin/garage-init.sh"]
+    depends_on:
+      garage:
+        condition: service_healthy
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      # garage server が生成したノード鍵を CLI が読むため meta を共有する。
+      - garage_meta:/var/lib/garage/meta
+    environment:
+      OBJECT_STORAGE_BUCKET: gobp-local
+      OBJECT_STORAGE_ACCESS_KEY_ID: GK1234567890abcdef12345678
+      OBJECT_STORAGE_SECRET_ACCESS_KEY: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+    restart: "no"
+    profiles:
+      - development
+      - tools
 
 # -------------------------------------
 # 補助サービス
@@ -186,4 +233,8 @@ services:
 
 volumes:
   pg_data:
+    external: false
+  garage_meta:
+    external: false
+  garage_data:
     external: false

@@ -13,6 +13,7 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			setEnvVarsForTesting(t)
+			//nolint:dupl // Config の全フィールドを網羅比較するための構造体リテラルであり、mock 側期待値との重複は不可避
 			expected := &Config{
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
@@ -117,6 +118,15 @@ func TestNew(t *testing.T) {
 					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
 					discoveryTTL:       expectedAuthDiscoveryTTL,
 					unknownKidCooldown: expectedAuthUnknownKidCooldown,
+				},
+				objectStorage: ObjectStorageConfig{
+					endpoint:        expectedObjectStorageEndpoint,
+					region:          expectedObjectStorageRegion,
+					bucket:          expectedObjectStorageBucket,
+					accessKeyID:     expectedObjectStorageAccessKeyID,
+					secretAccessKey: expectedObjectStorageSecretAccessKey,
+					usePathStyle:    expectedObjectStorageUsePathStyle,
+					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
 				},
 			}
 
