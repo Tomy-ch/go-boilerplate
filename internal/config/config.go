@@ -138,6 +138,15 @@ func New() (*Config, error) {
 			discoveryTTL:       cfg.Auth.JWKSDiscoveryTTL,
 			unknownKidCooldown: cfg.Auth.JWKSUnknownKIDCooldown,
 		},
+		objectStorage: ObjectStorageConfig{
+			endpoint:        cfg.ObjectStorage.Endpoint,
+			region:          cfg.ObjectStorage.Region,
+			bucket:          cfg.ObjectStorage.Bucket,
+			accessKeyID:     cfg.ObjectStorage.AccessKeyID,
+			secretAccessKey: cfg.ObjectStorage.SecretAccessKey,
+			usePathStyle:    cfg.ObjectStorage.UsePathStyle,
+			maxUploadBytes:  cfg.ObjectStorage.MaxUploadBytes,
+		},
 	}, nil
 }
 
