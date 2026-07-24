@@ -62,9 +62,14 @@ func TestBindHandler(t *testing.T) {
 	BindHandler(e, tf, uc, idempotency.Deps{})
 
 	routes := e.Routes()
-	require.Len(t, routes, 1)
-	assert.Equal(t, http.MethodPost, routes[0].Method)
-	assert.Equal(t, "/v1/purchases", routes[0].Path)
+	require.Len(t, routes, 2)
+	// GET（一覧取得）と POST（作成）が同一パスに登録される。登録順は保証されないためメソッドで引く。
+	paths := map[string]string{}
+	for _, r := range routes {
+		paths[r.Method] = r.Path
+	}
+	assert.Equal(t, "/v1/purchases", paths[http.MethodGet])
+	assert.Equal(t, "/v1/purchases", paths[http.MethodPost])
 }
 
 func Test_server_PostPurchases(t *testing.T) {

@@ -886,6 +886,10 @@ CREATE INDEX outbox_pending_idx ON public.outbox USING btree (id) WHERE (status 
 --
 CREATE INDEX outbox_published_gc_idx ON public.outbox USING btree (published_at) WHERE (status = 'published'::text);
 --
+-- Name: purchases_user_id_ordered_at_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree (user_id, ordered_at DESC, id DESC);
+--
 -- Name: users_search_text_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX users_search_text_trgm_idx ON public.users USING gin (search_text public.gin_trgm_ops);

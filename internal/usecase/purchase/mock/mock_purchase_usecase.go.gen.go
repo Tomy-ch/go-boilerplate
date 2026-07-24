@@ -12,6 +12,8 @@ package mock_purchase
 import (
 	context "context"
 	purchase "go-boilerplate/internal/usecase/purchase"
+	paging "go-boilerplate/internal/usecase/tools/paging"
+	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -54,4 +56,19 @@ func (m *MockUsecase) CreatePurchase(ctx context.Context, params purchase.Create
 func (mr *MockUsecaseMockRecorder) CreatePurchase(ctx, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePurchase", reflect.TypeOf((*MockUsecase)(nil).CreatePurchase), ctx, params)
+}
+
+// GetPurchases mocks base method.
+func (m *MockUsecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*purchase.PurchaseListView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPurchases", ctx, userID, cursor)
+	ret0, _ := ret[0].(*purchase.PurchaseListView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPurchases indicates an expected call of GetPurchases.
+func (mr *MockUsecaseMockRecorder) GetPurchases(ctx, userID, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPurchases", reflect.TypeOf((*MockUsecase)(nil).GetPurchases), ctx, userID, cursor)
 }

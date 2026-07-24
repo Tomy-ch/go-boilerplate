@@ -43,6 +43,15 @@ func (e PostPurchasesParamsDisplayCurrency) Valid() bool {
 	}
 }
 
+// CursorPaginationMetadataResponse defines model for CursorPaginationMetadataResponse.
+type CursorPaginationMetadataResponse struct {
+	// HasNext 次ページが存在するかどうか
+	HasNext bool `json:"hasNext"`
+
+	// NextCursor 次ページ取得用のカーソル。最終ページの場合は null です。
+	NextCursor *string `json:"nextCursor"`
+}
+
 // ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
@@ -92,6 +101,18 @@ type PurchaseDetailResponse struct {
 	UnitPrice string `json:"unitPrice"`
 }
 
+// PurchaseListResponse defines model for PurchaseListResponse.
+type PurchaseListResponse struct {
+	// HasNext 次ページが存在するかどうか
+	HasNext bool `json:"hasNext"`
+
+	// Items 購入履歴の概要一覧（注文日時の降順）。購入がない場合は空配列です。
+	Items []PurchaseSummaryResponse `json:"items"`
+
+	// NextCursor 次ページ取得用のカーソル。最終ページの場合は null です。
+	NextCursor *string `json:"nextCursor"`
+}
+
 // PurchaseResponse 購入情報のレスポンススキーマ。金額（subtotalAmount / taxAmount / shippingFee / totalAmount /
 // 明細 unitPrice）はすべて USD セント単位の整数です。
 type PurchaseResponse struct {
@@ -131,6 +152,22 @@ type PurchaseResponse struct {
 	UserId openapi_types.UUID `json:"userId"`
 }
 
+// PurchaseSummaryResponse 購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
+// （明細は購入詳細 API で取得します）。status は購入ステータスマスタの名称で解決済みです。
+type PurchaseSummaryResponse struct {
+	// Code 購入コード（UUIDv7 文字列・一意）
+	Code string `json:"code"`
+
+	// OrderedAt 注文日時
+	OrderedAt time.Time `json:"orderedAt"`
+
+	// Status 購入ステータスの名称（購入ステータスマスタで解決済み）。
+	Status string `json:"status"`
+
+	// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+	TotalAmount int64 `json:"totalAmount"`
+}
+
 // PurchasesPostRequest 購入作成リクエスト。明細（商品IDと数量）の配列を受け取ります。
 // 明細は 1 件以上必須で、同一 productId の重複は許可しません（いずれも 422）。
 type PurchasesPostRequest struct {
@@ -155,6 +192,12 @@ type ReferenceAmount struct {
 	// RateDate レートの基準日（外部レートサービスの公表日）
 	RateDate string `json:"rateDate"`
 }
+
+// CursorAfterParam defines model for CursorAfterParam.
+type CursorAfterParam = string
+
+// CursorFirstParam defines model for CursorFirstParam.
+type CursorFirstParam = int
 
 // DisplayCurrencyParam defines model for DisplayCurrencyParam.
 type DisplayCurrencyParam string
@@ -185,6 +228,15 @@ type basicAuthContextKey string
 
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
+
+// GetPurchasesParams defines parameters for GetPurchases.
+type GetPurchasesParams struct {
+	// After 次ページ取得用の不透明カーソル。先頭ページを取得する場合は省略します。
+	After *CursorAfterParam `form:"after,omitempty" json:"after,omitempty"`
+
+	// First 取得件数の上限
+	First *CursorFirstParam `form:"first,omitempty" json:"first,omitempty"`
+}
 
 // PostPurchasesParams defines parameters for PostPurchases.
 type PostPurchasesParams struct {
