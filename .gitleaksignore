@@ -9,3 +9,9 @@ docker/mock-auth-server/keys/mock-key-retired.pem:private-key:1
 # 同じ固定署名鍵の公開部を Go 側ローテーション統合テストが //go:embed で取り込むためのコピー。
 internal/integration/testdata/keys/mock-key-1.pem:private-key:1
 internal/integration/testdata/keys/mock-key-2.pem:private-key:1
+# ローカル開発用 Garage（S3 互換）の固定ダミー資格情報。実秘密ではなく make serve の
+# object storage バックエンド接続用にリポジトリで固定管理する（Garage 形式: rpc_secret=64hex /
+# secret access key=64hex）。テストは gofakes3 を使うため本値は本番・CI に流れない。
+docker/garage/garage.toml:generic-api-key:12
+docker-compose.yaml:generic-api-key:133
+env/.env:generic-api-key:64
