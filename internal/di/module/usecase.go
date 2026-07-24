@@ -54,8 +54,8 @@ func UsecaseModule() fx.Option {
 	)
 }
 
-// provideProductUsecase は、商品ユースケースを object storage / authz / アップロード上限（config 由来）とともに構築します。
 // sample-api:begin
+// provideProductUsecase は、商品ユースケースを object storage / authz / アップロード上限（config 由来）とともに構築します。
 func provideProductUsecase(
 	repo domainproduct.Repository,
 	storage objectstoragebd.Storage,
