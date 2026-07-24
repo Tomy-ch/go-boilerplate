@@ -137,7 +137,7 @@ If only non-runtime tools were updated, skip `make sync-versions`.
 
 ### 7. Re-pin Base Image Digests if a Runtime Changed
 
-If step 6 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `pin-images` skill's job, chained here):
+If step 6 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `images-pin` skill's job, chained here):
 
 ```sh
 make pin-images-resolve   # run `docker login` first if Docker Hub returns 429

@@ -154,7 +154,7 @@ make install-tools
 
 ### 10. base image digest pin の再固定
 
-ステップ 3 は `FROM golang:` の**タグ**を変えたが、以前 pin した `@sha256:...` digest は**旧** Go イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先するため、ビルドは旧イメージを黙って pull する）。digest が新タグに追従するよう registry から再 pin する。これは `pin-images` スキルの役目（姉妹関係によりここで chain）:
+ステップ 3 は `FROM golang:` の**タグ**を変えたが、以前 pin した `@sha256:...` digest は**旧** Go イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先するため、ビルドは旧イメージを黙って pull する）。digest が新タグに追従するよう registry から再 pin する。これは `images-pin` スキルの役目（姉妹関係によりここで chain）:
 
 ```sh
 make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`

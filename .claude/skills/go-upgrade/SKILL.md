@@ -157,7 +157,7 @@ Step 3 already rewrote the Dockerfile `FROM` tags and the `docker/**/README.md` 
 
 ### 10. Refresh Base Image Digest Pins
 
-Step 3 changed the `FROM golang:` **tag**, but the previously-pinned `@sha256:...` digest still points at the OLD Go image — a tag/digest mismatch (Docker honors the digest, so a build would silently pull the old image). Re-pin from the registry so the digest tracks the new tag. This is the `pin-images` skill's job (chained here per its sibling relationship):
+Step 3 changed the `FROM golang:` **tag**, but the previously-pinned `@sha256:...` digest still points at the OLD Go image — a tag/digest mismatch (Docker honors the digest, so a build would silently pull the old image). Re-pin from the registry so the digest tracks the new tag. This is the `images-pin` skill's job (chained here per its sibling relationship):
 
 ```sh
 make pin-images-resolve   # run `docker login` first if Docker Hub returns 429

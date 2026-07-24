@@ -52,7 +52,7 @@
 | --- | --- | --- |
 | 裸の整数、または `days=N`（`--days N`） | 除外期間（日）= `PIN_IMAGES_MIN_AGE_DAYS`。 | `14` |
 
-例: `/pin-images`（14日）・`/pin-images 30`（30日）・`/pin-images days=7`。
+例: `/images-pin`（14日）・`/images-pin 30`（30日）・`/images-pin days=7`。
 
 除外日数は非負整数。`0` は cooldown を無効化（新品 digest も採用）——ユーザーが明示的に `0` を渡したときだけ従い、サプライチェーンリスクを明示すること。
 
