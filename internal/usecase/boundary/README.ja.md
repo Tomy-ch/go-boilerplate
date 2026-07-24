@@ -46,6 +46,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`exchangerate`|`Gateway`|外部為替レート取得サービスへの意味的 gateway（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/exchangerate/`|
 |`idempotency`|`Store`|冪等性キーの永続化境界（claim / replay / 競合判定）|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
+|`objectstorage`|`Storage`|実体非依存のオブジェクトストレージ境界（キー指定でオブジェクトを `Put` し、保存先 `Path` を返す）|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
@@ -133,6 +134,16 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |`Job`|`Name()` + `Execute(ctx, args)` を持つジョブ定義|
 |`Runner`|`Run(ctx, jobName, args)` + `Names()` でジョブを実行・一覧|
 |`State`|`Set(name, args, done)` + `Snapshot()` でジョブ実行状態を管理|
+
+### objectstorage
+
+実体非依存のオブジェクトストレージ境界。Usecase はこのポートにのみ依存し、S3 互換 adapter（infrastructure）が実装する。bucket / region / etag などの vendor 語彙は境界を越えて漏れない。
+
+|型 / 関数|説明|
+|---|---|
+|`Storage`|`Put(ctx, PutObject) (Path, error)` でオブジェクトをキー配下へ保存する。失敗時は `apperror` sentinel（例 `ErrUnavailable`）を返す|
+|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType`）。`Key` は呼び出し側が採番する（例 `products/{uuid}.png`）|
+|`Path`|保存されたオブジェクトのパス（キー）。表示 URL は上位が別途組み立てる|
 
 ### outbox
 

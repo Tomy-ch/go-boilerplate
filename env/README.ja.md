@@ -52,7 +52,7 @@
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s|Code default `10s`|
 |SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|Code default `65s`。SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
 |SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s|Code default `60s`|
-|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|5|Code default `5`。Pre middleware。OpenAPI 検証がボディを読む前に適用|
+|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|6|Code default `6`。Pre middleware。OpenAPI 検証がボディを読む前に適用。`OBJECT_STORAGE_MAX_UPLOAD_BYTES`（＋ multipart オーバーヘッド）を上回る値に保つこと。下回るとエンドポイント側のアップロード上限が到達不能になる|
 |SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|Code default `60s`。停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics
@@ -184,7 +184,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。デプロイ時に注入|
 |OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。デプロイ時に注入|
 |OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`|
-|OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB|
+|OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない|
 
 ## 補足
 
