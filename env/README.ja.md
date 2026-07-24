@@ -178,7 +178,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|http://garage:3900|`required`（空を許容）。`local` は Garage の compose サービス、deploy は空|
+|OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。`local` は Garage の compose サービス、deploy は空|
 |OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`|
 |OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`|
 |OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。デプロイ時に注入|

@@ -178,7 +178,7 @@ S3-compatible object storage for uploaded assets (product images). The usecase d
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OBJECT_STORAGE_ENDPOINT|S3-compatible endpoint URL; empty means SDK default resolution (AWS S3)|string|http://garage:3900|`required` (empty allowed). `local` points at the Garage compose service; deploy leaves it empty|
+|OBJECT_STORAGE_ENDPOINT|S3-compatible endpoint URL; empty means SDK default resolution (AWS S3)|string|`http://garage:3900`|`required` (empty allowed). `local` points at the Garage compose service; deploy leaves it empty|
 |OBJECT_STORAGE_REGION|Signing region|string|us-east-1|`required,notEmpty`|
 |OBJECT_STORAGE_BUCKET|Bucket that stores objects|string|gobp-local|`required,notEmpty`|
 |OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|`required,notEmpty`. Injected at deploy time|
