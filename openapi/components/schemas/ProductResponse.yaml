@@ -7,8 +7,8 @@ required:
   - price
   - quantity
   - stockWarningThreshold
-  - statusId
-  - categoryId
+  - status
+  - category
   - publishedAt
 properties:
   id:
@@ -44,16 +44,10 @@ properties:
     nullable: true
     description: 在庫警告閾値。未設定の場合は null です。
     example: 10
-  statusId:
-    type: string
-    format: uuid
-    description: 商品ステータスID。名称は商品ステータスマスタ API で解決します。
-    example: "093170fb-83a2-4864-a2b3-53236eaf3597"
-  categoryId:
-    type: string
-    format: uuid
-    description: 商品カテゴリID。名称は商品カテゴリマスタ API で解決します。
-    example: "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
+  status:
+    $ref: './ProductStatusRef.yaml'
+  category:
+    $ref: './ProductCategoryRef.yaml'
   publishedAt:
     type: string
     format: date-time

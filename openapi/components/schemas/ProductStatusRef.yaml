@@ -1,0 +1,15 @@
+type: object
+description: 商品に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+required:
+  - id
+  - name
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 商品ステータスID
+    example: "093170fb-83a2-4864-a2b3-53236eaf3597"
+  name:
+    type: string
+    description: 商品ステータス名
+    example: "在庫あり"

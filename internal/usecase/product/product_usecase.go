@@ -20,6 +20,7 @@ import (
 )
 
 // ProductView は、商品 1 件分のユースケース出力 DTO です。Price はサブセント精度を保持する価格スケールの十進量です。
+// ステータス・カテゴリは商品集約の一部として ID と名称を保持します（画面側での再解決は不要です）。
 type ProductView struct {
 	ID                    uuid.UUID
 	Name                  string
@@ -28,7 +29,9 @@ type ProductView struct {
 	Quantity              int
 	StockWarningThreshold *int
 	StatusID              uuid.UUID
+	StatusName            string
 	CategoryID            uuid.UUID
+	CategoryName          string
 	PublishedAt           time.Time
 }
 
@@ -167,8 +170,10 @@ func toProductView(p *product.Product) ProductView {
 		Price:                 p.Price().Decimal(),
 		Quantity:              p.Quantity(),
 		StockWarningThreshold: p.StockWarningThreshold(),
-		StatusID:              p.StatusID(),
-		CategoryID:            p.CategoryID(),
+		StatusID:              p.Status().ID(),
+		StatusName:            p.Status().Name(),
+		CategoryID:            p.Category().ID(),
+		CategoryName:          p.Category().Name(),
 		PublishedAt:           p.PublishedAt(),
 	}
 }

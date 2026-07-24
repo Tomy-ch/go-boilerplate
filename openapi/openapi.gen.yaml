@@ -1207,6 +1207,38 @@ components:
           example: 1
     ResponseV1ProductCategories:
       $ref: '#/components/schemas/ProductCategoriesResponse'
+    ProductStatusRef:
+      type: object
+      description: 商品に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品ステータスID
+          example: 093170fb-83a2-4864-a2b3-53236eaf3597
+        name:
+          type: string
+          description: 商品ステータス名
+          example: 在庫あり
+    ProductCategoryRef:
+      type: object
+      description: 商品に紐づくカテゴリ（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品カテゴリID
+          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
+        name:
+          type: string
+          description: 商品カテゴリ名
+          example: 電子機器
     ProductResponse:
       type: object
       description: 商品情報のレスポンススキーマ
@@ -1217,8 +1249,8 @@ components:
         - price
         - quantity
         - stockWarningThreshold
-        - statusId
-        - categoryId
+        - status
+        - category
         - publishedAt
       properties:
         id:
@@ -1252,16 +1284,10 @@ components:
           nullable: true
           description: 在庫警告閾値。未設定の場合は null です。
           example: 10
-        statusId:
-          type: string
-          format: uuid
-          description: 商品ステータスID。名称は商品ステータスマスタ API で解決します。
-          example: 093170fb-83a2-4864-a2b3-53236eaf3597
-        categoryId:
-          type: string
-          format: uuid
-          description: 商品カテゴリID。名称は商品カテゴリマスタ API で解決します。
-          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
+        status:
+          $ref: '#/components/schemas/ProductStatusRef'
+        category:
+          $ref: '#/components/schemas/ProductCategoryRef'
         publishedAt:
           type: string
           format: date-time
@@ -1393,11 +1419,27 @@ components:
           example: '2026-07-23T00:00:00Z'
         referenceAmount:
           $ref: '#/components/schemas/ReferenceAmount'
+    PurchaseStatusRef:
+      type: object
+      description: 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ステータスID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        name:
+          type: string
+          description: 購入ステータス名
+          example: 完了
     PurchaseSummaryResponse:
       type: object
       description: |
         購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
-        （明細は購入詳細 API で取得します）。status は購入ステータスマスタの名称で解決済みです。
+        （明細は購入詳細 API で取得します）。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
       required:
         - code
         - totalAmount
@@ -1414,9 +1456,7 @@ components:
           description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
           example: 176500
         status:
-          type: string
-          description: 購入ステータスの名称（購入ステータスマスタで解決済み）。
-          example: 完了
+          $ref: '#/components/schemas/PurchaseStatusRef'
         orderedAt:
           type: string
           format: date-time

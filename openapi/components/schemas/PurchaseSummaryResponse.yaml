@@ -1,7 +1,7 @@
 type: object
 description: |
   購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
-  （明細は購入詳細 API で取得します）。status は購入ステータスマスタの名称で解決済みです。
+  （明細は購入詳細 API で取得します）。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
 required:
   - code
   - totalAmount
@@ -18,9 +18,7 @@ properties:
     description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
     example: 176500
   status:
-    type: string
-    description: 購入ステータスの名称（購入ステータスマスタで解決済み）。
-    example: "完了"
+    $ref: './PurchaseStatusRef.yaml'
   orderedAt:
     type: string
     format: date-time

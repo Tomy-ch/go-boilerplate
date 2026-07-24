@@ -152,8 +152,17 @@ type PurchaseResponse struct {
 	UserId openapi_types.UUID `json:"userId"`
 }
 
+// PurchaseStatusRef 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+type PurchaseStatusRef struct {
+	// Id 購入ステータスID
+	Id openapi_types.UUID `json:"id"`
+
+	// Name 購入ステータス名
+	Name string `json:"name"`
+}
+
 // PurchaseSummaryResponse 購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
-// （明細は購入詳細 API で取得します）。status は購入ステータスマスタの名称で解決済みです。
+// （明細は購入詳細 API で取得します）。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
 type PurchaseSummaryResponse struct {
 	// Code 購入コード（UUIDv7 文字列・一意）
 	Code string `json:"code"`
@@ -161,8 +170,8 @@ type PurchaseSummaryResponse struct {
 	// OrderedAt 注文日時
 	OrderedAt time.Time `json:"orderedAt"`
 
-	// Status 購入ステータスの名称（購入ステータスマスタで解決済み）。
-	Status string `json:"status"`
+	// Status 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	Status PurchaseStatusRef `json:"status"`
 
 	// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
 	TotalAmount int64 `json:"totalAmount"`

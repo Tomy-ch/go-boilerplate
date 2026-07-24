@@ -1,0 +1,15 @@
+type: object
+description: 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+required:
+  - id
+  - name
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 購入ステータスID
+    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  name:
+    type: string
+    description: 購入ステータス名
+    example: "完了"

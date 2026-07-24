@@ -1,0 +1,15 @@
+type: object
+description: 商品に紐づくカテゴリ（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+required:
+  - id
+  - name
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 商品カテゴリID
+    example: "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
+  name:
+    type: string
+    description: 商品カテゴリ名
+    example: "電子機器"

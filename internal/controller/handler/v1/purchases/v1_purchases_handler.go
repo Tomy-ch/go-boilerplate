@@ -81,8 +81,11 @@ func toPurchaseSummaryResponse(v purchaseuc.PurchaseSummaryView) gen.PurchaseSum
 	return gen.PurchaseSummaryResponse{
 		Code:        v.Code,
 		TotalAmount: int64(v.TotalAmount),
-		Status:      v.Status,
-		OrderedAt:   v.OrderedAt,
+		Status: gen.PurchaseStatusRef{
+			Id:   v.StatusID.ToPrimitive(),
+			Name: v.StatusName,
+		},
+		OrderedAt: v.OrderedAt,
 	}
 }
 

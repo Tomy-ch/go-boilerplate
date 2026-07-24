@@ -15,11 +15,12 @@ import (
 const purchaseCursorKeyCount = 2
 
 // PurchaseSummaryView は、購入履歴一覧の 1 件分のユースケース出力 DTO です。
-// TotalAmount は USD セント単位の整数、Status は購入ステータスマスタで解決済みの名称です。
+// TotalAmount は USD セント単位の整数、ステータスは購入ステータスマスタで解決済みの ID と名称です。
 type PurchaseSummaryView struct {
 	Code        string
 	TotalAmount int
-	Status      string
+	StatusID    uuid.UUID
+	StatusName  string
 	OrderedAt   time.Time
 }
 
@@ -78,7 +79,8 @@ func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *pa
 		items[i] = PurchaseSummaryView{
 			Code:        f.Code,
 			TotalAmount: f.TotalAmount,
-			Status:      f.StatusName,
+			StatusID:    f.StatusID,
+			StatusName:  f.StatusName,
 			OrderedAt:   f.OrderedAt,
 		}
 	}

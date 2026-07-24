@@ -196,6 +196,10 @@ components:
       $ref: './components/schemas/ProductCategoryResponse.yaml'
     ResponseV1ProductCategories:
       $ref: './components/responses/product-category/ProductCategoriesResponse.yaml'
+    ProductStatusRef:
+      $ref: './components/schemas/ProductStatusRef.yaml'
+    ProductCategoryRef:
+      $ref: './components/schemas/ProductCategoryRef.yaml'
     ProductResponse:
       $ref: './components/schemas/ProductResponse.yaml'
     ProductListResponse:
@@ -210,6 +214,8 @@ components:
       $ref: './components/responses/addresses/AddressCandidatesResponse.yaml'
     PurchaseResponse:
       $ref: './components/schemas/PurchaseResponse.yaml'
+    PurchaseStatusRef:
+      $ref: './components/schemas/PurchaseStatusRef.yaml'
     PurchaseSummaryResponse:
       $ref: './components/schemas/PurchaseSummaryResponse.yaml'
     PurchaseListResponse:
