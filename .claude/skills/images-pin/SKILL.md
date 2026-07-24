@@ -1,5 +1,5 @@
 ---
-name: pin-images
+name: images-pin
 description: >-
   Audit and refresh the digest pins for the Docker images referenced by `FROM` in `docker/*/Dockerfile` and by `image:` in `docker-compose*.yaml`, with a supply-chain cooldown that refuses freshly-rebuilt digests. The image tag (`golang:1.26.5-alpine`, `postgres:18.3-bookworm`) is the version source of truth and is owned by `go-upgrade` / `tools-upgrade` / `make sync-versions` (or upstream, for compose service images) — this skill NEVER changes tags, only the trailing `@sha256:...` digest. `docker/images-pin.toml` is the resolved `image:tag → digest` lockfile (single flat SSOT shared by Dockerfile and compose images), driven by `make pin-images-resolve` / `pin-images-apply` / `pin-images-check` (backed by `scripts/pin-images`). `resolve` re-resolves each tag's current digest via `docker buildx imagetools inspect` and quarantines any whose image-config `created` is younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14; pass `days=N` to override, `0` disables). Because a mutable tag has no queryable history, the step-back target is the tool's own prior lock entry; a fresh image with no prior lock has no aged step-back target and is unsafe to adopt, so `resolve` refuses it (exits non-zero) rather than leaving it tag-only — bootstrap such an image only deliberately via `days=0`. `apply` / `check` are fail-closed: every managed `FROM` / compose `image:` must be digest-pinned AND registered in the lockfile — a lock-absent image is an `未登録` error and a tag-only (un-pinned) reference is an `未固定` error, both non-zero (apply never strips a digest to normalize an image away). Verifies with `make pin-images-check` + `make docker-lint` (hadolint). Sibling of `actions-pin` (which pins GitHub Actions `uses:`). Use on a routine cadence, after a base-image / registry security advisory, or to pin an image that was previously quarantined once it has aged.
 ---
@@ -56,7 +56,7 @@ Parse the invocation arguments (order-independent):
 | --- | --- | --- |
 | a bare integer, or `days=N` (or `--days N`) | Exclusion window in days = `PIN_IMAGES_MIN_AGE_DAYS`. | `14` |
 
-Examples: `/pin-images` (14d) · `/pin-images 30` (30d) · `/pin-images days=7`.
+Examples: `/images-pin` (14d) · `/images-pin 30` (30d) · `/images-pin days=7`.
 
 The exclusion days must be a non-negative integer. `0` disables the cooldown (adopt even brand-new digests) — only honor it when the user explicitly passes `0`, and surface the supply-chain risk.
 

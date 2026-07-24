@@ -95,7 +95,7 @@ func (r *repository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, par
 		}
 		items := make([]purchase.FeedItem, len(rows))
 		for i, row := range rows {
-			items[i] = toFeedItem(row.ID, row.Code, row.TotalAmount, row.OrderedAt, row.StatusName)
+			items[i] = toFeedItem(row.ID, row.Code, row.TotalAmount, row.OrderedAt, row.StatusID, row.StatusName)
 		}
 		return items, nil
 	}
@@ -111,17 +111,18 @@ func (r *repository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, par
 	}
 	items := make([]purchase.FeedItem, len(rows))
 	for i, row := range rows {
-		items[i] = toFeedItem(row.ID, row.Code, row.TotalAmount, row.OrderedAt, row.StatusName)
+		items[i] = toFeedItem(row.ID, row.Code, row.TotalAmount, row.OrderedAt, row.StatusID, row.StatusName)
 	}
 	return items, nil
 }
 
 // toFeedItem は、購入履歴フィードの行（First / After で別型・同一フィールド）を読み取りモデルへ変換します。
-// 合計金額は決済スケール（BIGINT セント）を int へ、ステータス名は購入ステータスマスタ由来です。
-func toFeedItem(id uuid.UUID, code string, totalAmount int64, orderedAt time.Time, statusName string) purchase.FeedItem {
+// 合計金額は決済スケール（BIGINT セント）を int へ、ステータス ID / 名称は購入ステータスマスタ由来です。
+func toFeedItem(id uuid.UUID, code string, totalAmount int64, orderedAt time.Time, statusID uuid.UUID, statusName string) purchase.FeedItem {
 	return purchase.FeedItem{
 		Code:        code,
 		TotalAmount: int(totalAmount),
+		StatusID:    statusID,
 		StatusName:  statusName,
 		OrderedAt:   orderedAt,
 		ID:          id,

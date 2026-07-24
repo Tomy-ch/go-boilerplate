@@ -79,9 +79,15 @@ func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		Price:                 dto.Price.String(),
 		Quantity:              toInt32(dto.Quantity),
 		StockWarningThreshold: intPtrToInt32Ptr(dto.StockWarningThreshold),
-		StatusId:              dto.StatusID.ToPrimitive(),
-		CategoryId:            dto.CategoryID.ToPrimitive(),
-		PublishedAt:           dto.PublishedAt,
+		Status: gen.ProductStatusRef{
+			Id:   dto.StatusID.ToPrimitive(),
+			Name: dto.StatusName,
+		},
+		Category: gen.ProductCategoryRef{
+			Id:   dto.CategoryID.ToPrimitive(),
+			Name: dto.CategoryName,
+		},
+		PublishedAt: dto.PublishedAt,
 	}
 }
 

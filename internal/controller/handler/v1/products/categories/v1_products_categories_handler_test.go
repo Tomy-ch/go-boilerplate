@@ -7,7 +7,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
-	"go-boilerplate/internal/controller/handler/v1/product-categories/gen"
+	"go-boilerplate/internal/controller/handler/v1/products/categories/gen"
 	"go-boilerplate/internal/observability"
 	categoryuc "go-boilerplate/internal/usecase/product/category"
 	mock_category "go-boilerplate/internal/usecase/product/category/mock"
@@ -19,7 +19,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const targetPath = "/v1/product-categories"
+const targetPath = "/v1/products/categories"
 
 func newServer(t *testing.T) (*server, *mock_category.MockUsecase) {
 	t.Helper()

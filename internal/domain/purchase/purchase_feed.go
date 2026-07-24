@@ -13,6 +13,8 @@ type FeedItem struct {
 	Code string
 	// TotalAmount は、合計金額（小計 + 税額 + 送料）です。USD セント単位の整数です。
 	TotalAmount int
+	// StatusID は、購入ステータス ID（購入ステータスマスタとの結合で解決済み）です。
+	StatusID uuid.UUID
 	// StatusName は、購入ステータスの名称（購入ステータスマスタで解決済み）です。
 	StatusName string
 	// OrderedAt は、注文日時です。keyset の主ソートキーです。

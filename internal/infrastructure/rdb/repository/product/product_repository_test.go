@@ -274,6 +274,12 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 				assert.Equal(t, "1999", got.Price().String())
 				assert.Equal(t, 10, got.Quantity())
 				assert.Nil(t, got.StockWarningThreshold())
+				// 固定参照マスタとの結合で解決した status / category を ID・名称とも実 DB 経由で固定する
+				// （SQL の結合エイリアス取り違え＝status/category の名称入れ替わりを検出するため、異なる 2 値で検証）。
+				assert.Equal(t, mustParse(t, statusInStock), got.Status().ID())
+				assert.Equal(t, "在庫あり", got.Status().Name())
+				assert.Equal(t, mustParse(t, categoryElectronics), got.Category().ID())
+				assert.Equal(t, "電子機器", got.Category().Name())
 				// DB は timestamptz をローカルタイムゾーンで返すため、格納した瞬間の一致で比較する。
 				assert.True(t, base.Equal(got.PublishedAt()))
 			})
@@ -357,7 +363,7 @@ func Test_rowToProduct(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("gen.Products をドメインエンティティへ変換する", func(t *testing.T) {
+		t.Run("商品行(マスタ JOIN 込み)をドメインエンティティへ変換する", func(t *testing.T) {
 			t.Parallel()
 			row := gen.Products{
 				ID:                    id,
@@ -370,10 +376,14 @@ func Test_rowToProduct(t *testing.T) {
 				CategoryID:            categoryID,
 				PublishedAt:           ptr.To(publishedAt),
 			}
-			got, err := rowToProduct(row)
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
 			require.NoError(t, err)
 			assert.Equal(t, id, got.ID())
 			assert.Equal(t, "1999", got.Price().String())
+			assert.Equal(t, statusID, got.Status().ID())
+			assert.Equal(t, "在庫あり", got.Status().Name())
+			assert.Equal(t, categoryID, got.Category().ID())
+			assert.Equal(t, "電子機器", got.Category().Name())
 			assert.Equal(t, publishedAt, got.PublishedAt())
 		})
 	})
@@ -392,7 +402,39 @@ func Test_rowToProduct(t *testing.T) {
 				CategoryID:  categoryID,
 				PublishedAt: ptr.To(publishedAt),
 			}
-			got, err := rowToProduct(row)
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("JOIN で解決したステータス名が空の場合はデータ不整合としてErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			row := gen.Products{
+				ID:          id,
+				Name:        "商品",
+				Price:       decimal.FromInt(1999),
+				Quantity:    100,
+				StatusID:    statusID,
+				CategoryID:  categoryID,
+				PublishedAt: ptr.To(publishedAt),
+			}
+			got, err := rowToProduct(productRow{p: row, statusName: "", categoryName: "電子機器"})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("JOIN で解決したカテゴリ名が空の場合はデータ不整合としてErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			row := gen.Products{
+				ID:          id,
+				Name:        "商品",
+				Price:       decimal.FromInt(1999),
+				Quantity:    100,
+				StatusID:    statusID,
+				CategoryID:  categoryID,
+				PublishedAt: ptr.To(publishedAt),
+			}
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: ""})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})

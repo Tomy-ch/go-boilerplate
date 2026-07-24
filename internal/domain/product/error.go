@@ -17,8 +17,12 @@ var (
 	ErrInvalidStockWarningThreshold = xerrors.Wrap(errInvalid, "stockWarningThreshold failed")
 	// ErrInvalidStatusID は、商品ステータス ID の検証に失敗した場合のエラーです。
 	ErrInvalidStatusID = xerrors.Wrap(errInvalid, "statusID failed")
+	// ErrInvalidStatusName は、商品ステータス名の検証に失敗した場合のエラーです。
+	ErrInvalidStatusName = xerrors.Wrap(errInvalid, "statusName failed")
 	// ErrInvalidCategoryID は、商品カテゴリ ID の検証に失敗した場合のエラーです。
 	ErrInvalidCategoryID = xerrors.Wrap(errInvalid, "categoryID failed")
+	// ErrInvalidCategoryName は、商品カテゴリ名の検証に失敗した場合のエラーです。
+	ErrInvalidCategoryName = xerrors.Wrap(errInvalid, "categoryName failed")
 	// ErrInvalidPublishedAt は、公開日時の検証に失敗した場合のエラーです。
 	ErrInvalidPublishedAt = xerrors.Wrap(errInvalid, "publishedAt failed")
 )

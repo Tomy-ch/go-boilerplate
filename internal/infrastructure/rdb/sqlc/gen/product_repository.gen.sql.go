@@ -13,29 +13,45 @@ import (
 )
 
 const getPublishedProductByID = `-- name: GetPublishedProductByID :one
-SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.id = $1
     AND p.published_at IS NOT NULL
 `
 
 type GetPublishedProductByIDRow struct {
-	Products Products
+	StatusName   string
+	CategoryName string
+	Products     Products
 }
 
 // === source: database/dml/repository/product/select_published_product_by_id.sql ===
 // ID から公開中の単一商品を取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // 公開範囲の定義は一覧取得（ListPublishedProducts*）と同一述語（published_at 非 NULL）で、
 // 非公開・未存在はいずれも該当行なし（0 行）で返ります。
 //
-//	SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 //	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
 //	WHERE p.id = $1
 //	    AND p.published_at IS NOT NULL
 func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uuid.UUID) (*GetPublishedProductByIDRow, error) {
 	row := q.db.QueryRow(ctx, getPublishedProductByID, productIDParam)
 	var i GetPublishedProductByIDRow
 	err := row.Scan(
+		&i.StatusName,
+		&i.CategoryName,
 		&i.Products.ID,
 		&i.Products.Name,
 		&i.Products.Description,
@@ -52,8 +68,13 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 }
 
 const listPublishedProductsAsc = `-- name: ListPublishedProductsAsc :many
-SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
@@ -82,14 +103,23 @@ type ListPublishedProductsAscParams struct {
 }
 
 type ListPublishedProductsAscRow struct {
-	Products Products
+	StatusName   string
+	CategoryName string
+	Products     Products
 }
 
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より未来へ絞り込みます。
 //
-//	SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 //	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
@@ -123,6 +153,8 @@ func (q *Queries) ListPublishedProductsAsc(ctx context.Context, arg *ListPublish
 	for rows.Next() {
 		var i ListPublishedProductsAscRow
 		if err := rows.Scan(
+			&i.StatusName,
+			&i.CategoryName,
 			&i.Products.ID,
 			&i.Products.Name,
 			&i.Products.Description,
@@ -146,8 +178,13 @@ func (q *Queries) ListPublishedProductsAsc(ctx context.Context, arg *ListPublish
 }
 
 const listPublishedProductsDesc = `-- name: ListPublishedProductsDesc :many
-SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
@@ -176,15 +213,24 @@ type ListPublishedProductsDescParams struct {
 }
 
 type ListPublishedProductsDescRow struct {
-	Products Products
+	StatusName   string
+	CategoryName string
+	Products     Products
 }
 
 // === source: database/dml/repository/product/select_products.sql ===
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より過去へ絞り込みます。
 //
-//	SELECT p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
 //	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
@@ -218,6 +264,8 @@ func (q *Queries) ListPublishedProductsDesc(ctx context.Context, arg *ListPublis
 	for rows.Next() {
 		var i ListPublishedProductsDescRow
 		if err := rows.Scan(
+			&i.StatusName,
+			&i.CategoryName,
 			&i.Products.ID,
 			&i.Products.Name,
 			&i.Products.Description,

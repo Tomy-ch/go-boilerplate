@@ -19,6 +19,7 @@ include .makefiles/database/pool.mk
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk
 include .makefiles/app/worker.mk
+include .makefiles/app/mock-auth.mk
 include .makefiles/app/env.mk
 # GitHub関連
 include .makefiles/github/operation/release-branch.mk

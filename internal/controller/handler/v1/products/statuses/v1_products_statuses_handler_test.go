@@ -7,7 +7,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
-	"go-boilerplate/internal/controller/handler/v1/product-statuses/gen"
+	"go-boilerplate/internal/controller/handler/v1/products/statuses/gen"
 	"go-boilerplate/internal/observability"
 	statusuc "go-boilerplate/internal/usecase/product/status"
 	mock_status "go-boilerplate/internal/usecase/product/status/mock"
@@ -19,7 +19,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const targetPath = "/v1/product-statuses"
+const targetPath = "/v1/products/statuses"
 
 func newServer(t *testing.T) (*server, *mock_status.MockUsecase) {
 	t.Helper()

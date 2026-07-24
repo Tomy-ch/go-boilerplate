@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/apperror"
-	productstatuseshandler "go-boilerplate/internal/controller/handler/v1/product-statuses"
-	"go-boilerplate/internal/controller/handler/v1/product-statuses/gen"
+	productstatuseshandler "go-boilerplate/internal/controller/handler/v1/products/statuses"
+	"go-boilerplate/internal/controller/handler/v1/products/statuses/gen"
 	"go-boilerplate/internal/observability"
 	statusuc "go-boilerplate/internal/usecase/product/status"
 	mock_status "go-boilerplate/internal/usecase/product/status/mock"
@@ -41,7 +41,7 @@ func TestV1ProductStatuses_Integration(t *testing.T) {
 			productstatuseshandler.BindHandler(e, tf, mockUC)
 
 			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/product-statuses", nil, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/statuses", nil, nil)
 			AssertJSONResponseType[[]gen.ProductStatusResponse](t, actual)
 		})
 	})
@@ -49,7 +49,7 @@ func TestV1ProductStatuses_Integration(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("GET /v1/product-statuses が ErrInternal で 500 を返す", func(t *testing.T) {
+		t.Run("GET /v1/products/statuses が ErrInternal で 500 を返す", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -62,7 +62,7 @@ func TestV1ProductStatuses_Integration(t *testing.T) {
 
 			productstatuseshandler.BindHandler(e, tf, mockUC)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/product-statuses", nil, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/statuses", nil, nil)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
 	})

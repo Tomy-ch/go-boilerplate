@@ -27,6 +27,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 		return domainpurchase.FeedItem{
 			Code:        "code-" + salt,
 			TotalAmount: 176500,
+			StatusID:    uuid.NewTestFromSalt(t, salt+"_status"),
 			StatusName:  "完了",
 			OrderedAt:   orderedAt,
 			ID:          uuid.NewTestFromSalt(t, salt),
@@ -63,7 +64,8 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			require.Len(t, got.Items, 2)
 			// FeedItem の全フィールドが漏れなく PurchaseSummaryView へ写像されることを固定する。
 			assert.Equal(t, "code-a", got.Items[0].Code)
-			assert.Equal(t, "完了", got.Items[0].Status)
+			assert.Equal(t, items[0].StatusID, got.Items[0].StatusID)
+			assert.Equal(t, "完了", got.Items[0].StatusName)
 			assert.Equal(t, items[0].TotalAmount, got.Items[0].TotalAmount)
 			assert.True(t, items[0].OrderedAt.Equal(got.Items[0].OrderedAt))
 

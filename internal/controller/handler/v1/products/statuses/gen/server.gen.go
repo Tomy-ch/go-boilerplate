@@ -15,9 +15,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// 商品カテゴリマスタ一覧の取得
-	// (GET /v1/product-categories)
-	GetProductCategories(ctx echo.Context) error
+	// 商品ステータスマスタ一覧の取得
+	// (GET /v1/products/statuses)
+	GetProductStatuses(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -25,12 +25,12 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// GetProductCategories converts echo context to params.
-func (w *ServerInterfaceWrapper) GetProductCategories(ctx echo.Context) error {
+// GetProductStatuses converts echo context to params.
+func (w *ServerInterfaceWrapper) GetProductStatuses(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetProductCategories(ctx)
+	err = w.Handler.GetProductStatuses(ctx)
 	return err
 }
 
@@ -81,7 +81,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
-	router.GET(options.BaseURL+"/v1/product-categories", wrapper.GetProductCategories, options.OperationMiddlewares["GetProductCategories"]...)
+	router.GET(options.BaseURL+"/v1/products/statuses", wrapper.GetProductStatuses, options.OperationMiddlewares["GetProductStatuses"]...)
 
 }
 
@@ -89,16 +89,16 @@ type InternalServerError500JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
-type GetProductCategoriesRequestObject struct {
+type GetProductStatusesRequestObject struct {
 }
 
-type GetProductCategoriesResponseObject interface {
-	VisitGetProductCategoriesResponse(w http.ResponseWriter) error
+type GetProductStatusesResponseObject interface {
+	VisitGetProductStatusesResponse(w http.ResponseWriter) error
 }
 
-type GetProductCategories200JSONResponse ProductCategoriesResponse
+type GetProductStatuses200JSONResponse ProductsStatusesResponse
 
-func (response GetProductCategories200JSONResponse) VisitGetProductCategoriesResponse(w http.ResponseWriter) error {
+func (response GetProductStatuses200JSONResponse) VisitGetProductStatusesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -110,11 +110,11 @@ func (response GetProductCategories200JSONResponse) VisitGetProductCategoriesRes
 	return err
 }
 
-type GetProductCategories500JSONResponse struct {
+type GetProductStatuses500JSONResponse struct {
 	InternalServerError500JSONResponse
 }
 
-func (response GetProductCategories500JSONResponse) VisitGetProductCategoriesResponse(w http.ResponseWriter) error {
+func (response GetProductStatuses500JSONResponse) VisitGetProductStatusesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -126,11 +126,11 @@ func (response GetProductCategories500JSONResponse) VisitGetProductCategoriesRes
 	return err
 }
 
-type GetProductCategories503JSONResponse struct {
+type GetProductStatuses503JSONResponse struct {
 	ServiceUnavailable503JSONResponse
 }
 
-func (response GetProductCategories503JSONResponse) VisitGetProductCategoriesResponse(w http.ResponseWriter) error {
+func (response GetProductStatuses503JSONResponse) VisitGetProductStatusesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -144,9 +144,9 @@ func (response GetProductCategories503JSONResponse) VisitGetProductCategoriesRes
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// 商品カテゴリマスタ一覧の取得
-	// (GET /v1/product-categories)
-	GetProductCategories(ctx context.Context, request GetProductCategoriesRequestObject) (GetProductCategoriesResponseObject, error)
+	// 商品ステータスマスタ一覧の取得
+	// (GET /v1/products/statuses)
+	GetProductStatuses(ctx context.Context, request GetProductStatusesRequestObject) (GetProductStatusesResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
@@ -161,23 +161,23 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
-// GetProductCategories operation middleware
-func (sh *strictHandler) GetProductCategories(ctx echo.Context) error {
-	var request GetProductCategoriesRequestObject
+// GetProductStatuses operation middleware
+func (sh *strictHandler) GetProductStatuses(ctx echo.Context) error {
+	var request GetProductStatusesRequestObject
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetProductCategories(ctx.Request().Context(), request.(GetProductCategoriesRequestObject))
+		return sh.ssi.GetProductStatuses(ctx.Request().Context(), request.(GetProductStatusesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetProductCategories")
+		handler = middleware(handler, "GetProductStatuses")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(GetProductCategoriesResponseObject); ok {
-		return validResponse.VisitGetProductCategoriesResponse(ctx.Response())
+	} else if validResponse, ok := response.(GetProductStatusesResponseObject); ok {
+		return validResponse.VisitGetProductStatusesResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

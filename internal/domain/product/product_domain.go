@@ -18,6 +18,7 @@ import (
 type Products []*Product
 
 // Product は、商品を表すドメインエンティティです。price はサブセント精度を保持する money.Price で保持します。
+// status / category はそれぞれ ID と名称を持つ参照で、呼び出し側での名称の別解決は不要です。
 type Product struct {
 	id                    uuid.UUID
 	name                  string
@@ -25,14 +26,14 @@ type Product struct {
 	price                 money.Price
 	quantity              int
 	stockWarningThreshold *int
-	statusID              uuid.UUID
-	categoryID            uuid.UUID
+	status                StatusRef
+	category              CategoryRef
 	publishedAt           time.Time
 }
 
 // New は、商品エンティティの検証と生成を行います。price は非負の money.Price（非負検証は Price VO が担保）、
 // quantity は 0 以上、stockWarningThreshold は指定時 0 以上である必要があります。
-// id / statusID / categoryID が nil、name が長さ制約外、publishedAt がゼロ値の場合はそれぞれ検証エラーを返します。
+// id が nil、name が長さ制約外、status / category がゼロ値、publishedAt がゼロ値の場合はそれぞれ検証エラーを返します。
 func New(
 	id uuid.UUID,
 	name string,
@@ -40,8 +41,8 @@ func New(
 	price money.Price,
 	quantity int,
 	stockWarningThreshold *int,
-	statusID uuid.UUID,
-	categoryID uuid.UUID,
+	status StatusRef,
+	category CategoryRef,
 	publishedAt time.Time,
 ) (*Product, error) {
 	if id.IsNil() {
@@ -59,11 +60,11 @@ func New(
 			fmt.Sprintf("stockWarningThreshold must be %d or greater, got %d", minThreshold, *stockWarningThreshold),
 		)
 	}
-	if statusID.IsNil() {
-		return nil, xerrors.Wrap(ErrInvalidStatusID, "statusID is required")
+	if status.id.IsNil() {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "status is required")
 	}
-	if categoryID.IsNil() {
-		return nil, xerrors.Wrap(ErrInvalidCategoryID, "categoryID is required")
+	if category.id.IsNil() {
+		return nil, xerrors.Wrap(ErrInvalidCategoryID, "category is required")
 	}
 	if publishedAt.IsZero() {
 		return nil, xerrors.Wrap(ErrInvalidPublishedAt, "publishedAt is required")
@@ -76,8 +77,8 @@ func New(
 		price:                 price,
 		quantity:              quantity,
 		stockWarningThreshold: ptr.Copy(stockWarningThreshold),
-		statusID:              statusID,
-		categoryID:            categoryID,
+		status:                status,
+		category:              category,
 		publishedAt:           publishedAt,
 	}, nil
 }
@@ -100,11 +101,11 @@ func (p *Product) Quantity() int { return p.quantity }
 // StockWarningThreshold は、在庫警告閾値を返します。未設定の場合は nil です。
 func (p *Product) StockWarningThreshold() *int { return ptr.Copy(p.stockWarningThreshold) }
 
-// StatusID は、商品ステータス ID を返します。
-func (p *Product) StatusID() uuid.UUID { return p.statusID }
+// Status は、商品ステータス参照（ID + 名称）を返します。
+func (p *Product) Status() StatusRef { return p.status }
 
-// CategoryID は、商品カテゴリ ID を返します。
-func (p *Product) CategoryID() uuid.UUID { return p.categoryID }
+// Category は、商品カテゴリ参照（ID + 名称）を返します。
+func (p *Product) Category() CategoryRef { return p.category }
 
 // PublishedAt は、公開日時を返します。
 func (p *Product) PublishedAt() time.Time { return p.publishedAt }

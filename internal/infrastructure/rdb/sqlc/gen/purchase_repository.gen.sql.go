@@ -102,6 +102,7 @@ SELECT
     p.code,
     p.total_amount,
     p.ordered_at,
+    ps.id AS status_id,
     ps.name AS status_name
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
@@ -126,6 +127,7 @@ type ListPurchasesFeedAfterRow struct {
 	Code        string
 	TotalAmount int64
 	OrderedAt   time.Time
+	StatusID    uuid.UUID
 	StatusName  string
 }
 
@@ -137,6 +139,7 @@ type ListPurchasesFeedAfterRow struct {
 //	    p.code,
 //	    p.total_amount,
 //	    p.ordered_at,
+//	    ps.id AS status_id,
 //	    ps.name AS status_name
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
@@ -166,6 +169,7 @@ func (q *Queries) ListPurchasesFeedAfter(ctx context.Context, arg *ListPurchases
 			&i.Code,
 			&i.TotalAmount,
 			&i.OrderedAt,
+			&i.StatusID,
 			&i.StatusName,
 		); err != nil {
 			return nil, err
@@ -184,6 +188,7 @@ SELECT
     p.code,
     p.total_amount,
     p.ordered_at,
+    ps.id AS status_id,
     ps.name AS status_name
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
@@ -202,6 +207,7 @@ type ListPurchasesFeedFirstRow struct {
 	Code        string
 	TotalAmount int64
 	OrderedAt   time.Time
+	StatusID    uuid.UUID
 	StatusName  string
 }
 
@@ -215,6 +221,7 @@ type ListPurchasesFeedFirstRow struct {
 //	    p.code,
 //	    p.total_amount,
 //	    p.ordered_at,
+//	    ps.id AS status_id,
 //	    ps.name AS status_name
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
@@ -235,6 +242,7 @@ func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchases
 			&i.Code,
 			&i.TotalAmount,
 			&i.OrderedAt,
+			&i.StatusID,
 			&i.StatusName,
 		); err != nil {
 			return nil, err

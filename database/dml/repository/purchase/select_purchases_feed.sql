@@ -7,6 +7,7 @@ SELECT
     p.code,
     p.total_amount,
     p.ordered_at,
+    ps.id AS status_id,
     ps.name AS status_name
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
@@ -22,6 +23,7 @@ SELECT
     p.code,
     p.total_amount,
     p.ordered_at,
+    ps.id AS status_id,
     ps.name AS status_name
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id

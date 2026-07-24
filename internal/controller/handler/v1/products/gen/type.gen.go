@@ -85,6 +85,15 @@ type ErrorResponseWithDetails struct {
 	RequestId string `json:"requestId"`
 }
 
+// ProductCategoryRef 商品に紐づくカテゴリです。
+type ProductCategoryRef struct {
+	// Id 商品カテゴリID
+	Id openapi_types.UUID `json:"id"`
+
+	// Name 商品カテゴリ名
+	Name string `json:"name"`
+}
+
 // ProductImagePostRequest 商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
 // 対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
 type ProductImagePostRequest struct {
@@ -111,8 +120,8 @@ type ProductListResponse struct {
 
 // ProductResponse 商品情報のレスポンススキーマ
 type ProductResponse struct {
-	// CategoryId 商品カテゴリID。名称は商品カテゴリマスタ API で解決します。
-	CategoryId openapi_types.UUID `json:"categoryId"`
+	// Category 商品に紐づくカテゴリです。
+	Category ProductCategoryRef `json:"category"`
 
 	// Description 商品説明。未設定の場合は null です。
 	Description *string `json:"description"`
@@ -132,11 +141,20 @@ type ProductResponse struct {
 	// Quantity 在庫数
 	Quantity int32 `json:"quantity"`
 
-	// StatusId 商品ステータスID。名称は商品ステータスマスタ API で解決します。
-	StatusId openapi_types.UUID `json:"statusId"`
+	// Status 商品に紐づくステータスです。
+	Status ProductStatusRef `json:"status"`
 
 	// StockWarningThreshold 在庫警告閾値。未設定の場合は null です。
 	StockWarningThreshold *int32 `json:"stockWarningThreshold"`
+}
+
+// ProductStatusRef 商品に紐づくステータスです。
+type ProductStatusRef struct {
+	// Id 商品ステータスID
+	Id openapi_types.UUID `json:"id"`
+
+	// Name 商品ステータス名
+	Name string `json:"name"`
 }
 
 // CategoryIdParam defines model for CategoryIdParam.

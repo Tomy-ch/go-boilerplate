@@ -1,7 +1,7 @@
 get:
   operationId: GetProductStatuses
   tags:
-    - v1/product-statuses
+    - v1/products/statuses
   summary: 商品ステータスマスタ一覧の取得
   description: |
     商品ステータスマスタの全件を sort_key（表示順）昇順で返します。
@@ -13,8 +13,8 @@ get:
       content:
         application/json:
           schema:
-            $ref: '../../components/responses/product-status/ProductStatusesResponse.yaml'
+            $ref: '../../../components/responses/products/status/ProductsStatusesResponse.yaml'
     '500':
-      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
     '503':
-      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

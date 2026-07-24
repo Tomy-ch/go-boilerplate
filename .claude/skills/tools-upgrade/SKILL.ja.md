@@ -136,7 +136,7 @@ GitHub Releases 系は `gh api` を優先する（`GITHUB_TOKEN` 経由で認証
 
 ### 7. ランタイムが変わったら base image digest を再固定
 
-ステップ 6 で `make sync-versions` が走った（＝`go` / `node` / `python` bump で `FROM` の**タグ**が変わった）場合、以前 pin した `@sha256:...` digest は**旧**イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先）。registry から再 pin する（`pin-images` スキルの役目、ここで chain）:
+ステップ 6 で `make sync-versions` が走った（＝`go` / `node` / `python` bump で `FROM` の**タグ**が変わった）場合、以前 pin した `@sha256:...` digest は**旧**イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先）。registry から再 pin する（`images-pin` スキルの役目、ここで chain）:
 
 ```sh
 make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`

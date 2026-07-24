@@ -20,6 +20,13 @@ type repository struct {
 	tracer observability.LayerTracer
 }
 
+// productRow は、商品行と固定参照マスタ JOIN で解決したステータス名・カテゴリ名をまとめた変換元です。
+type productRow struct {
+	p            gen.Products
+	statusName   string
+	categoryName string
+}
+
 // New は、product.Repository の RDB 実装を生成して返します。
 func New(
 	db driver.DatabaseDriver,
@@ -53,7 +60,9 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
 		}
-		return rowsToProducts(rows, func(row *gen.ListPublishedProductsAscRow) gen.Products { return row.Products })
+		return rowsToProducts(rows, func(row *gen.ListPublishedProductsAscRow) productRow {
+			return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
+		})
 	}
 
 	rows, err := db.ListPublishedProductsDesc(ctx, &gen.ListPublishedProductsDescParams{
@@ -68,7 +77,9 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-	return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescRow) gen.Products { return row.Products })
+	return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescRow) productRow {
+		return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
+	})
 }
 
 // FindPublishedByID は、ID から公開中（published_at 非 NULL）の単一商品を取得します。
@@ -83,26 +94,35 @@ func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*prod
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return rowToProduct(row.Products)
+	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
-// rowToProduct は、sqlc が返す Products 行をドメインエンティティへ変換します。
+// rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）をドメインエンティティへ変換します。
 // 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
-func rowToProduct(p gen.Products) (*product.Product, error) {
-	price, err := money.NewPrice(p.Price)
+func rowToProduct(row productRow) (*product.Product, error) {
+	price, err := money.NewPrice(row.p.Price)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
+	status, err := product.NewStatusRef(row.p.StatusID, row.statusName)
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
+	category, err := product.NewCategoryRef(row.p.CategoryID, row.categoryName)
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
+
 	entity, err := product.New(
-		p.ID,
-		p.Name,
-		p.Description,
+		row.p.ID,
+		row.p.Name,
+		row.p.Description,
 		price,
-		int(p.Quantity),
-		int32PtrToIntPtr(p.StockWarningThreshold),
-		p.StatusID,
-		p.CategoryID,
-		ptr.Deref(p.PublishedAt, time.Time{}),
+		int(row.p.Quantity),
+		int32PtrToIntPtr(row.p.StockWarningThreshold),
+		status,
+		category,
+		ptr.Deref(row.p.PublishedAt, time.Time{}),
 	)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
@@ -111,7 +131,7 @@ func rowToProduct(p gen.Products) (*product.Product, error) {
 }
 
 // rowsToProducts は、行スライスをドメインエンティティ列へ変換します。
-func rowsToProducts[T any](rows []T, extract func(T) gen.Products) (product.Products, error) {
+func rowsToProducts[T any](rows []T, extract func(T) productRow) (product.Products, error) {
 	products := make(product.Products, len(rows))
 	for i, row := range rows {
 		p, err := rowToProduct(extract(row))
