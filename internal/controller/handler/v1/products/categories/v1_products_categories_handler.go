@@ -1,13 +1,13 @@
-//go:generate oapi-codegen --include-tags=v1/product-categories --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/product-categories --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/categories --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/categories --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-// Package productcategories は、/v1/product-categories エンドポイントに関連するハンドラを提供します。
+// Package productcategories は、/v1/products/categories エンドポイントに関連するハンドラを提供します。
 package productcategories
 
 import (
 	"context"
 
-	"go-boilerplate/internal/controller/handler/v1/product-categories/gen"
+	"go-boilerplate/internal/controller/handler/v1/products/categories/gen"
 	"go-boilerplate/internal/observability"
 	categoryuc "go-boilerplate/internal/usecase/product/category"
 

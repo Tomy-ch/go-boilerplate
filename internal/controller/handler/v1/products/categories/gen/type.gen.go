@@ -19,23 +19,32 @@ type ErrorResponse struct {
 	RequestId string `json:"requestId"`
 }
 
-// ProductStatusResponse 商品ステータスマスタ 1 件分のレスポンスです。
-type ProductStatusResponse struct {
-	// Code 商品ステータスコード（正の SMALLINT）
-	Code int `json:"code"`
-
-	// Id 商品ステータスID
+// ProductCategoryRef 商品に紐づくカテゴリです。
+type ProductCategoryRef struct {
+	// Id 商品カテゴリID
 	Id openapi_types.UUID `json:"id"`
 
-	// Name 商品ステータス名
+	// Name 商品カテゴリ名
+	Name string `json:"name"`
+}
+
+// ProductCategoryResponse defines model for ProductCategoryResponse.
+type ProductCategoryResponse struct {
+	// Code 商品カテゴリコード
+	Code int `json:"code"`
+
+	// Id 商品カテゴリID
+	Id openapi_types.UUID `json:"id"`
+
+	// Name 商品カテゴリ名
 	Name string `json:"name"`
 
-	// SortKey 表示順（sortKey 昇順で一覧を並べる。code とは非連動）
+	// SortKey 表示順
 	SortKey int `json:"sortKey"`
 }
 
-// ProductStatusesResponse 商品ステータスマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
-type ProductStatusesResponse = []ProductStatusResponse
+// ProductsCategoriesResponse 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
+type ProductsCategoriesResponse = []ProductCategoryResponse
 
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse

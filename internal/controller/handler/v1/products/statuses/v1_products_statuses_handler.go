@@ -1,13 +1,13 @@
-//go:generate oapi-codegen --include-tags=v1/product-statuses --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/product-statuses --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/statuses --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/statuses --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-// Package productstatuses は、/v1/product-statuses エンドポイントに関連するハンドラを提供します。
+// Package productstatuses は、/v1/products/statuses エンドポイントに関連するハンドラを提供します。
 package productstatuses
 
 import (
 	"context"
 
-	"go-boilerplate/internal/controller/handler/v1/product-statuses/gen"
+	"go-boilerplate/internal/controller/handler/v1/products/statuses/gen"
 	"go-boilerplate/internal/observability"
 	statusuc "go-boilerplate/internal/usecase/product/status"
 

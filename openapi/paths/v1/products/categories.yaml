@@ -1,7 +1,7 @@
 get:
   operationId: GetProductCategories
   tags:
-    - v1/product-categories
+    - v1/products/categories
   summary: 商品カテゴリマスタ一覧の取得
   description: |
     商品カテゴリマスタの全件を sort_key 昇順で返します。
@@ -13,8 +13,8 @@ get:
       content:
         application/json:
           schema:
-            $ref: '../../components/responses/product-category/ProductCategoriesResponse.yaml'
+            $ref: '../../../components/responses/products/category/ProductsCategoriesResponse.yaml'
     '500':
-      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
     '503':
-      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

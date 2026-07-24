@@ -85,7 +85,7 @@ type ErrorResponseWithDetails struct {
 	RequestId string `json:"requestId"`
 }
 
-// ProductCategoryRef 商品に紐づくカテゴリ（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// ProductCategoryRef 商品に紐づくカテゴリです。
 type ProductCategoryRef struct {
 	// Id 商品カテゴリID
 	Id openapi_types.UUID `json:"id"`
@@ -120,7 +120,7 @@ type ProductListResponse struct {
 
 // ProductResponse 商品情報のレスポンススキーマ
 type ProductResponse struct {
-	// Category 商品に紐づくカテゴリ（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// Category 商品に紐づくカテゴリです。
 	Category ProductCategoryRef `json:"category"`
 
 	// Description 商品説明。未設定の場合は null です。
@@ -141,14 +141,14 @@ type ProductResponse struct {
 	// Quantity 在庫数
 	Quantity int32 `json:"quantity"`
 
-	// Status 商品に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// Status 商品に紐づくステータスです。
 	Status ProductStatusRef `json:"status"`
 
 	// StockWarningThreshold 在庫警告閾値。未設定の場合は null です。
 	StockWarningThreshold *int32 `json:"stockWarningThreshold"`
 }
 
-// ProductStatusRef 商品に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// ProductStatusRef 商品に紐づくステータスです。
 type ProductStatusRef struct {
 	// Id 商品ステータスID
 	Id openapi_types.UUID `json:"id"`

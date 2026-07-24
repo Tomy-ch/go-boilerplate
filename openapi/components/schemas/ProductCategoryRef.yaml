@@ -1,5 +1,5 @@
 type: object
-description: 商品に紐づくカテゴリ（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+description: 商品に紐づくカテゴリです。
 required:
   - id
   - name

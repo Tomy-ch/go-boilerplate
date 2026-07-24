@@ -50,12 +50,12 @@ tags:
     description: ユーザー検索（キーワード）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
-  - name: v1/product-statuses
-    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
-  - name: v1/product-categories
-    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/statuses
+    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products/categories
+    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/detail
     description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
   - name: v1/exchange-rates
@@ -467,11 +467,11 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/product-statuses:
+  /v1/products/statuses:
     get:
       operationId: GetProductStatuses
       tags:
-        - v1/product-statuses
+        - v1/products/statuses
       summary: 商品ステータスマスタ一覧の取得
       description: |
         商品ステータスマスタの全件を sort_key（表示順）昇順で返します。
@@ -483,16 +483,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductStatusesResponse'
+                $ref: '#/components/schemas/ProductsStatusesResponse'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/product-categories:
+  /v1/products/categories:
     get:
       operationId: GetProductCategories
       tags:
-        - v1/product-categories
+        - v1/products/categories
       summary: 商品カテゴリマスタ一覧の取得
       description: |
         商品カテゴリマスタの全件を sort_key 昇順で返します。
@@ -504,7 +504,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductCategoriesResponse'
+                $ref: '#/components/schemas/ProductsCategoriesResponse'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -1151,94 +1151,80 @@ components:
           example: 東京都
     ResponseV1Prefectures:
       $ref: '#/components/schemas/PrefecturesResponse'
+    ProductStatusRef:
+      type: object
+      description: 商品に紐づくステータスです。
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品ステータスID
+          example: 093170fb-83a2-4864-a2b3-53236eaf3597
+        name:
+          type: string
+          description: 商品ステータス名
+          example: 在庫あり
     ProductStatusResponse:
       type: object
       description: 商品ステータスマスタ 1 件分のレスポンスです。
+      allOf:
+        - $ref: '#/components/schemas/ProductStatusRef'
+        - type: object
+          description: 商品ステータスマスタの詳細情報です。
+          required:
+            - code
+            - sortKey
+          properties:
+            code:
+              type: integer
+              description: 商品ステータスコード（正の SMALLINT）
+              example: 1
+            sortKey:
+              type: integer
+              description: 表示順（sortKey 昇順で一覧を並べる。code とは非連動）
+              example: 5
+    ResponseV1ProductsStatuses:
+      $ref: '#/components/schemas/ProductsStatusesResponse'
+    ProductCategoryRef:
+      type: object
+      description: 商品に紐づくカテゴリです。
       required:
         - id
-        - code
         - name
-        - sortKey
       properties:
         id:
           type: string
           format: uuid
-          description: 商品ステータスID
-          example: 093170fb-83a2-4864-a2b3-53236eaf3597
-        code:
-          type: integer
-          description: 商品ステータスコード（正の SMALLINT）
-          example: 1
+          description: 商品カテゴリID
+          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
         name:
           type: string
-          description: 商品ステータス名
-          example: 在庫あり
-        sortKey:
-          type: integer
-          description: 表示順（sortKey 昇順で一覧を並べる。code とは非連動）
-          example: 5
-    ResponseV1ProductStatuses:
-      $ref: '#/components/schemas/ProductStatusesResponse'
+          description: 商品カテゴリ名
+          example: 電子機器
     ProductCategoryResponse:
       type: object
       description: 商品カテゴリマスタ 1 件分のレスポンスです。
-      required:
-        - id
-        - code
-        - name
-        - sortKey
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: 商品カテゴリID
-          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
-        code:
-          type: integer
-          description: 商品カテゴリコード
-          example: 1
-        name:
-          type: string
-          description: 商品カテゴリ名
-          example: 電子機器
-        sortKey:
-          type: integer
-          description: 表示順
-          example: 1
-    ResponseV1ProductCategories:
-      $ref: '#/components/schemas/ProductCategoriesResponse'
-    ProductStatusRef:
-      type: object
-      description: 商品に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
-      required:
-        - id
-        - name
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: 商品ステータスID
-          example: 093170fb-83a2-4864-a2b3-53236eaf3597
-        name:
-          type: string
-          description: 商品ステータス名
-          example: 在庫あり
-    ProductCategoryRef:
-      type: object
-      description: 商品に紐づくカテゴリ（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
-      required:
-        - id
-        - name
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: 商品カテゴリID
-          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
-        name:
-          type: string
-          description: 商品カテゴリ名
-          example: 電子機器
+      allOf:
+        - $ref: '#/components/schemas/ProductCategoryRef'
+        - type: object
+          description: 商品カテゴリマスタの詳細情報です。
+          required:
+            - code
+            - sortKey
+          properties:
+            code:
+              type: integer
+              description: 商品カテゴリコード
+              example: 1
+            sortKey:
+              type: integer
+              description: 表示順
+              example: 1
+    ResponseV1ProductsCategories:
+      $ref: '#/components/schemas/ProductsCategoriesResponse'
     ProductResponse:
       type: object
       description: 商品情報のレスポンススキーマ
@@ -1702,12 +1688,12 @@ components:
       description: 都道府県マスタの一覧（code 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/PrefectureResponse'
-    ProductStatusesResponse:
+    ProductsStatusesResponse:
       type: array
       description: 商品ステータスマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductStatusResponse'
-    ProductCategoriesResponse:
+    ProductsCategoriesResponse:
       type: array
       description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
       items:

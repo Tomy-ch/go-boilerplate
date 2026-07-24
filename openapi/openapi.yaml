@@ -49,12 +49,12 @@ tags:
     description: ユーザー検索（キーワード）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
-  - name: v1/product-statuses
-    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
-  - name: v1/product-categories
-    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/statuses
+    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products/categories
+    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/detail
     description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
   - name: v1/exchange-rates
@@ -96,10 +96,10 @@ paths:
     $ref: './paths/v1/users/feed.yaml'
   /v1/prefectures:
     $ref: './paths/v1/prefectures.yaml'
-  /v1/product-statuses:
-    $ref: './paths/v1/product-statuses.yaml'
-  /v1/product-categories:
-    $ref: './paths/v1/product-categories.yaml'
+  /v1/products/statuses:
+    $ref: './paths/v1/products/statuses.yaml'
+  /v1/products/categories:
+    $ref: './paths/v1/products/categories.yaml'
   /v1/products:
     $ref: './paths/v1/products.yaml'
   /v1/products/{productId}:
@@ -188,18 +188,18 @@ components:
       $ref: './components/schemas/PrefectureResponse.yaml'
     ResponseV1Prefectures:
       $ref: './components/responses/prefecture/PrefecturesResponse.yaml'
-    ProductStatusResponse:
-      $ref: './components/schemas/ProductStatusResponse.yaml'
-    ResponseV1ProductStatuses:
-      $ref: './components/responses/product-status/ProductStatusesResponse.yaml'
-    ProductCategoryResponse:
-      $ref: './components/schemas/ProductCategoryResponse.yaml'
-    ResponseV1ProductCategories:
-      $ref: './components/responses/product-category/ProductCategoriesResponse.yaml'
     ProductStatusRef:
       $ref: './components/schemas/ProductStatusRef.yaml'
+    ProductStatusResponse:
+      $ref: './components/schemas/ProductStatusResponse.yaml'
+    ResponseV1ProductsStatuses:
+      $ref: './components/responses/products/status/ProductsStatusesResponse.yaml'
     ProductCategoryRef:
       $ref: './components/schemas/ProductCategoryRef.yaml'
+    ProductCategoryResponse:
+      $ref: './components/schemas/ProductCategoryResponse.yaml'
+    ResponseV1ProductsCategories:
+      $ref: './components/responses/products/category/ProductsCategoriesResponse.yaml'
     ProductResponse:
       $ref: './components/schemas/ProductResponse.yaml'
     ProductListResponse:
