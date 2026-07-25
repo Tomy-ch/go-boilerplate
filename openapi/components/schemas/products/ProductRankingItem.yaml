@@ -1,0 +1,30 @@
+type: object
+description: 売上ランキング 1 商品分の項目です。
+required:
+  - productId
+  - name
+  - price
+  - soldQuantity
+properties:
+  productId:
+    type: string
+    format: uuid
+    description: 商品ID
+    example: "b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"
+  name:
+    type: string
+    description: 商品名
+    maxLength: 255
+    example: "ワイヤレスイヤホン"
+  price:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: >-
+      価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。
+      JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+    example: "19.99"
+  soldQuantity:
+    type: integer
+    format: int64
+    description: 集計期間内の販売数量（キャンセル済みの購入を除く合算値）。
+    example: 42

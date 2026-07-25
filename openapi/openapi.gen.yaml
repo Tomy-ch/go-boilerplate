@@ -58,6 +58,8 @@ tags:
     description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/detail
     description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
+  - name: v1/products/ranking
+    description: 商品売上ランキング（認証不要・購入明細の集計 / query_service サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: v1/addresses
@@ -574,6 +576,34 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/ranking:
+    get:
+      operationId: GetProductsRanking
+      tags:
+        - v1/products/ranking
+      summary: 商品売上ランキングの取得
+      description: |
+        購入明細を集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
+        キャンセル済み（canceled_at が設定済み）の購入は集計から除外します。未払いの購入は集計に含みます。
+        period=30d の場合は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+        同一販売数量の商品は商品 ID の昇順で安定的に並びます。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RankingPeriodParam'
+        - $ref: '#/components/parameters/RankingLimitParam'
+      responses:
+        '200':
+          description: 販売数量の降順で取得した商品ランキング
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRankingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/products/images:
     post:
       operationId: PostProductsImages
@@ -993,6 +1023,30 @@ components:
         type: string
         format: uuid
         example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+    RankingPeriodParam:
+      name: period
+      in: query
+      description: |
+        集計対象期間。`all`（既定）は全期間、`30d` は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+      required: false
+      schema:
+        type: string
+        enum:
+          - all
+          - 30d
+        default: all
+        example: all
+    RankingLimitParam:
+      name: limit
+      in: query
+      description: 取得する上位件数。売上数量の降順で上位 limit 件を返します。
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 10
     PurchaseIdParam:
       name: purchaseId
       in: path
@@ -1375,6 +1429,46 @@ components:
               items:
                 $ref: '#/components/schemas/ProductResponse'
         - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    ProductRankingItem:
+      type: object
+      description: 売上ランキング 1 商品分の項目です。
+      required:
+        - productId
+        - name
+        - price
+        - soldQuantity
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        name:
+          type: string
+          description: 商品名
+          maxLength: 255
+          example: ワイヤレスイヤホン
+        price:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+          example: '19.99'
+        soldQuantity:
+          type: integer
+          format: int64
+          description: 集計期間内の販売数量（キャンセル済みの購入を除く合算値）。
+          example: 42
+    ProductRankingResponse:
+      type: object
+      description: 売上ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
+      required:
+        - rankings
+      properties:
+        rankings:
+          type: array
+          description: 販売数量の降順で並んだ商品ランキングです。
+          items:
+            $ref: '#/components/schemas/ProductRankingItem'
     ProductImageResponse:
       type: object
       description: |
