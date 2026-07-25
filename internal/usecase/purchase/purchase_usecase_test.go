@@ -54,7 +54,7 @@ func rereadPurchase(t *testing.T) *domainpurchase.Purchase {
 		160000, 16000, 500, 176500,
 		details,
 		time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-		nil, nil, nil,
+		nil, nil, nil, nil,
 	)
 	require.NoError(t, err)
 	return p
@@ -397,7 +397,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 		p, err := domainpurchase.Reconstruct(
 			purchaseID, "cancel-uc-code", owner, uuid.NewTestFromSalt(t, "cancel_uc_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil,
+			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
 		)
 		require.NoError(t, err)
 		return p
@@ -566,6 +566,212 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 	})
 }
 
+func Test_usecase_PayPurchase(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.NewTestFromSalt(t, "pay_uc_user")
+	purchaseID := uuid.NewTestFromSalt(t, "pay_uc_id")
+
+	// lockable は、cmd.LockPurchase が返す再構築済み購入を生成するローカルヘルパーです。
+	lockable := func(t *testing.T, owner uuid.UUID, statusCode int, paidAt *time.Time) *domainpurchase.Purchase {
+		t.Helper()
+		details := []domainpurchase.PurchaseDetail{
+			domainpurchase.NewPurchaseDetail(
+				uuid.NewTestFromSalt(t, "pay_uc_d1"),
+				uuid.NewTestFromSalt(t, "pay_uc_p1"),
+				2,
+				mustPrice(t, "800"),
+			),
+		}
+		p, err := domainpurchase.Reconstruct(
+			purchaseID, "pay-uc-code", owner, uuid.NewTestFromSalt(t, "pay_uc_status"),
+			statusCode, 160000, 16000, 500, 176500, details,
+			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), paidAt, nil, nil, nil,
+		)
+		require.NoError(t, err)
+		return p
+	}
+
+	// newUC は、指定 mock を注入した usecase を生成するローカルヘルパーです。
+	newUC := func(t *testing.T, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
+		t.Helper()
+		return &usecase{
+			tracer: observability.NewNoopTracerFactory(t).Usecase(),
+			txm:    testkit.NewMockTransactionManager(t),
+			cmd:    cmd, repo: repo, emit: emit,
+			clock: clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)),
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロック→所有権検証→支払い→emit→再読込を経て支払いビューを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(nil)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+
+			paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+			detail := &domainpurchase.Detail{
+				ID:             purchaseID,
+				Code:           "pay-uc-code",
+				UserID:         userID,
+				StatusID:       uuid.NewTestFromSalt(t, "pay_uc_paid_status"),
+				StatusName:     "支払い済み",
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details: []domainpurchase.PurchaseDetail{
+					domainpurchase.NewPurchaseDetail(
+						uuid.NewTestFromSalt(t, "pay_uc_d1"),
+						uuid.NewTestFromSalt(t, "pay_uc_p1"),
+						2,
+						mustPrice(t, "800"),
+					),
+				},
+				OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+				PaidAt:    &paidAt,
+			}
+			repo.EXPECT().FindDetailByID(gomock.Any(), purchaseID).Return(detail, nil)
+
+			u := newUC(t, cmd, repo, emit)
+			view, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.NoError(t, err)
+			assert.Equal(t, detail.StatusID, view.StatusID)
+			assert.Equal(t, "支払い済み", view.StatusName)
+			require.NotNil(t, view.PaidAt)
+			assert.Equal(t, paidAt, *view.PaidAt)
+			require.Len(t, view.Details, 1)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("他人の購入の場合、ErrNotFoundを返し支払い書き込みを行わない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			otherOwner := uuid.NewTestFromSalt(t, "pay_uc_other")
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusCodeUnprocessed, nil), nil)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+
+		t.Run("二重支払い（既に支払い済み）の場合、ErrAlreadyPaidを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			paidAt := time.Date(2026, time.July, 24, 0, 0, 0, 0, time.UTC)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodePaid, &paidAt), nil)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, domainpurchase.ErrAlreadyPaid)
+		})
+
+		t.Run("不正遷移（キャンセル済み）の場合、ErrPayNotAllowedを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeCompleted, nil), nil)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, domainpurchase.ErrPayNotAllowed)
+		})
+
+		t.Run("LockPurchaseが失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(nil, apperror.ErrUnavailable)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("PayPurchase書き込みが失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+
+		t.Run("outbox発行が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(nil)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, apperror.ErrInternal)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("再読込が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(nil)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+			repo.EXPECT().FindDetailByID(gomock.Any(), purchaseID).Return(nil, apperror.ErrNotFound)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+	})
+}
+
+//nolint:dupl // 支払い/キャンセルの DTO 写像テストは対称で構造の重複は不可避
 func Test_toCancelPurchaseView(t *testing.T) {
 	t.Parallel()
 
@@ -602,6 +808,50 @@ func Test_toCancelPurchaseView(t *testing.T) {
 			assert.Equal(t, d.TotalAmount, view.TotalAmount)
 			require.NotNil(t, view.CanceledAt)
 			assert.Equal(t, canceledAt, *view.CanceledAt)
+			require.Len(t, view.Details, 1)
+			assert.Equal(t, d.Details[0].ProductID(), view.Details[0].ProductID)
+			assert.True(t, d.Details[0].UnitPrice().Decimal().Equal(view.Details[0].UnitPrice))
+		})
+	})
+}
+
+//nolint:dupl // 支払い/キャンセルの DTO 写像テストは対称で構造の重複は不可避
+func Test_toPayPurchaseView(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("詳細読み取りモデルを支払いビューへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+			d := &domainpurchase.Detail{
+				ID:             uuid.NewTestFromSalt(t, "tpv_id"),
+				Code:           "tpv-code",
+				UserID:         uuid.NewTestFromSalt(t, "tpv_user"),
+				StatusID:       uuid.NewTestFromSalt(t, "tpv_status"),
+				StatusName:     "支払い済み",
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details: []domainpurchase.PurchaseDetail{
+					domainpurchase.NewPurchaseDetail(uuid.NewTestFromSalt(t, "tpv_d"), uuid.NewTestFromSalt(t, "tpv_p"), 2, mustPrice(t, "800")),
+				},
+				OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+				PaidAt:    &paidAt,
+			}
+
+			view := toPayPurchaseView(d)
+			assert.Equal(t, d.ID, view.ID)
+			assert.Equal(t, d.Code, view.Code)
+			assert.Equal(t, d.UserID, view.UserID)
+			assert.Equal(t, d.StatusID, view.StatusID)
+			assert.Equal(t, "支払い済み", view.StatusName)
+			assert.Equal(t, d.TotalAmount, view.TotalAmount)
+			require.NotNil(t, view.PaidAt)
+			assert.Equal(t, paidAt, *view.PaidAt)
 			require.Len(t, view.Details, 1)
 			assert.Equal(t, d.Details[0].ProductID(), view.Details[0].ProductID)
 			assert.True(t, d.Details[0].UnitPrice().Decimal().Equal(view.Details[0].UnitPrice))

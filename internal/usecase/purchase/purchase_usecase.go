@@ -105,6 +105,31 @@ type CancelPurchaseView struct {
 	CanceledAt     *time.Time
 }
 
+// PayPurchaseParams は、購入支払いの入力パラメータです。
+type PayPurchaseParams struct {
+	// PurchaseID は、支払い対象の購入 ID です。
+	PurchaseID uuid.UUID
+	// UserID は、支払いを要求した認証済みの内部ユーザー ID です。所有権の検証に用います。
+	UserID uuid.UUID
+}
+
+// PayPurchaseView は、支払い後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+// マスタで解決済みの ID と名称、PaidAt は支払い日時です。金額はすべて USD セント単位の整数です。
+type PayPurchaseView struct {
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	StatusName     string
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetailView
+	OrderedAt      time.Time
+	PaidAt         *time.Time
+}
+
 // Usecase は、購入の作成ユースケースを定義します。
 type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫減算・購入作成・明細作成・outbox 発行を単一 tx で
@@ -117,6 +142,10 @@ type Usecase interface {
 	// 明細分の在庫復元 → outbox 発行を単一 tx で原子的に行います。他ユーザーの購入・不存在はいずれも
 	// 存在秘匿のため NotFound（404）、不正遷移は 409 を返します。
 	CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
+	// PayPurchase は、本人の購入を支払い済みへ遷移させます。購入行のロック → 所有権検証 → 状態遷移（→ 支払い済み）→
+	// outbox 発行を単一 tx で原子的に行います。決済 SDK / PSP 連携は行わない擬似決済です。他ユーザーの購入・不存在は
+	// いずれも存在秘匿のため NotFound（404）、二重支払い・不正遷移は 409 を返します。
+	PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
 }
 
 // usecase は、Usecase の実装です。
@@ -282,6 +311,63 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 	return toCancelPurchaseView(detail), nil
 }
 
+// PayPurchase は、本人の購入を支払い済みへ遷移させます。
+func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	now := u.clock.Now()
+
+	var detail *purchase.Detail
+	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。擬似決済は単一集約
+	// （purchases）の状態更新のみで在庫に触れないため CommandService ではなく Repository で完結する。
+	// 二重支払いは購入行ロック + 状態チェック（ErrAlreadyPaid）で安全化する。
+	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
+		locked, lerr := u.repo.LockByID(ctx, params.PurchaseID)
+		if lerr != nil {
+			return lerr
+		}
+
+		// 他人の購入は存在を秘匿するため、不一致・不存在いずれも NotFound（404）へ畳む。
+		if locked.UserID() != params.UserID {
+			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
+		}
+
+		if perr := locked.Pay(now); perr != nil {
+			return perr
+		}
+
+		if perr := u.repo.UpdatePaid(ctx, locked); perr != nil {
+			return perr
+		}
+
+		payload, berr := event.BuildPaid(locked)
+		if berr != nil {
+			return berr
+		}
+		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
+			AggregateType: aggregateType,
+			AggregateID:   params.PurchaseID.String(),
+			EventType:     event.TypePaid,
+			Payload:       payload,
+		}); eerr != nil {
+			return eerr
+		}
+
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
+		if rerr != nil {
+			return rerr
+		}
+		detail = reread
+		return nil
+	}); txErr != nil {
+		return PayPurchaseView{}, txErr
+	}
+
+	return toPayPurchaseView(detail), nil
+}
+
 // referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。
 // 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
 func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
@@ -352,5 +438,31 @@ func toCancelPurchaseView(d *purchase.Detail) CancelPurchaseView {
 		Details:        views,
 		OrderedAt:      d.OrderedAt,
 		CanceledAt:     d.CanceledAt,
+	}
+}
+
+// toPayPurchaseView は、購入詳細の読み取りモデルを支払いレスポンスの出力 DTO へ変換します。
+func toPayPurchaseView(d *purchase.Detail) PayPurchaseView {
+	views := make([]PurchaseDetailView, len(d.Details))
+	for i, detail := range d.Details {
+		views[i] = PurchaseDetailView{
+			ProductID: detail.ProductID(),
+			Quantity:  detail.Quantity(),
+			UnitPrice: detail.UnitPrice().Decimal(),
+		}
+	}
+	return PayPurchaseView{
+		ID:             d.ID,
+		Code:           d.Code,
+		UserID:         d.UserID,
+		StatusID:       d.StatusID,
+		StatusName:     d.StatusName,
+		SubtotalAmount: d.SubtotalAmount,
+		TaxAmount:      d.TaxAmount,
+		ShippingFee:    d.ShippingFee,
+		TotalAmount:    d.TotalAmount,
+		Details:        views,
+		OrderedAt:      d.OrderedAt,
+		PaidAt:         d.PaidAt,
 	}
 }

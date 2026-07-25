@@ -144,6 +144,7 @@ func (c *commandService) LockPurchase(ctx context.Context, id uuid.UUID) (*purch
 		int(p.TotalAmount),
 		details,
 		p.OrderedAt,
+		p.PaidAt,
 		p.CanceledAt,
 		p.ShippedAt,
 		p.DeliveredAt,

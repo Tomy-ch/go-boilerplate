@@ -30,7 +30,7 @@ func TestBuildCanceled(t *testing.T) {
 				uuid.NewTestFromSalt(t, "bc_id"), "bc-code",
 				uuid.NewTestFromSalt(t, "bc_user"), uuid.NewTestFromSalt(t, "bc_status"),
 				domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
-				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil,
+				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
 			)
 			require.NoError(t, err)
 			now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
@@ -69,7 +69,7 @@ func TestBuildCanceled(t *testing.T) {
 				uuid.NewTestFromSalt(t, "bc_nil_id"), "bc-nil-code",
 				uuid.NewTestFromSalt(t, "bc_nil_user"), uuid.NewTestFromSalt(t, "bc_nil_status"),
 				domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
-				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil,
+				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
 			)
 			require.NoError(t, err)
 
