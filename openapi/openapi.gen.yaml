@@ -64,6 +64,8 @@ tags:
     description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
   - name: v1/purchases
     description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
+  - name: v1/purchases/detail
+    description: 単一購入の詳細取得（本人のみ・集約跨ぎ QueryService・明細に商品名/未存在は 404 で秘匿）。
   - name: v1/purchases/detail/cancel
     description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
   - name: v1/purchases/detail/pay
@@ -773,6 +775,37 @@ paths:
           $ref: '#/components/responses/Conflict409'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/{purchaseId}:
+    get:
+      operationId: GetPurchasesDetail
+      tags:
+        - v1/purchases/detail
+      summary: 購入詳細の取得
+      description: |
+        認証主体（本人）の購入 1 件を明細込みで取得します。認証必須です。
+        status は ID・名称を事前解決済みで、明細には商品名（products との結合で解決した現在名）を含みます。
+        他ユーザーの購入・不存在はいずれも 404 で存在を秘匿します。
+        金額（subtotalAmount / taxAmount / shippingFee / totalAmount）はすべて USD セント単位の整数、
+        明細 unitPrice は購入時点の単価スナップショット（USD ドルの decimal 文字列）です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchaseIdParam'
+      responses:
+        '200':
+          description: 購入詳細の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseGetDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '404':
+          $ref: '#/components/responses/NotFound404'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -1558,6 +1591,115 @@ components:
           format: uuid
           description: 商品ID
           example: 5266f905-1af4-477a-bc7c-e69729e22a2b
+        quantity:
+          type: integer
+          format: int32
+          description: 購入数量
+          example: 2
+        unitPrice:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: |
+            購入時点の単価スナップショット。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "800.00"）。
+            購入成立後に商品価格が変わっても本値は不変です。
+          example: '800.00'
+    PurchaseGetDetailResponse:
+      type: object
+      description: |
+        購入詳細（GET）のレスポンススキーマ。status は ID・名称を事前解決済みで、明細には商品名
+        （products との結合で解決した現在名）を含みます。paidAt は未支払いなら null、canceledAt は
+        未キャンセルなら null です。金額（subtotalAmount / taxAmount / shippingFee / totalAmount）は
+        すべて USD セント単位の整数、明細 unitPrice は購入時点の単価スナップショット（USD ドルの decimal 文字列）です。
+      required:
+        - id
+        - code
+        - userId
+        - status
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列（商品名込み）
+          items:
+            $ref: '#/components/schemas/PurchaseDetailItemResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 支払日時。未支払いの場合は null です。
+          example: '2026-07-25T00:00:00Z'
+        canceledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: キャンセル日時。未キャンセルの場合は null です。
+          example: '2026-07-26T00:00:00Z'
+    PurchaseDetailItemResponse:
+      type: object
+      description: |
+        購入詳細（GET）専用の購入明細レスポンス。productName は products との結合で解決した現在の商品名です。
+        unitPrice は購入時点の単価スナップショットです。
+      required:
+        - productId
+        - productName
+        - quantity
+        - unitPrice
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: 5266f905-1af4-477a-bc7c-e69729e22a2b
+        productName:
+          type: string
+          description: 商品名（products との結合で解決した現在名）
+          example: ワイヤレスイヤホン
         quantity:
           type: integer
           format: int32

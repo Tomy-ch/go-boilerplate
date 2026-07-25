@@ -63,6 +63,8 @@ tags:
     description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
   - name: v1/purchases
     description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
+  - name: v1/purchases/detail
+    description: 単一購入の詳細取得（本人のみ・集約跨ぎ QueryService・明細に商品名/未存在は 404 で秘匿）。
   - name: v1/purchases/detail/cancel
     description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
   - name: v1/purchases/detail/pay
@@ -116,6 +118,8 @@ paths:
     $ref: './paths/v1/addresses.yaml'
   /v1/purchases:
     $ref: './paths/v1/purchases.yaml'
+  /v1/purchases/{purchaseId}:
+    $ref: './paths/v1/purchases/purchaseId.yaml'
   /v1/purchases/{purchaseId}/cancel:
     $ref: './paths/v1/purchases/purchaseId/cancel.yaml'
   /v1/purchases/{purchaseId}/pay:
@@ -230,6 +234,10 @@ components:
       $ref: './components/responses/purchases/PurchaseListResponse.yaml'
     PurchaseDetailResponse:
       $ref: './components/schemas/PurchaseDetailResponse.yaml'
+    PurchaseGetDetailResponse:
+      $ref: './components/schemas/PurchaseGetDetailResponse.yaml'
+    PurchaseDetailItemResponse:
+      $ref: './components/schemas/PurchaseDetailItemResponse.yaml'
     PurchaseDetailInput:
       $ref: './components/schemas/PurchaseDetailInput.yaml'
     RequestPostV1Purchases:
