@@ -202,13 +202,12 @@ do NOT start a duplicate DB stack or hijack another checkout's containers. Witho
 targets default to `local` / `test` on 5432 / 8080 / 4000 (single-stack, unchanged).
 Details: `docs/maintenance/db-worktree-pool.md`.
 
-**Schema-dump contamination guard (worktree + `make gen-query`):** the `dump-schema` step of
-`make gen-query` / `make gen-*` `pg_dump`s the shared `local` DB — NOT the slot DB — so another
-worktree's migrations can leak into this branch's generated `schema.gen.sql` / `models.gen.go`
-(issue #657). Before running `make gen-query` in a worktree, rebuild the shared `local` from THIS
-branch's migrations so the dump reflects only your schema: `make db-local-reinit`
-(drop-tables → migrate-up → seed). After generating, `git diff` the generated artifacts for foreign
-columns before committing. Interim manual guard until #657's deterministic dump lands.
+**DB clean-up (worktree slot pool):** the pool shares one Postgres instance, so tables from another
+branch's migrations can linger in a DB you reuse. As part of clean-up — at the start of DB-backed
+work, and whenever the shared DB carries stale tables — rebuild your DB from THIS branch's migrations
+so you always work against a clean, migration-faithful schema: `make db-acquire` re-creates the
+slot's `wt<N>` DBs this way, and `make db-local-reinit` / `db-test-reinit` drop every `public` table
+then migrate-up + seed the shared `local` / `test`.
 
 ## Protected Documentation
 
