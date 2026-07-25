@@ -202,6 +202,13 @@ do NOT start a duplicate DB stack or hijack another checkout's containers. Witho
 targets default to `local` / `test` on 5432 / 8080 / 4000 (single-stack, unchanged).
 Details: `docs/maintenance/db-worktree-pool.md`.
 
+**DB clean-up (worktree slot pool):** the pool shares one Postgres instance, so tables from another
+branch's migrations can linger in a DB you reuse. As part of clean-up — at the start of DB-backed
+work, and whenever the shared DB carries stale tables — rebuild your DB from THIS branch's migrations
+so you always work against a clean, migration-faithful schema: `make db-acquire` re-creates the
+slot's `wt<N>` DBs this way, and `make db-local-reinit` / `db-test-reinit` drop every `public` table
+then migrate-up + seed the shared `local` / `test`.
+
 ## Protected Documentation
 
 `AGENTS.md` must be maintained by humans only. AI agents must NOT modify it unless explicitly

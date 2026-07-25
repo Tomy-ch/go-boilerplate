@@ -467,6 +467,11 @@ linters:
         - pattern: '^fmt\.Errorf$'
           msg: "禁止：fmt.Errorf は使用しないでください。
                 pkg/xerrors の New / Wrap / Join を使用してください。"
+        - pattern: '^time\.Now$'
+          pkg: '^time$'
+          msg: "禁止：現在時刻は clock.Clock（internal/usecase/boundary/clock）の Now() で取得してください。
+                domain / usecase での time.Now() は固定時刻に差し替えられず非決定的なテストを招きます
+                （本ルールは exclusions.rules で domain / usecase 層のみに限定しています）。"
       analyze-types: true
     funcorder:
       constructor: true
@@ -529,6 +534,12 @@ linters:
       - path: pkg/ptr/ptr_test\.go
         linters:
           - modernize
+      # time.Now の禁止（forbidigo）は domain / usecase 層でのみ適用する。
+      # infrastructure は clock の具体実装を提供し、controller / di は計測・ロギング用途で time.Now() を許容する。
+      - path-except: internal/(domain|usecase)/
+        linters:
+          - forbidigo
+        text: 'time\.Now'
 
 run:
   timeout: "3m"
