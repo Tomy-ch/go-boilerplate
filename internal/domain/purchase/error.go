@@ -28,14 +28,14 @@ var (
 	ErrInvalidAmount = xerrors.Wrap(errInvalid, "amount failed")
 
 	// ErrInsufficientStock は、在庫不足（売り越し）の場合のエラーです。
-	// 在庫は時間依存の外部状態でありリクエスト自体は妥当なため、409（ErrConflict）へ写像します（ADR-0038）。
+	// 在庫は時間依存の外部状態でありリクエスト自体は妥当なため、409（ErrConflict）へ写像します（ADR-0039）。
 	ErrInsufficientStock = xerrors.Wrap(apperror.ErrConflict, "insufficient stock")
 
 	// ErrAlreadyCanceled は、既にキャンセル済みの購入を再度キャンセルしようとした場合のエラーです。
-	// 冪等でない状態遷移の衝突であり、409（ErrConflict）へ写像します（ADR-0038）。
+	// 冪等でない状態遷移の衝突であり、409（ErrConflict）へ写像します（ADR-0039）。
 	ErrAlreadyCanceled = xerrors.Wrap(apperror.ErrConflict, "purchase already canceled")
 
 	// ErrCancelNotAllowed は、キャンセル不可の状態（完了・発送済み・配達済み）からキャンセルしようとした場合のエラーです。
-	// 状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0038）。
+	// 状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0039）。
 	ErrCancelNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be canceled in the current state")
 )

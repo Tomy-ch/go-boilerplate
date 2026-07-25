@@ -1,6 +1,6 @@
--- name: IncrementProductStock :exec
--- 在庫を数量分復元（加算）する。キャンセル時の在庫復元は #571 の防御的減算の逆操作であり、
--- 相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要（購入行ロック下で実行）。
+-- name: IncrementProductStock :execrows
+-- 在庫を数量分復元（加算）する。相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要
+-- （購入行ロック下で実行）。対象行が不存在の場合は影響 0 行として呼び出し側で NotFound へ fail-closed 検出する。
 UPDATE products
 SET
     quantity = quantity + @quantity_param,

@@ -7,6 +7,7 @@ package gen
 
 import (
 	"context"
+	"time"
 
 	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
@@ -95,7 +96,7 @@ func (q *Queries) GetPurchaseByIDForUpdate(ctx context.Context, id uuid.UUID) (*
 	return &i, err
 }
 
-const incrementProductStock = `-- name: IncrementProductStock :exec
+const incrementProductStock = `-- name: IncrementProductStock :execrows
 UPDATE products
 SET
     quantity = quantity + $1,
@@ -109,17 +110,20 @@ type IncrementProductStockParams struct {
 }
 
 // === source: database/dml/command_service/purchase/increment_product_stock.sql ===
-// 在庫を数量分復元（加算）する。キャンセル時の在庫復元は #571 の防御的減算の逆操作であり、
-// 相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要（購入行ロック下で実行）。
+// 在庫を数量分復元（加算）する。相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要
+// （購入行ロック下で実行）。対象行が不存在の場合は影響 0 行として呼び出し側で NotFound へ fail-closed 検出する。
 //
 //	UPDATE products
 //	SET
 //	    quantity = quantity + $1,
 //	    updated_at = NOW()
 //	WHERE id = $2
-func (q *Queries) IncrementProductStock(ctx context.Context, arg *IncrementProductStockParams) error {
-	_, err := q.db.Exec(ctx, incrementProductStock, arg.QuantityParam, arg.ProductIDParam)
-	return err
+func (q *Queries) IncrementProductStock(ctx context.Context, arg *IncrementProductStockParams) (int64, error) {
+	result, err := q.db.Exec(ctx, incrementProductStock, arg.QuantityParam, arg.ProductIDParam)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertPurchase = `-- name: InsertPurchase :exec
@@ -305,19 +309,20 @@ SET
         SELECT ps.id FROM purchase_statuses AS ps
         WHERE ps.code = $1
     ),
-    canceled_at = NOW(),
+    canceled_at = $2,
     updated_at = NOW()
-WHERE purchases.id = $2
+WHERE purchases.id = $3
 `
 
 type UpdatePurchaseCanceledParams struct {
 	StatusCode int16
+	CanceledAt *time.Time
 	ID         uuid.UUID
 }
 
 // === source: database/dml/command_service/purchase/update_purchase_canceled.sql ===
 // 購入をキャンセル状態へ更新する。status_id は code から解決し（seed UUID を焼き込まない）、
-// canceled_at / updated_at を NOW() でセットする（status と timestamp の同時セット・ADR-0028）。
+// canceled_at はドメインが決定した時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
 // 対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、遷移可否ガードは付けない（ドメインが SoT）。
 //
 //	UPDATE purchases
@@ -326,10 +331,10 @@ type UpdatePurchaseCanceledParams struct {
 //	        SELECT ps.id FROM purchase_statuses AS ps
 //	        WHERE ps.code = $1
 //	    ),
-//	    canceled_at = NOW(),
+//	    canceled_at = $2,
 //	    updated_at = NOW()
-//	WHERE purchases.id = $2
+//	WHERE purchases.id = $3
 func (q *Queries) UpdatePurchaseCanceled(ctx context.Context, arg *UpdatePurchaseCanceledParams) error {
-	_, err := q.db.Exec(ctx, updatePurchaseCanceled, arg.StatusCode, arg.ID)
+	_, err := q.db.Exec(ctx, updatePurchaseCanceled, arg.StatusCode, arg.CanceledAt, arg.ID)
 	return err
 }

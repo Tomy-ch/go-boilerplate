@@ -11,9 +11,9 @@ WHERE id = @product_id_param
     AND quantity >= @quantity_param;
 
 -- === source: database/dml/command_service/purchase/increment_product_stock.sql ===
--- name: IncrementProductStock :exec
--- 在庫を数量分復元（加算）する。キャンセル時の在庫復元は #571 の防御的減算の逆操作であり、
--- 相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要（購入行ロック下で実行）。
+-- name: IncrementProductStock :execrows
+-- 在庫を数量分復元（加算）する。相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要
+-- （購入行ロック下で実行）。対象行が不存在の場合は影響 0 行として呼び出し側で NotFound へ fail-closed 検出する。
 UPDATE products
 SET
     quantity = quantity + @quantity_param,
@@ -93,7 +93,7 @@ FOR UPDATE OF p;
 -- === source: database/dml/command_service/purchase/update_purchase_canceled.sql ===
 -- name: UpdatePurchaseCanceled :exec
 -- 購入をキャンセル状態へ更新する。status_id は code から解決し（seed UUID を焼き込まない）、
--- canceled_at / updated_at を NOW() でセットする（status と timestamp の同時セット・ADR-0028）。
+-- canceled_at はドメインが決定した時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
 -- 対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、遷移可否ガードは付けない（ドメインが SoT）。
 UPDATE purchases
 SET
@@ -101,6 +101,6 @@ SET
         SELECT ps.id FROM purchase_statuses AS ps
         WHERE ps.code = @status_code
     ),
-    canceled_at = NOW(),
+    canceled_at = @canceled_at,
     updated_at = NOW()
 WHERE purchases.id = @id;

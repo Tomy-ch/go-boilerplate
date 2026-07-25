@@ -130,7 +130,7 @@ workflow:
 ## PATCH キャンセル (purchase cancel)
 
 `PATCH /v1/purchases/{purchaseId}/cancel`。本人の購入をキャンセルする状態遷移経路。状態機械の source of truth は
-`status_id`（現在状態）で、timestamps（`canceled_at` / `shipped_at` / `delivered_at`）はイベント発生の監査記録として併用する（[ADR-0028]）。
+`status_id`（現在状態）で、timestamps（`canceled_at` / `shipped_at` / `delivered_at`）はイベント発生の監査記録として併用する。
 在庫復元は `POST /v1/purchases` の在庫減算と対称な同一 tx 強整合で、[ADR-0027] の CommandService に対称実装する（原子性方式は [ADR-0029]）。
 キャンセル後の状態名解決は詳細読み取りモデル（`purchase.Detail`、GET 詳細で再利用可能な Repository read）で JOIN 解決する。
 

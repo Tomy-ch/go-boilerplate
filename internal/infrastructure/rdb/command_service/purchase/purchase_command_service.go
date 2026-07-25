@@ -163,16 +163,19 @@ func (c *commandService) CancelPurchase(ctx context.Context, p *purchase.Purchas
 	db := gen.New(driver.New(ctx, c.db))
 
 	for _, d := range p.Details() {
-		if err := db.IncrementProductStock(ctx, &gen.IncrementProductStockParams{
+		affected, err := db.IncrementProductStock(ctx, &gen.IncrementProductStockParams{
 			QuantityParam:  toInt32(d.Quantity()),
 			ProductIDParam: d.ProductID(),
-		}); err != nil {
-			return pgerror.NormalizeError(err)
+		})
+		// 対象商品が不存在（影響 0 行）なら fail-closed で NotFound（減算側の売り越しガードと対称の二重防御）。
+		if nerr := pgerror.NormalizeExecResult(affected, err); nerr != nil {
+			return nerr
 		}
 	}
 
 	if err := db.UpdatePurchaseCanceled(ctx, &gen.UpdatePurchaseCanceledParams{
 		StatusCode: toInt16(p.StatusCode()),
+		CanceledAt: p.CanceledAt(),
 		ID:         p.ID(),
 	}); err != nil {
 		return pgerror.NormalizeError(err)

@@ -234,7 +234,8 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、状態遷移と在庫復元の部分適用を防ぐ。
+	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。状態遷移と在庫復元を
+	// 単一 tx にまとめ部分適用を防ぐ。二重キャンセルは購入行ロック + 状態チェック（ErrAlreadyCanceled）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseID)
 		if lerr != nil {
