@@ -858,7 +858,46 @@ func Test_run_safeHandle(t *testing.T) {
 
 func Test_run_startHeartbeat(t *testing.T) {
 	t.Parallel()
-	t.Skip("Extend ハートビートは engine 統合テスト TestEngine_Run/engineRunExtendCalledPeriodically・engineRunNoExtendWhenIntervalNonPositive でカバー")
+
+	// Extend の周期発火（ticker.C 経路）と done 停止経路は engine 統合テスト
+	// TestEngine_Run/engineRunExtendCalledPeriodically・engineRunExtendErrorHeartbeatContinues でカバーする。
+	// ここでは engine 経由では done と競合して非決定になる ctx.Done() 停止経路を、ticker を実質無効化して
+	// 決定的に検証する（停止クロージャが goroutine 終了を待つ契約も併せて確認する）。
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ctxキャンセルでハートビートgoroutineが停止する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			set := baseSettings()
+			set.ExtendInterval = time.Hour // ticker.C を発火させず、停止トリガを ctx.Done() のみに限定する
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, set, w), w)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			stop := r.startHeartbeat(ctx, bw.Message{ID: "a"})
+			cancel() // ctx.Done() を唯一の ready case にして goroutine を停止させる
+			stop()   // goroutine の完全終了（stopped の close）を待つ
+
+			assert.Equal(t, 0, f.ExtendCount("a")) // ticker 未発火のため Extend は呼ばれない
+		})
+
+		t.Run("ExtendIntervalが0以下の場合はハートビートを起動しない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			set := baseSettings()
+			set.ExtendInterval = 0
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, set, w), w)
+
+			stop := r.startHeartbeat(context.Background(), bw.Message{ID: "a"})
+			stop() // no-op クロージャ（goroutine を起動していない）
+
+			assert.Equal(t, 0, f.ExtendCount("a"))
+		})
+	})
 }
 
 func Test_run_handleResult(t *testing.T) {

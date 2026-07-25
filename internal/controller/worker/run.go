@@ -217,7 +217,11 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 
 	ticker := time.NewTicker(interval)
 	done := make(chan struct{})
+	// stopped は goroutine の終了を通知する。停止クロージャがこれを待つことで、worker 停止後に
+	// heartbeat goroutine が残らないこと（graceful-stop 契約）を保証する。
+	stopped := make(chan struct{})
 	go func() {
+		defer close(stopped)
 		for {
 			select {
 			case <-done:
@@ -244,6 +248,7 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 	return func() {
 		ticker.Stop()
 		close(done)
+		<-stopped // goroutine の完全終了を待つ（停止後に heartbeat が残らないことを保証）
 	}
 }
 
