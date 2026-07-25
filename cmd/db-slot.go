@@ -14,11 +14,13 @@ import (
 )
 
 const (
-	defaultPoolMaxSlots     = 8
-	defaultPoolTTLSeconds   = 1800
-	defaultPoolAPIBasePort  = 8080
-	defaultPoolMockBasePort = 4000
-	defaultPoolPGPort       = 5432
+	defaultPoolMaxSlots      = 8
+	defaultPoolTTLSeconds    = 1800
+	defaultPoolAPIBasePort   = 8080
+	defaultPoolMockBasePort  = 4000
+	defaultPoolDlvBasePort   = 2345
+	defaultPoolPprofBasePort = 6060
+	defaultPoolPGPort        = 5432
 )
 
 // newDBSlotCommand は、worktree 並列開発用の DB スロットプールを操作するコマンドを生成します。
@@ -82,6 +84,8 @@ func newSlotPool() (*dbslot.Pool, error) {
 		SharedProject: envStr("GOBP_DB_SHARED_PROJECT", "gobp-shared"),
 		APIBasePort:   envInt("GOBP_API_POOL_BASE", defaultPoolAPIBasePort),
 		MockAuthBase:  envInt("GOBP_MOCK_AUTH_POOL_BASE", defaultPoolMockBasePort),
+		DlvBase:       envInt("GOBP_DLV_POOL_BASE", defaultPoolDlvBasePort),
+		PprofBase:     envInt("GOBP_PPROF_POOL_BASE", defaultPoolPprofBasePort),
 		APPEnv:        os.Getenv("APP_ENV"),
 	}
 	return dbslot.NewPool(reg, admin, dbslot.ExecCompose{}, cfg, os.Stdout, os.Stderr), nil

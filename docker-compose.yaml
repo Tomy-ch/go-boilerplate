@@ -8,11 +8,11 @@ services:
       dockerfile: docker/server/Dockerfile
       target: tooling
     ports:
-      # API ポートは DB スロットプール（scripts/db-pool）が worktree 毎に割り当てる（既定 8080）。
-      # 複数 worktree で同時に make serve するための分離。コンテナ内部は常に 8080。
+      # ホスト公開ポートは DB スロットプール（cmd/db-slot）が worktree 毎に割り当てる（既定 8080/2345/6060）。
+      # 複数 worktree で同時に make serve するための分離。コンテナ内部は常に固定。
       - "${API_HOST_PORT:-8080}:8080"   # APIポート
-      - "2345:2345"   # デバッグ(dlv)ポート
-      - "6060:6060"   # メトリクス(pprof)ポート
+      - "${DLV_HOST_PORT:-2345}:2345"   # デバッグ(dlv)ポート
+      - "${PPROF_HOST_PORT:-6060}:6060" # メトリクス(pprof)ポート
     volumes:
       - .:/app
     extra_hosts:
@@ -35,8 +35,9 @@ services:
   database: # PostgreSQLデータベース
     image: postgres:18.3-bookworm@sha256:80630f83606d8db77d30b3851b16a9f78be2d0d4dda6f7b82a1fdca5ebe3acba
     ports:
-      # DB コンテナは全 worktree 共有の単一インスタンス（ホスト 5432 固定）。worktree の
-      # 並列化は per-worktree のデータベース（wt<N>_local / wt<N>_test）で行う（scripts/db-pool）。
+      # 固定ポートを持つ共有インフラ（database / observability / garage）は、全 checkout が
+      # 単一プロジェクト gobp-shared の 1 インスタンスを共有する。worktree の並列化は
+      # per-worktree のデータベース（wt<N>_local / wt<N>_test）で行う（cmd/db-slot）。
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql

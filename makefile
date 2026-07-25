@@ -2,6 +2,8 @@
 .DEFAULT_GOAL := help
 
 # 依存されるファイル
+# Docker関連
+include .makefiles/docker/compose.mk
 # DB関連
 include .makefiles/database/vars.mk
 # Go言語関連
