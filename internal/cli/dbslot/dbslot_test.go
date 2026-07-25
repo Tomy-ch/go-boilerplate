@@ -205,6 +205,79 @@ func TestPool_Acquire(t *testing.T) {
 	})
 }
 
+func TestPool_slotInUse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("app コンテナが稼働していれば使用中と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			pool, _, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(1, nil)
+
+			busy, err := pool.slotInUse(context.Background(), 1)
+
+			require.NoError(t, err)
+			assert.True(t, busy)
+		})
+
+		t.Run("コンテナが無くても DB 接続があれば使用中と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			pool, admin, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
+			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(2, nil)
+
+			busy, err := pool.slotInUse(context.Background(), 1)
+
+			require.NoError(t, err)
+			assert.True(t, busy)
+		})
+
+		t.Run("コンテナも DB 接続も無ければ未使用と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			pool, admin, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
+			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(0, nil)
+
+			busy, err := pool.slotInUse(context.Background(), 1)
+
+			require.NoError(t, err)
+			assert.False(t, busy)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("コンテナ確認が失敗すればエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			pool, _, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, errBoom)
+
+			_, err := pool.slotInUse(context.Background(), 1)
+
+			require.ErrorIs(t, err, errBoom)
+		})
+
+		t.Run("接続確認が失敗すればエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			pool, admin, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
+			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(0, errBoom)
+
+			_, err := pool.slotInUse(context.Background(), 1)
+
+			require.ErrorIs(t, err, errBoom)
+		})
+	})
+}
+
 func TestPool_Release(t *testing.T) {
 	t.Parallel()
 
