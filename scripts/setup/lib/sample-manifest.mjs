@@ -196,8 +196,6 @@ export const SAMPLE_DOMAINS = {
       "database/migrations/000012_create_purchases.down.sql",
       "database/migrations/000013_create_purchase_details.up.sql",
       "database/migrations/000013_create_purchase_details.down.sql",
-      "database/migrations/000015_add_purchase_statuses_paid_shipped_delivered.up.sql",
-      "database/migrations/000015_add_purchase_statuses_paid_shipped_delivered.down.sql",
       // Go 各層
       "internal/domain/purchase",
       "internal/usecase/purchase",

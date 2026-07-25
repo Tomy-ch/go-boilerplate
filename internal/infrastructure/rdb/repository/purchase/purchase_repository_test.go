@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 既存 seed / migration 000015 の FK 対象（支払い済みは code=7）。
+// 既存 seed の FK 対象（支払い済みは code=7）。
 const (
 	seedStatusInStock  = "093170fb-83a2-4864-a2b3-53236eaf3597"
 	seedCategory       = "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
