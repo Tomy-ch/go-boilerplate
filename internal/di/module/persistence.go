@@ -1,13 +1,14 @@
 package module
 
 import (
-	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"        // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                       // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/product"                          // sample-api:line
-	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category" // sample-api:line
-	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"  // sample-api:line
-	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase"            // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/user"                             // sample-api:line
+	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"           // sample-api:line
+	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking" // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                          // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/product"                             // sample-api:line
+	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category"    // sample-api:line
+	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"     // sample-api:line
+	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase"               // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/user"                                // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
 	outboxsq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox"
@@ -36,9 +37,10 @@ func persistenceModule() fx.Option {
 		),
 		fx.Module("query_service",
 			fx.Provide(
-			// sample-api:begin
-			// クエリサービスは、このサンプルでは用意しませんが、必要に応じてここに追加します。
-			// sample-api:end
+				// sample-api:begin
+				// サンプルのクエリサービス（購入明細を集計した商品売上ランキング）
+				productrankingqs.New,
+				// sample-api:end
 			),
 		),
 		fx.Module("command_service",
