@@ -1,15 +1,16 @@
 package module
 
 import (
-	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"           // sample-api:line
-	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking" // sample-api:line
-	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"        // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                          // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/product"                             // sample-api:line
-	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category"    // sample-api:line
-	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"     // sample-api:line
-	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase"               // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/user"                                // sample-api:line
+	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"             // sample-api:line
+	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking"   // sample-api:line
+	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"          // sample-api:line
+	purchasesummaryqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/summary" // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                            // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/product"                               // sample-api:line
+	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category"      // sample-api:line
+	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"       // sample-api:line
+	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase"                 // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/user"                                  // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
 	outboxsq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox"
@@ -43,6 +44,8 @@ func persistenceModule() fx.Option {
 				productrankingqs.New,
 				// サンプルのクエリサービス（購入詳細の集約跨ぎ read 投影）
 				purchasedetailqs.New,
+				// サンプルのクエリサービス（認証主体自身の購入集計）
+				purchasesummaryqs.New,
 				// sample-api:end
 			),
 		),
