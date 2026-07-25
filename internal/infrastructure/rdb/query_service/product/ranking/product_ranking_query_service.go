@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/product/ranking/query"
 )
 
@@ -17,13 +18,15 @@ const rankingWindow30d = 30 * 24 * time.Hour
 
 type service struct {
 	db     driver.DatabaseDriver
+	clk    clock.Clock
 	tracer observability.LayerTracer
 }
 
 // New は、商品売上ランキングのクエリサービス実装を生成して返します。
-func New(db driver.DatabaseDriver, tf observability.TracerFactory) query.ProductRankingQueryService {
+func New(db driver.DatabaseDriver, clk clock.Clock, tf observability.TracerFactory) query.ProductRankingQueryService {
 	return &service{
 		db:     db,
+		clk:    clk,
 		tracer: tf.Infra(),
 	}
 }
@@ -33,7 +36,7 @@ func (s *service) ListRanking(ctx context.Context, params query.RankingQueryPara
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	filterByPeriod, orderedAfter := resolvePeriod(params.Period, time.Now())
+	filterByPeriod, orderedAfter := resolvePeriod(params.Period, s.clk.Now())
 
 	db := gen.New(driver.New(ctx, s.db))
 	rows, err := db.ListProductRanking(ctx, &gen.ListProductRankingParams{

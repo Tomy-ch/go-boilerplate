@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
+	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/product/ranking/query"
 	"go-boilerplate/pkg/uuid"
 
@@ -92,9 +93,8 @@ func Test_service_ListRanking(t *testing.T) {
 	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
-	svc := &service{db: testDB, tracer: lt}
-
 	now := time.Now()
+	svc := &service{db: testDB, clk: clocktestkit.NewMockClock(t, now), tracer: lt}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -214,7 +214,7 @@ func Test_service_ListRanking(t *testing.T) {
 			})
 		})
 
-		t.Run("period=30dは30日境界の内側の注文を含み境界より古い注文を除外する", func(t *testing.T) {
+		t.Run("period=30dは境界ちょうどの注文を含み境界より古い注文を除外する", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -222,13 +222,12 @@ func Test_service_ListRanking(t *testing.T) {
 				product := mustParse(t, "aa100000-0000-4000-8000-000000000001")
 				insertProduct(ctx, t, drv, product, "10", "境界商品")
 
-				// ListRanking は内部で time.Now() から境界を算出するため、直前に基準時刻を確定する。
-				// マージンはサービスが後続で呼ぶ time.Now() の進みを吸収しつつ、30 日境界の内外を判別する。
-				boundary := time.Now().Add(-30 * 24 * time.Hour)
+				// サービスは固定 clock の now を基準に境界を算出するため、同じ now から境界を厳密に再現する。
+				boundary := now.Add(-rankingWindow30d)
 				insidePurchase := mustParse(t, "aa100000-0000-4000-8000-0000000000f1")
 				outsidePurchase := mustParse(t, "aa100000-0000-4000-8000-0000000000f2")
-				insertPurchase(ctx, t, drv, insidePurchase, boundary.Add(10*time.Second), nil)
-				insertPurchase(ctx, t, drv, outsidePurchase, boundary.Add(-10*time.Second), nil)
+				insertPurchase(ctx, t, drv, insidePurchase, boundary, nil)
+				insertPurchase(ctx, t, drv, outsidePurchase, boundary.Add(-time.Second), nil)
 				insertDetail(ctx, t, drv, mustParse(t, "aa100000-0000-4000-8000-0000000000d1"), insidePurchase, product, 3)
 				insertDetail(ctx, t, drv, mustParse(t, "aa100000-0000-4000-8000-0000000000d2"), outsidePurchase, product, 40)
 
@@ -320,11 +319,13 @@ func TestNew(t *testing.T) {
 
 	testDB := testkit.NewTestDB(t)
 	tf := observability.NewNoopTracerFactory(t)
+	clk := clocktestkit.NewMockClock(t, time.Now())
 	expected := &service{
 		db:     testDB,
+		clk:    clk,
 		tracer: tf.Infra(),
 	}
-	actual := New(testDB, tf)
+	actual := New(testDB, clk, tf)
 	assert.Equal(t, expected, actual)
 }
 
