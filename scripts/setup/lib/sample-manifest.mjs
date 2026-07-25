@@ -217,8 +217,6 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_purchases_detail_test.go",
       "internal/integration/v1_purchases_cancel_test.go",
       "internal/integration/v1_purchases_pay_test.go",
-      // 購入集計（GET /v1/users/me/purchases/summary）。OpenAPI パスと handler は user ドメインの
-      // "openapi/paths/v1/users" / "internal/controller/handler/v1/users" 配下にあり、そちらで削除される。
       "internal/integration/v1_users_me_purchases_summary_test.go",
       // DML
       "database/dml/command_service/purchase",
