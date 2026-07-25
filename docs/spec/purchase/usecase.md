@@ -177,6 +177,51 @@ workflow:
     - ErrUnauthenticated → 401（Authn 不在）
 ```
 
+## GET 集計（購入サマリ・me）
+
+`GET /v1/users/me/purchases/summary`。認証主体自身の購入の総件数・合計金額・ステータス別内訳を返す集計読み取り経路
+（マイページの集計カード用。一覧・明細は返さない）。`COUNT` / `SUM` / `GROUP BY` の結果は購入集約を再構成できない
+**派生投影**であり、[ADR-0027] が Repository から集計を明示除外しているため **QueryService**（`internal/usecase/purchase/query`）に置く
+（ステータス名解決だけで済む一覧の Repository read とは経路を分ける。集計は購入集約側に置き、user 配下には置かない）。
+配置判断は ADR-0027 + `docs/rules.md` § Repository / QueryService Rules で既に固定化されているため**新規 ADR は発行しない**。
+所有権は QS の `WHERE p.user_id = @user_id` で担保し、パスに他者識別子を持たないため所有権チェックは不要。書き込みを伴わないため tx は不要。
+
+ユースケースは `internal/usecase/purchase/purchase_usecase.go`（tx / CommandService / outbox を持つ書き込み中心の集約）ではなく、
+読み取り専用の別パッケージ `internal/usecase/purchase/summary` に置く（`product/ranking` と同じ集計 read の形。
+`purchase.PurchaseSummaryView` は一覧要素の DTO 名として既に使われており、集計 DTO と名前空間が衝突する点も理由）。
+
+```yaml
+input:
+  - authn: "*auth.Authn"       # 認証主体。nil は Unauthenticated（401）。UserID() を QS の所有権述語へ渡す
+
+output:
+  struct: SummaryView          # package summary
+  fields:
+    - name: TotalCount / TotalAmount
+      type: int64              # 総件数 / 合計金額（USD セント整数）。購入 0 件でも 0 を返しエラーにしない
+    - name: StatusBreakdown
+      type: "[]StatusCountView"  # { StatusID, StatusName, Count, TotalAmount }。購入に出現したステータスのみ・マスタ表示順（sort_key 昇順）
+
+dependencies:
+  - query.PurchaseSummaryQueryService   # SummarizeByUserID（ステータス単位の COUNT / SUM・所有権 SQL 述語）
+  - observability.TracerFactory
+
+workflow:
+  tx_required: false               # read-only
+  steps:
+    - authn == nil なら ErrUnauthenticated（401）
+    - authn.UserID() を取得（未解決はエラー伝播）
+    - qs.SummarizeByUserID(userID) でステータス別の件数・金額を 1 クエリで取得
+    - ステータス別の集計値を総件数・合計金額へ畳み込み SummaryView へ写像（総計と内訳が同一スナップショットで整合する）
+  errors:
+    - ErrUnauthenticated → 401（Authn 不在）
+```
+
+キャンセル済みの購入も総件数・合計金額に含める。キャンセルはステータス別内訳の 1 要素として件数・金額とも返るため、
+キャンセルを除いた値が必要なクライアントは内訳から差し引ける。総計から除外する設計は、内訳の母数と総計が食い違ううえ、
+「何を純額とするか」という業務方針を API に焼き込むことになるため採らない（会計・決済 API の慣行どおり、
+キャンセルを負値で表現することもしない。金額は非負のまま状態で区別する）。
+
 ## PATCH キャンセル (purchase cancel)
 
 `PATCH /v1/purchases/{purchaseId}/cancel`。本人の購入をキャンセルする状態遷移経路。状態機械の source of truth は
@@ -297,6 +342,8 @@ workflow:
 
 - 冪等スコープは内部 UserID（#581 の確定に追随）。middleware が Scope を設定し、本 usecase 側の固有作業はない。
 - `referenceAmount` は非永続・参考表示専用。丸めは half-up（[ADR-0099]）で、ドメインの切り捨て金額とは目的が異なるため規則が分かれる（[ADR-0100]）。
+- 購入集計（`GET /v1/users/me/purchases/summary`）の `WHERE user_id = $1` は、購入履歴一覧用の複合インデックス
+  `purchases (user_id, ordered_at DESC, id DESC)`（migration 000012）の先頭列で解決できるため、集計専用のインデックス追加は不要。
 
 [ADR-0027]: ../../adr/0027-lightweight-cqrs.md
 [ADR-0028]: ../../adr/0028-system-cqrs-dml-category.md
