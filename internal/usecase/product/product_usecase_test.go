@@ -9,13 +9,16 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/kernel/money"
 	domainproduct "go-boilerplate/internal/domain/product"
+	mock_category "go-boilerplate/internal/domain/product/category/mock"
 	mock_product "go-boilerplate/internal/domain/product/mock"
+	mock_status "go-boilerplate/internal/domain/product/status/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	mock_objectstorage "go-boilerplate/internal/usecase/boundary/objectstorage/mock"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
@@ -50,7 +53,8 @@ func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainpro
 		ptr.To(2),
 		status,
 		category,
-		publishedAt,
+		ptr.To(publishedAt),
+		nil,
 	)
 	require.NoError(t, err)
 	return p
@@ -73,12 +77,24 @@ func TestNew(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		tf := observability.NewNoopTracerFactory(t)
+		txm := mock_tx.NewMockManager(ctrl)
 		repo := mock_product.NewMockRepository(ctrl)
+		categoryRepo := mock_category.NewMockRepository(ctrl)
+		statusRepo := mock_status.NewMockRepository(ctrl)
 		storage := mock_objectstorage.NewMockStorage(ctrl)
 		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 
-		expected := &usecase{tracer: tf.Usecase(), repo: repo, storage: storage, authorizer: authorizer, maxUploadBytes: 5242880}
-		actual := New(repo, storage, authorizer, 5242880, tf)
+		expected := &usecase{
+			tracer:         tf.Usecase(),
+			txm:            txm,
+			repo:           repo,
+			categoryRepo:   categoryRepo,
+			statusRepo:     statusRepo,
+			storage:        storage,
+			authorizer:     authorizer,
+			maxUploadBytes: 5242880,
+		}
+		actual := New(txm, repo, categoryRepo, statusRepo, storage, authorizer, 5242880, tf)
 
 		assert.Equal(t, expected, actual)
 	})
@@ -261,7 +277,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			decoded, dErr := decodeProductCursor(cursor)
 			require.NoError(t, dErr)
 			// NextCursor は切り詰め後の末尾行(p2)を指す。
-			assert.Equal(t, p2.PublishedAt(), decoded.publishedAt)
+			assert.Equal(t, ptr.Deref(p2.PublishedAt(), time.Time{}), decoded.publishedAt)
 			assert.Equal(t, p2.ID(), decoded.id)
 		})
 

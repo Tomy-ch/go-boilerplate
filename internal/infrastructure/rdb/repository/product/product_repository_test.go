@@ -102,7 +102,7 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				last := firstPage[len(firstPage)-1]
 				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
 					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
-					AfterPublishedAt: ptr.To(last.PublishedAt()), AfterID: ptr.To(last.ID()),
+					AfterPublishedAt: last.PublishedAt(), AfterID: ptr.To(last.ID()),
 				})
 				require.NoError(t, err)
 				require.Len(t, secondPage, 2)
@@ -281,7 +281,8 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 				assert.Equal(t, mustParse(t, categoryElectronics), got.Category().ID())
 				assert.Equal(t, "電子機器", got.Category().Name())
 				// DB は timestamptz をローカルタイムゾーンで返すため、格納した瞬間の一致で比較する。
-				assert.True(t, base.Equal(got.PublishedAt()))
+				require.NotNil(t, got.PublishedAt())
+				assert.True(t, base.Equal(*got.PublishedAt()))
 			})
 		})
 	})
@@ -384,7 +385,8 @@ func Test_rowToProduct(t *testing.T) {
 			assert.Equal(t, "在庫あり", got.Status().Name())
 			assert.Equal(t, categoryID, got.Category().ID())
 			assert.Equal(t, "電子機器", got.Category().Name())
-			assert.Equal(t, publishedAt, got.PublishedAt())
+			require.NotNil(t, got.PublishedAt())
+			assert.Equal(t, publishedAt, *got.PublishedAt())
 		})
 	})
 
@@ -437,6 +439,132 @@ func Test_rowToProduct(t *testing.T) {
 			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: ""})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}
+
+func Test_repository_Create(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("商品を登録し image_path / published_at / 説明を往復して取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuid.NewTestFromSalt(t, "create_roundtrip_id")
+				publishedAt := time.Date(2099, time.June, 1, 0, 0, 0, 0, time.UTC)
+				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
+				require.NoError(t, err)
+				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
+				require.NoError(t, err)
+				price, err := money.NewPrice(decimal.FromInt(1999))
+				require.NoError(t, err)
+				entity, err := domainproduct.New(
+					id, "作成商品", ptr.To("<p>リッチテキスト説明</p>"), price, 100, ptr.To(10),
+					statusRef, categoryRef, ptr.To(publishedAt), ptr.To("products/created.png"),
+				)
+				require.NoError(t, err)
+
+				require.NoError(t, repo.Create(ctx, entity))
+
+				got, err := repo.FindPublishedByID(ctx, id)
+				require.NoError(t, err)
+				assert.Equal(t, "作成商品", got.Name())
+				require.NotNil(t, got.Description())
+				assert.Equal(t, "<p>リッチテキスト説明</p>", *got.Description())
+				require.NotNil(t, got.ImagePath())
+				assert.Equal(t, "products/created.png", *got.ImagePath())
+				require.NotNil(t, got.PublishedAt())
+				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
+			})
+		})
+
+		t.Run("image_path / published_at が nil の場合、DB へ NULL として登録される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuid.NewTestFromSalt(t, "create_nil_optional_id")
+				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
+				require.NoError(t, err)
+				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
+				require.NoError(t, err)
+				price, err := money.NewPrice(decimal.FromInt(500))
+				require.NoError(t, err)
+				entity, err := domainproduct.New(
+					id, "未公開商品", nil, price, 0, nil,
+					statusRef, categoryRef, nil, nil,
+				)
+				require.NoError(t, err)
+
+				require.NoError(t, repo.Create(ctx, entity))
+
+				// 公開述語(published_at IS NOT NULL)で除外されるため FindPublishedByID では読み戻せない。
+				// 実際に NULL 列として書き込まれたことを生 SQL で直接検証する。
+				var publishedAt *time.Time
+				var imagePath *string
+				err = driver.New(ctx, testDB).
+					QueryRow(ctx, "SELECT published_at, image_path FROM products WHERE id = $1", id).
+					Scan(&publishedAt, &imagePath)
+				require.NoError(t, err)
+				assert.Nil(t, publishedAt)
+				assert.Nil(t, imagePath)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "create_canceled_id")
+			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
+			require.NoError(t, err)
+			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
+			require.NoError(t, err)
+			price, err := money.NewPrice(decimal.FromInt(100))
+			require.NoError(t, err)
+			entity, err := domainproduct.New(
+				id, "キャンセル商品", nil, price, 1, nil,
+				statusRef, categoryRef, nil, nil,
+			)
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			// db.CreateProduct が context.Canceled を返し、pgerror.NormalizeError が ErrCanceled へ正規化する。
+			err = repo.Create(ctx, entity)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_intPtrToInt32Ptr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilの場合はnilを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, intPtrToInt32Ptr(nil))
+		})
+
+		t.Run("非nilの場合は値を保持したint32ポインタを返す", func(t *testing.T) {
+			t.Parallel()
+			got := intPtrToInt32Ptr(ptr.To(42))
+			require.NotNil(t, got)
+			assert.Equal(t, int32(42), *got)
 		})
 	})
 }

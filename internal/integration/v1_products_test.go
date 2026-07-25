@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -36,12 +37,55 @@ func TestV1Products_Integration(t *testing.T) {
 			Quantity:    100,
 			StatusID:    uuid.NewTestFromSalt(t, "integration_status"),
 			CategoryID:  uuid.NewTestFromSalt(t, "integration_category"),
-			PublishedAt: time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC),
+			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
+			ImagePath:   ptr.To("products/integration_product.png"),
 		}
+	}
+
+	productCreateBody := func(t *testing.T) *gen.PostProductsJSONRequestBody {
+		t.Helper()
+		return &gen.PostProductsJSONRequestBody{
+			Name:        "商品",
+			Description: ptr.To("<p>リッチテキスト説明</p>"),
+			Price:       "19.99",
+			Quantity:    100,
+			CategoryId:  uuid.NewTestFromSalt(t, "integration_category").ToPrimitive(),
+			StatusId:    uuid.NewTestFromSalt(t, "integration_status").ToPrimitive(),
+			ImagePath:   ptr.To("products/integration_product.png"),
+		}
+	}
+
+	availableAdmin := func(t *testing.T, e *echo.Echo) http.Header {
+		t.Helper()
+		return MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "integration_admin"))
 	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("POST /v1/products が admin で 201 を返し imagePath を往復する", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().CreateProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(sampleView(t), nil)
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			headers := availableAdmin(t, e)
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/products", productCreateBody(t), headers)
+			require.Equal(t, http.StatusCreated, actual.StatusCode)
+
+			var body gen.ProductResponse
+			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
+			require.NotNil(t, body.ImagePath)
+			assert.Equal(t, "products/integration_product.png", *body.ImagePath)
+			require.NotNil(t, body.Description)
+			assert.Equal(t, "説明", *body.Description)
+		})
 
 		t.Run("GET /v1/products が未認証でも ProductListResponse を返す", func(t *testing.T) {
 			t.Parallel()
@@ -138,6 +182,63 @@ func TestV1Products_Integration(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("POST /v1/products が権限エラー(usecase)を403へ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().CreateProduct(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.ProductView{}, apperror.ErrPermissionDenied)
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			headers := availableAdmin(t, e)
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/products", productCreateBody(t), headers)
+			AssertErrorResponse(t, actual, http.StatusForbidden)
+		})
+
+		t.Run("POST /v1/products が負価格・負在庫などの検証違反で422を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().CreateProduct(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.ProductView{}, apperror.ErrValidation)
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			headers := availableAdmin(t, e)
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/products", productCreateBody(t), headers)
+			AssertErrorResponse(t, actual, http.StatusUnprocessableEntity)
+		})
+
+		t.Run("POST /v1/products が status/category 不在(整合性異常)で500を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().CreateProduct(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.ProductView{}, apperror.ErrInternal)
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			headers := availableAdmin(t, e)
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/products", productCreateBody(t), headers)
+			AssertErrorResponse(t, actual, http.StatusInternalServerError)
+		})
 
 		t.Run("GET /v1/products が不正な after で 400 を返す", func(t *testing.T) {
 			t.Parallel()

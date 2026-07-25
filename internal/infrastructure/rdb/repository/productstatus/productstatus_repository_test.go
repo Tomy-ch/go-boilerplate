@@ -161,3 +161,48 @@ func Test_rowToProductStatus(t *testing.T) {
 		})
 	})
 }
+
+func Test_repository_FindByID(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("IDから商品ステータスを取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			inStockID, err := uuid.Parse("093170fb-83a2-4864-a2b3-53236eaf3597")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByID(ctx, inStockID)
+				require.NoError(t, err)
+				require.NotNil(t, actual)
+				assert.Equal(t, inStockID, actual.ID())
+				assert.Equal(t, "在庫あり", actual.Name())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しないIDはNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			missingID := uuid.NewTestFromSalt(t, "status_missing")
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByID(ctx, missingID)
+				assert.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+	})
+}
