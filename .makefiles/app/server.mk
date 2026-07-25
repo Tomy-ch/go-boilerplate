@@ -31,23 +31,23 @@ serve:
 	@$(COMPOSE_APP) up -d $(APP_SERVICES)
 	@# スロット保持時のみ heartbeat を更新する（未取得なら何もしない）。
 	@go run ./cmd/ db-slot heartbeat
-	@echo "✅ 開発環境の起動が完了しました。API: http://localhost:$(API_HOST_PORT) (project=$(APP_PROJECT))"
+	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080} (project=$(APP_PROJECT_SH))"
 
 serve-build:
 	@echo "🧰 ビルド後、開発環境を起動します。"
 	@$(MAKE) infra-up
 	@$(COMPOSE_APP) up -d --build $(APP_SERVICES)
-	@echo "✅ 開発環境の起動が完了しました。API: http://localhost:$(API_HOST_PORT)"
+	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080}"
 
 serve-build-clean:
 	@echo "🧹 クリーンビルド後、開発環境を起動します（--no-cache --pull）。"
 	@$(COMPOSE_APP) build --no-cache --pull $(APP_SERVICES)
 	@$(MAKE) infra-up
 	@$(COMPOSE_APP) up -d $(APP_SERVICES)
-	@echo "✅ 開発環境の起動が完了しました。API: http://localhost:$(API_HOST_PORT)"
+	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080}"
 
 serve-stop:
-	@echo "🛑 app コンテナを停止します... (project=$(APP_PROJECT))"
+	@$(LOAD_SLOT); echo "🛑 app コンテナを停止します... (project=$(APP_PROJECT_SH))"
 	@$(COMPOSE_APP) down
 	@echo "✅ app コンテナを停止しました（共有インフラは稼働したままです）。"
 
