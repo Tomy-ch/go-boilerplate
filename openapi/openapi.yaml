@@ -57,6 +57,8 @@ tags:
     description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/detail
     description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
+  - name: v1/products/ranking
+    description: 商品売上ランキング（認証不要・購入明細の集計 / query_service サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: v1/addresses
@@ -108,6 +110,8 @@ paths:
     $ref: './paths/v1/products.yaml'
   /v1/products/{productId}:
     $ref: './paths/v1/products/productId.yaml'
+  /v1/products/ranking:
+    $ref: './paths/v1/products/ranking.yaml'
   /v1/products/images:
     $ref: './paths/v1/products/images.yaml'
   /v1/exchange-rates:
@@ -212,6 +216,10 @@ components:
       $ref: './components/schemas/ProductResponse.yaml'
     ProductListResponse:
       $ref: './components/responses/products/ProductListResponse.yaml'
+    ProductRankingItem:
+      $ref: './components/schemas/products/ProductRankingItem.yaml'
+    ProductRankingResponse:
+      $ref: './components/responses/products/ranking/ProductRankingResponse.yaml'
     ProductImageResponse:
       $ref: './components/schemas/ProductImageResponse.yaml'
     RequestPostV1ProductImages:

@@ -1,0 +1,10 @@
+type: object
+description: 売上ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
+required:
+  - rankings
+properties:
+  rankings:
+    type: array
+    description: 販売数量の降順で並んだ商品ランキングです。
+    items:
+      $ref: '../../../schemas/products/ProductRankingItem.yaml'
