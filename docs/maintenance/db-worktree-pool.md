@@ -23,7 +23,11 @@
   無視する。
 - **占有情報** = acquire が worktree ルートに `.gobp-db-slot`（gitignore）を書き出す。`make` が
   `-include` して以下を全ターゲットへ伝播する:
-  - `COMPOSE_PROJECT_NAME` = `gobp-shared`（DB ツーリング migrate/seed/psql/gen が共有 DB を指す）
+  - `COMPOSE_PROJECT_NAME` = `gobp-shared`（DB ツーリング migrate/seed/psql が共有 DB を指す）。
+    ただし `make gen-query` の `dump-schema` だけは例外で、共有 `local` を汚染源にしないよう当該
+    ブランチの migration から再構築した専用 `gen_schema` DB をダンプする。他 worktree の migration
+    が生成物へ混入するのを防ぐためのローカル専用ガードで、CI は fresh な postgres を migrate 済みで
+    `dump-schema-ci` を直接呼ぶため影響しない。
   - `DB_NAME_LOCAL` / `DB_NAME_TEST` = `wt<N>_local` / `wt<N>_test`（host 実行の `go test` は
     共有 DB の localhost:5432 経由でこの名前の自 worktree DB へ繋ぐ。`internal/config` のテスト設定が参照）
   - `API_HOST_PORT` = `8080+N` / `MOCK_AUTH_HOST_PORT` = `4000+N`（`make serve` の並列化用ポート）
