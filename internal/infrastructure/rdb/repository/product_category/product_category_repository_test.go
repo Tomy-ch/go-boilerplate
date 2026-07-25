@@ -159,3 +159,48 @@ func Test_rowToProductCategory(t *testing.T) {
 		})
 	})
 }
+
+func Test_repository_FindByID(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("IDから商品カテゴリを取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			electronicsID, err := uuid.Parse("5dd52d84-78eb-4a52-ba0b-2e11c95c2af2")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByID(ctx, electronicsID)
+				require.NoError(t, err)
+				require.NotNil(t, actual)
+				assert.Equal(t, electronicsID, actual.ID())
+				assert.Equal(t, "電子機器", actual.Name())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しないIDはNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			missingID := uuid.NewTestFromSalt(t, "category_missing")
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByID(ctx, missingID)
+				assert.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+	})
+}

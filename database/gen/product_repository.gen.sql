@@ -1,4 +1,31 @@
 
+-- === source: database/dml/repository/product/insert_product.sql ===
+-- name: CreateProduct :exec
+INSERT INTO products (
+    id,
+    name,
+    description,
+    price,
+    quantity,
+    stock_warning_threshold,
+    status_id,
+    category_id,
+    published_at,
+    image_path
+) VALUES
+(
+    sqlc.arg('id'),
+    sqlc.arg('name'),
+    sqlc.arg('description'),
+    sqlc.arg('price'),
+    sqlc.arg('quantity'),
+    sqlc.arg('stock_warning_threshold'),
+    sqlc.arg('status_id'),
+    sqlc.arg('category_id'),
+    sqlc.arg('published_at'),
+    sqlc.arg('image_path')
+);
+
 -- === source: database/dml/repository/product/select_products.sql ===
 -- name: ListPublishedProductsDesc :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。

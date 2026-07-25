@@ -11,6 +11,44 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
+const getProductCategoryByID = `-- name: GetProductCategoryByID :one
+SELECT
+    pc.id,
+    pc.name,
+    pc.code,
+    pc.sort_key
+FROM product_categories AS pc
+WHERE pc.id = $1
+`
+
+type GetProductCategoryByIDRow struct {
+	ID      uuid.UUID
+	Name    string
+	Code    int16
+	SortKey int16
+}
+
+// === source: database/dml/repository/product_category/select_product_category_by_id.sql ===
+//
+//	SELECT
+//	    pc.id,
+//	    pc.name,
+//	    pc.code,
+//	    pc.sort_key
+//	FROM product_categories AS pc
+//	WHERE pc.id = $1
+func (q *Queries) GetProductCategoryByID(ctx context.Context, id uuid.UUID) (*GetProductCategoryByIDRow, error) {
+	row := q.db.QueryRow(ctx, getProductCategoryByID, id)
+	var i GetProductCategoryByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Code,
+		&i.SortKey,
+	)
+	return &i, err
+}
+
 const getProductCategoryDomainAll = `-- name: GetProductCategoryDomainAll :many
 SELECT
     pc.id,

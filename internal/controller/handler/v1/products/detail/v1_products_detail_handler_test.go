@@ -42,7 +42,8 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		StatusName:            "在庫あり",
 		CategoryID:            uuid.NewTestFromSalt(t, salt+"_category"),
 		CategoryName:          "電子機器",
-		PublishedAt:           time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC),
+		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
+		ImagePath:             ptr.To("products/" + salt + ".png"),
 	}
 }
 
@@ -72,6 +73,7 @@ func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 			Name: dto.CategoryName,
 		},
 		PublishedAt: dto.PublishedAt,
+		ImagePath:   dto.ImagePath,
 	}
 }
 

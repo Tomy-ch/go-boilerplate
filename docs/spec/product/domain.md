@@ -1,8 +1,9 @@
 # Product — Domain Spec
 
-> `GET /v1/products`（公開商品一覧・cursor + フィルタ + keyword + sort）の read source となる商品集約の spec。
-> 本 PBI では参照（一覧取得）のみを対象とし、生成・更新系は含まない。名称解決を要する `statusID` / `categoryID` は
-> ID 参照のみを保持し、名称は別集約（商品ステータス / 商品カテゴリのマスタ API）で解決する（self-contained / option b）。
+> `GET /v1/products`（公開商品一覧・cursor + フィルタ + keyword + sort）の read source、および
+> `POST /v1/products`（admin 商品作成）の write target となる商品集約の spec。`statusID` / `categoryID` は
+> ID と名称の参照（`StatusRef` / `CategoryRef`）で保持し、名称は作成時に usecase が別集約（商品ステータス /
+> 商品カテゴリのマスタ）から解決して埋める。
 
 ## Overview
 
@@ -47,13 +48,16 @@ fields:
     type: uuid.UUID
     required: true          # IsNil の場合は ErrInvalidCategoryID
   - name: publishedAt
-    type: time.Time
-    required: true          # ゼロ値は ErrInvalidPublishedAt。一覧は公開済みのみを対象とするため常に非ゼロ
+    type: "*time.Time"
+    required: false         # nil 許容（未公開）。一覧取得は published_at 非 NULL のみを返すため一覧経由では常に非 nil
+  - name: imagePath
+    type: "*string"
+    required: false         # nil 許容（画像未設定）。無検証で保持（サニタイズは表示側の責務）
 ```
 
 > `createdAt` / `updatedAt`（監査列）は本 read model のドメイン不変条件に不要なため保持しない。
-> DB カラム `published_at` は NULL 許容だが、一覧クエリが `published_at IS NOT NULL` で絞り込むため、
-> 再構築されるエンティティの `publishedAt` は常に値を持つ（NULL 行は ErrInvalidPublishedAt として ErrInternal に正規化）。
+> DB カラム `published_at` は NULL 許容で、未公開商品を作成できる。一覧クエリは `published_at IS NOT NULL` で
+> 絞り込むため、一覧経由で再構築されるエンティティの `publishedAt` は常に値を持つ。
 
 ## Cross-field Invariants
 
@@ -93,6 +97,13 @@ fields:
     公開述語は FindPublishedList と同一（published_at 非 NULL）で、一覧と詳細の可視範囲を一致させる。
     未存在・非公開はいずれも取得失敗を NotFound として返し、未ログイン経路へ商品の存在を秘匿する。
     可視性判断は SQL に閉じ、usecase / controller には分岐を置かない（ADR-0027: 単一集約の ID fetch は Repository）。
+
+- name: Create
+  signature: Create(ctx context.Context, p *Product) error
+  behavior: |
+    商品を新規登録する。image_path を含む全列を INSERT する。
+    マスタ存在は usecase が作成前に確認し、不在は整合性異常として ErrInternal（500）に落とす（正典の 500 経路）。
+    テーブルの status_id / category_id の FK 制約は多層防御の保険であり、通常経路では到達しない。
 
 # ListParams（domain の read クエリ条件。不透明カーソルは持たず、境界を primitive で受け取る）
 - struct: ListParams

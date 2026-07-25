@@ -43,7 +43,8 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		StatusName:            "在庫あり",
 		CategoryID:            uuid.NewTestFromSalt(t, salt+"_category"),
 		CategoryName:          "電子機器",
-		PublishedAt:           time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC),
+		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
+		ImagePath:             ptr.To("products/" + salt + ".png"),
 	}
 }
 
@@ -73,6 +74,7 @@ func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 			Name: dto.CategoryName,
 		},
 		PublishedAt: dto.PublishedAt,
+		ImagePath:   dto.ImagePath,
 	}
 }
 
@@ -106,13 +108,14 @@ func TestBindHandler(t *testing.T) {
 	BindHandler(e, tf, mockApp)
 
 	routes := e.Routes()
-	require.Len(t, routes, 2)
-	methodByPath := make(map[string]string, len(routes))
+	require.Len(t, routes, 3)
+	registered := make(map[string]bool, len(routes))
 	for _, r := range routes {
-		methodByPath[r.Path] = r.Method
+		registered[r.Method+" "+r.Path] = true
 	}
-	assert.Equal(t, http.MethodGet, methodByPath[targetPath])
-	assert.Equal(t, http.MethodPost, methodByPath[targetPath+"/images"])
+	assert.True(t, registered[http.MethodGet+" "+targetPath])
+	assert.True(t, registered[http.MethodPost+" "+targetPath])
+	assert.True(t, registered[http.MethodPost+" "+targetPath+"/images"])
 }
 
 func Test_server_GetProducts(t *testing.T) {

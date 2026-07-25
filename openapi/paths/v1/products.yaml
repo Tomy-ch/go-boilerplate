@@ -30,3 +30,40 @@ get:
       $ref: '../../components/schemas/errors/InternalServerError500.yaml'
     '503':
       $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
+post:
+  operationId: PostProducts
+  tags:
+    - v1/products
+  summary: 商品の作成
+  description: |
+    商品を作成します。認証必須（admin のみ・非 admin は 403）。
+    description はリッチテキスト HTML を許容し、そのまま格納します（表示側でサニタイズします）。
+    imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+    price の非数値は 400、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+  security:
+    - BearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/requests/products/ProductsPostRequest.yaml'
+  responses:
+    '201':
+      description: 商品の作成に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ProductResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../components/schemas/errors/Forbidden403.yaml'
+    '422':
+      $ref: '../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'

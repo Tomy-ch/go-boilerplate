@@ -102,7 +102,7 @@ func Test_encodeProductCursor(t *testing.T) {
 			require.NoError(t, err)
 			last, err := product.New(
 				id, "商品名", ptr.To("説明"), mustPrice(t, "5.00"), 3, ptr.To(1),
-				status, category, publishedAt,
+				status, category, ptr.To(publishedAt), nil,
 			)
 			require.NoError(t, err)
 
