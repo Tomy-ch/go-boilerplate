@@ -18,6 +18,8 @@ methods:
     signature: CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
   - name: GetPurchases   # GET /v1/purchases（購入履歴一覧・cursor）。詳細は「## GET 一覧（購入履歴）」
     signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error)
+  - name: CancelPurchase # PATCH /v1/purchases/{purchaseId}/cancel。詳細は「## PATCH キャンセル」
+    signature: CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
 ```
 
 ## DTOs
@@ -122,6 +124,63 @@ workflow:
     - PurchaseSummaryView へ写像（他ユーザーの購入は SQL の所有権フィルタで空扱い）
   errors:
     - ErrInvalidArgument → 400（不正 cursor）
+    - 未認証は controller で 401（Authn 不在）
+```
+
+## PATCH キャンセル (purchase cancel)
+
+`PATCH /v1/purchases/{purchaseId}/cancel`。本人の購入をキャンセルする状態遷移経路。状態機械の source of truth は
+`status_id`（現在状態）で、timestamps（`canceled_at` / `shipped_at` / `delivered_at`）はイベント発生の監査記録として併用する（[ADR-0028]）。
+在庫復元は `POST /v1/purchases` の在庫減算と対称な同一 tx 強整合で、[ADR-0027] の CommandService に対称実装する（原子性方式は [ADR-0029]）。
+キャンセル後の状態名解決は詳細読み取りモデル（`purchase.Detail`、GET 詳細で再利用可能な Repository read）で JOIN 解決する。
+
+```yaml
+input:
+  struct: CancelPurchaseParams
+  fields:
+    - name: PurchaseID           # キャンセル対象の購入 ID
+      type: uuid.UUID
+    - name: UserID               # 認証済みの内部ユーザー ID（所有権検証）
+      type: uuid.UUID
+
+output:
+  struct: CancelPurchaseView
+  fields:
+    - name: ID / Code / UserID
+      type: uuid.UUID / string / uuid.UUID
+    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（キャンセル）
+      type: uuid.UUID / string
+    - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
+      type: int                     # USD セント整数
+    - name: Details
+      type: "[]PurchaseDetailView"
+    - name: OrderedAt
+      type: time.Time
+    - name: CanceledAt
+      type: "*time.Time"            # キャンセル日時
+
+dependencies:
+  - clock.Clock                     # Cancel(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
+  - tx.Manager                      # nested で最外 idempotency tx に乗る
+  - command.CommandService          # LockPurchase（FOR UPDATE）/ CancelPurchase（在庫加算 + status/canceled_at 更新）
+  - purchase.Repository             # FindDetailByID（書き込み後の状態名解決・DTO 取得元）
+  - outbox.EmitUsecase              # purchase.canceled.v1 の emit（同一 tx）
+
+workflow:
+  tx_required: true                 # nested（最外は idempotency.Run が所有）
+  steps:
+    - "txm.Do(nested) 内で:"
+    - "  ① cmd.LockPurchase で購入行を FOR UPDATE ロックし明細込みで再構築（並行キャンセルを直列化）"
+    - "  ② purchase.UserID() != params.UserID なら NotFound へ畳む（存在秘匿）"
+    - "  ③ purchase.Cancel(now) で遷移可否検証 + status/canceled_at を同時更新（ドメイン不変条件）"
+    - "  ④ cmd.CancelPurchase で明細分の在庫加算 + purchases の status_id/canceled_at 更新"
+    - "  ⑤ emit.Emit(purchase.canceled.v1) を同一 tx で発行する"
+    - "  ⑥ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
+    - CancelPurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
+  errors:
+    - ErrAlreadyCanceled → 409（二重キャンセル）
+    - ErrCancelNotAllowed → 409（完了・発送済み・配達済みからの不正遷移）
+    - ErrNotFound → 404（不存在・他人の購入の存在秘匿）
     - 未認証は controller で 401（Authn 不在）
 ```
 
