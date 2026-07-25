@@ -1,15 +1,15 @@
 package module
 
 import (
-	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase" // sample-api:line
+	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"           // sample-api:line
 	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking" // sample-api:line
-	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase" // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture" // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/product" // sample-api:line
-	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category" // sample-api:line
-	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus" // sample-api:line
-	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase" // sample-api:line
-	"go-boilerplate/internal/infrastructure/rdb/repository/user" // sample-api:line
+	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"        // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                          // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/product"                             // sample-api:line
+	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category"    // sample-api:line
+	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"     // sample-api:line
+	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase"               // sample-api:line
+	"go-boilerplate/internal/infrastructure/rdb/repository/user"                                // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
 	outboxsq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox"
