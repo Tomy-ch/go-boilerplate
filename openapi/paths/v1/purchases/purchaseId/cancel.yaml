@@ -1,0 +1,35 @@
+patch:
+  operationId: PatchPurchasesCancel
+  tags:
+    - v1/purchases/detail/cancel
+  summary: 購入のキャンセル
+  description: |
+    認証主体（本人）の購入をキャンセルします。認証必須です。
+    キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 / 支払い済み）からのみ遷移でき、
+    status を「キャンセル」へ更新し canceledAt をセットします。完了・キャンセル済み、および
+    発送済み（shippedAt）・配達済み（deliveredAt）の購入は 409 で拒否します。
+    キャンセル時に購入明細分の在庫を復元します（作成時の在庫減算と対称・同一トランザクションで強整合）。
+    他ユーザーの購入は 404 で存在を秘匿します。金額はすべて USD セント単位の整数です。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/purchase/PurchaseIdParam.yaml'
+  responses:
+    '200':
+      description: 購入のキャンセルに成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/schemas/PurchaseCancelResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '404':
+      $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '409':
+      $ref: '../../../../components/schemas/errors/Conflict409.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'
