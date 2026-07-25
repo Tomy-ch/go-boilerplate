@@ -10,6 +10,7 @@ import (
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/observability"
+	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/exchangerate"
 	mock_exchangerate "go-boilerplate/internal/usecase/exchangerate/mock"
 	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
@@ -49,9 +50,11 @@ func rereadPurchase(t *testing.T) *domainpurchase.Purchase {
 		"reread-code",
 		uuid.NewTestFromSalt(t, "reread_user"),
 		uuid.NewTestFromSalt(t, "reread_status"),
+		domainpurchase.StatusCodeUnprocessed,
 		160000, 16000, 500, 176500,
 		details,
 		time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+		nil, nil, nil,
 	)
 	require.NoError(t, err)
 	return p
@@ -74,7 +77,8 @@ func TestNew(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			xr := mock_exchangerate.NewMockUsecase(ctrl)
 
-			actual := New(txm, cmd, repo, emit, xr, tf)
+			clk := clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC))
+			actual := New(txm, cmd, repo, emit, xr, clk, tf)
 			require.NotNil(t, actual)
 		})
 	})
@@ -91,6 +95,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			tracer: observability.NewNoopTracerFactory(t).Usecase(),
 			txm:    testkit.NewMockTransactionManager(t),
 			cmd:    cmd, repo: repo, emit: emit, xr: xr,
+			clock: clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)),
 		}
 	}
 
@@ -368,6 +373,172 @@ func Test_toPurchaseView(t *testing.T) {
 			assert.Equal(t, entity.Details()[0].Quantity(), view.Details[0].Quantity)
 			assert.True(t, entity.Details()[0].UnitPrice().Decimal().Equal(view.Details[0].UnitPrice))
 			assert.Nil(t, view.ReferenceAmount)
+		})
+	})
+}
+
+func Test_usecase_CancelPurchase(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.NewTestFromSalt(t, "cancel_uc_user")
+	purchaseID := uuid.NewTestFromSalt(t, "cancel_uc_id")
+
+	// lockable は、cmd.LockPurchase が返す再構築済み購入を生成するローカルヘルパーです。
+	lockable := func(t *testing.T, owner uuid.UUID, statusCode int) *domainpurchase.Purchase {
+		t.Helper()
+		details := []domainpurchase.PurchaseDetail{
+			domainpurchase.NewPurchaseDetail(
+				uuid.NewTestFromSalt(t, "cancel_uc_d1"),
+				uuid.NewTestFromSalt(t, "cancel_uc_p1"),
+				2,
+				mustPrice(t, "800"),
+			),
+		}
+		p, err := domainpurchase.Reconstruct(
+			purchaseID, "cancel-uc-code", owner, uuid.NewTestFromSalt(t, "cancel_uc_status"),
+			statusCode, 160000, 16000, 500, 176500, details,
+			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil,
+		)
+		require.NoError(t, err)
+		return p
+	}
+
+	// newUC は、指定 mock を注入した usecase を生成するローカルヘルパーです。
+	newUC := func(t *testing.T, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
+		t.Helper()
+		return &usecase{
+			tracer: observability.NewNoopTracerFactory(t).Usecase(),
+			txm:    testkit.NewMockTransactionManager(t),
+			cmd:    cmd, repo: repo, emit: emit,
+			clock: clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)),
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロック→所有権検証→キャンセル→在庫復元→emit→再読込を経てキャンセルビューを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(nil)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+
+			canceledAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+			detail := &domainpurchase.Detail{
+				ID:             purchaseID,
+				Code:           "cancel-uc-code",
+				UserID:         userID,
+				StatusID:       uuid.NewTestFromSalt(t, "cancel_uc_canceled_status"),
+				StatusName:     "キャンセル",
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details: []domainpurchase.PurchaseDetail{
+					domainpurchase.NewPurchaseDetail(
+						uuid.NewTestFromSalt(t, "cancel_uc_d1"),
+						uuid.NewTestFromSalt(t, "cancel_uc_p1"),
+						2,
+						mustPrice(t, "800"),
+					),
+				},
+				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+				CanceledAt: &canceledAt,
+			}
+			repo.EXPECT().FindDetailByID(gomock.Any(), purchaseID).Return(detail, nil)
+
+			u := newUC(t, cmd, repo, emit)
+			view, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.NoError(t, err)
+			assert.Equal(t, detail.StatusID, view.StatusID)
+			assert.Equal(t, "キャンセル", view.StatusName)
+			require.NotNil(t, view.CanceledAt)
+			assert.Equal(t, canceledAt, *view.CanceledAt)
+			require.Len(t, view.Details, 1)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("他人の購入の場合、ErrNotFoundを返し在庫復元を行わない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			otherOwner := uuid.NewTestFromSalt(t, "cancel_uc_other")
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusCodeUnprocessed), nil)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+
+		t.Run("不正遷移（完了）の場合、ErrCancelNotAllowedを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeCompleted), nil)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, domainpurchase.ErrCancelNotAllowed)
+		})
+	})
+}
+
+func Test_toCancelPurchaseView(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("詳細読み取りモデルをキャンセルビューへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			canceledAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+			d := &domainpurchase.Detail{
+				ID:             uuid.NewTestFromSalt(t, "tcv_id"),
+				Code:           "tcv-code",
+				UserID:         uuid.NewTestFromSalt(t, "tcv_user"),
+				StatusID:       uuid.NewTestFromSalt(t, "tcv_status"),
+				StatusName:     "キャンセル",
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details: []domainpurchase.PurchaseDetail{
+					domainpurchase.NewPurchaseDetail(uuid.NewTestFromSalt(t, "tcv_d"), uuid.NewTestFromSalt(t, "tcv_p"), 2, mustPrice(t, "800")),
+				},
+				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+				CanceledAt: &canceledAt,
+			}
+
+			view := toCancelPurchaseView(d)
+			assert.Equal(t, d.ID, view.ID)
+			assert.Equal(t, d.Code, view.Code)
+			assert.Equal(t, d.UserID, view.UserID)
+			assert.Equal(t, d.StatusID, view.StatusID)
+			assert.Equal(t, "キャンセル", view.StatusName)
+			assert.Equal(t, d.TotalAmount, view.TotalAmount)
+			require.NotNil(t, view.CanceledAt)
+			assert.Equal(t, canceledAt, *view.CanceledAt)
+			require.Len(t, view.Details, 1)
+			assert.Equal(t, d.Details[0].ProductID(), view.Details[0].ProductID)
+			assert.True(t, d.Details[0].UnitPrice().Decimal().Equal(view.Details[0].UnitPrice))
 		})
 	})
 }
