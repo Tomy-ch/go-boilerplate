@@ -41,14 +41,17 @@ type ProductResponse struct {
 	// Id 商品ID
 	Id openapi_types.UUID `json:"id"`
 
+	// ImagePath 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
+	ImagePath *string `json:"imagePath"`
+
 	// Name 商品名
 	Name string `json:"name"`
 
 	// Price 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
 	Price string `json:"price"`
 
-	// PublishedAt 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
-	PublishedAt time.Time `json:"publishedAt"`
+	// PublishedAt 公開日時。未公開の場合は null です。
+	PublishedAt *time.Time `json:"publishedAt"`
 
 	// Quantity 在庫数
 	Quantity int32 `json:"quantity"`

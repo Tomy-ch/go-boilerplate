@@ -1,0 +1,125 @@
+package product
+
+import (
+	"context"
+	"time"
+
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/product"
+	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
+	"go-boilerplate/pkg/decimal"
+	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
+)
+
+// 商品が参照する status / category を解決できない参照整合性破れ（サーバ側データ不整合）を表します。
+var (
+	errMissingStatus   = xerrors.Wrap(apperror.ErrInternal, "status not found for product")
+	errMissingCategory = xerrors.Wrap(apperror.ErrInternal, "category not found for product")
+)
+
+// CreateProductParams は、商品作成の入力パラメータです。price は十進文字列で受け取り usecase で解釈します。
+type CreateProductParams struct {
+	Name                  string
+	Description           *string
+	Price                 string
+	Quantity              int
+	StockWarningThreshold *int
+	CategoryID            uuid.UUID
+	StatusID              uuid.UUID
+	PublishedAt           *time.Time
+	ImagePath             *string
+}
+
+// CreateProduct は、admin 認可のうえ、status / category の名称を解決して商品を作成します。
+// status / category の不在は整合性異常として 500、負価格・負在庫・名称長超過は 422 を返します。
+func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	if authn == nil {
+		return ProductView{}, apperror.ErrUnauthenticated
+	}
+	if err := u.authorizer.Authorize(ctx, authn, authz.ActionProductCreate, authz.NewResource("product", nil)); err != nil {
+		return ProductView{}, err
+	}
+
+	price, err := decimal.Parse(params.Price)
+	if err != nil {
+		return ProductView{}, xerrors.Wrap(apperror.ErrInvalidArgument, "price is not a valid decimal: "+err.Error())
+	}
+	productPrice, err := money.NewPrice(price)
+	if err != nil {
+		return ProductView{}, err
+	}
+
+	id, err := uuid.New()
+	if err != nil {
+		return ProductView{}, xerrors.Wrap(err, "failed to generate product id")
+	}
+
+	var entity *product.Product
+	err = u.txm.Do(ctx, func(ctx context.Context) error {
+		statusRef, categoryRef, err := u.resolveRefs(ctx, params.StatusID, params.CategoryID)
+		if err != nil {
+			return err
+		}
+
+		entity, err = product.New(
+			id,
+			params.Name,
+			params.Description,
+			productPrice,
+			params.Quantity,
+			params.StockWarningThreshold,
+			statusRef,
+			categoryRef,
+			params.PublishedAt,
+			params.ImagePath,
+		)
+		if err != nil {
+			return err
+		}
+
+		return u.repo.Create(ctx, entity)
+	})
+	if err != nil {
+		return ProductView{}, err
+	}
+
+	return toProductView(entity), nil
+}
+
+// resolveRefs は、status / category の ID から名称を解決し、商品ステータス参照・カテゴリ参照を構築します。
+// マスタ不在は参照整合性破れ（errMissingStatus / errMissingCategory）としてサーバ内部エラーへ正規化します。
+func (u *usecase) resolveRefs(
+	ctx context.Context, statusID, categoryID uuid.UUID,
+) (product.StatusRef, product.CategoryRef, error) {
+	statusEntity, err := u.statusRepo.FindByID(ctx, statusID)
+	if err != nil {
+		if xerrors.Is(err, apperror.ErrNotFound) {
+			return product.StatusRef{}, product.CategoryRef{}, errMissingStatus
+		}
+		return product.StatusRef{}, product.CategoryRef{}, err
+	}
+	statusRef, err := product.NewStatusRef(statusEntity.ID(), statusEntity.Name())
+	if err != nil {
+		return product.StatusRef{}, product.CategoryRef{}, err
+	}
+
+	categoryEntity, err := u.categoryRepo.FindByID(ctx, categoryID)
+	if err != nil {
+		if xerrors.Is(err, apperror.ErrNotFound) {
+			return product.StatusRef{}, product.CategoryRef{}, errMissingCategory
+		}
+		return product.StatusRef{}, product.CategoryRef{}, err
+	}
+	categoryRef, err := product.NewCategoryRef(categoryEntity.ID(), categoryEntity.Name())
+	if err != nil {
+		return product.StatusRef{}, product.CategoryRef{}, err
+	}
+
+	return statusRef, categoryRef, nil
+}

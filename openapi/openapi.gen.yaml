@@ -58,6 +58,8 @@ tags:
     description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/detail
     description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
+  - name: v1/products/ranking
+    description: 商品売上ランキング（認証不要・購入明細の集計 / query_service サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: v1/addresses
@@ -548,6 +550,43 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+    post:
+      operationId: PostProducts
+      tags:
+        - v1/products
+      summary: 商品の作成
+      description: |
+        商品を作成します。認証必須（admin のみ・非 admin は 403）。
+        description はリッチテキスト HTML を許容し、そのまま格納します（表示側でサニタイズします）。
+        imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+        price の非数値は 400、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductsPostRequest'
+      responses:
+        '201':
+          description: 商品の作成に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/products/{productId}:
     get:
       operationId: GetProductsDetail
@@ -572,6 +611,34 @@ paths:
           $ref: '#/components/responses/BadRequest400'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/ranking:
+    get:
+      operationId: GetProductsRanking
+      tags:
+        - v1/products/ranking
+      summary: 商品売上ランキングの取得
+      description: |
+        購入明細を集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
+        キャンセル済み（canceled_at が設定済み）の購入は集計から除外します。未払いの購入は集計に含みます。
+        period=30d の場合は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+        同一販売数量の商品は商品 ID の昇順で安定的に並びます。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RankingPeriodParam'
+        - $ref: '#/components/parameters/RankingLimitParam'
+      responses:
+        '200':
+          description: 販売数量の降順で取得した商品ランキング
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRankingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -1026,6 +1093,30 @@ components:
         type: string
         format: uuid
         example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+    RankingPeriodParam:
+      name: period
+      in: query
+      description: |
+        集計対象期間。`all`（既定）は全期間、`30d` は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+      required: false
+      schema:
+        type: string
+        enum:
+          - all
+          - 30d
+        default: all
+        example: all
+    RankingLimitParam:
+      name: limit
+      in: query
+      description: 取得する上位件数。売上数量の降順で上位 limit 件を返します。
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 10
     PurchaseIdParam:
       name: purchaseId
       in: path
@@ -1355,6 +1446,7 @@ components:
         - status
         - category
         - publishedAt
+        - imagePath
       properties:
         id:
           type: string
@@ -1394,8 +1486,14 @@ components:
         publishedAt:
           type: string
           format: date-time
-          description: 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
+          nullable: true
+          description: 公開日時。未公開の場合は null です。
           example: '2026-01-01T00:00:00Z'
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
     ProductListResponse:
       description: 商品一覧（cursor ページネーション）のレスポンススキーマ
       allOf:
@@ -1408,6 +1506,46 @@ components:
               items:
                 $ref: '#/components/schemas/ProductResponse'
         - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    ProductRankingItem:
+      type: object
+      description: 売上ランキング 1 商品分の項目です。
+      required:
+        - productId
+        - name
+        - price
+        - soldQuantity
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        name:
+          type: string
+          description: 商品名
+          maxLength: 255
+          example: ワイヤレスイヤホン
+        price:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+          example: '19.99'
+        soldQuantity:
+          type: integer
+          format: int64
+          description: 集計期間内の販売数量（キャンセル済みの購入を除く合算値）。
+          example: 42
+    ProductRankingResponse:
+      type: object
+      description: 売上ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
+      required:
+        - rankings
+      properties:
+        rankings:
+          type: array
+          description: 販売数量の降順で並んだ商品ランキングです。
+          items:
+            $ref: '#/components/schemas/ProductRankingItem'
     ProductImageResponse:
       type: object
       description: |
@@ -1422,6 +1560,8 @@ components:
           example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
     RequestPostV1ProductImages:
       $ref: '#/components/schemas/ProductImagePostRequest'
+    RequestPostV1Products:
+      $ref: '#/components/schemas/ProductsPostRequest'
     AddressCandidate:
       type: object
       description: |
@@ -1995,6 +2135,66 @@ components:
       description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
+    ProductsPostRequest:
+      type: object
+      description: |
+        商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+        price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+        imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。表示 URL はフロントが組み立てます。
+      required:
+        - name
+        - price
+        - quantity
+        - categoryId
+        - statusId
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: 商品名
+          example: ワイヤレスイヤホン
+        description:
+          type: string
+          nullable: true
+          description: 商品説明（リッチテキスト HTML を許容）。未設定の場合は null です。
+          example: <p>ノイズキャンセリング対応の Bluetooth イヤホン</p>
+        price:
+          type: string
+          pattern: ^-?\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99"）。 非数値は 400、負値は業務不変条件違反として 422 を返します。
+          example: '19.99'
+        quantity:
+          type: integer
+          format: int32
+          description: 在庫数。負値は業務不変条件違反として 422 を返します。
+          example: 100
+        stockWarningThreshold:
+          type: integer
+          format: int32
+          nullable: true
+          description: 在庫警告閾値。未設定の場合は null です。
+          example: 10
+        categoryId:
+          type: string
+          format: uuid
+          description: 商品カテゴリ ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        statusId:
+          type: string
+          format: uuid
+          description: 商品ステータス ID
+          example: c2e5f1a3-4d6b-5c7e-9f80-2b3c4d5e6f7a
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公開日時。未公開の場合は null です。
+          example: '2026-01-01T00:00:00Z'
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。未設定の場合は null です。画像アップロードで得たパスを渡します。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
     ProductImagePostRequest:
       type: object
       description: |

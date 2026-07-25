@@ -129,14 +129,17 @@ type ProductResponse struct {
 	// Id 商品ID
 	Id openapi_types.UUID `json:"id"`
 
+	// ImagePath 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
+	ImagePath *string `json:"imagePath"`
+
 	// Name 商品名
 	Name string `json:"name"`
 
 	// Price 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
 	Price string `json:"price"`
 
-	// PublishedAt 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
-	PublishedAt time.Time `json:"publishedAt"`
+	// PublishedAt 公開日時。未公開の場合は null です。
+	PublishedAt *time.Time `json:"publishedAt"`
 
 	// Quantity 在庫数
 	Quantity int32 `json:"quantity"`
@@ -155,6 +158,38 @@ type ProductStatusRef struct {
 
 	// Name 商品ステータス名
 	Name string `json:"name"`
+}
+
+// ProductsPostRequest 商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+// price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+// imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。表示 URL はフロントが組み立てます。
+type ProductsPostRequest struct {
+	// CategoryId 商品カテゴリ ID
+	CategoryId openapi_types.UUID `json:"categoryId"`
+
+	// Description 商品説明（リッチテキスト HTML を許容）。未設定の場合は null です。
+	Description *string `json:"description,omitempty"`
+
+	// ImagePath 画像パス。未設定の場合は null です。画像アップロードで得たパスを渡します。
+	ImagePath *string `json:"imagePath,omitempty"`
+
+	// Name 商品名
+	Name string `json:"name"`
+
+	// Price 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99"）。 非数値は 400、負値は業務不変条件違反として 422 を返します。
+	Price string `json:"price"`
+
+	// PublishedAt 公開日時。未公開の場合は null です。
+	PublishedAt *time.Time `json:"publishedAt,omitempty"`
+
+	// Quantity 在庫数。負値は業務不変条件違反として 422 を返します。
+	Quantity int32 `json:"quantity"`
+
+	// StatusId 商品ステータス ID
+	StatusId openapi_types.UUID `json:"statusId"`
+
+	// StockWarningThreshold 在庫警告閾値。未設定の場合は null です。
+	StockWarningThreshold *int32 `json:"stockWarningThreshold,omitempty"`
 }
 
 // CategoryIdParam defines model for CategoryIdParam.
@@ -229,6 +264,9 @@ type GetProductsParams struct {
 
 // GetProductsParamsSort defines parameters for GetProducts.
 type GetProductsParamsSort string
+
+// PostProductsJSONRequestBody defines body for PostProducts for application/json ContentType.
+type PostProductsJSONRequestBody = ProductsPostRequest
 
 // PostProductsImagesMultipartRequestBody defines body for PostProductsImages for multipart/form-data ContentType.
 type PostProductsImagesMultipartRequestBody = ProductImagePostRequest

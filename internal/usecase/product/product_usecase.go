@@ -1,6 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package product は、商品の参照ユースケースと商品画像アップロードユースケースを提供します。
+// Package product は、商品の参照・作成ユースケースと商品画像アップロードユースケースを提供します。
 package product
 
 import (
@@ -9,10 +9,13 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/product"
+	"go-boilerplate/internal/domain/product/category"
+	"go-boilerplate/internal/domain/product/status"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
+	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
@@ -32,7 +35,8 @@ type ProductView struct {
 	StatusName            string
 	CategoryID            uuid.UUID
 	CategoryName          string
-	PublishedAt           time.Time
+	PublishedAt           *time.Time
+	ImagePath             *string
 }
 
 // ProductListView は、公開商品一覧（cursor ページネーション）の取得結果を表します。
@@ -66,20 +70,29 @@ type Usecase interface {
 	// UploadProductImage は、admin が商品画像をアップロードし、格納先のオブジェクトパスを返します。
 	// 非 admin は 403、非対応形式は 415、サイズ超過は 413、空データは 422 を返します。
 	UploadProductImage(ctx context.Context, authn *auth.Authn, params UploadProductImageParams) (ProductImageView, error)
+	// CreateProduct は、admin が商品を作成し、作成した商品を返します。未認証は 401、非 admin は 403、
+	// 負価格・負在庫・名称長超過などの業務不変条件違反は 422、status / category の不在は整合性異常として 500 を返します。
+	CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error)
 }
 
 // usecase は、Usecase の実装です。
 type usecase struct {
 	tracer         observability.LayerTracer
+	txm            tx.Manager
 	repo           product.Repository
+	categoryRepo   category.Repository
+	statusRepo     status.Repository
 	storage        objectstorage.Storage
 	authorizer     authz.Authorizer
 	maxUploadBytes int64
 }
 
-// New は、商品の参照・画像アップロードユースケースを生成します。
+// New は、商品の参照・作成・画像アップロードユースケースを生成します。
 func New(
+	txm tx.Manager,
 	repo product.Repository,
+	categoryRepo category.Repository,
+	statusRepo status.Repository,
 	storage objectstorage.Storage,
 	authorizer authz.Authorizer,
 	maxUploadBytes int64,
@@ -87,7 +100,10 @@ func New(
 ) Usecase {
 	return &usecase{
 		tracer:         tf.Usecase(),
+		txm:            txm,
 		repo:           repo,
+		categoryRepo:   categoryRepo,
+		statusRepo:     statusRepo,
 		storage:        storage,
 		authorizer:     authorizer,
 		maxUploadBytes: maxUploadBytes,
@@ -175,5 +191,6 @@ func toProductView(p *product.Product) ProductView {
 		CategoryID:            p.Category().ID(),
 		CategoryName:          p.Category().Name(),
 		PublishedAt:           p.PublishedAt(),
+		ImagePath:             p.ImagePath(),
 	}
 }

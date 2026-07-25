@@ -9,14 +9,97 @@ import (
 	"context"
 	"time"
 
+	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 )
+
+const createProduct = `-- name: CreateProduct :exec
+INSERT INTO products (
+    id,
+    name,
+    description,
+    price,
+    quantity,
+    stock_warning_threshold,
+    status_id,
+    category_id,
+    published_at,
+    image_path
+) VALUES
+(
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10
+)
+`
+
+type CreateProductParams struct {
+	ID                    uuid.UUID
+	Name                  string
+	Description           *string
+	Price                 decimal.Decimal
+	Quantity              int32
+	StockWarningThreshold *int32
+	StatusID              uuid.UUID
+	CategoryID            uuid.UUID
+	PublishedAt           *time.Time
+	ImagePath             *string
+}
+
+// === source: database/dml/repository/product/insert_product.sql ===
+//
+//	INSERT INTO products (
+//	    id,
+//	    name,
+//	    description,
+//	    price,
+//	    quantity,
+//	    stock_warning_threshold,
+//	    status_id,
+//	    category_id,
+//	    published_at,
+//	    image_path
+//	) VALUES
+//	(
+//	    $1,
+//	    $2,
+//	    $3,
+//	    $4,
+//	    $5,
+//	    $6,
+//	    $7,
+//	    $8,
+//	    $9,
+//	    $10
+//	)
+func (q *Queries) CreateProduct(ctx context.Context, arg *CreateProductParams) error {
+	_, err := q.db.Exec(ctx, createProduct,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Price,
+		arg.Quantity,
+		arg.StockWarningThreshold,
+		arg.StatusID,
+		arg.CategoryID,
+		arg.PublishedAt,
+		arg.ImagePath,
+	)
+	return err
+}
 
 const getPublishedProductByID = `-- name: GetPublishedProductByID :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -40,7 +123,7 @@ type GetPublishedProductByIDRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -61,6 +144,7 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 		&i.Products.StatusID,
 		&i.Products.CategoryID,
 		&i.Products.PublishedAt,
+		&i.Products.ImagePath,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
 	)
@@ -71,7 +155,7 @@ const listPublishedProductsAsc = `-- name: ListPublishedProductsAsc :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -116,7 +200,7 @@ type ListPublishedProductsAscRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -164,6 +248,7 @@ func (q *Queries) ListPublishedProductsAsc(ctx context.Context, arg *ListPublish
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
+			&i.Products.ImagePath,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
 		); err != nil {
@@ -181,7 +266,7 @@ const listPublishedProductsDesc = `-- name: ListPublishedProductsDesc :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -227,7 +312,7 @@ type ListPublishedProductsDescRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -275,6 +360,7 @@ func (q *Queries) ListPublishedProductsDesc(ctx context.Context, arg *ListPublis
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
+			&i.Products.ImagePath,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
 		); err != nil {
