@@ -23,6 +23,4 @@ var (
 	ErrInvalidCategoryID = xerrors.Wrap(errInvalid, "categoryID failed")
 	// ErrInvalidCategoryName は、商品カテゴリ名の検証に失敗した場合のエラーです。
 	ErrInvalidCategoryName = xerrors.Wrap(errInvalid, "categoryName failed")
-	// ErrInvalidPublishedAt は、公開日時の検証に失敗した場合のエラーです。
-	ErrInvalidPublishedAt = xerrors.Wrap(errInvalid, "publishedAt failed")
 )

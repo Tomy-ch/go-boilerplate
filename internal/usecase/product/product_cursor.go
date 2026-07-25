@@ -6,6 +6,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -47,6 +48,7 @@ func decodeProductCursor(cursor *paging.Cursor) (*productCursor, error) {
 }
 
 // encodeProductCursor は、現在ページ末尾行のソートキー（published_at, id）から次ページ用の不透明カーソルを生成します。
+// 一覧は公開済み（published_at 非 NULL）のみを返すため、PublishedAt は常に非 nil です。
 func encodeProductCursor(last *product.Product) string {
-	return paging.EncodeCursor(last.PublishedAt().Format(time.RFC3339Nano), last.ID().String())
+	return paging.EncodeCursor(ptr.Deref(last.PublishedAt(), time.Time{}).Format(time.RFC3339Nano), last.ID().String())
 }

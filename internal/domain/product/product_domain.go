@@ -19,6 +19,7 @@ type Products []*Product
 
 // Product は、商品を表すドメインエンティティです。price はサブセント精度を保持する money.Price で保持します。
 // status / category はそれぞれ ID と名称を持つ参照で、呼び出し側での名称の別解決は不要です。
+// publishedAt は未公開の場合 nil、imagePath は画像未設定の場合 nil です。
 type Product struct {
 	id                    uuid.UUID
 	name                  string
@@ -28,12 +29,14 @@ type Product struct {
 	stockWarningThreshold *int
 	status                StatusRef
 	category              CategoryRef
-	publishedAt           time.Time
+	publishedAt           *time.Time
+	imagePath             *string
 }
 
 // New は、商品エンティティの検証と生成を行います。price は非負の money.Price（非負検証は Price VO が担保）、
 // quantity は 0 以上、stockWarningThreshold は指定時 0 以上である必要があります。
-// id が nil、name が長さ制約外、status / category がゼロ値、publishedAt がゼロ値の場合はそれぞれ検証エラーを返します。
+// publishedAt は nil（未公開）を許容し、imagePath は無検証で保持します。
+// id が nil、name が長さ制約外、status / category がゼロ値の場合はそれぞれ検証エラーを返します。
 func New(
 	id uuid.UUID,
 	name string,
@@ -43,7 +46,8 @@ func New(
 	stockWarningThreshold *int,
 	status StatusRef,
 	category CategoryRef,
-	publishedAt time.Time,
+	publishedAt *time.Time,
+	imagePath *string,
 ) (*Product, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
@@ -66,9 +70,6 @@ func New(
 	if category.id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidCategoryID, "category is required")
 	}
-	if publishedAt.IsZero() {
-		return nil, xerrors.Wrap(ErrInvalidPublishedAt, "publishedAt is required")
-	}
 
 	return &Product{
 		id:                    id,
@@ -79,7 +80,8 @@ func New(
 		stockWarningThreshold: ptr.Copy(stockWarningThreshold),
 		status:                status,
 		category:              category,
-		publishedAt:           publishedAt,
+		publishedAt:           ptr.Copy(publishedAt),
+		imagePath:             ptr.Copy(imagePath),
 	}, nil
 }
 
@@ -107,5 +109,8 @@ func (p *Product) Status() StatusRef { return p.status }
 // Category は、商品カテゴリ参照（ID + 名称）を返します。
 func (p *Product) Category() CategoryRef { return p.category }
 
-// PublishedAt は、公開日時を返します。
-func (p *Product) PublishedAt() time.Time { return p.publishedAt }
+// PublishedAt は、公開日時を返します。未公開の場合は nil です。
+func (p *Product) PublishedAt() *time.Time { return ptr.Copy(p.publishedAt) }
+
+// ImagePath は、画像パスを返します。未設定の場合は nil です。
+func (p *Product) ImagePath() *string { return ptr.Copy(p.imagePath) }
