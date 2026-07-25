@@ -27,7 +27,7 @@ gen-db-schema-ci:
 
 # dump-schema(ローカル) は共有 local DB を避け、当該ブランチの migration だけから再構築した
 # 専用 DB($(SCHEMA_GEN_DB)) をダンプする。これにより並行する別 worktree の migration が生成物
-# (schema.gen.sql / models.gen.go 等) へ混入しない（#657）。ローカル専用のガードであり、CI は
+# (schema.gen.sql / models.gen.go 等) へ混入しない。ローカル専用のガードであり、CI は
 # fresh な postgres service を migrate 済みで dump-schema-ci を直接呼ぶため本経路は通らない。
 SCHEMA_GEN_DB ?= gen_schema
 
