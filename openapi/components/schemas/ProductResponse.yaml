@@ -10,6 +10,7 @@ required:
   - status
   - category
   - publishedAt
+  - imagePath
 properties:
   id:
     type: string
@@ -51,5 +52,11 @@ properties:
   publishedAt:
     type: string
     format: date-time
-    description: 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
+    nullable: true
+    description: 公開日時。未公開の場合は null です。
     example: "2026-01-01T00:00:00Z"
+  imagePath:
+    type: string
+    nullable: true
+    description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
+    example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"

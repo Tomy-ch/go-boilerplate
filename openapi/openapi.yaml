@@ -216,6 +216,8 @@ components:
       $ref: './components/schemas/ProductImageResponse.yaml'
     RequestPostV1ProductImages:
       $ref: './components/requests/products/ProductImagePostRequest.yaml'
+    RequestPostV1Products:
+      $ref: './components/requests/products/ProductsPostRequest.yaml'
     AddressCandidate:
       $ref: './components/schemas/addresses/AddressCandidate.yaml'
     ResponseV1Addresses:
