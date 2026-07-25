@@ -37,6 +37,12 @@ type Repository interface {
 	// FindPublishedByID は、ID から公開中（published_at が非 NULL）の単一商品を取得します。
 	// 未存在・非公開のいずれも NotFound を返します（未ログイン経路への存在秘匿）。
 	FindPublishedByID(ctx context.Context, id uuid.UUID) (*Product, error)
+	// FindByID は、ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
+	// 公開日時の設定そのものを更新対象とするため、FindPublishedByID と異なり未公開商品も返します。
+	FindByID(ctx context.Context, id uuid.UUID) (*Product, error)
 	// Create は、商品を新規登録します。
 	Create(ctx context.Context, p *Product) error
+	// Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
+	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。
+	Update(ctx context.Context, p *Product) (int, error)
 }

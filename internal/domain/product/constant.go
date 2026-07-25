@@ -9,4 +9,6 @@ const (
 	// 参照元マスタ（product_statuses / product_categories）の名称長制約に揃えています。
 	minRefNameLength = 1
 	maxRefNameLength = 100
+	// initialVersion は、生成直後の商品が持つ楽観ロックのバージョンです。更新のたびに 1 つ進みます。
+	initialVersion = 1
 )

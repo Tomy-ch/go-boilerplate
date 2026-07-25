@@ -20,6 +20,7 @@ type Products []*Product
 // Product は、商品を表すドメインエンティティです。price はサブセント精度を保持する money.Price で保持します。
 // status / category はそれぞれ ID と名称を持つ参照で、呼び出し側での名称の別解決は不要です。
 // publishedAt は未公開の場合 nil、imagePath は画像未設定の場合 nil です。
+// version は並行更新による上書き（lost update）を防ぐ楽観ロックのバージョンです。
 type Product struct {
 	id                    uuid.UUID
 	name                  string
@@ -31,12 +32,14 @@ type Product struct {
 	category              CategoryRef
 	publishedAt           *time.Time
 	imagePath             *string
+	version               int
 }
 
 // New は、商品エンティティの検証と生成を行います。price は非負の money.Price（非負検証は Price VO が担保）、
 // quantity は 0 以上、stockWarningThreshold は指定時 0 以上である必要があります。
 // publishedAt は nil（未公開）を許容し、imagePath は無検証で保持します。
 // id が nil、name が長さ制約外、status / category がゼロ値の場合はそれぞれ検証エラーを返します。
+// 生成直後のバージョンは initialVersion です。
 func New(
 	id uuid.UUID,
 	name string,
@@ -49,26 +52,59 @@ func New(
 	publishedAt *time.Time,
 	imagePath *string,
 ) (*Product, error) {
+	return newProduct(
+		id, name, description, price, quantity, stockWarningThreshold,
+		status, category, publishedAt, imagePath, initialVersion,
+	)
+}
+
+// Reconstruct は、永続化済みの商品を再構築します。
+// version は永続化されている楽観ロックのバージョンで、initialVersion 未満の場合は検証エラーを返します。
+// その他の検証は New と同一です。
+func Reconstruct(
+	id uuid.UUID,
+	name string,
+	description *string,
+	price money.Price,
+	quantity int,
+	stockWarningThreshold *int,
+	status StatusRef,
+	category CategoryRef,
+	publishedAt *time.Time,
+	imagePath *string,
+	version int,
+) (*Product, error) {
+	return newProduct(
+		id, name, description, price, quantity, stockWarningThreshold,
+		status, category, publishedAt, imagePath, version,
+	)
+}
+
+// newProduct は、生成・再構築に共通の検証を行い商品エンティティを構築します。
+func newProduct(
+	id uuid.UUID,
+	name string,
+	description *string,
+	price money.Price,
+	quantity int,
+	stockWarningThreshold *int,
+	status StatusRef,
+	category CategoryRef,
+	publishedAt *time.Time,
+	imagePath *string,
+	version int,
+) (*Product, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
-	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
-		return nil, xerrors.Wrap(ErrInvalidName, msg)
+	if err := validateAttributes(name, quantity, stockWarningThreshold, status, category); err != nil {
+		return nil, err
 	}
-	if quantity < minQuantity {
-		return nil, xerrors.Wrap(ErrInvalidQuantity, fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, quantity))
-	}
-	if stockWarningThreshold != nil && *stockWarningThreshold < minThreshold {
+	if version < initialVersion {
 		return nil, xerrors.Wrap(
-			ErrInvalidStockWarningThreshold,
-			fmt.Sprintf("stockWarningThreshold must be %d or greater, got %d", minThreshold, *stockWarningThreshold),
+			ErrInvalidVersion,
+			fmt.Sprintf("version must be %d or greater, got %d", initialVersion, version),
 		)
-	}
-	if status.id.IsNil() {
-		return nil, xerrors.Wrap(ErrInvalidStatusID, "status is required")
-	}
-	if category.id.IsNil() {
-		return nil, xerrors.Wrap(ErrInvalidCategoryID, "category is required")
 	}
 
 	return &Product{
@@ -82,7 +118,80 @@ func New(
 		category:              category,
 		publishedAt:           ptr.Copy(publishedAt),
 		imagePath:             ptr.Copy(imagePath),
+		version:               version,
 	}, nil
+}
+
+// validateAttributes は、商品属性の不変条件を検証します。生成時と更新時で同一の条件を課します。
+func validateAttributes(
+	name string,
+	quantity int,
+	stockWarningThreshold *int,
+	status StatusRef,
+	category CategoryRef,
+) error {
+	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
+		return xerrors.Wrap(ErrInvalidName, msg)
+	}
+	if quantity < minQuantity {
+		return xerrors.Wrap(ErrInvalidQuantity, fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, quantity))
+	}
+	if stockWarningThreshold != nil && *stockWarningThreshold < minThreshold {
+		return xerrors.Wrap(
+			ErrInvalidStockWarningThreshold,
+			fmt.Sprintf("stockWarningThreshold must be %d or greater, got %d", minThreshold, *stockWarningThreshold),
+		)
+	}
+	if status.id.IsNil() {
+		return xerrors.Wrap(ErrInvalidStatusID, "status is required")
+	}
+	if category.id.IsNil() {
+		return xerrors.Wrap(ErrInvalidCategoryID, "category is required")
+	}
+	return nil
+}
+
+// Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
+// 変更せずに検証エラーを返します。引数は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡されます。
+// バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き UPDATE が行います）。
+func (p *Product) Update(
+	name string,
+	description *string,
+	price money.Price,
+	quantity int,
+	stockWarningThreshold *int,
+	status StatusRef,
+	category CategoryRef,
+	publishedAt *time.Time,
+	imagePath *string,
+) error {
+	if err := validateAttributes(name, quantity, stockWarningThreshold, status, category); err != nil {
+		return err
+	}
+
+	p.name = name
+	p.description = ptr.Copy(description)
+	p.price = price
+	p.quantity = quantity
+	p.stockWarningThreshold = ptr.Copy(stockWarningThreshold)
+	p.status = status
+	p.category = category
+	p.publishedAt = ptr.Copy(publishedAt)
+	p.imagePath = ptr.Copy(imagePath)
+
+	return nil
+}
+
+// EnsureVersion は、更新要求が指すバージョンが現在のバージョンと一致することを確認します。
+// 一致しない場合は、読み込み後に他者が更新したものとして ErrVersionConflict を返します。
+func (p *Product) EnsureVersion(expected int) error {
+	if p.version != expected {
+		return xerrors.Wrap(
+			ErrVersionConflict,
+			fmt.Sprintf("expected version %d, but current version is %d", expected, p.version),
+		)
+	}
+	return nil
 }
 
 // ID は、商品の ID を返します。
@@ -114,3 +223,6 @@ func (p *Product) PublishedAt() *time.Time { return ptr.Copy(p.publishedAt) }
 
 // ImagePath は、画像パスを返します。未設定の場合は nil です。
 func (p *Product) ImagePath() *string { return ptr.Copy(p.imagePath) }
+
+// Version は、楽観ロックのバージョンを返します。
+func (p *Product) Version() int { return p.version }
