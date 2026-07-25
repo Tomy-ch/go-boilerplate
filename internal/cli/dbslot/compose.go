@@ -26,10 +26,10 @@ func (c ExecCompose) UpSharedDB(ctx context.Context, project string) error {
 	return c.run(ctx, project, "--profile", "database", "up", "-d", "--wait", "database")
 }
 
-// DownServe は `docker compose -f docker-compose.yaml -f docker-compose.pool.yaml down` を実行します。
+// DownServe は `docker compose -f docker-compose.yaml -f docker-compose.attach.yaml down` を実行します。
 // serve コンテナが起動していなくてもエラーにしません（冪等）。
 func (c ExecCompose) DownServe(ctx context.Context, project string) error {
-	_ = c.run(ctx, project, "-f", "docker-compose.yaml", "-f", "docker-compose.pool.yaml", "down")
+	_ = c.run(ctx, project, "-f", "docker-compose.yaml", "-f", "docker-compose.attach.yaml", "down")
 	return nil
 }
 

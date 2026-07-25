@@ -36,7 +36,11 @@ func newMockPool(t *testing.T, root, appEnv string) (*Pool, *mock_dbslot.MockDBA
 	admin := mock_dbslot.NewMockDBAdmin(ctrl)
 	comp := mock_dbslot.NewMockCompose(ctrl)
 	reg := NewRegistry(t.TempDir(), root, "branch", 30*time.Minute, 8, func() time.Time { return time.Unix(1_000_000, 0) })
-	cfg := Config{Root: root, SharedProject: "gobp-shared", APIBasePort: 8080, MockAuthBase: 4000, APPEnv: appEnv}
+	cfg := Config{
+		Root: root, SharedProject: "gobp-shared",
+		APIBasePort: 8080, MockAuthBase: 4000, DlvBase: 2345, PprofBase: 6060,
+		APPEnv: appEnv,
+	}
 	return NewPool(reg, admin, comp, cfg, io.Discard, io.Discard), admin, comp
 }
 
@@ -71,6 +75,9 @@ func TestPool_Acquire(t *testing.T) {
 			assert.Contains(t, content, "DB_NAME_LOCAL=wt1_local")
 			assert.Contains(t, content, "DB_NAME_TEST=wt1_test")
 			assert.Contains(t, content, "API_HOST_PORT=8081")
+			assert.Contains(t, content, "MOCK_AUTH_HOST_PORT=4001")
+			assert.Contains(t, content, "DLV_HOST_PORT=2346")
+			assert.Contains(t, content, "PPROF_HOST_PORT=6061")
 			assert.Contains(t, content, "COMPOSE_PROJECT_NAME=gobp-shared")
 			assert.Contains(t, content, "SERVE_PROJECT=gobp-wt-1")
 		})

@@ -16,9 +16,11 @@ import (
 // Config は、Pool の振る舞いを決めるパラメータです。
 type Config struct {
 	Root          string // 自 worktree の絶対パス（.gobp-db-slot の出力先・owner）
-	SharedProject string // 共有 DB の固定 compose プロジェクト（例: gobp-shared）
+	SharedProject string // 共有インフラの固定 compose プロジェクト（例: gobp-shared）
 	APIBasePort   int    // API_HOST_PORT のベース（スロット N = base+N）
 	MockAuthBase  int    // MOCK_AUTH_HOST_PORT のベース
+	DlvBase       int    // DLV_HOST_PORT のベース
+	PprofBase     int    // PPROF_HOST_PORT のベース
 	APPEnv        string // 実行環境ラベル（deploy 系ガードに使用）
 }
 
@@ -185,11 +187,15 @@ func (p *Pool) ensureSlotDBs(ctx context.Context, slot int) error {
 }
 
 // writeSlotFile は、.gobp-db-slot（make が -include で読む KEY=VALUE）を書き出します。
+// app コンテナのホスト公開ポートは全てスロット番号で相対化し、並列 serve が衝突しないようにします。
 func (p *Pool) writeSlotFile(slot int) error {
 	content := fmt.Sprintf(
-		"SLOT=%d\nDB_NAME_LOCAL=%s\nDB_NAME_TEST=%s\nAPI_HOST_PORT=%d\nMOCK_AUTH_HOST_PORT=%d\nCOMPOSE_PROJECT_NAME=%s\nSERVE_PROJECT=%s\n",
+		"SLOT=%d\nDB_NAME_LOCAL=%s\nDB_NAME_TEST=%s\n"+
+			"API_HOST_PORT=%d\nMOCK_AUTH_HOST_PORT=%d\nDLV_HOST_PORT=%d\nPPROF_HOST_PORT=%d\n"+
+			"COMPOSE_PROJECT_NAME=%s\nSERVE_PROJECT=%s\n",
 		slot, dbLocal(slot), dbTest(slot),
-		p.cfg.APIBasePort+slot, p.cfg.MockAuthBase+slot, p.cfg.SharedProject, serveProject(slot))
+		p.cfg.APIBasePort+slot, p.cfg.MockAuthBase+slot, p.cfg.DlvBase+slot, p.cfg.PprofBase+slot,
+		p.cfg.SharedProject, serveProject(slot))
 	if err := os.WriteFile(p.slotFilePath(), []byte(content), filePerm); err != nil {
 		return xerrors.Wrap(err, "failed to write .gobp-db-slot")
 	}

@@ -24,13 +24,11 @@ import (
 )
 
 // useOpenAPIValidation は、OpenAPI スキーマに基づくリクエストバリデーションミドルウェアを Echo に登録します。
-// httptest のホストと spec の servers が不一致でも経路解決できるよう servers を空にします。
 func useOpenAPIValidation(t *testing.T, e *echo.Echo) {
 	t.Helper()
 
 	spec, err := validator.GetValidator()
 	require.NoError(t, err)
-	spec.Servers = nil
 
 	skipper := func(echo.Context) bool { return false }
 	authFunc := func(context.Context, *openapi3filter.AuthenticationInput) error { return nil }

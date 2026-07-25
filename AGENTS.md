@@ -194,18 +194,20 @@ Run / DB:
 **Working in a `git worktree` (DB + serve isolation):** a single shared Postgres (fixed compose
 project `gobp-shared`, host 5432) is shared by all worktrees; each leases a slot = its own
 databases (`wt<N>_local` / `wt<N>_test`) inside that instance. Before DB-backed tasks or `make serve`
-in a worktree, `make db-acquire` to lease a slot (creates + rebuilds `wt<N>_local` / `wt<N>_test`,
+in a worktree, `make slot-acquire` to lease a slot (creates + rebuilds `wt<N>_local` / `wt<N>_test`,
 propagates `DB_NAME_LOCAL` / `DB_NAME_TEST` / `API_HOST_PORT` `8080+N` / `MOCK_AUTH_HOST_PORT` `4000+N`),
 then `make test` connects to `wt<N>_test` on localhost:5432, `make serve` isolates the app in
-`gobp-wt-N` (curl `localhost:$API_HOST_PORT`) against the shared DB, and `make db-release` when done —
-do NOT start a duplicate DB stack or hijack another checkout's containers. Without `db-acquire`,
+`gobp-wt-N` (curl `localhost:$API_HOST_PORT`) against the shared DB, and `make slot-free` when done —
+do NOT start a duplicate DB stack or hijack another checkout's containers. To retire the worktree
+entirely, `make slot-release` stops the app + removes its local images, frees the slot, and removes
+the worktree, in that order. Without `slot-acquire`,
 targets default to `local` / `test` on 5432 / 8080 / 4000 (single-stack, unchanged).
 Details: `docs/maintenance/db-worktree-pool.md`.
 
 **DB clean-up (worktree slot pool):** the pool shares one Postgres instance, so tables from another
 branch's migrations can linger in a DB you reuse. As part of clean-up — at the start of DB-backed
 work, and whenever the shared DB carries stale tables — rebuild your DB from THIS branch's migrations
-so you always work against a clean, migration-faithful schema: `make db-acquire` re-creates the
+so you always work against a clean, migration-faithful schema: `make slot-acquire` re-creates the
 slot's `wt<N>` DBs this way, and `make db-local-reinit` / `db-test-reinit` drop every `public` table
 then migrate-up + seed the shared `local` / `test`.
 

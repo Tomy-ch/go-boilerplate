@@ -13,7 +13,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/security` : Trivy dependency vulnerability scan
-- `.makefiles/docker` : Dockerfile lint (hadolint)
+- `.makefiles/docker` : Compose project / host port definitions / Dockerfile lint (hadolint) / image digest pinning
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/docs` : Portal / Tool information documentation generation
@@ -38,21 +38,30 @@ Make targets are mainly organized into the following units.
 
 This is a group of targets related to application development environment startup and Job execution.
 
+Compose services are split into two layers (see `.makefiles/docker` group below): the shared **infra**
+layer (`database` / `observability` / `garage`) lives once in the fixed `gobp-shared` project, and the
+per-checkout **app** layer (`api_server` / `mock_auth_server`) runs in this checkout's `APP_PROJECT`.
+
 ### Application startup related
 
 | Command | Description | Main Use |
 | --- | --- | --- |
-| `make serve` | Starts Docker Compose services with the `development` profile in the background. | Start normal local development |
-| `make serve-build` | Rebuilds Docker images (cache enabled) and then starts the development environment. | Reflect Dockerfile or dependency changes |
-| `make serve-build-clean` | Cleanly rebuilds Docker images with `--no-cache --pull` and then starts the development environment. | Pick up base image updates (e.g., Go version upgrade) |
-| `make tools` | Starts development support tools with the `tools` profile. | When using development tools |
+| `make serve` | Brings up the shared infra (`infra-up`), then starts this checkout's app services in the background and refreshes the DB slot heartbeat. | Start normal local development |
+| `make serve-build` | Rebuilds the app images (cache enabled), brings up the shared infra, then starts the app services. | Reflect Dockerfile or dependency changes |
+| `make serve-build-clean` | Cleanly rebuilds the app images with `--no-cache --pull`, brings up the shared infra, then starts the app services. | Pick up base image updates (e.g., Go version upgrade) |
+| `make serve-stop` | Stops this checkout's app project only. | Stop the API without touching the shared infra or other checkouts |
+| `make infra-up` | Starts the shared infra services (`--wait`) plus the one-shot `garage_init` in the `gobp-shared` project. | Bring up the shared infra alone (called idempotently by `serve` / `job` / `worker`) |
+| `make infra-down` | Stops the shared infra project (named volumes are kept). | Shut the infra down — **affects every checkout / worktree** |
+| `make tools` | Starts development support tools with the `tools` profile in the shared infra project. | When using development tools (SQL editor `:7000` / docs viewer `:7001`) |
+| `make all` | Starts everything: `tools` followed by `serve-build`. | Bring up the whole local stack at once |
 | `make tool-runners-build` | Builds the on-demand tool runner images (go/node/python, cache enabled, no startup). | When updating tool runner Dockerfile or dependencies |
 | `make tool-runners-build-clean` | Cleanly builds the tool runner images with `--no-cache --pull` (no startup). | Pick up base image updates for tool runners |
 
 #### `make job NAME=<job_name> ARGS="<arguments>"`
 
 Executes an application Job.
-Calls `cmd/main.go job` within the `development` profile network.
+Brings up the shared infra, then runs `cmd/main.go job` in a one-off `api_server` container
+(`run --rm`) of this checkout's app project.
 
 - `NAME`: Job name to execute
 - `ARGS`: Additional arguments passed to the Job (optional)
@@ -66,8 +75,9 @@ make job NAME=batch-import ARGS="--target=local --dry-run"
 
 ### Long-running process (worker / outbox-relay) related
 
-Both are long-running daemons that reside until `SIGTERM` / `Ctrl-C`, run inside the
-`development` profile network (same mechanism as `make job`, via `go run ./cmd/`).
+Both are long-running daemons that reside until `SIGTERM` / `Ctrl-C`. They run in a one-off
+`api_server` container of this checkout's app project after the shared infra is brought up
+(same mechanism as `make job`, via `go run ./cmd/`).
 
 #### `make worker NAME=<worker_name> ARGS="<arguments>"`
 
@@ -247,8 +257,29 @@ This group runs local security scans (Trivy dependency scan, gitleaks secret sca
 
 ## `.makefiles/docker` group
 
-This group lints Dockerfiles with hadolint via the `go_tool_runner` container, and pins the
-`FROM` base images to an immutable digest (supply-chain hardening).
+This group holds the compose project / host port definitions shared by every target, lints
+Dockerfiles with hadolint via the `go_tool_runner` container, and pins the `FROM` base images to
+an immutable digest (supply-chain hardening).
+
+### Compose project definitions (`compose.mk`)
+
+`compose.mk` declares no target — it defines the variables the app / database groups build on, so it
+is `include`d at the top of the top-level `makefile` (the "depended-on files" section). Defaults are
+overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/README.md`).
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `INFRA_PROJECT` | `gobp-shared` | Fixed compose project holding the single shared infra instance. |
+| `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | Per-checkout compose project for the app layer. Becomes `SERVE_PROJECT` (`gobp-wt-N`) when a DB slot is held. |
+| `INFRA_SERVICES` | `database observability garage` | Services that can only run on fixed ports, hence shared. |
+| `APP_SERVICES` | `api_server mock_auth_server` | Services started per checkout. |
+| `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
+| `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | Compose invocation for the app layer. `docker-compose.attach.yaml` points the app services at the shared infra via `host.docker.internal`. |
+| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | Published host ports of the API / mock auth server. |
+| `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | Published host ports of the dlv debug / pprof endpoints. |
+| `COMPOSE_PROJECT_NAME` | `$(INFRA_PROJECT)` | Default project for compose calls that don't pass `-p`, so DB tooling shares the infra network. |
+
+### Dockerfile lint / image pin related
 
 | Command | Description | Notes |
 | --- | --- | --- |
