@@ -1,12 +1,15 @@
 ## DB スロットプール（複数 worktree が単一共有 DB を per-worktree データベースで共有）
 .PHONY: slot-acquire ## DB スロットを取得しスキーマを作り直す（共有 DB 上に per-worktree DB を貸与）
-.PHONY: slot-free ## 保持中の DB スロットだけを解放する（worktree もコンテナも残す）
+.PHONY: slot-free ## 保持中の DB スロットだけを解放する（worktree は残す。DB は warm 保持）
 .PHONY: slot-release ## worktree を撤収する（app 停止+イメージ削除 → スロット解放 → worktree 削除）
 .PHONY: slot-status ## DB スロットプールの占有状況を表示する
 
-# スロット定義（db-slot が書き出す KEY=VALUE）。docker/compose.mk の既定値（DB 名 local/test・
-# ホスト公開ポート 8080/4000/2345/6060・APP_PROJECT）をスロット分へ上書きする。未取得なら既定のまま
+# スロット定義（db-slot が書き出す KEY=VALUE）。既定値は docker-compose.attach.yaml 側の
+# ${VAR:-...}（DB 名 local/test・ホスト公開ポート 8080/4000/2345/6060）と docker/compose.mk の
+# APP_PROJECT_DEFAULT が持ち、スロット取得時だけこのファイルが上書きする。未取得でも既定のまま
 # 動くため、スロット取得は並列作業のための opt-in に留まる。
+# ここでの -include はホスト実行の go test へ DB 名を渡すためのもので、app 層の compose 呼び出しは
+# パース時では取りこぼすため LOAD_SLOT がレシピ内で読み直す（docker/compose.mk 参照）。
 # DB_NAME_LOCAL/TEST を読むのは slot-acquire の reinit と host 実行の go test のみで、db-init/db-migrate-up は
 # 今も DB=local/test 直書き（取得後に手で db-init すると共有 DB の local/test を触る点に注意）。
 -include .gobp-db-slot

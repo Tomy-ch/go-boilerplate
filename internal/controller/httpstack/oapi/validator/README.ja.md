@@ -14,7 +14,7 @@ flowchart LR
 ```
 
 1. `oapi-codegen` が `gen/validate.gen.go` を生成（base64 エンコード + gzip 圧縮された OpenAPI 仕様を含む）
-2. `GetValidator()` が `gen.GetSwagger()` を呼び出し、デコードしたスキーマを返す
+2. `GetValidator()` が `gen.GetSpec()` を呼び出してスキーマをデコードし、経路解決を Host 非依存にするため `servers` を除去する（残すとルーターが Host マッチを行い、ドキュメント上の `localhost:8080` 以外で待ち受けた全リクエストが 404 になる）
 3. `oapi.Middleware()`（親パッケージ）がこのスキーマで oapi-codegen のリクエストバリデータをラップ
 
 ## バリデーション対象

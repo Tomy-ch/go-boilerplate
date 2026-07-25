@@ -10,11 +10,14 @@
 .PHONY: tool-runners-build ## ツールランナー(go/node/python)をビルドする（キャッシュ利用・起動はしない）
 .PHONY: tool-runners-build-clean ## ツールランナーをクリーンビルドする（--no-cache --pull・起動はしない）
 
-# garage_init は完了して終了する one-shot のため --wait の対象から外す。
+# garage_init は完了して終了する one-shot のため --wait（起動までしか待たない）の対象から外し、
+# 代わりに wait で終了まで待つ。app はプロジェクトを跨ぐため compose の依存で待てず、バケット
+# 未プロビジョニングのまま S3 を触ると 503 になる。
 infra-up:
 	@echo "🔄 共有インフラを起動します... (project=$(INFRA_PROJECT))"
 	@$(COMPOSE_INFRA) --profile development up -d --wait $(INFRA_SERVICES)
 	@$(COMPOSE_INFRA) --profile development up -d garage_init
+	@$(COMPOSE_INFRA) wait garage_init > /dev/null
 	@echo "✅ 共有インフラが起動しています。Grafana: http://localhost:3000"
 
 infra-down:
@@ -28,23 +31,23 @@ serve:
 	@$(COMPOSE_APP) up -d $(APP_SERVICES)
 	@# スロット保持時のみ heartbeat を更新する（未取得なら何もしない）。
 	@go run ./cmd/ db-slot heartbeat
-	@echo "✅ 開発環境の起動が完了しました。API: http://localhost:$(API_HOST_PORT) (project=$(APP_PROJECT))"
+	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080} (project=$(APP_PROJECT_SH))"
 
 serve-build:
 	@echo "🧰 ビルド後、開発環境を起動します。"
 	@$(MAKE) infra-up
 	@$(COMPOSE_APP) up -d --build $(APP_SERVICES)
-	@echo "✅ 開発環境の起動が完了しました。API: http://localhost:$(API_HOST_PORT)"
+	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080}"
 
 serve-build-clean:
 	@echo "🧹 クリーンビルド後、開発環境を起動します（--no-cache --pull）。"
 	@$(COMPOSE_APP) build --no-cache --pull $(APP_SERVICES)
 	@$(MAKE) infra-up
 	@$(COMPOSE_APP) up -d $(APP_SERVICES)
-	@echo "✅ 開発環境の起動が完了しました。API: http://localhost:$(API_HOST_PORT)"
+	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080}"
 
 serve-stop:
-	@echo "🛑 app コンテナを停止します... (project=$(APP_PROJECT))"
+	@$(LOAD_SLOT); echo "🛑 app コンテナを停止します... (project=$(APP_PROJECT_SH))"
 	@$(COMPOSE_APP) down
 	@echo "✅ app コンテナを停止しました（共有インフラは稼働したままです）。"
 
