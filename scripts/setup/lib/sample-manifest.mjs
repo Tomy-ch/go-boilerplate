@@ -201,19 +201,24 @@ export const SAMPLE_DOMAINS = {
       "internal/usecase/purchase",
       "internal/infrastructure/rdb/command_service/purchase",
       "internal/infrastructure/rdb/repository/purchase",
+      "internal/infrastructure/rdb/query_service/purchase",
       "internal/controller/handler/v1/purchases",
       "internal/integration/v1_purchases_test.go",
       "internal/integration/v1_purchases_get_test.go",
+      "internal/integration/v1_purchases_detail_test.go",
       "internal/integration/v1_purchases_cancel_test.go",
       "internal/integration/v1_purchases_pay_test.go",
       // DML
       "database/dml/command_service/purchase",
       "database/dml/repository/purchase",
+      "database/dml/query_service/purchase",
       // 生成物（sqlc。openapi.yaml / DI 各ファイルの登録はマーカーで除去される）
       "internal/infrastructure/rdb/sqlc/gen/purchase_command_service.gen.sql.go",
       "internal/infrastructure/rdb/sqlc/gen/purchase_repository.gen.sql.go",
+      "internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go",
       "database/gen/purchase_command_service.gen.sql",
       "database/gen/purchase_repository.gen.sql",
+      "database/gen/purchase_query_service.gen.sql",
       // OpenAPI
       "openapi/paths/v1/purchases.yaml",
       "openapi/paths/v1/purchases",
@@ -225,6 +230,8 @@ export const SAMPLE_DOMAINS = {
       "openapi/components/schemas/PurchasePayResponse.yaml",
       "openapi/components/schemas/PurchaseSummaryResponse.yaml",
       "openapi/components/schemas/PurchaseDetailResponse.yaml",
+      "openapi/components/schemas/PurchaseGetDetailResponse.yaml",
+      "openapi/components/schemas/PurchaseDetailItemResponse.yaml",
       "openapi/components/schemas/PurchaseDetailInput.yaml",
       // spec
       "docs/spec/purchase",
