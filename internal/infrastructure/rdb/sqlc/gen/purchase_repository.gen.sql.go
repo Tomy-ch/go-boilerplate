@@ -13,25 +13,34 @@ import (
 )
 
 const getPurchaseByID = `-- name: GetPurchaseByID :one
-SELECT p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+SELECT
+    ps.code AS status_code,
+    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
 FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.id = $1
 `
 
 type GetPurchaseByIDRow struct {
-	Purchases Purchases
+	StatusCode int16
+	Purchases  Purchases
 }
 
 // === source: database/dml/repository/purchase/select_purchase_by_id.sql ===
-// ID から購入を 1 件取得する。存在しない場合は 0 行（NotFound）。
+// ID から購入を 1 件取得する。現在状態は購入ステータスマスタとの結合で code を解決する
+// （status_id は SoT、code は集約が状態機械の判定に用いる業務キー）。存在しない場合は 0 行（NotFound）。
 //
-//	SELECT p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+//	SELECT
+//	    ps.code AS status_code,
+//	    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
 //	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE p.id = $1
 func (q *Queries) GetPurchaseByID(ctx context.Context, id uuid.UUID) (*GetPurchaseByIDRow, error) {
 	row := q.db.QueryRow(ctx, getPurchaseByID, id)
 	var i GetPurchaseByIDRow
 	err := row.Scan(
+		&i.StatusCode,
 		&i.Purchases.ID,
 		&i.Purchases.Code,
 		&i.Purchases.UserID,
@@ -47,6 +56,76 @@ func (q *Queries) GetPurchaseByID(ctx context.Context, id uuid.UUID) (*GetPurcha
 		&i.Purchases.DeliveredAt,
 		&i.Purchases.CreatedAt,
 		&i.Purchases.UpdatedAt,
+	)
+	return &i, err
+}
+
+const getPurchaseDetailByID = `-- name: GetPurchaseDetailByID :one
+SELECT
+    p.id,
+    p.code,
+    p.user_id,
+    ps.id AS status_id,
+    ps.name AS status_name,
+    p.subtotal_amount,
+    p.tax_amount,
+    p.shipping_fee,
+    p.total_amount,
+    p.ordered_at,
+    p.canceled_at
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE p.id = $1
+`
+
+type GetPurchaseDetailByIDRow struct {
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	StatusName     string
+	SubtotalAmount int64
+	TaxAmount      int64
+	ShippingFee    int64
+	TotalAmount    int64
+	OrderedAt      time.Time
+	CanceledAt     *time.Time
+}
+
+// ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
+// 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
+// キャンセル日時（canceled_at）は未キャンセルなら NULL。存在しない場合は 0 行（NotFound）。
+//
+//	SELECT
+//	    p.id,
+//	    p.code,
+//	    p.user_id,
+//	    ps.id AS status_id,
+//	    ps.name AS status_name,
+//	    p.subtotal_amount,
+//	    p.tax_amount,
+//	    p.shipping_fee,
+//	    p.total_amount,
+//	    p.ordered_at,
+//	    p.canceled_at
+//	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE p.id = $1
+func (q *Queries) GetPurchaseDetailByID(ctx context.Context, id uuid.UUID) (*GetPurchaseDetailByIDRow, error) {
+	row := q.db.QueryRow(ctx, getPurchaseDetailByID, id)
+	var i GetPurchaseDetailByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.UserID,
+		&i.StatusID,
+		&i.StatusName,
+		&i.SubtotalAmount,
+		&i.TaxAmount,
+		&i.ShippingFee,
+		&i.TotalAmount,
+		&i.OrderedAt,
+		&i.CanceledAt,
 	)
 	return &i, err
 }

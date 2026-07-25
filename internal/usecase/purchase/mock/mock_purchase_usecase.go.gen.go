@@ -43,6 +43,21 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
 }
 
+// CancelPurchase mocks base method.
+func (m *MockUsecase) CancelPurchase(ctx context.Context, params purchase.CancelPurchaseParams) (purchase.CancelPurchaseView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelPurchase", ctx, params)
+	ret0, _ := ret[0].(purchase.CancelPurchaseView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CancelPurchase indicates an expected call of CancelPurchase.
+func (mr *MockUsecaseMockRecorder) CancelPurchase(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelPurchase", reflect.TypeOf((*MockUsecase)(nil).CancelPurchase), ctx, params)
+}
+
 // CreatePurchase mocks base method.
 func (m *MockUsecase) CreatePurchase(ctx context.Context, params purchase.CreatePurchaseParams) (purchase.PurchaseView, error) {
 	m.ctrl.T.Helper()

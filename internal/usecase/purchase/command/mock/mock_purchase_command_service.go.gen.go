@@ -42,6 +42,20 @@ func (m *MockCommandService) EXPECT() *MockCommandServiceMockRecorder {
 	return m.recorder
 }
 
+// CancelPurchase mocks base method.
+func (m *MockCommandService) CancelPurchase(ctx context.Context, p *purchase.Purchase) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelPurchase", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CancelPurchase indicates an expected call of CancelPurchase.
+func (mr *MockCommandServiceMockRecorder) CancelPurchase(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelPurchase", reflect.TypeOf((*MockCommandService)(nil).CancelPurchase), ctx, p)
+}
+
 // CreatePurchase mocks base method.
 func (m *MockCommandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
 	m.ctrl.T.Helper()
@@ -69,4 +83,19 @@ func (m *MockCommandService) LockProducts(ctx context.Context, productIDs []uuid
 func (mr *MockCommandServiceMockRecorder) LockProducts(ctx, productIDs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockProducts", reflect.TypeOf((*MockCommandService)(nil).LockProducts), ctx, productIDs)
+}
+
+// LockPurchase mocks base method.
+func (m *MockCommandService) LockPurchase(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockPurchase", ctx, id)
+	ret0, _ := ret[0].(*purchase.Purchase)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockPurchase indicates an expected call of LockPurchase.
+func (mr *MockCommandServiceMockRecorder) LockPurchase(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockPurchase", reflect.TypeOf((*MockCommandService)(nil).LockPurchase), ctx, id)
 }

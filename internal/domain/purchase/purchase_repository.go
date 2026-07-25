@@ -12,6 +12,10 @@ type Repository interface {
 	// FindByID は、ID から購入を明細込みで取得します。書き込み後のドメイン整合の再検証と
 	// レスポンス組み立ての取得元に用います。存在しない場合は NotFound を返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+	// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
+	// 購入ステータスマスタとの結合で解決します（購入ステータスは購入集約に属する固定参照マスタのため、
+	// 単一集約の Repository read です）。存在しない場合は NotFound を返します。
+	FindDetailByID(ctx context.Context, id uuid.UUID) (*Detail, error)
 	// FindFeedByUserID は、指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で
 	// keyset ページネーション取得します。ステータス名は購入ステータスマスタとの結合で解決します
 	// （購入ステータスは購入集約に属する固定参照マスタのため、単一集約の Repository read です）。

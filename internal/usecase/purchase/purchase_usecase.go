@@ -8,8 +8,10 @@ import (
 	"context"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/exchangerate"
 	"go-boilerplate/internal/usecase/outbox"
@@ -78,6 +80,31 @@ type PurchaseView struct {
 	ReferenceAmount *ReferenceAmountView
 }
 
+// CancelPurchaseParams は、購入キャンセルの入力パラメータです。
+type CancelPurchaseParams struct {
+	// PurchaseID は、キャンセル対象の購入 ID です。
+	PurchaseID uuid.UUID
+	// UserID は、キャンセルを要求した認証済みの内部ユーザー ID です。所有権の検証に用います。
+	UserID uuid.UUID
+}
+
+// CancelPurchaseView は、キャンセル後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+// マスタで解決済みの ID と名称、CanceledAt はキャンセル日時です。金額はすべて USD セント単位の整数です。
+type CancelPurchaseView struct {
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	StatusName     string
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetailView
+	OrderedAt      time.Time
+	CanceledAt     *time.Time
+}
+
 // Usecase は、購入の作成ユースケースを定義します。
 type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫減算・購入作成・明細作成・outbox 発行を単一 tx で
@@ -86,6 +113,10 @@ type Usecase interface {
 	// GetPurchases は、認証主体（userID）の購入履歴を注文日時降順（cursor ページネーション）で取得します。
 	// 一覧は概要（code / totalAmount / status / orderedAt）のみを返し、他ユーザーの購入は返しません。
 	GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error)
+	// CancelPurchase は、本人の購入をキャンセルします。購入行のロック → 所有権検証 → 状態遷移（→ キャンセル）→
+	// 明細分の在庫復元 → outbox 発行を単一 tx で原子的に行います。他ユーザーの購入・不存在はいずれも
+	// 存在秘匿のため NotFound（404）、不正遷移は 409 を返します。
+	CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
 }
 
 // usecase は、Usecase の実装です。
@@ -96,15 +127,17 @@ type usecase struct {
 	repo   purchase.Repository
 	emit   outbox.EmitUsecase
 	xr     exchangerate.Usecase
+	clock  clock.Clock
 }
 
-// New は、購入の作成ユースケースを生成します。
+// New は、購入ユースケースを生成します。
 func New(
 	txm tx.Manager,
 	cmd command.CommandService,
 	repo purchase.Repository,
 	emit outbox.EmitUsecase,
 	xr exchangerate.Usecase,
+	clock clock.Clock,
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
@@ -114,6 +147,7 @@ func New(
 		repo:   repo,
 		emit:   emit,
 		xr:     xr,
+		clock:  clock,
 	}
 }
 
@@ -192,6 +226,61 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 	return view, nil
 }
 
+// CancelPurchase は、本人の購入をキャンセルします。
+func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	now := u.clock.Now()
+
+	var detail *purchase.Detail
+	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、状態遷移と在庫復元の部分適用を防ぐ。
+	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
+		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseID)
+		if lerr != nil {
+			return lerr
+		}
+
+		// 他人の購入は存在を秘匿するため、不一致・不存在いずれも NotFound（404）へ畳む。
+		if locked.UserID() != params.UserID {
+			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
+		}
+
+		if cerr := locked.Cancel(now); cerr != nil {
+			return cerr
+		}
+
+		if perr := u.cmd.CancelPurchase(ctx, locked); perr != nil {
+			return perr
+		}
+
+		payload, berr := event.BuildCanceled(locked)
+		if berr != nil {
+			return berr
+		}
+		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
+			AggregateType: aggregateType,
+			AggregateID:   params.PurchaseID.String(),
+			EventType:     event.TypeCanceled,
+			Payload:       payload,
+		}); eerr != nil {
+			return eerr
+		}
+
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
+		if rerr != nil {
+			return rerr
+		}
+		detail = reread
+		return nil
+	}); txErr != nil {
+		return CancelPurchaseView{}, txErr
+	}
+
+	return toCancelPurchaseView(detail), nil
+}
+
 // referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。
 // 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
 func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
@@ -236,5 +325,31 @@ func toPurchaseView(p *purchase.Purchase) PurchaseView {
 		TotalAmount:    p.TotalAmount(),
 		Details:        views,
 		OrderedAt:      p.OrderedAt(),
+	}
+}
+
+// toCancelPurchaseView は、購入詳細の読み取りモデルをキャンセルレスポンスの出力 DTO へ変換します。
+func toCancelPurchaseView(d *purchase.Detail) CancelPurchaseView {
+	views := make([]PurchaseDetailView, len(d.Details))
+	for i, detail := range d.Details {
+		views[i] = PurchaseDetailView{
+			ProductID: detail.ProductID(),
+			Quantity:  detail.Quantity(),
+			UnitPrice: detail.UnitPrice().Decimal(),
+		}
+	}
+	return CancelPurchaseView{
+		ID:             d.ID,
+		Code:           d.Code,
+		UserID:         d.UserID,
+		StatusID:       d.StatusID,
+		StatusName:     d.StatusName,
+		SubtotalAmount: d.SubtotalAmount,
+		TaxAmount:      d.TaxAmount,
+		ShippingFee:    d.ShippingFee,
+		TotalAmount:    d.TotalAmount,
+		Details:        views,
+		OrderedAt:      d.OrderedAt,
+		CanceledAt:     d.CanceledAt,
 	}
 }

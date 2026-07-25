@@ -102,6 +102,84 @@ func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchas
 	return nil
 }
 
+// LockPurchase は、購入行のみ悲観ロック（FOR UPDATE OF p）して明細込みで再構築し返します。
+// キャンセルの状態遷移の競合（同一購入への並行キャンセル）を購入行ロックで直列化します。
+// 現在状態は購入ステータスマスタとの結合で code を解決します。存在しない場合は NotFound を返します。
+func (c *commandService) LockPurchase(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+	ctx, endSpan := c.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, c.db))
+
+	row, err := db.GetPurchaseByIDForUpdate(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	details := make([]purchase.PurchaseDetail, len(detailRows))
+	for i, dr := range detailRows {
+		d := dr.PurchaseDetails
+		unitPrice, perr := money.NewPrice(d.UnitPrice)
+		if perr != nil {
+			return nil, pgerror.NormalizeReconstructError(perr)
+		}
+		details[i] = purchase.NewPurchaseDetail(d.ID, d.ProductID, int(d.Quantity), unitPrice)
+	}
+
+	p := row.Purchases
+	entity, err := purchase.Reconstruct(
+		p.ID,
+		p.Code,
+		p.UserID,
+		p.StatusID,
+		int(row.StatusCode),
+		int(p.SubtotalAmount),
+		int(p.TaxAmount),
+		int(p.ShippingFee),
+		int(p.TotalAmount),
+		details,
+		p.OrderedAt,
+		p.CanceledAt,
+		p.ShippedAt,
+		p.DeliveredAt,
+	)
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
+	return entity, nil
+}
+
+// CancelPurchase は、キャンセルに伴う在庫復元（明細分の加算）と購入の状態更新（status_id / canceled_at）を
+// 渡された tx 内で原子的に実行します。在庫加算は相対更新で売り越しを生まないため在庫不足ガードは不要です。
+func (c *commandService) CancelPurchase(ctx context.Context, p *purchase.Purchase) error {
+	ctx, endSpan := c.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, c.db))
+
+	for _, d := range p.Details() {
+		if err := db.IncrementProductStock(ctx, &gen.IncrementProductStockParams{
+			QuantityParam:  toInt32(d.Quantity()),
+			ProductIDParam: d.ProductID(),
+		}); err != nil {
+			return pgerror.NormalizeError(err)
+		}
+	}
+
+	if err := db.UpdatePurchaseCanceled(ctx, &gen.UpdatePurchaseCanceledParams{
+		StatusCode: toInt16(p.StatusCode()),
+		ID:         p.ID(),
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	return nil
+}
+
 // toInt32 は、ドメインの int を sqlc の int32（DB INTEGER 列）へ変換します。
 func toInt32(v int) int32 {
 	//nolint:gosec // G115: 値は int32 の DB 列（quantity / unit_price / *_amount）由来で範囲に収まります
