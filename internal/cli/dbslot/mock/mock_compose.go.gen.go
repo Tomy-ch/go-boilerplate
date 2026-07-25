@@ -54,6 +54,21 @@ func (mr *MockComposeMockRecorder) DownServe(ctx, project any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownServe", reflect.TypeOf((*MockCompose)(nil).DownServe), ctx, project)
 }
 
+// RunningContainers mocks base method.
+func (m *MockCompose) RunningContainers(ctx context.Context, project string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunningContainers", ctx, project)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunningContainers indicates an expected call of RunningContainers.
+func (mr *MockComposeMockRecorder) RunningContainers(ctx, project any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunningContainers", reflect.TypeOf((*MockCompose)(nil).RunningContainers), ctx, project)
+}
+
 // UpSharedDB mocks base method.
 func (m *MockCompose) UpSharedDB(ctx context.Context, project string) error {
 	m.ctrl.T.Helper()
