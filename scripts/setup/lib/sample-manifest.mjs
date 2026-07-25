@@ -196,6 +196,8 @@ export const SAMPLE_DOMAINS = {
       "database/migrations/000012_create_purchases.down.sql",
       "database/migrations/000013_create_purchase_details.up.sql",
       "database/migrations/000013_create_purchase_details.down.sql",
+      "database/migrations/000015_add_purchase_statuses_paid_shipped_delivered.up.sql",
+      "database/migrations/000015_add_purchase_statuses_paid_shipped_delivered.down.sql",
       // Go 各層
       "internal/domain/purchase",
       "internal/usecase/purchase",
@@ -205,6 +207,7 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_purchases_test.go",
       "internal/integration/v1_purchases_get_test.go",
       "internal/integration/v1_purchases_cancel_test.go",
+      "internal/integration/v1_purchases_pay_test.go",
       // DML
       "database/dml/command_service/purchase",
       "database/dml/repository/purchase",
@@ -221,6 +224,7 @@ export const SAMPLE_DOMAINS = {
       "openapi/components/parameters/purchase",
       "openapi/components/schemas/PurchaseResponse.yaml",
       "openapi/components/schemas/PurchaseCancelResponse.yaml",
+      "openapi/components/schemas/PurchasePayResponse.yaml",
       "openapi/components/schemas/PurchaseSummaryResponse.yaml",
       "openapi/components/schemas/PurchaseDetailResponse.yaml",
       "openapi/components/schemas/PurchaseDetailInput.yaml",
