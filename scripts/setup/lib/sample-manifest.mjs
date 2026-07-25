@@ -205,6 +205,7 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_purchases_test.go",
       "internal/integration/v1_purchases_get_test.go",
       "internal/integration/v1_purchases_cancel_test.go",
+      "internal/integration/v1_purchases_pay_test.go",
       // DML
       "database/dml/command_service/purchase",
       "database/dml/repository/purchase",
@@ -221,6 +222,7 @@ export const SAMPLE_DOMAINS = {
       "openapi/components/parameters/purchase",
       "openapi/components/schemas/PurchaseResponse.yaml",
       "openapi/components/schemas/PurchaseCancelResponse.yaml",
+      "openapi/components/schemas/PurchasePayResponse.yaml",
       "openapi/components/schemas/PurchaseSummaryResponse.yaml",
       "openapi/components/schemas/PurchaseDetailResponse.yaml",
       "openapi/components/schemas/PurchaseDetailInput.yaml",

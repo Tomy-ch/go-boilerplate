@@ -48,6 +48,8 @@ fields:
     type: time.Time         # New ではゼロ値（DB 既定 NOW()）。Reconstruct で設定
   - name: statusCode
     type: int               # 現在状態の業務キー（status_id を JOIN で解決）。状態機械の source of truth
+  - name: paidAt
+    type: "*time.Time"      # 支払い日時（未支払いは nil）。支払い後も残る sticky な監査記録
   - name: canceledAt
     type: "*time.Time"      # キャンセル日時（未キャンセルは nil）。監査記録
   - name: shippedAt
@@ -106,13 +108,27 @@ fields:
   invariants:
     - status（statusCode）と対応 timestamp（canceledAt）は必ず同時セット
     - 既にセット済みの timestamps は不変（NULL → 値 の単調セットのみ）
+
+- name: Pay
+  signature: Pay(now time.Time) error
+  behavior: |
+    購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0076）。
+    遷移可否は statusCode を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
+      - 既に支払い済み（statusCode == 7）→ ErrAlreadyPaid（409。二重支払い）
+      - キャンセル済み（statusCode == 6）・完了（statusCode == 5）・発送済み（shippedAt != nil）・配達済み（deliveredAt != nil）→ ErrPayNotAllowed（409）
+      - それ以外（未処理 / 受付中 / 確認中 / 処理中）→ 許可
+    許可時は statusCode を支払い済み（7）へ、paidAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
+    決済 SDK / PSP 連携・金額検証は行わず、paidAt とステータスの記録のみを担う。
+  invariants:
+    - 支払い済み status（statusCode == 7）は paidAt を必須とする（一方向。paidAt は支払い後も残り、以降の遷移で status が変わっても保持されるためキャンセルのような双条件にはしない）
 ```
 
 ## Value Objects
 
 - `PurchaseDetail`（明細）/ `LockedProduct`（ロック済み在庫スナップショット・New の入力）。上記 Entity 参照。
 - `Detail`（購入 1 件の詳細読み取りモデル・read 側）。書き込み集約 Purchase とは別型で、ステータス名（`StatusName`）を
-  購入ステータスマスタとの JOIN で解決済み、`CanceledAt` はキャンセル日時（未キャンセルは nil）。`FindDetailByID` の返り値。
+  購入ステータスマスタとの JOIN で解決済み、`PaidAt` は支払い日時（未支払いは nil）、`CanceledAt` はキャンセル日時
+  （未キャンセルは nil）。`FindDetailByID` の返り値。
 
 ## Repository Methods
 
@@ -122,6 +138,17 @@ fields:
   behavior: |
     ID から購入を明細込みで取得し Reconstruct で再構築する。存在しない場合は NotFound。
     書き込み後のドメイン整合の再検証とレスポンスの取得元に用いる。
+- name: LockByID
+  signature: LockByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+  behavior: |
+    ID から購入を購入行のみ悲観ロック（SELECT FOR UPDATE OF p）して明細込みで再構築する。存在しない場合は NotFound。
+    支払いの状態遷移の競合（同一購入への並行支払い）を購入行ロックで直列化する。擬似決済は単一集約書き込みのため
+    CommandService ではなく Repository が担う（[ADR-0029] の判定軸）。
+- name: UpdatePaid
+  signature: UpdatePaid(ctx context.Context, p *Purchase) error
+  behavior: |
+    購入の状態更新（status_id は code から解決 / paid_at）を渡された ctx の tx 内で実行する。擬似決済のため
+    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
 - name: FindFeedByUserID
   signature: FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
   behavior: |
@@ -139,13 +166,15 @@ fields:
     状態名解決・レスポンスの取得元に用いる（GET 詳細 #569 でも再利用可能）。
 ```
 
-なお、状態遷移に伴う購入行の悲観ロック（`FOR UPDATE`）と在庫加算 + status/canceled_at 更新は Repository ではなく
-CommandService（`LockPurchase` / `CancelPurchase`）が担う（複数集約への原子的書き込み・[ADR-0027] / [ADR-0029]）。
+なお、状態遷移に伴う購入行の悲観ロック（`FOR UPDATE`）は、書き込みが集約を跨ぐかで担い手が分かれる（[ADR-0029] の判定軸）:
+
+- **キャンセル**は在庫復元（`products`）+ 購入更新（`purchases`）の**複数集約への原子的書き込み**のため CommandService（`LockPurchase` / `CancelPurchase`）が担う（[ADR-0027] / [ADR-0029]）。
+- **支払い**は `purchases` の status/paid_at のみの**単一集約書き込み**（在庫操作なし）のため、CommandService ではなく **Repository（`LockByID` / `UpdatePaid`）**が担う。行ロックは並行制御（二重支払い防止）であって集約横断の原子性ではない。
 
 ## Notes
 
-- 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する。
-- エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
+- 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `StatusCodePaid = 7` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。
+- エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` / `ErrAlreadyPaid` / `ErrPayNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
 
 [ADR-0027]: ../../adr/0027-lightweight-cqrs.md
 [ADR-0029]: ../../adr/0029-commandservice-atomicity-criterion.md

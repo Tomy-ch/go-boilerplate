@@ -65,6 +65,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 		int(p.TotalAmount),
 		details,
 		p.OrderedAt,
+		p.PaidAt,
 		p.CanceledAt,
 		p.ShippedAt,
 		p.DeliveredAt,
@@ -73,6 +74,70 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
 	return entity, nil
+}
+
+// LockByID は、購入行のみ悲観ロック（FOR UPDATE OF p）して明細込みで再構築し返します。
+// 支払いの状態遷移の競合（同一購入への並行支払い）を購入行ロックで直列化します。存在しない場合は NotFound を返します。
+func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	row, err := db.LockPurchaseByID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	details, err := toPurchaseDetails(detailRows)
+	if err != nil {
+		return nil, err
+	}
+
+	p := row.Purchases
+	entity, err := purchase.Reconstruct(
+		p.ID,
+		p.Code,
+		p.UserID,
+		p.StatusID,
+		int(row.StatusCode),
+		int(p.SubtotalAmount),
+		int(p.TaxAmount),
+		int(p.ShippingFee),
+		int(p.TotalAmount),
+		details,
+		p.OrderedAt,
+		p.PaidAt,
+		p.CanceledAt,
+		p.ShippedAt,
+		p.DeliveredAt,
+	)
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
+	return entity, nil
+}
+
+// UpdatePaid は、購入の状態更新（status_id / paid_at）を渡された tx 内で実行します。
+// 擬似決済のため単一集約（purchases）のみを更新し、在庫操作は伴いません。
+func (r *repository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	if err := db.UpdatePurchasePaid(ctx, &gen.UpdatePurchasePaidParams{
+		StatusCode: toInt16(p.StatusCode()),
+		PaidAt:     p.PaidAt(),
+		ID:         p.ID(),
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	return nil
 }
 
 // FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
@@ -110,8 +175,15 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 		TotalAmount:    int(row.TotalAmount),
 		Details:        details,
 		OrderedAt:      row.OrderedAt,
+		PaidAt:         row.PaidAt,
 		CanceledAt:     row.CanceledAt,
 	}, nil
+}
+
+// toInt16 は、ドメインの int を sqlc の int16（purchase_statuses.code の SMALLINT 列）へ変換します。
+func toInt16(v int) int16 {
+	//nolint:gosec // G115: 値は purchase_statuses.code（SMALLINT）由来で範囲に収まります
+	return int16(v)
 }
 
 // toPurchaseDetails は、明細行を購入明細の値オブジェクトへ変換します。単価は価格スケール（ドル decimal）です。

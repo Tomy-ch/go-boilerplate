@@ -38,4 +38,12 @@ var (
 	// ErrCancelNotAllowed は、キャンセル不可の状態（完了・発送済み・配達済み）からキャンセルしようとした場合のエラーです。
 	// 状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0039）。
 	ErrCancelNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be canceled in the current state")
+
+	// ErrAlreadyPaid は、既に支払い済みの購入を再度支払おうとした場合のエラーです（二重支払い）。
+	// 冪等でない状態遷移の衝突であり、409（ErrConflict）へ写像します（ADR-0039）。
+	ErrAlreadyPaid = xerrors.Wrap(apperror.ErrConflict, "purchase already paid")
+
+	// ErrPayNotAllowed は、支払い不可の状態（キャンセル済み・完了・発送済み・配達済み）から支払おうとした場合のエラーです。
+	// 状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0039）。
+	ErrPayNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be paid in the current state")
 )

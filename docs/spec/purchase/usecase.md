@@ -20,6 +20,8 @@ methods:
     signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error)
   - name: CancelPurchase # PATCH /v1/purchases/{purchaseId}/cancel。詳細は「## PATCH キャンセル」
     signature: CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
+  - name: PayPurchase   # PATCH /v1/purchases/{purchaseId}/pay。詳細は「## PATCH 支払い」
+    signature: PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
 ```
 
 ## DTOs
@@ -180,6 +182,65 @@ workflow:
   errors:
     - ErrAlreadyCanceled → 409（二重キャンセル）
     - ErrCancelNotAllowed → 409（完了・発送済み・配達済みからの不正遷移）
+    - ErrNotFound → 404（不存在・他人の購入の存在秘匿）
+    - 未認証は controller で 401（Authn 不在）
+```
+
+## PATCH 支払い (purchase pay)
+
+`PATCH /v1/purchases/{purchaseId}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0076）。
+決済 SDK / PSP 連携・金額検証は行わず、`paid_at` のセットと `status_id` の「支払い済み」への更新のみを担う。在庫操作は伴わない。
+**単一集約（`purchases`）のみを更新するため、複数集約の原子性を要する CommandService（[ADR-0029]）ではなく通常 usecase + Repository で完結する**
+（cancel は在庫復元を伴う複数集約書き込みのため CommandService を用いる。判定軸は「集約を跨ぐ書き込みの原子性が要るか」）。
+状態機械の source of truth はキャンセルと統一で `status_id`（現在状態）、timestamps は監査記録として併用する。二重支払いは
+購入行ロック（`repo.LockByID` の FOR UPDATE・並行制御であって集約横断ではない）+ ドメインの状態チェック（`ErrAlreadyPaid`）で防ぐ。
+支払い後の状態名解決は詳細読み取りモデル（`purchase.Detail`）で JOIN 解決する。
+
+```yaml
+input:
+  struct: PayPurchaseParams
+  fields:
+    - name: PurchaseID           # 支払い対象の購入 ID
+      type: uuid.UUID
+    - name: UserID               # 認証済みの内部ユーザー ID（所有権検証）
+      type: uuid.UUID
+
+output:
+  struct: PayPurchaseView
+  fields:
+    - name: ID / Code / UserID
+      type: uuid.UUID / string / uuid.UUID
+    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（支払い済み）
+      type: uuid.UUID / string
+    - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
+      type: int                     # USD セント整数
+    - name: Details
+      type: "[]PurchaseDetailView"
+    - name: OrderedAt
+      type: time.Time
+    - name: PaidAt
+      type: "*time.Time"            # 支払い日時
+
+dependencies:
+  - clock.Clock                     # Pay(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
+  - tx.Manager                      # 最外 tx（本経路は idempotency を配線しない）
+  - purchase.Repository             # LockByID（FOR UPDATE）/ UpdatePaid（status/paid_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
+  - outbox.EmitUsecase              # purchase.paid.v1 の emit（同一 tx）
+
+workflow:
+  tx_required: true
+  steps:
+    - "txm.Do 内で:"
+    - "  ① repo.LockByID で購入行を FOR UPDATE ロックし明細込みで再構築（並行支払いを直列化）"
+    - "  ② purchase.UserID() != params.UserID なら NotFound へ畳む（存在秘匿）"
+    - "  ③ purchase.Pay(now) で遷移可否検証 + status/paid_at を同時更新（ドメイン不変条件）"
+    - "  ④ repo.UpdatePaid で purchases の status_id/paid_at を更新（単一集約・在庫操作なし）"
+    - "  ⑤ emit.Emit(purchase.paid.v1) を同一 tx で発行する"
+    - "  ⑥ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
+    - PayPurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
+  errors:
+    - ErrAlreadyPaid → 409（二重支払い）
+    - ErrPayNotAllowed → 409（キャンセル済み・完了・発送済み・配達済みからの不正遷移）
     - ErrNotFound → 404（不存在・他人の購入の存在秘匿）
     - 未認証は controller で 401（Authn 不在）
 ```

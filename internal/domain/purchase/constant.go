@@ -11,6 +11,13 @@ const (
 	// StatusCodeCanceled は、購入キャンセルステータスのコードです。キャンセル遷移の遷移先です。
 	StatusCodeCanceled = 6
 
+	// StatusCodePaid は、購入支払い済みステータスのコードです。支払い遷移の遷移先で、未払い相当
+	// （未処理 / 受付中 / 確認中 / 処理中）からのみ到達します。ステータスの UUID はドメインに焼き込まず、
+	// 永続化時に code から解決します（seed との二重管理を避けるため）。
+	// なお code 値（7）は安定した業務キーであり状態の到達順序を意味しない（完了=5・キャンセル=6 より大きい）。
+	// 遷移判定は必ず等値比較で行い、大小比較（statusCode >= X 等）に用いてはならない。
+	StatusCodePaid = 7
+
 	// taxRatePercent は、国内消費税率（パーセント）です。sample の placeholder であり、
 	// 要件化した時点で config / マスタへ移します（ADR-0100）。
 	taxRatePercent = 10

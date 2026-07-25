@@ -12,6 +12,14 @@ type Repository interface {
 	// FindByID は、ID から購入を明細込みで取得します。書き込み後のドメイン整合の再検証と
 	// レスポンス組み立ての取得元に用います。存在しない場合は NotFound を返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+	// LockByID は、ID から購入を購入行のみ悲観ロック（SELECT FOR UPDATE）して明細込みで再構築し返します。
+	// 支払いの状態遷移の競合（同一購入への並行支払い）を購入行ロックで直列化します。擬似決済は単一集約
+	// （purchases）のみを更新するため、複数集約の原子性を要する CommandService ではなく Repository が担います。
+	// 存在しない場合は NotFound を返します。
+	LockByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+	// UpdatePaid は、購入の状態更新（status_id / paid_at）を、渡された ctx のトランザクション内で実行します。
+	// 擬似決済のため単一集約（purchases）のみを更新し、在庫操作は伴いません。対象行は LockByID で取得・検証済みです。
+	UpdatePaid(ctx context.Context, p *Purchase) error
 	// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 	// 購入ステータスマスタとの結合で解決します（購入ステータスは購入集約に属する固定参照マスタのため、
 	// 単一集約の Repository read です）。存在しない場合は NotFound を返します。

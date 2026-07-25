@@ -72,6 +72,7 @@ SELECT
     p.shipping_fee,
     p.total_amount,
     p.ordered_at,
+    p.paid_at,
     p.canceled_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
@@ -89,12 +90,14 @@ type GetPurchaseDetailByIDRow struct {
 	ShippingFee    int64
 	TotalAmount    int64
 	OrderedAt      time.Time
+	PaidAt         *time.Time
 	CanceledAt     *time.Time
 }
 
 // ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
 // 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
-// キャンセル日時（canceled_at）は未キャンセルなら NULL。存在しない場合は 0 行（NotFound）。
+// 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL。
+// 存在しない場合は 0 行（NotFound）。
 //
 //	SELECT
 //	    p.id,
@@ -107,6 +110,7 @@ type GetPurchaseDetailByIDRow struct {
 //	    p.shipping_fee,
 //	    p.total_amount,
 //	    p.ordered_at,
+//	    p.paid_at,
 //	    p.canceled_at
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
@@ -125,6 +129,7 @@ func (q *Queries) GetPurchaseDetailByID(ctx context.Context, id uuid.UUID) (*Get
 		&i.ShippingFee,
 		&i.TotalAmount,
 		&i.OrderedAt,
+		&i.PaidAt,
 		&i.CanceledAt,
 	)
 	return &i, err
@@ -332,4 +337,93 @@ func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchases
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockPurchaseByID = `-- name: LockPurchaseByID :one
+SELECT
+    ps.code AS status_code,
+    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE p.id = $1
+FOR UPDATE OF p
+`
+
+type LockPurchaseByIDRow struct {
+	StatusCode int16
+	Purchases  Purchases
+}
+
+// === source: database/dml/repository/purchase/lock_purchase_by_id.sql ===
+// ID から購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。支払いの状態遷移の
+// 競合（同一購入への並行支払い）を購入行ロックで直列化する（結合先の固定参照マスタはロックしない）。
+// 現在状態は購入ステータスマスタとの結合で code を解決する。存在しない場合は 0 行（NotFound）。
+//
+//	SELECT
+//	    ps.code AS status_code,
+//	    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+//	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE p.id = $1
+//	FOR UPDATE OF p
+func (q *Queries) LockPurchaseByID(ctx context.Context, id uuid.UUID) (*LockPurchaseByIDRow, error) {
+	row := q.db.QueryRow(ctx, lockPurchaseByID, id)
+	var i LockPurchaseByIDRow
+	err := row.Scan(
+		&i.StatusCode,
+		&i.Purchases.ID,
+		&i.Purchases.Code,
+		&i.Purchases.UserID,
+		&i.Purchases.StatusID,
+		&i.Purchases.SubtotalAmount,
+		&i.Purchases.TaxAmount,
+		&i.Purchases.ShippingFee,
+		&i.Purchases.TotalAmount,
+		&i.Purchases.OrderedAt,
+		&i.Purchases.PaidAt,
+		&i.Purchases.CanceledAt,
+		&i.Purchases.ShippedAt,
+		&i.Purchases.DeliveredAt,
+		&i.Purchases.CreatedAt,
+		&i.Purchases.UpdatedAt,
+	)
+	return &i, err
+}
+
+const updatePurchasePaid = `-- name: UpdatePurchasePaid :exec
+UPDATE purchases
+SET
+    status_id = (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = $1
+    ),
+    paid_at = $2,
+    updated_at = NOW()
+WHERE purchases.id = $3
+`
+
+type UpdatePurchasePaidParams struct {
+	StatusCode int16
+	PaidAt     *time.Time
+	ID         uuid.UUID
+}
+
+// === source: database/dml/repository/purchase/update_purchase_paid.sql ===
+// 購入を支払い済み状態へ更新する。擬似決済のため単一集約（purchases）のみを更新し、在庫操作は伴わない。
+// status_id は code から解決し（seed UUID を焼き込まない）、paid_at はドメインが決定した時刻（引数）を書き込み、
+// イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
+// 遷移可否ガードは付けない（ドメインが SoT）。
+//
+//	UPDATE purchases
+//	SET
+//	    status_id = (
+//	        SELECT ps.id FROM purchase_statuses AS ps
+//	        WHERE ps.code = $1
+//	    ),
+//	    paid_at = $2,
+//	    updated_at = NOW()
+//	WHERE purchases.id = $3
+func (q *Queries) UpdatePurchasePaid(ctx context.Context, arg *UpdatePurchasePaidParams) error {
+	_, err := q.db.Exec(ctx, updatePurchasePaid, arg.StatusCode, arg.PaidAt, arg.ID)
+	return err
 }

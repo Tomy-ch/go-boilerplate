@@ -313,6 +313,7 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				assert.Equal(t, created.ID(), actual.ID())
 				assert.Equal(t, userID, actual.UserID())
 				assert.Equal(t, domainpurchase.StatusCodeUnprocessed, actual.StatusCode())
+				assert.Nil(t, actual.PaidAt())
 				assert.Nil(t, actual.CanceledAt())
 				require.Len(t, actual.Details(), 1)
 				assert.Equal(t, pid, actual.Details()[0].ProductID())

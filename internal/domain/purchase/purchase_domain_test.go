@@ -278,6 +278,7 @@ func TestReconstruct(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			require.NoError(t, err)
 			assert.Equal(t, id, actual.ID())
@@ -294,6 +295,21 @@ func TestReconstruct(t *testing.T) {
 			require.Len(t, actual.Details(), 1)
 			assert.Equal(t, details[0].ProductID(), actual.Details()[0].ProductID())
 			assert.True(t, details[0].UnitPrice().Decimal().Equal(actual.Details()[0].UnitPrice().Decimal()))
+		})
+
+		t.Run("支払い後にキャンセルされた購入（paidAtとcanceledAtの両方セット）を再構築できる", func(t *testing.T) {
+			t.Parallel()
+			id, code, userID, statusID, details, orderedAt := valid(t)
+			paidAt := orderedAt
+			canceledAt := orderedAt
+			actual, err := Reconstruct(
+				id, code, userID, statusID, StatusCodeCanceled, 160000, 16000, 500, 176500, details, orderedAt,
+				&paidAt, &canceledAt, nil, nil,
+			)
+			require.NoError(t, err)
+			require.NotNil(t, actual.PaidAt())
+			assert.Equal(t, paidAt, *actual.PaidAt())
+			require.NotNil(t, actual.CanceledAt())
 		})
 	})
 
@@ -318,6 +334,7 @@ func TestReconstruct(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
@@ -326,7 +343,23 @@ func TestReconstruct(t *testing.T) {
 		t.Run("金額が負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, StatusCodeUnprocessed, -1, 16000, 500, 176500, details, orderedAt, nil, nil, nil)
+			actual, err := Reconstruct(
+				id,
+				code,
+				userID,
+				statusID,
+				StatusCodeUnprocessed,
+				-1,
+				16000,
+				500,
+				176500,
+				details,
+				orderedAt,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
@@ -334,7 +367,23 @@ func TestReconstruct(t *testing.T) {
 		t.Run("明細が空の場合、ErrEmptyDetailsを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, _, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, StatusCodeUnprocessed, 160000, 16000, 500, 176500, nil, orderedAt, nil, nil, nil)
+			actual, err := Reconstruct(
+				id,
+				code,
+				userID,
+				statusID,
+				StatusCodeUnprocessed,
+				160000,
+				16000,
+				500,
+				176500,
+				nil,
+				orderedAt,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrEmptyDetails)
 		})
@@ -357,6 +406,7 @@ func TestReconstruct(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidID)
@@ -365,7 +415,23 @@ func TestReconstruct(t *testing.T) {
 		t.Run("codeが空の場合、ErrInvalidCodeを返す", func(t *testing.T) {
 			t.Parallel()
 			id, _, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, "", userID, statusID, StatusCodeUnprocessed, 160000, 16000, 500, 176500, details, orderedAt, nil, nil, nil)
+			actual, err := Reconstruct(
+				id,
+				"",
+				userID,
+				statusID,
+				StatusCodeUnprocessed,
+				160000,
+				16000,
+				500,
+				176500,
+				details,
+				orderedAt,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCode)
 		})
@@ -388,6 +454,7 @@ func TestReconstruct(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidUserID)
@@ -396,7 +463,23 @@ func TestReconstruct(t *testing.T) {
 		t.Run("税額が負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, StatusCodeUnprocessed, 160000, -1, 500, 176500, details, orderedAt, nil, nil, nil)
+			actual, err := Reconstruct(
+				id,
+				code,
+				userID,
+				statusID,
+				StatusCodeUnprocessed,
+				160000,
+				-1,
+				500,
+				176500,
+				details,
+				orderedAt,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
@@ -419,6 +502,7 @@ func TestReconstruct(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
@@ -427,7 +511,23 @@ func TestReconstruct(t *testing.T) {
 		t.Run("合計額が負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, StatusCodeUnprocessed, 160000, 16000, 500, -1, details, orderedAt, nil, nil, nil)
+			actual, err := Reconstruct(
+				id,
+				code,
+				userID,
+				statusID,
+				StatusCodeUnprocessed,
+				160000,
+				16000,
+				500,
+				-1,
+				details,
+				orderedAt,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
@@ -435,7 +535,7 @@ func TestReconstruct(t *testing.T) {
 		t.Run("statusCodeが不正（未処理未満）の場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, 0, 160000, 16000, 500, 176500, details, orderedAt, nil, nil, nil)
+			actual, err := Reconstruct(id, code, userID, statusID, 0, 160000, 16000, 500, 176500, details, orderedAt, nil, nil, nil, nil)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -443,7 +543,31 @@ func TestReconstruct(t *testing.T) {
 		t.Run("キャンセルstatusなのにcanceledAtがnilの場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, StatusCodeCanceled, 160000, 16000, 500, 176500, details, orderedAt, nil, nil, nil)
+			actual, err := Reconstruct(
+				id,
+				code,
+				userID,
+				statusID,
+				StatusCodeCanceled,
+				160000,
+				16000,
+				500,
+				176500,
+				details,
+				orderedAt,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidStatusID)
+		})
+
+		t.Run("支払い済みstatusなのにpaidAtがnilの場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
+			t.Parallel()
+			id, code, userID, statusID, details, orderedAt := valid(t)
+			actual, err := Reconstruct(id, code, userID, statusID, StatusCodePaid, 160000, 16000, 500, 176500, details, orderedAt, nil, nil, nil, nil)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -464,6 +588,7 @@ func TestReconstruct(t *testing.T) {
 				176500,
 				details,
 				orderedAt,
+				nil,
 				&canceledAt,
 				nil,
 				nil,
@@ -487,7 +612,7 @@ func TestPurchase_Cancel(t *testing.T) {
 			uuid.NewTestFromSalt(t, "cancel_user"), uuid.NewTestFromSalt(t, "cancel_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-			canceledAt, shippedAt, deliveredAt,
+			nil, canceledAt, shippedAt, deliveredAt,
 		)
 		require.NoError(t, err)
 		return p
@@ -533,6 +658,75 @@ func TestPurchase_Cancel(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCodeUnprocessed, nil, nil, &now)
 			require.ErrorIs(t, p.Cancel(now), ErrCancelNotAllowed)
+		})
+	})
+}
+
+func TestPurchase_Pay(t *testing.T) {
+	t.Parallel()
+
+	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
+		t.Helper()
+		details := []PurchaseDetail{
+			NewPurchaseDetail(uuid.NewTestFromSalt(t, "pay_d1"), uuid.NewTestFromSalt(t, "pay_p1"), 2, mustPrice(t, "800")),
+		}
+		p, err := Reconstruct(
+			uuid.NewTestFromSalt(t, "pay_id"), "pay-code",
+			uuid.NewTestFromSalt(t, "pay_user"), uuid.NewTestFromSalt(t, "pay_status"),
+			statusCode, 160000, 16000, 500, 176500, details,
+			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			paidAt, canceledAt, shippedAt, deliveredAt,
+		)
+		require.NoError(t, err)
+		return p
+	}
+	now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未払い相当から支払うと、statusCodeが支払い済みになりpaidAtがセットされる", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeUnprocessed, nil, nil, nil, nil)
+			err := p.Pay(now)
+			require.NoError(t, err)
+			assert.Equal(t, StatusCodePaid, p.StatusCode())
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, now, *p.PaidAt())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既に支払い済み（statusCode）の場合、ErrAlreadyPaidを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodePaid, &now, nil, nil, nil)
+			require.ErrorIs(t, p.Pay(now), ErrAlreadyPaid)
+		})
+
+		t.Run("キャンセル済みの場合、ErrPayNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeCanceled, nil, &now, nil, nil)
+			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
+		})
+
+		t.Run("完了の場合、ErrPayNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeCompleted, nil, nil, nil, nil)
+			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
+		})
+
+		t.Run("発送済み（shippedAtセット済）の場合、ErrPayNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeUnprocessed, nil, nil, &now, nil)
+			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
+		})
+
+		t.Run("配達済み（deliveredAtセット済）の場合、ErrPayNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeUnprocessed, nil, nil, nil, &now)
+			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
 		})
 	})
 }

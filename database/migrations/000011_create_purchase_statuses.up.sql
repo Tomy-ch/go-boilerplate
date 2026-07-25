@@ -32,3 +32,9 @@ INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
 ('1904bf76-7d37-4288-bc15-359d2512ac91', '完了', 5, 5) ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
 ('e9d72547-adfe-48d9-9037-bd1f55d4158b', 'キャンセル', 6, 6) ON CONFLICT (id) DO NOTHING;
+INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
+('4b8f0e2a-1c3d-4a5e-8b7f-2d9c0e1a3b4c', '支払い済み', 7, 7) ON CONFLICT (id) DO NOTHING;
+INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
+('5c9a1f3b-2d4e-4b6f-9c8a-3e0d1f2b4c5d', '発送済み', 8, 8) ON CONFLICT (id) DO NOTHING;
+INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
+('6d0b2a4c-3e5f-4c7a-ad9b-4f1e2a3c5d6e', '配達済み', 9, 9) ON CONFLICT (id) DO NOTHING;

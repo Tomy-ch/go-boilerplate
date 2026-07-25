@@ -11,7 +11,8 @@ WHERE p.id = @id;
 -- name: GetPurchaseDetailByID :one
 -- ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
 -- 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
--- キャンセル日時（canceled_at）は未キャンセルなら NULL。存在しない場合は 0 行（NotFound）。
+-- 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL。
+-- 存在しない場合は 0 行（NotFound）。
 SELECT
     p.id,
     p.code,
@@ -23,6 +24,7 @@ SELECT
     p.shipping_fee,
     p.total_amount,
     p.ordered_at,
+    p.paid_at,
     p.canceled_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
