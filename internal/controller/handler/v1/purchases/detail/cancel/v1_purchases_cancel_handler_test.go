@@ -121,6 +121,25 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
+
+		t.Run("内部UserIDが未解決の場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			// WithUserID を呼ばず内部 UserID を未解決のまま載せる。
+			ctx := ctxhelper.WithAuthn(context.Background())
+			authn, err := auth.New("subject", "issuer", nil, nil)
+			require.NoError(t, err)
+			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
+
+			_, err = s.PatchPurchasesCancel(ctx, gen.PatchPurchasesCancelRequestObject{
+				PurchaseId: uuid.NewTestFromSalt(t, "hc_unresolved").ToPrimitive(),
+			})
+			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
+		})
 	})
 }
 

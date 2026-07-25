@@ -332,6 +332,34 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
 		})
+
+		t.Run("明細の単価が負値で再構築不能な場合はErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				pid := mustParse(t, "d1000000-0000-4000-8000-0000000000ce")
+				insertTestProduct(ctx, t, drv, pid, 80000, 20)
+
+				purchaseID := mustParse(t, "d1000000-0000-4000-8000-0000000000cf")
+				_, err := drv.Exec(ctx,
+					"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount) "+
+						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+					purchaseID, "lock-neg-code", userID, mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
+				)
+				require.NoError(t, err)
+				detailID := mustParse(t, "d1000000-0000-4000-8000-0000000000d0")
+				// NUMERIC 列は負値を格納できるが money.Price は非負不変条件を持つため再構築が失敗する。
+				_, err = drv.Exec(ctx,
+					"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5::numeric)",
+					detailID, purchaseID, pid, 2, "-1",
+				)
+				require.NoError(t, err)
+
+				_, err = svc.LockPurchase(ctx, purchaseID)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
 	})
 }
 

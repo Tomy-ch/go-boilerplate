@@ -53,5 +53,34 @@ func TestBuildCanceled(t *testing.T) {
 			assert.Equal(t, domainpurchase.StatusCodeCanceled, decoded.StatusCode)
 			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.CanceledAt)
 		})
+
+		t.Run("canceledAtがnilの購入はcanceledAtが空文字列になる", func(t *testing.T) {
+			t.Parallel()
+
+			details := []domainpurchase.PurchaseDetail{
+				domainpurchase.NewPurchaseDetail(
+					uuid.NewTestFromSalt(t, "bc_nil_d"),
+					uuid.NewTestFromSalt(t, "bc_nil_product"),
+					2,
+					mustPrice(t, "800"),
+				),
+			}
+			entity, err := domainpurchase.Reconstruct(
+				uuid.NewTestFromSalt(t, "bc_nil_id"), "bc-nil-code",
+				uuid.NewTestFromSalt(t, "bc_nil_user"), uuid.NewTestFromSalt(t, "bc_nil_status"),
+				domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
+				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil,
+			)
+			require.NoError(t, err)
+
+			payload, perr := event.BuildCanceled(entity)
+			require.NoError(t, perr)
+
+			var decoded struct {
+				CanceledAt string `json:"canceledAt"`
+			}
+			require.NoError(t, json.Unmarshal(payload, &decoded))
+			assert.Empty(t, decoded.CanceledAt)
+		})
 	})
 }

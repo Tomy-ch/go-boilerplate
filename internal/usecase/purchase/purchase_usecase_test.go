@@ -497,6 +497,72 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
 			require.ErrorIs(t, err, domainpurchase.ErrCancelNotAllowed)
 		})
+
+		t.Run("LockPurchaseが失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(nil, apperror.ErrUnavailable)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("CancelPurchase書き込みが失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+
+		t.Run("outbox発行が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(nil)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, apperror.ErrInternal)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("再読込が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(nil)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+			repo.EXPECT().FindDetailByID(gomock.Any(), purchaseID).Return(nil, apperror.ErrNotFound)
+
+			u := newUC(t, cmd, repo, emit)
+			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
 	})
 }
 
