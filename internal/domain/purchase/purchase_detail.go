@@ -32,6 +32,8 @@ type Detail struct {
 	Details []PurchaseDetail
 	// OrderedAt は、注文日時です。
 	OrderedAt time.Time
+	// PaidAt は、支払い日時です。未支払いの場合は nil です。
+	PaidAt *time.Time
 	// CanceledAt は、キャンセル日時です。未キャンセルの場合は nil です。
 	CanceledAt *time.Time
 }

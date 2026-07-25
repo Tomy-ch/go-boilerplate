@@ -86,3 +86,32 @@ func (mr *MockRepositoryMockRecorder) FindFeedByUserID(ctx, userID, params any) 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeedByUserID", reflect.TypeOf((*MockRepository)(nil).FindFeedByUserID), ctx, userID, params)
 }
+
+// LockByID mocks base method.
+func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockByID", ctx, id)
+	ret0, _ := ret[0].(*purchase.Purchase)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockByID indicates an expected call of LockByID.
+func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
+}
+
+// UpdatePaid mocks base method.
+func (m *MockRepository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdatePaid", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdatePaid indicates an expected call of UpdatePaid.
+func (mr *MockRepositoryMockRecorder) UpdatePaid(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePaid", reflect.TypeOf((*MockRepository)(nil).UpdatePaid), ctx, p)
+}

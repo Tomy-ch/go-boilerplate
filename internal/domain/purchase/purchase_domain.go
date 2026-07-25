@@ -57,6 +57,7 @@ type Purchase struct {
 	totalAmount    int
 	details        []PurchaseDetail
 	orderedAt      time.Time
+	paidAt         *time.Time
 	canceledAt     *time.Time
 	shippedAt      *time.Time
 	deliveredAt    *time.Time
@@ -162,7 +163,7 @@ func New(
 }
 
 // Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。
-// statusCode は購入ステータスマスタとの結合で解決した現在状態、canceledAt / shippedAt / deliveredAt は
+// statusCode は購入ステータスマスタとの結合で解決した現在状態、paidAt / canceledAt / shippedAt / deliveredAt は
 // 各イベントの発生日時（未発生は nil）です。ID / code / userID / statusID が nil、statusCode が不正、
 // 金額が負、明細が空の場合は検証エラーを返します。
 func Reconstruct(
@@ -177,6 +178,7 @@ func Reconstruct(
 	totalAmount int,
 	details []PurchaseDetail,
 	orderedAt time.Time,
+	paidAt *time.Time,
 	canceledAt *time.Time,
 	shippedAt *time.Time,
 	deliveredAt *time.Time,
@@ -200,6 +202,11 @@ func Reconstruct(
 	if (statusCode == StatusCodeCanceled) != (canceledAt != nil) {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "canceled status and canceledAt must be consistent")
 	}
+	// 支払い済み status は paidAt を必須とする（一方向）。paidAt は支払い後に残り続け、以降のキャンセル
+	// 等の遷移で status が変わっても保持されるため、キャンセルのような双条件にはしない。
+	if statusCode == StatusCodePaid && paidAt == nil {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "paid status requires paidAt")
+	}
 	if subtotalAmount < 0 || taxAmount < 0 || shippingFee < 0 || totalAmount < 0 {
 		return nil, xerrors.Wrap(ErrInvalidAmount, "amounts must not be negative")
 	}
@@ -222,6 +229,7 @@ func Reconstruct(
 		totalAmount:    totalAmount,
 		details:        copied,
 		orderedAt:      orderedAt,
+		paidAt:         ptr.Copy(paidAt),
 		canceledAt:     ptr.Copy(canceledAt),
 		shippedAt:      ptr.Copy(shippedAt),
 		deliveredAt:    ptr.Copy(deliveredAt),
@@ -280,6 +288,9 @@ func (p *Purchase) TotalAmount() int { return p.totalAmount }
 // OrderedAt は、注文日時を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。
 func (p *Purchase) OrderedAt() time.Time { return p.orderedAt }
 
+// PaidAt は、支払い日時を返します。未支払いの場合は nil です。
+func (p *Purchase) PaidAt() *time.Time { return ptr.Copy(p.paidAt) }
+
 // CanceledAt は、キャンセル日時を返します。未キャンセルの場合は nil です。
 func (p *Purchase) CanceledAt() *time.Time { return ptr.Copy(p.canceledAt) }
 
@@ -297,6 +308,24 @@ func (p *Purchase) Cancel(now time.Time) error {
 	}
 	p.statusCode = StatusCodeCanceled
 	p.canceledAt = &now
+	return nil
+}
+
+// Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
+// statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。既に支払い済みなら ErrAlreadyPaid、
+// キャンセル済み・完了・発送済み（shippedAt）・配達済み（deliveredAt）なら ErrPayNotAllowed をそれぞれ返します
+// （いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です
+// （決済 seam の除外は nextjs-boilerplate 側の設計判断）。
+// now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
+func (p *Purchase) Pay(now time.Time) error {
+	if p.statusCode == StatusCodePaid {
+		return ErrAlreadyPaid
+	}
+	if p.statusCode == StatusCodeCanceled || p.statusCode == StatusCodeCompleted || p.shippedAt != nil || p.deliveredAt != nil {
+		return ErrPayNotAllowed
+	}
+	p.statusCode = StatusCodePaid
+	p.paidAt = &now
 	return nil
 }
 
