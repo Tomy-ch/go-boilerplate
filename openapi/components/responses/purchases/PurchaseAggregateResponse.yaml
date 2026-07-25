@@ -10,12 +10,14 @@ properties:
   totalCount:
     type: integer
     format: int64
-    description: 購入総件数（キャンセル済みを含む）。購入がない場合は 0 です。
+    description: 購入総件数（キャンセル済みを含む）。statusBreakdown の count の総和と一致します。購入がない場合は 0 です。
     example: 12
   totalAmount:
     type: integer
     format: int64
-    description: 購入金額の合計（キャンセル済みを含む）。USD セント単位の整数です。購入がない場合は 0 です。
+    description: |
+      購入金額の合計（キャンセル済みを含む）。statusBreakdown の totalAmount の総和と一致します。
+      USD セント単位の整数です。購入がない場合は 0 です。
     example: 2118000
   statusBreakdown:
     type: array

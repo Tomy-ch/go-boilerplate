@@ -30,10 +30,11 @@ type PurchaseAggregateResponse struct {
 	// 購入がない場合は空配列です。
 	StatusBreakdown []PurchaseStatusBreakdownResponse `json:"statusBreakdown"`
 
-	// TotalAmount 購入金額の合計（キャンセル済みを含む）。USD セント単位の整数です。購入がない場合は 0 です。
+	// TotalAmount 購入金額の合計（キャンセル済みを含む）。statusBreakdown の totalAmount の総和と一致します。
+	// USD セント単位の整数です。購入がない場合は 0 です。
 	TotalAmount int64 `json:"totalAmount"`
 
-	// TotalCount 購入総件数（キャンセル済みを含む）。購入がない場合は 0 です。
+	// TotalCount 購入総件数（キャンセル済みを含む）。statusBreakdown の count の総和と一致します。購入がない場合は 0 です。
 	TotalCount int64 `json:"totalCount"`
 }
 
