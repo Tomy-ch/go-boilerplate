@@ -15,6 +15,7 @@ import (
 	mock_exchangerate "go-boilerplate/internal/usecase/exchangerate/mock"
 	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
 	mock_command "go-boilerplate/internal/usecase/purchase/command/mock"
+	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
@@ -74,11 +75,12 @@ func TestNew(t *testing.T) {
 			txm := testkit.NewMockTransactionManager(t)
 			cmd := mock_command.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
+			detailQS := mock_query.NewMockPurchaseDetailQueryService(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			xr := mock_exchangerate.NewMockUsecase(ctrl)
 
 			clk := clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC))
-			actual := New(txm, cmd, repo, emit, xr, clk, tf)
+			actual := New(txm, cmd, repo, detailQS, emit, xr, clk, tf)
 			require.NotNil(t, actual)
 		})
 	})

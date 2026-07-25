@@ -11,6 +11,7 @@ package mock_purchase
 
 import (
 	context "context"
+	auth "go-boilerplate/internal/usecase/boundary/auth"
 	purchase "go-boilerplate/internal/usecase/purchase"
 	paging "go-boilerplate/internal/usecase/tools/paging"
 	uuid "go-boilerplate/pkg/uuid"
@@ -71,6 +72,21 @@ func (m *MockUsecase) CreatePurchase(ctx context.Context, params purchase.Create
 func (mr *MockUsecaseMockRecorder) CreatePurchase(ctx, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePurchase", reflect.TypeOf((*MockUsecase)(nil).CreatePurchase), ctx, params)
+}
+
+// GetPurchaseDetail mocks base method.
+func (m *MockUsecase) GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (purchase.PurchaseGetDetailView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPurchaseDetail", ctx, authn, purchaseID)
+	ret0, _ := ret[0].(purchase.PurchaseGetDetailView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPurchaseDetail indicates an expected call of GetPurchaseDetail.
+func (mr *MockUsecaseMockRecorder) GetPurchaseDetail(ctx, authn, purchaseID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPurchaseDetail", reflect.TypeOf((*MockUsecase)(nil).GetPurchaseDetail), ctx, authn, purchaseID)
 }
 
 // GetPurchases mocks base method.

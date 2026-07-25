@@ -18,6 +18,8 @@ methods:
     signature: CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
   - name: GetPurchases   # GET /v1/purchases（購入履歴一覧・cursor）。詳細は「## GET 一覧（購入履歴）」
     signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error)
+  - name: GetPurchaseDetail # GET /v1/purchases/{purchaseId}（購入詳細・集約跨ぎ QS）。詳細は「## GET 詳細（購入詳細）」
+    signature: GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
   - name: CancelPurchase # PATCH /v1/purchases/{purchaseId}/cancel。詳細は「## PATCH キャンセル」
     signature: CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
   - name: PayPurchase   # PATCH /v1/purchases/{purchaseId}/pay。詳細は「## PATCH 支払い」
@@ -127,6 +129,52 @@ workflow:
   errors:
     - ErrInvalidArgument → 400（不正 cursor）
     - 未認証は controller で 401（Authn 不在）
+```
+
+## GET 詳細（購入詳細・集約跨ぎ QS）
+
+`GET /v1/purchases/{purchaseId}`。本人の購入 1 件を明細（商品名込み）とともに取得する読み取り経路。購入（`purchases` / `purchase_details`）と
+商品（`products`）は独立集約であり、明細に商品名を含む集約跨ぎの read 投影のため **QueryService**（`internal/usecase/purchase/query`）で取得する
+（[ADR-0027]。子参照マスタへの JOIN で済む一覧・cancel/pay の `purchase.Detail`（Repository read）とは経路を分ける）。商品名は `products` との
+JOIN でサーバー解決した現在名（live・非スナップショット）、ステータス名は購入ステータスマスタとの JOIN で解決する。所有権は QS 本体クエリの
+`WHERE p.id = @id AND p.user_id = @user_id` で担保し、他人の購入・不存在はいずれも 0 行 → NotFound（404）で存在を秘匿する（403 は用いない）。
+固定 2 クエリ（本体 + 明細 JOIN products）で N+1 を避ける。書き込みを伴わないため tx / authorizer は不要。
+
+```yaml
+input:
+  - authn: "*auth.Authn"       # 認証主体。nil は Unauthenticated（401）。UserID() を QS の所有権述語へ渡す
+  - purchaseID: uuid.UUID
+
+output:
+  struct: PurchaseGetDetailView
+  fields:
+    - name: ID / Code / UserID
+      type: uuid.UUID / string / uuid.UUID
+    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み
+      type: uuid.UUID / string
+    - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
+      type: int64                   # USD セント整数
+    - name: Details
+      type: "[]PurchaseDetailItemView"   # { ProductID, ProductName(products JOIN の現在名), Quantity, UnitPrice(価格スケール decimal) }
+    - name: OrderedAt
+      type: time.Time
+    - name: PaidAt / CanceledAt
+      type: "*time.Time"            # 未確定なら nil
+
+dependencies:
+  - query.PurchaseDetailQueryService   # FindDetailByUserAndID（集約跨ぎ read 投影・所有権 SQL 述語・0 行は NotFound）
+  - observability.TracerFactory
+
+workflow:
+  tx_required: false               # read-only
+  steps:
+    - authn == nil なら ErrUnauthenticated（401）
+    - authn.UserID() を取得（未解決はエラー伝播）
+    - qs.FindDetailByUserAndID(userID, purchaseID) で本体 + 明細（商品名 JOIN）を取得
+    - PurchaseGetDetailView へ写像して返す（読み取りモデルを外へ出さない）
+  errors:
+    - ErrNotFound → 404（不存在・他人の購入の存在秘匿）
+    - ErrUnauthenticated → 401（Authn 不在）
 ```
 
 ## PATCH キャンセル (purchase cancel)

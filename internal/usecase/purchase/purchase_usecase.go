@@ -11,12 +11,14 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/exchangerate"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
+	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
@@ -146,17 +148,21 @@ type Usecase interface {
 	// outbox 発行を単一 tx で原子的に行います。決済 SDK / PSP 連携は行わない擬似決済です。他ユーザーの購入・不存在は
 	// いずれも存在秘匿のため NotFound（404）、二重支払い・不正遷移は 409 を返します。
 	PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
+	// GetPurchaseDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。QueryService の集約跨ぎ read 投影を用い、
+	// 所有権は QS の SQL 述語で担保します。他ユーザーの購入・不存在はいずれも存在秘匿のため NotFound（404）を返します。
+	GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
 }
 
 // usecase は、Usecase の実装です。
 type usecase struct {
-	tracer observability.LayerTracer
-	txm    tx.Manager
-	cmd    command.CommandService
-	repo   purchase.Repository
-	emit   outbox.EmitUsecase
-	xr     exchangerate.Usecase
-	clock  clock.Clock
+	tracer   observability.LayerTracer
+	txm      tx.Manager
+	cmd      command.CommandService
+	repo     purchase.Repository
+	detailQS query.PurchaseDetailQueryService
+	emit     outbox.EmitUsecase
+	xr       exchangerate.Usecase
+	clock    clock.Clock
 }
 
 // New は、購入ユースケースを生成します。
@@ -164,19 +170,21 @@ func New(
 	txm tx.Manager,
 	cmd command.CommandService,
 	repo purchase.Repository,
+	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,
 	xr exchangerate.Usecase,
 	clock clock.Clock,
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
-		tracer: tf.Usecase(),
-		txm:    txm,
-		cmd:    cmd,
-		repo:   repo,
-		emit:   emit,
-		xr:     xr,
-		clock:  clock,
+		tracer:   tf.Usecase(),
+		txm:      txm,
+		cmd:      cmd,
+		repo:     repo,
+		detailQS: detailQS,
+		emit:     emit,
+		xr:       xr,
+		clock:    clock,
 	}
 }
 
