@@ -2,6 +2,7 @@ package module
 
 import (
 	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"        // sample-api:line
+	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"     // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                       // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/product"                          // sample-api:line
 	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category" // sample-api:line
@@ -36,9 +37,10 @@ func persistenceModule() fx.Option {
 		),
 		fx.Module("query_service",
 			fx.Provide(
-			// sample-api:begin
-			// クエリサービスは、このサンプルでは用意しませんが、必要に応じてここに追加します。
-			// sample-api:end
+				// sample-api:begin
+				// サンプルのクエリサービス（購入詳細の集約跨ぎ read 投影）
+				purchasedetailqs.New,
+				// sample-api:end
 			),
 		),
 		fx.Module("command_service",
