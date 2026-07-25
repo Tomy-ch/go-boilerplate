@@ -13,8 +13,8 @@ import (
 // 読み取り側に置きます（ADR-0027）。
 type PurchaseSummaryQueryService interface {
 	// SummarizeByUserID は、認証主体（userID）の購入をステータス単位に集計し、購入ステータスマスタの表示順で返します。
-	// 所有権は SQL の WHERE 述語で担保します。対象の購入が存在しない場合は空スライスを返します（エラーとしません）。
-	// キャンセル済みの購入も集計対象に含みます。
+	// 他の主体の購入が集計に混入しないことは本メソッドが担保します（呼び出し側での追加の所有権検査は不要です）。
+	// 対象の購入が存在しない場合は空スライスを返します（エラーとしません）。キャンセル済みの購入も集計対象に含みます。
 	SummarizeByUserID(ctx context.Context, userID uuid.UUID) ([]PurchaseStatusSummaryReadModel, error)
 }
 
