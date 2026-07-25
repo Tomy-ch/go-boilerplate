@@ -13,6 +13,8 @@ sort は `-publishedAt`（既定=降順）/ `publishedAt`（昇順）の 2 値�
 
 商品作成（`POST /v1/products`）は admin 認可のうえ、`tx.Manager` の境界内で商品ステータス / カテゴリの名称を ID から解決し、`Product` を構築して登録する write ユースケース。マスタ不在はサーバ側整合性異常（500）、価格・在庫などの業務不変条件違反は 422 に落とす。
 
+商品部分更新（`PATCH /v1/products/{productId}`）は admin 認可のうえ、`tx.Manager` の境界内で read-modify-write を行う write ユースケース。読み込み時点のバージョンを条件に更新することで、並行編集による上書き（lost update）を防ぐ。送られたフィールドのみを反映し、未送信は現在値を据え置き、null 明示はクリアする 3 状態の解決は usecase が担う（domain へは解決後の確定値のみを渡す）。参照の再解決は `statusId` / `categoryId` が指定された場合に限る。
+
 ## Interface
 
 ```yaml
@@ -25,6 +27,8 @@ methods:
     signature: GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
   - name: CreateProduct
     signature: CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error)
+  - name: UpdateProduct
+    signature: UpdateProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams) (ProductView, error)
 ```
 
 ## DTOs
@@ -66,6 +70,8 @@ methods:
       type: "*time.Time"     # 未公開は nil
     - name: ImagePath
       type: "*string"        # 画像未設定は nil
+    - name: Version
+      type: int              # 楽観ロックのバージョン。部分更新の要求へそのまま渡す
 - name: CreateProductParams
   description: 商品作成の入力。price は十進文字列で受け取り usecase で decimal へ解釈する（負値は 422）。publishedAt / imagePath は nil 許容。
   fields:
@@ -87,6 +93,31 @@ methods:
       type: "*time.Time"
     - name: ImagePath
       type: "*string"
+- name: UpdateProductParams
+  description: |
+    商品部分更新の入力。nil のポインタは未指定（現在値を据え置く）を表す。
+    クリアも許容するフィールドは pkg/patch.Field で 3 状態（未指定 / null 明示 / 値指定）を表す。
+  fields:
+    - name: Version
+      type: int                       # 更新対象を読み込んだ時点のバージョン。不一致は 409
+    - name: Name
+      type: "*string"
+    - name: Price
+      type: "*string"
+    - name: Quantity
+      type: "*int"
+    - name: CategoryID
+      type: "*uuid.UUID"
+    - name: StatusID
+      type: "*uuid.UUID"
+    - name: Description
+      type: "patch.Field[string]"     # null 明示でクリア
+    - name: StockWarningThreshold
+      type: "patch.Field[int]"        # null 明示でクリア
+    - name: PublishedAt
+      type: "patch.Field[time.Time]"  # null 明示でクリア（未公開へ戻す）
+    - name: ImagePath
+      type: "patch.Field[string]"     # null 明示でクリア
 - name: ProductListView
   description: 公開商品一覧（cursor ページネーション）の取得結果。
   fields:
@@ -100,11 +131,11 @@ methods:
 
 ```yaml
 - tracer              # observability.TracerFactory -> LayerTracer
-- txm                 # boundary/tx.Manager（CreateProduct のトランザクション境界）
-- product_repository  # domain/product.Repository（FindPublishedList / FindPublishedByID / Create）
+- txm                 # boundary/tx.Manager（CreateProduct / UpdateProduct のトランザクション境界）
+- product_repository  # domain/product.Repository（FindPublishedList / FindPublishedByID / FindByID / Create / Update）
 - category_repository # domain/product/category.Repository（FindByID でカテゴリ名称を解決）
 - status_repository   # domain/product/status.Repository（FindByID でステータス名称を解決）
-- authorizer          # boundary/authz.Authorizer（CreateProduct の admin 認可）
+- authorizer          # boundary/authz.Authorizer（CreateProduct / UpdateProduct の admin 認可）
 ```
 
 ## Workflow
@@ -166,3 +197,38 @@ errors:
   - 負価格・負在庫・名称長超過は apperror.ErrValidation（422）
   - status_id / category_id 不在は apperror.ErrInternal（500・整合性異常）
 ```
+
+### UpdateProduct
+
+```yaml
+tx_required: true
+steps:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）を返す
+  - authorizer.Authorize（ActionProductUpdate / resource=product）で admin 認可を確認する（拒否は 403）
+  - price が指定された場合のみ decimal へ解釈し money.NewPrice で非負を検証する（負値は 422 / 非数値は 400）
+  - txm.Do 内で以下を実行する:
+      - product_repository.FindByID で現在の商品を読み込む（未存在は 404。未公開商品も対象）
+      - EnsureVersion で要求バージョンと現在バージョンの一致を確認する（不一致は 409。この時点で書き込みへ進まない）
+      - statusId / categoryId のいずれかが指定された場合、status / category の参照をペアで再解決する（未指定側も現在の ID でマスタと突合し参照整合を再確認する）。両方とも未指定の場合のみ現在値を据え置き、マスタ問い合わせを行わない
+      - 未指定は現在値、null 明示は nil へ解決した確定値で product.Update を呼ぶ（不変条件違反は 422）
+      - product_repository.Update で読み込み時点のバージョンを条件に更新し、採番後のバージョンを受け取る（0 行は 409）
+  - Product を ProductView へ写像し、Version を採番後の値で上書きして返す
+calls:
+  - product_repository.FindByID
+  - status_repository.FindByID
+  - category_repository.FindByID
+  - product_repository.Update
+errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）
+  - 認可拒否は authz 由来の apperror.ErrPermissionDenied（403）
+  - 未存在は apperror.ErrNotFound（404）
+  - バージョン不一致は product.ErrVersionConflict（apperror.ErrConflict → 409）
+  - 負価格・負在庫・名称長超過は apperror.ErrValidation（422）
+  - status_id / category_id 不在は apperror.ErrInternal（500・整合性異常）
+```
+
+> 部分更新の 3 状態（未送信 / null 明示 / 値指定）は `pkg/patch.Field` で表し、usecase が現在値に対して解決する。
+> domain は解決後の確定値のみを受け取り、3 状態を知らない。
+>
+> 409（バージョン不一致）は、`tx.Manager` が透過的にリトライする serialization_failure（ADR-0029）とは別物で、
+> 同じ内容の再送では解消しない。クライアントは最新を取得し直してからやり直す必要がある。
