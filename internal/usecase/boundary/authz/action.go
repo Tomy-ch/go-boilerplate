@@ -11,6 +11,8 @@ const (
 	ActionProductImageUpload Action = "product:image:upload"
 	// ActionProductCreate は、商品の作成操作（admin）を表します。
 	ActionProductCreate Action = "product:create"
+	// ActionProductUpdate は、商品の更新操作（admin）を表します。
+	ActionProductUpdate Action = "product:update"
 )
 
 // Action は、認可対象の操作を表す値オブジェクトです（例: "user:delete"）。
