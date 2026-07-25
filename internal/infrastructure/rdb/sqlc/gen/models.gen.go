@@ -133,6 +133,8 @@ type Products struct {
 	CategoryID uuid.UUID
 	// 公開日時
 	PublishedAt *time.Time
+	// 画像パス
+	ImagePath *string
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
