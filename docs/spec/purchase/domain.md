@@ -46,6 +46,14 @@ fields:
     type: "[]PurchaseDetail" # 空は ErrEmptyDetails
   - name: orderedAt
     type: time.Time         # New ではゼロ値（DB 既定 NOW()）。Reconstruct で設定
+  - name: statusCode
+    type: int               # 現在状態の業務キー（status_id を JOIN で解決）。状態機械の source of truth
+  - name: canceledAt
+    type: "*time.Time"      # キャンセル日時（未キャンセルは nil）。監査記録
+  - name: shippedAt
+    type: "*time.Time"      # 発送日時（未発送は nil）。キャンセル可否の timestamps ガード対象
+  - name: deliveredAt
+    type: "*time.Time"      # 配達日時（未配達は nil）。キャンセル可否の timestamps ガード対象
 ```
 
 ```yaml
@@ -82,9 +90,29 @@ fields:
 - `unitPrice` は対応するロック済み商品の `price` スナップショット。
 - `subtotal = Σ unitPrice × quantity` / `tax = subtotal × taxRatePercent / 100`（切り捨て）/ `total = subtotal + tax + shippingFee`。
 
+## Behavior Methods
+
+```yaml
+- name: Cancel
+  signature: Cancel(now time.Time) error
+  behavior: |
+    購入をキャンセル状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/cancel の状態遷移）。
+    遷移可否は statusCode の許可遷移表を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
+      - 既にキャンセル（statusCode == 6 または canceledAt != nil）→ ErrAlreadyCanceled（409）
+      - 完了（statusCode == 5）・発送済み（shippedAt != nil）・配達済み（deliveredAt != nil）→ ErrCancelNotAllowed（409）
+      - それ以外（未処理 / 受付中 / 確認中 / 処理中 / 支払い済み）→ 許可
+    許可時は statusCode をキャンセル（6）へ、canceledAt を now へ同時にセットする（status と timestamp の同時セット・
+    既存 timestamps は不変という不変条件）。now は時刻境界（clock）から供給し、ドメインは時刻へ直接依存しない。
+  invariants:
+    - status（statusCode）と対応 timestamp（canceledAt）は必ず同時セット
+    - 既にセット済みの timestamps は不変（NULL → 値 の単調セットのみ）
+```
+
 ## Value Objects
 
 - `PurchaseDetail`（明細）/ `LockedProduct`（ロック済み在庫スナップショット・New の入力）。上記 Entity 参照。
+- `Detail`（購入 1 件の詳細読み取りモデル・read 側）。書き込み集約 Purchase とは別型で、ステータス名（`StatusName`）を
+  購入ステータスマスタとの JOIN で解決済み、`CanceledAt` はキャンセル日時（未キャンセルは nil）。`FindDetailByID` の返り値。
 
 ## Repository Methods
 
@@ -103,12 +131,21 @@ fields:
     Repository read。QS ではない）。params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返す。
     返す FeedItem は書き込み集約 Purchase とは別の読み取りモデル（Code / TotalAmount(USD セント) /
     StatusName / OrderedAt / ID）。不透明カーソルの符号化・復号は usecase 層の責務。
+- name: FindDetailByID
+  signature: FindDetailByID(ctx context.Context, id uuid.UUID) (*Detail, error)
+  behavior: |
+    ID から購入詳細（読み取りモデル Detail）を明細込みで取得する。ステータス名は購入ステータスマスタとの
+    JOIN で解決する（FindFeedByUserID と同じ子参照マスタ例外）。存在しない場合は NotFound。キャンセル後の
+    状態名解決・レスポンスの取得元に用いる（GET 詳細 #569 でも再利用可能）。
 ```
+
+なお、状態遷移に伴う購入行の悲観ロック（`FOR UPDATE`）と在庫加算 + status/canceled_at 更新は Repository ではなく
+CommandService（`LockPurchase` / `CancelPurchase`）が担う（複数集約への原子的書き込み・[ADR-0027] / [ADR-0029]）。
 
 ## Notes
 
-- 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `taxRatePercent = 10` / `shippingFeeCents = 500`。
-- エラー写像: `ErrInsufficientStock` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
+- 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する。
+- エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
 
 [ADR-0027]: ../../adr/0027-lightweight-cqrs.md
 [ADR-0029]: ../../adr/0029-commandservice-atomicity-criterion.md

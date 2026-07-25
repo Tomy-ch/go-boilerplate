@@ -12,6 +12,7 @@ import (
 
 	"go-boilerplate/internal/domain/kernel/money"
 	"go-boilerplate/pkg/decimal"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -42,17 +43,23 @@ type PurchaseDetail struct {
 }
 
 // Purchase は、購入を表すドメイン集約です。決済額（小計・税・送料・合計）は整数セント（決済スケール）で保持します。
+// 状態機械の現在状態は statusCode（安定した業務キー）を source of truth とし、timestamps
+// （canceledAt / shippedAt / deliveredAt）は「イベントがいつ起きたか」の監査記録として併用します。
 type Purchase struct {
 	id             uuid.UUID
 	code           string
 	userID         uuid.UUID
 	statusID       uuid.UUID
+	statusCode     int
 	subtotalAmount int
 	taxAmount      int
 	shippingFee    int
 	totalAmount    int
 	details        []PurchaseDetail
 	orderedAt      time.Time
+	canceledAt     *time.Time
+	shippedAt      *time.Time
+	deliveredAt    *time.Time
 }
 
 // NewLockedProduct は、ロック済み商品スナップショットを生成します。price は価格スケール（ドル decimal）です。
@@ -145,6 +152,7 @@ func New(
 		id:             id,
 		code:           code,
 		userID:         userID,
+		statusCode:     StatusCodeUnprocessed,
 		subtotalAmount: subtotal,
 		taxAmount:      tax,
 		shippingFee:    shipping,
@@ -154,18 +162,24 @@ func New(
 }
 
 // Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。
-// ID / code / userID / statusID が nil、金額が負、明細が空の場合は検証エラーを返します。
+// statusCode は購入ステータスマスタとの結合で解決した現在状態、canceledAt / shippedAt / deliveredAt は
+// 各イベントの発生日時（未発生は nil）です。ID / code / userID / statusID が nil、statusCode が不正、
+// 金額が負、明細が空の場合は検証エラーを返します。
 func Reconstruct(
 	id uuid.UUID,
 	code string,
 	userID uuid.UUID,
 	statusID uuid.UUID,
+	statusCode int,
 	subtotalAmount int,
 	taxAmount int,
 	shippingFee int,
 	totalAmount int,
 	details []PurchaseDetail,
 	orderedAt time.Time,
+	canceledAt *time.Time,
+	shippedAt *time.Time,
+	deliveredAt *time.Time,
 ) (*Purchase, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
@@ -178,6 +192,13 @@ func Reconstruct(
 	}
 	if statusID.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "statusID is required")
+	}
+	if statusCode < StatusCodeUnprocessed {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "statusCode is required")
+	}
+	// キャンセル status と canceledAt は同時セットの不変条件を持つ。片方のみの矛盾した永続化行を弾く。
+	if (statusCode == StatusCodeCanceled) != (canceledAt != nil) {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "canceled status and canceledAt must be consistent")
 	}
 	if subtotalAmount < 0 || taxAmount < 0 || shippingFee < 0 || totalAmount < 0 {
 		return nil, xerrors.Wrap(ErrInvalidAmount, "amounts must not be negative")
@@ -194,12 +215,16 @@ func Reconstruct(
 		code:           code,
 		userID:         userID,
 		statusID:       statusID,
+		statusCode:     statusCode,
 		subtotalAmount: subtotalAmount,
 		taxAmount:      taxAmount,
 		shippingFee:    shippingFee,
 		totalAmount:    totalAmount,
 		details:        copied,
 		orderedAt:      orderedAt,
+		canceledAt:     ptr.Copy(canceledAt),
+		shippedAt:      ptr.Copy(shippedAt),
+		deliveredAt:    ptr.Copy(deliveredAt),
 	}, nil
 }
 
@@ -236,8 +261,9 @@ func (p *Purchase) UserID() uuid.UUID { return p.userID }
 // StatusID は、購入ステータス ID を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。
 func (p *Purchase) StatusID() uuid.UUID { return p.statusID }
 
-// StatusCode は、購入作成時に設定する初期ステータスコード（未処理）を返します。
-func (p *Purchase) StatusCode() int { return StatusCodeUnprocessed }
+// StatusCode は、購入ステータスのコードを返します。New で生成した集約は未処理（1）、再構築時は
+// 購入ステータスマスタとの結合で解決した現在状態です。Cancel 後はキャンセル（6）になります。
+func (p *Purchase) StatusCode() int { return p.statusCode }
 
 // SubtotalAmount は、小計（USD セント）を返します。
 func (p *Purchase) SubtotalAmount() int { return p.subtotalAmount }
@@ -253,6 +279,26 @@ func (p *Purchase) TotalAmount() int { return p.totalAmount }
 
 // OrderedAt は、注文日時を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。
 func (p *Purchase) OrderedAt() time.Time { return p.orderedAt }
+
+// CanceledAt は、キャンセル日時を返します。未キャンセルの場合は nil です。
+func (p *Purchase) CanceledAt() *time.Time { return ptr.Copy(p.canceledAt) }
+
+// Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /
+// 支払い済み）からのみ遷移でき、statusCode をキャンセル（6）へ、canceledAt を now へ同時に更新します。
+// 既にキャンセル済みなら ErrAlreadyCanceled、完了・発送済み（shippedAt）・配達済み（deliveredAt）なら
+// ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
+func (p *Purchase) Cancel(now time.Time) error {
+	// canceledAt は Reconstruct の不変条件で statusCode==キャンセル と同値なので status だけで判定できる。
+	if p.statusCode == StatusCodeCanceled {
+		return ErrAlreadyCanceled
+	}
+	if p.statusCode == StatusCodeCompleted || p.shippedAt != nil || p.deliveredAt != nil {
+		return ErrCancelNotAllowed
+	}
+	p.statusCode = StatusCodeCanceled
+	p.canceledAt = &now
+	return nil
+}
 
 // Details は、購入明細のスライスを返します（内部スライスの変更を防ぐためコピーを返します）。
 func (p *Purchase) Details() []PurchaseDetail {

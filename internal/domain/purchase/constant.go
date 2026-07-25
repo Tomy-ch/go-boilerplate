@@ -5,6 +5,12 @@ const (
 	// ステータスの UUID はドメインに焼き込まず、永続化時に code から解決します（seed との二重管理を避けるため）。
 	StatusCodeUnprocessed = 1
 
+	// StatusCodeCompleted は、購入完了ステータスのコードです。完了後はキャンセルできません（不正遷移 409）。
+	StatusCodeCompleted = 5
+
+	// StatusCodeCanceled は、購入キャンセルステータスのコードです。キャンセル遷移の遷移先です。
+	StatusCodeCanceled = 6
+
 	// taxRatePercent は、国内消費税率（パーセント）です。sample の placeholder であり、
 	// 要件化した時点で config / マスタへ移します（ADR-0100）。
 	taxRatePercent = 10

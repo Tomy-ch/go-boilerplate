@@ -21,4 +21,11 @@ type CommandService interface {
 	// CreatePurchase は、在庫減算・purchases INSERT・purchase_details INSERT を、渡された ctx の
 	// トランザクション内で原子的に実行します。在庫減算は防御的に売り越しを弾きます。
 	CreatePurchase(ctx context.Context, p *purchase.Purchase) error
+	// LockPurchase は、購入行を悲観ロック（SELECT FOR UPDATE）して明細込みで再構築し返します。
+	// キャンセルの状態遷移の競合（同一購入への並行キャンセル）を購入行ロックで直列化します。
+	// 存在しない場合は NotFound を返します。
+	LockPurchase(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error)
+	// CancelPurchase は、キャンセルに伴う在庫復元（明細分の加算）と購入の状態更新（status_id / canceled_at）を、
+	// 渡された ctx のトランザクション内で原子的に実行します。在庫加算は相対更新で売り越しを生みません。
+	CancelPurchase(ctx context.Context, p *purchase.Purchase) error
 }

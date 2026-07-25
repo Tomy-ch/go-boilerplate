@@ -6,8 +6,10 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -179,6 +181,102 @@ func Test_repository_FindByID(t *testing.T) {
 				_, ferr := repo.FindByID(ctx, purchaseID)
 				require.ErrorIs(t, ferr, apperror.ErrInternal)
 			})
+		})
+	})
+}
+
+func Test_repository_FindDetailByID(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{tracer: lt, db: testDB}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入詳細をステータス名解決済みの読み取りモデルで取得する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "e1000000-0000-4000-8000-000000000001")
+
+				got, err := repo.FindDetailByID(ctx, purchaseID)
+				require.NoError(t, err)
+				assert.Equal(t, purchaseID, got.ID)
+				assert.Equal(t, mustParse(t, seedUnprocessedSID), got.StatusID)
+				assert.Equal(t, "未処理", got.StatusName)
+				assert.Equal(t, 176500, got.TotalAmount)
+				assert.Nil(t, got.CanceledAt)
+				require.Len(t, got.Details, 1)
+				assert.Equal(t, productID, got.Details[0].ProductID())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しないIDの場合はNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				missing, err := uuid.New()
+				require.NoError(t, err)
+				_, ferr := repo.FindDetailByID(ctx, missing)
+				require.ErrorIs(t, ferr, apperror.ErrNotFound)
+			})
+		})
+	})
+}
+
+func Test_toPurchaseDetails(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細行を購入明細の値オブジェクトへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			productID := mustParse(t, "e2000000-0000-4000-8000-000000000001")
+			rows := []*gen.ListPurchaseDetailsByPurchaseIDRow{
+				{PurchaseDetails: gen.PurchaseDetails{
+					ID:        mustParse(t, "e2000000-0000-4000-8000-0000000000d1"),
+					ProductID: productID,
+					Quantity:  2,
+					UnitPrice: decimaltestkit.MustParse(t, "800"),
+				}},
+			}
+
+			details, err := toPurchaseDetails(rows)
+			require.NoError(t, err)
+			require.Len(t, details, 1)
+			assert.Equal(t, productID, details[0].ProductID())
+			assert.Equal(t, 2, details[0].Quantity())
+			assert.Equal(t, "800", details[0].UnitPrice().String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("単価が負で再構築不能な場合はErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			rows := []*gen.ListPurchaseDetailsByPurchaseIDRow{
+				{PurchaseDetails: gen.PurchaseDetails{
+					ID:        mustParse(t, "e2000000-0000-4000-8000-0000000000d2"),
+					ProductID: mustParse(t, "e2000000-0000-4000-8000-000000000002"),
+					Quantity:  1,
+					UnitPrice: decimaltestkit.MustParse(t, "-1"),
+				}},
+			}
+
+			_, err := toPurchaseDetails(rows)
+			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 	})
 }

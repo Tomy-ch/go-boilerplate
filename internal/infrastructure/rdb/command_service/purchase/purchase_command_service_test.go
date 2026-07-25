@@ -3,6 +3,7 @@ package purchase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/kernel/money"
@@ -281,4 +282,176 @@ func newPurchase(t *testing.T, userID, productID uuid.UUID, quantity int, locked
 	)
 	require.NoError(t, err)
 	return entity
+}
+
+func Test_commandService_LockPurchase(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	svc := &commandService{tracer: lt, db: testDB}
+	userID := mustParse(t, seedUserID)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入行をロックし現在状態と明細込みで再構築する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				pid := mustParse(t, "d1000000-0000-4000-8000-000000000001")
+				insertTestProduct(ctx, t, drv, pid, 80000, 20)
+				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
+				require.NoError(t, err)
+				created := newPurchase(t, userID, pid, 2, locked)
+				require.NoError(t, svc.CreatePurchase(ctx, created))
+
+				actual, err := svc.LockPurchase(ctx, created.ID())
+				require.NoError(t, err)
+				assert.Equal(t, created.ID(), actual.ID())
+				assert.Equal(t, userID, actual.UserID())
+				assert.Equal(t, domainpurchase.StatusCodeUnprocessed, actual.StatusCode())
+				assert.Nil(t, actual.CanceledAt())
+				require.Len(t, actual.Details(), 1)
+				assert.Equal(t, pid, actual.Details()[0].ProductID())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しない購入IDの場合はErrNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				missing := mustParse(t, "d1000000-0000-4000-8000-0000000000ff")
+				_, err := svc.LockPurchase(ctx, missing)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+
+		t.Run("明細の単価が負値で再構築不能な場合はErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				pid := mustParse(t, "d1000000-0000-4000-8000-0000000000ce")
+				insertTestProduct(ctx, t, drv, pid, 80000, 20)
+
+				purchaseID := mustParse(t, "d1000000-0000-4000-8000-0000000000cf")
+				_, err := drv.Exec(ctx,
+					"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount) "+
+						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+					purchaseID, "lock-neg-code", userID, mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
+				)
+				require.NoError(t, err)
+				detailID := mustParse(t, "d1000000-0000-4000-8000-0000000000d0")
+				// NUMERIC 列は負値を格納できるが money.Price は非負不変条件を持つため再構築が失敗する。
+				_, err = drv.Exec(ctx,
+					"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5::numeric)",
+					detailID, purchaseID, pid, 2, "-1",
+				)
+				require.NoError(t, err)
+
+				_, err = svc.LockPurchase(ctx, purchaseID)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+	})
+}
+
+func Test_commandService_CancelPurchase(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	svc := &commandService{tracer: lt, db: testDB}
+	userID := mustParse(t, seedUserID)
+	now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("在庫を復元しstatus_idをキャンセルへ更新しcanceled_atをセットする", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				pid := mustParse(t, "d2000000-0000-4000-8000-000000000001")
+				insertTestProduct(ctx, t, drv, pid, 80000, 20)
+				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
+				require.NoError(t, err)
+				created := newPurchase(t, userID, pid, 2, locked)
+				require.NoError(t, svc.CreatePurchase(ctx, created)) // 在庫 20 → 18
+
+				var afterCreate int
+				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid).Scan(&afterCreate))
+				require.Equal(t, 18, afterCreate)
+
+				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
+				require.NoError(t, err)
+				require.NoError(t, lockedPurchase.Cancel(now))
+				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
+
+				// 在庫が明細分（2）復元される（減算の対称）。
+				var restored int
+				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid).Scan(&restored))
+				assert.Equal(t, 20, restored)
+
+				// status_id は code=6（キャンセル）へ解決され、canceled_at がセットされる。
+				var statusCode int
+				var canceledAt *time.Time
+				require.NoError(t, drv.QueryRow(ctx,
+					"SELECT ps.code, p.canceled_at FROM purchases AS p "+
+						"INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id WHERE p.id=$1", created.ID(),
+				).Scan(&statusCode, &canceledAt))
+				assert.Equal(t, domainpurchase.StatusCodeCanceled, statusCode)
+				assert.NotNil(t, canceledAt)
+			})
+		})
+
+		t.Run("複数明細の在庫をすべて復元する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				pid1 := mustParse(t, "d3000000-0000-4000-8000-000000000001")
+				pid2 := mustParse(t, "d3000000-0000-4000-8000-000000000002")
+				insertTestProduct(ctx, t, drv, pid1, 80000, 20)
+				insertTestProduct(ctx, t, drv, pid2, 1500, 10)
+				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid1, pid2})
+				require.NoError(t, err)
+
+				id, err := uuid.New()
+				require.NoError(t, err)
+				code, err := uuid.New()
+				require.NoError(t, err)
+				d1, err := uuid.New()
+				require.NoError(t, err)
+				d2, err := uuid.New()
+				require.NoError(t, err)
+				created, err := domainpurchase.New(id, code.String(), userID, []domainpurchase.DetailInput{
+					{ID: d1, ProductID: pid1, Quantity: 3},
+					{ID: d2, ProductID: pid2, Quantity: 4},
+				}, locked)
+				require.NoError(t, err)
+				require.NoError(t, svc.CreatePurchase(ctx, created)) // 20→17, 10→6
+
+				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
+				require.NoError(t, err)
+				require.NoError(t, lockedPurchase.Cancel(now))
+				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
+
+				var q1, q2 int
+				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid1).Scan(&q1))
+				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid2).Scan(&q2))
+				assert.Equal(t, 20, q1)
+				assert.Equal(t, 10, q2)
+			})
+		})
+	})
 }

@@ -7,6 +7,7 @@ package gen
 
 import (
 	"context"
+	"time"
 
 	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
@@ -38,6 +39,87 @@ type DecrementProductStockParams struct {
 //	    AND quantity >= $1
 func (q *Queries) DecrementProductStock(ctx context.Context, arg *DecrementProductStockParams) (int64, error) {
 	result, err := q.db.Exec(ctx, decrementProductStock, arg.QuantityParam, arg.ProductIDParam)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getPurchaseByIDForUpdate = `-- name: GetPurchaseByIDForUpdate :one
+SELECT
+    ps.code AS status_code,
+    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE p.id = $1
+FOR UPDATE OF p
+`
+
+type GetPurchaseByIDForUpdateRow struct {
+	StatusCode int16
+	Purchases  Purchases
+}
+
+// === source: database/dml/command_service/purchase/lock_purchase_for_update.sql ===
+// ID から購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。キャンセルの状態遷移の
+// 競合（同一購入への並行キャンセル）を購入行ロックで直列化する（結合先の固定参照マスタはロックしない）。
+// 現在状態は購入ステータスマスタとの結合で code を解決する。存在しない場合は 0 行（NotFound）。
+//
+//	SELECT
+//	    ps.code AS status_code,
+//	    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+//	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE p.id = $1
+//	FOR UPDATE OF p
+func (q *Queries) GetPurchaseByIDForUpdate(ctx context.Context, id uuid.UUID) (*GetPurchaseByIDForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getPurchaseByIDForUpdate, id)
+	var i GetPurchaseByIDForUpdateRow
+	err := row.Scan(
+		&i.StatusCode,
+		&i.Purchases.ID,
+		&i.Purchases.Code,
+		&i.Purchases.UserID,
+		&i.Purchases.StatusID,
+		&i.Purchases.SubtotalAmount,
+		&i.Purchases.TaxAmount,
+		&i.Purchases.ShippingFee,
+		&i.Purchases.TotalAmount,
+		&i.Purchases.OrderedAt,
+		&i.Purchases.PaidAt,
+		&i.Purchases.CanceledAt,
+		&i.Purchases.ShippedAt,
+		&i.Purchases.DeliveredAt,
+		&i.Purchases.CreatedAt,
+		&i.Purchases.UpdatedAt,
+	)
+	return &i, err
+}
+
+const incrementProductStock = `-- name: IncrementProductStock :execrows
+UPDATE products
+SET
+    quantity = quantity + $1,
+    updated_at = NOW()
+WHERE id = $2
+`
+
+type IncrementProductStockParams struct {
+	QuantityParam  int32
+	ProductIDParam uuid.UUID
+}
+
+// === source: database/dml/command_service/purchase/increment_product_stock.sql ===
+// 在庫を数量分復元（加算）する。相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要
+// （購入行ロック下で実行）。対象行が不存在の場合は影響 0 行として呼び出し側で NotFound へ fail-closed 検出する。
+//
+//	UPDATE products
+//	SET
+//	    quantity = quantity + $1,
+//	    updated_at = NOW()
+//	WHERE id = $2
+func (q *Queries) IncrementProductStock(ctx context.Context, arg *IncrementProductStockParams) (int64, error) {
+	result, err := q.db.Exec(ctx, incrementProductStock, arg.QuantityParam, arg.ProductIDParam)
 	if err != nil {
 		return 0, err
 	}
@@ -218,4 +300,41 @@ func (q *Queries) LockProductsForUpdate(ctx context.Context, productIds []uuid.U
 		return nil, err
 	}
 	return items, nil
+}
+
+const updatePurchaseCanceled = `-- name: UpdatePurchaseCanceled :exec
+UPDATE purchases
+SET
+    status_id = (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = $1
+    ),
+    canceled_at = $2,
+    updated_at = NOW()
+WHERE purchases.id = $3
+`
+
+type UpdatePurchaseCanceledParams struct {
+	StatusCode int16
+	CanceledAt *time.Time
+	ID         uuid.UUID
+}
+
+// === source: database/dml/command_service/purchase/update_purchase_canceled.sql ===
+// 購入をキャンセル状態へ更新する。status_id は code から解決し（seed UUID を焼き込まない）、
+// canceled_at はドメインが決定した時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
+// 対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、遷移可否ガードは付けない（ドメインが SoT）。
+//
+//	UPDATE purchases
+//	SET
+//	    status_id = (
+//	        SELECT ps.id FROM purchase_statuses AS ps
+//	        WHERE ps.code = $1
+//	    ),
+//	    canceled_at = $2,
+//	    updated_at = NOW()
+//	WHERE purchases.id = $3
+func (q *Queries) UpdatePurchaseCanceled(ctx context.Context, arg *UpdatePurchaseCanceledParams) error {
+	_, err := q.db.Exec(ctx, updatePurchaseCanceled, arg.StatusCode, arg.CanceledAt, arg.ID)
+	return err
 }

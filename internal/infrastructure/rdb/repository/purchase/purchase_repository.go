@@ -47,6 +47,75 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 		return nil, pgerror.NormalizeError(err)
 	}
 
+	details, err := toPurchaseDetails(detailRows)
+	if err != nil {
+		return nil, err
+	}
+
+	p := row.Purchases
+	entity, err := purchase.Reconstruct(
+		p.ID,
+		p.Code,
+		p.UserID,
+		p.StatusID,
+		int(row.StatusCode),
+		int(p.SubtotalAmount),
+		int(p.TaxAmount),
+		int(p.ShippingFee),
+		int(p.TotalAmount),
+		details,
+		p.OrderedAt,
+		p.CanceledAt,
+		p.ShippedAt,
+		p.DeliveredAt,
+	)
+	if err != nil {
+		return nil, pgerror.NormalizeReconstructError(err)
+	}
+	return entity, nil
+}
+
+// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
+// 購入ステータスマスタとの結合で解決します。存在しない場合は NotFound を返します。
+func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchase.Detail, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	row, err := db.GetPurchaseDetailByID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	details, err := toPurchaseDetails(detailRows)
+	if err != nil {
+		return nil, err
+	}
+
+	return &purchase.Detail{
+		ID:             row.ID,
+		Code:           row.Code,
+		UserID:         row.UserID,
+		StatusID:       row.StatusID,
+		StatusName:     row.StatusName,
+		SubtotalAmount: int(row.SubtotalAmount),
+		TaxAmount:      int(row.TaxAmount),
+		ShippingFee:    int(row.ShippingFee),
+		TotalAmount:    int(row.TotalAmount),
+		Details:        details,
+		OrderedAt:      row.OrderedAt,
+		CanceledAt:     row.CanceledAt,
+	}, nil
+}
+
+// toPurchaseDetails は、明細行を購入明細の値オブジェクトへ変換します。単価は価格スケール（ドル decimal）です。
+func toPurchaseDetails(detailRows []*gen.ListPurchaseDetailsByPurchaseIDRow) ([]purchase.PurchaseDetail, error) {
 	details := make([]purchase.PurchaseDetail, len(detailRows))
 	for i, dr := range detailRows {
 		d := dr.PurchaseDetails
@@ -56,24 +125,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 		}
 		details[i] = purchase.NewPurchaseDetail(d.ID, d.ProductID, int(d.Quantity), unitPrice)
 	}
-
-	p := row.Purchases
-	entity, err := purchase.Reconstruct(
-		p.ID,
-		p.Code,
-		p.UserID,
-		p.StatusID,
-		int(p.SubtotalAmount),
-		int(p.TaxAmount),
-		int(p.ShippingFee),
-		int(p.TotalAmount),
-		details,
-		p.OrderedAt,
-	)
-	if err != nil {
-		return nil, pgerror.NormalizeReconstructError(err)
-	}
-	return entity, nil
+	return details, nil
 }
 
 // FindFeedByUserID は、指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で
