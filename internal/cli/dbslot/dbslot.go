@@ -67,13 +67,13 @@ func (p *Pool) Acquire(ctx context.Context) error {
 		switch {
 		case p.reg.TryAcquireFresh(slot):
 		case p.reg.IsStale(slot):
-			// 稼働中の DB があれば（heartbeat 漏れの保険）reclaim で破壊しないよう skip。
-			n, err := p.admin.ActiveConnections(ctx, dbLocal(slot), dbTest(slot))
+			// heartbeat は make serve 時にしか打たれないため、起動しっぱなしの app を持つスロットも
+			// TTL 超過で stale になる。DB を作り直す前に serve 中でないことを確かめる。
+			busy, err := p.slotInUse(ctx, slot)
 			if err != nil {
 				return err
 			}
-			if n > 0 {
-				p.logf("slot %d is stale but has active DB connections, skip", slot)
+			if busy {
 				continue
 			}
 			if !p.reg.TryReclaim(slot) {
@@ -156,6 +156,31 @@ func (p *Pool) ensureLocalEnv() error {
 			"db-slot refuses to run: APP_ENV=%q is not a local/ci/test environment", p.cfg.APPEnv))
 	}
 	return nil
+}
+
+// slotInUse は、stale なスロットが実際にはまだ使われているかを返します。
+// app コンテナの稼働と DB への接続をそれぞれ確認します。接続プールはアイドルで空になるため、
+// 接続数だけでは serve 中の worktree を見落とします。
+func (p *Pool) slotInUse(ctx context.Context, slot int) (bool, error) {
+	running, err := p.comp.RunningContainers(ctx, serveProject(slot))
+	if err != nil {
+		return false, err
+	}
+	if running > 0 {
+		p.logf("slot %d is stale but %s has running containers, skip", slot, serveProject(slot))
+		return true, nil
+	}
+
+	conns, err := p.admin.ActiveConnections(ctx, dbLocal(slot), dbTest(slot))
+	if err != nil {
+		return false, err
+	}
+	if conns > 0 {
+		p.logf("slot %d is stale but has active DB connections, skip", slot)
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // finishAcquire は、取得済みスロットに meta / DB / .gobp-db-slot を確定させます。

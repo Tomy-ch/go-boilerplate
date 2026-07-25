@@ -89,10 +89,34 @@ func TestPool_Acquire(t *testing.T) {
 			pool, admin, comp := newMockPool(t, root, "")
 			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
 			// slot1 は稼働中接続ありで skip、slot2 を取得する。
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
 			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(1, nil)
 			expectSlotDBs(admin, "2")
 
 			// slot1 を別 owner の stale リースにする。
+			other := NewRegistry(pool.reg.dir, "/w/other", "b", 30*time.Minute, 8,
+				func() time.Time { return time.Unix(1, 0) })
+			require.True(t, other.TryAcquireFresh(1))
+			require.NoError(t, other.WriteMeta(1))
+
+			require.NoError(t, pool.Acquire(context.Background()))
+
+			b, err := os.ReadFile(filepath.Join(root, ".gobp-db-slot")) //nolint:gosec // テスト内の固定パス
+			require.NoError(t, err)
+			assert.Contains(t, string(b), "SLOT=2")
+		})
+
+		t.Run("stale スロットで app コンテナが稼働中なら破壊せず次スロットを取得する", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			pool, admin, comp := newMockPool(t, root, "")
+			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+			// 接続プールはアイドルで空になるため、接続数 0 でも serve 中なら slot1 を守る。
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(2, nil)
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-2").Return(0, nil).AnyTimes()
+			expectSlotDBs(admin, "2")
+
 			other := NewRegistry(pool.reg.dir, "/w/other", "b", 30*time.Minute, 8,
 				func() time.Time { return time.Unix(1, 0) })
 			require.True(t, other.TryAcquireFresh(1))

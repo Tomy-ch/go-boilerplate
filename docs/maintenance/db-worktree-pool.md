@@ -51,9 +51,14 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
 - **解放**: `slot-free` は、このスロットの app プロジェクト（`gobp-wt-N`）のコンテナを停止して
   から lease と `.gobp-db-slot` を削除する。データベースは warm 保持で次に貸す。
 - **stale 回収の安全化**: heartbeat が TTL（既定 1800 秒、`GOBP_DB_POOL_TTL`）超過したリースは acquire 時に
-  別 worktree が再取得できる（crash した worktree がスロットを握り続けない）。ただし回収前に
-  `pg_stat_activity` でそのスロットの DB に稼働中接続があるか確認し、あれば（heartbeat 更新漏れの保険）
-  破壊せず skip する。serve 中は `make serve` が heartbeat を打つ。
+  別 worktree が再取得できる（crash した worktree がスロットを握り続けない）。heartbeat は `make serve` 時に
+  しか打たないため、起動しっぱなしの app を持つスロットも TTL 超過で stale になる。そこで DB を作り直す前に
+  そのスロットが実際に使われていないかを 2 段で確かめ、使用中なら破壊せず skip する:
+  1. app プロジェクト（`gobp-wt-N`）に稼働中コンテナが無いこと
+  2. `pg_stat_activity` にそのスロットの DB への接続が無いこと
+
+  接続プールはアイドルで空になるため、2 だけでは serve 中の worktree を見落とす。逆に 1 だけでは
+  ホスト実行の `go test` を捉えられないため、両方を見る。
 
 ## 使い方
 
