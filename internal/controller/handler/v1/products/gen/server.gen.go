@@ -20,6 +20,9 @@ type ServerInterface interface {
 	// 商品一覧の取得
 	// (GET /v1/products)
 	GetProducts(ctx echo.Context, params GetProductsParams) error
+	// 商品の作成
+	// (POST /v1/products)
+	PostProducts(ctx echo.Context) error
 	// 商品画像のアップロード
 	// (POST /v1/products/images)
 	PostProductsImages(ctx echo.Context) error
@@ -83,6 +86,17 @@ func (w *ServerInterfaceWrapper) GetProducts(ctx echo.Context) error {
 	return err
 }
 
+// PostProducts converts echo context to params.
+func (w *ServerInterfaceWrapper) PostProducts(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostProducts(ctx)
+	return err
+}
+
 // PostProductsImages converts echo context to params.
 func (w *ServerInterfaceWrapper) PostProductsImages(ctx echo.Context) error {
 	var err error
@@ -142,6 +156,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.GET(options.BaseURL+"/v1/products", wrapper.GetProducts, options.OperationMiddlewares["GetProducts"]...)
+	router.POST(options.BaseURL+"/v1/products", wrapper.PostProducts, options.OperationMiddlewares["PostProducts"]...)
 	router.POST(options.BaseURL+"/v1/products/images", wrapper.PostProductsImages, options.OperationMiddlewares["PostProductsImages"]...)
 
 }
@@ -219,6 +234,118 @@ type GetProducts503JSONResponse struct {
 }
 
 func (response GetProducts503JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsRequestObject struct {
+	Body *PostProductsJSONRequestBody
+}
+
+type PostProductsResponseObject interface {
+	VisitPostProductsResponse(w http.ResponseWriter) error
+}
+
+type PostProducts201JSONResponse ProductResponse
+
+func (response PostProducts201JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProducts400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response PostProducts400JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProducts401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response PostProducts401JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProducts403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response PostProducts403JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProducts422JSONResponse struct {
+	UnprocessableEntity422JSONResponse
+}
+
+func (response PostProducts422JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProducts500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response PostProducts500JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProducts503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response PostProducts503JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -377,6 +504,9 @@ type StrictServerInterface interface {
 	// 商品一覧の取得
 	// (GET /v1/products)
 	GetProducts(ctx context.Context, request GetProductsRequestObject) (GetProductsResponseObject, error)
+	// 商品の作成
+	// (POST /v1/products)
+	PostProducts(ctx context.Context, request PostProductsRequestObject) (PostProductsResponseObject, error)
 	// 商品画像のアップロード
 	// (POST /v1/products/images)
 	PostProductsImages(ctx context.Context, request PostProductsImagesRequestObject) (PostProductsImagesResponseObject, error)
@@ -413,6 +543,35 @@ func (sh *strictHandler) GetProducts(ctx echo.Context, params GetProductsParams)
 		return err
 	} else if validResponse, ok := response.(GetProductsResponseObject); ok {
 		return validResponse.VisitGetProductsResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostProducts operation middleware
+func (sh *strictHandler) PostProducts(ctx echo.Context) error {
+	var request PostProductsRequestObject
+
+	var body PostProductsJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostProducts(ctx.Request().Context(), request.(PostProductsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostProducts")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostProductsResponseObject); ok {
+		return validResponse.VisitPostProductsResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

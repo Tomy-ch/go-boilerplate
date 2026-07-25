@@ -298,6 +298,7 @@ CREATE TABLE public.products (
     status_id uuid NOT NULL,
     category_id uuid NOT NULL,
     published_at timestamp with time zone,
+    image_path text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -341,6 +342,10 @@ COMMENT ON COLUMN public.products.category_id IS '商品カテゴリID';
 -- Name: COLUMN products.published_at; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.products.published_at IS '公開日時';
+--
+-- Name: COLUMN products.image_path; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.products.image_path IS '画像パス';
 --
 -- Name: COLUMN products.created_at; Type: COMMENT; Schema: public; Owner: -
 --

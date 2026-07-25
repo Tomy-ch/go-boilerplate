@@ -3,7 +3,6 @@ package product
 
 import (
 	"context"
-	"time"
 
 	"go-boilerplate/internal/domain/kernel/money"
 	"go-boilerplate/internal/domain/product"
@@ -11,7 +10,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 )
 
@@ -97,6 +95,40 @@ func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*prod
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
+// Create は、商品を新規登録します。
+func (r *repository) Create(ctx context.Context, p *product.Product) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	err := db.CreateProduct(ctx, &gen.CreateProductParams{
+		ID:                    p.ID(),
+		Name:                  p.Name(),
+		Description:           p.Description(),
+		Price:                 p.Price().Decimal(),
+		Quantity:              int32(p.Quantity()), //nolint:gosec // G115: quantity は int32 の DB 列に収まる範囲で検証済み
+		StockWarningThreshold: intPtrToInt32Ptr(p.StockWarningThreshold()),
+		StatusID:              p.Status().ID(),
+		CategoryID:            p.Category().ID(),
+		PublishedAt:           p.PublishedAt(),
+		ImagePath:             p.ImagePath(),
+	})
+	if err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	return nil
+}
+
+// intPtrToInt32Ptr は、ドメインの *int を sqlc の *int32 へ変換します（nil はそのまま nil）。
+func intPtrToInt32Ptr(v *int) *int32 {
+	if v == nil {
+		return nil
+	}
+	//nolint:gosec // G115: stockWarningThreshold は int32 の DB 列に収まる範囲で検証済み
+	i := int32(*v)
+	return &i
+}
+
 // rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）をドメインエンティティへ変換します。
 // 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToProduct(row productRow) (*product.Product, error) {
@@ -122,7 +154,8 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		int32PtrToIntPtr(row.p.StockWarningThreshold),
 		status,
 		category,
-		ptr.Deref(row.p.PublishedAt, time.Time{}),
+		row.p.PublishedAt,
+		row.p.ImagePath,
 	)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)

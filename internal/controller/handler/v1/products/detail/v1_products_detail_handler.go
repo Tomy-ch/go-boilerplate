@@ -61,6 +61,7 @@ func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
 			Name: dto.CategoryName,
 		},
 		PublishedAt: dto.PublishedAt,
+		ImagePath:   dto.ImagePath,
 	}
 }
 

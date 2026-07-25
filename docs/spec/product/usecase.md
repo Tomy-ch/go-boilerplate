@@ -11,6 +11,8 @@ cursor ページングは「直前ページ末尾行のソートキー `(publish
 
 sort は `-publishedAt`（既定=降順）/ `publishedAt`（昇順）の 2 値のみ。controller が enum を `Ascending` bool に写像して渡す。ステータス可視範囲の絞り込みは後続 PBI（#555）で対応する。ドメイン集約を outer 層へ露出させないため、`Product` は usecase 内で `ProductView` へ写像してから返す（DTO Boundary）。
 
+商品作成（`POST /v1/products`）は admin 認可のうえ、`tx.Manager` の境界内で商品ステータス / カテゴリの名称を ID から解決し、`Product` を構築して登録する write ユースケース。マスタ不在はサーバ側整合性異常（500）、価格・在庫などの業務不変条件違反は 422 に落とす。
+
 ## Interface
 
 ```yaml
@@ -21,6 +23,8 @@ methods:
     signature: ListProducts(ctx context.Context, params ListProductsParams) (*ProductListView, error)
   - name: GetProduct
     signature: GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
+  - name: CreateProduct
+    signature: CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error)
 ```
 
 ## DTOs
@@ -59,7 +63,30 @@ methods:
     - name: CategoryID
       type: uuid.UUID
     - name: PublishedAt
-      type: time.Time
+      type: "*time.Time"     # 未公開は nil
+    - name: ImagePath
+      type: "*string"        # 画像未設定は nil
+- name: CreateProductParams
+  description: 商品作成の入力。price は十進文字列で受け取り usecase で decimal へ解釈する（負値は 422）。publishedAt / imagePath は nil 許容。
+  fields:
+    - name: Name
+      type: string
+    - name: Description
+      type: "*string"
+    - name: Price
+      type: string
+    - name: Quantity
+      type: int
+    - name: StockWarningThreshold
+      type: "*int"
+    - name: CategoryID
+      type: uuid.UUID
+    - name: StatusID
+      type: uuid.UUID
+    - name: PublishedAt
+      type: "*time.Time"
+    - name: ImagePath
+      type: "*string"
 - name: ProductListView
   description: 公開商品一覧（cursor ページネーション）の取得結果。
   fields:
@@ -73,7 +100,11 @@ methods:
 
 ```yaml
 - tracer              # observability.TracerFactory -> LayerTracer
-- product_repository  # domain/product.Repository（FindPublishedList で公開商品を keyset 取得 / FindPublishedByID で公開商品を単件取得）
+- txm                 # boundary/tx.Manager（CreateProduct のトランザクション境界）
+- product_repository  # domain/product.Repository（FindPublishedList / FindPublishedByID / Create）
+- category_repository # domain/product/category.Repository（FindByID でカテゴリ名称を解決）
+- status_repository   # domain/product/status.Repository（FindByID でステータス名称を解決）
+- authorizer          # boundary/authz.Authorizer（CreateProduct の admin 認可）
 ```
 
 ## Workflow
@@ -109,4 +140,29 @@ calls:
   - product_repository.FindPublishedByID
 errors:
   - product_repository.FindPublishedByID のエラーをそのまま伝播する（未存在・非公開は apperror.ErrNotFound → 404）
+```
+
+### CreateProduct
+
+```yaml
+tx_required: true
+steps:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）を返す
+  - authorizer.Authorize（ActionProductCreate / resource=product）で admin 認可を確認する（拒否は 403）
+  - price（文字列）を decimal へ解釈し money.NewPrice で非負を検証する（負値は 422 / 非数値は 400。非数値は OpenAPI でも弾く）
+  - uuid.New で商品 ID を採番する
+  - txm.Do 内で以下を実行する:
+      - status_repository.FindByID / category_repository.FindByID で名称を解決する（未存在は整合性異常として ErrInternal=500）
+      - product.New で商品エンティティを構築する（負在庫・名称長超過は 422）
+      - product_repository.Create で登録する（DB の FK 制約は多層防御の保険。正典の 500 は上のマスタ確認）
+  - 生成した Product を ProductView（ImagePath / PublishedAt を含む）へ写像して返す
+calls:
+  - status_repository.FindByID
+  - category_repository.FindByID
+  - product_repository.Create
+errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）
+  - 認可拒否は authz 由来の apperror.ErrPermissionDenied（403）
+  - 負価格・負在庫・名称長超過は apperror.ErrValidation（422）
+  - status_id / category_id 不在は apperror.ErrInternal（500・整合性異常）
 ```

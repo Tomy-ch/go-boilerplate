@@ -548,6 +548,43 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+    post:
+      operationId: PostProducts
+      tags:
+        - v1/products
+      summary: 商品の作成
+      description: |
+        商品を作成します。認証必須（admin のみ・非 admin は 403）。
+        description はリッチテキスト HTML を許容し、そのまま格納します（表示側でサニタイズします）。
+        imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+        price の非数値は 400、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductsPostRequest'
+      responses:
+        '201':
+          description: 商品の作成に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/products/{productId}:
     get:
       operationId: GetProductsDetail
@@ -1376,6 +1413,7 @@ components:
         - status
         - category
         - publishedAt
+        - imagePath
       properties:
         id:
           type: string
@@ -1415,8 +1453,14 @@ components:
         publishedAt:
           type: string
           format: date-time
-          description: 公開日時。本エンドポイントは公開済みの商品のみを返すため、常に非 null です。
+          nullable: true
+          description: 公開日時。未公開の場合は null です。
           example: '2026-01-01T00:00:00Z'
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
     ProductListResponse:
       description: 商品一覧（cursor ページネーション）のレスポンススキーマ
       allOf:
@@ -1483,6 +1527,8 @@ components:
           example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
     RequestPostV1ProductImages:
       $ref: '#/components/schemas/ProductImagePostRequest'
+    RequestPostV1Products:
+      $ref: '#/components/schemas/ProductsPostRequest'
     AddressCandidate:
       type: object
       description: |
@@ -1947,6 +1993,66 @@ components:
       description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
+    ProductsPostRequest:
+      type: object
+      description: |
+        商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+        price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+        imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。表示 URL はフロントが組み立てます。
+      required:
+        - name
+        - price
+        - quantity
+        - categoryId
+        - statusId
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: 商品名
+          example: ワイヤレスイヤホン
+        description:
+          type: string
+          nullable: true
+          description: 商品説明（リッチテキスト HTML を許容）。未設定の場合は null です。
+          example: <p>ノイズキャンセリング対応の Bluetooth イヤホン</p>
+        price:
+          type: string
+          pattern: ^-?\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99"）。 非数値は 400、負値は業務不変条件違反として 422 を返します。
+          example: '19.99'
+        quantity:
+          type: integer
+          format: int32
+          description: 在庫数。負値は業務不変条件違反として 422 を返します。
+          example: 100
+        stockWarningThreshold:
+          type: integer
+          format: int32
+          nullable: true
+          description: 在庫警告閾値。未設定の場合は null です。
+          example: 10
+        categoryId:
+          type: string
+          format: uuid
+          description: 商品カテゴリ ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        statusId:
+          type: string
+          format: uuid
+          description: 商品ステータス ID
+          example: c2e5f1a3-4d6b-5c7e-9f80-2b3c4d5e6f7a
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公開日時。未公開の場合は null です。
+          example: '2026-01-01T00:00:00Z'
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。未設定の場合は null です。画像アップロードで得たパスを渡します。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
     ProductImagePostRequest:
       type: object
       description: |

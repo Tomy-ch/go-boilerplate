@@ -43,6 +43,21 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
 }
 
+// CreateProduct mocks base method.
+func (m *MockUsecase) CreateProduct(ctx context.Context, authn *auth.Authn, params product.CreateProductParams) (product.ProductView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateProduct", ctx, authn, params)
+	ret0, _ := ret[0].(product.ProductView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateProduct indicates an expected call of CreateProduct.
+func (mr *MockUsecaseMockRecorder) CreateProduct(ctx, authn, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProduct", reflect.TypeOf((*MockUsecase)(nil).CreateProduct), ctx, authn, params)
+}
+
 // GetProduct mocks base method.
 func (m *MockUsecase) GetProduct(ctx context.Context, id uuid.UUID) (product.ProductView, error) {
 	m.ctrl.T.Helper()

@@ -40,7 +40,8 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			Quantity:    100,
 			StatusID:    uuid.NewTestFromSalt(t, "integration_detail_status"),
 			CategoryID:  uuid.NewTestFromSalt(t, "integration_detail_category"),
-			PublishedAt: time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC),
+			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
+			ImagePath:   ptr.To("products/integration_detail.png"),
 		}
 	}
 

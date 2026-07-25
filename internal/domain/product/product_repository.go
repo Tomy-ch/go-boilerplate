@@ -37,4 +37,6 @@ type Repository interface {
 	// FindPublishedByID は、ID から公開中（published_at が非 NULL）の単一商品を取得します。
 	// 未存在・非公開のいずれも NotFound を返します（未ログイン経路への存在秘匿）。
 	FindPublishedByID(ctx context.Context, id uuid.UUID) (*Product, error)
+	// Create は、商品を新規登録します。
+	Create(ctx context.Context, p *Product) error
 }
