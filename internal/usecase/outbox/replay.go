@@ -27,7 +27,6 @@ func NewReplay(store outboxbndry.Store, tf observability.TracerFactory) ReplayUs
 	return &replayUsecase{store: store, tracer: tf.Usecase()}
 }
 
-// ReplayDead は、dead 行を pending へ戻し、戻した件数を返します。
 func (u *replayUsecase) ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

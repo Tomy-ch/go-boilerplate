@@ -80,7 +80,6 @@ func New(
 	}
 }
 
-// ListUsersByKeyword は、キーワードに基づいてユーザー一覧を取得します。
 func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (UserSearchResults, error) {
 	if filter == nil || page == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "filter and page must not be nil")
@@ -98,7 +97,6 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, 
 	return u.toSearchResults(ctx, us)
 }
 
-// CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返すユースケースです。
 func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error) {
 	if filter == nil {
 		return 0, xerrors.Wrap(apperror.ErrInvalidArgument, "filter must not be nil")
@@ -111,7 +109,6 @@ func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams)
 	return u.userRepo.CountByKeyword(ctx, keywords, filter.Active)
 }
 
-// ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。
 func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Page) (*UserSearchListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

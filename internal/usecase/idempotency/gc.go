@@ -41,7 +41,6 @@ func NewGC(store idempotencybndry.Store, clk clock.Clock, metrics GCMetrics) GCU
 	return &gcUsecase{store: store, clock: clk, metricsImpl: metrics}
 }
 
-// SweepExpired は、失効行を batchSize 件ずつ削除し、合計削除件数を返します。
 func (g *gcUsecase) SweepExpired(ctx context.Context, batchSize int32) (int64, error) {
 	if batchSize <= 0 {
 		batchSize = DefaultGCBatchSize
