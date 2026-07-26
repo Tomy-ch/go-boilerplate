@@ -572,6 +572,18 @@ func TestReconstruct(t *testing.T) {
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
 
+		t.Run("発送済みstatusなのにshippedAtがnilの場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
+			t.Parallel()
+			id, code, userID, statusID, details, orderedAt := valid(t)
+			paidAt := orderedAt
+			actual, err := Reconstruct(
+				id, code, userID, statusID, StatusCodeShipped, 160000, 16000, 500, 176500, details, orderedAt,
+				&paidAt, nil, nil, nil,
+			)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidStatusID)
+		})
+
 		t.Run("canceledAtがセット済みなのにキャンセルstatusでない場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
@@ -763,6 +775,155 @@ func TestPurchaseDetail_UnitPrice(t *testing.T) {
 			)
 			assert.Equal(t, "1.005", d.UnitPrice().String())
 			assert.True(t, d.UnitPrice().Decimal().Equal(decimaltestkit.MustParse(t, "1.005")))
+		})
+	})
+}
+
+func TestPurchase_Ship(t *testing.T) {
+	t.Parallel()
+
+	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
+		t.Helper()
+		details := []PurchaseDetail{
+			NewPurchaseDetail(uuid.NewTestFromSalt(t, "ship_d1"), uuid.NewTestFromSalt(t, "ship_p1"), 2, mustPrice(t, "800")),
+		}
+		p, err := Reconstruct(
+			uuid.NewTestFromSalt(t, "ship_id"), "ship-code",
+			uuid.NewTestFromSalt(t, "ship_user"), uuid.NewTestFromSalt(t, "ship_status"),
+			statusCode, 160000, 16000, 500, 176500, details,
+			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			paidAt, canceledAt, shippedAt, deliveredAt,
+		)
+		require.NoError(t, err)
+		return p
+	}
+	paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("支払い済みから発送すると、statusCodeが発送済みになりshippedAtがセットされる", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodePaid, &paidAt, nil, nil, nil)
+			err := p.Ship(now)
+			require.NoError(t, err)
+			assert.Equal(t, StatusCodeShipped, p.StatusCode())
+			require.NotNil(t, p.ShippedAt())
+			assert.Equal(t, now, *p.ShippedAt())
+		})
+
+		t.Run("発送してもpaidAtは保持される", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodePaid, &paidAt, nil, nil, nil)
+			require.NoError(t, p.Ship(now))
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, paidAt, *p.PaidAt())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既に発送済み（statusCode）の場合、ErrAlreadyShippedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeShipped, &paidAt, nil, &now, nil)
+			require.ErrorIs(t, p.Ship(now), ErrAlreadyShipped)
+		})
+
+		t.Run("未払い（未処理）の場合、ErrShipNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeUnprocessed, nil, nil, nil, nil)
+			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+		})
+
+		t.Run("キャンセル済みの場合、ErrShipNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeCanceled, nil, &now, nil, nil)
+			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+		})
+
+		t.Run("完了の場合、ErrShipNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeCompleted, nil, nil, nil, nil)
+			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+		})
+
+		t.Run("配達済みの場合、二重発送ではなくErrShipNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			deliveredAt := time.Date(2026, time.July, 27, 0, 0, 0, 0, time.UTC)
+			p := build(t, StatusCodeDelivered, &paidAt, nil, &now, &deliveredAt)
+			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+		})
+
+		t.Run("遷移に失敗した場合、statusCodeとshippedAtを変更しない", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusCodeUnprocessed, nil, nil, nil, nil)
+			require.Error(t, p.Ship(now))
+			assert.Equal(t, StatusCodeUnprocessed, p.StatusCode())
+			assert.Nil(t, p.ShippedAt())
+		})
+	})
+}
+
+func TestPurchase_ShippedAt(t *testing.T) {
+	t.Parallel()
+
+	build := func(t *testing.T, shippedAt *time.Time) *Purchase {
+		t.Helper()
+		details := []PurchaseDetail{
+			NewPurchaseDetail(uuid.NewTestFromSalt(t, "sa_d1"), uuid.NewTestFromSalt(t, "sa_p1"), 2, mustPrice(t, "800")),
+		}
+		statusCode := StatusCodePaid
+		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
+		if shippedAt != nil {
+			statusCode = StatusCodeShipped
+		}
+		p, err := Reconstruct(
+			uuid.NewTestFromSalt(t, "sa_id"), "sa-code",
+			uuid.NewTestFromSalt(t, "sa_user"), uuid.NewTestFromSalt(t, "sa_status"),
+			statusCode, 160000, 16000, 500, 176500, details,
+			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			&paidAt, nil, shippedAt, nil,
+		)
+		require.NoError(t, err)
+		return p
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未発送の場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, build(t, nil).ShippedAt())
+		})
+
+		t.Run("発送済みの場合、内部状態を保護するためコピーを返す", func(t *testing.T) {
+			shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
+			p := build(t, &shippedAt)
+
+			t.Run("再構築時に渡したポインタを変更しても、購入のshippedAtは変わらない", func(t *testing.T) {
+				t.Parallel()
+
+				original := shippedAt
+				shippedAt = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+				require.NotNil(t, p.ShippedAt())
+				assert.Equal(t, original, *p.ShippedAt())
+			})
+
+			t.Run("ShippedAtの返り値を変更しても、購入のshippedAtは変わらない", func(t *testing.T) {
+				t.Parallel()
+
+				original := *p.ShippedAt()
+
+				got := p.ShippedAt()
+				*got = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+				require.NotNil(t, p.ShippedAt())
+				assert.NotEqual(t, *got, *p.ShippedAt())
+				assert.Equal(t, original, *p.ShippedAt())
+			})
 		})
 	})
 }
