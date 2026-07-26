@@ -54,11 +54,15 @@ make db-init
 
 下記コマンドで、Goモジュール名を一括置換するスクリプトを実行してください。
 
-ORGとREPOは適宜置き換えてください。派生設定は気になる箇所のみ変更してください。
+ORG・REPO・CODE_OWNERS は適宜置き換えてください。派生設定は気になる箇所のみ変更してください。
 
 ```sh
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
+
+# CODEOWNERS の所有者。ユーザー(@name)かチーム(@org/team)を指定します。
+# 組織そのものは所有者になれないため、組織が持つ fork ではチームを指定してください。
+export CODE_OWNERS=<@your-org/tech-leads>
 
 export MODULE=${REPO}
 export APP_NAME=${REPO}
@@ -71,6 +75,7 @@ make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib

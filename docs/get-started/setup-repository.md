@@ -54,11 +54,15 @@ make db-init
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
 
-Replace ORG and REPO as appropriate. Only change derived settings if necessary.
+Replace ORG, REPO, and CODE_OWNERS as appropriate. Only change derived settings if necessary.
 
 ```sh
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
+
+# CODEOWNERS owner — a user (@name) or a team (@org/team). An organization itself
+# cannot own a path, so a fork owned by one must name a team.
+export CODE_OWNERS=<@your-org/tech-leads>
 
 export MODULE=${REPO}
 export APP_NAME=${REPO}
@@ -71,6 +75,7 @@ make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib

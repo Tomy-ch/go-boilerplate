@@ -3,8 +3,9 @@
 # GitHub requires the "Require review from Code Owners" branch-protection rule for
 # these entries to be enforced; without it they only auto-request the reviewer.
 #
-# Replace @Tomy-ch with the team that owns the decision in your fork
-# (e.g. @your-org/tech-leads).
+# The owner below is a placeholder. Point every rule at your fork's owning role with:
+#
+#   make setup-replace-codeowners OWNERS='@example-org/tech-leads'
 
 # Supply-chain controls. The npm `min-release-age` cooldown in each .npmrc is
 # evaluated only while npm resolves dependencies, so a lockfile produced with it
