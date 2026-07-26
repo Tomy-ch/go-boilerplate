@@ -257,7 +257,7 @@ type GetProductsParams struct {
 	// StatusId 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
 	StatusId *StatusIdParam `form:"statusId,omitempty" json:"statusId,omitempty"`
 
-	// Keyword 全文検索キーワード
+	// Keyword 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
 	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`
 
 	// Sort 並び順。`-publishedAt`（既定）は公開日時の降順、`publishedAt` は公開日時の昇順です。

@@ -205,7 +205,7 @@ type GetUsersParams struct {
 	// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
 	Active *ActiveParam `form:"active,omitempty" json:"active,omitempty"`
 
-	// Page ページ番号（1から始まる）
+	// Page ページ番号（1から始まる）。上限を超えた場合は 400 を返します。
 	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
 
 	// PerPage 1ページあたりの取得件数
