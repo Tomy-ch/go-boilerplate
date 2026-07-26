@@ -240,6 +240,10 @@ Verification contents:
 - HTTP Status Code = 200
 - Content-Type = application/json
 - The response body can be unmarshaled into type `T`
+- Every field declared as a Go slice in `T` (recursively, including nested
+  structs and slice elements) is serialized as a JSON array — never `null`.
+  Only a key that is present with a `null` value is a violation; an absent key
+  (e.g. `omitempty`) is not.
 
 This helper intentionally does **not** compare field values. Per the test
 pyramid above, response value correctness (the presenter's field mapping) is the
@@ -248,6 +252,11 @@ independent oracle. Duplicating value assertions here would couple the
 integration test to presenter details and make it brittle; for responses that
 carry dynamic values (e.g. build info, `RegisteredAt`) only the type is
 checkable anyway.
+
+The array-not-`null` check is not a value assertion but a check on the
+**serialization shape**: whether an empty collection reaches the client as `[]`
+or `null` is decided at the HTTP boundary, so the integration layer owns this
+guarantee.
 
 Usage example:
 

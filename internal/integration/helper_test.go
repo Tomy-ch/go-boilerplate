@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -125,6 +128,9 @@ func (s *Server) DoJSON(
 // integration テストは HTTP 境界（router → middleware → handler → シリアライズ）の到達と
 // レスポンスの型整合のみを検証する。フィールド値の正しさは controller のユニットテストが
 // 独立オラクルで担保するため、ここでは値比較を行わない。
+//
+// 加えてシリアライズの形の検査として、T にスライスとして宣言されたフィールドが
+// JSON で null になっていないこと（空でも [] を返す API 契約）を検証する。
 func AssertJSONResponseType[T any](t *testing.T, actualResponse *http.Response) {
 	t.Helper()
 
@@ -136,6 +142,99 @@ func AssertJSONResponseType[T any](t *testing.T, actualResponse *http.Response) 
 
 	var actualObj T
 	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。型引数に期待される型を指定してください。")
+
+	assertDeclaredArraysNotNull(t, resBody, reflect.TypeOf((*T)(nil)).Elem(), "")
+}
+
+// assertDeclaredArraysNotNull は、typ 内でスライスとして宣言されたフィールドが raw の JSON 上で
+// null にシリアライズされていないことを再帰的に検証する。
+//
+// 違反となるのはキーが存在して値が null の場合のみで、キー自体が無い（omitempty で absent）場合は
+// 違反としない。[]byte は base64 文字列にシリアライズされるため対象外。
+func assertDeclaredArraysNotNull(t *testing.T, raw json.RawMessage, typ reflect.Type, path string) {
+	t.Helper()
+
+	if isJSONNull(raw) {
+		return
+	}
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+
+	switch typ.Kind() {
+	case reflect.Struct:
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &fields); err != nil {
+			// time.Time など JSON オブジェクト以外へシリアライズされる struct は対象外。
+			return
+		}
+		for i := range typ.NumField() {
+			f := typ.Field(i)
+			if !f.IsExported() {
+				continue
+			}
+			if _, tagged := f.Tag.Lookup("json"); f.Anonymous && !tagged {
+				// タグ無し埋め込みフィールドは JSON 上で親にインライン化される。
+				assertDeclaredArraysNotNull(t, raw, f.Type, path)
+				continue
+			}
+			name, ok := jsonFieldName(f)
+			if !ok {
+				continue
+			}
+			fieldRaw, present := fields[name]
+			if !present {
+				continue
+			}
+			fieldPath := name
+			if path != "" {
+				fieldPath = path + "." + name
+			}
+			ft := f.Type
+			for ft.Kind() == reflect.Pointer {
+				ft = ft.Elem()
+			}
+			if ft.Kind() == reflect.Slice && ft.Elem().Kind() != reflect.Uint8 && isJSONNull(fieldRaw) {
+				assert.Failf(t, "配列フィールドが null",
+					"配列フィールド %q が JSON で null にシリアライズされています（[] を返す契約違反）", fieldPath)
+				continue
+			}
+			assertDeclaredArraysNotNull(t, fieldRaw, f.Type, fieldPath)
+		}
+	case reflect.Slice:
+		if typ.Elem().Kind() == reflect.Uint8 {
+			return
+		}
+		var elems []json.RawMessage
+		if err := json.Unmarshal(raw, &elems); err != nil {
+			return
+		}
+		for i, elemRaw := range elems {
+			assertDeclaredArraysNotNull(t, elemRaw, typ.Elem(), path+"["+strconv.Itoa(i)+"]")
+		}
+	default:
+	}
+}
+
+// jsonFieldName は、struct フィールドの JSON キー名を解決する。`json:"-"` のときは ok=false。
+func jsonFieldName(f reflect.StructField) (string, bool) {
+	tag, tagged := f.Tag.Lookup("json")
+	if !tagged {
+		return f.Name, true
+	}
+	if tag == "-" {
+		return "", false
+	}
+	name, _, _ := strings.Cut(tag, ",")
+	if name == "" {
+		return f.Name, true
+	}
+	return name, true
+}
+
+// isJSONNull は、raw が JSON リテラル null かどうかを返す。
+func isJSONNull(raw json.RawMessage) bool {
+	return len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
 }
 
 // UseAppErrorHandler は、本番相当の HTTPErrorHandler を Echo に登録する。
