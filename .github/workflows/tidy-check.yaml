@@ -40,7 +40,9 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          cache: true
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
 
       # `go mod verify` only checks modules already present in the local download
       # cache, and it neither downloads what is missing nor reads go.sum. On its own
