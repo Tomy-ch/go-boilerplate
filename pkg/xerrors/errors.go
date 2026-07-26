@@ -19,17 +19,19 @@ func Wrap(err error, msg string) error {
 	return errors.Wrap(err, msg)
 }
 
-// Is は、エラーが特定のターゲットエラーと一致するかを判定します。
+// Is は、err のエラーチェーン中に target と一致するエラーが含まれるかを判定します。
 func Is(err, target error) bool {
 	return errors.Is(err, target)
 }
 
-// As は、エラーが特定のターゲット型に変換可能かを判定します。
+// As は、err のエラーチェーンから target が指す型に一致する最初のエラーを探し、見つかった場合は
+// target へその値を設定して true を返します。target は非 nil のポインタである必要があります。
 func As(err error, target any) bool {
 	return errors.As(err, target)
 }
 
 // Join は、複数のエラーを結合して新しいエラーを生成します。
+// nil の要素は捨てられ、非 nil が 1 つも無い場合は nil を返します。
 func Join(errs ...error) error {
 	return errors.Join(errs...)
 }

@@ -338,6 +338,11 @@ each other.
   there is no concrete detail worth adding, **omit the implementation doc entirely** — the
   implementation type is unexported, so `revive`'s `exported` rule does not require one.
 
+This interface-vs-implementation split is **not specific to this layer**. It applies wherever an
+interface and its unexported implementation live in the same package — `internal/logging`'s `Logger`
+and `internal/observability`'s provider factories are held to the same rule. The layer-vocabulary part
+below is what differs per layer; the no-verbatim-duplicate part is repository-wide.
+
 The same application-vocabulary rule governs the **port interfaces this layer owns** — Boundary,
 CommandService, QueryService. A port is the seam to the outside, which is exactly why it must be
 stated in technology-neutral terms: contract the *guarantee*, not the mechanism that currently

@@ -8,7 +8,7 @@
 # カバレッジ対象外パッケージ（test / test-cached / gen-test-repo / test-cover-ci で共有）
 GO_TEST_EXCLUDE := /(gen|cmd|mock|apperror|scripts)(/|$$)
 
-# カバレッジゲートの下限（CLAUDE.md の 90% フロア）
+# カバレッジゲートの下限（docs/rules.md の 90% フロア）
 COVERAGE_THRESHOLD := 90
 
 test:

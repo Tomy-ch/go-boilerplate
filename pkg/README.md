@@ -41,6 +41,20 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 - Must not depend on other `pkg/` packages — the sole permitted exception is `pkg/xerrors` (enforced by depguard `independent_pkg` in `.golangci-full.yaml`)
 - Each package must have a single responsibility
 
+### Doc comments must stay context-independent too
+
+The constraints above govern the doc comments, not just the code. A `pkg/` package is meant to survive
+being copied into another project, so its doc comments must not bake in **this** application's context:
+no specific environment-variable names, no naming of the current call sites, and no examples that
+mirror this repository's layer structure. Write `envutil.Override("SOME_KEY", "value")`, not a real
+`DB_NAME`; say a retry loop is shared by "any caller that classifies retryability", not by "the tx
+retry and the external HTTP retry". Naming the current consumers is also plain noise under
+[`docs/rules.md`](../docs/rules.md) § Comment Rules ("where it is called from").
+
+Conversely, the contract itself must be **complete**, because a generic utility is read without the
+surrounding application to fall back on: mutation of pointer arguments, `nil` semantics, silent
+clamping of out-of-range inputs, and units all belong in the doc comment.
+
 ## Package List
 
 |Package|Summary|Wraps|

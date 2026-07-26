@@ -85,6 +85,15 @@ var (
 		errInvalidConfig,
 		"shutdown timeout must be greater than or equal to request timeout",
 	)
+	// ErrBodyLimitBelowMaxUploadBytes は、リクエストボディ上限（SERVER_BODY_LIMIT_MB）が
+	// アップロード上限（OBJECT_STORAGE_MAX_UPLOAD_BYTES）以下であることを示すエラーです。
+	// ボディ上限は Pre ミドルウェアとして全リクエストへ先に適用されるため、これを下回るとアップロード
+	// 上限に達する前に 413 が返り、エンドポイント側の上限が到達不能になります。マルチパートの
+	// オーバーヘッド分の余裕も必要です。server グラフの起動時に検証されます（ValidateUploadBodyLimit）。
+	ErrBodyLimitBelowMaxUploadBytes = xerrors.Wrap(
+		errInvalidConfig,
+		"server body limit must be greater than object storage max upload bytes",
+	)
 	// ErrInvalidMetricsPortRange は、メトリクスサーバーの無効なポート範囲に関するエラーを表します。
 	ErrInvalidMetricsPortRange = xerrors.Wrap(
 		errInvalidConfig,

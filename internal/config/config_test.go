@@ -552,6 +552,40 @@ func Test_validateServerShutdown(t *testing.T) {
 	})
 }
 
+func Test_validateUploadBodyLimit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限を上回る場合は成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateUploadBodyLimit(6, 5_242_880))
+		})
+
+		t.Run("ボディ上限がアップロード上限を1バイト上回る場合は成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateUploadBodyLimit(1, BytesPerMB-1)) // 境界値: 上回れば可
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限と同値の場合はErrBodyLimitBelowMaxUploadBytesを返す", func(t *testing.T) {
+			t.Parallel()
+			err := validateUploadBodyLimit(1, BytesPerMB) // 境界値: 等値はマルチパート分の余裕が無く不可
+			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
+		})
+
+		t.Run("ボディ上限がアップロード上限を下回る場合はErrBodyLimitBelowMaxUploadBytesを返す", func(t *testing.T) {
+			t.Parallel()
+			err := validateUploadBodyLimit(5, 5_242_880)
+			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
+		})
+	})
+}
+
 func Test_validateDatabaseConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

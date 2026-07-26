@@ -1,6 +1,8 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package logging は、アプリケーションのロギング機能を提供します。
+// Package logging は、zap を基盤とする構造化ロギングの抽象を提供します。呼び出し側は zap へ直接
+// 依存せず Logger 経由でログを出力し、ctx からの trace_id / span_id の自動注入と、HTTP / SQL の
+// ログフィールド生成（LogFieldBuilder）を利用できます。
 package logging
 
 import (
@@ -35,7 +37,8 @@ type Logger interface {
 	Error(ctx context.Context, msg string, fields ...*Field)
 	// Named は、新しい名前付きの Logger を返す。
 	Named(name string) Logger
-	// CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
+	// CallerSkip は、既存のスキップ数へ skip を加算した新しい Logger を返す。
+	// 絶対値の設定ではないため、CallerSkip 済みの Logger へ重ねて呼ぶと積み上がる。
 	CallerSkip(skip int) Logger
 }
 
@@ -52,7 +55,8 @@ type levelGatedCore struct {
 }
 
 // WithCore は、既存 Logger に追加のログ core を、元 Logger と同じ最小レベルでゲートして
-// Tee した新しい Logger を返します。core が nil の場合は、元の Logger をそのまま返します。
+// Tee した新しい Logger を返します。core が nil の場合、および l が本パッケージの具象型でない
+// 場合（テスト用 fake 等）は Tee できないため、元の Logger をそのまま返します。
 func WithCore(l Logger, core LogCore) Logger {
 	if core == nil {
 		return l
@@ -91,7 +95,6 @@ func (c levelGatedCore) With(fields []zapcore.Field) zapcore.Core {
 	return levelGatedCore{Core: c.Core.With(fields), min: c.min}
 }
 
-// Named は、新しい名前付きの Logger を返す。
 func (l *logger) Named(name string) Logger {
 	return &logger{
 		log:     l.log.Named(name),
@@ -99,7 +102,6 @@ func (l *logger) Named(name string) Logger {
 	}
 }
 
-// CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
 func (l *logger) CallerSkip(skip int) Logger {
 	return &logger{
 		log:     l.log.WithOptions(zap.AddCallerSkip(skip)),
@@ -107,28 +109,24 @@ func (l *logger) CallerSkip(skip int) Logger {
 	}
 }
 
-// Debug はデバッグレベルのログを出力する。
 func (l *logger) Debug(ctx context.Context, msg string, fields ...*Field) {
 	if ce := l.log.Check(zapcore.DebugLevel, msg); ce != nil {
 		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
 	}
 }
 
-// Info は情報レベルのログを出力する。
 func (l *logger) Info(ctx context.Context, msg string, fields ...*Field) {
 	if ce := l.log.Check(zapcore.InfoLevel, msg); ce != nil {
 		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
 	}
 }
 
-// Warn は警告レベルのログを出力する。
 func (l *logger) Warn(ctx context.Context, msg string, fields ...*Field) {
 	if ce := l.log.Check(zapcore.WarnLevel, msg); ce != nil {
 		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)
 	}
 }
 
-// Error はエラーレベルのログを出力する。
 func (l *logger) Error(ctx context.Context, msg string, fields ...*Field) {
 	if ce := l.log.Check(zapcore.ErrorLevel, msg); ce != nil {
 		ce.Write(l.convertFields(l.injectTrace(ctx, fields))...)

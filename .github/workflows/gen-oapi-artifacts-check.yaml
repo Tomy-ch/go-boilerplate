@@ -50,9 +50,9 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
-      # PR の source（openapi/ 配下）が触られているかを判定する。
-      # 触られている場合は「make gen-api を忘れた」可能性が高く、触られていない
-      # 場合は generator 側のドリフト（非決定的出力 / 依存更新）の可能性が高い。
+      # Determine whether the PR touched the source (under openapi/).
+      # If it did, a forgotten "make gen-api" is the likely cause; if it did not,
+      # generator-side drift (non-deterministic output / dependency update) is more likely.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
@@ -83,7 +83,7 @@ jobs:
             echo "No differences in OpenAPI generated output were detected." > "$out"
             exit 0
           fi
-          # 通知メッセージ内の `make ...` はリテラル表示（展開させない）ため SC2016 を無効化
+          # Disable SC2016: `make ...` in the notification message is shown literally (must not expand)
           # shellcheck disable=SC2016
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
@@ -92,7 +92,7 @@ jobs:
             echo "title=## ⚠️ Drift in OpenAPI generated output detected (openapi/ unchanged)" >> "$GITHUB_OUTPUT"
             printf '%s\n' "This PR does not modify anything under \`openapi/\`, so this may be generator-side drift (non-deterministic output, dependency version differences, stale generated artifacts on the base, etc.). Run \`make gen-bundle-oapi && make gen-api-docs\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
-          # ファイル名を markdown コード表示にする `%s` はリテラル（展開させない）ため SC2016 を無効化
+          # Disable SC2016: the `%s` that renders the filename as markdown code is literal (must not expand)
           # shellcheck disable=SC2016
           {
             echo ""

@@ -42,3 +42,8 @@ const (
 	// MaxPort は許可される最大ポート番号を表します。
 	MaxPort = 65535
 )
+
+// BytesPerMB は、MB 表記をバイトへ換算する係数です。
+// SERVER_BODY_LIMIT_MB を解釈する echo の body limit ミドルウェアが 10 進の MB（1MB=1,000,000 byte）を
+// 用いるため、2 進（1MiB=1,048,576 byte）ではなくこの値に揃えます。
+const BytesPerMB int64 = 1_000_000

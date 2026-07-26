@@ -404,6 +404,25 @@ SELECT / WHERE / JOIN
 - QueryService
 - ReadModel
 
+### doc コメントはドメイン語彙で書く
+
+上記の SQL の形は **インフラ層の実装に許される範囲**を定めたものであり、ここに書く doc コメントの語彙では
+ありません。Repository インターフェースは永続化への継ぎ目であり、だからこそその doc コメントは**保証**を
+ドメイン語彙で契約し、**機構**は実装側に委ねます。`LockByID` は悲観ロックを取ることと、そのロックが何を
+直列化するかを述べますが、そのロックが `SELECT … FOR UPDATE` であることは述べません。フィード系メソッドは
+「注文日時の降順（同時刻は ID 降順）」と述べ、`(ordered_at DESC, id DESC)` とは述べません。テーブル名・
+カラム名・SQL 断片は、既にそれを述べているインフラ層の doc コメントに属します
+（[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail、および本ルールの元になった
+[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation を参照）。
+
+ドメイン層に固有の帰結が 2 点あります。
+
+- **数値の境界がストレージ幅に由来する場合は、SQL の型名ではなく Go の整数幅で表現します** — `1〜32767` は
+  符号付き 16bit 整数の正数範囲として記述します。これにより定数がマジックナンバーに見えることを避けつつ、
+  技術非依存を保てます。その理由は定数の側に置き、公開コンストラクタの doc は純粋な契約に保ちます。
+- **参照マスタはドメイン名で呼びます**（商品ステータスマスタ）。テーブル名（`product_statuses`）では呼びません。
+
 ## 呼び出せる層
 
 呼び出し元：
@@ -594,7 +613,7 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 - 振る舞いメソッドで状態遷移
 - VOで整合性担保
 - Repository抽象化
-- テーブル駆動テスト
+- `t.Run` を並べたケース記述（テーブル駆動の `for` ループは使わない — [`docs/testing-conventions.md`](../../docs/testing-conventions.md) を参照）
 
 ### Don’t
 

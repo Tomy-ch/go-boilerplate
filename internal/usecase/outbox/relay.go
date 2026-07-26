@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// DefaultBatchSize は、1 回の relay で claim する pending 行数の既定値です。
+	// DefaultBatchSize は、1 回の relay で claim する pending エントリ数の既定値です。
 	DefaultBatchSize int32 = 100
 	// DefaultMaxAttempts は、dead 化までの publish 試行回数の既定値です。
 	DefaultMaxAttempts int32 = 10
@@ -26,7 +26,7 @@ const (
 
 // Metrics は、relay engine が記録する outbox 固有の o11y シンクです。
 type Metrics interface {
-	// SetLagSeconds は、最古 pending 行の経過秒数（SLI=outbox lag）を記録します。
+	// SetLagSeconds は、最古 pending エントリの経過秒数（SLI=outbox lag）を記録します。
 	SetLagSeconds(ctx context.Context, seconds int64)
 	// IncDead は、dead 化したメッセージ数を計上します。
 	IncDead(ctx context.Context)
@@ -34,20 +34,20 @@ type Metrics interface {
 
 // RelayResult は、1 回の RelayBatch の結果です。
 type RelayResult struct {
-	// Claimed は、claim した pending 行数です（0 なら pending 無し）。
+	// Claimed は、claim した pending エントリ数です（0 なら pending 無し）。
 	Claimed int
-	// Published は、claim 行のうち publish に成功した行数です。
+	// Published は、claim したエントリのうち publish に成功した件数です。
 	Published int
 }
 
-// RelayUsecase は、pending 行を claim して publish するユースケースです。relay engine が周期的に呼びます。
+// RelayUsecase は、pending のエントリを claim して publish するユースケースです。relay engine が周期的に呼びます。
 type RelayUsecase interface {
-	// RelayBatch は、最大 batchSize 件の pending 行を 1 tx で claim → publish → mark し、結果を返します。
+	// RelayBatch は、最大 batchSize 件の pending エントリを 1 tx で claim → publish → mark し、結果を返します。
 	// 個々の publish 失敗は tx を巻き戻さず（failed/dead をマークして）次 poll で再送します。
 	// DB アクセス自体の失敗のみ tx を巻き戻すエラーとして返します。
 	RelayBatch(ctx context.Context, batchSize int32) (RelayResult, error)
-	// RecordLag は、最古 pending 行の経過時間（outbox lag）を SLI メトリクスへ記録します。
-	// pending 行が無ければ 0 を記録します。
+	// RecordLag は、最古 pending エントリの経過時間（outbox lag）を SLI メトリクスへ記録します。
+	// pending のエントリが無ければ 0 を記録します。
 	RecordLag(ctx context.Context) error
 }
 

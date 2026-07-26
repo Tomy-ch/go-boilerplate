@@ -13,13 +13,13 @@ import (
 const (
 	// DefaultGCBatchSize は、GC の 1 バッチあたり削除件数の既定値です。
 	DefaultGCBatchSize int32 = 10_000
-	// DefaultRetention は、published 行を保持する既定期間です。これより古い行が GC 対象になります。
+	// DefaultRetention は、published のエントリを保持する既定期間です。これより古いエントリが GC 対象になります。
 	DefaultRetention = 7 * 24 * time.Hour
 )
 
-// GCUsecase は、published 済みの outbox 行を刈り取るユースケースです。
+// GCUsecase は、published 済みの outbox エントリを刈り取るユースケースです。
 type GCUsecase interface {
-	// SweepPublished は、retention より古い published 行を batchSize 件ずつ削除し、合計削除件数を返します。
+	// SweepPublished は、retention より古い published エントリを batchSize 件ずつ削除し、合計削除件数を返します。
 	SweepPublished(ctx context.Context, batchSize int32) (int64, error)
 }
 
@@ -47,7 +47,7 @@ func (g *gcUsecase) SweepPublished(ctx context.Context, batchSize int32) (int64,
 			return total, err
 		}
 		total += deleted
-		// バッチが満たなかった = もう対象行は無い。
+		// バッチが満たなかった = もう対象のエントリは無い。
 		if deleted < int64(batchSize) {
 			return total, nil
 		}

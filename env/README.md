@@ -52,7 +52,7 @@ This directory is the canonical reference for every environment variable read by
 |SERVER_READ_TIMEOUT|Request read timeout|duration|10s|Code default `10s`|
 |SERVER_WRITE_TIMEOUT|Response write timeout|duration|65s|Code default `65s`. Must be >= SERVER_REQUEST_TIMEOUT; net/http cuts the connection before the deadline budget fires if this is shorter|
 |SERVER_IDLE_TIMEOUT|KeepAlive timeout|duration|60s|Code default `60s`|
-|SERVER_BODY_LIMIT_MB|Request body size limit in MB (decimal, 1MB=1,000,000 bytes); 413 on exceed|int|6|Code default `6`. Pre middleware, applied before OpenAPI validation reads the body. Must stay above `OBJECT_STORAGE_MAX_UPLOAD_BYTES` (plus multipart overhead) or the per-endpoint upload limit is unreachable|
+|SERVER_BODY_LIMIT_MB|Request body size limit in MB (decimal, 1MB=1,000,000 bytes); 413 on exceed|int|6|Code default `6`. Pre middleware, applied before OpenAPI validation reads the body. Must stay above `OBJECT_STORAGE_MAX_UPLOAD_BYTES` (plus multipart overhead) or the per-endpoint upload limit is unreachable. Enforced at server startup by `config.ValidateUploadBodyLimit`|
 |SERVER_REQUEST_TIMEOUT|Per-request deadline budget (set once at the entry, propagated to all layers via ctx)|duration|60s|Code default `60s`. Single stop-timeout axis; statement_timeout etc. are backstops|
 
 ### Metrics
@@ -184,7 +184,7 @@ S3-compatible object storage for uploaded assets (product images). The usecase d
 |OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|`required,notEmpty`. Injected at deploy time|
 |OBJECT_STORAGE_SECRET_ACCESS_KEY|Static-credential secret access key|string|gobp-local-secret-key|`required,notEmpty`. Injected at deploy time|
 |OBJECT_STORAGE_USE_PATH_STYLE|Use path-style addressing (Garage / MinIO require true; AWS S3 uses false)|bool|true|`required`|
-|OBJECT_STORAGE_MAX_UPLOAD_BYTES|Maximum accepted upload size in bytes|int|5242880|`required,notEmpty`. 5 MiB in the sample. Must stay below the global `SERVER_BODY_LIMIT_MB` (bytes, decimal) minus multipart overhead, otherwise the global body limit rejects first and this check never fires|
+|OBJECT_STORAGE_MAX_UPLOAD_BYTES|Maximum accepted upload size in bytes|int|5242880|`required,notEmpty`. 5 MiB in the sample. Must stay below the global `SERVER_BODY_LIMIT_MB` (bytes, decimal) minus multipart overhead, otherwise the global body limit rejects first and this check never fires. Enforced at server startup by `config.ValidateUploadBodyLimit`|
 
 ## Notes
 
