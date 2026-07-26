@@ -114,7 +114,7 @@ jobs:
         run: |
           sudo chown -R "$USER:$USER" docs internal openapi
 
-      # 材料化した env/.env は生成物ではないため、コミット判定の対象から外す。
+      # The materialized env/.env is not generated output, so exclude it from the commit check.
       - name: Restore embedded env
         run: make restore-env
 
@@ -124,7 +124,7 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
-          # この push に .go 変更が含まれるか（意味のあるカバレッジ更新の判定に使う）。
+          # Whether this push contains .go changes (used to decide if a coverage update is meaningful).
           go_changed=false
           if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
             go_changed=true
@@ -137,7 +137,7 @@ jobs:
             git checkout -- docs/coverage/index.html 2>/dev/null || true
           fi
 
-          # ノイズ除去後に、コミットすべき差分が残っているかで PR 作成可否を判定する。
+          # After removing noise, decide whether to create a PR based on whether committable diffs remain.
           git add -A
           if git diff --cached --quiet; then
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
