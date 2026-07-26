@@ -51,7 +51,7 @@ type CompleteParams struct {
 
 // Store は、冪等性キーの永続化境界です。すべて scope 必須（id 単独 lookup を持たない＝越境防止）。
 type Store interface {
-	// Claim は、claimed 行を作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。
+	// Claim は、claimed のエントリを作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。
 	// ロック待ちタイムアウト時は ErrLockTimeout を返します。
 	// 業務トランザクション内から呼び出すこと（ロック待ちの上限がトランザクションスコープのため）。
 	Claim(ctx context.Context, p ClaimParams) (claimed bool, err error)
@@ -59,6 +59,6 @@ type Store interface {
 	Get(ctx context.Context, scope, key string) (*Record, error)
 	// Complete は、claimed → completed へ遷移し結果を保存します。
 	Complete(ctx context.Context, p CompleteParams) error
-	// DeleteExpired は、cutoff より古い行を limit 件まで削除し、削除件数を返します。
+	// DeleteExpired は、cutoff より古いエントリを limit 件まで削除し、削除件数を返します。
 	DeleteExpired(ctx context.Context, cutoff time.Time, limit int32) (int64, error)
 }

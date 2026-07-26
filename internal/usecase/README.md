@@ -319,6 +319,39 @@ These belong to:
 - Interface name should be unified as `Usecase` (e.g., `user.Usecase`).
 - Constructor should be named `New`, registered in `di/module/usecase.go`.
 
+### Doc comments: interface vs implementation
+
+An interface and its implementation live in the same package here (`Usecase` and the unexported
+`usecase`), so both carry a doc comment. They serve **different readers** and must not be copies of
+each other.
+
+- **Interface doc = the caller-facing contract**, per `docs/rules.md` § Comment Rules. It must stay
+  within **application vocabulary**: naming a Repository / QueryService / Boundary is fine (those are
+  inward-facing abstractions Usecase legitimately owns), but **infrastructure vocabulary leaks the
+  layer** and is forbidden — SQL fragments (`SELECT … FOR UPDATE`), table names, column names, keyset
+  mechanics. Those belong to the Infrastructure doc comment that already states them.
+- **Implementation doc = for the next implementer.** It may go **one step more concrete** than the
+  contract, still in application vocabulary: which collaborator carries a guarantee, why the
+  transaction boundary sits where it does, what degrades instead of failing, why a conflict is not
+  retryable. `UpdateProduct` in `product/product_update_usecase.go` is the reference example.
+- **Never restate the interface doc verbatim.** A duplicate adds nothing and rots in two places. When
+  there is no concrete detail worth adding, **omit the implementation doc entirely** — the
+  implementation type is unexported, so `revive`'s `exported` rule does not require one.
+
+The same application-vocabulary rule governs the **port interfaces this layer owns** — Boundary,
+CommandService, QueryService. A port is the seam to the outside, which is exactly why it must be
+stated in technology-neutral terms: contract the *guarantee*, not the mechanism that currently
+delivers it. `LockPurchase` says it takes a pessimistic lock and what that lock serializes — the
+caller depends on both — but not that the lock is a `SELECT … FOR UPDATE`. A `QueryService` says
+ownership is enforced by its own filtering, not by a SQL `WHERE` predicate. The mechanism belongs to
+the Infrastructure implementation's doc comment, which is free to name it (see
+[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail).
+
+The content standard itself (contract + non-obvious Why; no How narration, no development history, no
+restatement) is `docs/rules.md` § Comment Rules. This section only settles **which doc comment
+carries what**.
+
 ### Clarification about “not implementing business logic”
 
 - **Domain logic** belongs to the Domain layer.

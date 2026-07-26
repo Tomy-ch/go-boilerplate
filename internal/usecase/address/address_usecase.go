@@ -61,7 +61,6 @@ func New(
 	}
 }
 
-// LookupByPostalCode は、正規化済み 7 桁の郵便番号から住所候補を返します。
 func (u *usecase) LookupByPostalCode(ctx context.Context, postalCode string) (*Result, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

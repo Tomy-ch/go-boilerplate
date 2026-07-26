@@ -34,7 +34,6 @@ func NewGC(store outboxbndry.Store, clk clock.Clock) GCUsecase {
 	return &gcUsecase{store: store, clock: clk, retention: DefaultRetention}
 }
 
-// SweepPublished は、retention より古い published 行を batchSize 件ずつ削除し、合計削除件数を返します。
 func (g *gcUsecase) SweepPublished(ctx context.Context, batchSize int32) (int64, error) {
 	if batchSize <= 0 {
 		batchSize = DefaultGCBatchSize

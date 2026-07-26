@@ -71,7 +71,6 @@ func New(gateway boundary.Gateway, logger logging.Logger, tf observability.Trace
 	}
 }
 
-// Convert は、base 通貨建ての金額を quote 通貨へ換算し、任意で表示通貨の参考換算額を返します。
 func (u *usecase) Convert(ctx context.Context, in ConvertInput) (*ConvertResult, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
