@@ -124,6 +124,7 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 					assert.True(t, strings.HasPrefix(obj.Key, "products/"))
 					assert.True(t, strings.HasSuffix(obj.Key, ".png"))
 					assert.Equal(t, "image/png", obj.ContentType)
+					assert.Equal(t, "public, max-age=31536000, immutable", obj.CacheControl)
 					assert.Equal(t, pngData, obj.Body)
 					return objectstorage.Path(obj.Key), nil
 				})

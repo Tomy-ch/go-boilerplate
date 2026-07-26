@@ -25,6 +25,9 @@ type PutObject struct {
 	Body []byte
 	// ContentType は、オブジェクトの MIME タイプ（例 "image/png"）です。
 	ContentType string
+	// CacheControl は、配信時に返す Cache-Control（例 "public, max-age=31536000, immutable"）です。
+	// 空文字なら設定しません。キャッシュ可否はキーの不変性に依存するため、呼び出し側が決めます。
+	CacheControl string
 }
 
 // Path は、保存されたオブジェクトのパス（キー）です。

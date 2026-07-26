@@ -14,6 +14,10 @@ import (
 // imageKeyPrefix は、商品画像オブジェクトキーの接頭辞です。
 const imageKeyPrefix = "products/"
 
+// imageCacheControl は、商品画像の配信時に返す Cache-Control です。
+// 画像の差し替えは既存キーを上書きせず別の UUID を採番するため、同一キーの内容は不変です。
+const imageCacheControl = "public, max-age=31536000, immutable"
+
 // allowedImageContentTypes は、許可する画像 Content-Type から拡張子への対応表です。
 // Content-Type は controller 側で実バイトから判定（sniff）した値を受け取ります。
 var allowedImageContentTypes = map[string]string{
@@ -65,9 +69,10 @@ func (u *usecase) UploadProductImage(ctx context.Context, authn *auth.Authn, par
 	key := imageKeyPrefix + id.String() + "." + ext
 
 	path, err := u.storage.Put(ctx, objectstorage.PutObject{
-		Key:         key,
-		Body:        params.Data,
-		ContentType: params.ContentType,
+		Key:          key,
+		Body:         params.Data,
+		ContentType:  params.ContentType,
+		CacheControl: imageCacheControl,
 	})
 	if err != nil {
 		return ProductImageView{}, err
