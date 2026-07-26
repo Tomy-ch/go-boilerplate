@@ -254,6 +254,7 @@ This group runs local security scans (Trivy dependency scan, gitleaks secret sca
 | `make trivy-fs-ci` | Runs `trivy fs` directly. | CI target. Skips `vendor/` to match CI. |
 | `make secret-scan` | Scans the working tree for secrets with gitleaks. | Invokes `make secret-scan-ci` inside the `go_tool_runner` container. |
 | `make secret-scan-ci` | Runs `gitleaks dir . --redact` directly. | CI target. Generated files are allowlisted in `.gitleaks.toml`. |
+| `make npm-cooldown-audit` | Reports lockfile entries younger than the `min-release-age` declared in their own `.npmrc`. | Runs on the host. Reports only — exits 0 even on a finding, because overriding the cooldown is a deliberate call. |
 
 ## `.makefiles/docker` group
 
