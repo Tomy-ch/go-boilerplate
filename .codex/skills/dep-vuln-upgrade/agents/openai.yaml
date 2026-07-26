@@ -1,0 +1,4 @@
+interface:
+  display_name: "Targeted Vulnerability Upgrade"
+  short_description: "指定された脆弱なnpm・Go依存だけを安全に更新する"
+  default_prompt: "$dep-vuln-upgrade を使い、この脆弱性一覧にある依存だけを修正版へ更新して。"

@@ -1,0 +1,11 @@
+# Codex project defaults for this repository.
+# Detailed command and path constraints remain canonical in AGENTS.md.
+
+# Match the project policy: ordinary work stays sandboxed, while consequential
+# commands remain subject to an explicit approval request.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[features]
+# Repository skills delegate independent read-only reviews to .codex/agents/.
+multi_agent = true
