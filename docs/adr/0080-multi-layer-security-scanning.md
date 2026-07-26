@@ -29,13 +29,37 @@ approaches:
   tree (including non-reachable code) provides a broader safety net for prioritisation
   and advisory tracking.
 
-No single tool covers all four surfaces adequately. A layered approach using purpose-fit
-tools is required.
+Two further surfaces were added as the pipeline matured:
+
+- **The workflows and their runners themselves**: a CI definition is code with credentials,
+  and a compromised action or a template-injected `run:` block is an attack on the build
+  rather than on the product.
+- **The shape of the API contract**: an endpoint that declares no bound on its input, or no
+  authentication, is a defect in the spec that no code scanner reads.
+
+No single tool covers these surfaces adequately. A layered approach using purpose-fit tools
+is required.
 
 ## Decision
 
-Operate four independent security scanning layers, each with its own trigger schedule
-and tool:
+Operate independent security scanning layers, each owning one surface with its own trigger,
+threshold, and gate policy. The layers below are the current set; the organising principle
+is one surface per tool, and one gate policy per workflow.
+
+**Layer boundaries that matter when adding a tool:**
+
+- A finding that the change under review *introduced* blocks immediately (misconfiguration,
+  a newly added vulnerable dependency, a poisoned lockfile, a spec that loosens an input
+  bound). A finding *inherited* from the existing tree is reported on the PR and gated at
+  the promotion boundary instead — blocking there stops unrelated work while the fix is
+  prepared elsewhere. This is why `trivy-fs.yaml` / `osv-scanner.yaml` report while
+  `trivy-release-gate.yaml` / `osv-release-gate.yaml` block.
+- Scanners are split by *surface × gate policy*, not by tool. The same tool appears in more
+  than one workflow when the questions differ (Trivy scans dependencies, Dockerfiles, and
+  licences in three workflows with three thresholds), and overlapping detections are
+  resolved by giving the surface a single owner rather than gating twice on one finding.
+
+**The layers:**
 
 **1. Reachability-filtered vulnerability scan — govulncheck** (`vulnerability-check.yaml`):
 Triggered on every PR that touches `.go`, `go.mod`, or `go.sum`. Runs
@@ -62,7 +86,59 @@ Triggered on PRs touching `.go`, `go.mod`, or `go.sum`, and on a weekly schedule
 (`cron: '0 0 * * 1'`). Runs `trivy fs` in `vuln` scan mode for `library` vulnerabilities
 at `CRITICAL`, `HIGH`, and `MEDIUM` severity, ignoring unfixed vulnerabilities. Produces
 both a Markdown summary (posted as a PR comment) and a SARIF report uploaded to GitHub
-Security via the CodeQL upload action.
+Security via the CodeQL upload action. Reports only; the blocking verdict belongs to layer 5.
+
+**5. Promotion gates — Trivy / OSV** (`trivy-release-gate.yaml`, `osv-release-gate.yaml`):
+Run on PRs into `develop` / `staging` / `production`, where the dependency state under
+review is the one about to ship. Unlike layer 4 these count unfixed findings too, because
+at the promotion boundary a known-severe vulnerability is a decision rather than a backlog
+item.
+
+**6. Broad dependency scan — OSV-Scanner** (`osv-scanner.yaml`):
+Covers the Go module graph and both npm lockfiles through one advisory source. Its
+`osv-diff` job additionally blocks a PR that *introduces* an advisory the base branch did
+not have, with no severity or fixability threshold — that gate asks only "did this change
+add something new", which is the GHAS-independent equivalent of Dependency Review.
+
+**7. Configuration scan — Trivy config** (`trivy-config.yaml`):
+Dockerfile misconfiguration at `HIGH` and above, blocking. Accepted exceptions are pinned
+per path in `.trivyignore.yaml`. hadolint (`docker-lint.yaml`) lints the same files for
+style and correctness; this layer is the security-policy layer above it.
+
+**8. Licence inventory — Trivy licence** (job in `trivy-fs.yaml`):
+Report-only and permanently so until a prohibited-licence policy exists.
+
+**9. SAST on first-party source — Opengrep** (`sast.yaml`):
+Semgrep-compatible rules (`p/golang`, `p/owasp-top-ten`) with intra-file taint tracking,
+scoped to `internal` / `pkg` / `cmd` / `database` / `openapi` and gating at `ERROR`.
+Dockerfiles are deliberately excluded here because layer 7 owns them.
+
+**10. Secret detection — TruffleHog** (`trufflehog.yaml`):
+Complements layer 3 by reporting only *verified* secrets — credentials that are actually
+live — where gitleaks covers the regex-based side.
+
+**11. Workflow and runner integrity — zizmor + Harden Runner** (`zizmor.yaml`, and a step in
+every job): static analysis of the workflow definitions themselves (template injection,
+excessive permissions, credential persistence), plus egress auditing on every runner.
+
+**12. Supply-chain provenance — Scorecard, Dependency Review, lockfile-lint, capslock**
+(`scorecard.yaml`, `dependency-review.yaml`, `lockfile-integrity.yaml`,
+`capability-diff.yaml`): repository posture scoring, GHAS-backed dependency review, lockfile
+`resolved`-URL verification against the official registry, and a report-only capability
+diff on the Go dependency graph.
+
+**13. Fuzzing — Go native** (`fuzz.yaml`): weekly randomised input exploration over the
+parsers that accept external text. It is the only layer that finds defects nobody thought
+to write a test for; its first run found an unbounded-exponent hang in `pkg/decimal`.
+
+**14. API contract security — Spectral** (`openapi-security.yaml`): the OWASP API Security
+ruleset over the OpenAPI definition, asking about unbounded input, undeclared
+authentication, and server inventory. Convention linting stays with redocly
+([ADR-0010](0010-redocly-modular-spec-pipeline.md)); the two do not overlap.
+
+Scheduled runs are staggered one per hour on Monday so a single hour does not queue every
+scanner. Any scanner with a weekly schedule calls `notify-failure.yaml` on failure, because
+a scheduled failure has no author watching it.
 
 ## Consequences
 
@@ -78,7 +154,12 @@ Security via the CodeQL upload action.
 
 ### Negative Consequences
 
-- Four separate workflows add CI complexity and surface area to maintain.
+- The workflow count is substantial, and each one is surface area to maintain. The
+  split is deliberate (surface × gate policy), but it means adding a scanner is never
+  just "add a tool" — it requires deciding which surface owns the finding.
+- Detections overlap across tools, and the overlap has to be resolved by hand each time
+  (Opengrep and Trivy both flag a root-user Dockerfile; Opengrep and gosec both flag
+  `math/rand`). Left unresolved, the same finding gates twice and gets suppressed twice.
 - Govulncheck's reachability analysis requires Go module awareness; if the module graph
   changes structure, filtering assumptions may need revisiting.
 - Secret scan runs unconditionally on every PR (no path filter), adding a fixed overhead

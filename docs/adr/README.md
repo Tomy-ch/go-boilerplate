@@ -148,6 +148,7 @@ do X") are tagged `setup-review`.
 | [0102](0102-exact-decimal-pkg-wrap.md) | Exact-decimal quantities use a `pkg/decimal` wrapper and a string wire contract | accepted |
 | [0103](0103-decimal-half-up-rounding.md) | referenceAmount and rate application round half-up at a single point, on exact decimals | accepted |
 | [0104](0104-domain-shared-kernel.md) | Cross-aggregate value objects live in a curated domain shared kernel (`internal/domain/kernel`) | accepted |
+| [0105](0105-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

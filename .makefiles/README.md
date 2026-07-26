@@ -252,6 +252,13 @@ This group runs local security scans (Trivy dependency scan, gitleaks secret sca
 | --- | --- | --- |
 | `make trivy-fs` | Scans library dependencies with Trivy fs. | Invokes `make trivy-fs-ci` inside the `go_tool_runner` container. |
 | `make trivy-fs-ci` | Runs `trivy fs` directly. | CI target. Skips `vendor/` to match CI. |
+| `make trivy-fs-release-ci` | Runs `trivy fs` including unfixed vulnerabilities. | CI target for the promotion gate; differs from `trivy-fs-ci` only by dropping `--ignore-unfixed`. |
+| `make trivy-config` | Scans the Dockerfiles for misconfiguration. | Invokes `make trivy-config-ci` inside the `go_tool_runner` container. |
+| `make trivy-config-ci` | Runs `trivy config` directly. | CI target. Gates at `CRITICAL,HIGH`; accepted exceptions live in `.trivyignore.yaml`. |
+| `make trivy-license` | Lists dependency licences. | Invokes `make trivy-license-ci` inside the `go_tool_runner` container. |
+| `make trivy-license-ci` | Runs `trivy fs --scanners license` directly. | CI target. Report-only; no severity threshold until a prohibited-licence policy exists. |
+| `make trivy-image-ci` | Scans a built image for vulnerabilities. | CI target. Pass the image with `TRIVY_IMAGE=`. |
+| `make trivy-image-gate-ci` | Fails on fixable `CRITICAL` / `HIGH` in a built image. | CI target. Pass the image with `TRIVY_IMAGE=`. |
 | `make secret-scan` | Scans the working tree for secrets with gitleaks. | Invokes `make secret-scan-ci` inside the `go_tool_runner` container. |
 | `make secret-scan-ci` | Runs `gitleaks dir . --redact` directly. | CI target. Generated files are allowlisted in `.gitleaks.toml`. |
 
@@ -299,6 +306,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gen-bundle-oapi-ci` | Generates `openapi/openapi.gen.yaml` via `redocly bundle`. | CI target |
 | `make gen-api-docs-ci` | Generates `docs/openapi/index.html` via `redocly build-docs`. | CI target |
 | `make lint-oapi-ci` | Runs `redocly lint openapi/openapi.yaml` directly. | CI target |
+| `make lint-oapi-security-ci` | Runs Spectral with the OWASP API Security ruleset. | CI target. Runs outside `node_tool_runner` because Spectral resolves its ruleset from `docker/tools/node_modules`; run `npm ci` there first. |
 | `make gen-mock-auth-oapi` | Bundles the mock-auth-server OpenAPI and generates zod schemas. | Invokes `make gen-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
 | `make gen-mock-auth-oapi-docs` | Generates the mock-auth-server Redoc HTML from its OpenAPI. | Outputs `docs/openapi/mock-auth-server/index.html` via the `node_tool_runner` container. |
 | `make lint-mock-auth-oapi` | Validates the mock-auth-server OpenAPI definition with `redocly lint`. | Invokes `make lint-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
@@ -401,6 +409,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make delete-all-labels` | Deletes all existing labels in the GitHub repository. | None |
 | `make create-default-labels` | Creates default labels based on `.github/settings/labels.json`. | None |
 | `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | None |
+| `make enable-workflows` | Enables every workflow left in `disabled_fork` state. | Idempotent. A fork or template-derived repository starts with all workflows disabled. |
 
 ### GitHub repository initialization related
 
