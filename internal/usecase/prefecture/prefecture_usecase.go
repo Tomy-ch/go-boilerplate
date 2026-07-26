@@ -41,7 +41,6 @@ func New(repo prefecture.Repository, tf observability.TracerFactory) Usecase {
 	}
 }
 
-// ListPrefectures は、全都道府県を code 昇順で返します。
 func (u *usecase) ListPrefectures(ctx context.Context) (PrefectureDTOs, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

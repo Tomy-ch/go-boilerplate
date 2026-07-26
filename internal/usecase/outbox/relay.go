@@ -47,6 +47,7 @@ type RelayUsecase interface {
 	// DB アクセス自体の失敗のみ tx を巻き戻すエラーとして返します。
 	RelayBatch(ctx context.Context, batchSize int32) (RelayResult, error)
 	// RecordLag は、最古 pending 行の経過時間（outbox lag）を SLI メトリクスへ記録します。
+	// pending 行が無ければ 0 を記録します。
 	RecordLag(ctx context.Context) error
 }
 
@@ -83,8 +84,6 @@ func NewRelay(
 	}
 }
 
-// RecordLag は、最古 pending 行の経過時間（outbox lag）を SLI メトリクスへ記録します。
-// pending 行が無ければ 0 を記録します。
 func (u *relayUsecase) RecordLag(ctx context.Context) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -104,7 +103,6 @@ func (u *relayUsecase) RecordLag(ctx context.Context) error {
 	return nil
 }
 
-// RelayBatch は、最大 batchSize 件の pending 行を 1 tx で claim → publish → mark し、結果を返します。
 func (u *relayUsecase) RelayBatch(ctx context.Context, batchSize int32) (RelayResult, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

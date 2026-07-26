@@ -115,7 +115,6 @@ func New(
 	}
 }
 
-// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。
 func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (*ProductListView, error) {
 	if params.Cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
@@ -168,8 +167,8 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	return &ProductListView{Items: items, NextCursor: nextCursor}, nil
 }
 
-// GetProduct は、ID から公開中の単一商品を取得します。
-// 未存在・非公開は Repository が NotFound を返すため、そのまま伝播して 404 に落とします（存在秘匿）。
+// GetProduct は、存在秘匿を Repository が返す NotFound に委ね、usecase 側では公開判定を再実装しません。
+// Repository のエラーをそのまま伝播させることで、未存在と非公開が 404 として区別不能に保たれます。
 func (u *usecase) GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

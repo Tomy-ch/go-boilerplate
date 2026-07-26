@@ -13,7 +13,7 @@ import (
 )
 
 // PurchaseDetailItemView は、購入詳細（取得）の明細 1 件のユースケース出力 DTO です。
-// ProductName は products との結合で解決した現在名、UnitPrice は価格スケール（ドル decimal）です。
+// ProductName は購入時点ではなく現在の商品名、UnitPrice は価格スケール（ドル decimal）です。
 type PurchaseDetailItemView struct {
 	ProductID   uuid.UUID
 	ProductName string
@@ -39,7 +39,8 @@ type PurchaseGetDetailView struct {
 	CanceledAt     *time.Time
 }
 
-// GetPurchaseDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。
+// GetPurchaseDetail は、購入と商品にまたがる read 投影を QueryService に委ねます。所有権の絞り込みも
+// QueryService 側が担うため、usecase 側では取得後の所有者チェックを行いません。
 func (u *usecase) GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

@@ -62,7 +62,8 @@ func New(qs query.ProductRankingQueryService, tf observability.TracerFactory) Us
 	}
 }
 
-// GetProductsRanking は、集計期間と件数を正規化し、クエリサービスの集計結果を DTO へ写像して返します。
+// GetProductsRanking は、集計期間と件数の正規化を usecase 側の入力方針として引き受けます。QueryService へは
+// 正規化済みの値だけが渡るため、未知の期間や範囲外の件数が集計側へ到達する経路はありません。
 func (u *usecase) GetProductsRanking(ctx context.Context, params GetRankingParams) (RankingView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

@@ -42,7 +42,6 @@ func New(repo category.Repository, tf observability.TracerFactory) Usecase {
 	}
 }
 
-// ListCategories は、全商品カテゴリを sortKey 昇順で返します。
 func (u *usecase) ListCategories(ctx context.Context) (CategoryDTOs, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

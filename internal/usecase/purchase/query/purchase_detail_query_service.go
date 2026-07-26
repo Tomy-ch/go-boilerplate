@@ -15,7 +15,7 @@ import (
 // PurchaseDetailQueryService は、購入詳細の集約跨ぎ read 投影を提供する QueryService です。
 type PurchaseDetailQueryService interface {
 	// FindDetailByUserAndID は、認証主体（userID）が所有する購入 1 件を明細（商品名込み）とともに取得します。
-	// 所有権は SQL の WHERE 述語で担保し、他人の購入・不存在はいずれも apperror.ErrNotFound を返して秘匿します。
+	// 所有権は本サービス側の絞り込みで担保し、他人の購入・不存在はいずれも apperror.ErrNotFound を返して秘匿します。
 	FindDetailByUserAndID(ctx context.Context, userID, purchaseID uuid.UUID) (*PurchaseDetailReadModel, error)
 }
 
@@ -37,7 +37,7 @@ type PurchaseDetailReadModel struct {
 	CanceledAt     *time.Time
 }
 
-// PurchaseDetailItem は、購入明細 1 件の読み取りモデルです。ProductName は products との結合で解決した現在名、
+// PurchaseDetailItem は、購入明細 1 件の読み取りモデルです。ProductName は購入時点ではなく現在の商品名、
 // UnitPrice は購入時点の単価スナップショット（価格スケール）です。
 type PurchaseDetailItem struct {
 	ProductID   uuid.UUID

@@ -33,8 +33,6 @@ type CreateProductParams struct {
 	ImagePath             *string
 }
 
-// CreateProduct は、admin 認可のうえ、status / category の名称を解決して商品を作成します。
-// status / category の不在は整合性異常として 500、負価格・負在庫・名称長超過は 422 を返します。
 func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
