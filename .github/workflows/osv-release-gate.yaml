@@ -1,0 +1,82 @@
+name: Release OSV Scan
+
+# Blocking half of the OSV double gate. osv-scanner.yaml reports on every
+# dependency-touching PR without ever failing; this one runs on a PR that promotes into
+# a deploy branch and fails on HIGH or above, so a vulnerability is decided on at the
+# promotion boundary instead of blocking unrelated feature work.
+#
+# Deliberately carries no `paths` filter: a promotion PR often changes nothing under
+# go.mod or the npm lockfiles, yet it is exactly the moment the dependency state has to
+# be re-judged — and a required check must run to be able to block.
+on:
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - production
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The scanner version is declared in mise.toml (SSOT) — never pinned here.
+      - name: Install osv-scanner
+        run: mise install aqua:google/osv-scanner
+
+      - name: Scan with osv-scanner
+        id: scan
+        uses: ./.github/actions/osv-scan
+
+      - name: Upload osv-scanner release report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osv-release-gate
+          path: |
+            osv-scanner.json
+            osv-scanner.log
+            osv-findings.json
+            osv-scanner-summary.md
+
+      - name: Comment OSV release gate result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- osv-release-gate-result -->'
+          title: ${{ steps.scan.outputs.title }}
+          body-file: osv-scanner-summary.md
+          details-summary: '📄 Summary'
+
+      # An empty output (the scan never produced one) also fails, so a scanner or
+      # parsing failure is never mistaken for a pass.
+      - name: Fail if a blocking vulnerability was found
+        if: always() && steps.scan.outputs.gating != '0'
+        run: exit 1
