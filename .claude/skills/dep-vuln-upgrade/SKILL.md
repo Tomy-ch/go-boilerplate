@@ -1,6 +1,6 @@
 ---
 name: dep-vuln-upgrade
-description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's npm lockfiles (`package-lock.json`, e.g. `docker/tools/` and `docker/mock-auth-server/`) and the Go module graph (`go.mod` / `go.sum`), targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive npm deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the repo's own `.npmrc` `min-release-age` cooldown (deferring any fix that npm would hard-reject as too new), then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps and too-new opt-ins. It updates lockfiles with `npm install --package-lock-only` (scoped `overrides` for transitive deps), runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `npm audit` / `govulncheck` / build plus generated-artifact drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), or for a general `go.mod` dependency refresh (`make tidy-lib`).
+description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's npm lockfiles (`package-lock.json`, e.g. `docker/tools/` and `docker/mock-auth-server/`) and the Go module graph (`go.mod` / `go.sum`), targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive npm deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the repo's own `.npmrc` `min-release-age` cooldown (deferring any fix that npm would hard-reject as too new), chains `/supply-chain-triage` on every entry the cooldown catches so the opt-in rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps and too-new opt-ins. It updates lockfiles with `npm install --package-lock-only` (scoped `overrides` for transitive deps), runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `npm audit` / `govulncheck` / build plus generated-artifact drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), or for a general `go.mod` dependency refresh (`make tidy-lib`).
 argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" per line] [min_age_days]'
 ---
 
@@ -125,6 +125,16 @@ For each chosen version, compute `now - publish_date` and set a disposition:
 
 The caution exists because malicious uploads to npm / the Go proxy are typically detected and revoked within hours to days. A security fix is urgent, so `too-new` is a warning the user can override — but `blocked` is the repo's own policy enforced by npm itself, and the skill respects it rather than disabling the cooldown. Note the boundary is real: a version published even a few minutes inside an N-day window is `blocked` until the window rolls past its exact publish timestamp.
 
+### 3.5. Triage What the Gate Caught
+
+For every entry dispositioned `too-new` or `blocked`, chain **`/supply-chain-triage`** (one invocation per entry) before Step 4 presents the decision.
+
+The window is a proxy for four questions — did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear — and those can be answered directly instead of waited out (`docs/design/security.md` → "Dependencies"). This step is where that happens: a `too-new` opt-in is precisely the decision that should rest on evidence rather than on the user's tolerance for a day count, and a `blocked` entry needs to know whether waiting is merely inconvenient or actually protective.
+
+Pass the ecosystem, package, candidate version, the **baseline the lockfile currently holds** (the diff's other end), `<MIN_AGE_DAYS>`, the disposition, and the CVE forcing the move. Triage is report-only — it reads the tarball / module zip without executing it and returns a 0–12 score, a band, and citations. It changes nothing and never adopts anything; the decision stays in Step 4.
+
+Skip it when there is nothing flagged (all `clear`), and skip it for an entry the user has already declined this run. Carry each entry's band into Step 4's summary and option descriptions so the choice is made with the evidence attached.
+
 ### 4. Display Summary; Auto-apply Clear, Confirm Only the Flagged
 
 Print a Japanese summary grouped by disposition. Example:
@@ -141,9 +151,11 @@ Print a Japanese summary grouped by disposition. Example:
 
 ⚠️ too-new（公開が min_age 未満 / 別途 opt-in）:
   - fast-uri 3.1.3 → 3.1.4  [docker/tools]  (公開 3 日 / CVE-2026-16221 / HIGH)
+      トリアージ: 1/12 LOW（発行者同一・provenance 一致・差分は URL parser のみ・新規依存なし）
 
 ⛔ deferred（repo の .npmrc min-release-age に阻まれ install 不可）:
   - brace-expansion 1.1.16  [docker/tools, spectral-core 内]  (公開が cooldown 内 / 2026-07-22 頃に解除)
+      トリアージ: 2/12 LOW（ただし .npmrc の cooldown により install 自体が不可）
 
 ❓ 未検出 / 要手動:
   - （lockfile に見つからない等）
@@ -156,7 +168,7 @@ The confirmation policy is deliberately asymmetric — a clear patch is the whol
 - **too-new (caution, no repo cooldown) → report and confirm (opt-in)**, default not applied.
 - **blocked / deferred → never applied**; just report it and when it will clear.
 
-Only call `AskUserQuestion` when there is a **major-bump** and/or **too-new** entry to decide (a single `multiSelect: true` question listing just those, all deselected by default). If every eligible entry is `clear`-and-non-major, apply them straight away with no question. If nothing is eligible, skip to Step 7 with no writes.
+Only call `AskUserQuestion` when there is a **major-bump** and/or **too-new** entry to decide (a single `multiSelect: true` question listing just those, all deselected by default). Give each `too-new` option its Step 3.5 triage band in the description (`1/12 LOW` / `7/12 HIGH` / `INSUFFICIENT-EVIDENCE`) — that band is the reason to opt in or wait, so it belongs where the click happens rather than only in the summary above. If every eligible entry is `clear`-and-non-major, apply them straight away with no question. If nothing is eligible, skip to Step 7 with no writes.
 
 ### 5. Apply the Updates
 
@@ -238,6 +250,7 @@ Summarize in Japanese:
 - Packages patched, grouped by ecosystem / location, with the version diff and CVE ids.
 - Any `overrides` added, flagged as **provisional pins to reclaim** once the parent natively ships the fix (specifier used — floor vs the exceptional exact pin, and why).
 - Any `too-new` or `major-bump` entries applied (and the confirmation), or deliberately skipped.
+- For each entry the cooldown caught: its triage band and the axis that drove it, so the record shows the adopt-or-wait call rested on evidence. Name any axis that came back unanswerable.
 - Any `not-present` / `needs-manual` entries the user must handle another way.
 - Verification results (`make lint` / `make test` / `npm audit` / `govulncheck` / drift checks).
 - Regenerated artifacts, if any.
@@ -248,7 +261,7 @@ Do NOT commit, stage, or push. The user reviews the working tree and runs `/comm
 
 - **Targeted, not blanket.** The defining property of this skill is that it touches only advisory-named packages. If mid-run you notice an unrelated outdated dep, mention it but do not bump it here.
 - **Don't over-ask.** A `clear`, non-major patch is exactly what the user invoked the skill for — apply it without a confirmation click. Reserve `AskUserQuestion` for the genuinely consequential calls: **major bumps** (breaking risk) and **too-new** opt-ins. Report those separately and clearly.
-- **Respect the repo's npm cooldown; never disable it.** A `.npmrc` `min-release-age=N` is a deliberate supply-chain control. When it blocks a fix (`ETARGET ... date before <cutoff>`), the version is `blocked`/deferred — report when it clears (`publish_date + N days`), do not lower `min-release-age`, add `--before`, or otherwise route around it. Often the advisory's only in-cooldown fix is a fresh patch published the same day; wait it out or pick an older already-aged fixed version *only if the user approves that version*.
+- **Respect the repo's npm cooldown; never disable it.** A `.npmrc` `min-release-age=N` is a deliberate supply-chain control. When it blocks a fix (`ETARGET ... date before <cutoff>`), the version is `blocked`/deferred — report when it clears (`publish_date + N days`), do not lower `min-release-age`, add `--before`, or otherwise route around it. A LOW triage band does not change this: triage supplies evidence, not permission, and the cooldown is enforced by npm at resolution time regardless of what the evidence says. Often the advisory's only in-cooldown fix is a fresh patch published the same day; wait it out or pick an older already-aged fixed version *only if the user approves that version*.
 - **Vendoring.** If `vendor/` is present, a `go.mod` change is not done until `go mod vendor` re-syncs `vendor/modules.txt`; otherwise the build breaks with `inconsistent vendoring`.
 - **Transitive vs direct.** Bumping a direct dep is preferred when a compatible direct-dep version already carries the fix; scoped `overrides` is the tool for purely-transitive deps whose parent has not yet released. A scoped override (`"parent": {"pkg": ">=<fixed> <<next-major>"}`) fixes the vulnerable nested copy without downgrading an already-patched top-level copy. State which mechanism each package used in the report.
 - **Overrides are provisional debt — write a floor, then reclaim them.** An `overrides` entry is a manual, sticky pin that npm neither expires nor reminds you about, so it rots into a silent cap on a transitive dep. Two rules keep it healthy: (1) write it as a **same-major floor** (`">=<fixed> <<next-major>"`), never an exact version, so it enforces the fix as a *minimum* without freezing the dep — reserve an exact pin for when a newer in-range version is known-broken and must be held; (2) treat every override as **temporary** — once the **parent** ships a release that natively pulls a fixed version, reclaim it: bump the parent, delete the now-redundant override, `npm install --package-lock-only`, and re-run `npm audit` to confirm the fix still holds without the pin. A stale exact override can even re-introduce a vulnerability once the pinned version is itself flagged.
@@ -266,6 +279,7 @@ Confirm before reporting completion:
 - [ ] Each package located (lockfile dir / `go.mod`) and classified direct vs transitive/indirect; not-present entries surfaced
 - [ ] Fixed version chosen as minimal same-major; major bumps flagged as potentially breaking; downgrade guard applied
 - [ ] Publish date fetched; disposition set (clear / too-new / blocked-by-cooldown)
+- [ ] Every `too-new` / `blocked` entry triaged via `/supply-chain-triage` (baseline = the lockfile's current version); band carried into the summary and the `AskUserQuestion` option descriptions
 - [ ] Japanese summary shown; **clear non-major applied without asking**; `AskUserQuestion` used only for major-bump / too-new; blocked entries deferred (not applied)
 - [ ] npm direct via `npm install --package-lock-only`; transitive via a **scoped same-major floor** `overrides` (`">=<fixed> <<next-major>"`; exact pin only for a known-broken newer version) + `npm install --package-lock-only`; lockfile never hand-edited
 - [ ] Any override recorded as provisional in the report (reclaim — bump parent, drop override, re-audit — once the parent natively ships the fix)
