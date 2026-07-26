@@ -107,6 +107,20 @@ common gotcha is that generated artifacts become root-owned on the host and `git
 touch them. **See the `repo-ops` skill for the exact recovery commands** (not restated here).
 Target list: [`.makefiles/README.md`](../../.makefiles/README.md).
 
+### Image builds borrow the host's GitHub token
+
+Both the tool-runner image and the `api_server` tooling image resolve their tools with `mise`, which
+reads the GitHub Releases API. Unauthenticated calls are capped at **60 per hour per IP** — less than a
+single build needs, since every `mise install` re-resolves the whole `mise.toml`. The build therefore
+fails with `403 Forbidden`, and because each attempt exhausts the fresh quota, the reset window just
+moves forward on every retry.
+
+`make` resolves a token (an already-set `GITHUB_TOKEN` first, otherwise `gh auth token`) and hands it to
+the build as a **BuildKit secret**, which raises the ceiling to 5,000 per hour. The secret is mounted
+only for the `mise install` layer, so the token reaches neither an image layer, nor `docker history`,
+nor the running container. Without `gh` and without `GITHUB_TOKEN` nothing breaks: the build falls back
+to unauthenticated calls, which suffices while the layer is cached or the hourly budget is unspent.
+
 ## server + API slot ring (worktree parallelism)
 
 The mechanism that lets multiple git worktrees (and the main checkout) use the **single shared
