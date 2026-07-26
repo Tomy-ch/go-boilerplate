@@ -32,6 +32,7 @@ include .makefiles/github/setting/label-setting.mk
 include .makefiles/github/lint.mk
 include .makefiles/github/commitlint.mk
 include .makefiles/github/pin.mk
+include .makefiles/github/workflows.mk
 # Go言語関連
 include .makefiles/go/fmt.mk
 include .makefiles/go/gen.mk
