@@ -1,0 +1,139 @@
+name: Actions Static Analysis
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/zizmor.yml'
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/zizmor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      # persist-credentials: false — nothing after checkout talks to git, and this
+      # job holds security-events: write, so the job token must not be left behind
+      # in .git/config.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # cache: false — this job holds security-events: write, so it must not
+      # restore a tool cache that a less privileged workflow could have written.
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          cache: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml, so it is never duplicated here.
+      - name: Install zizmor
+        run: mise install aqua:zizmorcore/zizmor
+
+      # zizmor exits non-zero when it reports findings, so the exit codes are
+      # captured instead of failing the step: the SARIF upload and the PR comment
+      # must still run. The final gate step turns the captured status into a
+      # workflow failure.
+      #
+      # Two passes on purpose:
+      #   - SARIF keeps every finding so code scanning holds the full picture.
+      #   - The gate/PR comment is limited to high severity, so CI fails on
+      #     high-signal findings only. Exceptions live in .github/zizmor.yml.
+      #
+      # GH_TOKEN enables the online audits (unpinned / stale / archived action
+      # lookups), which need API access.
+      - name: Run zizmor
+        id: zizmor
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          set +e
+
+          mise exec -- zizmor --format sarif --no-progress . > zizmor.sarif
+          sarif_code=$?
+
+          # -q keeps the per-file INFO lines out of the PR comment body.
+          mise exec -- zizmor -q --format plain --no-progress --min-severity high . 2>&1 | tee zizmor.log
+          code=${PIPESTATUS[0]}
+
+          set -e
+
+          # 0 = no findings, 14 = findings reported; anything else is a tool error.
+          if [ "$sarif_code" -ne 0 ] && [ "$sarif_code" -ne 14 ]; then
+            echo "::warning::zizmor failed to produce SARIF (exit ${sarif_code})"
+          fi
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Actions static analysis: PASS (zizmor)" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## 🚨 Actions static analysis: FINDINGS (zizmor)" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Upload zizmor report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: zizmor
+          path: |
+            zizmor.sarif
+            zizmor.log
+
+      - name: Upload zizmor SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor
+
+      - name: Comment zizmor result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- zizmor-result -->'
+          title: ${{ steps.zizmor.outputs.title }}
+          body-file: zizmor.log
+          details-summary: 'zizmor log'
+
+      - name: Fail if zizmor reported findings
+        if: always() && steps.zizmor.outputs.status != 'success'
+        run: exit 1

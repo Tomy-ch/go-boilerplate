@@ -1,0 +1,39 @@
+# zizmor configuration — static analysis for GitHub Actions definitions.
+# Consumed by .github/workflows/zizmor.yaml.
+#
+# Policy for this file:
+#   - No audit is disabled. Every entry below is either a documented false
+#     positive or an explicitly accepted baseline for a pre-existing finding.
+#   - `ignore` is file-scoped, so a NEW workflow hitting the same audit still
+#     fails CI. Remove an entry once its finding is actually fixed.
+#   - `remap` is used where the finding class is repository-wide and inherent to
+#     the toolchain: the audit keeps running and every finding stays in the SARIF
+#     uploaded to code scanning, it just no longer trips the CI gate (which fires
+#     on high severity only).
+
+rules:
+  # Composite-action findings cannot be ignored per file (zizmor limitation), so
+  # the severity is remapped instead of listing the file.
+  # .github/actions/setup-postgres appends to $GITHUB_PATH using its own
+  # `pg-version` input, which is supplied by the calling workflow and never by
+  # untrusted event data — zizmor itself rates this detection "low confidence".
+  github-env:
+    remap:
+      severity: medium
+
+  # Fires on any workflow that combines a caching setup action (mise / setup-go)
+  # with a trigger set zizmor associates with publishing, which is nearly every
+  # workflow here — a file list would rot on every addition. Detection is "low
+  # confidence" and the caches are branch-scoped, so it is kept as an alert
+  # rather than a gate. deploy-app.yaml, which really does publish images, is
+  # still worth an explicit review.
+  cache-poisoning:
+    remap:
+      severity: medium
+
+  # The cooldown windows in .github/dependabot.yml are a deliberate, documented
+  # supply-chain policy (patch 5 / minor 7 / major 30 days, and security updates
+  # bypass the cooldown by design), not an oversight.
+  dependabot-cooldown:
+    ignore:
+      - dependabot.yml
