@@ -7,11 +7,11 @@ on:
       - staging
       - develop
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -185,8 +185,11 @@ jobs:
           title: '## Trivy Image Scan (table)'
           details-summary: 'Image Scan Results'
 
+      # PR ではプロモーションをブロックし、週次 schedule では既にマージ済みイメージに
+      # 新規公開された fixable な CRITICAL/HIGH を赤い定期実行として可視化する。
+      # workflow_dispatch は探索的実行なのでゲートしない。
       - name: Trivy image scan (gate - fixable CRITICAL/HIGH)
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}

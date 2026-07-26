@@ -16,6 +16,8 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+  schedule:
+    - cron: '0 8 * * 1'
   workflow_dispatch:
 
 permissions:
