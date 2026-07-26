@@ -81,8 +81,13 @@ func TestSecurityDeclaration(t *testing.T) {
 							"%s は認証必須のため許可リストのエントリが不要です。publicOperations から削除してください", key)
 						continue
 					}
-					assert.Contains(t, publicOperations, key,
-						"%s に認証必須の security 宣言がありません。認証が必要なら OpenAPI 定義に security: [BearerAuth] を追加し、意図的な公開 API なら publicOperations に理由コメント付きで追加してください", key)
+					assert.Contains(
+						t,
+						publicOperations,
+						key,
+						"%s に認証必須の security 宣言がありません。認証が必要なら OpenAPI 定義に security: [BearerAuth] を追加し、意図的な公開 API なら publicOperations に理由コメント付きで追加してください",
+						key,
+					)
 				}
 			}
 
