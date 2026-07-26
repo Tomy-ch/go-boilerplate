@@ -1,121 +1,151 @@
-# 共有インフラと DB スロットプール（worktree 並列開発）
+# Shared Infra and the DB Slot Pool (parallel worktree development)
 
-複数の git worktree（および主 checkout）が **単一の共有インフラ** を衝突なく並列利用するための仕組み。
-compose のサービスを 2 層に分ける:
+日本語: [db-worktree-pool.ja.md](../ja/maintenance/db-worktree-pool.ja.md)
 
-- **infra 層** — 固定ポートでしか動けないサービス（`database` 5432 / `observability` 3000・4317・4318・3200 /
-  `garage` 3900・3903）。固定 compose プロジェクト `gobp-shared` に **全 checkout で 1 インスタンスだけ**置く。
-- **app 層** — checkout 毎に要る `api_server` / `mock_auth_server`。checkout 毎の compose プロジェクトへ分離し、
-  ホスト公開ポートをずらして並列起動する。
+The mechanism that lets several git worktrees (and the main checkout) use a **single shared infra**
+in parallel without colliding. Compose services are split into two layers:
 
-DB の worktree 分離は「別コンテナ・別ポート」ではなく「同一インスタンス内の別データベース」
-（`wt<N>_local` / `wt<N>_test`）で行う。これにより DB 軸のホストポート割当が不要になり、「別 worktree が
-5432 を握っていて `make test` が動かせない」も「主 checkout の serve が worktree の DB と衝突する」も起きない。
-o11y は共有が利点になる（全 checkout のトレース / メトリクス / ログが 1 つの Grafana に集まる）。
+- **infra layer** — the services that can only run on fixed ports (`database` 5432 / `observability`
+  3000, 4317, 4318, 3200 / `garage` 3900, 3903). They live in the fixed compose project
+  `gobp-shared`, with **one instance for all checkouts**.
+- **app layer** — `api_server` / `mock_auth_server`, which every checkout needs for itself. They are
+  split into a per-checkout compose project and started in parallel on shifted host ports.
 
-## 仕組み
+Worktree separation of the DB is "a different database inside the same instance"
+(`wt<N>_local` / `wt<N>_test`), not "a different container on a different port". That removes the
+need to allocate a host port per DB, so neither "another worktree holds 5432, so `make test` cannot
+run" nor "the main checkout's serve collides with a worktree's DB" can happen. For o11y, sharing is
+an advantage: the traces / metrics / logs of every checkout land in a single Grafana.
 
-- **infra 層** = 固定 compose プロジェクト `gobp-shared`（`GOBP_DB_SHARED_PROJECT`）。worktree はディレクトリ毎に
-  compose の既定プロジェクト名が変わるため、共有側は明示の固定名に固定する。`make infra-up` で起動し、
-  `make serve` / `make job` / `make worker` も冒頭で冪等に呼ぶ。
-- **app 層** = `APP_PROJECT`。スロット未取得なら `gobp-app-<ディレクトリ名>`、取得時は `gobp-wt-N`。
-  `docker-compose.attach.yaml` を重ね、共有インフラを `host.docker.internal` のホスト公開ポート経由で参照する
-  （`DB_HOST` / `OBS_OTLP_ENDPOINT` / `OBJECT_STORAGE_ENDPOINT` を実行時 env で上書きする。`loader.go` は
-  実行時 env を `env/.env` より優先する）。
-- **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 8 = wt1〜wt8）。
-  スロットを取らない checkout は既定の `local` / `test` をそのまま使うため、スロット取得は**並列作業のための
-  opt-in** に留まる。
-- **実装** = ホスト実行の Go CLI `cmd/db-slot`（コアは `internal/cli/dbslot`）。リース判定・DB 作成・
-  compose 起動をテスト可能な形で担う。make ターゲットは `go run ./cmd/ db-slot <sub>` を呼ぶ。
-- **リース** = ホスト上のロックディレクトリ `${GOBP_DB_POOL_DIR:-~/.cache/gobp-db-pool}/slot-N.lock`。
-  新規取得は `os.Mkdir` の原子性、stale 回収は `rename` で原子的に占有権を奪い、acquire の走査全体を
-  `flock` で直列化するため、2 worktree が同一スロットを二重リースしない。`meta`（owner / heartbeat /
-  branch）は `0600`、symlink を向いた pool dir は先読み攻撃対策として拒否する。
-- **実行環境ガード** = `APP_ENV` が deploy 系（dev/stg/prd）のとき db-slot は実行を拒否する（DB を
-  作成/破棄するため dev/test 専用）。`internal/config` のテスト設定も同様に deploy 系では DB_NAME 上書きを
-  無視する。
-- **占有情報** = acquire が worktree ルートに `.gobp-db-slot`（gitignore）を書き出す。`make` が
-  `-include` して `.makefiles/docker/compose.mk` の既定値を上書きし、全ターゲットへ伝播する:
-  - `DB_NAME_LOCAL` / `DB_NAME_TEST` = `wt<N>_local` / `wt<N>_test`（既定 `local` / `test`。host 実行の
-    `go test` は共有 DB の localhost:5432 経由でこの名前の自 worktree DB へ繋ぐ。`internal/config` のテスト設定が参照）
+## How it works
+
+- **infra layer** = the fixed compose project `gobp-shared` (`GOBP_DB_SHARED_PROJECT`). A worktree
+  gets a different default compose project name per directory, so the shared side is pinned to an
+  explicit fixed name. `make infra-up` starts it; `make serve` / `make job` / `make worker` also call
+  it idempotently first.
+- **app layer** = `APP_PROJECT`: `gobp-app-<directory name>` when no slot is held, `gobp-wt-N` when
+  one is. `docker-compose.attach.yaml` is overlaid so the shared infra is reached through
+  `host.docker.internal` on its host-published ports (`DB_HOST` / `OBS_OTLP_ENDPOINT` /
+  `OBJECT_STORAGE_ENDPOINT` are overridden as runtime env; `loader.go` gives runtime env priority
+  over `env/.env`).
+- **slot N** = the database-name pair `wt<N>_local` / `wt<N>_test` inside the shared DB (MAX 8 by
+  default = wt1–wt8). A checkout that takes no slot keeps the default `local` / `test`, so acquiring
+  a slot stays an **opt-in for parallel work**.
+- **implementation** = the host-run Go CLI `cmd/db-slot` (core in `internal/cli/dbslot`), which owns
+  lease decisions, database creation, and compose startup in a testable form. The make targets call
+  `go run ./cmd/ db-slot <sub>`.
+- **lease** = the lock directory `${GOBP_DB_POOL_DIR:-~/.cache/gobp-db-pool}/slot-N.lock` on the
+  host. A new acquisition relies on the atomicity of `os.Mkdir`, stale reclaim seizes ownership
+  atomically via `rename`, and the whole acquire scan is serialized with `flock`, so two worktrees
+  never double-lease the same slot. `meta` (owner / heartbeat / branch) is `0600`, and a pool dir
+  pointing at a symlink is rejected as a pre-read attack countermeasure.
+- **runtime environment guard** = db-slot refuses to run when `APP_ENV` is a deploy environment
+  (dev/stg/prd), since it creates and destroys databases and is therefore dev/test only. The test
+  configuration in `internal/config` likewise ignores the DB_NAME override in deploy environments.
+- **slot record** = acquire writes `.gobp-db-slot` (gitignored) at the worktree root. `make`
+  `-include`s it, overriding the defaults from `.makefiles/docker/compose.mk` and propagating to
+  every target:
+  - `DB_NAME_LOCAL` / `DB_NAME_TEST` = `wt<N>_local` / `wt<N>_test` (default `local` / `test`; a
+    host-run `go test` connects through the shared DB on localhost:5432 to its own worktree database
+    under this name — read by the test configuration in `internal/config`)
   - `API_HOST_PORT` = `8080+N` / `MOCK_AUTH_HOST_PORT` = `4000+N` / `DLV_HOST_PORT` = `2345+N` /
-    `PPROF_HOST_PORT` = `6060+N`（app 層のホスト公開ポートは全てスロット番号で相対化する）
-  - `SERVE_PROJECT` = `gobp-wt-N`（app 層の compose プロジェクト = `APP_PROJECT`）
-  - `COMPOSE_PROJECT_NAME` = `gobp-shared`（DB ツーリング migrate/seed/psql/gen が共有インフラのネットワークで
-    動くよう既定プロジェクトを infra 層へ寄せる。未取得時も compose.mk が同じ既定を置く）
-- **拡張・timezone のブートストラップ**: acquire は `wt<N>_local` / `wt<N>_test` を CREATE DATABASE
-  （存在ガード）した後、各 DB に `pg_trgm` 拡張と `Asia/Tokyo` timezone を設定する（init スクリプトが
-  `local` / `test` に施すのと同じもの。動的に作る worktree DB には明示設定が必要）。
-- **スキーマ安全性**: acquire は取得後に `wt<N>_local` / `wt<N>_test` を drop→migrate→seed で
-  自ブランチのスキーマへ作り直す。別ブランチが使ったスロットを引き継いでも安全。
-- **解放**: `slot-free` は、このスロットの app プロジェクト（`gobp-wt-N`）のコンテナを停止して
-  から lease と `.gobp-db-slot` を削除する。データベースは warm 保持で次に貸す。
-- **stale 回収の安全化**: heartbeat が TTL（既定 1800 秒、`GOBP_DB_POOL_TTL`）超過したリースは acquire 時に
-  別 worktree が再取得できる（crash した worktree がスロットを握り続けない）。heartbeat は `make serve` 時に
-  しか打たないため、起動しっぱなしの app を持つスロットも TTL 超過で stale になる。そこで DB を作り直す前に
-  そのスロットが実際に使われていないかを 2 段で確かめ、使用中なら破壊せず skip する:
-  1. app プロジェクト（`gobp-wt-N`）に稼働中コンテナが無いこと
-  2. `pg_stat_activity` にそのスロットの DB への接続が無いこと
+    `PPROF_HOST_PORT` = `6060+N` (every app-layer host port is relative to the slot number)
+  - `SERVE_PROJECT` = `gobp-wt-N` (the app layer's compose project = `APP_PROJECT`)
+  - `COMPOSE_PROJECT_NAME` = `gobp-shared` (moves the default project to the infra layer so DB
+    tooling — migrate / seed / psql / gen — runs on the shared infra's network; `compose.mk` sets the
+    same default even when no slot is held)
+- **extension / timezone bootstrap**: after `CREATE DATABASE` (guarded by an existence check) for
+  `wt<N>_local` / `wt<N>_test`, acquire sets the `pg_trgm` extension and the `Asia/Tokyo` timezone on
+  each database (the same things the init script applies to `local` / `test`; a dynamically created
+  worktree database needs them set explicitly).
+- **schema safety**: after acquiring, acquire rebuilds `wt<N>_local` / `wt<N>_test` to the current
+  branch's schema via drop → migrate → seed. Inheriting a slot another branch used is therefore safe.
+- **schema-generation isolation**: `dump-schema` (behind `make gen-query`) dumps neither the shared
+  `local` nor your own worktree database. It drops a dedicated `gen_schema` database (`SCHEMA_GEN_DB`),
+  migrates it up from *this* branch's migrations, and dumps that. Migrations from a concurrent
+  worktree therefore cannot leak into the generated artifacts (`schema.gen.sql`, `models.gen.go`, …).
+  This is a local-only guard: CI migrates a fresh postgres service and calls `dump-schema-ci`
+  directly, so it never takes this path.
+- **release**: `slot-free` stops the containers of this slot's app project (`gobp-wt-N`) before
+  deleting the lease and `.gobp-db-slot`. The databases are kept warm for the next tenant.
+- **safe stale reclaim**: a lease whose heartbeat has exceeded the TTL (1800 seconds by default,
+  `GOBP_DB_POOL_TTL`) can be re-acquired by another worktree, so a crashed worktree does not hold a
+  slot forever. Because the heartbeat is only sent on `make serve`, a slot whose app is left running
+  also goes stale once the TTL passes. Before rebuilding the databases, therefore, two checks confirm
+  the slot is genuinely unused; if it is in use, the slot is skipped rather than destroyed:
+  1. the app project (`gobp-wt-N`) has no running container
+  2. `pg_stat_activity` shows no connection to that slot's databases
 
-  接続プールはアイドルで空になるため、2 だけでは serve 中の worktree を見落とす。逆に 1 だけでは
-  ホスト実行の `go test` を捉えられないため、両方を見る。
+  Connection pools drain when idle, so check 2 alone would miss a worktree that is serving.
+  Conversely check 1 alone cannot catch a host-run `go test`, so both are used.
 
-## 使い方
+## Usage
 
-スロットを取らない checkout（主 checkout など）は、そのまま `make serve` すれば共有インフラへ繋がる。
-
-```sh
-make serve           # 共有インフラを起動し app を gobp-app-<dir> で起動 → curl localhost:8080
-make serve-stop      # この checkout の app だけ停止（共有インフラは残す）
-make infra-up        # 共有インフラだけ起動
-make infra-down      # 共有インフラを停止（全 checkout に影響する）
-```
-
-worktree で並列に作業するときはスロットを取る。
-
-```sh
-make slot-acquire    # 空きスロットをリースし自 worktree DB を作成/再構築
-make test            # ホストから localhost:5432 経由で wt<N>_test へ接続
-make serve           # app を gobp-wt-N で起動 → curl localhost:$API_HOST_PORT（DB は共有の wt<N>_local）
-make slot-status     # スロット占有状況（DB 名 / API ポート）を表示
-make slot-free       # スロットだけを解放（データベースは warm 保持、worktree は残す）
-```
-
-作業が終わって worktree ごと畳むときは `slot-release` を使う。app の停止とローカルビルド
-イメージの削除、スロット解放、worktree 削除をこの順で行う。
+A checkout that takes no slot (the main checkout, typically) reaches the shared infra with a plain
+`make serve`.
 
 ```sh
-make slot-release    # app 停止+イメージ削除 → スロット解放 → worktree 削除
+make serve           # start the shared infra and the app as gobp-app-<dir> → curl localhost:8080
+make serve-stop      # stop only this checkout's app (the shared infra stays up)
+make infra-up        # start just the shared infra
+make infra-down      # stop the shared infra (affects every checkout)
 ```
 
-順序は入れ替えられない。`slot-free` が `.gobp-db-slot` を消すと `SERVE_PROJECT` が失われ、
-`APP_PROJECT` が `gobp-app-<dir>` へフォールバックするため、先に解放すると app の停止が
-別プロジェクトを対象にしてしまう。`git worktree remove` は cwd ごと消すので必ず最後に置く。
-未コミット・未追跡ファイルがあれば git が削除を拒否するので、`--force` は付けていない。
-主 checkout で誤って叩いた場合は、何もせずエラー終了する。
+Acquire a slot when working in a worktree in parallel.
 
-## 環境変数
+```sh
+make slot-acquire    # lease a free slot and create/rebuild this worktree's databases
+make test            # connects from the host through localhost:5432 to wt<N>_test
+make serve           # start the app as gobp-wt-N → curl localhost:$API_HOST_PORT (DB is the shared wt<N>_local)
+make slot-status     # show slot occupancy (database names / API ports)
+make slot-free       # release only the slot (databases stay warm, the worktree stays)
+```
 
-| 変数 | 既定 | 意味 |
+Use `slot-release` when the work is done and the worktree itself is being retired. It stops the app
+and removes locally built images, releases the slot, and removes the worktree, in that order.
+
+```sh
+make slot-release    # stop app + remove images → release the slot → remove the worktree
+```
+
+The order cannot be rearranged. Once `slot-free` deletes `.gobp-db-slot`, `SERVE_PROJECT` is lost and
+`APP_PROJECT` falls back to `gobp-app-<dir>`, so releasing first would point the app shutdown at a
+different project. `git worktree remove` deletes the cwd along with everything else, so it must come
+last. Git refuses the removal when uncommitted or untracked files remain, which is why `--force` is
+not passed. Run by mistake in the main checkout, it exits with an error without doing anything.
+
+## Environment variables
+
+| Variable | Default | Meaning |
 | --- | --- | --- |
-| `GOBP_DB_POOL_DIR` | `~/.cache/gobp-db-pool` | リースレジストリの置き場所（symlink は拒否） |
-| `GOBP_DB_SHARED_PROJECT` | `gobp-shared` | 共有インフラの固定 compose プロジェクト名 |
-| `GOBP_API_POOL_BASE` | `8080` | `API_HOST_PORT` のベース（スロット N = ベース+N） |
-| `GOBP_MOCK_AUTH_POOL_BASE` | `4000` | `MOCK_AUTH_HOST_PORT` のベース |
-| `GOBP_DLV_POOL_BASE` | `2345` | `DLV_HOST_PORT` のベース |
-| `GOBP_PPROF_POOL_BASE` | `6060` | `PPROF_HOST_PORT` のベース |
-| `GOBP_DB_POOL_MAX` | `8` | スロット数（=同時並列数の上限） |
-| `GOBP_DB_POOL_TTL` | `1800` | stale 判定の heartbeat 猶予（秒） |
+| `GOBP_DB_POOL_DIR` | `~/.cache/gobp-db-pool` | Where the lease registry lives (a symlink is rejected) |
+| `GOBP_DB_SHARED_PROJECT` | `gobp-shared` | Fixed compose project name of the shared infra |
+| `GOBP_API_POOL_BASE` | `8080` | Base for `API_HOST_PORT` (slot N = base + N) |
+| `GOBP_MOCK_AUTH_POOL_BASE` | `4000` | Base for `MOCK_AUTH_HOST_PORT` |
+| `GOBP_DLV_POOL_BASE` | `2345` | Base for `DLV_HOST_PORT` |
+| `GOBP_PPROF_POOL_BASE` | `6060` | Base for `PPROF_HOST_PORT` |
+| `GOBP_DB_POOL_MAX` | `8` | Number of slots (= the cap on concurrent parallel work) |
+| `GOBP_DB_POOL_TTL` | `1800` | Heartbeat grace period for the stale decision (seconds) |
 
-## 注意
+## Caveats
 
-- **共有インスタンスの blast radius**: 全 checkout が 1 個の Postgres / o11y / オブジェクトストレージを共有する。
-  データベースは分離されるため DDL は DB を跨げないが、reinit の対象 DB 名を取り違えると他 worktree を壊しうる。
-  `make infra-down` も同様に全 checkout を止める。
-- **infra 層の再作成**: `gobp-shared` を動かす checkout が変わったとき、その checkout の compose 定義が
-  前回と異なると（ブランチ違いで image の digest pin が変わった等）compose がコンテナを作り直す。
-  名前付きボリュームは残るためデータは失われないが、稼働中 app の接続は切れる。
-- **オブジェクトストレージは共有**: `garage` のバケットは全 checkout で共通（DB と違いスキーマを持たないため
-  ブランチ間で壊れない）。ブランチ毎に隔離したい場合は `OBJECT_STORAGE_BUCKET` を分ける。
-- API 帯 8080–8087 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
-- `docker/`・`internal/cli/dbslot`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。
+- **Blast radius of a shared instance**: every checkout shares one Postgres / o11y / object storage.
+  Databases are isolated, so DDL cannot cross a database boundary — but getting the target database
+  name of a reinit wrong can destroy another worktree's. Concretely, `db-init` / `db-local-reinit` /
+  `db-test-reinit` hardcode `DB=local` / `DB=test`, so running them while holding a slot rebuilds the
+  shared databases rather than your worktree's. Name the target explicitly when rebuilding your own,
+  e.g. `make db-reinit DB=$DB_NAME_LOCAL`. `make infra-down` likewise stops every checkout.
+- **Schema generation cannot run concurrently**: `gen_schema` is a single database name inside the
+  shared instance, so two checkouts running `make gen-query` (`dump-schema`) at the same time rebuild
+  the same database and corrupt each other's output. Generate schemas one checkout at a time.
+- **Re-creation of the infra layer**: when the checkout that runs `gobp-shared` changes and its
+  compose definition differs from last time (a different image digest pin on another branch, say),
+  compose re-creates the containers. Named volumes survive, so no data is lost, but running apps lose
+  their connections.
+- **Object storage is shared**: the `garage` bucket is common to every checkout (unlike a database it
+  has no schema, so it does not break across branches). Point a branch at a different
+  `OBJECT_STORAGE_BUCKET` to isolate it.
+- `sql_editor` / `docs_viewer` have been moved into the 7000 range so they do not collide with the
+  API band 8080–8087.
+- The wiring spans `docker/`, `internal/cli/dbslot`, and `.makefiles/`, so update this document
+  whenever it changes.

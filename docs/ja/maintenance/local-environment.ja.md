@@ -7,9 +7,9 @@ English: [local-environment.md](../../maintenance/local-environment.md)
 俯瞰するための地図。各要素の詳細は既存の正本ドキュメントへリンクするに留め、ここでは
 **全体像と役割分担**だけを示す（重複再掲を避け、ドリフトを防ぐ）。
 
-- make ターゲットの一覧 → [`.makefiles/README.md`](../../../.makefiles/README.md)
+- make ターゲットの一覧 → [`.makefiles/README.md`](../../../.makefiles/README.ja.md)
 - 生成物 / root 所有 / DB 落ち等の詰まり所 → `repo-ops` スキル
-- worktree × DB スロットプールの詳細 → [db-worktree-pool.md](../../maintenance/db-worktree-pool.md)
+- worktree × DB スロットプールの詳細 → [db-worktree-pool.ja.md](db-worktree-pool.ja.md)
 - o11y の送出配線 → [observability.ja.md](../design/observability.ja.md)、認証（疑似 OIDC）→ [auth.ja.md](../design/auth.ja.md)
 
 ## 全体像
@@ -100,7 +100,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 **tool-runner コンテナ内で実行**される（`docker/tools/Dockerfile` の go / node / python target）。
 リポジトリを `.:/app` にバインドし、コンテナ内 **root** で走るため、生成物がホスト側で root 所有になり
 `git` が触れなくなる等の典型的な詰まりがある。**具体的な復旧コマンドは `repo-ops` スキルを参照**
-（ここでは再掲しない）。ターゲット一覧は [`.makefiles/README.md`](../../../.makefiles/README.md)。
+（ここでは再掲しない）。ターゲット一覧は [`.makefiles/README.md`](../../../.makefiles/README.ja.md)。
 
 ## server + API スロットリング（worktree 並列）
 
@@ -130,14 +130,14 @@ graph LR
 - `API_HOST_PORT = 8080+N`、`MOCK_AUTH_HOST_PORT = 4000+N`、`DLV_HOST_PORT = 2345+N`、`PPROF_HOST_PORT = 6060+N`。
 - スロットを取らない checkout は既定の DB 名（`local` / `test`）と既定ポートのまま動くため、
   スロット取得は**並列作業のための opt-in** に留まる。
-- リース・ブートストラップ・`make slot-acquire` / `slot-free` / `slot-release` 等の**全詳細は正本の [db-worktree-pool.md](../../maintenance/db-worktree-pool.md) を参照**。
+- リース・ブートストラップ・`make slot-acquire` / `slot-free` / `slot-release` 等の**全詳細は正本の [db-worktree-pool.ja.md](db-worktree-pool.ja.md) を参照**。
 
 ## 関連ドキュメント
 
 | 目的 | 参照先 |
 | --- | --- |
-| make ターゲット一覧 | [`.makefiles/README.md`](../../../.makefiles/README.md) |
-| worktree × DB スロットプール（正本） | [db-worktree-pool.md](../../maintenance/db-worktree-pool.md) |
+| make ターゲット一覧 | [`.makefiles/README.md`](../../../.makefiles/README.ja.md) |
+| worktree × DB スロットプール（正本） | [db-worktree-pool.ja.md](db-worktree-pool.ja.md) |
 | 生成物 / root 所有 / DB 落ちの復旧手順 | `repo-ops` スキル |
 | Observability の送出配線 | [observability.ja.md](../design/observability.ja.md) |
 | 認証（疑似 OIDC / JWKS） | [auth.ja.md](../design/auth.ja.md) |

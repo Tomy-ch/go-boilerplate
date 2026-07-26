@@ -104,8 +104,8 @@ API サーバーをホスト上で直接実行する（例: `mise` 経由でイ�
 - Docker Compose のサービスとプロファイル定義:
   [`docker-compose.yaml`](../../../docker-compose.yaml)。
 - Dockerfile ターゲットとサービス詳細:
-  [`docker/README.md`](../../../docker/README.md)。
+  [`docker/README.md`](../../../docker/README.ja.md)。
 - コンテナベース再現性の根拠:
   [ADR-0070](0070-containerized-pinned-toolchain.ja.md)。
 - `make serve`（development プロファイル）、`make tools`（tools プロファイル）:
-  [`.makefiles/README.md`](../../../.makefiles/README.md)。
+  [`.makefiles/README.md`](../../../.makefiles/README.ja.md)。

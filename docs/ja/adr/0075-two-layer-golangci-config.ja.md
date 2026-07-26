@@ -76,6 +76,6 @@ IDE フィードバックをブロックし、30 秒の最小パスでは CI 専
 
 - ソース: `.golangci.yaml`（最小デフォルト）、`.golangci-full.yaml`（完全ゲート）、
   `.makefiles/go/golangci-lint.mk` の 8 行目と 11 行目。
-- `.golangci-full.yaml` の `depguard` ルールは [`docs/rules.md`](../../rules.md) に文書化された
+- `.golangci-full.yaml` の `depguard` ルールは [`docs/rules.md`](../rules.ja.md) に文書化された
   レイヤー依存ルールの機械強制版である。
 - 関連: [ADR-0002](0002-onion-architecture.ja.md) — `depguard` が強制するレイヤー境界。

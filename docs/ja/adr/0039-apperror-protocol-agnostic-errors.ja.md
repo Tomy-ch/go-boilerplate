@@ -59,5 +59,5 @@ accepted
 
 - ソース: `internal/apperror/README.md`（Basic Policy および Mapping Table セクション）。
 - エラー処理ルール（ラッピング、`xerrors.Join` vs `xerrors.Wrap`、リダクトルール）:
-  [`docs/rules.md`](../../rules.md) — Error Handling Rules セクション。
+  [`docs/rules.md`](../rules.ja.md) — Error Handling Rules セクション。
 - `xerrors.Is` を介したプロトコルマッピングは `pkg/xerrors` のラッピングポリシーに従う。

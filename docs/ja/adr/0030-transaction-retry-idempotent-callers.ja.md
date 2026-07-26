@@ -42,7 +42,7 @@ PostgreSQL の REPEATABLE READ および SERIALIZABLE 分離レベルは、次�
 
 ネストされた `Manager.Do` 呼び出し（コンテキストにすでにトランザクションが存在する場合）は外側のトランザクションを再利用し、ちょうど 1 回だけ実行される。リトライされるのは最外側の `Do` 呼び出しのみである。
 
-リトライ判定は `errors.As` を使って生のエラーチェーンから `*pgconn.PgError` を検索する。プロジェクトは文字列でフラットにするラップではなく `xerrors.Join` を使用しているため、`pgerror.NormalizeError` の後もエラーチェーンに `*pgconn.PgError` がアクセス可能なまま残る（[`docs/rules.md`](../../rules.md) § "Error Handling Rules" を参照）。
+リトライ判定は `errors.As` を使って生のエラーチェーンから `*pgconn.PgError` を検索する。プロジェクトは文字列でフラットにするラップではなく `xerrors.Join` を使用しているため、`pgerror.NormalizeError` の後もエラーチェーンに `*pgconn.PgError` がアクセス可能なまま残る（[`docs/rules.md`](../rules.ja.md) § "Error Handling Rules" を参照）。
 
 ## 影響
 
@@ -79,6 +79,6 @@ PostgreSQL のセーブポイントを使ってネストされた `Do` 呼び出
 
 ## 補足
 
-- 出典: [`internal/usecase/boundary/tx/README.md`](../../../internal/usecase/boundary/tx/README.md) § "Notes"（リトライと冪等性の契約）。
+- 出典: [`internal/usecase/boundary/tx/README.md`](../../../internal/usecase/boundary/tx/README.ja.md) § "Notes"（リトライと冪等性の契約）。
 - 出典: [`internal/infrastructure/rdb/driver/transaction.go`](../../../internal/infrastructure/rdb/driver/transaction.go) — `Do`（リトライループ）と `doOnce`（単一試行、リトライ判定用の生エラーを返す）。
 - 関連: リトライとバックオフは `pkg/retry` および `pkg/backoff` に実装されている。

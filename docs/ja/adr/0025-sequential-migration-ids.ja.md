@@ -61,6 +61,6 @@ golang-migrateはファイル名順にマイグレーションを適用する。
 
 ## 補足
 
-- Source: [`database/migrations/README.md`](../../../database/migrations/README.md)の§ "File Naming Convention"および§ "CI Check"。
+- Source: [`database/migrations/README.md`](../../../database/migrations/README.ja.md)の§ "File Naming Convention"および§ "CI Check"。
 - CIワークフロー: [`.github/workflows/migration-check.yaml`](../../../.github/workflows/migration-check.yaml)。
 - 関連: [ADR-0024](0024-append-only-immutable-migrations.ja.md)（不変性）。

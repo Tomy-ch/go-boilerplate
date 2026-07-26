@@ -68,7 +68,7 @@ DMLディレクトリはSQLソースファイルをアーキテクチャ上の�
 
 ## 補足
 
-- Source: [`database/dml/README.md`](../../../database/dml/README.md)の§ "Directory Structure"および§ "Subdirectory Mapping to Onion Architecture"。
-- Source: [`database/dml/system_cqrs/README.md`](../../../database/dml/system_cqrs/README.md)。
+- Source: [`database/dml/README.md`](../../../database/dml/README.ja.md)の§ "Directory Structure"および§ "Subdirectory Mapping to Onion Architecture"。
+- Source: [`database/dml/system_cqrs/README.md`](../../../database/dml/system_cqrs/README.ja.md)。
 - DI登録: [`internal/di/module/persistence.go`](../../../internal/di/module/persistence.go)。
 - 関連: [ADR-0027](0027-lightweight-cqrs.ja.md)（system_cqrsが外側に位置するCQRS分割）；[ADR-0023](0023-merged-dml-schema-as-sqlc-input.ja.md)（merge-dmlパイプライン）。
