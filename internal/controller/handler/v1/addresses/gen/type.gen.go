@@ -8,7 +8,7 @@ import (
 )
 
 // AddressCandidate 郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、
-// 解決できた場合のみ prefecture_id を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
+// 解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
 type AddressCandidate struct {
 	// City 市区町村
 	City string `json:"city"`
@@ -24,7 +24,7 @@ type AddressCandidate struct {
 }
 
 // AddressCandidatesResponse 郵便番号 lookup による住所候補のレスポンスです。
-// 外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `is_fallback: true` で degrade し、
+// 外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `isFallback: true` で degrade し、
 // 登録フローを止めません（外部が落ちても縦一本のジャーニーを進めるためのフォールバック）。
 type AddressCandidatesResponse struct {
 	// Candidates 住所候補の一覧。該当なし・degrade 時は空配列。

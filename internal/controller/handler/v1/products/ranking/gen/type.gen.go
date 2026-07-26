@@ -99,7 +99,7 @@ type bearerAuthContextKey string
 
 // GetProductsRankingParams defines parameters for GetProductsRanking.
 type GetProductsRankingParams struct {
-	// Period 集計対象期間。`all`（既定）は全期間、`30d` は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+	// Period 集計対象期間。`all`（既定）は全期間、`30d` は注文日時が直近30日以内の購入のみを集計します。
 	Period *GetProductsRankingParamsPeriod `form:"period,omitempty" json:"period,omitempty"`
 
 	// Limit 取得する上位件数。売上数量の降順で上位 limit 件を返します。

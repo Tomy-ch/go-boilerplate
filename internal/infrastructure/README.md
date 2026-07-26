@@ -112,6 +112,14 @@ The boundary is directional — this detail stays **here**. A Usecase or Domain 
 repeats it has leaked the layer; see
 [`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation.
 
+The converse is the failure mode to watch for here. Because the inward interface states the guarantee
+in application vocabulary, an implementation doc that only paraphrases that interface adds **nothing**
+— it is a duplicate that rots in two places. So an implementation doc must either **name the
+mechanism** (`FindByID` reads without taking a lock, unlike `LockByID`; `SearchByKeyword` dispatches to
+one of three fixed queries on the `active` filter; `Update` normalizes zero affected rows to NotFound)
+or be **omitted** — the Repository type is unexported, so `revive`'s `exported` rule does not require
+one. Paraphrasing the interface is the one option that is never right.
+
 ## Directory Structure
 
 ```mermaid

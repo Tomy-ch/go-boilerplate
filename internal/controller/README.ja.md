@@ -18,7 +18,7 @@ internal/controller/
 ├── handler/        # HTTP ハンドラ（サーバーのエントリポイント）
 ├── job/            # ジョブコントローラ（CLI のエントリポイント）
 ├── worker/         # ワーカーエンジン（メッセージキューのエントリポイント）
-├── outbox/         # outbox リレーエンジン（outbox テーブルを poll して publish）
+├── outbox/         # outbox リレーエンジン（outbox を poll して publish）
 ├── server/         # Echo インスタンス生成・サーバー起動
 ├── httpstack/      # HTTP ミドルウェア群
 ├── error/response/ # エラーレスポンス生成
@@ -33,7 +33,7 @@ internal/controller/
 |`handler/`|HTTP リクエストを受け取り Usecase へ委譲するハンドラ|[README](handler/README.ja.md)|
 |`job/`|CLI から起動されるジョブのコントローラ|[README](job/README.ja.md)|
 |`worker/`|pull-ack メッセージキューを消費し Usecase へディスパッチするワーカーエンジン|[README](worker/README.ja.md)|
-|`outbox/`|outbox テーブルを周期的に poll し未 publish メッセージを送るリレーエンジン|—|
+|`outbox/`|outbox を周期的に poll し未 publish メッセージを送るリレーエンジン|—|
 |`server/`|Echo インスタンスの初期化と DI ライフサイクルへの統合|[README](server/README.ja.md)|
 |`httpstack/`|ミドルウェア群（CORS, セキュリティ, ログ, 認証等）|[README](httpstack/README.ja.md)|
 |`error/response/`|統一的な HTTP エラーレスポンスの生成と apperror マッピング|[README](error/response/README.ja.md)|
@@ -54,6 +54,17 @@ flowchart TB
 ```
 
 Controller は **Usecase を通してのみ下位層にアクセス**します。
+
+### doc コメントは HTTP 語彙で書く
+
+上記の禁止された依存の矢印は doc コメントにも適用されます。ハンドラの doc コメントは HTTP レベルの契約
+（そのエンドポイントが何を返すか、失敗がどのステータスコードへ写像されるか、認証が必要か）を述べ、
+テーブル名・カラム名・SQL 断片・トランザクション境界の所在は述べません。それらはそれを所有する層に属します
+（[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation および
+[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail を参照）。ハンドラのメソッドは非公開の `server` に対するメソッドであるため `revive` は doc コメントを
+要求しません。生成された `ServerInterface` が既に OpenAPI の summary を持ち、HTTP レベルで足す価値のある
+具体が無いなら、言い換えを書くのではなく省略します。
 
 ## テスト戦略
 

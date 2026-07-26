@@ -1,4 +1,4 @@
-// Package user は、ユーザーに関するドメインのリポジトリを提供します。
+// Package user は、ユーザーリポジトリ（user.Repository）の RDB 実装を提供します。
 package user
 
 import (
@@ -82,8 +82,9 @@ func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit
 	return rowsToUsers(rows, func(r *gen.ListUsersFeedAfterRow) gen.Users { return r.Users })
 }
 
-// SearchByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得します。
-// active=nil で全件、true でアクティブのみ、false で削除済みのみを対象とします。keywords が空の場合は全ユーザーを対象とします。
+// SearchByKeyword は、buildLikeTokens が組み立てた ILIKE パターン列のいずれかに search_text が一致するユーザーを、
+// active の値で 3 つの固定クエリ（全件 / アクティブのみ / 削除済みのみ）へ振り分けて取得します。
+// keywords が空の場合は全件マッチのパターン（%）を用います。
 func (r *repository) SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -249,6 +250,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, er
 }
 
 // Update は、ユーザーの mutable フィールドと updatedAt / deletedAt を更新します。
+// 影響行数 0 は対象不存在として pgerror.NormalizeExecResult が NotFound へ正規化します。
 func (r *repository) Update(ctx context.Context, u *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -268,7 +270,6 @@ func (r *repository) Update(ctx context.Context, u *user.User) error {
 		DeletedAt:    u.DeletedAt(),
 		ID:           u.ID(),
 	})
-	// エラー正規化と「影響行数 0 → NotFound」判定は pgerror に集約
 	return pgerror.NormalizeExecResult(rows, err)
 }
 

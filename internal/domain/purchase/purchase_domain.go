@@ -163,7 +163,7 @@ func New(
 }
 
 // Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。
-// statusCode は購入ステータスマスタとの結合で解決した現在状態、paidAt / canceledAt / shippedAt / deliveredAt は
+// statusCode は購入ステータスマスタで解決した現在状態、paidAt / canceledAt / shippedAt / deliveredAt は
 // 各イベントの発生日時（未発生は nil）です。ID / code / userID / statusID が nil、statusCode が不正、
 // 金額が負、明細が空の場合は検証エラーを返します。
 func Reconstruct(
@@ -198,7 +198,7 @@ func Reconstruct(
 	if statusCode < StatusCodeUnprocessed {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "statusCode is required")
 	}
-	// キャンセル status と canceledAt は同時セットの不変条件を持つ。片方のみの矛盾した永続化行を弾く。
+	// キャンセル status と canceledAt は同時セットの不変条件を持つ。片方のみの矛盾した永続化状態を弾く。
 	if (statusCode == StatusCodeCanceled) != (canceledAt != nil) {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "canceled status and canceledAt must be consistent")
 	}
@@ -270,7 +270,7 @@ func (p *Purchase) UserID() uuid.UUID { return p.userID }
 func (p *Purchase) StatusID() uuid.UUID { return p.statusID }
 
 // StatusCode は、購入ステータスのコードを返します。New で生成した集約は未処理（1）、再構築時は
-// 購入ステータスマスタとの結合で解決した現在状態です。Cancel 後はキャンセル（6）になります。
+// 購入ステータスマスタで解決した現在状態です。Cancel 後はキャンセル（6）になります。
 func (p *Purchase) StatusCode() int { return p.statusCode }
 
 // SubtotalAmount は、小計（USD セント）を返します。

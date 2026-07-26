@@ -62,8 +62,8 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
-      # 存在しない worker 名を渡し、"unknown worker" エラーで終了することを確認する
-      # （DI 構築・DB 接続を含む起動経路が機能していることの確認。DB/DI 失敗時は出力に含まれない）。
+      # Pass a non-existent worker name and verify it exits with an "unknown worker" error
+      # (confirms the boot path including DI construction and DB connection works; a DB / DI failure would not produce this output).
       - name: Boot worker entrypoint and expect "unknown worker"
         run: |
           set -uo pipefail
@@ -77,13 +77,13 @@ jobs:
           echo "-------------------------"
 
           if [ "${code}" -eq 0 ]; then
-            echo "FAIL: 未知 worker なのに exit 0 が返った（dispatch が機能していない可能性）"
+            echo "FAIL: exit 0 returned for an unknown worker (dispatch may not be working)"
             exit 1
           fi
 
           if ! echo "${output}" | grep -q "unknown worker"; then
-            echo "FAIL: non-zero 終了だが 'unknown worker' 経路ではない（起動/DI/DB 接続の失敗の可能性）"
+            echo "FAIL: non-zero exit but not via the 'unknown worker' path (boot / DI / DB connection may have failed)"
             exit 1
           fi
 
-          echo "OK: worker のエントリポイントが起動（DI/DB 構築）し、未知 worker を正しく拒否した"
+          echo "OK: the worker entrypoint booted (DI / DB constructed) and correctly rejected an unknown worker"

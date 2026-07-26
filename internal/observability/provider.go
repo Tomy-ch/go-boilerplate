@@ -71,6 +71,8 @@ func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resour
 }
 
 // NewTracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、構築した TracerProvider を返す。
+// TracesEnabled が偽でも span 自体は有効な TraceID / SpanID を持って生成され続け、止まるのは OTLP への
+// エクスポートのみ（log-trace 相関はこの経路でも成立する）。sampler は SDK 既定のままで env からは調整できない。
 func NewTracerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdktrace.TracerProvider, error) {
 	opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res)}
 
@@ -99,7 +101,8 @@ func NewTextMapPropagator() propagation.TextMapPropagator {
 }
 
 // NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
-// MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 goroutine も開始する。
+// MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 goroutine も開始し、偽の場合は Reader を
+// 持たない no-op 相当の MeterProvider を返す。
 func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
 	opts := []sdkmetric.Option{sdkmetric.WithResource(res)}
 

@@ -10,7 +10,7 @@ var (
 	// ErrEmptyDetails は、明細が空の場合のエラーです（422）。
 	ErrEmptyDetails = xerrors.Wrap(errInvalid, "details must not be empty")
 	// ErrDuplicateProductID は、明細に同一 productID が重複した場合のエラーです（422）。
-	// 在庫行のロック順序を固定するため、重複は入力段階で弾きます。
+	// 在庫のロック順序を固定するため、重複は入力段階で弾きます。
 	ErrDuplicateProductID = xerrors.Wrap(errInvalid, "duplicate product id in details")
 	// ErrInvalidQuantity は、購入数量が最小値未満の場合のエラーです（422）。
 	ErrInvalidQuantity = xerrors.Wrap(errInvalid, "quantity must be positive")

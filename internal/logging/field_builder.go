@@ -125,7 +125,9 @@ func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*
 	return fields
 }
 
-// BuildSQLEndFields は、SQLの終了時点のログ出力用の Field スライスを構築します。
+// BuildSQLEndFields は、SQL の終了時点のログ出力用の Field スライスを構築します。
+// args_count は引数がある場合のみ、internal_error はエラーがある場合のみ、parent_span_id は
+// observability が有効かつ値がある場合のみ付与されるため、フィールド構成は毎回同一ではありません。
 func (l *logFieldBuilder) BuildSQLEndFields(sql SQLFieldsEndInput) []*Field {
 	compact := l.buildCompactQuery(sql.Query)
 

@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-// Message は、publish 先非依存のメッセージ封筒です。outbox 行から構築され、
+// Message は、publish 先非依存のメッセージ封筒です。outbox のエントリから構築され、
 // substrate（HTTP 等）へ載せ替える際の中立表現です。net/http 等の型は露出しません。
 type Message struct {
 	// MessageID は dedup の安定キーです。受信側へ Idempotency-Key として伝搬されます。

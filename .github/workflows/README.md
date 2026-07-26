@@ -116,6 +116,12 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
 
 ## Notes
 
+- Comments and log messages in `.github/workflows/**` and `.github/actions/**` are written in
+  **English**, including `echo` output and `::error::` annotations. The repository's Japanese-comment
+  convention covers Go code, test names, PRs, and replies — it does not extend to CI definitions,
+  whose readers are the workflow logs and the wider Actions ecosystem. The content standard in
+  [`docs/rules.md`](../../docs/rules.md) § Comment Rules still applies: no how-narration, no
+  development history, no restatement, and keep a non-obvious Why.
 - `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>` (one branch per release base, reused across runs with `delete-branch: true`); the workflow skips itself on that branch to avoid recursion.
 - All deployment workflows require their target branch (`production` / `staging` / `develop`) to be branch-protected; merges must flow through PR review.
 - Security scan triggers are defined per tool in the Security Trigger Matrix above; if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.

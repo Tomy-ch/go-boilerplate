@@ -43,7 +43,7 @@ type ProductStatusResponse struct {
 	SortKey int `json:"sortKey"`
 }
 
-// ProductsStatusesResponse 商品ステータスマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
+// ProductsStatusesResponse 商品ステータスマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
 type ProductsStatusesResponse = []ProductStatusResponse
 
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。

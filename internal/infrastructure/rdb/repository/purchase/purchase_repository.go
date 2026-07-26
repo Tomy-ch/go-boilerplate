@@ -30,7 +30,8 @@ func New(
 	}
 }
 
-// FindByID は、ID から購入を明細込みで取得します。存在しない場合は NotFound を返します。
+// FindByID は、購入本体と明細の 2 クエリでロックを取らずに読み出し、集約として再構築します
+// （ロックを取る LockByID との対）。存在しない場合は NotFound を返します。
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

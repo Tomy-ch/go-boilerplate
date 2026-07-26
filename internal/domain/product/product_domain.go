@@ -153,7 +153,7 @@ func validateAttributes(
 
 // Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
 // 変更せずに検証エラーを返します。引数は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡されます。
-// バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き UPDATE が行います）。
+// バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
 func (p *Product) Update(
 	name string,
 	description *string,

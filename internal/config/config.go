@@ -15,7 +15,8 @@ import (
 // exporterNone は、送出を明示的に無効化する exporter 値。
 const exporterNone = "none"
 
-// New は、アプリケーションの設定を初期化します。
+// New は、環境変数から設定を読み込み、検証したうえで Config を構築して返します。
+// 型変換の失敗、値の範囲・相互整合性の違反、CIDR の解析失敗のいずれでもエラーを返します。
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[Loader]()
 	if err != nil {
@@ -269,6 +270,22 @@ func ValidateServerShutdown(appCfg *ApplicationConfig, srvCfg *ServerConfig) err
 func validateServerShutdown(shutdown, request time.Duration) error {
 	if shutdown < request {
 		return ErrShutdownTimeoutBelowRequestTimeout
+	}
+	return nil
+}
+
+// ValidateUploadBodyLimit は、リクエストボディ上限がアップロード上限を上回ることを検証します。
+// ValidateServerShutdown と同じ理由で、この制約は HTTP サーバーを組むプロセスにのみ意味を持つため
+// New() では走らせず、server グラフの DI から適用する。
+func ValidateUploadBodyLimit(srvCfg *ServerConfig, objCfg *ObjectStorageConfig) error {
+	return validateUploadBodyLimit(srvCfg.BodyLimitMB(), objCfg.MaxUploadBytes())
+}
+
+// validateUploadBodyLimit は、bodyLimitMB をバイト換算した値が maxUploadBytes を上回ることを検証します。
+// マルチパートのオーバーヘッド分をどれだけ積むかは運用判断のため、ここでは等値も不可とするだけに留めます。
+func validateUploadBodyLimit(bodyLimitMB int, maxUploadBytes int64) error {
+	if int64(bodyLimitMB)*BytesPerMB <= maxUploadBytes {
+		return ErrBodyLimitBelowMaxUploadBytes
 	}
 	return nil
 }
