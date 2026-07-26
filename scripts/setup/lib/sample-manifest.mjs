@@ -151,6 +151,12 @@ export const SAMPLE_DOMAINS = {
       "internal/usecase/boundary/objectstorage",
       "internal/infrastructure/objectstorage",
       "internal/di/module/objectstorage.go",
+
+      // 商品画像のシード（オブジェクト投入 + image_path 反映）。storage/ はこの用途にしか存在しない
+      "internal/cli/seed/product_image.go",
+      "internal/cli/seed/product_image_test.go",
+      "storage",
+
       "internal/infrastructure/rdb/repository/product",
       "internal/usecase/product/ranking",
       "internal/infrastructure/rdb/query_service/product",

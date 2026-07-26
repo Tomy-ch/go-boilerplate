@@ -5,8 +5,11 @@ import (
 
 	"go-boilerplate/internal/cli/seed"
 	"go-boilerplate/internal/config"
+	s3storage "go-boilerplate/internal/infrastructure/objectstorage/s3" // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"                  // sample-api:line
+	"go-boilerplate/internal/usecase/boundary/objectstorage" // sample-api:line
 	"go-boilerplate/pkg/envutil"
 	"go-boilerplate/pkg/fs"
 
@@ -36,8 +39,52 @@ func newDBSeedCommand() *cobra.Command {
 func dbSeedRun(database string) error {
 	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 
-	return seed.RunDBSeed(logger, fs.OS{}, database, openSeedDB)
+	if err := seed.RunDBSeed(logger, fs.OS{}, database, openSeedDB); err != nil {
+		return err
+	}
+
+	// sample-api:begin
+	endpoint, put, err := openSeedObjectStorage(logger, database)
+	if err != nil {
+		return err
+	}
+
+	return seed.RunProductImageSeed(logger, fs.OS{}, database, endpoint, put, openSeedDB)
+	// sample-api:end
 }
+
+// sample-api:begin
+// openSeedObjectStorage は、seed 用設定を読み込みオブジェクトストレージ実装を組み立てる実依存の口です。
+// 併せて接続先エンドポイントを返し、実環境のバケットへサンプル画像を投入しない判断を呼び出し先へ委ねます。
+func openSeedObjectStorage(logger logging.Logger, database string) (string, seed.PutObjectFunc, error) {
+	cfg, err := newConfigForSeed(logger, database)
+	if err != nil {
+		return "", nil, err
+	}
+	osCfg := config.NewObjectStorageConfig(cfg)
+	storage := s3storage.New(s3storage.Config{
+		Endpoint:        osCfg.Endpoint(),
+		Region:          osCfg.Region(),
+		Bucket:          osCfg.Bucket(),
+		AccessKeyID:     osCfg.AccessKeyID(),
+		SecretAccessKey: osCfg.SecretAccessKey(),
+		UsePathStyle:    osCfg.UsePathStyle(),
+	}, observability.NewDisabledTracerFactory())
+
+	put := func(ctx context.Context, obj seed.ObjectToPut) error {
+		_, perr := storage.Put(ctx, objectstorage.PutObject{
+			Key:          obj.Key,
+			Body:         obj.Body,
+			ContentType:  obj.ContentType,
+			CacheControl: obj.CacheControl,
+		})
+		return perr
+	}
+
+	return osCfg.Endpoint(), put, nil
+}
+
+// sample-api:end
 
 // openSeedDB は、seed 用設定を読み込み DB 接続を確立する実依存の口です。
 func openSeedDB(logger logging.Logger, database string) (driver.DatabaseDriver, error) {
