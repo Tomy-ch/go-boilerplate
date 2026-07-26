@@ -36,4 +36,6 @@ type Detail struct {
 	PaidAt *time.Time
 	// CanceledAt は、キャンセル日時です。未キャンセルの場合は nil です。
 	CanceledAt *time.Time
+	// ShippedAt は、発送日時です。未発送の場合は nil です。
+	ShippedAt *time.Time
 }

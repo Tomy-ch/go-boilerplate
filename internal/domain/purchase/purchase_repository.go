@@ -20,6 +20,9 @@ type Repository interface {
 	// UpdatePaid は、購入の状態遷移（→ 支払い済み）を、渡された ctx のトランザクション内で実行します。
 	// 擬似決済のため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
 	UpdatePaid(ctx context.Context, p *Purchase) error
+	// UpdateShipped は、購入の状態遷移（→ 発送済み）を、渡された ctx のトランザクション内で実行します。
+	// 配送追跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
+	UpdateShipped(ctx context.Context, p *Purchase) error
 	// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 	// 購入ステータスマスタで解決します（購入ステータスは購入集約に属する固定参照マスタのため、
 	// 単一集約の Repository read です）。存在しない場合は NotFound を返します。

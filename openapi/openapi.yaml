@@ -73,6 +73,8 @@ tags:
     description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
   - name: v1/purchases/detail/pay
     description: 購入の支払い（本人のみ・状態機械/不正遷移 409・擬似決済）。
+  - name: v1/purchases/detail/ship
+    description: 購入の発送（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 # ここで設定した認証が全体で適用される。
@@ -132,6 +134,8 @@ paths:
     $ref: './paths/v1/purchases/purchaseId/cancel.yaml'
   /v1/purchases/{purchaseId}/pay:
     $ref: './paths/v1/purchases/purchaseId/pay.yaml'
+  /v1/purchases/{purchaseId}/ship:
+    $ref: './paths/v1/purchases/purchaseId/ship.yaml'
   # sample-api:end
 components:
   parameters:
