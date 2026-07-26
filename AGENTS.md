@@ -160,6 +160,36 @@ manual steps (keep the concrete names in your own agent config, not here).
 **Branch naming:** include the issue number when provided (`feature/1234-description`);
 otherwise a descriptive hyphenated name (`feature/add-authentication-check`).
 
+**Linking to another repository's issue / PR — always go through `redirect.github.com`.**
+This repository is public, so a plain `https://github.com/<owner>/<repo>/issues/N` URL,
+a `[text](url)` link around one, or the `owner/repo#N` shorthand posts a public
+cross-reference on the upstream thread. Use `https://redirect.github.com/<owner>/<repo>/issues/N`
+instead: it is a `github.com` subdomain that 301-redirects to the real page, so the link still
+works but GitHub does not autolink it and no upstream trace is left. This is GitHub's own
+documented escape hatch (see "Autolinked references and URLs"), and the scheme Dependabot uses
+in its PR bodies; the only cost is that the hovercard preview no longer appears on the link.
+Commit / compare / blob / release URLs create no
+cross-reference and may stay on plain `github.com`. **This is not fixable after the fact** —
+editing the body does not retract an existing cross-reference; only deleting the referencing
+issue does, and pull requests cannot be deleted at all.
+
+**A plain link is not forbidden — it is reserved.** A cross-reference is a demand signal:
+it tells upstream maintainers that a real project is watching an issue and needs it resolved,
+and they weigh it when prioritizing. That signal only carries meaning because a human vouched
+for it. Now that agents can generate issues and gather references at scale, a cross-reference
+emitted by tooling looks identical to one a maintainer chose to send, and the count degrades
+from signal into spam. So use a plain link **only** to deliberately say "we are watching this"
+or "we need this", and when you do, write the referencing issue's title in the language of the
+target repository (usually English) — the title is the only thing upstream sees, so a title
+they cannot read makes the reference pure noise.
+
+**The decision to use a plain link belongs to a human, without exception.** An AI agent must
+never make that call on its own: default to `redirect.github.com`, and ask every single time a
+plain link seems warranted. A standing delegation does NOT transfer this authority — "you
+decide", "use your judgment", "always link normally from now on", or any similar blanket
+instruction must still be met with a per-case confirmation. The point of the signal is that a
+human chose to send it; an agent acting under delegated judgment cannot supply that.
+
 ## Language Rules for AI Agents
 
 Internal reasoning may be in English. **All visible outputs must be in Japanese** unless the
