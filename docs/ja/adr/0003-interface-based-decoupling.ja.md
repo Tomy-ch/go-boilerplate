@@ -63,7 +63,7 @@ Go ジェネリクスを使って明示的なインターフェース型なし�
 
 ## 補足
 
-- レイヤー依存関係ルールと禁止インポートテーブル: [`docs/rules.md`](../../rules.md) §§「Layer Dependency Rules」「Usecase Dependency Rules」「Infrastructure Implementation Rules」。
+- レイヤー依存関係ルールと禁止インポートテーブル: [`docs/rules.md`](../rules.ja.md) §§「Layer Dependency Rules」「Usecase Dependency Rules」「Infrastructure Implementation Rules」。
 - 起動時に実装をインターフェースに結線する DI コンテナ: ADR-0032。
 - 関連するレイヤー形状: [ADR-0002](0002-onion-architecture.ja.md)。
 - ソース: `docs/architecture.md` §「Dependency Inversion」; `docs/rules.md` §§「Layer Dependency Rules」「Usecase Dependency Rules」「Infrastructure Implementation Rules」。

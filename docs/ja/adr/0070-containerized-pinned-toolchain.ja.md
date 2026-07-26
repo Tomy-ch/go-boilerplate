@@ -86,7 +86,7 @@ Docker Compose によるアプローチはエディター非依存である。
 ## 補足
 
 - ツールチェーン実行ルール（「コンテナをバイパスしてはならない」制約を含む）:
-  [`docs/rules.md`](../../rules.md) §「Toolchain Execution Rules」。
+  [`docs/rules.md`](../rules.ja.md) §「Toolchain Execution Rules」。
 - ツールバージョンの宣言: [`mise.toml`](../../../mise.toml)。
 - コンテナサービス定義: [`docker-compose.yaml`](../../../docker-compose.yaml)
   （`go_tool_runner`・`node_tool_runner`・`python_tool_runner` — プロファイル `generate`）。

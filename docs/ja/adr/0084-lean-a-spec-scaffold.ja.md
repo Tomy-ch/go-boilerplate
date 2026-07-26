@@ -63,5 +63,5 @@ accepted
 
 - ソース: `.claude/scaffold-spec/lifecycle.md`（§"なぜ 2 spec か"）、`.claude/skills/scaffold-endpoint/SKILL.md`、`.claude/skills/scaffold-controller/SKILL.md`、`.claude/skills/scaffold-infra-db/SKILL.md`、`.claude/scaffold-spec/domain-spec.md`、`.claude/scaffold-spec/usecase-spec.md`。
 - スペックファイルは `docs/spec/<feature>/` の下に永続的な設計成果物としてリポジトリにコミットされる。スキャフォールド完了後も残り、PR とともにレビューされる。
-- コントローラーとインフラの命名規則適用は `arch-check` が管理する。その基礎となるレイヤー依存性と純粋性ルールについては [`docs/rules.md`](../../rules.md) を参照。
+- コントローラーとインフラの命名規則適用は `arch-check` が管理する。その基礎となるレイヤー依存性と純粋性ルールについては [`docs/rules.md`](../rules.ja.md) を参照。
 - コントローラーの導出はマッピングできない `operationId` で停止する。インフラの導出は TODO スタブで続行する。この非対称性は、部分的なインフラ実装はコンパイルできるが、部分的なハンドラー実装は生成された `ServerInterface` に違反するためである。

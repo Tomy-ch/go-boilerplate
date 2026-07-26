@@ -47,5 +47,5 @@ accepted
 ## 補足
 
 - 具体的な型安全コード生成の仕組みは[ADR-0022](0022-sqlc-type-safe-sql.ja.md)（sqlc）。
-- Repository / QueryServiceルールによって部分的に強制される（[`docs/rules.md`](../../rules.md#repository--queryservice-rules)）。
+- Repository / QueryServiceルールによって部分的に強制される（[`docs/rules.md`](../rules.ja.md#repository--queryservice-ルール)）。
 - `docs/decisions.md`（§ "Why SQL-first"）から移行。

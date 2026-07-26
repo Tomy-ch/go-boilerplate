@@ -7,7 +7,7 @@
 スコープ分担(以下を跨いで重複させないこと):
 
 - **本書** — 具体的な *どう書くか*(技法 / 規約)。
-- [`rules.md` → *Testing & Definition of Done*](rules.md) — 非交渉の *どうなれば完了か*(層ごとのテスト・90% ライン・「compiles ≠ done」・実行時 DI 検証・実アプリの smoke test・到達不能分岐の方針)。
+- [`rules.md` → *Testing & Definition of Done*](rules.ja.md) — 非交渉の *どうなれば完了か*(層ごとのテスト・90% ライン・「compiles ≠ done」・実行時 DI 検証・実アプリの smoke test・到達不能分岐の方針)。
 - 各層 `README` → *Test Strategy* — 層ごとの **観点**(その層で何を検証するか)。
 
 canonical な参照テストは [`internal/domain/user/user_domain_test.go`](../../internal/domain/user/user_domain_test.go) です。
@@ -76,7 +76,7 @@ assert.Equal(t, expected, actual)  // 終端の値検証は assert
 ## 8. カバレッジ
 
 - `make test`(カバレッジ付き)を実行する。カバレッジは現行 baseline から **低下させない**。新規 / 変更パッケージは **90%** 超、handler は ~100% に近づける。
-- ラインを下回るパッケージは不足分岐テストを追加する — 満たすまで止めない。(「完了」の定義は [`rules.md` → Testing & Definition of Done](rules.md)。)
+- ラインを下回るパッケージは不足分岐テストを追加する — 満たすまで止めない。(「完了」の定義は [`rules.md` → Testing & Definition of Done](rules.ja.md)。)
 
 ## 9. カバレッジ例外とガバナンス
 
@@ -115,4 +115,4 @@ section 1〜9 はテストを *well-formed*(整形式)にするが、*meaningful
 - **time リテラル固定漏れ** — 固定 `baseTime` ではなくアサーション内で `time.Now()` を呼ぶ / システムクロックに依存する比較。
 - **責務クリープ** — 1 つの `TestXxx` が複数 subject を駆動する(section 1 の 1:1 違反)。subject ごとに 1 つの `TestXxx` へ分解し、複数 subject を 1 テストに畳み込まない。
 - **helper 重複** — 3 つ以上の `TestXxx` にまたがり 5 行以上の fixture が重複しており、`t.Helper()` 付き helper にすべき。
-- **冗長なコメント** — コードを言い換える / *why* を語る inline コメント。ケースの意図はコメントではなく日本語の `t.Run` 名に持たせる([`rules.md`](rules.md) の Comment Rules 準拠)。
+- **冗長なコメント** — コードを言い換える / *why* を語る inline コメント。ケースの意図はコメントではなく日本語の `t.Run` 名に持たせる([`rules.md`](rules.ja.md) の Comment Rules 準拠)。

@@ -42,7 +42,7 @@ PostgreSQL の REPEATABLE READ および SERIALIZABLE 分離レベルは、次�
 
 ネストされた `Manager.Do` 呼び出し（コンテキストにすでにトランザクションが存在する場合）は外側のトランザクションを再利用し、ちょうど 1 回だけ実行される。リトライされるのは最外側の `Do` 呼び出しのみである。
 
-リトライ判定は `errors.As` を使って生のエラーチェーンから `*pgconn.PgError` を検索する。プロジェクトは文字列でフラットにするラップではなく `xerrors.Join` を使用しているため、`pgerror.NormalizeError` の後もエラーチェーンに `*pgconn.PgError` がアクセス可能なまま残る（[`docs/rules.md`](../../rules.md) § "Error Handling Rules" を参照）。
+リトライ判定は `errors.As` を使って生のエラーチェーンから `*pgconn.PgError` を検索する。プロジェクトは文字列でフラットにするラップではなく `xerrors.Join` を使用しているため、`pgerror.NormalizeError` の後もエラーチェーンに `*pgconn.PgError` がアクセス可能なまま残る（[`docs/rules.md`](../rules.ja.md) § "Error Handling Rules" を参照）。
 
 ## 影響
 

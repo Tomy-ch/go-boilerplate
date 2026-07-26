@@ -92,4 +92,4 @@ CI ワークフロー（`go-test.yaml` の 79〜80 行目）では、ゲート�
 - ソース: `.makefiles/go/test.mk` の 11〜12 行目と 44〜51 行目、`.github/workflows/go-test.yaml`
   の 79〜80 行目、`internal/observability/README.md` の 504〜523 行目。
 - テスト構造（テスト構造、`require` vs `assert`、モック）は [`docs/testing-conventions.md`](../../testing-conventions.md) に記載。
-- カバレッジを要求する DoD は [`docs/rules.md`](../../rules.md) に記載。
+- カバレッジを要求する DoD は [`docs/rules.md`](../rules.ja.md) に記載。

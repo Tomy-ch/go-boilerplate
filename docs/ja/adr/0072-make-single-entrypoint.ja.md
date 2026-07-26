@@ -94,4 +94,4 @@ CI は開発者向けコマンドから乖離し得る呼び出しをハード�
 - ヘルプジェネレータのソース:
   [`scripts/make_help.mjs`](../../../scripts/make_help.mjs)。
 - ツールチェーン実行ルール（コンテナ vs ベアメタル）:
-  [`docs/rules.md`](../../rules.md) § "Toolchain Execution Rules"。
+  [`docs/rules.md`](../rules.ja.md) § "Toolchain Execution Rules"。

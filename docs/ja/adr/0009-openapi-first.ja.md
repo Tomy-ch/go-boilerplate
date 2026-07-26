@@ -48,5 +48,5 @@ API 仕様を **OpenAPI ファースト**で定義する。OpenAPI ドキュメ�
 
 ## 補足
 
-- [`docs/rules.md`](../../rules.md#openapi-first) の OpenAPI ファーストルールで強制される（実装前に仕様を定義すること、生成コードを手動で編集しないこと）。これらのルールはこの決定の日常的な*結果*である。
+- [`docs/rules.md`](../rules.ja.md#openapi-first) の OpenAPI ファーストルールで強制される（実装前に仕様を定義すること、生成コードを手動で編集しないこと）。これらのルールはこの決定の日常的な*結果*である。
 - `docs/decisions.md`（§ "Why OpenAPI-first"）から移行。

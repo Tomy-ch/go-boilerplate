@@ -57,7 +57,7 @@ accepted
 
 Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0032](0032-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
 
-日々の境界適用ルールは[`docs/rules.md`](../../rules.md)の§ "Repository / QueryService Rules"参照。
+日々の境界適用ルールは[`docs/rules.md`](../rules.ja.md)の§ "Repository / QueryService Rules"参照。
 
 ## 影響
 
@@ -103,6 +103,6 @@ Repositoryから読み込みメソッドを完全に排除し、すべての読�
 ## 補足
 
 - Source: [`internal/infrastructure/rdb/query_service/README.md`](../../../internal/infrastructure/rdb/query_service/README.md)の§ "Relationship to CQRS"および§ "When to Use QS Over Repository"。
-- Source: [`docs/rules.md`](../../rules.md)の§ "Repository / QueryService Rules"。
+- Source: [`docs/rules.md`](../rules.ja.md)の§ "Repository / QueryService Rules"。
 - DI登録: [`internal/di/module/persistence.go`](../../../internal/di/module/persistence.go)。
 - 関連: [ADR-0028](0028-system-cqrs-dml-category.ja.md)（CQRSの外に位置する第4カテゴリとしてのsystem_cqrs）。

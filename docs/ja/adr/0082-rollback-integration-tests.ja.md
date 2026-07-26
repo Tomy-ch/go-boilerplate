@@ -71,4 +71,4 @@ PostgreSQL の依存関係を回避するが、スキーマの乖離（PostgreSQ
 - ソース: `internal/infrastructure/rdb/testkit/README.md`、`internal/infrastructure/rdb/testkit/test_kit.go`。
 - ロールバックメカニズムは、`tx.Manager.Do` がコールバックからの非 nil 返り値をロールバックをトリガーするエラーとして扱うことに依存する。`errRollbackForTest` は `WithinTx` によって認識・抑制されるプライベートなセンチネルであり、テストに失敗として伝播されることはない。
 - `fn` 内で生成された値に対してアサートするテストは、クロージャ内で `require`/`assert` を使用しなければならない。`WithinTx` は `fn` の返り値を伝播しないためである。
-- インフラテストカバレッジ目標: ≥ 85%（[`.claude/skills/scaffold-infra-db/SKILL.md`](../../../.claude/skills/scaffold-infra-db/SKILL.md) による。リポジトリ全体の基準は [`docs/rules.md`](../../rules.md) の > 90%）。
+- インフラテストカバレッジ目標: ≥ 85%（[`.claude/skills/scaffold-infra-db/SKILL.md`](../../../.claude/skills/scaffold-infra-db/SKILL.md) による。リポジトリ全体の基準は [`docs/rules.md`](../rules.ja.md) の > 90%）。

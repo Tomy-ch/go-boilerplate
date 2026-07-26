@@ -73,6 +73,6 @@ type StrictServerInterface interface {
 
 - `//go:generate` ディレクティブは [`internal/controller/handler/`](../../../internal/controller/handler/) 配下の各 `*_handler.go` ファイルの先頭にある。
 - 生成ファイルは各ハンドラーディレクトリの `gen/` サブパッケージにあり、手動で編集してはならない。
-- ハンドラー層の契約（`operationId` ごとに 1 つの `StrictServerInterface` メソッド、ハンドラー内にビジネスロジックなし）は [`docs/rules.md`](../../rules.md) のアーキテクチャルールで強制される。
+- ハンドラー層の契約（`operationId` ごとに 1 つの `StrictServerInterface` メソッド、ハンドラー内にビジネスロジックなし）は [`docs/rules.md`](../rules.ja.md) のアーキテクチャルールで強制される。
 - 親の決定: [ADR-0009](0009-openapi-first.ja.md)（OpenAPI ファースト）。
 - 仕様バンドルの前提条件: [ADR-0010](0010-redocly-modular-spec-pipeline.ja.md)。
