@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/exchangerate"
@@ -132,6 +133,23 @@ type PayPurchaseView struct {
 	PaidAt         *time.Time
 }
 
+// ShipPurchaseView は、発送後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+// マスタで解決済みの ID と名称、ShippedAt は発送日時です。金額はすべて USD セント単位の整数です。
+type ShipPurchaseView struct {
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	StatusName     string
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetailView
+	OrderedAt      time.Time
+	ShippedAt      *time.Time
+}
+
 // Usecase は、購入の作成ユースケースを定義します。
 type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫減算・購入作成・明細作成・outbox 発行を単一 tx で
@@ -148,6 +166,10 @@ type Usecase interface {
 	// outbox 発行を単一 tx で原子的に行います。決済 SDK / PSP 連携は行わない擬似決済です。他ユーザーの購入・不存在は
 	// いずれも存在秘匿のため NotFound（404）、二重支払い・不正遷移は 409 を返します。
 	PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
+	// ShipPurchase は、購入を発送済みへ遷移させます。認可（admin のみ）→ 購入行のロック → 状態遷移（→ 発送済み）→
+	// outbox 発行を行い、状態遷移以降を単一 tx で原子的に実行します。所有権は問わず（admin は任意の購入を発送可）、
+	// 非 admin は 403、不存在は 404、二重発送・不正遷移は 409 を返します。
+	ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (ShipPurchaseView, error)
 	// GetPurchaseDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。QueryService の集約跨ぎ read 投影を用い、
 	// 所有権は QS の SQL 述語で担保します。他ユーザーの購入・不存在はいずれも存在秘匿のため NotFound（404）を返します。
 	GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
@@ -155,14 +177,15 @@ type Usecase interface {
 
 // usecase は、Usecase の実装です。
 type usecase struct {
-	tracer   observability.LayerTracer
-	txm      tx.Manager
-	cmd      command.CommandService
-	repo     purchase.Repository
-	detailQS query.PurchaseDetailQueryService
-	emit     outbox.EmitUsecase
-	xr       exchangerate.Usecase
-	clock    clock.Clock
+	tracer     observability.LayerTracer
+	txm        tx.Manager
+	cmd        command.CommandService
+	repo       purchase.Repository
+	detailQS   query.PurchaseDetailQueryService
+	emit       outbox.EmitUsecase
+	xr         exchangerate.Usecase
+	clock      clock.Clock
+	authorizer authz.Authorizer
 }
 
 // New は、購入ユースケースを生成します。
@@ -174,17 +197,19 @@ func New(
 	emit outbox.EmitUsecase,
 	xr exchangerate.Usecase,
 	clock clock.Clock,
+	authorizer authz.Authorizer,
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
-		tracer:   tf.Usecase(),
-		txm:      txm,
-		cmd:      cmd,
-		repo:     repo,
-		detailQS: detailQS,
-		emit:     emit,
-		xr:       xr,
-		clock:    clock,
+		tracer:     tf.Usecase(),
+		txm:        txm,
+		cmd:        cmd,
+		repo:       repo,
+		detailQS:   detailQS,
+		emit:       emit,
+		xr:         xr,
+		clock:      clock,
+		authorizer: authorizer,
 	}
 }
 
@@ -376,6 +401,71 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 	return toPayPurchaseView(detail), nil
 }
 
+// ShipPurchase は、購入を発送済みへ遷移させます。
+func (u *usecase) ShipPurchase(
+	ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID,
+) (ShipPurchaseView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	if authn == nil {
+		return ShipPurchaseView{}, apperror.ErrUnauthenticated
+	}
+	// 発送は運用（admin）の操作で所有者概念を持たないため、所有者なしリソースとして認可する。
+	// 所有者を渡さないことで Authorizer の所有者フォールバックが働かず、admin だけが通る。
+	if err := u.authorizer.Authorize(
+		ctx, authn, authz.ActionPurchaseShip, authz.NewResource("purchase", nil),
+	); err != nil {
+		return ShipPurchaseView{}, err
+	}
+
+	now := u.clock.Now()
+
+	var detail *purchase.Detail
+	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。配送追跡を扱わず単一集約
+	// （purchases）の状態更新のみのため CommandService ではなく Repository で完結する。
+	// 二重発送は購入行ロック + 状態チェック（ErrAlreadyShipped）で安全化する。
+	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
+		locked, lerr := u.repo.LockByID(ctx, purchaseID)
+		if lerr != nil {
+			return lerr
+		}
+
+		if serr := locked.Ship(now); serr != nil {
+			return serr
+		}
+
+		if uerr := u.repo.UpdateShipped(ctx, locked); uerr != nil {
+			return uerr
+		}
+
+		payload, berr := event.BuildShipped(locked)
+		if berr != nil {
+			return berr
+		}
+		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
+			AggregateType: aggregateType,
+			AggregateID:   purchaseID.String(),
+			EventType:     event.TypeShipped,
+			Payload:       payload,
+		}); eerr != nil {
+			return eerr
+		}
+
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
+		if rerr != nil {
+			return rerr
+		}
+		detail = reread
+		return nil
+	}); txErr != nil {
+		return ShipPurchaseView{}, txErr
+	}
+
+	return toShipPurchaseView(detail), nil
+}
+
 // referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。
 // 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
 func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
@@ -446,6 +536,32 @@ func toCancelPurchaseView(d *purchase.Detail) CancelPurchaseView {
 		Details:        views,
 		OrderedAt:      d.OrderedAt,
 		CanceledAt:     d.CanceledAt,
+	}
+}
+
+// toShipPurchaseView は、購入詳細の読み取りモデルを発送レスポンスの出力 DTO へ変換します。
+func toShipPurchaseView(d *purchase.Detail) ShipPurchaseView {
+	views := make([]PurchaseDetailView, len(d.Details))
+	for i, detail := range d.Details {
+		views[i] = PurchaseDetailView{
+			ProductID: detail.ProductID(),
+			Quantity:  detail.Quantity(),
+			UnitPrice: detail.UnitPrice().Decimal(),
+		}
+	}
+	return ShipPurchaseView{
+		ID:             d.ID,
+		Code:           d.Code,
+		UserID:         d.UserID,
+		StatusID:       d.StatusID,
+		StatusName:     d.StatusName,
+		SubtotalAmount: d.SubtotalAmount,
+		TaxAmount:      d.TaxAmount,
+		ShippingFee:    d.ShippingFee,
+		TotalAmount:    d.TotalAmount,
+		Details:        views,
+		OrderedAt:      d.OrderedAt,
+		ShippedAt:      d.ShippedAt,
 	}
 }
 
