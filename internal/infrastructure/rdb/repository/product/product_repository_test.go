@@ -716,6 +716,12 @@ func Test_repository_Update(t *testing.T) {
 
 				loaded, err := repo.FindByID(ctx, id)
 				require.NoError(t, err)
+				// クリア前が非 NULL であることを確かめないと、最初から NULL だった場合と区別が付かない。
+				require.NotNil(t, loaded.Description())
+				require.NotNil(t, loaded.StockWarningThreshold())
+				require.NotNil(t, loaded.PublishedAt())
+				require.NotNil(t, loaded.ImagePath())
+
 				require.NoError(t, loaded.Update(
 					loaded.Name(), nil, loaded.Price(), loaded.Quantity(), nil,
 					loaded.Status(), loaded.Category(), nil, nil,
