@@ -13,10 +13,13 @@ KEY_NAME=gobp-local-key
 
 # ノードにロール未割当なら単一ノードのレイアウトを割り当てて適用する（再実行時はスキップ）。
 # CLI はノード鍵を共有 meta ボリュームから読む（garage server が生成したもの）。
+# インスタンスは全 checkout で共有され、初回ブートストラップ時に複数の checkout が同時に
+# ここへ到達しうる。割当は先着が勝てばよいので競合による失敗は無視し、どちらも割り当てられ
+# なかった場合は後続の bucket allow が失敗して顕在化する。
 if garage -c "$CONFIG" layout show 2>/dev/null | grep -q "No nodes currently have a role"; then
   NODE_ID=$(garage -c "$CONFIG" node id -q | cut -d@ -f1)
-  garage -c "$CONFIG" layout assign -z dc1 -c 1G "$NODE_ID"
-  garage -c "$CONFIG" layout apply --version 1
+  garage -c "$CONFIG" layout assign -z dc1 -c 1G "$NODE_ID" 2>/dev/null || true
+  garage -c "$CONFIG" layout apply --version 1 2>/dev/null || true
 fi
 
 garage -c "$CONFIG" bucket create "$BUCKET" 2>/dev/null || true
