@@ -984,7 +984,6 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 
-			// 認証主体を購入の所有者（ownerID）とは別のユーザーにしても、所有権検証で弾かれず発送まで到達する。
 			authn, err := auth.New("ship-uc-subject", "ship-uc-issuer", nil, nil)
 			require.NoError(t, err)
 			other := authn.WithUserID(uuid.NewTestFromSalt(t, "ship_uc_other"))
