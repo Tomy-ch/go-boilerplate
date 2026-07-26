@@ -148,7 +148,9 @@ product images straight from the object storage, the way a CDN fronts S3 in prod
   (`curl -H 'Host: gobp-local' http://<host>:3902/products/...`) or add `127.0.0.1 gobp-local.web.garage.localhost`
   to `/etc/hosts`
 - Listing stays closed: the web endpoint never lists, and an anonymous `ListObjects` against the S3 API is
-  unsigned and rejected. Object keys carry a UUID, so they cannot be guessed
+  unsigned and rejected. Object keys carry a UUIDv7, whose ~74 random bits put enumeration out of reach —
+  but note that the remaining bits are a millisecond timestamp, so a key is opaque, not secret. Treat
+  anything in this bucket as world-readable to whoever holds the key
 - **Website permission is per bucket, not per object** — every object in `gobp-local` becomes anonymously
   readable. The bucket holds nothing but product images; storing non-public objects would require a second bucket
 

@@ -144,7 +144,10 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   their connections.
 - **Object storage is shared**: the `garage` bucket is common to every checkout (unlike a database it
   has no schema, so it does not break across branches). Point a branch at a different
-  `OBJECT_STORAGE_BUCKET` to isolate it.
+  `OBJECT_STORAGE_BUCKET` to isolate it. The access key is shared the same way — `garage_init` imports
+  it under one fixed key name from the running checkout's `env/.env`, so a branch that edits
+  `OBJECT_STORAGE_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` changes what every other checkout authenticates
+  with. Isolate by bucket, not by credential.
 - `sql_editor` / `docs_viewer` have been moved into the 7000 range so they do not collide with the
   API band 8080–8087.
 - The wiring spans `docker/`, `internal/cli/dbslot`, and `.makefiles/`, so update this document
