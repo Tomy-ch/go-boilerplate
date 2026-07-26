@@ -5,4 +5,6 @@ required: false
 schema:
   type: string
   format: uuid
+  pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+  maxLength: 36
   example: "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"

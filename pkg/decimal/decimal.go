@@ -13,16 +13,50 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// 受理する十進値の桁数上限です。PostgreSQL の NUMERIC が保持できる桁数（小数点前 131072 桁 /
+// 小数点後 16383 桁）に合わせています。ADR-0101 のとおり価格列は精度指定なしの NUMERIC であり、
+// これを超える値はそもそも永続化できません。
+//
+// 上限が要るのは、指数表記が「解析は一瞬・文字列化は爆発」という非対称性を持つためです。
+// 例えば "1E100000000" は係数と指数だけを保持するため即座に解析できますが、String() は
+// 約 1 億桁を materialize しようとしてプロセスを停止させます。
+const (
+	maxIntegerDigits  = 131072
+	maxFractionDigits = 16383
+)
+
 // Decimal は、正確な十進量を表す不変の値オブジェクトです。ゼロ値は 0 を表します。
 type Decimal struct{ d decimal.Decimal } //nolint:recvcheck // immutable VO; pointer receiver only for Scan/UnmarshalJSON
 
 // Parse は、十進文字列を Decimal へ解析します。解析に失敗した場合はエラーを返します。
+//
+//	桁数が永続化可能な範囲を超える値も ErrInvalid として拒否します。
 func Parse(s string) (Decimal, error) {
 	d, err := decimal.NewFromString(s)
 	if err != nil {
 		return Decimal{}, xerrors.Wrap(ErrInvalid, err.Error())
 	}
+	if err := checkMagnitude(d); err != nil {
+		return Decimal{}, err
+	}
 	return fromShopspring(d), nil
+}
+
+// checkMagnitude は、値の桁数が受理範囲に収まるかを検証します。
+//
+//	係数と指数だけを見るため、巨大な値でも文字列化せずに判定できます。
+func checkMagnitude(d decimal.Decimal) error {
+	exp := int(d.Exponent())
+	if exp < 0 {
+		if -exp > maxFractionDigits {
+			return xerrors.Wrap(ErrInvalid, "too many fraction digits")
+		}
+		return nil
+	}
+	if d.NumDigits()+exp > maxIntegerDigits {
+		return xerrors.Wrap(ErrInvalid, "too many integer digits")
+	}
+	return nil
 }
 
 // FromInt は、int64 から Decimal を生成します。

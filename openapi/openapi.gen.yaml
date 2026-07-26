@@ -22,12 +22,16 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development server
+    x-internal: true
   - url: https://api.example.com
     description: Production server (replace with actual URL)
+    x-internal: false
   - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
+    x-internal: false
   - url: https://development.api.example.com
     description: Development server (replace with actual URL)
+    x-internal: true
 security: []
 tags:
   - name: health
@@ -1068,11 +1072,12 @@ components:
     PageParam:
       name: page
       in: query
-      description: ページ番号（1から始まる）
+      description: ページ番号（1から始まる）。上限を超えた場合は 400 を返します。
       required: false
       schema:
         type: integer
         minimum: 1
+        maximum: 10000
         default: 1
         example: 1
     PerPageParam:
@@ -1093,6 +1098,8 @@ components:
       required: false
       schema:
         type: string
+        pattern: ^[A-Za-z0-9_-]+$
+        maxLength: 512
     CursorFirstParam:
       name: first
       in: query
@@ -1114,16 +1121,19 @@ components:
       required: false
       schema:
         type: string
+        pattern: ^[\x21-\x7E]+$
         minLength: 1
         maxLength: 255
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
     KeywordParam:
       name: keyword
       in: query
-      description: 全文検索キーワード
+      description: 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
       required: false
       schema:
         type: string
+        minLength: 1
+        maxLength: 255
         example: example keyword
     ActiveParam:
       name: active
@@ -1141,6 +1151,8 @@ components:
       schema:
         type: string
         format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
         example: 123e4567-e89b-12d3-a456-426614174000
     CategoryIdParam:
       name: categoryId
@@ -1150,6 +1162,8 @@ components:
       schema:
         type: string
         format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
         example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
     StatusIdParam:
       name: statusId
@@ -1159,6 +1173,8 @@ components:
       schema:
         type: string
         format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
         example: 093170fb-83a2-4864-a2b3-53236eaf3597
     SortParam:
       name: sort
@@ -1207,6 +1223,8 @@ components:
       schema:
         type: string
         format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
         example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
     RankingPeriodParam:
       name: period
@@ -1240,11 +1258,16 @@ components:
       schema:
         type: string
         format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
         example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
   securitySchemes:
     BearerAuth:
       type: http
-      description: 認証にBearerトークンを使用することを示します。
+      description: |
+        認証にBearerトークンを使用することを示します。
+        JWT の検証は RFC8725（JSON Web Token Best Current Practices）に従います。
+        署名アルゴリズムは許可リストで固定し、`alg: none` と鍵の混同を拒否します。
       scheme: bearer
       bearerFormat: JWT
     BasicAuth:
@@ -1983,6 +2006,8 @@ components:
         productId:
           type: string
           format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
           description: 購入する商品のID
           example: 5266f905-1af4-477a-bc7c-e69729e22a2b
         quantity:
@@ -2348,11 +2373,15 @@ components:
         categoryId:
           type: string
           format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
           description: 商品カテゴリ ID
           example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
         statusId:
           type: string
           format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
           description: 商品ステータス ID
           example: c2e5f1a3-4d6b-5c7e-9f80-2b3c4d5e6f7a
         publishedAt:
@@ -2421,11 +2450,15 @@ components:
         categoryId:
           type: string
           format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
           description: 商品カテゴリ ID
           example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
         statusId:
           type: string
           format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
           description: 商品ステータス ID
           example: c2e5f1a3-4d6b-5c7e-9f80-2b3c4d5e6f7a
         publishedAt:

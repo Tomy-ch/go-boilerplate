@@ -1,0 +1,123 @@
+name: Lockfile Integrity
+
+# Guards against lockfile poisoning: an attacker who can edit package-lock.json
+# does not need to touch package.json at all, because npm installs whatever the
+# lockfile's `resolved` URL points at. The version and the integrity hash can look
+# untouched while the tarball comes from somewhere else entirely.
+#
+# This is a different question from the vulnerability scanners. OSV and Trivy ask
+# "is this package known-bad"; a poisoned lockfile names a package that is not
+# known-bad at all, because the malicious artifact was never published to the
+# registry under that name.
+#
+# PR-only and gating on purpose. There is no scheduled run: the lockfiles in the
+# repository cannot change without a commit, so re-checking an unchanged tree
+# weekly would only ever restate the previous answer.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/lockfile-integrity.yaml'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lockfile-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml (SSOT) — never duplicated here.
+      - name: Install lockfile-lint
+        run: mise install npm:lockfile-lint
+
+      # lockfile-lint exits 1 on a finding and 0 when clean, so the status is
+      # captured rather than allowed to abort the step: the PR comment has to be
+      # produced either way. The final step turns the captured status into the
+      # verdict.
+      #
+      # --allowed-hosts npm expands to registry.npmjs.org; --validate-https rejects
+      # a plain-HTTP resolved URL, which would let an on-path attacker swap the
+      # tarball regardless of which host it names.
+      - name: Lint lockfiles
+        id: lint
+        run: |
+          set -uo pipefail
+
+          : > lockfile-lint.log
+          status=success
+
+          for lockfile in docker/tools/package-lock.json docker/mock-auth-server/package-lock.json; do
+            echo "### ${lockfile}" >> lockfile-lint.log
+            if lockfile-lint \
+                 --path "${lockfile}" \
+                 --type npm \
+                 --validate-https \
+                 --allowed-hosts npm >> lockfile-lint.log 2>&1; then
+              echo "ok" >> lockfile-lint.log
+            else
+              status=failure
+            fi
+            echo >> lockfile-lint.log
+          done
+
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          if [ "${status}" = "success" ]; then
+            echo "title=## ✅ Lockfile Integrity: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "title=## 🚨 Lockfile Integrity: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          cat lockfile-lint.log >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload lockfile-lint log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: lockfile-lint
+          path: lockfile-lint.log
+
+      - name: Comment lockfile result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- lockfile-integrity-result -->'
+          title: ${{ steps.lint.outputs.title }}
+          body-file: lockfile-lint.log
+          details-summary: 'lockfile-lint log'
+
+      # Gating with no severity threshold: a resolved URL either points at the
+      # registry over HTTPS or it does not.
+      - name: Fail if a lockfile finding was found
+        if: always() && steps.lint.outputs.status != 'success'
+        run: exit 1

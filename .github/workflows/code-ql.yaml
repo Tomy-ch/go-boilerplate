@@ -49,7 +49,9 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          cache: true
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
@@ -63,3 +65,17 @@ jobs:
         uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           category: '/language:go'
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: codeql
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.codeql.result) }}
+    uses: ./.github/workflows/notify-failure.yaml
+    with:
+      failed-job: codeql
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

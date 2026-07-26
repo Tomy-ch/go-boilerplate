@@ -54,6 +54,13 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
 |OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
 |npm Cooldown Audit|`npm-cooldown-audit.yaml`|Report lockfile entries that do not satisfy the `.npmrc` supply-chain cooldown (never blocks)|
+|Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
+|SAST|`sast.yaml`|Opengrep (Semgrep-compatible) scan of first-party source with taint tracking|
+|Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
+|OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
+|Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
+|Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
+|Notify Failure|`notify-failure.yaml`|Reusable `workflow_call` target that pushes a scheduled failure to a human|
 
 Every scanner writes SARIF to GitHub code scanning where it can, and comments its result on the PR through the shared `upsert-pr-comment` action.
 
@@ -74,9 +81,31 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OpenSSF Scorecard | — | default branch only | weekly |
 | Image Scan | PRs into a deploy branch | — | weekly |
 | Release gates (Trivy FS / OSV) | PRs into a deploy branch | — | — |
-| npm cooldown audit | lockfile / `.npmrc` change | same as above | weekly |
+| npm cooldown audit | lockfile / `.npmrc` changes | same as above | weekly |
+| Trivy config (misconfig) | Dockerfile-change PRs | same as above | — |
+| Trivy licence | same trigger as Trivy FS | same as above | weekly |
+| OSV diff | dependency-change PRs | — | — |
+| Opengrep (SAST) | Go / dependency / spec-change PRs | same as above | weekly |
+| lockfile-lint | lockfile-change PRs | — | — |
+| Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
+| capslock | `go.mod`-change PRs | — | — |
+| Go fuzzing | — | — | weekly |
 
-Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit.
+Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
+
+Every scanner with a weekly schedule calls `notify-failure.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
+
+#### Overlapping surfaces
+
+Several tools can detect the same class of finding. Each surface has one owner so that a single problem does not gate twice and get suppressed twice:
+
+| Surface | Owner | Also capable, deliberately not used here |
+| --- | --- | --- |
+| Dockerfile security policy | `trivy-config.yaml` | Opengrep (its Dockerfile rules are excluded in `sast.yaml`) |
+| Dockerfile style / correctness | `docker-lint.yaml` (hadolint) | — (a different layer, not a duplicate) |
+| First-party Go source | `sast.yaml` (Opengrep) + `gosec` in golangci-lint | — |
+| OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) | Spectral |
+| OpenAPI security posture | `openapi-security.yaml` (Spectral) | redocly |
 
 #### Release Gates
 
@@ -142,5 +171,9 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
 - `trivy-fs.yaml` and `osv-scanner.yaml` never fail a check: every finding, fixed or not, is written to code scanning and to the PR comment, and the blocking verdict is left to the release gates described above, so a promotion cannot silently ship a known vulnerability while an ordinary PR is not held hostage to one it did not introduce.
 - `trufflehog.yaml` reports only *verified* secrets and never writes a raw secret value into the job log, the PR comment, or an artifact; gitleaks covers the regex-based side with `--redact`.
 - Exceptions to zizmor's audits live in `.github/zizmor.yml`. `ignore` there is file-scoped on purpose, so a new workflow hitting the same audit still fails; entries are removed as the underlying finding is fixed rather than kept as a permanent allowlist.
-- **Cache safety.** Caches are branch-scoped — a run restores only its own ref's cache plus the default branch's — so a pull-request run cannot write a cache that a later `release/*` push restores, which is why caching is enabled freely on the workflows here. Poisoning becomes possible only when untrusted PR code executes in a trusted scope while a cache is saved: `pull_request_target` and `workflow_run` run in the base ref's scope, so a workflow that checks out the PR head there would leave its cache exactly where privileged runs read it. Never combine those two; a workflow that must handle untrusted code keeps caching off.
+- **Cache safety.** Caches are branch-scoped — a run restores only its own ref's cache plus the default branch's — so a pull-request run cannot write a cache that a later `release/*` push restores. That is why caching stays enabled on ordinary CI workflows. Poisoning becomes possible in two places. First, when untrusted PR code executes in a trusted scope while a cache is saved: `pull_request_target` and `workflow_run` run in the base ref's scope, so a workflow that checks out the PR head there would leave its cache exactly where privileged runs read it. Never combine those two; a workflow that must handle untrusted code keeps caching off. Second, **between workflows that share a branch scope but not a privilege level** — several ordinary workflows also run on pushes to protected branches, so a compromised one could leave a poisoned tool cache for a job holding `security-events: write` to restore and execute. Every job with that permission therefore sets `cache: false`, trading a slower install for not inheriting an artifact a lower-privileged run could have written.
 - The `Detect changes` step in `auto-generate-docs.yaml` excludes coverage HTML and SchemaSpy timestamp churn so cosmetic regenerations do not open noise PRs.
+- GitHub disables scheduled workflows automatically after 60 days without a commit, and it does so silently. Keeping them alive is out of scope for this template — no keepalive job is provided — so a fork that goes quiet should expect to re-enable them from the Actions tab.
+- A repository created from a fork or template starts with every workflow in `disabled_fork` state, where nothing runs at all. `make enable-workflows` enumerates and enables them; it is idempotent and safe to re-run.
+- `.spectral.yaml` and `.trivyignore.yaml` follow the same policy as `.github/zizmor.yml`: nothing is disabled in bulk, every entry carries the ADR or implementation that justifies it, and suppressions are scoped to a path (or a JSON pointer) so a new file hitting the same rule still fails.
+- `fuzz.yaml` is scheduled rather than run per PR: a fuzz run explores a random corpus, so gating a merge on it would make the verdict depend on a coin flip. Crash reproducers are committed under `testdata/fuzz/` and replay as ordinary regression tests.

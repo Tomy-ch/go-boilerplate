@@ -22,12 +22,16 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development server
+    x-internal: true
   - url: https://api.example.com
     description: Production server (replace with actual URL)
+    x-internal: false
   - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
+    x-internal: false
   - url: https://development.api.example.com
     description: Development server (replace with actual URL)
+    x-internal: true
 tags:
   - name: health
     description: ヘルスチェック（liveness）。

@@ -132,3 +132,17 @@ jobs:
         with:
           name: npm-cooldown
           path: npm-cooldown-summary.md
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: npm-cooldown-audit
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.npm-cooldown-audit.result) }}
+    uses: ./.github/workflows/notify-failure.yaml
+    with:
+      failed-job: npm-cooldown-audit
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

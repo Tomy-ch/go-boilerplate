@@ -94,6 +94,10 @@ setup-repo:
 	fi
 	@echo "✅ リリースノートの初期化を終了します。"
 
+	@echo "🔧 ワークフローの有効化を開始します..."
+	@$(MAKE) enable-workflows
+	@echo "✅ ワークフローの有効化を終了します。"
+
 	@git remote remove upstream || true
 	@echo "✅ Initialization complete. Default branch: production"
 

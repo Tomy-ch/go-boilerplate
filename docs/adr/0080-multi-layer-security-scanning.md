@@ -37,6 +37,16 @@ approaches:
 - **The runner's own behaviour**: A compromised action or a transitive tool download
   exfiltrates at execution time, which no static scan observes.
 
+Further surfaces were added as the pipeline matured:
+
+- **The workflows and their runners themselves**: a CI definition is code with credentials,
+  and a compromised action or a template-injected `run:` block is an attack on the build
+  rather than on the product.
+- **The shape of the API contract**: an endpoint that declares no bound on its input, or no
+  authentication, is a defect in the spec that no code scanner reads.
+- **Inputs nobody wrote a test for**: a parser accepts whatever arrives, and the cases that
+  break it are by definition the ones nobody imagined.
+
 No single tool covers these surfaces adequately, so a layered approach using purpose-fit
 tools is required.
 
@@ -53,6 +63,11 @@ need to be answered in different places.
 ## Decision
 
 Operate purpose-fit scanning layers, and separate reporting from gating.
+
+Layers are split by *surface × gate policy*, not by tool. The same tool appears in more than
+one workflow when the questions differ — Trivy scans dependencies, Dockerfiles and licences
+in three workflows with three thresholds — and overlapping detections are resolved by giving
+each surface a single owner rather than gating twice on one finding.
 
 **1. Reporting and gating are distinct mechanisms.**
 
@@ -89,6 +104,15 @@ PR *adds*, so it can block on an ordinary PR without punishing anyone for inheri
 | Workflow definitions | zizmor | Actions-file PRs / protected push / weekly | same workflow |
 | Container image | Trivy image + SBOM | deploy-branch PRs / weekly | same workflow |
 | Repository posture | OpenSSF Scorecard | default branch / weekly | — |
+| Dependency versions younger than the cooldown | npm cooldown audit | lockfile / `.npmrc` changes / weekly | — (never blocks by design) |
+| Dockerfile misconfiguration | Trivy config | Dockerfile-change PRs / protected push | same workflow (HIGH+) |
+| Dependency licences | Trivy licence | same trigger as Trivy FS / weekly | — (no policy yet) |
+| Newly introduced advisories, GHAS-independent | OSV diff | dependency-change PRs | same workflow (no threshold) |
+| First-party source patterns | Opengrep (taint-tracking) | Go / dependency / spec PRs / weekly | same workflow (ERROR) |
+| Lockfile `resolved` URLs | lockfile-lint | lockfile-change PRs | same workflow |
+| API contract shape | Spectral (OWASP API) | spec-change PRs / protected push | same workflow |
+| Inputs nobody tested | Go native fuzzing | weekly | same workflow |
+| Dependency capabilities | capslock | `go.mod`-change PRs | — (report-only) |
 
 A PR surfaces the risk the change introduces; a push to a protected branch keeps a
 code-scanning baseline for branch protection to judge; a weekly schedule exists only where
@@ -132,12 +156,16 @@ credentials after checkout set `persist-credentials: false`.
 
 ### Negative Consequences
 
-- Ten workflows plus two release gates is materially more CI surface to maintain than a
-  handful. The shared `.github/actions/osv-scan` composite action keeps the OSV parser and
-  severity policy in one place, but the breadth itself is a cost.
+- The workflow count is materially more CI surface to maintain than a handful. The shared
+  `.github/actions/osv-scan` composite action keeps the OSV parser and severity policy in
+  one place, but the breadth itself is a cost, and adding a scanner is never just "add a
+  tool" — it requires deciding which surface owns the finding.
 - The release gates only block if registered as required status checks. Where branch
   protection is not configured, they report but do not enforce, and the split degrades to
   reporting-only everywhere.
+- Detections overlap across tools, and the overlap has to be resolved by hand each time
+  (Opengrep and Trivy both flag a root-user Dockerfile; Opengrep and gosec both flag
+  `math/rand`). Left unresolved, the same finding gates twice and gets suppressed twice.
 - Govulncheck's reachability analysis requires Go module awareness; if the module graph
   changes structure, filtering assumptions may need revisiting.
 - Secret scans run unconditionally on every PR (no path filter), adding fixed overhead.

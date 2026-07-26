@@ -65,6 +65,9 @@ jobs:
         with:
           version: 2026.6.0
           install: false
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # The scanner version is declared in mise.toml (SSOT) — never pinned here.
@@ -127,3 +130,161 @@ jobs:
         with:
           sarif_file: osv-scanner.sarif
           category: osv-scanner
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: osv-scanner
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.osv-scanner.result) }}
+    uses: ./.github/workflows/notify-failure.yaml
+    with:
+      failed-job: osv-scanner
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Whether this PR ADDS a vulnerable dependency, as opposed to inheriting one.
+  # The job above reports the whole tree and defers blocking to osv-release-gate;
+  # this one blocks immediately, because a vulnerability the PR itself introduces is
+  # the author's to answer for. It is the GHAS-independent equivalent of
+  # dependency-review.yaml.
+  #
+  # No severity or fixability filter on purpose: the release gate needs a threshold
+  # because it judges an inherited backlog, whereas here the question is only
+  # "did this change add something that was not there before".
+  #
+  # The normalizing jq in .github/actions/osv-scan is deliberately NOT reused — it
+  # exists to apply the severity policy, and this gate has none. A set difference
+  # over (package, advisory) pairs is the whole verdict.
+  osv-diff:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      # fetch-depth: 0 so the base commit is present locally; the base tree is then
+      # materialized with git worktree rather than a second actions/checkout, which
+      # can only place a tree inside the workspace where the head scan would walk it.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install osv-scanner
+        run: mise install aqua:google/osv-scanner
+
+      # Exit code 1 means "vulnerabilities found" and is expected on both sides, so
+      # only other codes are treated as a tool failure.
+      - name: Scan both trees
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          # Resolved here, in the workspace, and invoked by absolute path below.
+          # mise reads its config from the working directory, so letting the base
+          # worktree resolve its own shim would run whatever version that commit
+          # pinned — and a set difference between two scanner versions reports
+          # version drift as "newly introduced".
+          OSV_SCANNER="$(mise which osv-scanner)"
+
+          scan() {
+            local dir="$1" out="$2" code=0
+            (cd "${dir}" && "${OSV_SCANNER}" scan source -r . --format json --output-file "${out}") || code=$?
+            if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+              echo "::error::osv-scanner exited with ${code} while scanning ${dir}"
+              exit "${code}"
+            fi
+          }
+
+          git worktree add --detach "${RUNNER_TEMP}/osv-base" "${BASE_SHA}"
+
+          scan "${GITHUB_WORKSPACE}" "${GITHUB_WORKSPACE}/osv-head.json"
+          scan "${RUNNER_TEMP}/osv-base" "${GITHUB_WORKSPACE}/osv-base.json"
+        shell: bash
+
+      - name: Diff the two finding sets
+        id: diff
+        run: |
+          set -euo pipefail
+
+          # One key per (package, advisory). Version is excluded on purpose: bumping
+          # a package to another still-vulnerable version is not a NEW advisory, and
+          # the reporting job already covers it.
+          keys() {
+            jq -r '
+              [ .results[]?
+                | .packages[]?
+                | .package.name as $name
+                | .vulnerabilities[]?
+                | "\($name)\t\(.id)"
+              ] | unique | .[]
+            ' "$1"
+          }
+
+          keys osv-head.json > head.keys
+          keys osv-base.json > base.keys
+
+          # comm needs sorted input; jq's `unique` already sorts, but LC_ALL is
+          # pinned so the shell and jq agree on collation.
+          LC_ALL=C comm -23 head.keys base.keys > introduced.keys
+
+          COUNT=$(wc -l < introduced.keys | tr -d ' ')
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "${COUNT}" -eq 0 ]; then
+            echo "title=## ✅ OSV Diff: PASS (no newly introduced advisory)" >> "$GITHUB_OUTPUT"
+            echo "This PR introduces no dependency advisory that the base branch did not already have." > osv-diff-summary.md
+          else
+            echo "title=## 🚨 OSV Diff: ${COUNT} newly introduced advisory(ies)" >> "$GITHUB_OUTPUT"
+            {
+              echo "Advisories present in this PR but not on the base branch:"
+              echo
+              while IFS=$'\t' read -r name id; do
+                echo "- \`${name}\` — [${id}](https://osv.dev/vulnerability/${id})"
+              done < introduced.keys
+            } > osv-diff-summary.md
+          fi
+
+          cat osv-diff-summary.md >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload OSV diff report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osv-diff
+          path: |
+            osv-head.json
+            osv-base.json
+            osv-diff-summary.md
+
+      - name: Comment OSV diff result on PR
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- osv-diff-result -->'
+          title: ${{ steps.diff.outputs.title }}
+          body-file: osv-diff-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Fail if the PR introduces an advisory
+        if: always() && steps.diff.outputs.count != '0'
+        run: exit 1

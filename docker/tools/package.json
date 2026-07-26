@@ -2,6 +2,8 @@
   "name": "docs-tools",
   "type": "module",
   "dependencies": {
+    "@stoplight/spectral-cli": "6.16.1",
+    "@stoplight/spectral-owasp-ruleset": "2.0.1",
     "commander": "15.0.0",
     "esbuild": "0.28.1",
     "fuse.js": "6.6.2",
@@ -17,6 +19,7 @@
   },
   "overrides": {
     "js-yaml": "4.3.0",
+    "@asyncapi/specs": "6.11.1",
     "@stoplight/spectral-core": {
       "brace-expansion": "1.1.16"
     },

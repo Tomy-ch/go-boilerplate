@@ -1,0 +1,99 @@
+# Spectral 設定 / OWASP API Security ルールセット。`make lint-oapi-security`（CI: openapi-security.yaml）で
+# openapi/openapi.yaml を検証する。規約・命名・メタデータの検証は redocly.yaml の担当で、ここは重複しない。
+#
+# この設定の方針:
+#   - ルールの無効化は一括では行わない。off にしたものは必ず理由を書き、根拠となる ADR か実装を示す。
+#   - 抑止は可能な限りファイルスコープ（overrides）にし、新しいファイルが同じ問題を持てば再び落ちるようにする。
+#   - 実在の欠落はルールを緩めるのではなく spec 側を直す。
+
+# ruleset は node の解決規則でこのファイルの位置（リポジトリルート）から探されるため、
+# npm 依存を持つ docker/tools 配下を明示する。
+extends: ["./docker/tools/node_modules/@stoplight/spectral-owasp-ruleset/dist/ruleset.js"]
+
+rules:
+  # --- レート制限系: ADR-0094 と衝突するため無効化 ---
+  # ADR-0094 は「レート制限をアプリケーションに実装せず、API Gateway / LB / service mesh へ委譲する」
+  # ことを決定として明記している。これらのルールは 429 レスポンスと RateLimit-* ヘッダを
+  # spec に宣言することを要求するが、本アプリはレート制限を一切知らないため、宣言すれば
+  # 実装が保証しない契約を spec が約束することになる。
+  owasp:api4:2023-rate-limit: off
+  owasp:api4:2023-rate-limit-retry-after: off
+  owasp:api4:2023-rate-limit-responses-429: off
+
+  # --- string-restricted: 自由入力フィールドと両立しないため無効化 ---
+  # 全ての string に format / pattern / enum のいずれかを要求するルール。しかし商品名・氏名・
+  # 住所・全文検索キーワードのような人間の自由入力は、文字クラスで制約すること自体が誤りで
+  # （日本語や記号を含む正当な入力を拒否する）、長さの上限は string-limit 側が別途担保する。
+  owasp:api4:2023-string-restricted: off
+
+  # --- 制約系: 既定は無効。下の overrides でパラメータに限って有効化する ---
+  # リクエストボディは Pre middleware の body limit（SERVER_BODY_LIMIT_MB、既定 6MB、
+  # OpenAPI 検証よりも前に適用）で上位から縛られている。一方 path / query / header の入力には
+  # その天井が無く、spec の制約が唯一の防御になる。したがって強制する場所をパラメータへ寄せる。
+  #
+  # ボイラープレートとしての判断でもある。ボディの各フィールドに業務的な上限値を焼き込むと、
+  # 利用側の業務要件を先取りして固定してしまう（例: 商品説明の最大文字数）。パラメータ側の値は
+  # いずれも実装から導出できる（UUID の桁数、base64url の文字集合、paging.maxPage など）。
+  #
+  # 利用側でフィールド単位の業務上限を定める場合は、この overrides を外して全体で有効化すること。
+  owasp:api4:2023-string-limit: off
+  owasp:api4:2023-integer-limit: off
+  owasp:api4:2023-integer-limit-legacy: off
+  owasp:api4:2023-array-limit: off
+
+  # --- integer-format: 防御を足さず生成コードだけ壊すため無効化 ---
+  # このルールは整数へ format: int32 / int64 を要求する。しかし本 spec の整数パラメータは
+  # いずれも minimum / maximum を持ち、範囲は JSON Schema の標準検証で既に強制されている
+  # （kin-openapi も minimum / maximum は当然に評価する）ため、format は防御を何も足さない。
+  # 一方 oapi-codegen は format 付き整数パラメータに対して *int ではなく名前付き型を生成するため、
+  # 追加するとハンドラのシグネチャが壊れる。得るものが無く壊すものがある変更なので採用しない。
+  owasp:api4:2023-integer-format: off
+
+  # --- 認証まわり: 既存のより強い統制と重複するため無効化 ---
+  # read-restricted は「認証されていない read 操作」を指摘するが、本リポジトリは redocly.yaml の
+  # rule/require-explicit-security で「全 operation に security を明示する」ことを既に強制している。
+  # 公開エンドポイント（商品カタログ・都道府県・為替レート・ops 系）は security: [] を明示して
+  # 意図的に公開していることを宣言済みで、指摘 13 件はすべてその宣言に対するもの。
+  # 「security の記述漏れ」を落とす require-explicit-security の方が強く、かつ腐らない。
+  owasp:api2:2023-read-restricted: off
+
+  # /metrics 専用の Basic 認証。ADR-0016 が「/metrics を OpenAPI 検証パイプラインの外に置き、
+  # 専用の Echo BasicAuth ミドルウェアで保護する」ことを決定として明記している。
+  # スクレイプ用の ops エンドポイントであり、利用者向け API の認証方式ではない。
+  owasp:api2:2023-no-http-basic: off
+
+  # --- エラーレスポンスの網羅性: redocly 側で既に決定済みのため無効化 ---
+  # 401: BearerAuth を要求する operation は全て 401 を定義済み（未定義ゼロを確認済み）。
+  # 残る指摘は security: [] の公開エンドポイントと ops 系に対するもので、401 は発生し得ない。
+  # 400/422・500: redocly.yaml が operation-4xx-response を「全 operation に 4xx を必須とはしない
+  # （204 系など）」という理由で off にしており、同じ問いに対する決定が既に存在する。
+  owasp:api8:2023-define-error-responses-401: off
+  owasp:api8:2023-define-error-responses-500: off
+  owasp:api8:2023-define-error-validation: off
+
+overrides:
+  # servers[0] は localhost の開発用エントリで、平文 HTTP は正当。公開先の 3 つは https のため、
+  # ルール自体は有効なまま「この 1 エントリだけ」を対象外にする。
+  - files:
+      - "openapi/openapi.yaml#/servers/0"
+    rules:
+      owasp:api8:2023-no-server-http: off
+
+  # servers[3] は development 環境。ルールが許容する語は
+  # local|sandbox|alpha|beta|test|testing|stag|staging|prod|production|next|preprod|preproduction
+  # で development を含まないが、これは本リポジトリの実際の環境名（deploy ブランチ develop に対応）
+  # であり、ルールの語彙不足に合わせて説明文を歪めるべきではない。このエントリのみ対象外にする。
+  - files:
+      - "openapi/openapi.yaml#/servers/3"
+    rules:
+      owasp:api9:2023-inventory-environment: off
+
+  # パラメータ（path / query / header）には body limit が効かないため、制約系を厳格に有効化する。
+  - files:
+      - "openapi/components/parameters/**"
+    rules:
+      owasp:api4:2023-string-limit: error
+      owasp:api4:2023-integer-limit: error
+      owasp:api4:2023-integer-limit-legacy: error
+      owasp:api4:2023-integer-format: error
+      owasp:api4:2023-array-limit: error
