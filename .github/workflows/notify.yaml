@@ -218,11 +218,16 @@ jobs:
         run: |
           set -euo pipefail
           # --fail-with-body surfaces Slack's rejection reason; -sS keeps the log free
-          # of a progress meter while still printing errors. Reading the URL from env
-          # keeps it out of this file, though it still reaches curl's argv.
-          curl --fail-with-body -sS \
+          # of a progress meter while still printing errors.
+          #
+          # The URL is fed through `--config -` rather than passed as an argument,
+          # because a process argument is world-readable through /proc on the runner
+          # for as long as curl lives. Nothing else should be sharing this runner —
+          # the job checks out no code and runs only pinned actions — but the webhook
+          # is the one secret here, and keeping it out of argv costs a pipe.
+          printf 'url = "%s"\n' "${SLACK_WEBHOOK_URL}" | curl --config - \
+            --fail-with-body -sS \
             -X POST \
             -H 'Content-Type: application/json' \
-            --data @notification.json \
-            "${SLACK_WEBHOOK_URL}"
+            --data @notification.json
         shell: bash
