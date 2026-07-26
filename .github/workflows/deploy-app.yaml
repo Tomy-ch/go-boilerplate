@@ -29,10 +29,16 @@ jobs:
             suffix: ""
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -53,10 +59,12 @@ jobs:
 
       - name: Define build environment
         id: meta_env
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [[ "${{ github.ref_name }}" == "production" ]]; then
+          if [[ "${REF_NAME}" == "production" ]]; then
             echo "app_env=prd" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+          elif [[ "${REF_NAME}" == "staging" ]]; then
             echo "app_env=stg" >> "$GITHUB_OUTPUT"
           else
             echo "app_env=dev" >> "$GITHUB_OUTPUT"
@@ -96,10 +104,13 @@ jobs:
       # WARN: 他レジストリへ移行する場合はこのステップを差し替えること。
       #       後段のビルド/署名/attestation はここで確立した認証セッションに依存する。
       - name: Login to registry
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Login to container registry here (ECR/GCR/ACR/GHCR)"
           echo "Note: Please modify this section according to your environment"
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${REGISTRY_TOKEN}" | docker login ghcr.io -u "${REGISTRY_USER}" --password-stdin
 
       - name: Generate vendor
         run: |
@@ -178,6 +189,11 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Configure cloud credentials
         run: |
           echo "Configure authentication for target cloud environment"

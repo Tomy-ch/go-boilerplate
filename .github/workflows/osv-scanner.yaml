@@ -1,0 +1,129 @@
+name: OSV Scan
+
+# Cross-ecosystem dependency scan against the OSV database (Go modules + npm lockfiles).
+# Complements the Go-only scanners: govulncheck (reachability) and Trivy FS (Go deps).
+#
+# Developer-facing half of the double gate: it reports (code scanning + PR comment) and
+# never fails, the same shape trivy-fs.yaml has. Blocking is osv-release-gate.yaml's job,
+# on PRs into a deploy branch — where a finding is a promotion decision rather than noise
+# a feature PR happened to inherit.
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/osv-scanner.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+  pull_request:
+    paths:
+      - '.github/workflows/osv-scanner.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-scanner:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The scanner version is declared in mise.toml (SSOT) — never pinned here.
+      - name: Install osv-scanner
+        run: mise install aqua:google/osv-scanner
+
+      - name: Scan with osv-scanner
+        id: scan
+        uses: ./.github/actions/osv-scan
+
+      - name: Run osv-scanner (SARIF)
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          osv-scanner scan source -r . --format sarif --output-file osv-scanner.sarif
+          code=$?
+          set -e
+
+          if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+            echo "::error::osv-scanner exited with ${code}"
+            exit "${code}"
+          fi
+
+          # osv-scanner emits absolute file:// URIs; code scanning needs paths
+          # relative to the repository root to annotate the manifest files.
+          jq --arg prefix "file://${GITHUB_WORKSPACE}/" '
+            .runs[]?.results[]?.locations[]?.physicalLocation.artifactLocation.uri |= ltrimstr($prefix)
+          ' osv-scanner.sarif > osv-scanner.sarif.tmp
+          mv osv-scanner.sarif.tmp osv-scanner.sarif
+
+      - name: Upload osv-scanner report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osv-scanner
+          path: |
+            osv-scanner.json
+            osv-scanner.sarif
+            osv-scanner.log
+            osv-findings.json
+            osv-scanner-summary.md
+
+      - name: Comment OSV Scan result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- osv-scanner-result -->'
+          title: ${{ steps.scan.outputs.title }}
+          body-file: osv-scanner-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload osv-scanner SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: osv-scanner.sarif
+          category: osv-scanner

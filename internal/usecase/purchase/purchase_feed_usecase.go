@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// purchaseCursorKeyCount は、購入履歴一覧カーソルが保持するソートキーの個数（ordered_at, id）です。
+// purchaseCursorKeyCount は、購入履歴一覧カーソルが保持するソートキーの個数（注文日時, ID）です。
 const purchaseCursorKeyCount = 2
 
 // PurchaseSummaryView は、購入履歴一覧の 1 件分のユースケース出力 DTO です。
@@ -34,14 +34,14 @@ type PurchaseListView struct {
 
 // purchaseCursor は、購入履歴一覧（keyset ページネーション）の境界キーを表す usecase 層の値です。
 // 直前ページ末尾行の注文日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。
-// ドメイン層は不透明カーソルを持たず、この境界を primitive（ordered_at, id）で受け取ります。
+// ドメイン層は不透明カーソルを持たず、この境界を primitive（注文日時, ID）で受け取ります。
 type purchaseCursor struct {
 	orderedAt time.Time
 	id        uuid.UUID
 }
 
-// GetPurchases は、認証主体（userID）の購入履歴を注文日時降順（cursor ページネーション）で取得します。
-// 他ユーザーの購入は Repository の所有権フィルタにより返りません（対象がなければ空一覧）。
+// GetPurchases は、所有権の絞り込みを Repository に委ね、usecase 側では所有者を再判定しません。
+// 対象が無い場合は Repository が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません。
 func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error) {
 	if cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
@@ -119,7 +119,7 @@ func decodePurchaseCursor(cursor *paging.Cursor) (*purchaseCursor, error) {
 	return &purchaseCursor{orderedAt: orderedAt, id: id}, nil
 }
 
-// encodePurchaseCursor は、現在ページ末尾行のソートキー（ordered_at, id）から次ページ用の不透明カーソルを生成します。
+// encodePurchaseCursor は、現在ページ末尾のソートキー（注文日時, ID）から次ページ用の不透明カーソルを生成します。
 func encodePurchaseCursor(last purchase.FeedItem) string {
 	return paging.EncodeCursor(last.OrderedAt.Format(time.RFC3339Nano), last.ID.String())
 }

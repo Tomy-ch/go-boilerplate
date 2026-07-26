@@ -1,0 +1,78 @@
+name: OpenSSF Scorecard
+
+on:
+  # This repository's default branch is not a fixed name (`main` / `master`): it moves
+  # forward with each release (`release/vX.Y.Z`). A branch name therefore cannot be baked
+  # into this file, so the push trigger matches the whole `release/*` namespace and the job
+  # below narrows it down to whichever branch is currently the default one.
+  push:
+    branches:
+      - 'release/*'
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+# Declare default permissions as read only.
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    # Scorecard must analyse the default branch only:
+    #   - the Branch-Protection check can only be evaluated against the default branch, and
+    #   - `publish_results` is accepted by the OpenSSF API only for the default branch.
+    # push は release/* 名前空間全体を受けるため default ブランチ以外を弾く必要があり、
+    # 非 default ブランチでの手動 workflow_dispatch も publish_results が受け付けず失敗する
+    # ため同様に弾く。schedule は常に default ブランチで走るので影響しない。全イベントを
+    # 現在の default ブランチだけに一様に絞る。
+    if: github.ref_name == github.event.repository.default_branch
+    permissions:
+      # Needed to upload the results to the code scanning dashboard.
+      security-events: write
+      # Needed to publish the results and get a badge (see publish_results below).
+      id-token: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Required by Scorecard: the analysis must not run with a credential-bearing
+          # git config available to it.
+          persist-credentials: false
+
+      - name: Run Scorecard analysis
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          # This sends the scores to the public OpenSSF REST API: the results become
+          # externally visible (consumable via https://api.scorecard.dev and the OpenSSF
+          # dashboard) and enable the Scorecard badge. Only meaningful because this
+          # repository is public; on a private repository it is forced to false.
+          publish_results: true
+
+      - name: Upload Scorecard report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: scorecard
+          path: scorecard.sarif
+
+      - name: Upload Scorecard SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: scorecard.sarif
+          category: scorecard

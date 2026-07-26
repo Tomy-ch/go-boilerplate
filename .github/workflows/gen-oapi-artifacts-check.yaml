@@ -21,6 +21,11 @@ jobs:
     env:
       ENV: ci
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -52,11 +57,13 @@ jobs:
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          git fetch --no-tags --depth=200 origin "${BASE_REF}" || true
           changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
           if echo "$changed" | grep -qE '^openapi/'; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"

@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
   pull-requests: write
 
 concurrency:
@@ -21,8 +20,15 @@ jobs:
   trivy-fs-release:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Trivy FS scan (JSON, include unfixed)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -98,3 +104,11 @@ jobs:
           title: ${{ steps.summarize.outputs.title }}
           body-file: trivy-fs-release-summary.md
           details-summary: '📄 Summary'
+
+      # release-gate はデプロイ先ブランチへの PR に対する厳格ゲート。unfixed を含む全件で
+      # fail する（osv-scanner.yaml が unfixed を落とす緩和を、この「everything counts」な
+      # view に依存して正当化している）。summarize が走らず count が空の場合も fail する
+      # ため、スキャン/集計の失敗が pass と誤認されることはない。
+      - name: Fail if any vulnerability was found
+        if: always() && steps.summarize.outputs.count != '0'
+        run: exit 1

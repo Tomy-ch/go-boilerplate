@@ -113,7 +113,8 @@ type Usecase interface {
 	// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
-	// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します。
+	// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します。指定されたフィールドのみを
+	// 反映し、未指定 / null は据え置きます（値のクリアは非対応で、クリアには全更新の UpdateUser を使います）。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
 	// DeleteUser は、認可を確認したうえでユーザーを論理削除します。
@@ -156,7 +157,6 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Page
 	return u.toUserViews(ctx, us)
 }
 
-// CreateUser は、ユーザーを作成するユースケースです。
 func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -202,14 +202,12 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserVie
 	return toUserView(userEntity, pftName), nil
 }
 
-// CountUsers は、ユーザーの総件数を返すユースケースです。
 func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 	return u.userRepo.CountByActive(ctx, active)
 }
 
-// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
 func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -225,7 +223,6 @@ func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *pa
 	return &UserListView{Items: items, Total: total}, nil
 }
 
-// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
 func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error) {
 	if cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
@@ -264,7 +261,6 @@ func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*Us
 	return &UserFeedView{Items: items, NextCursor: nextCursor}, nil
 }
 
-// GetUser は、IDから単一ユーザーを取得するユースケースです。
 func (u *usecase) GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -289,7 +285,6 @@ func (u *usecase) GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID
 	return toUserView(userEntity, pftDomain.Name()), nil
 }
 
-// UpdateUser は、ユーザーのプロフィールを全更新します。
 func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -341,8 +336,6 @@ func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 	return toUserView(userEntity, pftName), nil
 }
 
-// UpdateUserPartially は、ユーザーを部分更新します。
-// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは全更新用の UpdateUser を使う）。
 func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -401,7 +394,6 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, 
 	return toUserView(userEntity, pftName), nil
 }
 
-// DeleteUser は、ユーザーを論理削除します。
 func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
