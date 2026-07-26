@@ -49,4 +49,4 @@ accepted
 ## 補足
 
 - CIで`migration-check.yaml`によって強制される（採番の規律については[ADR-0025](0025-sequential-migration-ids.ja.md)参照）。
-- Source: [`docs/rules.md`](../rules.ja.md)の§ "Database Migration"；[`database/migrations/README.md`](../../../database/migrations/README.md)の§ "Rules"。
+- Source: [`docs/rules.md`](../rules.ja.md)の§ "Database Migration"；[`database/migrations/README.md`](../../../database/migrations/README.ja.md)の§ "Rules"。

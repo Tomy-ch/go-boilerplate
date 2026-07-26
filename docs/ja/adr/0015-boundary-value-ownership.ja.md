@@ -69,7 +69,7 @@ OpenAPI リクエスト制約  ⊆  ドメインルール  ⊆  OpenAPI レス�
 
 ## 補足
 
-- 完全な根拠と具体例（`firstName` の maxLength 50 / 100 / 100 / 100 がリクエスト / ドメイン / DB / レスポンス間でどう異なるか）: [`openapi/boundary-ownership.md`](../../../openapi/boundary-ownership.md)。
+- 完全な根拠と具体例（`firstName` の maxLength 50 / 100 / 100 / 100 がリクエスト / ドメイン / DB / レスポンス間でどう異なるか）: [`openapi/boundary-ownership.md`](../../../openapi/boundary-ownership.ja.md)。
 - ドメイン定数は `internal/domain/<aggregate>/constant.go` に存在する。
 - ワイヤー契約側を強制するリクエスト検証は [ADR-0013](0013-spec-driven-request-validation.ja.md) に説明されている。
 - [ADR-0014](0014-validation-value-authority.ja.md) を前提とする。ビジネス有効性の権威はドメインにあり、*厳しさ*（値集合の狭さ）と *権威* は別軸である。本 ADR の方向不変条件（`request ⊆ domain ⊆ response`）は厳しさの観点であり、ドメインの権威を覆すものではない。

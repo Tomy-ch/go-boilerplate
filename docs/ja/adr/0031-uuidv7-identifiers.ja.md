@@ -84,6 +84,6 @@ UUIDv7 と同様に時刻順かつ辞書順ソート可能である。別のラ�
 
 ## 補足
 
-- 出典: [`pkg/uuid/README.md`](../../../pkg/uuid/README.md) — `github.com/google/uuid` をラップし UUIDv7 を生成する。
+- 出典: [`pkg/uuid/README.md`](../../../pkg/uuid/README.ja.md) — `github.com/google/uuid` をラップし UUIDv7 を生成する。
 - 出典: [`sqlc.yaml`](../../../sqlc.yaml) — `uuid` 型を `pkg/uuid.UUID` にオーバーライド。
 - 関連: [ADR-0022](0022-sqlc-type-safe-sql.ja.md)（sqlc の型オーバーライドがこの UUID 型を生成コードに組み込む仕組み）。

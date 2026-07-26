@@ -82,6 +82,6 @@ API エンドポイントと同じリクエスト単位の `Authenticator` を�
 - ルート登録と BasicAuth ワイヤリング: [`internal/controller/handler/metrics/metrics_handler.go`](../../../internal/controller/handler/metrics/metrics_handler.go)。
 - バリデーター: [`internal/controller/httpstack/basicauth/basic.go`](../../../internal/controller/httpstack/basicauth/basic.go)。
 - オペレーションパス分類: `internal/controller/httpstack/ops/paths.go`。
-- [`openapi/README.md`](../../../openapi/README.md)（§ Security）のセキュリティ注記: `/metrics` の `security:` 宣言はドキュメント目的のみ。
+- [`openapi/README.md`](../../../openapi/README.ja.md)（§ Security）のセキュリティ注記: `/metrics` の `security:` 宣言はドキュメント目的のみ。
 - 関連する決定: [ADR-0013](0013-spec-driven-request-validation.ja.md)（仕様駆動リクエスト検証——この ADR はその付随する例外記録）。
 - 親の決定: [ADR-0009](0009-openapi-first.ja.md)（OpenAPI ファースト）。

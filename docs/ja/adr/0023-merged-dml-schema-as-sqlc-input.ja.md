@@ -65,6 +65,6 @@ sqlcはマイグレーションの順序を理解しない。すべてのマイ�
 
 ## 補足
 
-- Source: [`database/README.md`](../../../database/README.md) — データライフサイクル図。
+- Source: [`database/README.md`](../../../database/README.ja.md) — データライフサイクル図。
 - 関連: [ADR-0021](0021-sql-first-data-access.ja.md)（SQLファーストデータアクセス）、[ADR-0022](0022-sqlc-type-safe-sql.ja.md)（コードジェネレーターとしてのsqlc）。
 - `make gen-query`がmerge-dml・dump-schema・sqlcを順に実行する単一コマンドである。

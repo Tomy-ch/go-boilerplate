@@ -102,7 +102,7 @@ Repositoryから読み込みメソッドを完全に排除し、すべての読�
 
 ## 補足
 
-- Source: [`internal/infrastructure/rdb/query_service/README.md`](../../../internal/infrastructure/rdb/query_service/README.md)の§ "Relationship to CQRS"および§ "When to Use QS Over Repository"。
+- Source: [`internal/infrastructure/rdb/query_service/README.md`](../../../internal/infrastructure/rdb/query_service/README.ja.md)の§ "Relationship to CQRS"および§ "When to Use QS Over Repository"。
 - Source: [`docs/rules.md`](../rules.ja.md)の§ "Repository / QueryService Rules"。
 - DI登録: [`internal/di/module/persistence.go`](../../../internal/di/module/persistence.go)。
 - 関連: [ADR-0028](0028-system-cqrs-dml-category.ja.md)（CQRSの外に位置する第4カテゴリとしてのsystem_cqrs）。

@@ -79,6 +79,6 @@ PostgreSQL のセーブポイントを使ってネストされた `Do` 呼び出
 
 ## 補足
 
-- 出典: [`internal/usecase/boundary/tx/README.md`](../../../internal/usecase/boundary/tx/README.md) § "Notes"（リトライと冪等性の契約）。
+- 出典: [`internal/usecase/boundary/tx/README.md`](../../../internal/usecase/boundary/tx/README.ja.md) § "Notes"（リトライと冪等性の契約）。
 - 出典: [`internal/infrastructure/rdb/driver/transaction.go`](../../../internal/infrastructure/rdb/driver/transaction.go) — `Do`（リトライループ）と `doOnce`（単一試行、リトライ判定用の生エラーを返す）。
 - 関連: リトライとバックオフは `pkg/retry` および `pkg/backoff` に実装されている。

@@ -28,7 +28,7 @@ accepted
 
 `make migrate-up`が新規環境を完全に機能する状態にするために必要な唯一のコマンドであり、別のデータステップは必要ない。
 
-**トランザクショナルシードデータ**は`database/seed/`に置かれ、`make db-seed`（または`./server db-seed`）によってのみ適用される。このコマンドは本番環境での使用から明示的に除外されている。完全なポリシーは[`database/seed/README.md`](../../../database/seed/README.md)参照。
+**トランザクショナルシードデータ**は`database/seed/`に置かれ、`make db-seed`（または`./server db-seed`）によってのみ適用される。このコマンドは本番環境での使用から明示的に除外されている。完全なポリシーは[`database/seed/README.md`](../../../database/seed/README.ja.md)参照。
 
 ## 影響
 
@@ -55,6 +55,6 @@ accepted
 
 ## 補足
 
-- Source: [`database/seed/README.md`](../../../database/seed/README.md)の§ "Difference from Migrations"および§ "Notes"。
-- Source: [`database/README.md`](../../../database/README.md)。
+- Source: [`database/seed/README.md`](../../../database/seed/README.ja.md)の§ "Difference from Migrations"および§ "Notes"。
+- Source: [`database/README.md`](../../../database/README.ja.md)。
 - 関連: [ADR-0024](0024-append-only-immutable-migrations.ja.md)（不変性）；[ADR-0025](0025-sequential-migration-ids.ja.md)（採番）。

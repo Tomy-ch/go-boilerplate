@@ -90,7 +90,7 @@ CI は開発者向けコマンドから乖離し得る呼び出しをハード�
 - トップレベルの makefile とインクルードリスト:
   [`makefile`](../../../makefile)。
 - `.makefiles/` の規約（通常 vs `-ci`、命名、グループレイアウト）:
-  [`.makefiles/README.md`](../../../.makefiles/README.md)。
+  [`.makefiles/README.md`](../../../.makefiles/README.ja.md)。
 - ヘルプジェネレータのソース:
   [`scripts/make_help.mjs`](../../../scripts/make_help.mjs)。
 - ツールチェーン実行ルール（コンテナ vs ベアメタル）:

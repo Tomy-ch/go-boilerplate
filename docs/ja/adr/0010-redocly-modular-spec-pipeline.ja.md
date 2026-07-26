@@ -59,6 +59,6 @@ Redocly ツールチェーンの依存関係を回避できる。却下：単一
 
 - ビルドターゲットの定義: [`.makefiles/openapi/gen.mk`](../../../.makefiles/openapi/gen.mk)。
 - リントルールと命名規約の強制: [`redocly.yaml`](../../../redocly.yaml)。
-- モジュラーディレクトリ構造の説明: [`openapi/README.md`](../../../openapi/README.md)。
+- モジュラーディレクトリ構造の説明: [`openapi/README.md`](../../../openapi/README.ja.md)。
 - `openapi/openapi.gen.yaml` は生成された出力であり、手動で編集してはならない（[`docs/rules.md`](../rules.ja.md) の生成ファイルルール参照）。
 - 親の決定: [ADR-0009](0009-openapi-first.ja.md)（OpenAPI ファースト）。

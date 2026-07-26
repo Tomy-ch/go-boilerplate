@@ -90,4 +90,4 @@ Docker Compose によるアプローチはエディター非依存である。
 - ツールバージョンの宣言: [`mise.toml`](../../../mise.toml)。
 - コンテナサービス定義: [`docker-compose.yaml`](../../../docker-compose.yaml)
   （`go_tool_runner`・`node_tool_runner`・`python_tool_runner` — プロファイル `generate`）。
-- Docker イメージ / Dockerfile の詳細: [`docker/README.md`](../../../docker/README.md)。
+- Docker イメージ / Dockerfile の詳細: [`docker/README.md`](../../../docker/README.ja.md)。

@@ -99,7 +99,7 @@ Node と同じ ESM モデルを共有するが、ツールスタックに存在�
 ## 補足
 
 - スクリプトディレクトリの概要とスクリプトごとの説明:
-  [`scripts/README.md`](../../../scripts/README.md)。
+  [`scripts/README.md`](../../../scripts/README.ja.md)。
 - ツールチェーンコンテナ定義（node_tool_runner、go_tool_runner）:
   [ADR-0070](0070-containerized-pinned-toolchain.ja.md)。
 - スクリプトを呼び出す Make ターゲットエントリポイント:
