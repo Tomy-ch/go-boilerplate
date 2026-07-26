@@ -1,0 +1,19 @@
+# Paths whose review is reserved to a specific role, rather than any reviewer.
+#
+# GitHub requires the "Require review from Code Owners" branch-protection rule for
+# these entries to be enforced; without it they only auto-request the reviewer.
+#
+# Replace @Tomy-ch with the team that owns the decision in your fork
+# (e.g. @your-org/tech-leads).
+
+# Supply-chain controls. The npm `min-release-age` cooldown in each .npmrc is
+# evaluated only while npm resolves dependencies, so a lockfile produced with it
+# switched off installs cleanly under `npm ci` and shows no symptom in CI.
+# Overriding the cooldown is a deliberate call — reacting to a CRITICAL advisory is
+# a legitimate one — and this entry is what reserves that call to the owning role.
+# `npm-cooldown-audit.yaml` detects and reports a bypass but never blocks it; this
+# is the half that enforces.
+**/.npmrc                             @Tomy-ch
+**/package-lock.json                  @Tomy-ch
+.github/actions-pin.toml              @Tomy-ch
+docker/images-pin.toml                @Tomy-ch
