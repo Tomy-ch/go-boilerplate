@@ -78,10 +78,20 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
+
+          # The binary is resolved here, in the workspace, and then invoked by
+          # absolute path inside the base worktree. mise reads its config from the
+          # working directory, and the base commit's mise.toml does not necessarily
+          # declare capslock — it did not when this workflow was introduced, so the
+          # shim failed to resolve there. Pinning the path also guarantees both
+          # sides of the diff are produced by the same binary; letting each tree
+          # resolve its own would contaminate the comparison with version drift.
+          CAPSLOCK="$(mise which capslock)"
+
           git worktree add --detach "${RUNNER_TEMP}/caps-base" "${BASE_SHA}"
           (
             cd "${RUNNER_TEMP}/caps-base"
-            capslock -packages ./... -output json -granularity package
+            "${CAPSLOCK}" -packages ./... -output json -granularity package
           ) > "${GITHUB_WORKSPACE}/capabilities-base.json"
         shell: bash
 

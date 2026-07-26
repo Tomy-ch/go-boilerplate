@@ -195,9 +195,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Resolved here, in the workspace, and invoked by absolute path below.
+          # mise reads its config from the working directory, so letting the base
+          # worktree resolve its own shim would run whatever version that commit
+          # pinned — and a set difference between two scanner versions reports
+          # version drift as "newly introduced".
+          OSV_SCANNER="$(mise which osv-scanner)"
+
           scan() {
             local dir="$1" out="$2" code=0
-            (cd "${dir}" && osv-scanner scan source -r . --format json --output-file "${out}") || code=$?
+            (cd "${dir}" && "${OSV_SCANNER}" scan source -r . --format json --output-file "${out}") || code=$?
             if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
               echo "::error::osv-scanner exited with ${code} while scanning ${dir}"
               exit "${code}"
