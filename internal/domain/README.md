@@ -409,6 +409,28 @@ Place them in:
 - QueryService
 - ReadModel
 
+### Doc comments stay in domain vocabulary
+
+The SQL shapes above bound **what the Infrastructure implementation may do**; they are not the
+vocabulary of the doc comments written here. A Repository interface is the seam to persistence, which
+is exactly why its doc comment must contract the **guarantee** in domain vocabulary and leave the
+**mechanism** to the implementation: `LockByID` states that it takes a pessimistic lock and what that
+lock serializes, not that the lock is a `SELECT … FOR UPDATE`; a feed method states "ordered by
+ordered-at descending, tie-broken by ID", not `(ordered_at DESC, id DESC)`. Table names, column
+names, and SQL fragments belong to the Infrastructure doc comment that already states them — see
+[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail, and [`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
+implementation for the rule this mirrors.
+
+Two consequences are specific to Domain:
+
+- **A numeric bound whose reason is the storage width is expressed as a Go integer width**, not as a
+  SQL type name — `1..32767` is documented as the positive range of a signed 16-bit integer. That
+  keeps the constant from reading as a magic number while staying technology-neutral. Put the reason
+  on the constant so the exported constructor's doc stays a pure contract.
+- **A reference master is named by its domain name** (the product-status master), never by its table
+  (`product_statuses`).
+
 ## Callable layers
 
 Called from:
@@ -603,7 +625,7 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 - state transition via behavior methods
 - ensure consistency via Value Objects
 - Repository abstraction
-- table-driven tests
+- sequential `t.Run` cases (no table-driven `for` loops — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md))
 
 ### Don’t
 

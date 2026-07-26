@@ -19,7 +19,7 @@ internal/controller/
 ├── handler/        # HTTP handlers (server entry points)
 ├── job/            # Job controllers (CLI entry points)
 ├── worker/         # Worker engine (message-queue entry points)
-├── outbox/         # Outbox relay engine (polls the outbox table and publishes)
+├── outbox/         # Outbox relay engine (polls the outbox and publishes)
 ├── server/         # Echo instance creation and server startup
 ├── httpstack/      # HTTP middleware stack
 ├── error/response/ # Error response generation
@@ -34,7 +34,7 @@ internal/controller/
 |`handler/`|Handlers that receive HTTP requests and delegate to Usecase|[README](handler/README.md)|
 |`job/`|Job controllers invoked from CLI|[README](job/README.md)|
 |`worker/`|Worker engine consuming a pull-ack message queue and dispatching to Usecase|[README](worker/README.md)|
-|`outbox/`|Relay engine that periodically polls the outbox table and publishes pending messages|—|
+|`outbox/`|Relay engine that periodically polls the outbox and publishes pending messages|—|
 |`server/`|Echo instance initialization and DI lifecycle integration|[README](server/README.md)|
 |`httpstack/`|Middleware stack (CORS, security, logging, auth, etc.)|[README](httpstack/README.md)|
 |`error/response/`|Unified HTTP error response generation and apperror mapping|[README](error/response/README.md)|
@@ -55,6 +55,18 @@ flowchart TB
 ```
 
 Controllers access lower layers **only through Usecase**.
+
+### Doc comments stay in HTTP vocabulary
+
+The forbidden edges above govern doc comments as well. A handler doc comment states the HTTP-level
+contract — what the endpoint returns, which status codes the failures map to, whether authentication
+is required — and must not name tables, columns, SQL fragments, or where the transaction boundary
+sits; those belong to the layer that owns them (see
+[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation and
+[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail). A handler method is a method on the unexported `server`, so `revive` does not require a doc
+comment on it: when the generated `ServerInterface` already carries the OpenAPI summary and there is
+no HTTP-level detail worth adding, omit it rather than restating.
 
 ## Test Strategy
 

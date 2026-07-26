@@ -5,8 +5,8 @@ English | [日本語](README.ja.md)
 ## Role in Onion Architecture
 
 - A **one-shot GC entry point** (Controller layer / CLI driving adapter): another entry point into the Usecase layer, not a new architectural layer.
-- It is the **prune half** of the [transactional outbox](../../../../docs/design/outbox.md) subsystem. Once a row has been delivered it is marked `published`; this job batch-deletes `published` rows older than the retention window so the outbox table does not grow without bound.
-- Distinct from the two other outbox asynchronous halves: it is **not** the relay poll-loop (that is the resident `Engine` in `internal/controller/outbox`) and **not** dead-row recovery (that is `ReplayUsecase`). This job only prunes `published` rows.
+- It is the **prune half** of the [transactional outbox](../../../../docs/design/outbox.md) subsystem. Once an entry has been delivered it is marked `published`; this job batch-deletes `published` entries older than the retention window so the outbox does not grow without bound.
+- Distinct from the two other outbox asynchronous halves: it is **not** the relay poll-loop (that is the resident `Engine` in `internal/controller/outbox`) and **not** dead-entry recovery (that is `ReplayUsecase`). This job only prunes `published` entries.
 - An external scheduler (k8s CronJob / cron) runs it as a **cron, not a daemon** — a single `cmd job outbox-gc` invocation sweeps and exits.
 - The job owns only **args parsing, span start/end, and result logging**; the sweep business is fully delegated to `outbox.GCUsecase`. It never touches the store or transactions directly.
 
@@ -21,7 +21,7 @@ English | [日本語](README.ja.md)
 
 | Dependency | Purpose |
 | --- | --- |
-| `outbox.GCUsecase` | `SweepPublished(ctx, batchSize) (int64, error)` — deletes `published` rows older than retention in batches of `batchSize` and returns the total deleted count |
+| `outbox.GCUsecase` | `SweepPublished(ctx, batchSize) (int64, error)` — deletes `published` entries older than retention in batches of `batchSize` and returns the total deleted count |
 | `logging.Logger` | structured result log |
 | `observability.TracerFactory` | Controller-layer tracer via `tf.Controller()` |
 
@@ -46,5 +46,5 @@ Only `--batch-size=N` is accepted:
 
 ## Notes
 
-- Idempotent by design: re-running only deletes already-eligible `published` rows, so retries are safe.
-- The retention window is the usecase's concern; this job passes only the batch size. For the relay loop, retention, and dead-row replay, see the [design reference](../../../../docs/design/outbox.md).
+- Idempotent by design: re-running only deletes already-eligible `published` entries, so retries are safe.
+- The retention window is the usecase's concern; this job passes only the batch size. For the relay loop, retention, and dead-entry replay, see the [design reference](../../../../docs/design/outbox.md).
