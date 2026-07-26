@@ -100,6 +100,17 @@ Infrastructure 層では以下を行ってはいけません。
 - context を必ず伝搬する
 - 外部エラーは必ず正規化する
 
+### doc コメントに技術的詳細を書いてよい
+
+技術的詳細の隠蔽（*設計原則まとめ § 1*）が意味するのは、外側の層がそれを**見ない**ことであって、この層が
+それを**書き残さない**ことではない。Repository / QueryService / CommandService の doc コメントは SQL を
+保守する人間が読むので、保証を担っている仕組みを名指ししてよい — 取得するロック（`FOR UPDATE OF p`）、
+所有権を担保する述語、ページネーションを安定させる keyset の順序、N+1 を避ける固定クエリ数など。
+
+境界は方向性を持つ — この詳細は**ここに留める**。Usecase や Domain の doc コメントがこれを繰り返していれば
+それは層漏れである。[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
+implementation を参照。
+
 ## ディレクトリ構成
 
 ```mermaid

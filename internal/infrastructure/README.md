@@ -100,6 +100,18 @@ The following must not be done in the Infrastructure layer.
 - Always propagate context
 - Always normalize external errors
 
+### Doc comments may name technical detail
+
+Encapsulating technical detail (see *Design Principles Summary § 1*) means the outer layers must not
+**see** it — not that this layer must not **document** it. A Repository / QueryService /
+CommandService doc comment is read by whoever maintains the SQL, so it should name the mechanics that
+carry a guarantee: the lock it takes (`FOR UPDATE OF p`), the predicate that enforces ownership, the
+keyset ordering that makes pagination stable, the fixed query count that avoids N+1.
+
+The boundary is directional — this detail stays **here**. A Usecase or Domain doc comment that
+repeats it has leaked the layer; see
+[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation.
+
 ## Directory Structure
 
 ```mermaid

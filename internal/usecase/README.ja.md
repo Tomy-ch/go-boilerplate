@@ -443,6 +443,35 @@ flowchart TB
 - インターフェイスは`Usecase`（例：`user.Usecase`）で統一。
 - インスタンスの生成関数名は `New` で統一し、[di/module/usecase.go](../di/module/usecase.go) で登録する。
 
+### doc コメント：インターフェイス側と実装側
+
+本リポジトリではインターフェイスとその実装が同一パッケージに同居する（`Usecase` と非 export の
+`usecase`）ため、双方が doc コメントを持つ。両者は**読み手が異なる**ので、互いの複製にしてはならない。
+
+- **インターフェイス側 doc ＝ 呼出側契約**（`docs/rules.md` § Comment Rules に準拠）。記述は
+  **アプリケーション語彙**に留めること。Repository / QueryService / Boundary の名指しは可（Usecase が正当に
+  所有する内向きの抽象のため）だが、**インフラ語彙は層を漏らす**ため禁止 — SQL の断片
+  （`SELECT … FOR UPDATE`）、テーブル名、カラム名、keyset の仕組みなど。それらは既にそう書いてある
+  Infrastructure 側の doc コメントの担当である。
+- **実装側 doc ＝ 次にここを触る実装者向け。** アプリケーション語彙のまま、契約より**一段具体**に踏み込ん
+  でよい。どの協力者が保証を担っているか、なぜトランザクション境界がそこにあるか、何が失敗ではなく
+  degrade するか、なぜその競合はリトライで解消しないか、など。`product/product_update_usecase.go` の
+  `UpdateProduct` が参照実装。
+- **インターフェイス側 doc の逐語複製は書かない。** 複製は何も足さず、2 箇所で腐る。足す価値のある具体が
+  無いなら**実装側 doc は省略してよい** — 実装型は非 export のため `revive` の `exported` ルールの対象外。
+
+同じアプリケーション語彙の規則は、**この層が所有する port インターフェイス** — Boundary / CommandService /
+QueryService — にも適用される。port は外部との接ぎ目であり、だからこそ技術中立に記述しなければならない。
+契約すべきは*保証*であって、現時点でそれを実現している機構ではない。`LockPurchase` は悲観ロックを取ること、
+そのロックが何を直列化するかを述べる（呼出側はその両方に依存する）が、そのロックが `SELECT … FOR UPDATE`
+であることは述べない。`QueryService` は所有権を自身の絞り込みで担保すると述べ、SQL の `WHERE` 述語とは
+書かない。機構は Infrastructure 実装側の doc コメントの担当であり、そちらでは名指ししてよい
+（[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail を参照）。
+
+コメントの内容基準そのもの（契約 + 非自明な Why、How のナレーション / 経緯 / 言い換えは書かない）は
+`docs/rules.md` § Comment Rules にある。本節は**どの doc コメントが何を担うか**だけを定める。
+
 ### ビジネスロジックを実装しない？ → 誤解を避けて明確化
 
 - “ドメインロジック”は Domain 層に置く（エンティティ/VO/ドメインサービスのメソッド）。
