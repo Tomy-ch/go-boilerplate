@@ -172,3 +172,7 @@ powering this session (see the environment/system prompt) so triggering matches 
 - No eval artifacts committed (workspace under gitignored `tmp/`).
 - No hard-protected path touched; only `.claude/skills/**` modified.
 - The user has reviewed outputs (viewer or inline) and is satisfied, per the official loop.
+- For every new or materially changed skill that is not platform-only, invoke `sync-ai` after local
+  validation with this environment as the source. Pass the transfer contract to the receiving
+  environment's `manage-skill`. When this invocation is itself the receiving child operation, do
+  not invoke `sync-ai` again.
