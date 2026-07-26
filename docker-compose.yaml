@@ -7,6 +7,8 @@ services:
       context: .
       dockerfile: docker/server/Dockerfile
       target: tooling
+      secrets:
+        - github_token
     ports:
       # ホスト公開ポートは DB スロットプール（cmd/db-slot）が worktree 毎に割り当てる（既定 8080/2345/6060）。
       # 複数 worktree で同時に make serve するための分離。コンテナ内部は常に固定。
@@ -190,6 +192,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: go_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -205,6 +209,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: node_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -222,6 +228,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: python_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -231,6 +239,12 @@ services:
     entrypoint: ""
     profiles:
       - generate
+
+secrets:
+  # mise が GitHub Releases API を認証付きで引くためのトークン（ビルド時のみ利用し、イメージには残らない）。
+  # 値は make が解決して環境変数で渡す。空文字の場合はビルド側が未認証へフォールバックする。
+  github_token:
+    environment: GITHUB_TOKEN
 
 volumes:
   pg_data:
