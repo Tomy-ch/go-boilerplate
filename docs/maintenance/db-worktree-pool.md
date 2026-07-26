@@ -6,7 +6,7 @@ The mechanism that lets several git worktrees (and the main checkout) use a **si
 in parallel without colliding. Compose services are split into two layers:
 
 - **infra layer** — the services that can only run on fixed ports (`database` 5432 / `observability`
-  3000, 4317, 4318, 3200 / `garage` 3900, 3903). They live in the fixed compose project
+  3000, 4317, 4318, 3200 / `garage` 3900, 3902). They live in the fixed compose project
   `gobp-shared`, with **one instance for all checkouts**.
 - **app layer** — `api_server` / `mock_auth_server`, which every checkout needs for itself. They are
   split into a per-checkout compose project and started in parallel on shifted host ports.

@@ -186,6 +186,8 @@ S3-compatible object storage for uploaded assets (product images). The usecase d
 |OBJECT_STORAGE_USE_PATH_STYLE|Use path-style addressing (Garage / MinIO require true; AWS S3 uses false)|bool|true|`required`|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|Maximum accepted upload size in bytes|int|5242880|`required,notEmpty`. 5 MiB in the sample. Must stay below the global `SERVER_BODY_LIMIT_MB` (bytes, decimal) minus multipart overhead, otherwise the global body limit rejects first and this check never fires. Enforced at server startup by `config.ValidateUploadBodyLimit`|
 
+Delivery is separate from these variables: the API returns only the object key (`imagePath`) and never a full URL, so the frontend composes `<delivery origin>/<object key>`. There is therefore no delivery-origin variable on this side — the frontend owns it (`http://gobp-local.web.garage.localhost:3902` for `local`, the CDN domain in deploy environments). See [`docker/README.md`](../docker/README.md) for how the local delivery endpoint is opened for anonymous read.
+
 ## Notes
 
 - The Example column shows values appropriate for local development. Production values typically differ for any Secret / CIDR / Cookie-domain / origin entries.

@@ -142,7 +142,7 @@ Substrate-agnostic object-storage boundary. Usecase depends only on this port; t
 |Type / Function|Description|
 |---|---|
 |`Storage`|Save an object under its key via `Put(ctx, PutObject) (Path, error)`; failures return an `apperror` sentinel (e.g. `ErrUnavailable`)|
-|`PutObject`|Input DTO (`Key` / `Body` / `ContentType`); the caller assigns `Key` (e.g. `products/{uuid}.png`)|
+|`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `products/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
 |`Path`|The stored object path (key); the display URL is composed separately by the caller|
 
 ### outbox
