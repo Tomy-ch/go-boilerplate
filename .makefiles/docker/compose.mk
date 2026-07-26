@@ -1,7 +1,7 @@
 # docker compose のプロジェクト構成（infra 層 / app 層）
 #
 # 固定ポートでしか動けないサービス（database 5432 / observability 3000・4317・4318・3200 /
-# garage 3900・3903）は全 checkout で 1 インスタンスだけを共有し、INFRA_PROJECT に置く。
+# garage 3900・3902）は全 checkout で 1 インスタンスだけを共有し、INFRA_PROJECT に置く。
 # checkout 毎に必要な api_server / mock_auth_server だけを per-checkout のプロジェクトへ分離し、
 # docker-compose.attach.yaml で共有インフラへ host-gateway 経由で接続する。
 INFRA_PROJECT ?= $(if $(GOBP_DB_SHARED_PROJECT),$(GOBP_DB_SHARED_PROJECT),gobp-shared)
