@@ -114,7 +114,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0077](0077-coverage-hard-gate.ja.md) | 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける | accepted |
 | [0078](0078-ci-real-graph-boot-check.ja.md) | CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証） | accepted |
 | [0079](0079-generated-artifact-drift-gate.ja.md) | 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット | accepted |
-| [0080](0080-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン（到達可能性フィルタ付き govulncheck + スケジュール CodeQL SAST + シークレット + FS スキャン） | accepted |
+| [0080](0080-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン——報告とゲートを分離し、ハードニングされたランナー上で行う | accepted |
 | [0081](0081-sha-pinned-actions.ja.md) | GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する | accepted |
 | [0082](0082-rollback-integration-tests.ja.md) | インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する | accepted |
 | [0083](0083-multi-model-adversarial-review.ja.md) | ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する | accepted |

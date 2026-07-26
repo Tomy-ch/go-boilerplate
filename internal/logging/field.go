@@ -21,7 +21,6 @@ const (
 
 type fieldKey string
 
-// fieldKind は、フィールドの種類を表します。
 type fieldKind int
 
 // Field は、ログフィールドを表します。

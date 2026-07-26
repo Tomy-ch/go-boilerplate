@@ -4,6 +4,7 @@
 .PHONY: setup-replace-app-metadata ## node_tool_runnerでAPP_NAMEやOpenAPIタイトルの置換を実行
 .PHONY: setup-replace-repository-reference ## node_tool_runnerでリポジトリ参照の置換を実行
 .PHONY: setup-replace-license-copyright ## node_tool_runnerでLICENSEの著作権表示更新を実行
+.PHONY: setup-replace-codeowners ## node_tool_runnerでCODEOWNERSの所有者の一括置換を実行
 .PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
@@ -134,6 +135,15 @@ setup-replace-license-copyright:
 	@docker compose run --rm node_tool_runner node scripts/setup/replace-license-copyright.mjs \
 		--holder "$(COPYRIGHT_HOLDER)" \
 		$(if $(COPYRIGHT_YEAR),--year $(COPYRIGHT_YEAR),) \
+		$(SETUP_DRY_RUN_FLAG)
+
+setup-replace-codeowners:
+	@if [ -z "$(OWNERS)" ]; then \
+		echo "❌ OWNERS を指定してください。例: make setup-replace-codeowners OWNERS='@example-org/tech-leads'"; \
+		exit 1; \
+	fi
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-codeowners.mjs \
+		--owners "$(OWNERS)" \
 		$(SETUP_DRY_RUN_FLAG)
 
 # sample-api:begin

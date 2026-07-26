@@ -33,8 +33,8 @@ func splitFuncName(full string) (string, string) {
 // メソッド名のみを抽出します。
 // 例:
 //
-//	"github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser"
-//	  → "GetUser"
+//	"github.com/org/proj/foo/bar.(*Baz).Do"
+//	  → "Do"
 func ExtractFunctionName(full string) string {
 	_, fn := splitFuncName(full)
 	if fn == "" {
@@ -48,8 +48,8 @@ func ExtractFunctionName(full string) string {
 // レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。
 // 例:
 //
-//	"github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser" → "user"
-//	"github.com/org/proj/internal/usecase/user.UserUsecase.GetUser"    → "user"
+//	"github.com/org/proj/foo/bar.(*Baz).Do" → "bar"
+//	"github.com/org/proj/foo/bar.Baz.Do"    → "bar"
 func ExtractPackageName(full string) string {
 	lhs, fn := splitFuncName(full)
 	// 分割できない（"." が無い）入力は抽出不能として ExtractFunctionName と

@@ -36,7 +36,6 @@ type ProductImageView struct {
 	Path string
 }
 
-// UploadProductImage は、admin 認可のうえ画像を object storage へ格納し、格納先パスを返します。
 func (u *usecase) UploadProductImage(ctx context.Context, authn *auth.Authn, params UploadProductImageParams) (ProductImageView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

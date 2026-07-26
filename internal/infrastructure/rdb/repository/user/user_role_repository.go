@@ -27,7 +27,7 @@ func NewRoleRepository(
 	}
 }
 
-// FindRolesByUserID は、指定ユーザーに割り当てられた全ロールを取得します。
+// FindRolesByUserID は、指定ユーザーに割り当てられた全ロールを user_roles と roles の内部結合で取得します。
 func (r *roleRepository) FindRolesByUserID(ctx context.Context, userID uuid.UUID) (user.Roles, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

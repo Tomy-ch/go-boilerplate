@@ -24,6 +24,7 @@ scripts/
     ├── replace-app-metadata.mjs
     ├── replace-license-copyright.mjs
     ├── replace-repository-reference.mjs
+    ├── replace-codeowners.mjs
     ├── remove-sample-api.mjs  # サンプルAPI(user/product/order)を削除 <!-- sample-api:line -->
     └── lib/                   # setup スクリプト共通ユーティリティ
 ```
@@ -85,6 +86,7 @@ scripts/
 |`replace-app-metadata.mjs`|env ファイルと OpenAPI 仕様のアプリ名・説明を置換|
 |`replace-license-copyright.mjs`|LICENSE の著作権者名と年を置換|
 |`replace-repository-reference.mjs`|README と OpenAPI の GitHub リポジトリ参照を置換|
+|`replace-codeowners.mjs`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。|
 |`remove-sample-api.mjs`|サンプルAPI(`user`/`product`/`order`)を削除。`lib/sample-api.mjs` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
 
 すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。

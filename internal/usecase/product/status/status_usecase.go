@@ -42,7 +42,6 @@ func New(repo status.Repository, tf observability.TracerFactory) Usecase {
 	}
 }
 
-// ListStatuses は、全商品ステータスを sortKey 昇順で返します。
 func (u *usecase) ListStatuses(ctx context.Context) (StatusDTOs, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

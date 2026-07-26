@@ -21,8 +21,8 @@ type Category struct {
 	sortKey int
 }
 
-// New は、商品カテゴリエンティティの検証と生成を行います。code・sortKey は 1〜32767（正の SMALLINT）の
-// 整数である必要があります。id が nil の場合は ErrInvalidID、名前長・code 範囲・sortKey 範囲の違反の場合は
+// New は、商品カテゴリエンティティの検証と生成を行います。code・sortKey は 1〜32767 の整数である
+// 必要があります。id が nil の場合は ErrInvalidID、名前長・code 範囲・sortKey 範囲の違反の場合は
 // それぞれ ErrInvalidName / ErrInvalidCode / ErrInvalidSortKey を返します。
 func New(
 	id uuid.UUID,

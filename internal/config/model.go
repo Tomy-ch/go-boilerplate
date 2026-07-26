@@ -378,7 +378,7 @@ func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
 // NewSecureCookieConfig は、セキュアクッキーの設定を返します。
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
 
-// Secure は、Secure属性の強制設定を返します。
+// Secure は、Secure 属性の強制設定を返します。nil は「上書きしない」ことを意味します。
 func (s *SecureCookieConfig) Secure() *bool {
 	if s.secure == nil {
 		return nil
@@ -387,10 +387,10 @@ func (s *SecureCookieConfig) Secure() *bool {
 	return &v
 }
 
-// SameSite は、SameSite属性の強制設定を返します。
+// SameSite は、SameSite 属性の強制設定を返します。空文字列は「上書きしない」ことを意味します。
 func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
 
-// Domain は、Domain属性の強制設定を返します。
+// Domain は、Domain 属性の強制設定を返します。空文字列は「上書きしない」ことを意味します。
 func (s *SecureCookieConfig) Domain() string { return s.domain }
 
 // NewWorkerConfig は、worker engine の設定を返します。
@@ -504,4 +504,7 @@ func (o *ObjectStorageConfig) SecretAccessKey() string { return o.secretAccessKe
 func (o *ObjectStorageConfig) UsePathStyle() bool { return o.usePathStyle }
 
 // MaxUploadBytes は、アップロード可能な最大バイト数を返します。
+// ServerConfig.BodyLimitMB（マルチパートのオーバーヘッドを含む）を上回る値を設定すると、
+// グローバルな body limit が先に 413 を返すためこの上限は到達不能になります。
+// この関係は server グラフの起動時に ValidateUploadBodyLimit が検証します。
 func (o *ObjectStorageConfig) MaxUploadBytes() int64 { return o.maxUploadBytes }

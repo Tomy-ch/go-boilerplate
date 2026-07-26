@@ -12,8 +12,8 @@ type Repository interface {
 	// FindByActive は、ユーザーの情報を、ページング付きで取得します。
 	// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。
 	FindByActive(ctx context.Context, active *bool, limit, offset int32) (Users, error)
-	// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-	// after=nil の場合は先頭ページを返し、それ以外は after が表す境界より後ろ（より過去）の行を返します。
+	// FindFeed は、未削除ユーザーを作成日時の降順（同時刻は ID 降順）の安定順で keyset ページネーション取得します。
+	// after=nil の場合は先頭ページを返し、それ以外は after が表す境界より後ろ（より過去）を返します。
 	FindFeed(ctx context.Context, after *FeedCursor, limit int32) (Users, error)
 	// SearchByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得します。
 	// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。keywords が空の場合は全ユーザーを対象とします。

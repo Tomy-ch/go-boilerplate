@@ -115,3 +115,17 @@ func (mr *MockRepositoryMockRecorder) UpdatePaid(ctx, p any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePaid", reflect.TypeOf((*MockRepository)(nil).UpdatePaid), ctx, p)
 }
+
+// UpdateShipped mocks base method.
+func (m *MockRepository) UpdateShipped(ctx context.Context, p *purchase.Purchase) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShipped", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateShipped indicates an expected call of UpdateShipped.
+func (mr *MockRepositoryMockRecorder) UpdateShipped(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShipped", reflect.TypeOf((*MockRepository)(nil).UpdateShipped), ctx, p)
+}

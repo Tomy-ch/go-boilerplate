@@ -14,6 +14,9 @@ const httpClientMeterName = "go-boilerplate/httpclient"
 
 // HTTPClientMetrics は、外部 HTTP client の RED 計装（リクエスト数・エラー数・レイテンシ）に
 // retry 回数と breaker 状態 gauge を加えた計装一式です。
+//
+// downstream には registry で解決される固定の Downstream 名など低カーディナリティな識別子のみを
+// 渡します。生の URL やリクエスト固有の値を渡すとメトリクスのカーディナリティが際限なく増えます。
 type HTTPClientMetrics struct {
 	requests     metric.Int64Counter
 	errors       metric.Int64Counter

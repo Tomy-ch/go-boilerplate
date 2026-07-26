@@ -64,10 +64,10 @@ all:
 
 tool-runners-build:
 	@echo "🧰 ツールランナーをビルドします。"
-	@docker compose build go_tool_runner node_tool_runner python_tool_runner
+	@$(LOAD_GH_TOKEN); docker compose build go_tool_runner node_tool_runner python_tool_runner
 	@echo "✅ ツールランナーのビルドが完了しました。"
 
 tool-runners-build-clean:
 	@echo "🧹 ツールランナーをクリーンビルドします（--no-cache --pull）。"
-	@docker compose build --no-cache --pull go_tool_runner node_tool_runner python_tool_runner
+	@$(LOAD_GH_TOKEN); docker compose build --no-cache --pull go_tool_runner node_tool_runner python_tool_runner
 	@echo "✅ ツールランナーのクリーンビルドが完了しました。"

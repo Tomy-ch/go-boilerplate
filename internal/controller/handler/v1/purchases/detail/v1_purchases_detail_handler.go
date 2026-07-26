@@ -87,9 +87,9 @@ func toPurchaseGetDetailResponse(v purchaseuc.PurchaseGetDetailView) gen.Purchas
 	}
 }
 
-// toInt32 は、ドメイン DTO の int をレスポンスの int32 へ変換します。
-// 値は int32 の DB 列（quantity）由来のため範囲に収まります。
+// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
+// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
 func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は int32 の DB 列由来でありオーバーフローしません
+	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
 	return int32(v)
 }

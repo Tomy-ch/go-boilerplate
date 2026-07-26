@@ -1,7 +1,7 @@
 // Package retry は、失敗分類を消費する有限リトライの行動層です。
 //
 // classify → bounded attempts → backoff + full jitter → deadline-aware という
-// 共通ループを 1 度だけ実装し、tx リトライや外部 HTTP の retry が共有します。
+// 共通ループを 1 度だけ実装し、リトライ可能性の分類を持つ任意の呼び出し側が共有します。
 // バックオフの待機時間は呼び出し側が [Policy.Backoff]（attempt → 基本待機時間）で
 // 与え、本パッケージはそこへ full jitter（[Full]）を重畳します。乱数（math/rand/v2）
 // 依存を本パッケージ側へ閉じることで、待機時間算出を担う純粋な pkg/backoff の

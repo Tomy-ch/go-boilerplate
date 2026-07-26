@@ -1,7 +1,7 @@
 type: object
 description: |
   郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、
-  解決できた場合のみ prefecture_id を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
+  解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
 required:
   - prefectureId
   - prefectureName

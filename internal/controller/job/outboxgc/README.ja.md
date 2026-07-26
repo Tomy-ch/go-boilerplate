@@ -5,7 +5,7 @@
 ## オニオンアーキテクチャにおける役割
 
 - **ワンショットの GC エントリポイント**（Controller 層 / CLI driving adapter）。新しいアーキテクチャ層ではなく、Usecase 層への入口の一つです。
-- [transactional outbox](../../../../docs/design/outbox.md) サブシステムの **prune 側**です。行は配信完了すると `published` にマークされます。本ジョブは retention を超えた `published` 行をバッチ削除し、outbox テーブルの無制限な肥大化を防ぎます。
+- [transactional outbox](../../../../docs/design/outbox.md) サブシステムの **prune 側**です。エントリは配信完了すると `published` にマークされます。本ジョブは retention を超えた `published` のエントリをバッチ削除し、outbox の無制限な肥大化を防ぎます。
 - outbox の他の 2 つの非同期側とは別物です。relay のポーリングループ（`internal/controller/outbox` の常駐 `Engine`）でも、dead 行の復旧（`ReplayUsecase`）でもありません。本ジョブは `published` 行の刈り取りのみを行います。
 - 外部スケジューラ（k8s CronJob / cron）が **デーモンではなく cron として**起動します。`cmd job outbox-gc` の 1 回の実行で掃除して終了します。
 - ジョブが担うのは **args のパース・span の開始/終了・結果ログ**のみで、掃除の業務は `outbox.GCUsecase` に完全委譲します。store やトランザクションを直接触りません。
@@ -21,7 +21,7 @@
 
 | 依存 | 目的 |
 | --- | --- |
-| `outbox.GCUsecase` | `SweepPublished(ctx, batchSize) (int64, error)` — retention より古い `published` 行を `batchSize` 件ずつ削除し、合計削除件数を返す |
+| `outbox.GCUsecase` | `SweepPublished(ctx, batchSize) (int64, error)` — retention より古い `published` のエントリを `batchSize` 件ずつ削除し、合計削除件数を返す |
 | `logging.Logger` | 構造化された結果ログ |
 | `observability.TracerFactory` | `tf.Controller()` による Controller 層 tracer |
 
@@ -46,5 +46,5 @@
 
 ## 補足
 
-- 設計上べき等です。再実行しても対象の `published` 行を削除するだけなので、リトライは安全です。
-- retention の幅は usecase の関心事で、本ジョブはバッチサイズのみを渡します。relay ループ・retention・dead 行の replay については[設計リファレンス](../../../../docs/design/outbox.md)を参照してください。
+- 設計上べき等です。再実行しても対象の `published` のエントリを削除するだけなので、リトライは安全です。
+- retention の幅は usecase の関心事で、本ジョブはバッチサイズのみを渡します。relay ループ・retention・dead のエントリの replay については[設計リファレンス](../../../../docs/design/outbox.md)を参照してください。

@@ -4,12 +4,12 @@ get:
     - v1/products/categories
   summary: 商品カテゴリマスタ一覧の取得
   description: |
-    商品カテゴリマスタの全件を sort_key 昇順で返します。
+    商品カテゴリマスタの全件を sortKey（表示順）昇順で返します。
     認証不要の公開エンドポイントであり、ページネーションは行いません（全件を返します）。
   security: []
   responses:
     '200':
-      description: 商品カテゴリマスタの一覧（sort_key 昇順）
+      description: 商品カテゴリマスタの一覧（sortKey 昇順）
       content:
         application/json:
           schema:

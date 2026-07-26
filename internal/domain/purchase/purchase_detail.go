@@ -6,7 +6,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-// Detail は、購入 1 件の詳細読み取りモデルです。ステータス名は購入ステータスマスタとの結合で
+// Detail は、購入 1 件の詳細読み取りモデルです。ステータス名は購入ステータスマスタで
 // 解決済みで、書き込み集約 Purchase とは別型です（read 側・CQRS）。明細は購入明細（PurchaseDetail）の
 // スライスで、金額はすべて USD セント単位の整数、CanceledAt は未キャンセルなら nil です。
 type Detail struct {
@@ -16,7 +16,7 @@ type Detail struct {
 	Code string
 	// UserID は、購入したユーザーの ID です。
 	UserID uuid.UUID
-	// StatusID は、購入ステータス ID（購入ステータスマスタとの結合で解決済み）です。
+	// StatusID は、購入ステータス ID（購入ステータスマスタで解決済み）です。
 	StatusID uuid.UUID
 	// StatusName は、購入ステータスの名称（購入ステータスマスタで解決済み）です。
 	StatusName string
@@ -36,4 +36,6 @@ type Detail struct {
 	PaidAt *time.Time
 	// CanceledAt は、キャンセル日時です。未キャンセルの場合は nil です。
 	CanceledAt *time.Time
+	// ShippedAt は、発送日時です。未発送の場合は nil です。
+	ShippedAt *time.Time
 }

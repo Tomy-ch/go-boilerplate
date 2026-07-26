@@ -78,6 +78,8 @@ tags:
     description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
   - name: v1/purchases/detail/pay
     description: 購入の支払い（本人のみ・状態機械/不正遷移 409・擬似決済）。
+  - name: v1/purchases/detail/ship
+    description: 購入の発送（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -519,12 +521,12 @@ paths:
         - v1/products/statuses
       summary: 商品ステータスマスタ一覧の取得
       description: |
-        商品ステータスマスタの全件を sort_key（表示順）昇順で返します。
+        商品ステータスマスタの全件を sortKey（表示順）昇順で返します。
         認証不要の公開エンドポイントであり、ページネーションは行いません（全 10 件を返します）。
       security: []
       responses:
         '200':
-          description: 商品ステータスマスタの一覧（sort_key 昇順）
+          description: 商品ステータスマスタの一覧（sortKey 昇順）
           content:
             application/json:
               schema:
@@ -540,12 +542,12 @@ paths:
         - v1/products/categories
       summary: 商品カテゴリマスタ一覧の取得
       description: |
-        商品カテゴリマスタの全件を sort_key 昇順で返します。
+        商品カテゴリマスタの全件を sortKey（表示順）昇順で返します。
         認証不要の公開エンドポイントであり、ページネーションは行いません（全件を返します）。
       security: []
       responses:
         '200':
-          description: 商品カテゴリマスタの一覧（sort_key 昇順）
+          description: 商品カテゴリマスタの一覧（sortKey 昇順）
           content:
             application/json:
               schema:
@@ -705,8 +707,8 @@ paths:
       summary: 商品売上ランキングの取得
       description: |
         購入明細を集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
-        キャンセル済み（canceled_at が設定済み）の購入は集計から除外します。未払いの購入は集計に含みます。
-        period=30d の場合は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+        キャンセル済みの購入は集計から除外します。未払いの購入は集計に含みます。
+        period=30d の場合は注文日時が直近30日以内の購入のみを集計します。
         同一販売数量の商品は商品 ID の昇順で安定的に並びます。
       security: []
       parameters:
@@ -834,16 +836,16 @@ paths:
         - v1/addresses
       summary: 郵便番号から住所候補を補完します。
       description: |
-        郵便番号（postal_code）から住所候補（都道府県・市区町村・町域）を補完して返します。
+        郵便番号（postalCode）から住所候補（都道府県・市区町村・町域）を補完して返します。
         外部の郵便番号 lookup サービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
         登録画面（郵便番号入力→住所オートフィル）で利用するため認証不要で、外部 lookup 障害時は
-        503 ではなく `200 + 空 candidates + is_fallback: true` で degrade します（外部が落ちても登録を止めない）。
+        503 ではなく `200 + 空 candidates + isFallback: true` で degrade します（外部が落ちても登録を止めない）。
       security: []
       parameters:
         - $ref: '#/components/parameters/PostalCodeParam'
       responses:
         '200':
-          description: 住所候補（degrade 時は空 candidates + is_fallback:true）を返します。
+          description: '住所候補（degrade 時は空 candidates + isFallback: true）を返します。'
           content:
             application/json:
               schema:
@@ -1030,6 +1032,41 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/{purchaseId}/ship:
+    patch:
+      operationId: PatchPurchasesShip
+      tags:
+        - v1/purchases/detail/ship
+      summary: 購入の発送
+      description: |
+        購入を発送済みへ遷移させます。認証必須で、管理者（admin）のみ実行できます。
+        支払い済みからのみ遷移でき、status を「発送済み」へ更新し shippedAt をセットします。
+        未払い相当（未処理 / 受付中 / 確認中 / 処理中）・完了・キャンセル済み・配達済みの購入は 409（不正遷移）、
+        既に発送済みの購入も 409（二重発送）で拒否します。配送追跡（追跡番号 / 配送業者 / 追跡 URL）は扱いません。
+        購入者本人であっても管理者でなければ 403 で拒否します。金額はすべて USD セント単位の整数です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchaseIdParam'
+      responses:
+        '200':
+          description: 購入の発送に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseShipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
 components:
   parameters:
     PageParam:
@@ -1193,7 +1230,7 @@ components:
       name: period
       in: query
       description: |
-        集計対象期間。`all`（既定）は全期間、`30d` は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+        集計対象期間。`all`（既定）は全期間、`30d` は注文日時が直近30日以内の購入のみを集計します。
       required: false
       schema:
         type: string
@@ -1673,7 +1710,7 @@ components:
       type: object
       description: |
         郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、
-        解決できた場合のみ prefecture_id を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
+        解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
       required:
         - prefectureId
         - prefectureName
@@ -2286,12 +2323,12 @@ components:
         $ref: '#/components/schemas/PrefectureResponse'
     ProductsStatusesResponse:
       type: array
-      description: 商品ステータスマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
+      description: 商品ステータスマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductStatusResponse'
     ProductsCategoriesResponse:
       type: array
-      description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
+      description: 商品カテゴリマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
     ProductsPostRequest:
@@ -2520,7 +2557,7 @@ components:
       type: object
       description: |
         郵便番号 lookup による住所候補のレスポンスです。
-        外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `is_fallback: true` で degrade し、
+        外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `isFallback: true` で degrade し、
         登録フローを止めません（外部が落ちても縦一本のジャーニーを進めるためのフォールバック）。
       required:
         - candidates
@@ -2623,6 +2660,77 @@ components:
           format: date-time
           description: 支払日時
           example: '2026-07-25T00:00:00Z'
+    PurchaseShipResponse:
+      type: object
+      description: |
+        購入発送後の購入情報レスポンススキーマ。status は ID・名称を事前解決済みで、
+        別途の名称解決 API 呼び出しは不要です。shippedAt に発送日時が入ります。
+        金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
+        すべて USD セント単位の整数です。
+      required:
+        - id
+        - code
+        - userId
+        - status
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+        - shippedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列
+          items:
+            $ref: '#/components/schemas/PurchaseDetailResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        shippedAt:
+          type: string
+          format: date-time
+          description: 発送日時
+          example: '2026-07-26T00:00:00Z'
   responses:
     BadRequest400:
       description: リクエストが不正です。

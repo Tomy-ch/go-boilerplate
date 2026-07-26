@@ -4,16 +4,16 @@ get:
     - v1/addresses
   summary: 郵便番号から住所候補を補完します。
   description: |
-    郵便番号（postal_code）から住所候補（都道府県・市区町村・町域）を補完して返します。
+    郵便番号（postalCode）から住所候補（都道府県・市区町村・町域）を補完して返します。
     外部の郵便番号 lookup サービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
     登録画面（郵便番号入力→住所オートフィル）で利用するため認証不要で、外部 lookup 障害時は
-    503 ではなく `200 + 空 candidates + is_fallback: true` で degrade します（外部が落ちても登録を止めない）。
+    503 ではなく `200 + 空 candidates + isFallback: true` で degrade します（外部が落ちても登録を止めない）。
   security: []
   parameters:
     - $ref: '../../components/parameters/address/PostalCodeParam.yaml'
   responses:
     '200':
-      description: 住所候補（degrade 時は空 candidates + is_fallback:true）を返します。
+      description: '住所候補（degrade 時は空 candidates + isFallback: true）を返します。'
       content:
         application/json:
           schema:

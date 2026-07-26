@@ -123,7 +123,7 @@ do X") are tagged `setup-review`.
 | [0077](0077-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
 | [0078](0078-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
 | [0079](0079-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
-| [0080](0080-multi-layer-security-scanning.md) | Multi-layer security scanning (reachability-filtered govulncheck + scheduled CodeQL SAST + secret + fs scans) | accepted |
+| [0080](0080-multi-layer-security-scanning.md) | Multi-layer security scanning, splitting reporting from gating, on hardened runners | accepted |
 | [0081](0081-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
 | [0082](0082-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
 | [0083](0083-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |

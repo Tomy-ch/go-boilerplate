@@ -30,7 +30,8 @@ func New(
 	}
 }
 
-// FindByID は、ID から購入を明細込みで取得します。存在しない場合は NotFound を返します。
+// FindByID は、購入本体と明細の 2 クエリでロックを取らずに読み出し、集約として再構築します
+// （ロックを取る LockByID との対）。存在しない場合は NotFound を返します。
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -140,6 +141,25 @@ func (r *repository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error
 	return nil
 }
 
+// UpdateShipped は、購入の状態更新（status_id / shipped_at）を渡された tx 内で実行します。
+// 配送追跡を扱わないため単一集約（purchases）のみを更新し、在庫操作は伴いません。
+// status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します。遷移可否のガードは持たず、
+// 対象行が呼び出し側で FOR UPDATE 取得・検証済みであること（ドメインが遷移の source of truth）に依存します。
+func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	if err := db.UpdatePurchaseShipped(ctx, &gen.UpdatePurchaseShippedParams{
+		StatusCode: toInt16(p.StatusCode()),
+		ShippedAt:  p.ShippedAt(),
+		ID:         p.ID(),
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	return nil
+}
+
 // FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 // 購入ステータスマスタとの結合で解決します。存在しない場合は NotFound を返します。
 func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchase.Detail, error) {
@@ -177,6 +197,7 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 		OrderedAt:      row.OrderedAt,
 		PaidAt:         row.PaidAt,
 		CanceledAt:     row.CanceledAt,
+		ShippedAt:      row.ShippedAt,
 	}, nil
 }
 

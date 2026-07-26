@@ -163,9 +163,10 @@ func New(
 }
 
 // Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。
-// statusCode は購入ステータスマスタとの結合で解決した現在状態、paidAt / canceledAt / shippedAt / deliveredAt は
+// statusCode は購入ステータスマスタで解決した現在状態、paidAt / canceledAt / shippedAt / deliveredAt は
 // 各イベントの発生日時（未発生は nil）です。ID / code / userID / statusID が nil、statusCode が不正、
-// 金額が負、明細が空の場合は検証エラーを返します。
+// 金額が負、明細が空の場合は検証エラーを返します。statusCode と timestamps の組み合わせが状態遷移では
+// 到達し得ないもの（発送後のキャンセル、発送を伴わない配達 等）の場合も ErrInvalidStatusID を返します。
 func Reconstruct(
 	id uuid.UUID,
 	code string,
@@ -198,7 +199,7 @@ func Reconstruct(
 	if statusCode < StatusCodeUnprocessed {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "statusCode is required")
 	}
-	// キャンセル status と canceledAt は同時セットの不変条件を持つ。片方のみの矛盾した永続化行を弾く。
+	// キャンセル status と canceledAt は同時セットの不変条件を持つ。片方のみの矛盾した永続化状態を弾く。
 	if (statusCode == StatusCodeCanceled) != (canceledAt != nil) {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "canceled status and canceledAt must be consistent")
 	}
@@ -206,6 +207,25 @@ func Reconstruct(
 	// 等の遷移で status が変わっても保持されるため、キャンセルのような双条件にはしない。
 	if statusCode == StatusCodePaid && paidAt == nil {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "paid status requires paidAt")
+	}
+	// 発送済み status は shippedAt を必須とする（一方向）。shippedAt は発送後に残り続け、以降の
+	// 配達済み等の遷移で status が変わっても保持されるため、キャンセルのような双条件にはしない。
+	if statusCode == StatusCodeShipped && shippedAt == nil {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "shipped status requires shippedAt")
+	}
+	// キャンセルは発送前にしか行えない（Cancel が shippedAt / deliveredAt を拒否する）ため、キャンセル
+	// status と発送・配達の記録は同居しない。支払い後のキャンセルは正常なので paidAt は対象外。
+	if statusCode == StatusCodeCanceled && (shippedAt != nil || deliveredAt != nil) {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "canceled status must not have shippedAt or deliveredAt")
+	}
+	// 発送済みへは支払い済みからのみ遷移し、支払い済みは paidAt を必須とするため、paidAt を欠く発送済みは
+	// 到達不能な状態である。
+	if statusCode == StatusCodeShipped && paidAt == nil {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "shipped status requires paidAt")
+	}
+	// 配達は発送済みからのみ到達するため、shippedAt を欠く deliveredAt は到達不能な状態である。
+	if deliveredAt != nil && shippedAt == nil {
+		return nil, xerrors.Wrap(ErrInvalidStatusID, "deliveredAt requires shippedAt")
 	}
 	if subtotalAmount < 0 || taxAmount < 0 || shippingFee < 0 || totalAmount < 0 {
 		return nil, xerrors.Wrap(ErrInvalidAmount, "amounts must not be negative")
@@ -270,7 +290,7 @@ func (p *Purchase) UserID() uuid.UUID { return p.userID }
 func (p *Purchase) StatusID() uuid.UUID { return p.statusID }
 
 // StatusCode は、購入ステータスのコードを返します。New で生成した集約は未処理（1）、再構築時は
-// 購入ステータスマスタとの結合で解決した現在状態です。Cancel 後はキャンセル（6）になります。
+// 購入ステータスマスタで解決した現在状態です。Cancel 後はキャンセル（6）になります。
 func (p *Purchase) StatusCode() int { return p.statusCode }
 
 // SubtotalAmount は、小計（USD セント）を返します。
@@ -293,6 +313,9 @@ func (p *Purchase) PaidAt() *time.Time { return ptr.Copy(p.paidAt) }
 
 // CanceledAt は、キャンセル日時を返します。未キャンセルの場合は nil です。
 func (p *Purchase) CanceledAt() *time.Time { return ptr.Copy(p.canceledAt) }
+
+// ShippedAt は、発送日時を返します。未発送の場合は nil です。
+func (p *Purchase) ShippedAt() *time.Time { return ptr.Copy(p.shippedAt) }
 
 // Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /
 // 支払い済み）からのみ遷移でき、statusCode をキャンセル（6）へ、canceledAt を now へ同時に更新します。
@@ -326,6 +349,23 @@ func (p *Purchase) Pay(now time.Time) error {
 	}
 	p.statusCode = StatusCodePaid
 	p.paidAt = &now
+	return nil
+}
+
+// Ship は、購入を発送済み状態へ遷移させます。支払い済みからのみ遷移でき、statusCode を発送済み（8）へ、
+// shippedAt を now へ同時に更新します。既に発送済みなら ErrAlreadyShipped、それ以外の状態
+// （未払い相当・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
+// 配送追跡（追跡番号 / 配送業者）は扱わず、shippedAt とステータスの記録のみを担います。
+// now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
+func (p *Purchase) Ship(now time.Time) error {
+	if p.statusCode == StatusCodeShipped {
+		return ErrAlreadyShipped
+	}
+	if p.statusCode != StatusCodePaid {
+		return ErrShipNotAllowed
+	}
+	p.statusCode = StatusCodeShipped
+	p.shippedAt = &now
 	return nil
 }
 

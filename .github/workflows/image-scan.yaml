@@ -187,9 +187,9 @@ jobs:
           title: '## Trivy Image Scan (table)'
           details-summary: 'Image Scan Results'
 
-      # PR ではプロモーションをブロックし、週次 schedule では既にマージ済みイメージに
-      # 新規公開された fixable な CRITICAL/HIGH を赤い定期実行として可視化する。
-      # workflow_dispatch は探索的実行なのでゲートしない。
+      # On PRs this blocks promotion; on the weekly schedule it surfaces newly published fixable
+      # CRITICAL/HIGH findings on already-merged images as a red scheduled run.
+      # workflow_dispatch is exploratory, so it is not gated.
       - name: Trivy image scan (gate - fixable CRITICAL/HIGH)
         if: ${{ github.event_name != 'workflow_dispatch' }}
         env:
