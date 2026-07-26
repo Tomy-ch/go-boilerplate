@@ -1,0 +1,58 @@
+name: Dependency Review
+
+# Blocks a PR before merge when it introduces a dependency with a known
+# vulnerability. Scoped to the files that can change the dependency graph
+# (Go modules + vendored sources + the npm lockfiles of the tooling images),
+# which matches the ecosystems declared in .github/dependabot.yml.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/dependency-review.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    # The action diffs the base ref against the head ref, so it only has the
+    # required context on a pull request. Skip it on workflow_dispatch instead
+    # of letting the run fail.
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      # Required by comment-summary-in-pr.
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # License policy is intentionally left at the action default: this
+      # repository declares no allow / deny license list, so no allow-licenses /
+      # deny-licenses input is set here.
+      - name: Dependency Review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # Trivy (trivy-fs) and govulncheck already report MEDIUM and above.
+          # This workflow is a merge blocker, so it is narrowed to HIGH and
+          # above to keep the block signal actionable.
+          fail-on-severity: high
+          comment-summary-in-pr: always
