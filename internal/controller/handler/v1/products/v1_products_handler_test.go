@@ -45,6 +45,7 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		CategoryName:          "電子機器",
 		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
 		ImagePath:             ptr.To("products/" + salt + ".png"),
+		Version:               3,
 	}
 }
 
@@ -75,6 +76,8 @@ func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		},
 		PublishedAt: dto.PublishedAt,
 		ImagePath:   dto.ImagePath,
+		//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
+		Version: int32(dto.Version),
 	}
 }
 

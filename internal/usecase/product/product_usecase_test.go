@@ -444,6 +444,7 @@ func Test_usecase_GetProduct(t *testing.T) {
 			assert.Equal(t, p.Category().ID(), actual.CategoryID)
 			assert.Equal(t, p.Category().Name(), actual.CategoryName)
 			assert.Equal(t, p.PublishedAt(), actual.PublishedAt)
+			assert.Equal(t, p.Version(), actual.Version)
 		})
 	})
 

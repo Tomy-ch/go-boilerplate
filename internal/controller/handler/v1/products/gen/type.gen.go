@@ -149,6 +149,9 @@ type ProductResponse struct {
 
 	// StockWarningThreshold 在庫警告閾値。未設定の場合は null です。
 	StockWarningThreshold *int32 `json:"stockWarningThreshold"`
+
+	// Version 楽観ロック用のバージョン。更新のたびに 1 つ進みます。 部分更新（PATCH /v1/products/{productId}）へそのまま渡すことで、 読み込み後に他者が更新していた場合の上書き（lost update）を 409 として検出できます。
+	Version int32 `json:"version"`
 }
 
 // ProductStatusRef 商品に紐づくステータスです。

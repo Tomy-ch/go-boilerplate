@@ -135,6 +135,8 @@ type Products struct {
 	PublishedAt *time.Time
 	// 画像パス
 	ImagePath *string
+	// 楽観ロックバージョン
+	LockVersion int32
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時

@@ -1,0 +1,48 @@
+---
+name: commit
+description: Analyze working-tree changes, propose coherent Japanese Git commits, and create them after explicit approval. Use when the user asks to commit current changes or split a mixed change set. Enforce this repository's protected-branch, explicit-staging, commit-prefix, verification, and push-confirmation rules. Support `--dry-run` and `--scope=staged|all`.
+---
+
+# Scoped Git Commit
+
+Parse `--dry-run` and `--scope=staged|all` (`all` is default). Never commit without first presenting the proposed grouping and receiving explicit approval.
+
+## Preflight
+
+1. Run `make fix` once. Stop if it fails; include its resulting changes in the candidate set.
+2. Inspect branch, `HEAD`, staged and unstaged status, diff summaries, and merge/cherry-pick/rebase state.
+3. Stop without writing if the branch is `production`, `develop`, `staging`, or `release/*`; if there is no in-scope change; or if a Git operation is in progress.
+4. When available, inspect the current branch's PR. If it is merged, recommend a fresh feature branch from that PR's base before committing. Do not switch branches without approval. If the PR is open, retain the branch and remember that pushing needs confirmation.
+5. Read `.lefthook.yaml` when present so the proposal can name the checks that will be run once after all split commits.
+
+## Inspect and propose
+
+Read both staged and unstaged diffs, unless `--scope=staged` was supplied. Treat generated output and `vendor/` as riders: they belong with the source change that caused them.
+
+Use exactly one prefix per commit:
+
+`Feat:`, `Fix:`, `Refactor:`, `Perf:`, `Docs:`, `Test:`, `Build:`, `CI:`, `Chore:`, `Style:`, or `Revert:`.
+
+Create one commit per semantic change. Tests can accompany the implementation they validate; documentation is otherwise independent; unrelated formatting is a separate `Style:` commit. Propose the result in Japanese, with every file and a short rationale. State that each commit uses `--no-verify`, then that the complete pre-commit gate runs once after the final commit.
+
+For `--dry-run`, provide the proposal only.
+
+## Create approved commits
+
+For each approved group:
+
+1. Stage only the listed paths. Never use `git add .`, `git add -A`, or `git commit -a`.
+2. Commit with `git commit --no-verify` and a Japanese message headed `<Prefix>: <title>`. Include the required `Co-Authored-By` footer for Codex. If the change applies a documented review finding, add its `Refs:` footer.
+3. Do not amend, force-push, disable signing, or use destructive reset commands.
+
+If one group fails, stop immediately. Report completed commits and the error. Offer the user a recoverable `git reset --mixed <original-head>`; never run it without approval and never use `--hard`.
+
+## Verify and hand off
+
+After every commit succeeds, run `lefthook run pre-commit --force` when available, then `make fix`.
+
+- If verification fails, report the failed command and stop; do not roll back commits.
+- If the final formatter changes files, show the diff and ask whether to create a follow-up commit.
+- Never push automatically. On an existing PR branch, ask: 「変更はローカルにコミット済みです。これらの変更をプルリクエストにプッシュしますか？」
+
+Report created commits, verification outcome, remaining changes, and whether a push decision is needed.

@@ -1,0 +1,8 @@
+name = "arch-auditor-pkg"
+description = "pkg の再利用可能性と framework 非依存性を読み取り専用で監査する"
+developer_instructions = """
+対象は `pkg/**/*.go`（生成コード・sqlc・mock・テストを除く）に限定する。
+`AGENTS.md`、`pkg/README.md`、最も近い subpackage README を毎回読む。
+`internal/` への依存、framework 依存、feature 固有の業務ロジックを確認する。subpackage README に明示された例外は尊重する。
+file:line と根拠を添え、violation と suggestion を日本語で返す。変更・lint 再実行はしない。
+"""

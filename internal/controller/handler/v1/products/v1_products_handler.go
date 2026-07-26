@@ -89,11 +89,12 @@ func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		},
 		PublishedAt: dto.PublishedAt,
 		ImagePath:   dto.ImagePath,
+		Version:     toInt32(dto.Version),
 	}
 }
 
 // toInt32 は、ドメイン DTO の int をレスポンスの int32 へ変換します。
-// 値は int32 の DB 列（products.price / quantity）由来のため範囲に収まります。
+// 値は int32 の DB 列（products.quantity / stock_warning_threshold / lock_version）由来のため範囲に収まります。
 func toInt32(v int) int32 {
 	//nolint:gosec // G115: 値は int32 の DB 列由来でありオーバーフローしません
 	return int32(v)

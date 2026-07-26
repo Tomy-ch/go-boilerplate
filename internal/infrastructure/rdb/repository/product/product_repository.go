@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type repository struct {
@@ -95,6 +96,20 @@ func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*prod
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
+// FindByID は、ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
+func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	row, err := db.GetProductByID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
+}
+
 // Create は、商品を新規登録します。
 func (r *repository) Create(ctx context.Context, p *product.Product) error {
 	ctx, endSpan := r.tracer.Start(ctx)
@@ -117,6 +132,40 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 		return pgerror.NormalizeError(err)
 	}
 	return nil
+}
+
+// Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
+func (r *repository) Update(ctx context.Context, p *product.Product) (int, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	lockVersion, err := db.UpdateProduct(ctx, &gen.UpdateProductParams{
+		Name:                  p.Name(),
+		Description:           p.Description(),
+		Price:                 p.Price().Decimal(),
+		Quantity:              int32(p.Quantity()), //nolint:gosec // G115: quantity は int32 の DB 列に収まる範囲で検証済み
+		StockWarningThreshold: intPtrToInt32Ptr(p.StockWarningThreshold()),
+		StatusID:              p.Status().ID(),
+		CategoryID:            p.Category().ID(),
+		PublishedAt:           p.PublishedAt(),
+		ImagePath:             p.ImagePath(),
+		ID:                    p.ID(),
+		//nolint:gosec // G115: version は int32 の DB 列由来であり範囲に収まります
+		CurrentVersion: int32(p.Version()),
+	})
+	if err != nil {
+		// 対象行なしは、読み込み後に他トランザクションが更新しバージョンが進んだことを意味します
+		// （存在は同一トランザクション内の読み込みで確認済みです）。
+		// tx.Manager が透過リトライする一時障害（serialization_failure）と異なり同じ内容の再送では
+		// 解消しないため、リトライ対象と混同されないよう衝突として返します。
+		if pgerror.IsNoRows(err) {
+			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
+		}
+		return 0, pgerror.NormalizeError(err)
+	}
+
+	return int(lockVersion), nil
 }
 
 // intPtrToInt32Ptr は、ドメインの *int を sqlc の *int32 へ変換します（nil はそのまま nil）。
@@ -145,7 +194,7 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
 
-	entity, err := product.New(
+	entity, err := product.Reconstruct(
 		row.p.ID,
 		row.p.Name,
 		row.p.Description,
@@ -156,6 +205,7 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		category,
 		row.p.PublishedAt,
 		row.p.ImagePath,
+		int(row.p.LockVersion),
 	)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)

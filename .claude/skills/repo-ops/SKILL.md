@@ -1,100 +1,403 @@
 ---
 name: repo-ops
 description: >-
-  Operational runbook for this repository's recurring, easy-to-trip-on gotchas around generated artifacts, the dockerized tool runners, and the DB. Use when a generated file drifts (`schema.gen.sql`, mocks, portal guides), when `git` suddenly refuses to touch a generated directory because it became root-owned, when a regeneration step fails because the DB container is down or carries stale tables, when building a per-environment image, or when the commit-msg hook errors. The repo runs most code generation inside Docker tool-runner containers as root, which is the root cause of several of these. Read-only knowledge skill — it tells you the exact command to run; it does not silently mutate state. Triggers: "schema.gen.sql が diff る / generate-db-check が落ちる", "git が docs/portal や mock を permission denied", "gen-query が DB に繋がらず落ちる", "per-env イメージのビルド", "commit-msg / commitlint が not found".
+  Operational runbook for this repository's recurring, easy-to-trip-on gotchas around the two-layer docker compose setup, the shared Postgres + worktree slot ring, generated artifacts, the dockerized tool runners, and the local/CI gates (lefthook hooks + GitHub Actions). Use when a bare `docker compose` command finds nothing or tries to start a second Postgres on 5432, when a generated file drifts (`schema.gen.sql`, sqlc models, mocks, portal guides), when `git` refuses a generated directory because it became root-owned, when `make gen-query` fails or two checkouts fight over schema generation, when tests hit the wrong database after acquiring a DB slot, when a hook or CI check fails for something you did not touch (gitleaks fingerprints, sample-removal manifest, pin lockfiles, migration numbering, sync-versions, golden JWKS), when `env/.env` is unexpectedly dirty, when local golangci-lint disagrees with CI, when building a per-environment image, or when you need to locate the authoritative document for a question and a repo-wide grep drowns in Japanese mirrors and generated copies. Most of it follows from three facts: codegen runs as root inside Docker tool-runner containers, infra is one shared compose project (`gobp-shared`) for every checkout, and lint/format/test run on the host via mise. Read-only knowledge skill — it names the exact command; it does not silently mutate state. Triggers: "schema.gen.sql が diff る / gen-*-artifacts-check が落ちる", "docker compose ps に何も出ない / 5432 が既に使われている", "git が docs/portal や mock を permission denied", "gen-query が DB に繋がらず落ちる", "slot 取得後にテストが別 DB を見る", "secret-scan / sample-removal-check / pin-images-check が落ちる", "commitlint / orval が not found", "per-env イメージのビルド", "どのドキュメントが正本か分からない / grep が対訳・生成物に埋もれる".
 ---
 
 # Repo Ops Runbook
 
-Concrete recovery + procedure steps for the operational gotchas that recur in this repo. Most stem from one fact: **`make gen-*` runs inside Docker tool-runner containers (`node_tool_runner` / `go_tool_runner` / `python_tool_runner`) as root**, and the DB-backed generators dump the **live** database. Knowing that explains every item below.
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
+(not loaded as a skill; for human reference only).
 
-This skill is a lookup table, not a workflow. Find the symptom, run the fix. When a step is destructive (drops DB data, `chown`s a tree) say so to the user first per `CLAUDE.md`.
+Concrete recovery steps for the operational gotchas that recur in this repo. This is a lookup
+table, not a workflow: find the symptom, run the fix. When a step is destructive (drops DB data,
+`chown`s a tree, stops containers other checkouts rely on) say so to the user first per `CLAUDE.md`.
 
-## 1. `schema.gen.sql` drift → `generate-db-check` / `gen-*-artifacts-check` fails
+Three facts explain almost everything below:
 
-`database/gen/schema.gen.sql` is produced by `make dump-schema`, which `pg_dump`s the **running** DB. Any change to DB-init SQL (extensions in `docker/database/*.sql`) or to `database/migrations/**` changes the dump, so the committed `schema.gen.sql` drifts and the CI check (`dump-schema` → `git diff`) fails.
+1. **Codegen runs as root inside Docker tool-runner containers** (`go_tool_runner` /
+   `node_tool_runner` / `python_tool_runner`) over the `.:/app` bind mount → generated files come
+   back root-owned, and the tools live in the image, not on your host.
+2. **Infra is a single shared compose project.** `database` / `observability` / `garage` run once
+   for *every* checkout under the fixed project `gobp-shared`; only `api_server` /
+   `mock_auth_server` are per-checkout. Worktrees are separated by *database name*
+   (`wt<N>_local` / `wt<N>_test`), not by port. Canonical design:
+   `docs/maintenance/db-worktree-pool.md`, topology: `docs/maintenance/local-environment.md`.
+3. **`make lint` / `fix` / `test` run on the host** via mise — the exception to the "everything is
+   dockerized" rule, and the source of host-vs-CI mismatches.
 
-Fix: regenerate and commit it.
+## Symptom index
+
+| Symptom | Section |
+| --- | --- |
+| `docker compose ps` empty / "port 5432 already allocated" / service not found | §1 |
+| `schema.gen.sql` or sqlc output drifts, `gen-db-artifacts-check` fails | §2 |
+| `make gen-query` fails to reach the DB, or two checkouts clobber each other | §3 |
+| `git add` / `restore` → permission denied on a generated dir | §4 |
+| Tests / migrations hit the wrong database after `make slot-acquire` | §5 |
+| Integration tests fail right after switching branches | §5 |
+| pre-push `secret-scan` flags a secret you did not add | §6 |
+| `sample-removal-check` fails in CI | §7 |
+| `env/.env` is dirty and you did not edit it | §8 |
+| Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §9 |
+| `commitlint: not found`, `orval: not found`, stale tool version | §10 |
+| A hook fails for something outside your change | §11 |
+| `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §12 |
+| "Migration version gap / duplicate" from pre-commit | §13 |
+| S3 calls return 503 locally | §14 |
+| Golden JWKS drift, mock-auth OpenAPI out of date | §15 |
+| Building an image for a specific environment | §16 |
+| `sync-versions` drift in CI | §17 |
+| Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 |
+
+## 0. Finding the authoritative source
+
+Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output
+that lags the code, so a naive repo-wide search buries the one file that actually decides the answer.
+Of 927 tracked `*.md`, **409 are `*.ja.md` translations** and **72 are generated
+`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and
+`docs/db-schema/**` ~390.
+
+### Where the truth lives
+
+| To answer | Read | Looks authoritative but is not |
+| --- | --- | --- |
+| What a make target runs / which target does X | `.makefiles/**/*.mk`, index `.makefiles/README.md`, `make help` | `docs/portal/guides/make.md` — generated, lags the `.mk` |
+| Layer boundaries, generated-file / DTO / tx / comment rules | `docs/rules.md` | — |
+| System structure, layer responsibilities | `docs/architecture.md` | — |
+| How to carry out a change (API / DB / business logic) | `docs/development-flow.md` | — |
+| Test conventions | `docs/testing-conventions.md` + the layer README's *Test Strategy* | — |
+| Why something is designed this way | `docs/adr/` (107 records; log at `docs/adr/README.md`) | — |
+| How a subsystem works (rest / worker / job / outbox / idempotency / o11y / auth) | `docs/design/README.md` and its siblings | — |
+| Local topology, compose layering, hot reload | `docs/maintenance/local-environment.md` | — |
+| Worktree slot ring, shared DB | `docs/maintenance/db-worktree-pool.md` | — |
+| Per-package detail and design intent | the nearest `internal/**/README.md` / `pkg/**/README.md` (171 of them) | a skill body — skills follow READMEs, not the reverse |
+| An environment variable | `internal/config/envspec.go` + `model.go`, table in `env/README.md` | a value in `env/.env*` alone |
+| What a CI gate or hook actually checks | `.github/workflows/*.yaml`, `.lefthook.yaml` | — |
+| Tool / runtime versions | `mise.toml` (everything else is derived — §17) | `go.mod`, Dockerfiles, READMEs — all derived |
+| Generated artifacts, protected paths, scope | `AGENTS.md` | — |
+
+### Searching without the noise
 
 ```bash
-docker compose up -d database          # DB must be running
-make dump-schema                       # rewrites database/gen/schema.gen.sql from the live DB
-git add database/gen/schema.gen.sql
+rg "<pattern>" \
+  -g '!**/*.ja.md' -g '!docs/ja/**' -g '!docs/portal/**' \
+  -g '!docs/godoc/**' -g '!docs/db-schema/**' -g '!docs/openapi/**' -g '!docs/coverage/**'
 ```
 
-Rule of thumb: **any change under `docker/database/`, `database/migrations/`, or DB extensions requires regenerating `schema.gen.sql` and committing it in the same change.**
+Typical effect: `gen-query` 45 → 19 hits, `NormalizeError` 74 → 33. `rg` honours `.gitignore`, so
+`vendor/` and `node_modules/` are already excluded — but the generated `docs/` trees are *tracked*,
+so they need these explicit globs. Hitting a `*.ja.md` is still useful as a **locator** (it proves the
+topic is documented); read the English original beside it, per `AGENTS.md`'s rule never to read
+`*.ja.md`.
 
-## 2. `git` refuses a generated directory — it became root-owned
+### When sources disagree
 
-`make gen-portal-docs` (and other docker-root generators) write `docs/portal/{guides,docs.json}` as **root** because the container runs as root over the `.:/app` bind mount. Afterwards host `git add` / `git restore` fail with `permission denied`. The same happens to freshly-created mock directories from `make gen-go-code` (e.g. `pkg/fs/mock`, `pkg/exec/mock`).
+Follow `AGENTS.md`'s instruction priority: `AGENTS.md` → `docs/rules.md` → `docs/architecture.md` →
+user instruction. For design intent and implementation policy the order is **README > Code > SKILL**
+(the rule `back-prop` enforces): a skill that contradicts a README is the thing that is out of date.
+If code and its README disagree, that is drift worth surfacing — `back-prop` detects it.
 
-Fix: hand ownership back via a container (don't `sudo` unless you must):
+## 1. Compose project resolution — a bare `docker compose` targets the wrong project
+
+Compose derives its project name from the directory, so a bare `docker compose <cmd>` in this repo
+(or in a worktree) addresses an *empty* project — not the shared infra. `.makefiles/docker/compose.mk`
+exports `COMPOSE_PROJECT_NAME=gobp-shared`, so this only works when the command comes from `make`.
 
 ```bash
-# portal output
+docker compose ps                  # ← empty: project = <directory name>
+docker compose -p gobp-shared ps   # ← the actual shared infra
+```
+
+Consequences of getting it wrong: `docker compose up -d database` starts a **second** Postgres that
+collides on host port 5432; `docker compose exec database psql …` reports the service is not running;
+`docker compose run --rm go_tool_runner make db-migrate-ci-up` cannot resolve the `database` host
+because the one-off container joined a different network.
+
+Fix: drive infra through `make`, or set the project explicitly.
+
+```bash
+make infra-up                                    # start database / observability / garage (+ garage_init)
+make serve                                       # infra-up + this checkout's app layer
+make serve-stop                                  # stop only this checkout's app
+COMPOSE_PROJECT_NAME=gobp-shared docker compose exec -T database psql -U postgres -l
+```
+
+`make infra-down` stops the infra for **every** checkout and worktree — confirm before running it.
+
+## 2. Generated DB artifacts drift → `gen-db-artifacts-check` fails
+
+`database/gen/schema.gen.sql` and the sqlc output (`internal/infrastructure/rdb/sqlc/gen/*.gen.sql.go`,
+`database/gen/*.gen.sql`) are produced by `make gen-query`. Any change under `database/migrations/**`,
+`database/dml/**`, or `docker/database/**` changes them, so committing the source without the
+regenerated output fails the CI check (regenerate → `git diff`).
+
+```bash
+make infra-up
+make gen-query                     # dump-schema → merge-dml → sqlc generate → fmt
+git add database/gen internal/infrastructure/rdb/sqlc/gen
+```
+
+Rule of thumb: **a schema- or DML-affecting change and its regenerated artifacts belong in the same
+change.** If CI reports drift while the PR touches no SQL source, it is generator-side drift (sqlc
+version, stale artifacts on the base) — regenerate locally, or refresh the base and merge.
+
+## 3. `make gen-query` — needs infra up, and `gen_schema` is shared
+
+`dump-schema` no longer dumps your `local` database. It bootstraps a dedicated **`gen_schema`**
+database (`SCHEMA_GEN_DB` in `.makefiles/database/gen.mk`), drops its tables, migrates it up from
+*this branch's* migrations, and dumps that. So stale tables in your working database can no longer
+leak into generated code — but two consequences remain:
+
+- It still talks to the shared Postgres via `docker compose exec database`, so the infra must be up
+  (§1); otherwise it dies with a connection error.
+- **`gen_schema` is a single database name inside the one shared instance.** Two checkouts running
+  `make gen-query` at the same time rebuild the same database and corrupt each other's output. Run
+  schema generation in one checkout at a time. (This constraint currently lives only in the
+  `gen.mk` comment — it is not in `docs/`.)
+
+## 4. `git` refuses a generated directory — it became root-owned
+
+Tool runners run as root over the bind mount, so files they *create* are root-owned on the host:
+`docs/portal/{guides,docs.json}` from `make gen-portal-docs`, freshly created mock directories from
+`make gen-go-code` (e.g. `pkg/fs/mock`), `docs/godoc/`, and any newly added generated file. Host
+`git add` / `git restore` then fail with `permission denied`.
+
+Fix: hand ownership back through a container (preferred over host `sudo`):
+
+```bash
 docker compose run --rm --user root node_tool_runner chown -R $(id -u):$(id -g) /app/docs/portal
-# a root-owned mock dir
-docker compose run --rm --user root go_tool_runner chown -R $(id -u):$(id -g) /app/pkg/fs/mock /app/pkg/exec/mock
+docker compose run --rm --user root go_tool_runner   chown -R $(id -u):$(id -g) /app/pkg/fs/mock /app/pkg/exec/mock
 ```
 
-Trap: `git restore docs/portal` to clean up root-owned files will also **revert any hand edits** you made under `docs/portal` — re-apply / re-sync those in a separate commit after the chown.
+Trap: `git restore docs/portal` to clean up root-owned files also **reverts hand edits** under
+`docs/portal` — re-apply them after the chown, in a separate commit.
 
-## 3. A `make gen-*` step needs the DB up and reset
+## 5. Wrong database after acquiring a slot, or after switching branches
 
-`make gen-query` chains `dump-schema` (see §1), so it needs the **DB container running** — otherwise it dies with `connection refused`. It also reflects whatever tables currently exist: if you deleted source for a table but did not drop the table, the dump still contains it and the generated models keep the dead type.
+`make slot-acquire` writes `.gobp-db-slot` and make propagates `DB_NAME_LOCAL` / `DB_NAME_TEST`
+(`wt<N>_local` / `wt<N>_test`) from it. Two traps follow:
 
-Procedure when regenerating after a schema-affecting change:
+- **`db-init` / `db-local-reinit` / `db-test-reinit` hardcode `DB=local` / `DB=test`.** After
+  acquiring a slot they rebuild the *shared* databases, not yours — destructive to whoever is using
+  them. Target your own explicitly:
+
+  ```bash
+  set -a; . ./.gobp-db-slot; set +a
+  make db-reinit DB="$DB_NAME_LOCAL"      # drop tables → migrate-up → seed
+  make db-reinit DB="$DB_NAME_TEST"
+  ```
+
+- **A bare `go test ./...` does not see `DB_NAME_TEST`** — make exports it, your shell does not — so
+  it silently connects to the shared `test` database, which another branch's migrations may own.
+  Run `make test` (or export the variable yourself).
+
+Integration tests (`internal/integration`, `internal/infrastructure/rdb/**`) do not migrate anything;
+they expect a migrated + seeded database. After switching to a branch with different migrations,
+rebuild first — `make slot-acquire` does it for slot databases, `make db-test-reinit` for the shared
+`test`. Prefer `db-reinit` over `db-init`: `db-init` runs `migrate-down` first and cannot recover a
+dirty schema whose `.down.sql` no longer exists.
+
+## 6. pre-push `secret-scan` flags a secret you did not add
+
+`.gitleaksignore` entries are fingerprints of the form `<path>:<rule>:<line>` — they **embed the line
+number** (e.g. `docker-compose.yaml:generic-api-key:134`, `env/.env:generic-api-key:64`). Editing
+those files shifts the line, the old fingerprint stops matching, and the intentionally-allowed
+sample credential is reported as a fresh finding.
 
 ```bash
-docker compose up -d database
-make db-local-migrate-down db-test-migrate-down   # drop to clean (destructive — confirm with user)
-make db-init-local db-init-test                   # re-migrate from the current migration set (+ seed)
-make gen-query                                     # now dumps the intended schema
+make secret-scan          # reproduce; the output carries the new fingerprint (values are redacted)
 ```
 
-For DB-layer integration tests (`internal/infrastructure/rdb/repository`, `query_service`), the **test DB must be migrated + seeded** first: after any reset, run migrate-up + seed for **both** local and test. To run the binary from the host against the docker DB, override the host: `DB_HOST=localhost go run ./cmd/ ...`.
+Then update the matching line in `.gitleaksignore` to the new number, keeping the explanatory comment.
+Only do this for entries already documented there as intentional (mock-auth signing keys, Garage dev
+credentials) — a genuinely new finding is a real secret and must be removed from the tree instead.
 
-## 4. Per-environment Docker images
+## 7. `sample-removal-check` fails in CI
 
-The runtime image bakes a single `env/.env.<env>` chosen at build time via `--build-arg APP_ENV=<env>` (the deploy workflow injects it). There is no single image switched by a runtime ENV.
+`scripts/setup/lib/sample-manifest.mjs` declares every path that `make setup-remove-sample-api`
+deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample
+domain (user / product / purchase / …) without registering them leaves dangling references after
+removal, which the CI job catches by actually performing the removal and then building, linting, and
+testing. Nothing local fails — this is CI-only unless you run it yourself.
+
+When you add sample-domain files (handler, usecase, domain, repository, DML, migration, seed, spec,
+integration test, sample-only generated output), add their paths to the matching domain entry. Lines
+mixed into shared files are handled with `sample-api` marker comments instead of paths. Preview the
+effect without deleting anything:
+
+```bash
+DRY_RUN=1 make setup-remove-sample-api
+```
+
+## 8. `env/.env` is dirty and you did not edit it
+
+`env/.env` is committed, and `make materialize-env` overwrites it with `env/.env.$(APP_ENV)` (default
+`ci`) so the value set can be embedded at build time. CI and image builds do this, and an interrupted
+local run leaves the copy in place.
+
+```bash
+make restore-env          # git restore env/.env
+```
+
+Never commit a materialized `env/.env`. Note that editing this file also shifts the gitleaks
+fingerprint in §6.
+
+## 9. Host-side lint / format / test, and the two golangci configs
+
+`make lint` / `make fix` resolve golangci-lint through mise on the **host** (`mise which golangci-lint`),
+and `make test` runs `go test` on the host too. If the binary is missing, `mise install` — do not
+reach for a container.
+
+The repo ships two configs, and a bare `golangci-lint run` picks the wrong one:
+
+```bash
+golangci-lint run                                  # → .golangci.yaml (lightweight; some linters off)
+make lint                                          # → .golangci-full.yaml, what CI runs
+golangci-lint run --config .golangci-full.yaml     # equivalent, when you need extra flags
+```
+
+Always reproduce CI failures with the full config.
+
+## 10. `commitlint: not found` / `orval: not found` / a stale tool version
+
+The tool-runner images are **build artifacts of `mise.toml` and `docker/tools/package*.json`**. Tools
+are resolved inside the runners, never on the host (the same reproducibility rule as codegen — see
+`docs/rules.md`). After changing either file — or on a fresh clone whose images predate them — the
+runner is missing the tool or ships an old version.
+
+```bash
+make tool-runners-build           # rebuild go / node / python runners (cached)
+make tool-runners-build-clean     # --no-cache --pull, when the cached layer is the problem
+```
+
+The node runner also carries `/app/scripts/node_modules` as an anonymous volume (so the bind mount
+does not shadow it); helper scripts and `gen-mock-auth-oapi` resolve their binaries from there, which
+is why a stale image breaks them.
+
+The commit-msg hook runs `make commitlint COMMIT_MSG_FILE={1}` through `node_tool_runner`, so this is
+the usual cause of a failing commit. `commitlint.config.js` deliberately disables `type-case` (the
+repo prefixes are Cap-first `Feat`/`Fix`/… while CI messages are upper-case, so no single case can be
+enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are ignored by default.
+
+## 11. Hook map — what runs when, and what to do when it fails for reasons outside your change
+
+`.lefthook.yaml`, by trigger:
+
+| Hook | Glob → command (abridged) |
+| --- | --- |
+| pre-commit | `*.go` → `make lint`, `make test-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
+| commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
+| pre-push | `make secret-scan`; `*.go` → `make test`; `*.go` / `openapi/**` → regenerate and `git diff --exit-code` on `*.gen.go` / mocks / `openapi.gen.yaml`; `go.mod` / `go.sum` → `go mod tidy` + diff |
+
+The pre-push `gen-go-check` regenerates in Docker and fails on any diff — the fix is to commit the
+regenerated output (§2, §4), not to re-run it. When a hook is red for a reason unrelated to your
+change (a pre-existing failure on the base branch, an environment problem), push with `--no-verify`
+and fix the cause separately rather than reshaping your change around it.
+
+## 12. `pin-images-check` / `pin-actions-check` — fail-closed lockfiles
+
+Both checks are fail-closed: every `FROM` in `docker/*/Dockerfile`, every `image:` in
+`docker-compose*.yaml`, and every `uses:` in `.github/workflows/**` must be pinned *and* registered in
+its lockfile (`docker/images-pin.toml`, `.github/actions-pin.toml`). Adding a new compose service or
+action therefore blocks the commit with 未登録 (not in lockfile) or 未固定 (tag-only).
+
+Do not hand-edit the pinned digest or SHA. Use the dedicated skills — `images-pin` for images,
+`actions-pin` for actions — which own the supply-chain cooldown (a freshly published digest is
+refused, not adopted) and the `resolve` → `apply` → `check` sequence.
+
+## 13. "Migration version gap / duplicate" from pre-commit
+
+`make check-migration-{up,down}-{version,gap}` require the `database/migrations/**` sequence numbers
+to be unique and contiguous for both directions. The usual trigger is merging an advanced base branch
+that already added your number. Renumber *your* new files (both `.up.sql` and `.down.sql`); never edit
+an existing committed migration, per `AGENTS.md`. Scaffold new ones with
+`make new-migrate-<name>` so numbering comes from the tool.
+
+## 14. Local S3 calls return 503
+
+The `garage` bucket, layout, and access key are provisioned by a **one-shot `garage_init`** container.
+`make infra-up` starts it and waits for it to finish, because compose's `depends_on` cannot express it
+across projects; an app started before provisioning completes gets 503 from the S3 endpoint.
+
+```bash
+make infra-up                     # idempotent; waits for garage_init to exit
+```
+
+The bucket is shared by every checkout (unlike databases, it has no schema to break across branches).
+To isolate a branch, point it at a different `OBJECT_STORAGE_BUCKET`. Go tests do not touch garage —
+they use in-process gofakes3.
+
+## 15. mock-auth-server — a separate npm project with its own generated artifacts
+
+`docker/mock-auth-server/` is a standalone Node project (its own `package.json`, OpenAPI, and tests).
+Two of its outputs are drift-checked in CI:
+
+- **Golden JWKS** — `fixtures/jwks/*.json` and `internal/integration/testdata/jwks/*.json` are written
+  by one generator so the provider and the Go integration tests share a single source. After touching
+  the key store or the keys, run `npm run gen:jwks` in `docker/mock-auth-server` and commit both
+  directories.
+- **OpenAPI bundle + zod schemas** — regenerate with `make gen-mock-auth-oapi` (runs in
+  `node_tool_runner`, resolving `orval` from `/app/scripts/node_modules`; see §10 if it is not found).
+
+`make reset-mock-auth-users` restores the fixed mock users to their neutral defaults after a test run
+has mutated them.
+
+## 16. Per-environment Docker images
+
+The runtime image bakes a single `env/.env.<env>` chosen at build time via `--build-arg APP_ENV=<env>`
+(the deploy workflow injects it). There is no single image switched by a runtime ENV.
 
 ```bash
 docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/Dockerfile .
 # verify only .env.stg was baked in
 ```
 
-There is no separate migration image: `env/` and `database/migrations` are embedded in the
-binary, so migrations run from the same `runtime` image via a command override
-(`./server migrate-up`).
+There is no separate migration image: `env/` and `database/migrations` are embedded in the binary, so
+migrations run from the same `runtime` image via a command override (`./server migrate-up`).
 
-## 5. commit-msg hook / commitlint errors
+## 17. `sync-versions` drift
 
-The lefthook **commit-msg** hook runs `make commitlint COMMIT_MSG_FILE={1}`, which executes `commitlint` inside the `node_tool_runner` container — tools are resolved in the containerized runners, never on the host (the same reproducibility rule as every other lint / codegen target; see `docs/rules.md`). If the `node_tool_runner` image is missing or out of date, the hook fails with `commitlint: not found`; rebuild it once with `make tool-runners-build` (or `docker compose build node_tool_runner`).
-
-```text
-make commitlint COMMIT_MSG_FILE={1}
-```
-
-`commitlint.config.js` intentionally disables `type-case` (the repo prefixes are Cap-first `Feat`/`Fix`/… but CI uses all-caps, so a single case can't be enforced) and pins `type-enum` to the project prefixes. `Merge` / `Revert` commits are auto-ignored by commitlint defaults.
-
-## 6. Generated mocks — never hand-write, regenerate via Docker
-
-Mocks are generated, never authored by hand. Each source declares `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` (the `$GOFILE`-based destination is uniform across the repo, so the same line copies into any interface file), and `make gen-go-code` runs them in `go_tool_runner` with the **pinned** mockgen (`v0.6.0`). Regenerated mock directories may come back root-owned (see §2).
-
-After changing an interface (signature, new method), regenerate rather than editing `*_mock.go`:
+`mise.toml` is the source of truth for tool versions; `go.mod`, the Dockerfiles, and the `docker/**`
+READMEs are derived. Editing a derived file directly, or bumping `mise.toml` without propagating,
+fails the CI check.
 
 ```bash
-make gen-go-code        # runs go:generate (mockgen) in docker, pinned version
+make sync-versions                # propagate from mise.toml, then commit the result
 ```
 
-## 7. The `.makefiles` SETUP_DRY_RUN convention
+For a Go version bump use the `go-upgrade` skill, which owns the full procedure.
 
-The setup / teardown make targets gate dry-run on `$(if $(DRY_RUN),--dry-run,)` plus `[ -n "$(DRY_RUN)" ]`, which treat **any non-empty value as truthy** — `DRY_RUN=0 make <target>` is still a dry-run. To actually run, omit the variable entirely (`make <target>`). To preview, `DRY_RUN=1 make <target>`.
+## 18. Generated mocks — never hand-write, regenerate via Docker
+
+Each source declares
+`//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE`
+(the `$GOFILE`-based destination is uniform across the repo, so the same line copies into any
+interface file), and `make gen-go-code` runs them in `go_tool_runner` with the pinned mockgen
+(`mise.toml`, currently `0.6.0`). After changing an interface, regenerate rather than editing
+`*_mock.go`; new mock directories may come back root-owned (§4).
+
+```bash
+make gen-go-code
+```
+
+## 19. The `.makefiles` DRY_RUN convention
+
+Setup / teardown targets gate dry-run on `$(if $(DRY_RUN),--dry-run,)` plus `[ -n "$(DRY_RUN)" ]`,
+which treat **any non-empty value as truthy** — `DRY_RUN=0 make <target>` is still a dry-run. To
+actually run, omit the variable entirely; to preview, `DRY_RUN=1 make <target>`. `setup-repo` rejects
+`DRY_RUN` outright because it cannot be previewed.
 
 ## Constraints
 
-- ✅ Read-only knowledge: surface the exact command; run it only when the user asked you to perform the operation.
-- ✅ Warn before destructive steps (DB drops in §3, `chown -R` in §2) per `CLAUDE.md`.
+- ✅ Read-only knowledge: surface the exact command; run it only when the user asked you to perform
+  the operation.
+- ✅ Warn before anything destructive: DB rebuilds (§5), `chown -R` (§4), `make infra-down` and other
+  shared-infra operations that affect every checkout (§1).
+- ✅ Prefer `make` over raw `docker compose`; when raw compose is unavoidable, set
+  `COMPOSE_PROJECT_NAME=gobp-shared` / `-p gobp-shared` explicitly (§1).
 - ✅ Prefer the dockerized `--user root … chown` recovery over host `sudo`.
-- ❌ Do not hand-edit generated artifacts (`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`, `schema.gen.sql`, `docs/portal/guides/**`) — regenerate instead.
-- ❌ Do not commit a schema-affecting change without regenerating `schema.gen.sql` (§1).
+- ❌ Do not hand-edit generated artifacts (`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`,
+  `schema.gen.sql`, `docs/portal/guides/**`, pinned digests/SHAs) — regenerate or use the owning skill.
+- ❌ Do not commit a schema- or DML-affecting change without its regenerated artifacts (§2), and do
+  not commit a materialized `env/.env` (§8).
