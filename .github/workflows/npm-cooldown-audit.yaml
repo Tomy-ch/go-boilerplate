@@ -1,0 +1,134 @@
+name: npm Cooldown Audit
+
+# The npm `min-release-age` cooldown in each .npmrc is evaluated only while npm
+# resolves dependencies (npm install / update). Every CI job and image build here
+# uses `npm ci`, which just replays the lockfile and never resolves, so a lockfile
+# produced with the cooldown switched off passes CI without a single symptom.
+# This workflow is the detector for that blind spot.
+#
+# It NEVER fails the build. Bypassing the cooldown is a tech-lead / architect call
+# — reacting to a CRITICAL advisory is a legitimate use — and a hard gate would
+# block exactly the case the bypass exists for. The scope is policy drift:
+# accidents, convention rot, and a change in npm's own behaviour. It is not a
+# defence against someone with commit access, who can delete this file in the same
+# change; enforcement of the "tech-lead only" rule lives in CODEOWNERS.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/npm-cooldown-audit.yaml'
+      - 'scripts/npm-cooldown/**'
+      - '**/package-lock.json'
+      - '**/.npmrc'
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/npm-cooldown-audit.yaml'
+      - 'scripts/npm-cooldown/**'
+      - '**/package-lock.json'
+      - '**/.npmrc'
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  npm-cooldown-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # A pull request is audited against its base, so the finding names exactly the
+      # entries this change introduces, and the PR comment survives as the record
+      # even after those versions age out of the cooldown window. The scheduled run
+      # audits every entry instead, as a second net for anything that slipped in
+      # through a path this trigger set does not cover.
+      - name: Resolve audit base
+        id: base
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BASE_REF}" ]; then
+            echo "base=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=200 origin "${BASE_REF}"
+          echo "base=origin/${BASE_REF}" >> "$GITHUB_OUTPUT"
+
+      - name: Audit npm cooldown compliance
+        id: audit
+        shell: bash
+        env:
+          AUDIT_BASE: ${{ steps.base.outputs.base }}
+        run: |
+          set -euo pipefail
+
+          args=(audit --github --summary-out=npm-cooldown-summary.md)
+          if [ -n "${AUDIT_BASE}" ]; then
+            args+=(--base="${AUDIT_BASE}")
+          fi
+
+          go run ./scripts/npm-cooldown "${args[@]}"
+
+          # The tool writes `findings=<n>` into $GITHUB_OUTPUT itself; read it back
+          # from that file, since a write there is not visible as a shell variable
+          # within the same step.
+          findings=$(grep -E '^findings=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
+          if [ "${findings:-0}" != "0" ]; then
+            echo "title=## ⚠️ npm cooldown: 違反 ${findings} 件（ブロックはしません）" >> "$GITHUB_OUTPUT"
+          else
+            echo "title=## ✅ npm cooldown: PASS" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Reported on every run, not only on a finding: a comment that appears solely
+      # when something is wrong gives no evidence that the detector still works, and
+      # this one is expected to stay silent for its whole life.
+      - name: Comment npm cooldown result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- npm-cooldown-result -->'
+          title: ${{ steps.audit.outputs.title }}
+          body-file: npm-cooldown-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload npm cooldown summary
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: npm-cooldown
+          path: npm-cooldown-summary.md

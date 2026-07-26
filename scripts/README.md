@@ -24,6 +24,7 @@ scripts/
     ├── replace-app-metadata.mjs
     ├── replace-license-copyright.mjs
     ├── replace-repository-reference.mjs
+    ├── replace-codeowners.mjs
     ├── remove-sample-api.mjs  # Remove the sample API (user/product/order) <!-- sample-api:line -->
     └── lib/                   # Shared utilities for setup scripts
 ```
@@ -85,6 +86,7 @@ Scripts for configuring the boilerplate when creating a new project from this te
 |`replace-app-metadata.mjs`|Replace app name/description in env files and OpenAPI spec|
 |`replace-license-copyright.mjs`|Replace LICENSE copyright holder and year|
 |`replace-repository-reference.mjs`|Replace GitHub repository references in READMEs and OpenAPI|
+|`replace-codeowners.mjs`|Replace the owner of every rule in `.github/CODEOWNERS`. Comment lines keep their example owner, and a rule whose owner field is unrecognizable is reported instead of rewritten.|
 |`remove-sample-api.mjs`|Remove the sample API (`user`/`product`/`order`): deletes paths declared in `lib/sample-api.mjs` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint. <!-- sample-api:line -->|
 
 All setup scripts support `--dry-run` for preview.

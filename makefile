@@ -53,6 +53,7 @@ include .makefiles/markdown/lint.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
+include .makefiles/security/npm-cooldown.mk
 # Docker関連
 include .makefiles/docker/lint.mk
 include .makefiles/docker/pin.mk
