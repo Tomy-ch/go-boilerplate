@@ -163,12 +163,19 @@ jobs:
           body-file: opengrep-summary.md
           details-summary: '📄 Summary'
 
-      # SARIF keeps the full picture, including findings suppressed in source: they
-      # are emitted with suppressions[].kind = inSource, which code scanning renders
-      # as a dismissed alert rather than dropping silently.
+      # opengrep still emits findings suppressed by an in-source `// nosemgrep`,
+      # tagging them with suppressions[].kind = inSource. GitHub code scanning does
+      # NOT honour that tag — the alert lands as state=open with no dismissal — so an
+      # accepted exception would sit in the alert list forever and defeat the
+      # zero-baseline this workflow relies on. They are therefore dropped before the
+      # upload, which also matches the JSON the gate above reads (suppressions are
+      # already applied there). The exception stays visible where it belongs: next to
+      # the code, with the rule id and the reason.
       - name: Opengrep scan (SARIF)
         if: always()
         run: |
+          set -euo pipefail
+
           opengrep scan \
             --config p/golang \
             --config p/owasp-top-ten \
@@ -178,8 +185,11 @@ jobs:
             --exclude '*_mock.go' \
             --exclude 'openapi.gen.yaml' \
             --sarif \
-            --output opengrep.sarif \
+            --output opengrep-raw.sarif \
             internal pkg cmd database openapi
+
+          jq '.runs[]?.results |= map(select((.suppressions // []) | length == 0))' \
+            opengrep-raw.sarif > opengrep.sarif
         shell: bash
 
       - name: Upload SAST SARIF to code scanning
