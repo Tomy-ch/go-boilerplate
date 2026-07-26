@@ -1,0 +1,130 @@
+name: OpenAPI Security
+
+# Spectral with the OWASP API Security ruleset, over openapi/openapi.yaml.
+#
+# Distinct from oapi-lint.yaml, which runs redocly lint. The two do not overlap:
+# redocly enforces this repository's conventions (operationId casing, camelCase
+# body fields, unused components, explicit security on every operation), while
+# this workflow asks OWASP's questions (unbounded input, weak auth declarations,
+# undeclared server inventory). redocly stays the linter of record because it is
+# also the bundler and docs generator (ADR-0010); Spectral is additive.
+#
+# Rule dispositions live in .spectral.yaml, each with the ADR or implementation
+# that justifies it. Nothing is disabled in bulk.
+#
+# mock-auth-server's spec is deliberately out of scope: it is a test double, so
+# gating it against a production API security ruleset would be noise.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/openapi-security.yaml'
+      - '.spectral.yaml'
+      - 'openapi/**'
+      - 'docker/tools/package.json'
+      - 'docker/tools/package-lock.json'
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/openapi-security.yaml'
+      - '.spectral.yaml'
+      - 'openapi/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  openapi-security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The Node version is pinned in mise.toml (SSOT), same as every other
+      # Node-using workflow here.
+      - name: Install node
+        run: mise install node
+
+      # --ignore-scripts blocks the postinstall RCE path, matching how the tool
+      # runner image installs the same manifest. The Spectral CLI and the OWASP
+      # ruleset are pinned in docker/tools/package-lock.json.
+      - name: Install OpenAPI tooling
+        run: npm ci --ignore-scripts
+        working-directory: docker/tools
+
+      # spectral exits non-zero on an error-severity finding, so the status is
+      # captured and the PR comment is produced either way; the final step turns
+      # the captured status into the verdict.
+      - name: Spectral scan
+        id: scan
+        run: |
+          set -uo pipefail
+          set +e
+
+          make lint-oapi-security-ci > spectral.log 2>&1
+          code=$?
+          set -e
+
+          cat spectral.log
+
+          if [ "${code}" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ OpenAPI Security: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## 🚨 OpenAPI Security: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          cat spectral.log >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload Spectral log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: spectral
+          path: spectral.log
+
+      - name: Comment OpenAPI security result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- openapi-security-result -->'
+          title: ${{ steps.scan.outputs.title }}
+          body-file: spectral.log
+          details-summary: 'spectral log'
+
+      # Gating: a finding here is introduced by the spec change under review, and
+      # the accepted exceptions are already encoded in .spectral.yaml.
+      - name: Fail if a finding was found
+        if: always() && steps.scan.outputs.status != 'success'
+        run: exit 1
