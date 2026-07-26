@@ -105,13 +105,22 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
 
+			var captured *auth.Authn
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(shipViewFixture(t), nil)
+				DoAndReturn(func(_ context.Context, a *auth.Authn, _ uuid.UUID) (purchaseuc.ShipPurchaseView, error) {
+					captured = a
+					return shipViewFixture(t), nil
+				})
 
 			_, err = s.PatchPurchasesShip(ctx, gen.PatchPurchasesShipRequestObject{
 				PurchaseId: uuid.NewTestFromSalt(t, "hs_unresolved").ToPrimitive(),
 			})
 			require.NoError(t, err)
+
+			// 内部 UserID が未解決でも認証主体そのものは usecase へ渡る（解決可否の判断は認可側の責務）。
+			require.NotNil(t, captured)
+			_, uerr := captured.UserID()
+			require.ErrorIs(t, uerr, auth.ErrUserIDUnresolved)
 		})
 	})
 

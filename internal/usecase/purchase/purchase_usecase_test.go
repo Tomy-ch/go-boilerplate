@@ -83,10 +83,21 @@ func TestNew(t *testing.T) {
 			xr := mock_exchangerate.NewMockUsecase(ctrl)
 
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
-
 			clk := clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC))
+
+			expected := &usecase{
+				tracer:     tf.Usecase(),
+				txm:        txm,
+				cmd:        cmd,
+				repo:       repo,
+				detailQS:   detailQS,
+				emit:       emit,
+				xr:         xr,
+				clock:      clk,
+				authorizer: authorizer,
+			}
 			actual := New(txm, cmd, repo, detailQS, emit, xr, clk, authorizer, tf)
-			require.NotNil(t, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -965,7 +976,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			require.Len(t, view.Details, 1)
 		})
 
-		t.Run("所有者以外のadminでも発送でき所有権は問わない", func(t *testing.T) {
+		t.Run("購入の所有者と異なる認証主体でも発送でき所有権を問わない", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -973,15 +984,22 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 
-			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			// 認証主体を購入の所有者（ownerID）とは別のユーザーにしても、所有権検証で弾かれず発送まで到達する。
+			authn, err := auth.New("ship-uc-subject", "ship-uc-issuer", nil, nil)
+			require.NoError(t, err)
+			other := authn.WithUserID(uuid.NewTestFromSalt(t, "ship_uc_other"))
+
+			authorizer.EXPECT().Authorize(gomock.Any(), other, gomock.Any(), gomock.Any()).Return(nil)
 			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(paidLockable(t), nil)
 			repo.EXPECT().UpdateShipped(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
 			repo.EXPECT().FindDetailByID(gomock.Any(), purchaseID).Return(shippedDetail(t), nil)
 
 			u := newUC(t, repo, emit, authorizer)
-			_, err := u.ShipPurchase(context.Background(), &auth.Authn{}, purchaseID)
+			view, err := u.ShipPurchase(context.Background(), other, purchaseID)
 			require.NoError(t, err)
+			// 所有者は購入側の userID のまま（認証主体で上書きされない）。
+			assert.Equal(t, ownerID, view.UserID)
 		})
 
 		t.Run("発送操作を所有者なしリソースとして認可する", func(t *testing.T) {

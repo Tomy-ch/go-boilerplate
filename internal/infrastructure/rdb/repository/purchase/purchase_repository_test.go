@@ -25,6 +25,8 @@ const (
 	seedUserID         = "550e8400-e29b-41d4-a716-446655440000"
 	seedUnprocessedSID = "a66c996c-86b2-41d8-9bdd-9b685fb7c47d"
 	seedPaidSID        = "4b8f0e2a-1c3d-4a5e-8b7f-2d9c0e1a3b4c"
+	// unknownStatusCode は、購入ステータスマスタに存在しない code です（seed は 1〜9）。
+	unknownStatusCode = 99
 )
 
 func mustParse(t *testing.T, s string) uuid.UUID {
@@ -215,6 +217,7 @@ func Test_repository_FindDetailByID(t *testing.T) {
 				assert.Equal(t, 176500, got.TotalAmount)
 				assert.Nil(t, got.PaidAt)
 				assert.Nil(t, got.CanceledAt)
+				assert.Nil(t, got.ShippedAt)
 				require.Len(t, got.Details, 1)
 				assert.Equal(t, productID, got.Details[0].ProductID())
 			})
@@ -435,6 +438,35 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				assert.Equal(t, "発送済み", detail.StatusName)
 				require.NotNil(t, detail.ShippedAt)
 				assert.Equal(t, shippedAt.UTC(), detail.ShippedAt.UTC())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("マスタに無いステータスコードの場合はpgエラーをapperrorへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000003")
+
+				locked, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+
+				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
+				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
+				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
+				broken, err := domainpurchase.Reconstruct(
+					locked.ID(), locked.Code(), locked.UserID(), locked.StatusID(),
+					unknownStatusCode,
+					locked.SubtotalAmount(), locked.TaxAmount(), locked.ShippingFee(), locked.TotalAmount(),
+					locked.Details(), locked.OrderedAt(), nil, nil, &shippedAt, nil,
+				)
+				require.NoError(t, err)
+
+				require.ErrorIs(t, repo.UpdateShipped(ctx, broken), apperror.ErrInvalidArgument)
 			})
 		})
 	})

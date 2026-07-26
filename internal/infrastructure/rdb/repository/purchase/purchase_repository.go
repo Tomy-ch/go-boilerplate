@@ -142,6 +142,8 @@ func (r *repository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error
 
 // UpdateShipped は、購入の状態更新（status_id / shipped_at）を渡された tx 内で実行します。
 // 配送追跡を扱わないため単一集約（purchases）のみを更新し、在庫操作は伴いません。
+// status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します。遷移可否のガードは持たず、
+// 対象行が呼び出し側で FOR UPDATE 取得・検証済みであること（ドメインが遷移の source of truth）に依存します。
 func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
