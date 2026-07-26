@@ -1,0 +1,30 @@
+get:
+  operationId: GetUsersMePurchasesSummary
+  tags:
+    - v1/users/me/purchases
+  summary: 認証ユーザー自身の購入集計の取得
+  description: |
+    認証コンテキスト（Bearer トークン）の内部 UserID に該当するユーザー自身の購入を集計して取得します。
+    マイページの集計カード表示を想定した最小集計で、購入一覧そのものは返しません（履歴は購入履歴一覧 API）。
+    パスに他者の識別子を持たないため、他ユーザーの集計は取得できません。
+    合計金額は USD セント単位の整数です。キャンセル済みの購入も総件数・合計金額に含めます
+    （キャンセルはステータス別内訳の 1 要素として件数・金額とも返るため、キャンセルを除いた値が必要な
+    クライアントは内訳から差し引けます）。
+    購入が 1 件もない場合はエラーではなくゼロ値（件数 0・合計 0・内訳は空配列）を返します。
+    本 op 自体は DB の集計 SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  responses:
+    '200':
+      description: 認証ユーザー自身の購入集計の取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../../components/responses/purchases/PurchaseAggregateResponse.yaml'
+    '401':
+      $ref: '../../../../../components/schemas/errors/Unauthorized401.yaml'
+    '500':
+      $ref: '../../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../../components/schemas/errors/ServiceUnavailable503.yaml'

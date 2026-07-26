@@ -13,7 +13,7 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/security` : Trivy 依存脆弱性スキャン
-- `.makefiles/docker` : Dockerfile Lint（hadolint）
+- `.makefiles/docker` : compose プロジェクト / ホストポート定義・Dockerfile Lint（hadolint）・image digest 固定
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
@@ -38,21 +38,30 @@ Make ターゲットは主に以下の単位で整理されています。
 
 アプリケーションの開発環境起動や Job 実行に関するターゲット群です。
 
+compose のサービスは 2 層に分かれます（後述の `.makefiles/docker` 系を参照）。共有の **infra 層**
+（`database` / `observability` / `garage`）は固定プロジェクト `gobp-shared` に 1 インスタンスだけ置き、
+checkout 毎の **app 層**（`api_server` / `mock_auth_server`）は自 checkout の `APP_PROJECT` で起動します。
+
 ### アプリケーション起動関連
 
 | コマンド | 説明 | 主な用途 |
 | --- | --- | --- |
-| `make serve` | `development` プロファイルの Docker Compose サービスをバックグラウンドで起動します。 | 通常のローカル開発開始 |
-| `make serve-build` | Docker イメージをキャッシュを利用して再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
-| `make serve-build-clean` | `--no-cache --pull` でクリーンビルドしたうえで開発環境を起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
-| `make tools` | `tools` プロファイルの開発支援ツール群を起動します。 | 開発ツール利用時 |
+| `make serve` | 共有インフラを起動（`infra-up`）したうえで、自 checkout の app サービスをバックグラウンド起動し、DB スロットの heartbeat を更新します。 | 通常のローカル開発開始 |
+| `make serve-build` | app イメージをキャッシュ利用で再ビルドし、共有インフラを起動したうえで app サービスを起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build-clean` | app イメージを `--no-cache --pull` でクリーンビルドし、共有インフラを起動したうえで app サービスを起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
+| `make serve-stop` | 自 checkout の app プロジェクトだけを停止します。 | 共有インフラや他 checkout に触れず API を止める |
+| `make infra-up` | 共有インフラのサービス（`--wait`）と one-shot の `garage_init` を `gobp-shared` プロジェクトで起動します。 | 共有インフラだけを起動する（`serve` / `job` / `worker` が冪等に呼びます） |
+| `make infra-down` | 共有インフラのプロジェクトを停止します（名前付きボリュームは保持）。 | インフラを落とす。**全 checkout / worktree に影響します** |
+| `make tools` | `tools` プロファイルの開発支援ツール群を共有インフラのプロジェクトで起動します。 | 開発ツール利用時（SQL editor `:7000` / docs viewer `:7001`） |
+| `make all` | `tools` → `serve-build` の順に全サービスを一括起動します。 | ローカルスタック全体を一度に立ち上げる |
 | `make tool-runners-build` | オンデマンド実行のツールランナー画像(go/node/python)をキャッシュ利用でビルドします（起動はしません）。 | ツールランナーの Dockerfile や依存変更の反映 |
 | `make tool-runners-build-clean` | ツールランナー画像を `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールランナーの base image 更新の取り込み |
 
 #### `make job NAME=<job名> ARGS="<引数>"`
 
 アプリケーションの Job を実行します。
-`development` プロファイルのネットワーク内で `cmd/main.go job` を呼び出します。
+共有インフラを起動したうえで、自 checkout の app プロジェクトの使い捨て `api_server` コンテナ
+（`run --rm`）で `cmd/main.go job` を呼び出します。
 
 - `NAME`: 実行する Job 名
 - `ARGS`: Job に渡す追加引数（任意）
@@ -66,8 +75,9 @@ make job NAME=batch-import ARGS="--target=local --dry-run"
 
 ### 常駐プロセス(worker / outbox-relay)関連
 
-いずれも `SIGTERM` / `Ctrl-C` まで常駐するデーモンで、`development` プロファイルの
-ネットワーク内（`make job` と同じ `go run ./cmd/` 方式）で実行します。
+いずれも `SIGTERM` / `Ctrl-C` まで常駐するデーモンで、共有インフラを起動したうえで自 checkout の
+app プロジェクトの使い捨て `api_server` コンテナ内（`make job` と同じ `go run ./cmd/` 方式）で
+実行します。
 
 #### `make worker NAME=<worker名> ARGS="<引数>"`
 
@@ -247,8 +257,29 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 
 ## `.makefiles/docker` 系
 
-`go_tool_runner` コンテナ経由で hadolint により Dockerfile を lint し、`FROM` の base image を
-不変の digest へ固定します（サプライチェーン対策）。
+全ターゲットが共有する compose プロジェクト / ホストポートの定義を持ち、`go_tool_runner` コンテナ経由で
+hadolint により Dockerfile を lint し、`FROM` の base image を不変の digest へ固定します
+（サプライチェーン対策）。
+
+### compose プロジェクト定義（`compose.mk`）
+
+`compose.mk` はターゲットを持たず、app / database 系が土台にする変数を定義するため、トップレベル
+`makefile` の冒頭（「依存されるファイル」セクション）で `include` されます。DB スロット保持時は
+`.gobp-db-slot` が既定値を上書きします（`internal/cli/dbslot/README.ja.md` 参照）。
+
+| 変数 | 既定 | 説明 |
+| --- | --- | --- |
+| `INFRA_PROJECT` | `gobp-shared` | 共有インフラの唯一のインスタンスを置く固定 compose プロジェクト。 |
+| `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | app 層の checkout 毎 compose プロジェクト。DB スロット保持時は `SERVE_PROJECT`（`gobp-wt-N`）になります。 |
+| `INFRA_SERVICES` | `database observability garage` | 固定ポートでしか動けないため共有するサービス。 |
+| `APP_SERVICES` | `api_server mock_auth_server` | checkout 毎に起動するサービス。 |
+| `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | infra 層向けの compose 呼び出し。 |
+| `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | app 層向けの compose 呼び出し。`docker-compose.attach.yaml` が app サービスの接続先を `host.docker.internal` 経由の共有インフラへ差し替えます。 |
+| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | API / mock 認証サーバーのホスト公開ポート。 |
+| `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | dlv デバッグ / pprof のホスト公開ポート。 |
+| `COMPOSE_PROJECT_NAME` | `$(INFRA_PROJECT)` | `-p` を渡さない compose 呼び出しの既定プロジェクト。DB ツーリングが共有インフラのネットワークで動くようにします。 |
+
+### Dockerfile Lint / image 固定関連
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |

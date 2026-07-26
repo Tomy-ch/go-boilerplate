@@ -20,6 +20,7 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/users"                                          // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/detail"                                   // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/feed"                                     // sample-api:line
+	usersmepurchaseshandler "go-boilerplate/internal/controller/handler/v1/users/me/purchases"     // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/search"                                   // sample-api:line
 	"go-boilerplate/internal/controller/handler/version"
 
@@ -41,6 +42,7 @@ func ControllerModule() fx.Option {
 			detail.BindHandler,
 			feed.BindHandler,
 			search.BindHandler,
+			usersmepurchaseshandler.BindHandler,
 			exchangeratehandler.BindHandler,
 			addresseshandler.BindHandler,
 			prefectureshandler.BindHandler,

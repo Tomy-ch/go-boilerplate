@@ -21,5 +21,13 @@ func TestGetValidator(t *testing.T) {
 			require.NoError(t, err)
 			assert.IsType(t, &openapi3.T{}, validator)
 		})
+
+		t.Run("経路解決を Host 非依存にするため servers を除去する", func(t *testing.T) {
+			t.Parallel()
+
+			validator, err := GetValidator()
+			require.NoError(t, err)
+			assert.Empty(t, validator.Servers)
+		})
 	})
 }

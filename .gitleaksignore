@@ -13,5 +13,5 @@ internal/integration/testdata/keys/mock-key-2.pem:private-key:1
 # object storage バックエンド接続用にリポジトリで固定管理する（Garage 形式: rpc_secret=64hex /
 # secret access key=64hex）。テストは gofakes3 を使うため本値は本番・CI に流れない。
 docker/garage/garage.toml:generic-api-key:12
-docker-compose.yaml:generic-api-key:133
+docker-compose.yaml:generic-api-key:134
 env/.env:generic-api-key:64

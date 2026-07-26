@@ -11,11 +11,37 @@ docker/
 ├── server/             # アプリケーションサーバ用 Dockerfile
 ├── tools/              # コード生成・ツールランナー用 Dockerfile
 ├── document/           # ドキュメントビューア用 Dockerfile + nginx設定
+├── garage/             # オブジェクトストレージ用 Dockerfile + 設定 + プロビジョニングスクリプト
+├── mock-auth-server/   # 疑似 OIDC 認証サーバー用 Dockerfile + アプリケーション
 └── database/
     ├── sql/            # DB初期化SQL
     ├── schemaspy/      # ER図生成設定
     └── sqlfluff/       # SQLリンター設定
 ```
+
+## compose の階層構成（infra / app）
+
+compose のサービスは 2 層に分かれており、主 checkout と任意個数の worktree を同時に起動できます。
+
+|層|compose プロジェクト|サービス|
+|---|---|---|
+|**infra**|`gobp-shared`（固定名）— **全 checkout で 1 インスタンス**|`database` / `observability` / `garage`（+ `garage_init`）。補助サービスとツールランナーも `COMPOSE_PROJECT_NAME` の既定により同じプロジェクトで動く|
+|**app**|`APP_PROJECT` — checkout 毎（`gobp-app-<ディレクトリ名>`、DB スロット保持時は `gobp-wt-N`）|`api_server` / `mock_auth_server`|
+
+infra 層には固定ポートでしか動けないサービスだけが属し、そのためホスト上に 1 つだけ存在します。
+
+|ファイル|役割|
+|---|---|
+|`docker-compose.yaml`|全サービスの定義|
+|`docker-compose.attach.yaml`|app 層の override。**常に**重ねて適用する（`docker compose -f docker-compose.yaml -f docker-compose.attach.yaml`）|
+
+`docker-compose.attach.yaml` は `api_server` のホスト公開ポートを `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}` にし、`depends_on` を `mock_auth_server` だけに絞り（infra 層は起動済みのため）、`DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-4000}` の上書きで共有インフラを参照させます。`mock_auth_server` の `OIDC_ISSUER` も同じ公開ポートに追従します。
+
+|目的|参照先|
+|---|---|
+|層の変数（`INFRA_PROJECT` / `APP_PROJECT` / `COMPOSE_INFRA` / `COMPOSE_APP`）|[`.makefiles/docker/compose.mk`](../.makefiles/docker/compose.mk)|
+|ローカル開発環境の全体像|[`docs/maintenance/local-environment.md`](../docs/maintenance/local-environment.md)|
+|ホスト公開ポート / DB 名のスロット割当|[`docs/maintenance/db-worktree-pool.md`](../docs/maintenance/db-worktree-pool.md)|
 
 ## サービス概要
 
@@ -23,20 +49,25 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 
 ### 開発環境（profile: `development`）
 
-|サービス|Dockerfile / Image|ポート|説明|
-|---|---|---|---|
-|`api_server`|`docker/server/Dockerfile` (target: `tooling`)|8080, 2345, 6060|開発用APIサーバ（air によるホットリロード）|
-|`database`|`postgres:18.3-bookworm`|5432|PostgreSQL データベース|
-|`observability`|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
+|サービス|層|Dockerfile / Image|ポート|説明|
+|---|---|---|---|---|
+|`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|開発用APIサーバ（air によるホットリロード）|
+|`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-4000}`|疑似 OIDC 認証サーバー（JWT Test Provider）|
+|`database`|infra|`postgres:18.3-bookworm`|5432|PostgreSQL データベース|
+|`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
+|`garage`|infra|`docker/garage/Dockerfile`|3900, 3903|S3 互換オブジェクトストレージ（S3 API / Admin API）|
+|`garage_init`|infra|`docker/garage/Dockerfile`|-|garage のレイアウト / バケット / アクセスキーを one-shot でプロビジョニング（冪等）|
 
-### 補助サービス（profile: `tools`）
+DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` / `4000+N` / `2345+N` / `6060+N`）だけで、コンテナ内部のポートは常に固定です。
+
+### 補助サービス（profile: `tools`・infra 層）
 
 |サービス|Dockerfile / Image|ポート|説明|
 |---|---|---|---|
 |`docs_viewer`|`docker/document/Dockerfile`|7001|ドキュメントポータル（nginx）|
 |`sql_editor`|`sosedoff/pgweb`|7000|Web SQL エディタ|
 
-### ツールランナー（profile: `generate`）
+### ツールランナー（profile: `generate`・infra 層）
 
 |サービス|Dockerfile / Image|説明|
 |---|---|---|
@@ -92,6 +123,22 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 - `docs/` ディレクトリ全体をボリュームマウント
 - ポータルアプリは `/portal/` で提供
 - `http://localhost:7001/` にアクセスすると `/portal/` にリダイレクト
+
+## garage
+
+ローカル開発用の S3 互換オブジェクトストレージです（テストは in-process の gofakes3 を使います）。
+
+- ベースイメージ: `alpine:3.24` に `dxflrs/garage` から `garage` バイナリをコピー。公式イメージは `scratch` ベースで shell を持たず、プロビジョニングスクリプトを実行できないため
+- `garage.toml`: 単一ノード構成（`replication_factor = 1`、S3 API `3900` / Admin API `3903`）。read-only でマウント
+- `init.sh`: `garage_init` サービスが実行する冪等なプロビジョニング（レイアウト割当 → バケット作成 → 固定アクセスキー import → バケット許可）。値は `env/.env` の `OBJECT_STORAGE_*` と一致させる
+
+## mock-auth-server
+
+疑似 OIDC 認証サーバー（JWT Test Provider）のコンテナです。エンドポイント・フロー・fixture は [`docker/mock-auth-server/README.ja.md`](mock-auth-server/README.ja.md) を参照してください。
+
+- ベースイメージ: `node:24.18.0-alpine`。Node のネイティブ型ストリッピングで `.ts` を直接実行（`tsc` ビルド不要）
+- 非rootユーザー（`node`）で実行。コンテナ内部のポートは常に `4000`
+- `OIDC_ISSUER` はホストOS / ブラウザから参照する URL のため、`docker-compose.attach.yaml` でホスト公開ポートに追従させる
 
 ## database
 

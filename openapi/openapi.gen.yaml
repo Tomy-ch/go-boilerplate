@@ -48,6 +48,8 @@ tags:
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
     description: ユーザー検索（キーワード）。
+  - name: v1/users/me/purchases
+    description: 認証主体自身の購入集計（認証必須・自分絞り込み / query_service サンプル）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
@@ -390,6 +392,37 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/users/me/purchases/summary:
+    get:
+      operationId: GetUsersMePurchasesSummary
+      tags:
+        - v1/users/me/purchases
+      summary: 認証ユーザー自身の購入集計の取得
+      description: |
+        認証コンテキスト（Bearer トークン）の内部 UserID に該当するユーザー自身の購入を集計して取得します。
+        マイページの集計カード表示を想定した最小集計で、購入一覧そのものは返しません（履歴は購入履歴一覧 API）。
+        パスに他者の識別子を持たないため、他ユーザーの集計は取得できません。
+        合計金額は USD セント単位の整数です。キャンセル済みの購入も総件数・合計金額に含めます
+        （キャンセルはステータス別内訳の 1 要素として件数・金額とも返るため、キャンセルを除いた値が必要な
+        クライアントは内訳から差し引けます）。
+        購入が 1 件もない場合はエラーではなくゼロ値（件数 0・合計 0・内訳は空配列）を返します。
+        本 op 自体は DB の集計 SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 認証ユーザー自身の購入集計の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseAggregateResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -1993,6 +2026,56 @@ components:
           format: date-time
           description: キャンセル日時
           example: '2026-07-25T00:00:00Z'
+    PurchaseStatusBreakdownResponse:
+      type: object
+      description: |
+        購入集計のステータス別内訳の 1 要素。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+      required:
+        - status
+        - count
+        - totalAmount
+      properties:
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        count:
+          type: integer
+          format: int64
+          description: 当該ステータスの購入件数
+          example: 4
+        totalAmount:
+          type: integer
+          format: int64
+          description: 当該ステータスの購入金額の合計。USD セント単位の整数です。
+          example: 706000
+    PurchaseAggregateResponse:
+      description: |
+        認証ユーザー自身の購入集計のレスポンススキーマ。件数・合計金額・ステータス別内訳のみを返し、
+        購入一覧・明細は含みません。金額は USD セント単位の整数です。
+      type: object
+      required:
+        - totalCount
+        - totalAmount
+        - statusBreakdown
+      properties:
+        totalCount:
+          type: integer
+          format: int64
+          description: 購入総件数（キャンセル済みを含む）。statusBreakdown の count の総和と一致します。購入がない場合は 0 です。
+          example: 12
+        totalAmount:
+          type: integer
+          format: int64
+          description: |
+            購入金額の合計（キャンセル済みを含む）。statusBreakdown の totalAmount の総和と一致します。
+            USD セント単位の整数です。購入がない場合は 0 です。
+          example: 2118000
+        statusBreakdown:
+          type: array
+          description: |
+            ステータス別の内訳（購入ステータスマスタの表示順）。購入に出現したステータスのみを含むため、
+            購入がない場合は空配列です。
+          items:
+            $ref: '#/components/schemas/PurchaseStatusBreakdownResponse'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。

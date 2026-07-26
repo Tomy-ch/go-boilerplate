@@ -16,9 +16,11 @@ import (
 // Config は、Pool の振る舞いを決めるパラメータです。
 type Config struct {
 	Root          string // 自 worktree の絶対パス（.gobp-db-slot の出力先・owner）
-	SharedProject string // 共有 DB の固定 compose プロジェクト（例: gobp-shared）
+	SharedProject string // 共有インフラの固定 compose プロジェクト（例: gobp-shared）
 	APIBasePort   int    // API_HOST_PORT のベース（スロット N = base+N）
 	MockAuthBase  int    // MOCK_AUTH_HOST_PORT のベース
+	DlvBase       int    // DLV_HOST_PORT のベース
+	PprofBase     int    // PPROF_HOST_PORT のベース
 	APPEnv        string // 実行環境ラベル（deploy 系ガードに使用）
 }
 
@@ -65,13 +67,13 @@ func (p *Pool) Acquire(ctx context.Context) error {
 		switch {
 		case p.reg.TryAcquireFresh(slot):
 		case p.reg.IsStale(slot):
-			// 稼働中の DB があれば（heartbeat 漏れの保険）reclaim で破壊しないよう skip。
-			n, err := p.admin.ActiveConnections(ctx, dbLocal(slot), dbTest(slot))
+			// heartbeat は make serve 時にしか打たれないため、起動しっぱなしの app を持つスロットも
+			// TTL 超過で stale になる。DB を作り直す前に serve 中でないことを確かめる。
+			busy, err := p.slotInUse(ctx, slot)
 			if err != nil {
 				return err
 			}
-			if n > 0 {
-				p.logf("slot %d is stale but has active DB connections, skip", slot)
+			if busy {
 				continue
 			}
 			if !p.reg.TryReclaim(slot) {
@@ -156,6 +158,31 @@ func (p *Pool) ensureLocalEnv() error {
 	return nil
 }
 
+// slotInUse は、stale なスロットが実際にはまだ使われているかを返します。
+// app コンテナの稼働と DB への接続をそれぞれ確認します。接続プールはアイドルで空になるため、
+// 接続数だけでは serve 中の worktree を見落とします。
+func (p *Pool) slotInUse(ctx context.Context, slot int) (bool, error) {
+	running, err := p.comp.RunningContainers(ctx, serveProject(slot))
+	if err != nil {
+		return false, err
+	}
+	if running > 0 {
+		p.logf("slot %d is stale but %s has running containers, skip", slot, serveProject(slot))
+		return true, nil
+	}
+
+	conns, err := p.admin.ActiveConnections(ctx, dbLocal(slot), dbTest(slot))
+	if err != nil {
+		return false, err
+	}
+	if conns > 0 {
+		p.logf("slot %d is stale but has active DB connections, skip", slot)
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // finishAcquire は、取得済みスロットに meta / DB / .gobp-db-slot を確定させます。
 func (p *Pool) finishAcquire(ctx context.Context, slot int, verb string) error {
 	if err := p.reg.WriteMeta(slot); err != nil {
@@ -185,11 +212,15 @@ func (p *Pool) ensureSlotDBs(ctx context.Context, slot int) error {
 }
 
 // writeSlotFile は、.gobp-db-slot（make が -include で読む KEY=VALUE）を書き出します。
+// app コンテナのホスト公開ポートは全てスロット番号で相対化し、並列 serve が衝突しないようにします。
 func (p *Pool) writeSlotFile(slot int) error {
 	content := fmt.Sprintf(
-		"SLOT=%d\nDB_NAME_LOCAL=%s\nDB_NAME_TEST=%s\nAPI_HOST_PORT=%d\nMOCK_AUTH_HOST_PORT=%d\nCOMPOSE_PROJECT_NAME=%s\nSERVE_PROJECT=%s\n",
+		"SLOT=%d\nDB_NAME_LOCAL=%s\nDB_NAME_TEST=%s\n"+
+			"API_HOST_PORT=%d\nMOCK_AUTH_HOST_PORT=%d\nDLV_HOST_PORT=%d\nPPROF_HOST_PORT=%d\n"+
+			"COMPOSE_PROJECT_NAME=%s\nSERVE_PROJECT=%s\n",
 		slot, dbLocal(slot), dbTest(slot),
-		p.cfg.APIBasePort+slot, p.cfg.MockAuthBase+slot, p.cfg.SharedProject, serveProject(slot))
+		p.cfg.APIBasePort+slot, p.cfg.MockAuthBase+slot, p.cfg.DlvBase+slot, p.cfg.PprofBase+slot,
+		p.cfg.SharedProject, serveProject(slot))
 	if err := os.WriteFile(p.slotFilePath(), []byte(content), filePerm); err != nil {
 		return xerrors.Wrap(err, "failed to write .gobp-db-slot")
 	}

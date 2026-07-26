@@ -2,9 +2,12 @@
 package dbslot
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"os"
 	"os/exec"
+	"strings"
 
 	"go-boilerplate/pkg/xerrors"
 )
@@ -15,6 +18,8 @@ type Compose interface {
 	UpSharedDB(ctx context.Context, project string) error
 	// DownServe は、per-worktree の serve プロジェクト（app コンテナ）を停止・削除します。
 	DownServe(ctx context.Context, project string) error
+	// RunningContainers は、指定プロジェクトで稼働中のコンテナ数を返します。
+	RunningContainers(ctx context.Context, project string) (int, error)
 }
 
 // ExecCompose は、docker compose をホストで実行する Compose 実装です。
@@ -26,21 +31,53 @@ func (c ExecCompose) UpSharedDB(ctx context.Context, project string) error {
 	return c.run(ctx, project, "--profile", "database", "up", "-d", "--wait", "database")
 }
 
-// DownServe は `docker compose -f docker-compose.yaml -f docker-compose.pool.yaml down` を実行します。
+// DownServe は `docker compose -f docker-compose.yaml -f docker-compose.attach.yaml down` を実行します。
 // serve コンテナが起動していなくてもエラーにしません（冪等）。
 func (c ExecCompose) DownServe(ctx context.Context, project string) error {
-	_ = c.run(ctx, project, "-f", "docker-compose.yaml", "-f", "docker-compose.pool.yaml", "down")
+	_ = c.run(ctx, project, "-f", "docker-compose.yaml", "-f", "docker-compose.attach.yaml", "down")
 	return nil
 }
 
+// RunningContainers は `docker compose ps -q --status running` の出力行数を返します。
+// プロジェクトが存在しない場合は 0 を返します（未 serve と稼働中を区別できれば足りるため）。
+func (c ExecCompose) RunningContainers(ctx context.Context, project string) (int, error) {
+	out, err := c.output(ctx, project, "ps", "-q", "--status", "running")
+	if err != nil {
+		return 0, err
+	}
+
+	n := 0
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
+		if strings.TrimSpace(line) != "" {
+			n++
+		}
+	}
+
+	return n, nil
+}
+
 func (ExecCompose) run(ctx context.Context, project string, args ...string) error {
-	// 引数は本パッケージ内の固定文字列のみ（ユーザー入力を渡さない）。
-	cmd := exec.CommandContext(ctx, "docker", append([]string{"compose"}, args...)...) //nolint:gosec // 固定引数
-	cmd.Env = append(os.Environ(), "COMPOSE_PROJECT_NAME="+project)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := newComposeCmd(ctx, project, os.Stderr, args...).Run(); err != nil {
 		return xerrors.Wrap(err, "docker compose failed")
 	}
 	return nil
+}
+
+func (ExecCompose) output(ctx context.Context, project string, args ...string) (string, error) {
+	var buf bytes.Buffer
+	if err := newComposeCmd(ctx, project, &buf, args...).Run(); err != nil {
+		return "", xerrors.Wrap(err, "docker compose failed")
+	}
+	return buf.String(), nil
+}
+
+// newComposeCmd は、固定プロジェクトを環境変数で与えた docker compose コマンドを組み立てます。
+func newComposeCmd(ctx context.Context, project string, stdout io.Writer, args ...string) *exec.Cmd {
+	// 引数は本パッケージ内の固定文字列のみ（ユーザー入力を渡さない）。
+	cmd := exec.CommandContext(ctx, "docker", append([]string{"compose"}, args...)...) //nolint:gosec // 固定引数
+	cmd.Env = append(os.Environ(), "COMPOSE_PROJECT_NAME="+project)
+	cmd.Stdout = stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd
 }

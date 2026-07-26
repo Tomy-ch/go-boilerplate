@@ -36,7 +36,11 @@ func newMockPool(t *testing.T, root, appEnv string) (*Pool, *mock_dbslot.MockDBA
 	admin := mock_dbslot.NewMockDBAdmin(ctrl)
 	comp := mock_dbslot.NewMockCompose(ctrl)
 	reg := NewRegistry(t.TempDir(), root, "branch", 30*time.Minute, 8, func() time.Time { return time.Unix(1_000_000, 0) })
-	cfg := Config{Root: root, SharedProject: "gobp-shared", APIBasePort: 8080, MockAuthBase: 4000, APPEnv: appEnv}
+	cfg := Config{
+		Root: root, SharedProject: "gobp-shared",
+		APIBasePort: 8080, MockAuthBase: 4000, DlvBase: 2345, PprofBase: 6060,
+		APPEnv: appEnv,
+	}
 	return NewPool(reg, admin, comp, cfg, io.Discard, io.Discard), admin, comp
 }
 
@@ -71,6 +75,9 @@ func TestPool_Acquire(t *testing.T) {
 			assert.Contains(t, content, "DB_NAME_LOCAL=wt1_local")
 			assert.Contains(t, content, "DB_NAME_TEST=wt1_test")
 			assert.Contains(t, content, "API_HOST_PORT=8081")
+			assert.Contains(t, content, "MOCK_AUTH_HOST_PORT=4001")
+			assert.Contains(t, content, "DLV_HOST_PORT=2346")
+			assert.Contains(t, content, "PPROF_HOST_PORT=6061")
 			assert.Contains(t, content, "COMPOSE_PROJECT_NAME=gobp-shared")
 			assert.Contains(t, content, "SERVE_PROJECT=gobp-wt-1")
 		})
@@ -82,10 +89,34 @@ func TestPool_Acquire(t *testing.T) {
 			pool, admin, comp := newMockPool(t, root, "")
 			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
 			// slot1 は稼働中接続ありで skip、slot2 を取得する。
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
 			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(1, nil)
 			expectSlotDBs(admin, "2")
 
 			// slot1 を別 owner の stale リースにする。
+			other := NewRegistry(pool.reg.dir, "/w/other", "b", 30*time.Minute, 8,
+				func() time.Time { return time.Unix(1, 0) })
+			require.True(t, other.TryAcquireFresh(1))
+			require.NoError(t, other.WriteMeta(1))
+
+			require.NoError(t, pool.Acquire(context.Background()))
+
+			b, err := os.ReadFile(filepath.Join(root, ".gobp-db-slot")) //nolint:gosec // テスト内の固定パス
+			require.NoError(t, err)
+			assert.Contains(t, string(b), "SLOT=2")
+		})
+
+		t.Run("stale スロットで app コンテナが稼働中なら破壊せず次スロットを取得する", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			pool, admin, comp := newMockPool(t, root, "")
+			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+			// 接続プールはアイドルで空になるため、接続数 0 でも serve 中なら slot1 を守る。
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(2, nil)
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-2").Return(0, nil).AnyTimes()
+			expectSlotDBs(admin, "2")
+
 			other := NewRegistry(pool.reg.dir, "/w/other", "b", 30*time.Minute, 8,
 				func() time.Time { return time.Unix(1, 0) })
 			require.True(t, other.TryAcquireFresh(1))
@@ -170,6 +201,79 @@ func TestPool_Acquire(t *testing.T) {
 			err := pool.Acquire(context.Background())
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no free slot")
+		})
+	})
+}
+
+func TestPool_slotInUse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("app コンテナが稼働していれば使用中と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			pool, _, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(1, nil)
+
+			busy, err := pool.slotInUse(context.Background(), 1)
+
+			require.NoError(t, err)
+			assert.True(t, busy)
+		})
+
+		t.Run("コンテナが無くても DB 接続があれば使用中と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			pool, admin, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
+			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(2, nil)
+
+			busy, err := pool.slotInUse(context.Background(), 1)
+
+			require.NoError(t, err)
+			assert.True(t, busy)
+		})
+
+		t.Run("コンテナも DB 接続も無ければ未使用と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			pool, admin, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
+			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(0, nil)
+
+			busy, err := pool.slotInUse(context.Background(), 1)
+
+			require.NoError(t, err)
+			assert.False(t, busy)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("コンテナ確認が失敗すればエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			pool, _, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, errBoom)
+
+			_, err := pool.slotInUse(context.Background(), 1)
+
+			require.ErrorIs(t, err, errBoom)
+		})
+
+		t.Run("接続確認が失敗すればエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			pool, admin, comp := newMockPool(t, t.TempDir(), "")
+			comp.EXPECT().RunningContainers(gomock.Any(), "gobp-wt-1").Return(0, nil)
+			admin.EXPECT().ActiveConnections(gomock.Any(), "wt1_local", "wt1_test").Return(0, errBoom)
+
+			_, err := pool.slotInUse(context.Background(), 1)
+
+			require.ErrorIs(t, err, errBoom)
 		})
 	})
 }

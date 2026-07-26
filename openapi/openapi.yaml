@@ -47,6 +47,8 @@ tags:
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
     description: ユーザー検索（キーワード）。
+  - name: v1/users/me/purchases
+    description: 認証主体自身の購入集計（認証必須・自分絞り込み / query_service サンプル）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
@@ -98,6 +100,8 @@ paths:
     $ref: './paths/v1/users/userId.yaml'
   /v1/users/me:
     $ref: './paths/v1/users/me.yaml'
+  /v1/users/me/purchases/summary:
+    $ref: './paths/v1/users/me/purchases/summary.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
   /v1/users/feed:
@@ -254,4 +258,8 @@ components:
       $ref: './components/requests/purchases/PurchasesPostRequest.yaml'
     PurchaseCancelResponse:
       $ref: './components/schemas/PurchaseCancelResponse.yaml'
+    PurchaseStatusBreakdownResponse:
+      $ref: './components/schemas/PurchaseStatusBreakdownResponse.yaml'
+    PurchaseAggregateResponse:
+      $ref: './components/responses/purchases/PurchaseAggregateResponse.yaml'
     # sample-api:end

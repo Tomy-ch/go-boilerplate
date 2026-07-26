@@ -23,6 +23,15 @@ func stubDocker(t *testing.T, exit int) string {
 	return out
 }
 
+// stubDockerStdout は、標準出力に stdout を返すダミー docker を PATH 先頭に仕込む。
+func stubDockerStdout(t *testing.T, stdout string, exit int) {
+	t.Helper()
+	dir := t.TempDir()
+	script := "#!/bin/sh\nprintf '%s' '" + stdout + "'\nexit " + strconv.Itoa(exit) + "\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "docker"), []byte(script), 0o755)) //nolint:gosec // 実行可能スタブ
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
 func TestExecCompose_UpSharedDB(t *testing.T) { //nolint:paralleltest // stubDocker が t.Setenv を使うため並列化不可
 	out := stubDocker(t, 0)
 
@@ -40,7 +49,7 @@ func TestExecCompose_UpSharedDB(t *testing.T) { //nolint:paralleltest // stubDoc
 
 func TestExecCompose_DownServe(t *testing.T) { //nolint:paralleltest // stubDocker が t.Setenv を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
-		t.Run("serve プロジェクトを pool override 付きで down する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("serve プロジェクトを attach override 付きで down する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			out := stubDocker(t, 0)
 
 			require.NoError(t, ExecCompose{}.DownServe(context.Background(), "gobp-wt-1"))
@@ -48,13 +57,45 @@ func TestExecCompose_DownServe(t *testing.T) { //nolint:paralleltest // stubDock
 			b, err := os.ReadFile(out) //nolint:gosec // テスト内の固定パス
 			require.NoError(t, err)
 			assert.Contains(t, string(b), "proj=gobp-wt-1")
-			assert.Contains(t, string(b), "-f docker-compose.yaml -f docker-compose.pool.yaml down")
+			assert.Contains(t, string(b), "-f docker-compose.yaml -f docker-compose.attach.yaml down")
 		})
 
 		t.Run("down が失敗してもエラーにしない（冪等）", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			stubDocker(t, 1)
 
 			require.NoError(t, ExecCompose{}.DownServe(context.Background(), "gobp-wt-1"))
+		})
+	})
+}
+
+func TestExecCompose_RunningContainers(t *testing.T) { //nolint:paralleltest // stubDocker が t.Setenv を使うため並列化不可
+	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("稼働中コンテナの ID 行数を返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			stubDockerStdout(t, "abc123\ndef456\n", 0)
+
+			n, err := ExecCompose{}.RunningContainers(context.Background(), "gobp-wt-1")
+
+			require.NoError(t, err)
+			assert.Equal(t, 2, n)
+		})
+
+		t.Run("出力が空なら 0 を返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			stubDockerStdout(t, "\n", 0)
+
+			n, err := ExecCompose{}.RunningContainers(context.Background(), "gobp-wt-1")
+
+			require.NoError(t, err)
+			assert.Zero(t, n)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("docker が失敗すればエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			stubDockerStdout(t, "", 1)
+
+			_, err := ExecCompose{}.RunningContainers(context.Background(), "gobp-wt-1")
+
+			require.Error(t, err)
 		})
 	})
 }
