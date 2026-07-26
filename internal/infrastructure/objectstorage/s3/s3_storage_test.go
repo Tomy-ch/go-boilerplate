@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"          //nolint:depguard // 送出されたリクエストヘッダを記録するテスト専用のラッパに必要（本番 infra は http を直接使わない）
 	"net/http/httptest" //nolint:depguard // gofakes3 の in-process S3 サーバ起動にテスト専用の httptest が必要（本番 infra は http を直接使わない）
+	"net/textproto"     //nolint:depguard // ヘッダ名の正規化にテスト専用で必要（本番 infra は http を直接使わない）
 	"sync"
 	"testing"
 
@@ -30,7 +31,8 @@ type requestHeaders struct {
 	h  http.Header
 }
 
-// set は、受け取ったヘッダを記録します。
+// set は、受け取ったヘッダのスナップショットを記録します。
+// 後続のリクエストで元のヘッダが再利用されても記録が変質しないよう複製します。
 func (r *requestHeaders) set(h http.Header) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -42,6 +44,16 @@ func (r *requestHeaders) get(name string) string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.h.Get(name)
+}
+
+// has は、name のヘッダが送出されたかを返します。
+// get は「送出されていない」と「空値で送出された」をどちらも空文字として返すため、
+// 送出そのものの有無を問う場合はこちらを使います。
+func (r *requestHeaders) has(name string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, ok := r.h[textproto.CanonicalMIMEHeaderKey(name)]
+	return ok
 }
 
 // newFakeS3 は、gofakes3 の in-process S3 サーバを起動し、testBucket を作成して
@@ -151,7 +163,7 @@ func Test_storage_Put(t *testing.T) {
 			})
 
 			require.NoError(t, err)
-			assert.Empty(t, received.get("Cache-Control"))
+			assert.False(t, received.has("Cache-Control"))
 		})
 	})
 

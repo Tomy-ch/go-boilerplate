@@ -137,6 +137,32 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 			assert.True(t, strings.HasPrefix(view.Path, "products/"))
 			assert.True(t, strings.HasSuffix(view.Path, ".png"))
 		})
+
+		t.Run("サイズ上限ちょうどの画像はアップロードできる", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			storage := mock_objectstorage.NewMockStorage(ctrl)
+
+			authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductImageUpload, gomock.Any()).
+				Return(nil)
+			storage.EXPECT().Put(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, obj objectstorage.PutObject) (objectstorage.Path, error) {
+					return objectstorage.Path(obj.Key), nil
+				})
+
+			u := &usecase{
+				tracer: lt, authorizer: authorizer, storage: storage,
+				maxUploadBytes: int64(len(pngData)),
+			}
+			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+				UploadProductImageParams{ContentType: "image/png", Data: pngData})
+
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
