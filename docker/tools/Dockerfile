@@ -10,16 +10,16 @@ FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149a
 # CGO_ENABLED=0: `go:` backend で install されるツール（mockgen）を静的バイナリにする
 ENV CGO_ENABLED=0
 
-# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
-SHELL ["/bin/ash", "-o", "pipefail", "-c"]
-
 RUN apk add --no-cache bash ca-certificates curl git
 
 ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
+# パイプのままだとリトライ時に部分受信分が sh へ流れ込むため、ファイルへ落としてから実行する。
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -87,9 +87,6 @@ CMD []
 # ------------------------------
 FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS node_tools
 
-# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
-SHELL ["/bin/ash", "-o", "pipefail", "-c"]
-
 RUN apk add --no-cache \
     bash \
     ca-certificates \
@@ -101,7 +98,9 @@ ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -152,15 +151,13 @@ RUN apt-get update \
         make \
     && rm -rf /var/lib/apt/lists/*
 
-# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
-# bash は上の apt-get で導入済み（python:slim は debian ベースで /bin/ash を持たない）
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
 ARG MISE_VERSION
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH" \
     MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise
-RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
