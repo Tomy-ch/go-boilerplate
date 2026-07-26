@@ -9,7 +9,7 @@ English: [local-environment.md](../../maintenance/local-environment.md)
 
 - make ターゲットの一覧 → [`.makefiles/README.md`](../../../.makefiles/README.md)
 - 生成物 / root 所有 / DB 落ち等の詰まり所 → `repo-ops` スキル
-- worktree × DB スロットプールの詳細 → [db-worktree-pool.md](../../maintenance/db-worktree-pool.md)
+- worktree × DB スロットプールの詳細 → [db-worktree-pool.ja.md](db-worktree-pool.ja.md)
 - o11y の送出配線 → [observability.ja.md](../design/observability.ja.md)、認証（疑似 OIDC）→ [auth.ja.md](../design/auth.ja.md)
 
 ## 全体像
@@ -130,14 +130,14 @@ graph LR
 - `API_HOST_PORT = 8080+N`、`MOCK_AUTH_HOST_PORT = 4000+N`、`DLV_HOST_PORT = 2345+N`、`PPROF_HOST_PORT = 6060+N`。
 - スロットを取らない checkout は既定の DB 名（`local` / `test`）と既定ポートのまま動くため、
   スロット取得は**並列作業のための opt-in** に留まる。
-- リース・ブートストラップ・`make slot-acquire` / `slot-free` / `slot-release` 等の**全詳細は正本の [db-worktree-pool.md](../../maintenance/db-worktree-pool.md) を参照**。
+- リース・ブートストラップ・`make slot-acquire` / `slot-free` / `slot-release` 等の**全詳細は正本の [db-worktree-pool.ja.md](db-worktree-pool.ja.md) を参照**。
 
 ## 関連ドキュメント
 
 | 目的 | 参照先 |
 | --- | --- |
 | make ターゲット一覧 | [`.makefiles/README.md`](../../../.makefiles/README.md) |
-| worktree × DB スロットプール（正本） | [db-worktree-pool.md](../../maintenance/db-worktree-pool.md) |
+| worktree × DB スロットプール（正本） | [db-worktree-pool.ja.md](db-worktree-pool.ja.md) |
 | 生成物 / root 所有 / DB 落ちの復旧手順 | `repo-ops` スキル |
 | Observability の送出配線 | [observability.ja.md](../design/observability.ja.md) |
 | 認証（疑似 OIDC / JWKS） | [auth.ja.md](../design/auth.ja.md) |
