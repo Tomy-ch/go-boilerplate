@@ -24,6 +24,8 @@ methods:
     signature: CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
   - name: PayPurchase   # PATCH /v1/purchases/{purchaseId}/pay。詳細は「## PATCH 支払い」
     signature: PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
+  - name: ShipPurchase  # PATCH /v1/purchases/{purchaseId}/ship（admin のみ）。詳細は「## PATCH 発送」
+    signature: ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (ShipPurchaseView, error)
 ```
 
 ## DTOs
@@ -335,6 +337,72 @@ workflow:
     - ErrAlreadyPaid → 409（二重支払い）
     - ErrPayNotAllowed → 409（キャンセル済み・完了・発送済み・配達済みからの不正遷移）
     - ErrNotFound → 404（不存在・他人の購入の存在秘匿）
+    - 未認証は controller で 401（Authn 不在）
+```
+
+## PATCH 発送 (purchase ship)
+
+`PATCH /v1/purchases/{purchaseId}/ship`。購入を発送済みへ遷移させる状態遷移経路。`shipped_at` のセットと `status_id` の
+「発送済み」への更新のみを担い、配送追跡（追跡番号 / 配送業者 / 追跡 URL）と在庫操作は伴わない。支払いと同じく
+**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0029] の判定軸）。
+二重発送は購入行ロック（`repo.LockByID` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyShipped`）で防ぐ。
+
+支払い・キャンセルと異なり **admin 専用の運用操作**であり、認可の扱いが 3 点で異なる:
+
+- **所有権を問わない**（admin は任意の購入を発送できる）。よって `UserID` を入力に取らず、`Authn` をそのまま受けて認可へ渡す。
+- **認可は Authorizer へ委譲する**。usecase は role を検査せず、`ActionPurchaseShip` と所有者なしリソース
+  （`authz.NewResource("purchase", nil)`）を宣言するのみで、「admin なら許可 / 非 admin は所有者一致時のみ許可」というポリシーは
+  Authorizer（`internal/infrastructure/authz/userrole`）が持つ。`ownerID` を nil にすると所有者フォールバックが働かず、実質 admin 限定になる。
+- **不存在を 404 で秘匿しない**（非 admin は認可で先に 403 となり購入の存在を知り得ないため）。
+
+```yaml
+input:
+  args:
+    - name: authn                # 認証主体（認可の判定材料。usecase は role を検査せず Authorizer へ委譲）
+      type: "*auth.Authn"
+    - name: purchaseID           # 発送対象の購入 ID
+      type: uuid.UUID
+
+output:
+  struct: ShipPurchaseView
+  fields:
+    - name: ID / Code / UserID
+      type: uuid.UUID / string / uuid.UUID
+    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（発送済み）
+      type: uuid.UUID / string
+    - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
+      type: int                     # USD セント整数
+    - name: Details
+      type: "[]PurchaseDetailView"
+    - name: OrderedAt
+      type: time.Time
+    - name: ShippedAt
+      type: "*time.Time"            # 発送日時
+
+dependencies:
+  - authz.Authorizer                # ActionPurchaseShip の認可（admin 判定は内部 DB role が SoT）
+  - clock.Clock                     # Ship(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
+  - tx.Manager                      # 最外 tx（本経路は idempotency を配線しない）
+  - purchase.Repository             # LockByID（FOR UPDATE）/ UpdateShipped（status/shipped_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
+  - outbox.EmitUsecase              # purchase.shipped.v1 の emit（同一 tx）
+
+workflow:
+  tx_required: true
+  steps:
+    - "① authn が nil なら ErrUnauthenticated（401）"
+    - "② authorizer.Authorize(ActionPurchaseShip, Resource{kind: purchase, ownerID: nil}) で認可（tx の外）"
+    - "txm.Do 内で:"
+    - "  ③ repo.LockByID で購入行を FOR UPDATE ロックし明細込みで再構築（並行発送を直列化）"
+    - "  ④ purchase.Ship(now) で遷移可否検証 + status/shipped_at を同時更新（ドメイン不変条件）"
+    - "  ⑤ repo.UpdateShipped で purchases の status_id/shipped_at を更新（単一集約・在庫操作なし）"
+    - "  ⑥ emit.Emit(purchase.shipped.v1) を同一 tx で発行する"
+    - "  ⑦ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
+    - ShipPurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
+  errors:
+    - ErrForbidden → 403（非 admin）
+    - ErrAlreadyShipped → 409（二重発送）
+    - ErrShipNotAllowed → 409（未払い相当・完了・キャンセル済み・配達済みからの不正遷移）
+    - ErrNotFound → 404（不存在。所有権による秘匿はしない）
     - 未認証は controller で 401（Authn 不在）
 ```
 
