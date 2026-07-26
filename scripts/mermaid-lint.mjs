@@ -47,7 +47,7 @@ try {
 }
 
 // markdownlint-cli2 の MD_GLOBS と対象範囲を揃える（生成物・vendor・AGENTS.md を除外）。
-const EXCLUDE_DIRS = new Set(["vendor", "node_modules", ".git"])
+const EXCLUDE_DIRS = new Set(["vendor", "node_modules", ".git", "tmp"])
 const EXCLUDE_PREFIXES = [
   "docs/portal/guides/",
   "docs/coverage/",
