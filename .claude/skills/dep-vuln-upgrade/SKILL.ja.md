@@ -123,6 +123,16 @@ curl -fsSL "https://proxy.golang.org/<module>/@v/<version>.info" | jq -r '.Time'
 
 npm / Go proxy への悪意ある publish は通常、数時間〜数日で検知・撤回されるため caution を設ける。セキュリティ修正は急ぐので `too-new` はユーザーが override できる警告だが、`blocked` はリポジトリ自身のポリシーを npm 自体が強制するものであり、スキルは cooldown を無効化せず尊重する。境界は現実的である点に注意: N 日窓の内側に数分でも入って公開された版は、窓がその正確な publish 時刻を跨ぐまで `blocked`。
 
+### 3.5. ゲートが捕捉したものをトリアージする
+
+disposition が `too-new` または `blocked` になった全エントリについて、Step 4 が判断を提示する前に **`/supply-chain-triage`** を chain する（エントリごとに 1 回）。
+
+窓は四つの問い——発行者は変わったか、artifact は source と一致するか、実際に何が変わったか、新しい依存が増えたか——の代理指標であり、待つ代わりに直接答えることができる（`docs/design/security.md` → 「Dependencies」）。この Step がその実行場所である。`too-new` の opt-in はまさに、ユーザーの日数に対する許容度ではなく証拠に基づくべき判断であり、`blocked` エントリについては、待つことが単に不便なのか実際に防御的なのかを知る必要がある。
+
+エコシステム、パッケージ、候補バージョン、**lockfile が現在保持している baseline**（差分のもう一方の端）、`<MIN_AGE_DAYS>`、disposition、移動を強いている CVE を渡す。トリアージは報告のみ——tarball / module zip を実行せずに読み、0–12 のスコア・バンド・根拠を返す。何も変更せず、何も採用しない。判断は Step 4 に残る。
+
+フラグ付きが何も無い（全て `clear`）ときは飛ばす。この run でユーザーが既に見送ったエントリも飛ばす。各エントリのバンドは Step 4 のサマリと選択肢の説明へ引き継ぎ、証拠を添えたうえで選択させる。
+
 ### 4. サマリ表示・clear は自動適用・フラグ付きのみ確認
 
 日本語サマリを disposition ごとに出す。例:
@@ -139,9 +149,11 @@ npm / Go proxy への悪意ある publish は通常、数時間〜数日で検�
 
 ⚠️ too-new（公開が min_age 未満 / 別途 opt-in）:
   - fast-uri 3.1.3 → 3.1.4  [docker/tools]  (公開 3 日 / CVE-2026-16221 / HIGH)
+      トリアージ: 1/12 LOW（発行者同一・provenance 一致・差分は URL parser のみ・新規依存なし）
 
 ⛔ deferred（repo の .npmrc min-release-age に阻まれ install 不可）:
   - brace-expansion 1.1.16  [docker/tools, spectral-core 内]  (公開が cooldown 内 / 2026-07-22 頃に解除)
+      トリアージ: 2/12 LOW（ただし .npmrc の cooldown により install 自体が不可）
 
 ❓ 未検出 / 要手動:
   - （lockfile に見つからない等）
@@ -154,7 +166,7 @@ npm / Go proxy への悪意ある publish は通常、数時間〜数日で検�
 - **too-new（cooldown 無しの caution）→ 報告・確認（opt-in）**、既定は未適用。
 - **blocked / deferred → 決して適用しない**。報告と解除時期だけ示す。
 
-`AskUserQuestion` を呼ぶのは、判断すべき **major 跨ぎ** および/または **too-new** エントリがあるときだけ（それらだけを並べた 1 回の `multiSelect: true`、既定は全て未選択）。eligible が全て `clear` かつ非 major なら、質問せず即適用する。eligible が無ければ書き込みなしで Step 7 へ。
+`AskUserQuestion` を呼ぶのは、判断すべき **major 跨ぎ** および/または **too-new** エントリがあるときだけ（それらだけを並べた 1 回の `multiSelect: true`、既定は全て未選択）。各 `too-new` の選択肢には Step 3.5 のトリアージ・バンド（`1/12 LOW` / `7/12 HIGH` / `INSUFFICIENT-EVIDENCE`）を説明として付ける。opt-in するか待つかの理由はそのバンドなのだから、上のサマリだけでなくクリックする場所に置くべきである。eligible が全て `clear` かつ非 major なら、質問せず即適用する。eligible が無ければ書き込みなしで Step 7 へ。
 
 ### 5. 更新の適用
 
@@ -236,6 +248,7 @@ govulncheck ./...                # 利用可能なら。GHSA が解消するこ�
 - パッチした package を ecosystem / location ごとにまとめ、version 差分と CVE id 付きで。
 - 追加した `overrides` は、親が修正版を native に取り込んだら **回収すべき暫定 pin** として明示する（使った specifier — フロアか例外的 exact pin か、およびその理由）。
 - 適用した `too-new` / `major-bump` エントリ（およびその確認）、または意図的にスキップしたもの。
+- cooldown が捕捉した各エントリについて、そのトリアージ・バンドとそれを決めた軸。採用か待機かの判断が証拠に基づいたことを記録に残すため。答えられなかった軸があればそれも挙げる。
 - ユーザーが別手段で対処すべき `not-present` / `needs-manual` エントリ。
 - 検証結果（`make lint` / `make test` / `npm audit` / `govulncheck` / drift チェック）。
 - 再生成物（あれば）。
@@ -246,7 +259,7 @@ commit / stage / push はしない。ユーザーがツリーをレビューし 
 
 - **一括ではなく対象限定。** このスキルの本質は勧告で名指しされた package のみに触れること。実行中に無関係な古い依存に気づいても、言及はしてもここでバンプしない。
 - **聞きすぎない。** `clear` かつ非 major のパッチは、まさにユーザーがスキルを起動した目的 — 確認クリックなしで適用する。`AskUserQuestion` は本当に重い判断のためだけに取っておく: **major 跨ぎ**（breaking リスク）と **too-new** の opt-in。それらは別途・明確に報告する。
-- **リポジトリの npm cooldown を尊重し、無効化しない。** `.npmrc` `min-release-age=N` は意図的な supply-chain 制御。修正版をブロックしたら（`ETARGET ... date before <cutoff>`）、その版は `blocked`/deferred — 解除時期（`publish_date + N 日`）を報告し、`min-release-age` を下げたり `--before` を足したり迂回したりしない。勧告の唯一の cooldown 内修正版が同日公開の新しい patch であることが多い。窓が明けるのを待つか、より古く既に枯れた修正版を選ぶ — *ただしユーザーがその版を承認した場合のみ*。
+- **リポジトリの npm cooldown を尊重し、無効化しない。** `.npmrc` `min-release-age=N` は意図的な supply-chain 制御。修正版をブロックしたら（`ETARGET ... date before <cutoff>`）、その版は `blocked`/deferred — 解除時期（`publish_date + N 日`）を報告し、`min-release-age` を下げたり `--before` を足したり迂回したりしない。LOW のトリアージ・バンドもこれを変えない。トリアージが供給するのは証拠であって許可ではなく、cooldown は証拠が何を言おうと npm が依存解決時に強制する。勧告の唯一の cooldown 内修正版が同日公開の新しい patch であることが多い。窓が明けるのを待つか、より古く既に枯れた修正版を選ぶ — *ただしユーザーがその版を承認した場合のみ*。
 - **Vendoring。** `vendor/` があるなら、`go.mod` の変更は `go mod vendor` が `vendor/modules.txt` を再同期するまで完了しない。さもなくばビルドが `inconsistent vendoring` で落ちる。
 - **推移的 vs 直接。** 修正を含む互換な直接依存版が既にあるなら直接バンプが望ましい。親がまだ release していない純粋な推移的依存にはスコープ付き `overrides` を使う。スコープ付き override（`"parent": {"pkg": ">=<fixed> <<next-major>"}`）は、既に修正済みの top-level コピーを downgrade せずに脆弱な nested コピーを直す。各 package がどちらを使ったか報告に明記する。
 - **override は暫定的な負債 — フロアで書き、後で回収する。** `overrides` エントリは手動の sticky な pin で、npm は失効も通知もしないため、推移的依存への静かなキャップとして腐っていく。健全に保つ 2 つの規則: (1) exact version ではなく **同一 major のフロア**（`">=<fixed> <<next-major>"`）で書き、依存を凍結せずに修正を *最低ライン* として強制する — exact pin は range 内のより新しい版が既知の壊れで留めざるを得ないときだけに取っておく。(2) すべての override を **暫定** として扱う — **親** が修正版を native に引き込む release を出したら回収する: 親をバンプし、不要になった override を削除し、`npm install --package-lock-only`、そして `npm audit` を再実行して pin 無しでも修正が保たれることを確認する。腐った exact override は、pin した版自体が指摘されると脆弱性を再導入すらしうる。
@@ -264,6 +277,7 @@ commit / stage / push はしない。ユーザーがツリーをレビューし 
 - [ ] 各 package の所在（lockfile ディレクトリ / `go.mod`）を特定し direct vs transitive/indirect を分類、not-present を提示した
 - [ ] 修正版を同一 major の最小として選び、major 跨ぎを breaking の可能性としてフラグ、downgrade ガードを適用した
 - [ ] 公開日を取得し disposition を設定した（clear / too-new / blocked-by-cooldown）
+- [ ] `too-new` / `blocked` の全エントリを `/supply-chain-triage` でトリアージした（baseline = lockfile の現行版）。バンドをサマリと `AskUserQuestion` の選択肢説明へ引き継いだ
 - [ ] 日本語サマリを表示し、**clear 非 major は確認なしで適用**、`AskUserQuestion` は major-bump / too-new のみに使用、blocked は deferred（未適用）
 - [ ] npm 直接は `npm install --package-lock-only`、推移的は **スコープ付き同一 major フロア** の `overrides`（`">=<fixed> <<next-major>"`。exact pin は既知の壊れた新版のときだけ）+ `npm install --package-lock-only`、lockfile は手編集しない
 - [ ] 追加した override を報告で暫定と明示した（親が修正版を native に出したら回収 — 親バンプ・override 削除・再 audit）

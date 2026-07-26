@@ -1,7 +1,7 @@
 ---
 name: actions-pin
 description: >-
-  Audit and upgrade the SHA-pinned GitHub Actions referenced by `.github/workflows/**` and `.github/actions/**`, with a supply-chain quarantine and automatic step-back to the previous aged version. Default is minor-only (stay within current majors); pass `major` to also bump major versions; pass a number or `days=N` to set the exclusion window (`PIN_ACTIONS_MIN_AGE_DAYS`, default 14). The version source of truth is the trailing tag comment on each `uses: owner/repo@<sha> # <tag>` line; `.github/actions-pin.toml` is the resolved tag→SHA lockfile, driven by `make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check` (backed by `scripts/pin-actions`). For each target major the skill prefers the moving major tag when its latest is aged, else steps back to the newest exact version older than the exclusion window, else holds — so a freshly published (possibly compromised) release is never adopted. Verifies with `make pin-actions-check` + `make actions-lint`. Major bumps additionally verify `with:` input compatibility and are held (not auto-applied) on a breaking change. Sibling of `tools-upgrade` (which covers `mise.toml`, not Actions). Use on a routine cadence or after an Actions security advisory.
+  Audit and upgrade the SHA-pinned GitHub Actions referenced by `.github/workflows/**` and `.github/actions/**`, with a supply-chain quarantine and automatic step-back to the previous aged version. Default is minor-only (stay within current majors); pass `major` to also bump major versions; pass a number or `days=N` to set the exclusion window (`PIN_ACTIONS_MIN_AGE_DAYS`, default 14). The version source of truth is the trailing tag comment on each `uses: owner/repo@<sha> # <tag>` line; `.github/actions-pin.toml` is the resolved tag→SHA lockfile, driven by `make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check` (backed by `scripts/pin-actions`). For each target major the skill prefers the moving major tag when its latest is aged, else steps back to the newest exact version older than the exclusion window, else holds — so a freshly published (possibly compromised) release is never adopted. Where no aged release exists to step back to, it chains `/supply-chain-triage` for a scored evidence verdict on the fresh head, and it stops on an **exact** tag whose SHA moved (a re-pointed tag) as a security event rather than a refresh. Verifies with `make pin-actions-check` + `make actions-lint`. Major bumps additionally verify `with:` input compatibility and are held (not auto-applied) on a breaking change. Sibling of `tools-upgrade` (which covers `mise.toml`, not Actions). Use on a routine cadence or after an Actions security advisory.
 ---
 
 # GitHub Actions Pin Upgrade
@@ -104,6 +104,18 @@ For each distinct external action, fetch its release list with dates (`gh api re
 
 `resolve` / `apply` / `actionlint` catch syntax, NOT semantic input changes. For every action whose **major changes**, read its release notes / `action.yml` and compare against every `with:` block this repo uses. Examples seen: `peter-evans/create-pull-request` renamed `git-token`→`branch-token` (v8); `actions/upload-pages-artifact` v5 excludes dotfiles and requires `deploy-pages@v4+`. If the repo's actual inputs remain compatible → keep the bump. If a breaking input change applies → **hold the action and report the required change**; do not auto-apply. (Minor-only refreshes within a major skip this check.)
 
+### 3.5. Triage Where Step-back Is Not Available
+
+The quarantine's normal answer here is the **step-back** (rule 2): pin the newest already-aged exact version. That needs no evidence gathering — it adopts something the window has already cleared. Triage belongs to the cases where stepping back is not an option:
+
+- **A rule 3 hold** — no release in the target major is older than the cutoff, so the choice is wait or take the fresh one. There is no vetted alternative to fall back to.
+- **An advisory whose fix exists only in the fresh head**, where waiting means staying vulnerable.
+- **Any action whose `with:` review (step 3) held it**, if the user then asks whether the fresh version is safe in itself.
+
+For those, chain **`/supply-chain-triage`** with `github-actions` as the ecosystem, the action, the candidate tag, and the **SHA currently recorded in `.github/actions-pin.toml`** as the baseline — the lockfile SHA is what the workflows run today, so it is the correct other end of the diff. Actions triage is the strongest of the four ecosystems: the artifact is a real commit range, so publisher, tag-to-commit correspondence, the diff, and the input surface are all directly answerable.
+
+Triage is report-only. It never edits a comment tag, the lockfile, or a `uses:` line, and never runs `resolve` / `apply`. Carry the band into step 4's plan so the hold-versus-adopt choice is visible with its evidence; the decision stays with `AskUserQuestion`.
+
 ### 4. Display Plan and Confirm
 
 Print a Japanese summary: bumps to apply (moving `# vM` / exact step-back `# vM.x.y`, each with the chosen version + its age), held items (with reason: still-fresh new major / breaking `with:` / no aged release), and unchanged. Then confirm the concrete set via `AskUserQuestion` (`multiSelect: true` when several independent bumps are offered) so the step-back and hold decisions are visible before any write.
@@ -120,7 +132,9 @@ make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>   # the parsed exclusion d
 make pin-actions-apply
 ```
 
-`resolve` re-resolves every referenced tag (current-major actions also get their latest aged within-major SHA) and prints `⚠️ ... 既存ピンを維持` for any whose within-major head is inside the window — expected, not a failure. If `resolve` aborts with `ref "vN" が見つかりません`, the moving-major tag does not exist — that action should have been a step-2 exact pin; fix and re-run. If it aborts on vendor inconsistency, run step 0's `go mod vendor`.
+`resolve` re-resolves every referenced tag (current-major actions also get their latest aged within-major SHA) and prints `⚠️ ... 既存ピンを維持` for any whose within-major head is inside the window — expected, not a failure.
+
+**Watch the lockfile diff for a re-pointed tag.** A moving major tag (`# v6`) legitimately advances to a new SHA. An **exact** comment tag (`# v4.1.0`) must not: if `resolve` gives an exact tag a different SHA than the lockfile already recorded, the version reference stayed the same while the code underneath it changed. That is tag re-pointing, the shape of the `tj-actions/changed-files` compromise, and it is a security event rather than a pin refresh. Stop, do not `apply`, and triage it (`/supply-chain-triage`, baseline = the lockfile's previous SHA) before anything is written — the old and new SHAs are what make an upstream report actionable. If `resolve` aborts with `ref "vN" が見つかりません`, the moving-major tag does not exist — that action should have been a step-2 exact pin; fix and re-run. If it aborts on vendor inconsistency, run step 0's `go mod vendor`.
 
 ### 7. Verify
 
@@ -133,11 +147,12 @@ Report OK / FAIL per command. Do NOT auto-roll-back on failure — the user deci
 
 ### 8. Final Report
 
-Summarize: actions bumped (moving / exact step-back), actions SHA-refreshed, actions held (with reason), verification result. List any exact-version pins introduced so the user knows to revisit them once aged. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`-prefixed) manually.
+Summarize: actions bumped (moving / exact step-back), actions SHA-refreshed, actions held (with reason, plus any triage band and the axis that drove it), any re-pointed exact tag found in step 6, verification result. List any exact-version pins introduced so the user knows to revisit them once aged. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`-prefixed) manually.
 
 ## Notes
 
-- **Step-back is the default response to the quarantine, not a hold.** Holding happens only when no aged release exists in the target major. This is the behavior the arguments are designed around.
+- **Step-back is the default response to the quarantine, not a hold.** Holding happens only when no aged release exists in the target major. This is the behavior the arguments are designed around. It is also why triage is the exception here rather than the rule: an aged exact version is evidence the window has already supplied, and gathering more about the fresh head buys nothing when a vetted alternative is one comment-tag edit away.
+- **A tag is a name, not an identity.** The lockfile exists because a tag can be re-pointed; an exact tag whose SHA moves is the case it was built to catch (step 6). Treat it as a security event, not a refresh.
 - **Quarantine vs new majors**: the gate keys off SHA age, and a new major has no prior lockfile entry, so a fresh major's moving tag is skipped by `resolve` until it ages — which is exactly why step 2 pins an aged exact version instead.
 - **Not every action has a moving major tag.** Always `git ls-remote` the `vM` tag before assuming `# vM` resolves (`sigstore/cosign-installer` is the known exception → permanent exact pin).
 - **`actionlint` ≠ semantic safety.** It validates workflow syntax, not whether a bumped action's inputs/behavior still match usage. The `with:` review (step 3) is mandatory for major bumps.
@@ -156,7 +171,9 @@ Confirm before reporting completion:
 - [ ] Per action: target major determined by mode, then Target-Selection Rule applied (moving `# vM` aged → exact step-back → hold)
 - [ ] Tag-format changes (e.g. added `v` prefix) and moving-tag existence accounted for
 - [ ] For each major-changing action: `with:` compatibility verified; breaking ones held + reported
-- [ ] Plan (bumps / step-backs / holds with reasons) presented and confirmed via `AskUserQuestion`
+- [ ] Rule 3 holds (and advisory-driven fresh heads) triaged via `/supply-chain-triage` with the lockfile SHA as baseline; step-backs left untriaged by design
+- [ ] Lockfile diff checked for an **exact** tag whose SHA moved (re-pointed tag → stop before `apply`, triage, report)
+- [ ] Plan (bumps / step-backs / holds with reasons, with any triage band) presented and confirmed via `AskUserQuestion`
 - [ ] Comment tags edited only for approved bumps; held / unchanged actions left untouched
 - [ ] `make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>` + `make pin-actions-apply` run
 - [ ] `make pin-actions-check` + `make actions-lint` run and reported
