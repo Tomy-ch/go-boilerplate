@@ -74,6 +74,8 @@ tags:
     description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
   - name: v1/purchases/detail/pay
     description: 購入の支払い（本人のみ・状態機械/不正遷移 409・擬似決済）。
+  - name: v1/purchases/detail/ship
+    description: 購入の発送（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -1026,6 +1028,41 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/{purchaseId}/ship:
+    patch:
+      operationId: PatchPurchasesShip
+      tags:
+        - v1/purchases/detail/ship
+      summary: 購入の発送
+      description: |
+        購入を発送済みへ遷移させます。認証必須で、管理者（admin）のみ実行できます。
+        支払い済みからのみ遷移でき、status を「発送済み」へ更新し shippedAt をセットします。
+        未払い相当（未処理 / 受付中 / 確認中 / 処理中）・完了・キャンセル済み・配達済みの購入は 409（不正遷移）、
+        既に発送済みの購入も 409（二重発送）で拒否します。配送追跡（追跡番号 / 配送業者 / 追跡 URL）は扱いません。
+        購入者本人であっても管理者でなければ 403 で拒否します。金額はすべて USD セント単位の整数です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchaseIdParam'
+      responses:
+        '200':
+          description: 購入の発送に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseShipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
 components:
   parameters:
     PageParam:
@@ -2590,6 +2627,77 @@ components:
           format: date-time
           description: 支払日時
           example: '2026-07-25T00:00:00Z'
+    PurchaseShipResponse:
+      type: object
+      description: |
+        購入発送後の購入情報レスポンススキーマ。status は ID・名称を事前解決済みで、
+        別途の名称解決 API 呼び出しは不要です。shippedAt に発送日時が入ります。
+        金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
+        すべて USD セント単位の整数です。
+      required:
+        - id
+        - code
+        - userId
+        - status
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+        - shippedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列
+          items:
+            $ref: '#/components/schemas/PurchaseDetailResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        shippedAt:
+          type: string
+          format: date-time
+          description: 発送日時
+          example: '2026-07-26T00:00:00Z'
   responses:
     BadRequest400:
       description: リクエストが不正です。
