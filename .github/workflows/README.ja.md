@@ -61,9 +61,9 @@
 
 | 種別 | PR | protected branch への push | 定期 |
 | --- | --- | --- | --- |
-| gitleaks | 全 PR | 不要 | 不要 |
+| gitleaks | 全 PR | 不要 | 週次で履歴全体 |
 | TruffleHog | 全 PR の差分 | 不要 | 週次で履歴全体 |
-| zizmor | Actions 関連ファイル変更時 | `develop` / `staging` / `production` / `release/*` | 不要 |
+| zizmor | Actions 関連ファイル変更時 | `develop` / `staging` / `production` / `release/*` | 週次（オンライン監査） |
 | Dependency Review | 依存関係変更 PR | 不要 | 不要 |
 | govulncheck | Go・依存変更 PR | 同上 | 週次 |
 | Trivy FS | Go・依存変更 PR | 同上 | 週次 |
@@ -72,7 +72,7 @@
 | OpenSSF Scorecard | 不要 | 既定ブランチのみ | 週次 |
 | Image Scan | デプロイ先ブランチへの PR | 不要 | 週次 |
 
-週次実行は月曜内でずらしています（`0 0` Trivy FS / Image Scan、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard）。同一時刻に全スキャナが並ぶのを避けるためです。
+週次実行は月曜内で 1 時間ごとにずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査））。同一時刻に全スキャナが並ぶのを避けるためです。
 
 #### ランナーのハードニング
 
@@ -105,7 +105,7 @@
 - `auto-generate-docs.yaml` は `auto/docs-update/<base>` というブランチ名で auto-PR を作成（release base ごとに 1 ブランチを `delete-branch: true` で再利用）。再帰実行を避けるため自己ブランチでは workflow をスキップ
 - デプロイ系 workflow の target ブランチ（`production` / `staging` / `develop`）はすべてブランチ保護を有効化。マージは必ず PR レビュー経由
 - セキュリティスキャンのトリガーは上記「セキュリティのトリガーマトリクス」でツールごとに定義。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
-- `trivy-fs.yaml` と `osv-scanner.yaml` は**修正版が存在する脆弱性でのみ**ゲートする。修正版のない advisory も code scanning と PR コメントには載るが、チェックを恒久的に赤くはしない。厳格版はデプロイ先ブランチ向け PR を見る `trivy-release-gate.yaml` が担当
+- `trivy-fs.yaml` と `osv-scanner.yaml` は**修正版が存在する脆弱性でのみ**ゲートする。修正版のない advisory も code scanning と PR コメントには載るが、チェックを恒久的に赤くはしない。厳格版の `trivy-release-gate.yaml` はデプロイ先ブランチ向け PR で**修正版の有無に関わらず全 finding で fail** し、既知の脆弱性を黙ってデプロイに載せない
 - `trufflehog.yaml` は**検証済み**シークレットのみを報告し、生のシークレット値をジョブログ / PR コメント / artifact のいずれにも出さない。正規表現ベースの検知は `--redact` 付きの gitleaks が担当
 - zizmor の例外設定は `.github/zizmor.yml`。`ignore` はファイル単位であり、同じ audit を踏む新規ワークフローは意図どおり落ちる。恒久的な allowlist ではなく、元の指摘を直したらエントリを消す運用
 - `auto-generate-docs.yaml` の `Detect changes` ステップはカバレッジ HTML / SchemaSpy のタイムスタンプ揺れを除外し、無意味な PR が発火しないよう設計
