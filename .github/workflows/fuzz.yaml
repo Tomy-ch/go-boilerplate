@@ -93,7 +93,7 @@ jobs:
   notify-failure:
     needs: fuzz
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.fuzz.result) }}
-    uses: ./.github/workflows/notify-failure.yaml
+    uses: ./.github/workflows/notify.yaml
     with:
       failed-job: fuzz
     secrets:
