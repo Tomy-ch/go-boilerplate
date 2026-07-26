@@ -17,3 +17,10 @@
 **/package-lock.json                  @Tomy-ch
 .github/actions-pin.toml              @Tomy-ch
 docker/images-pin.toml                @Tomy-ch
+
+# Go modules have no toolchain-side cooldown to bypass — nothing refuses a
+# freshly published version, so nothing can detect that one was taken. Review is
+# the only control on this ecosystem, which makes the entry below load-bearing
+# rather than symmetrical bookkeeping.
+go.mod                                @Tomy-ch
+go.sum                                @Tomy-ch
