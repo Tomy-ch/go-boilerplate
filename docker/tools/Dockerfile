@@ -108,7 +108,11 @@ WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install npm:@redocly/cli \
+# install 対象は npm backend だが、mise は対象に関わらず mise.toml 全体を解決するため GitHub を引く。
+RUN --mount=type=secret,id=github_token \
+    github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
+    if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
+    mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
     && mise install npm:@commitlint/cli \
     && rm -rf /root/.cache /root/.npm
@@ -163,7 +167,11 @@ WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install uv \
+# uv 自体が aqua:astral-sh/uv（GitHub Releases 解決）であるうえ、mise は mise.toml 全体を解決する。
+RUN --mount=type=secret,id=github_token \
+    github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
+    if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
+    mise install uv \
     && mise install pipx:sqlfluff \
     && rm -rf /root/.cache
 
