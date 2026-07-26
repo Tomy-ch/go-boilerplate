@@ -193,7 +193,7 @@ fields:
 
 ## Notes
 
-- 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `StatusCodePaid = 7` / `StatusCodeShipped = 8` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。code 値は状態の到達順序を意味しないため、遷移判定は等値比較のみで行う。
+- 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `StatusCodePaid = 7` / `StatusCodeShipped = 8` / `StatusCodeDelivered = 9` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。code 値は状態の到達順序を意味しないため、遷移判定は等値比較のみで行う。
 - エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` / `ErrAlreadyPaid` / `ErrPayNotAllowed` / `ErrAlreadyShipped` / `ErrShipNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
 
 [ADR-0027]: ../../adr/0027-lightweight-cqrs.md

@@ -852,7 +852,7 @@ func TestPurchase_Ship(t *testing.T) {
 		t.Run("配達済みの場合、二重発送ではなくErrShipNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			deliveredAt := time.Date(2026, time.July, 27, 0, 0, 0, 0, time.UTC)
-			p := build(t, StatusCodeCompleted, &paidAt, nil, &now, &deliveredAt)
+			p := build(t, StatusCodeDelivered, &paidAt, nil, &now, &deliveredAt)
 			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
 		})
 
@@ -899,13 +899,31 @@ func TestPurchase_ShippedAt(t *testing.T) {
 		})
 
 		t.Run("発送済みの場合、内部状態を保護するためコピーを返す", func(t *testing.T) {
-			t.Parallel()
 			shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 			p := build(t, &shippedAt)
-			got := p.ShippedAt()
-			require.NotNil(t, got)
-			assert.Equal(t, shippedAt, *got)
-			assert.NotSame(t, &shippedAt, got)
+
+			t.Run("再構築時に渡したポインタを変更しても、購入のshippedAtは変わらない", func(t *testing.T) {
+				t.Parallel()
+
+				original := shippedAt
+				shippedAt = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+				require.NotNil(t, p.ShippedAt())
+				assert.Equal(t, original, *p.ShippedAt())
+			})
+
+			t.Run("ShippedAtの返り値を変更しても、購入のshippedAtは変わらない", func(t *testing.T) {
+				t.Parallel()
+
+				original := *p.ShippedAt()
+
+				got := p.ShippedAt()
+				*got = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+				require.NotNil(t, p.ShippedAt())
+				assert.NotEqual(t, *got, *p.ShippedAt())
+				assert.Equal(t, original, *p.ShippedAt())
+			})
 		})
 	})
 }

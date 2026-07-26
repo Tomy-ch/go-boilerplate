@@ -346,7 +346,6 @@ func (p *Purchase) Ship(now time.Time) error {
 	if p.statusCode == StatusCodeShipped {
 		return ErrAlreadyShipped
 	}
-	// 遷移元は支払い済みのみ。配達済みを含む他の状態はすべて不正遷移として弾く。
 	if p.statusCode != StatusCodePaid {
 		return ErrShipNotAllowed
 	}

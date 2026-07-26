@@ -23,6 +23,11 @@ const (
 	// （seed との二重管理を避けるため）。code 値（8）も到達順序を意味しないため、遷移判定は等値比較のみで行う。
 	StatusCodeShipped = 8
 
+	// StatusCodeDelivered は、購入配達済みステータスのコードです。発送済みからのみ到達し、発送・支払い・
+	// キャンセルはいずれも不可能な終端状態です。配達遷移そのものは未実装ですが、購入ステータスマスタに
+	// 存在する状態であり、他の遷移が「配達済みからは遷移できない」ことを表明するために必要です。
+	StatusCodeDelivered = 9
+
 	// taxRatePercent は、国内消費税率（パーセント）です。sample の placeholder であり、
 	// 要件化した時点で config / マスタへ移します（ADR-0100）。
 	taxRatePercent = 10
