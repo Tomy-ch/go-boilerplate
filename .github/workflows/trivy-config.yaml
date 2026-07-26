@@ -1,0 +1,152 @@
+name: Config Scan
+
+# Trivy misconfiguration scanning for Dockerfiles, kept out of trivy-fs.yaml on
+# purpose. The two share a tool and nothing else: this one has a different target
+# (Dockerfiles, not dependency manifests), a different path filter, and a different
+# gate (HIGH+ blocks here, while dependency findings are reported and gated at
+# release time). Folding it into the dependency scan would also break that
+# workflow's summary, which counts .Results[].Vulnerabilities and would have to
+# start distinguishing .Misconfigurations from it.
+#
+# docker-compose files are NOT covered: Trivy ships no compose checks, so the
+# scanner detects only the five Dockerfiles under docker/. hadolint
+# (docker-lint.yaml) lints the same files for style and correctness; this workflow
+# is the security-policy layer over them.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/trivy-config.yaml'
+      - '.makefiles/security/trivy.mk'
+      - '.trivyignore.yaml'
+      - 'docker/**/Dockerfile'
+  pull_request:
+    paths:
+      - '.github/workflows/trivy-config.yaml'
+      - '.makefiles/security/trivy.mk'
+      - '.trivyignore.yaml'
+      - 'docker/**/Dockerfile'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trivy-config:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install trivy
+        run: mise install aqua:aquasecurity/trivy
+
+      # -s keeps make from echoing the recipe into the JSON. See trivy.mk.
+      - name: Trivy config scan (JSON)
+        run: make -s trivy-config-ci TRIVY_FORMAT=json > trivy-config.json
+        shell: bash
+
+      - name: Create Trivy config summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          # trivy config emits one Result per detected config file; files with no
+          # finding carry no Misconfigurations key at all, hence the // [] default.
+          # Results itself is absent — not empty — when nothing was detected at all,
+          # which a PR that deletes every Dockerfile would produce, so it needs the
+          # same defaulting before being iterated.
+          COUNT=$(jq '
+            [(.Results // [])[] | .Misconfigurations // []]
+            | flatten
+            | length
+          ' trivy-config.json)
+
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Config Scan: PASS (no HIGH+ misconfiguration)" >> "$GITHUB_OUTPUT"
+            echo "No HIGH or CRITICAL misconfiguration found." > trivy-config-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Config Scan: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            (.Results // [])[]
+            | .Target as $target
+            | (.Misconfigurations // [])[]
+            | "- [\(.Severity)] `\($target)` \(.ID) — \(.Title)\n  - \(.Resolution)"
+          ' trivy-config.json > trivy-config-summary.md
+        shell: bash
+
+      - name: Upload Trivy config report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: trivy-config
+          path: |
+            trivy-config.json
+            trivy-config-summary.md
+
+      - name: Comment Trivy config result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- trivy-config-result -->'
+          title: ${{ steps.summarize.outputs.title }}
+          body-file: trivy-config-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Trivy config scan (SARIF)
+        if: always()
+        run: make -s trivy-config-ci TRIVY_FORMAT=sarif > trivy-config.sarif
+        shell: bash
+
+      # Its own category so misconfiguration alerts stay separable from the
+      # dependency findings uploaded under trivy-fs.
+      - name: Upload Trivy config SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-misconfig
+
+      # Unlike the dependency scan, a misconfiguration is introduced by the change
+      # under review rather than inherited from an upstream advisory, so it blocks
+      # here instead of being deferred to a release gate. Accepted exceptions live
+      # in .trivyignore.yaml, pinned per path.
+      - name: Fail if a HIGH+ misconfiguration was found
+        if: always() && steps.summarize.outputs.count != '0'
+        run: exit 1
