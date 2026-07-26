@@ -1,0 +1,250 @@
+name: OSV Scan
+
+# Cross-ecosystem dependency scan against the OSV database (Go modules + npm lockfiles).
+# Complements the Go-only scanners: govulncheck (reachability) and Trivy FS (Go deps).
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/osv-scanner.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+  pull_request:
+    paths:
+      - '.github/workflows/osv-scanner.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-scanner:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The scanner version is declared in mise.toml (SSOT) — never pinned here.
+      - name: Install osv-scanner
+        run: mise install aqua:google/osv-scanner
+
+      # `scan source -r .` walks the repo and extracts every supported manifest:
+      # go.mod plus both package-lock.json files. No exclusion is configured because
+      # the walk honours .gitignore, which already excludes vendor/ and node_modules/;
+      # and even when vendored, `go mod vendor` emits no nested go.mod, so vendor/
+      # cannot produce duplicate findings.
+      #
+      # Exit code 1 means "vulnerabilities found", so it is captured rather than
+      # aborting the job — the report has to be uploaded before failing.
+      - name: Run osv-scanner (JSON)
+        id: scan
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          osv-scanner scan source -r . \
+            --format json --output-file osv-scanner.json 2>&1 | tee osv-scanner.log
+          code=${PIPESTATUS[0]}
+          set -e
+
+          # Anything other than 0 (clean) / 1 (vulnerabilities found) is a tool failure.
+          if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+            echo "::error::osv-scanner exited with ${code}"
+            exit "${code}"
+          fi
+
+          echo "exit-code=${code}" >> "$GITHUB_OUTPUT"
+
+      # Gating policy, aligned with trivy-fs.yaml's `ignore-unfixed: true`: a
+      # vulnerability with no released fix is an alert, not a gate — there is no action
+      # a PR author can take, so blocking on it only produces a permanently red check.
+      # Everything is still reported (SARIF + PR comment); only the CI verdict is
+      # restricted to findings whose fixed version resolves. This is expressed as a rule
+      # rather than an ID allowlist, so it cannot go stale: the moment upstream ships a
+      # fix, the finding starts gating on its own. Deploy-target branches keep the
+      # stricter "everything counts" view through trivy-release-gate.yaml.
+      - name: Create OSV summary (Markdown)
+        id: summarize
+        shell: bash
+        env:
+          SCAN_EXIT_CODE: ${{ steps.scan.outputs.exit-code }}
+        run: |
+          set -euo pipefail
+
+          # Flatten to one record per advisory. `fixed` is resolved by picking the
+          # affected range that actually contains the installed version, because OSV
+          # lists one range per maintained branch; it stays null when the advisory
+          # declares no fixed version at all.
+          jq --arg workspace "${GITHUB_WORKSPACE}/" '
+            def vnum: (sub("^[vV]"; "") | split("-")[0] | split(".") | map(tonumber? // 0));
+
+            [ .results[]?
+              | (.source.path | ltrimstr($workspace)) as $src
+              | .packages[]?
+              | .package as $p
+              | .vulnerabilities[]?
+              | {
+                  src: $src,
+                  name: $p.name,
+                  version: $p.version,
+                  id: .id,
+                  severity: (.database_specific.severity // "UNKNOWN" | ascii_upcase),
+                  fixed: ([ .affected[]?
+                            | select(.package.name == $p.name and .package.ecosystem == $p.ecosystem)
+                            | .ranges[]?
+                            | ((.events | map(select(has("introduced"))) | first | .introduced) // "0") as $introduced
+                            | ((.events | map(select(has("fixed"))) | first | .fixed) // null) as $fixed
+                            | select(($introduced | vnum) <= ($p.version | vnum))
+                            | select($fixed == null or ($p.version | vnum) < ($fixed | vnum))
+                            | $fixed // empty
+                          ] | first)
+                }
+            ]
+            | sort_by({CRITICAL:0,HIGH:1,MODERATE:2,MEDIUM:2,LOW:3,UNKNOWN:4}[.severity] // 5, .name)
+          ' osv-scanner.json > osv-findings.json
+
+          TOTAL=$(jq 'length' osv-findings.json)
+          FIXABLE=$(jq '[ .[] | select(.fixed != null) ] | length' osv-findings.json)
+          UNFIXED=$((TOTAL - FIXABLE))
+
+          echo "total=${TOTAL}" >> "$GITHUB_OUTPUT"
+          echo "fixable=${FIXABLE}" >> "$GITHUB_OUTPUT"
+
+          # Guard against silently passing on a schema change: the scanner claiming
+          # findings while the summary parses none means this filter stopped matching.
+          if [ "${SCAN_EXIT_CODE}" -ne 0 ] && [ "${TOTAL}" -eq 0 ]; then
+            echo "::error::osv-scanner exited ${SCAN_EXIT_CODE} but no finding could be parsed — the JSON schema may have changed"
+            exit 1
+          fi
+
+          if [ "${TOTAL}" -eq 0 ]; then
+            echo "title=## ✅ OSV Scan: PASS (no known vulnerabilities)" >> "$GITHUB_OUTPUT"
+            echo "No known vulnerabilities found." > osv-scanner-summary.md
+            exit 0
+          fi
+
+          if [ "${FIXABLE}" -eq 0 ]; then
+            echo "title=## ✅ OSV Scan: PASS (fixable: 0 / total: ${TOTAL})" >> "$GITHUB_OUTPUT"
+          else
+            echo "title=## 🚨 OSV Scan: FOUND (fixable: ${FIXABLE} / total: ${TOTAL})" >> "$GITHUB_OUTPUT"
+          fi
+
+          # upsert-pr-comment renders the body inside a code block, so the sections use
+          # plain-text headers instead of Markdown headings.
+          {
+            if [ "${FIXABLE}" -gt 0 ]; then
+              echo "Fixable — gates this workflow (${FIXABLE})"
+              jq -r '
+                .[] | select(.fixed != null)
+                | "- [\(.severity)] \(.name) `\(.version)` → `\(.fixed)` (\(.id)) — \(.src)"
+              ' osv-findings.json
+            fi
+
+            if [ "${UNFIXED}" -gt 0 ]; then
+              if [ "${FIXABLE}" -gt 0 ]; then
+                echo
+              fi
+              echo "No fix released — reported only, does not gate (${UNFIXED})"
+              jq -r '
+                .[] | select(.fixed == null)
+                | "- [\(.severity)] \(.name) `\(.version)` → no fix released (\(.id)) — \(.src)"
+              ' osv-findings.json
+            fi
+          } > osv-scanner-summary.md
+
+      - name: Run osv-scanner (SARIF)
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          osv-scanner scan source -r . --format sarif --output-file osv-scanner.sarif
+          code=$?
+          set -e
+
+          if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+            echo "::error::osv-scanner exited with ${code}"
+            exit "${code}"
+          fi
+
+          # osv-scanner emits absolute file:// URIs; code scanning needs paths
+          # relative to the repository root to annotate the manifest files.
+          jq --arg prefix "file://${GITHUB_WORKSPACE}/" '
+            .runs[]?.results[]?.locations[]?.physicalLocation.artifactLocation.uri |= ltrimstr($prefix)
+          ' osv-scanner.sarif > osv-scanner.sarif.tmp
+          mv osv-scanner.sarif.tmp osv-scanner.sarif
+
+      - name: Upload osv-scanner report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osv-scanner
+          path: |
+            osv-scanner.json
+            osv-scanner.sarif
+            osv-scanner.log
+            osv-findings.json
+            osv-scanner-summary.md
+
+      - name: Comment OSV Scan result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- osv-scanner-result -->'
+          title: ${{ steps.summarize.outputs.title }}
+          body-file: osv-scanner-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload osv-scanner SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: osv-scanner.sarif
+          category: osv-scanner
+
+      # Gated on fixable findings only; an empty output (the summary step never ran)
+      # also fails, so a scanner or parsing failure is never mistaken for a pass.
+      - name: Fail if fixable vulnerabilities were found
+        if: always() && steps.summarize.outputs.fixable != '0'
+        run: exit 1
