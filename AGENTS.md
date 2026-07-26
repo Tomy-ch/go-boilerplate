@@ -160,6 +160,19 @@ manual steps (keep the concrete names in your own agent config, not here).
 **Branch naming:** include the issue number when provided (`feature/1234-description`);
 otherwise a descriptive hyphenated name (`feature/add-authentication-check`).
 
+**Linking to another repository's issue / PR — always go through `redirect.github.com`.**
+This repository is public, so a plain `https://github.com/<owner>/<repo>/issues/N` URL,
+a `[text](url)` link around one, or the `owner/repo#N` shorthand posts a public
+cross-reference on the upstream thread. Use `https://redirect.github.com/<owner>/<repo>/issues/N`
+instead: it is a `github.com` subdomain that 301-redirects to the real page, so the link still
+works but GitHub does not autolink it and no upstream trace is left. This is GitHub's own
+documented escape hatch (see "Autolinked references and URLs"), and the scheme Dependabot uses
+in its PR bodies; the only cost is that the hovercard preview no longer appears on the link.
+Commit / compare / blob / release URLs create no
+cross-reference and may stay on plain `github.com`. **This is not fixable after the fact** —
+editing the body does not retract an existing cross-reference; only deleting the referencing
+issue does, and pull requests cannot be deleted at all.
+
 ## Language Rules for AI Agents
 
 Internal reasoning may be in English. **All visible outputs must be in Japanese** unless the
