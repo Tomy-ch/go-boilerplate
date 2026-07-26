@@ -13,15 +13,19 @@ For the Japanese reference translation, see [README.ja.md](README.ja.md).
 change, protected targets, architecture boundaries, Git rules, and validation expectations. Read it
 before using or modifying this directory.
 
-`config.toml` sets Codex execution defaults. It does not duplicate the fine-grained safety rules from
-`AGENTS.md`: generated-file protection, prohibited Git operations, and repository modification scope
-remain canonical there.
+`config.toml` records this scaffold's intended Codex posture; it is not a loaded repository-level
+configuration. As measured with `codex-cli 0.145.0`, Codex does not auto-load project-level
+configuration. Apply its values with `-c key=value`, layer them through `--profile`, or reflect them
+in `~/.codex/config.toml`. Nothing is presently mis-set because the effective Codex defaults already
+coincide with this intended posture. The fine-grained safety rules remain canonical in `AGENTS.md`:
+generated-file protection, prohibited Git operations, and repository modification scope are not
+duplicated here.
 
 ## Layout
 
 | Path | Purpose |
 | --- | --- |
-| `config.toml` | Repository-level Codex defaults: sandbox policy, approval policy, and enabled capabilities. |
+| `config.toml` | Recorded Codex posture: sandbox policy, approval policy, and enabled capabilities. Codex does not auto-load it; apply it with `-c`, `--profile`, or `~/.codex/config.toml`. |
 | `skills/<name>/` | Reusable workflows. Each skill has an English-canonical `SKILL.md`; `agents/openai.yaml` provides Codex UI metadata. Some skills bundle `scripts/` or `prompts/`. |
 | `agents/` | Role definitions for read-only parallel work, such as layer auditors and review verifiers. Integrator skills use them when delegation is available and otherwise execute the same role instructions inline. |
 | `scaffold-spec/` | Runtime spec-format definitions used by `new-spec-*`, `verify-spec`, and `scaffold-*` skills. Updating these files changes the shared format without duplicating it into skills. |
