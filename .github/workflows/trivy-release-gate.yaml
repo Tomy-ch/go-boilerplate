@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
   pull-requests: write
 
 concurrency:
@@ -105,3 +104,11 @@ jobs:
           title: ${{ steps.summarize.outputs.title }}
           body-file: trivy-fs-release-summary.md
           details-summary: '📄 Summary'
+
+      # release-gate はデプロイ先ブランチへの PR に対する厳格ゲート。unfixed を含む全件で
+      # fail する（osv-scanner.yaml が unfixed を落とす緩和を、この「everything counts」な
+      # view に依存して正当化している）。summarize が走らず count が空の場合も fail する
+      # ため、スキャン/集計の失敗が pass と誤認されることはない。
+      - name: Fail if any vulnerability was found
+        if: always() && steps.summarize.outputs.count != '0'
+        run: exit 1
