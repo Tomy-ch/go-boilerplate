@@ -28,8 +28,9 @@ func Module() fx.Option {
 func HookModule() fx.Option {
 	return fx.Module("server.hook",
 		fx.Invoke(
-			// server グラフに限って shutdown/request の交差検証を適用する（非 HTTP プロセスへ波及させない）。
+			// server グラフに限って設定の交差検証を適用する（非 HTTP プロセスへ波及させない）。
 			config.ValidateServerShutdown,
+			config.ValidateUploadBodyLimit,
 			hook.RegisterHTTPServerHooks,
 		),
 	)

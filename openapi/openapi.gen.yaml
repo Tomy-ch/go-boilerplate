@@ -517,12 +517,12 @@ paths:
         - v1/products/statuses
       summary: 商品ステータスマスタ一覧の取得
       description: |
-        商品ステータスマスタの全件を sort_key（表示順）昇順で返します。
+        商品ステータスマスタの全件を sortKey（表示順）昇順で返します。
         認証不要の公開エンドポイントであり、ページネーションは行いません（全 10 件を返します）。
       security: []
       responses:
         '200':
-          description: 商品ステータスマスタの一覧（sort_key 昇順）
+          description: 商品ステータスマスタの一覧（sortKey 昇順）
           content:
             application/json:
               schema:
@@ -538,12 +538,12 @@ paths:
         - v1/products/categories
       summary: 商品カテゴリマスタ一覧の取得
       description: |
-        商品カテゴリマスタの全件を sort_key 昇順で返します。
+        商品カテゴリマスタの全件を sortKey（表示順）昇順で返します。
         認証不要の公開エンドポイントであり、ページネーションは行いません（全件を返します）。
       security: []
       responses:
         '200':
-          description: 商品カテゴリマスタの一覧（sort_key 昇順）
+          description: 商品カテゴリマスタの一覧（sortKey 昇順）
           content:
             application/json:
               schema:
@@ -703,8 +703,8 @@ paths:
       summary: 商品売上ランキングの取得
       description: |
         購入明細を集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
-        キャンセル済み（canceled_at が設定済み）の購入は集計から除外します。未払いの購入は集計に含みます。
-        period=30d の場合は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+        キャンセル済みの購入は集計から除外します。未払いの購入は集計に含みます。
+        period=30d の場合は注文日時が直近30日以内の購入のみを集計します。
         同一販売数量の商品は商品 ID の昇順で安定的に並びます。
       security: []
       parameters:
@@ -832,16 +832,16 @@ paths:
         - v1/addresses
       summary: 郵便番号から住所候補を補完します。
       description: |
-        郵便番号（postal_code）から住所候補（都道府県・市区町村・町域）を補完して返します。
+        郵便番号（postalCode）から住所候補（都道府県・市区町村・町域）を補完して返します。
         外部の郵便番号 lookup サービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
         登録画面（郵便番号入力→住所オートフィル）で利用するため認証不要で、外部 lookup 障害時は
-        503 ではなく `200 + 空 candidates + is_fallback: true` で degrade します（外部が落ちても登録を止めない）。
+        503 ではなく `200 + 空 candidates + isFallback: true` で degrade します（外部が落ちても登録を止めない）。
       security: []
       parameters:
         - $ref: '#/components/parameters/PostalCodeParam'
       responses:
         '200':
-          description: 住所候補（degrade 時は空 candidates + is_fallback:true）を返します。
+          description: '住所候補（degrade 時は空 candidates + isFallback: true）を返します。'
           content:
             application/json:
               schema:
@@ -1212,7 +1212,7 @@ components:
       name: period
       in: query
       description: |
-        集計対象期間。`all`（既定）は全期間、`30d` は注文日時（ordered_at）が直近30日以内の購入のみを集計します。
+        集計対象期間。`all`（既定）は全期間、`30d` は注文日時が直近30日以内の購入のみを集計します。
       required: false
       schema:
         type: string
@@ -1687,7 +1687,7 @@ components:
       type: object
       description: |
         郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、
-        解決できた場合のみ prefecture_id を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
+        解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
       required:
         - prefectureId
         - prefectureName
@@ -2298,12 +2298,12 @@ components:
         $ref: '#/components/schemas/PrefectureResponse'
     ProductsStatusesResponse:
       type: array
-      description: 商品ステータスマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
+      description: 商品ステータスマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductStatusResponse'
     ProductsCategoriesResponse:
       type: array
-      description: 商品カテゴリマスタの一覧（sort_key 昇順）。全件を返し、ページネーションは行いません。
+      description: 商品カテゴリマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
     ProductsPostRequest:
@@ -2524,7 +2524,7 @@ components:
       type: object
       description: |
         郵便番号 lookup による住所候補のレスポンスです。
-        外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `is_fallback: true` で degrade し、
+        外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `isFallback: true` で degrade し、
         登録フローを止めません（外部が落ちても縦一本のジャーニーを進めるためのフォールバック）。
       required:
         - candidates

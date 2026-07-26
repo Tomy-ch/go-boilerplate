@@ -10,7 +10,7 @@ import (
 
 // ListParams は、公開商品一覧取得の絞り込み・並び順・keyset 境界を表すクエリ条件です。
 // keyset 境界は (AfterPublishedAt, AfterID) の組で表し、先頭ページは両方 nil、継続ページは両方が
-// 直前ページ末尾行の値になります（不透明カーソルの符号化・復号は usecase 層の責務です）。
+// 直前ページ末尾の値になります（不透明カーソルの符号化・復号は usecase 層の責務です）。
 type ListParams struct {
 	// Limit は、取得件数の上限です。
 	Limit int32
@@ -30,11 +30,11 @@ type ListParams struct {
 
 // Repository は、商品の永続化操作を定義するドメインリポジトリインターフェースです。
 type Repository interface {
-	// FindPublishedList は、公開済み（published_at が非 NULL）の商品を keyset ページネーションで取得します。
-	// 並び順は (published_at, id) で、params.Ascending により昇順／降順を切り替えます。
+	// FindPublishedList は、公開済みの商品を keyset ページネーションで取得します。
+	// 並び順は公開日時（同時刻は ID）で、params.Ascending により昇順／降順を切り替えます。
 	// params.CategoryID / StatusID / Keyword が指定された場合は該当条件で絞り込みます。
 	FindPublishedList(ctx context.Context, params ListParams) (Products, error)
-	// FindPublishedByID は、ID から公開中（published_at が非 NULL）の単一商品を取得します。
+	// FindPublishedByID は、ID から公開中の単一商品を取得します。
 	// 未存在・非公開のいずれも NotFound を返します（未ログイン経路への存在秘匿）。
 	FindPublishedByID(ctx context.Context, id uuid.UUID) (*Product, error)
 	// FindByID は、ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。

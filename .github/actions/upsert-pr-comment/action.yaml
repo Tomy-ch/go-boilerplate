@@ -1,28 +1,28 @@
 name: Upsert PR comment
-description: マーカーで既存コメントを検出し update / create する（PR コメントの upsert）
+description: Detect an existing comment by marker and update / create it (PR comment upsert)
 
 inputs:
   github-token:
     required: true
-    description: コメント投稿に使う GITHUB_TOKEN
+    description: GITHUB_TOKEN used to post the comment
   marker:
     required: true
-    description: 同一コメント検出用の HTML コメントマーカー
+    description: HTML comment marker used to detect the same comment
   body-file:
     required: true
-    description: 本文として読み込むファイルパス
+    description: Path to the file read as the comment body
   title:
     required: false
     default: ""
-    description: 本文先頭へ付与する見出し（任意）
+    description: Heading prepended to the body (optional)
   details-summary:
     required: false
     default: ""
-    description: 指定時は本文をコードブロック付き details で畳む際の summary 文言
+    description: When set, the summary text used to fold the body into a details block with a code block
   max-length:
     required: false
     default: "45000"
-    description: 本文の最大文字数（超過分は truncate）
+    description: Maximum body length in characters (the excess is truncated)
 
 runs:
   using: composite

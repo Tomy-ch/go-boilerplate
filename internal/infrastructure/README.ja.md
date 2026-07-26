@@ -111,6 +111,13 @@ Infrastructure 層では以下を行ってはいけません。
 それは層漏れである。[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
 implementation を参照。
 
+この層で警戒すべきはその裏返しである。内側のインターフェイスが保証をアプリケーション語彙で述べている以上、
+その言い換えに留まる実装側 doc は**何も足していない** — 2 箇所で腐る複製でしかない。したがって実装側 doc は
+**機構を名指しする**（`FindByID` は `LockByID` と異なりロックを取らずに読む、`SearchByKeyword` は `active` の
+値で 3 つの固定クエリへ振り分ける、`Update` は影響行数 0 を NotFound へ正規化する、など）か、**省略する**かの
+どちらかである。Repository 型は非 export なので `revive` の `exported` ルールは doc を要求しない。
+インターフェイスの言い換えだけが、常に誤りである。
+
 ## ディレクトリ構成
 
 ```mermaid

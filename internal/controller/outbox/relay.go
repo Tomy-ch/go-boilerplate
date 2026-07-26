@@ -1,4 +1,4 @@
-// Package outbox は、outbox テーブルを周期 poll して未 publish メッセージを送る relay engine を提供します。
+// Package outbox は、outbox を周期 poll して未 publish メッセージを送る relay engine を提供します。
 // engine 自体は loop と待機制御だけを担い、claim → publish → mark の業務は usecase に委譲します。
 package outbox
 
@@ -16,7 +16,7 @@ const relayLoggerName = "outbox-relay"
 
 // Settings は、relay engine のチューニング値です。
 type Settings struct {
-	// BatchSize は、1 回の poll で claim する pending 行数です。
+	// BatchSize は、1 回の poll で claim する pending エントリ数です。
 	BatchSize int32
 	// PollInterval は、pending を捌き切った（空振り or 部分消化）後に次 poll まで待機する時間です。
 	PollInterval time.Duration
@@ -24,7 +24,7 @@ type Settings struct {
 	ErrorBackoff time.Duration
 }
 
-// Engine は、pending 行を周期 poll して publish する常駐 engine です。
+// Engine は、pending のエントリを周期 poll して publish する常駐 engine です。
 type Engine struct {
 	uc      outboxuc.RelayUsecase
 	sleeper clock.Sleeper

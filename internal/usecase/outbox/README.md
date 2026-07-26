@@ -2,10 +2,10 @@
 
 English | [日本語](README.ja.md)
 
-Usecases for the transactional outbox: **emit** (write an outbox row in the same
-transaction as the domain change), **relay** (claim pending rows and publish
-them), **GC** (prune old published rows), and **replay** (return dead rows to
-pending). All persistence goes through the `Store` boundary
+Usecases for the transactional outbox: **emit** (record an outbox entry in the
+same transaction as the domain change), **relay** (claim pending entries and
+publish them), **GC** (prune old published entries), and **replay** (return dead
+entries to pending). All persistence goes through the `Store` boundary
 (`internal/usecase/boundary/outbox`); the concrete RDB implementation lives in
 `internal/infrastructure/rdb/system_cqrs/outbox/`.
 
@@ -14,12 +14,12 @@ pending). All persistence goes through the `Store` boundary
 Publishing an event to an external broker is not part of the database
 transaction. If the domain change commits but the publish fails (or vice versa),
 the two diverge — a **lost event** or a **phantom event**. The outbox closes
-that gap: the event is written to a DB row inside the *same* transaction as the
-domain change, and a separate relay process publishes it afterwards
+that gap: the event is recorded inside the *same* transaction as the domain
+change, and a separate relay process publishes it afterwards
 (at-least-once). Consumers must therefore be idempotent — the `MessageID` is the
 stable dedup key propagated into the `Idempotency-Key`.
 
-## Row lifecycle
+## Entry lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -27,11 +27,11 @@ stateDiagram-v2
     pending --> published: relay ClaimPending (FOR UPDATE SKIP LOCKED), publish ok
     pending --> pending: publish fail (attempts++), retried next poll
     pending --> dead: publish fail, attempts ≥ maxAttempts
-    published --> [*]: SweepPublished (GC), row deleted
+    published --> [*]: SweepPublished (GC), entry deleted
     dead --> pending: ReplayDead
 ```
 
-`published` rows are pruned by **GC** (`SweepPublished`); `dead` rows are
+`published` entries are pruned by **GC** (`SweepPublished`); `dead` entries are
 recovered by **replay** (`ReplayDead`). These are distinct paths — GC never
 touches `dead`, and replay never touches `published`.
 
@@ -41,11 +41,11 @@ touches `dead`, and replay never touches `published`.
 
 `NewEmit(store, tracerFactory) EmitUsecase`
 
-- `Emit(ctx, EmitInput) (uuid.UUID, error)` inserts exactly one outbox row and
+- `Emit(ctx, EmitInput) (uuid.UUID, error)` records exactly one outbox entry and
   returns the allocated `message_id`. It must be called **inside the same
   `tx.Manager.Do` as the domain change** so a rolled-back business transaction
-  also rolls back the outbox row (no lost / phantom event).
-- The current trace context is captured into the row's headers as `traceparent`
+  also rolls back the outbox entry (no lost / phantom event).
+- The current trace context is captured into the entry's headers as `traceparent`
   (via `observability.InjectTraceContextToCarrier`), so the eventual
   relay → consumer stays on the same trace.
 - `EmitInput` fields: `AggregateType`, `AggregateID` (observation only),
@@ -66,17 +66,17 @@ touches `dead`, and replay never touches `published`.
 `NewRelay(txm, store, publisher, metrics, clock, logger, tracerFactory) RelayUsecase`
 
 - `RelayBatch(ctx, batchSize) (RelayResult, error)` claims up to `batchSize`
-  pending rows and publishes them, all in **one transaction** so multiple relay
-  instances never double-publish the same row. `batchSize <= 0` falls back to
+  pending entries and publishes them, all in **one transaction** so multiple relay
+  instances never double-publish the same entry. `batchSize <= 0` falls back to
   `DefaultBatchSize` (100). `RelayResult` reports `Claimed` and `Published`.
-  - A **publish failure does not roll back the transaction**: the row is marked
+  - A **publish failure does not roll back the transaction**: the entry is marked
     failed (`attempts++`) and left for the next poll to retry; once `attempts`
-    reaches `DefaultMaxAttempts` (10) the row is marked `dead`, `Metrics.IncDead`
+    reaches `DefaultMaxAttempts` (10) the entry is marked `dead`, `Metrics.IncDead`
     is counted, and a warning is logged.
   - Only a **DB access failure** (claim / mark) returns an error that rolls the
     transaction back.
-- `RecordLag(ctx) error` records the age of the oldest pending row as the outbox
-  lag SLI via `Metrics.SetLagSeconds`; with no pending rows it records `0`.
+- `RecordLag(ctx) error` records the age of the oldest pending entry as the outbox
+  lag SLI via `Metrics.SetLagSeconds`; with no pending entries it records `0`.
 - `Metrics` is the outbox-specific o11y sink: `SetLagSeconds(ctx, seconds)` and
   `IncDead(ctx)`.
 
@@ -84,18 +84,18 @@ touches `dead`, and replay never touches `published`.
 
 `NewGC(store, clock) GCUsecase`
 
-- `SweepPublished(ctx, batchSize) (int64, error)` deletes `published` rows older
+- `SweepPublished(ctx, batchSize) (int64, error)` deletes `published` entries older
   than `DefaultRetention` (7 days) in batches of `batchSize` and returns the
   total deleted. `batchSize <= 0` falls back to `DefaultGCBatchSize` (10,000).
-  It loops until a short batch signals no more rows remain.
+  It loops until a short batch signals no more entries remain.
 
 ### replay — `ReplayUsecase`
 
 `NewReplay(store, tracerFactory) ReplayUsecase`
 
-- `ReplayDead(ctx, messageID *uuid.UUID) (int64, error)` moves `dead` rows back
+- `ReplayDead(ctx, messageID *uuid.UUID) (int64, error)` moves `dead` entries back
   to `pending` and returns the count restored. `messageID == nil` replays **all**
-  dead rows; a non-nil value targets that single `message_id`.
+  dead entries; a non-nil value targets that single `message_id`.
 
 ## Layout
 

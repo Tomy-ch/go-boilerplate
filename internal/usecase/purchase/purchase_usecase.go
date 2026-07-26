@@ -295,7 +295,7 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 
 	var detail *purchase.Detail
 	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。状態遷移と在庫復元を
-	// 単一 tx にまとめ部分適用を防ぐ。二重キャンセルは購入行ロック + 状態チェック（ErrAlreadyCanceled）で安全化する。
+	// 単一 tx にまとめ部分適用を防ぐ。二重キャンセルは購入のロック + 状態チェック（ErrAlreadyCanceled）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseID)
 		if lerr != nil {

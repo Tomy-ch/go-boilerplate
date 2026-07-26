@@ -73,10 +73,10 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 
 ## 6. 運用
 
-- **GC ジョブ** `idempotency-gc`（`internal/controller/job/idempotencygc/`）が失効行をバッチ削除。外部スケジューラから `cmd job idempotency-gc`（`--batch-size=N`、既定 10,000）で起動。推奨間隔は**毎時**（TTL 24h ゆえリアルタイム不要）。
+- **GC ジョブ** `idempotency-gc`（`internal/controller/job/idempotencygc/`）が失効したエントリをバッチ削除。外部スケジューラから `cmd job idempotency-gc`（`--batch-size=N`、既定 10,000）で起動。推奨間隔は**毎時**（TTL 24h ゆえリアルタイム不要）。
 - **TTL = 24h** = リトライ許容窓。TTL 経過後の再送は新規実行になる。
 - **メトリクス**: 冪等性の判定結果 / 内部失敗 / GC 削除カウンタは、HTTP ステータスからの推測ではなく usecase 境界で観測する（hit/miss/conflict は `Claim`/`Get`/`Complete` の結果を見ないと確定できないため）。
-  - `Run[T]` は `Deps.Metrics`（`idempotency.Metrics`）へ計上する: `IncMiss`（新規 claim）/ `IncHit`（completed の replay）/ `IncConflict`（ロックタイムアウト・claimed のまま・claim 直後に行が消失）/ `IncFingerprintMismatch` / `IncClaimFailure`（`ErrLockTimeout` 以外の claim エラー）/ `IncCompleteFailure`。
+  - `Run[T]` は `Deps.Metrics`（`idempotency.Metrics`）へ計上する: `IncMiss`（新規 claim）/ `IncHit`（completed の replay）/ `IncConflict`（ロックタイムアウト・claimed のまま・claim 直後にエントリが消失）/ `IncFingerprintMismatch` / `IncClaimFailure`（`ErrLockTimeout` 以外の claim エラー）/ `IncCompleteFailure`。
   - `GCUsecase` は `GCMetrics` へ計上する: バッチ成功ごとに `IncExpiredCleanup(count)`、削除エラー時に `IncExpiredCleanupFailure()`。
   - 配線済みの実装は `observability.NewIdempotencyMetrics`（`internal/di/module/usecase.go` で両 interface として提供）。OpenTelemetry カウンタ `idempotency.requests{operation_id,result}` / `idempotency.failures{operation_id,phase}` / `idempotency.expired_cleanup{job}` を出力する。高カーディナリティ・秘匿値（Idempotency-Key・scope・fingerprint・PII・raw error）は**ラベルにしない**。空の `operation_id` は `unknown` に丸める。
   - `Deps.Metrics` も `GCMetrics` 引数も任意のまま: `nil` は **no-op**（観測性バックエンド無しでも `Run`/`GC` は動作する）。
