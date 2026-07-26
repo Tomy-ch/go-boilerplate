@@ -60,7 +60,7 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
 |Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
-|Notify Failure|`notify-failure.yaml`|Reusable `workflow_call` target that pushes a scheduled failure to a human|
+|Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
 
 Every scanner writes SARIF to GitHub code scanning where it can, and comments its result on the PR through the shared `upsert-pr-comment` action.
 
@@ -93,7 +93,20 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
 
-Every scanner with a weekly schedule calls `notify-failure.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
+Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
+
+Failure is not the only thing worth pushing. A report-only scanner leaves its job green on a finding, so failure mode can never fire for one; those call `notify.yaml` in detection mode instead, which names the actor, ref, commit and the findings themselves. Both modes skip delivery and leave the run green when no webhook secret is configured, so a fork is never failed by a notification it cannot send.
+
+Which trigger a detection notification fires on follows from who the right recipient is. For the vulnerability scanners it is the scheduled run only — on a PR the finding is already in a comment addressed to the author, who introduced the dependency, whereas a weekly finding is a newly published advisory against code that stood still and reaches nobody. The npm cooldown audit is the exception and fires on every trigger, because the decision to bypass the cooldown belongs to a tech lead / architect who is not necessarily on the PR.
+
+| Workflow | Fires when | Trigger |
+| --- | --- | --- |
+| `npm-cooldown-audit.yaml` | any cooldown finding | all |
+| `trivy-fs.yaml` | fixable CRITICAL / HIGH / MEDIUM found | schedule |
+| `vulnerability-check.yaml` | reachable vulnerability found | schedule |
+| `osv-scanner.yaml` | promotion-blocking finding | schedule |
+
+The other scheduled scanners need no detection notification: gitleaks, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Three are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does.
 
 #### Overlapping surfaces
 

@@ -85,7 +85,7 @@ jobs:
   notify-failure:
     needs: scorecard
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.scorecard.result) }}
-    uses: ./.github/workflows/notify-failure.yaml
+    uses: ./.github/workflows/notify.yaml
     with:
       failed-job: scorecard
     secrets:

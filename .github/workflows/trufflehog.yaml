@@ -148,7 +148,7 @@ jobs:
   notify-failure:
     needs: trufflehog
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.trufflehog.result) }}
-    uses: ./.github/workflows/notify-failure.yaml
+    uses: ./.github/workflows/notify.yaml
     with:
       failed-job: trufflehog
     secrets:

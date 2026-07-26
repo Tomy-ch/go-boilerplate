@@ -213,7 +213,7 @@ jobs:
   notify-failure:
     needs: build
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.build.result) }}
-    uses: ./.github/workflows/notify-failure.yaml
+    uses: ./.github/workflows/notify.yaml
     with:
       failed-job: build
     secrets:

@@ -1,0 +1,58 @@
+name: Notification detail
+description: Turn a scanner's Markdown summary into a compact notification body
+
+# Shared by the report-only scanners that push a finding through notify.yaml's
+# detection mode. A detection notification has to name what was found, but a summary
+# written for a PR comment is longer than a chat message should be, so this keeps the
+# finding lines and drops the surrounding prose.
+#
+# Finding lines are the Markdown list items every summary emits. Falling back to the
+# whole file matters because a summary that stops using a list is a formatting change,
+# not a reason to notify with an empty body.
+
+inputs:
+  summary-file:
+    description: Path to the Markdown summary the scanner wrote.
+    required: true
+  max-lines:
+    description: >-
+      Most finding lines to carry. Beyond this the remainder is counted rather than
+      listed, so a long backlog cannot push the notification past what a chat backend
+      will render.
+    required: false
+    default: '20'
+
+outputs:
+  markdown:
+    description: Notification body — Markdown, one finding per line
+    value: ${{ steps.build.outputs.markdown }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build notification detail
+      id: build
+      shell: bash
+      env:
+        SUMMARY_FILE: ${{ inputs.summary-file }}
+        MAX_LINES: ${{ inputs.max-lines }}
+      run: |
+        set -euo pipefail
+
+        detail=$(grep -E '^- ' "${SUMMARY_FILE}" || true)
+        if [ -z "${detail}" ]; then
+          detail=$(cat "${SUMMARY_FILE}")
+        fi
+
+        total=$(printf '%s\n' "${detail}" | wc -l | tr -d ' ')
+        if [ "${total}" -gt "${MAX_LINES}" ]; then
+          detail=$(printf '%s\n- … and %d more (see the run)' \
+            "$(printf '%s\n' "${detail}" | head -n "${MAX_LINES}")" \
+            "$((total - MAX_LINES))")
+        fi
+
+        {
+          echo 'markdown<<NOTIFY_DETAIL_EOF'
+          echo "${detail}"
+          echo 'NOTIFY_DETAIL_EOF'
+        } >> "$GITHUB_OUTPUT"

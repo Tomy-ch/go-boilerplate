@@ -7,8 +7,10 @@ description: Run osv-scanner, normalize its findings and classify each one again
 # putting `osv-scanner` on PATH (mise); this action only scans and classifies.
 #
 # Writes to the workspace: osv-scanner.json (raw report), osv-scanner.log,
-# osv-findings.json (normalized, one record per advisory) and
-# osv-scanner-summary.md (PR comment body).
+# osv-findings.json (normalized, one record per advisory), osv-scanner-summary.md
+# (PR comment body) and osv-gating.md — the gating findings alone, for a caller that
+# must report only those, since the summary interleaves both classes under headings
+# that a line-oriented reader cannot tell apart.
 
 outputs:
   gating:
@@ -131,6 +133,7 @@ runs:
         if [ "${TOTAL}" -eq 0 ]; then
           echo "title=## ✅ OSV Scan: PASS (no known vulnerabilities)" >> "$GITHUB_OUTPUT"
           echo "No known vulnerabilities found." > osv-scanner-summary.md
+          : > osv-gating.md
           exit 0
         fi
 
@@ -140,15 +143,19 @@ runs:
           echo "title=## 🚨 OSV Scan: FOUND (blocking: ${GATING} / total: ${TOTAL})" >> "$GITHUB_OUTPUT"
         fi
 
+        # Rendered to its own file first so that the summary below and any caller that
+        # reports gating findings alone stay one list, not two that can drift apart.
+        jq -r '
+          .[] | select(.gating)
+          | "- [\(.severity)] \(.name) `\(.version)` \(if .fixed then "→ `\(.fixed)`" else "→ no fix released" end) (\(.id)) — \(.src)"
+        ' osv-findings.json > osv-gating.md
+
         # upsert-pr-comment renders the body inside a code block, so the sections use
         # plain-text headers instead of Markdown headings.
         {
           if [ "${GATING}" -gt 0 ]; then
             echo "Blocks a PR into develop / staging / production (${GATING})"
-            jq -r '
-              .[] | select(.gating)
-              | "- [\(.severity)] \(.name) `\(.version)` \(if .fixed then "→ `\(.fixed)`" else "→ no fix released" end) (\(.id)) — \(.src)"
-            ' osv-findings.json
+            cat osv-gating.md
           fi
 
           if [ "${REPORTED}" -gt 0 ]; then
