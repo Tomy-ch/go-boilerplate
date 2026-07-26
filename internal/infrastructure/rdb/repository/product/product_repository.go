@@ -96,7 +96,8 @@ func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*prod
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
-// FindByID は、ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
+// FindByID は、GetProductByID で published_at を絞らずに単一商品を取得します
+// （公開中のみを返す FindPublishedByID との対で、未公開商品も返します）。未存在は NotFound を返します。
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

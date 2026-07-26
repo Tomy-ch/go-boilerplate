@@ -27,7 +27,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc statusuc.Useca
 	}, nil))
 }
 
-// GetProductStatuses は、商品ステータスマスタの全件を sort_key 昇順で返します。
+// GetProductStatuses は、商品ステータスマスタの全件を sortKey 昇順で返します。
 func (s *server) GetProductStatuses(
 	ctx context.Context, _ gen.GetProductStatusesRequestObject,
 ) (gen.GetProductStatusesResponseObject, error) {

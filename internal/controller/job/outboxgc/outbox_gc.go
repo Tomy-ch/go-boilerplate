@@ -1,4 +1,4 @@
-// Package outboxgc は、retention を超えた published 済みの outbox 行を削除する GC ジョブを提供します。
+// Package outboxgc は、retention を超えた published 済みの outbox エントリを削除する GC ジョブを提供します。
 // 外部スケジューラ（k8s CronJob / cron）が `cmd job outbox-gc` をワンショット起動する想定です。
 package outboxgc
 
@@ -42,7 +42,7 @@ func (j *jobImpl) Name() string {
 	return jobName
 }
 
-// Execute は、retention を超えた published 行をバッチ削除します。--batch-size=N で 1 バッチの件数を指定できます。
+// Execute は、retention を超えた published エントリをバッチ削除します。--batch-size=N で 1 バッチの件数を指定できます。
 func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 	ctx, endSpan := j.tracer.Start(ctx)
 	defer endSpan()

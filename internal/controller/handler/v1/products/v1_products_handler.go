@@ -93,14 +93,14 @@ func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
 	}
 }
 
-// toInt32 は、ドメイン DTO の int をレスポンスの int32 へ変換します。
-// 値は int32 の DB 列（products.quantity / stock_warning_threshold / lock_version）由来のため範囲に収まります。
+// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
+// 値は 32bit 整数幅で永続化される在庫数・在庫警告閾値・バージョン由来のため範囲に収まります。
 func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は int32 の DB 列由来でありオーバーフローしません
+	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
 	return int32(v)
 }
 
-// intPtrToInt32Ptr は、ドメイン DTO の *int をレスポンスの *int32 へ変換します（nil はそのまま nil）。
+// intPtrToInt32Ptr は、ユースケースの DTO の *int をレスポンスの *int32 へ変換します（nil はそのまま nil）。
 func intPtrToInt32Ptr(v *int) *int32 {
 	if v == nil {
 		return nil

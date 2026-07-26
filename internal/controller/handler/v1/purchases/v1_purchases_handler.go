@@ -89,7 +89,8 @@ func toPurchaseSummaryResponse(v purchaseuc.PurchaseSummaryView) gen.PurchaseSum
 	}
 }
 
-// PostPurchases は、明細から購入を作成します。認証必須で、idempotency.Run を通して最外トランザクションを開始します。
+// PostPurchases は、明細から購入を作成します。認証必須で、同一 Idempotency-Key の再送には
+// 最初の結果を再生して返します。
 func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesRequestObject) (gen.PostPurchasesResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -170,9 +171,9 @@ func toReferenceAmount(r *purchaseuc.ReferenceAmountView) *gen.ReferenceAmount {
 	}
 }
 
-// toInt32 は、ドメイン DTO の int をレスポンスの int32 へ変換します。
-// 値は int32 の DB 列（*_amount / quantity / unit_price）由来のため範囲に収まります。
+// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
+// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
 func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は int32 の DB 列由来でありオーバーフローしません
+	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
 	return int32(v)
 }

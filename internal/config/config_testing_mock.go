@@ -441,11 +441,6 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("OBJECT_STORAGE_MAX_UPLOAD_BYTES", expectedObjectStorageMaxUploadBytesStr)
 }
 
-// testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST が
-// あればそれを、無ければ既定の "test" を返します。DB スロットプール利用時は
-// make が DB_NAME_TEST を各 worktree のテスト用データベース（wt<N>_test）へ設定するため、共有 DB
-// (localhost:5432) 内の自 worktree DB へ繋ぎます。
-//
 // testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST があればそれを、
 // 無ければ既定の "test" を返します。DB スロットプール利用時は make が DB_NAME_TEST を各 worktree の
 // テスト用データベース（wt<N>_test）へ設定するため、共有 DB 内の自 worktree DB へ繋ぎます。ただし

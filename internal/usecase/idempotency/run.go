@@ -20,7 +20,7 @@ const ttl = 24 * time.Hour
 // Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。
 // 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
 type Metrics interface {
-	// IncHit は、completed 行の再送（replay）を計上します。
+	// IncHit は、completed のエントリへの再送（replay）を計上します。
 	IncHit(ctx context.Context, operationID string)
 	// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。
 	IncMiss(ctx context.Context, operationID string)
@@ -47,7 +47,7 @@ type nopMetrics struct{}
 
 // Run は、ctx に Idempotency-Key が無ければ businessFn を素通し実行し、ある場合は業務 tx 内で
 // claim → businessFn → complete を 1 tx で行います。再送は replay、並行 claim は 409、指紋不一致は 422。
-// successStatus は completed 行へ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。
+// successStatus は completed のエントリへ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。
 //
 // 前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。
 // replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。
@@ -131,7 +131,7 @@ func decideExisting[T any](
 		return zero, false, err
 	}
 	if rec == nil {
-		// claim 衝突直後に行が消えた稀なレース。後で再試行させる。
+		// claim 衝突直後にエントリが消えた稀なレース。後で再試行させる。
 		deps.metrics().IncConflict(ctx, req.OperationID)
 		return zero, false, xerrors.Wrap(apperror.ErrConflict, "idempotency key state unavailable, retry later")
 	}

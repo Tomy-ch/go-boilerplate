@@ -1,5 +1,5 @@
 // Package purchase は、購入 CommandService（command.CommandService）の RDB 実装を提供します。
-// 在庫減算・購入・明細の書き込みを、渡された ctx のトランザクション内で原子的に実行します（本リポジトリ初の CommandService 実装）。
+// 在庫減算・購入・明細の書き込みを、渡された ctx のトランザクション内で原子的に実行します。
 package purchase
 
 import (
