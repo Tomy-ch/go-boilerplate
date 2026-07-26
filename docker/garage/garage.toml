@@ -11,11 +11,13 @@ rpc_public_addr = "garage:3901"
 # ローカル専用の固定 RPC secret（64桁 hex・機密ではなくローカルネットワーク内のみ）。
 rpc_secret = "1f2e3d4c5b6a798877665544332211000f1e2d3c4b5a69788796a5b4c3d2e1f0"
 
+# root_domain（vhost 形式の解決）は置かない。Go 側は path 形式で接続する。
 [s3_api]
 s3_region = "us-east-1"
 api_bind_addr = "[::]:3900"
-root_domain = ".s3.garage.localhost"
 
-[admin]
-api_bind_addr = "[::]:3903"
-admin_token = "gobp-local-admin-token"
+# 匿名 read の公開配信エンドポイント（商品画像をブラウザへ直接配信する）。バケットは Host ヘッダで
+# 決まり、パス形式では解決できないため <bucket>.<root_domain> で参照する。
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.localhost"
