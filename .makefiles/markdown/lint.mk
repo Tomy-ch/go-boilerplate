@@ -21,7 +21,7 @@ md-mermaid-lint:
 
 # -----CI内で実行するコマンド群-----
 # markdownlint-cli2 の ignore 記法は "#glob"。Make 変数代入では # がコメント開始になるため \# でエスケープする。
-MD_GLOBS := "**/*.md" "\#vendor/**" "\#**/node_modules/**" "\#.git/**" "\#docs/portal/guides/**" "\#docs/coverage/**" "\#docs/db-schema/**" "\#AGENTS.md"
+MD_GLOBS := "**/*.md" "\#vendor/**" "\#**/node_modules/**" "\#.git/**" "\#tmp/**" "\#docs/portal/guides/**" "\#docs/coverage/**" "\#docs/db-schema/**" "\#AGENTS.md"
 
 # markdownlint（体裁）と mermaid（図の構文）の両方を通す。
 md-lint-ci: md-markdownlint-ci md-mermaid-lint-ci
