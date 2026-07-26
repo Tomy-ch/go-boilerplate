@@ -6,13 +6,33 @@ package gen
 import (
 	"time"
 
+	"github.com/oapi-codegen/nullable"
 	openapi_types "github.com/oapi-codegen/runtime/types"
+)
+
+const (
+	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
 )
 
 // ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
 	Code string `json:"code"`
+
+	// Message 人間が読めるエラーメッセージ
+	Message string `json:"message"`
+
+	// RequestId リクエストID
+	RequestId string `json:"requestId"`
+}
+
+// ErrorResponseWithDetails 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type ErrorResponseWithDetails struct {
+	// Code 機械的に処理可能なエラーコード
+	Code string `json:"code"`
+
+	// Details エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
+	Details *[]string `json:"details,omitempty"`
 
 	// Message 人間が読めるエラーメッセージ
 	Message string `json:"message"`
@@ -28,6 +48,45 @@ type ProductCategoryRef struct {
 
 	// Name 商品カテゴリ名
 	Name string `json:"name"`
+}
+
+// ProductPatchRequest 商品部分更新リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+// 送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
+// description / stockWarningThreshold / publishedAt / imagePath は null を明示すると値をクリアします
+// （未送信＝据え置きと null＝クリアは区別されます）。
+// version には更新対象を読み込んだ時点の値を渡します。DB の現在値と一致しない場合は他者の更新と競合した
+// ものとして 409 を返します（再取得したうえで送り直してください）。
+// 負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+type ProductPatchRequest struct {
+	// CategoryId 商品カテゴリ ID
+	CategoryId *openapi_types.UUID `json:"categoryId,omitempty"`
+
+	// Description 商品説明（リッチテキスト HTML を許容）。null を指定すると説明をクリアします。
+	Description nullable.Nullable[string] `json:"description,omitempty"`
+
+	// ImagePath 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 null を指定すると画像をクリアします。
+	ImagePath nullable.Nullable[string] `json:"imagePath,omitempty"`
+
+	// Name 商品名
+	Name *string `json:"name,omitempty"`
+
+	// Price 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99"）。 非数値は 400、負値は業務不変条件違反として 422 を返します。
+	Price *string `json:"price,omitempty"`
+
+	// PublishedAt 公開日時。null を指定すると未公開に戻します。
+	PublishedAt nullable.Nullable[time.Time] `json:"publishedAt,omitempty"`
+
+	// Quantity 在庫数。負値は業務不変条件違反として 422 を返します。
+	Quantity *int32 `json:"quantity,omitempty"`
+
+	// StatusId 商品ステータス ID
+	StatusId *openapi_types.UUID `json:"statusId,omitempty"`
+
+	// StockWarningThreshold 在庫警告閾値。null を指定すると閾値をクリアします。
+	StockWarningThreshold nullable.Nullable[int32] `json:"stockWarningThreshold,omitempty"`
+
+	// Version 楽観ロック用のバージョン。更新対象を読み込んだ時点の値を渡します。 DB の現在値と一致しない場合は 409 を返します。
+	Version int32 `json:"version"`
 }
 
 // ProductResponse 商品情報のレスポンススキーマ
@@ -61,6 +120,9 @@ type ProductResponse struct {
 
 	// StockWarningThreshold 在庫警告閾値。未設定の場合は null です。
 	StockWarningThreshold *int32 `json:"stockWarningThreshold"`
+
+	// Version 楽観ロック用のバージョン。更新のたびに 1 つ進みます。 部分更新（PATCH /v1/products/{productId}）へそのまま渡すことで、 読み込み後に他者が更新していた場合の上書き（lost update）を 409 として検出できます。
+	Version int32 `json:"version"`
 }
 
 // ProductStatusRef 商品に紐づくステータスです。
@@ -78,6 +140,12 @@ type ProductIdParam = openapi_types.UUID
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
 
+// Conflict409 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Conflict409 = ErrorResponse
+
+// Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Forbidden403 = ErrorResponse
+
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
 
@@ -87,8 +155,17 @@ type NotFound404 = ErrorResponse
 // ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ServiceUnavailable503 = ErrorResponse
 
+// Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Unauthorized401 = ErrorResponse
+
+// UnprocessableEntity422 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type UnprocessableEntity422 = ErrorResponseWithDetails
+
 // basicAuthContextKey is the context key for BasicAuth security scheme
 type basicAuthContextKey string
 
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
+
+// PatchProductsDetailJSONRequestBody defines body for PatchProductsDetail for application/json ContentType.
+type PatchProductsDetailJSONRequestBody = ProductPatchRequest

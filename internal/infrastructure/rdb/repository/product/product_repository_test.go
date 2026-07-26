@@ -376,6 +376,7 @@ func Test_rowToProduct(t *testing.T) {
 				StatusID:              statusID,
 				CategoryID:            categoryID,
 				PublishedAt:           ptr.To(publishedAt),
+				LockVersion:           3,
 			}
 			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
 			require.NoError(t, err)
@@ -387,6 +388,7 @@ func Test_rowToProduct(t *testing.T) {
 			assert.Equal(t, "電子機器", got.Category().Name())
 			require.NotNil(t, got.PublishedAt())
 			assert.Equal(t, publishedAt, *got.PublishedAt())
+			assert.Equal(t, 3, got.Version())
 		})
 	})
 
@@ -439,6 +441,24 @@ func Test_rowToProduct(t *testing.T) {
 			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: ""})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("バージョンが下限未満の行はエンティティ再構築の失敗としてErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+			row := gen.Products{
+				ID:          id,
+				Name:        "商品",
+				Price:       decimal.FromInt(1999),
+				Quantity:    100,
+				StatusID:    statusID,
+				CategoryID:  categoryID,
+				PublishedAt: ptr.To(publishedAt),
+				LockVersion: 0,
+			}
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			require.NotErrorIs(t, err, domainproduct.ErrInvalidVersion)
 		})
 	})
 }
@@ -545,6 +565,197 @@ func Test_repository_Create(t *testing.T) {
 			// db.CreateProduct が context.Canceled を返し、pgerror.NormalizeError が ErrCanceled へ正規化する。
 			err = repo.Create(ctx, entity)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_repository_FindByID(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	unpublishedID := "aaaaaaaa-0000-4000-8000-000000000001"
+	versionedID := "aaaaaaaa-0000-4000-8000-000000000002"
+	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非公開(published_atがNULL)の商品も取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+"-UNPUB-ANY", nil, 1999, statusInStock, categoryElectronics, nil)
+
+				got, err := repo.FindByID(ctx, mustParse(t, unpublishedID))
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, mustParse(t, unpublishedID), got.ID())
+				assert.Equal(t, probeKeyword+"-UNPUB-ANY", got.Name())
+				assert.Nil(t, got.PublishedAt())
+			})
+		})
+
+		t.Run("DBに永続化されたversionがエンティティに反映される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, versionedID, probeKeyword+"-VER", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+				// 初期値(1)との区別が付くよう、DB 側のバージョンだけを進めた行を用意する。
+				_, err := drv.Exec(ctx, "UPDATE products SET lock_version = 3 WHERE id = $1", mustParse(t, versionedID))
+				require.NoError(t, err)
+
+				got, err := repo.FindByID(ctx, mustParse(t, versionedID))
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, 3, got.Version())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未存在のIDはNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := repo.FindByID(ctx, uuid.NewTestFromSalt(t, "find_by_id_missing"))
+				assert.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+	})
+}
+
+func Test_repository_Update(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	updatedID := "bbbbbbbb-0000-4000-8000-000000000001"
+	conflictID := "bbbbbbbb-0000-4000-8000-000000000002"
+	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("更新に成功すると採番後のversionを返しDBの行が更新される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, updatedID, probeKeyword+"-UPD", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+
+				entity, err := repo.FindByID(ctx, mustParse(t, updatedID))
+				require.NoError(t, err)
+				require.Equal(t, 1, entity.Version())
+
+				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusOutOfStock), "在庫切れ")
+				require.NoError(t, err)
+				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryBooks), "書籍")
+				require.NoError(t, err)
+				price, err := money.NewPrice(decimal.FromInt(2500))
+				require.NoError(t, err)
+				publishedAt := base.Add(24 * time.Hour)
+				require.NoError(t, entity.Update(
+					"更新後商品", ptr.To("更新後の説明"), price, 5, ptr.To(3),
+					statusRef, categoryRef, ptr.To(publishedAt), ptr.To("products/updated.png"),
+				))
+
+				version, err := repo.Update(ctx, entity)
+				require.NoError(t, err)
+				assert.Equal(t, 2, version)
+
+				got, err := repo.FindByID(ctx, mustParse(t, updatedID))
+				require.NoError(t, err)
+				assert.Equal(t, "更新後商品", got.Name())
+				require.NotNil(t, got.Description())
+				assert.Equal(t, "更新後の説明", *got.Description())
+				assert.Equal(t, "2500", got.Price().String())
+				assert.Equal(t, 5, got.Quantity())
+				require.NotNil(t, got.StockWarningThreshold())
+				assert.Equal(t, 3, *got.StockWarningThreshold())
+				assert.Equal(t, mustParse(t, statusOutOfStock), got.Status().ID())
+				assert.Equal(t, mustParse(t, categoryBooks), got.Category().ID())
+				require.NotNil(t, got.PublishedAt())
+				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
+				require.NotNil(t, got.ImagePath())
+				assert.Equal(t, "products/updated.png", *got.ImagePath())
+				assert.Equal(t, 2, got.Version())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("古いversionを持つエンティティの更新はErrVersionConflictを返しDBの行を変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, conflictID, probeKeyword+"-CONFLICT", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+
+				stale, err := repo.FindByID(ctx, mustParse(t, conflictID))
+				require.NoError(t, err)
+
+				// 読み込み後に他トランザクションが更新し、DB 側のバージョンだけが進んだ状態を再現する。
+				_, err = drv.Exec(ctx,
+					"UPDATE products SET name = $2, lock_version = lock_version + 1 WHERE id = $1",
+					mustParse(t, conflictID), probeKeyword+"-BY-OTHER",
+				)
+				require.NoError(t, err)
+
+				require.NoError(t, stale.Update(
+					"衝突する更新", stale.Description(), stale.Price(), stale.Quantity(), stale.StockWarningThreshold(),
+					stale.Status(), stale.Category(), stale.PublishedAt(), stale.ImagePath(),
+				))
+
+				version, err := repo.Update(ctx, stale)
+				require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+				assert.Equal(t, 0, version)
+
+				got, err := repo.FindByID(ctx, mustParse(t, conflictID))
+				require.NoError(t, err)
+				assert.Equal(t, probeKeyword+"-BY-OTHER", got.Name())
+				assert.Equal(t, 2, got.Version())
+			})
+		})
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化され衝突とは区別される", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "update_canceled_id")
+			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
+			require.NoError(t, err)
+			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
+			require.NoError(t, err)
+			price, err := money.NewPrice(decimal.FromInt(100))
+			require.NoError(t, err)
+			entity, err := domainproduct.New(
+				id, "キャンセル商品", nil, price, 1, nil,
+				statusRef, categoryRef, nil, nil,
+			)
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			version, err := repo.Update(ctx, entity)
+			assert.Equal(t, 0, version)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			require.NotErrorIs(t, err, domainproduct.ErrVersionConflict)
 		})
 	})
 }

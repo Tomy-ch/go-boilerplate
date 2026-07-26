@@ -11,6 +11,7 @@ required:
   - category
   - publishedAt
   - imagePath
+  - version
 properties:
   id:
     type: string
@@ -60,3 +61,11 @@ properties:
     nullable: true
     description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
     example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"
+  version:
+    type: integer
+    format: int32
+    description: >-
+      楽観ロック用のバージョン。更新のたびに 1 つ進みます。
+      部分更新（PATCH /v1/products/{productId}）へそのまま渡すことで、
+      読み込み後に他者が更新していた場合の上書き（lost update）を 409 として検出できます。
+    example: 1

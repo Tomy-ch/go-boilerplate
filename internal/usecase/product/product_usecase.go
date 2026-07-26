@@ -37,6 +37,8 @@ type ProductView struct {
 	CategoryName          string
 	PublishedAt           *time.Time
 	ImagePath             *string
+	// Version は、楽観ロックのバージョンです。部分更新の要求へそのまま渡すことで競合を検出できます。
+	Version int
 }
 
 // ProductListView は、公開商品一覧（cursor ページネーション）の取得結果を表します。
@@ -73,6 +75,9 @@ type Usecase interface {
 	// CreateProduct は、admin が商品を作成し、作成した商品を返します。未認証は 401、非 admin は 403、
 	// 負価格・負在庫・名称長超過などの業務不変条件違反は 422、status / category の不在は整合性異常として 500 を返します。
 	CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error)
+	// UpdateProduct は、admin が商品の属性を部分更新し、更新後の商品を返します。未認証は 401、非 admin は 403、
+	// 未存在は 404、読み込み後に他者が更新していた場合は 409、業務不変条件違反は 422 を返します。
+	UpdateProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams) (ProductView, error)
 }
 
 // usecase は、Usecase の実装です。
@@ -192,5 +197,6 @@ func toProductView(p *product.Product) ProductView {
 		CategoryName:          p.Category().Name(),
 		PublishedAt:           p.PublishedAt(),
 		ImagePath:             p.ImagePath(),
+		Version:               p.Version(),
 	}
 }

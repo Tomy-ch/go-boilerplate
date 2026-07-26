@@ -95,11 +95,66 @@ func (q *Queries) CreateProduct(ctx context.Context, arg *CreateProductParams) e
 	return err
 }
 
+const getProductByID = `-- name: GetProductByID :one
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.id = $1
+`
+
+type GetProductByIDRow struct {
+	StatusName   string
+	CategoryName string
+	Products     Products
+}
+
+// === source: database/dml/repository/product/select_product_by_id.sql ===
+// ID から公開状態を問わない単一商品を取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+// 公開中のみを返す GetPublishedProductByID とは可視範囲が異なり、未公開商品も返します
+// （公開日時の設定そのものを更新対象とする管理用途の read-modify-write に用います）。
+//
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
+//	WHERE p.id = $1
+func (q *Queries) GetProductByID(ctx context.Context, productIDParam uuid.UUID) (*GetProductByIDRow, error) {
+	row := q.db.QueryRow(ctx, getProductByID, productIDParam)
+	var i GetProductByIDRow
+	err := row.Scan(
+		&i.StatusName,
+		&i.CategoryName,
+		&i.Products.ID,
+		&i.Products.Name,
+		&i.Products.Description,
+		&i.Products.Price,
+		&i.Products.Quantity,
+		&i.Products.StockWarningThreshold,
+		&i.Products.StatusID,
+		&i.Products.CategoryID,
+		&i.Products.PublishedAt,
+		&i.Products.ImagePath,
+		&i.Products.LockVersion,
+		&i.Products.CreatedAt,
+		&i.Products.UpdatedAt,
+	)
+	return &i, err
+}
+
 const getPublishedProductByID = `-- name: GetPublishedProductByID :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -123,7 +178,7 @@ type GetPublishedProductByIDRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -145,6 +200,7 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 		&i.Products.CategoryID,
 		&i.Products.PublishedAt,
 		&i.Products.ImagePath,
+		&i.Products.LockVersion,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
 	)
@@ -155,7 +211,7 @@ const listPublishedProductsAsc = `-- name: ListPublishedProductsAsc :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -200,7 +256,7 @@ type ListPublishedProductsAscRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -249,6 +305,7 @@ func (q *Queries) ListPublishedProductsAsc(ctx context.Context, arg *ListPublish
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
 			&i.Products.ImagePath,
+			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
 		); err != nil {
@@ -266,7 +323,7 @@ const listPublishedProductsDesc = `-- name: ListPublishedProductsDesc :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -312,7 +369,7 @@ type ListPublishedProductsDescRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -361,6 +418,7 @@ func (q *Queries) ListPublishedProductsDesc(ctx context.Context, arg *ListPublis
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
 			&i.Products.ImagePath,
+			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
 		); err != nil {
@@ -372,4 +430,78 @@ func (q *Queries) ListPublishedProductsDesc(ctx context.Context, arg *ListPublis
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProduct = `-- name: UpdateProduct :one
+UPDATE products
+SET
+    name = $1,
+    description = $2,
+    price = $3,
+    quantity = $4,
+    stock_warning_threshold = $5,
+    status_id = $6,
+    category_id = $7,
+    published_at = $8,
+    image_path = $9,
+    lock_version = products.lock_version + 1,
+    updated_at = NOW()
+WHERE products.id = $10
+    AND products.lock_version = $11
+RETURNING products.lock_version
+`
+
+type UpdateProductParams struct {
+	Name                  string
+	Description           *string
+	Price                 decimal.Decimal
+	Quantity              int32
+	StockWarningThreshold *int32
+	StatusID              uuid.UUID
+	CategoryID            uuid.UUID
+	PublishedAt           *time.Time
+	ImagePath             *string
+	ID                    uuid.UUID
+	CurrentVersion        int32
+}
+
+// === source: database/dml/repository/product/update_product.sql ===
+// 楽観ロック条件付きで商品を更新し、採番後のバージョンを返します。
+// lock_version の加算は DB が行い、採番の権威を単一箇所に置きます。
+// WHERE の lock_version 一致が並行更新による lost update を防ぐ本体で、読み込み後に他トランザクションが
+// 更新していた場合は該当行なし（0 行）で返り、呼び出し側が衝突として扱います。
+//
+//	UPDATE products
+//	SET
+//	    name = $1,
+//	    description = $2,
+//	    price = $3,
+//	    quantity = $4,
+//	    stock_warning_threshold = $5,
+//	    status_id = $6,
+//	    category_id = $7,
+//	    published_at = $8,
+//	    image_path = $9,
+//	    lock_version = products.lock_version + 1,
+//	    updated_at = NOW()
+//	WHERE products.id = $10
+//	    AND products.lock_version = $11
+//	RETURNING products.lock_version
+func (q *Queries) UpdateProduct(ctx context.Context, arg *UpdateProductParams) (int32, error) {
+	row := q.db.QueryRow(ctx, updateProduct,
+		arg.Name,
+		arg.Description,
+		arg.Price,
+		arg.Quantity,
+		arg.StockWarningThreshold,
+		arg.StatusID,
+		arg.CategoryID,
+		arg.PublishedAt,
+		arg.ImagePath,
+		arg.ID,
+		arg.CurrentVersion,
+	)
+	var lock_version int32
+	err := row.Scan(&lock_version)
+	return lock_version, err
 }

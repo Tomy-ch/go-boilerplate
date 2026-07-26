@@ -648,6 +648,51 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+    patch:
+      operationId: PatchProductsDetail
+      tags:
+        - v1/products/detail
+      summary: 単一商品の部分更新
+      description: |
+        指定された UUID に該当する商品の属性を部分更新します。admin のみ実行できます（非 admin は 403）。
+        送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
+        description / stockWarningThreshold / publishedAt / imagePath は null を明示するとクリアします。
+        公開日時そのものを更新対象とするため、取得系と異なり未公開商品も更新できます。
+        version が DB の現在値と一致しない場合は他者の更新と競合したものとして 409 を返します。
+        409 は再送では解消しないため、クライアントは再取得してから送り直してください。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPatchRequest'
+      responses:
+        '200':
+          description: 商品の部分更新に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/products/ranking:
     get:
       operationId: GetProductsRanking
@@ -1480,6 +1525,7 @@ components:
         - category
         - publishedAt
         - imagePath
+        - version
       properties:
         id:
           type: string
@@ -1527,6 +1573,11 @@ components:
           nullable: true
           description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
           example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+        version:
+          type: integer
+          format: int32
+          description: 楽観ロック用のバージョン。更新のたびに 1 つ進みます。 部分更新（PATCH /v1/products/{productId}）へそのまま渡すことで、 読み込み後に他者が更新していた場合の上書き（lost update）を 409 として検出できます。
+          example: 1
     ProductListResponse:
       description: 商品一覧（cursor ページネーション）のレスポンススキーマ
       allOf:
@@ -2278,6 +2329,87 @@ components:
           nullable: true
           description: 画像パス。未設定の場合は null です。画像アップロードで得たパスを渡します。
           example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+    ProductPatchRequest:
+      type: object
+      description: |
+        商品部分更新リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+        送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
+        description / stockWarningThreshold / publishedAt / imagePath は null を明示すると値をクリアします
+        （未送信＝据え置きと null＝クリアは区別されます）。
+        version には更新対象を読み込んだ時点の値を渡します。DB の現在値と一致しない場合は他者の更新と競合した
+        ものとして 409 を返します（再取得したうえで送り直してください）。
+        負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          format: int32
+          description: 楽観ロック用のバージョン。更新対象を読み込んだ時点の値を渡します。 DB の現在値と一致しない場合は 409 を返します。
+          example: 1
+        name:
+          type: string
+          maxLength: 255
+          description: 商品名
+          example: ワイヤレスイヤホン
+        description:
+          type: string
+          nullable: true
+          description: 商品説明（リッチテキスト HTML を許容）。null を指定すると説明をクリアします。
+          example: <p>ノイズキャンセリング対応の Bluetooth イヤホン</p>
+          x-go-type: nullable.Nullable[string]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
+        price:
+          type: string
+          pattern: ^-?\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99"）。 非数値は 400、負値は業務不変条件違反として 422 を返します。
+          example: '19.99'
+        quantity:
+          type: integer
+          format: int32
+          description: 在庫数。負値は業務不変条件違反として 422 を返します。
+          example: 100
+        stockWarningThreshold:
+          type: integer
+          format: int32
+          nullable: true
+          description: 在庫警告閾値。null を指定すると閾値をクリアします。
+          example: 10
+          x-go-type: nullable.Nullable[int32]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
+        categoryId:
+          type: string
+          format: uuid
+          description: 商品カテゴリ ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        statusId:
+          type: string
+          format: uuid
+          description: 商品ステータス ID
+          example: c2e5f1a3-4d6b-5c7e-9f80-2b3c4d5e6f7a
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公開日時。null を指定すると未公開に戻します。
+          example: '2026-01-01T00:00:00Z'
+          x-go-type: nullable.Nullable[time.Time]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 null を指定すると画像をクリアします。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+          x-go-type: nullable.Nullable[string]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
     ProductImagePostRequest:
       type: object
       description: |

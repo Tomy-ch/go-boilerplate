@@ -52,6 +52,7 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 |`exec`|External command execution (interface + mock)|Standard library `os/exec`|
 |`fnmeta`|Function / package name extraction|None|
 |`fs`|Filesystem operations (interface + mock)|Standard library `os`|
+|`patch`|Three-state values for partial-update (PATCH) input|None|
 |`ptr`|Pointer operations|None|
 |`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|
 |`safecast`|Type conversion with overflow detection|None|
@@ -139,6 +140,16 @@ Abstracts filesystem operations behind an interface so callers can inject a mock
 |---|---|
 |`FS` (interface)|`ReadFile` / `WriteFile` / `Glob`|
 |`OS` (struct)|`os`-based implementation of `FS`|
+
+### patch
+
+Three-state values for partial-update (PATCH) input. Distinguishes "not sent (keep current)", "sent as `null` (clear)", and "sent with a value (replace)" — a distinction a plain `*T` collapses into `nil`. The zero value of `Field[T]` is unspecified, so a struct of `Field` values defaults to "change nothing".
+
+|Symbol|Description|
+|---|---|
+|`Field[T]` (struct)|One field's specification state in a partial update|
+|`Unspecified[T]` / `Null[T]` / `Value[T]`|Constructors for the three states|
+|`Field[T].Resolve`|Apply the specification to a current value|
 
 ### ptr
 

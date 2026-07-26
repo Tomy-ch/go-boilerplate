@@ -113,6 +113,13 @@ func isPgConnectionError(err error) bool {
 	return strings.HasPrefix(pgErr.Code, "08")
 }
 
+// IsNoRows は、クエリが 1 行も返さなかったことを示すエラーかを判定します。
+// 条件付き UPDATE（楽観ロック等）では対象行なしが「未存在」ではなく「条件不一致」を意味するため、
+// NormalizeError による ErrNotFound への一律の写像に代えて、呼び出し側が固有の意味を与えるための述語です。
+func IsNoRows(err error) bool {
+	return xerrors.Is(err, pgx.ErrNoRows)
+}
+
 // IsLockNotAvailable は、lock_timeout 失効によるエラーであるかを判定します。
 func IsLockNotAvailable(err error) bool {
 	var pgErr *pgconn.PgError

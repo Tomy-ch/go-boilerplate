@@ -23,4 +23,9 @@ var (
 	ErrInvalidCategoryID = xerrors.Wrap(errInvalid, "categoryID failed")
 	// ErrInvalidCategoryName は、商品カテゴリ名の検証に失敗した場合のエラーです。
 	ErrInvalidCategoryName = xerrors.Wrap(errInvalid, "categoryName failed")
+	// ErrInvalidVersion は、楽観ロックのバージョンの検証に失敗した場合のエラーです。
+	ErrInvalidVersion = xerrors.Wrap(errInvalid, "version failed")
+	// ErrVersionConflict は、読み込み後に他者が更新しており、楽観ロックのバージョンが一致しない場合のエラーです。
+	// 同じ内容の再送では解消しないため、呼び出し元は最新を取得し直したうえでやり直す必要があります。
+	ErrVersionConflict = xerrors.Wrap(apperror.ErrConflict, "product version conflict")
 )

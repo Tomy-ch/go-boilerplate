@@ -25,3 +25,48 @@ get:
       $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
     '503':
       $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'
+patch:
+  operationId: PatchProductsDetail
+  tags:
+    - v1/products/detail
+  summary: 単一商品の部分更新
+  description: |
+    指定された UUID に該当する商品の属性を部分更新します。admin のみ実行できます（非 admin は 403）。
+    送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
+    description / stockWarningThreshold / publishedAt / imagePath は null を明示するとクリアします。
+    公開日時そのものを更新対象とするため、取得系と異なり未公開商品も更新できます。
+    version が DB の現在値と一致しない場合は他者の更新と競合したものとして 409 を返します。
+    409 は再送では解消しないため、クライアントは再取得してから送り直してください。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../components/parameters/product/ProductIdParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/requests/products/ProductPatchRequest.yaml'
+  responses:
+    '200':
+      description: 商品の部分更新に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ProductResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '404':
+      $ref: '../../../components/schemas/errors/NotFound404.yaml'
+    '409':
+      $ref: '../../../components/schemas/errors/Conflict409.yaml'
+    '422':
+      $ref: '../../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

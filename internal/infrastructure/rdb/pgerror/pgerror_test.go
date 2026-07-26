@@ -255,6 +255,30 @@ func TestIsLockNotAvailable(t *testing.T) {
 	})
 }
 
+func TestIsNoRows(t *testing.T) {
+	t.Parallel()
+
+	t.Run("pgx.ErrNoRowsはtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsNoRows(pgx.ErrNoRows))
+	})
+
+	t.Run("ラップされたpgx.ErrNoRowsはtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsNoRows(xerrors.Wrap(pgx.ErrNoRows, "wrapped")))
+	})
+
+	t.Run("nilはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsNoRows(nil))
+	})
+
+	t.Run("行なし以外のエラーはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsNoRows(context.Canceled))
+	})
+}
+
 func TestIsRetryableTxError(t *testing.T) {
 	t.Parallel()
 

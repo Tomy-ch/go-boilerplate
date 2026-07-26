@@ -19,6 +19,9 @@ type ServerInterface interface {
 	// 単一商品の取得
 	// (GET /v1/products/{productId})
 	GetProductsDetail(ctx echo.Context, productId ProductIdParam) error
+	// 単一商品の部分更新
+	// (PATCH /v1/products/{productId})
+	PatchProductsDetail(ctx echo.Context, productId ProductIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -39,6 +42,24 @@ func (w *ServerInterfaceWrapper) GetProductsDetail(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetProductsDetail(ctx, productId)
+	return err
+}
+
+// PatchProductsDetail converts echo context to params.
+func (w *ServerInterfaceWrapper) PatchProductsDetail(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PatchProductsDetail(ctx, productId)
 	return err
 }
 
@@ -90,16 +111,25 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.GET(options.BaseURL+"/v1/products/:productId", wrapper.GetProductsDetail, options.OperationMiddlewares["GetProductsDetail"]...)
+	router.PATCH(options.BaseURL+"/v1/products/:productId", wrapper.PatchProductsDetail, options.OperationMiddlewares["PatchProductsDetail"]...)
 
 }
 
 type BadRequest400JSONResponse ErrorResponse
+
+type Conflict409JSONResponse ErrorResponse
+
+type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
 type NotFound404JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
+
+type Unauthorized401JSONResponse ErrorResponse
+
+type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
 type GetProductsDetailRequestObject struct {
 	ProductId ProductIdParam `json:"productId"`
@@ -183,11 +213,155 @@ func (response GetProductsDetail503JSONResponse) VisitGetProductsDetailResponse(
 	return err
 }
 
+type PatchProductsDetailRequestObject struct {
+	ProductId ProductIdParam `json:"productId"`
+	Body      *PatchProductsDetailJSONRequestBody
+}
+
+type PatchProductsDetailResponseObject interface {
+	VisitPatchProductsDetailResponse(w http.ResponseWriter) error
+}
+
+type PatchProductsDetail200JSONResponse ProductResponse
+
+func (response PatchProductsDetail200JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response PatchProductsDetail400JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response PatchProductsDetail401JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response PatchProductsDetail403JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail404JSONResponse struct{ NotFound404JSONResponse }
+
+func (response PatchProductsDetail404JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail409JSONResponse struct{ Conflict409JSONResponse }
+
+func (response PatchProductsDetail409JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail422JSONResponse struct {
+	UnprocessableEntity422JSONResponse
+}
+
+func (response PatchProductsDetail422JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response PatchProductsDetail500JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsDetail503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response PatchProductsDetail503JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// 単一商品の取得
 	// (GET /v1/products/{productId})
 	GetProductsDetail(ctx context.Context, request GetProductsDetailRequestObject) (GetProductsDetailResponseObject, error)
+	// 単一商品の部分更新
+	// (PATCH /v1/products/{productId})
+	PatchProductsDetail(ctx context.Context, request PatchProductsDetailRequestObject) (PatchProductsDetailResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
@@ -221,6 +395,37 @@ func (sh *strictHandler) GetProductsDetail(ctx echo.Context, productId ProductId
 		return err
 	} else if validResponse, ok := response.(GetProductsDetailResponseObject); ok {
 		return validResponse.VisitGetProductsDetailResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PatchProductsDetail operation middleware
+func (sh *strictHandler) PatchProductsDetail(ctx echo.Context, productId ProductIdParam) error {
+	var request PatchProductsDetailRequestObject
+
+	request.ProductId = productId
+
+	var body PatchProductsDetailJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PatchProductsDetail(ctx.Request().Context(), request.(PatchProductsDetailRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PatchProductsDetail")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PatchProductsDetailResponseObject); ok {
+		return validResponse.VisitPatchProductsDetailResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
