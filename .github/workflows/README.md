@@ -9,7 +9,7 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 | Group | When it runs | What it does |
 | --- | --- | --- |
 | CI Checks | every pull request | Block merge if lint / test / generated-artifact consistency fails |
-| Security | every PR + weekly schedule (Trivy / CodeQL) + push baseline (CodeQL) | Surface vulnerabilities in code, dependencies, images, and Go runtime |
+| Security | per-tool matrix (see below) | Surface vulnerabilities in code, dependencies, images, workflow definitions, and committed secrets |
 | Deployment | push to `production` / `staging` / `develop` | Build artifacts, run migration, deploy app or docs portal |
 | Documentation | push to `release/*` | Regenerate OpenAPI / ER / portal docs and open an auto-sync PR |
 
@@ -46,7 +46,37 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
 |Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
+|OSV Scan|`osv-scanner.yaml`|OSV database scan across the Go module graph and the npm lockfiles|
 |Secret Scan|`secret-scan.yaml`|gitleaks scan for committed secrets (via go_tool_runner)|
+|Secret Scan (TruffleHog)|`trufflehog.yaml`|TruffleHog scan for *verified* secrets — credentials that are actually live|
+|Actions Static Analysis|`zizmor.yaml`|zizmor audit of the workflow / composite-action definitions themselves|
+|Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
+|OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
+
+Every scanner writes SARIF to GitHub code scanning where it can, and comments its result on the PR through the shared `upsert-pr-comment` action.
+
+#### Security Trigger Matrix
+
+Each tool runs where its findings can actually change: a PR surfaces the risk the change itself introduces, a push to a protected branch keeps a code-scanning baseline for branch protection to judge, and a weekly schedule only exists for tools whose result can change while the code stands still (newly disclosed CVEs, new queries).
+
+| Tool | Pull request | Push to protected branch | Schedule |
+| --- | --- | --- | --- |
+| gitleaks | all PRs | — | — |
+| TruffleHog | all PRs, diff only | — | weekly, full history |
+| zizmor | when Actions files change | `develop` / `staging` / `production` / `release/*` | — |
+| Dependency Review | dependency-change PRs | — | — |
+| govulncheck | Go / dependency-change PRs | same as above | weekly |
+| Trivy FS | Go / dependency-change PRs | same as above | weekly |
+| OSV-Scanner | dependency-change PRs | same as above | weekly |
+| CodeQL | Go / dependency-change PRs | same as above | weekly |
+| OpenSSF Scorecard | — | default branch only | weekly |
+| Image Scan | PRs into a deploy branch | — | weekly |
+
+Weekly runs are staggered across Monday (`0 0` Trivy FS / Image Scan, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard) so a single hour does not queue every scanner at once.
+
+#### Runner Hardening
+
+Every job in this directory starts with `step-security/harden-runner` in `egress-policy: audit` mode. It records the runner's outbound network calls and file-integrity events so a compromised action or transitive tool download becomes visible. `audit` only reports — moving to `block` requires a settled allowlist of endpoints, which is deliberately deferred until the audit data exists.
 
 ### Deployment (Push)
 
@@ -74,5 +104,8 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
 
 - `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>` (one branch per release base, reused across runs with `delete-branch: true`); the workflow skips itself on that branch to avoid recursion.
 - All deployment workflows require their target branch (`production` / `staging` / `develop`) to be branch-protected; merges must flow through PR review.
-- Security scans run on every PR (Trivy FS / image and CodeQL also run weekly via `schedule` to catch newly disclosed CVEs / queries; CodeQL additionally runs on push to `release/*` and the deploy branches to keep a code-scanning baseline); if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.
+- Security scan triggers are defined per tool in the Security Trigger Matrix above; if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.
+- `trivy-fs.yaml` and `osv-scanner.yaml` only gate on vulnerabilities that have a fixed version available — an unfixed advisory is still reported to code scanning and to the PR comment, but it does not turn a check permanently red. `trivy-release-gate.yaml` is the strict counterpart: it looks at everything, including unfixed, on PRs into a deploy branch.
+- `trufflehog.yaml` reports only *verified* secrets and never writes a raw secret value into the job log, the PR comment, or an artifact; gitleaks covers the regex-based side with `--redact`.
+- Exceptions to zizmor's audits live in `.github/zizmor.yml`. `ignore` there is file-scoped on purpose, so a new workflow hitting the same audit still fails; entries are removed as the underlying finding is fixed rather than kept as a permanent allowlist.
 - The `Detect changes` step in `auto-generate-docs.yaml` excludes coverage HTML and SchemaSpy timestamp churn so cosmetic regenerations do not open noise PRs.

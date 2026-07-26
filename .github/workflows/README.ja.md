@@ -9,7 +9,7 @@
 | グループ | 発火タイミング | 目的 |
 | --- | --- | --- |
 | CI チェック | 全 PR | lint / test / 生成物整合性が失敗したらマージブロック |
-| セキュリティ | 全 PR + 週次スケジュール（Trivy / CodeQL）+ push ベースライン（CodeQL） | コード / 依存 / イメージ / Go ランタイムの脆弱性を surface |
+| セキュリティ | ツールごとのマトリクス（後述） | コード / 依存 / イメージ / ワークフロー定義 / コミット済みシークレットの問題を surface |
 | デプロイ | `production` / `staging` / `develop` への push | 成果物ビルド、マイグレーション実行、アプリ / docs portal をデプロイ |
 | ドキュメント | `release/*` への push | OpenAPI / ER / portal ドキュメントを再生成し auto-sync PR を作成 |
 
@@ -46,7 +46,37 @@
 |Release Dependency Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
 |Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成 + Trivy スキャン|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck による Go パッケージ脆弱性検出|
+|OSV Scan|`osv-scanner.yaml`|OSV データベースによる Go モジュール / npm lockfile 横断の脆弱性スキャン|
 |Secret Scan|`secret-scan.yaml`|gitleaks によるコミット済みシークレットの検出（go_tool_runner 経由）|
+|Secret Scan (TruffleHog)|`trufflehog.yaml`|TruffleHog による**検証済み**シークレット（実際に有効なクレデンシャル）の検出|
+|Actions Static Analysis|`zizmor.yaml`|zizmor によるワークフロー / composite action 定義自体の静的解析|
+|Dependency Review|`dependency-review.yaml`|PR が新たに持ち込む脆弱な依存をマージ前にブロック|
+|OpenSSF Scorecard|`scorecard.yaml`|リポジトリのセキュリティ姿勢のスコアリングと結果の公開|
+
+各スキャナは可能な限り SARIF を GitHub code scanning へ送り、結果は共通の `upsert-pr-comment` アクションで PR にコメントします。
+
+#### セキュリティのトリガーマトリクス
+
+各ツールは「結果が実際に変わりうる場所」で走らせています。PR はその変更自身が持ち込むリスクを surface し、protected branch への push はブランチ保護が判断材料にする code scanning のベースラインを残し、定期実行は「コードが変わらなくても結果が変わる」種別（新規公表 CVE / 新規クエリ）にだけ設けます。
+
+| 種別 | PR | protected branch への push | 定期 |
+| --- | --- | --- | --- |
+| gitleaks | 全 PR | 不要 | 不要 |
+| TruffleHog | 全 PR の差分 | 不要 | 週次で履歴全体 |
+| zizmor | Actions 関連ファイル変更時 | `develop` / `staging` / `production` / `release/*` | 不要 |
+| Dependency Review | 依存関係変更 PR | 不要 | 不要 |
+| govulncheck | Go・依存変更 PR | 同上 | 週次 |
+| Trivy FS | Go・依存変更 PR | 同上 | 週次 |
+| OSV-Scanner | 依存関係変更 PR | 同上 | 週次 |
+| CodeQL | Go・依存変更 PR | 同上 | 週次 |
+| OpenSSF Scorecard | 不要 | 既定ブランチのみ | 週次 |
+| Image Scan | デプロイ先ブランチへの PR | 不要 | 週次 |
+
+週次実行は月曜内でずらしています（`0 0` Trivy FS / Image Scan、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard）。同一時刻に全スキャナが並ぶのを避けるためです。
+
+#### ランナーのハードニング
+
+このディレクトリの全ジョブは `step-security/harden-runner` を `egress-policy: audit` で先頭に置いています。ランナーの外向き通信とファイル改変を記録することで、侵害されたアクションやツールの推移的ダウンロードが可視化されます。`audit` は記録のみで、`block` へ移行するには許可エンドポイントの確定が前提になるため、監査データが溜まるまで意図的に見送っています。
 
 ### デプロイ（Push）
 
@@ -74,5 +104,8 @@
 
 - `auto-generate-docs.yaml` は `auto/docs-update/<base>` というブランチ名で auto-PR を作成（release base ごとに 1 ブランチを `delete-branch: true` で再利用）。再帰実行を避けるため自己ブランチでは workflow をスキップ
 - デプロイ系 workflow の target ブランチ（`production` / `staging` / `develop`）はすべてブランチ保護を有効化。マージは必ず PR レビュー経由
-- セキュリティスキャンは全 PR で実行（Trivy の FS / image と CodeQL は新規公表 CVE / クエリ検知のため週次 `schedule` でも実行。CodeQL は code scanning ベースライン維持のため `release/*` とデプロイ系ブランチへの push でも実行）。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
+- セキュリティスキャンのトリガーは上記「セキュリティのトリガーマトリクス」でツールごとに定義。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
+- `trivy-fs.yaml` と `osv-scanner.yaml` は**修正版が存在する脆弱性でのみ**ゲートする。修正版のない advisory も code scanning と PR コメントには載るが、チェックを恒久的に赤くはしない。厳格版はデプロイ先ブランチ向け PR を見る `trivy-release-gate.yaml` が担当
+- `trufflehog.yaml` は**検証済み**シークレットのみを報告し、生のシークレット値をジョブログ / PR コメント / artifact のいずれにも出さない。正規表現ベースの検知は `--redact` 付きの gitleaks が担当
+- zizmor の例外設定は `.github/zizmor.yml`。`ignore` はファイル単位であり、同じ audit を踏む新規ワークフローは意図どおり落ちる。恒久的な allowlist ではなく、元の指摘を直したらエントリを消す運用
 - `auto-generate-docs.yaml` の `Detect changes` ステップはカバレッジ HTML / SchemaSpy のタイムスタンプ揺れを除外し、無意味な PR が発火しないよう設計
