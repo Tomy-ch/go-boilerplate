@@ -369,6 +369,77 @@ func Test_repository_UpdatePaid(t *testing.T) {
 	})
 }
 
+func Test_repository_UpdateShipped(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{tracer: lt, db: testDB}
+	paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+	shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("status_idを発送済みへ更新しshipped_atをセットし在庫は変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000001")
+
+				paid, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				require.NoError(t, paid.Pay(paidAt))
+				require.NoError(t, repo.UpdatePaid(ctx, paid))
+
+				locked, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				require.NoError(t, locked.Ship(shippedAt))
+				require.NoError(t, repo.UpdateShipped(ctx, locked))
+
+				// 再読込で status_id が発送済み（code=8）へ解決され、shipped_at がセットされる。
+				reread, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				assert.Equal(t, domainpurchase.StatusCodeShipped, reread.StatusCode())
+				require.NotNil(t, reread.ShippedAt())
+				assert.Equal(t, shippedAt.UTC(), reread.ShippedAt().UTC())
+
+				// 発送は在庫を操作しない（挿入時の 20 のまま）。
+				var stock int
+				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", productID).Scan(&stock))
+				assert.Equal(t, 20, stock)
+			})
+		})
+
+		t.Run("読み取りモデルにshipped_atが反映される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000002")
+
+				paid, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				require.NoError(t, paid.Pay(paidAt))
+				require.NoError(t, repo.UpdatePaid(ctx, paid))
+
+				locked, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				require.NoError(t, locked.Ship(shippedAt))
+				require.NoError(t, repo.UpdateShipped(ctx, locked))
+
+				detail, err := repo.FindDetailByID(ctx, purchaseID)
+				require.NoError(t, err)
+				assert.Equal(t, "発送済み", detail.StatusName)
+				require.NotNil(t, detail.ShippedAt)
+				assert.Equal(t, shippedAt.UTC(), detail.ShippedAt.UTC())
+			})
+		})
+	})
+}
+
 func Test_toPurchaseDetails(t *testing.T) {
 	t.Parallel()
 

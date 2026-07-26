@@ -73,7 +73,8 @@ SELECT
     p.total_amount,
     p.ordered_at,
     p.paid_at,
-    p.canceled_at
+    p.canceled_at,
+    p.shipped_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.id = $1
@@ -92,11 +93,13 @@ type GetPurchaseDetailByIDRow struct {
 	OrderedAt      time.Time
 	PaidAt         *time.Time
 	CanceledAt     *time.Time
+	ShippedAt      *time.Time
 }
 
 // ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
 // 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
-// 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL。
+// 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL、
+// 発送日時（shipped_at）は未発送なら NULL。
 // 存在しない場合は 0 行（NotFound）。
 //
 //	SELECT
@@ -111,7 +114,8 @@ type GetPurchaseDetailByIDRow struct {
 //	    p.total_amount,
 //	    p.ordered_at,
 //	    p.paid_at,
-//	    p.canceled_at
+//	    p.canceled_at,
+//	    p.shipped_at
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE p.id = $1
@@ -131,6 +135,7 @@ func (q *Queries) GetPurchaseDetailByID(ctx context.Context, id uuid.UUID) (*Get
 		&i.OrderedAt,
 		&i.PaidAt,
 		&i.CanceledAt,
+		&i.ShippedAt,
 	)
 	return &i, err
 }
@@ -425,5 +430,43 @@ type UpdatePurchasePaidParams struct {
 //	WHERE purchases.id = $3
 func (q *Queries) UpdatePurchasePaid(ctx context.Context, arg *UpdatePurchasePaidParams) error {
 	_, err := q.db.Exec(ctx, updatePurchasePaid, arg.StatusCode, arg.PaidAt, arg.ID)
+	return err
+}
+
+const updatePurchaseShipped = `-- name: UpdatePurchaseShipped :exec
+UPDATE purchases
+SET
+    status_id = (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = $1
+    ),
+    shipped_at = $2,
+    updated_at = NOW()
+WHERE purchases.id = $3
+`
+
+type UpdatePurchaseShippedParams struct {
+	StatusCode int16
+	ShippedAt  *time.Time
+	ID         uuid.UUID
+}
+
+// === source: database/dml/repository/purchase/update_purchase_shipped.sql ===
+// 購入を発送済み状態へ更新する。配送追跡は扱わないため単一集約（purchases）のみを更新し、在庫操作は伴わない。
+// status_id は code から解決し（seed UUID を焼き込まない）、shipped_at はドメインが決定した時刻（引数）を書き込み、
+// イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
+// 遷移可否ガードは付けない（ドメインが SoT）。
+//
+//	UPDATE purchases
+//	SET
+//	    status_id = (
+//	        SELECT ps.id FROM purchase_statuses AS ps
+//	        WHERE ps.code = $1
+//	    ),
+//	    shipped_at = $2,
+//	    updated_at = NOW()
+//	WHERE purchases.id = $3
+func (q *Queries) UpdatePurchaseShipped(ctx context.Context, arg *UpdatePurchaseShippedParams) error {
+	_, err := q.db.Exec(ctx, updatePurchaseShipped, arg.StatusCode, arg.ShippedAt, arg.ID)
 	return err
 }
