@@ -695,6 +695,45 @@ func Test_repository_Update(t *testing.T) {
 				assert.Equal(t, 2, got.Version())
 			})
 		})
+
+		t.Run("description / stock_warning_threshold / published_at / image_path を nil で更新するとDBへNULLとして書き込まれる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuid.NewTestFromSalt(t, "update_clear_nullable_id")
+				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
+				require.NoError(t, err)
+				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
+				require.NoError(t, err)
+				price, err := money.NewPrice(decimal.FromInt(1999))
+				require.NoError(t, err)
+				entity, err := domainproduct.New(
+					id, "クリア対象商品", ptr.To("<p>クリア前の説明</p>"), price, 5, ptr.To(10),
+					statusRef, categoryRef, ptr.To(base), ptr.To("products/cleared.png"),
+				)
+				require.NoError(t, err)
+				require.NoError(t, repo.Create(ctx, entity))
+
+				loaded, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				require.NoError(t, loaded.Update(
+					loaded.Name(), nil, loaded.Price(), loaded.Quantity(), nil,
+					loaded.Status(), loaded.Category(), nil, nil,
+				))
+
+				version, err := repo.Update(ctx, loaded)
+				require.NoError(t, err)
+				assert.Equal(t, 2, version)
+
+				// FindByID は公開述語を持たないため、published_at をクリアした後も読み戻せる。
+				got, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				assert.Nil(t, got.Description())
+				assert.Nil(t, got.StockWarningThreshold())
+				assert.Nil(t, got.PublishedAt())
+				assert.Nil(t, got.ImagePath())
+			})
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
