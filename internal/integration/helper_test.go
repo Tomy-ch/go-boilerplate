@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
+	"reflect" //nolint:depguard // テスト専用。宣言されたスライスフィールドを JSON と突き合わせ「配列は null でなく [] を返す」シリアライズ契約を型横断で検証するのに reflect が必須（本番コードは reflect を使わない）。
 	"strconv"
 	"strings"
 	"testing"
@@ -143,7 +143,7 @@ func AssertJSONResponseType[T any](t *testing.T, actualResponse *http.Response) 
 	var actualObj T
 	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。型引数に期待される型を指定してください。")
 
-	assertDeclaredArraysNotNull(t, resBody, reflect.TypeOf((*T)(nil)).Elem(), "")
+	assertDeclaredArraysNotNull(t, resBody, reflect.TypeFor[T](), "")
 }
 
 // assertDeclaredArraysNotNull は、typ 内でスライスとして宣言されたフィールドが raw の JSON 上で
@@ -163,57 +163,73 @@ func assertDeclaredArraysNotNull(t *testing.T, raw json.RawMessage, typ reflect.
 
 	switch typ.Kind() {
 	case reflect.Struct:
-		var fields map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &fields); err != nil {
-			// time.Time など JSON オブジェクト以外へシリアライズされる struct は対象外。
-			return
-		}
-		for i := range typ.NumField() {
-			f := typ.Field(i)
-			if !f.IsExported() {
-				continue
-			}
-			if _, tagged := f.Tag.Lookup("json"); f.Anonymous && !tagged {
-				// タグ無し埋め込みフィールドは JSON 上で親にインライン化される。
-				assertDeclaredArraysNotNull(t, raw, f.Type, path)
-				continue
-			}
-			name, ok := jsonFieldName(f)
-			if !ok {
-				continue
-			}
-			fieldRaw, present := fields[name]
-			if !present {
-				continue
-			}
-			fieldPath := name
-			if path != "" {
-				fieldPath = path + "." + name
-			}
-			ft := f.Type
-			for ft.Kind() == reflect.Pointer {
-				ft = ft.Elem()
-			}
-			if ft.Kind() == reflect.Slice && ft.Elem().Kind() != reflect.Uint8 && isJSONNull(fieldRaw) {
-				assert.Failf(t, "配列フィールドが null",
-					"配列フィールド %q が JSON で null にシリアライズされています（[] を返す契約違反）", fieldPath)
-				continue
-			}
-			assertDeclaredArraysNotNull(t, fieldRaw, f.Type, fieldPath)
-		}
+		assertStructArraysNotNull(t, raw, typ, path)
 	case reflect.Slice:
-		if typ.Elem().Kind() == reflect.Uint8 {
-			return
-		}
-		var elems []json.RawMessage
-		if err := json.Unmarshal(raw, &elems); err != nil {
-			return
-		}
-		for i, elemRaw := range elems {
-			assertDeclaredArraysNotNull(t, elemRaw, typ.Elem(), path+"["+strconv.Itoa(i)+"]")
-		}
+		assertSliceArraysNotNull(t, raw, typ, path)
 	default:
+		// スカラー等、配列を含み得ない型は検査対象外。
 	}
+}
+
+// assertStructArraysNotNull は、struct 型 typ の各フィールドを JSON と突き合わせて検査する。
+func assertStructArraysNotNull(t *testing.T, raw json.RawMessage, typ reflect.Type, path string) {
+	t.Helper()
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		// time.Time など JSON オブジェクト以外へシリアライズされる struct は対象外。
+		return
+	}
+	// VisibleFields はタグ無し埋め込みフィールドを昇格済みの形で列挙するため、
+	// 埋め込みのインライン化を個別に扱う必要がない。
+	for _, f := range reflect.VisibleFields(typ) {
+		if f.Anonymous || !f.IsExported() {
+			continue
+		}
+		name, ok := jsonFieldName(f)
+		if !ok {
+			continue
+		}
+		fieldRaw, present := fields[name]
+		if !present {
+			continue
+		}
+		fieldPath := name
+		if path != "" {
+			fieldPath = path + "." + name
+		}
+		if isDeclaredArray(f.Type) && isJSONNull(fieldRaw) {
+			assert.Failf(t, "配列フィールドが null",
+				"配列フィールド %q が JSON で null にシリアライズされています（[] を返す契約違反）", fieldPath)
+			continue
+		}
+		assertDeclaredArraysNotNull(t, fieldRaw, f.Type, fieldPath)
+	}
+}
+
+// assertSliceArraysNotNull は、スライス型 typ の各要素を再帰的に検査する。
+func assertSliceArraysNotNull(t *testing.T, raw json.RawMessage, typ reflect.Type, path string) {
+	t.Helper()
+
+	if typ.Elem().Kind() == reflect.Uint8 {
+		return // []byte は base64 文字列。
+	}
+	var elems []json.RawMessage
+	if err := json.Unmarshal(raw, &elems); err != nil {
+		return
+	}
+	for i, elemRaw := range elems {
+		assertDeclaredArraysNotNull(t, elemRaw, typ.Elem(), path+"["+strconv.Itoa(i)+"]")
+	}
+}
+
+// isDeclaredArray は、t がポインタを剥がしたうえで JSON 配列としてシリアライズされる
+// スライス型（[]byte を除く）かを返す。
+func isDeclaredArray(t reflect.Type) bool {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Slice && t.Elem().Kind() != reflect.Uint8
 }
 
 // jsonFieldName は、struct フィールドの JSON キー名を解決する。`json:"-"` のときは ok=false。
