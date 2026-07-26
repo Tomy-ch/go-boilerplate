@@ -1,0 +1,100 @@
+name: Fuzz
+
+# Go native fuzzing over the parsers that accept externally supplied text.
+#
+# Unit tests assert the cases someone thought of; fuzzing asks what happens on the
+# ones nobody did. That distinction already paid for itself: the first run of
+# FuzzParse found that pkg/decimal accepted "00E100044400" instantly and then hung
+# for minutes inside String(), materializing ~100 million digits.
+#
+# Weekly rather than per-PR: a fuzz run explores a random corpus, so the same code
+# can pass today and fail tomorrow. Gating a PR on it would make merges depend on
+# a coin flip, while a scheduled run turns the same randomness into coverage that
+# accumulates over time.
+
+on:
+  schedule:
+    # Monday 10:00 UTC — the slot after sast.yaml (09:00), continuing the stagger
+    # that #677 established.
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    strategy:
+      # One target per job so a crash in one does not mask the others, and so the
+      # failing target is identifiable from the job name alone.
+      fail-fast: false
+      matrix:
+        include:
+          - package: ./pkg/decimal
+            target: FuzzParse
+          - package: ./pkg/uuid
+            target: FuzzParse
+          - package: ./internal/usecase/tools/paging
+            target: FuzzNewCursor
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # 3 minutes per target keeps the whole matrix around 10 minutes of runner
+      # time. The committed corpus under testdata/fuzz is replayed first as a plain
+      # regression test, so previously found crashes are caught immediately even
+      # when the random exploration finds nothing new.
+      - name: Fuzz ${{ matrix.target }}
+        env:
+          PACKAGE: ${{ matrix.package }}
+          TARGET: ${{ matrix.target }}
+        run: go test "${PACKAGE}" -run "${TARGET}" -fuzz "${TARGET}" -fuzztime 180s
+        shell: bash
+
+      # A crash leaves its reproducer in testdata/fuzz/<target>/. Keeping it is the
+      # whole point: it is the input needed to reproduce and, once fixed, the
+      # regression test that keeps the bug closed.
+      - name: Upload crash corpus
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: fuzz-corpus-${{ matrix.target }}-${{ strategy.job-index }}
+          path: |
+            **/testdata/fuzz/**
+          if-no-files-found: warn
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: fuzz
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.fuzz.result) }}
+    uses: ./.github/workflows/notify-failure.yaml
+    with:
+      failed-job: fuzz
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
