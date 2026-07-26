@@ -336,5 +336,18 @@ func Test_usecase_resolveRefs(t *testing.T) {
 			_, _, err := u.resolveRefs(context.Background(), sid, cid)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
+
+		t.Run("category取得のNotFound以外のエラーはそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			sid, cid := statusID(t), categoryID(t)
+			statusRepo, categoryRepo := newRepos(t)
+			statusRepo.EXPECT().FindByID(gomock.Any(), sid).Return(mustStatus(t, sid), nil)
+			categoryRepo.EXPECT().FindByID(gomock.Any(), cid).Return(nil, apperror.ErrCanceled)
+
+			u := &usecase{statusRepo: statusRepo, categoryRepo: categoryRepo}
+			_, _, err := u.resolveRefs(context.Background(), sid, cid)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
 	})
 }
