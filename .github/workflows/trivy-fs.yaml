@@ -45,6 +45,9 @@ jobs:
       security-events: write
       actions: read
       pull-requests: write
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -110,6 +113,13 @@ jobs:
           ' trivy-fs.json > trivy-fs-summary.md
 
         shell: bash
+
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: trivy-fs-summary.md
 
       - name: Upload Trivy FS report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -247,6 +257,21 @@ jobs:
           title: ${{ steps.summarize.outputs.title }}
           body-file: trivy-license-summary.md
           details-summary: '📄 Summary'
+
+  # This job is report-only, so a finding leaves it green and the failure notification
+  # below can never fire for one. On a PR that is fine — the finding is in a comment
+  # addressed to the author, who introduced the dependency. On the weekly run there is
+  # no author and no change: the finding is a newly published advisory against code
+  # that stood still, which is the one case nothing else surfaces. Hence schedule only.
+  notify-detection:
+    needs: trivy-fs
+    if: ${{ github.event_name == 'schedule' && needs.trivy-fs.outputs.count != '' && needs.trivy-fs.outputs.count != '0' }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      detected: Trivy FS found ${{ needs.trivy-fs.outputs.count }} fixable vulnerabilities
+      details: ${{ needs.trivy-fs.outputs.detail }}
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # A scheduled failure has no author watching it, so it is pushed to a human.
   # PR / push failures are deliberately excluded: they are already visible.
