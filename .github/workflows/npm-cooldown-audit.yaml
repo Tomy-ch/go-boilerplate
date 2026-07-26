@@ -47,6 +47,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      findings: ${{ steps.audit.outputs.findings }}
+      detail: ${{ steps.detail.outputs.markdown }}
 
     steps:
       - name: Harden the runner
@@ -112,6 +115,15 @@ jobs:
             echo "title=## ✅ npm cooldown: PASS" >> "$GITHUB_OUTPUT"
           fi
 
+      # The notification has to name the offending entries itself, so that the message
+      # alone answers what was bypassed.
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.audit.outputs.findings != '' && steps.audit.outputs.findings != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: npm-cooldown-summary.md
+
       # Reported on every run, not only on a finding: a comment that appears solely
       # when something is wrong gives no evidence that the detector still works, and
       # this one is expected to stay silent for its whole life.
@@ -132,6 +144,25 @@ jobs:
         with:
           name: npm-cooldown
           path: npm-cooldown-summary.md
+
+  # The two passive output paths above do not reach the role that owns the decision:
+  # a PR comment only reaches whoever opens that PR, and a ::warning:: annotation dies
+  # with the run's log retention. Bypassing the cooldown is a tech-lead / architect
+  # call, so a finding has to be pushed to them wherever it was introduced — which is
+  # why this fires on every trigger, not only the scheduled run.
+  #
+  # Fires on a finding only. The counterpart below fires when the scanner itself broke;
+  # neither covers the other, because this workflow is non-blocking by design and a
+  # finding therefore leaves the audit job green.
+  notify-detection:
+    needs: npm-cooldown-audit
+    if: ${{ needs.npm-cooldown-audit.outputs.findings != '' && needs.npm-cooldown-audit.outputs.findings != '0' }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      detected: npm cooldown bypass detected (${{ needs.npm-cooldown-audit.outputs.findings }} findings)
+      details: ${{ needs.npm-cooldown-audit.outputs.detail }}
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # A scheduled failure has no author watching it, so it is pushed to a human.
   # PR / push failures are deliberately excluded: they are already visible.
