@@ -10,7 +10,7 @@ require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cockroachdb/errors v1.14.0
 	github.com/exaring/otelpgx v0.11.1
-	github.com/getkin/kin-openapi v0.140.0
+	github.com/getkin/kin-openapi v0.144.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
