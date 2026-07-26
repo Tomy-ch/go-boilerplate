@@ -241,8 +241,7 @@ services:
       - generate
 
 secrets:
-  # mise が GitHub Releases API を認証付きで引くためのトークン（ビルド時のみ利用し、イメージには残らない）。
-  # 値は make が解決して環境変数で渡す。空文字の場合はビルド側が未認証へフォールバックする。
+  # mise のツール解決を認証付きにするビルド時トークン。build-arg と違いイメージ履歴に残らない。
   github_token:
     environment: GITHUB_TOKEN
 

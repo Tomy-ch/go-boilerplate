@@ -78,10 +78,8 @@ WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-# mise は GitHub Releases API からツールを解決する。未認証は 60 req/hour（IP 単位）で、
-# mise.toml 全体を解決する install を連ねるとビルド 1 回で使い切り 403 で落ちる。
-# secret 経由でトークンを渡せた場合のみ認証（5,000 req/hour）に切り替える。secret はレイヤに残らず、
-# 未指定ならマウント自体が存在しないため従来どおり未認証で動く（トークン無しでもビルドは成立する）。
+# 未認証の GitHub API（60 req/hour・IP 単位）ではこの install 群を賄えず 403 になる。トークンは
+# イメージ履歴に焼き込む build-arg を避け secret で渡す（未指定なら従来どおり未認証で成立）。
 RUN --mount=type=secret,id=github_token \
   github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
   if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \

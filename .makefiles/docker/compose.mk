@@ -22,14 +22,12 @@ APP_PROJECT_DEFAULT = gobp-app-$(notdir $(CURDIR))
 # ホスト公開ポートの既定値は docker-compose.attach.yaml 側の ${VAR:-...} が持つ（多重定義を避ける）。
 APP_PROJECT_SH = $${SERVE_PROJECT:-$(APP_PROJECT_DEFAULT)}
 
-# 起動対象は常にサービス名で明示するため、profile 指定は対象を絞る用途ではなく有効化のためだけに置く
-# （COMPOSE_INFRA は profile 無指定。tools 等でサービス名を省く呼び出しがあり、development を混ぜられない）。
-# イメージビルド時、mise は GitHub Releases API からツールを解決する。未認証は 60 req/hour（IP 単位）で
-# ビルド 1 回分に足りず 403 で落ちるため、ホストの gh CLI からトークンを借りて認証（5,000 req/hour）にする。
-# 既に GITHUB_TOKEN を持つ環境（CI 等）はそちらを優先し、gh が無ければ空のまま従来どおり未認証で進む。
-# レシピ実行時に評価するため、ビルドを伴わない make 呼び出しで gh を起動することはない。
+# イメージビルド時、mise は GitHub Releases API でツールを解決する。未認証 60 req/hour（IP 単位）は
+# ビルド 1 回分に足りず 403 で落ちるため、ホストの gh からトークンを借りる。
 LOAD_GH_TOKEN = export GITHUB_TOKEN="$${GITHUB_TOKEN:-$$(gh auth token 2>/dev/null || true)}"
 
+# 起動対象は常にサービス名で明示するため、profile 指定は対象を絞る用途ではなく有効化のためだけに置く
+# （COMPOSE_INFRA は profile 無指定。tools 等でサービス名を省く呼び出しがあり、development を混ぜられない）。
 COMPOSE_INFRA = $(LOAD_GH_TOKEN); docker compose -p $(INFRA_PROJECT)
 COMPOSE_APP = $(LOAD_SLOT); $(LOAD_GH_TOKEN); docker compose -p "$(APP_PROJECT_SH)" \
 	-f docker-compose.yaml -f docker-compose.attach.yaml --profile development
