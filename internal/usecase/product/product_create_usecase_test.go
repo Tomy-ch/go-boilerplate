@@ -325,6 +325,37 @@ func Test_usecase_resolveRefs(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
+		t.Run("status名称が参照制約違反(NewStatusRef失敗)の場合、errMissingStatus(ErrInternal)へ正規化しErrValidationを露出しない", func(t *testing.T) {
+			t.Parallel()
+
+			sid, cid := statusID(t), categoryID(t)
+			statusRepo, categoryRepo := newRepos(t)
+			// ゼロ値 status（ID が nil）を返すと NewStatusRef が ErrInvalidStatusID で失敗する。
+			statusRepo.EXPECT().FindByID(gomock.Any(), sid).Return(&status.Status{}, nil)
+
+			u := &usecase{statusRepo: statusRepo, categoryRepo: categoryRepo}
+			_, _, err := u.resolveRefs(context.Background(), sid, cid)
+
+			require.ErrorIs(t, err, errMissingStatus)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			require.NotErrorIs(t, err, apperror.ErrValidation) // サーバ側データ不整合を 4xx として露出しない
+		})
+
+		t.Run("category名称が参照制約違反(NewCategoryRef失敗)の場合、errMissingCategory(ErrInternal)へ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			sid, cid := statusID(t), categoryID(t)
+			statusRepo, categoryRepo := newRepos(t)
+			statusRepo.EXPECT().FindByID(gomock.Any(), sid).Return(mustStatus(t, sid), nil)
+			categoryRepo.EXPECT().FindByID(gomock.Any(), cid).Return(&category.Category{}, nil)
+
+			u := &usecase{statusRepo: statusRepo, categoryRepo: categoryRepo}
+			_, _, err := u.resolveRefs(context.Background(), sid, cid)
+
+			require.ErrorIs(t, err, errMissingCategory)
+			require.NotErrorIs(t, err, apperror.ErrValidation)
+		})
+
 		t.Run("NotFound以外のエラーはそのまま伝播する", func(t *testing.T) {
 			t.Parallel()
 
