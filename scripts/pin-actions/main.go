@@ -180,7 +180,7 @@ func collectKeys(files []string) map[string]ref {
 }
 
 // quarantine は minAgeDays 未満の新しすぎる解決先を採用しない。第1戻り値（採用 SHA）が "" は skip（初回かつ新しすぎ）。
-// 経過日数は ageFn 経由で取得し（I/O を注入して分岐をテスト可能にする）、その失敗は err で呼び出し元へ伝播する。
+// 経過日数は ageFn から取得し、その失敗は err で呼び出し元へ伝播する。
 // minAgeDays<=0 のときは ageFn を呼ばず候補をそのまま採用する。
 func quarantine(ageFn func() (int, error), key, candidate string, minAgeDays int, existing map[string]string) (string, string, error) {
 	if minAgeDays <= 0 {
@@ -336,7 +336,6 @@ func report(missing, drifted []string, dryRun bool, changed int) {
 }
 
 // resolveSHA は owner/repo の tag/branch を commit SHA へ解決する。annotated tag は ^{} で deref する。
-// 出力パースと ref 優先選択は selectSHA へ委譲し、本関数は git ls-remote の実行のみを担う。
 func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 	cctx, cancel := context.WithTimeout(ctx, lsRemoteTimeout)
 	defer cancel()
@@ -396,7 +395,7 @@ func writeLock(path string, lock map[string]string) error {
 }
 
 // isIgnorableLockErr は、lockfile 読み込みエラーのうち無視して続行してよいものを判定する。
-// nil（成功）と「ファイル不在」（初回 resolve）のみ true。それ以外（権限・破損等）は fail-close 対象。
+// nil（成功）と「ファイル不在」（初回 resolve）のみ true。それ以外（権限エラー・読み取り失敗等）は fail-close 対象。
 func isIgnorableLockErr(err error) bool {
 	return err == nil || xerrors.Is(err, os.ErrNotExist)
 }
