@@ -3,14 +3,77 @@
 Adapters that implement the object-storage seam (`internal/usecase/boundary/objectstorage`)
 against a concrete storage service.
 
+## Role
+
+Implements the `objectstorage.Storage` port. `New` in this package selects the implementation;
+`s3/` holds the S3-compatible one. Vendor vocabulary (bucket / region / endpoint / SDK types)
+stops here — the port above exposes only a key, bytes, and content metadata.
+
+## Directory Structure
+
+|Path|Role|
+|---|---|
+|`objectstorage.go`|The single place that chooses an implementation. Both the DI graph and the CLI call it, so retargeting the substrate is a one-function edit|
+|`s3/`|S3-compatible adapter (AWS SDK v2). `New(Config, TracerFactory)` returns the port; the concrete type stays unexported|
+
 ## Layout convention
 
 - **Substrate-agnostic contract** lives at `internal/usecase/boundary/objectstorage` (the seam),
   above this layer — not here. Infrastructure implements that port; it does not own the abstraction.
 - **Substrate-specific adapter** lives at `objectstorage/<substrate>/` (e.g. `objectstorage/s3`).
   The package name is the substrate, so the concrete technology stays visible at the import site.
-- **`New` in this package is the only place that chooses an implementation.** Both the DI graph and
-  the CLI go through it, so retargeting the substrate is a one-function edit.
+
+## Port mapping
+
+| seam | S3 |
+| --- | --- |
+| `Put(ctx, PutObject) (Path, error)` | `PutObject`. `Key` → `Key` (under the configured `Bucket`), `Body` → body + `ContentLength`, `ContentType` → `ContentType`, `CacheControl` → `CacheControl`. An empty `CacheControl` leaves the field unset rather than sending an empty header, so "no caching directive" stays distinguishable from "an empty one" |
+| return `Path` | The key that was written, echoed back. The adapter never returns a URL — composing one is the caller's job, because the delivery origin is not a property of the store |
+
+## Error normalization
+
+Every SDK failure is wrapped into `apperror.ErrUnavailable` at the single call site in `Put`, so
+upper layers branch on the sentinel and never inspect an AWS error type. This is deliberately
+**coarser than the RDB side**: `rdb/pgerror` maps SQLSTATE to distinct sentinels because callers
+act differently on a unique-violation than on a deadlock, whereas the current port has one
+operation whose failures are all "the store did not accept the write". Splitting the mapping is
+worth doing when an operation is added whose caller must distinguish not-found from denied.
+
+## Config
+
+`s3.Config` is populated from `OBJECT_STORAGE_*` (see [env/README.md](../../../env/README.md)):
+
+- `Endpoint` — empty means SDK default resolution, i.e. real AWS S3. A non-empty value points at
+  a compatible service (locally, the Garage container)
+- `UsePathStyle` — must be `true` for Garage / MinIO, `false` for AWS S3
+- `Region` is used for request signing even against a non-AWS service
+
+## Observability
+
+`Put` opens an infrastructure-layer span via the injected `TracerFactory`, so a store call appears
+in the same trace as the handler and usecase that triggered it. The adapter emits no logs of its
+own; failures surface through the normalized error.
+
+## Wired by default — unlike the SQS adapter
+
+This adapter **is** in the default DI graph, so `aws-sdk-go-v2/service/s3` is linked into the
+shipped binary. That is the opposite of [`queue/sqs`](../queue/sqs/README.md), which is
+deliberately left unwired to keep the AWS SDK out of the binary
+([ADR-0044](../../../docs/adr/0044-sqs-adapter-opt-in.md)).
+
+The asymmetry is intentional: a worker has no broker until an integrator chooses one, whereas the
+object-storage port is exercised by the template out of the box and needs a working implementation
+to be more than a declaration. A fork that stores nothing can drop `objectStorageModule()` from
+`InfrastructureModule()`.
+
+## Test strategy
+
+- **Unit tests run against `gofakes3` in-process** — no container, so `make test` needs nothing
+  running. The fake is started per test and speaks enough of the S3 API to exercise the adapter
+- **The Garage container is for `make serve`**, not for tests. Anything asserted about real
+  delivery (public read, cache headers) is verified by hand against that container
+- `gofakes3` does not persist every header it receives (`Cache-Control` among them), so assertions
+  about headers the adapter *sends* inspect the outgoing request rather than the stored object
 
 ## S3 is one worked example, not the target
 
