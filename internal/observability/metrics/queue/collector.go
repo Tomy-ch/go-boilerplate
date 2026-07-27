@@ -74,6 +74,12 @@ type failureKey struct {
 	queue   string
 }
 
+// collectResult は、1 target の並行収集結果です。
+type collectResult struct {
+	stats worker.QueueStats
+	err   error
+}
+
 // NewStatsCollector は、指定の収集対象から StatsCollector を生成します。
 func NewStatsCollector(targets []Target) *StatsCollector {
 	return &StatsCollector{
@@ -103,17 +109,30 @@ func (c *StatsCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *StatsCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx, cancel := context.WithTimeout(context.Background(), collectTimeout)
 	defer cancel()
-	for _, t := range c.targets {
-		stats, err := t.Provider.QueueStats(ctx)
-		if err != nil {
+
+	// 遅い 1 provider が共有 deadline を食い潰して健全な target まで収集失敗させるのを防ぐため、
+	// 全 target を並行収集する。channel 送信は Wait 後に単一 goroutine から直列で行う（並行送信回避）。
+	results := make([]collectResult, len(c.targets))
+	var wg sync.WaitGroup
+	for i, t := range c.targets {
+		wg.Add(1)
+		go func(i int, t Target) {
+			defer wg.Done()
+			stats, err := t.Provider.QueueStats(ctx)
+			results[i] = collectResult{stats: stats, err: err}
+		}(i, t)
+	}
+	wg.Wait()
+
+	for i, t := range c.targets {
+		if results[i].err != nil {
 			// QueueStats は source / DLQ いずれの失敗かを区別しないため queue="unknown" とします。
 			c.recordFailure(t.WorkerName, t.Adapter, queueUnknown)
 			continue
 		}
-
-		c.collectDepth(ch, t, queueSource, stats.Source)
-		if stats.DLQ != nil {
-			c.collectDepth(ch, t, queueDLQ, *stats.DLQ)
+		c.collectDepth(ch, t, queueSource, results[i].stats.Source)
+		if results[i].stats.DLQ != nil {
+			c.collectDepth(ch, t, queueDLQ, *results[i].stats.DLQ)
 		}
 	}
 	c.emitFailures(ch)

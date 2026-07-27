@@ -141,6 +141,54 @@ worker_queue_depth{adapter="sqs",queue="source",state="delayed",worker="w"} 0
 			assert.Equal(t, 3, testutil.CollectAndCount(c, "worker_queue_depth"))
 		})
 
+		t.Run("遅い target が健全な target の収集をブロックしない（並行収集）", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			fastCalled := make(chan struct{})
+			// 先頭の遅い target は後続の fast が呼ばれるまで待つ。逐次収集だと fast は呼ばれず
+			// deadline まで待たされ失敗計上される＝並行でなければ両者成功のアサーションは満たせない。
+			slow := mock_worker.NewMockQueueStatsProvider(ctrl)
+			slow.EXPECT().QueueStats(gomock.Any()).DoAndReturn(
+				func(ctx context.Context) (worker.QueueStats, error) {
+					select {
+					case <-fastCalled:
+						return worker.QueueStats{Source: worker.QueueDepth{Visible: 1}}, nil
+					case <-ctx.Done():
+						return worker.QueueStats{}, ctx.Err()
+					}
+				})
+			fast := mock_worker.NewMockQueueStatsProvider(ctrl)
+			fast.EXPECT().QueueStats(gomock.Any()).DoAndReturn(
+				func(context.Context) (worker.QueueStats, error) {
+					close(fastCalled)
+					return worker.QueueStats{Source: worker.QueueDepth{Visible: 2}}, nil
+				})
+
+			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
+				{WorkerName: "slow", Adapter: "sqs", Provider: slow},
+				{WorkerName: "fast", Adapter: "sqs", Provider: fast},
+			})
+
+			reg := prometheus.NewPedanticRegistry()
+			require.NoError(t, reg.Register(c))
+			got, err := reg.Gather()
+			require.NoError(t, err)
+
+			var depthCount int
+			var hasFailure bool
+			for _, mf := range got {
+				switch mf.GetName() {
+				case "worker_queue_depth":
+					depthCount = len(mf.GetMetric())
+				case "worker_queue_stats_collection_failures_total":
+					hasFailure = true
+				}
+			}
+			assert.Equal(t, 6, depthCount) // 2 target × 3 state、両者成功
+			assert.False(t, hasFailure)
+		})
+
 		t.Run("metric label に queue URL_ARN_message id を含めない", func(t *testing.T) {
 			t.Parallel()
 
