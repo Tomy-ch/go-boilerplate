@@ -73,9 +73,7 @@ func (w *cookieRewriteWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		rawCookies := w.hdr.Values(headerSetCookie)
 		if len(rawCookies) > 0 {
 			w.hdr.Del(headerSetCookie)
-			for _, raw := range rawCookies {
-				w.hdr.Add(headerSetCookie, w.rewriteOrKeep(raw))
-			}
+			w.addRewrittenCookies(w.hdr, rawCookies)
 		}
 	}
 
@@ -136,7 +134,13 @@ func (w *cookieRewriteWriter) flushHeadersWithRewrite() {
 		}
 	}
 
-	for _, raw := range w.hdr.Values(headerSetCookie) {
-		w.orig.Header().Add(headerSetCookie, w.rewriteOrKeep(raw))
+	w.addRewrittenCookies(w.orig.Header(), w.hdr.Values(headerSetCookie))
+}
+
+// addRewrittenCookies は raws の各 Set-Cookie を rewriteOrKeep に通して dst へ Add します。
+// Hijack の in-place 書き換えと flush の別ヘッダへの copy-add で共通の走査処理を 1 箇所に集約します。
+func (w *cookieRewriteWriter) addRewrittenCookies(dst http.Header, raws []string) {
+	for _, raw := range raws {
+		dst.Add(headerSetCookie, w.rewriteOrKeep(raw))
 	}
 }

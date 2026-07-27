@@ -336,16 +336,24 @@ func report(missing, drifted []string, dryRun bool, changed int) {
 }
 
 // resolveSHA は owner/repo の tag/branch を commit SHA へ解決する。annotated tag は ^{} で deref する。
+// 出力パースと ref 優先選択は selectSHA へ委譲し、本関数は git ls-remote の実行のみを担う。
 func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 	cctx, cancel := context.WithTimeout(ctx, lsRemoteTimeout)
 	defer cancel()
 	url := "https://github.com/" + repo
-	out, err := exec.CommandContext(cctx, "git", "ls-remote", url, tag, tag+"^{}").Output() //nolint:gosec // 参照名は workflow 由来
+	// --end-of-options 以降を確実に ref 名として扱わせ、`-` 始まりの tag のオプション誤解釈を防ぐ。
+	out, err := exec.CommandContext(cctx, "git", "ls-remote", url, "--end-of-options", tag, tag+"^{}").Output() //nolint:gosec // 参照名は workflow 由来
 	if err != nil {
 		return "", xerrors.Wrap(err, "git ls-remote")
 	}
+	return selectSHA(string(out), tag)
+}
+
+// selectSHA は git ls-remote の生出力から tag に対応する commit SHA を選ぶ。
+// 優先順位は annotated tag の deref (^{}) > 軽量 tag > branch head。いずれも無ければ未発見エラー。
+func selectSHA(out, tag string) (string, error) {
 	var tagSHA, derefSHA, headSHA string
-	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) != lsRemoteCols {
 			continue

@@ -530,7 +530,10 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("fetch がエラーの場合、無効トークンへ正規化され原因を保持する", func(t *testing.T) {
+		// ResolveKey は原因のみを持つ素の error を返し、ErrJWTAuthenticatorInvalidToken への
+		// 正規化は Authenticate の境界一箇所に集約する。内側でセンチネルを付けない契約を固定する
+		// （境界での正規化は TestNewJWKS の Authenticate 経由ケースで担保）。
+		t.Run("fetch がエラーの場合、正規化せず原因を素の error として伝播する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
@@ -538,7 +541,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
 
 			_, err := r.ResolveKey(context.Background(), testKID)
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 			require.ErrorIs(t, err, errBoom)
 		})
 
@@ -554,7 +557,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			require.ErrorIs(t, err1, errBoom)
 
 			_, err2 := r.ResolveKey(context.Background(), testKID)
-			require.ErrorIs(t, err2, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err2, ErrJWTAuthenticatorInvalidToken)
 			require.ErrorIs(t, err2, errBoom)
 		})
 
@@ -593,7 +596,8 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			)
 
 			_, err := r.ResolveKey(context.Background(), "absent-kid")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "no matching JWKS key")
 		})
 
 		t.Run("直近取得が成功なら cooldown 中の未知 kid は再取得せず拒否する", func(t *testing.T) {
@@ -610,7 +614,8 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			_, err := r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err)
 			_, err = r.ResolveKey(context.Background(), "unknown-kid")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "no matching JWKS key")
 		})
 	})
 }
@@ -630,13 +635,15 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 
 			// 初回の未知 kid は 1 度だけ再取得し、不在を確定して negative へ記録する。
 			_, err := r.ResolveKey(context.Background(), "absent-kid")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "no matching JWKS key")
 			require.Equal(t, 1, cc.count())
 
 			// cooldown を跨いでも、同一の不在確定 kid は再取得しない（negative cache が抑止する）。
 			clk.advance(jwksRefreshCooldown + time.Second)
 			_, err = r.ResolveKey(context.Background(), "absent-kid")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "kid known-absent")
 			assert.Equal(t, 1, cc.count(), "不在確定 kid は cooldown 経過後も再取得しない")
 		})
 
@@ -653,7 +660,8 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 
 			// 現世代 {testKID} で kid-2 は不在確定（negative 記録）。
 			_, err := r.ResolveKey(context.Background(), "kid-2")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "no matching JWKS key")
 			require.Equal(t, 1, cc.count())
 
 			// cacheTTL 経過で世代が失効 → 再取得で鍵集合が変わり negative はクリアされ kid-2 を解決する。
@@ -683,7 +691,8 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			// cooldown 中に未知 kid-2 を問い合わせる → throttle で未取得。不在確定として記録してはならない。
 			clk.advance(jwksRefreshCooldown / 2)
 			_, err = r.ResolveKey(context.Background(), "kid-2")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "no matching JWKS key")
 			require.Equal(t, 1, cc.count(), "cooldown 中は再取得しない")
 
 			// cooldown 明け（provider が kid-2 を追加）→ 再取得して kid-2 を解決できる（取りこぼさない）。
@@ -703,7 +712,8 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 
 			// 初回取得で bogus kid の不在を確定（negative 記録）。
 			_, err := r.ResolveKey(context.Background(), "bogus")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "no matching JWKS key")
 			require.Equal(t, 1, cc.count())
 
 			// cacheTTL 経過で世代失効 → 同一集合を再取得（negative は破棄されない）。
@@ -714,7 +724,8 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 
 			// 集合不変のため negative は保持され、bogus kid は再取得を誘発しない。
 			_, err = r.ResolveKey(context.Background(), "bogus")
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.ErrorContains(t, err, "kid known-absent")
 			assert.Equal(t, 2, cc.count(), "集合不変なら bogus kid の negative を保持し再取得しない")
 		})
 

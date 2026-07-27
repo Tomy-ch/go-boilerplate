@@ -351,6 +351,11 @@ func Test_cookieRewriteWriter_rewriteOrKeep(t *testing.T) {
 	})
 }
 
+func Test_cookieRewriteWriter_addRewrittenCookies(t *testing.T) {
+	t.Parallel()
+	t.Skip("addRewrittenCookies は Hijack / flushHeadersWithRewrite の各テストで実カバー済み（各 Set-Cookie を rewriteOrKeep して dst へ Add するだけの共通ループ）")
+}
+
 func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
 	t.Parallel()
 

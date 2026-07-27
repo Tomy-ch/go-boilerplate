@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
@@ -155,7 +156,7 @@ func Test_rowToRole(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			role, err := rowToRole(id, "admin", int16(1))
+			role, err := rowToRole(&gen.GetUserRolesByUserIDRow{ID: id, Name: "admin", Code: int16(1)})
 			require.NoError(t, err)
 			require.NotNil(t, role)
 			assert.Equal(t, id, role.ID())
@@ -174,7 +175,7 @@ func Test_rowToRole(t *testing.T) {
 			require.NoError(t, err)
 
 			// code=0 は未知のロールコードのため domain 構築が失敗する。
-			role, err := rowToRole(id, "admin", int16(0))
+			role, err := rowToRole(&gen.GetUserRolesByUserIDRow{ID: id, Name: "admin", Code: int16(0)})
 			require.Error(t, err)
 			require.Nil(t, role)
 			require.ErrorIs(t, err, apperror.ErrInternal)

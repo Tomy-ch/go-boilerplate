@@ -123,17 +123,19 @@ func newJWKSResolver(
 
 // ResolveKey は、kid に対応する署名検証用公開鍵を返します（KeyResolver 実装）。
 // キャッシュに無い / 期限切れの場合は JWKS を再取得します。
+// 返すエラーは keyFunc → ParseWithClaims 経由で Authenticate の境界へ伝播し、そこで
+// ErrJWTAuthenticatorInvalidToken へ一括正規化するため、ここでは原因のみを持つ素の error を返します。
 func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.PublicKey, error) {
 	if key := r.lookup(kid); key != nil {
 		return key, nil
 	}
 	// 現世代で不在が確定済みの kid は再取得せず即座に拒否する（再取得連打の抑止）。
 	if r.negativelyCached(kid) {
-		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "kid known-absent in current JWKS")
+		return nil, xerrors.New("kid known-absent in current JWKS")
 	}
 	fetched, err := r.refresh(ctx)
 	if err != nil {
-		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidToken, err)
+		return nil, err
 	}
 	if key := r.lookup(kid); key != nil {
 		return key, nil
@@ -143,7 +145,7 @@ func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.Publi
 	if fetched {
 		r.recordAbsent(kid)
 	}
-	return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "no matching JWKS key for kid")
+	return nil, xerrors.New("no matching JWKS key for kid")
 }
 
 // negativelyCached は、現世代（鮮度内）で kid が不在確定として記録済みかを返します。

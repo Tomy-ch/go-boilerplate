@@ -28,14 +28,6 @@ func TestMiddleware(t *testing.T) {
 
 			assert.NotNil(t, Middleware(logger, lf))
 		})
-	})
-}
-
-func Test_loggingMiddleware(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("非運用系APIでは2xxをInfoレベルで出力する", func(t *testing.T) {
 			t.Parallel()
@@ -54,7 +46,7 @@ func Test_loggingMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := loggingMiddleware(logger, lf)(next)
+			handler := Middleware(logger, lf)(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
@@ -79,11 +71,15 @@ func Test_loggingMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := loggingMiddleware(logger, lf)(next)
+			handler := Middleware(logger, lf)(next)
 			require.NoError(t, handler(c))
 
 			assert.Zero(t, observed.Len())
 		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
 		t.Run("5xxレスポンスではErrorレベルで出力される", func(t *testing.T) {
 			t.Parallel()
@@ -102,7 +98,7 @@ func Test_loggingMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := loggingMiddleware(logger, lf)(next)
+			handler := Middleware(logger, lf)(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
@@ -169,15 +165,17 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			c := newContext()
 			expectedStatus := http.StatusCreated
 			expectedRequestID := "req-123"
+			expectedEventAt := time.Date(2026, time.July, 27, 12, 0, 0, 0, time.UTC)
 
 			c.Response().Status = expectedStatus
 			c.Response().Header().Set("X-Request-Id", expectedRequestID)
 
 			l := requestLog{c: c, lf: lf}
-			fields := l.buildResponseLogFields(150 * time.Millisecond)
+			fields := l.buildResponseLogFields(expectedEventAt, 150*time.Millisecond)
 
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
 			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+			assert.Contains(t, fields, logging.Time(logging.EventAtKey, expectedEventAt))
 		})
 	})
 }

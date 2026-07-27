@@ -238,6 +238,8 @@ func (a *authenticator) Authenticate(ctx context.Context, cred *authbd.Credentia
 // keyFunc は、ctx を捕捉した jwtlib.Keyfunc を返します。署名検証に用いる公開鍵を KeyResolver 経由で解決します。
 // 解決する鍵は RSA 公開鍵であるため、RSA 系（RS* / PS*）以外の署名方式は
 // alg allowlist をすり抜けても鍵種別不一致として拒否します（鍵混同の防御）。
+// keyFunc / KeyResolver が返すエラーは ParseWithClaims 経由で Authenticate の境界へ伝播し、
+// そこで ErrJWTAuthenticatorInvalidToken へ一括正規化するため、ここでは原因のみを持つ素の error を返します。
 func (a *authenticator) keyFunc(ctx context.Context) jwtlib.Keyfunc {
 	return func(token *jwtlib.Token) (any, error) {
 		switch token.Method.(type) {
@@ -245,7 +247,7 @@ func (a *authenticator) keyFunc(ctx context.Context) jwtlib.Keyfunc {
 			kid, _ := token.Header["kid"].(string)
 			return a.keyResolver.ResolveKey(ctx, kid)
 		default:
-			return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "unexpected signing method type")
+			return nil, xerrors.New("unexpected signing method type")
 		}
 	}
 }

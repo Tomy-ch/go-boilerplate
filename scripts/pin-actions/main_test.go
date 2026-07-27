@@ -243,6 +243,64 @@ func TestQuarantine(t *testing.T) {
 	})
 }
 
+func TestSelectSHA(t *testing.T) {
+	t.Parallel()
+
+	const (
+		tag         = "v7.0.0"
+		derefSHA    = shaCheckout
+		lightTagSHA = shaSetupGo
+		headSHA     = shaCodeQL
+	)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("annotated tag の deref を最優先で採用する", func(t *testing.T) {
+			t.Parallel()
+			out := lightTagSHA + "\trefs/tags/" + tag + "\n" +
+				derefSHA + "\trefs/tags/" + tag + "^{}\n"
+			sha, err := selectSHA(out, tag)
+			require.NoError(t, err)
+			assert.Equal(t, derefSHA, sha)
+		})
+
+		t.Run("deref が無ければ軽量 tag を採用する", func(t *testing.T) {
+			t.Parallel()
+			out := lightTagSHA + "\trefs/tags/" + tag + "\n"
+			sha, err := selectSHA(out, tag)
+			require.NoError(t, err)
+			assert.Equal(t, lightTagSHA, sha)
+		})
+
+		t.Run("tag が無ければ branch head へフォールバックする", func(t *testing.T) {
+			t.Parallel()
+			out := headSHA + "\trefs/heads/" + tag + "\n"
+			sha, err := selectSHA(out, tag)
+			require.NoError(t, err)
+			assert.Equal(t, headSHA, sha)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("該当 ref が無ければ未発見エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := selectSHA("", tag)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tag)
+		})
+
+		t.Run("無関係な ref のみなら未発見エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			out := headSHA + "\trefs/heads/main\n"
+			_, err := selectSHA(out, tag)
+			require.Error(t, err)
+		})
+	})
+}
+
 func TestIsIgnorableLockErr(t *testing.T) {
 	t.Parallel()
 

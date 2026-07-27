@@ -17,14 +17,10 @@ type cookieAttrs struct {
 // 失敗時は ok == false を返します。
 func parseSetCookie(raw string) (string, string, *cookieAttrs, bool) {
 	parts := strings.Split(raw, ";")
-	first := strings.TrimSpace(parts[0])
-	eq := strings.Index(first, keyValueAttrSep)
-	if eq <= 0 {
+	name, value, isKV := splitAttr(parts[0])
+	if !isKV || name == "" {
 		return "", "", nil, false
 	}
-
-	name := strings.TrimSpace(first[:eq])
-	value := strings.TrimSpace(first[eq+1:]) // 前後空白のみ除去し、内部の quoted/encoded は保持する
 
 	attrs := &cookieAttrs{order: make([]string, 0, len(parts)-1), kv: make(map[string]*string, len(parts)-1)}
 	for _, p := range parts[1:] {

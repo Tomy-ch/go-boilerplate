@@ -58,10 +58,8 @@ func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *pa
 
 	params := purchase.ListFeedParams{Limit: cursor.Limit32() + 1}
 	if after != nil {
-		orderedAt := after.orderedAt
-		id := after.id
-		params.AfterOrderedAt = &orderedAt
-		params.AfterID = &id
+		params.AfterOrderedAt = &after.orderedAt
+		params.AfterID = &after.id
 	}
 
 	feed, err := u.repo.FindFeedByUserID(ctx, userID, params)

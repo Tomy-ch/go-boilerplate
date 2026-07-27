@@ -8,9 +8,9 @@ import (
 	"go-boilerplate/internal/config"
 )
 
-// ResolveMetricsStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
+// StartMetricsAndResolveStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
 // 本番モードでは起動せず nil を返します（呼び出し側は nil を「停止不要」として扱います）。
-func ResolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) {
+func StartMetricsAndResolveStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) {
 	if appCfg.IsProductionMode() {
 		return nil
 	}
@@ -30,6 +30,12 @@ func RunServer(
 	stopMetrics func(context.Context),
 ) error {
 	if err := startApp(ctx); err != nil {
+		// 起動に失敗しても、既に起動済みの補助メトリクスサーバーは停止する（確保と解放の対称性）。
+		if stopMetrics != nil {
+			stopCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+			defer cancel()
+			stopMetrics(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
+		}
 		return err
 	}
 

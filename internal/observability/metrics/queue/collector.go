@@ -137,12 +137,25 @@ func (c *StatsCollector) recordFailure(workerName, adapter, queue string) {
 }
 
 // emitFailures は、累積した収集失敗回数を counter として出力します。
+// channel 送信は consumer が読むまでブロックし得るため、ロック下では failures の
+// スナップショットを取るに留め、送信はロック解放後に行います。
 func (c *StatsCollector) emitFailures(ch chan<- prometheus.Metric) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	snapshot := make([]struct {
+		key failureKey
+		v   int64
+	}, 0, len(c.failures))
 	for k, v := range c.failures {
+		snapshot = append(snapshot, struct {
+			key failureKey
+			v   int64
+		}{key: k, v: v})
+	}
+	c.mu.Unlock()
+
+	for _, s := range snapshot {
 		ch <- prometheus.MustNewConstMetric(
-			c.failureDesc, prometheus.CounterValue, float64(v), k.worker, k.adapter, k.queue)
+			c.failureDesc, prometheus.CounterValue, float64(s.v), s.key.worker, s.key.adapter, s.key.queue)
 	}
 }
 
