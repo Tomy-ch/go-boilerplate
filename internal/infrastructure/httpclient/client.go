@@ -179,12 +179,13 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 
 	body, err := readBody(httpResp.Body, profile.MaxResponseBytes)
 	if err != nil {
-		// 上限超過は決定的失敗(errResponseTooLarge=ErrInvalidArgument)なので、そのまま返して retry させない。
-		// 真の read 失敗(接続断など応答未取得)は transport 失敗として ErrUnavailable で包み retry 対象に残す。
+		// 上限超過は決定的失敗なのでそのまま返す（非 retry 化は isRetryableOutcome が本 sentinel を除外して担う）。
+		// 真の read 失敗(接続断/キャンセルなど応答未完了)は transport 失敗として正規化し、ctx キャンセルは
+		// ErrCanceled(非 retry)、その他は ErrUnavailable(retry 対象) へ写像する（Do 失敗経路と一貫）。
 		if xerrors.Is(err, errResponseTooLarge) {
 			return nil, err
 		}
-		return nil, xerrors.Wrap(apperror.ErrUnavailable, redactErrMessage(err))
+		return nil, normalizeTransportError(err)
 	}
 
 	resp := &Response{

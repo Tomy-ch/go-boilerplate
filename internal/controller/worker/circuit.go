@@ -63,6 +63,17 @@ func (c *circuit) toHalfOpen() {
 	}
 }
 
+// abortProbe は、Half-open の probe バッチが空振り（0 件受信）だったとき probing を解除します。
+// probe が in-flight にならないと結果（onSuccess/onFailure）が出ず slotFreed も鳴らないため、
+// これを解除しないと poll loop が次周の acquire で永久停止する。解除後は次周で再 probe できる。
+func (c *circuit) abortProbe() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.phase == phaseHalfOpen {
+		c.probing = false
+	}
+}
+
 // tryBeginProbe は、Half-open で probe バッチをまだ投入していなければ probing を確定して true を返します。
 // 既に probing 中（結果待ち）または Half-open でない場合は false を返し、呼び出し側は新規 Receive を止めます。
 // これにより 1 Half-open エピソードで投入する probe は 1 バッチ（総試行数 ≤ CircuitHalfOpenProbe）に限定されます。

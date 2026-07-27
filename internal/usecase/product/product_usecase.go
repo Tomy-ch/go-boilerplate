@@ -159,7 +159,9 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	}
 
 	var nextCursor *string
-	if hasNext {
+	if hasNext && len(products) > 0 {
+		// len 判定は防御的な安全弁。hasNext は len > limit なので limit >= 1 の下では冗長だが、
+		// limit の下限保証は paging.NewCursor 依存であり、ゼロ値 Cursor 混入時の products[-1] panic を防ぐ。
 		encoded := encodeProductCursor(products[len(products)-1])
 		nextCursor = &encoded
 	}

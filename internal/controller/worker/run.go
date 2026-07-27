@@ -75,6 +75,13 @@ func (r *run) loop(parent context.Context) error {
 			r.onPollError(ctx, err)
 			continue
 		}
+		if len(msgs) == 0 {
+			// Half-open の probe Receive が空振り（long-poll のタイムアウト等）なら probing を解除し、
+			// 次周で再 probe できるようにする（解除しないと probe 結果が出ず poll loop が停止する）。
+			// Closed/Open では no-op。
+			r.cb.abortProbe()
+			continue
+		}
 		r.dispatchAll(ctx, msgs)
 	}
 }

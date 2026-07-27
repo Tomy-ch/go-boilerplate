@@ -712,6 +712,45 @@ func Test_circuit_tryBeginProbe(t *testing.T) {
 	})
 }
 
+func Test_circuit_abortProbe(t *testing.T) {
+	t.Parallel()
+
+	bo := backoff.Exponential{Initial: 100 * time.Millisecond, Max: time.Second, Multiplier: 2}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Half-open の probing 中に呼ぶと probing を解除し再 probe できる", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCircuit(1, bo)
+			c.onFailure()                       // Closed -> Open
+			c.toHalfOpen()                      // Open -> Half-open
+			require.True(t, c.tryBeginProbe())  // probing=true
+			require.False(t, c.tryBeginProbe()) // 既に probing 中
+
+			c.abortProbe()
+
+			assert.Equal(t, phaseHalfOpen, c.phaseNow()) // phase は Half-open のまま
+			assert.True(t, c.tryBeginProbe())            // probing 解除済みなので再 probe 可
+		})
+
+		t.Run("Half-open 以外（Closed / Open）では no-op", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCircuit(1, bo)
+			require.Equal(t, phaseClosed, c.phaseNow())
+			c.abortProbe()
+			assert.Equal(t, phaseClosed, c.phaseNow())
+
+			c.onFailure() // Open
+			require.Equal(t, phaseOpen, c.phaseNow())
+			c.abortProbe()
+			assert.Equal(t, phaseOpen, c.phaseNow())
+		})
+	})
+}
+
 func Test_keyedDispatcher_dispatch(t *testing.T) {
 	t.Parallel()
 

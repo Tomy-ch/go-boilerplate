@@ -240,7 +240,7 @@ func Test_client_Do_Send(t *testing.T) {
 			assert.Nil(t, resp)
 		})
 
-		t.Run("ボディ上限超過はErrInvalidArgumentを返しレスポンスはnil", func(t *testing.T) {
+		t.Run("ボディ上限超過はErrUnavailableを返しレスポンスはnil", func(t *testing.T) {
 			t.Parallel()
 
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -256,8 +256,9 @@ func Test_client_Do_Send(t *testing.T) {
 			client := newClient(t, registry)
 			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "tiny", srv.URL))
 
-			// 決定的失敗のため非 retry 系の ErrInvalidArgument を返す（transport 失敗の ErrUnavailable ではない）。
-			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			// 下流起因の応答異常なので HTTP 語彙は transport 失敗と同じ ErrUnavailable(503)。
+			// 非 retry 化は isRetryableOutcome が errResponseTooLarge を除外して担う。
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
 		})
 	})
@@ -307,7 +308,7 @@ func Test_client_Do_ResponseTooLarge(t *testing.T) {
 			client := newClient(t, registry)
 			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "tiny", srv.URL))
 
-			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Equal(t, int32(1), hits.Load()) // GET でも retry されない
 		})
 
@@ -333,7 +334,7 @@ func Test_client_Do_ResponseTooLarge(t *testing.T) {
 			const rounds = 3
 			for range rounds {
 				_, err := client.Do(context.Background(), req)
-				require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+				require.ErrorIs(t, err, apperror.ErrUnavailable)
 			}
 
 			// breaker が open していれば fail-fast でサーバへ到達しなくなる。全リクエストが到達＝open していない。
