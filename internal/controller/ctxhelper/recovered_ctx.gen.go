@@ -5,7 +5,7 @@ package ctxhelper
 import (
 	"context"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type recoveredKeyType struct{}
@@ -29,11 +29,11 @@ func GetRecovered(ctx context.Context) (bool, bool) {
 
 // --- echo.Context wrapper（std lib 版へ委譲） ---
 
-func SetRecoveredToEcho(c echo.Context, val bool) {
+func SetRecoveredToEcho(c *echo.Context, val bool) {
 	ctx := SetRecovered(c.Request().Context(), val)
 	c.SetRequest(c.Request().WithContext(ctx))
 }
 
-func GetRecoveredFromEcho(c echo.Context) (bool, bool) {
+func GetRecoveredFromEcho(c *echo.Context) (bool, bool) {
 	return GetRecovered(c.Request().Context())
 }

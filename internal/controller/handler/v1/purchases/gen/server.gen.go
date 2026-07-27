@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -18,10 +18,10 @@ import (
 type ServerInterface interface {
 	// 購入履歴一覧の取得
 	// (GET /v1/purchases)
-	GetPurchases(ctx echo.Context, params GetPurchasesParams) error
+	GetPurchases(ctx *echo.Context, params GetPurchasesParams) error
 	// 購入の作成
 	// (POST /v1/purchases)
-	PostPurchases(ctx echo.Context, params PostPurchasesParams) error
+	PostPurchases(ctx *echo.Context, params PostPurchasesParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -30,7 +30,7 @@ type ServerInterfaceWrapper struct {
 }
 
 // GetPurchases converts echo context to params.
-func (w *ServerInterfaceWrapper) GetPurchases(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) GetPurchases(ctx *echo.Context) error {
 	var err error
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -57,7 +57,7 @@ func (w *ServerInterfaceWrapper) GetPurchases(ctx echo.Context) error {
 }
 
 // PostPurchases converts echo context to params.
-func (w *ServerInterfaceWrapper) PostPurchases(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PostPurchases(ctx *echo.Context) error {
 	var err error
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -97,15 +97,15 @@ func (w *ServerInterfaceWrapper) PostPurchases(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -362,7 +362,7 @@ type StrictServerInterface interface {
 	PostPurchases(ctx context.Context, request PostPurchasesRequestObject) (PostPurchasesResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -375,12 +375,12 @@ type strictHandler struct {
 }
 
 // GetPurchases operation middleware
-func (sh *strictHandler) GetPurchases(ctx echo.Context, params GetPurchasesParams) error {
+func (sh *strictHandler) GetPurchases(ctx *echo.Context, params GetPurchasesParams) error {
 	var request GetPurchasesRequestObject
 
 	request.Params = params
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetPurchases(ctx.Request().Context(), request.(GetPurchasesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -400,7 +400,7 @@ func (sh *strictHandler) GetPurchases(ctx echo.Context, params GetPurchasesParam
 }
 
 // PostPurchases operation middleware
-func (sh *strictHandler) PostPurchases(ctx echo.Context, params PostPurchasesParams) error {
+func (sh *strictHandler) PostPurchases(ctx *echo.Context, params PostPurchasesParams) error {
 	var request PostPurchasesRequestObject
 
 	request.Params = params
@@ -411,7 +411,7 @@ func (sh *strictHandler) PostPurchases(ctx echo.Context, params PostPurchasesPar
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PostPurchases(ctx.Request().Context(), request.(PostPurchasesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

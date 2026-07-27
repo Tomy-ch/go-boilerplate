@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/addresses --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/addresses --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/addresses --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package addresses は、/v1/addresses エンドポイントに関連するハンドラを提供します。
 package addresses

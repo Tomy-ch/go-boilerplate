@@ -11,7 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -19,13 +19,13 @@ import (
 type ServerInterface interface {
 	// 商品一覧の取得
 	// (GET /v1/products)
-	GetProducts(ctx echo.Context, params GetProductsParams) error
+	GetProducts(ctx *echo.Context, params GetProductsParams) error
 	// 商品の作成
 	// (POST /v1/products)
-	PostProducts(ctx echo.Context) error
+	PostProducts(ctx *echo.Context) error
 	// 商品画像のアップロード
 	// (POST /v1/products/images)
-	PostProductsImages(ctx echo.Context) error
+	PostProductsImages(ctx *echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -34,7 +34,7 @@ type ServerInterfaceWrapper struct {
 }
 
 // GetProducts converts echo context to params.
-func (w *ServerInterfaceWrapper) GetProducts(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) GetProducts(ctx *echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
@@ -87,7 +87,7 @@ func (w *ServerInterfaceWrapper) GetProducts(ctx echo.Context) error {
 }
 
 // PostProducts converts echo context to params.
-func (w *ServerInterfaceWrapper) PostProducts(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PostProducts(ctx *echo.Context) error {
 	var err error
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -98,7 +98,7 @@ func (w *ServerInterfaceWrapper) PostProducts(ctx echo.Context) error {
 }
 
 // PostProductsImages converts echo context to params.
-func (w *ServerInterfaceWrapper) PostProductsImages(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PostProductsImages(ctx *echo.Context) error {
 	var err error
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -112,15 +112,15 @@ func (w *ServerInterfaceWrapper) PostProductsImages(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -512,7 +512,7 @@ type StrictServerInterface interface {
 	PostProductsImages(ctx context.Context, request PostProductsImagesRequestObject) (PostProductsImagesResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -525,12 +525,12 @@ type strictHandler struct {
 }
 
 // GetProducts operation middleware
-func (sh *strictHandler) GetProducts(ctx echo.Context, params GetProductsParams) error {
+func (sh *strictHandler) GetProducts(ctx *echo.Context, params GetProductsParams) error {
 	var request GetProductsRequestObject
 
 	request.Params = params
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProducts(ctx.Request().Context(), request.(GetProductsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -550,7 +550,7 @@ func (sh *strictHandler) GetProducts(ctx echo.Context, params GetProductsParams)
 }
 
 // PostProducts operation middleware
-func (sh *strictHandler) PostProducts(ctx echo.Context) error {
+func (sh *strictHandler) PostProducts(ctx *echo.Context) error {
 	var request PostProductsRequestObject
 
 	var body PostProductsJSONRequestBody
@@ -559,7 +559,7 @@ func (sh *strictHandler) PostProducts(ctx echo.Context) error {
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PostProducts(ctx.Request().Context(), request.(PostProductsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -579,7 +579,7 @@ func (sh *strictHandler) PostProducts(ctx echo.Context) error {
 }
 
 // PostProductsImages operation middleware
-func (sh *strictHandler) PostProductsImages(ctx echo.Context) error {
+func (sh *strictHandler) PostProductsImages(ctx *echo.Context) error {
 	var request PostProductsImagesRequestObject
 
 	if reader, err := ctx.Request().MultipartReader(); err != nil {
@@ -588,7 +588,7 @@ func (sh *strictHandler) PostProductsImages(ctx echo.Context) error {
 		request.Body = reader
 	}
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PostProductsImages(ctx.Request().Context(), request.(PostProductsImagesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
