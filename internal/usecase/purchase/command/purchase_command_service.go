@@ -17,6 +17,8 @@ import (
 type CommandService interface {
 	// LockProducts は、指定商品を ID 昇順に悲観ロックし、価格・在庫を返します。
 	// ロック順序を固定することでデッドロックを避けます。
+	// 不存在の商品はロックできず戻り値から除外されるため、要素数は productIDs より少なくなり得ます
+	// （不存在の検証は呼び出し側の責務です）。
 	LockProducts(ctx context.Context, productIDs []uuid.UUID) ([]purchase.LockedProduct, error)
 	// CreatePurchase は、在庫の減算・購入の作成・明細の作成を、渡された ctx のトランザクション内で
 	// 原子的に実行します。在庫減算は防御的に売り越しを弾きます。

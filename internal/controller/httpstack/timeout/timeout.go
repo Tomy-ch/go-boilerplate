@@ -15,9 +15,8 @@ import (
 // Middleware は、リクエスト context に timeout の deadline を設定するミドルウェアを返します。
 //
 // 後続の全ミドルウェア・ハンドラ・DB・外部 HTTP が単一の deadline budget を ctx 経由で共有します。
-// response writer のデータ競合を避けるため race-free な ContextTimeout を基底とします
-// （deprecated な Timeout は競合を抱える）。deadline 超過は apperror.ErrUnavailable(503) へ、
-// それ以外のエラーはそのまま伝播します。
+// response writer のデータ競合を避けるため race-free な ContextTimeout を基底とします。
+// deadline 超過は apperror.ErrUnavailable(503) へ、それ以外のエラーはそのまま伝播します。
 func Middleware(timeout time.Duration) echo.MiddlewareFunc {
 	return middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
 		Timeout: timeout,

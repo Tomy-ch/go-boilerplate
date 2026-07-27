@@ -39,7 +39,6 @@ func (w *cookieRewriteWriter) WriteHeader(code int) {
 	}
 	w.wroteHdr = true
 
-	// Set-Cookie を書き換え
 	w.flushHeadersWithRewrite()
 
 	w.orig.WriteHeader(code)
@@ -137,7 +136,6 @@ func (w *cookieRewriteWriter) flushHeadersWithRewrite() {
 		}
 	}
 
-	// Set-Cookie を rewrite してから追加
 	for _, raw := range w.hdr.Values(headerSetCookie) {
 		w.orig.Header().Add(headerSetCookie, w.rewriteOrKeep(raw))
 	}

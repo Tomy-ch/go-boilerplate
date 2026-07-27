@@ -106,7 +106,7 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 	return nil
 }
 
-// sanitizeSchemaInPlace は、schema.sql を sqlc 向けに整形します。
+// sanitizeSchemaInPlace は、schema.gen.sql を sqlc 向けに整形します。
 // trimPrefixes 一致のメタ行に加え、空行（空白のみ・元から空）も除去します（空行除去まで含むのは意図的）。
 func (g *Generator) sanitizeSchemaInPlace(ctx context.Context) error {
 	srcAbs := filepath.Join(g.workDir, g.schemaRelPath)

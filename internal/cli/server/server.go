@@ -36,7 +36,6 @@ func RunServer(
 	<-ctx.Done()
 
 	// 停止処理は無期限に待たず、シャットダウン開始時点から設定タイムアウト内で完了させます。
-	// タイムアウトを起動直後ではなくこの時点で計測することで、稼働時間に消費されないようにします。
 	stopCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 

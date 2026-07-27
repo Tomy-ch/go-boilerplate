@@ -4,8 +4,8 @@
 package worker
 
 const (
-	// ReservedKeyPrefix は、Attributes のうち engine が解釈せず素通しする
-	// broker 固有値（lease/handle 等）の予約キーに付ける接頭辞です。
+	// ReservedKeyPrefix は、engine が解釈も伝播もしない adapter 専用の broker 固有値
+	// （receipt handle / lease 等）を、traceparent 等の伝播対象属性と区別して隔離するための予約キー接頭辞です。
 	ReservedKeyPrefix = "_"
 
 	// AttrReceiptHandle は、broker のメッセージ識別子（SQS の receipt handle 等）を

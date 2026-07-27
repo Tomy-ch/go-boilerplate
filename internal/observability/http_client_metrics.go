@@ -10,8 +10,8 @@ import (
 // httpClientMeterName は、外部 HTTP client substrate 計装の meter 名です。
 const httpClientMeterName = "go-boilerplate/httpclient"
 
-// HTTPClientMetrics は、外部 HTTP client の RED 計装（リクエスト数・エラー数・レイテンシ）に
-// retry 回数と breaker 状態 gauge を加えた計装一式です。
+// HTTPClientMetrics は、外部 HTTP client の計装一式です
+// （RED＝リクエスト数・エラー数・レイテンシに、retry 回数・処理中リクエスト数・breaker 状態 gauge を加えたもの）。
 //
 // downstream には registry で解決される固定の Downstream 名など低カーディナリティな識別子のみを
 // 渡します。生の URL やリクエスト固有の値を渡すとメトリクスのカーディナリティが際限なく増えます。

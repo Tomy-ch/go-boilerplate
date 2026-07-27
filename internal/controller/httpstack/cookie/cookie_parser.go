@@ -24,7 +24,7 @@ func parseSetCookie(raw string) (string, string, *cookieAttrs, bool) {
 	}
 
 	name := strings.TrimSpace(first[:eq])
-	value := strings.TrimSpace(first[eq+1:]) // value はそのまま（quoted/encoded を壊さない）
+	value := strings.TrimSpace(first[eq+1:]) // 前後空白のみ除去し、内部の quoted/encoded は保持する
 
 	attrs := &cookieAttrs{order: make([]string, 0, len(parts)-1), kv: make(map[string]*string, len(parts)-1)}
 	for _, p := range parts[1:] {
@@ -80,7 +80,6 @@ func delAttr(attrs *cookieAttrs, key string) {
 		return
 	}
 	delete(attrs.kv, key)
-	// order からも消す
 	out := attrs.order[:0]
 	for _, k := range attrs.order {
 		if k != key {
