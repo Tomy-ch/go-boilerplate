@@ -76,9 +76,7 @@ func (r *run) loop(parent context.Context) error {
 			continue
 		}
 		if len(msgs) == 0 {
-			// Half-open の probe Receive が空振り（long-poll のタイムアウト等）なら probing を解除し、
-			// 次周で再 probe できるようにする（解除しないと probe 結果が出ず poll loop が停止する）。
-			// Closed/Open では no-op。
+			// Half-open の probe が空振りしたので probing を解除し、次周で再 probe させる。
 			r.cb.abortProbe()
 			continue
 		}
@@ -111,7 +109,6 @@ func (r *run) acquire(ctx context.Context) (int, bool) {
 			continue // スロット待ちの間に Open へ遷移したので Receive せず再評価
 		case phaseHalfOpen:
 			if r.cb.tryBeginProbe() {
-				// Half-open エピソードでは probe バッチを 1 度だけ投入する（総試行数 ≤ CircuitHalfOpenProbe）。
 				return min(r.e.set.CircuitHalfOpenProbe, free), true
 			}
 			// 既に probe 投入済み（probing 中）。結果が確定して Closed/Open へ遷移するまで新規 Receive を

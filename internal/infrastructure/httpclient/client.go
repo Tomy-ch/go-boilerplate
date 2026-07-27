@@ -123,8 +123,8 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		}
 
 		resp, err = c.attempt(ctx, req, profile)
-		// retryable は「再試行対象の結果か」を表す。breaker への失敗計上（!retryable = 成功扱い）と
-		// retry 継続判定の双方に用いる。429 や応答未取得の transport 失敗も含むため server 障害とは限らない。
+		// retryable は retry 継続判定に加え breaker への計上も兼ねる（!retryable を成功として記録するため、
+		// 429 や応答未取得の transport 失敗は breaker 上の失敗、4xx は成功扱いになる）。
 		retryable := isRetryableOutcome(resp, err)
 		br.record(!retryable, c.clk.Now(), generation)
 
@@ -179,9 +179,8 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 
 	body, err := readBody(httpResp.Body, profile.MaxResponseBytes)
 	if err != nil {
-		// 上限超過は決定的失敗なのでそのまま返す（非 retry 化は isRetryableOutcome が本 sentinel を除外して担う）。
-		// 真の read 失敗(接続断/キャンセルなど応答未完了)は transport 失敗として正規化し、ctx キャンセルは
-		// ErrCanceled(非 retry)、その他は ErrUnavailable(retry 対象) へ写像する（Do 失敗経路と一貫）。
+		// 上限超過は決定的失敗なのでそのまま返す（非 retry 化は isRetryableOutcome が担う）。
+		// それ以外は応答未完了の transport 失敗として正規化する（Do 失敗経路と一貫）。
 		if xerrors.Is(err, errResponseTooLarge) {
 			return nil, err
 		}

@@ -30,12 +30,9 @@ var (
 	errMethodRequired         = xerrors.Wrap(apperror.ErrInvalidArgument, "Method is required")
 	errIdempotencyKeyRequired = xerrors.Wrap(apperror.ErrInvalidArgument, "AllowRetry requires IdempotencyKey")
 
-	// errResponseTooLarge は、レスポンスボディが上限を超過したことを表します。
-	// これは下流/サーバ側起因の応答異常なので、HTTP 語彙は transport 失敗と同じ ErrUnavailable(503) を保つ
-	// （gateway が apperror sentinel を透過するため、ここで ErrInvalidArgument(400) にすると下流障害が
-	// クライアント過失として誤帰属する）。「再試行しても改善しない決定的失敗」である点は retry.go の
-	// isRetryableOutcome が本 sentinel を明示除外することで担保し（retry 可否と HTTP ステータス写像という
-	// 別軸を単一 sentinel に兼務させない）、無駄な再試行と breaker の自傷 open を防ぐ。
+	// errResponseTooLarge は、レスポンスボディが上限を超過したことを表します。下流起因の応答異常なので
+	// HTTP 語彙は transport 失敗と同じ ErrUnavailable(503) を保ちます（400 にすると下流障害がクライアント
+	// 過失として誤帰属する）。決定的失敗としての非 retry 化は retry.go の isRetryableOutcome が担います。
 	errResponseTooLarge = xerrors.Wrap(apperror.ErrUnavailable, "response body exceeds max bytes")
 )
 

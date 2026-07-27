@@ -329,12 +329,10 @@ func TestPool_Release(t *testing.T) {
 			comp.EXPECT().DownServe(gomock.Any(), "gobp-wt-1").Return(errBoom)
 
 			require.NoError(t, pool.Acquire(context.Background()))
-			// 停止失敗でも teardown（リース解放・slot file 削除）は続行する。
 			require.NoError(t, pool.Release(context.Background()))
 
 			_, err := os.Stat(filepath.Join(root, ".gobp-db-slot"))
 			assert.True(t, os.IsNotExist(err))
-			// 実失敗はログに可視化され、孤児コンテナを検知できる。
 			assert.Contains(t, logbuf.String(), "failed to stop serve containers for slot 1")
 		})
 	})
