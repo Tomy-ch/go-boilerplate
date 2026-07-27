@@ -180,7 +180,7 @@ func Test_newDB(t *testing.T) {
 			assert.Positive(t, tracer.started.Load())
 		})
 
-		t.Run("tracer が nil の場合は計装を結線せず接続を返す", func(t *testing.T) {
+		t.Run("tracer が nil の場合は計装を結線しない", func(t *testing.T) {
 			t.Parallel()
 
 			dbCfg, osCfg, dbConnCfg := newConfigs(t)
@@ -189,7 +189,9 @@ func Test_newDB(t *testing.T) {
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, db.Close()) })
 
-			require.NoError(t, db.Ping(context.Background()))
+			drv, ok := db.(*dbDriver)
+			require.True(t, ok)
+			assert.Nil(t, drv.pool.Config().ConnConfig.Tracer) // 未結線であること自体を確認する
 		})
 	})
 }

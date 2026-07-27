@@ -218,6 +218,32 @@ func Test_client_attempt(t *testing.T) {
 			assert.Nil(t, resp)
 		})
 
+		t.Run("ボディの読み取り自体が失敗した場合は transport エラーとして正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			// Content-Length を過大申告したまま接続を切り、上限超過ではない純粋な read 失敗を起こす。
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hj, ok := w.(http.Hijacker)
+				if !ok {
+					return
+				}
+				conn, buf, err := hj.Hijack()
+				if err != nil {
+					return
+				}
+				_, _ = buf.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nhello")
+				_ = buf.Flush()
+				_ = conn.Close()
+			}))
+			t.Cleanup(srv.Close)
+
+			resp, err := newTestClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, srv.URL), DefaultProfile())
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, errResponseTooLarge) // 上限超過ではなく read 失敗として扱う
+			assert.Nil(t, resp)
+		})
+
 		t.Run("エラーステータスは Response を保ったまま対応するアプリエラーを返す", func(t *testing.T) {
 			t.Parallel()
 

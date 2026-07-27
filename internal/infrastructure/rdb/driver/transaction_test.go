@@ -35,6 +35,9 @@ type stubTx struct {
 }
 
 // stubDriver は、Begin の戻り値を注入する DatabaseDriver のテストダブルです。
+// 生成 mock は同じ mock パッケージ内の mock_query_metric.go.gen.go が driver を import するため、
+// 内部テストパッケージからは import cycle になり使えません（外部テストパッケージの
+// transaction_retry_test.go は生成 mock を使えますが、doOnce / rollback は非公開のため到達できません）。
 type stubDriver struct {
 	DatabaseDriver
 

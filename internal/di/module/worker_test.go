@@ -9,6 +9,15 @@ import (
 	workerboundary "go-boilerplate/internal/usecase/boundary/worker"
 )
 
+// fakeWorker は、名前だけを返す最小の Worker 実装です（group へ集約された個々の寄与を識別するために使う）。
+type fakeWorker struct {
+	workerboundary.Worker
+
+	name string
+}
+
+func (w fakeWorker) Name() string { return w.name }
+
 func TestWorkerModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
@@ -65,11 +74,15 @@ func Test_provideWorkers(t *testing.T) {
 			t.Parallel()
 
 			got := collectGroup[workerboundary.Worker](t, `group:"workers"`, provideWorkers(
-				func() workerboundary.Worker { return nil },
-				func() workerboundary.Worker { return nil },
+				func() workerboundary.Worker { return fakeWorker{name: "a"} },
+				func() workerboundary.Worker { return fakeWorker{name: "b"} },
 			))
 
-			assert.Len(t, got, 2)
+			names := make([]string, 0, len(got))
+			for _, w := range got {
+				names = append(names, w.Name())
+			}
+			assert.ElementsMatch(t, []string{"a", "b"}, names)
 		})
 
 		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
