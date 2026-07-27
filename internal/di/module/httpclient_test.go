@@ -66,17 +66,127 @@ func Test_httpClientModule_ProvidesClient(t *testing.T) {
 
 func Test_provideHTTPClientRegistry(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_httpClientModule_ProvidesClient で Registry 構築と required 欠落時の起動失敗分岐を検証済み")
+
+	profile := func(name httpclient.Downstream) httpclient.DownstreamProfile {
+		return httpclient.DownstreamProfile{Name: name, Profile: httpclient.DefaultProfile()}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("required が全て登録済みの場合は Profile を引ける Registry を返す", func(t *testing.T) {
+			t.Parallel()
+
+			in := HTTPClientProfilesIn{
+				Profiles: []httpclient.DownstreamProfile{profile("svc")},
+				Required: []httpclient.Downstream{"svc"},
+			}
+
+			reg, err := provideHTTPClientRegistry(in)
+
+			require.NoError(t, err)
+			require.NotNil(t, reg)
+			assert.Equal(t, httpclient.DefaultProfile(), reg.Profile("svc"))
+		})
+
+		t.Run("required が空の場合も Registry を返す", func(t *testing.T) {
+			t.Parallel()
+
+			reg, err := provideHTTPClientRegistry(HTTPClientProfilesIn{})
+
+			require.NoError(t, err)
+			assert.NotNil(t, reg)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("required に対応する profile が無い場合は欠落名を含むエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			in := HTTPClientProfilesIn{
+				Profiles: []httpclient.DownstreamProfile{profile("svc")},
+				Required: []httpclient.Downstream{"svc", "orphan"},
+			}
+
+			reg, err := provideHTTPClientRegistry(in)
+
+			require.ErrorContains(t, err, "orphan")
+			assert.Nil(t, reg)
+		})
+
+		t.Run("同一 Downstream の profile が重複登録された場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			in := HTTPClientProfilesIn{
+				Profiles: []httpclient.DownstreamProfile{profile("svc"), profile("svc")},
+			}
+
+			reg, err := provideHTTPClientRegistry(in)
+
+			require.ErrorContains(t, err, "duplicate")
+			assert.Nil(t, reg)
+		})
+	})
 }
 
 func Test_provideHTTPClientProfiles(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_httpClientModule_ProvidesClient で profile 登録経路を検証済み")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡した全コンストラクタの Profile が httpclient_profiles グループへ集まる", func(t *testing.T) {
+			t.Parallel()
+
+			got := collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, provideHTTPClientProfiles(
+				func() httpclient.DownstreamProfile {
+					return httpclient.DownstreamProfile{Name: "a", Profile: httpclient.DefaultProfile()}
+				},
+				func() httpclient.DownstreamProfile {
+					return httpclient.DownstreamProfile{Name: "b", Profile: httpclient.DefaultProfile()}
+				},
+			))
+
+			names := make([]httpclient.Downstream, 0, len(got))
+			for _, p := range got {
+				names = append(names, p.Name)
+			}
+			assert.ElementsMatch(t, []httpclient.Downstream{"a", "b"}, names)
+		})
+
+		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, provideHTTPClientProfiles()))
+		})
+	})
 }
 
 func Test_provideRequiredDownstreams(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_httpClientModule_ProvidesClient で required 登録経路と欠落時の起動失敗を検証済み")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡した全コンストラクタの Downstream が required_downstreams グループへ集まる", func(t *testing.T) {
+			t.Parallel()
+
+			got := collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, provideRequiredDownstreams(
+				func() httpclient.Downstream { return "a" },
+				func() httpclient.Downstream { return "b" },
+			))
+
+			assert.ElementsMatch(t, []httpclient.Downstream{"a", "b"}, got)
+		})
+
+		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, provideRequiredDownstreams()))
+		})
+	})
 }
 
 // newHTTPClientTestApp は、本番同様の clockModule / httpClientModule 配線に extra を足した fx アプリを構築します。
