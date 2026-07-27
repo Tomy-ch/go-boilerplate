@@ -288,8 +288,7 @@ func TestSelectSHA(t *testing.T) {
 		t.Run("該当 ref が無ければ未発見エラーを返す", func(t *testing.T) {
 			t.Parallel()
 			_, err := selectSHA("", tag)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tag)
+			require.ErrorContains(t, err, tag)
 		})
 
 		t.Run("無関係な ref のみなら未発見エラーを返す", func(t *testing.T) {

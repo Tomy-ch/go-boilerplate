@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -917,7 +918,9 @@ func Test_run_acquire(t *testing.T) {
 			select {
 			case got := <-ch:
 				assert.True(t, got.ok)
-				assert.Positive(t, got.n)
+				// Closed の通常 Receive は min(BatchSize=10, free) を返す。probe で 2 つ充填し 1 つ解放したため
+				// free = cap(10) - 1 = 9 となり、min(10, 9) = 9 に決まる。
+				assert.Equal(t, 9, got.n)
 			case <-time.After(time.Second):
 				t.Fatal("結果確定後に acquire が復帰しなかった")
 			}
@@ -1080,7 +1083,81 @@ func Test_run_triggerFatal(t *testing.T) {
 
 func Test_run_loop(t *testing.T) {
 	t.Parallel()
-	t.Skip("poll loop 本体は engine 統合テスト TestEngine_Run（ctx cancel/Ack/Nack 等）でカバー")
+
+	// poll loop の基本振り分け（ctx cancel / Ack / Nack / Fatal 等）は engine 統合テスト TestEngine_Run で
+	// カバーする。ここでは Fake が空スライスを返せず到達不能な「Half-open の probe Receive が 0 件 →
+	// abortProbe → 次周で再 probe」の配線を、生成 mock で決定的に固定する（abortProbe を外すと probing が
+	// 解除されず tryBeginProbe が false のまま新規 Receive が止まり、成功メッセージが永久に届かない半開デッドロック）。
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Half-openのprobeが0件でも再probeして成功メッセージをAckする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			mc := mock_worker.NewMockConsumer(ctrl)
+
+			var mu sync.Mutex
+			step := 0
+			mc.EXPECT().Receive(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
+				func(ctx context.Context, _ int) ([]bw.Message, error) {
+					mu.Lock()
+					step++
+					s := step
+					mu.Unlock()
+					switch s {
+					case 1:
+						return nil, xerrors.New("broker unreachable") // poll 失敗で circuit を Open へ trip
+					case 2:
+						return []bw.Message{}, nil // Half-open の probe が空振り → abortProbe 経路
+					case 3:
+						return []bw.Message{{ID: "a"}}, nil // 再 probe で成功メッセージが届く
+					default:
+						<-ctx.Done() // 以降は intake を止め、ctx キャンセルで loop を終了させる
+						return nil, ctx.Err()
+					}
+				})
+
+			acked := make(chan string, 1)
+			mc.EXPECT().Ack(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
+				func(_ context.Context, m bw.Message) error {
+					select {
+					case acked <- m.ID:
+					default:
+					}
+					return nil
+				})
+
+			set := baseSettings()
+			set.Concurrency = 1
+			set.MaxInFlight = 1
+			set.BatchSize = 1
+			set.CircuitHalfOpenProbe = 1
+			set.CircuitFailureThreshold = 1 // 1 度の poll 失敗で Open へ
+			set.CircuitOpenBackoffInitial = 10 * time.Millisecond
+			set.CircuitOpenBackoffMax = 10 * time.Millisecond
+			w := testWorker{name: "w", cons: mc, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, set, w), w)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			loopDone := make(chan error, 1)
+			go func() { loopDone <- r.loop(ctx) }()
+
+			select {
+			case id := <-acked:
+				assert.Equal(t, "a", id)
+			case <-time.After(eventually):
+				t.Fatal("Half-open の再 probe が行われず成功メッセージが Ack されなかった（半開デッドロック）")
+			}
+
+			cancel()
+			select {
+			case <-loopDone:
+			case <-time.After(eventually):
+				t.Fatal("ctx キャンセルで loop が終了しなかった")
+			}
+		})
+	})
 }
 
 func Test_run_process(t *testing.T) {

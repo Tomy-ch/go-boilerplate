@@ -815,6 +815,18 @@ func Test_newJWKSResolver(t *testing.T) {
 			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), 0, nil, 0, newFakeClock(fixedNow))
 			assert.Equal(t, defaultJWKSCacheTTL, r.cacheTTL)
 		})
+
+		t.Run("cooldown が 0 以下なら既定 cooldown が適用される", func(t *testing.T) {
+			t.Parallel()
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			assert.Equal(t, jwksRefreshCooldown, r.cooldown)
+		})
+
+		t.Run("allowedAlgs が空なら既定の許可アルゴリズムが適用される", func(t *testing.T) {
+			t.Parallel()
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			assert.Equal(t, defaultAllowedAlgs, r.allowedAlgs)
+		})
 	})
 }
 

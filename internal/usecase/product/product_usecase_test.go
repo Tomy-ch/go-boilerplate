@@ -342,6 +342,25 @@ func Test_usecase_ListProducts(t *testing.T) {
 			assert.Nil(t, actual.NextCursor)
 		})
 
+		t.Run("ゼロ値Cursor混入時もproducts末尾のpanicを避け空ItemsとnilのNextCursorを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// ゼロ値 Cursor（limit=0）では Limit()=0 かつ Repository へは limit+1=1 件要求される。
+			// 1 件返ると hasNext=len(1)>0=true・切り詰めで products が空になり、len(products)>0 の安全弁が
+			// 無いと products[len-1] が products[-1] で panic する。安全弁により panic せず空一覧を返す。
+			ctx := context.Background()
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Return(
+				domainproduct.Products{newTestProduct(t, "zero_cursor", base)}, nil)
+
+			u := &usecase{tracer: lt, repo: repo}
+			actual, err := u.ListProducts(ctx, ListProductsParams{Cursor: &paging.Cursor{}})
+			require.NoError(t, err)
+			assert.Empty(t, actual.Items)
+			assert.Nil(t, actual.NextCursor)
+		})
+
 		t.Run("フィルタ・並び順・カーソル境界がドメインのListParamsへ引き渡される", func(t *testing.T) {
 			t.Parallel()
 

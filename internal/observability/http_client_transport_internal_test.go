@@ -156,34 +156,27 @@ func Test_conditionalPropagator_Inject(t *testing.T) {
 	t.Skip("conditionalPropagator.Inject は Test_conditionalPropagator が有効/無効/未設定の全分岐を検証済み")
 }
 
+//nolint:paralleltest // 子テストが t.Setenv を使うため関数全体を並列化不可
 func Test_newGuardedBaseTransport(t *testing.T) {
-	t.Parallel()
-
+	//nolint:paralleltest // 子テストが t.Setenv を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
+		//nolint:paralleltest // 兄弟テストが t.Setenv を使うため並列化不可
 		t.Run("指定した dial control を DialContext に持つ transport を返す", func(t *testing.T) {
-			t.Parallel()
-
 			tr := newGuardedBaseTransport(permissiveDialControl)
 
 			require.NotNil(t, tr)
 			assert.NotNil(t, tr.DialContext)
 		})
 
+		//nolint:paralleltest // 兄弟テストが t.Setenv を使うため並列化不可
 		t.Run("env 由来 proxy を継承せず Proxy を無効化する", func(t *testing.T) {
-			t.Parallel()
-
 			tr := newGuardedBaseTransport(permissiveDialControl)
 
 			// 不変条件: proxy 経由では dial 先が proxy になり宛先 IP 検査が素通りするため、Proxy は常に nil。
 			assert.Nil(t, tr.Proxy)
 		})
-	})
-}
 
-func Test_newGuardedBaseTransport_proxyDoesNotBypassGuard(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) {
+		//nolint:paralleltest // t.Setenv 使用のため並列化不可
 		t.Run("proxy 設定下でも dial 先が宛先IPでガードが効く", func(t *testing.T) {
 			// proxy を設定しても base.Proxy=nil のため transport は proxy を使わず宛先へ直結し、
 			// guardedDialControl（dial 先 IP 検査）が宛先に効き続ける（SSRF ガードの無効化を防ぐ）。
@@ -197,6 +190,8 @@ func Test_newGuardedBaseTransport_proxyDoesNotBypassGuard(t *testing.T) {
 			}
 
 			base := newGuardedBaseTransport(control)
+			// 回帰の実効ロックはこれ: Proxy=nil であれば http.Client は ProxyFromEnvironment を参照せず、
+			// dial 先が常に宛先になり宛先 IP ガードが効く。SSRF ガード無効化の退行はここで確実に落ちる。
 			require.Nil(t, base.Proxy)
 
 			client := &http.Client{Transport: base}
@@ -206,7 +201,9 @@ func Test_newGuardedBaseTransport_proxyDoesNotBypassGuard(t *testing.T) {
 			_, err = client.Do(req)
 			require.Error(t, err) // dial control が止めるためエラーになる
 
-			// dial 先は proxy(10.0.0.1) ではなく宛先(93.184.216.34) であり、ガードが宛先へ効く。
+			// e2e アサート: dial 先が proxy(10.0.0.1) ではなく宛先(93.184.216.34) であること。ただし net/http の
+			// proxy 判定は httpproxy 環境変数を一度だけキャッシュするため、他テストの環境変数読取り順序に依存しうる。
+			// 実効ロックは上の require.Nil(base.Proxy) 側にあり、本アサートは補助的な end-to-end 確認にとどめる。
 			assert.Equal(t, "93.184.216.34:80", gotAddr)
 		})
 	})

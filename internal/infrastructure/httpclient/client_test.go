@@ -341,6 +341,46 @@ func Test_client_Do_ResponseTooLarge(t *testing.T) {
 			assert.Equal(t, int32(rounds), hits.Load())
 		})
 
+		t.Run("5xxかつ上限超過ボディでもreadBodyが先勝ちしresp_nilでretryもopenもしない", func(t *testing.T) {
+			t.Parallel()
+
+			// attempt は status 分類より先に readBody を行うため、503 とボディ上限超過が同時に起きても
+			// errResponseTooLarge が先勝ちして resp=nil になる（status(503) は観測されない）。
+			var hits atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hits.Add(1)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte("0123456789"))
+			}))
+			t.Cleanup(srv.Close)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxResponseBytes = 4
+			profile.MaxAttempts = 3
+			profile.BaseBackoff = time.Millisecond
+			profile.MaxBackoff = time.Millisecond
+			// 1 件の失敗で open する設定。上限超過が失敗計上されない（＝ breaker 非 open）ことも併せて固定する。
+			profile.Breaker = httpclient.BreakerConfig{
+				FailureThreshold: 0.5,
+				MinRequests:      1,
+				OpenDuration:     time.Hour,
+				HalfOpenProbes:   1,
+			}
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"tiny": profile})
+			client := newClient(t, registry)
+
+			req := httpclient.NewRequest(httpclient.MethodGet(), "tiny", srv.URL)
+			resp, err := client.Do(context.Background(), req)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, resp)                    // status(503) ではなく上限超過失敗が先勝ちするため resp は返らない
+			assert.Equal(t, int32(1), hits.Load()) // 決定的失敗なので retry されない
+
+			// breaker が open していれば 2 回目は fail-fast でサーバへ到達しない。到達＝ open していない。
+			_, err = client.Do(context.Background(), req)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Equal(t, int32(2), hits.Load())
+		})
+
 		t.Run("真のread失敗は従来どおりリトライされる", func(t *testing.T) {
 			t.Parallel()
 

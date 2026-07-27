@@ -234,28 +234,32 @@ func Test_parseFilter(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("同一フラグ重複の場合、duplicateエラーを返す", func(t *testing.T) {
+		t.Run("同一フラグ（--active-only）重複の場合、duplicateエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			active, err := parseFilter([]string{"--active-only", "--active-only"})
-			require.Error(t, err)
+			require.ErrorContains(t, err, "duplicate flag: --active-only")
 			assert.Nil(t, active)
-			assert.ErrorContains(t, err, "duplicate flag: --active-only")
+		})
+
+		t.Run("同一フラグ（--inactive-only）重複の場合、duplicateエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{"--inactive-only", "--inactive-only"})
+			require.ErrorContains(t, err, "duplicate flag: --inactive-only")
+			assert.Nil(t, active)
 		})
 
 		t.Run("両フラグ併用の場合、conflictingエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			active, err := parseFilter([]string{"--active-only", "--inactive-only"})
-			require.Error(t, err)
+			require.ErrorContains(t, err, "conflicting filter flags: --active-only, --inactive-only")
 			assert.Nil(t, active)
-			assert.ErrorContains(t, err, "conflicting filter flags: --active-only, --inactive-only")
 		})
 
 		t.Run("未知フラグの場合、unknownエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			active, err := parseFilter([]string{"--nope"})
-			require.Error(t, err)
+			require.ErrorContains(t, err, "unknown flag: --nope")
 			assert.Nil(t, active)
-			assert.ErrorContains(t, err, "unknown flag: --nope")
 		})
 	})
 }
@@ -266,18 +270,22 @@ func Test_filterLabel(t *testing.T) {
 	active := true
 	inactive := false
 
-	t.Run("nilの場合、allを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, "all", filterLabel(nil))
-	})
 
-	t.Run("trueの場合、activeを返す", func(t *testing.T) {
-		t.Parallel()
-		assert.Equal(t, "active", filterLabel(&active))
-	})
+		t.Run("nilの場合、allを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "all", filterLabel(nil))
+		})
 
-	t.Run("falseの場合、inactiveを返す", func(t *testing.T) {
-		t.Parallel()
-		assert.Equal(t, "inactive", filterLabel(&inactive))
+		t.Run("trueの場合、activeを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "active", filterLabel(&active))
+		})
+
+		t.Run("falseの場合、inactiveを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "inactive", filterLabel(&inactive))
+		})
 	})
 }
