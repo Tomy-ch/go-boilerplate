@@ -222,7 +222,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return daysSince(rel.PublishedAt), nil
 	}
 	if st != http.StatusOK && st != http.StatusNotFound {
-		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("releases/tags/%s: %d", tag, st))
+		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("releases/tags/%s status=%d", tag, st))
 	}
 
 	var commit struct {
@@ -237,7 +237,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return 0, err
 	}
 	if st != http.StatusOK {
-		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("commits/%s: %d", sha, st))
+		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("commits/%s status=%d", sha, st))
 	}
 	return daysSince(commit.Commit.Committer.Date), nil
 }

@@ -376,7 +376,7 @@ func packumentTimes(ctx context.Context, name string) (map[string]time.Time, err
 		return map[string]time.Time{}, nil // private / 削除済み。判定不能として扱う
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, xerrors.Wrap(errRegistryStatus, fmt.Sprintf("registry %s: %d", name, resp.StatusCode))
+		return nil, xerrors.Wrap(errRegistryStatus, fmt.Sprintf("registry %s status=%d", name, resp.StatusCode))
 	}
 
 	var doc struct {
