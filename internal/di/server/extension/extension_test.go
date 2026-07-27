@@ -318,7 +318,7 @@ func Test_applyMiddlewares(t *testing.T) {
 
 			err := applyMiddlewares(logging.NewTestLogger(t), "use", mws, recorder(&order))
 
-			require.ErrorContains(t, err, "duplicate use middleware priorities")
+			require.ErrorIs(t, err, errDuplicateMiddlewarePriority)
 			assert.Empty(t, order) // 検証を通過する前に適用が始まっていないこと
 		})
 	})
