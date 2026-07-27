@@ -37,7 +37,7 @@ need.
 | Service | Image / Dockerfile | Ports | Description |
 | --- | --- | --- | --- |
 | `api_server` | `docker/server/Dockerfile` target `tooling` | 8080, 2345, 6060 | Hot reload (air), debugger (dlv), pprof metrics |
-| `database` | `postgres:18.3-bookworm` | 5432 | PostgreSQL; health-checked before `api_server` starts |
+| `database` | `postgres:18.4-trixie` | 5432 | PostgreSQL; health-checked before `api_server` starts |
 | `observability` | `grafana/otel-lgtm` | 3000, 4317, 4318, 3200 | Grafana, OTLP gRPC/HTTP, Tempo API |
 
 **Profile: `tools`** — auxiliary developer tools; shares the `database` service.
