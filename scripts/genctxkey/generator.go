@@ -22,6 +22,11 @@ const (
 	filePerm = 0o644
 )
 
+var (
+	wordSepRe   = regexp.MustCompile(`[^\p{L}\p{N}]+`)
+	qualifierRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*\.`)
+)
+
 //go:embed template_ctx.tpl
 var ctxTpl string
 
@@ -30,7 +35,6 @@ var testTpl string
 
 type Param struct {
 	NameLower        string
-	NameFlat         string
 	NameCamel        string
 	Type             string
 	ImportPath       string
@@ -72,7 +76,6 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 
 	p := Param{
 		NameLower:        lower,
-		NameFlat:         lower,
 		NameCamel:        camel,
 		Type:             typeExpr,
 		ImportPath:       importPath,
@@ -85,11 +88,11 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 		return err
 	}
 
-	if err := writeFile(filepath.Join(outDir, p.NameFlat+"_ctx.gen.go"), ctxTpl, p); err != nil {
+	if err := writeFile(filepath.Join(outDir, p.NameLower+"_ctx.gen.go"), ctxTpl, p); err != nil {
 		return err
 	}
 
-	if err := writeFile(filepath.Join(outDir, p.NameFlat+"_ctx_test.go"), testTpl, p); err != nil {
+	if err := writeFile(filepath.Join(outDir, p.NameLower+"_ctx_test.go"), testTpl, p); err != nil {
 		return err
 	}
 
@@ -118,14 +121,22 @@ func writeFile(path, tpl string, p Param) error {
 	return os.WriteFile(path, src, filePerm)
 }
 
-func toExportedName(s string) (string, error) {
-	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
-
-	var sb strings.Builder
+// splitWords は、非英数字区切りで語に分割し、空要素を除去して返します。
+func splitWords(s string) []string {
+	parts := wordSepRe.Split(s, -1)
+	words := make([]string, 0, len(parts))
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
+		words = append(words, p)
+	}
+	return words
+}
+
+func toExportedName(s string) (string, error) {
+	var sb strings.Builder
+	for _, p := range splitWords(s) {
 		runes := []rune(p)
 		sb.WriteString(strings.ToUpper(string(runes[0])) + string(runes[1:]))
 	}
@@ -143,13 +154,8 @@ func toExportedName(s string) (string, error) {
 }
 
 func toIdentifierLower(s string) (string, error) {
-	// split on non-alnum, join, and lower
-	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
 	var sb strings.Builder
-	for _, p := range parts {
-		if p == "" {
-			continue
-		}
+	for _, p := range splitWords(s) {
 		sb.WriteString(strings.ToLower(p))
 	}
 	out := sb.String()
@@ -225,8 +231,7 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 func extractQualifier(t string) string {
 	// find last occurrence of identifier followed by '.'
-	re := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*\.`)
-	matches := re.FindAllString(t, -1)
+	matches := qualifierRe.FindAllString(t, -1)
 	if len(matches) == 0 {
 		return ""
 	}
