@@ -103,7 +103,18 @@ func (r *run) acquire(ctx context.Context) (int, bool) {
 		case phaseOpen:
 			continue // スロット待ちの間に Open へ遷移したので Receive せず再評価
 		case phaseHalfOpen:
-			return min(r.e.set.CircuitHalfOpenProbe, free), true
+			if r.cb.tryBeginProbe() {
+				// Half-open エピソードでは probe バッチを 1 度だけ投入する（総試行数 ≤ CircuitHalfOpenProbe）。
+				return min(r.e.set.CircuitHalfOpenProbe, free), true
+			}
+			// 既に probe 投入済み（probing 中）。結果が確定して Closed/Open へ遷移するまで新規 Receive を
+			// 止め、in-flight 解放（probe 結果の到来で slotFreed が鳴る）で起床して再評価する。
+			select {
+			case <-ctx.Done():
+				return 0, false
+			case <-r.slotFreed:
+			}
+			continue
 		default:
 			return min(r.e.set.BatchSize, free), true
 		}

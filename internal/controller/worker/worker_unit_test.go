@@ -641,6 +641,77 @@ func Test_circuit_toHalfOpen(t *testing.T) {
 	})
 }
 
+func Test_circuit_tryBeginProbe(t *testing.T) {
+	t.Parallel()
+
+	bo := backoff.Exponential{Initial: 100 * time.Millisecond, Max: time.Second, Multiplier: 2}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Half-open では最初の 1 回だけ true を返し、以降は probing 中として false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCircuit(1, bo)
+			c.onFailure()  // Closed -> Open
+			c.toHalfOpen() // Open -> Half-open
+			require.Equal(t, phaseHalfOpen, c.phaseNow())
+
+			assert.True(t, c.tryBeginProbe())  // 1 バッチ目のみ投入許可
+			assert.False(t, c.tryBeginProbe()) // 以降は probing 中で拒否
+			assert.False(t, c.tryBeginProbe())
+		})
+
+		t.Run("次の Half-open エピソード（toHalfOpen）で probing がリセットされ再び投入できる", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCircuit(1, bo)
+			c.onFailure()
+			c.toHalfOpen()
+			require.True(t, c.tryBeginProbe())
+			require.False(t, c.tryBeginProbe())
+
+			c.onFailure()  // Half-open 失敗 -> Open（trip）
+			c.toHalfOpen() // 次のエピソード
+
+			assert.True(t, c.tryBeginProbe()) // リセットされ再投入可
+		})
+
+		t.Run("Half-open 成功で Closed 復帰後は probing がリセットされる", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCircuit(1, bo)
+			c.onFailure()
+			c.toHalfOpen()
+			require.True(t, c.tryBeginProbe())
+
+			c.onSuccess() // Half-open -> Closed
+			require.Equal(t, phaseClosed, c.phaseNow())
+
+			c.onFailure()  // 再び Open
+			c.toHalfOpen() // 次の Half-open
+			assert.True(t, c.tryBeginProbe())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Half-open 以外（Closed / Open）では false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCircuit(2, bo)
+			require.Equal(t, phaseClosed, c.phaseNow())
+			assert.False(t, c.tryBeginProbe()) // Closed
+
+			c.onFailure()
+			c.onFailure() // threshold=2 -> Open
+			require.Equal(t, phaseOpen, c.phaseNow())
+			assert.False(t, c.tryBeginProbe()) // Open
+		})
+	})
+}
+
 func Test_keyedDispatcher_dispatch(t *testing.T) {
 	t.Parallel()
 
@@ -740,6 +811,99 @@ func Test_run_waitCooldown(t *testing.T) {
 	})
 }
 
+func Test_run_acquire(t *testing.T) {
+	t.Parallel()
+
+	newTestRun := func(t *testing.T) *run {
+		t.Helper()
+		f := testkit.NewFake()
+		w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+		set := baseSettings()
+		set.MaxInFlight = 10
+		set.BatchSize = 10
+		set.CircuitHalfOpenProbe = 2
+		set.CircuitFailureThreshold = 1
+		return newRun(newTestEngine(t, set, w), w)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		// MaxInFlight(10) > CircuitHalfOpenProbe(2) でも、Half-open では probe バッチを 1 度だけ投入し、
+		// 結果が確定するまで新規 Receive を止める（総 probe ≤ CircuitHalfOpenProbe の回帰）。
+		t.Run("Half-open では probe を 1 バッチだけ投入し、結果確定まで再投入せず、確定後は通常 Receive を返す", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+			r.cb.onFailure()  // Open へ
+			r.cb.toHalfOpen() // Half-open へ
+			require.Equal(t, phaseHalfOpen, r.cb.phaseNow())
+
+			// 1 回目: MaxInFlight=10 でも probe=2 に制限される。
+			n, ok := r.acquire(context.Background())
+			require.True(t, ok)
+			require.Equal(t, 2, n)
+
+			// probe が in-flight にある状態を再現する。
+			r.inflight <- struct{}{}
+			r.inflight <- struct{}{}
+
+			// 2 回目: probing 中は再投入せずブロックするため goroutine で回す。
+			type acqResult struct {
+				n  int
+				ok bool
+			}
+			ch := make(chan acqResult, 1)
+			go func() {
+				gotN, gotOK := r.acquire(context.Background())
+				ch <- acqResult{gotN, gotOK}
+			}()
+
+			// probe を再投入していない（＝ブロックしている）ことを確認する。
+			select {
+			case <-ch:
+				t.Fatal("probing 中に acquire が新規 Receive を返した（probe が再投入された）")
+			case <-time.After(50 * time.Millisecond):
+			}
+
+			// probe 結果の到来を再現: 成功で Closed へ遷移し in-flight を 1 つ解放する。
+			r.cb.onSuccess()
+			<-r.inflight
+			select {
+			case r.slotFreed <- struct{}{}:
+			default:
+			}
+
+			// 起床して Closed の通常 Receive（probe バッチではない）を返す。
+			select {
+			case got := <-ch:
+				assert.True(t, got.ok)
+				assert.Positive(t, got.n)
+			case <-time.After(time.Second):
+				t.Fatal("結果確定後に acquire が復帰しなかった")
+			}
+			assert.Equal(t, phaseClosed, r.cb.phaseNow())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ctx が完了している場合は Receive せず false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			n, ok := r.acquire(ctx)
+
+			assert.False(t, ok)
+			assert.Zero(t, n)
+		})
+	})
+}
+
 func Test_run_warnIfPoison(t *testing.T) {
 	t.Parallel()
 
@@ -834,11 +998,6 @@ func Test_run_triggerFatal(t *testing.T) {
 func Test_run_loop(t *testing.T) {
 	t.Parallel()
 	t.Skip("poll loop 本体は engine 統合テスト TestEngine_Run（ctx cancel/Ack/Nack 等）でカバー")
-}
-
-func Test_run_acquire(t *testing.T) {
-	t.Parallel()
-	t.Skip("Receive 許可の二段ゲートは engine 統合テスト TestEngine_Run/engineRunCircuitOpenAndRecover・engineRunAcquireInterruptedByCancel でカバー")
 }
 
 func Test_run_process(t *testing.T) {
