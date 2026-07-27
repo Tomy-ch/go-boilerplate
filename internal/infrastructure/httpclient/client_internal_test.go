@@ -325,20 +325,20 @@ func Test_client_doWithRetry(t *testing.T) {
 func Test_client_recordOutcome(t *testing.T) {
 	t.Parallel()
 
-	// newRecordingClient は、計上内容を読み出せる metrics を背にした client と読み出し関数を返す。
-	newRecordingClient := func(t *testing.T) (*client, func(metricName, labelKey string) []string) {
+	// newRecordingClient は、計上内容を読み出せる metrics を背にした client を返す。
+	newRecordingClient := func(t *testing.T) (*client, *observability.ObservedHTTPClientMetrics) {
 		t.Helper()
-		metrics, labelValues := observability.NewObservedHTTPClientMetrics(t)
+		obs := observability.NewObservedHTTPClientMetrics(t)
 		clk := clocktestkit.NewStepClock(time.Now(), 0)
 		c, ok := New(
 			observability.NewNoopHTTPClientTransport(t),
 			clk,
 			clk,
 			NewRegistry(nil),
-			metrics,
+			obs.HTTPClientMetrics,
 		).(*client)
 		require.True(t, ok)
-		return c, labelValues
+		return c, obs
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -347,12 +347,12 @@ func Test_client_recordOutcome(t *testing.T) {
 		t.Run("成功応答は status_class 付きで requests のみ計上する", func(t *testing.T) {
 			t.Parallel()
 
-			c, labelValues := newRecordingClient(t)
+			c, obs := newRecordingClient(t)
 
 			c.recordOutcome(context.Background(), "acct", &Response{StatusCode: http.StatusOK}, nil)
 
-			assert.Equal(t, []string{"2xx"}, labelValues("httpclient.requests", "status_class"))
-			assert.Empty(t, labelValues("httpclient.errors", "reason"))
+			assert.Equal(t, []string{"2xx"}, obs.LabelValues(t, "httpclient.requests", "status_class"))
+			assert.Empty(t, obs.LabelValues(t, "httpclient.errors", "reason"))
 		})
 	})
 
@@ -362,44 +362,44 @@ func Test_client_recordOutcome(t *testing.T) {
 		t.Run("応答ありのエラーは http_ + status_class を reason に計上する", func(t *testing.T) {
 			t.Parallel()
 
-			c, labelValues := newRecordingClient(t)
+			c, obs := newRecordingClient(t)
 
 			c.recordOutcome(
 				context.Background(), "acct", &Response{StatusCode: http.StatusServiceUnavailable}, apperror.ErrUnavailable)
 
-			assert.Equal(t, []string{"http_5xx"}, labelValues("httpclient.errors", "reason"))
+			assert.Equal(t, []string{"http_5xx"}, obs.LabelValues(t, "httpclient.errors", "reason"))
 		})
 
 		t.Run("サーキット開放は circuit_open を reason に計上する", func(t *testing.T) {
 			t.Parallel()
 
-			c, labelValues := newRecordingClient(t)
+			c, obs := newRecordingClient(t)
 
 			c.recordOutcome(context.Background(), "acct", nil, errCircuitOpen)
 
-			assert.Equal(t, []string{"circuit_open"}, labelValues("httpclient.errors", "reason"))
+			assert.Equal(t, []string{"circuit_open"}, obs.LabelValues(t, "httpclient.errors", "reason"))
 			// 応答が無いので requests は計上しない。
-			assert.Empty(t, labelValues("httpclient.requests", "status_class"))
+			assert.Empty(t, obs.LabelValues(t, "httpclient.requests", "status_class"))
 		})
 
 		t.Run("キャンセルは canceled を reason に計上する", func(t *testing.T) {
 			t.Parallel()
 
-			c, labelValues := newRecordingClient(t)
+			c, obs := newRecordingClient(t)
 
 			c.recordOutcome(context.Background(), "acct", nil, apperror.ErrCanceled)
 
-			assert.Equal(t, []string{"canceled"}, labelValues("httpclient.errors", "reason"))
+			assert.Equal(t, []string{"canceled"}, obs.LabelValues(t, "httpclient.errors", "reason"))
 		})
 
 		t.Run("分類できないエラーは transport を reason に計上する", func(t *testing.T) {
 			t.Parallel()
 
-			c, labelValues := newRecordingClient(t)
+			c, obs := newRecordingClient(t)
 
 			c.recordOutcome(context.Background(), "acct", nil, xerrors.New("dial failed"))
 
-			assert.Equal(t, []string{"transport"}, labelValues("httpclient.errors", "reason"))
+			assert.Equal(t, []string{"transport"}, obs.LabelValues(t, "httpclient.errors", "reason"))
 		})
 	})
 }

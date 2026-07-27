@@ -19,6 +19,14 @@ const (
 	span             = "noop-span"
 )
 
+// ObservedHTTPClientMetrics は、計上内容を読み出せる HTTPClientMetrics です。
+// HTTPClientMetrics をそのまま埋め込むため、被験側へは埋め込みフィールドを渡して通常どおり計上させます。
+type ObservedHTTPClientMetrics struct {
+	*HTTPClientMetrics
+
+	reader *sdkmetric.ManualReader
+}
+
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
 func NewNoopTracerFactory(t *testing.T) TracerFactory {
 	t.Helper()
@@ -78,10 +86,9 @@ func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
 	return hm
 }
 
-// NewObservedHTTPClientMetrics は、計上内容を読み出せる HTTPClientMetrics と読み出し関数を返します。
-// 読み出し関数は、metricName の counter に記録された labelKey の値を計上順に依らず全件返します
-// （未計上なら空）。計上先の label を検証したい呼び出し元テストで使用します。
-func NewObservedHTTPClientMetrics(t *testing.T) (*HTTPClientMetrics, func(metricName, labelKey string) []string) {
+// NewObservedHTTPClientMetrics は、計上内容を読み出せる HTTPClientMetrics を返します。
+// 計上先の label を検証したい呼び出し元テストで使用します。
+func NewObservedHTTPClientMetrics(t *testing.T) *ObservedHTTPClientMetrics {
 	t.Helper()
 
 	reader := sdkmetric.NewManualReader()
@@ -90,20 +97,31 @@ func NewObservedHTTPClientMetrics(t *testing.T) (*HTTPClientMetrics, func(metric
 		t.Fatalf("failed to build observed http client metrics: %v", err)
 	}
 
-	return hm, func(metricName, labelKey string) []string {
-		t.Helper()
-		var rm metricdata.ResourceMetrics
-		if cerr := reader.Collect(context.Background(), &rm); cerr != nil {
-			t.Fatalf("failed to collect http client metrics: %v", cerr)
-		}
-		return labelValuesOf(t, rm, metricName, labelKey)
-	}
+	return &ObservedHTTPClientMetrics{HTTPClientMetrics: hm, reader: reader}
 }
 
-// labelValuesOf は、rm の中から metricName の counter を探し、その各データポイントの labelKey の値を返します。
-func labelValuesOf(t *testing.T, rm metricdata.ResourceMetrics, metricName, labelKey string) []string {
+// LabelValues は、metricName の counter に付いた labelKey の値を返します（未計上なら空）。
+// 返るのは counter のデータポイント単位、すなわち計上された label 組であり、記録回数ではありません
+// （同一 label 組へ何回記録しても cumulative counter の 1 データポイントに集約されます）。
+// metricName が int64 counter でない場合は、テストキットの誤用としてテストを失敗させます。
+func (o *ObservedHTTPClientMetrics) LabelValues(t *testing.T, metricName, labelKey string) []string {
 	t.Helper()
 
+	var rm metricdata.ResourceMetrics
+	if err := o.reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("failed to collect http client metrics: %v", err)
+	}
+
+	values, ok := counterLabelValues(rm, metricName, labelKey)
+	if !ok {
+		t.Fatalf("metric %s is not an int64 counter", metricName)
+	}
+	return values
+}
+
+// counterLabelValues は、rm から metricName の int64 counter を探し、各データポイントの labelKey の値を返します。
+// metricName の指標が int64 counter でない場合は ok=false を返します（未計上の場合は空・ok=true）。
+func counterLabelValues(rm metricdata.ResourceMetrics, metricName, labelKey string) ([]string, bool) {
 	var values []string
 	for _, sm := range rm.ScopeMetrics {
 		for _, m := range sm.Metrics {
@@ -112,7 +130,7 @@ func labelValuesOf(t *testing.T, rm metricdata.ResourceMetrics, metricName, labe
 			}
 			sum, ok := m.Data.(metricdata.Sum[int64])
 			if !ok {
-				t.Fatalf("metric %s is not an int64 sum", metricName)
+				return nil, false
 			}
 			for _, dp := range sum.DataPoints {
 				if v, found := dp.Attributes.Value(attribute.Key(labelKey)); found {
@@ -121,7 +139,7 @@ func labelValuesOf(t *testing.T, rm metricdata.ResourceMetrics, metricName, labe
 			}
 		}
 	}
-	return values
+	return values, true
 }
 
 // NewNoopOutboxMetrics は、テスト用に no-op の MeterProvider から OutboxMetrics を生成します。
