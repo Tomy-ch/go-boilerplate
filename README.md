@@ -27,6 +27,7 @@ Each item is a thin seam you extend; follow the link for the design and rules.
 - **Application jobs** — [docs/design/job.md](docs/design/job.md)
 - **REST reliability** (timeouts / body limit / deadline budget / tx retry) — [docs/design/rest.md](docs/design/rest.md)
 - **Observability** (OpenTelemetry traces / metrics / logs, config-driven) — [docs/design/observability.md](docs/design/observability.md)
+- **Object storage** (vendor-neutral boundary behind an S3-compatible adapter; local container, seeding and public read delivery included) — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **Single self-contained binary** (env + migrations embedded → one image) — [docker/README.md](docker/README.md)
 
 ## Prerequisites
@@ -182,6 +183,7 @@ The source of truth lives close to the code. Start here and follow the link that
 ├── pkg/            # Shared, framework-agnostic utilities
 ├── openapi/        # API contracts
 ├── database/       # Migrations & SQL (sqlc)
+├── storage/        # Objects seeded into the bucket (directory layout = key layout)
 ├── env/            # Per-environment variables (embedded into the binary)
 ├── docker/
 ├── docs/
@@ -198,6 +200,7 @@ The source of truth lives close to the code. Start here and follow the link that
 | Dependency Injection | uber/fx |
 | API Definition | OpenAPI + oapi-codegen |
 | Database | PostgreSQL |
+| Object Storage | S3-compatible (AWS SDK v2; Garage for local) |
 | Query | sqlc |
 | Migration | golang-migrate |
 | Logging | zap (+ OpenTelemetry via otelzap) |
