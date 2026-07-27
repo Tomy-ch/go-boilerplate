@@ -24,8 +24,11 @@ const skipReasonMaxLines = 8
 const selfFile = "skip_reason_policy_test.go"
 
 var (
-	// skipCallRe は、テストハンドル経由の Skip 呼び出し（t.Skip / tb.Skipf 等）を検出する。
-	skipCallRe = regexp.MustCompile(`\b\w+\.Skipf?\(`)
+	// skipCallRe は、テストハンドル経由の Skip 呼び出し（t.Skip / tb.Skipf / t.SkipNow 等）を検出する。
+	// SkipNow を含めるのは、理由を持たない skip がゲートを素通りしないようにするため。
+	skipCallRe = regexp.MustCompile(`\b\w+\.Skip(f|Now)?\(`)
+	// skipNowRe は、理由を伴わない SkipNow 呼び出しを判別する。
+	skipNowRe = regexp.MustCompile(`\b\w+\.SkipNow\(`)
 	// coveringTestRe は、skip 理由が別のテスト関数を名指ししていることを検出する。
 	// Go のテスト関数は Test の直後が大文字か `_` になるため、この形で「他テスト参照」を捕捉できる。
 	coveringTestRe = regexp.MustCompile(`Test[A-Z_]`)
@@ -76,6 +79,11 @@ func collectSkipReasonViolations(file string, lines []string) []string {
 	for i, line := range lines {
 		loc := skipCallRe.FindStringIndex(line)
 		if loc == nil || inComment(line, loc[0]) {
+			continue
+		}
+
+		if skipNowRe.MatchString(line[loc[0]:loc[1]]) {
+			violations = append(violations, describe(file, i, lines[i], "理由を持たない SkipNow は使えない"))
 			continue
 		}
 
@@ -204,6 +212,17 @@ func Test_collectSkipReasonViolations(t *testing.T) {
 
 			require.Len(t, got, 1)
 			assert.Contains(t, got[0], "他のテストを名指し")
+		})
+
+		t.Run("理由を持たない SkipNow を違反にする", func(t *testing.T) {
+			t.Parallel()
+
+			lines := []string{`	t.SkipNow()`}
+
+			got := collectSkipReasonViolations("f.go", lines)
+
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "SkipNow")
 		})
 
 		t.Run("理由を変数越しに渡す回避を違反にする", func(t *testing.T) {
