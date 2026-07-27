@@ -102,8 +102,34 @@ func describe(file string, idx int, line, reason string) string {
 // inComment は、位置 at がその行のコメント部分にあるかを返す。
 // 行頭コメントだけでなく、コード末尾に付いた行内コメント中の言及も走査対象から外すために使う。
 func inComment(line string, at int) bool {
-	c := strings.Index(line, "//")
+	c := commentStart(line)
 	return c >= 0 && c < at
+}
+
+// commentStart は、行コメントの開始位置を返す（無ければ -1）。
+// 文字列リテラル中の `//`（URL など）をコメント開始と誤認すると、同じ行にある実在の Skip 呼び出しを
+// 走査対象から外してしまうため、クオートの開閉を追いながらリテラルの外だけを探す。
+func commentStart(line string) int {
+	var inQuote, inRaw, escaped bool
+	for i := range len(line) {
+		switch {
+		case escaped:
+			escaped = false
+		case inRaw:
+			inRaw = line[i] != '`'
+		case inQuote && line[i] == '\\':
+			escaped = true
+		case inQuote:
+			inQuote = line[i] != '"'
+		case line[i] == '`':
+			inRaw = true
+		case line[i] == '"':
+			inQuote = true
+		case line[i] == '/' && i+1 < len(line) && line[i+1] == '/':
+			return i
+		}
+	}
+	return -1
 }
 
 // skipCallText は、Skip 呼び出しの引数テキストを返す。
@@ -162,6 +188,17 @@ func Test_collectSkipReasonViolations(t *testing.T) {
 			t.Parallel()
 
 			lines := []string{`	t.Skip("TestCoveringOne でカバー済み")`}
+
+			got := collectSkipReasonViolations("f.go", lines)
+
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "他のテストを名指し")
+		})
+
+		t.Run("同じ行の先行リテラルに含まれる // で見逃さない", func(t *testing.T) {
+			t.Parallel()
+
+			lines := []string{`	u := "http://internal"; t.Skip("TestCoveringOne でカバー済み")`}
 
 			got := collectSkipReasonViolations("f.go", lines)
 
@@ -259,6 +296,56 @@ func Test_skipCallText(t *testing.T) {
 			_, ok := skipCallText(lines, 0, len(`	t.Skip(`))
 
 			assert.False(t, ok)
+		})
+	})
+}
+
+func Test_commentStart(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("行頭コメントの開始位置を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, 1, commentStart(` // 理由`))
+		})
+
+		t.Run("コード末尾の行内コメントの開始位置を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, len(`x := 1 `), commentStart(`x := 1 // 理由`))
+		})
+
+		t.Run("コメントが無ければ -1 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, -1, commentStart(`t.Skip("理由")`))
+		})
+
+		t.Run("文字列リテラル中の // はコメント開始とみなさない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, -1, commentStart(`u := "http://internal"`))
+		})
+
+		t.Run("生文字列リテラル中の // もコメント開始とみなさない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, -1, commentStart("u := `http://internal`"))
+		})
+
+		t.Run("エスケープされたクオートでリテラルは閉じない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, -1, commentStart(`u := "a\"http://internal"`))
+		})
+
+		t.Run("リテラルを閉じた後の // はコメント開始とみなす", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, len(`u := "http://internal" `), commentStart(`u := "http://internal" // 理由`))
 		})
 	})
 }
