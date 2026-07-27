@@ -995,3 +995,103 @@ func TestPurchase_ShippedAt(t *testing.T) {
 		})
 	})
 }
+
+func TestLockedProduct_ID(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestLockedProduct_Quantity(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestNewLockedProduct(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestNewPurchaseDetail(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchaseDetail_ID(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchaseDetail_ProductID(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchaseDetail_Quantity(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_CanceledAt(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_Code(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_Details(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_ID(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_OrderedAt(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_PaidAt(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_ShippingFee(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_StatusCode(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_StatusID(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_SubtotalAmount(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_TaxAmount(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_TotalAmount(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestPurchase_UserID(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}

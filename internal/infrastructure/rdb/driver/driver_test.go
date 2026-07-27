@@ -195,3 +195,38 @@ func Test_newDB(t *testing.T) {
 		})
 	})
 }
+
+func Test_dbDriver_Begin(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_dbDriver_Close(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_dbDriver_Exec(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_dbDriver_Ping(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_dbDriver_Query(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_dbDriver_QueryRow(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_dbDriver_Stats(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}

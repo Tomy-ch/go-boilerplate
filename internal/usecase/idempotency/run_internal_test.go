@@ -15,28 +15,87 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_nopMetrics(t *testing.T) {
+func Test_nopMetrics_IncHit(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Metrics 未配線時の no-op 実装は全カウンタを安全に呼べる", func(t *testing.T) {
+		t.Run("Metrics 未配線時の no-op 実装を panic せず呼べる", func(t *testing.T) {
 			t.Parallel()
 
-			// Metrics 未配線 → dispatcher が返す no-op 実装で、全カウンタが panic せず呼べることを固定する
-			// （メトリクス任意＝nil-safety の end-to-end 契約）。
-			m := Deps{}.metrics()
-			ctx := context.Background()
+			// Metrics 未配線 → dispatcher が返す no-op 実装を呼べることを固定する（メトリクス任意＝nil-safety の契約）。
+			assert.NotPanics(t, func() { Deps{}.metrics().IncHit(context.Background(), "op") })
+		})
+	})
+}
 
-			assert.NotPanics(t, func() {
-				m.IncHit(ctx, "op")
-				m.IncMiss(ctx, "op")
-				m.IncConflict(ctx, "op")
-				m.IncFingerprintMismatch(ctx, "op")
-				m.IncClaimFailure(ctx, "op")
-				m.IncCompleteFailure(ctx, "op")
-			})
+func Test_nopMetrics_IncMiss(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Metrics 未配線時の no-op 実装を panic せず呼べる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotPanics(t, func() { Deps{}.metrics().IncMiss(context.Background(), "op") })
+		})
+	})
+}
+
+func Test_nopMetrics_IncConflict(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Metrics 未配線時の no-op 実装を panic せず呼べる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotPanics(t, func() { Deps{}.metrics().IncConflict(context.Background(), "op") })
+		})
+	})
+}
+
+func Test_nopMetrics_IncFingerprintMismatch(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Metrics 未配線時の no-op 実装を panic せず呼べる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotPanics(t, func() { Deps{}.metrics().IncFingerprintMismatch(context.Background(), "op") })
+		})
+	})
+}
+
+func Test_nopMetrics_IncClaimFailure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Metrics 未配線時の no-op 実装を panic せず呼べる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotPanics(t, func() { Deps{}.metrics().IncClaimFailure(context.Background(), "op") })
+		})
+	})
+}
+
+func Test_nopMetrics_IncCompleteFailure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Metrics 未配線時の no-op 実装を panic せず呼べる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotPanics(t, func() { Deps{}.metrics().IncCompleteFailure(context.Background(), "op") })
 		})
 	})
 }

@@ -195,3 +195,23 @@ func Test_injectToCarrier(t *testing.T) {
 		})
 	})
 }
+
+func TestExtractFromCarrier(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestInjectTraceContextToCarrier(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_mapCarrier_Get(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_mapCarrier_Set(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}

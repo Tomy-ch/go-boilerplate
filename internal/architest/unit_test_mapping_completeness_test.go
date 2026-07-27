@@ -24,7 +24,6 @@ var (
 	methodDeclRe = regexp.MustCompile(`^func \(\s*(?:\w+\s+)?\*?(\w+)(?:\[.*\])?\) (\w+)\(`)
 	freeFuncRe   = regexp.MustCompile(`^func (\w+)(?:\[.*\])?\(`)
 	testFuncRe   = regexp.MustCompile(`^func (Test\w+)\(`)
-	branchRe     = regexp.MustCompile(`^\t+(if|for|switch|select)[ ({]`)
 	genHeaderRe  = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
 )
 
@@ -34,10 +33,11 @@ type prodSubject struct {
 	candidates []string // 許容するテスト関数名（いずれか 1 つでも存在すれば充足）
 }
 
-// TestUnitTestMappingCompleteness は、分岐（if/for/switch/select）を持つ production の
-// func / method が、命名規約に一致する TestXxx を同一パッケージに持つことを機械検証する。
-// テスト対象と TestXxx の 1:1 を強制し、レビュー頼みの見落とし（例: keyFunc の防御分岐が
-// 呼び出し側テストに埋もれて専用テストが無い状態）を loud な失敗に変える。
+// TestUnitTestMappingCompleteness は、production の全 func / method が、命名規約に一致する
+// TestXxx を同一パッケージに持つことを機械検証する。テスト対象と TestXxx の 1:1 を強制し、
+// レビュー頼みの見落とし（例: keyFunc の防御分岐が呼び出し側テストに埋もれて専用テストが
+// 無い状態、ルート登録だけを行う分岐なしの BindHandler が未テストのまま残る状態）を
+// loud な失敗に変える。
 //
 // 「1:1 を採らない」ことは許さない。対象が検証不可能であるために到達できない場合に限り、
 // 命名規約どおりの TestXxx を宣言し中で t.Skip("なぜ検証不可能か") することで意図を明示する
@@ -55,7 +55,7 @@ func TestUnitTestMappingCompleteness(t *testing.T) {
 	t.Logf("total 1:1 violations: %d", len(violations))
 
 	require.Empty(t, violations,
-		"分岐を持つ production 関数/メソッドに対応する TestXxx が無い（1:1 違反）。"+
+		"production 関数/メソッドに対応する TestXxx が無い（1:1 違反）。"+
 			"専用テストを追加すること。検証不可能であるために到達できない対象に限り、"+
 			"命名規約どおりの TestXxx を宣言し、なぜ検証不可能かを t.Skip の理由文に書いて明示できる。")
 }
@@ -104,7 +104,7 @@ func indexGoFile(path string, lines []string, prodByDir map[string][]prodSubject
 	if isGeneratedGo(path, lines) {
 		return
 	}
-	prodByDir[dir] = append(prodByDir[dir], collectBranchingSubjects(lines, path)...)
+	prodByDir[dir] = append(prodByDir[dir], collectSubjects(lines, path)...)
 }
 
 // collectViolations は、対応する TestXxx を持たない subject を違反として列挙する。
@@ -121,11 +121,12 @@ func collectViolations(prodByDir map[string][]prodSubject, testsByDir map[string
 	return violations
 }
 
-// collectBranchingSubjects は、分岐を持つ func / method を subject 化して返す。
-// 分岐が無い trivial（getter / 単純ラッパ等）は 1:1 の対象外として除外する。
-func collectBranchingSubjects(lines []string, file string) []prodSubject {
+// collectSubjects は、宣言されている全ての func / method を subject 化して返す。
+// 分岐の有無・body の行数では絞らない（getter / 単純ラッパ / ルート登録のみの関数も
+// 契約を持ちうるため）。除外するのは main / init のみ。
+func collectSubjects(lines []string, file string) []prodSubject {
 	var subs []prodSubject
-	for i, line := range lines {
+	for _, line := range lines {
 		var name string
 		var candidates []string
 
@@ -144,31 +145,9 @@ func collectBranchingSubjects(lines []string, file string) []prodSubject {
 			continue
 		}
 
-		if funcBodyHasBranch(lines, i) {
-			subs = append(subs, prodSubject{name: name, file: file, candidates: candidates})
-		}
+		subs = append(subs, prodSubject{name: name, file: file, candidates: candidates})
 	}
 	return subs
-}
-
-// funcBodyHasBranch は、宣言行 declIdx から次の行頭 `}`（トップレベルの閉じ括弧）までを本文とみなし、
-// 文頭に分岐キーワードが現れるかを判定する。コメント行（`//`）は除外される（branchRe が行頭タブ+キーワード限定のため）。
-//
-// gofmt は短い body を 1 行に保つ（例: getter `func (u *User) City() string { return u.city }`）。
-// 1 行関数は trivial とみなし分岐なし扱いにする（複数行本文の走査に入ると後続関数の分岐を誤検出するため）。
-func funcBodyHasBranch(lines []string, declIdx int) bool {
-	if strings.HasSuffix(strings.TrimRight(lines[declIdx], " \t"), "}") {
-		return false // 1 行関数 = trivial
-	}
-	for j := declIdx + 1; j < len(lines); j++ {
-		if lines[j] == "}" { // gofmt: トップレベル関数の閉じ括弧は行頭 `}`
-			return false
-		}
-		if branchRe.MatchString(lines[j]) {
-			return true
-		}
-	}
-	return false
 }
 
 func hasAnyTest(tests map[string]struct{}, candidates []string) bool {

@@ -140,3 +140,23 @@ func TestRoles_HasAdmin(t *testing.T) {
 		})
 	})
 }
+
+func TestRole_Code(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestRole_ID(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestRole_IsAdmin(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func TestRole_Name(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
