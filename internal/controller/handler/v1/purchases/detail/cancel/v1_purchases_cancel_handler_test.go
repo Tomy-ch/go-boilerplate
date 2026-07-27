@@ -142,6 +142,24 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			})
 			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
+
+		t.Run("レスポンス変換が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			view := cancelViewFixture(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			uc.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(view, nil)
+
+			userID := uuid.NewTestFromSalt(t, "hc_user_overflow")
+			_, err := s.PatchPurchasesCancel(authnContext(t, userID), gen.PatchPurchasesCancelRequestObject{
+				PurchaseId: uuid.NewTestFromSalt(t, "hc_purchase_overflow").ToPrimitive(),
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 	})
 }
 

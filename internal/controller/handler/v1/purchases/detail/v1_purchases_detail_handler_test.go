@@ -143,6 +143,24 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
+
+		t.Run("レスポンス変換が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			view := detailViewFixture(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			uc.EXPECT().GetPurchaseDetail(gomock.Any(), gomock.Any(), gomock.Any()).Return(view, nil)
+
+			userID := uuid.NewTestFromSalt(t, "hd_user_overflow")
+			_, err := s.GetPurchasesDetail(authnContext(t, userID), gen.GetPurchasesDetailRequestObject{
+				PurchaseId: uuid.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 	})
 }
 
