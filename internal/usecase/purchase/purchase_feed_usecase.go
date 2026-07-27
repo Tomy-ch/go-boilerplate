@@ -2,6 +2,7 @@ package purchase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go-boilerplate/internal/apperror"
@@ -86,7 +87,7 @@ func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *pa
 	}
 
 	var nextCursor *string
-	if hasNext && len(feed) > 0 {
+	if hasNext {
 		encoded := encodePurchaseCursor(feed[len(feed)-1])
 		nextCursor = &encoded
 	}
@@ -103,7 +104,7 @@ func decodePurchaseCursor(cursor *paging.Cursor) (*purchaseCursor, error) {
 
 	keys := cursor.Keys()
 	if len(keys) != purchaseCursorKeyCount {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: expected 2 keys")
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, fmt.Sprintf("invalid cursor: expected %d keys", purchaseCursorKeyCount))
 	}
 
 	orderedAt, err := time.Parse(time.RFC3339Nano, keys[0])

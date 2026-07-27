@@ -159,7 +159,7 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	}
 
 	var nextCursor *string
-	if hasNext && len(products) > 0 {
+	if hasNext {
 		encoded := encodeProductCursor(products[len(products)-1])
 		nextCursor = &encoded
 	}

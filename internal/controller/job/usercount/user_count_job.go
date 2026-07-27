@@ -38,14 +38,14 @@ func New(
 }
 
 // Name は、このジョブの名前を返します。
-func (u *jobImpl) Name() string {
+func (j *jobImpl) Name() string {
 	return jobName
 }
 
 // Execute は、ユーザ件数を集計してログに出力します。
 // --active-only / --inactive-only でカウント対象を絞り込めます。両フラグの併用はエラーです。
-func (u *jobImpl) Execute(ctx context.Context, args []string) error {
-	ctx, endSpan := u.tracer.Start(ctx)
+func (j *jobImpl) Execute(ctx context.Context, args []string) error {
+	ctx, endSpan := j.tracer.Start(ctx)
 	defer endSpan()
 
 	active, err := parseFilter(args)
@@ -53,11 +53,11 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 		return err
 	}
 
-	count, err := u.usecase.CountUsers(ctx, active)
+	count, err := j.usecase.CountUsers(ctx, active)
 	if err != nil {
 		return err
 	}
-	u.logging.Named(jobName).Info(
+	j.logging.Named(jobName).Info(
 		ctx,
 		"Result: total user count",
 		logging.Int64(logging.JobResultKey, count),

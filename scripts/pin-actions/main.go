@@ -37,6 +37,8 @@ const (
 	lsRemoteCols    = 2 // <sha>\t<refname>
 	lsRemoteTimeout = 30 * time.Second
 	hoursPerDay     = 24
+
+	usage = "❌ usage: pin-actions <resolve|apply|check>"
 )
 
 var (
@@ -58,7 +60,7 @@ func (r ref) key() string { return r.repo + "@" + r.tag }
 func main() {
 	log.SetFlags(0)
 	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: pin-actions <resolve|apply|check>")
+		log.Fatal(usage)
 	}
 	root, err := os.Getwd()
 	if err != nil {
@@ -79,7 +81,7 @@ func main() {
 	case "check":
 		applyOrCheck(root, files, true)
 	default:
-		log.Fatalf("❌ usage: pin-actions <resolve|apply|check>")
+		log.Fatal(usage)
 	}
 }
 

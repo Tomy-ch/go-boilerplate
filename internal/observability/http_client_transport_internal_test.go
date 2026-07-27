@@ -364,7 +364,7 @@ func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
 	})
 }
 
-func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
+func Test_urlSecretRestoringRoundTripper_RoundTrip(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -374,7 +374,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			parts := redactedURLParts{rawQuery: "token=secret&postalCode=1000001", fragment: "sess=abc"}
 			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, parts)
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.com/search", nil)
@@ -391,7 +391,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			req, err := http.NewRequestWithContext(
 				context.Background(), http.MethodGet, "https://example.com/search", nil)
 			require.NoError(t, err)
@@ -406,7 +406,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, redactedURLParts{rawQuery: "token=secret"})
 			req := (&http.Request{Method: http.MethodGet, Header: make(http.Header)}).WithContext(ctx)
 
@@ -425,7 +425,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 
 			wantErr := errTestRoundTrip
 			captured := &captureRoundTripper{err: wantErr}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			req, err := http.NewRequestWithContext(
 				context.Background(), http.MethodGet, "https://example.com/search", nil)
 			require.NoError(t, err)

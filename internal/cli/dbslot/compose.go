@@ -45,14 +45,7 @@ func (c ExecCompose) RunningContainers(ctx context.Context, project string) (int
 		return 0, err
 	}
 
-	n := 0
-	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
-		if strings.TrimSpace(line) != "" {
-			n++
-		}
-	}
-
-	return n, nil
+	return len(strings.Fields(out)), nil
 }
 
 func (ExecCompose) run(ctx context.Context, project string, args ...string) error {

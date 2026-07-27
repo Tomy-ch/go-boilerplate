@@ -65,16 +65,16 @@ type redactedURLParts struct {
 
 // spanURLRedactingRoundTripper は、otelhttp が span の url.full へ記録する URL からクエリ・フラグメントを除去します。
 // otelhttp は url.full を req.URL.String() から算出するため、otelhttp へ渡す直前にこれらを ctx へ退避して URL から
-// 取り除き（span には現れなくなる）、実送信直前に queryRestoringRoundTripper が復元します。
+// 取り除き（span には現れなくなる）、実送信直前に urlSecretRestoringRoundTripper が復元します。
 // クエリ・フラグメントは機密になり得るため既定で全除去します（httpclient のエラーメッセージ redaction＝redactURL と同方針）。
 // userinfo は otelhttp が url.full 算出時に別途除去するため、ここでは扱いません。
 type spanURLRedactingRoundTripper struct {
 	inner http.RoundTripper
 }
 
-// queryRestoringRoundTripper は、span 記録のために除去した機密構成要素を実送信直前に URL へ復元する base transport です。
+// urlSecretRestoringRoundTripper は、span 記録のために除去した機密構成要素を実送信直前に URL へ復元する base transport です。
 // otelhttp は復元前に url.full を記録済みのため、ここでの復元は span へ影響しません。
-type queryRestoringRoundTripper struct {
+type urlSecretRestoringRoundTripper struct {
 	base http.RoundTripper
 }
 
@@ -100,7 +100,7 @@ func newHTTPClientTransport(
 	tp trace.TracerProvider, propagator propagation.TextMapPropagator, control dialControl,
 ) *HTTPClientTransport {
 	rt := otelhttp.NewTransport(
-		queryRestoringRoundTripper{base: newGuardedBaseTransport(control)},
+		urlSecretRestoringRoundTripper{base: newGuardedBaseTransport(control)},
 		otelhttp.WithTracerProvider(tp),
 		otelhttp.WithMeterProvider(metricnoop.NewMeterProvider()),
 		otelhttp.WithPropagators(conditionalPropagator{inner: propagator}),
@@ -127,7 +127,7 @@ func (rt spanURLRedactingRoundTripper) RoundTrip(req *http.Request) (*http.Respo
 }
 
 // RoundTrip は、退避済みの機密構成要素があれば URL へ復元してから base へ委譲します。
-func (rt queryRestoringRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+func (rt urlSecretRestoringRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if parts, ok := req.Context().Value(spanQueryRedactionKey{}).(redactedURLParts); ok && req.URL != nil {
 		req.URL.RawQuery = parts.rawQuery
 		req.URL.Fragment = parts.fragment
@@ -190,7 +190,7 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
-		return err
+		return xerrors.Wrap(err, "ssrf guard: blocked malformed address "+address)
 	}
 	addr, err := netip.ParseAddr(host)
 	if err != nil {

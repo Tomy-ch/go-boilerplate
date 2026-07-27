@@ -7,9 +7,9 @@ import (
 	"go.uber.org/fx"
 )
 
-// httpREDMetricsPriority は、HTTP RED メトリクスミドルウェアの適用順序です。
+// httpRedMetricsPriority は、HTTP RED メトリクスミドルウェアの適用順序です。
 // 順序設計の根拠は README「Priority Order」を参照してください。
-const httpREDMetricsPriority = 8
+const httpRedMetricsPriority = 8
 
 // HTTPRedMetricsModule は、HTTP RED（Rate / Errors / Duration）メトリクスのミドルウェアを提供するfxモジュールを返します。
 func HTTPRedMetricsModule() fx.Option {
@@ -35,7 +35,7 @@ func HTTPRedMetricsMiddleware(rec redmetrics.Recorder) extension.UseMiddlewareOu
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
 			Name:       "httpredmetrics",
-			Priority:   httpREDMetricsPriority,
+			Priority:   httpRedMetricsPriority,
 			Middleware: redmetrics.Middleware(rec),
 		},
 	}

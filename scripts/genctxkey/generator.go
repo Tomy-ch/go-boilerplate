@@ -85,7 +85,7 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 	}
 
 	if err := os.MkdirAll(outDir, dirPerm); err != nil {
-		return err
+		return xerrors.Wrap(err, "mkdir "+outDir)
 	}
 
 	if err := writeFile(filepath.Join(outDir, p.NameLower+"_ctx.gen.go"), ctxTpl, p); err != nil {
@@ -104,12 +104,12 @@ func writeFile(path, tpl string, p Param) error {
 
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, p); err != nil {
-		return err
+		return xerrors.Wrap(err, "execute template "+path)
 	}
 
 	src, err := format.Source(buf.Bytes())
 	if err != nil {
-		return err
+		return xerrors.Wrap(err, "format "+path)
 	}
 
 	if existing, err := os.ReadFile(path); err == nil { //nolint:gosec // generator writes/reads controlled path
@@ -118,7 +118,10 @@ func writeFile(path, tpl string, p Param) error {
 		}
 	}
 
-	return os.WriteFile(path, src, filePerm)
+	if err := os.WriteFile(path, src, filePerm); err != nil {
+		return xerrors.Wrap(err, "write "+path)
+	}
+	return nil
 }
 
 // splitWords は、非英数字区切りで語に分割し、空要素を除去して返します。
@@ -254,7 +257,7 @@ func resolveTestValue(t, nameLower, override string) (string, string) {
 		return "true", "false"
 	default:
 		// 任意型は意味ある success 値を自動合成できない。
-		// 呼び出し側が -test-value を渡せば success に採用し、未指定なら従来通り zero 値にフォールバックする。
+		// override があれば success に採用し、無ければ zero 値（*new(T)）を success/fail 双方に用いる。
 		fail := "*new(" + t + ")"
 		if override != "" {
 			return override, fail
