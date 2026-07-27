@@ -186,6 +186,8 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない|
 
+配信はこれらの変数の管轄外です。API はオブジェクトキー（`imagePath`）だけを返しフル URL を返さないため、フロントが `<配信オリジン>/<オブジェクトキー>` を組み立てます。したがって配信オリジンの変数はこちら側に存在せず、フロントが持ちます（`local` は `http://gobp-local.web.garage.localhost:3902`、デプロイ環境では CDN のドメイン）。ローカルの配信エンドポイントを匿名 read で開く方法は [`docker/README.md`](../docker/README.md) を参照してください。
+
 ## 補足
 
 - 例欄の値はローカル開発向け。本番では Secret / CIDR / Cookie ドメイン / origin 等は基本的に別の値になります

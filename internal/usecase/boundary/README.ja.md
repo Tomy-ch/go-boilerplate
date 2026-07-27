@@ -142,7 +142,7 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |型 / 関数|説明|
 |---|---|
 |`Storage`|`Put(ctx, PutObject) (Path, error)` でオブジェクトをキー配下へ保存する。失敗時は `apperror` sentinel（例 `ErrUnavailable`）を返す|
-|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType`）。`Key` は呼び出し側が採番する（例 `products/{uuid}.png`）|
+|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType` / `CacheControl`）。`Key` は呼び出し側が採番し（例 `products/{uuid}.png`）、`CacheControl` も呼び出し側が決める。キャッシュ可否はキーの採番方針から導かれるため（空なら未設定）|
 |`Path`|保存されたオブジェクトのパス（キー）。表示 URL は上位が別途組み立てる|
 
 ### outbox

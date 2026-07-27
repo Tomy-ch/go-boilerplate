@@ -55,8 +55,8 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 |`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-4000}`|疑似 OIDC 認証サーバー（JWT Test Provider）|
 |`database`|infra|`postgres:18.3-bookworm`|5432|PostgreSQL データベース|
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
-|`garage`|infra|`docker/garage/Dockerfile`|3900, 3903|S3 互換オブジェクトストレージ（S3 API / Admin API）|
-|`garage_init`|infra|`docker/garage/Dockerfile`|-|garage のレイアウト / バケット / アクセスキーを one-shot でプロビジョニング（冪等）|
+|`garage`|infra|`dxflrs/garage`|3900, 3902|S3 互換オブジェクトストレージ（S3 API / Web API）|
+|`garage_init`|infra|`docker/garage/Dockerfile`|-|garage のレイアウト / バケット / アクセスキー / 公開配信の許可を one-shot でプロビジョニング（冪等）|
 
 DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` / `4000+N` / `2345+N` / `6060+N`）だけで、コンテナ内部のポートは常に固定です。
 
@@ -128,9 +128,18 @@ DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` 
 
 ローカル開発用の S3 互換オブジェクトストレージです（テストは in-process の gofakes3 を使います）。
 
-- ベースイメージ: `alpine:3.24` に `dxflrs/garage` から `garage` バイナリをコピー。公式イメージは `scratch` ベースで shell を持たず、プロビジョニングスクリプトを実行できないため
-- `garage.toml`: 単一ノード構成（`replication_factor = 1`、S3 API `3900` / Admin API `3903`）。read-only でマウント
-- `init.sh`: `garage_init` サービスが実行する冪等なプロビジョニング（レイアウト割当 → バケット作成 → 固定アクセスキー import → バケット許可）。値は `env/.env` の `OBJECT_STORAGE_*` と一致させる
+- サーバ本体は公式の `dxflrs/garage` イメージをそのまま使います。ビルドが必要なのは `garage_init` の方です。公式イメージは `scratch` ベースで shell を持たずプロビジョニングスクリプトを実行できないため、そのために Dockerfile が `garage` バイナリを `alpine:3.24` へコピーします
+- `garage.toml`: 単一ノード構成（`replication_factor = 1`、S3 API `3900` / Web API `3902`）。read-only でマウント
+- `init.sh`: `garage_init` サービスが実行する冪等なプロビジョニング（レイアウト割当 → バケット作成 → 固定アクセスキー import → バケット許可 → 公開配信の許可）。同じくマウントで渡すため、編集にイメージの再ビルドは不要です。`OBJECT_STORAGE_*` は `env/.env` から直接読み（`env_file` で渡す）、未設定なら即座に失敗するため、バケットとキーが Go 側の接続先と食い違うことはありません
+
+### 公開配信（匿名 read）
+
+Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクトを**資格情報なしで**配信します。本番で CDN が S3 の前段に立つのと同じ形で、ブラウザがオブジェクトストレージから直接商品画像を読み込めます。書き込みは `POST /v1/products/images`（BearerAuth + admin）のままで、開くのは read だけです。
+
+- 配信オリジン: `http://gobp-local.web.garage.localhost:3902` — オブジェクトは `<オリジン>/<オブジェクトキー>` で、例えば `http://gobp-local.web.garage.localhost:3902/products/{uuid}.png` です。フロントはこの値を配信オリジンの設定に入れます。API はフル URL を返さず、オブジェクトキー（`imagePath`）だけを返します
+- **virtual-host 形式のみ。** Garage の web エンドポイントは `Host` ヘッダ（`<bucket>.<root_domain>` または `<bucket>`）からバケットを解決するため、パス形式（`localhost:3902/<bucket>/<key>`）は動きません。macOS と主要ブラウザは `*.localhost` を自前で `127.0.0.1` に解決するので `/etc/hosts` への追記は不要です。解決しない glibc の Linux コンテナ内からは、ヘッダを明示するか（`curl -H 'Host: gobp-local' http://<host>:3902/products/...`）、`/etc/hosts` へ `127.0.0.1 gobp-local.web.garage.localhost` を追記してください
+- 一覧は閉じたままです。web エンドポイントは一覧を返さず、S3 API への匿名 `ListObjects` は署名が無いため拒否されます。オブジェクトキーは UUIDv7 で、ランダムな約 74 ビットにより列挙は非現実的です。ただし残りのビットはミリ秒精度のタイムスタンプであり、キーは opaque ではあっても secret ではありません。このバケットの中身は、キーを知る者に対しては誰でも読めるものとして扱ってください
+- **公開配信の許可はバケット単位であってオブジェクト単位ではありません。** `gobp-local` のすべてのオブジェクトが匿名で読めるようになります。このバケットは商品画像しか持たないため許容していますが、非公開のオブジェクトを置くならバケットを分ける必要があります
 
 ## mock-auth-server
 
