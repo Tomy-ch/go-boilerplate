@@ -15,7 +15,7 @@ The canonical reference test is [`internal/domain/user/user_domain_test.go`](../
 
 ## 1. Structure
 
-- **One `TestXxx` per function or method — strictly 1:1; no bundling.** This applies to getters / accessors as well: do not group them into a `*_Accessors` / `*_Getters` test — one `TestXxx` per accessor. The 1:1 mapping is enforced mechanically by `internal/architest` (`TestUnitTestMappingCompleteness`) for branching functions / methods. A subject that genuinely should not have its own unit test (its branches are covered via a public caller / integration / DI-graph test) must still declare its convention-named `TestXxx` and call `t.Skip("<covering test>")` — there is no allowlist; the exemption reason stays in the code.
+- **One `TestXxx` per function or method — strictly 1:1; no bundling.** This applies to getters / accessors as well: do not group them into a `*_Accessors` / `*_Getters` test — one `TestXxx` per accessor. The 1:1 mapping is enforced mechanically by `internal/architest` (`TestUnitTestMappingCompleteness`) over every production function / method — branchless ones included, since a body without an `if` can still carry a contract (a `BindHandler` that only registers a route pins its method + path). Only `main` / `init` and generated files are out of scope. A subject that genuinely should not have its own unit test (it is covered via a public caller / integration / DI-graph test) must still declare its convention-named `TestXxx` and call `t.Skip("<covering test>")` — there is no allowlist; the exemption reason stays in the code.
 - Every logical branch is exercised.
 - The **outermost `t.Run` groups are the literal strings `正常系` / `異常系`** — not a `正常系_xxx` prefixed form. Nest further `t.Run` subcases inside them.
 
