@@ -35,7 +35,7 @@ services:
       - development
 
   database: # PostgreSQLデータベース
-    image: postgres:18.3-bookworm@sha256:80630f83606d8db77d30b3851b16a9f78be2d0d4dda6f7b82a1fdca5ebe3acba
+    image: postgres:18.4-trixie@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
     ports:
       # 固定ポートを持つ共有インフラ（database / observability / garage）は、全 checkout が
       # 単一プロジェクト gobp-shared の 1 インスタンスを共有する。worktree の並列化は
@@ -97,7 +97,7 @@ services:
       - auth
 
   garage: # S3 互換オブジェクトストレージ（ローカル開発用。テストは gofakes3 in-process を使う）
-    image: dxflrs/garage:v1.0.1@sha256:a5706cf1f3d7b349ac5133ec59ad8181b709270b75e5f2fa7b3e1a5c07d67137
+    image: dxflrs/garage:v2.3.0@sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690
     entrypoint: ["/garage", "-c", "/etc/garage.toml", "server"]
     ports:
       - "3900:3900" # S3 API
