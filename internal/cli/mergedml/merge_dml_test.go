@@ -324,7 +324,7 @@ func TestGenerator_ensureUnderDir(t *testing.T) {
 		t.Run("genRootDirの外を指すパスはエラー", func(t *testing.T) {
 			t.Parallel()
 			err := g.ensureUnderDir(filepath.Join(testWorkDir, "database", "outside.sql"))
-			require.Error(t, err)
+			require.ErrorIs(t, err, errPathOutsideBaseDir)
 		})
 	})
 }

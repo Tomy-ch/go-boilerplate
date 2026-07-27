@@ -92,7 +92,7 @@ func TestMigrateUpRun(t *testing.T) {
 			}
 
 			err := MigrateUpRun(-1, "", logging.NewTestLogger(t), factory)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNegativeSteps)
 			assert.False(t, called)
 		})
 
@@ -195,7 +195,7 @@ func TestMigrateDownRun(t *testing.T) {
 			}
 
 			err := MigrateDownRun(-2, "", logging.NewTestLogger(t), factory)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNegativeSteps)
 			assert.False(t, called)
 		})
 

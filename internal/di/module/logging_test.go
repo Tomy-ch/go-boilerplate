@@ -116,7 +116,7 @@ func Test_provideLogger(t *testing.T) {
 		t.Run("未知のモードはエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			lg, err := provideLogger(newAppCfg(t, "unknown", "info"), nil, nil)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnknownAppMode)
 			assert.Nil(t, lg)
 		})
 	})
