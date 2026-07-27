@@ -1,7 +1,7 @@
 ---
 name: arch-auditor-usecase
 description: >-
-  Read-only usecase-layer architectural auditor. Audits Go files in `internal/usecase/**` for layer compliance, reading `CLAUDE.md` + `internal/usecase/README.md` + `internal/usecase/boundary/README.md` at runtime as the source of truth (hardcodes no rules). Checks forbidden imports (infrastructure packages, frameworks, direct `time.Now()` / `math/rand`), thin-orchestrator heuristic (no business rules in usecase), boundary-interface usage for time / randomness / external IO, and transaction-boundary correctness (`tx.Manager`). Per-layer worker for the `arch-check` integrator, invoked once by the `arch-check` integrator (or standalone via the Agent tool) so per-layer audits fan out in parallel. Read-only: returns findings only, never edits source. Default model `sonnet`; the orchestrator may override.
+  Read-only usecase-layer architectural auditor. Audits Go files in `internal/usecase/**` for layer compliance, reading `CLAUDE.md` + `internal/usecase/README.md` + `internal/usecase/boundary/README.md` at runtime as the source of truth (hardcodes no rules). Checks forbidden imports (infrastructure packages, frameworks, direct `time.Now()` / `math/rand`), thin-orchestrator heuristic (no business rules in usecase), boundary-interface usage for time / randomness / external IO, transaction-boundary correctness (`tx.Manager`), and same-typed positional arguments — a function with 2+ parameters of one type, swappable at a call site with no compile or lint error — reported as `suggestion` conditional on a swap actually being possible. Per-layer worker for the `arch-check` integrator, invoked once by the `arch-check` integrator (or standalone via the Agent tool) so per-layer audits fan out in parallel. Read-only: returns findings only, never edits source. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -56,6 +56,8 @@ For each in-scope usecase Go file:
 3. **Transaction boundary**: DB writes spanning multiple Repository calls without `tx.Manager.Do(...)` wrapping → `suggestion`.
 4. **Boundary usage**: every external dependency (time, randomness, external HTTP/queue) should be injected via an `internal/usecase/boundary/` interface, not used directly.
 5. **Tracer span (recommended)**: per usecase README "Observability (Tracing)" (canonical — re-read, not restated here), each public method should open a tracer span. Missing span → `suggestion` (推奨機能、未配線は blocker ではない).
+6. **Same-typed positional arguments**: a usecase function or helper taking **two or more parameters of the same type** (adjacent same-typed pointers are the worst case) can have those arguments swapped at a call site with no compile or lint error → `suggestion`, remedied by the Params DTO struct the usecase README already uses for inputs. Applies to arguments the usecase passes on as well — a long positional domain constructor call is the inherited form of the same risk, and the fix belongs to the domain package.
+   - **Only when a swap is actually possible.** At most one parameter of any given type → the compiler already rejects a swap → no finding. Never recommend bundling by reflex just because a signature is long.
 
 ## Output (Japanese — this IS the return value)
 
@@ -86,6 +88,7 @@ If nothing is found: `usecase 層の違反は検出されませんでした。` 
 - ❌ Hardcode usecase rules (always read README + boundary README)
 - ❌ Duplicate depguard checks
 - ❌ Re-run `make lint` if the orchestrator supplied `lintOutput`
+- ❌ Flag a signature whose parameter types are all distinct as a same-typed-argument risk (the compiler already rejects a swap)
 - ✅ Japanese output, citing source-of-truth document + line
 - ✅ Re-read READMEs every run
 - ✅ Final message is the data — no narration
