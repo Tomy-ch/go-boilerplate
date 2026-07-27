@@ -229,7 +229,53 @@ func Test_parseApproxCount(t *testing.T) {
 
 func Test_statsProvider_queueDepth(t *testing.T) {
 	t.Parallel()
-	t.Skip(
-		"statsProvider.queueDepth は stats_test.go の Test_statsProvider_QueueStats（visible/not_visible/delayed のparseとGetQueueAttributesエラー分岐）で網羅されている",
-	)
+
+	newProvider := func(t *testing.T, api API) *statsProvider {
+		t.Helper()
+		return &statsProvider{api: api, tracer: observability.NewNoopTracerFactory(t).Infra()}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定 URL の approximate 属性 3 種を QueueDepth へ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, in *awssqs.GetQueueAttributesInput, _ ...func(*awssqs.Options)) (*awssqs.GetQueueAttributesOutput, error) {
+					assert.Equal(t, "other", aws.ToString(in.QueueUrl)) // cfg ではなく引数で渡した URL を問い合わせる
+					assert.Equal(t, []types.QueueAttributeName{
+						types.QueueAttributeNameApproximateNumberOfMessages,
+						types.QueueAttributeNameApproximateNumberOfMessagesNotVisible,
+						types.QueueAttributeNameApproximateNumberOfMessagesDelayed,
+					}, in.AttributeNames)
+					return attrs("10", "3", "1"), nil
+				},
+			)
+
+			depth, err := newProvider(t, api).queueDepth(context.Background(), "other")
+
+			require.NoError(t, err)
+			assert.Equal(t, worker.QueueDepth{Visible: 10, InFlight: 3, Delayed: 1}, depth)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("GetQueueAttributes のエラーは正規化しゼロ値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).Return(nil, assert.AnError)
+
+			depth, err := newProvider(t, api).queueDepth(context.Background(), "q")
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Equal(t, worker.QueueDepth{}, depth)
+		})
+	})
 }

@@ -464,19 +464,134 @@ func Test_repository_CountByActive(t *testing.T) {
 	})
 }
 
+// newTestQueries は、テスト DB へ直接クエリを発行する sqlc の Queries ファクトリを返す。
+func newTestQueries(t *testing.T) func(context.Context) *gen.Queries {
+	t.Helper()
+	testDB := testkit.NewTestDB(t)
+	return func(ctx context.Context) *gen.Queries { return gen.New(driver.New(ctx, testDB)) }
+}
+
 func Test_fetchListUsersRows(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_repository_FindByActive（active=nil 経路）の実 DB テストでカバー")
+
+	txm := testkit.NewTestTransactionRunner(t)
+	queries := newTestQueries(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("limit 件までのユーザーをエンティティへ変換して返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := fetchListUsersRows(ctx, queries(ctx), &gen.ListUsersParams{LimitParam: 2, OffsetParam: 0})
+
+				require.NoError(t, err)
+				require.Len(t, got, 2)
+				assert.NotEmpty(t, got[0].ID())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := fetchListUsersRows(ctx, queries(ctx), &gen.ListUsersParams{LimitParam: 1})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, got)
+		})
+	})
 }
 
 func Test_fetchListUsersRowsByActive(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_repository_FindByActive（active=true 経路）の実 DB テストでカバー")
+
+	txm := testkit.NewTestTransactionRunner(t)
+	queries := newTestQueries(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未削除のユーザーだけをエンティティへ変換して返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := fetchListUsersRowsByActive(
+					ctx, queries(ctx), &gen.ListActiveUsersParams{LimitParam: 100, OffsetParam: 0})
+
+				require.NoError(t, err)
+				require.NotEmpty(t, got)
+				for _, u := range got {
+					assert.Nil(t, u.DeletedAt())
+				}
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := fetchListUsersRowsByActive(ctx, queries(ctx), &gen.ListActiveUsersParams{LimitParam: 1})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, got)
+		})
+	})
 }
 
 func Test_fetchListUsersRowsByDeleted(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_repository_FindByActive（active=false 経路）の実 DB テストでカバー")
+
+	txm := testkit.NewTestTransactionRunner(t)
+	queries := newTestQueries(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("削除済みのユーザーだけをエンティティへ変換して返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := fetchListUsersRowsByDeleted(
+					ctx, queries(ctx), &gen.ListDeletedUsersParams{LimitParam: 100, OffsetParam: 0})
+
+				require.NoError(t, err)
+				require.NotEmpty(t, got)
+				for _, u := range got {
+					assert.NotNil(t, u.DeletedAt())
+				}
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := fetchListUsersRowsByDeleted(ctx, queries(ctx), &gen.ListDeletedUsersParams{LimitParam: 1})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, got)
+		})
+	})
 }
 
 func Test_rowToUser(t *testing.T) {

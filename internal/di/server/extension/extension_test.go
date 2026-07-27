@@ -256,7 +256,72 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 
 func Test_applyMiddlewares(t *testing.T) {
 	t.Parallel()
-	t.Skip("TestApplyPreMiddlewares / TestApplyUseMiddlewares で優先度順適用と重複エラー分岐を検証済み")
+
+	// markMiddleware は、apply へ渡された際に自身の名前を order へ記録するミドルウェアを返す。
+	markMiddleware := func(order *[]string, name string) echo.MiddlewareFunc {
+		return func(next echo.HandlerFunc) echo.HandlerFunc {
+			*order = append(*order, name)
+			return next
+		}
+	}
+	// recorder は、受け取ったミドルウェアを適用順に評価する apply 関数を返す。
+	recorder := func(order *[]string) func(...echo.MiddlewareFunc) {
+		return func(mws ...echo.MiddlewareFunc) {
+			for _, mw := range mws {
+				mw(nil)
+			}
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("宣言順によらず priority 昇順で適用する", func(t *testing.T) {
+			t.Parallel()
+
+			var order []string
+			mws := []middlewareEntry{
+				{name: "C", priority: 30, middleware: markMiddleware(&order, "C")},
+				{name: "A", priority: 10, middleware: markMiddleware(&order, "A")},
+				{name: "B", priority: 20, middleware: markMiddleware(&order, "B")},
+			}
+
+			err := applyMiddlewares(logging.NewTestLogger(t), "use", mws, recorder(&order))
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{"A", "B", "C"}, order)
+		})
+
+		t.Run("ミドルウェアが 0 件の場合は何も適用せずエラーも返さない", func(t *testing.T) {
+			t.Parallel()
+
+			var order []string
+
+			err := applyMiddlewares(logging.NewTestLogger(t), "pre", nil, recorder(&order))
+
+			require.NoError(t, err)
+			assert.Empty(t, order)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("priority が重複する場合は 1 件も適用せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			var order []string
+			mws := []middlewareEntry{
+				{name: "A", priority: 10, middleware: markMiddleware(&order, "A")},
+				{name: "B", priority: 10, middleware: markMiddleware(&order, "B")},
+			}
+
+			err := applyMiddlewares(logging.NewTestLogger(t), "use", mws, recorder(&order))
+
+			require.ErrorIs(t, err, errDuplicateMiddlewarePriority)
+			assert.Empty(t, order) // 検証を通過する前に適用が始まっていないこと
+		})
+	})
 }
 
 func Test_validatePriorityConflicts(t *testing.T) {

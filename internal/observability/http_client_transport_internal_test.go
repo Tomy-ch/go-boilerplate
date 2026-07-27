@@ -164,11 +164,6 @@ func newSampledContext() context.Context {
 	return trace.ContextWithSpanContext(context.Background(), sc)
 }
 
-func Test_conditionalPropagator_Inject(t *testing.T) {
-	t.Parallel()
-	t.Skip("conditionalPropagator.Inject は Test_conditionalPropagator が有効/無効/未設定の全分岐を検証済み")
-}
-
 //nolint:paralleltest // 子テストが t.Setenv を使うため関数全体を並列化不可
 func Test_newGuardedBaseTransport(t *testing.T) {
 	//nolint:paralleltest // 子テストが t.Setenv を使うため並列化不可
@@ -222,7 +217,7 @@ func Test_newGuardedBaseTransport(t *testing.T) {
 	})
 }
 
-func Test_conditionalPropagator(t *testing.T) {
+func Test_conditionalPropagator_Inject(t *testing.T) {
 	t.Parallel()
 
 	prop := conditionalPropagator{inner: propagation.TraceContext{}}
@@ -246,28 +241,6 @@ func Test_conditionalPropagator(t *testing.T) {
 			prop.Inject(ctx, carrier)
 			assert.NotEmpty(t, carrier.Get("traceparent"))
 		})
-
-		t.Run("Extract は内側 propagator へ委譲し trace context を復元する", func(t *testing.T) {
-			t.Parallel()
-
-			// 内側と同じ propagator で carrier を作り、Extract が委譲されていることを確認する。
-			carrier := propagation.MapCarrier{}
-			propagation.TraceContext{}.Inject(newSampledContext(), carrier)
-
-			got := prop.Extract(context.Background(), carrier)
-
-			sc := trace.SpanContextFromContext(got)
-			assert.True(t, sc.IsValid())
-			want := trace.SpanContextFromContext(newSampledContext())
-			assert.Equal(t, want.TraceID().String(), sc.TraceID().String())
-			assert.Equal(t, want.SpanID().String(), sc.SpanID().String())
-		})
-
-		t.Run("Fields は内側 propagator のキー集合を委譲する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, propagation.TraceContext{}.Fields(), prop.Fields())
-		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -280,6 +253,46 @@ func Test_conditionalPropagator(t *testing.T) {
 			carrier := propagation.MapCarrier{}
 			prop.Inject(ctx, carrier)
 			assert.Empty(t, carrier.Get("traceparent"))
+		})
+	})
+}
+
+func Test_conditionalPropagator_Extract(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("内側 propagator へ委譲し trace context を復元する", func(t *testing.T) {
+			t.Parallel()
+
+			// 内側と同じ propagator で carrier を作り、Extract が委譲されていることを確認する。
+			carrier := propagation.MapCarrier{}
+			propagation.TraceContext{}.Inject(newSampledContext(), carrier)
+
+			got := conditionalPropagator{inner: propagation.TraceContext{}}.Extract(context.Background(), carrier)
+
+			sc := trace.SpanContextFromContext(got)
+			assert.True(t, sc.IsValid())
+			want := trace.SpanContextFromContext(newSampledContext())
+			assert.Equal(t, want.TraceID().String(), sc.TraceID().String())
+			assert.Equal(t, want.SpanID().String(), sc.SpanID().String())
+		})
+	})
+}
+
+func Test_conditionalPropagator_Fields(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("内側 propagator のキー集合を委譲する", func(t *testing.T) {
+			t.Parallel()
+
+			prop := conditionalPropagator{inner: propagation.TraceContext{}}
+
+			assert.Equal(t, propagation.TraceContext{}.Fields(), prop.Fields())
 		})
 	})
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
@@ -182,6 +183,134 @@ func TestNewStubSpanContext(t *testing.T) {
 
 			spanCtx := trace.SpanFromContext(ctx)
 			assert.True(t, spanCtx.SpanContext().IsValid())
+		})
+	})
+}
+
+func TestNewObservedHTTPClientMetrics(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("計上を読み出せる HTTPClientMetrics を返す", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+			require.NotNil(t, obs.HTTPClientMetrics)
+
+			obs.RecordError(context.Background(), "acct", "transport")
+
+			assert.Equal(t, []string{"transport"}, obs.LabelValues(t, "httpclient.errors", "reason"))
+		})
+	})
+}
+
+func TestObservedHTTPClientMetrics_LabelValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("計上された label 組を全件返す", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+			ctx := context.Background()
+			obs.RecordError(ctx, "acct", "transport")
+			obs.RecordError(ctx, "acct", "canceled")
+
+			assert.ElementsMatch(t, []string{"transport", "canceled"}, obs.LabelValues(t, "httpclient.errors", "reason"))
+		})
+
+		t.Run("同一 label 組への複数回の記録は 1 件へ集約される", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+			ctx := context.Background()
+			obs.RecordError(ctx, "acct", "transport")
+			obs.RecordError(ctx, "acct", "transport")
+
+			assert.Equal(t, []string{"transport"}, obs.LabelValues(t, "httpclient.errors", "reason"))
+		})
+
+		t.Run("未計上の指標に対しては空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+
+			assert.Empty(t, obs.LabelValues(t, "httpclient.errors", "reason"))
+		})
+	})
+}
+
+func Test_counterLabelValues(t *testing.T) {
+	t.Parallel()
+
+	// collect は、obs への計上結果を ResourceMetrics として取り出す。
+	collect := func(t *testing.T, obs *ObservedHTTPClientMetrics) metricdata.ResourceMetrics {
+		t.Helper()
+		var rm metricdata.ResourceMetrics
+		require.NoError(t, obs.reader.Collect(context.Background(), &rm))
+		return rm
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した counter のデータポイントから label 値を全件返す", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+			ctx := context.Background()
+			obs.RecordError(ctx, "acct", "transport")
+			obs.RecordError(ctx, "acct", "canceled")
+
+			got, ok := counterLabelValues(collect(t, obs), "httpclient.errors", "reason")
+
+			require.True(t, ok)
+			assert.ElementsMatch(t, []string{"transport", "canceled"}, got)
+		})
+
+		t.Run("指標に存在しない label キーは値を返さない", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+			obs.RecordError(context.Background(), "acct", "transport")
+
+			got, ok := counterLabelValues(collect(t, obs), "httpclient.errors", "unknown_label")
+
+			require.True(t, ok)
+			assert.Empty(t, got)
+		})
+
+		t.Run("名前が一致しない指標は無視する", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+			obs.RecordError(context.Background(), "acct", "transport")
+
+			got, ok := counterLabelValues(collect(t, obs), "httpclient.requests", "status_class")
+
+			require.True(t, ok)
+			assert.Empty(t, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("int64 counter でない指標を指定した場合は ok=false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			obs := NewObservedHTTPClientMetrics(t)
+			// latency は Histogram のため counter として読み出せない（テストキットの誤用にあたる）。
+			obs.RecordLatencyMs(context.Background(), "acct", 12)
+
+			got, ok := counterLabelValues(collect(t, obs), "httpclient.request_latency_ms", "downstream")
+
+			assert.False(t, ok)
+			assert.Nil(t, got)
 		})
 	})
 }

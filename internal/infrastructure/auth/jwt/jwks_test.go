@@ -202,7 +202,7 @@ func TestRequiredDownstream(t *testing.T) {
 	})
 }
 
-func TestParseJWKSKeys(t *testing.T) {
+func Test_parseJWKSKeys(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -750,16 +750,99 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 
 func Test_jwksResolver_negativelyCached(t *testing.T) {
 	t.Parallel()
-	// negativelyCached の分岐（fetchedAt zero / TTL 切れ / negative 登録有無）は
-	// Test_jwksResolver_negativeCache が ResolveKey 経由で網羅している。命名規約充足のためのスキップ。
-	t.Skip("Test_jwksResolver_negativeCache が振る舞い経由で網羅している")
+
+	// newFetchedResolver は、fixedNow に取得済みの状態（キャッシュ鮮度内）の resolver と clock を返す。
+	newFetchedResolver := func(t *testing.T) (*jwksResolver, *fakeClock) {
+		t.Helper()
+		clk := newFakeClock(fixedNow)
+		r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+		r.fetchedAt = clk.Now()
+		return r, clk
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("鮮度内で不在確定済みの kid は true", func(t *testing.T) {
+			t.Parallel()
+
+			r, _ := newFetchedResolver(t)
+			r.negative = map[string]struct{}{"absent": {}}
+
+			assert.True(t, r.negativelyCached("absent"))
+		})
+
+		t.Run("鮮度内でも未記録の kid は false", func(t *testing.T) {
+			t.Parallel()
+
+			r, _ := newFetchedResolver(t)
+			r.negative = map[string]struct{}{"absent": {}}
+
+			assert.False(t, r.negativelyCached("other"))
+		})
+
+		t.Run("未取得（fetchedAt がゼロ）なら false", func(t *testing.T) {
+			t.Parallel()
+
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r.negative = map[string]struct{}{"absent": {}}
+
+			assert.False(t, r.negativelyCached("absent"))
+		})
+
+		t.Run("cacheTTL 経過後は記録済みでも false（退役後の再評価を許す）", func(t *testing.T) {
+			t.Parallel()
+
+			r, clk := newFetchedResolver(t)
+			r.negative = map[string]struct{}{"absent": {}}
+			clk.advance(time.Hour)
+
+			assert.False(t, r.negativelyCached("absent"))
+		})
+	})
 }
 
 func Test_jwksResolver_recordAbsent(t *testing.T) {
 	t.Parallel()
-	// recordAbsent（実取得世代でのみ記録・鮮度外は非記録）は Test_jwksResolver_negativeCache が
-	// ResolveKey 経由で網羅している。命名規約充足のためのスキップ。
-	t.Skip("Test_jwksResolver_negativeCache が振る舞い経由で網羅している")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("鮮度内なら不在確定として記録する", func(t *testing.T) {
+			t.Parallel()
+
+			clk := newFakeClock(fixedNow)
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r.fetchedAt = clk.Now()
+
+			r.recordAbsent("absent")
+
+			assert.Contains(t, r.negative, "absent")
+		})
+
+		t.Run("未取得（fetchedAt がゼロ）なら記録しない", func(t *testing.T) {
+			t.Parallel()
+
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+
+			r.recordAbsent("absent")
+
+			assert.Empty(t, r.negative)
+		})
+
+		t.Run("cacheTTL 経過後は記録しない（回転追加された kid を拒否し続けないため）", func(t *testing.T) {
+			t.Parallel()
+
+			clk := newFakeClock(fixedNow)
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r.fetchedAt = clk.Now()
+			clk.advance(time.Hour)
+
+			r.recordAbsent("absent")
+
+			assert.Empty(t, r.negative)
+		})
+	})
 }
 
 func Test_sameKeySet(t *testing.T) {
@@ -789,13 +872,6 @@ func Test_sameKeySet(t *testing.T) {
 			assert.False(t, sameKeySet(base, other))
 		})
 	})
-}
-
-func Test_parseJWKSKeys(t *testing.T) {
-	t.Parallel()
-	// parseJWKSKeys は TestParseJWKSKeys が全分岐（kid 有無 / 非 RSA / 不正 JSON / 鍵ゼロ）を
-	// 直接呼び出しで網羅済みのため、専用テストは重複となる。命名規約充足のためのスキップ。
-	t.Skip("parseJWKSKeys は TestParseJWKSKeys が直接呼び出しで網羅している")
 }
 
 func Test_newJWKSResolver(t *testing.T) {

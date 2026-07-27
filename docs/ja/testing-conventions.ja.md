@@ -14,7 +14,9 @@ canonical な参照テストは [`internal/domain/user/user_domain_test.go`](../
 
 ## 1. 構造
 
-- **1 つの関数 / メソッドにつき 1 つの `TestXxx` — 厳密に 1:1、束ねない。** getter / accessor も同様: `*_Accessors` / `*_Getters` に束ねず、accessor ごとに 1 つの `TestXxx` を用意する。この 1:1 対応は、分岐を持つ関数 / メソッドについて `internal/architest`（`TestUnitTestMappingCompleteness`）が機械的に強制する。真にユニットテストを持つべきでない対象（分岐が公開呼び出し元 / 統合 / DI グラフテストで被覆される）も、規約どおりの名前の `TestXxx` を宣言し `t.Skip("<被覆テスト>")` を呼ぶこと。allowlist は持たず、除外理由はコードに残す。
+- **1 つの関数 / メソッドにつき 1 つの `TestXxx` — 厳密に 1:1、束ねない。** getter / accessor も同様: `*_Accessors` / `*_Getters` に束ねず、accessor ごとに 1 つの `TestXxx` を用意する。この 1:1 対応は、分岐を持つ関数 / メソッドについて `internal/architest`（`TestUnitTestMappingCompleteness`）が機械的に強制する。
+- **`t.Skip` は、対象が検証不可能であるために到達できない場合のみ許容する** — 例: 失敗経路が `tb.Fatalf` を呼ぶテストヘルパーは、呼び出し側テストの終了を伴うため直接検証できない。skip の理由文には **なぜ検証不可能なのか** を書く。allowlist は持たず、その理由はコードに残す。
+- **「他のテストでカバー済み」は skip の理由にならない。** その skip は対象を別テストの実装に依存させる: カバー元が縮小・削除されても skip は green のままで、カバー元が本当にその分岐を通っているかを機械検証する手段も無く、後から増えた分岐は誰にも検証されないまま無言で通る — 1:1 対応が名前だけの殻になる。呼び出し元 / 統合 / DI グラフテストがたまたま通っていても、テスト可能な対象はテストする。他テストを名指しした skip 理由は `internal/architest`（`TestSkipReasonDoesNotNameCoveringTest`）が失敗させる。
 - すべての論理分岐を網羅する。
 - **最外の `t.Run` グループは literal な `正常系` / `異常系`** — `正常系_xxx` の prefix 形は使わない。その内側にさらに `t.Run` サブケースをネストする。
 
