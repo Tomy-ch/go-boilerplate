@@ -40,7 +40,7 @@ func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 }
 
 // validProductArgs は、テスト用に有効な商品 ID と属性一式を構築します。
-// 同型（*string）の Description / ImagePath は、対応の取り違えを検出できるよう異なる 2 値を返します。
+// Description と ImagePath は取り違えを検出できるよう異なる値にします。
 func validProductArgs(t *testing.T) (uuid.UUID, Attributes) {
 	t.Helper()
 	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
@@ -133,7 +133,7 @@ func TestNew(t *testing.T) {
 		t.Run("生成後に引数のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
 			t.Parallel()
 
-			// 並列サブテスト間でポインタを共有しないよう、この場で属性一式を作り直す。
+			// 他の並列サブテストとポインタを共有しないよう作り直す。
 			localID, localAttrs := validProductArgs(t)
 
 			actual, err := New(localID, localAttrs)

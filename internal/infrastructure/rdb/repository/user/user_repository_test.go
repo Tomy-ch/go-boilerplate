@@ -494,9 +494,7 @@ func Test_rowToUser(t *testing.T) {
 			updatedAt := time.Date(2026, time.February, 3, 4, 5, 6, 0, time.UTC)
 			deletedAt := time.Date(2026, time.March, 4, 5, 6, 7, 0, time.UTC)
 
-			// first_name / last_name / phone / city / street は同型（string）、created_at / updated_at /
-			// deleted_at も同型（time.Time）のため、列の対応づけを取り違えても型検査を通過する。
-			// 取り違えを検出できるよう、いずれも異なる値を与えて対応を固定する。
+			// 同型の氏名・住所・監査時刻は、取り違えを検出できるよう異なる値で対応を固定する。
 			got, err := rowToUser(gen.Users{
 				ID:           id,
 				FirstName:    "太郎",

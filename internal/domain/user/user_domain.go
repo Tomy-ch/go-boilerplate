@@ -31,10 +31,8 @@ type User struct {
 	deletedAt    *time.Time
 }
 
-// Profile は、ユーザーのプロフィール属性一式です。生成時と UpdateProfile での置き換え時で同じ集合を受け取ります。
-// FirstName・LastName・Phone・City・Street のように同型（string）の属性が並ぶため、位置引数では取り違えても
-// 型検査を通過します。フィールド名で与えることで位置由来の取り違えを防ぎます。
-// Building は未設定を nil で表します。Email と PostalCode は文字列で受け取り、値オブジェクトへの変換時に検証します。
+// Profile は、ユーザーのプロフィール属性一式です。New と UpdateProfile が同じ集合を受け取ります。
+// Building は未設定を nil で表し、Email と PostalCode は値オブジェクトへの変換時に検証します。
 type Profile struct {
 	FirstName    string
 	LastName     string
@@ -47,8 +45,7 @@ type Profile struct {
 	PostalCode   string
 }
 
-// Attributes は、ユーザーの属性一式です。プロフィールに監査時刻を加えた、生成時に必要な集合を表します。
-// CreatedAt と UpdatedAt も同型（time.Time）のため、Profile と同じ理由でフィールド名指定を要求します。
+// Attributes は、ユーザーの属性一式です。Profile に監査時刻を加えた、生成時に必要な集合を表します。
 // DeletedAt は未削除を nil で表します。
 type Attributes struct {
 	Profile

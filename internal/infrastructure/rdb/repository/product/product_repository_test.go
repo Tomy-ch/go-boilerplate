@@ -393,8 +393,7 @@ func Test_rowToProduct(t *testing.T) {
 			assert.Equal(t, "電子機器", got.Category().Name())
 			require.NotNil(t, got.PublishedAt())
 			assert.Equal(t, publishedAt, *got.PublishedAt())
-			// description / image_path は同型（*string）のため列の対応づけを取り違えても型検査を通過する。
-			// 取り違えを検出できるよう、異なる 2 値を与えて双方の対応を固定する。
+			// 同型の description / image_path は、取り違えを検出できるよう異なる値で対応を固定する。
 			require.NotNil(t, got.Description())
 			assert.Equal(t, "説明", *got.Description())
 			require.NotNil(t, got.ImagePath())
