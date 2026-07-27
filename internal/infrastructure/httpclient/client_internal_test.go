@@ -137,7 +137,104 @@ func Test_readBody(t *testing.T) {
 
 func Test_client_attempt(t *testing.T) {
 	t.Parallel()
-	t.Skip("client.attempt は client_test.go の Test_client_Do_Send（2xx/4xx/5xx/transport失敗/URL不正/ボディ上限超過）で httptest サーバ経由の統合テストとして網羅されている")
+
+	const ds Downstream = "acct"
+
+	newTestClient := func(t *testing.T) *client {
+		t.Helper()
+		clk := clocktestkit.NewStepClock(time.Now(), 0)
+		c, ok := New(
+			observability.NewNoopHTTPClientTransport(t),
+			clk,
+			clk,
+			NewRegistry(map[Downstream]Profile{ds: DefaultProfile()}),
+			observability.NewNoopHTTPClientMetrics(t),
+		).(*client)
+		require.True(t, ok)
+		return c
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("2xx はステータス・ヘッダ・ボディを詰めた Response を返す", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("X-Kind", "ok")
+				_, _ = w.Write([]byte("body"))
+			}))
+			t.Cleanup(srv.Close)
+
+			resp, err := newTestClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, srv.URL), DefaultProfile())
+
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.Equal(t, []string{"ok"}, resp.Header["X-Kind"])
+			assert.Equal(t, []byte("body"), resp.Body)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("URL が不正な場合は送信せず ErrInvalidArgument を返す", func(t *testing.T) {
+			t.Parallel()
+
+			resp, err := newTestClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, "://invalid"), DefaultProfile())
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Nil(t, resp)
+		})
+
+		t.Run("接続に失敗した場合は transport エラーとして正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+			url := srv.URL
+			srv.Close() // 接続先を落として transport 失敗を確定させる
+
+			resp, err := newTestClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, url), DefaultProfile())
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, resp)
+		})
+
+		t.Run("ボディが上限を超える場合は errResponseTooLarge をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("too long body"))
+			}))
+			t.Cleanup(srv.Close)
+
+			profile := DefaultProfile()
+			profile.MaxResponseBytes = 1
+
+			resp, err := newTestClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, srv.URL), profile)
+
+			require.ErrorIs(t, err, errResponseTooLarge)
+			assert.Nil(t, resp)
+		})
+
+		t.Run("エラーステータスは Response を保ったまま対応するアプリエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte("down"))
+			}))
+			t.Cleanup(srv.Close)
+
+			resp, err := newTestClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, srv.URL), DefaultProfile())
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotNil(t, resp) // 呼び出し元が status / body を見られるよう Response は返す
+			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			assert.Equal(t, []byte("down"), resp.Body)
+		})
+	})
 }
 
 // Test_client_doWithRetry は、retry ループの分岐網羅（backoff / deadline / breaker / budget / minimum-attempt）を
@@ -201,5 +298,82 @@ func Test_client_doWithRetry(t *testing.T) {
 
 func Test_client_recordOutcome(t *testing.T) {
 	t.Parallel()
-	t.Skip("client.recordOutcome は client_test.go の Test_client_Do_Send（http_/circuit_open/canceled/transport の各 error class）で網羅されている")
+
+	// newRecordingClient は、計上内容を読み出せる metrics を背にした client と読み出し関数を返す。
+	newRecordingClient := func(t *testing.T) (*client, func(metricName, labelKey string) []string) {
+		t.Helper()
+		metrics, labelValues := observability.NewObservedHTTPClientMetrics(t)
+		clk := clocktestkit.NewStepClock(time.Now(), 0)
+		c, ok := New(
+			observability.NewNoopHTTPClientTransport(t),
+			clk,
+			clk,
+			NewRegistry(nil),
+			metrics,
+		).(*client)
+		require.True(t, ok)
+		return c, labelValues
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("成功応答は status_class 付きで requests のみ計上する", func(t *testing.T) {
+			t.Parallel()
+
+			c, labelValues := newRecordingClient(t)
+
+			c.recordOutcome(context.Background(), "acct", &Response{StatusCode: http.StatusOK}, nil)
+
+			assert.Equal(t, []string{"2xx"}, labelValues("httpclient.requests", "status_class"))
+			assert.Empty(t, labelValues("httpclient.errors", "reason"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("応答ありのエラーは http_ + status_class を reason に計上する", func(t *testing.T) {
+			t.Parallel()
+
+			c, labelValues := newRecordingClient(t)
+
+			c.recordOutcome(
+				context.Background(), "acct", &Response{StatusCode: http.StatusServiceUnavailable}, apperror.ErrUnavailable)
+
+			assert.Equal(t, []string{"http_5xx"}, labelValues("httpclient.errors", "reason"))
+		})
+
+		t.Run("サーキット開放は circuit_open を reason に計上する", func(t *testing.T) {
+			t.Parallel()
+
+			c, labelValues := newRecordingClient(t)
+
+			c.recordOutcome(context.Background(), "acct", nil, errCircuitOpen)
+
+			assert.Equal(t, []string{"circuit_open"}, labelValues("httpclient.errors", "reason"))
+			// 応答が無いので requests は計上しない。
+			assert.Empty(t, labelValues("httpclient.requests", "status_class"))
+		})
+
+		t.Run("キャンセルは canceled を reason に計上する", func(t *testing.T) {
+			t.Parallel()
+
+			c, labelValues := newRecordingClient(t)
+
+			c.recordOutcome(context.Background(), "acct", nil, apperror.ErrCanceled)
+
+			assert.Equal(t, []string{"canceled"}, labelValues("httpclient.errors", "reason"))
+		})
+
+		t.Run("分類できないエラーは transport を reason に計上する", func(t *testing.T) {
+			t.Parallel()
+
+			c, labelValues := newRecordingClient(t)
+
+			c.recordOutcome(context.Background(), "acct", nil, xerrors.New("dial failed"))
+
+			assert.Equal(t, []string{"transport"}, labelValues("httpclient.errors", "reason"))
+		})
+	})
 }
