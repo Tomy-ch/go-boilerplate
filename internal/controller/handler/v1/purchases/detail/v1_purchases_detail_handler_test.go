@@ -2,6 +2,7 @@ package detail
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -154,7 +156,8 @@ func Test_toPurchaseGetDetailResponse(t *testing.T) {
 			t.Parallel()
 
 			view := detailViewFixture(t)
-			r := toPurchaseGetDetailResponse(view)
+			r, err := toPurchaseGetDetailResponse(view)
+			require.NoError(t, err)
 			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
@@ -183,10 +186,24 @@ func Test_toPurchaseGetDetailResponse(t *testing.T) {
 			view.PaidAt = nil
 			view.CanceledAt = &canceledAt
 
-			r := toPurchaseGetDetailResponse(view)
+			r, err := toPurchaseGetDetailResponse(view)
+			require.NoError(t, err)
 			assert.Nil(t, r.PaidAt)
 			require.NotNil(t, r.CanceledAt)
 			assert.Equal(t, canceledAt, *r.CanceledAt)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("数量がint32範囲を超える場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			view := detailViewFixture(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			_, err := toPurchaseGetDetailResponse(view)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 	})
 }

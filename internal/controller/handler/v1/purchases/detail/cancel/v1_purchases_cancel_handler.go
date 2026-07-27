@@ -6,6 +6,7 @@ package cancel
 
 import (
 	"context"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
@@ -13,6 +14,8 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen"
 	"go-boilerplate/internal/observability"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -60,16 +63,25 @@ func (s *server) PatchPurchasesCancel(
 		return nil, err
 	}
 
-	return gen.PatchPurchasesCancel200JSONResponse(toCancelResponse(view)), nil
+	res, err := toCancelResponse(view)
+	if err != nil {
+		return nil, err
+	}
+	return gen.PatchPurchasesCancel200JSONResponse(res), nil
 }
 
 // toCancelResponse は、キャンセル後の購入 DTO を HTTP レスポンスへ変換します。
-func toCancelResponse(v purchaseuc.CancelPurchaseView) gen.PurchaseCancelResponse {
+// 数量が int32 に収まらない場合はエラーを返します。
+func toCancelResponse(v purchaseuc.CancelPurchaseView) (gen.PurchaseCancelResponse, error) {
 	details := make([]gen.PurchaseDetailResponse, len(v.Details))
 	for i, d := range v.Details {
+		quantity, err := safecast.IntToInt32(d.Quantity)
+		if err != nil {
+			return gen.PurchaseCancelResponse{}, xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  conv.Int32(d.Quantity),
+			Quantity:  quantity,
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -88,6 +100,6 @@ func toCancelResponse(v purchaseuc.CancelPurchaseView) gen.PurchaseCancelRespons
 		TotalAmount:    int64(v.TotalAmount),
 		Details:        details,
 		OrderedAt:      v.OrderedAt,
-		CanceledAt:     conv.TimeOrZero(v.CanceledAt),
-	}
+		CanceledAt:     ptr.Deref(v.CanceledAt, time.Time{}),
+	}, nil
 }

@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-Boundary helpers for the controller layer's request/response type conversions — OpenAPI-generated types ↔ domain types, plus usecase DTO → response type helpers. Used **only** by the controller layer.
+Boundary helpers that convert OpenAPI-generated types into domain types, used **only** by the controller layer.
 
 ## Why
 

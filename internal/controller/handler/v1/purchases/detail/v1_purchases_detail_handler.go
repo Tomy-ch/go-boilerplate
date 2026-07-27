@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/gen"
 	"go-boilerplate/internal/observability"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -53,17 +54,26 @@ func (s *server) GetPurchasesDetail(
 		return nil, err
 	}
 
-	return gen.GetPurchasesDetail200JSONResponse(toPurchaseGetDetailResponse(view)), nil
+	res, err := toPurchaseGetDetailResponse(view)
+	if err != nil {
+		return nil, err
+	}
+	return gen.GetPurchasesDetail200JSONResponse(res), nil
 }
 
 // toPurchaseGetDetailResponse は、購入詳細の取得 DTO を HTTP レスポンスへ変換します。
-func toPurchaseGetDetailResponse(v purchaseuc.PurchaseGetDetailView) gen.PurchaseGetDetailResponse {
+// 数量が int32 に収まらない場合はエラーを返します。
+func toPurchaseGetDetailResponse(v purchaseuc.PurchaseGetDetailView) (gen.PurchaseGetDetailResponse, error) {
 	details := make([]gen.PurchaseDetailItemResponse, len(v.Details))
 	for i, d := range v.Details {
+		quantity, err := safecast.IntToInt32(d.Quantity)
+		if err != nil {
+			return gen.PurchaseGetDetailResponse{}, xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
 		details[i] = gen.PurchaseDetailItemResponse{
 			ProductId:   d.ProductID.ToPrimitive(),
 			ProductName: d.ProductName,
-			Quantity:    conv.Int32(d.Quantity),
+			Quantity:    quantity,
 			UnitPrice:   d.UnitPrice.String(),
 		}
 	}
@@ -84,5 +94,5 @@ func toPurchaseGetDetailResponse(v purchaseuc.PurchaseGetDetailView) gen.Purchas
 		OrderedAt:      v.OrderedAt,
 		PaidAt:         v.PaidAt,
 		CanceledAt:     v.CanceledAt,
-	}
+	}, nil
 }

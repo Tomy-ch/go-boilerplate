@@ -6,6 +6,7 @@ package pay
 
 import (
 	"context"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
@@ -13,6 +14,8 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen"
 	"go-boilerplate/internal/observability"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -60,16 +63,25 @@ func (s *server) PatchPurchasesPay(
 		return nil, err
 	}
 
-	return gen.PatchPurchasesPay200JSONResponse(toPayResponse(view)), nil
+	res, err := toPayResponse(view)
+	if err != nil {
+		return nil, err
+	}
+	return gen.PatchPurchasesPay200JSONResponse(res), nil
 }
 
 // toPayResponse は、支払い後の購入 DTO を HTTP レスポンスへ変換します。
-func toPayResponse(v purchaseuc.PayPurchaseView) gen.PurchasePayResponse {
+// 数量が int32 に収まらない場合はエラーを返します。
+func toPayResponse(v purchaseuc.PayPurchaseView) (gen.PurchasePayResponse, error) {
 	details := make([]gen.PurchaseDetailResponse, len(v.Details))
 	for i, d := range v.Details {
+		quantity, err := safecast.IntToInt32(d.Quantity)
+		if err != nil {
+			return gen.PurchasePayResponse{}, xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  conv.Int32(d.Quantity),
+			Quantity:  quantity,
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -88,6 +100,6 @@ func toPayResponse(v purchaseuc.PayPurchaseView) gen.PurchasePayResponse {
 		TotalAmount:    int64(v.TotalAmount),
 		Details:        details,
 		OrderedAt:      v.OrderedAt,
-		PaidAt:         conv.TimeOrZero(v.PaidAt),
-	}
+		PaidAt:         ptr.Deref(v.PaidAt, time.Time{}),
+	}, nil
 }

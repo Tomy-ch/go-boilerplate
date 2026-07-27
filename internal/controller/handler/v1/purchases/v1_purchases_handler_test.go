@@ -2,6 +2,7 @@ package purchases
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
@@ -223,7 +225,8 @@ func Test_toPurchaseResponse(t *testing.T) {
 			t.Parallel()
 
 			view := newTestPurchaseView(t)
-			actual := toPurchaseResponse(view)
+			actual, err := toPurchaseResponse(view)
+			require.NoError(t, err)
 			assert.Equal(t, view.ID.ToPrimitive(), actual.Id)
 			assert.Equal(t, view.Code, actual.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), actual.UserId)
@@ -250,12 +253,26 @@ func Test_toPurchaseResponse(t *testing.T) {
 				Rate:     decimaltestkit.MustParse(t, "150.5"),
 				RateDate: "2026-07-21",
 			}
-			actual := toPurchaseResponse(view)
+			actual, err := toPurchaseResponse(view)
+			require.NoError(t, err)
 			require.NotNil(t, actual.ReferenceAmount)
 			assert.Equal(t, "JPY", actual.ReferenceAmount.Currency)
 			assert.Equal(t, int64(26475), actual.ReferenceAmount.Amount)
 			assert.Equal(t, "150.5", actual.ReferenceAmount.Rate)
 			assert.Equal(t, "2026-07-21", actual.ReferenceAmount.RateDate)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("数量がint32範囲を超える場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			view := newTestPurchaseView(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			_, err := toPurchaseResponse(view)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 	})
 }

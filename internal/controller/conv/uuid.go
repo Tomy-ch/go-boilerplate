@@ -1,5 +1,5 @@
-// Package conv は、controller 層のリクエスト/レスポンス双方の境界型変換ヘルパーを提供します。
-// OpenAPI 生成型 ↔ ドメイン型の変換や、usecase の DTO をレスポンス型へ倒す変換をここへ集約し、
+// Package conv は、controller 層で OpenAPI 生成型をドメイン型へ変換する境界ヘルパーを提供します。
+// OpenAPI 生成型を import するのは controller 層のみであり、本パッケージ経由に集約することで
 // 変換の用途を境界に限定します（usecase / domain からは利用できません）。
 package conv
 
