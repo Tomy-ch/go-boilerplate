@@ -185,3 +185,65 @@ func TestNewStubSpanContext(t *testing.T) {
 		})
 	})
 }
+
+func TestNewObservedHTTPClientMetrics(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("計上した label 値を読み出せる metrics を返す", func(t *testing.T) {
+			t.Parallel()
+
+			hm, labelValues := NewObservedHTTPClientMetrics(t)
+			hm.RecordError(context.Background(), "acct", "transport")
+
+			assert.Equal(t, []string{"transport"}, labelValues("httpclient.errors", "reason"))
+		})
+
+		t.Run("未計上の指標に対しては空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, labelValues := NewObservedHTTPClientMetrics(t)
+
+			assert.Empty(t, labelValues("httpclient.errors", "reason"))
+		})
+	})
+}
+
+func Test_labelValuesOf(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した指標のデータポイントから label 値を全件返す", func(t *testing.T) {
+			t.Parallel()
+
+			hm, labelValues := NewObservedHTTPClientMetrics(t)
+			ctx := context.Background()
+			hm.RecordError(ctx, "acct", "transport")
+			hm.RecordError(ctx, "acct", "canceled")
+
+			assert.ElementsMatch(t, []string{"transport", "canceled"}, labelValues("httpclient.errors", "reason"))
+		})
+
+		t.Run("指標に存在しない label キーは値を返さない", func(t *testing.T) {
+			t.Parallel()
+
+			hm, labelValues := NewObservedHTTPClientMetrics(t)
+			hm.RecordError(context.Background(), "acct", "transport")
+
+			assert.Empty(t, labelValues("httpclient.errors", "unknown_label"))
+		})
+
+		t.Run("名前が一致しない指標は無視する", func(t *testing.T) {
+			t.Parallel()
+
+			hm, labelValues := NewObservedHTTPClientMetrics(t)
+			hm.RecordError(context.Background(), "acct", "transport")
+
+			assert.Empty(t, labelValues("httpclient.requests", "status_class"))
+		})
+	})
+}

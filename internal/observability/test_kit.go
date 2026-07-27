@@ -4,7 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"go.opentelemetry.io/otel/attribute"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
@@ -73,6 +76,52 @@ func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
 		t.Fatalf("failed to build noop http client metrics: %v", err)
 	}
 	return hm
+}
+
+// NewObservedHTTPClientMetrics は、計上内容を読み出せる HTTPClientMetrics と読み出し関数を返します。
+// 読み出し関数は、metricName の counter に記録された labelKey の値を計上順に依らず全件返します
+// （未計上なら空）。計上先の label を検証したい呼び出し元テストで使用します。
+func NewObservedHTTPClientMetrics(t *testing.T) (*HTTPClientMetrics, func(metricName, labelKey string) []string) {
+	t.Helper()
+
+	reader := sdkmetric.NewManualReader()
+	hm, err := NewHTTPClientMetrics(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	if err != nil {
+		t.Fatalf("failed to build observed http client metrics: %v", err)
+	}
+
+	return hm, func(metricName, labelKey string) []string {
+		t.Helper()
+		var rm metricdata.ResourceMetrics
+		if cerr := reader.Collect(context.Background(), &rm); cerr != nil {
+			t.Fatalf("failed to collect http client metrics: %v", cerr)
+		}
+		return labelValuesOf(t, rm, metricName, labelKey)
+	}
+}
+
+// labelValuesOf は、rm の中から metricName の counter を探し、その各データポイントの labelKey の値を返します。
+func labelValuesOf(t *testing.T, rm metricdata.ResourceMetrics, metricName, labelKey string) []string {
+	t.Helper()
+
+	var values []string
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != metricName {
+				continue
+			}
+			sum, ok := m.Data.(metricdata.Sum[int64])
+			if !ok {
+				t.Fatalf("metric %s is not an int64 sum", metricName)
+			}
+			for _, dp := range sum.DataPoints {
+				if v, found := dp.Attributes.Value(attribute.Key(labelKey)); found {
+					values = append(values, v.String())
+				}
+			}
+		}
+	}
+	return values
 }
 
 // NewNoopOutboxMetrics は、テスト用に no-op の MeterProvider から OutboxMetrics を生成します。
