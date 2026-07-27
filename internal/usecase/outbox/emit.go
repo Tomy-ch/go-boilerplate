@@ -6,7 +6,7 @@ package outbox
 import (
 	"context"
 	"encoding/json"
-	"maps"
+	"strings"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
@@ -14,6 +14,16 @@ import (
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
+
+// sensitiveHeaderDenylist は、外部エンドポイントへ送出してはならない明白な機微ヘッダ名（小文字正規化済み）です。
+// 呼び出し側契約（EmitInput.Headers の doc）に加えた defense-in-depth であり、egress 起点である
+// この emit ユースケースで、誤って混入した既知の機微ヘッダを保守的に落とします。
+var sensitiveHeaderDenylist = map[string]struct{}{
+	"authorization":       {},
+	"proxy-authorization": {},
+	"cookie":              {},
+	"set-cookie":          {},
+}
 
 // EmitInput は、ドメインイベントを outbox へ emit する入力です。
 type EmitInput struct {
@@ -53,7 +63,12 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 	defer endSpan()
 
 	headers := make(map[string]string, len(in.Headers)+1)
-	maps.Copy(headers, in.Headers)
+	for k, v := range in.Headers {
+		if _, denied := sensitiveHeaderDenylist[strings.ToLower(k)]; denied {
+			continue
+		}
+		headers[k] = v
+	}
 	// emit span の trace context を traceparent として載せる（消費側が同一 trace に繋がる）。
 	observability.InjectTraceContextToCarrier(ctx, headers)
 

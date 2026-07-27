@@ -123,21 +123,25 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		}
 
 		resp, err = c.attempt(ctx, req, profile)
-		serverFault := isRetryableOutcome(resp, err)
-		br.record(!serverFault, c.clk.Now(), generation)
+		// retryable は「再試行対象の結果か」を表す。breaker への失敗計上（!retryable = 成功扱い）と
+		// retry 継続判定の双方に用いる。429 や応答未取得の transport 失敗も含むため server 障害とは限らない。
+		retryable := isRetryableOutcome(resp, err)
+		br.record(!retryable, c.clk.Now(), generation)
 
-		if !retrySafe || !serverFault {
+		if !retrySafe || !retryable {
 			return resp, err
 		}
 		if attempt == maxAttempts {
 			return resp, err
 		}
-		if !c.budget.tryConsume(req.downstream) {
-			return resp, err
-		}
 
+		// budget は「retry を実際に行うとき」だけ消費する。副作用のない overall デッドライン判定を
+		// 先に済ませ、待機で期限超過して retry しない場合にトークンを無駄消費しないようにする。
 		wait := retryWait(attempt, profile, resp, c.clk.Now())
 		if !c.canRetryWithin(overallDeadline, wait) {
+			return resp, err
+		}
+		if !c.budget.tryConsume(req.downstream) {
 			return resp, err
 		}
 

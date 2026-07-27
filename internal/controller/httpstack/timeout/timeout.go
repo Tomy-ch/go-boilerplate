@@ -22,7 +22,9 @@ func Middleware(timeout time.Duration) echo.MiddlewareFunc {
 		Timeout: timeout,
 		ErrorHandler: func(err error, _ echo.Context) error {
 			if xerrors.Is(err, context.DeadlineExceeded) {
-				return xerrors.Wrap(apperror.ErrUnavailable, "request deadline exceeded")
+				// 原因 err（どの下流操作が期限超過したかの文脈・スタック）を保持したまま
+				// ErrUnavailable を結合し、503 マッピングとログ上の原因追跡を両立する。
+				return xerrors.Join(apperror.ErrUnavailable, err)
 			}
 			return err
 		},
