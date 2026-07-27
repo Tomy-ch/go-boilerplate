@@ -174,21 +174,21 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserVie
 		}
 		pftName = pftDomain.Name()
 
-		userEntity, err = user.New(
-			dto.UserID,
-			dto.FirstName,
-			dto.LastName,
-			dto.Email,
-			dto.Phone,
-			pftDomain.ID(),
-			dto.City,
-			dto.Street,
-			dto.Building,
-			dto.PostalCode,
-			now,
-			now,
-			nil,
-		)
+		userEntity, err = user.New(dto.UserID, user.Attributes{
+			Profile: user.Profile{
+				FirstName:    dto.FirstName,
+				LastName:     dto.LastName,
+				Email:        dto.Email,
+				Phone:        dto.Phone,
+				PrefectureID: pftDomain.ID(),
+				City:         dto.City,
+				Street:       dto.Street,
+				Building:     dto.Building,
+				PostalCode:   dto.PostalCode,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
 		if err != nil {
 			return err
 		}
@@ -312,18 +312,17 @@ func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 		}
 		pftName = pftDomain.Name()
 
-		if err = userEntity.UpdateProfile(
-			dto.FirstName,
-			dto.LastName,
-			dto.Email,
-			dto.Phone,
-			pftDomain.ID(),
-			dto.City,
-			dto.Street,
-			dto.Building,
-			dto.PostalCode,
-			now,
-		); err != nil {
+		if err = userEntity.UpdateProfile(user.Profile{
+			FirstName:    dto.FirstName,
+			LastName:     dto.LastName,
+			Email:        dto.Email,
+			Phone:        dto.Phone,
+			PrefectureID: pftDomain.ID(),
+			City:         dto.City,
+			Street:       dto.Street,
+			Building:     dto.Building,
+			PostalCode:   dto.PostalCode,
+		}, now); err != nil {
 			return err
 		}
 
@@ -371,18 +370,17 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, 
 			building = dto.Building
 		}
 
-		if err = userEntity.UpdateProfile(
-			ptr.Deref(dto.FirstName, userEntity.FirstName()),
-			ptr.Deref(dto.LastName, userEntity.LastName()),
-			ptr.Deref(dto.Email, userEntity.Email()),
-			ptr.Deref(dto.Phone, userEntity.Phone()),
-			prefectureID,
-			ptr.Deref(dto.City, userEntity.City()),
-			ptr.Deref(dto.Street, userEntity.Street()),
-			building,
-			ptr.Deref(dto.PostalCode, userEntity.PostalCode()),
-			now,
-		); err != nil {
+		if err = userEntity.UpdateProfile(user.Profile{
+			FirstName:    ptr.Deref(dto.FirstName, userEntity.FirstName()),
+			LastName:     ptr.Deref(dto.LastName, userEntity.LastName()),
+			Email:        ptr.Deref(dto.Email, userEntity.Email()),
+			Phone:        ptr.Deref(dto.Phone, userEntity.Phone()),
+			PrefectureID: prefectureID,
+			City:         ptr.Deref(dto.City, userEntity.City()),
+			Street:       ptr.Deref(dto.Street, userEntity.Street()),
+			Building:     building,
+			PostalCode:   ptr.Deref(dto.PostalCode, userEntity.PostalCode()),
+		}, now); err != nil {
 			return err
 		}
 		return u.userRepo.Update(ctx, userEntity)
