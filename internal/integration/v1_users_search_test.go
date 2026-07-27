@@ -12,7 +12,7 @@ import (
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_search "go-boilerplate/internal/usecase/user/search/mock"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/mock/gomock"
 )
 

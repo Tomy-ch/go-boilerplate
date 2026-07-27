@@ -62,21 +62,20 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 
-	userDomain, err := user.New(
-		uuid.NewTestFromSalt(t, "user_domain"),
-		"first_name",
-		"last_name",
-		"user@example.com",
-		"phone_number",
-		prefectureID,
-		"city_name",
-		"town_address",
-		nil,
-		"150-0001",
-		now,
-		now,
-		nil,
-	)
+	userDomain, err := user.New(uuid.NewTestFromSalt(t, "user_domain"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
 	require.NoError(t, err)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -227,21 +226,20 @@ func Test_usecase_CreateUser(t *testing.T) {
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 
-	userDomain, err := user.New(
-		uuid.NewTestFromSalt(t, "user_domain"),
-		"first_name",
-		"last_name",
-		"user@example.com",
-		"phone_number",
-		prefectureID,
-		"city_name",
-		"town_address",
-		nil,
-		"150-0001",
-		now,
-		now,
-		nil,
-	)
+	userDomain, err := user.New(uuid.NewTestFromSalt(t, "user_domain"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
 	require.NoError(t, err)
 
 	prefectureName := "prefecture_name"
@@ -467,11 +465,20 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
-	userDomain, err := user.New(
-		uuid.NewTestFromSalt(t, "user_domain"),
-		"first_name", "last_name", "user@example.com", "phone_number",
-		prefectureID, "city_name", "town_address", nil, "150-0001", now, now, nil,
-	)
+	userDomain, err := user.New(uuid.NewTestFromSalt(t, "user_domain"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
 	require.NoError(t, err)
 	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
 	require.NoError(t, err)
@@ -621,11 +628,20 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 
 	// newFeedUser は、作成日時違いのフィードユーザーを生成するヘルパーです。
 	newFeedUser := func(salt string, createdAt time.Time) *user.User {
-		u, uErr := user.New(
-			uuid.NewTestFromSalt(t, salt),
-			"first_name", "last_name", "user@example.com", "phone_number",
-			prefectureID, "city_name", "town_address", nil, "150-0001", createdAt, createdAt, nil,
-		)
+		u, uErr := user.New(uuid.NewTestFromSalt(t, salt), user.Attributes{
+			Profile: user.Profile{
+				FirstName:    "first_name",
+				LastName:     "last_name",
+				Email:        "user@example.com",
+				Phone:        "phone_number",
+				PrefectureID: prefectureID,
+				City:         "city_name",
+				Street:       "town_address",
+				PostalCode:   "150-0001",
+			},
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+		})
 		require.NoError(t, uErr)
 		return u
 	}
@@ -954,11 +970,20 @@ func Test_usecase_toUserViews(t *testing.T) {
 
 	prefectureID := uuid.NewTestFromSalt(t, "to_user_views_prefecture")
 
-	userDomain, err := user.New(
-		uuid.NewTestFromSalt(t, "to_user_views_user"),
-		"first_name", "last_name", "user@example.com", "phone_number",
-		prefectureID, "city_name", "town_address", nil, "150-0001", now, now, nil,
-	)
+	userDomain, err := user.New(uuid.NewTestFromSalt(t, "to_user_views_user"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
 	require.NoError(t, err)
 
 	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)

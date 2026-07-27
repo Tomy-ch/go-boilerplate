@@ -34,11 +34,11 @@ func Test_validateDatabaseName(t *testing.T) {
 
 		t.Run("空文字は不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateDatabaseName(""))
+			require.ErrorIs(t, validateDatabaseName(""), errInvalidDatabaseName)
 		})
 		t.Run("想定外のDB名は不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateDatabaseName("production"))
+			require.ErrorIs(t, validateDatabaseName("production"), errInvalidDatabaseName)
 		})
 	})
 }

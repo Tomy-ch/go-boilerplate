@@ -8,7 +8,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +24,7 @@ func TestMiddleware(t *testing.T) {
 			secCfg := config.NewSecurityConfig(config.MockConfigForTest(t))
 			e := echo.New()
 			e.Use(Middleware(secCfg))
-			e.GET("/", func(c echo.Context) error { return c.NoContent(http.StatusOK) })
+			e.GET("/", func(c *echo.Context) error { return c.NoContent(http.StatusOK) })
 
 			origin := secCfg.AllowedOrigins()[0]
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodOptions, "/", nil)
@@ -47,7 +47,7 @@ func TestMiddleware(t *testing.T) {
 			secCfg := config.NewSecurityConfig(config.MockConfigForTest(t))
 			e := echo.New()
 			e.Use(Middleware(secCfg))
-			e.GET("/", func(c echo.Context) error { return c.NoContent(http.StatusOK) })
+			e.GET("/", func(c *echo.Context) error { return c.NoContent(http.StatusOK) })
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodOptions, "/", nil)
 			req.Header.Set(echo.HeaderOrigin, "https://evil.example.com")
@@ -72,7 +72,11 @@ func Test_buildCORSConfig(t *testing.T) {
 			origins := []string{"http://localhost:3000", "http://localhost:4000"}
 			cfg := buildCORSConfig(origins)
 			assert.Equal(t, origins, cfg.AllowOrigins)
-			assert.Equal(t, []string{echo.HEAD, echo.GET, echo.POST, echo.PUT, echo.PATCH, echo.DELETE, echo.OPTIONS}, cfg.AllowMethods)
+			assert.Equal(
+				t,
+				[]string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
+				cfg.AllowMethods,
+			)
 			assert.Equal(t, []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization}, cfg.AllowHeaders)
 			assert.Equal(t, []string{echo.HeaderContentDisposition, echo.HeaderLocation, echo.HeaderXRequestID}, cfg.ExposeHeaders)
 			assert.False(t, cfg.AllowCredentials)

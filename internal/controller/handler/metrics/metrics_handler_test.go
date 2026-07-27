@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/httpstack/basicauth"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,8 +43,8 @@ func TestBindHandler(t *testing.T) {
 			e := echo.New()
 			BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
 
-			testassert.AssertEchoRouterPath(t, "/metrics", e.Routes())
-			testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
+			testassert.AssertEchoRouterPath(t, "/metrics", e.Router().Routes())
+			testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Router().Routes())
 		})
 
 		t.Run("正しい認証情報で200を返す", func(t *testing.T) {

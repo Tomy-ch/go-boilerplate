@@ -35,7 +35,7 @@ func TestNewLogFields(t *testing.T) {
 	})
 }
 
-func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
+func Test_logFieldBuilder_BuildHTTPRequestFields(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
@@ -117,7 +117,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 	})
 }
 
-func TestLogFields_BuildResponseFields(t *testing.T) {
+func Test_logFieldBuilder_BuildHTTPResponseFields(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
@@ -165,11 +165,6 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 }
 
 func Test_logFieldBuilder_BuildSQLEndFields(t *testing.T) {
-	t.Parallel()
-	t.Skip("logFieldBuilder.BuildSQLEndFields は TestLogFields_BuildSQLEndFields が全分岐を検証済み")
-}
-
-func TestLogFields_BuildSQLEndFields(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
@@ -330,7 +325,7 @@ func fieldKeys(fs []*Field) []string {
 	return keys
 }
 
-func Test_buildCompactQuery(t *testing.T) {
+func Test_logFieldBuilder_buildCompactQuery(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
@@ -354,16 +349,6 @@ func Test_buildCompactQuery(t *testing.T) {
 			assert.Empty(t, impl.buildCompactQuery(""))
 		})
 	})
-}
-
-func Test_logFieldBuilder_BuildHTTPRequestFields(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func Test_logFieldBuilder_BuildHTTPResponseFields(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
 }
 
 func Test_logFieldBuilder_buildEventHeader(t *testing.T) {

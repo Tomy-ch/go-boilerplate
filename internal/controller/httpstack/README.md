@@ -18,12 +18,6 @@ Each sub-package is split into small responsibilities and combined during applic
 
 ## Sub-package List
 
-### Server Configuration
-
-|Package|Function|Description|
-|---|---|---|
-|`debugmode`|`New`|Enable debug mode in development only|
-
 ### Middleware
 
 |Package|Function|Description|
@@ -86,7 +80,6 @@ Do not register middleware directly within `httpstack`. This can cause dependenc
 
 |Feature|Development|Production|
 |---|---|---|
-|Debug mode|Enabled|Disabled|
 |IP extraction|Direct|X-Forwarded-For + CIDR|
 |Recovery stack|10KB (full)|4KB (limited)|
 

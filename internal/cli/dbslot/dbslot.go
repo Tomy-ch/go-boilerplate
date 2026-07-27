@@ -13,6 +13,13 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+var (
+	// errNoFreeSlot は、空きスロットが無くリースできなかった場合のエラーです。
+	errNoFreeSlot = xerrors.New("no free slot; release one or raise GOBP_DB_POOL_MAX")
+	// errDeployEnvRefused は、deploy 系 env で DB スロット操作を拒否した場合のエラーです。
+	errDeployEnvRefused = xerrors.New("db-slot refuses to run outside a local/ci/test environment")
+)
+
 // Config は、Pool の振る舞いを決めるパラメータです。
 type Config struct {
 	Root          string // 自 worktree の絶対パス（.gobp-db-slot の出力先・owner）
@@ -86,8 +93,7 @@ func (p *Pool) Acquire(ctx context.Context) error {
 		}
 		return p.finishAcquire(ctx, slot, "acquired")
 	}
-	return xerrors.New(fmt.Sprintf(
-		"no free slot (all %d in use). release one or raise GOBP_DB_POOL_MAX", p.reg.MaxSlots()))
+	return xerrors.Wrap(errNoFreeSlot, fmt.Sprintf("all %d slots in use", p.reg.MaxSlots()))
 }
 
 // Release は、serve コンテナを停止し、リースと .gobp-db-slot を解放します（DB は warm 保持）。
@@ -155,8 +161,7 @@ func (p *Pool) slotFilePath() string { return filepath.Join(p.cfg.Root, ".gobp-d
 // ツールのため。APP_ENV 未設定はローカル開発とみなし許可）。
 func (p *Pool) ensureLocalEnv() error {
 	if p.cfg.APPEnv != "" && !config.IsLocalClassEnv(p.cfg.APPEnv) {
-		return xerrors.New(fmt.Sprintf(
-			"db-slot refuses to run: APP_ENV=%q is not a local/ci/test environment", p.cfg.APPEnv))
+		return xerrors.Wrap(errDeployEnvRefused, fmt.Sprintf("APP_ENV=%q", p.cfg.APPEnv))
 	}
 	return nil
 }

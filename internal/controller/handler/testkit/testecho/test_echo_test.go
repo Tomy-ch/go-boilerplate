@@ -9,14 +9,14 @@ import (
 
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func newEchoWithUserRoute() *echo.Echo {
 	e := echo.New()
-	e.GET("/users/:id", func(c echo.Context) error {
+	e.GET("/users/:id", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "user:"+c.Param("id"))
 	})
 	return e
@@ -102,7 +102,7 @@ func TestEchoTestClient_Build(t *testing.T) {
 
 			_, _, c := client.Build()
 			assert.Equal(t, "/health", c.Path())
-			assert.Empty(t, c.ParamNames())
+			assert.Empty(t, c.PathValues())
 		})
 	})
 }
@@ -214,7 +214,7 @@ func TestEchoTestClient_WithAppErrorHandler(t *testing.T) {
 		t.Run("エラーを返すハンドラがアプリ標準のJSONエラー応答になる", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
-			e.GET("/boom", func(_ echo.Context) error {
+			e.GET("/boom", func(_ *echo.Context) error {
 				return xerrors.New("boom")
 			})
 

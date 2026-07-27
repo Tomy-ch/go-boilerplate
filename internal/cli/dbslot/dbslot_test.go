@@ -157,9 +157,7 @@ func TestPool_Acquire(t *testing.T) {
 			// deploy 系は EnsureDir/UpSharedDB より前に弾かれるため mock 呼び出しは発生しない。
 			pool, _, _ := newMockPool(t, t.TempDir(), config.EnvProduction)
 
-			err := pool.Acquire(context.Background())
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "refuses to run")
+			require.ErrorIs(t, pool.Acquire(context.Background()), errDeployEnvRefused)
 		})
 
 		t.Run("共有 DB 起動に失敗するとエラーを返す", func(t *testing.T) {
@@ -199,9 +197,7 @@ func TestPool_Acquire(t *testing.T) {
 			comp.EXPECT().UpSharedDB(gomock.Any(), gomock.Any()).Return(nil)
 			fillSlots(t, pool.reg.dir, pool.reg.MaxSlots())
 
-			err := pool.Acquire(context.Background())
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "no free slot")
+			require.ErrorIs(t, pool.Acquire(context.Background()), errNoFreeSlot)
 		})
 	})
 }

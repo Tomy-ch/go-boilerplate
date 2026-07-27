@@ -94,7 +94,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 - 生成 mock を駆動するサブテストは mock controller 経由で assert している扱い: `EXPECT()`（メソッドが呼ばれないことを示す意図的な *no-EXPECT* や `.Times(0)` を含む）がアサーション。`assert.*` / `require.*` 行が無いというだけで「アサーション無し」と指摘しない。
 - **table-driven `for` ループは違反**（`scaffold-test/SKILL.md` Rule 5）。`(input, expected)` 構造体スライスを `for _, tc := range cases { t.Run(...) }` で回すブロックは、可読性や `dupl` 回避を理由にしても指摘する。正しい形はケース毎の逐次 `t.Run` sibling（重複は許容）。長いゲッター/境界リストでも同様。
 - **subject 関数 ↔ `TestXxx` の 1:1 対応。** ここでの *subject* はペアになる本番ソース — バイナリにビルドされる非テスト・非生成の `.go` ファイル。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外（手書き `TestXxx` を期待しない）。両方向を確認:
-  - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数 subject を束ねる `TestXxx`（統合された `*_Accessors` / `*_Getters` 等）は 1:1 違反で、rationale コメントによる免除は無い。subject ごとに `TestXxx` を分解する。唯一の免除は分岐が他（公開呼び出し元 / 統合 / DI グラフ）で被覆される subject で、その場合も規約名の `TestXxx` を宣言し `t.Skip("<被覆テスト>")` を呼ぶ — 束ねは常に指摘し、決して受け入れない（`docs/testing-conventions.md` §1、`internal/architest` が強制）。
+  - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数 subject を束ねる `TestXxx`（統合された `*_Accessors` / `*_Getters` 等）は 1:1 違反で、rationale コメントによる免除は無い。subject ごとに `TestXxx` を分解する。唯一の免除は **検証不可能であるために到達できない** subject で、その場合も規約名の `TestXxx` を宣言し `t.Skip("<なぜ検証不可能か>")` を呼ぶ — 束ねは常に指摘し、決して受け入れない（`docs/testing-conventions.md` §1、`internal/architest` が強制）。
   - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は **Lens 5（シンボル網羅）の所管** — 本レンズは既に存在する `TestXxx` の *形*（命名ゆらぎ / 束ね / 分裂）だけを指摘し、存在しないこと自体は Lens 5 に委ねて二重報告しない。
 - mock は `<package>/mock/*_mock.go` から（手書き mock 禁止）。
 - 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`docs/testing-conventions.md` ルール）。
@@ -130,6 +130,7 @@ subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の�
 - 境界制約を持つフィールドについて min-1 / min / max / max+1 の境界値が exercise されているか。
 - zero 値 / nil 入力を防御している constructor / factory に reject ケースがあるか。
 - テストの harness が**実行しない** constructor / provider / factory 本体を通ってしか到達できない分岐は未カバー扱い — 依存グラフを構築するだけでコンストラクタを実行しないグラフ / 配線検証 harness はそれらの本体をカバーしないので、直接の単体テスト（関数を実際に呼ぶ）が要る。 適用される harness は層 README の Test Strategy が明示する。
+- subject を他のテストがカバーしていることを理由にした `t.Skip` は、weigh するギャップではなく **修正必須** の違反: その skip はテストを別テストの実装に依存させ、カバー元が縮小しても green のまま残る。実テストを要求する（`docs/testing-conventions.md` §1、`internal/architest` の `TestSkipReasonDoesNotNameCoveringTest` が強制）。
 - 「再現できない」と理由付けされた `t.Skip` は受け入れず軸A のギャップとして疑う: 層 README の Test Strategy に到達できる統合スタイルの harness が無いか確認する（例: 真の並行 / ロック競合は、直列化するテスト用 tx ヘルパでは表現できず独立コネクションが要る）。skip 分岐を具体的な再現経路つきで 追加検討 として surface する。
 
 カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。加えて **criticality（1-10）** を*本番影響*で採点して付す（レンズ由来 severity とは直交する軸 —「追加検討」は*どの種類*のギャップか、criticality は*壊れたらどれだけ悪いか*）。未検証のまま壊れた場合に出荷されるリグレッションを一文添え、追加検討 finding を criticality 降順に並べて最悪から潰せるようにする: 9-10 データ破壊 / 認証・認可の穴 / 整合性違反 · 7-8 ユーザ影響のあるロジック誤り（誤った status / DTO マッピング）· 5-6 軽微な edge / boundary · 3-4 網羅性のための nice-to-have · 1-2 任意。構造準拠（修正必須）には criticality を付けない（常に即修正）。
@@ -153,12 +154,12 @@ Output: subject ごとに、(1) 未カバー分岐 + 提案 `t.Run` ケース名
 手順:
 
 1. **subject シンボル表を構築する。** ペアの `<subject>.go`（非生成・非 `*_test.go`）から、その層の規約が `TestXxx` を期待する全シンボルを列挙: 公開 func / メソッド / コンストラクタ、および層が直接テストする分岐ロジックを持つパッケージレベルの非公開 func（期待は層 README の Test Strategy + `docs/testing-conventions.md` §1 が定義。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外）。 getter / accessor / provider func / env ゲートヘルパも数える — これらこそ見落とされやすい低可視性シンボル。
-2. **各シンボルを `TestXxx` に対応付ける。** シンボルが*充足*なのは、規約名の `TestXxx` がそれを対象にしている場合、または規約名の `TestXxx` を宣言しつつ実在の被覆テスト（公開呼び出し元 / 統合 / DI グラフ）を名指す `t.Skip("<被覆テスト>")` を呼んでいる場合（`docs/testing-conventions.md` §1）。
+2. **各シンボルを `TestXxx` に対応付ける。** シンボルが*充足*なのは、規約名の `TestXxx` が実際にそれをテストしている場合のみ。 本体が `t.Skip` だけの `TestXxx` が充足なのは、理由が「なぜ subject を検証できないか」を述べている場合に限り、他テストがカバーしていることを理由にした skip は**未充足**（`docs/testing-conventions.md` §1）。
 3. **充足しない全シンボルを** **シンボル未カバー** finding として挙げる → severity **補完推奨**（コード要素まるごとテストが無い — Lens 4 の*関数内*分岐ギャップとは別の構造的カバレッジ穴）。 subject `symbol @ file:line` を引用し `TestXxx` 名（と `正常系` / `異常系` 骨子）を提案。 Lens 4 軸A と同じ **criticality（1-10）** 本番影響スコアを付し降順に並べる — 完全に未テストの認証・認可 / 永続化シンボルは、未テストの些末な getter より上位。
 
 Lens 4 への引き継ぎ: Lens 5 があるシンボルを「まるごと未テスト」と挙げたら、Lens 4 はそのシンボルの分岐を追加列挙しない（「テスト無し」ギャップは 1 個であって N 個ではない）。 Lens 4 は Lens 5 が充足と見なしたが部分的にしかカバーされていないシンボルだけを拾う。
 
-Output: テストが無い（または実在の被覆テストを欠く `t.Skip` の）subject シンボルのリスト。 各々 `symbol @ file:line` / 提案 `TestXxx` / criticality。
+Output: テストが無い（または `t.Skip` の理由が検証不可能性でなく被覆テストを名指している）subject シンボルのリスト。 各々 `symbol @ file:line` / 提案 `TestXxx` / criticality。
 
 ## Step 3. 各 finding を検証
 

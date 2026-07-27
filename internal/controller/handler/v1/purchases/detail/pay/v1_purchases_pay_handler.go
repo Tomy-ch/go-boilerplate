@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/purchases/detail/pay --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/purchases/detail/pay --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/purchases/detail/pay --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package pay は、PATCH /v1/purchases/{purchaseId}/pay エンドポイントに関連するハンドラを提供します。
 package pay
@@ -18,7 +18,7 @@ import (
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。

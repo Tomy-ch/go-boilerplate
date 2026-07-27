@@ -421,7 +421,7 @@ Layer spans are emitted in all three layers (controller / usecase / infra) via
 `LayerTracer.Start`, but their **diagnostic value differs**, which matters when
 deciding where to trim instrumentation.
 
-- **Controller layer span — most redundant.** The `otelecho` middleware already
+- **Controller layer span — most redundant.** The `echootel` middleware already
   creates a **per-request root span**, so a span added in the controller (handler)
   layer covers **almost the same boundary and roughly the same interval** as that
   request span. It largely duplicates the root span.

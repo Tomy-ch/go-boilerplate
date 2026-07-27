@@ -15,7 +15,7 @@ import (
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,8 +58,8 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	got := make(map[string]bool, len(e.Routes()))
-	for _, r := range e.Routes() {
+	got := make(map[string]bool, len(e.Router().Routes()))
+	for _, r := range e.Router().Routes() {
 		got[r.Method+" "+r.Path] = true
 	}
 
@@ -71,7 +71,7 @@ func TestBindHandler(t *testing.T) {
 		http.MethodGet + " /v1/users/me",
 	}
 
-	assert.Len(t, e.Routes(), len(expected))
+	assert.Len(t, e.Router().Routes(), len(expected))
 	for _, route := range expected {
 		assert.Contains(t, got, route)
 	}

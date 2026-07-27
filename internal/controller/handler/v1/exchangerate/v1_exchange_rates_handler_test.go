@@ -14,7 +14,7 @@ import (
 	"go-boilerplate/pkg/decimal"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -37,8 +37,8 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockUC)
 
-	testassert.AssertEchoRouterPath(t, targetPath, e.Routes())
-	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
+	testassert.AssertEchoRouterPath(t, targetPath, e.Router().Routes())
+	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Router().Routes())
 }
 
 func Test_server_GetExchangeRates(t *testing.T) {

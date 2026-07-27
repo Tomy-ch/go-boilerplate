@@ -7,7 +7,7 @@ import (
 	"go-boilerplate/internal/controller/error/response"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			t.Parallel()
 
 			inner := xerrors.New("inner failure")
-			ehe := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
+			ehe := echo.NewHTTPError(http.StatusForbidden, "").Wrap(inner)
 
 			actual := normalizeEchoHTTPError(ehe)
 			require.NotNil(t, actual)
@@ -41,7 +41,7 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			t.Parallel()
 
 			inner := xerrors.New("inner2")
-			ehe := &echo.HTTPError{Code: http.StatusConflict, Internal: inner}
+			ehe := echo.NewHTTPError(http.StatusConflict, "").Wrap(inner)
 
 			actual := normalizeEchoHTTPError(ehe, "d1", "d2")
 			require.NotNil(t, actual)
@@ -55,6 +55,17 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			require.Error(t, actual.Internal)
 			assert.Contains(t, actual.Internal.Error(), "inner2")
 		})
+
+		t.Run("Echoの定義済みエラーの場合、ステータスが解決されレスポンスが返る", func(t *testing.T) {
+			t.Parallel()
+
+			actual := normalizeEchoHTTPError(echo.ErrNotFound)
+			require.NotNil(t, actual)
+
+			expectedBase := response.NewHTTPErrorFromStatus(http.StatusNotFound, nil)
+			assert.Equal(t, expectedBase.Code, actual.Code)
+			assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -67,7 +78,7 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 
 		t.Run("EchoHTTPErrorだがステータス範囲外の場合、nilが返る", func(t *testing.T) {
 			t.Parallel()
-			ehe := &echo.HTTPError{Code: http.StatusContinue}
+			ehe := echo.NewHTTPError(http.StatusContinue, "")
 			assert.Nil(t, normalizeEchoHTTPError(ehe))
 		})
 	})

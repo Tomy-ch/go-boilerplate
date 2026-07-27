@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +19,7 @@ func TestMiddleware(t *testing.T) {
 		t.Run("ミドルウェアが生成される", func(t *testing.T) {
 			t.Parallel()
 
-			mw := Middleware("test-service")
+			mw := Middleware()
 			assert.NotNil(t, mw)
 		})
 	})
@@ -36,7 +36,7 @@ func TestPassthroughMiddleware(t *testing.T) {
 
 			e := echo.New()
 			e.Use(PassthroughMiddleware())
-			e.GET("/", func(c echo.Context) error {
+			e.GET("/", func(c *echo.Context) error {
 				return c.NoContent(http.StatusOK)
 			})
 
@@ -60,7 +60,7 @@ func TestMiddleware_Integration(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			e.Use(Middleware("test-service"))
+			e.Use(Middleware())
 
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)

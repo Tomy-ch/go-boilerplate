@@ -18,7 +18,7 @@ import (
 	idempotencyuc "go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -40,12 +40,12 @@ type spyRequest struct {
 }
 
 // strictHandlerFunc は、oapi-codegen 生成の gen.StrictHandlerFunc と同型のテスト用型です。
-type strictHandlerFunc func(ec echo.Context, request any) (any, error)
+type strictHandlerFunc func(ec *echo.Context, request any) (any, error)
 
-// newEcho は、テスト用の echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
+// newEcho は、テスト用の *echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
 // withAuthn なら subject を持つ Authn を ctx に仕込みます。subject が UUID として解釈できる場合は
 // 内部 UserID も解決済みにします（冪等性スコープは内部 UserID を使うため）。
-func newEcho(key string, withAuthn bool, subject string) echo.Context {
+func newEcho(key string, withAuthn bool, subject string) *echo.Context {
 	ctx := context.Background()
 	if withAuthn {
 		ctx = ctxhelper.WithAuthn(ctx)
@@ -72,7 +72,7 @@ func TestStrictMiddleware(t *testing.T) {
 			t.Parallel()
 
 			called := false
-			h := strictHandlerFunc(func(echo.Context, any) (any, error) {
+			h := strictHandlerFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -97,7 +97,7 @@ func Test_handle(t *testing.T) {
 		t.Run("ヘッダ無しは素通しし後段をそのまま呼ぶ", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -113,7 +113,7 @@ func Test_handle(t *testing.T) {
 		t.Run("空白のみのキーは素通しし後段をそのまま呼ぶ", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -131,7 +131,7 @@ func Test_handle(t *testing.T) {
 		t.Run("認証が無ければ冪等性は発動せず素通しする", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -147,7 +147,7 @@ func Test_handle(t *testing.T) {
 		t.Run("認証ありでも内部UserID未解決なら冪等性は発動せず素通しする", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -164,7 +164,7 @@ func Test_handle(t *testing.T) {
 		t.Run("有効キー+UserID解決済みなら Request を ctx に載せて後段へ渡す", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -211,7 +211,7 @@ func Test_handle(t *testing.T) {
 		t.Run("255文字超のキーは400で後段を呼ばない", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -226,7 +226,7 @@ func Test_handle(t *testing.T) {
 		t.Run("非印字ASCIIを含むキーは400で後段を呼ばない", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -241,7 +241,7 @@ func Test_handle(t *testing.T) {
 		t.Run("指紋生成に失敗するリクエストは500で後段を呼ばない(fail-closed)", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})

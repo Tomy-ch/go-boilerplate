@@ -798,7 +798,72 @@ func Test_keyedDispatcher_dispatch(t *testing.T) {
 
 func Test_keyedDispatcher_runKey(t *testing.T) {
 	t.Parallel()
-	t.Skip("keyRunner の FIFO 直列処理は engine 統合テスト TestEngine_Run/engineRunPartitionKeySerialized でカバー")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同一 key のメッセージを投入順に直列処理する", func(t *testing.T) {
+			t.Parallel()
+
+			var mu sync.Mutex
+			var order []string
+			overlapped := false
+			running := 0
+
+			done := make(chan struct{}, 3)
+			kd := newKeyedDispatcher(3, func(_ context.Context, m bw.Message) {
+				mu.Lock()
+				running++
+				overlapped = overlapped || running > 1
+				order = append(order, m.ID)
+				mu.Unlock()
+
+				time.Sleep(tick) // 直列でなければ処理が重なるだけの幅を作る
+
+				mu.Lock()
+				running--
+				mu.Unlock()
+				done <- struct{}{}
+			})
+
+			kd.dispatch(context.Background(), bw.Message{ID: "a", PartitionKey: "k"})
+			kd.dispatch(context.Background(), bw.Message{ID: "b", PartitionKey: "k"})
+			kd.dispatch(context.Background(), bw.Message{ID: "c", PartitionKey: "k"})
+
+			for range 3 {
+				select {
+				case <-done:
+				case <-time.After(eventually):
+					t.Fatal("同一 key のメッセージが処理されなかった")
+				}
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			assert.Equal(t, []string{"a", "b", "c"}, order)
+			assert.False(t, overlapped)
+		})
+
+		t.Run("滞留が無くなった key の runner は破棄される", func(t *testing.T) {
+			t.Parallel()
+
+			processed := make(chan struct{}, 1)
+			kd := newKeyedDispatcher(1, func(context.Context, bw.Message) { processed <- struct{}{} })
+
+			kd.dispatch(context.Background(), bw.Message{ID: "a", PartitionKey: "k"})
+
+			select {
+			case <-processed:
+			case <-time.After(eventually):
+				t.Fatal("メッセージが処理されなかった")
+			}
+			require.Eventually(t, func() bool {
+				kd.mu.Lock()
+				defer kd.mu.Unlock()
+				return len(kd.runners) == 0
+			}, eventually, tick)
+		})
+	})
 }
 
 func Test_run_waitCooldown(t *testing.T) {
@@ -1162,17 +1227,197 @@ func Test_run_loop(t *testing.T) {
 
 func Test_run_process(t *testing.T) {
 	t.Parallel()
-	t.Skip("1 メッセージ処理単位は engine 統合テスト TestEngine_Run/engineRunConcurrencyBounded 等でカバー")
+
+	// process は poll loop が in-flight トークンを計上した後に呼ばれるため、同じ前提を作ってから呼ぶ。
+	newDispatchedRun := func(t *testing.T, set Settings, f *testkit.Fake, h bw.Handler) *run {
+		t.Helper()
+		w := testWorker{name: "w", cons: f, handler: h}
+		r := newRun(newTestEngine(t, set, w), w)
+		r.inflight <- struct{}{}
+		r.wg.Add(1)
+		return r
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Handle 成功時は Ack し in-flight と同時実行スロットを解放する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			r := newDispatchedRun(t, baseSettings(), f, handlerFunc(func(context.Context, bw.Message) error { return nil }))
+
+			r.process(context.Background(), bw.Message{ID: "a"})
+
+			assert.Equal(t, []string{"a"}, f.AckedIDs())
+			assert.Empty(t, r.inflight)
+			assert.Empty(t, r.conc)
+		})
+
+		t.Run("Handle が retryable を返した場合は Nack する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			r := newDispatchedRun(t, baseSettings(), f, handlerFunc(func(context.Context, bw.Message) error {
+				return xerrors.Wrap(apperror.ErrRetryable, "temporary")
+			}))
+
+			r.process(context.Background(), bw.Message{ID: "a"})
+
+			assert.Equal(t, []string{"a"}, f.NackedIDs())
+			assert.Empty(t, f.AckedIDs())
+			assert.Empty(t, r.inflight)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同時実行が上限かつ ctx キャンセル済みの場合は Handle せず in-flight だけ解放する", func(t *testing.T) {
+			t.Parallel()
+
+			handled := false
+			f := testkit.NewFake()
+			set := baseSettings()
+			set.Concurrency = 1
+			r := newDispatchedRun(t, set, f, handlerFunc(func(context.Context, bw.Message) error {
+				handled = true
+				return nil
+			}))
+			r.conc <- struct{}{} // 同時実行上限を埋め、select の ready を ctx.Done() のみに固定する
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			r.process(ctx, bw.Message{ID: "a"})
+
+			assert.False(t, handled)
+			assert.Empty(t, f.AckedIDs())  // 未処理なので Ack しない（再配送へ委ねる）
+			assert.Empty(t, f.NackedIDs()) // Nack もしない
+			assert.Empty(t, r.inflight)
+		})
+	})
 }
 
 func Test_run_finishMessage(t *testing.T) {
 	t.Parallel()
-	t.Skip("in-flight 解放と poll loop 起床は engine 統合テスト TestEngine_Run/engineRunMaxInFlightBounded でカバー")
+
+	newTestRun := func(t *testing.T) *run {
+		t.Helper()
+		f := testkit.NewFake()
+		w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+		r := newRun(newTestEngine(t, baseSettings(), w), w)
+		r.inflight <- struct{}{}
+		r.wg.Add(1)
+		return r
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("in-flight を解放し poll loop へ空きを通知して drain 待ちを解く", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+
+			r.finishMessage(context.Background())
+
+			assert.Empty(t, r.inflight)
+			assert.Len(t, r.slotFreed, 1)
+
+			waited := make(chan struct{})
+			go func() { r.wg.Wait(); close(waited) }()
+			select {
+			case <-waited:
+			case <-time.After(eventually):
+				t.Fatal("WaitGroup が解放されず drain が待ち続ける")
+			}
+		})
+
+		t.Run("通知が既に積まれている場合はブロックせず解放だけ行う", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+			r.slotFreed <- struct{}{} // 容量 1 を先に埋め、通知を捨てる経路へ落とす
+
+			r.finishMessage(context.Background())
+
+			assert.Empty(t, r.inflight)
+			assert.Len(t, r.slotFreed, 1)
+		})
+	})
 }
 
 func Test_run_safeHandle(t *testing.T) {
 	t.Parallel()
-	t.Skip("per-message recover と Extend ハートビートは engine 統合テスト TestEngine_Run/engineRunPanicIsolated・engineRunExtendCalledPeriodically でカバー")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Handle が成功した場合は nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, baseSettings(), w), w)
+
+			require.NoError(t, r.safeHandle(context.Background(), bw.Message{ID: "a"}))
+		})
+
+		t.Run("Handle 実行中は ExtendInterval ごとに可視性を延長する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			set := baseSettings()
+			set.ExtendInterval = 10 * time.Millisecond
+			release := make(chan struct{})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				<-release // 延長が複数回発火するまで処理中の状態を保つ
+				return nil
+			})}
+			r := newRun(newTestEngine(t, set, w), w)
+
+			done := make(chan error, 1)
+			go func() { done <- r.safeHandle(context.Background(), bw.Message{ID: "a"}) }()
+
+			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
+			close(release)
+			require.NoError(t, <-done)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Handle のエラーはそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			boom := xerrors.New("handler boom")
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return boom })}
+			r := newRun(newTestEngine(t, baseSettings(), w), w)
+
+			require.ErrorIs(t, r.safeHandle(context.Background(), bw.Message{ID: "a"}), boom)
+		})
+
+		t.Run("Handle が panic した場合は retryable へ変換し panic 値はログにのみ残す", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				panic("secret boom")
+			})}
+			eng, err := New([]bw.Worker{w}, baseSettings(), observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			gotErr := r.safeHandle(context.Background(), bw.Message{ID: "a"})
+
+			require.ErrorIs(t, gotErr, apperror.ErrRetryable)
+			assert.NotContains(t, gotErr.Error(), "secret boom") // 秘密情報を伝播エラーに載せない
+			assert.Equal(t, 1, observed.FilterMessage("panic recovered in handler").Len())
+		})
+	})
 }
 
 func Test_run_startHeartbeat(t *testing.T) {
@@ -1274,15 +1519,166 @@ func Test_run_handleResult(t *testing.T) {
 
 func Test_run_ack(t *testing.T) {
 	t.Parallel()
-	t.Skip("Ack とエラーログは engine 統合テスト TestEngine_Run/engineRunAcksOnSuccess・engineRunAckErrorLogged でカバー")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Ack が成功した場合はエラーログを出さない", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			eng, err := New([]bw.Worker{w}, baseSettings(), observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			r.ack(context.Background(), bw.Message{ID: "a"})
+
+			assert.Equal(t, []string{"a"}, f.AckedIDs())
+			assert.Zero(t, observed.FilterMessage("ack error").Len())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Ack が失敗した場合はエラーログに残す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			mc := mock_worker.NewMockConsumer(ctrl)
+			mc.EXPECT().Ack(gomock.Any(), gomock.Any()).Return(xerrors.New("ack boom"))
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			w := testWorker{name: "w", cons: mc, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			eng, err := New([]bw.Worker{w}, baseSettings(), observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			r.ack(context.Background(), bw.Message{ID: "a"})
+
+			assert.Equal(t, 1, observed.FilterMessage("ack error").Len())
+		})
+	})
 }
 
 func Test_run_nack(t *testing.T) {
 	t.Parallel()
-	t.Skip("Nack と再配送 backoff は engine 統合テスト TestEngine_Run/engineRunRetryableNacked・engineRunNackErrorLogged でカバー")
+
+	// 再配送遅延は full jitter で散らされるため、値そのものではなく上限（指数 backoff の算出値）で判定する。
+	backoffSettings := func() Settings {
+		set := baseSettings()
+		set.NackBackoffInitial = 10 * time.Millisecond
+		set.NackBackoffMax = time.Second
+		return set
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("初回配送は初期 backoff を上限とする遅延つきで再配送する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, backoffSettings(), w), w)
+
+			r.nack(context.Background(), bw.Message{ID: "a", ReceiveCount: 1})
+
+			assert.Equal(t, []string{"a"}, f.NackedIDs())
+			require.True(t, f.NackBackoffApplied("a"))
+			assert.LessOrEqual(t, f.NackBackoffOf("a"), 10*time.Millisecond)
+		})
+
+		t.Run("再配送回数に応じて遅延の上限が指数的に伸びる", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			r := newRun(newTestEngine(t, backoffSettings(), w), w)
+
+			r.nack(context.Background(), bw.Message{ID: "a", ReceiveCount: 3}) // attempt=2 -> 10ms * 2^2
+
+			require.True(t, f.NackBackoffApplied("a"))
+			assert.LessOrEqual(t, f.NackBackoffOf("a"), 40*time.Millisecond)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再配送が失敗した場合はエラーログに残す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			mc := mock_worker.NewMockConsumer(ctrl)
+			mc.EXPECT().NackWithBackoff(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New("nack boom"))
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			w := testWorker{name: "w", cons: mc, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			eng, err := New([]bw.Worker{w}, backoffSettings(), observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			r.nack(context.Background(), bw.Message{ID: "a", ReceiveCount: 1})
+
+			assert.Equal(t, 1, observed.FilterMessage("nack error").Len())
+		})
+	})
 }
 
 func Test_run_drain(t *testing.T) {
 	t.Parallel()
-	t.Skip("in-flight の drain 待機は engine 統合テスト TestEngine_drain でカバー")
+
+	newTestRun := func(t *testing.T, drainTimeout time.Duration) *run {
+		t.Helper()
+		f := testkit.NewFake()
+		w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+		set := baseSettings()
+		set.DrainTimeout = drainTimeout
+		return newRun(newTestEngine(t, set, w), w)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("in-flight の完了で DrainTimeout を待たずに返る", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t, time.Hour) // タイムアウト経路で抜けたなら時間切れとして失敗する長さ
+			r.wg.Add(1)
+
+			done := make(chan struct{})
+			go func() { r.drain(); close(done) }()
+			r.wg.Done()
+
+			select {
+			case <-done:
+			case <-time.After(eventually):
+				t.Fatal("in-flight 完了後も drain が返らなかった")
+			}
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("in-flight が完了しない場合は DrainTimeout で打ち切る", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t, 20*time.Millisecond)
+			r.wg.Add(1) // 完了しない in-flight を模す
+
+			done := make(chan struct{})
+			go func() { r.drain(); close(done) }()
+
+			select {
+			case <-done:
+			case <-time.After(eventually):
+				t.Fatal("DrainTimeout を過ぎても drain が返らなかった")
+			}
+			r.wg.Done() // drain 内の待機 goroutine を残さない
+		})
+	})
 }

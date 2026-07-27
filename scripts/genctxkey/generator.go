@@ -27,6 +27,17 @@ var (
 	qualifierRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*\.`)
 )
 
+var (
+	// errMissingNameOrType は、name / type のいずれかが未指定の場合のエラーです。
+	errMissingNameOrType = xerrors.New("name and type are required")
+	// errInvalidName は、名前から識別子を組み立てられなかった場合のエラーです。
+	errInvalidName = xerrors.New("invalid name")
+	// errInvalidIdentifier は、組み立てた識別子が Go の識別子として不正な場合のエラーです。
+	errInvalidIdentifier = xerrors.New("invalid identifier")
+	// errQualifierAliasMismatch は、型の修飾子と import alias が食い違う場合のエラーです。
+	errQualifierAliasMismatch = xerrors.New("type qualifier does not match alias")
+)
+
 //go:embed template_ctx.tpl
 var ctxTpl string
 
@@ -45,7 +56,7 @@ type Param struct {
 
 func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string) error {
 	if name == "" || typ == "" {
-		return xerrors.New("name and type are required")
+		return errMissingNameOrType
 	}
 
 	if outDir == "" {
@@ -146,11 +157,11 @@ func toExportedName(s string) (string, error) {
 	out := sb.String()
 
 	if out == "" {
-		return "", xerrors.New("invalid name: " + s)
+		return "", xerrors.Wrap(errInvalidName, s)
 	}
 
 	if !isValidIdentifier(out) {
-		return "", xerrors.New("invalid identifier: " + out)
+		return "", xerrors.Wrap(errInvalidIdentifier, out)
 	}
 
 	return out, nil
@@ -163,7 +174,7 @@ func toIdentifierLower(s string) (string, error) {
 	}
 	out := sb.String()
 	if out == "" {
-		return "", xerrors.New("invalid name: " + s)
+		return "", xerrors.Wrap(errInvalidName, s)
 	}
 	// ensure starts with a letter or '_'
 	runes := []rune(out)
@@ -171,7 +182,7 @@ func toIdentifierLower(s string) (string, error) {
 		out = "x" + out
 	}
 	if !isValidIdentifier(out) {
-		return "", xerrors.New("invalid identifier: " + out)
+		return "", xerrors.Wrap(errInvalidIdentifier, out)
 	}
 	return out, nil
 }
@@ -226,7 +237,7 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 	// Alias provided: validate against qualifier when present
 	if qualifier != "" && qualifier != importAlias {
-		return "", xerrors.New(fmt.Sprintf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias))
+		return "", xerrors.Wrap(errQualifierAliasMismatch, fmt.Sprintf("qualifier=%s alias=%s", qualifier, importAlias))
 	}
 
 	return importAlias, nil

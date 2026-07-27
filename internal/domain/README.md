@@ -109,6 +109,37 @@ type Users []*User
 - Package name should be the domain name
 - Constructor name should be `New`
 
+### Bundle attributes into a struct when positional arguments can be swapped
+
+The criteria — when a same-typed-parameter swap is a real risk, when it is not, and whether to remedy it
+with distinct VO types or with a struct — are layer-independent and live in `docs/rules.md`
+("Function Signature Rules"). This section covers only how the domain layer applies them.
+
+An entity whose attributes trigger the rule bundles them into a value struct shared by every entry point,
+so creation, reconstruction, and update cannot drift apart:
+
+```go
+// The attribute set shared by the constructor and the behavior methods.
+type Attributes struct {
+    Name        string
+    Description *string
+    // ...
+    ImagePath   *string
+}
+
+func New(id uuid.UUID, attrs Attributes) (*Entity, error)
+func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
+func (e *Entity) Update(attrs Attributes) error
+```
+
+The identity (`id`) and the optimistic-lock version stay positional — they are distinctly typed and are
+not part of the attribute set the update entry point replaces. When only a subset of the attributes is
+replaceable, name that subset as its own struct and embed it (`user.Profile` inside `user.Attributes`)
+rather than declaring two overlapping structs.
+
+Reconstruction from a DB row is the most exposed caller in this layer, so the mapping test the rule
+requires belongs on the Repository's row-to-entity conversion as well as on the constructor.
+
 ### Do not set outside constructor
 
 - Invariants are guaranteed in `New(...)`
@@ -718,34 +749,43 @@ type User struct {
     deletedAt    *time.Time
 }
 
+// 置き換え可能な属性の部分集合（New / UpdateProfile で共有）。
+// firstName / lastName / phone / city / street は同型のため、フィールド名指定を要求する。
+type Profile struct {
+    FirstName    string
+    LastName     string
+    Email        string
+    Phone        string
+    PrefectureID uuid.UUID
+    City         string
+    Street       string
+    Building     *string
+    PostalCode   string
+}
+
+// 生成に必要な属性一式。createdAt / updatedAt も同型のため同じ扱いとする。
+type Attributes struct {
+    Profile
+
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+}
+
 // ファクトリ: 不変条件を満たすときだけ実体を生成
-func New(
-    id uuid.UUID,
-    firstName string,
-    lastName string,
-    email string,
-    phone string,
-    prefectureID uuid.UUID,
-    city string,
-    street string,
-    building *string,
-    postalCode string,
-    createdAt time.Time,
-    updatedAt time.Time,
-    deletedAt *time.Time,
-) (*User, error) {
+func New(id uuid.UUID, attrs Attributes) (*User, error) {
     if id.IsNil() {
         return nil, xerrors.Wrap(ErrInvalidID, "id is required")
     }
     // フィールド検証（New / UpdateProfile で共有）
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(attrs.Profile); err != nil {
         return nil, err
     }
-    if updatedAt.Before(createdAt) {
+    if attrs.UpdatedAt.Before(attrs.CreatedAt) {
         return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
     }
-    if deletedAt != nil {
-        if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+    if attrs.DeletedAt != nil {
+        if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
             return nil, err
         }
     }
@@ -753,9 +793,9 @@ func New(
     // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
     return &User{
         id:        id,
-        building:  ptr.Copy(building),
-        deletedAt: ptr.Copy(deletedAt),
-        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
+        building:  ptr.Copy(attrs.Building),
+        deletedAt: ptr.Copy(attrs.DeletedAt),
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も attrs から設定（例示のため省略）
     }, nil
 }
 
@@ -767,18 +807,11 @@ func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
 // 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
 // ビジネスロジック（振る舞い）: プロフィール一括更新
-func (u *User) UpdateProfile(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-    updatedAt time.Time,
-) error {
+func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
     if err := u.ensureNotDeleted(); err != nil {
         return err
     }
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(profile); err != nil {
         return err
     }
     if err := u.ensureUpdatedAt(updatedAt); err != nil {
@@ -806,18 +839,12 @@ func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
 
 // バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
-func validateProfileFields(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-) error {
-    if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+func validateProfileFields(profile Profile) error {
+    if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
         return xerrors.Wrap(ErrInvalidFirstName, msg)
     }
     // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
-    if prefectureID.IsNil() {
+    if profile.PrefectureID.IsNil() {
         return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
     }
     if building != nil { // building は任意

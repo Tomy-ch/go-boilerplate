@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -18,10 +18,10 @@ import (
 type ServerInterface interface {
 	// 単一商品の取得
 	// (GET /v1/products/{productId})
-	GetProductsDetail(ctx echo.Context, productId ProductIdParam) error
+	GetProductsDetail(ctx *echo.Context, productId ProductIdParam) error
 	// 単一商品の部分更新
 	// (PATCH /v1/products/{productId})
-	PatchProductsDetail(ctx echo.Context, productId ProductIdParam) error
+	PatchProductsDetail(ctx *echo.Context, productId ProductIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -30,7 +30,7 @@ type ServerInterfaceWrapper struct {
 }
 
 // GetProductsDetail converts echo context to params.
-func (w *ServerInterfaceWrapper) GetProductsDetail(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) GetProductsDetail(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "productId" -------------
 	var productId ProductIdParam
@@ -46,7 +46,7 @@ func (w *ServerInterfaceWrapper) GetProductsDetail(ctx echo.Context) error {
 }
 
 // PatchProductsDetail converts echo context to params.
-func (w *ServerInterfaceWrapper) PatchProductsDetail(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PatchProductsDetail(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "productId" -------------
 	var productId ProductIdParam
@@ -67,15 +67,15 @@ func (w *ServerInterfaceWrapper) PatchProductsDetail(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -364,7 +364,7 @@ type StrictServerInterface interface {
 	PatchProductsDetail(ctx context.Context, request PatchProductsDetailRequestObject) (PatchProductsDetailResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -377,12 +377,12 @@ type strictHandler struct {
 }
 
 // GetProductsDetail operation middleware
-func (sh *strictHandler) GetProductsDetail(ctx echo.Context, productId ProductIdParam) error {
+func (sh *strictHandler) GetProductsDetail(ctx *echo.Context, productId ProductIdParam) error {
 	var request GetProductsDetailRequestObject
 
 	request.ProductId = productId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProductsDetail(ctx.Request().Context(), request.(GetProductsDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -402,7 +402,7 @@ func (sh *strictHandler) GetProductsDetail(ctx echo.Context, productId ProductId
 }
 
 // PatchProductsDetail operation middleware
-func (sh *strictHandler) PatchProductsDetail(ctx echo.Context, productId ProductIdParam) error {
+func (sh *strictHandler) PatchProductsDetail(ctx *echo.Context, productId ProductIdParam) error {
 	var request PatchProductsDetailRequestObject
 
 	request.ProductId = productId
@@ -413,7 +413,7 @@ func (sh *strictHandler) PatchProductsDetail(ctx echo.Context, productId Product
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PatchProductsDetail(ctx.Request().Context(), request.(PatchProductsDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

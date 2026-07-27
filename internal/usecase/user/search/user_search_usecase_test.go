@@ -23,21 +23,20 @@ import (
 // newSearchTestUser は、検索テスト用のユーザーエンティティを生成するヘルパーです。
 func newSearchTestUser(t *testing.T, prefectureID uuid.UUID, createdAt time.Time) *user.User {
 	t.Helper()
-	u, err := user.New(
-		uuid.NewTestFromSalt(t, "search_user_domain"),
-		"Grace",
-		"Lee",
-		"grace.lee@example.com",
-		"090-1234-5678",
-		prefectureID,
-		"city_name",
-		"town_address",
-		nil,
-		"150-0001",
-		createdAt,
-		createdAt,
-		nil,
-	)
+	u, err := user.New(uuid.NewTestFromSalt(t, "search_user_domain"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "Grace",
+			LastName:     "Lee",
+			Email:        "grace.lee@example.com",
+			Phone:        "090-1234-5678",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
+	})
 	require.NoError(t, err)
 	return u
 }

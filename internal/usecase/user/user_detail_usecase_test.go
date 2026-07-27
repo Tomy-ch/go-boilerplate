@@ -48,10 +48,21 @@ func newTestAuthn(t *testing.T) *authbd.Authn {
 
 func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User {
 	t.Helper()
-	u, err := user.New(
-		id, "John", "Doe", "john@example.com", "1234567890",
-		prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001", ts, ts, nil,
-	)
+	u, err := user.New(id, user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "John",
+			LastName:     "Doe",
+			Email:        "john@example.com",
+			Phone:        "1234567890",
+			PrefectureID: prefID,
+			City:         "Shibuya",
+			Street:       "1-2-3",
+			Building:     new("Building A"),
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: ts,
+		UpdatedAt: ts,
+	})
 	require.NoError(t, err)
 	return u
 }
@@ -505,11 +516,22 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("既に削除済みの場合_ErrAlreadyDeleted", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
-			deletedUser, err := user.New(
-				id, "John", "Doe", "john@example.com", "1234567890",
-				prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001",
-				now, now, new(now),
-			)
+			deletedUser, err := user.New(id, user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "John",
+					LastName:     "Doe",
+					Email:        "john@example.com",
+					Phone:        "1234567890",
+					PrefectureID: prefID,
+					City:         "Shibuya",
+					Street:       "1-2-3",
+					Building:     new("Building A"),
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+				DeletedAt: new(now),
+			})
 			require.NoError(t, err)
 
 			clock := clocktest.NewMockClockOnce(t, now.Add(time.Hour))

@@ -13,7 +13,7 @@ import (
 	"go-boilerplate/pkg/decimal"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/mock/gomock"
 )
 

@@ -18,8 +18,8 @@ English: [dependencies.md](../../reference/dependencies.md)
 
 | 領域 | ライブラリ | 責務 |
 | --- | --- | --- |
-| Web / API | `labstack/echo/v4` | HTTP web フレームワーク（[ADR-0017](../adr/0017-echo-http-framework.ja.md) 参照） |
-| Web / API | `oapi-codegen/echo-middleware` | Echo 向け OpenAPI リクエスト検証ミドルウェア |
+| Web / API | `labstack/echo/v5` | HTTP web フレームワーク（[ADR-0017](../adr/0017-echo-http-framework.ja.md) 参照） |
+| Web / API | `oapi-codegen/echo-v5-middleware` | Echo 向け OpenAPI リクエスト検証ミドルウェア |
 | Web / API | `oapi-codegen/runtime` | oapi-codegen 生成コードのランタイムサポート |
 | Web / API | `getkin/kin-openapi` | OpenAPI 3 ドキュメントモデル / ローダ |
 | Config | `caarlos0/env/v11` | 環境変数 → 構造体デコード |
@@ -61,7 +61,7 @@ typed な `OBS_*` config から明示的に構築されます（[ADR-0062](../ad
 
 | ライブラリ | 結合 | 役割 |
 | --- | --- | --- |
-| `contrib/instrumentation/github.com/labstack/echo/otelecho` | Echo `MiddlewareFunc` × otel trace | リクエスト毎のルートサーバスパン（status / パス正規化 / W3C 伝播） |
+| `labstack/echo-opentelemetry` | Echo `MiddlewareFunc` × otel trace | リクエスト毎のルートサーバスパン（status / パス正規化 / W3C 伝播） |
 | `contrib/instrumentation/net/http/otelhttp` | `net/http` `RoundTripper`/`Handler` × otel trace | `net/http` の計装（クライアントトランスポート + ハンドラスパン） |
 | `exaring/otelpgx` | pgx `QueryTracer` × otel trace | pgx トレーサフック経由の SQL クエリスパン |
 | `contrib/bridges/otelzap` | zap `zapcore.Core` × otel/log | zap レコードを OTel ログレコードへブリッジし OTLP 送出 |

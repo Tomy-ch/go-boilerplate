@@ -12,7 +12,7 @@ import (
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )

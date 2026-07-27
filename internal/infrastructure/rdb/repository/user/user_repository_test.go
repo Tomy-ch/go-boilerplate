@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -331,21 +332,21 @@ func Test_repository_Create(t *testing.T) {
 				prefectureID, err := uuid.Parse("a03aaec4-3bd6-4bfb-8e47-2fbfa026d344")
 				require.NoError(t, err)
 
-				userEntity, err := user.New(
-					userID,
-					"Alice",
-					"Smith",
-					"alice.smith@example.com",
-					"555-555-5555",
-					prefectureID,
-					"新宿区",
-					"5-5-5",
-					new("Building X"),
-					"160-0022",
-					now,
-					now,
-					nil,
-				)
+				userEntity, err := user.New(userID, user.Attributes{
+					Profile: user.Profile{
+						FirstName:    "Alice",
+						LastName:     "Smith",
+						Email:        "alice.smith@example.com",
+						Phone:        "555-555-5555",
+						PrefectureID: prefectureID,
+						City:         "新宿区",
+						Street:       "5-5-5",
+						Building:     new("Building X"),
+						PostalCode:   "160-0022",
+					},
+					CreatedAt: now,
+					UpdatedAt: now,
+				})
 				require.NoError(t, err)
 
 				createErr := repo.Create(ctx, userEntity)
@@ -382,21 +383,21 @@ func Test_repository_Create(t *testing.T) {
 				prefectureID, err := uuid.Parse("a03aaec4-3bd6-4bfb-8e47-2fbfa026d344")
 				require.NoError(t, err)
 
-				userEntity, err := user.New(
-					userID,
-					"John",
-					"Doe",
-					"john.doe@example.com",
-					"555-555-5555",
-					prefectureID,
-					"新宿区",
-					"5-5-5",
-					new("Building X"),
-					"160-0022",
-					now,
-					now,
-					nil,
-				)
+				userEntity, err := user.New(userID, user.Attributes{
+					Profile: user.Profile{
+						FirstName:    "John",
+						LastName:     "Doe",
+						Email:        "john.doe@example.com",
+						Phone:        "555-555-5555",
+						PrefectureID: prefectureID,
+						City:         "新宿区",
+						Street:       "5-5-5",
+						Building:     new("Building X"),
+						PostalCode:   "160-0022",
+					},
+					CreatedAt: now,
+					UpdatedAt: now,
+				})
 				require.NoError(t, err)
 
 				createErr := repo.Create(ctx, userEntity)
@@ -463,23 +464,185 @@ func Test_repository_CountByActive(t *testing.T) {
 	})
 }
 
+// newTestQueries は、テスト DB へ直接クエリを発行する sqlc の Queries ファクトリを返す。
+func newTestQueries(t *testing.T) func(context.Context) *gen.Queries {
+	t.Helper()
+	testDB := testkit.NewTestDB(t)
+	return func(ctx context.Context) *gen.Queries { return gen.New(driver.New(ctx, testDB)) }
+}
+
 func Test_fetchListUsersRows(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_repository_FindByActive（active=nil 経路）の実 DB テストでカバー")
+
+	txm := testkit.NewTestTransactionRunner(t)
+	queries := newTestQueries(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("limit 件までのユーザーをエンティティへ変換して返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := fetchListUsersRows(ctx, queries(ctx), &gen.ListUsersParams{LimitParam: 2, OffsetParam: 0})
+
+				require.NoError(t, err)
+				require.Len(t, got, 2)
+				assert.NotEmpty(t, got[0].ID())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := fetchListUsersRows(ctx, queries(ctx), &gen.ListUsersParams{LimitParam: 1})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, got)
+		})
+	})
 }
 
 func Test_fetchListUsersRowsByActive(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_repository_FindByActive（active=true 経路）の実 DB テストでカバー")
+
+	txm := testkit.NewTestTransactionRunner(t)
+	queries := newTestQueries(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未削除のユーザーだけをエンティティへ変換して返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := fetchListUsersRowsByActive(
+					ctx, queries(ctx), &gen.ListActiveUsersParams{LimitParam: 100, OffsetParam: 0})
+
+				require.NoError(t, err)
+				require.NotEmpty(t, got)
+				for _, u := range got {
+					assert.Nil(t, u.DeletedAt())
+				}
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := fetchListUsersRowsByActive(ctx, queries(ctx), &gen.ListActiveUsersParams{LimitParam: 1})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, got)
+		})
+	})
 }
 
 func Test_fetchListUsersRowsByDeleted(t *testing.T) {
 	t.Parallel()
-	t.Skip("Test_repository_FindByActive（active=false 経路）の実 DB テストでカバー")
+
+	txm := testkit.NewTestTransactionRunner(t)
+	queries := newTestQueries(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("削除済みのユーザーだけをエンティティへ変換して返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := fetchListUsersRowsByDeleted(
+					ctx, queries(ctx), &gen.ListDeletedUsersParams{LimitParam: 100, OffsetParam: 0})
+
+				require.NoError(t, err)
+				require.NotEmpty(t, got)
+				for _, u := range got {
+					assert.NotNil(t, u.DeletedAt())
+				}
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := fetchListUsersRowsByDeleted(ctx, queries(ctx), &gen.ListDeletedUsersParams{LimitParam: 1})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, got)
+		})
+	})
 }
 
 func Test_rowToUser(t *testing.T) {
 	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ユーザー行をドメインエンティティへ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "row_to_user_id")
+			prefectureID := uuid.NewTestFromSalt(t, "row_to_user_prefecture_id")
+			createdAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			updatedAt := time.Date(2026, time.February, 3, 4, 5, 6, 0, time.UTC)
+			deletedAt := time.Date(2026, time.March, 4, 5, 6, 7, 0, time.UTC)
+
+			// 同型の氏名・住所・監査時刻は、取り違えを検出できるよう異なる値で対応を固定する。
+			got, err := rowToUser(gen.Users{
+				ID:           id,
+				FirstName:    "太郎",
+				LastName:     "山田",
+				Email:        "taro@example.com",
+				Phone:        "09012345678",
+				PrefectureID: prefectureID,
+				City:         "渋谷区",
+				Street:       "1-2-3",
+				Building:     ptr.To("サンプルビル 101"),
+				PostalCode:   "150-0001",
+				CreatedAt:    createdAt,
+				UpdatedAt:    updatedAt,
+				DeletedAt:    ptr.To(deletedAt),
+			})
+			require.NoError(t, err)
+			assert.Equal(t, id, got.ID())
+			assert.Equal(t, "太郎", got.FirstName())
+			assert.Equal(t, "山田", got.LastName())
+			assert.Equal(t, "taro@example.com", got.Email())
+			assert.Equal(t, "09012345678", got.Phone())
+			assert.Equal(t, prefectureID, got.PrefectureID())
+			assert.Equal(t, "渋谷区", got.City())
+			assert.Equal(t, "1-2-3", got.Street())
+			require.NotNil(t, got.Building())
+			assert.Equal(t, "サンプルビル 101", *got.Building())
+			assert.Equal(t, "150-0001", got.PostalCode())
+			assert.Equal(t, createdAt, got.CreatedAt())
+			assert.Equal(t, updatedAt, got.UpdatedAt())
+			require.NotNil(t, got.DeletedAt())
+			assert.Equal(t, deletedAt, *got.DeletedAt())
+		})
+	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
@@ -488,7 +651,6 @@ func Test_rowToUser(t *testing.T) {
 			t.Parallel()
 
 			// ゼロ値の行は ID が nil のため domain 構築が失敗する。
-			// 成功経路は Test_repository_FindByID / Test_repository_FindByActive の実 DB テストでカバー。
 			entity, err := rowToUser(gen.Users{})
 			require.Error(t, err)
 			require.Nil(t, entity)

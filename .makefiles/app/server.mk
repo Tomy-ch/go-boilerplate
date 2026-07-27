@@ -13,10 +13,12 @@
 # garage_init は完了して終了する one-shot のため --wait（正常終了も失敗と見なす）の対象から外し、
 # 終了まで同期ブロックする run で実行する。app はプロジェクトを跨ぐため compose の依存で待てず、
 # バケット未プロビジョニングのまま S3 を触ると 503 になる。
+# garage_init の CLI は garage server と RPC バージョンが一致しないと接続できないため、server の
+# image 更新に取り残された古いイメージで走らないよう --build を付ける（キャッシュは効く）。
 infra-up:
 	@echo "🔄 共有インフラを起動します... (project=$(INFRA_PROJECT))"
 	@$(COMPOSE_INFRA) --profile development up -d --wait $(INFRA_SERVICES)
-	@$(COMPOSE_INFRA) --profile development run --rm -T garage_init > /dev/null
+	@$(COMPOSE_INFRA) --profile development run --rm --build -T garage_init > /dev/null
 	@echo "✅ 共有インフラが起動しています。Grafana: http://localhost:3000"
 
 infra-down:

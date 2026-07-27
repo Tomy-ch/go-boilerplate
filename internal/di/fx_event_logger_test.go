@@ -1,6 +1,7 @@
 package di
 
 import (
+	"context"
 	"testing"
 
 	"go-boilerplate/internal/logging"
@@ -24,7 +25,7 @@ func TestNewFxEventLogger(t *testing.T) {
 	})
 }
 
-func TestFxEventLogger_LogEvent(t *testing.T) {
+func Test_fxEventLogger_LogEvent(t *testing.T) {
 	t.Parallel()
 
 	boom := xerrors.New("boom")
@@ -166,12 +167,50 @@ func TestFxEventLogger_LogEvent(t *testing.T) {
 	})
 }
 
-func Test_fxEventLogger_LogEvent(t *testing.T) {
-	t.Parallel()
-	t.Skip("TestFxEventLogger_LogEvent で全イベント分岐を検証済み")
-}
-
 func Test_fxEventLogger_record(t *testing.T) {
 	t.Parallel()
-	t.Skip("record は LogEvent の各イベント経由で TestFxEventLogger_LogEvent が成否分岐を検証済み")
+
+	boom := xerrors.New("boom")
+	failFields := []*logging.Field{logging.String("phase", "provide")}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("errがnilの場合は成功用ロガーへ成功メッセージとフィールドを渡す", func(t *testing.T) {
+			t.Parallel()
+
+			obs, logs := logging.NewObservedTestLogger(t)
+			f := &fxEventLogger{logger: obs}
+
+			f.record(nil, "Provide failed", failFields, f.logger.Info, "Provided", logging.String("module", "m"))
+
+			entries := logs.FilterMessage("Provided").All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, "info", entries[0].Level.String())
+			assert.Equal(t, map[string]any{"module": "m"}, entries[0].ContextMap()) // 失敗用フィールドは混ざらない
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("errが非nilの場合は成功用ロガーを呼ばず失敗フィールドとエラーを添えてErrorで記録する", func(t *testing.T) {
+			t.Parallel()
+
+			obs, logs := logging.NewObservedTestLogger(t)
+			f := &fxEventLogger{logger: obs}
+			okCalled := false
+			logOK := func(context.Context, string, ...*logging.Field) { okCalled = true }
+
+			f.record(boom, "Provide failed", failFields, logOK, "Provided", logging.String("module", "m"))
+
+			assert.False(t, okCalled)
+			entries := logs.FilterMessage("Provide failed").All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, "error", entries[0].Level.String())
+			ctxMap := entries[0].ContextMap()
+			assert.Equal(t, "provide", ctxMap["phase"])
+			assert.Contains(t, ctxMap, string(logging.ErrorKey))
+		})
+	})
 }

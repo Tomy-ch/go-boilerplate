@@ -2,14 +2,28 @@ package driver
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	"go-boilerplate/internal/config"
 
 	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// recordingQueryTracer は、クエリ計装が結線されたかを呼び出し回数で観測する pgx.QueryTracer です。
+type recordingQueryTracer struct{ started atomic.Int32 }
+
+func (r *recordingQueryTracer) TraceQueryStart(
+	ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData,
+) context.Context {
+	r.started.Add(1)
+	return ctx
+}
+
+func (r *recordingQueryTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
 
 func TestNewTracedDB(t *testing.T) {
 	t.Parallel()
@@ -137,7 +151,49 @@ func TestNewDB(t *testing.T) {
 
 func Test_newDB(t *testing.T) {
 	t.Parallel()
-	t.Skip("TestNewDB / TestNewTracedDB（driver パッケージ）の実 DB テストでカバー")
+
+	newConfigs := func(t *testing.T) (
+		*config.DatabaseConfig, *config.OperatingSystemConfig, *config.DBConnectionConfig,
+	) {
+		t.Helper()
+		cfg := config.MockConfigForTest(t)
+		dbCfg := config.NewDatabaseConfig(cfg)
+		dbCfg.SetDatabaseHost(t, "localhost")
+		return dbCfg, config.NewOperatingSystemConfig(cfg), config.NewDBConnectionConfig(cfg)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("tracer が非nilの場合はクエリ計装を接続へ結線する", func(t *testing.T) {
+			t.Parallel()
+
+			dbCfg, osCfg, dbConnCfg := newConfigs(t)
+			tracer := &recordingQueryTracer{}
+
+			db, err := newDB(dbCfg, osCfg, dbConnCfg, tracer)
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+			_, err = db.Exec(context.Background(), "SELECT 1")
+			require.NoError(t, err)
+			assert.Positive(t, tracer.started.Load())
+		})
+
+		t.Run("tracer が nil の場合は計装を結線しない", func(t *testing.T) {
+			t.Parallel()
+
+			dbCfg, osCfg, dbConnCfg := newConfigs(t)
+
+			db, err := newDB(dbCfg, osCfg, dbConnCfg, nil)
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+			drv, ok := db.(*dbDriver)
+			require.True(t, ok)
+			assert.Nil(t, drv.pool.Config().ConnConfig.Tracer)
+		})
+	})
 }
 
 func Test_dbDriver_Begin(t *testing.T) {

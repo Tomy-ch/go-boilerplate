@@ -132,7 +132,8 @@ func Test_provideAuthorizer(t *testing.T) {
 				logger := logging.NewTestLogger(t)
 
 				authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, env), Logger: logger})
-				require.Error(t, err)
+				require.ErrorIs(t, err, errNoAuthorizerForEnv)
+				require.ErrorContains(t, err, env)
 				assert.Nil(t, authorizer)
 			})
 		}

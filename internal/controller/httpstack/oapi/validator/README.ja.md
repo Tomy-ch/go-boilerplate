@@ -26,7 +26,7 @@ flowchart LR
 - **リクエストボディ** — スキーマ、必須フィールド、Content-Type
 - **Content-Type ヘッダー** — OpenAPI 仕様と一致するか
 
-バリデーションエラーは `openapi3filter.RequestError` として返され、`errorhandler` で捕捉されます。
+バリデーションエラーはバリデーションミドルウェアが `echo.HTTPError` へ変換し、`errorhandler` で捕捉されます。
 
 ## コード生成
 

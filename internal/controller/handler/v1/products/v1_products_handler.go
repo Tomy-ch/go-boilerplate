@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/products --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/products --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package products は、/v1/products エンドポイントに関連するハンドラを提供します。
 package products
@@ -13,7 +13,7 @@ import (
 	productuc "go-boilerplate/internal/usecase/product"
 	"go-boilerplate/internal/usecase/tools/paging"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // sortPublishedAtAsc は、公開日時の昇順を表す sort パラメータ値です。これ以外（未指定を含む）は降順として扱います。

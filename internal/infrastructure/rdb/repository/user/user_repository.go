@@ -142,21 +142,22 @@ func buildLikeTokens(keywords []string) []string {
 // rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
 // 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToUser(u gen.Users) (*user.User, error) {
-	entity, err := user.New(
-		u.ID,
-		u.FirstName,
-		u.LastName,
-		u.Email,
-		u.Phone,
-		u.PrefectureID,
-		u.City,
-		u.Street,
-		u.Building,
-		u.PostalCode,
-		u.CreatedAt,
-		u.UpdatedAt,
-		u.DeletedAt,
-	)
+	entity, err := user.New(u.ID, user.Attributes{
+		Profile: user.Profile{
+			FirstName:    u.FirstName,
+			LastName:     u.LastName,
+			Email:        u.Email,
+			Phone:        u.Phone,
+			PrefectureID: u.PrefectureID,
+			City:         u.City,
+			Street:       u.Street,
+			Building:     u.Building,
+			PostalCode:   u.PostalCode,
+		},
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+		DeletedAt: u.DeletedAt,
+	})
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}

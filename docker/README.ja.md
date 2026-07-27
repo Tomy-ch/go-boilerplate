@@ -53,7 +53,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 |---|---|---|---|---|
 |`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|開発用APIサーバ（air によるホットリロード）|
 |`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-4000}`|疑似 OIDC 認証サーバー（JWT Test Provider）|
-|`database`|infra|`postgres:18.3-bookworm`|5432|PostgreSQL データベース|
+|`database`|infra|`postgres:18.4-trixie`|5432|PostgreSQL データベース|
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
 |`garage`|infra|`dxflrs/garage`|3900, 3902|S3 互換オブジェクトストレージ（S3 API / Web API）|
 |`garage_init`|infra|`docker/garage/Dockerfile`|-|garage のレイアウト / バケット / アクセスキー / 公開配信の許可を one-shot でプロビジョニング（冪等）|

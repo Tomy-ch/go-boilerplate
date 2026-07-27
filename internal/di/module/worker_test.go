@@ -9,6 +9,15 @@ import (
 	workerboundary "go-boilerplate/internal/usecase/boundary/worker"
 )
 
+// fakeWorker は、名前だけを返す最小の Worker 実装です（group へ集約された個々の寄与を識別するために使う）。
+type fakeWorker struct {
+	workerboundary.Worker
+
+	name string
+}
+
+func (w fakeWorker) Name() string { return w.name }
+
 func TestWorkerModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
@@ -57,12 +66,61 @@ func Test_provideQueueStatsCollector(t *testing.T) {
 
 func Test_provideWorkers(t *testing.T) {
 	t.Parallel()
-	t.Skip("TestWorkerModule_GraphIsValid の登録経路ケースで workers group への登録分岐を検証済み")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡した全コンストラクタの Worker が workers グループへ集まる", func(t *testing.T) {
+			t.Parallel()
+
+			got := collectGroup[workerboundary.Worker](t, `group:"workers"`, provideWorkers(
+				func() workerboundary.Worker { return fakeWorker{name: "a"} },
+				func() workerboundary.Worker { return fakeWorker{name: "b"} },
+			))
+
+			names := make([]string, 0, len(got))
+			for _, w := range got {
+				names = append(names, w.Name())
+			}
+			assert.ElementsMatch(t, []string{"a", "b"}, names)
+		})
+
+		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
+			t.Parallel()
+
+			// WorkerModule は既定で worker を 1 つも登録しないため、空呼び出しが成立することが前提条件になる。
+			assert.Empty(t, collectGroup[workerboundary.Worker](t, `group:"workers"`, provideWorkers()))
+		})
+	})
 }
 
 func Test_provideQueueStatsTargets(t *testing.T) {
 	t.Parallel()
-	t.Skip("TestWorkerModule_GraphIsValid の登録経路ケースで queue_stats_targets group への登録分岐を検証済み")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡した全コンストラクタの Target が queue_stats_targets グループへ集まる", func(t *testing.T) {
+			t.Parallel()
+
+			got := collectGroup[queuemetrics.Target](t, `group:"worker.queue_stats_targets"`, provideQueueStatsTargets(
+				func() queuemetrics.Target { return queuemetrics.Target{WorkerName: "a"} },
+				func() queuemetrics.Target { return queuemetrics.Target{WorkerName: "b"} },
+			))
+
+			names := make([]string, 0, len(got))
+			for _, target := range got {
+				names = append(names, target.WorkerName)
+			}
+			assert.ElementsMatch(t, []string{"a", "b"}, names)
+		})
+
+		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, collectGroup[queuemetrics.Target](t, `group:"worker.queue_stats_targets"`, provideQueueStatsTargets()))
+		})
+	})
 }
 
 func TestWorkerModule(t *testing.T) {

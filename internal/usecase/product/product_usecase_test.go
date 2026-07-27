@@ -44,18 +44,16 @@ func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainpro
 	require.NoError(t, err)
 	category, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, salt+"_category"), "電子機器")
 	require.NoError(t, err)
-	p, err := domainproduct.New(
-		uuid.NewTestFromSalt(t, salt),
-		"商品-"+salt,
-		ptr.To("説明-"+salt),
-		mustPrice(t, "10.00"),
-		5,
-		ptr.To(2),
-		status,
-		category,
-		ptr.To(publishedAt),
-		nil,
-	)
+	p, err := domainproduct.New(uuid.NewTestFromSalt(t, salt), domainproduct.Attributes{
+		Name:                  "商品-" + salt,
+		Description:           ptr.To("説明-" + salt),
+		Price:                 mustPrice(t, "10.00"),
+		Quantity:              5,
+		StockWarningThreshold: ptr.To(2),
+		Status:                status,
+		Category:              category,
+		PublishedAt:           ptr.To(publishedAt),
+	})
 	require.NoError(t, err)
 	return p
 }

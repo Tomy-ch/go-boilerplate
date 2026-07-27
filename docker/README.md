@@ -53,7 +53,7 @@ The following table maps services defined in docker-compose.yaml to their corres
 |---|---|---|---|---|
 |`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|Development API server (hot reload via air)|
 |`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-4000}`|Mock OIDC auth server (JWT test provider)|
-|`database`|infra|`postgres:18.3-bookworm`|5432|PostgreSQL database|
+|`database`|infra|`postgres:18.4-trixie`|5432|PostgreSQL database|
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|Local observability stack (OTLP endpoint / Grafana) for o11y verification|
 |`garage`|infra|`dxflrs/garage`|3900, 3902|S3-compatible object storage (S3 API / Web API)|
 |`garage_init`|infra|`docker/garage/Dockerfile`|-|One-shot provisioning of the garage layout / bucket / access key / website access (idempotent)|

@@ -18,12 +18,6 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 
 ## サブパッケージ一覧
 
-### サーバ設定
-
-|パッケージ|関数|説明|
-|---|---|---|
-|`debugmode`|`New`|開発環境でのみデバッグモードを有効化|
-
 ### ミドルウェア
 
 |パッケージ|関数|説明|
@@ -86,7 +80,6 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 
 |機能|Development|Production|
 |---|---|---|
-|デバッグモード|有効|無効|
 |IP 抽出|直接抽出|X-Forwarded-For + CIDR|
 |リカバリスタック|10KB（フル）|4KB（制限）|
 

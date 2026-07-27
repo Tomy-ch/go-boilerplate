@@ -26,7 +26,7 @@ func TestMustParse(t *testing.T) {
 
 		t.Run("無効な文字列は tb.Fatalf でテストを終了させる", func(t *testing.T) {
 			t.Parallel()
-			t.Skip("tb.Fatalf は呼び出し側テストの終了を伴い直接検証不可。Parse の異常系は pkg/decimal の TestParse で保証する")
+			t.Skip("tb.Fatalf は呼び出し側テストの終了を伴うため、この分岐は検証不可")
 		})
 	})
 }

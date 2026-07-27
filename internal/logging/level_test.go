@@ -53,21 +53,21 @@ func TestParseLevel(t *testing.T) {
 			t.Parallel()
 
 			_, err := ParseLevel("invalid")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnsupportedLogLevel)
 		})
 
 		t.Run("空文字列はエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
 			_, err := ParseLevel("")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnsupportedLogLevel)
 		})
 
 		t.Run("大文字のレベル文字列はエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
 			_, err := ParseLevel("DEBUG")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnsupportedLogLevel)
 		})
 	})
 }

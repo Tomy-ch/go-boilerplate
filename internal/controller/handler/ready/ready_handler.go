@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=ready --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=ready --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=ready --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package ready は、サーバーのレディネスチェックのハンドラーを提供します。
 package ready
@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	healthcheckuc "go-boilerplate/internal/usecase/healthcheck"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

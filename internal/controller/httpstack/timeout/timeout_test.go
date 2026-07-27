@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -34,7 +34,7 @@ func TestMiddleware(t *testing.T) {
 			t.Parallel()
 
 			var deadlineSet bool
-			code, err := exec(t, time.Second, func(c echo.Context) error {
+			code, err := exec(t, time.Second, func(c *echo.Context) error {
 				_, deadlineSet = c.Request().Context().Deadline()
 				return c.NoContent(http.StatusOK)
 			})
@@ -53,7 +53,7 @@ func TestMiddleware(t *testing.T) {
 
 			// ハンドラは deadline を尊重して ctx 完了後に返る。ContextTimeout が超過を検知し
 			// ErrorHandler 経由で apperror.ErrUnavailable を返す。
-			_, err := exec(t, 20*time.Millisecond, func(c echo.Context) error {
+			_, err := exec(t, 20*time.Millisecond, func(c *echo.Context) error {
 				<-c.Request().Context().Done()
 				return c.Request().Context().Err()
 			})
@@ -66,7 +66,7 @@ func TestMiddleware(t *testing.T) {
 		t.Run("期限超過前に非タイムアウトエラーを返した場合は元のエラーを保持する", func(t *testing.T) {
 			t.Parallel()
 
-			_, err := exec(t, time.Second, func(echo.Context) error {
+			_, err := exec(t, time.Second, func(*echo.Context) error {
 				return apperror.ErrNotFound
 			})
 

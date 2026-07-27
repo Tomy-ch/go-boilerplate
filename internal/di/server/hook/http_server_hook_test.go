@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -11,10 +12,9 @@ import (
 	"go-boilerplate/internal/controller/server"
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	"go-boilerplate/internal/di/server/extension"
-	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -49,9 +49,9 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 	srvCfg := config.NewServerConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
 
-	e := server.NewAppServer(srvCfg)
+	_, srv := newTestHTTPServer(t, srvCfg)
 
-	RegisterHTTPServerHooks(e, mockReg, mockLogger, appCfg, secCfg, srvCfg, osCfg, &extension.AppliedServerExtends{})
+	RegisterHTTPServerHooks(srv, mockReg, mockLogger, appCfg, secCfg, srvCfg, osCfg, &extension.AppliedServerExtends{})
 	assert.NotNil(t, startFn)
 	assert.NotNil(t, shutdownFn)
 }
@@ -62,7 +62,7 @@ func Test_newStartServerFunc(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("HTTPサーバーが起動後にListenerが設定されること", func(t *testing.T) {
+		t.Run("HTTPサーバーが起動し設定ポートで待ち受けること", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -77,13 +77,7 @@ func Test_newStartServerFunc(t *testing.T) {
 				Times(1)
 			namedMock.EXPECT().Error(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
-			lc := &net.ListenConfig{}
-			ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
-			require.NoError(t, err)
-			tcpAddr, ok := ln.Addr().(*net.TCPAddr)
-			require.True(t, ok)
-			port := tcpAddr.Port
-			require.NoError(t, ln.Close())
+			port := freePort(t)
 
 			cfg := config.MockConfigForTest(t)
 			appCfg := config.NewApplicationConfig(cfg)
@@ -92,16 +86,24 @@ func Test_newStartServerFunc(t *testing.T) {
 			osCfg := config.NewOperatingSystemConfig(cfg)
 			srvCfg.SetServerPort(t, port)
 
-			e := server.NewAppServer(srvCfg)
+			e, srv := newTestHTTPServer(t, srvCfg)
+			e.GET("/ping", func(c *echo.Context) error { return c.NoContent(http.StatusNoContent) })
 
-			fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
-			err = fn(context.Background())
-			require.NoError(t, err)
-			assert.NotNil(t, e.Listener)
+			fn := newStartServerFunc(srv, mockLogger, appCfg, secCfg, srvCfg, osCfg)
+			require.NoError(t, fn(context.Background()))
 
 			t.Cleanup(func() {
-				_ = e.Shutdown(context.Background())
+				_ = srv.Shutdown(context.Background())
 			})
+
+			// TCP の接続確立はリッスンだけで成立するため、実際にリクエストを処理できることまで確かめる。
+			url := "http://" + net.JoinHostPort("127.0.0.1", strconv.Itoa(port)) + "/ping"
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+			require.NoError(t, err)
+			resp, err := (&http.Client{Timeout: time.Second}).Do(req)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = resp.Body.Close() })
+			assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 		})
 	})
 
@@ -132,52 +134,77 @@ func Test_newStartServerFunc(t *testing.T) {
 			osCfg := config.NewOperatingSystemConfig(cfg)
 			srvCfg.SetServerPort(t, port)
 
-			e := server.NewAppServer(srvCfg)
-			fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
+			_, srv := newTestHTTPServer(t, srvCfg)
+			fn := newStartServerFunc(srv, mockLogger, appCfg, secCfg, srvCfg, osCfg)
 
 			err = fn(context.Background())
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "failed to listen on port")
 		})
+	})
+}
 
-		t.Run("Startがhttp.ErrServerClosed以外で失敗するとErrorログを出す", func(t *testing.T) {
+func Test_serveHTTP(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Shutdownによる停止ではErrorログを出さない", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
+			mockLogger := mock_logging.NewMockLogger(ctrl)
 
+			cfg := config.MockConfigForTest(t)
+			srvCfg := config.NewServerConfig(cfg)
+			_, srv := newTestHTTPServer(t, srvCfg)
+
+			lc := &net.ListenConfig{}
+			ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+
+			done := make(chan struct{})
+			go func() {
+				serveHTTP(context.Background(), srv, ln, mockLogger)
+				close(done)
+			}()
+
+			require.NoError(t, srv.Shutdown(context.Background()))
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				t.Fatal("serveHTTP が終了しなかった")
+			}
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("http.ErrServerClosed以外で終了するとErrorログを出す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
 			mockLogger := mock_logging.NewMockLogger(ctrl)
 			namedMock := mock_logging.NewMockLogger(ctrl)
 
-			mockLogger.EXPECT().Named("server.Start").Return(namedMock).AnyTimes()
-			namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
-			namedMock.EXPECT().
-				Info(gomock.Any(), "http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				AnyTimes()
-			errLogged := make(chan struct{})
+			mockLogger.EXPECT().Named("server.Start").Return(namedMock).Times(1)
 			namedMock.EXPECT().
 				Error(gomock.Any(), "failed to start http server", gomock.Any()).
-				Do(func(context.Context, string, ...*logging.Field) { close(errLogged) }).
 				Times(1)
 
 			cfg := config.MockConfigForTest(t)
-			appCfg := config.NewApplicationConfig(cfg)
-			secCfg := config.NewSecurityConfig(cfg)
 			srvCfg := config.NewServerConfig(cfg)
-			osCfg := config.NewOperatingSystemConfig(cfg)
-			srvCfg.SetServerPort(t, 0) // OS 割り当ての空きポート
+			_, srv := newTestHTTPServer(t, srvCfg)
 
-			e := server.NewAppServer(srvCfg)
-			fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
+			lc := &net.ListenConfig{}
+			ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			// 閉じた Listener を渡し、正常停止以外の終了を再現する。
+			require.NoError(t, ln.Close())
 
-			require.NoError(t, fn(context.Background()))
-			// Shutdown ではなく Listener を直接 Close し、Serve を http.ErrServerClosed 以外で終了させる。
-			require.NoError(t, e.Listener.Close())
-
-			select {
-			case <-errLogged:
-			case <-time.After(2 * time.Second):
-				t.Fatal("Start 失敗時の Error ログが呼ばれなかった")
-			}
+			serveHTTP(context.Background(), srv, ln, mockLogger)
 		})
 	})
 }
@@ -201,8 +228,8 @@ func Test_newStopServerFunc(t *testing.T) {
 			srvCfg := config.NewServerConfig(cfg)
 			osCfg := config.NewOperatingSystemConfig(cfg)
 
-			e := server.NewAppServer(srvCfg)
-			fn := newStopServerFunc(e, mockLogger, osCfg)
+			_, srv := newTestHTTPServer(t, srvCfg)
+			fn := newStopServerFunc(srv, mockLogger, osCfg)
 
 			require.NoError(t, fn(context.Background()))
 		})
@@ -225,12 +252,12 @@ func Test_newStopServerFunc(t *testing.T) {
 			srvCfg := config.NewServerConfig(cfg)
 			osCfg := config.NewOperatingSystemConfig(cfg)
 
-			e := server.NewAppServer(srvCfg)
+			e, srv := newTestHTTPServer(t, srvCfg)
 
 			// ハンドラを処理中にして接続を active に保ち、Shutdown を idle 完了させない
 			entered := make(chan struct{})
 			release := make(chan struct{})
-			e.GET("/block", func(c echo.Context) error {
+			e.GET("/block", func(c *echo.Context) error {
 				close(entered)
 				<-release
 				return c.NoContent(http.StatusOK)
@@ -239,8 +266,7 @@ func Test_newStopServerFunc(t *testing.T) {
 			lc := &net.ListenConfig{}
 			ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 			require.NoError(t, err)
-			e.Listener = ln
-			go func() { _ = e.Start("") }()
+			go func() { _ = srv.Serve(ln) }()
 			t.Cleanup(func() { close(release) })
 
 			go func() {
@@ -258,7 +284,7 @@ func Test_newStopServerFunc(t *testing.T) {
 			// 既に期限の切れた context で Shutdown → 処理中接続が残り context error を返す
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 			defer cancel()
-			fn := newStopServerFunc(e, mockLogger, osCfg)
+			fn := newStopServerFunc(srv, mockLogger, osCfg)
 			require.Error(t, fn(ctx))
 		})
 	})
@@ -267,4 +293,23 @@ func Test_newStopServerFunc(t *testing.T) {
 func Test_lifecycleEventFields(t *testing.T) {
 	t.Parallel()
 	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+// newTestHTTPServer は、テスト用の HTTP サーバーを Echo とともに構築します。
+func newTestHTTPServer(t *testing.T, srvCfg *config.ServerConfig) (*echo.Echo, *http.Server) {
+	t.Helper()
+	e := server.NewAppServer()
+	return e, server.NewHTTPServer(e, srvCfg)
+}
+
+// freePort は、OS が割り当てた空きポート番号を返します。
+func freePort(t *testing.T) int {
+	t.Helper()
+	lc := &net.ListenConfig{}
+	ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	require.True(t, ok)
+	require.NoError(t, ln.Close())
+	return tcpAddr.Port
 }

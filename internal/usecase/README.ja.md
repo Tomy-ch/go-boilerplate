@@ -484,7 +484,7 @@ detail を参照）。
 
 ### HTTP/DBの要素は持ち込まない
 
-- `http.*`, `echo.Context`, `sqlc` 型、`sql.Null*`、DB列名、OpenAPI生成型…を引数/戻り値に使わない。
+- `http.*`, `*echo.Context`, `sqlc` 型、`sql.Null*`、DB列名、OpenAPI生成型…を引数/戻り値に使わない。
 - 代わりに DTO/VO（Page/Filters/Actor） で表現。
 
 ### エラー方針
@@ -668,7 +668,7 @@ Usecase テストでは以下を扱いません。
 ### Don’t
 
 - DomainのEntityを直接返す
-- `http.Status` や `echo.Context` を引数に取る/返す
+- `http.Status` や `*echo.Context` を引数に取る/返す
 - `sqlc`生成型や`sql.Null*`を引数/戻り値に使う
 - `openapi/gen`の型を直接返す（DTOに詰め替えるのはControllerの責務）
 - Listで0件をエラー化（`apperror.ErrNotFound`(404)は単体取得のみ）

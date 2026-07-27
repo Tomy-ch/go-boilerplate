@@ -21,7 +21,7 @@ flowchart TB
     end
 
     subgraph "Stop フック"
-        Shutdown["e.Shutdown()"]
+        Shutdown["srv.Shutdown()"]
         DBClose["db.Close()"]
         O11yShutdown["tp.Shutdown() / mp.Shutdown()"]
     end
@@ -35,8 +35,8 @@ flowchart TB
 
 HTTP サーバーの起動・停止を `lifecycle.Registrar` に登録します。
 
-- **Start**: goroutine で `e.Start()` を実行し、起動ログにポート / allowed_origins / CIDR / モードを出力
-- **Stop**: `e.Shutdown(ctx)` で Graceful Shutdown
+- **Start**: リスナを開き（bind 失敗は起動を中断）、goroutine で待ち受けを開始し、起動ログにポート / allowed_origins / CIDR / モードを出力
+- **Stop**: `srv.Shutdown(ctx)` で Graceful Shutdown
 - `extension.AppliedServerExtends` を受け取ることで、サーバー拡張が適用された後に登録されることを保証
 
 ## RegisterDBCloseHooks

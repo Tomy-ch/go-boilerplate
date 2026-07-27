@@ -49,6 +49,7 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 		t.Parallel()
 		txm := &testTxRunner{
 			inner: innerTxm,
+			db:    db,
 			t:     t,
 		}
 		txm.WithinTx(func(_ context.Context) {})

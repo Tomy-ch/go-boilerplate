@@ -22,7 +22,7 @@ func TestNewBasicAuthValidator(t *testing.T) {
 
 		t.Run("ユーザー名とパスワードが一致する場合、trueを返す", func(t *testing.T) {
 			t.Parallel()
-			ok, err := validator(mtc.UserName(), mtc.Password(), nil)
+			ok, err := validator(nil, mtc.UserName(), mtc.Password())
 			require.NoError(t, err)
 			assert.True(t, ok)
 		})
@@ -33,28 +33,28 @@ func TestNewBasicAuthValidator(t *testing.T) {
 
 		t.Run("両方とも不一致の場合、falseを返す", func(t *testing.T) {
 			t.Parallel()
-			ok, err := validator("wrong-user", "wrong-password", nil)
+			ok, err := validator(nil, "wrong-user", "wrong-password")
 			require.NoError(t, err)
 			assert.False(t, ok)
 		})
 
 		t.Run("ユーザー名のみ一致しパスワードが不一致の場合、falseを返す", func(t *testing.T) {
 			t.Parallel()
-			ok, err := validator(mtc.UserName(), "wrong-password", nil)
+			ok, err := validator(nil, mtc.UserName(), "wrong-password")
 			require.NoError(t, err)
 			assert.False(t, ok)
 		})
 
 		t.Run("パスワードのみ一致しユーザー名が不一致の場合、falseを返す", func(t *testing.T) {
 			t.Parallel()
-			ok, err := validator("wrong-user", mtc.Password(), nil)
+			ok, err := validator(nil, "wrong-user", mtc.Password())
 			require.NoError(t, err)
 			assert.False(t, ok)
 		})
 
 		t.Run("空のユーザー名とパスワードの場合、falseを返す", func(t *testing.T) {
 			t.Parallel()
-			ok, err := validator("", "", nil)
+			ok, err := validator(nil, "", "")
 			require.NoError(t, err)
 			assert.False(t, ok)
 		})
@@ -65,7 +65,7 @@ func TestNewBasicAuthValidator(t *testing.T) {
 			longUser := strings.Repeat("a", 1024)
 			longPass := strings.Repeat("b", 4096)
 
-			ok, err := validator(longUser, longPass, nil)
+			ok, err := validator(nil, longUser, longPass)
 			require.NoError(t, err)
 			assert.False(t, ok)
 		})
