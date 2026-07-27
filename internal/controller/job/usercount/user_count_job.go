@@ -13,6 +13,11 @@ import (
 
 const jobName = "user-count"
 
+const (
+	activeOnlyFlag   = "--active-only"
+	inactiveOnlyFlag = "--inactive-only"
+)
+
 type jobImpl struct {
 	logging logging.Logger
 	tracer  observability.LayerTracer
@@ -43,27 +48,11 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	var active *bool
-	filter := "all"
-	for _, a := range args {
-		// 相反・重複するフィルタ指定は、後勝ちで黙殺せずエラーにする。
-		switch a {
-		case "--active-only":
-			if active != nil {
-				return xerrors.New("conflicting filter flag: " + a)
-			}
-			active = new(true)
-			filter = "active"
-		case "--inactive-only":
-			if active != nil {
-				return xerrors.New("conflicting filter flag: " + a)
-			}
-			active = new(false)
-			filter = "inactive"
-		default:
-			return xerrors.New("unknown flag: " + a)
-		}
+	active, err := parseFilter(args)
+	if err != nil {
+		return err
 	}
+
 	count, err := u.usecase.CountUsers(ctx, active)
 	if err != nil {
 		return err
@@ -72,7 +61,52 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 		ctx,
 		"Result: total user count",
 		logging.Int64(logging.JobResultKey, count),
-		logging.String(logging.FilterKey, filter),
+		logging.String(logging.FilterKey, filterLabel(active)),
 	)
 	return nil
+}
+
+// parseFilter は、--active-only / --inactive-only フラグを解釈しカウント対象の絞り込み条件を返します。
+// 未指定は nil（全件）。同一フラグの重複・両フラグの併用・未知フラグはいずれも、後勝ちで黙殺せずエラーにします。
+func parseFilter(args []string) (*bool, error) {
+	seenActive, seenInactive := false, false
+	for _, a := range args {
+		switch a {
+		case activeOnlyFlag:
+			if seenActive {
+				return nil, xerrors.New("duplicate flag: " + activeOnlyFlag)
+			}
+			seenActive = true
+		case inactiveOnlyFlag:
+			if seenInactive {
+				return nil, xerrors.New("duplicate flag: " + inactiveOnlyFlag)
+			}
+			seenInactive = true
+		default:
+			return nil, xerrors.New("unknown flag: " + a)
+		}
+	}
+	if seenActive && seenInactive {
+		return nil, xerrors.New("conflicting filter flags: " + activeOnlyFlag + ", " + inactiveOnlyFlag)
+	}
+	switch {
+	case seenActive:
+		return new(true), nil
+	case seenInactive:
+		return new(false), nil
+	default:
+		return nil, nil //nolint:nilnil // フラグ未指定は「絞り込みなし（全件）」を表すため nil, nil が正常値
+	}
+}
+
+// filterLabel は、絞り込み条件をログ用のラベルへ変換します（nil→all / true→active / false→inactive）。
+func filterLabel(active *bool) string {
+	switch {
+	case active == nil:
+		return "all"
+	case *active:
+		return "active"
+	default:
+		return "inactive"
+	}
 }
