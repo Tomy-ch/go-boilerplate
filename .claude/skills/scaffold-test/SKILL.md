@@ -243,7 +243,7 @@ The strict 1:1 rule (no bundling; skip-test exemption via named `TestXxx` + `t.S
 
 ## Constraints (Summary)
 
-- ❌ Add restate-the-code or *why*-narration comments to the generated test — keep test comments minimal (behavior only). Case intent is carried by the Japanese `t.Run` name, not by inline comments; the only required non-godoc comment is the `-race` serial-block exception rationale.
+- ❌ Add restate-the-code or *why*-narration comments to the generated test — keep test comments minimal (behavior only). Case intent is carried by the Japanese `t.Run` name, not by inline comments; the only required non-godoc comment is the `-race` serial-block exception rationale. When a comment does earn its place, keep it to one line — a multi-line explanation of a fixture or an idiomatic assertion costs more to read than it returns.
 - ❌ Multiple `TestXxx` for the same function / method.
 - ❌ Bundling multiple subjects into one `TestXxx` (strict 1:1, no exception; getters / accessors included). A subject covered elsewhere still gets its own named `TestXxx` + `t.Skip("<covering test>")` — never a bundle.
 - ❌ Table-driven `for`-loop tests (forbidden — always write sequential `t.Run` siblings, one per case).
