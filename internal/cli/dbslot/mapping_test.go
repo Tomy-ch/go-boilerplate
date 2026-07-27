@@ -361,7 +361,8 @@ func TestPool_finishAcquire(t *testing.T) {
 			b, err := os.ReadFile(filepath.Join(root, ".gobp-db-slot")) //nolint:gosec // テスト内の固定パス
 			require.NoError(t, err)
 			assert.Contains(t, string(b), "SLOT=3")
-			assert.Contains(t, out.String(), "SLOT=3") // 呼び出し元（make）が読む内容が標準出力へ出る
+			// make は .gobp-db-slot を -include で読む。標準出力は人が確認するためのエコー。
+			assert.Contains(t, out.String(), "SLOT=3")
 		})
 	})
 

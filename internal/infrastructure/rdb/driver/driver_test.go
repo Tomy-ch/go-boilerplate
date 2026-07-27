@@ -191,7 +191,7 @@ func Test_newDB(t *testing.T) {
 
 			drv, ok := db.(*dbDriver)
 			require.True(t, ok)
-			assert.Nil(t, drv.pool.Config().ConnConfig.Tracer) // 未結線であること自体を確認する
+			assert.Nil(t, drv.pool.Config().ConnConfig.Tracer)
 		})
 	})
 }
