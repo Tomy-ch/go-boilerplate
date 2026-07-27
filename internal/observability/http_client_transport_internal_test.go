@@ -65,6 +65,11 @@ func Test_guardedDialControl(t *testing.T) {
 			// 100.128.0.0 は /10 の外＝グローバル扱いで通ること（過剰ブロック防止）。
 			require.NoError(t, guardedDialControl(deny, "tcp", "100.128.0.1:80", nil))
 		})
+
+		t.Run("NAT64 Well-Known Prefixに埋め込んだpublic IPv4は許可する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, guardedDialControl(deny, "tcp", "[64:ff9b::5db8:d822]:80", nil)) // 93.184.216.34
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -102,6 +107,14 @@ func Test_guardedDialControl(t *testing.T) {
 			t.Parallel()
 			require.Error(t, guardedDialControl(allow, "tcp", "169.254.169.254:80", nil))
 			require.Error(t, guardedDialControl(deny, "tcp", "169.254.169.254:80", nil))
+		})
+
+		t.Run("NAT64 Well-Known Prefixに埋め込んだ内部宛てIPは埋め込みIPv4で判定して拒否する", func(t *testing.T) {
+			t.Parallel()
+			// 埋め込み IPv4 を剥がす正規化が退行すると IPv4 ガードを迂回できる。
+			require.Error(t, guardedDialControl(deny, "tcp", "[64:ff9b::7f00:1]:80", nil))     // 127.0.0.1
+			require.Error(t, guardedDialControl(deny, "tcp", "[64:ff9b::a00:5]:80", nil))      // 10.0.0.5
+			require.Error(t, guardedDialControl(allow, "tcp", "[64:ff9b::a9fe:a9fe]:80", nil)) // 169.254.169.254
 		})
 
 		t.Run("private許可フラグなしならloopback/privateを拒否する", func(t *testing.T) {

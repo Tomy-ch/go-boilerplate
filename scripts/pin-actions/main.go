@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -206,7 +207,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		//nolint:tagliatelle // GitHub API のレスポンスフィールド名(published_at)に合わせる必要があるため
 		PublishedAt time.Time `json:"published_at"`
 	}
-	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+tag, &rel)
+	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &rel)
 	if err != nil {
 		return 0, err
 	}
@@ -224,7 +225,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 			} `json:"committer"`
 		} `json:"commit"`
 	}
-	st, err = githubGet(ctx, "https://api.github.com/repos/"+repo+"/commits/"+sha, &commit)
+	st, err = githubGet(ctx, "https://api.github.com/repos/"+repo+"/commits/"+url.PathEscape(sha), &commit)
 	if err != nil {
 		return 0, err
 	}
