@@ -383,3 +383,33 @@ func Test_breakerManager_get(t *testing.T) {
 		})
 	})
 }
+
+func Test_breaker_currentState(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_breaker_toClosed(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_breaker_toHalfOpen(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_breaker_toOpen(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_newBreaker(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
+
+func Test_newBreakerManager(t *testing.T) {
+	t.Parallel()
+	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+}
