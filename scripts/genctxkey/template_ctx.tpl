@@ -9,7 +9,7 @@ import (
 	{{.ImportAlias}} "{{.ImportPath}}"
 	{{- end}}
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type {{.NameLower}}KeyType struct{}
@@ -33,11 +33,11 @@ func Get{{.NameCamel}}(ctx context.Context) ({{.Type}}, bool) {
 
 // --- echo.Context wrapper（std lib 版へ委譲） ---
 
-func Set{{.NameCamel}}ToEcho(c echo.Context, val {{.Type}}) {
+func Set{{.NameCamel}}ToEcho(c *echo.Context, val {{.Type}}) {
 	ctx := Set{{.NameCamel}}(c.Request().Context(), val)
 	c.SetRequest(c.Request().WithContext(ctx))
 }
 
-func Get{{.NameCamel}}FromEcho(c echo.Context) ({{.Type}}, bool) {
+func Get{{.NameCamel}}FromEcho(c *echo.Context) ({{.Type}}, bool) {
 	return Get{{.NameCamel}}(c.Request().Context())
 }

@@ -24,7 +24,7 @@ flowchart LR
     HookModule --> Start["Server Start"]
 ```
 
-1. `Module()` — Create Echo instance
+1. `Module()` — Create the Echo instance and the `http.Server` that serves it
 2. `MiddlewareModule()` — Apply all middleware and configurators
 3. `HookModule()` — Register start/stop hooks (server starts here)
 
@@ -39,5 +39,5 @@ flowchart LR
 
 - `Module()` must be loaded before `MiddlewareModule()` — Echo instance is required for middleware application
 - `HookModule()` must be loaded last — server starts after middleware and configurators are applied
-- `NewAppServer` has side effects and must not be referenced from domain/usecase
+- `NewAppServer` / `NewHTTPServer` have side effects and must not be referenced from domain/usecase
 - Extensions are applied in the order **MiddlewareModule → HookModule**

@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-`genctxkey` is a tool that generates code to pass values to and from `context.Context` and `echo.Context` in a type-safe manner.
+`genctxkey` is a tool that generates code to pass values to and from `context.Context` and `*echo.Context` in a type-safe manner.
 
 ## Overview
 
@@ -19,7 +19,7 @@ This tool automatically generates helper functions to solve these problems.
 - for context.Context
   - `SetXxx`
   - `GetXxx`
-- for echo.Context
+- for *echo.Context
   - `SetXxxToEcho`
   - `GetXxxFromEcho`
 

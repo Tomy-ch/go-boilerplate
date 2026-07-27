@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/products/ranking --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/products/ranking --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/ranking --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package productranking は、/v1/products/ranking エンドポイントに関連するハンドラを提供します。
 package productranking
@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	rankinguc "go-boilerplate/internal/usecase/product/ranking"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

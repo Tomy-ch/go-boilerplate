@@ -31,7 +31,7 @@ Make observability a single, typed, **config-driven** switch:
   settings is intentional: a bare enable flag paired with a dead exporter is meaningless;
   this design forces operators to be conscious of export configuration.
 - Gating is applied at **construction time**: a disabled signal builds no exporter / batcher
-  / reader / runtime collector (no network, no goroutines), the Echo otelecho middleware
+  / reader / runtime collector (no network, no goroutines), the Echo OTel middleware
   degrades to pass-through, and the otelzap log core is not Tee'd into the logger. The SDK
   provider shells remain (cheap, inert) — this is runtime disabling, not build-time removal.
 - The same config-driven gate also governs **per-log trace correlation**. `trace_id` /
@@ -78,7 +78,7 @@ planes.
 ### Build-tag removal of the otel / bridge dependencies
 
 Rejected for now: runtime disabling meets the lightweight goal; build-time removal would add
-two wiring variants for hot-path-wired instrumentation (otelecho / otelpgx) without a current
+two wiring variants for hot-path-wired instrumentation (Echo OTel middleware / otelpgx) without a current
 requirement.
 
 ## Notes

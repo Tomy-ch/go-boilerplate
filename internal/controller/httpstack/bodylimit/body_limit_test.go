@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestMiddleware(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		handled := false
-		handler := func(c echo.Context) error {
+		handler := func(c *echo.Context) error {
 			_, _ = io.ReadAll(c.Request().Body) // BodyLimit は reader をラップするので読み切る
 			handled = true
 			return c.NoContent(http.StatusOK)
@@ -64,9 +64,7 @@ func TestMiddleware(t *testing.T) {
 			handled, err := exec(t, 1, bytes.Repeat([]byte("a"), 2_000_000))
 
 			require.Error(t, err)
-			var he *echo.HTTPError
-			require.ErrorAs(t, err, &he)
-			assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
+			assert.Equal(t, http.StatusRequestEntityTooLarge, echo.StatusCode(err))
 			assert.False(t, handled)
 		})
 
@@ -77,9 +75,7 @@ func TestMiddleware(t *testing.T) {
 			handled, err := exec(t, 1, bytes.Repeat([]byte("a"), 1_000_001))
 
 			require.Error(t, err)
-			var he *echo.HTTPError
-			require.ErrorAs(t, err, &he)
-			assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
+			assert.Equal(t, http.StatusRequestEntityTooLarge, echo.StatusCode(err))
 			assert.False(t, handled)
 		})
 
@@ -95,7 +91,7 @@ func TestMiddleware(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			handled := false
-			handler := func(c echo.Context) error {
+			handler := func(c *echo.Context) error {
 				_, err := io.ReadAll(c.Request().Body) // 実読み取りで上限超過し 413 を返す
 				handled = true
 				return err
@@ -103,9 +99,7 @@ func TestMiddleware(t *testing.T) {
 			err := Middleware(1)(handler)(c)
 
 			require.Error(t, err)
-			var he *echo.HTTPError
-			require.ErrorAs(t, err, &he)
-			assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
+			assert.Equal(t, http.StatusRequestEntityTooLarge, echo.StatusCode(err))
 			assert.True(t, handled, "実読み取り経路を通すためハンドラ自体は実行される")
 		})
 

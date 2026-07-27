@@ -168,7 +168,7 @@ The substrate ships the following ready-to-use instrumentation. An integrator mo
 | --- | --- | --- |
 | **Per-layer tracing** | `TracerFactory.Controller()/Usecase()/Infra()` → `LayerTracer.Start` | span name `layer.package.function`; auto start/end + `trace_id`/`span_id` structured logs |
 | **Ad-hoc span helper** | `RunWithSpan` / `StartSpanWithParent` / `StartWithSuffix` | span any function without a layer tracer; suffix to disambiguate multiple spans in one function |
-| **HTTP root spans** | `otelecho` middleware | per-request root span (the controller-layer span largely duplicates it — see README §Design Policy 5) |
+| **HTTP root spans** | `echootel` middleware | per-request root span (the controller-layer span largely duplicates it — see README §Design Policy 5) |
 | **DB tracing + metrics** | `NewPgxTracer` (`otelpgx`) | connection details suppressed from attributes |
 | **Outbound HTTP RED metrics** | `NewHTTPClientTransport` + `HTTPClientMetrics` | requests / errors / latency + retries / in-flight / breaker-state gauge |
 | **Subsystem metrics** | `OutboxMetrics` / `WorkerMetrics` / `IdempotencyMetrics` | lag & dead / engine RED + DLQ / idempotency result & GC; low-cardinality labels only |

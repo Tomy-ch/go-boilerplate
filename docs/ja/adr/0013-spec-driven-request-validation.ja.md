@@ -21,7 +21,7 @@ accepted
 
 ## 決定
 
-`oapi-codegen/echo-middleware` パッケージの `oapimw.OapiRequestValidatorWithOptions` を Echo ミドルウェアとしてワイヤリングし、解析済みの仕様と `openapi3filter.AuthenticationFunc` を渡す。バリデーターが実行される前に、authn コンテキストスロットを注入して `AuthenticationFunc` がリクエストコンテキストに認証結果を書き込めるようにする。
+`oapi-codegen/echo-v5-middleware` パッケージの `oapimw.OapiRequestValidatorWithOptions` を Echo ミドルウェアとしてワイヤリングし、解析済みの仕様と `openapi3filter.AuthenticationFunc` を渡す。バリデーターが実行される前に、authn コンテキストスロットを注入して `AuthenticationFunc` がリクエストコンテキストに認証結果を書き込めるようにする。
 
 ```go
 func Middleware(
@@ -37,7 +37,7 @@ func Middleware(
         },
     })
     return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
+        return func(c *echo.Context) error {
             req := c.Request()
             req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
             c.SetRequest(req)

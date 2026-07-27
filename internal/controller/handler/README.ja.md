@@ -234,7 +234,7 @@ Handler --> Usecase
 
      ```go
      //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
      ```
 
   4. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
@@ -511,7 +511,7 @@ Controller → Database
 
 #### Don’t
 
-- Usecase に `http.Status`, `echo.Context`, `*http.Request` などの HTTP 要素を渡す
+- Usecase に `http.Status`, `*echo.Context`, `*http.Request` などの HTTP 要素を渡す
 - Usecase で `limit/offset` を直に決めるために **HTTP のパラメータ生値**を渡す  
 - `sqlc` 生成型やDB列名をControllerにそのまま持ち込む
 - 一覧0件で `ErrNotFound` を返して404にする  
@@ -788,14 +788,14 @@ rec := testecho.NewEchoTestClient(t, e).
 |`AuthBearer`|Bearer トークンを設定|
 |`PathParams`|パスパラメータを設定|
 |`QueryParams`|クエリパラメータを設定|
-|`Build`|Request / ResponseRecorder / echo.Context を返す|
+|`Build`|Request / ResponseRecorder / *echo.Context を返す|
 |`Serve`|Echo にリクエストを送信し ResponseRecorder を返す|
 
 ### testspan
 
 |関数|説明|
 |---|---|
-|`StartTestSpanForEcho`|echo.Context にテスト用 span を埋め込み、終了関数を返す|
+|`StartTestSpanForEcho`|*echo.Context にテスト用 span を埋め込み、終了関数を返す|
 
 ### testuuid
 
@@ -809,7 +809,7 @@ rec := testecho.NewEchoTestClient(t, e).
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 package items
 
@@ -819,7 +819,7 @@ import (
     "go-boilerplate/internal/observability"
     // それぞれ実装で使うパッケージをimport
 
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 type server struct {

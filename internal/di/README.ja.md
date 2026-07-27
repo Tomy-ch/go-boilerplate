@@ -179,7 +179,7 @@ internal/di
 │   └── core/            # HTTP スタック共通コンポーネント（authn / basicauth / validator / …）
 ├── server/              # Echo サーバーモジュール（Module / MiddlewareModule / HookModule）
 │   ├── extension/       # ミドルウェア & configurator の DI（inbound / outbound / security /
-│   │                    #   instrumentation / nonprod / testkit）
+│   │                    #   instrumentation / testkit）
 │   └── hook/            # サーバーのライフサイクルフック（HTTP 起動/停止・DB close・o11y shutdown）
 ├── lifecycle/           # Registrar（fx.Lifecycle の抽象化）+ SupervisedRunner
 ├── shutdowner/          # fx.Shutdowner のラッパー（ワンショット系の自己停止）

@@ -419,7 +419,7 @@ observability 機能が失敗しても
 layer span は controller / usecase / infra の全層で `LayerTracer.Start` により生成されますが、
 その **診断上の価値は異なります**。これは計装をどこから削るかを判断する際に重要になります。
 
-- **controller 層の span — 最も冗長。** `otelecho` ミドルウェアが **リクエスト単位のルート span を既に生成**
+- **controller 層の span — 最も冗長。** `echootel` ミドルウェアが **リクエスト単位のルート span を既に生成**
   しているため、controller(handler) 層で追加する span は **そのリクエスト span とほぼ同じ境界・同程度の区間を重複**
   します。ルート span とほぼ重なります。
 - **usecase / infra 層の span — 残す価値がある。** これらは **リクエスト内の内訳**

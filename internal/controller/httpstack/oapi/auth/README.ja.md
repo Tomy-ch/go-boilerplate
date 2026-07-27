@@ -47,9 +47,14 @@ flowchart TB
 |`ErrAuthnSlotNotFound`|`ErrUnauthenticated`|リクエストコンテキストに authn スロットが無い（`oapi.Middleware` が未注入）|
 |`ErrInvalidAuthDefaultMode`|`ErrInternal`|デフォルト認証ポリシーが見つからない（**予約** — 現状は返さない。注意点を参照）|
 
+authFunc から出るエラーはすべて HTTP ステータスを持つ形へ包まれます —— 上記の認証失敗は 401、
+アイデンティティ解決時の infra 障害は `infraErrorToHTTP` が選んだステータス（500 / 503）です。
+これは見た目の問題ではありません。バリデーションミドルウェアはエラーから読み取れるステータス
+しか伝播させず、それ以外は 403 に丸めるため、包まないと認証エラーが 403 として表に出ます。
+
 ## authn スロット統合
 
-この関数は OpenAPI バリデーションパイプライン内で動作するため、`echo.Context` ではなく `context.Context` のみが利用可能です。親の `oapi.Middleware` がバリデーション実行前に `request.Context()` へ **authn スロット**（`ctxhelper.WithAuthn`）を仕込むことで、バリデータから呼ばれる authFunc がそのスロットへ認証結果 `Authn` を `ctxhelper.SetAuthn` で書き戻せます。ハンドラは後段で `ctxhelper.GetAuthn` により取得します。
+この関数は OpenAPI バリデーションパイプライン内で動作するため、`*echo.Context` ではなく `context.Context` のみが利用可能です。親の `oapi.Middleware` がバリデーション実行前に `request.Context()` へ **authn スロット**（`ctxhelper.WithAuthn`）を仕込むことで、バリデータから呼ばれる authFunc がそのスロットへ認証結果 `Authn` を `ctxhelper.SetAuthn` で書き戻せます。ハンドラは後段で `ctxhelper.GetAuthn` により取得します。
 
 ```mermaid
 flowchart LR

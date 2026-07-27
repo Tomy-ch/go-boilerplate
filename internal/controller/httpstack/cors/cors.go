@@ -2,10 +2,12 @@
 package cors
 
 import (
+	"net/http"
+
 	"go-boilerplate/internal/config"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 // corsMaxAgeSeconds は、プリフライト結果のキャッシュ秒数。
@@ -21,13 +23,13 @@ func buildCORSConfig(allowedOrigins []string) middleware.CORSConfig {
 	return middleware.CORSConfig{
 		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{
-			echo.HEAD,
-			echo.GET,
-			echo.POST,
-			echo.PUT,
-			echo.PATCH,
-			echo.DELETE,
-			echo.OPTIONS,
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodOptions,
 		},
 		AllowHeaders: []string{
 			echo.HeaderOrigin,

@@ -13,9 +13,7 @@ flowchart TB
     Normalize["normalizeHTTPError"]
     TypeCheck{"Error type?"}
     AppErr["HTTPErrorResponse (apperror)"]
-    EchoErr["echo.HTTPError"]
-    OAPICheck{"OpenAPI error?"}
-    OAPIErr["RequestError / SecurityError / ResponseError"]
+    EchoErr["Status-carrying error<br/>(echo.HTTPError / predefined / OpenAPI validation)"]
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (fallback)"]
     AddReqID["Attach RequestID"]
@@ -28,9 +26,7 @@ flowchart TB
     Guard -- no --> Normalize
     Normalize --> TypeCheck
     TypeCheck -- HTTPErrorResponse --> AppErr --> AddReqID
-    TypeCheck -- echo.HTTPError --> EchoErr --> OAPICheck
-    OAPICheck -- yes --> OAPIErr --> AddReqID
-    OAPICheck -- no --> EchoNorm --> AddReqID
+    TypeCheck -- status-carrying error --> EchoErr --> EchoNorm --> AddReqID
     TypeCheck -- other --> Fallback --> AddReqID
     AddReqID --> Gate --> Write --> Log
 ```
@@ -46,17 +42,15 @@ Errors already wrapped by `response.NewHTTPErrorFromAppError()` in handlers.
 - If HTTP status is valid (400-599): use as-is, attach RequestID
 - If HTTP status is invalid: re-normalize via `NewHTTPErrorFromAppError(internal)`
 
-### 2. `echo.HTTPError` (Echo / OpenAPI Error)
+### 2. Errors carrying an HTTP status (Echo / OpenAPI Error)
 
-First checks for OpenAPI-specific errors inside the Echo error:
+Resolved with `echo.StatusCode`, so both `echo.HTTPError` and Echo's predefined errors
+(`echo.ErrNotFound` and friends, whose type is unexported) are covered. OpenAPI validation
+failures arrive through this path too: the validation middleware turns them into an
+`echo.HTTPError` carrying the status it decided (400 for a malformed request, 404 / 405 for
+an unroutable one, 401 for a rejected credential -- see the `oapi/auth` README).
 
-|OpenAPI Error Type|HTTP Status|
-|---|---|
-|`openapi3filter.RequestError`|400 Bad Request|
-|`openapi3filter.SecurityRequirementsError`|401 Unauthorized|
-|`openapi3filter.ResponseError`|500 Internal Server Error|
-
-If not an OpenAPI error, normalizes as a standard Echo HTTP error using the status code.
+A status outside 400-599 is not treated as an error status and falls through to the fallback.
 
 ### 3. Fallback
 
@@ -120,8 +114,7 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 |File|Responsibility|
 |---|---|
 |`http_error_handler.go`|Main handler, normalization dispatcher, logging|
-|`echo_http_error_handler.go`|Normalize `echo.HTTPError` to `HTTPErrorResponse`|
-|`open_api_error_handler.go`|Normalize OpenAPI validation errors to `HTTPErrorResponse`|
+|`echo_http_error_handler.go`|Normalize errors carrying an HTTP status to `HTTPErrorResponse`|
 |`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec|
 
 ## Coverage exceptions

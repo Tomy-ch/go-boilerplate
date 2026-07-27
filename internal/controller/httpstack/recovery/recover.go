@@ -8,9 +8,10 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 const (
@@ -21,11 +22,27 @@ const (
 )
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
+//
+// [middleware.RecoverWithConfig] は復帰した panic を [middleware.PanicStackError] へ包んで
+// 戻り値のエラーとして返すため、その外側でスタック付きのログを出し、
+// エラーハンドラへは包む前のエラーを渡します。
 func Middleware(z logging.Logger, lf logging.LogFieldBuilder, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
-	cnf := newRecoverConfig(z, appCfg)
-	cnf.LogErrorFunc = newRecoverLogErrorFunc(z, lf)
+	recoverMW := middleware.RecoverWithConfig(newRecoverConfig(z, appCfg))
+	logPanic := newPanicLogFunc(z, lf)
 
-	return middleware.RecoverWithConfig(cnf)
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		recovered := recoverMW(next)
+		return func(c *echo.Context) error {
+			err := recovered(c)
+
+			var pse *middleware.PanicStackError
+			if !xerrors.As(err, &pse) {
+				return err
+			}
+			logPanic(c, pse.Err, pse.Stack)
+			return pse.Err
+		}
+	}
 }
 
 // newRecoverConfig は、環境設定に基づいてリカバリミドルウェアの設定を生成します。
@@ -45,9 +62,9 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 	}
 }
 
-// newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
-func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error {
-	return func(c echo.Context, err error, stack []byte) error {
+// newPanicLogFunc は、復帰したパニックのログ出力関数を生成します。
+func newPanicLogFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c *echo.Context, err error, stack []byte) {
+	return func(c *echo.Context, err error, stack []byte) {
 		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
 		recoverFields := []*logging.Field{
 			logging.String(logging.InternalErrorKey, err.Error()),
@@ -55,9 +72,8 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
 		logger.Named("middleware.recover").Error(c.Request().Context(), "panic recovered", fields...)
-		// ログ済みを記録し err を返す（echo が c.Error で 500 を返す。二重ログは ctxhelper.GetRecoveredFromEcho で抑止）。
+		// ログ済みを記録する（二重ログは ctxhelper.GetRecoveredFromEcho で抑止）。
 		ctxhelper.SetRecoveredToEcho(c, true)
-		return err
 	}
 }
 
@@ -75,7 +91,7 @@ func productionConfig() middleware.RecoverConfig {
 	return middleware.RecoverConfig{
 		StackSize: productionStackSize,
 		// DisableStackAll=true で他 goroutine は除外しつつ、当該 goroutine のスタックは捕捉する
-		// （DisablePrintStack=true だと echo が runtime.Stack 自体を行わず LogErrorFunc に空が渡る）。
+		// （DisablePrintStack=true だと echo が runtime.Stack 自体を行わず PanicStackError にも包まれない）。
 		DisableStackAll:   true,
 		DisablePrintStack: false,
 	}

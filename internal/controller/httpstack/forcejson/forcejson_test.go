@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,7 +53,7 @@ func Test_shouldForceJSON(t *testing.T) {
 func Test_ensureJSONContentType(t *testing.T) {
 	t.Parallel()
 
-	newCtx := func() echo.Context {
+	newCtx := func() *echo.Context {
 		e := echo.New()
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
@@ -128,26 +128,48 @@ func TestMiddleware(t *testing.T) {
 
 		t.Run("HTMLボディはapplication/jsonへ上書きされる", func(t *testing.T) {
 			t.Parallel()
-			got := exec(t, func(c echo.Context) error { return c.HTML(http.StatusOK, "<p>hi</p>") })
+			got := exec(t, func(c *echo.Context) error { return c.HTML(http.StatusOK, "<p>hi</p>") })
 			assert.Equal(t, echo.MIMEApplicationJSON, got)
 		})
 
 		t.Run("Content-Type未設定のボディもapplication/jsonへ上書きされる", func(t *testing.T) {
 			t.Parallel()
-			got := exec(t, func(c echo.Context) error { return c.Blob(http.StatusOK, "", []byte("x")) })
+			got := exec(t, func(c *echo.Context) error { return c.Blob(http.StatusOK, "", []byte("x")) })
 			assert.Equal(t, echo.MIMEApplicationJSON, got)
 		})
 
 		t.Run("application/jsonは変更されない", func(t *testing.T) {
 			t.Parallel()
-			got := exec(t, func(c echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"k": "v"}) })
+			got := exec(t, func(c *echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"k": "v"}) })
 			assert.Equal(t, echo.MIMEApplicationJSON, got)
 		})
 
 		t.Run("text/plainは変更されない", func(t *testing.T) {
 			t.Parallel()
-			got := exec(t, func(c echo.Context) error { return c.String(http.StatusOK, "plain") })
+			got := exec(t, func(c *echo.Context) error { return c.String(http.StatusOK, "plain") })
 			assert.Equal(t, echo.MIMETextPlainCharsetUTF8, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("レスポンスを取り出せない場合は補正せず素通しする", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/t", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			// Echo のレスポンスへ辿れないライタへ差し替える。
+			c.SetResponse(rec)
+
+			handler := Middleware()(func(c *echo.Context) error {
+				return c.HTML(http.StatusOK, "<p>hi</p>")
+			})
+			require.NoError(t, handler(c))
+
+			assert.Equal(t, echo.MIMETextHTMLCharsetUTF8, rec.Header().Get(echo.HeaderContentType))
 		})
 	})
 }

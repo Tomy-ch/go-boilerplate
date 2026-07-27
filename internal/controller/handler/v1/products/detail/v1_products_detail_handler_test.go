@@ -18,7 +18,7 @@ import (
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -116,7 +116,7 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	routes := e.Routes()
+	routes := e.Router().Routes()
 	require.Len(t, routes, 2)
 	registered := make(map[string]bool, len(routes))
 	for _, r := range routes {

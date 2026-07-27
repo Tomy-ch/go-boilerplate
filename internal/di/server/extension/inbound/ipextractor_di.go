@@ -5,7 +5,7 @@ import (
 	"go-boilerplate/internal/controller/httpstack/ipextractor"
 	"go-boilerplate/internal/di/server/extension"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/fx"
 )
 
