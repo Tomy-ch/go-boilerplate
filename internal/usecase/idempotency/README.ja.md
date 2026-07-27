@@ -78,7 +78,7 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 - **メトリクス**: 冪等性の判定結果 / 内部失敗 / GC 削除カウンタは、HTTP ステータスからの推測ではなく usecase 境界で観測する（hit/miss/conflict は `Claim`/`Get`/`Complete` の結果を見ないと確定できないため）。
   - `Run[T]` は `Deps.Metrics`（`idempotency.Metrics`）へ計上する: `IncMiss`（新規 claim）/ `IncHit`（completed の replay）/ `IncConflict`（ロックタイムアウト・claimed のまま・claim 直後にエントリが消失）/ `IncFingerprintMismatch` / `IncClaimFailure`（`ErrLockTimeout` 以外の claim エラー）/ `IncCompleteFailure`。
   - `GCUsecase` は `GCMetrics` へ計上する: バッチ成功ごとに `IncExpiredCleanup(count)`、削除エラー時に `IncExpiredCleanupFailure()`。
-  - 配線済みの実装は `observability.NewIdempotencyMetrics`（`internal/di/module/usecase.go` で両 interface として提供）。OpenTelemetry カウンタ `idempotency.requests{operation_id,result}` / `idempotency.failures{operation_id,phase}` / `idempotency.expired_cleanup{job}` を出力する。高カーディナリティ・秘匿値（Idempotency-Key・scope・fingerprint・PII・raw error）は**ラベルにしない**。空の `operation_id` は `unknown` に丸める。
+  - 配線済みの実装は `observability.NewIdempotencyMetrics`（`internal/di/module/usecase.go` で両 interface として提供）。OpenTelemetry カウンタ `idempotency.requests{operation_id,result}` / `idempotency.failures{operation_id,phase}`（per-request 失敗: `phase=claim/complete`）/ `idempotency.expired_cleanup{job}` / `idempotency.expired_cleanup_failure{job}`（GC バッチ失敗 — per-request の `failures` に畳まず GC 成功と同じく `job` ラベルで対称に保つ）を出力する。高カーディナリティ・秘匿値（Idempotency-Key・scope・fingerprint・PII・raw error）は**ラベルにしない**。空の `operation_id` は `unknown` に丸める。
   - `Deps.Metrics` も `GCMetrics` 引数も任意のまま: `nil` は **no-op**（観測性バックエンド無しでも `Run`/`GC` は動作する）。
 - **オペレーションごとに成功ステータスは1つ**: `Run[T]` は `successStatus` を1つ記録し、`PostUsers` は常に 201 を返す。成功ステータスが複数あり得る（例: 200 と 201）エンドポイントに `Run[T]` を採用する場合は、保存ステータスで分岐するようハンドラを拡張すること（現状の replay はハンドラ固定のレスポンス型で再描画する）。
 
