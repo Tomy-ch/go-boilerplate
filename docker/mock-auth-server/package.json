@@ -23,7 +23,7 @@
   "dependencies": {
     "@hono/node-server": "2.0.10",
     "hono": "^4.12.31",
-    "jose": "^5.9.6",
+    "jose": "^6.2.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
