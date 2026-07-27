@@ -94,16 +94,24 @@ worktrees can `make serve` at the same time. The variables below are defined in
 
 `pg_data` outlives the container, so a `database` image whose base OS carries a different glibc
 makes every existing database report a collation version mismatch — PostgreSQL records the glibc
-collation version at `CREATE DATABASE` time and warns on connect once the running OS disagrees:
+collation version at `CREATE DATABASE` time and complains once the running OS disagrees:
 
 ```txt
 WARNING:  database "local" has a collation version mismatch
 DETAIL:  The database was created using collation version 2.36, but the operating system provides version 2.41.
 ```
 
-Recreating the databases does not clear it: `CREATE DATABASE` copies `datcollversion` from
-`template1`, which carries the old value too. Reindex and refresh every database in the shared
-instance once, `template1` included:
+On an existing database this is only a warning, but on `template1` it is **fatal to
+`CREATE DATABASE`** — which means `make slot-acquire` and `make db-*-reinit` fail outright, not
+noisily:
+
+```txt
+ERROR: template database "template1" has a collation version mismatch (SQLSTATE XX000)
+```
+
+Recreating the databases is therefore not a workaround, and would not clear the warning anyway:
+`CREATE DATABASE` copies `datcollversion` from `template1`, which carries the old value too.
+Reindex and refresh every database in the shared instance once, `template1` included:
 
 ```sh
 docker exec gobp-shared-database-1 bash -c 'for db in $(psql -U postgres -Atc "select datname from pg_database where datallowconn"); do psql -U postgres -q -d "$db" -c "REINDEX DATABASE \"$db\";" -c "ALTER DATABASE \"$db\" REFRESH COLLATION VERSION;"; done'
@@ -113,6 +121,12 @@ The reindex is what makes the refresh honest — text index ordering was built u
 collation, so refreshing the recorded version without rebuilding would simply hide the
 disagreement. On a local dataset this takes seconds. CI is unaffected: its `database` service
 container starts from an empty volume every run.
+
+The shared instance is what makes this bite twice. While one checkout runs the new `database`
+image and another still runs the old one, whichever ran `make infra-up` last owns the container,
+and the volume's recorded collation version follows it — so the mismatch reappears in the other
+direction and has to be refreshed again. Until every checkout is on the same `database` image,
+expect to re-run the command above after another checkout brings the shared infra up.
 
 ## Hot reload (air + delve)
 

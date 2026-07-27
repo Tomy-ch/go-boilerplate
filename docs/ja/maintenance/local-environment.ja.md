@@ -91,16 +91,23 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 
 `pg_data` はコンテナより長生きするため、`database` イメージのベース OS が変わって glibc が入れ替わると、
 既存の全データベースが collation version mismatch を報告する。PostgreSQL は `CREATE DATABASE` 時点の
-glibc collation version を記録しており、稼働中の OS と食い違うと接続のたびに警告する:
+glibc collation version を記録しており、稼働中の OS と食い違うと文句を言う:
 
 ```txt
 WARNING:  database "local" has a collation version mismatch
 DETAIL:  The database was created using collation version 2.36, but the operating system provides version 2.41.
 ```
 
-データベースを作り直しても解消しない。`CREATE DATABASE` は `datcollversion` を `template1` から複製し、
-その `template1` 自体が古い値を持つためである。共有インスタンス内の全データベースを `template1` 込みで
-一度 reindex し、記録を更新する:
+既存データベースでは警告で済むが、`template1` で起きた場合は **`CREATE DATABASE` が失敗する**。
+つまり `make slot-acquire` や `make db-*-reinit` は騒がしくなるのではなく、そのまま落ちる:
+
+```txt
+ERROR: template database "template1" has a collation version mismatch (SQLSTATE XX000)
+```
+
+したがってデータベースの作り直しは回避策にならないし、そもそも警告も消えない。`CREATE DATABASE` は
+`datcollversion` を `template1` から複製し、その `template1` 自体が古い値を持つためである。
+共有インスタンス内の全データベースを `template1` 込みで一度 reindex し、記録を更新する:
 
 ```sh
 docker exec gobp-shared-database-1 bash -c 'for db in $(psql -U postgres -Atc "select datname from pg_database where datallowconn"); do psql -U postgres -q -d "$db" -c "REINDEX DATABASE \"$db\";" -c "ALTER DATABASE \"$db\" REFRESH COLLATION VERSION;"; done'
@@ -109,6 +116,12 @@ docker exec gobp-shared-database-1 bash -c 'for db in $(psql -U postgres -Atc "s
 refresh を正当化するのが reindex である。テキストインデックスの並び順は旧 collation で構築されており、
 再構築せずに記録だけ更新すれば食い違いを隠すだけになる。ローカルのデータ量なら数秒で終わる。CI は
 毎回空ボリュームから `database` service container を起動するため影響を受けない。
+
+これが二度刺さるのは共有インスタンスだからである。ある checkout が新しい `database` イメージを、別の
+checkout がまだ古いイメージを使っている間は、最後に `make infra-up` した側がコンテナを握り、ボリューム
+に記録された collation version もそれに追従する。つまり食い違いが逆向きに再発し、もう一度 refresh が
+要る。全 checkout が同じ `database` イメージに揃うまでは、他の checkout が共有インフラを起動するたびに
+上のコマンドを再実行することになる。
 
 ## ホットリロード（air + delve）
 
