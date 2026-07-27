@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-OpenAPI 生成型をドメイン型へ変換する境界ヘルパー。**controller 層のみ**が利用します。
+controller 層のリクエスト/レスポンス型変換のための境界ヘルパー。OpenAPI 生成型 ↔ ドメイン型に加え、usecase DTO → レスポンス型のヘルパーも提供します。**controller 層のみ**が利用します。
 
 ## 目的
 

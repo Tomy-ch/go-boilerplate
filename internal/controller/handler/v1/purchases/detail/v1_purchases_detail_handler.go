@@ -63,7 +63,7 @@ func toPurchaseGetDetailResponse(v purchaseuc.PurchaseGetDetailView) gen.Purchas
 		details[i] = gen.PurchaseDetailItemResponse{
 			ProductId:   d.ProductID.ToPrimitive(),
 			ProductName: d.ProductName,
-			Quantity:    toInt32(d.Quantity),
+			Quantity:    conv.Int32(d.Quantity),
 			UnitPrice:   d.UnitPrice.String(),
 		}
 	}
@@ -85,11 +85,4 @@ func toPurchaseGetDetailResponse(v purchaseuc.PurchaseGetDetailView) gen.Purchas
 		PaidAt:         v.PaidAt,
 		CanceledAt:     v.CanceledAt,
 	}
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
-	return int32(v)
 }

@@ -199,22 +199,3 @@ func Test_toShipResponse(t *testing.T) {
 		})
 	})
 }
-
-func Test_shippedAt(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("非nilの場合は値を返す", func(t *testing.T) {
-			t.Parallel()
-			tm := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
-			assert.Equal(t, tm, shippedAt(&tm))
-		})
-
-		t.Run("nilの場合はゼロ値を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, time.Time{}, shippedAt(nil))
-		})
-	})
-}

@@ -138,7 +138,7 @@ func toPurchaseResponse(v purchaseuc.PurchaseView) gen.PurchaseResponse {
 	for i, d := range v.Details {
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  toInt32(d.Quantity),
+			Quantity:  conv.Int32(d.Quantity),
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -169,11 +169,4 @@ func toReferenceAmount(r *purchaseuc.ReferenceAmountView) *gen.ReferenceAmount {
 		Rate:     r.Rate.String(),
 		RateDate: r.RateDate,
 	}
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
-	return int32(v)
 }

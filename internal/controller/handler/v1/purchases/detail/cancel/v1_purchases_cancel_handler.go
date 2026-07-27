@@ -6,7 +6,6 @@ package cancel
 
 import (
 	"context"
-	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
@@ -70,7 +69,7 @@ func toCancelResponse(v purchaseuc.CancelPurchaseView) gen.PurchaseCancelRespons
 	for i, d := range v.Details {
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  toInt32(d.Quantity),
+			Quantity:  conv.Int32(d.Quantity),
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -89,22 +88,6 @@ func toCancelResponse(v purchaseuc.CancelPurchaseView) gen.PurchaseCancelRespons
 		TotalAmount:    int64(v.TotalAmount),
 		Details:        details,
 		OrderedAt:      v.OrderedAt,
-		CanceledAt:     canceledAt(v.CanceledAt),
+		CanceledAt:     conv.TimeOrZero(v.CanceledAt),
 	}
-}
-
-// canceledAt は、キャンセル日時（*time.Time）をレスポンスの time.Time へ変換します。
-// キャンセル成功時は常に非 nil ですが、防御的に nil はゼロ値へ倒します。
-func canceledAt(t *time.Time) time.Time {
-	if t == nil {
-		return time.Time{}
-	}
-	return *t
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
-	return int32(v)
 }

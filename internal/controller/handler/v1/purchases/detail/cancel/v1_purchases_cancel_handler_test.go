@@ -166,22 +166,3 @@ func Test_toCancelResponse(t *testing.T) {
 		})
 	})
 }
-
-func Test_canceledAt(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("非nilの場合は値を返す", func(t *testing.T) {
-			t.Parallel()
-			tm := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
-			assert.Equal(t, tm, canceledAt(&tm))
-		})
-
-		t.Run("nilの場合はゼロ値を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, time.Time{}, canceledAt(nil))
-		})
-	})
-}

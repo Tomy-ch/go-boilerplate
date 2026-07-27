@@ -6,7 +6,6 @@ package ship
 
 import (
 	"context"
-	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
@@ -63,7 +62,7 @@ func toShipResponse(v purchaseuc.ShipPurchaseView) gen.PurchaseShipResponse {
 	for i, d := range v.Details {
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  toInt32(d.Quantity),
+			Quantity:  conv.Int32(d.Quantity),
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -82,22 +81,6 @@ func toShipResponse(v purchaseuc.ShipPurchaseView) gen.PurchaseShipResponse {
 		TotalAmount:    int64(v.TotalAmount),
 		Details:        details,
 		OrderedAt:      v.OrderedAt,
-		ShippedAt:      shippedAt(v.ShippedAt),
+		ShippedAt:      conv.TimeOrZero(v.ShippedAt),
 	}
-}
-
-// shippedAt は、発送日時（*time.Time）をレスポンスの time.Time へ変換します。
-// 発送成功時は常に非 nil ですが、防御的に nil はゼロ値へ倒します。
-func shippedAt(t *time.Time) time.Time {
-	if t == nil {
-		return time.Time{}
-	}
-	return *t
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は int32 の DB 列由来でありオーバーフローしません
-	return int32(v)
 }
