@@ -403,7 +403,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: nil})
-			assert.Nil(t, actual)
+			assert.Empty(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
@@ -420,7 +420,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: cursor})
-			assert.Nil(t, actual)
+			assert.Empty(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
@@ -436,7 +436,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: newDefaultCursor(t)})
 			require.ErrorIs(t, err, expectedErr)
-			assert.Nil(t, actual)
+			assert.Empty(t, actual)
 		})
 	})
 }

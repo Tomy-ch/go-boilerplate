@@ -66,7 +66,7 @@ type ListProductsParams struct {
 // Usecase は、商品の参照ユースケースと画像アップロードユースケースを定義します。
 type Usecase interface {
 	// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。
-	ListProducts(ctx context.Context, params ListProductsParams) (*ProductListView, error)
+	ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
 	// GetProduct は、ID から公開中の単一商品を取得します。未存在・非公開はいずれも NotFound を返します（存在秘匿）。
 	GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
 	// UploadProductImage は、admin が商品画像をアップロードし、格納先のオブジェクトパスを返します。
@@ -115,9 +115,9 @@ func New(
 	}
 }
 
-func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (*ProductListView, error) {
+func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error) {
 	if params.Cursor == nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
+		return ProductListView{}, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
 	}
 
 	ctx, endSpan := u.tracer.Start(ctx)
@@ -125,7 +125,7 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 
 	after, err := decodeProductCursor(params.Cursor)
 	if err != nil {
-		return nil, err
+		return ProductListView{}, err
 	}
 
 	domainParams := product.ListParams{
@@ -144,7 +144,7 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 
 	products, err := u.repo.FindPublishedList(ctx, domainParams)
 	if err != nil {
-		return nil, err
+		return ProductListView{}, err
 	}
 
 	limit := params.Cursor.Limit()
@@ -164,7 +164,7 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 		nextCursor = &encoded
 	}
 
-	return &ProductListView{Items: items, NextCursor: nextCursor}, nil
+	return ProductListView{Items: items, NextCursor: nextCursor}, nil
 }
 
 // GetProduct は、存在秘匿を Repository が返す NotFound に委ね、usecase 側では公開判定を再実装しません。

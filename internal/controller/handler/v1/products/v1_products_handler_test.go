@@ -136,7 +136,7 @@ func Test_server_GetProducts(t *testing.T) {
 
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				Return(&productuc.ProductListView{Items: []productuc.ProductView{dto1, dto2}, NextCursor: nil}, nil)
+				Return(productuc.ProductListView{Items: []productuc.ProductView{dto1, dto2}, NextCursor: nil}, nil)
 
 			resp, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{Params: gen.GetProductsParams{}})
 			require.NoError(t, err)
@@ -160,7 +160,7 @@ func Test_server_GetProducts(t *testing.T) {
 
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				Return(&productuc.ProductListView{Items: []productuc.ProductView{dto1}, NextCursor: &nextCursor}, nil)
+				Return(productuc.ProductListView{Items: []productuc.ProductView{dto1}, NextCursor: &nextCursor}, nil)
 
 			resp, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{
 				Params: gen.GetProductsParams{After: &after, First: &first},
@@ -190,9 +190,9 @@ func Test_server_GetProducts(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (*productuc.ProductListView, error) {
+				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
-					return &productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
+					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				})
 
 			_, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{
@@ -216,9 +216,9 @@ func Test_server_GetProducts(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (*productuc.ProductListView, error) {
+				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
-					return &productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
+					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				})
 
 			_, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{Params: gen.GetProductsParams{}})
@@ -250,7 +250,7 @@ func Test_server_GetProducts(t *testing.T) {
 			expectedErr := apperror.ErrInternal
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				Return(nil, expectedErr)
+				Return(productuc.ProductListView{}, expectedErr)
 
 			resp, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{Params: gen.GetProductsParams{}})
 			assert.Nil(t, resp)
