@@ -30,8 +30,11 @@ var (
 	errMethodRequired         = xerrors.Wrap(apperror.ErrInvalidArgument, "Method is required")
 	errIdempotencyKeyRequired = xerrors.Wrap(apperror.ErrInvalidArgument, "AllowRetry requires IdempotencyKey")
 
-	// errResponseTooLarge は、レスポンスボディが上限を超過したことを表します（ErrUnavailable）。
-	errResponseTooLarge = xerrors.Wrap(apperror.ErrUnavailable, "response body exceeds max bytes")
+	// errResponseTooLarge は、レスポンスボディが上限を超過したことを表します。
+	// 再試行しても同じ結果になる決定的失敗なので、transport 失敗(ErrUnavailable)ではなく
+	// 非 retry 系(buildRequest の precondition 違反と同じ ErrInvalidArgument)を内包させます。
+	// これにより isRetryableOutcome が false となり、無駄な再試行と breaker の自傷 open を防ぎます。
+	errResponseTooLarge = xerrors.Wrap(apperror.ErrInvalidArgument, "response body exceeds max bytes")
 )
 
 // statusToAppError は、HTTP ステータスコードを apperror sentinel に写像します。
