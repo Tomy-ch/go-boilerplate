@@ -199,15 +199,18 @@ linters:
             - pkg: go.opentelemetry.io/otel
               desc: "オブザーバビリティ関連ライブラリの使用は制限されています。
                 可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
-        restrict_the_use_of_otel_contrib: # OTel contrib(計装/エクスポータ)の使用を制限します
+        restrict_the_use_of_otel_instrumentation: # OTel 計装ライブラリ(contrib / Echo 公式)の使用を制限します
           files:
             - "**/*.go"
             - "!**/internal/observability/**.go" # otel 初期化(exporter / runtime 計装)で使用を許可します
-            - "!**/internal/controller/httpstack/observability/**.go" # HTTP層の otelecho ミドルウェア統合で使用を許可します
+            - "!**/internal/controller/httpstack/observability/**.go" # HTTP層の OTel ミドルウェア統合で使用を許可します
           list-mode: lax
           deny:
             - pkg: go.opentelemetry.io/contrib
               desc: "OTel contrib ライブラリの使用は observability の初期化 / HTTP otel ミドルウェアに限定されています。
+                可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
+            - pkg: github.com/labstack/echo-opentelemetry
+              desc: "Echo の OTel 計装ライブラリの使用は HTTP otel ミドルウェアに限定されています。
                 可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
         restrict_lifecycle_to_di: # di 層外からの lifecycle.Registrar への参照を禁止する
           files:
