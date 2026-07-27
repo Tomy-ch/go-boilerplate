@@ -199,7 +199,20 @@ grep -rl "setup-review" docs/adr/
 
 不変（元 ADR は編集せず supersede する新 ADR を追加）モデルは、**運用開始後**に決定を見直すときに適用します。セットアップ時の一度きりの再ベースライン化には適用しません。
 
-## Phase 11: サンプルAPIの削除
+## Phase 11: 依存ライセンス方針の決定
+
+依存ライセンススキャン（`make trivy-license` と [.github/workflows/trivy-fs.yaml](../../../.github/workflows/trivy-fs.yaml) の `trivy-license` ジョブ）は**恒久的に報告専用**です。全依存のライセンスをジョブサマリと PR コメントへ列挙するだけで、ビルドを落とすことはありません。
+
+これは未完成のゲートではなく、**意図的な非選択**です。どのライセンスを許容するかは、このテンプレートを採用する組織が持つ法務判断です。配布されるバイナリでは失格となる copyleft が、バイナリが自社インフラの外へ出ないサービスでは全く問題にならないこともあり、答えは会社・製品・配布形態ごとに変わります。ここで閾値を決めることは、ある一社の法務スタンスを全 fork へ焼き込むことになるため、テンプレートは棚卸しだけを提供し、判断は採用側に委ねます。
+
+自組織に禁止ライセンス方針がある（あるいは必要な）場合は、次のように自分でゲート化してください：
+
+1. 許容する集合を Trivy 自身の分類（`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`）で決め、**出荷物とビルド専用ツールに同じ基準を当てるか**を判断する。同じでなくてよい：本リポジトリで `notice` / `unencumbered` 以外に分類される依存は、出荷されないビルド専用の `docker/tools/` 由来です。
+2. Trivy の分類は出発点であり権威ではないものとして扱う。`BlueOak-1.0.0` は OSI 承認の permissive ライセンスでありながら `unknown` に落ちるため、この種のケースは分類任せにせず明示的に決める。
+3. [.makefiles/security/trivy.mk](../../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../../.trivyignore.yaml) へ記録する。
+4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0080](../../../docs/adr/0080-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
+
+## Phase 12: サンプルAPIの削除
 
 このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
 
