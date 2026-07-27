@@ -57,6 +57,9 @@ const (
 	outputPerm     = 0o600
 )
 
+// errRegistryStatus は、npm registry が 200 / 404 以外のステータスを返した場合のエラー。
+var errRegistryStatus = xerrors.New("unexpected npm registry status")
+
 // entry は lockfile に記録された 1 パッケージ。path は lockfile 内のキー（差分表示用に保持する）。
 type entry struct {
 	path    string
@@ -373,7 +376,7 @@ func packumentTimes(ctx context.Context, name string) (map[string]time.Time, err
 		return map[string]time.Time{}, nil // private / 削除済み。判定不能として扱う
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, xerrors.New(fmt.Sprintf("registry %s: %d", name, resp.StatusCode))
+		return nil, xerrors.Wrap(errRegistryStatus, fmt.Sprintf("registry %s: %d", name, resp.StatusCode))
 	}
 
 	var doc struct {

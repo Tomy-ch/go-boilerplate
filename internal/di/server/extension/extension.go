@@ -17,6 +17,9 @@ import (
 // callerSkip は、applyMiddlewares → ApplyPreMiddlewares/ApplyUseMiddlewares の呼び出し経路で挟まるフレームを飛ばし、ログの caller を実呼び出し位置に合わせる段数。
 const callerSkip = 2
 
+// errDuplicateMiddlewarePriority は、同一種別のミドルウェアに Priority の重複がある場合のエラーです。
+var errDuplicateMiddlewarePriority = xerrors.New("duplicate middleware priorities")
+
 // ServerExtends は、サーバーの拡張機能を表します。
 type ServerExtends struct {
 	fx.In
@@ -161,9 +164,8 @@ func validatePriorityConflicts(kind string, mws []middlewareEntry) error {
 	conflicts := extractPriorityConflicts(byPriority)
 
 	if len(conflicts) > 0 {
-		return xerrors.New(fmt.Sprintf("duplicate %s middleware priorities: %s",
-			kind, strings.Join(conflicts, "; "),
-		))
+		return xerrors.Wrap(errDuplicateMiddlewarePriority,
+			fmt.Sprintf("%s: %s", kind, strings.Join(conflicts, "; ")))
 	}
 
 	return nil

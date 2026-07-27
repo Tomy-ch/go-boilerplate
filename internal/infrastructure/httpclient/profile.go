@@ -28,6 +28,9 @@ const (
 	defaultBreakerHalfOpenProbes   = 3
 )
 
+// ErrDuplicateProfile は、同一 Downstream の Profile が重複登録されたことを示すエラーです。
+var ErrDuplicateProfile = xerrors.New("duplicate httpclient profile for downstream")
+
 // Profile は、Downstream ごとの resilient な振る舞いの設定です（infra 内部・port に漏らしません）。
 type Profile struct {
 	// PerAttemptTimeout は、1 回の試行(attempt)あたりのタイムアウトです。
@@ -123,7 +126,7 @@ func NewRegistryFromProfiles(profiles []DownstreamProfile) (Registry, error) {
 	m := make(map[Downstream]Profile, len(profiles))
 	for _, p := range profiles {
 		if _, dup := m[p.Name]; dup {
-			return nil, xerrors.New(fmt.Sprintf("duplicate httpclient profile for downstream %q", p.Name))
+			return nil, xerrors.Wrap(ErrDuplicateProfile, fmt.Sprintf("%q", p.Name))
 		}
 		m[p.Name] = p.Profile
 	}

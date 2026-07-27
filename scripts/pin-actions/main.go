@@ -49,6 +49,13 @@ var (
 	lockRe = regexp.MustCompile(`^"([^"]+)"\s*=\s*"([0-9a-f]{40})"`)
 )
 
+var (
+	// errGitHubAPIStatus は、GitHub API が想定外の HTTP ステータスを返した場合のエラー。
+	errGitHubAPIStatus = xerrors.New("unexpected GitHub API status")
+	// errRefNotFound は、指定 ref が upstream に見つからなかった場合のエラー。
+	errRefNotFound = xerrors.New("ref が見つかりません")
+)
+
 // ref はアクション参照 1 件。repo は owner/repo、sub はサブパス（codeql-action/init 等）、tag は固定対象の版。
 type ref struct {
 	repo string
@@ -215,7 +222,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return daysSince(rel.PublishedAt), nil
 	}
 	if st != http.StatusOK && st != http.StatusNotFound {
-		return 0, xerrors.New(fmt.Sprintf("releases/tags/%s: %d", tag, st))
+		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("releases/tags/%s: %d", tag, st))
 	}
 
 	var commit struct {
@@ -230,7 +237,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return 0, err
 	}
 	if st != http.StatusOK {
-		return 0, xerrors.New(fmt.Sprintf("commits/%s: %d", sha, st))
+		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("commits/%s: %d", sha, st))
 	}
 	return daysSince(commit.Commit.Committer.Date), nil
 }
@@ -376,7 +383,7 @@ func selectSHA(out, tag string) (string, error) {
 	case headSHA != "":
 		return headSHA, nil
 	default:
-		return "", xerrors.New(fmt.Sprintf("ref %q が見つかりません", tag))
+		return "", xerrors.Wrap(errRefNotFound, fmt.Sprintf("%q", tag))
 	}
 }
 

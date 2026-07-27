@@ -18,6 +18,15 @@ const jobName = "outbox-gc"
 
 const batchSizeFlagPrefix = "--batch-size="
 
+var (
+	// errUnknownFlag は、未知のフラグが指定された場合のエラーです。
+	errUnknownFlag = xerrors.New("unknown flag")
+	// errDuplicateFlag は、同一フラグが複数回指定された場合のエラーです。
+	errDuplicateFlag = xerrors.New("duplicate flag")
+	// errInvalidBatchSize は、--batch-size に正の整数以外が指定された場合のエラーです。
+	errInvalidBatchSize = xerrors.New("invalid batch size")
+)
+
 type jobImpl struct {
 	logging logging.Logger
 	tracer  observability.LayerTracer
@@ -71,16 +80,16 @@ func parseBatchSize(args []string) (int32, error) {
 	seen := false
 	for _, a := range args {
 		if !strings.HasPrefix(a, batchSizeFlagPrefix) {
-			return 0, xerrors.New("unknown flag: " + a)
+			return 0, xerrors.Wrap(errUnknownFlag, a)
 		}
 		if seen {
-			return 0, xerrors.New("duplicate flag: " + batchSizeFlagPrefix)
+			return 0, xerrors.Wrap(errDuplicateFlag, batchSizeFlagPrefix)
 		}
 		seen = true
 
 		n, err := strconv.ParseInt(strings.TrimPrefix(a, batchSizeFlagPrefix), 10, 32)
 		if err != nil || n <= 0 {
-			return 0, xerrors.New("invalid batch size: " + a)
+			return 0, xerrors.Wrap(errInvalidBatchSize, a)
 		}
 		batchSize = int32(n)
 	}

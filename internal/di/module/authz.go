@@ -19,6 +19,9 @@ import (
 // callerSkipCount は、ロギングラッパーが追加するフレーム数を補正するためのスキップ数です。
 const callerSkipCount = 1
 
+// errNoAuthorizerForEnv は、現在の環境に対応する Authorizer が無く配線に失敗した場合のエラーです。
+var errNoAuthorizerForEnv = xerrors.New("no authorizer configured for environment")
+
 // authorizerParams は、provideAuthorizer の依存を集約する fx パラメータです。
 // RoleRepo はサンプル（user_roles）依存で、サンプル削除時にフィールドとプロバイダが対で除去されます。 // sample-api:line
 type authorizerParams struct {
@@ -86,6 +89,6 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 			logging.String("env", p.AppCfg.Env()),
 		)
 
-		return nil, xerrors.New("no authorizer configured for environment: " + p.AppCfg.Env())
+		return nil, xerrors.Wrap(errNoAuthorizerForEnv, p.AppCfg.Env())
 	}
 }

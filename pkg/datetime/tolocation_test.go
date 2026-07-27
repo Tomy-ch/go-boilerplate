@@ -35,7 +35,7 @@ func Test_toLocation(t *testing.T) {
 		t.Run("loc が nil の場合はエラーを返し parse を評価しても結果は捨てる", func(t *testing.T) {
 			t.Parallel()
 			got, err := toLocation(nil, func() (time.Time, error) { return time.Now(), nil })
-			require.ErrorContains(t, err, "loc must not be nil")
+			require.ErrorIs(t, err, ErrNilLocation)
 			assert.True(t, got.IsZero())
 		})
 

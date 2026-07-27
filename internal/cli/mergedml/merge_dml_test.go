@@ -60,15 +60,15 @@ func Test_validateTargetType(t *testing.T) {
 
 		t.Run("空文字は不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateTargetType(""))
+			require.ErrorIs(t, validateTargetType(""), errInvalidTargetType)
 		})
 		t.Run("カレントディレクトリ指定は不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateTargetType("."))
+			require.ErrorIs(t, validateTargetType("."), errInvalidTargetType)
 		})
 		t.Run("想定外のタイプは不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateTargetType("unknown"))
+			require.ErrorIs(t, validateTargetType("unknown"), errInvalidTargetType)
 		})
 	})
 }

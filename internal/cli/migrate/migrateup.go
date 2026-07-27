@@ -16,7 +16,7 @@ func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator
 	ctx := context.Background()
 
 	if steps < 0 {
-		err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))
+		err := xerrors.Wrap(errNegativeSteps, fmt.Sprintf("got %d", steps))
 		logger.Named("migrateUpRun").Error(ctx, "invalid steps", logging.Error(logging.ErrorKey, err))
 		return err
 	}

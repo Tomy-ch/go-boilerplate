@@ -37,6 +37,17 @@ var reservedPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("2001:db8::/32"),   // RFC 3849 IPv6 ドキュメント用（Documentation）
 }
 
+var (
+	// errSSRFUnparsableAddress は、接続先アドレスをパースできず fail-close で拒否した場合のエラーです。
+	errSSRFUnparsableAddress = xerrors.New("ssrf guard: blocked unparsable address")
+	// errSSRFBlockedAddress は、link-local / unspecified の接続先を拒否した場合のエラーです。
+	errSSRFBlockedAddress = xerrors.New("ssrf guard: blocked address")
+	// errSSRFReservedAddress は、bogon/予約帯の接続先を拒否した場合のエラーです。
+	errSSRFReservedAddress = xerrors.New("ssrf guard: blocked reserved address")
+	// errSSRFPrivateAddress は、loopback / private / CGNAT の接続先を、許可フラグが無いまま拒否した場合のエラーです。
+	errSSRFPrivateAddress = xerrors.New("ssrf guard: blocked private/loopback address")
+)
+
 // dialControl は、接続直前に呼ばれる net.Dialer の ControlContext 関数の型です。
 type dialControl = func(ctx context.Context, network, address string, c syscall.RawConn) error
 
@@ -200,7 +211,7 @@ func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawCon
 	}
 	addr, err := netip.ParseAddr(host)
 	if err != nil {
-		return xerrors.New("ssrf guard: blocked unparsable address " + host)
+		return xerrors.Wrap(errSSRFUnparsableAddress, host)
 	}
 	// zone を落として family を正規化し、Prefix 判定を IPv4-mapped/zone 付きでも取りこぼさないようにする。
 	addr = addr.Unmap().WithZone("")
@@ -210,16 +221,16 @@ func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawCon
 		addr = netip.AddrFrom4([4]byte{b[12], b[13], b[14], b[15]})
 	}
 	if addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() || addr.IsUnspecified() {
-		return xerrors.New("ssrf guard: blocked address " + host)
+		return xerrors.Wrap(errSSRFBlockedAddress, host)
 	}
 	// bogon/予約帯は正当な宛先にならないため allowPrivateNetwork フラグに関わらず常時拒否する。
 	for _, p := range reservedPrefixes {
 		if p.Contains(addr) {
-			return xerrors.New("ssrf guard: blocked reserved address " + host)
+			return xerrors.Wrap(errSSRFReservedAddress, host)
 		}
 	}
 	if !allowPrivateNetworkFromContext(ctx) && (addr.IsLoopback() || addr.IsPrivate() || cgnatPrefix.Contains(addr)) {
-		return xerrors.New("ssrf guard: blocked private/loopback address " + host)
+		return xerrors.Wrap(errSSRFPrivateAddress, host)
 	}
 	return nil
 }
