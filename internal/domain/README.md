@@ -136,9 +136,42 @@ func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
 func (e *Entity) Update(attrs Attributes) error
 ```
 
-This applies only where a swap is actually possible. When every parameter has a distinct type the
-compiler already rejects a swap, so keep the positional form — bundling every constructor by reflex is
-not the rule.
+#### When it applies
+
+The trigger is **two or more parameters of one type in a single signature**. Compare the resolved
+types — two distinct named types are distinct even when both wrap a string. Beyond the trigger, weigh
+how likely a swap is to survive undetected:
+
+- **Optional / pointer attributes** — `nil` is valid for either, so nothing at runtime rejects the swap.
+- **Free-form values** — no validation would reject the other attribute's value (a description and an
+  image path both pass "is a string").
+- **A caller that maps positionally** — a Repository rebuilding the entity from a DB row, a seed, or
+  any code that fills arguments in column order rather than by meaning.
+- **Adjacent parameters** — neighbours are easier to transpose than distant ones.
+
+The more of these hold, the stronger the case. All of them holding is the case this convention exists
+for.
+
+#### When it does not apply
+
+- **Every parameter has a distinct type.** The compiler already rejects a swap, so keep the positional
+  form. This is the common case, and bundling by reflex is not the rule.
+- **A swap cannot survive construction.** The invariants reject the transposed values (two VOs with
+  disjoint format checks, for instance), so the mistake fails fast in `New(...)` instead of being
+  persisted.
+- **The signature is merely long.** Parameter count alone is not the criterion — a ten-parameter
+  constructor whose types are all distinct carries no swap risk.
+
+#### Choosing the remedy
+
+- Give the attributes **distinct types** (a VO per attribute) when the attribute deserves an invariant
+  of its own. That is the format-check rule below, and it removes the swap risk as a side effect.
+- **Bundle into an attribute struct** when a VO would add no invariant and the value really is a plain
+  primitive. The field name is then the only thing distinguishing the attributes.
+
+Either way, lock the mapping with a test that passes **distinct** values for the same-typed attributes
+and asserts each getter — including at the persistence boundary, where field names still allow a wrong
+assignment.
 
 ### Do not set outside constructor
 
