@@ -316,6 +316,7 @@ export const MARKER_FILES = [
   "internal/di/module/authz.go",
   "internal/di/module/authz_test.go",
   "internal/di/module/job.go",
+  "cmd/seed.go",
   ".makefiles/github/operation/setup-repository.mk",
   ".makefiles/README.md",
   ".makefiles/README.ja.md",

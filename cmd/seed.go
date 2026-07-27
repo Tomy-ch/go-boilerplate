@@ -48,9 +48,12 @@ func dbSeedRun(database string) error {
 	if err != nil {
 		return err
 	}
-
-	return seed.RunProductImageSeed(logger, fs.OS{}, database, endpoint, put, openSeedDB)
+	if serr := seed.RunProductImageSeed(logger, fs.OS{}, database, endpoint, put, openSeedDB); serr != nil {
+		return serr
+	}
 	// sample-api:end
+
+	return nil
 }
 
 // sample-api:begin
