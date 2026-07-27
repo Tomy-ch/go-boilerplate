@@ -177,6 +177,10 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 	}
 	dialer := &net.Dialer{ControlContext: control}
 	base.DialContext = dialer.DialContext
+	// 不変条件: proxy 経由では dial 先が宛先ではなく proxy になり、guardedDialControl の宛先 IP 検査が
+	// 素通りする（SSRF ガードの無効化）。DefaultTransport から継承した環境変数由来の Proxy を無効化し、
+	// 宛先へ直結してガードを常に宛先 IP に効かせる（ADR-0020 の最終宛先 IP 検査と整合）。
+	base.Proxy = nil
 	return base
 }
 

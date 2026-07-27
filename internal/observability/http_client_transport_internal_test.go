@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 
 	"go-boilerplate/pkg/xerrors"
@@ -168,6 +169,45 @@ func Test_newGuardedBaseTransport(t *testing.T) {
 
 			require.NotNil(t, tr)
 			assert.NotNil(t, tr.DialContext)
+		})
+
+		t.Run("env 由来 proxy を継承せず Proxy を無効化する", func(t *testing.T) {
+			t.Parallel()
+
+			tr := newGuardedBaseTransport(permissiveDialControl)
+
+			// 不変条件: proxy 経由では dial 先が proxy になり宛先 IP 検査が素通りするため、Proxy は常に nil。
+			assert.Nil(t, tr.Proxy)
+		})
+	})
+}
+
+func Test_newGuardedBaseTransport_proxyDoesNotBypassGuard(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("proxy 設定下でも dial 先が宛先IPでガードが効く", func(t *testing.T) {
+			// proxy を設定しても base.Proxy=nil のため transport は proxy を使わず宛先へ直結し、
+			// guardedDialControl（dial 先 IP 検査）が宛先に効き続ける（SSRF ガードの無効化を防ぐ）。
+			t.Setenv("HTTP_PROXY", "http://10.0.0.1:3128")
+			t.Setenv("HTTPS_PROXY", "http://10.0.0.1:3128")
+
+			var gotAddr string
+			control := func(_ context.Context, _, address string, _ syscall.RawConn) error {
+				gotAddr = address
+				return errTestRoundTrip // 実接続はせず dial 直前で止める
+			}
+
+			base := newGuardedBaseTransport(control)
+			require.Nil(t, base.Proxy)
+
+			client := &http.Client{Transport: base}
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://93.184.216.34:80/x", nil)
+			require.NoError(t, err)
+
+			_, err = client.Do(req)
+			require.Error(t, err) // dial control が止めるためエラーになる
+
+			// dial 先は proxy(10.0.0.1) ではなく宛先(93.184.216.34) であり、ガードが宛先へ効く。
+			assert.Equal(t, "93.184.216.34:80", gotAddr)
 		})
 	})
 }
