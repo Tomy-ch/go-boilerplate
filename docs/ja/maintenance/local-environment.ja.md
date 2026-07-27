@@ -76,7 +76,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | --- | --- | --- | --- | --- |
 | `api_server` | app | build `docker/server/Dockerfile` | `${API_HOST_PORT:-8080}:8080` / dlv `${DLV_HOST_PORT:-2345}:2345` / pprof `${PPROF_HOST_PORT:-6060}:6060`（内部ポートは固定） | アプリ本体。dev target は **air** で起動しホットリロード＋delve デバッグ |
 | `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-4000}:4000`（内部 4000） | 疑似 OIDC 認証サーバー（JWT テストプロバイダ）。RS 側の JWKS 検証相手 |
-| `database` | infra | `postgres:18.3-bookworm` | `5432` 固定 | 全 checkout 共有の**単一**インスタンス（並列化は DB 名で行う。下記スロットリング参照） |
+| `database` | infra | `postgres:18.4-trixie` | `5432` 固定 | 全 checkout 共有の**単一**インスタンス（並列化は DB 名で行う。下記スロットリング参照） |
 | `observability` | infra | `grafana/otel-lgtm` | `3000`（Grafana UI）/ `4317`（OTLP gRPC）/ `4318`（OTLP HTTP）/ `3200`（Tempo API） | 全 checkout の traces / metrics / logs の受け皿。profile: `development` |
 | `garage` | infra | build `docker/garage/Dockerfile` | `3900`（S3 API）/ `3903`（Admin API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う） |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキーの冪等プロビジョニング |
@@ -86,6 +86,29 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile`（各 target） | なし（run/exec 実行） | コード生成・lint 等のツールボックス。**`user: root`**・profile: `generate`・リポジトリを `.:/app` にバインド |
 
 > `docs_viewer` / `sql_editor` は API スロット帯（`8080+N`）との衝突回避で **7000 番台へ退避**済み。
+
+### `database` のベース OS 変更後に出る collation version mismatch
+
+`pg_data` はコンテナより長生きするため、`database` イメージのベース OS が変わって glibc が入れ替わると、
+既存の全データベースが collation version mismatch を報告する。PostgreSQL は `CREATE DATABASE` 時点の
+glibc collation version を記録しており、稼働中の OS と食い違うと接続のたびに警告する:
+
+```txt
+WARNING:  database "local" has a collation version mismatch
+DETAIL:  The database was created using collation version 2.36, but the operating system provides version 2.41.
+```
+
+データベースを作り直しても解消しない。`CREATE DATABASE` は `datcollversion` を `template1` から複製し、
+その `template1` 自体が古い値を持つためである。共有インスタンス内の全データベースを `template1` 込みで
+一度 reindex し、記録を更新する:
+
+```sh
+docker exec gobp-shared-database-1 bash -c 'for db in $(psql -U postgres -Atc "select datname from pg_database where datallowconn"); do psql -U postgres -q -d "$db" -c "REINDEX DATABASE \"$db\";" -c "ALTER DATABASE \"$db\" REFRESH COLLATION VERSION;"; done'
+```
+
+refresh を正当化するのが reindex である。テキストインデックスの並び順は旧 collation で構築されており、
+再構築せずに記録だけ更新すれば食い違いを隠すだけになる。ローカルのデータ量なら数秒で終わる。CI は
+毎回空ボリュームから `database` service container を起動するため影響を受けない。
 
 ## ホットリロード（air + delve）
 

@@ -34,7 +34,7 @@ PostgreSQL データベース、オブザーバビリティスタック、ドキ
 | サービス | イメージ / Dockerfile | ポート | 説明 |
 | --- | --- | --- | --- |
 | `api_server` | `docker/server/Dockerfile` ターゲット `tooling` | 8080, 2345, 6060 | ホットリロード（air）、デバッガ（dlv）、pprof メトリクス |
-| `database` | `postgres:18.3-bookworm` | 5432 | PostgreSQL。`api_server` 起動前にヘルスチェック済み |
+| `database` | `postgres:18.4-trixie` | 5432 | PostgreSQL。`api_server` 起動前にヘルスチェック済み |
 | `observability` | `grafana/otel-lgtm` | 3000, 4317, 4318, 3200 | Grafana、OTLP gRPC/HTTP、Tempo API |
 
 **プロファイル: `tools`** — 補助的な開発者ツール。`database` サービスを共有する。

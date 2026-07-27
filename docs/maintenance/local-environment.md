@@ -79,7 +79,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | --- | --- | --- | --- | --- |
 | `api_server` | app | build `docker/server/Dockerfile` | `${API_HOST_PORT:-8080}:8080` / dlv `${DLV_HOST_PORT:-2345}:2345` / pprof `${PPROF_HOST_PORT:-6060}:6060` (internal ports fixed) | The app itself. The dev target starts via **air** for hot reload + delve debugging |
 | `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-4000}:4000` (internal 4000) | Mock OIDC auth server (JWT test provider); the JWKS-verification counterpart of the RS side |
-| `database` | infra | `postgres:18.3-bookworm` | `5432` fixed | A **single** instance shared by all checkouts (parallelism is by DB name — see the slot ring below) |
+| `database` | infra | `postgres:18.4-trixie` | `5432` fixed | A **single** instance shared by all checkouts (parallelism is by DB name — see the slot ring below) |
 | `observability` | infra | `grafana/otel-lgtm` | `3000` (Grafana UI) / `4317` (OTLP gRPC) / `4318` (OTLP HTTP) / `3200` (Tempo API) | Sink for traces / metrics / logs of every checkout. profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key / website access |
@@ -89,6 +89,30 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile` (per target) | none (run/exec) | Toolboxes for code generation / lint. **`user: root`**, profile: `generate`, repo bind-mounted at `.:/app` |
 
 > `docs_viewer` / `sql_editor` are moved to the **7000 range** to avoid colliding with the API slot band (`8080+N`).
+
+### Collation version mismatch after a `database` base-OS change
+
+`pg_data` outlives the container, so a `database` image whose base OS carries a different glibc
+makes every existing database report a collation version mismatch — PostgreSQL records the glibc
+collation version at `CREATE DATABASE` time and warns on connect once the running OS disagrees:
+
+```txt
+WARNING:  database "local" has a collation version mismatch
+DETAIL:  The database was created using collation version 2.36, but the operating system provides version 2.41.
+```
+
+Recreating the databases does not clear it: `CREATE DATABASE` copies `datcollversion` from
+`template1`, which carries the old value too. Reindex and refresh every database in the shared
+instance once, `template1` included:
+
+```sh
+docker exec gobp-shared-database-1 bash -c 'for db in $(psql -U postgres -Atc "select datname from pg_database where datallowconn"); do psql -U postgres -q -d "$db" -c "REINDEX DATABASE \"$db\";" -c "ALTER DATABASE \"$db\" REFRESH COLLATION VERSION;"; done'
+```
+
+The reindex is what makes the refresh honest — text index ordering was built under the old
+collation, so refreshing the recorded version without rebuilding would simply hide the
+disagreement. On a local dataset this takes seconds. CI is unaffected: its `database` service
+container starts from an empty volume every run.
 
 ## Hot reload (air + delve)
 
