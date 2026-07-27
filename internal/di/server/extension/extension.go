@@ -165,7 +165,7 @@ func validatePriorityConflicts(kind string, mws []middlewareEntry) error {
 
 	if len(conflicts) > 0 {
 		return xerrors.Wrap(errDuplicateMiddlewarePriority,
-			fmt.Sprintf("%s: %s", kind, strings.Join(conflicts, "; ")))
+			fmt.Sprintf("%s (%s)", kind, strings.Join(conflicts, "; ")))
 	}
 
 	return nil

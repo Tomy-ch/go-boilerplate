@@ -244,7 +244,7 @@ func Test_toLocation_NilLocation(t *testing.T) {
 			t.Parallel()
 
 			empty, err := ParseDateOnlyToLocation("2025-12-05", nil)
-			require.ErrorIs(t, err, ErrNilLocation)
+			require.ErrorIs(t, err, errNilLocation)
 			assert.Empty(t, empty)
 		})
 	})

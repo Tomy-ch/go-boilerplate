@@ -15,11 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// xerrorsNewCall は、検出対象となる呼び出しの字面です。
 const xerrorsNewCall = "xerrors.New("
 
-// sentinelDeclRe は、package-level の単独 var 宣言（`var errXxx = xerrors.New(`）にマッチします。
-var sentinelDeclRe = regexp.MustCompile(`^var \w+ = xerrors\.New\(`)
+var (
+	// sentinelDeclRe は、package-level の単独 var 宣言（`var errXxx = xerrors.New(`）にマッチします。
+	sentinelDeclRe = regexp.MustCompile(`^var \w+ = xerrors\.New\(`)
+	// blockSentinelDeclRe は、package-level の var ブロック直下の宣言（`\terrXxx = xerrors.New(`）にマッチします。
+	// gofmt は宣言名を揃えるため `=` の前の空白は 1 個とは限りません。
+	blockSentinelDeclRe = regexp.MustCompile(`^\t\w+ += xerrors\.New\(`)
+)
 
 // TestNoInlineXerrorsNew は、production コードが関数本体内で xerrors.New を直接生成していないことを
 // 機械検証する。関数本体で生成したエラーは呼び出し側から errors.Is で識別できず、テストが
@@ -74,24 +78,34 @@ func TestNoInlineXerrorsNew(t *testing.T) {
 // collectInlineXerrorsNew は、gofmt 済みソースの行列から、package-level の var 宣言以外の位置に
 // 現れる xerrors.New 呼び出しを `file:line: 該当行` 形式で列挙します。
 //
-// gofmt は package-level の var ブロックを行頭 `var (` … 行頭 `)` に整形するため、その区間を
+// gofmt は package-level の var ブロックを行頭 `var (` … 行頭 `)` に整形するため、その区間だけを
 // 許可領域とみなします。関数本体内の var ブロックは行頭がタブになるので許可領域に入りません。
+// 許可領域の中でも、宣言行そのものの形に一致しない位置（関数リテラルの内側など）は違反として扱います。
+// 行コメントは対象外です。
 func collectInlineXerrorsNew(lines []string, file string) []string {
 	var violations []string
 	inVarBlock := false
 
 	for i, line := range lines {
-		if inVarBlock {
-			if strings.HasPrefix(line, ")") {
-				inVarBlock = false
-			}
-			continue
-		}
-		if strings.HasPrefix(line, "var (") {
+		switch {
+		case strings.HasPrefix(line, "var ("):
 			inVarBlock = true
 			continue
+		case inVarBlock && strings.HasPrefix(line, ")"):
+			inVarBlock = false
+			continue
 		}
-		if !strings.Contains(line, xerrorsNewCall) || sentinelDeclRe.MatchString(line) {
+		// 行コメントは規約の解説そのものが `xerrors.New(` の字面を含むため、実呼び出しと区別する。
+		// 行途中のコメント・文字列リテラル内の字面までは見分けないが、誤検出の現実的な発生源は行コメント。
+		if !strings.Contains(line, xerrorsNewCall) || strings.HasPrefix(strings.TrimSpace(line), "//") {
+			continue
+		}
+		// ブロック内でも宣言行の形（1 段インデントの直接代入）に一致するものだけを許可する。
+		// ブロック全体を無条件に許可すると、関数リテラルへ包んだ動的生成を見逃す。
+		if inVarBlock && blockSentinelDeclRe.MatchString(line) {
+			continue
+		}
+		if !inVarBlock && sentinelDeclRe.MatchString(line) {
 			continue
 		}
 		violations = append(violations, fmt.Sprintf("%s:%d: %s", file, i+1, strings.TrimSpace(line)))
@@ -107,7 +121,7 @@ func Test_collectInlineXerrorsNew(t *testing.T) {
 
 		t.Run("package-levelのvarブロック内の宣言は検出しない", func(t *testing.T) {
 			t.Parallel()
-			lines := strings.Split("package p\n\nvar (\n\terrA = xerrors.New(\"a\")\n\terrB = xerrors.New(\"b\")\n)\n", "\n")
+			lines := strings.Split("package p\n\nvar (\n\terrA   = xerrors.New(\"a\")\n\terrBcd = xerrors.New(\"b\")\n)\n", "\n")
 			assert.Empty(t, collectInlineXerrorsNew(lines, "p.go"))
 		})
 
@@ -120,6 +134,15 @@ func Test_collectInlineXerrorsNew(t *testing.T) {
 		t.Run("引数を改行した単独var宣言は検出しない", func(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split("package p\n\nvar errA = xerrors.New(\n\t\"very long message\")\n", "\n")
+			assert.Empty(t, collectInlineXerrorsNew(lines, "p.go"))
+		})
+
+		t.Run("行コメント内のxerrors.Newは検出しない", func(t *testing.T) {
+			t.Parallel()
+			lines := strings.Split(
+				"package p\n\n// 規約: 関数本体で xerrors.New(\"msg\") を返さない\nfunc f() error {\n\treturn nil\n}\n",
+				"\n",
+			)
 			assert.Empty(t, collectInlineXerrorsNew(lines, "p.go"))
 		})
 
@@ -160,6 +183,17 @@ func Test_collectInlineXerrorsNew(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split("package p\n\nvar f = func() error { return xerrors.New(\"boom\") }\n", "\n")
 			assert.Len(t, collectInlineXerrorsNew(lines, "p.go"), 1)
+		})
+
+		t.Run("package-levelのvarブロック内でも関数リテラル内の生成は検出する", func(t *testing.T) {
+			t.Parallel()
+			lines := strings.Split(
+				"package p\n\nvar (\n\terrA = xerrors.New(\"a\")\n\tf    = func(x string) error {\n\t\treturn xerrors.New(\"boom: \" + x)\n\t}\n)\n",
+				"\n",
+			)
+			violations := collectInlineXerrorsNew(lines, "p.go")
+			require.Len(t, violations, 1)
+			assert.Equal(t, `p.go:6: return xerrors.New("boom: " + x)`, violations[0])
 		})
 	})
 }
