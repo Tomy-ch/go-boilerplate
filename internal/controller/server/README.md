@@ -15,6 +15,23 @@ It builds the Echo instance and the `http.Server` that serves it with the timeou
 
 This package **does not define middleware directly**. Middleware application is handled by `internal/controller/httpstack` and `internal/di/server/extension`. Registering the server's start / shutdown with the DI lifecycle (`lifecycle.Registrar`) is handled by `internal/di/server/hook`, not this package.
 
+## Test Strategy
+
+The package holds two kinds of subject, tested differently.
+
+### Echo context utilities
+
+`BuildHTTPRequestLogInput` / `ExtractPathParams` / `ExtractQueryParams` / `ResponseOf` are driven against a real context (`echo.New().NewContext(httptest.NewRequestWithContext(...), httptest.NewRecorder())`) — there is nothing to mock:
+
+- **Empty vs populated** — no path values / no query yields a **non-nil empty** map, not nil (callers range over it unconditionally); populated input is extracted in full, including a repeated query key keeping every value.
+- **Field mapping** — `BuildHTTPRequestLogInput` copies each request attribute into the matching log-input field for the given event type. Assert per field; `EventAt` is clock-derived, so assert it is non-zero rather than pinning a literal.
+- **`ResponseOf` unwrap chain** — a response writer wrapped by a middleware still resolves to the *same* `*echo.Response` (`assert.Same`), and a writer that does not lead back to Echo returns `nil`. Every caller's degradation path (`logging` / `redmetrics` / `forcejson` / `cookie` / `errorhandler`) rests on that nil branch, and the production stack never produces it — so it is pinned here, at the definition, not only at the call sites.
+
+### Server construction
+
+- `NewHTTPServer` copies each timeout from `ServerConfig` onto the `http.Server` and keeps the given Echo as `Handler`. Assert per field — a mis-mapped timeout is silent at runtime.
+- Listening, serving, and graceful shutdown are **not** exercised here; they belong to the lifecycle hooks in [`internal/di/server/hook`](../../di/server/hook/README.md).
+
 ## Notes
 
 - The Echo instance created by `NewAppServer` receives middleware from subsequent extensions -- this package **does not define middleware directly**

@@ -515,6 +515,19 @@ ApplyExtends --> UseMiddlewares
 ApplyExtends --> ServerConfigurators
 ```
 
+## テスト戦略
+
+ここに書くのはレイヤ全体の基準であり、より詳細が必要なサブディレクトリは自身の README に記す（グラフ検証は `module/`、ライフサイクルフックは `server/hook/`）。
+
+DI レイヤは配線を行うのみで、計算はしない。したがってテストは **グラフが解決すること** と **このレイヤが所有する処理本体の挙動** を検証し、ビジネス的な振る舞いは検証しない。
+
+- **グラフの妥当性** — モジュール単位の `fx.ValidateApp`。コンストラクタもライフサイクルフックも実行せずにグラフを解決するため、配線の充足だけを証明し、それ以上は証明しない。[`module/README.ja.md`](module/README.ja.md) を参照。
+- **独自ロジックを持つ provider / `fx.Invoke` の本体** — まさにグラフ検証が到達しない箇所。単体テストで関数を直接呼ぶこと。グラフ上にしか登場しない本体は未テストである。
+- **ライフサイクルフック** — `lifecycle.Registrar` のモックで登録された start / stop クロージャを捕捉して駆動する。[`server/hook/README.ja.md`](server/hook/README.ja.md) を参照。`job` / `worker` / `outboxrelay` の各フックは `lifecycle.SupervisedRunner` の上で同じ形を取り、drain 経路（cancel → grace 上限つきの wait）が固定すべき分岐となる。
+- **環境ゲート付きの配線** — local / CI / test 以外で fail closed するモジュール（`authzModule`、`core.AuthnModule`）はゲートの **両側** を検証する。安全側に倒すこと自体が防御であり、許可側しか通らないテストは要点を何も担保しない。
+
+実 Echo と実 DB を使ったプロセス全体の起動はここでは対象外 —— それは [`internal/integration`](../integration/README.ja.md) の担当。
+
 ## 設計原則
 
 この DI レイヤは次の原則に基づいています。

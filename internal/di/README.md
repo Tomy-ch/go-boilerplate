@@ -510,6 +510,22 @@ ApplyExtends --> UseMiddlewares
 ApplyExtends --> ServerConfigurators
 ```
 
+## Test Strategy
+
+This is the layer-wide baseline; a sub-directory that needs more detail states it in its own README
+(`module/` for graph validation, `server/hook/` for lifecycle hooks).
+
+The DI layer wires — it does not compute. Tests therefore verify **that the graph resolves** and
+**that the bodies this layer owns behave**, never business behavior:
+
+- **Graph validity** — `fx.ValidateApp` per module. It resolves the graph without executing constructors or lifecycle hooks, so it proves wiring completeness and nothing else. See [`module/README.md`](module/README.md).
+- **Provider / `fx.Invoke` bodies with their own logic** — precisely what graph validation does *not* reach. Call the function directly in a unit test; a body that only appears in the graph is untested.
+- **Lifecycle hooks** — capture the registered start / stop closures through a `lifecycle.Registrar` mock and drive them. See [`server/hook/README.md`](server/hook/README.md); the `job` / `worker` / `outboxrelay` hooks share that shape on top of `lifecycle.SupervisedRunner`, where the drain path (cancel → wait, bounded by grace) is the branch to pin.
+- **Environment-gated wiring** — a module that fails closed outside local / CI / test (`authzModule`, `core.AuthnModule`) is exercised on **both** sides of the gate. The refusal is the safeguard, so a test that only covers the permissive side covers nothing that matters.
+
+Whole-process startup against a real Echo and a real database is out of scope here — that is
+[`internal/integration`](../integration/README.md).
+
 ## Design Principles
 
 This DI layer is based on the following principles.
