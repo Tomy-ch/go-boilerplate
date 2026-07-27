@@ -8,10 +8,7 @@ import (
 )
 
 // httpREDMetricsPriority は、HTTP RED メトリクスミドルウェアの適用順序です。
-// forceJSON(7) の後・logging(9) の前に置き、observability(2) 開始後に計測します。
-// logging より外側に置くことで、redmetrics の After フックが logging の After より先に発火し、
-// 計測した duration に logging の I/O が混入しないようにする。
-// forceJSON(7) と重複しないよう 8 を用います（Priority 重複は適用時にエラー）。
+// 順序設計の根拠は README「Priority Order」を参照してください。
 const httpREDMetricsPriority = 8
 
 // HTTPRedMetricsModule は、HTTP RED（Rate / Errors / Duration）メトリクスのミドルウェアを提供するfxモジュールを返します。
