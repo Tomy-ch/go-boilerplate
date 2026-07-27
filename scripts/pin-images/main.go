@@ -56,6 +56,13 @@ var (
 	digestRe = regexp.MustCompile(`(?m)^Digest:[ \t]+(sha256:[0-9a-f]+)`)
 )
 
+var (
+	// errDigestUnparsable は、inspect 出力から Digest 行を解析できなかった場合のエラー。
+	errDigestUnparsable = xerrors.New("Digest 行を解析できません")
+	// errCreatedUnparsable は、inspect 出力から image config の created を解析できなかった場合のエラー。
+	errCreatedUnparsable = xerrors.New("created を解析できません")
+)
+
 // target は走査対象のファイルと、その参照行を捕捉する正規表現（prefix/ref/suffix の 3 グループ）。
 type target struct {
 	path string
@@ -223,7 +230,7 @@ func resolveDigest(ctx context.Context, ref string) (string, error) {
 	}
 	m := digestRe.FindStringSubmatch(out)
 	if m == nil {
-		return "", xerrors.New(ref + ": Digest 行を解析できません")
+		return "", xerrors.Wrap(errDigestUnparsable, ref)
 	}
 	return m[1], nil
 }
@@ -258,7 +265,7 @@ func earliestCreated(ctx context.Context, ref string) (time.Time, error) {
 	if lastErr != nil {
 		return time.Time{}, lastErr
 	}
-	return time.Time{}, xerrors.New(ref + ": created を解析できません")
+	return time.Time{}, xerrors.Wrap(errCreatedUnparsable, ref)
 }
 
 // minCreated は inspect 出力の各行（"2006-01-02 15:04:05.9 +0000 UTC"）から最古の時刻を返す。

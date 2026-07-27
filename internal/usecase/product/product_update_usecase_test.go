@@ -48,19 +48,17 @@ func newUpdateTarget(t *testing.T, version int) *domainproduct.Product {
 	categoryRef, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, "update_current_category"), "現行カテゴリ")
 	require.NoError(t, err)
 
-	p, err := domainproduct.Reconstruct(
-		uuid.NewTestFromSalt(t, "update_product"),
-		"現行商品名",
-		ptr.To("現行説明"),
-		mustPrice(t, "10.5"),
-		5,
-		ptr.To(2),
-		statusRef,
-		categoryRef,
-		ptr.To(updateBasePublishedAt),
-		ptr.To("products/current.png"),
-		version,
-	)
+	p, err := domainproduct.Reconstruct(uuid.NewTestFromSalt(t, "update_product"), domainproduct.Attributes{
+		Name:                  "現行商品名",
+		Description:           ptr.To("現行説明"),
+		Price:                 mustPrice(t, "10.5"),
+		Quantity:              5,
+		StockWarningThreshold: ptr.To(2),
+		Status:                statusRef,
+		Category:              categoryRef,
+		PublishedAt:           ptr.To(updateBasePublishedAt),
+		ImagePath:             ptr.To("products/current.png"),
+	}, version)
 	require.NoError(t, err)
 
 	return p

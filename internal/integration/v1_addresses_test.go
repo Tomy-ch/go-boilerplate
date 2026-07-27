@@ -12,7 +12,7 @@ import (
 	mock_address "go-boilerplate/internal/usecase/address/mock"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/mock/gomock"
 )
 

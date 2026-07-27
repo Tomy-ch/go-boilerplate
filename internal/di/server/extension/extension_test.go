@@ -9,7 +9,7 @@ import (
 
 	"go-boilerplate/internal/logging"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ import (
 // orderTagMiddleware は X-Order ヘッダへ tag を追記するミドルウェアを返します（適用順序の検証用）。
 func orderTagMiddleware(tag string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			c.Response().Header().Add("X-Order", tag)
 			return next(c)
 		}
@@ -27,7 +27,7 @@ func orderTagMiddleware(tag string) echo.MiddlewareFunc {
 // serveRootAndOrder は / へ1回リクエストし、積まれた X-Order ヘッダの並びを返します。
 func serveRootAndOrder(t *testing.T, e *echo.Echo) []string {
 	t.Helper()
-	e.GET("/", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
+	e.GET("/", func(c *echo.Context) error { return c.String(http.StatusOK, "ok") })
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -126,7 +126,7 @@ func TestApplyConfigurators(t *testing.T) {
 			e := echo.New()
 
 			cfg := func(e *echo.Echo) {
-				e.GET("/cfg", func(c echo.Context) error {
+				e.GET("/cfg", func(c *echo.Context) error {
 					c.Response().Header().Set("X-Cfg", "yes")
 					return c.NoContent(http.StatusNoContent)
 				})
@@ -157,19 +157,19 @@ func TestApplyExtends(t *testing.T) {
 			e := echo.New()
 
 			pre := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
+				return func(c *echo.Context) error {
 					c.Response().Header().Set("X-Pre", "ok")
 					return next(c)
 				}
 			}
 			use := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
+				return func(c *echo.Context) error {
 					c.Response().Header().Add("X-Use", "1")
 					return next(c)
 				}
 			}
 			cfg := func(e *echo.Echo) {
-				e.GET("/ext", func(c echo.Context) error {
+				e.GET("/ext", func(c *echo.Context) error {
 					return c.String(http.StatusOK, "done")
 				})
 			}
@@ -246,7 +246,7 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	ApplyConfigurators(e, logging.NewTestLogger(t), nil)
 
 	// still able to register and serve a route
-	e.GET("/ok", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
+	e.GET("/ok", func(c *echo.Context) error { return c.String(http.StatusOK, "ok") })
 	ctx := context.Background()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ok", nil)
 	rec := httptest.NewRecorder()
@@ -365,12 +365,12 @@ func Test_validatePriorityConflicts(t *testing.T) {
 		}
 
 		preErr := validatePriorityConflicts("pre", mws)
-		require.Error(t, preErr)
-		assert.Contains(t, preErr.Error(), "duplicate pre middleware priorities")
+		require.ErrorIs(t, preErr, errDuplicateMiddlewarePriority)
+		require.ErrorContains(t, preErr, "pre")
 
 		useErr := validatePriorityConflicts("use", mws)
-		require.Error(t, useErr)
-		assert.Contains(t, useErr.Error(), "duplicate use middleware priorities")
+		require.ErrorIs(t, useErr, errDuplicateMiddlewarePriority)
+		require.ErrorContains(t, useErr, "use")
 	})
 }
 

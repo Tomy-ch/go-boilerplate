@@ -10,4 +10,5 @@ Echo 用の OpenTelemetry トレーシングミドルウェアです。
 
 ## 補足
 
-- `Middleware(serviceName)` は OTel（`otelecho`）トレーシングミドルウェアを返します。`PassthroughMiddleware()` は次のハンドラへそのまま渡す no-op ミドルウェアを返します。DI 層はトレースが無効（`ObservabilityConfig.TracesEnabled()` が false）のとき passthrough を選択するため、登録側で条件分岐を持たずに常にミドルウェアスロットが埋まります。
+- `Middleware()` は OTel（`echootel`）トレーシングミドルウェアを返します。`PassthroughMiddleware()` は次のハンドラへそのまま渡す no-op ミドルウェアを返します。DI 層はトレースが無効（`ObservabilityConfig.TracesEnabled()` が false）のとき passthrough を選択するため、登録側で条件分岐を持たずに常にミドルウェアスロットが埋まります。
+- ミドルウェアはサーバ名を受け取りません。`echootel` の `Config.ServerName` は `server.address` / `server.port` 属性に使うサーバの正式ホスト名であり、サービス名（OTel の Resource が持つ）ではありません。空のままにするとリクエストの `Host` から解決されます。

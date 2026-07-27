@@ -65,18 +65,17 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 			return err
 		}
 
-		entity, err = product.New(
-			id,
-			params.Name,
-			params.Description,
-			productPrice,
-			params.Quantity,
-			params.StockWarningThreshold,
-			statusRef,
-			categoryRef,
-			params.PublishedAt,
-			params.ImagePath,
-		)
+		entity, err = product.New(id, product.Attributes{
+			Name:                  params.Name,
+			Description:           params.Description,
+			Price:                 productPrice,
+			Quantity:              params.Quantity,
+			StockWarningThreshold: params.StockWarningThreshold,
+			Status:                statusRef,
+			Category:              categoryRef,
+			PublishedAt:           params.PublishedAt,
+			ImagePath:             params.ImagePath,
+		})
 		if err != nil {
 			return err
 		}

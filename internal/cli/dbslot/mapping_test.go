@@ -65,9 +65,7 @@ func TestRegistry_EnsureDir(t *testing.T) {
 			require.NoError(t, os.Symlink(target, link))
 
 			r := NewRegistry(link, "/w/a", "b", time.Minute, 4, nil)
-			err := r.EnsureDir()
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "symlink")
+			require.ErrorIs(t, r.EnsureDir(), errPoolDirSymlink)
 		})
 	})
 }

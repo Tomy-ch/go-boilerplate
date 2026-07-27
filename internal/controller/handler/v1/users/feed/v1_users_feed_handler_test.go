@@ -13,7 +13,7 @@ import (
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +54,7 @@ func TestBindHandler(t *testing.T) {
 	BindHandler(e, tf, mockApp)
 
 	// /v1/users/feed (GET) が登録される。
-	routes := e.Routes()
+	routes := e.Router().Routes()
 
 	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodGet, routes[0].Method)

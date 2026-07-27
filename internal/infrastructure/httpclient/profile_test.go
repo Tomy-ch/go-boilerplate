@@ -64,8 +64,7 @@ func TestNewRegistryFromProfiles(t *testing.T) {
 				{Name: "dup", Profile: httpclient.DefaultProfile()},
 			})
 
-			// sentinel を持たないため、重複固有のメッセージで他経路のエラーと区別する。
-			require.ErrorContains(t, err, "duplicate httpclient profile for downstream")
+			require.ErrorIs(t, err, httpclient.ErrDuplicateProfile)
 			assert.Nil(t, registry)
 		})
 	})

@@ -288,6 +288,7 @@ func TestSelectSHA(t *testing.T) {
 		t.Run("該当 ref が無ければ未発見エラーを返す", func(t *testing.T) {
 			t.Parallel()
 			_, err := selectSHA("", tag)
+			require.ErrorIs(t, err, errRefNotFound)
 			require.ErrorContains(t, err, tag)
 		})
 
@@ -295,7 +296,7 @@ func TestSelectSHA(t *testing.T) {
 			t.Parallel()
 			out := headSHA + "\trefs/heads/main\n"
 			_, err := selectSHA(out, tag)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errRefNotFound)
 		})
 	})
 }

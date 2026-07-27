@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/exchange-rates --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/exchange-rates --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/exchange-rates --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package exchangerate は、/v1/exchange-rates エンドポイントに関連するハンドラを提供します。
 package exchangerate
@@ -14,7 +14,7 @@ import (
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

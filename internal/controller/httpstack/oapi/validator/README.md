@@ -26,7 +26,7 @@ The middleware validates:
 - **Request body** — schema, required fields, content-type
 - **Content-Type header** — must match the OpenAPI spec
 
-Validation errors are returned as `openapi3filter.RequestError` and caught by the `errorhandler`.
+Validation errors are turned into an `echo.HTTPError` by the validation middleware and caught by the `errorhandler`.
 
 ## Code Generation
 

@@ -76,6 +76,7 @@ func Test_provideAuthenticator(t *testing.T) {
 		t.Helper()
 		logger := logging.NewTestLogger(t)
 		authenticator, err := provideAuthenticator(newAuthParams(t, env, logger))
+		require.ErrorIs(t, err, errNoAuthenticatorForEnv)
 		require.ErrorContains(t, err, env)
 		assert.Nil(t, authenticator)
 	}

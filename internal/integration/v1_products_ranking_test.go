@@ -17,7 +17,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -30,7 +30,7 @@ func useOpenAPIValidation(t *testing.T, e *echo.Echo) {
 	spec, err := validator.GetValidator()
 	require.NoError(t, err)
 
-	skipper := func(echo.Context) bool { return false }
+	skipper := func(*echo.Context) bool { return false }
 	authFunc := func(context.Context, *openapi3filter.AuthenticationInput) error { return nil }
 	e.Use(oapi.Middleware(spec, skipper, authFunc))
 }

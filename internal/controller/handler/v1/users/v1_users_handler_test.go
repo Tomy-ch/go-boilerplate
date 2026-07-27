@@ -16,7 +16,7 @@ import (
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,7 +53,7 @@ func TestBindHandler(t *testing.T) {
 	BindHandler(e, tf, mockApp, idempotency.Deps{})
 
 	// /v1/users (GET, POST) が登録される。
-	routes := e.Routes()
+	routes := e.Router().Routes()
 
 	expectedMethods := []string{
 		http.MethodGet,  // GetUsers

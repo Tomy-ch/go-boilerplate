@@ -10,7 +10,7 @@ import (
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +33,7 @@ func TestMiddleware(t *testing.T) {
 			e := echo.New()
 			c := e.NewContext(req, rec)
 
-			handler := mw(func(_ echo.Context) error {
+			handler := mw(func(_ *echo.Context) error {
 				return nil
 			})
 

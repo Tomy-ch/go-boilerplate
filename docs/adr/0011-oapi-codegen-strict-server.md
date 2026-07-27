@@ -17,7 +17,7 @@ accepted
 spec rather than written by hand. The question is *how* to scope that generation: a single
 global generation produces one large interface that all handlers must implement together,
 which creates tight coupling between otherwise-independent handler packages. Additionally,
-the default oapi-codegen server mode passes raw `echo.Context` to each handler method,
+the default oapi-codegen server mode passes raw `*echo.Context` to each handler method,
 leaving request unmarshalling and response serialization to the handler implementation —
 this is boilerplate that every handler author must reproduce consistently.
 
@@ -88,7 +88,7 @@ generated file also produce frequent merge conflicts.
 
 ### Plain echo-server mode (without strict-server)
 
-Still scoped per tag, but each handler method receives a raw `echo.Context` and must
+Still scoped per tag, but each handler method receives a raw `*echo.Context` and must
 perform its own binding and serialisation. Rejected because it reproduces the same
 boilerplate in every handler and leaves room for inconsistent error handling. Writing this
 binding and serialisation boilerplate in every handler also significantly inflates overall

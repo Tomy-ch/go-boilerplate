@@ -34,6 +34,13 @@ const (
 	genFilePerm = 0o644
 )
 
+var (
+	// errInvalidTargetType は、許可されていない DML カテゴリタイプが指定された場合のエラーです。
+	errInvalidTargetType = xerrors.New("invalid target type")
+	// errPathOutsideBaseDir は、生成対象パスがベースディレクトリの外を指した場合のエラーです。
+	errPathOutsideBaseDir = xerrors.New("path is outside of baseDir")
+)
+
 // FileSystem は merge-dml が必要とするファイル操作を抽象化します。
 type FileSystem interface {
 	ListSubDirNames(base string) ([]string, error)    // base 直下のサブディレクトリ名（昇順）
@@ -209,7 +216,7 @@ func validateTargetType(targetType string) error {
 	case "repository", "query_service", "system_cqrs", "command_service":
 		return nil
 	default:
-		return xerrors.New("invalid target type: " + targetType)
+		return xerrors.Wrap(errInvalidTargetType, targetType)
 	}
 }
 
@@ -304,7 +311,7 @@ func (g *Generator) ensureUnderDir(path string) error {
 	}
 	rel = filepath.Clean(rel)
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return xerrors.New(fmt.Sprintf("path is outside of baseDir: path=%s base=%s", absPath, absBase))
+		return xerrors.Wrap(errPathOutsideBaseDir, fmt.Sprintf("path=%s base=%s", absPath, absBase))
 	}
 	return nil
 }

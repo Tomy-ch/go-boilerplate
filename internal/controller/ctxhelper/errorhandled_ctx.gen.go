@@ -5,7 +5,7 @@ package ctxhelper
 import (
 	"context"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type errorhandledKeyType struct{}
@@ -29,11 +29,11 @@ func GetErrorHandled(ctx context.Context) (bool, bool) {
 
 // --- echo.Context wrapper（std lib 版へ委譲） ---
 
-func SetErrorHandledToEcho(c echo.Context, val bool) {
+func SetErrorHandledToEcho(c *echo.Context, val bool) {
 	ctx := SetErrorHandled(c.Request().Context(), val)
 	c.SetRequest(c.Request().WithContext(ctx))
 }
 
-func GetErrorHandledFromEcho(c echo.Context) (bool, bool) {
+func GetErrorHandledFromEcho(c *echo.Context) (bool, bool) {
 	return GetErrorHandled(c.Request().Context())
 }

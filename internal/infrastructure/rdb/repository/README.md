@@ -743,7 +743,7 @@ Repository **does not depend on HTTP layer**.
 NG example
 
 ```go
-func (r *repository) Create(ctx echo.Context)
+func (r *repository) Create(ctx *echo.Context)
 ```
 
 Repository is implemented as a **pure Go interface**.

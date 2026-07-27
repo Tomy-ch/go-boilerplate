@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=healthz --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package healthz は、サーバーのヘルスチェックのハンドラーを提供します。
 package healthz
@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/controller/handler/healthz/gen"
 	"go-boilerplate/internal/observability"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

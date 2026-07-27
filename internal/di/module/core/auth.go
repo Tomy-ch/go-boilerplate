@@ -31,6 +31,9 @@ const callerSkipCount = 1
 // mock 認証サーバーは access token に付与し ID Token には付与しないため、typ 不一致で ID Token 誤用を拒否します。
 const accessTokenType = "at+jwt"
 
+// errNoAuthenticatorForEnv は、現在の環境に対応する Authenticator が無く配線に失敗した場合のエラーです。
+var errNoAuthenticatorForEnv = xerrors.New("no authenticator configured for environment")
+
 // authenticatorParams は、provideAuthenticator の依存を集約する fx パラメータです。
 // HTTPClient は JWKS 取得に用いる outbound HTTP substrate で、infra 層（InfrastructureModule）が全プロファイルで提供する常設依存です。
 type authenticatorParams struct {
@@ -83,7 +86,7 @@ func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
 			logging.String("env", p.AppCfg.Env()),
 		)
 
-		return nil, xerrors.New("no authenticator configured for environment: " + p.AppCfg.Env())
+		return nil, xerrors.Wrap(errNoAuthenticatorForEnv, p.AppCfg.Env())
 	}
 }
 

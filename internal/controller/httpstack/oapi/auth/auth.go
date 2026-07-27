@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 const prefixBearer = "Bearer "
@@ -28,18 +28,30 @@ func NewAuthenticator(
 		// エラー変換は authExtractor に一本化。
 		authn, err := authExtractor(ctx, req, authenticator, resolver)
 		if err != nil {
-			return err
+			return withHTTPStatus(err)
 		}
 		if authn == nil {
-			return ErrUnauthorizedTokenNotProvided
+			return withHTTPStatus(ErrUnauthorizedTokenNotProvided)
 		}
 
 		//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
 		if !ctxhelper.SetAuthn(req.Context(), *authn) {
-			return ErrAuthnSlotNotFound
+			return withHTTPStatus(ErrAuthnSlotNotFound)
 		}
 		return nil
 	}
+}
+
+// withHTTPStatus は、認証フェーズのエラーへ 401 のステータスを持たせます（元のエラーは保持）。
+// OpenAPI バリデータは認証エラーのうち HTTP ステータスを解決できないものを 403 へ丸めるため、
+// 401 として返すにはこの段でステータスを持たせる必要があります。
+// infra 障害は infraErrorToHTTP が先にステータスを付与するため、ここで 401 に潰されません。
+func withHTTPStatus(err error) error {
+	var he *echo.HTTPError
+	if xerrors.As(err, &he) {
+		return err
+	}
+	return echo.NewHTTPError(http.StatusUnauthorized, "").Wrap(err)
 }
 
 // authExtractor は、Bearer トークンを検証して内部ユーザーを解決した Authn を返します。
@@ -94,7 +106,7 @@ func infraErrorToHTTP(err error) error {
 	if xerrors.Is(err, apperror.ErrUnavailable) {
 		status = http.StatusServiceUnavailable
 	}
-	return echo.NewHTTPError(status).SetInternal(err)
+	return echo.NewHTTPError(status, "").Wrap(err)
 }
 
 // extractBearerToken は、Authorization ヘッダから Bearer トークンを抽出します。

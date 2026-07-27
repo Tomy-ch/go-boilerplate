@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/products/statuses --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/products/statuses --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/statuses --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package productstatuses は、/v1/products/statuses エンドポイントに関連するハンドラを提供します。
 package productstatuses
@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	statusuc "go-boilerplate/internal/usecase/product/status"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

@@ -28,16 +28,18 @@ accepted
 
 - グルーを手で実装すると対象（Echo / pgx / zap）の内部ライフサイクルに強く結合し、
   保守負債を削減するどころか増やすことになる。
-- それぞれ**小規模かつ Apache-2.0 ライセンス**であるため、最悪の場合はベンダー化 / フォークが
-  可能。フォークコストはライブラリごとに記録された本番コード行数の範囲に留まる。
-- otel-contrib 系（`otelecho` / `otelhttp` / `otelzap`）は**otel-contrib の月次リリーストレイン**で
-  提供され、OpenTelemetry とロックステップで維持される。`otelpgx` は
-  サードパーティパッケージ（`github.com/exaring/otelpgx`、Apache-2.0）で、pgx と OpenTelemetry を
-  独立に追従する。いずれの場合も残存するドリフトサーフェスはフレームワーク側のインターフェースのみで、
+- それぞれ**小規模かつ寛容なライセンス**（Apache-2.0 または MIT）であるため、最悪の場合は
+  ベンダー化 / フォークが可能。フォークコストはライブラリごとに記録された本番コード行数の範囲に留まる。
+- otel-contrib 系（`otelhttp` / `otelzap`）は**otel-contrib の月次リリーストレイン**で
+  提供され、OpenTelemetry とロックステップで維持される。`echootel` は Echo 自身の計装モジュール
+  （`github.com/labstack/echo-opentelemetry`、MIT — [ADR-0017](0017-echo-http-framework.ja.md) を参照）、
+  `otelpgx` はサードパーティパッケージ（`github.com/exaring/otelpgx`、Apache-2.0）で、
+  いずれも対象フレームワークと OpenTelemetry を独立に追従する。いずれの場合も残存するドリフト
+  サーフェスはフレームワーク側のインターフェースのみで、
   それら（`echo.MiddlewareFunc` / `net/http.RoundTripper` / pgx `QueryTracer` / `zapcore.Core`）は
-  安定した v1 である。
+  安定している。
 
-現在受け入れられている例外は `otelecho`（ルートサーバースパン）・`otelhttp`（外向き HTTP クライアント
+現在受け入れられている例外は `echootel`（ルートサーバースパン）・`otelhttp`（外向き HTTP クライアント
 スパン）・`otelpgx`（SQL クエリスパン）・`otelzap`（zap → OTel ログブリッジ）である。
 
 ## 影響

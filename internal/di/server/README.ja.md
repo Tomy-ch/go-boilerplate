@@ -39,5 +39,5 @@ flowchart LR
 
 - `Module()` は `MiddlewareModule()` より先にロードする必要がある — ミドルウェア適用に Echo インスタンスが必要
 - `HookModule()` は最後にロードする — ミドルウェア・Configurator 適用後にサーバーが起動
-- `NewAppServer` は副作用を持つため、domain / usecase から参照しないこと
+- `NewAppServer` / `NewHTTPServer` は副作用を持つため、domain / usecase から参照しないこと
 - extension は **MiddlewareModule → HookModule** の順で適用される

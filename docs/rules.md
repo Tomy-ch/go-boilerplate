@@ -256,6 +256,44 @@ Boundary clarifications (common misreads):
 - Do not pass sqlc generated types to Usecase / Domain
 - Always convert to Domain Entity or DTO
 
+## Function Signature Rules
+
+Layer-independent: this applies to constructors, behavior methods, usecase functions, and helpers alike.
+
+A function taking **two or more parameters of the same type** lets a call site swap them with no compile
+or lint error. Bundle those parameters into a value struct so every call site states which one each value
+is. This does not hand the check to the compiler — a same-typed field filled with the wrong value still
+compiles — but it removes the position-dependent binding that let adjacent same-typed arguments
+transpose, so what remains is a named mistake visible in review rather than an invisible ordering one.
+Keep call sites keyed: an unkeyed composite literal reintroduces the ordering dependency this removes.
+
+**When it applies.** The trigger is two or more parameters of one type in a single signature; compare the
+resolved types, since two distinct named types are distinct even when both wrap a string. Beyond the
+trigger, weigh how likely a swap is to survive undetected:
+
+- **Optional / pointer parameters** — `nil` is valid for either, so nothing at runtime rejects the swap.
+- **Free-form values** — no validation would reject the other parameter's value.
+- **A caller that maps positionally** — a Repository rebuilding an entity from a DB row, a seed, or any
+  code that fills arguments in column order rather than by meaning.
+- **Adjacent parameters** — neighbours are easier to transpose than distant ones.
+
+**When it does not apply.**
+
+- **Every parameter has a distinct type.** The compiler already rejects a swap, so keep the positional
+  form. This is the common case, and bundling by reflex is not the rule.
+- **A swap cannot survive construction.** The invariants reject the transposed values, so the mistake
+  fails fast instead of propagating.
+- **The signature is merely long.** Parameter count alone is not the criterion.
+
+**Choosing the remedy.** Give the parameters distinct types (a VO each) when the value deserves an
+invariant of its own — that removes the swap risk as a side effect. Bundle into a struct when a VO would
+add no invariant and the value really is a plain primitive. Either way, lock the mapping with a test that
+passes **distinct** values for the same-typed parameters and asserts each one — including at the
+persistence boundary, where field names still allow a wrong assignment.
+
+Per-layer application: `internal/domain/README.md` (attribute structs on entities),
+`internal/usecase/README.md` (Params DTO structs on usecase inputs).
+
 ## Package / Directory Naming Rules
 
 - Go package identifiers are a single lowercase word with **no underscores** (staticcheck ST1003).
@@ -312,6 +350,7 @@ Usecase should **avoid direct dependency on Infrastructure**.
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
+- **Never return a `xerrors.New(...)` built inside a function body.** Declare the error as a package-level sentinel (`var errXxx = xerrors.New("...")`) and attach the dynamic context with `xerrors.Wrap(errXxx, ctx)`. An error created in place is unreachable to `errors.Is`, so callers cannot branch on it and tests are forced onto message-string matching — a one-word wording change then breaks the test, and a different error passes it. Enforced mechanically by `internal/architest` (`TestNoInlineXerrorsNew`); there is no allowlist. `_test.go` is out of scope — building an ad-hoc error to inject is a legitimate use there.
 - When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
 - To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0040](adr/0040-error-metadata-code-message-details.md).
 - Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0041](adr/0041-error-details-opt-in-gate.md).
@@ -329,6 +368,8 @@ upstream <https://go.dev/doc/comment>).
   - **Where it is called from** — call-site / registration notes coupled to organization: `// 〜の登録は di 層が担う`.
   - **Change history / development 経緯** — migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため` — these rot and belong in the PR / commit log.
   - **Restatement / tautology** — `// 内部表現は [16]byte`, `// User は User です`; or a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (an unresolved, legitimate TODO is not flagged).
+- **Volume is itself a cost.** A comment is re-read every time the code is, so length raises cognitive load even when each line is individually defensible. State the contract in as few words as it takes and stop. Two habits produce most of the bloat: spelling out a **repo-wide rationale** at every declaration that follows it (state it once here and let the code stay silent — link, do not repeat), and **narrating the mechanism** of a language feature the reader already knows. A comment the reader must work through to reach a fact the signature already gave them is a net loss.
+- **Idiomatic code needs no explanation.** The routine surface of building an API — an entity constructor, a Params / attribute struct, a Repository's row-to-entity conversion, a handler's bind → usecase → response, a table of validated fields — is conventional, and a reader fluent in this codebase already knows what it is for. Comment only what **departs** from the convention, or what the convention cannot express. This is **suppression, not elimination**: an exported declaration still carries its `Name`-prefixed contract, and a genuinely non-obvious Why still stays. Conversely, the further code sits from the idiom (a workaround, a deliberate deviation, a constraint imposed from outside), the more a comment earns its space.
 - **Correct outranks everything.** A doc comment that lies about or has drifted from the actual behavior is worse than no comment — the highest-priority finding.
 - **A non-obvious Why is the one addition godoc does not mandate but this repo keeps** — the reason behind a decision the code cannot convey (a load-bearing constraint / intent). OK: `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"). Include it only when genuinely non-obvious.
 - **Never invent a Why.** A Why is kept only when it is non-obvious **and** verifiable — derivable from the code, a design document, or the configuration. A rationale you cannot establish is a guess, and a plausible guess is worse than silence: a comment reads as authoritative, so a wrong Why misleads every later reader and survives longer than the code it explains. When a defensive branch or a magic value looks like it needs a reason you cannot pin down, leave the comment out and raise the gap in review instead of writing something that sounds right. Restating only the part you can verify is not a fix either — that lands back on **restatement**.

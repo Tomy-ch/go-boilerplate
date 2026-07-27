@@ -46,7 +46,8 @@ func TestNew(t *testing.T) {
 			t.Run(env+"環境では生成を拒否してエラーを返す", func(t *testing.T) {
 				t.Parallel()
 				authorizer, err := New(newAppCfg(t, env))
-				require.Error(t, err)
+				require.ErrorIs(t, err, errNonLocalEnv)
+				require.ErrorContains(t, err, env)
 				assert.Nil(t, authorizer)
 			})
 		}

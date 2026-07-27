@@ -15,7 +15,12 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 - Use `Is` / `As` instead of direct `errors.Is` / `errors.As` for consistency
 - Use `New` / `Wrap` / `Join` instead of `fmt.Errorf` for error creation and wrapping
   (`Join` combines multiple errors). When a value must be embedded in the message, compose it with
-  `fmt.Sprintf` and pass it to `New` / `Wrap`. `fmt.Errorf` is forbidden by `forbidigo`.
+  `fmt.Sprintf` and pass it to `Wrap`. `fmt.Errorf` is forbidden by `forbidigo`.
+- In production code, `New` belongs in a **package-level `var` declaration** — never in a function
+  body. Declare the sentinel once (`var errXxx = New("...")`) and attach the dynamic context at the
+  raising site with `Wrap(errXxx, ctx)`, so callers and tests identify the error with `Is` instead of
+  matching its message. `internal/architest` (`TestNoInlineXerrorsNew`) enforces this; `_test.go`
+  is out of scope, where an ad-hoc error to inject is a legitimate use.
 - When attaching an apperror sentinel to an underlying error, prefer `Join(sentinel, err)`
   (or `Join(sentinel, Wrap(err, "context"))` when context is needed) so the original error stays
   in the chain for `Is` / `As`. Do not flatten it with `Wrap(sentinel, err.Error())`, which drops

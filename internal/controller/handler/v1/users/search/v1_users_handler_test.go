@@ -14,7 +14,7 @@ import (
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_query "go-boilerplate/internal/usecase/user/search/mock"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,8 +55,8 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	testassert.AssertEchoRouterPath(t, targetPath, e.Routes())
-	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
+	testassert.AssertEchoRouterPath(t, targetPath, e.Router().Routes())
+	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Router().Routes())
 }
 
 func Test_server_GetUsersSearch(t *testing.T) {

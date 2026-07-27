@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=version --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=version --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=version --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package version パッケージは、アプリケーションのバージョン情報を提供します。
 package version
@@ -16,7 +16,7 @@ import (
 	"go-boilerplate/pkg/datetime"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 var errInvalidBuildDate = xerrors.Wrap(apperror.ErrInternal, "invalid build date")

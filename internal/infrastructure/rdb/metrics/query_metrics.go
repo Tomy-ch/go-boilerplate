@@ -16,6 +16,9 @@ const (
 	querySubsystem = "query"
 )
 
+// errIncompatibleCollector は、同名で登録済みのコレクタが期待する型と非互換だった場合のエラーです。
+var errIncompatibleCollector = xerrors.New("registerOrExisting: collector is already registered with an incompatible type")
+
 // queryMetrics は、DB クエリの duration / error を Prometheus メトリクスとして記録する driver.QueryRecorder 実装です。
 type queryMetrics struct {
 	duration    *prometheus.HistogramVec
@@ -77,8 +80,7 @@ func registerOrExisting[T prometheus.Collector](reg prometheus.Registerer, c T) 
 		if existing, ok := alreadyRegisteredErr.ExistingCollector.(T); ok {
 			return existing
 		}
-		panic(xerrors.New(fmt.Sprintf(
-			"registerOrExisting: collector [%s] is already registered with an incompatible type %T",
+		panic(xerrors.Wrap(errIncompatibleCollector, fmt.Sprintf("collector [%s], existing type %T",
 			collectorFQNames(c), alreadyRegisteredErr.ExistingCollector)))
 	}
 	panic(xerrors.Wrap(err, fmt.Sprintf(

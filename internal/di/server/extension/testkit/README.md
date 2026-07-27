@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-`testkit` provides **shared test helpers for the di server extension module tests** (the sibling `inbound` / `outbound` / `security` / `instrumentation` / `nonprod` packages).
+`testkit` provides **shared test helpers for the di server extension module tests** (the sibling `inbound` / `outbound` / `security` / `instrumentation` packages).
 
 It centralizes the boilerplate of building a throwaway `fx` app and asserting what a module provides into a fx group, so each extension's `module_graph_test.go` stays small and consistent.
 

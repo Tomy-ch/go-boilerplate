@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package detail は、/v1/users/{userId} エンドポイントに関連するハンドラを提供します。
 package detail
@@ -15,7 +15,7 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 )
 

@@ -59,7 +59,7 @@ func Test_httpClientModule_ProvidesClient(t *testing.T) {
 				fx.Populate(&client),
 			)
 
-			require.Error(t, app.Start(context.Background()))
+			require.ErrorIs(t, app.Start(context.Background()), errRequiredProfileMissing)
 		})
 	})
 }

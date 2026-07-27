@@ -23,6 +23,9 @@ const (
 	filePerm = 0o600 // meta / lock ファイル（ユーザー専有）
 )
 
+// errPoolDirSymlink は、レジストリのプールディレクトリが symlink だった場合のエラーです。
+var errPoolDirSymlink = xerrors.New("pool dir is a symlink; set GOBP_DB_POOL_DIR to a safe path")
+
 // reclaimSeq は、回収時の一時名を一意にするためのカウンタ（プロセス内 goroutine 間の衝突回避）。
 var reclaimSeq atomic.Int64
 
@@ -72,7 +75,7 @@ func (r *Registry) Lock() (func(), error) {
 // EnsureDir は、レジストリを用意します。symlink は先読み攻撃対策として拒否します。
 func (r *Registry) EnsureDir() error {
 	if fi, err := os.Lstat(r.dir); err == nil && fi.Mode()&os.ModeSymlink != 0 {
-		return xerrors.New(fmt.Sprintf("pool dir %q is a symlink; set GOBP_DB_POOL_DIR to a safe path", r.dir))
+		return xerrors.Wrap(errPoolDirSymlink, fmt.Sprintf("%q", r.dir))
 	}
 	if err := os.MkdirAll(r.dir, dirPerm); err != nil {
 		return xerrors.Wrap(err, "failed to create pool dir")

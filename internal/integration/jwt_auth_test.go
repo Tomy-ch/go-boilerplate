@@ -12,7 +12,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	jose "github.com/go-jose/go-jose/v4"
 	jwtlib "github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -154,7 +154,7 @@ func newProtectedServer(t *testing.T, authenticator authbd.Authenticator) *Serve
 	e := echo.New()
 	UseAppErrorHandler(t, e)
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			req := c.Request()
 			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 			c.SetRequest(req)
@@ -169,7 +169,7 @@ func newProtectedServer(t *testing.T, authenticator authbd.Authenticator) *Serve
 		}
 	})
 	// 解決済み UserID がハンドラまで伝播することを検証するため、Authn.UserID をレスポンスに載せる。
-	e.GET("/protected", func(c echo.Context) error {
+	e.GET("/protected", func(c *echo.Context) error {
 		authn, ok := ctxhelper.GetAuthn(c.Request().Context())
 		if !ok {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "authn missing"})

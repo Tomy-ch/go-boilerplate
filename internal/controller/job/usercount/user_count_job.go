@@ -18,6 +18,15 @@ const (
 	inactiveOnlyFlag = "--inactive-only"
 )
 
+var (
+	// errDuplicateFlag は、同一フラグが複数回指定された場合のエラーです。
+	errDuplicateFlag = xerrors.New("duplicate flag")
+	// errUnknownFlag は、未知のフラグが指定された場合のエラーです。
+	errUnknownFlag = xerrors.New("unknown flag")
+	// errConflictingFilterFlags は、--active-only と --inactive-only が併用された場合のエラーです。
+	errConflictingFilterFlags = xerrors.New("conflicting filter flags")
+)
+
 type jobImpl struct {
 	logging logging.Logger
 	tracer  observability.LayerTracer
@@ -74,20 +83,20 @@ func parseFilter(args []string) (*bool, error) {
 		switch a {
 		case activeOnlyFlag:
 			if seenActive {
-				return nil, xerrors.New("duplicate flag: " + activeOnlyFlag)
+				return nil, xerrors.Wrap(errDuplicateFlag, activeOnlyFlag)
 			}
 			seenActive = true
 		case inactiveOnlyFlag:
 			if seenInactive {
-				return nil, xerrors.New("duplicate flag: " + inactiveOnlyFlag)
+				return nil, xerrors.Wrap(errDuplicateFlag, inactiveOnlyFlag)
 			}
 			seenInactive = true
 		default:
-			return nil, xerrors.New("unknown flag: " + a)
+			return nil, xerrors.Wrap(errUnknownFlag, a)
 		}
 	}
 	if seenActive && seenInactive {
-		return nil, xerrors.New("conflicting filter flags: " + activeOnlyFlag + ", " + inactiveOnlyFlag)
+		return nil, xerrors.Wrap(errConflictingFilterFlags, activeOnlyFlag+", "+inactiveOnlyFlag)
 	}
 	switch {
 	case seenActive:

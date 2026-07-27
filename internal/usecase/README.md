@@ -367,7 +367,7 @@ carries what**.
 Forbidden types in parameters or return values:
 
 - `http.*`
-- `echo.Context`
+- `*echo.Context`
 - `sqlc` generated types
 - `sql.Null*`
 - DB column names
@@ -562,7 +562,7 @@ This allows fast and stable validation of:
 ### Don’t
 
 - Return Domain entities directly
-- Accept / return `http.Status` or `echo.Context`
+- Accept / return `http.Status` or `*echo.Context`
 - Use `sqlc` generated types
 - Return OpenAPI generated types
 - Treat empty list as error

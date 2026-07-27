@@ -10,14 +10,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// 認証ユーザー自身の購入集計の取得
 	// (GET /v1/users/me/purchases/summary)
-	GetUsersMePurchasesSummary(ctx echo.Context) error
+	GetUsersMePurchasesSummary(ctx *echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -26,7 +26,7 @@ type ServerInterfaceWrapper struct {
 }
 
 // GetUsersMePurchasesSummary converts echo context to params.
-func (w *ServerInterfaceWrapper) GetUsersMePurchasesSummary(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) GetUsersMePurchasesSummary(ctx *echo.Context) error {
 	var err error
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -40,15 +40,15 @@ func (w *ServerInterfaceWrapper) GetUsersMePurchasesSummary(ctx echo.Context) er
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -167,7 +167,7 @@ type StrictServerInterface interface {
 	GetUsersMePurchasesSummary(ctx context.Context, request GetUsersMePurchasesSummaryRequestObject) (GetUsersMePurchasesSummaryResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -180,10 +180,10 @@ type strictHandler struct {
 }
 
 // GetUsersMePurchasesSummary operation middleware
-func (sh *strictHandler) GetUsersMePurchasesSummary(ctx echo.Context) error {
+func (sh *strictHandler) GetUsersMePurchasesSummary(ctx *echo.Context) error {
 	var request GetUsersMePurchasesSummaryRequestObject
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsersMePurchasesSummary(ctx.Request().Context(), request.(GetUsersMePurchasesSummaryRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
