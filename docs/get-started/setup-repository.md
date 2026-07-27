@@ -204,7 +204,20 @@ For your project, review each and decide:
 
 The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
-## Phase 11: Remove Sample APIs
+## Phase 11: Decide the dependency-license policy
+
+The dependency-license scan (`make trivy-license`, and the `trivy-license` job in [.github/workflows/trivy-fs.yaml](../../.github/workflows/trivy-fs.yaml)) is **report-only, permanently**. It enumerates every dependency's license into the job summary and a PR comment, and never fails the build.
+
+That is a deliberate non-choice, not an unfinished gate. Which licenses are acceptable is a legal question owned by the organization adopting this template: copyleft that is disqualifying for a distributed binary can be entirely acceptable for a service whose binary never leaves your infrastructure, and the answer varies by company, product, and distribution model. Picking a threshold here would bake one company's legal posture into every fork, so the template ships the inventory and leaves the judgement to the adopter.
+
+If your organization has (or needs) a prohibited-license policy, gate it yourself:
+
+1. Decide the acceptable set in terms of Trivy's own classification (`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`), and decide whether shipped artifacts and build-only tooling get the same bar. They may not: the classifications outside `notice` / `unencumbered` in this repository come from `docker/tools/`, which is build-only and never shipped.
+2. Treat Trivy's classification as a starting point, not an authority. `BlueOak-1.0.0` lands in `unknown` even though it is OSI-approved and permissive, so decide such cases explicitly instead of letting the bucket decide for you.
+3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
+4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0080](../adr/0080-multi-layer-security-scanning.md), which both currently state that no policy exists.
+
+## Phase 12: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 
