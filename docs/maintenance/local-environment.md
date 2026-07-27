@@ -133,10 +133,23 @@ and the volume's recorded collation version follows it — so the mismatch reapp
 direction and has to be refreshed again. Until every checkout is on the same `database` image,
 expect to re-run the command above after another checkout brings the shared infra up.
 
-`garage` sits on the same seesaw, and its exposure is worse than a warning. Its metadata volume is
-migrated in place by a newer server, and Garage documents only the forward migration — a downgrade
-back to the older major is not a supported path. Until every checkout is on the same `garage` image,
-take a snapshot before letting the shared infra change hands:
+`garage` sits on the same seesaw, and it fails harder and more quietly. A newer server migrates the
+metadata volume in place, and the older major then cannot read what it wrote:
+
+```txt
+Error: Internal error: Remote error: Unable to decode entry of bucket_v2
+```
+
+The compose healthcheck does not catch this — it runs `garage status`, which reports node liveness,
+not table readability, so the node comes up **healthy** while every bucket lookup fails and the
+breakage surfaces later as S3 errors. Worse, `garage_init` reads that failure as "no bucket yet" and
+creates a fresh one, orphaning whatever objects the bucket held. Moving back to the newer image
+restores decodability, but the re-created bucket stays empty — re-seed it with `make db-local-seed`.
+
+Nothing here is precious (dev-only object storage, seeded from `storage/seed/`), so the practical
+rule is to get every checkout onto the same `garage` image rather than to defend the volume. When
+that is not yet possible and the volume holds something you want back, snapshot before letting the
+shared infra change hands:
 
 ```sh
 docker compose -p gobp-shared exec garage /garage -c /etc/garage.toml meta snapshot --all
