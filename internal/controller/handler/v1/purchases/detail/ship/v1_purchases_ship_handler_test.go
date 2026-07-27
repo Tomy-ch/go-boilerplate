@@ -3,6 +3,7 @@ package ship
 import (
 	"context"
 	"math"
+	"net/http"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -52,6 +54,21 @@ func shipViewFixture(t *testing.T) purchaseuc.ShipPurchaseView {
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		ShippedAt: &shipped,
 	}
+}
+
+func TestBindHandler(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	tf := observability.NewNoopTracerFactory(t)
+	uc := mock_purchaseuc.NewMockUsecase(gomock.NewController(t))
+
+	BindHandler(e, tf, uc)
+
+	routes := e.Routes()
+	require.Len(t, routes, 1)
+	assert.Equal(t, http.MethodPatch, routes[0].Method)
+	assert.Equal(t, "/v1/purchases/:purchaseId/ship", routes[0].Path)
 }
 
 func Test_server_PatchPurchasesShip(t *testing.T) {
