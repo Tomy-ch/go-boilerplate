@@ -120,6 +120,7 @@ func (r *run) acquire(ctx context.Context) (int, bool) {
 			case <-ctx.Done():
 				return 0, false
 			case <-r.slotFreed:
+				r.e.markProgress() // probing 待機からの起床は進捗とみなし、probe 待ちの間の readiness stale を避ける
 			}
 			continue
 		default:

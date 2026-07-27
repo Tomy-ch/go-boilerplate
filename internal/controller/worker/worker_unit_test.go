@@ -940,6 +940,50 @@ func Test_run_acquire(t *testing.T) {
 			assert.False(t, ok)
 			assert.Zero(t, n)
 		})
+
+		t.Run("probing 待機中に ctx がキャンセルされると Receive せず false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRun(t)
+			r.cb.onFailure()  // Open へ
+			r.cb.toHalfOpen() // Half-open へ
+			require.Equal(t, phaseHalfOpen, r.cb.phaseNow())
+
+			// probe バッチを投入して probing 中にする（in-flight を充填して slotFreed が鳴らない状態）。
+			n, ok := r.acquire(context.Background())
+			require.True(t, ok)
+			require.Equal(t, 2, n)
+			r.inflight <- struct{}{}
+			r.inflight <- struct{}{}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			type acqResult struct {
+				n  int
+				ok bool
+			}
+			ch := make(chan acqResult, 1)
+			go func() {
+				gotN, gotOK := r.acquire(ctx)
+				ch <- acqResult{gotN, gotOK}
+			}()
+
+			// probing 中は結果待ちでブロックする。
+			select {
+			case <-ch:
+				t.Fatal("probing 待機中に acquire が復帰した")
+			case <-time.After(50 * time.Millisecond):
+			}
+
+			cancel() // slotFreed には触れず ctx キャンセルで抜ける
+
+			select {
+			case got := <-ch:
+				assert.False(t, got.ok)
+				assert.Zero(t, got.n)
+			case <-time.After(time.Second):
+				t.Fatal("ctx キャンセル後も acquire が復帰しなかった")
+			}
+		})
 	})
 }
 
