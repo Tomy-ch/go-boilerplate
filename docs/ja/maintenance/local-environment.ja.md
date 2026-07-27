@@ -78,8 +78,8 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-4000}:4000`（内部 4000） | 疑似 OIDC 認証サーバー（JWT テストプロバイダ）。RS 側の JWKS 検証相手 |
 | `database` | infra | `postgres:18.4-trixie` | `5432` 固定 | 全 checkout 共有の**単一**インスタンス（並列化は DB 名で行う。下記スロットリング参照） |
 | `observability` | infra | `grafana/otel-lgtm` | `3000`（Grafana UI）/ `4317`（OTLP gRPC）/ `4318`（OTLP HTTP）/ `3200`（Tempo API） | 全 checkout の traces / metrics / logs の受け皿。profile: `development` |
-| `garage` | infra | build `docker/garage/Dockerfile` | `3900`（S3 API）/ `3903`（Admin API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う） |
-| `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキーの冪等プロビジョニング |
+| `garage` | infra | `dxflrs/garage` | `3900`（S3 API）/ `3902`（Web API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う）。Web API はオブジェクトを匿名配信する — [`docker/README.md`](../../../docker/README.md) 参照 |
+| `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキー / 公開配信の許可の冪等プロビジョニング |
 | `docs_viewer` | infra | build `docker/document/Dockerfile` | `7001:80` | 開発用ドキュメントビューア |
 | `sql_editor` | infra | `sosedoff/pgweb` | `7000:8081` | ブラウザ DB クライアント |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `5433:3000` | ER 図生成 |
@@ -98,12 +98,18 @@ WARNING:  database "local" has a collation version mismatch
 DETAIL:  The database was created using collation version 2.36, but the operating system provides version 2.41.
 ```
 
-既存データベースでは警告で済むが、`template1` で起きた場合は **`CREATE DATABASE` が失敗する**。
-つまり `make slot-acquire` や `make db-*-reinit` は騒がしくなるのではなく、そのまま落ちる:
+既存データベースへの接続は警告で済むが、食い違った `template1` に対する `CREATE DATABASE` は
+ハードエラーになる:
 
 ```txt
 ERROR: template database "template1" has a collation version mismatch (SQLSTATE XX000)
 ```
+
+したがって落ちるのはデータベースを作る経路だけである — `wt<N>` のデータベースが未作成のスロットに
+対する `make slot-acquire` と、使い捨てデータベースを作る `internal/cli/dbslot` のテストが該当する。
+作成済みスロットの再取得や `make db-*-reinit` は、既存データベース内のテーブルを触るだけなので通る。
+ただしその警告は無視してよいノイズではない。まだ致命的でないだけで、同じインデックス並び順の
+食い違いを指している。
 
 したがってデータベースの作り直しは回避策にならないし、そもそも警告も消えない。`CREATE DATABASE` は
 `datcollversion` を `template1` から複製し、その `template1` 自体が古い値を持つためである。
@@ -122,6 +128,15 @@ checkout がまだ古いイメージを使っている間は、最後に `make i
 に記録された collation version もそれに追従する。つまり食い違いが逆向きに再発し、もう一度 refresh が
 要る。全 checkout が同じ `database` イメージに揃うまでは、他の checkout が共有インフラを起動するたびに
 上のコマンドを再実行することになる。
+
+`garage` も同じシーソーに乗っており、しかも露出は警告どころではない。メタデータボリュームは新しい
+サーバーによってその場で移行される一方、Garage が文書化しているのは前方向の移行だけで、古いメジャーへの
+ダウングレードはサポート対象外である。全 checkout が同じ `garage` イメージに揃うまでは、共有インフラの
+持ち主が変わる前にスナップショットを取っておく:
+
+```sh
+docker compose -p gobp-shared exec garage /garage -c /etc/garage.toml meta snapshot --all
+```
 
 ## ホットリロード（air + delve）
 

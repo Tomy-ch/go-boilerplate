@@ -101,13 +101,18 @@ WARNING:  database "local" has a collation version mismatch
 DETAIL:  The database was created using collation version 2.36, but the operating system provides version 2.41.
 ```
 
-On an existing database this is only a warning, but on `template1` it is **fatal to
-`CREATE DATABASE`** — which means `make slot-acquire` and `make db-*-reinit` fail outright, not
-noisily:
+Connecting to an existing database only warns, but `CREATE DATABASE` against a mismatched
+`template1` is a hard error:
 
 ```txt
 ERROR: template database "template1" has a collation version mismatch (SQLSTATE XX000)
 ```
+
+So only the paths that create a database fail — `make slot-acquire` on a slot whose `wt<N>` databases
+do not exist yet, and the `internal/cli/dbslot` tests, which create throwaway databases. Re-acquiring
+an already-provisioned slot and `make db-*-reinit` keep working, since they only touch tables inside
+existing databases. Their warning is not noise to ignore, though: it is the same index-ordering
+disagreement, just not yet fatal.
 
 Recreating the databases is therefore not a workaround, and would not clear the warning anyway:
 `CREATE DATABASE` copies `datcollversion` from `template1`, which carries the old value too.
@@ -127,6 +132,15 @@ image and another still runs the old one, whichever ran `make infra-up` last own
 and the volume's recorded collation version follows it — so the mismatch reappears in the other
 direction and has to be refreshed again. Until every checkout is on the same `database` image,
 expect to re-run the command above after another checkout brings the shared infra up.
+
+`garage` sits on the same seesaw, and its exposure is worse than a warning. Its metadata volume is
+migrated in place by a newer server, and Garage documents only the forward migration — a downgrade
+back to the older major is not a supported path. Until every checkout is on the same `garage` image,
+take a snapshot before letting the shared infra change hands:
+
+```sh
+docker compose -p gobp-shared exec garage /garage -c /etc/garage.toml meta snapshot --all
+```
 
 ## Hot reload (air + delve)
 
