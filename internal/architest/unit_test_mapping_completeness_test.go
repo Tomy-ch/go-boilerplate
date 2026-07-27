@@ -20,7 +20,8 @@ import (
 var (
 	// 型パラメータ節（`[T any]` 等）を許容する。レシーバ型・自由関数名の直後に挟まりうるため、
 	// 省略可能な `(?:\[.*\])?` を挟んでからメソッド引数の `(` を要求する。
-	methodDeclRe = regexp.MustCompile(`^func \(\s*\w+\s+\*?(\w+)(?:\[.*\])?\) (\w+)\(`)
+	// レシーバ変数名は省略可能（`func (*T) M()` は Go として合法で、名前を省くだけで検証を逃れられないようにする）。
+	methodDeclRe = regexp.MustCompile(`^func \(\s*(?:\w+\s+)?\*?(\w+)(?:\[.*\])?\) (\w+)\(`)
 	freeFuncRe   = regexp.MustCompile(`^func (\w+)(?:\[.*\])?\(`)
 	testFuncRe   = regexp.MustCompile(`^func (Test\w+)\(`)
 	branchRe     = regexp.MustCompile(`^\t+(if|for|switch|select)[ ({]`)
@@ -56,7 +57,7 @@ func TestUnitTestMappingCompleteness(t *testing.T) {
 	require.Empty(t, violations,
 		"分岐を持つ production 関数/メソッドに対応する TestXxx が無い（1:1 違反）。"+
 			"専用テストを追加すること。検証不可能であるために到達できない対象に限り、"+
-			"命名規約どおりの TestXxx を宣言し t.Skip(なぜ検証不可能か) で明示できる。")
+			"命名規約どおりの TestXxx を宣言し、なぜ検証不可能かを t.Skip の理由文に書いて明示できる。")
 }
 
 // scanPackages は internal / pkg 配下を走査し、ディレクトリ単位で
