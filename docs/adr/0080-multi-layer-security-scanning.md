@@ -160,9 +160,15 @@ credentials after checkout set `persist-credentials: false`.
   `.github/actions/osv-scan` composite action keeps the OSV parser and severity policy in
   one place, but the breadth itself is a cost, and adding a scanner is never just "add a
   tool" — it requires deciding which surface owns the finding.
-- The release gates only block if registered as required status checks. Where branch
-  protection is not configured, they report but do not enforce, and the split degrades to
-  reporting-only everywhere.
+- Blocking depends on the gates being registered as required status checks — a
+  `required_status_checks` rule listing each gate's check context in
+  `.github/settings/branch-protection.json`, which takes effect only once that ruleset is
+  applied to the repository with `make apply-branch-protection`. Until that rule is present
+  and applied, the gates report without blocking. Because a required check on a path- or
+  branch-filtered workflow hangs a PR that never triggers it, each gate carries a
+  `*-guard.yaml` companion that reports the same check context as a success on the
+  complementary path/branch set, so a PR that skips the body still reports the context — an
+  extra workflow per gate whose filter has to be kept in sync with the body it guards.
 - Detections overlap across tools, and the overlap has to be resolved by hand each time
   (Opengrep and Trivy both flag a root-user Dockerfile; Opengrep and gosec both flag
   `math/rand`). Left unresolved, the same finding gates twice and gets suppressed twice.

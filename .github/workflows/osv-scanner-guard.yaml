@@ -1,0 +1,41 @@
+name: OSV Scan (required-check guard)
+
+# Skip-guard companion for osv-scanner.yaml's `osv-diff` job. That job is
+# registered as a required status check, but osv-scanner.yaml only triggers on a
+# pull_request when it touches the dependency `paths`; a PR that changes no
+# dependency manifest would never report the `osv-diff` context and would block
+# merging forever.
+#
+# This workflow runs on the complementary set (`paths-ignore` mirrors
+# osv-scanner.yaml's pull_request `paths`) and reports the same `osv-diff` context
+# as an immediate success. When both run, GitHub requires every same-named check to
+# pass, so this no-op can never mask a real osv-diff failure.
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/osv-scanner.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: No dependency manifest changed — satisfy the required context
+        run: echo "No dependency path changed; the required 'osv-diff' context is satisfied by this guard."
