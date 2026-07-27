@@ -1,0 +1,38 @@
+name: Config Scan (required-check guard)
+
+# Skip-guard companion for trivy-config.yaml. The `trivy-config` job is registered
+# as a required status check, but trivy-config.yaml only triggers when the PR
+# touches its `paths`; a PR that changes no Dockerfile would never report the
+# `trivy-config` context and would block merging forever.
+#
+# This workflow runs on the complementary set (`paths-ignore` mirrors
+# trivy-config.yaml's pull_request `paths`) and reports the same `trivy-config`
+# context as an immediate success. When both run, GitHub requires every same-named
+# check to pass, so this no-op can never mask a real trivy-config failure.
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/trivy-config.yaml'
+      - '.makefiles/security/trivy.mk'
+      - '.trivyignore.yaml'
+      - 'docker/**/Dockerfile'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trivy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: No Dockerfile changed — satisfy the required context
+        run: echo "No Dockerfile-related path changed; the required 'trivy-config' context is satisfied by this guard."

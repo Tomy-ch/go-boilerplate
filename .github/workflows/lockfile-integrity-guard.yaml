@@ -1,0 +1,37 @@
+name: Lockfile Integrity (required-check guard)
+
+# Skip-guard companion for lockfile-integrity.yaml. The `lockfile-lint` job is
+# registered as a required status check, but lockfile-integrity.yaml only triggers
+# when the PR touches its `paths`; a PR that changes no lockfile would never report
+# the `lockfile-lint` context and would block merging forever.
+#
+# This workflow runs on the complementary set (`paths-ignore` mirrors
+# lockfile-integrity.yaml's pull_request `paths`) and reports the same
+# `lockfile-lint` context as an immediate success. When both run, GitHub requires
+# every same-named check to pass, so this no-op can never mask a real failure.
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/lockfile-integrity.yaml'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lockfile-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: No lockfile changed — satisfy the required context
+        run: echo "No lockfile path changed; the required 'lockfile-lint' context is satisfied by this guard."

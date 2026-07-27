@@ -1,0 +1,40 @@
+name: OpenAPI Security (required-check guard)
+
+# Skip-guard companion for openapi-security.yaml. The `openapi-security` job is
+# registered as a required status check, but openapi-security.yaml only triggers
+# when the PR touches its `paths`; a PR that changes nothing under them would never
+# report the `openapi-security` context and would block merging forever.
+#
+# This workflow runs on the complementary set (`paths-ignore` mirrors
+# openapi-security.yaml's pull_request `paths`) and reports the same
+# `openapi-security` context as an immediate success. When both run, GitHub
+# requires every same-named check to pass, so this no-op can never mask a real
+# failure.
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/openapi-security.yaml'
+      - '.spectral.yaml'
+      - 'openapi/**'
+      - 'docker/tools/package.json'
+      - 'docker/tools/package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  openapi-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: No API spec changed — satisfy the required context
+        run: echo "No OpenAPI-related path changed; the required 'openapi-security' context is satisfied by this guard."

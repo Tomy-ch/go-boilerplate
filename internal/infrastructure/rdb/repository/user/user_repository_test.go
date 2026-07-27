@@ -496,3 +496,36 @@ func Test_rowToUser(t *testing.T) {
 		})
 	})
 }
+
+func Test_rowsToUsers(t *testing.T) {
+	t.Parallel()
+
+	identity := func(r gen.Users) gen.Users { return r }
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("空スライスは空の列を返す", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := rowsToUsers([]gen.Users{}, identity)
+
+			require.NoError(t, err)
+			assert.Empty(t, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("変換失敗があれば nil とエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// ゼロ値の行は ID が nil で rowToUser が失敗する（成功経路は実 DB テストでカバー）。
+			got, err := rowsToUsers([]gen.Users{{}}, identity)
+
+			require.Error(t, err)
+			assert.Nil(t, got)
+		})
+	})
+}

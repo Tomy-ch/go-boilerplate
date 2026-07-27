@@ -1,0 +1,41 @@
+name: Release OSV Scan (required-check guard)
+
+# Skip-guard companion for osv-release-gate.yaml. The `osv-release` job is
+# registered as a required status check on the shared branch-protection ruleset,
+# which also covers PRs into release/** and hotfix/**. The gate itself only runs on
+# a PR into a deploy branch (develop / staging / production) — by design, so an
+# inherited finding is decided at the promotion boundary rather than on every
+# feature PR (ADR-0080). A PR into release/** or hotfix/** would therefore never
+# report the `osv-release` context and would block merging forever.
+#
+# This workflow runs on the complementary branch set (`branches-ignore` mirrors the
+# gate's deploy-branch `branches`) and reports the same `osv-release` context as an
+# immediate success, so exactly one of the two always reports it. The two are
+# mutually exclusive on the target branch, so this no-op never runs alongside the
+# real gate and never masks it.
+
+on:
+  pull_request:
+    branches-ignore:
+      - develop
+      - staging
+      - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Not a promotion PR — satisfy the required context
+        run: echo "PR does not target a deploy branch; the required 'osv-release' context is satisfied by this guard."

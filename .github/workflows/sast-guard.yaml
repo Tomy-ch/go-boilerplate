@@ -1,0 +1,41 @@
+name: SAST (required-check guard)
+
+# Skip-guard companion for sast.yaml. The `sast` job is registered as a required
+# status check, but sast.yaml only triggers when the PR touches its `paths`; a PR
+# that changes nothing under them would never report the `sast` context and would
+# block merging forever ("Expected — Waiting for status to be reported").
+#
+# This workflow runs on the complementary set (`paths-ignore` mirrors sast.yaml's
+# pull_request `paths`) and reports the same `sast` context as an immediate
+# success, so exactly one of the two always reports it. When both run — a PR
+# touching a scanned path and an unscanned one — GitHub requires every same-named
+# check to pass, so this no-op can never mask a real sast failure.
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/sast.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'openapi/**'
+      - 'database/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: No source paths changed — satisfy the required context
+        run: echo "No SAST-scanned path changed; the required 'sast' context is satisfied by this guard."
