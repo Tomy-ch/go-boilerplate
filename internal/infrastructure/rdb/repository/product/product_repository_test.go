@@ -824,3 +824,69 @@ func Test_intPtrToInt32Ptr(t *testing.T) {
 		})
 	})
 }
+
+func Test_rowsToProducts(t *testing.T) {
+	t.Parallel()
+
+	newRow := func(t *testing.T, salt string) productRow {
+		t.Helper()
+		return productRow{
+			p: gen.Products{
+				ID:          uuid.NewTestFromSalt(t, salt),
+				Name:        "商品",
+				Description: ptr.To("説明"),
+				Price:       decimal.FromInt(1999),
+				Quantity:    100,
+				StatusID:    uuid.NewTestFromSalt(t, salt+"_status"),
+				CategoryID:  uuid.NewTestFromSalt(t, salt+"_category"),
+				LockVersion: 3,
+			},
+			statusName:   "在庫あり",
+			categoryName: "電子機器",
+		}
+	}
+	identity := func(r productRow) productRow { return r }
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("行スライスを順序を保ってエンティティ列へ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			r1 := newRow(t, "rows_a")
+			r2 := newRow(t, "rows_b")
+
+			got, err := rowsToProducts([]productRow{r1, r2}, identity)
+
+			require.NoError(t, err)
+			require.Len(t, got, 2)
+			assert.Equal(t, r1.p.ID, got[0].ID())
+			assert.Equal(t, r2.p.ID, got[1].ID())
+		})
+
+		t.Run("空スライスは空の列を返す", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := rowsToProducts([]productRow{}, identity)
+
+			require.NoError(t, err)
+			assert.Empty(t, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("変換失敗があれば先頭で打ち切り nil とエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			invalid := newRow(t, "rows_invalid")
+			invalid.statusName = "" // status 名が空だと rowToProduct が検証失敗する
+
+			got, err := rowsToProducts([]productRow{invalid, newRow(t, "rows_valid")}, identity)
+
+			require.Error(t, err)
+			assert.Nil(t, got)
+		})
+	})
+}
