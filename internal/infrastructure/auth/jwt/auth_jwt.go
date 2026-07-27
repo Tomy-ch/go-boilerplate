@@ -141,13 +141,7 @@ func NewJWKS(params JWKSParams, client httpclient.Client) (authbd.Authenticator,
 		return nil, err
 	}
 
-	resolver := newJWKSResolver(client, urlFn, params.CacheTTL, params.Clock)
-	if len(params.AllowedAlgs) > 0 {
-		resolver.allowedAlgs = params.AllowedAlgs
-	}
-	if params.UnknownKidCooldown > 0 {
-		resolver.cooldown = params.UnknownKidCooldown
-	}
+	resolver := newJWKSResolver(client, urlFn, params.CacheTTL, params.AllowedAlgs, params.UnknownKidCooldown, params.Clock)
 	return NewWithKeyResolver(params.Params, resolver)
 }
 

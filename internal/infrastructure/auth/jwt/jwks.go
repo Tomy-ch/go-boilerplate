@@ -92,16 +92,30 @@ func RequiredDownstream() httpclient.Downstream {
 }
 
 // newJWKSResolver は、JWKS 解決器を生成します（この時点では取得しません＝遅延取得）。
-func newJWKSResolver(client httpclient.Client, urlFn func(context.Context) (string, error), cacheTTL time.Duration, clk clock.Clock) *jwksResolver {
+// cacheTTL / cooldown が非正、allowedAlgs が空のときは、それぞれ既定値へフォールバックします。
+func newJWKSResolver(
+	client httpclient.Client,
+	urlFn func(context.Context) (string, error),
+	cacheTTL time.Duration,
+	allowedAlgs []string,
+	cooldown time.Duration,
+	clk clock.Clock,
+) *jwksResolver {
 	if cacheTTL <= 0 {
 		cacheTTL = defaultJWKSCacheTTL
+	}
+	if cooldown <= 0 {
+		cooldown = jwksRefreshCooldown
+	}
+	if len(allowedAlgs) == 0 {
+		allowedAlgs = defaultAllowedAlgs
 	}
 	return &jwksResolver{
 		client:      client,
 		urlFn:       urlFn,
 		cacheTTL:    cacheTTL,
-		cooldown:    jwksRefreshCooldown,
-		allowedAlgs: defaultAllowedAlgs,
+		cooldown:    cooldown,
+		allowedAlgs: allowedAlgs,
 		clk:         clk,
 		keys:        map[string]crypto.PublicKey{},
 	}
