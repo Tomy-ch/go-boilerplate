@@ -18,8 +18,10 @@ import (
 // 自由関数は `Test<Func>`（非公開なら `Test_<func>`）。depguard が go/ast を禁じるため、
 // gofmt 済みソースのテキスト走査で検出する（既存 architest と同方針）。
 var (
-	methodDeclRe = regexp.MustCompile(`^func \(\s*\w+\s+\*?(\w+)\) (\w+)\(`)
-	freeFuncRe   = regexp.MustCompile(`^func (\w+)\(`)
+	// 型パラメータ節（`[T any]` 等）を許容する。レシーバ型・自由関数名の直後に挟まりうるため、
+	// 省略可能な `(?:\[.*\])?` を挟んでからメソッド引数の `(` を要求する。
+	methodDeclRe = regexp.MustCompile(`^func \(\s*\w+\s+\*?(\w+)(?:\[.*\])?\) (\w+)\(`)
+	freeFuncRe   = regexp.MustCompile(`^func (\w+)(?:\[.*\])?\(`)
 	testFuncRe   = regexp.MustCompile(`^func (Test\w+)\(`)
 	branchRe     = regexp.MustCompile(`^\t+(if|for|switch|select)[ ({]`)
 	genHeaderRe  = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
