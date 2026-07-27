@@ -237,6 +237,8 @@ flowchart TB
 | `ErrNotFound` | 対象が存在しない | 404 Not Found |
 | `ErrConflict` | 競合（ユニーク制約違反・同時更新衝突など） | 409 Conflict |
 | `ErrValidation` | ドメイン/ユースケースの検証失敗 | 422 Unprocessable Entity |
+| `ErrUnsupportedMediaType` | サポートされていない Content-Type / メディア形式 | 415 Unsupported Media Type |
+| `ErrPayloadTooLarge` | リクエストペイロードが許容サイズを超過 | 413 Payload Too Large |
 | `ErrTooManyRequests` | リクエスト過多（流量制限・外部 API のスロットリング応答の伝播など） | 429 Too Many Requests |
 | `ErrCanceled` | クライアントがリクエストをキャンセル/切断 | 499 Client Closed Request |
 | `ErrInternal` | 想定外の内部エラー | 500 Internal Server Error |
