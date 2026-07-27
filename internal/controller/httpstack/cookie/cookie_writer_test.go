@@ -353,7 +353,64 @@ func Test_cookieRewriteWriter_rewriteOrKeep(t *testing.T) {
 
 func Test_cookieRewriteWriter_addRewrittenCookies(t *testing.T) {
 	t.Parallel()
-	t.Skip("addRewrittenCookies は Hijack / flushHeadersWithRewrite の各テストで実カバー済み（各 Set-Cookie を rewriteOrKeep して dst へ Add するだけの共通ループ）")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全てのSet-Cookieを書き換えて指定ヘッダへ追加する", func(t *testing.T) {
+			t.Parallel()
+			b := true
+			cfg := &SecurityCookie{applyToAll: true, forceHTTPOnly: &b}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			w.addRewrittenCookies(dst, []string{"a=1; Path=/", "b=2; Path=/"})
+
+			got := dst.Values(headerSetCookie)
+			require.Len(t, got, 2)
+			assert.Contains(t, got[0], "a=1")
+			assert.Contains(t, got[0], "HttpOnly")
+			assert.Contains(t, got[1], "b=2")
+			assert.Contains(t, got[1], "HttpOnly")
+		})
+
+		t.Run("書き換え不能なSet-Cookieも欠落させず元のまま追加する", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			w.addRewrittenCookies(dst, []string{"NoEquals"})
+
+			assert.Equal(t, []string{"NoEquals"}, dst.Values(headerSetCookie))
+		})
+
+		t.Run("空のSet-Cookie列では何も追加しない", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			w.addRewrittenCookies(dst, nil)
+
+			assert.Empty(t, dst.Values(headerSetCookie))
+		})
+
+		t.Run("既存のSet-Cookieを保持したまま追記する", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			dst.Add(headerSetCookie, "existing=0; Path=/")
+			w.addRewrittenCookies(dst, []string{"a=1; Path=/"})
+
+			got := dst.Values(headerSetCookie)
+			require.Len(t, got, 2)
+			assert.Contains(t, got[0], "existing=0")
+			assert.Contains(t, got[1], "a=1")
+		})
+	})
 }
 
 func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
