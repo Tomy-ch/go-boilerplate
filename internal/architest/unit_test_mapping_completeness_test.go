@@ -38,9 +38,10 @@ type prodSubject struct {
 // テスト対象と TestXxx の 1:1 を強制し、レビュー頼みの見落とし（例: keyFunc の防御分岐が
 // 呼び出し側テストに埋もれて専用テストが無い状態）を loud な失敗に変える。
 //
-// 「1:1 を採らない」ことは許さない。真にユニットテスト不要 / 現時点で書けない対象も、
-// 命名規約どおりの TestXxx を宣言し中で t.Skip("理由") することで意図を明示する
-// （allowlist は持たない。理由がコード上に残る）。
+// 「1:1 を採らない」ことは許さない。対象が検証不可能であるために到達できない場合に限り、
+// 命名規約どおりの TestXxx を宣言し中で t.Skip("なぜ検証不可能か") することで意図を明示する
+// （allowlist は持たない。理由がコード上に残る）。「他のテストでカバー済み」は skip の
+// 理由にならない。テスト可能な対象は実テストを書く。
 func TestUnitTestMappingCompleteness(t *testing.T) {
 	t.Parallel()
 
@@ -54,7 +55,8 @@ func TestUnitTestMappingCompleteness(t *testing.T) {
 
 	require.Empty(t, violations,
 		"分岐を持つ production 関数/メソッドに対応する TestXxx が無い（1:1 違反）。"+
-			"専用テストを追加するか、真に不要なら命名規約どおりの TestXxx を宣言し t.Skip(理由) で明示すること。")
+			"専用テストを追加すること。検証不可能であるために到達できない対象に限り、"+
+			"命名規約どおりの TestXxx を宣言し t.Skip(なぜ検証不可能か) で明示できる。")
 }
 
 // scanPackages は internal / pkg 配下を走査し、ディレクトリ単位で
