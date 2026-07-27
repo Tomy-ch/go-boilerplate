@@ -84,73 +84,73 @@ func Test_guardedDialControl(t *testing.T) {
 		t.Run("IPリテラルでないホスト名はfail-closeで拒否する", func(t *testing.T) {
 			t.Parallel()
 			// パース不能なアドレスは許可せず拒否する（fail-close）。
-			require.Error(t, guardedDialControl(allow, "tcp", "example.com:80", nil))
-			require.Error(t, guardedDialControl(deny, "tcp", "example.com:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "example.com:80", nil), errSSRFUnparsableAddress)
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "example.com:80", nil), errSSRFUnparsableAddress)
 		})
 
 		t.Run("zone付きIPv6リンクローカルはフラグに関わらず拒否する", func(t *testing.T) {
 			t.Parallel()
 			// fe80::1%eth0 は zone 付きでも link-local と判定してブロックする（判定回避の穴を塞ぐ）。
-			require.Error(t, guardedDialControl(allow, "tcp", "[fe80::1%eth0]:80", nil))
-			require.Error(t, guardedDialControl(deny, "tcp", "[fe80::1%eth0]:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "[fe80::1%eth0]:80", nil), errSSRFBlockedAddress)
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "[fe80::1%eth0]:80", nil), errSSRFBlockedAddress)
 		})
 
 		t.Run("IPv4-mappedのIPv6リテラルでも予約帯/CGNATを拒否する", func(t *testing.T) {
 			t.Parallel()
 			// netip.Prefix.Contains は family 不一致（IPv4 prefix vs 4-in-6）で false を返すため、
 			// Unmap による正規化が退行すると ::ffff: 形式で判定を迂回できてしまう。
-			require.Error(t, guardedDialControl(allow, "tcp", "[::ffff:240.0.0.1]:80", nil))
-			require.Error(t, guardedDialControl(deny, "tcp", "[::ffff:100.64.0.1]:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "[::ffff:240.0.0.1]:80", nil), errSSRFReservedAddress)
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "[::ffff:100.64.0.1]:80", nil), errSSRFPrivateAddress)
 		})
 
 		t.Run("リンクローカル(メタデータ)はフラグに関わらず拒否する", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, guardedDialControl(allow, "tcp", "169.254.169.254:80", nil))
-			require.Error(t, guardedDialControl(deny, "tcp", "169.254.169.254:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "169.254.169.254:80", nil), errSSRFBlockedAddress)
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "169.254.169.254:80", nil), errSSRFBlockedAddress)
 		})
 
 		t.Run("NAT64 Well-Known Prefixに埋め込んだ内部宛てIPは埋め込みIPv4で判定して拒否する", func(t *testing.T) {
 			t.Parallel()
 			// 埋め込み IPv4 を剥がす正規化が退行すると IPv4 ガードを迂回できる。
-			require.Error(t, guardedDialControl(deny, "tcp", "[64:ff9b::7f00:1]:80", nil))     // 127.0.0.1
-			require.Error(t, guardedDialControl(deny, "tcp", "[64:ff9b::a00:5]:80", nil))      // 10.0.0.5
-			require.Error(t, guardedDialControl(allow, "tcp", "[64:ff9b::a9fe:a9fe]:80", nil)) // 169.254.169.254
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "[64:ff9b::7f00:1]:80", nil), errSSRFPrivateAddress)     // 127.0.0.1
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "[64:ff9b::a00:5]:80", nil), errSSRFPrivateAddress)      // 10.0.0.5
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "[64:ff9b::a9fe:a9fe]:80", nil), errSSRFBlockedAddress) // 169.254.169.254
 		})
 
 		t.Run("private許可フラグなしならloopback/privateを拒否する", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, guardedDialControl(deny, "tcp", "127.0.0.1:8080", nil))
-			require.Error(t, guardedDialControl(deny, "tcp", "10.0.0.5:80", nil))
-			require.Error(t, guardedDialControl(deny, "tcp", "192.168.1.10:80", nil))
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "127.0.0.1:8080", nil), errSSRFPrivateAddress)
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "10.0.0.5:80", nil), errSSRFPrivateAddress)
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "192.168.1.10:80", nil), errSSRFPrivateAddress)
 		})
 
 		t.Run("private許可フラグなしならCGNAT(100.64.0.0/10)も拒否する", func(t *testing.T) {
 			t.Parallel()
 			// Go の IsPrivate は CGNAT を含まないため、明示判定で塞ぐ。境界も検証。
-			require.Error(t, guardedDialControl(deny, "tcp", "100.64.0.1:80", nil))
-			require.Error(t, guardedDialControl(deny, "tcp", "100.127.255.254:80", nil))
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "100.64.0.1:80", nil), errSSRFPrivateAddress)
+			require.ErrorIs(t, guardedDialControl(deny, "tcp", "100.127.255.254:80", nil), errSSRFPrivateAddress)
 		})
 
 		t.Run("予約/将来利用帯はprivate許可フラグありでも拒否する", func(t *testing.T) {
 			t.Parallel()
 			// RFC 5737 TEST-NET-1（192.0.2.0/24）— ドキュメント/テスト用、正当な宛先にならない。
-			require.Error(t, guardedDialControl(allow, "tcp", "192.0.2.1:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "192.0.2.1:80", nil), errSSRFReservedAddress)
 			// RFC 5737 TEST-NET-2（198.51.100.0/24）— ドキュメント/テスト用、正当な宛先にならない。
-			require.Error(t, guardedDialControl(allow, "tcp", "198.51.100.5:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "198.51.100.5:80", nil), errSSRFReservedAddress)
 			// RFC 5737 TEST-NET-3（203.0.113.0/24）— ドキュメント/テスト用、正当な宛先にならない。
-			require.Error(t, guardedDialControl(allow, "tcp", "203.0.113.5:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "203.0.113.5:80", nil), errSSRFReservedAddress)
 			// RFC 1112/6890 将来予約（240.0.0.0/4）— 現実の宛先として到達不能。
-			require.Error(t, guardedDialControl(allow, "tcp", "240.0.0.1:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "240.0.0.1:80", nil), errSSRFReservedAddress)
 			// RFC 2544 ベンチマーク測定用（198.18.0.0/15）— 本番トラフィックの宛先にならない。
-			require.Error(t, guardedDialControl(allow, "tcp", "198.18.0.1:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "198.18.0.1:80", nil), errSSRFReservedAddress)
 			// RFC 1122/6890「このネットワーク」（0.0.0.0/8）— 0.0.0.0 ちょうど以外も拒否する。
-			require.Error(t, guardedDialControl(allow, "tcp", "0.0.0.1:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "0.0.0.1:80", nil), errSSRFReservedAddress)
 			// 0.0.0.0 ちょうどは IsUnspecified 経路で拒否される（/8 追加前からの既存挙動）。
-			require.Error(t, guardedDialControl(allow, "tcp", "0.0.0.0:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "0.0.0.0:80", nil), errSSRFBlockedAddress)
 			// RFC 6890 IETF プロトコル割当（192.0.0.0/24）— 一般宛て通信には使われない。
-			require.Error(t, guardedDialControl(allow, "tcp", "192.0.0.1:80", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "192.0.0.1:80", nil), errSSRFReservedAddress)
 			// RFC 3849 IPv6 ドキュメント用（2001:db8::/32）— テスト/文書専用で実到達不能。
-			require.Error(t, guardedDialControl(allow, "tcp", "[2001:db8::1]:443", nil))
+			require.ErrorIs(t, guardedDialControl(allow, "tcp", "[2001:db8::1]:443", nil), errSSRFReservedAddress)
 		})
 	})
 }

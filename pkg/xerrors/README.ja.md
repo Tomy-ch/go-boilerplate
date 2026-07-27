@@ -14,8 +14,13 @@
 - `StackTrace(err)` は `%+v` 表現（スタックが付いていればそれも含む）を返す（`err` が `nil` なら空文字列）
 - 一貫性のため `errors.Is` / `errors.As` ではなく本パッケージの `Is` / `As` を使用すること
 - エラーの生成・ラップには `fmt.Errorf` ではなく `New` / `Wrap` / `Join` を使用すること
-  （`Join` は複数エラーの結合）。メッセージに値を埋め込む場合は `fmt.Sprintf` で整形してから `New` / `Wrap` に渡すこと。
+  （`Join` は複数エラーの結合）。メッセージに値を埋め込む場合は `fmt.Sprintf` で整形してから `Wrap` に渡すこと。
   `fmt.Errorf` は `forbidigo` で禁止されています。
+- production コードでの `New` は **package-level の `var` 宣言**に限る（関数本体では使わない）。
+  センチネルを一度だけ宣言し（`var errXxx = New("...")`）、動的な文脈は発生箇所で `Wrap(errXxx, ctx)` として付与する。
+  これにより呼び出し側とテストはメッセージ一致ではなく `Is` でエラーを識別できる。
+  `internal/architest`（`TestNoInlineXerrorsNew`）が機械検証する。`_test.go` は対象外で、
+  注入用のアドホックなエラーを作るのは正当な用法。
 - apperror センチネルを元エラーに付与する場合は、`Wrap(sentinel, err.Error())` で潰さず
   `Join(sentinel, err)`（文脈が要る場合は `Join(sentinel, Wrap(err, "文脈"))`）を優先すること。
   これにより元エラーの型・スタックが chain に残り `Is` / `As` で辿れる。

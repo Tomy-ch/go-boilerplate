@@ -60,15 +60,15 @@ func Test_validateTargetType(t *testing.T) {
 
 		t.Run("空文字は不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateTargetType(""))
+			require.ErrorIs(t, validateTargetType(""), errInvalidTargetType)
 		})
 		t.Run("カレントディレクトリ指定は不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateTargetType("."))
+			require.ErrorIs(t, validateTargetType("."), errInvalidTargetType)
 		})
 		t.Run("想定外のタイプは不許可", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, validateTargetType("unknown"))
+			require.ErrorIs(t, validateTargetType("unknown"), errInvalidTargetType)
 		})
 	})
 }
@@ -324,7 +324,7 @@ func TestGenerator_ensureUnderDir(t *testing.T) {
 		t.Run("genRootDirの外を指すパスはエラー", func(t *testing.T) {
 			t.Parallel()
 			err := g.ensureUnderDir(filepath.Join(testWorkDir, "database", "outside.sql"))
-			require.Error(t, err)
+			require.ErrorIs(t, err, errPathOutsideBaseDir)
 		})
 	})
 }

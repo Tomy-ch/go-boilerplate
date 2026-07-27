@@ -237,28 +237,31 @@ func Test_parseFilter(t *testing.T) {
 		t.Run("同一フラグ（--active-only）重複の場合、duplicateエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			active, err := parseFilter([]string{"--active-only", "--active-only"})
-			require.ErrorContains(t, err, "duplicate flag: --active-only")
+			require.ErrorIs(t, err, errDuplicateFlag)
+			require.ErrorContains(t, err, activeOnlyFlag)
 			assert.Nil(t, active)
 		})
 
 		t.Run("同一フラグ（--inactive-only）重複の場合、duplicateエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			active, err := parseFilter([]string{"--inactive-only", "--inactive-only"})
-			require.ErrorContains(t, err, "duplicate flag: --inactive-only")
+			require.ErrorIs(t, err, errDuplicateFlag)
+			require.ErrorContains(t, err, inactiveOnlyFlag)
 			assert.Nil(t, active)
 		})
 
 		t.Run("両フラグ併用の場合、conflictingエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			active, err := parseFilter([]string{"--active-only", "--inactive-only"})
-			require.ErrorContains(t, err, "conflicting filter flags: --active-only, --inactive-only")
+			require.ErrorIs(t, err, errConflictingFilterFlags)
 			assert.Nil(t, active)
 		})
 
 		t.Run("未知フラグの場合、unknownエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			active, err := parseFilter([]string{"--nope"})
-			require.ErrorContains(t, err, "unknown flag: --nope")
+			require.ErrorIs(t, err, errUnknownFlag)
+			require.ErrorContains(t, err, "--nope")
 			assert.Nil(t, active)
 		})
 	})

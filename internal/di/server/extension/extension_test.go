@@ -300,12 +300,12 @@ func Test_validatePriorityConflicts(t *testing.T) {
 		}
 
 		preErr := validatePriorityConflicts("pre", mws)
-		require.Error(t, preErr)
-		assert.Contains(t, preErr.Error(), "duplicate pre middleware priorities")
+		require.ErrorIs(t, preErr, errDuplicateMiddlewarePriority)
+		require.ErrorContains(t, preErr, "pre")
 
 		useErr := validatePriorityConflicts("use", mws)
-		require.Error(t, useErr)
-		assert.Contains(t, useErr.Error(), "duplicate use middleware priorities")
+		require.ErrorIs(t, useErr, errDuplicateMiddlewarePriority)
+		require.ErrorContains(t, useErr, "use")
 	})
 }
 

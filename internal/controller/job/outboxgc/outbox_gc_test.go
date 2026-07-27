@@ -58,31 +58,31 @@ func Test_parseBatchSize(t *testing.T) {
 		t.Run("未知のフラグはエラー", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseBatchSize([]string{"--unknown"})
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnknownFlag)
 		})
 
 		t.Run("重複指定はエラー", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseBatchSize([]string{"--batch-size=1", "--batch-size=2"})
-			require.Error(t, err)
+			require.ErrorIs(t, err, errDuplicateFlag)
 		})
 
 		t.Run("0以下はエラー", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseBatchSize([]string{"--batch-size=0"})
-			require.Error(t, err)
+			require.ErrorIs(t, err, errInvalidBatchSize)
 		})
 
 		t.Run("非数値はエラー", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseBatchSize([]string{"--batch-size=abc"})
-			require.Error(t, err)
+			require.ErrorIs(t, err, errInvalidBatchSize)
 		})
 
 		t.Run("負数はエラー", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseBatchSize([]string{"--batch-size=-1"})
-			require.Error(t, err)
+			require.ErrorIs(t, err, errInvalidBatchSize)
 		})
 	})
 }

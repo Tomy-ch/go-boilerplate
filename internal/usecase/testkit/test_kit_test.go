@@ -21,6 +21,11 @@ func TestExpectedDBError(t *testing.T) {
 			actual := ExpectedDBError()
 			require.Error(t, actual)
 		})
+
+		t.Run("呼び出しごとに同一のエラーを返しerrors.Isで識別できる", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, ExpectedDBError(), errExpectedDB)
+		})
 	})
 }
 

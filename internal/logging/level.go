@@ -9,6 +9,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// errUnsupportedLogLevel は、APP_LOG_LEVEL が受理しないレベル文字列を渡された場合のエラーです。
+var errUnsupportedLogLevel = xerrors.New("unsupported log level")
+
 // Level は、ログ出力レベルを表す型です（ゼロ値は Info 相当）。
 type Level struct {
 	zl zapcore.Level
@@ -39,6 +42,6 @@ func ParseLevel(s string) (Level, error) {
 	case config.LogLevelError:
 		return LevelError(), nil
 	default:
-		return Level{}, xerrors.New(fmt.Sprintf("unsupported log level: %q", s))
+		return Level{}, xerrors.Wrap(errUnsupportedLogLevel, fmt.Sprintf("%q", s))
 	}
 }

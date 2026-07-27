@@ -225,7 +225,14 @@ func Test_registerOrExisting(t *testing.T) {
 
 			// 同名・同 descriptor だが型が *HistogramVec のため型アサーションが失敗し panic する。
 			hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: name, Help: "h"}, []string{"l"})
-			assert.Panics(t, func() { registerOrExisting(reg, hist) })
+			var recovered any
+			func() {
+				defer func() { recovered = recover() }()
+				registerOrExisting(reg, hist)
+			}()
+			panicErr, ok := recovered.(error)
+			require.True(t, ok)
+			require.ErrorIs(t, panicErr, errIncompatibleCollector)
 		})
 
 		t.Run("AlreadyRegistered以外の登録失敗はpanicする", func(t *testing.T) {
@@ -239,7 +246,14 @@ func Test_registerOrExisting(t *testing.T) {
 				prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h1"}, []string{"l"})))
 
 			conflict := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h2"}, []string{"l"})
-			assert.Panics(t, func() { registerOrExisting(reg, conflict) })
+			var recovered any
+			func() {
+				defer func() { recovered = recover() }()
+				registerOrExisting(reg, conflict)
+			}()
+			panicErr, ok := recovered.(error)
+			require.True(t, ok)
+			require.ErrorContains(t, panicErr, "failed to register collector")
 		})
 	})
 }
