@@ -40,6 +40,7 @@ type TransactionRunner interface {
 // testTxRunner はテスト用のトランザクションランナーを表します。
 type testTxRunner struct {
 	inner tx.Manager
+	db    driver.DatabaseDriver
 	t     *testing.T
 }
 
@@ -60,6 +61,7 @@ func NewTestTransactionRunner(t *testing.T) TransactionRunner {
 
 	runner := &testTxRunner{
 		inner: innerTxm,
+		db:    db,
 		t:     t,
 	}
 
@@ -82,7 +84,7 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 	baseCtx := context.Background()
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
-		q := driver.New(txCtx, testDB)
+		q := driver.New(txCtx, t.db)
 		// advisory lock 待ちは lock_timeout(10s) の対象で、高負荷で超過すると 55P03（非リトライ）で
 		// 落ちる。取得の間だけ無効化する（直列化ゆえテーブルロック競合は起きず待ち詰まりの懸念はない）。
 		if _, lockErr := q.Exec(txCtx, "SET LOCAL lock_timeout = 0"); lockErr != nil {
