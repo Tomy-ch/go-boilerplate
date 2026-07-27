@@ -109,6 +109,16 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, initialVersion, actual.Version())
 
 			// ポインタ getter は防御的コピーを返し、返り値を書き換えてもエンティティ内部は不変。
+			mutatedDescription := actual.Description()
+			*mutatedDescription = "mutated"
+			require.NotNil(t, actual.Description())
+			assert.Equal(t, *attrs.Description, *actual.Description())
+
+			mutatedThreshold := actual.StockWarningThreshold()
+			*mutatedThreshold = minThreshold
+			require.NotNil(t, actual.StockWarningThreshold())
+			assert.Equal(t, *attrs.StockWarningThreshold, *actual.StockWarningThreshold())
+
 			mutatedPublishedAt := actual.PublishedAt()
 			*mutatedPublishedAt = time.Time{}
 			require.NotNil(t, actual.PublishedAt())
@@ -118,6 +128,33 @@ func TestNew(t *testing.T) {
 			*mutatedImagePath = "mutated"
 			require.NotNil(t, actual.ImagePath())
 			assert.Equal(t, *attrs.ImagePath, *actual.ImagePath())
+		})
+
+		t.Run("生成後に引数のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			// 並列サブテスト間でポインタを共有しないよう、この場で属性一式を作り直す。
+			localID, localAttrs := validProductArgs(t)
+
+			actual, err := New(localID, localAttrs)
+			require.NoError(t, err)
+
+			expectedDescription, expectedThreshold := *localAttrs.Description, *localAttrs.StockWarningThreshold
+			expectedPublishedAt, expectedImagePath := *localAttrs.PublishedAt, *localAttrs.ImagePath
+
+			*localAttrs.Description = "書き換え後の説明"
+			*localAttrs.StockWarningThreshold = minThreshold
+			*localAttrs.PublishedAt = time.Time{}
+			*localAttrs.ImagePath = "mutated"
+
+			require.NotNil(t, actual.Description())
+			assert.Equal(t, expectedDescription, *actual.Description())
+			require.NotNil(t, actual.StockWarningThreshold())
+			assert.Equal(t, expectedThreshold, *actual.StockWarningThreshold())
+			require.NotNil(t, actual.PublishedAt())
+			assert.Equal(t, expectedPublishedAt, *actual.PublishedAt())
+			require.NotNil(t, actual.ImagePath())
+			assert.Equal(t, expectedImagePath, *actual.ImagePath())
 		})
 
 		t.Run("description・stockWarningThreshold・publishedAt・imagePathがnilでも生成される", func(t *testing.T) {
