@@ -43,7 +43,7 @@ flowchart TB
 |---|---|
 |`kin-openapi/openapi3`|OpenAPI 3.x スキーマモデル|
 |`kin-openapi/openapi3filter`|リクエストバリデーションと認証フィルタ|
-|`oapi-codegen/echo-middleware`|OpenAPI バリデーションの Echo アダプタ|
+|`oapi-codegen/echo-v5-middleware`|OpenAPI バリデーションの Echo アダプタ|
 |`ctxhelper`|リクエストコンテキストへの Authn スロット注入と get/set|
 |`boundary/auth`|認証インターフェースと `Authn` 値オブジェクト|
 

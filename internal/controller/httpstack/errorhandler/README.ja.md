@@ -13,9 +13,7 @@ flowchart TB
     Normalize["normalizeHTTPError"]
     TypeCheck{"エラー型?"}
     AppErr["HTTPErrorResponse (apperror)"]
-    EchoErr["echo.HTTPError"]
-    OAPICheck{"OpenAPI エラー?"}
-    OAPIErr["RequestError / SecurityError / ResponseError"]
+    EchoErr["ステータスを持つエラー<br/>(echo.HTTPError / 定義済み / OpenAPI 検証)"]
     EchoNorm["normalizeEchoHTTPError"]
     Fallback["NewHTTPErrorFromAppError (フォールバック)"]
     AddReqID["RequestID 付与"]
@@ -28,9 +26,7 @@ flowchart TB
     Guard -- no --> Normalize
     Normalize --> TypeCheck
     TypeCheck -- HTTPErrorResponse --> AppErr --> AddReqID
-    TypeCheck -- echo.HTTPError --> EchoErr --> OAPICheck
-    OAPICheck -- yes --> OAPIErr --> AddReqID
-    OAPICheck -- no --> EchoNorm --> AddReqID
+    TypeCheck -- ステータスを持つエラー --> EchoErr --> EchoNorm --> AddReqID
     TypeCheck -- その他 --> Fallback --> AddReqID
     AddReqID --> Gate --> Write --> Log
 ```
@@ -46,17 +42,15 @@ flowchart TB
 - HTTP ステータスが有効（400-599）: そのまま使用し、RequestID を付与
 - HTTP ステータスが無効: `NewHTTPErrorFromAppError(internal)` で再正規化
 
-### 2. `echo.HTTPError`（Echo / OpenAPI エラー）
+### 2. HTTP ステータスを持つエラー（Echo / OpenAPI エラー）
 
-まず Echo エラー内の OpenAPI 固有エラーを確認：
+ステータスは `echo.StatusCode` で解決するため、`echo.HTTPError` に加えて Echo の定義済み
+エラー（`echo.ErrNotFound` など。型は非公開）も対象になります。OpenAPI バリデーションの
+失敗もこの経路に入ります —— バリデーションミドルウェアが決めたステータス（不正なリクエスト
+は 400、経路解決不能は 404 / 405、資格情報の拒否は 401。`oapi/auth` の README 参照）を持つ
+`echo.HTTPError` として届きます。
 
-|OpenAPI エラー型|HTTP ステータス|
-|---|---|
-|`openapi3filter.RequestError`|400 Bad Request|
-|`openapi3filter.SecurityRequirementsError`|401 Unauthorized|
-|`openapi3filter.ResponseError`|500 Internal Server Error|
-
-OpenAPI エラーでない場合は、ステータスコードを使って標準 Echo HTTP エラーとして正規化。
+400〜599 の範囲外のステータスはエラーステータスとみなさず、フォールバックへ落ちます。
 
 ### 3. フォールバック
 
@@ -120,8 +114,7 @@ spec 複製から作るため Host 非依存で、proxy / test の Host でも�
 |ファイル|責務|
 |---|---|
 |`http_error_handler.go`|メインハンドラ、正規化ディスパッチ、ログ出力|
-|`echo_http_error_handler.go`|`echo.HTTPError` → `HTTPErrorResponse` の正規化|
-|`open_api_error_handler.go`|OpenAPI バリデーションエラー → `HTTPErrorResponse` の正規化|
+|`echo_http_error_handler.go`|HTTP ステータスを持つエラー → `HTTPErrorResponse` の正規化|
 |`detail_exposure.go`|`DetailPolicy` — OpenAPI spec から解決するエンドポイントごとの `details` opt-in|
 
 ## カバレッジ例外
