@@ -256,6 +256,44 @@ Boundary clarifications (common misreads):
 - Do not pass sqlc generated types to Usecase / Domain
 - Always convert to Domain Entity or DTO
 
+## Function Signature Rules
+
+Layer-independent: this applies to constructors, behavior methods, usecase functions, and helpers alike.
+
+A function taking **two or more parameters of the same type** lets a call site swap them with no compile
+or lint error. Bundle those parameters into a value struct so every call site states which one each value
+is. This does not hand the check to the compiler — a same-typed field filled with the wrong value still
+compiles — but it removes the position-dependent binding that let adjacent same-typed arguments
+transpose, so what remains is a named mistake visible in review rather than an invisible ordering one.
+Keep call sites keyed: an unkeyed composite literal reintroduces the ordering dependency this removes.
+
+**When it applies.** The trigger is two or more parameters of one type in a single signature; compare the
+resolved types, since two distinct named types are distinct even when both wrap a string. Beyond the
+trigger, weigh how likely a swap is to survive undetected:
+
+- **Optional / pointer parameters** — `nil` is valid for either, so nothing at runtime rejects the swap.
+- **Free-form values** — no validation would reject the other parameter's value.
+- **A caller that maps positionally** — a Repository rebuilding an entity from a DB row, a seed, or any
+  code that fills arguments in column order rather than by meaning.
+- **Adjacent parameters** — neighbours are easier to transpose than distant ones.
+
+**When it does not apply.**
+
+- **Every parameter has a distinct type.** The compiler already rejects a swap, so keep the positional
+  form. This is the common case, and bundling by reflex is not the rule.
+- **A swap cannot survive construction.** The invariants reject the transposed values, so the mistake
+  fails fast instead of propagating.
+- **The signature is merely long.** Parameter count alone is not the criterion.
+
+**Choosing the remedy.** Give the parameters distinct types (a VO each) when the value deserves an
+invariant of its own — that removes the swap risk as a side effect. Bundle into a struct when a VO would
+add no invariant and the value really is a plain primitive. Either way, lock the mapping with a test that
+passes **distinct** values for the same-typed parameters and asserts each one — including at the
+persistence boundary, where field names still allow a wrong assignment.
+
+Per-layer application: `internal/domain/README.md` (attribute structs on entities),
+`internal/usecase/README.md` (Params DTO structs on usecase inputs).
+
 ## Package / Directory Naming Rules
 
 - Go package identifiers are a single lowercase word with **no underscores** (staticcheck ST1003).

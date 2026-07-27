@@ -111,16 +111,12 @@ type Users []*User
 
 ### Bundle attributes into a struct when positional arguments can be swapped
 
-A constructor or behavior method that takes **two or more parameters of the same type** — especially
-adjacent same-typed pointers such as `description *string` and `imagePath *string` — lets a call site
-swap them without the compiler or the linter noticing. Callers that fill the arguments mechanically in
-column order (a Repository rebuilding an entity from a DB row) are the most exposed: the swap
-silently persists each value under the wrong attribute, and tests stay green unless they assert two
-distinct values.
+The criteria — when a same-typed-parameter swap is a real risk, when it is not, and whether to remedy it
+with distinct VO types or with a struct — are layer-independent and live in `docs/rules.md`
+("Function Signature Rules"). This section covers only how the domain layer applies them.
 
-Bundle the attributes into a value struct so every call site names each field, which turns a swap into
-a compile error. The same struct is shared by the creation, reconstruction, and update entry points so
-they cannot drift apart.
+An entity whose attributes trigger the rule bundles them into a value struct shared by every entry point,
+so creation, reconstruction, and update cannot drift apart:
 
 ```go
 // The attribute set shared by the constructor and the behavior methods.
@@ -136,42 +132,13 @@ func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
 func (e *Entity) Update(attrs Attributes) error
 ```
 
-#### When it applies
+The identity (`id`) and the optimistic-lock version stay positional — they are distinctly typed and are
+not part of the attribute set the update entry point replaces. When only a subset of the attributes is
+replaceable, name that subset as its own struct and embed it (`user.Profile` inside `user.Attributes`)
+rather than declaring two overlapping structs.
 
-The trigger is **two or more parameters of one type in a single signature**. Compare the resolved
-types — two distinct named types are distinct even when both wrap a string. Beyond the trigger, weigh
-how likely a swap is to survive undetected:
-
-- **Optional / pointer attributes** — `nil` is valid for either, so nothing at runtime rejects the swap.
-- **Free-form values** — no validation would reject the other attribute's value (a description and an
-  image path both pass "is a string").
-- **A caller that maps positionally** — a Repository rebuilding the entity from a DB row, a seed, or
-  any code that fills arguments in column order rather than by meaning.
-- **Adjacent parameters** — neighbours are easier to transpose than distant ones.
-
-The more of these hold, the stronger the case. All of them holding is the case this convention exists
-for.
-
-#### When it does not apply
-
-- **Every parameter has a distinct type.** The compiler already rejects a swap, so keep the positional
-  form. This is the common case, and bundling by reflex is not the rule.
-- **A swap cannot survive construction.** The invariants reject the transposed values (two VOs with
-  disjoint format checks, for instance), so the mistake fails fast in `New(...)` instead of being
-  persisted.
-- **The signature is merely long.** Parameter count alone is not the criterion — a ten-parameter
-  constructor whose types are all distinct carries no swap risk.
-
-#### Choosing the remedy
-
-- Give the attributes **distinct types** (a VO per attribute) when the attribute deserves an invariant
-  of its own. That is the format-check rule below, and it removes the swap risk as a side effect.
-- **Bundle into an attribute struct** when a VO would add no invariant and the value really is a plain
-  primitive. The field name is then the only thing distinguishing the attributes.
-
-Either way, lock the mapping with a test that passes **distinct** values for the same-typed attributes
-and asserts each getter — including at the persistence boundary, where field names still allow a wrong
-assignment.
+Reconstruction from a DB row is the most exposed caller in this layer, so the mapping test the rule
+requires belongs on the Repository's row-to-entity conversion as well as on the constructor.
 
 ### Do not set outside constructor
 
@@ -782,34 +749,43 @@ type User struct {
     deletedAt    *time.Time
 }
 
+// 置き換え可能な属性の部分集合（New / UpdateProfile で共有）。
+// firstName / lastName / phone / city / street は同型のため、フィールド名指定を要求する。
+type Profile struct {
+    FirstName    string
+    LastName     string
+    Email        string
+    Phone        string
+    PrefectureID uuid.UUID
+    City         string
+    Street       string
+    Building     *string
+    PostalCode   string
+}
+
+// 生成に必要な属性一式。createdAt / updatedAt も同型のため同じ扱いとする。
+type Attributes struct {
+    Profile
+
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+}
+
 // ファクトリ: 不変条件を満たすときだけ実体を生成
-func New(
-    id uuid.UUID,
-    firstName string,
-    lastName string,
-    email string,
-    phone string,
-    prefectureID uuid.UUID,
-    city string,
-    street string,
-    building *string,
-    postalCode string,
-    createdAt time.Time,
-    updatedAt time.Time,
-    deletedAt *time.Time,
-) (*User, error) {
+func New(id uuid.UUID, attrs Attributes) (*User, error) {
     if id.IsNil() {
         return nil, xerrors.Wrap(ErrInvalidID, "id is required")
     }
     // フィールド検証（New / UpdateProfile で共有）
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(attrs.Profile); err != nil {
         return nil, err
     }
-    if updatedAt.Before(createdAt) {
+    if attrs.UpdatedAt.Before(attrs.CreatedAt) {
         return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
     }
-    if deletedAt != nil {
-        if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+    if attrs.DeletedAt != nil {
+        if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
             return nil, err
         }
     }
@@ -817,9 +793,9 @@ func New(
     // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
     return &User{
         id:        id,
-        building:  ptr.Copy(building),
-        deletedAt: ptr.Copy(deletedAt),
-        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
+        building:  ptr.Copy(attrs.Building),
+        deletedAt: ptr.Copy(attrs.DeletedAt),
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も attrs から設定（例示のため省略）
     }, nil
 }
 
@@ -831,18 +807,11 @@ func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
 // 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
 // ビジネスロジック（振る舞い）: プロフィール一括更新
-func (u *User) UpdateProfile(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-    updatedAt time.Time,
-) error {
+func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
     if err := u.ensureNotDeleted(); err != nil {
         return err
     }
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(profile); err != nil {
         return err
     }
     if err := u.ensureUpdatedAt(updatedAt); err != nil {
@@ -870,18 +839,12 @@ func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
 
 // バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
-func validateProfileFields(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-) error {
-    if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+func validateProfileFields(profile Profile) error {
+    if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
         return xerrors.Wrap(ErrInvalidFirstName, msg)
     }
     // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
-    if prefectureID.IsNil() {
+    if profile.PrefectureID.IsNil() {
         return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
     }
     if building != nil { // building は任意

@@ -36,8 +36,11 @@ type Product struct {
 }
 
 // Attributes は、商品の属性一式です。生成・再構築・更新のいずれの入口も同じ集合を受け取ります。
-// Description と ImagePath のように同型の属性が並ぶため、位置引数ではなくフィールド名で与えることで、
-// 属性の取り違えをコンパイルエラーとして検出できるようにしています。
+// Description・StockWarningThreshold・PublishedAt・ImagePath は、未設定を nil で表します。
+// この型自体は不変条件を持たず、検証は受け取り側（New / Reconstruct / Update）が行います。
+// Description と ImagePath は同型（*string）で、位置引数では取り違えても型検査を通過するため、
+// フィールド名で与えることで位置由来の取り違えを防ぎます。フィールド名に誤った値を与えた場合は
+// 型検査では防げないため、属性の対応づけはテストで固定します。
 type Attributes struct {
 	Name                  string
 	Description           *string

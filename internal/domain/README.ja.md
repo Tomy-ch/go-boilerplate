@@ -104,14 +104,12 @@ type Users []*User
 
 ### 位置引数を取り違えうる場合は属性を構造体へ束ねる
 
-**同型の引数を 2 つ以上取る**コンストラクタ・振る舞いメソッド（特に `description *string` と
-`imagePath *string` のように同型のポインタが並ぶもの）は、呼び出し側で入れ替えてもコンパイラにも
-lint にも検出されない。とりわけ引数を列順に機械的に流し込む呼び出し側（DB 行からエンティティを
-再構築する Repository）で危険で、取り違えると各値が誤った属性としてサイレントに永続化される。
-テストが異なる 2 値を検証していない限り green のまま通る。
+判断基準（同型引数の取り違えが実際にリスクとなるのはどんな場合か、ならないのはどんな場合か、対処を
+VO 化と構造体化のどちらにするか）は層非依存であり `docs/rules.md`（"Function Signature Rules"）に置く。
+この節では domain 層での適用のみを扱う。
 
-属性を値構造体へ束ね、各呼び出し側にフィールド名を書かせることで、取り違えをコンパイルエラーに
-できる。生成・再構築・更新の各入口が同じ構造体を共有するため、入口ごとの乖離も防げる。
+ルールのトリガーを満たす属性を持つエンティティは、それらを値構造体へ束ね、全入口で共有する。これに
+より生成・再構築・更新の各入口が乖離しない。
 
 ```go
 // コンストラクタと振る舞いメソッドが共有する属性一式。
@@ -127,39 +125,13 @@ func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
 func (e *Entity) Update(attrs Attributes) error
 ```
 
-#### 適用する場合
+識別子（`id`）と楽観ロックのバージョンは位置引数のままとする。型が相異なるうえ、更新の入口が置き換える
+属性集合には含まれないためである。置き換え可能なのが属性の一部だけの場合は、その部分集合を独立した
+構造体として命名し埋め込む（`user.Attributes` に `user.Profile` を埋め込む形）。重複するフィールドを
+持つ構造体を 2 つ宣言しないこと。
 
-トリガーは **1 つのシグネチャに同型の引数が 2 つ以上あること**。型は解決後で比較し、同じ string を
-包む名前付き型どうしでも型が異なれば別物として扱う。トリガーを満たしたうえで、取り違えが検出され
-ないまま残る確度を次の観点で測る。
-
-- **省略可能／ポインタの属性** — どちらも `nil` が正当なため、実行時に取り違えを弾く検査がない。
-- **自由書式の値** — もう一方の属性の値を弾く検証が存在しない（説明文も画像パスも「string である」
-  検証は等しく通過する）。
-- **位置で機械的に流し込む呼び出し側** — DB 行からエンティティを再構築する Repository、seed など、
-  意味ではなく列順で引数を埋めるコード。
-- **引数が隣接している** — 離れた引数より隣どうしの方が入れ替わりやすい。
-
-これらが揃うほど適用の根拠は強い。すべて該当する場合が、この規約が想定している状況である。
-
-#### 適用しない場合
-
-- **全引数の型が相異なる。** 入れ替えはコンパイラが弾くため位置引数のままでよい。これが通常の
-  ケースであり、反射的に構造体化するルールではない。
-- **入れ替えが構築を通過できない。** 入れ替えた値を不変条件が弾く場合（書式検査が排他的な VO 同士
-  など）、誤りは永続化される前に `New(...)` で fail fast する。
-- **単に引数が多いだけ。** 引数の個数は判断基準ではない。全引数の型が相異なる 10 引数の
-  コンストラクタに取り違えリスクはない。
-
-#### 対処の選択
-
-- 属性自体に不変条件を持たせるべきなら、**型を相異なるものにする**（属性ごとの VO 化）。後述の
-  書式検査の規約そのものであり、副次的に取り違えリスクも消える。
-- VO 化しても不変条件が増えず、値が本当に素のプリミティブなら、**属性構造体へ束ねる**。この場合は
-  フィールド名だけが属性を区別する手段になる。
-
-いずれの場合も、同型の属性へ**異なる値**を渡して各 getter を検証するテストで対応づけを固定する。
-フィールド名があっても誤った代入は書けるため、永続化境界でも同様に固定すること。
+この層で最も晒されるのは DB 行からの再構築であるため、ルールが要求する写像テストはコンストラクタ側に
+加えて Repository の行→エンティティ変換にも置く。
 
 ### コンストラクタ経由以外でセットしない
 
@@ -765,34 +737,43 @@ type User struct {
     deletedAt    *time.Time
 }
 
+// 置き換え可能な属性の部分集合（New / UpdateProfile で共有）。
+// firstName / lastName / phone / city / street は同型のため、フィールド名指定を要求する。
+type Profile struct {
+    FirstName    string
+    LastName     string
+    Email        string
+    Phone        string
+    PrefectureID uuid.UUID
+    City         string
+    Street       string
+    Building     *string
+    PostalCode   string
+}
+
+// 生成に必要な属性一式。createdAt / updatedAt も同型のため同じ扱いとする。
+type Attributes struct {
+    Profile
+
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+}
+
 // ファクトリ: 不変条件を満たすときだけ実体を生成
-func New(
-    id uuid.UUID,
-    firstName string,
-    lastName string,
-    email string,
-    phone string,
-    prefectureID uuid.UUID,
-    city string,
-    street string,
-    building *string,
-    postalCode string,
-    createdAt time.Time,
-    updatedAt time.Time,
-    deletedAt *time.Time,
-) (*User, error) {
+func New(id uuid.UUID, attrs Attributes) (*User, error) {
     if id.IsNil() {
         return nil, xerrors.Wrap(ErrInvalidID, "id is required")
     }
     // フィールド検証（New / UpdateProfile で共有）
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(attrs.Profile); err != nil {
         return nil, err
     }
-    if updatedAt.Before(createdAt) {
+    if attrs.UpdatedAt.Before(attrs.CreatedAt) {
         return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
     }
-    if deletedAt != nil {
-        if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+    if attrs.DeletedAt != nil {
+        if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
             return nil, err
         }
     }
@@ -800,9 +781,9 @@ func New(
     // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
     return &User{
         id:        id,
-        building:  ptr.Copy(building),
-        deletedAt: ptr.Copy(deletedAt),
-        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
+        building:  ptr.Copy(attrs.Building),
+        deletedAt: ptr.Copy(attrs.DeletedAt),
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も attrs から設定（例示のため省略）
     }, nil
 }
 
@@ -814,18 +795,11 @@ func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
 // 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
 // ビジネスロジック（振る舞い）: プロフィール一括更新
-func (u *User) UpdateProfile(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-    updatedAt time.Time,
-) error {
+func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
     if err := u.ensureNotDeleted(); err != nil {
         return err
     }
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(profile); err != nil {
         return err
     }
     if err := u.ensureUpdatedAt(updatedAt); err != nil {
@@ -853,18 +827,12 @@ func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
 
 // バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
-func validateProfileFields(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-) error {
-    if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+func validateProfileFields(profile Profile) error {
+    if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
         return xerrors.Wrap(ErrInvalidFirstName, msg)
     }
     // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
-    if prefectureID.IsNil() {
+    if profile.PrefectureID.IsNil() {
         return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
     }
     if building != nil { // building は任意
