@@ -121,7 +121,12 @@ func targetFiles(root string) ([]string, error) {
 
 func resolve(root string, files []string, minAgeDays int) {
 	keys := collectKeys(files)
-	existing, _ := readLock(filepath.Join(root, lockFile)) // 無ければ空
+	// lockfile 不在（初回）は空マップで続行するが、それ以外の読み込み失敗は握り潰さず fail-close する
+	// （既存ピンが lock から脱落し供給網ガードの維持保証が破れるのを防ぐ。applyOrCheck と対称）。
+	existing, err := readLock(filepath.Join(root, lockFile))
+	if !isIgnorableLockErr(err) {
+		log.Fatalf("❌ read lockfile: %v", err)
+	}
 
 	ctx := context.Background()
 	lock := map[string]string{}
@@ -131,7 +136,11 @@ func resolve(root string, files []string, minAgeDays int) {
 		if err != nil {
 			log.Fatalf("❌ resolve %s: %v", k, err)
 		}
-		use, note := quarantine(ctx, r.repo, r.tag, k, sha, minAgeDays, existing)
+		ageFn := func() (int, error) { return refAgeDays(ctx, r.repo, r.tag, sha) }
+		use, note, err := quarantine(ageFn, k, sha, minAgeDays, existing)
+		if err != nil {
+			log.Fatalf("❌ age %s: %v", k, err)
+		}
 		if note != "" {
 			notes = append(notes, note)
 		}
@@ -168,22 +177,24 @@ func collectKeys(files []string) map[string]ref {
 	return keys
 }
 
-// quarantine は minAgeDays 未満の新しすぎる解決先を採用しない。第1戻り値 "" は skip（初回かつ新しすぎ）。
-func quarantine(ctx context.Context, repo, tag, key, candidate string, minAgeDays int, existing map[string]string) (string, string) {
+// quarantine は minAgeDays 未満の新しすぎる解決先を採用しない。第1戻り値（採用 SHA）が "" は skip（初回かつ新しすぎ）。
+// 経過日数は ageFn 経由で取得し（I/O を注入して分岐をテスト可能にする）、その失敗は err で呼び出し元へ伝播する。
+// minAgeDays<=0 のときは ageFn を呼ばず候補をそのまま採用する。
+func quarantine(ageFn func() (int, error), key, candidate string, minAgeDays int, existing map[string]string) (string, string, error) {
 	if minAgeDays <= 0 {
-		return candidate, ""
+		return candidate, "", nil
 	}
-	age, err := refAgeDays(ctx, repo, tag, candidate)
+	age, err := ageFn()
 	if err != nil {
-		log.Fatalf("❌ age %s: %v", key, err)
+		return "", "", err
 	}
 	if age >= minAgeDays {
-		return candidate, ""
+		return candidate, "", nil
 	}
 	if prev, ok := existing[key]; ok {
-		return prev, fmt.Sprintf("%s: 解決先が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays)
+		return prev, fmt.Sprintf("%s: 解決先が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays), nil
 	}
-	return "", fmt.Sprintf("%s: 解決先が %d 日 (<%d)・既存ピン無しのため skip", key, age, minAgeDays)
+	return "", fmt.Sprintf("%s: 解決先が %d 日 (<%d)・既存ピン無しのため skip", key, age, minAgeDays), nil
 }
 
 // refAgeDays は解決先の経過日数を返す。タグに対応する Release があれば published_at（偽装困難）を、
@@ -372,6 +383,12 @@ func writeLock(path string, lock map[string]string) error {
 		fmt.Fprintf(&b, "%q = %q\n", k, lock[k])
 	}
 	return os.WriteFile(path, []byte(b.String()), filePerm)
+}
+
+// isIgnorableLockErr は、lockfile 読み込みエラーのうち無視して続行してよいものを判定する。
+// nil（成功）と「ファイル不在」（初回 resolve）のみ true。それ以外（権限・破損等）は fail-close 対象。
+func isIgnorableLockErr(err error) bool {
+	return err == nil || xerrors.Is(err, os.ErrNotExist)
 }
 
 func readLock(path string) (map[string]string, error) {
