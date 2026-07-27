@@ -26,7 +26,7 @@ You are **read-only**. Never edit, write, or mutate anything. Use `Bash` only fo
 | `CLAUDE.md` (Layer Rules / Forbidden Shortcuts) | Top-level constraints |
 | `internal/usecase/README.md` | Thin orchestrator, depend on domain IF only |
 | `internal/usecase/boundary/README.md` | Boundary IF conventions (clock / tx / encrypter / external IO) |
-| `internal/domain/README.md` (bundling attributes when positional arguments can be swapped) | Criteria for the same-typed-argument check — layer-independent, so the domain README is its single source |
+| `docs/rules.md` (Function Signature Rules) | Criteria for the same-typed-argument check — layer-independent, so `docs/rules.md` is its single source |
 | `.golangci.yaml` `depguard:` | Already enforced — do not duplicate |
 
 ## Step 1. Resolve File Scope (only if `files` not supplied)
@@ -57,7 +57,7 @@ For each in-scope usecase Go file:
 3. **Transaction boundary**: DB writes spanning multiple Repository calls without `tx.Manager.Do(...)` wrapping → `suggestion`.
 4. **Boundary usage**: every external dependency (time, randomness, external HTTP/queue) should be injected via an `internal/usecase/boundary/` interface, not used directly.
 5. **Tracer span (recommended)**: per usecase README "Observability (Tracing)" (canonical — re-read, not restated here), each public method should open a tracer span. Missing span → `suggestion` (推奨機能、未配線は blocker ではない).
-6. **Same-typed positional arguments**: a usecase function or helper taking **two or more parameters of the same type** can have them swapped at a call site with no compile or lint error → `suggestion`, remedied by the Params DTO struct the usecase README already uses for inputs. The criteria are the domain README section "Bundle attributes into a struct when positional arguments can be swapped" (*When it applies* / *When it does not apply*) — the risk is layer-independent, so read that section and apply it as written rather than inventing a threshold. Applies to arguments the usecase passes on as well: a long positional domain constructor call is the inherited form of the same risk, and the fix belongs to the domain package.
+6. **Same-typed positional arguments**: a usecase function or helper taking **two or more parameters of the same type** can have them swapped at a call site with no compile or lint error → `suggestion`, remedied by the Params DTO struct the usecase README already uses for inputs. The criteria are `docs/rules.md` "Function Signature Rules" (*When it applies* / *When it does not apply*) — read it and apply it as written rather than inventing a threshold. Applies to arguments the usecase passes on as well: a long positional domain constructor call is the inherited form of the same risk, and the fix belongs to the domain package.
 
 ## Output (Japanese — this IS the return value)
 

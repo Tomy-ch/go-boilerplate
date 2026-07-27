@@ -26,6 +26,7 @@ You are **read-only**. Never edit, write, or mutate anything — not source, not
 | `CLAUDE.md` (Layer Rules / Forbidden Shortcuts) | Top-level constraints |
 | `internal/domain/README.md` | Domain purity, allowed imports, value vs interface conventions |
 | `internal/domain/<aggregate>/*.go` | Reference patterns from sibling code |
+| `docs/rules.md` (Function Signature Rules) | Criteria for the same-typed-argument check — layer-independent single source |
 | `database/migrations/*.sql` | `CREATE TABLE` for entity ↔ column soft check (lean A) |
 | `.golangci.yaml` `depguard:` | Already enforced — do not duplicate |
 
@@ -65,8 +66,8 @@ For each in-scope domain Go file:
    - Map `snake_case` columns ↔ `camelCase` fields.
    - **Auto-recognized as legitimate (no finding)**: computed values written as methods (`func (u User) FullName() string`), VO types wrapping multiple columns (resolve the VO type, treat wrapped columns as covered), method-only structs.
    - **Report as `suggestion`** (never `violation` — 1:1 is an idealization): SQL column with no matching field / VO equivalent; struct field with no column and no VO resolution; type mismatch (e.g. `VARCHAR` vs `int`).
-3. **Same-typed positional arguments** — a constructor (`New` / `Reconstruct` / unexported shared builder) or behavior method taking **two or more parameters of the same type** can have them swapped at a call site with no compile or lint error. The criteria are the README section "Bundle attributes into a struct when positional arguments can be swapped" (*When it applies* / *When it does not apply* / *Choosing the remedy*) — read it and apply it as written; hardcode no threshold of your own.
-   - Report as `suggestion`, never `violation` — the positional form is not a rule violation. Cite which README risk factors hold and which remedy its criteria select.
+3. **Same-typed positional arguments** — a constructor (`New` / `Reconstruct` / unexported shared builder) or behavior method taking **two or more parameters of the same type** can have them swapped at a call site with no compile or lint error. The criteria are `docs/rules.md` "Function Signature Rules" (*When it applies* / *When it does not apply* / *Choosing the remedy*) — read it and apply it as written; hardcode no threshold of your own. `internal/domain/README.md` covers only this layer's application (attribute struct shared by every entry point, mapping test on the row-to-entity conversion).
+   - Report as `suggestion`, never `violation` — the positional form is not a rule violation. Cite which of the rule's risk factors hold and which remedy its criteria select.
    - `type-design-reviewer` covers the same risk from the degree / type-design angle. When the orchestrator runs both, report the mechanical detection only and leave the scoring to that agent — do not restate its rubric.
 
 ## Output (Japanese — this IS the return value)
