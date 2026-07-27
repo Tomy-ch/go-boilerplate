@@ -29,11 +29,14 @@ Do NOT use this skill for:
 
 - `docs/testing-conventions.md` — the project-wide testing conventions, **including section 10 (Semantic quality bar / anti-patterns)** — the SSOT for Lens 3 and Lens 4 Axis B (意味網羅), shared with `scaffold-test`.
 - `.codex/skills/scaffold-test/SKILL.md` — the canonical generation rules (parallel mandate, `t.Run` per subcase, 正常系 / 異常系 grouping, Japanese naming, require vs assert, mock policy, `for`-loop policy, one-`TestXxx`-per-subject policy). This skill reviews against those same rules — no duplication.
-- The nearest layer README, walked up from each target test file:
+- The nearest layer README, resolved by **walking up from each target test file to the closest ancestor `README.md` that carries a `Test Strategy` / `Testing strategy` section** (the same rule `scaffold-test/SKILL.md` applies — keep the two in step). A nearer README without the section is still read for that package's own conventions. The list below is a snapshot of where the walk currently lands, not a closed map; a path that is not listed is walked, never treated as out of scope:
   - `internal/domain/README.md` (Testing strategy)
   - `internal/usecase/README.md` (Testing Strategy)
   - `internal/controller/handler/README.md` (Test Strategy)
+  - `internal/controller/httpstack/README.md` (Test Strategy) — the resolution target for every middleware sub-package
+  - `internal/controller/server/README.md` (Test Strategy)
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` (Test Strategy)
+  - `internal/di/README.md` (Test Strategy, layer baseline) — superseded by `internal/di/module/README.md` / `internal/di/server/hook/README.md` for targets under those
   - For `pkg/**`, see `scaffold-test/SKILL.md` — `pkg/README.md` intentionally has no Test Strategy section; viewpoints come from sibling tests + per-package sub-`pkg/<name>/README.md`. **No gap warning for pkg.**
 - The target `*_test.go` file(s).
 - The corresponding subject source file(s) (`<subject>.go` paired with `<subject>_test.go`) — required for the two code-origin lenses (Lens 4 branch × meaning, Lens 5 subject-symbol completeness) to know what is and isn't tested.
@@ -71,14 +74,14 @@ For each target test file, also resolve its **subject source file** (same packag
 
 For every target test file:
 
-1. Detect the layer from the file path (the band lookup matches `scaffold-test/SKILL.md`).
+1. Resolve the layer README by walking up from the file path (the same walk `scaffold-test/SKILL.md` describes — not a fixed band lookup).
 2. Read the layer README's `Test Strategy` / `Testing strategy` section (full text including every sub-section heading).
 3. Read `docs/testing-conventions.md` once.
 4. Read `.codex/skills/scaffold-test/SKILL.md` once — the canonical generation rules.
 5. Read the subject source file (paired with the test file).
 6. Read sibling `*_test.go` files in the same package for established conventions (helper signatures, fixture style, mock wiring).
 
-If any layer README has no Test Strategy section in a place where one is expected (i.e. `internal/<layer>/` other than `pkg/`), note it for the report — it surfaces as a documentation gap, but does not block the review.
+If the walk reaches the repository root without finding a Test Strategy section and the target is under `internal/**`, note it for the report — it surfaces as a documentation gap, but does not block the review. **Every `internal/**` path is expected to resolve to one**, with `pkg/**` as the single documented exemption; never treat a layer as exempt merely because it is not named in the snapshot list above. Lens 2 (viewpoint coverage) has no comparison baseline in that state, so say so explicitly rather than letting the lens report nothing and read as a pass.
 
 ## Step 2. Fan Out Five Adversarial Reviewers
 
@@ -113,7 +116,7 @@ Compares the layer README's Test Strategy sub-sections to what the test file act
 
 - For each sub-section heading in the README's Test Strategy (`### Getter contract test` / `### Immutable guarantee test` / `### Invariant preservation test` / etc.), is there at least one `TestXxx → t.Run(case)` that maps to it?
 - The layer README's Test Strategy section is the SSOT for that layer's per-layer viewpoint list (read in Step 1). Do NOT keep a hardcoded per-layer viewpoint list in this skill — it drifts from the READMEs. Apply whatever sub-sections that layer's README declares; when a README is missing a viewpoint the reviewer would expect, that absence is itself a documentation-gap finding (surfaced in 補遺), not a reason to hardcode the viewpoint here.
-- If a layer README has no Test Strategy section (e.g. `pkg/**`), use the sibling-test pattern as the comparison baseline instead.
+- If the walk finds no Test Strategy section anywhere above the target, use the sibling-test pattern as the comparison baseline instead — and say which case it is: under `pkg/**` that is the layer's normal mode (no gap), while under `internal/**` it is a documentation gap that leaves this lens without a baseline (report it in 補遺).
 
 Output: a list of viewpoints the README declares but the test file does not exercise, with `file:section` references back into the README.
 

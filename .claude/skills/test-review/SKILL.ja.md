@@ -23,11 +23,14 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 - `docs/testing-conventions.md` — **section 10（意味的品質のバー / アンチパターン）を含む**。 Lens 3 と Lens 4 軸B（意味網羅）の SSOT であり、`scaffold-test` と共有する。
 - `.claude/skills/scaffold-test/SKILL.md` — 生成側 canonical ルール（parallel 必須 / `t.Run` per subcase / 正常系・異常系 グルーピング / 日本語命名 / require vs assert / mock 方針 / for-loop 方針 / 1 関数 = 1 `TestXxx`）。本スキルはこれらに対してレビューする（重複定義しない）。
-- 対象ファイルから walk up で解決した層 README:
+- 層 README。**対象テストファイルから上位へ歩き、`Test Strategy` / `Testing strategy` 節を持つ最も近い祖先 `README.md`** を採用する（`scaffold-test/SKILL.md` と同じ規則 — 両者は歩調を合わせる）。節を持たないより近い README も、そのパッケージ固有の規約のために併読する。下記は現時点で walk が着地する先のスナップショットであり固定マップではない。一覧に無いパスは walk の対象であって、対象外ではない。
   - `internal/domain/README.md`（Testing strategy）
   - `internal/usecase/README.md`（Testing Strategy）
   - `internal/controller/handler/README.md`（Test Strategy）
+  - `internal/controller/httpstack/README.md`（Test Strategy）— 各ミドルウェアのサブパッケージの解決先
+  - `internal/controller/server/README.md`（Test Strategy）
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md`（Test Strategy）
+  - `internal/di/README.md`（Test Strategy、層の基準）— 配下の対象では `internal/di/module/README.md` / `internal/di/server/hook/README.md` が優先される
   - `pkg/**` については `scaffold-test/SKILL.md` 参照 — `pkg/README.md` は意図的に Test Strategy 節を持たず、sibling tests + `pkg/<name>/README.md` から観点派生。**pkg では gap 警告を出さない**。
 - 対象 `*_test.go`。
 - 対応する subject ソース (`<subject>.go` / `<subject>_test.go` 対）— コード起点 2 レンズ（Lens 4 分岐×意味 / Lens 5 シンボル網羅）で「何が test されていないか」を判定するために必須。
@@ -65,14 +68,14 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 各対象 test ファイルにつき:
 
-1. ファイルパスから層検出（band lookup は `scaffold-test/SKILL.md` と同じ）。
+1. ファイルパスから上位へ歩いて層 README を解決する（`scaffold-test/SKILL.md` が定める walk と同じ規則。固定の band lookup ではない）。
 2. 該当層 README の `Test Strategy` / `Testing strategy` 節（全文、サブセクション見出し含む）。
 3. `docs/testing-conventions.md`（1 回）。
 4. `.claude/skills/scaffold-test/SKILL.md`（1 回、canonical ルール）。
 5. subject ソース。
 6. 同パッケージの sibling test（helper シグネチャ / fixture スタイル / mock 配線 等の確立 convention）。
 
-`internal/<layer>/` で Test Strategy 節が期待されているのに無い場合は report に notes として記録（pkg は除外、警告ではなく documentation gap として）。
+対象が `internal/**` 配下で、上位へ歩いてもリポジトリルートまで Test Strategy 節が見つからない場合は report に notes として記録する（レビューはブロックせず、documentation gap として surface）。**`internal/**` の全パスが節へ解決されることを期待する**。唯一の免除は `pkg/**` であり、上記スナップショット一覧に名前が無いことを理由に免除扱いしないこと。この状態では Lens 2（観点カバレッジ）に比較基準が無いため、その旨を明示する — 何も報告されずに pass と読まれてしまわないように。
 
 ## Step 2. 5 つの adversarial reviewer を fan out
 
@@ -107,7 +110,7 @@ Output: `file:line` 付きの違反 finding リスト + 違反したルール。
 
 - README の各サブセクション見出し（`### Getter contract test` / `### Immutable guarantee test` / `### Invariant preservation test` 等）に対応する `TestXxx → t.Run(case)` が 1 件以上あるか。
 - 層 README の Test Strategy 節がその層の観点リストの SSOT（Step 1 で読む）。 per-layer 観点リストを本スキルにハードコードしない — README と drift する。 その層の README が宣言するサブセクションをそのまま適用し、reviewer が期待する観点が README に欠けていれば、それ自体を doc ギャップ finding（補遺で surface）として出す。ここに観点を書き戻さない。
-- 層 README に Test Strategy 節が無い場合（`pkg/**`）は sibling test パターンを比較基準にする。
+- 上位へ歩いても Test Strategy 節が見つからない場合は sibling test パターンを比較基準にする。ただしどちらのケースかを明示する — `pkg/**` 配下ならそれが層の正常モード（gap ではない）、`internal/**` 配下なら本レンズの比較基準を欠いた documentation gap（補遺で報告）。
 
 Output: README が宣言しているが test が exercise していない観点リスト（`file:section` で README 該当節を引用）。
 
