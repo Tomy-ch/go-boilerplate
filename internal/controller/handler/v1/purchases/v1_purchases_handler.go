@@ -20,7 +20,7 @@ import (
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。

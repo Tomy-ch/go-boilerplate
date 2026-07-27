@@ -19,7 +19,7 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 )
 

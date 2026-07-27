@@ -235,7 +235,7 @@ Generated code is output under `gen/`.
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 ```
 
 1. Bundle/validate OpenAPI with swagger-cli and generate with oapi-codegen
@@ -661,14 +661,14 @@ rec := testecho.NewEchoTestClient(t, e).
 |`AuthBearer`|Set Bearer token|
 |`PathParams`|Set path parameters|
 |`QueryParams`|Set query parameters|
-|`Build`|Return Request / ResponseRecorder / echo.Context|
+|`Build`|Return Request / ResponseRecorder / *echo.Context|
 |`Serve`|Send request to Echo and return ResponseRecorder|
 
 ### testspan
 
 |Function|Description|
 |---|---|
-|`StartTestSpanForEcho`|Embed test span into echo.Context and return end function|
+|`StartTestSpanForEcho`|Embed test span into *echo.Context and return end function|
 
 ### testuuid
 
@@ -682,7 +682,7 @@ rec := testecho.NewEchoTestClient(t, e).
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 package items
 
@@ -692,7 +692,7 @@ import (
     "go-boilerplate/internal/observability"
     // import required packages
 
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 type server struct {

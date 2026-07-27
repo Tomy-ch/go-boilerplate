@@ -13,7 +13,7 @@ import (
 	productuc "go-boilerplate/internal/usecase/product"
 	"go-boilerplate/internal/usecase/tools/paging"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // sortPublishedAtAsc は、公開日時の昇順を表す sort パラメータ値です。これ以外（未指定を含む）は降順として扱います。

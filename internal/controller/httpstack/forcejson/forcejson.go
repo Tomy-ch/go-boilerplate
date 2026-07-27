@@ -4,16 +4,24 @@ package forcejson
 import (
 	"strings"
 
-	"github.com/labstack/echo/v4"
+	"go-boilerplate/internal/controller/server"
+
+	"github.com/labstack/echo/v5"
 )
 
 // Middleware は、Content-Type が未設定または text/html の場合に
 // application/json へ強制するミドルウェアを返します。
+// レスポンスを取り出せない場合は補正せず素通しします。
 func Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
+			res := server.ResponseOf(c)
+			if res == nil {
+				return next(c)
+			}
+
 			// next 後では commit 済みで反映されないため、WriteHeader 直前(Before)に補正する。
-			c.Response().Before(func() {
+			res.Before(func() {
 				ensureJSONContentType(c)
 			})
 			return next(c)
@@ -22,7 +30,7 @@ func Middleware() echo.MiddlewareFunc {
 }
 
 // ensureJSONContentType は、Content-Type が未設定または text/html の場合に application/json へ強制します。
-func ensureJSONContentType(c echo.Context) {
+func ensureJSONContentType(c *echo.Context) {
 	h := c.Response().Header()
 	if shouldForceJSON(h.Get(echo.HeaderContentType)) {
 		h.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

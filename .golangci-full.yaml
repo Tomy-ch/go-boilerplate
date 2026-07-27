@@ -322,7 +322,7 @@ linters:
             - pkg: net/http
               desc: "Domain層でhttpパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "Domain層でechoパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
             - pkg: database/sql
@@ -351,7 +351,7 @@ linters:
             - pkg: net/http
               desc: "Usecase層でhttpパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "Usecase層でechoパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
             - pkg: go-boilerplate/internal/controller/
@@ -393,7 +393,7 @@ linters:
             - pkg: net/http
               desc: "Infrastructure層でhttpパッケージを直接使用しないでください。
                 controller層にて処理して、DTOなどを介して値を受け渡してください。"
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "Infrastructure層でechoパッケージを直接使用しないでください。
                 controller層にて処理して、DTOなどを介して値を受け渡してください。"
             - pkg: go-boilerplate/internal/controller/
@@ -405,7 +405,7 @@ linters:
             - "**/internal/infrastructure/httpclient/**.go"
           list-mode: lax
           deny:
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "outbound HTTP client では echo(inbound ハンドラ用)を使用しないでください。"
             - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"

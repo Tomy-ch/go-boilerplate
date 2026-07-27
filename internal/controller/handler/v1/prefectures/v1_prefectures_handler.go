@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	prefectureuc "go-boilerplate/internal/usecase/prefecture"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

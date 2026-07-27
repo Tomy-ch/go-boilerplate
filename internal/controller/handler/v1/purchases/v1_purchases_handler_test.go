@@ -20,7 +20,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -63,7 +63,7 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, uc, idempotency.Deps{})
 
-	routes := e.Routes()
+	routes := e.Router().Routes()
 	require.Len(t, routes, 2)
 	// GET（一覧取得）と POST（作成）が同一パスに登録される。登録順は保証されないためメソッドで引く。
 	paths := map[string]string{}

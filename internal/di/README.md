@@ -173,7 +173,7 @@ internal/di
 │   └── core/            # HTTP-stack common components (authn / basicauth / validator / …)
 ├── server/              # Echo server module (Module / MiddlewareModule / HookModule)
 │   ├── extension/       # Middleware & configurator DI (inbound / outbound / security /
-│   │                    #   instrumentation / nonprod / testkit)
+│   │                    #   instrumentation / testkit)
 │   └── hook/            # Server lifecycle hooks (HTTP start/stop, DB close, o11y shutdown)
 ├── lifecycle/           # Registrar (fx.Lifecycle abstraction) + SupervisedRunner
 ├── shutdowner/          # fx.Shutdowner wrapper (self-stop for one-shot profiles)

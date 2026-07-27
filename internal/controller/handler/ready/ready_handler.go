@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	healthcheckuc "go-boilerplate/internal/usecase/healthcheck"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

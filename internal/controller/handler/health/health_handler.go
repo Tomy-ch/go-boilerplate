@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/controller/handler/health/gen"
 	"go-boilerplate/internal/observability"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

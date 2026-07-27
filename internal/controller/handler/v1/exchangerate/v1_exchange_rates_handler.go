@@ -14,7 +14,7 @@ import (
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

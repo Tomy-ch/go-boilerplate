@@ -749,7 +749,7 @@ Repository は **HTTP 層に依存しません。**
 NG例
 
 ```go
-func (r *repository) Create(ctx echo.Context)
+func (r *repository) Create(ctx *echo.Context)
 ```
 
 Repository は **純粋な Go インターフェース**で実装します。

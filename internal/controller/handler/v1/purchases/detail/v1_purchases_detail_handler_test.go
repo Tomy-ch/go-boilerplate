@@ -18,7 +18,7 @@ import (
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -66,7 +66,7 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, uc)
 
-	routes := e.Routes()
+	routes := e.Router().Routes()
 	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodGet, routes[0].Method)
 	assert.Equal(t, "/v1/purchases/:purchaseId", routes[0].Path)

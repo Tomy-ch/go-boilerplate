@@ -21,7 +21,7 @@ flowchart TB
     end
 
     subgraph "Stop Hooks"
-        Shutdown["e.Shutdown()"]
+        Shutdown["srv.Shutdown()"]
         DBClose["db.Close()"]
         O11yShutdown["tp.Shutdown() / mp.Shutdown()"]
     end
@@ -35,8 +35,8 @@ flowchart TB
 
 Registers HTTP server start/stop hooks with `lifecycle.Registrar`.
 
-- **Start**: Executes `e.Start()` in a goroutine, logs port / allowed_origins / CIDR / mode
-- **Stop**: Graceful Shutdown via `e.Shutdown(ctx)`
+- **Start**: Opens the listener (a bind failure aborts startup), serves in a goroutine, logs port / allowed_origins / CIDR / mode
+- **Stop**: Graceful Shutdown via `srv.Shutdown(ctx)`
 - Receives `extension.AppliedServerExtends` to ensure registration occurs after server extensions are applied
 
 ## RegisterDBCloseHooks

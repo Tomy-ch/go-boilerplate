@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	rankinguc "go-boilerplate/internal/usecase/product/ranking"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type server struct {

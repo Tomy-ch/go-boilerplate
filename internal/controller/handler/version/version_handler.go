@@ -16,7 +16,7 @@ import (
 	"go-boilerplate/pkg/datetime"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 var errInvalidBuildDate = xerrors.Wrap(apperror.ErrInternal, "invalid build date")
