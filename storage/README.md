@@ -3,33 +3,36 @@
 Local seed content for the object-storage substrate — the counterpart of `database/seed` for the
 S3-compatible bucket. `database/` bootstraps rows; this directory bootstraps objects.
 
-## Directory
+## The directory layout is the key layout
 
-|Path|Role|
-|---|---|
-|`seed/products/`|Sample product images, uploaded by `make db-seed`|
+`make db-seed` uploads everything under `seed/` and **derives each object key from the path relative to
+`seed/`**, so the tree built here is the tree that appears in the bucket:
 
-## `seed/products/`
+```text
+storage/seed/<prefix>/<file>   →   <prefix>/<file>
+```
 
-**The file name is the object key.** A file named `{product ID}.{ext}` is stored under
-`products/{product ID}.{ext}`, and the seeder writes that same string into the matching row's
-`image_path`. Key and column therefore cannot drift: to add an image, drop in a file whose base name
-is the product's UUID as it appears in `database/seed/*.sql`, and re-run `make db-seed`.
+A subdirectory is simply a key prefix; adding one puts its files under that prefix. Nothing in the
+seeder is bound to a particular prefix — it never interprets file names and never touches the database.
 
-- Accepted extensions: `.webp` (preferred) / `.png` / `.jpg` / `.jpeg`. Anything else is skipped with a warning; dotfiles are ignored
-- One image per product — the schema holds a single `image_path`
-- A file whose UUID matches no row is skipped with a warning, so an image can be staged before its row exists
+- Files sit one level below `seed/`; a file placed directly in `seed/` has no prefix and is skipped
+- Accepted extensions are the ones the seeder can label with a MIME type (`.webp` / `.png` / `.jpg` /
+  `.jpeg` / `.svg` / `.pdf`). Anything else is skipped with a warning rather than served as the wrong
+  type; dotfiles are ignored
 - Keep the files small. Everyone who clones this template pulls them
-- The seeder only ever writes `image_path`. Deleting a file does not clear the column it already set, and
-  clearing it automatically would wipe images uploaded through the API in the same local database — reset
-  such a row by hand, or rebuild the database (`make db-local-reinit`)
 
-Production keys are `products/{uuid}.{ext}` too, but assigned per upload (see
-`internal/usecase/product`), so a replaced image never overwrites an existing key. Seed keys reuse the
-product's own ID instead, which is what makes them reproducible from the file name alone.
+## Rows that reference an object
 
-## When nothing is uploaded
+The seeder only uploads. A column holding an object key is written by the SQL in `database/seed`, like
+any other column — so the key in the SQL and the file name here have to agree. Keeping both in the same
+commit is what stops them from drifting.
 
-The seeder is a no-op — success, not an error — when the directory holds no image, or when
-`OBJECT_STORAGE_ENDPOINT` is empty. An empty endpoint means SDK-default resolution, i.e. a real AWS S3
-account, and sample images must never be pushed there.
+## What is not uploaded
+
+Nothing happens — success, not an error — when `seed/` holds no file, or when `OBJECT_STORAGE_ENDPOINT`
+is empty. An empty endpoint means SDK-default resolution, i.e. a real AWS S3 account, and seed content
+must never be pushed there. That is also why CI, whose endpoint is empty, only ever seeds the database.
+
+No `Cache-Control` is set on the uploaded objects. A seed file is replaceable in place under the same
+key, so it is not immutable; the caching policy for content uploaded through the API is decided by that
+upload path instead.

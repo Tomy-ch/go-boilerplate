@@ -148,14 +148,7 @@ export const SAMPLE_DOMAINS = {
 
       "internal/domain/product",
       "internal/usecase/product",
-      "internal/usecase/boundary/objectstorage",
-      "internal/infrastructure/objectstorage",
-      "internal/di/module/objectstorage.go",
-
-      // 商品画像のシード（オブジェクト投入 + image_path 反映）。storage/ はこの用途にしか存在しない
-      "internal/cli/seed/product_image.go",
-      "internal/cli/seed/product_image_test.go",
-      "storage",
+      "storage/seed/products",
 
       "internal/infrastructure/rdb/repository/product",
       "internal/usecase/product/ranking",
@@ -316,7 +309,6 @@ export const MARKER_FILES = [
   "internal/di/module/authz.go",
   "internal/di/module/authz_test.go",
   "internal/di/module/job.go",
-  "cmd/seed.go",
   ".makefiles/github/operation/setup-repository.mk",
   ".makefiles/README.md",
   ".makefiles/README.ja.md",
