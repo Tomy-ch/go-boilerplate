@@ -226,6 +226,26 @@ func Test_putSeedObjects(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("複数件失敗した場合は全てのエラーを保持して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			fsys := mock_fs.NewMockFS(ctrl)
+			firstErr := xerrors.New("first read failed")
+			secondErr := xerrors.New("second read failed")
+			var recorded []ObjectToPut
+
+			fsys.EXPECT().ReadFile(testSeedFile).Return(nil, firstErr)
+			fsys.EXPECT().ReadFile(other).Return(nil, secondErr)
+
+			err := putSeedObjects(context.Background(), logging.NewTestLogger(t), fsys,
+				recordingPut(&recorded), []string{testSeedFile, other})
+
+			require.ErrorIs(t, err, firstErr)
+			require.ErrorIs(t, err, secondErr)
+			assert.Empty(t, recorded)
+		})
+
 		t.Run("1件失敗しても残りを試みてエラーをまとめて返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -272,6 +292,26 @@ func Test_putSeedObject(t *testing.T) {
 				Body:        body,
 				ContentType: "image/webp",
 			}, recorded[0])
+		})
+
+		t.Run("jpgとjpegはどちらもimage_jpegとして保存する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			fsys := mock_fs.NewMockFS(ctrl)
+			jpg := objectSeedPlace + "/products/a.jpg"
+			jpeg := objectSeedPlace + "/products/b.jpeg"
+			var recorded []ObjectToPut
+
+			fsys.EXPECT().ReadFile(jpg).Return([]byte("jpg"), nil)
+			fsys.EXPECT().ReadFile(jpeg).Return([]byte("jpeg"), nil)
+
+			require.NoError(t, putSeedObject(context.Background(), logging.NewTestLogger(t), fsys, recordingPut(&recorded), jpg))
+			require.NoError(t, putSeedObject(context.Background(), logging.NewTestLogger(t), fsys, recordingPut(&recorded), jpeg))
+
+			require.Len(t, recorded, 2)
+			assert.Equal(t, "image/jpeg", recorded[0].ContentType)
+			assert.Equal(t, "image/jpeg", recorded[1].ContentType)
 		})
 
 		t.Run("接頭辞ディレクトリはキーの構造として保たれる", func(t *testing.T) {

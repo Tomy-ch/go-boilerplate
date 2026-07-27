@@ -5,7 +5,7 @@ import (
 
 	"go-boilerplate/internal/cli/seed"
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/di/module"
+	objectstorageinfra "go-boilerplate/internal/infrastructure/objectstorage"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
@@ -52,7 +52,6 @@ func dbSeedRun(database string) error {
 }
 
 // openSeedObjectStorage は、seed 用設定を読み込みオブジェクトストレージ実装を組み立てる実依存の口です。
-// 実装の選択は di/module.NewObjectStorage へ閉じ込め、ここでは中立境界を seed 用の関数値へ変換するに留めます。
 // 併せて接続先エンドポイントを返し、実環境のバケットへ投入しない判断を呼び出し先へ委ねます。
 func openSeedObjectStorage(logger logging.Logger, database string) (string, seed.PutObjectFunc, error) {
 	cfg, err := newConfigForSeed(logger, database)
@@ -60,7 +59,7 @@ func openSeedObjectStorage(logger logging.Logger, database string) (string, seed
 		return "", nil, err
 	}
 	osCfg := config.NewObjectStorageConfig(cfg)
-	storage := module.NewObjectStorage(osCfg, observability.NewDisabledTracerFactory())
+	storage := objectstorageinfra.New(osCfg, observability.NewDisabledTracerFactory())
 
 	put := func(ctx context.Context, obj seed.ObjectToPut) error {
 		_, perr := storage.Put(ctx, objectstorage.PutObject{

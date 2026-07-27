@@ -158,10 +158,11 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 				tracer: lt, authorizer: authorizer, storage: storage,
 				maxUploadBytes: int64(len(pngData)),
 			}
-			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
+			view, err := u.UploadProductImage(context.Background(), &auth.Authn{},
 				UploadProductImageParams{ContentType: "image/png", Data: pngData})
 
 			require.NoError(t, err)
+			assert.True(t, strings.HasPrefix(view.Path, "products/"))
 		})
 	})
 
