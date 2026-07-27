@@ -26,16 +26,18 @@ to the single-responsibility policy, on these common grounds:
 
 - Hand-rolling the glue would couple tightly to the target's internal lifecycle
   (Echo / pgx / zap) and raise maintenance debt rather than reduce it.
-- Each is **small and Apache-2.0 licensed**, so worst case it can be vendored / forked; the
-  fork cost is bounded to the production line counts recorded per library.
-- The otel-contrib ones (`otelecho`, `otelhttp`, `otelzap`) ship on **otel-contrib's monthly
-  release train**, kept lockstep with OpenTelemetry; `otelpgx` is a third-party package
-  (`github.com/exaring/otelpgx`, Apache-2.0) tracking pgx + OpenTelemetry independently. In
-  every case the only residual drift surface is the framework-side interface, and those
-  interfaces (`echo.MiddlewareFunc` / `net/http.RoundTripper` / pgx `QueryTracer` /
-  `zapcore.Core`) are stable v1.
+- Each is **small and permissively licensed** (Apache-2.0 or MIT), so worst case it can be
+  vendored / forked; the fork cost is bounded to the production line counts recorded per library.
+- The otel-contrib ones (`otelhttp`, `otelzap`) ship on **otel-contrib's monthly release
+  train**, kept lockstep with OpenTelemetry; `echootel` is Echo's own instrumentation module
+  (`github.com/labstack/echo-opentelemetry`, MIT — see [ADR-0017](0017-echo-http-framework.md))
+  and `otelpgx` is a third-party package (`github.com/exaring/otelpgx`, Apache-2.0), both
+  tracking their target framework + OpenTelemetry independently. In every case the only
+  residual drift surface is the framework-side interface, and those interfaces
+  (`echo.MiddlewareFunc` / `net/http.RoundTripper` / pgx `QueryTracer` / `zapcore.Core`)
+  are stable.
 
-The currently-accepted exceptions are `otelecho` (root server span), `otelhttp` (outbound
+The currently-accepted exceptions are `echootel` (root server span), `otelhttp` (outbound
 HTTP client spans), `otelpgx` (SQL query spans), and `otelzap` (zap → OTel log bridge).
 
 ## Consequences

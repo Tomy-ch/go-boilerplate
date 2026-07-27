@@ -26,7 +26,7 @@ oapi ミドルウェアスキッパーは `/metrics` をオペレーションパ
 ```go
 // internal/controller/httpstack/oapi/skipper/skipper.go
 func New() echomw.Skipper {
-    return func(c echo.Context) bool {
+    return func(c *echo.Context) bool {
         return ops.IsOpsPath(c.Request().URL.Path)
     }
 }
