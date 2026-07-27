@@ -43,9 +43,9 @@ Handler code can then retrieve `Authn` using `ctxhelper.GetAuthn()`.
 |---|---|---|
 |`ErrUnauthorizedInvalidToken`|`ErrUnauthenticated`|Token validation failed by `Authenticator`|
 |`ErrUnauthorizedTokenNotProvided`|`ErrUnauthenticated`|No token found in the `Authorization` header|
-|`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|Authorization token is missing|
+|`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|Authorization token is missing (**reserved** — not currently returned; see Notes)|
 |`ErrAuthnSlotNotFound`|`ErrUnauthenticated`|Authn slot not found in the request context (slot not seeded by `oapi.Middleware`)|
-|`ErrInvalidAuthDefaultMode`|`ErrInternal`|Default auth policy not found|
+|`ErrInvalidAuthDefaultMode`|`ErrInternal`|Default auth policy not found (**reserved** — not currently returned; see Notes)|
 
 ## Authn Slot Integration
 
@@ -64,3 +64,4 @@ flowchart LR
 - Token extraction is header-only; cookies are not consulted (Bearer / Resource Server model)
 - Only the `Authorization: Bearer <token>` form is accepted (RFC 6750); non-Bearer schemes and custom header names are not supported
 - The `Authenticator` implementation is environment-specific (local mock, JWT, OAuth, etc.) and injected via DI
+- **Reserved error seams (not currently returned).** `ErrUnauthorizedTokenMissing` and `ErrInvalidAuthDefaultMode` are deliberately provided as extension points for scenarios this package does not yet implement — respectively, distinguishing a *missing `Authorization` header* from an *empty Bearer token*, and a future *default auth policy* resolution path. Today token absence is reported solely via `ErrUnauthorizedTokenNotProvided`, and there is no default-policy resolution. They are kept (not deleted) as intentional API seams; when either scenario is actually implemented, add the returning code path together with its test rather than relying on the bare sentinel

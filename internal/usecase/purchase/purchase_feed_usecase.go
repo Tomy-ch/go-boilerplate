@@ -2,6 +2,7 @@ package purchase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go-boilerplate/internal/apperror"
@@ -57,10 +58,8 @@ func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *pa
 
 	params := purchase.ListFeedParams{Limit: cursor.Limit32() + 1}
 	if after != nil {
-		orderedAt := after.orderedAt
-		id := after.id
-		params.AfterOrderedAt = &orderedAt
-		params.AfterID = &id
+		params.AfterOrderedAt = &after.orderedAt
+		params.AfterID = &after.id
 	}
 
 	feed, err := u.repo.FindFeedByUserID(ctx, userID, params)
@@ -87,6 +86,8 @@ func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *pa
 
 	var nextCursor *string
 	if hasNext && len(feed) > 0 {
+		// len 判定は防御的な安全弁。hasNext は len > limit なので limit >= 1 の下では冗長だが、
+		// limit の下限保証は paging.NewCursor 依存であり、ゼロ値 Cursor 混入時の feed[-1] panic を防ぐ。
 		encoded := encodePurchaseCursor(feed[len(feed)-1])
 		nextCursor = &encoded
 	}
@@ -103,7 +104,7 @@ func decodePurchaseCursor(cursor *paging.Cursor) (*purchaseCursor, error) {
 
 	keys := cursor.Keys()
 	if len(keys) != purchaseCursorKeyCount {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: expected 2 keys")
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, fmt.Sprintf("invalid cursor: expected %d keys", purchaseCursorKeyCount))
 	}
 
 	orderedAt, err := time.Parse(time.RFC3339Nano, keys[0])

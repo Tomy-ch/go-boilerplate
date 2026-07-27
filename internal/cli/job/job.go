@@ -58,10 +58,9 @@ func runJob(
 	}
 }
 
-// gracefulStop は、親キャンセルに左右されない grace の猶予を停止処理（app.Stop）に与え、
-// その結果を返します。SIGINT 伝播や親 ctx タイムアウト後でも OTel flush / DB pool close に
-// grace の全猶予が保証されます。停止失敗を呼び出し元のエラーチェーンに含め exit code へ
-// 反映できるよう、エラーは破棄せず返します。
+// gracefulStop は、親キャンセルから切り離した grace の猶予を停止処理に与え、その結果を返します。
+// SIGINT 伝播や親 ctx タイムアウト後でも grace の全猶予が停止処理に保証されます。停止失敗を
+// 呼び出し元のエラーチェーン（＝exit code）に反映できるよう、エラーは破棄せず返します。
 func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) error {
 	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
 	defer cancel()

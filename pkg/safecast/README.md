@@ -10,6 +10,6 @@ Go's built-in numeric conversions silently wrap or truncate on overflow. This pa
 
 ## Notes
 
-Returns `ErrOverflow` when the value exceeds `math.MaxInt`.
+Returns `ErrOverflow` when the value falls outside the destination type's range.
 
 Depends on `pkg/xerrors` for error wrapping — the sole permitted `pkg/` → `pkg/` dependency (enforced by depguard `independent_pkg`).

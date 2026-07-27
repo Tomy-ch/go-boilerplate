@@ -2,6 +2,7 @@ package purchases
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
@@ -210,6 +212,27 @@ func Test_server_PostPurchases(t *testing.T) {
 			})
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
+
+		t.Run("レスポンス変換が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+
+			view := newTestPurchaseView(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(view, nil)
+
+			userID := uuid.NewTestFromSalt(t, "h_user_overflow")
+			productID := uuid.NewTestFromSalt(t, "h_prod_overflow")
+			_, err := s.PostPurchases(authnContext(t, userID), gen.PostPurchasesRequestObject{
+				Body: &gen.PurchasesPostRequest{
+					Details: []gen.PurchaseDetailInput{{ProductId: productID.ToPrimitive(), Quantity: 2}},
+				},
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 	})
 }
 
@@ -223,7 +246,8 @@ func Test_toPurchaseResponse(t *testing.T) {
 			t.Parallel()
 
 			view := newTestPurchaseView(t)
-			actual := toPurchaseResponse(view)
+			actual, err := toPurchaseResponse(view)
+			require.NoError(t, err)
 			assert.Equal(t, view.ID.ToPrimitive(), actual.Id)
 			assert.Equal(t, view.Code, actual.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), actual.UserId)
@@ -250,12 +274,26 @@ func Test_toPurchaseResponse(t *testing.T) {
 				Rate:     decimaltestkit.MustParse(t, "150.5"),
 				RateDate: "2026-07-21",
 			}
-			actual := toPurchaseResponse(view)
+			actual, err := toPurchaseResponse(view)
+			require.NoError(t, err)
 			require.NotNil(t, actual.ReferenceAmount)
 			assert.Equal(t, "JPY", actual.ReferenceAmount.Currency)
 			assert.Equal(t, int64(26475), actual.ReferenceAmount.Amount)
 			assert.Equal(t, "150.5", actual.ReferenceAmount.Rate)
 			assert.Equal(t, "2026-07-21", actual.ReferenceAmount.RateDate)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("数量がint32範囲を超える場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			view := newTestPurchaseView(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			_, err := toPurchaseResponse(view)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 	})
 }

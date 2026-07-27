@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 
 	"go-boilerplate/pkg/xerrors"
@@ -64,6 +65,11 @@ func Test_guardedDialControl(t *testing.T) {
 			// 100.128.0.0 は /10 の外＝グローバル扱いで通ること（過剰ブロック防止）。
 			require.NoError(t, guardedDialControl(deny, "tcp", "100.128.0.1:80", nil))
 		})
+
+		t.Run("NAT64 Well-Known Prefixに埋め込んだpublic IPv4は許可する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, guardedDialControl(deny, "tcp", "[64:ff9b::5db8:d822]:80", nil)) // 93.184.216.34
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -101,6 +107,14 @@ func Test_guardedDialControl(t *testing.T) {
 			t.Parallel()
 			require.Error(t, guardedDialControl(allow, "tcp", "169.254.169.254:80", nil))
 			require.Error(t, guardedDialControl(deny, "tcp", "169.254.169.254:80", nil))
+		})
+
+		t.Run("NAT64 Well-Known Prefixに埋め込んだ内部宛てIPは埋め込みIPv4で判定して拒否する", func(t *testing.T) {
+			t.Parallel()
+			// 埋め込み IPv4 を剥がす正規化が退行すると IPv4 ガードを迂回できる。
+			require.Error(t, guardedDialControl(deny, "tcp", "[64:ff9b::7f00:1]:80", nil))     // 127.0.0.1
+			require.Error(t, guardedDialControl(deny, "tcp", "[64:ff9b::a00:5]:80", nil))      // 10.0.0.5
+			require.Error(t, guardedDialControl(allow, "tcp", "[64:ff9b::a9fe:a9fe]:80", nil)) // 169.254.169.254
 		})
 
 		t.Run("private許可フラグなしならloopback/privateを拒否する", func(t *testing.T) {
@@ -155,19 +169,55 @@ func Test_conditionalPropagator_Inject(t *testing.T) {
 	t.Skip("conditionalPropagator.Inject は Test_conditionalPropagator が有効/無効/未設定の全分岐を検証済み")
 }
 
+//nolint:paralleltest // 子テストが t.Setenv を使うため関数全体を並列化不可
 func Test_newGuardedBaseTransport(t *testing.T) {
-	t.Parallel()
-
+	//nolint:paralleltest // 子テストが t.Setenv を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
+		//nolint:paralleltest // 兄弟テストが t.Setenv を使うため並列化不可
 		t.Run("指定した dial control を DialContext に持つ transport を返す", func(t *testing.T) {
-			t.Parallel()
-
 			tr := newGuardedBaseTransport(permissiveDialControl)
 
 			require.NotNil(t, tr)
 			assert.NotNil(t, tr.DialContext)
+		})
+
+		//nolint:paralleltest // 兄弟テストが t.Setenv を使うため並列化不可
+		t.Run("env 由来 proxy を継承せず Proxy を無効化する", func(t *testing.T) {
+			tr := newGuardedBaseTransport(permissiveDialControl)
+
+			// 不変条件: proxy 経由では dial 先が proxy になり宛先 IP 検査が素通りするため、Proxy は常に nil。
+			assert.Nil(t, tr.Proxy)
+		})
+
+		//nolint:paralleltest // t.Setenv 使用のため並列化不可
+		t.Run("proxy 設定下でも dial 先が宛先IPでガードが効く", func(t *testing.T) {
+			// proxy を設定しても base.Proxy=nil のため transport は proxy を使わず宛先へ直結し、
+			// guardedDialControl（dial 先 IP 検査）が宛先に効き続ける（SSRF ガードの無効化を防ぐ）。
+			t.Setenv("HTTP_PROXY", "http://10.0.0.1:3128")
+			t.Setenv("HTTPS_PROXY", "http://10.0.0.1:3128")
+
+			var gotAddr string
+			control := func(_ context.Context, _, address string, _ syscall.RawConn) error {
+				gotAddr = address
+				return errTestRoundTrip // 実接続はせず dial 直前で止める
+			}
+
+			base := newGuardedBaseTransport(control)
+			// 回帰の実効ロックはこれ: Proxy=nil であれば http.Client は ProxyFromEnvironment を参照せず、
+			// dial 先が常に宛先になり宛先 IP ガードが効く。SSRF ガード無効化の退行はここで確実に落ちる。
+			require.Nil(t, base.Proxy)
+
+			client := &http.Client{Transport: base}
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://93.184.216.34:80/x", nil)
+			require.NoError(t, err)
+
+			_, err = client.Do(req)
+			require.Error(t, err) // dial control が止めるためエラーになる
+
+			// e2e アサート: dial 先が proxy(10.0.0.1) ではなく宛先(93.184.216.34) であること。ただし net/http の
+			// proxy 判定は httpproxy 環境変数を一度だけキャッシュするため、他テストの環境変数読取り順序に依存しうる。
+			// 実効ロックは上の require.Nil(base.Proxy) 側にあり、本アサートは補助的な end-to-end 確認にとどめる。
+			assert.Equal(t, "93.184.216.34:80", gotAddr)
 		})
 	})
 }
@@ -324,7 +374,7 @@ func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
 	})
 }
 
-func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
+func Test_urlSecretRestoringRoundTripper_RoundTrip(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -334,7 +384,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			parts := redactedURLParts{rawQuery: "token=secret&postalCode=1000001", fragment: "sess=abc"}
 			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, parts)
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.com/search", nil)
@@ -351,7 +401,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			req, err := http.NewRequestWithContext(
 				context.Background(), http.MethodGet, "https://example.com/search", nil)
 			require.NoError(t, err)
@@ -366,7 +416,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 			t.Parallel()
 
 			captured := &captureRoundTripper{}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			ctx := context.WithValue(context.Background(), spanQueryRedactionKey{}, redactedURLParts{rawQuery: "token=secret"})
 			req := (&http.Request{Method: http.MethodGet, Header: make(http.Header)}).WithContext(ctx)
 
@@ -385,7 +435,7 @@ func Test_queryRestoringRoundTripper_RoundTrip(t *testing.T) {
 
 			wantErr := errTestRoundTrip
 			captured := &captureRoundTripper{err: wantErr}
-			rt := queryRestoringRoundTripper{base: captured}
+			rt := urlSecretRestoringRoundTripper{base: captured}
 			req, err := http.NewRequestWithContext(
 				context.Background(), http.MethodGet, "https://example.com/search", nil)
 			require.NoError(t, err)

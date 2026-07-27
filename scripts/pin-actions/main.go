@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,6 +38,8 @@ const (
 	lsRemoteCols    = 2 // <sha>\t<refname>
 	lsRemoteTimeout = 30 * time.Second
 	hoursPerDay     = 24
+
+	usage = "❌ usage: pin-actions <resolve|apply|check>"
 )
 
 var (
@@ -58,7 +61,7 @@ func (r ref) key() string { return r.repo + "@" + r.tag }
 func main() {
 	log.SetFlags(0)
 	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: pin-actions <resolve|apply|check>")
+		log.Fatal(usage)
 	}
 	root, err := os.Getwd()
 	if err != nil {
@@ -79,7 +82,7 @@ func main() {
 	case "check":
 		applyOrCheck(root, files, true)
 	default:
-		log.Fatalf("❌ usage: pin-actions <resolve|apply|check>")
+		log.Fatal(usage)
 	}
 }
 
@@ -121,7 +124,12 @@ func targetFiles(root string) ([]string, error) {
 
 func resolve(root string, files []string, minAgeDays int) {
 	keys := collectKeys(files)
-	existing, _ := readLock(filepath.Join(root, lockFile)) // 無ければ空
+	// lockfile 不在（初回）は空マップで続行するが、それ以外の読み込み失敗は握り潰さず fail-close する
+	// （既存ピンが lock から脱落し供給網ガードの維持保証が破れるのを防ぐ。applyOrCheck と対称）。
+	existing, err := readLock(filepath.Join(root, lockFile))
+	if !isIgnorableLockErr(err) {
+		log.Fatalf("❌ read lockfile: %v", err)
+	}
 
 	ctx := context.Background()
 	lock := map[string]string{}
@@ -131,7 +139,11 @@ func resolve(root string, files []string, minAgeDays int) {
 		if err != nil {
 			log.Fatalf("❌ resolve %s: %v", k, err)
 		}
-		use, note := quarantine(ctx, r.repo, r.tag, k, sha, minAgeDays, existing)
+		ageFn := func() (int, error) { return refAgeDays(ctx, r.repo, r.tag, sha) }
+		use, note, err := quarantine(ageFn, k, sha, minAgeDays, existing)
+		if err != nil {
+			log.Fatalf("❌ age %s: %v", k, err)
+		}
 		if note != "" {
 			notes = append(notes, note)
 		}
@@ -168,22 +180,24 @@ func collectKeys(files []string) map[string]ref {
 	return keys
 }
 
-// quarantine は minAgeDays 未満の新しすぎる解決先を採用しない。第1戻り値 "" は skip（初回かつ新しすぎ）。
-func quarantine(ctx context.Context, repo, tag, key, candidate string, minAgeDays int, existing map[string]string) (string, string) {
+// quarantine は minAgeDays 未満の新しすぎる解決先を採用しない。第1戻り値（採用 SHA）が "" は skip（初回かつ新しすぎ）。
+// 経過日数は ageFn から取得し、その失敗は err で呼び出し元へ伝播する。
+// minAgeDays<=0 のときは ageFn を呼ばず候補をそのまま採用する。
+func quarantine(ageFn func() (int, error), key, candidate string, minAgeDays int, existing map[string]string) (string, string, error) {
 	if minAgeDays <= 0 {
-		return candidate, ""
+		return candidate, "", nil
 	}
-	age, err := refAgeDays(ctx, repo, tag, candidate)
+	age, err := ageFn()
 	if err != nil {
-		log.Fatalf("❌ age %s: %v", key, err)
+		return "", "", err
 	}
 	if age >= minAgeDays {
-		return candidate, ""
+		return candidate, "", nil
 	}
 	if prev, ok := existing[key]; ok {
-		return prev, fmt.Sprintf("%s: 解決先が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays)
+		return prev, fmt.Sprintf("%s: 解決先が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays), nil
 	}
-	return "", fmt.Sprintf("%s: 解決先が %d 日 (<%d)・既存ピン無しのため skip", key, age, minAgeDays)
+	return "", fmt.Sprintf("%s: 解決先が %d 日 (<%d)・既存ピン無しのため skip", key, age, minAgeDays), nil
 }
 
 // refAgeDays は解決先の経過日数を返す。タグに対応する Release があれば published_at（偽装困難）を、
@@ -193,7 +207,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		//nolint:tagliatelle // GitHub API のレスポンスフィールド名(published_at)に合わせる必要があるため
 		PublishedAt time.Time `json:"published_at"`
 	}
-	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+tag, &rel)
+	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &rel)
 	if err != nil {
 		return 0, err
 	}
@@ -211,7 +225,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 			} `json:"committer"`
 		} `json:"commit"`
 	}
-	st, err = githubGet(ctx, "https://api.github.com/repos/"+repo+"/commits/"+sha, &commit)
+	st, err = githubGet(ctx, "https://api.github.com/repos/"+repo+"/commits/"+url.PathEscape(sha), &commit)
 	if err != nil {
 		return 0, err
 	}
@@ -327,12 +341,19 @@ func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 	cctx, cancel := context.WithTimeout(ctx, lsRemoteTimeout)
 	defer cancel()
 	url := "https://github.com/" + repo
-	out, err := exec.CommandContext(cctx, "git", "ls-remote", url, tag, tag+"^{}").Output() //nolint:gosec // 参照名は workflow 由来
+	// --end-of-options 以降を確実に ref 名として扱わせ、`-` 始まりの tag のオプション誤解釈を防ぐ。
+	out, err := exec.CommandContext(cctx, "git", "ls-remote", url, "--end-of-options", tag, tag+"^{}").Output() //nolint:gosec // 参照名は workflow 由来
 	if err != nil {
 		return "", xerrors.Wrap(err, "git ls-remote")
 	}
+	return selectSHA(string(out), tag)
+}
+
+// selectSHA は git ls-remote の生出力から tag に対応する commit SHA を選ぶ。
+// 優先順位は annotated tag の deref (^{}) > 軽量 tag > branch head。いずれも無ければ未発見エラー。
+func selectSHA(out, tag string) (string, error) {
 	var tagSHA, derefSHA, headSHA string
-	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) != lsRemoteCols {
 			continue
@@ -372,6 +393,12 @@ func writeLock(path string, lock map[string]string) error {
 		fmt.Fprintf(&b, "%q = %q\n", k, lock[k])
 	}
 	return os.WriteFile(path, []byte(b.String()), filePerm)
+}
+
+// isIgnorableLockErr は、lockfile 読み込みエラーのうち無視して続行してよいものを判定する。
+// nil（成功）と「ファイル不在」（初回 resolve）のみ true。それ以外（権限エラー・読み取り失敗等）は fail-close 対象。
+func isIgnorableLockErr(err error) bool {
+	return err == nil || xerrors.Is(err, os.ErrNotExist)
 }
 
 func readLock(path string) (map[string]string, error) {

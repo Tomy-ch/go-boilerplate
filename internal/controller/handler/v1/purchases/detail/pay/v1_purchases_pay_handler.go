@@ -14,6 +14,8 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen"
 	"go-boilerplate/internal/observability"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -61,16 +63,25 @@ func (s *server) PatchPurchasesPay(
 		return nil, err
 	}
 
-	return gen.PatchPurchasesPay200JSONResponse(toPayResponse(view)), nil
+	res, err := toPayResponse(view)
+	if err != nil {
+		return nil, err
+	}
+	return gen.PatchPurchasesPay200JSONResponse(res), nil
 }
 
 // toPayResponse は、支払い後の購入 DTO を HTTP レスポンスへ変換します。
-func toPayResponse(v purchaseuc.PayPurchaseView) gen.PurchasePayResponse {
+// 数量が int32 に収まらない場合はエラーを返します。
+func toPayResponse(v purchaseuc.PayPurchaseView) (gen.PurchasePayResponse, error) {
 	details := make([]gen.PurchaseDetailResponse, len(v.Details))
 	for i, d := range v.Details {
+		quantity, err := safecast.IntToInt32(d.Quantity)
+		if err != nil {
+			return gen.PurchasePayResponse{}, xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  toInt32(d.Quantity),
+			Quantity:  quantity,
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -89,22 +100,6 @@ func toPayResponse(v purchaseuc.PayPurchaseView) gen.PurchasePayResponse {
 		TotalAmount:    int64(v.TotalAmount),
 		Details:        details,
 		OrderedAt:      v.OrderedAt,
-		PaidAt:         paidAt(v.PaidAt),
-	}
-}
-
-// paidAt は、支払い日時（*time.Time）をレスポンスの time.Time へ変換します。
-// 支払い成功時は常に非 nil ですが、防御的に nil はゼロ値へ倒します。
-func paidAt(t *time.Time) time.Time {
-	if t == nil {
-		return time.Time{}
-	}
-	return *t
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
-	return int32(v)
+		PaidAt:         ptr.Deref(v.PaidAt, time.Time{}),
+	}, nil
 }

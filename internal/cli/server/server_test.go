@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveMetricsStop(t *testing.T) {
+func TestStartMetricsAndResolveStop(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestResolveMetricsStop(t *testing.T) {
 				return func() { started = true }, stopFn
 			}
 
-			stop := ResolveMetricsStop(appCfg, newMetrics)
+			stop := StartMetricsAndResolveStop(appCfg, newMetrics)
 			assert.NotNil(t, stop, "非本番では停止関数が返ること")
 			assert.True(t, started, "メトリクスサーバーが起動されること")
 		})
@@ -49,7 +49,7 @@ func TestResolveMetricsStop(t *testing.T) {
 				return func() {}, func(_ context.Context) {}
 			}
 
-			stop := ResolveMetricsStop(appCfg, newMetrics)
+			stop := StartMetricsAndResolveStop(appCfg, newMetrics)
 			assert.Nil(t, stop, "本番では停止関数は nil であること")
 			assert.False(t, called, "本番ではメトリクス生成自体を呼ばないこと")
 		})
@@ -141,7 +141,7 @@ func TestRunServer(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("起動失敗時は停止処理を行わずエラーを返す", func(t *testing.T) {
+		t.Run("起動失敗時はstopAppを呼ばずエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
 			startErr := xerrors.New("start failed")
@@ -156,6 +156,28 @@ func TestRunServer(t *testing.T) {
 			err := RunServer(context.Background(), shutdownTimeout, start, stop, nil)
 			require.ErrorIs(t, err, startErr)
 			assert.False(t, stopCalled, "起動失敗時は stopApp を呼ばないこと")
+		})
+
+		t.Run("起動失敗時でも起動済みメトリクスサーバーは停止する", func(t *testing.T) {
+			t.Parallel()
+
+			startErr := xerrors.New("start failed")
+			start := func(context.Context) error { return startErr }
+			stop := func(context.Context) error { return nil }
+
+			var (
+				stopMetricsCalled      bool
+				stopMetricsHasDeadline bool
+			)
+			stopMetrics := func(c context.Context) {
+				stopMetricsCalled = true
+				_, stopMetricsHasDeadline = c.Deadline()
+			}
+
+			err := RunServer(context.Background(), shutdownTimeout, start, stop, stopMetrics)
+			require.ErrorIs(t, err, startErr)
+			assert.True(t, stopMetricsCalled, "起動失敗時も起動済みメトリクスは停止すること（確保と解放の対称性）")
+			assert.True(t, stopMetricsHasDeadline, "メトリクス停止は期限付き context を受け取ること")
 		})
 
 		t.Run("シグナル受信後にstopAppがエラーを返すとそのエラーを伝播する", func(t *testing.T) {

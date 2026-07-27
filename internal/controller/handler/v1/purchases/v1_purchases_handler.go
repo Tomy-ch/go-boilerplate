@@ -17,6 +17,7 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -129,16 +130,25 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 		return nil, err
 	}
 
-	return gen.PostPurchases201JSONResponse(toPurchaseResponse(view)), nil
+	res, err := toPurchaseResponse(view)
+	if err != nil {
+		return nil, err
+	}
+	return gen.PostPurchases201JSONResponse(res), nil
 }
 
 // toPurchaseResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
-func toPurchaseResponse(v purchaseuc.PurchaseView) gen.PurchaseResponse {
+// 数量が int32 に収まらない場合はエラーを返します。
+func toPurchaseResponse(v purchaseuc.PurchaseView) (gen.PurchaseResponse, error) {
 	details := make([]gen.PurchaseDetailResponse, len(v.Details))
 	for i, d := range v.Details {
+		quantity, err := safecast.IntToInt32(d.Quantity)
+		if err != nil {
+			return gen.PurchaseResponse{}, xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  toInt32(d.Quantity),
+			Quantity:  quantity,
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -155,7 +165,7 @@ func toPurchaseResponse(v purchaseuc.PurchaseView) gen.PurchaseResponse {
 		Details:         details,
 		OrderedAt:       v.OrderedAt,
 		ReferenceAmount: toReferenceAmount(v.ReferenceAmount),
-	}
+	}, nil
 }
 
 // toReferenceAmount は、参考換算額の DTO を HTTP レスポンスへ変換します（nil はそのまま nil）。
@@ -169,11 +179,4 @@ func toReferenceAmount(r *purchaseuc.ReferenceAmountView) *gen.ReferenceAmount {
 		Rate:     r.Rate.String(),
 		RateDate: r.RateDate,
 	}
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
-	return int32(v)
 }

@@ -1,6 +1,7 @@
 package dbslot
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -305,6 +306,34 @@ func TestPool_Release(t *testing.T) {
 
 			pool, _, _ := newMockPool(t, t.TempDir(), "")
 			require.NoError(t, pool.Release(context.Background()))
+		})
+
+		t.Run("serve 停止が失敗してもリースは解放しログへ可視化する", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			ctrl := gomock.NewController(t)
+			admin := mock_dbslot.NewMockDBAdmin(ctrl)
+			comp := mock_dbslot.NewMockCompose(ctrl)
+			reg := NewRegistry(t.TempDir(), root, "branch", 30*time.Minute, 8,
+				func() time.Time { return time.Unix(1_000_000, 0) })
+			cfg := Config{
+				Root: root, SharedProject: "gobp-shared",
+				APIBasePort: 8080, MockAuthBase: 4000, DlvBase: 2345, PprofBase: 6060,
+			}
+			var logbuf bytes.Buffer
+			pool := NewPool(reg, admin, comp, cfg, io.Discard, &logbuf)
+
+			comp.EXPECT().UpSharedDB(gomock.Any(), "gobp-shared").Return(nil)
+			expectSlotDBs(admin, "1")
+			comp.EXPECT().DownServe(gomock.Any(), "gobp-wt-1").Return(errBoom)
+
+			require.NoError(t, pool.Acquire(context.Background()))
+			require.NoError(t, pool.Release(context.Background()))
+
+			_, err := os.Stat(filepath.Join(root, ".gobp-db-slot"))
+			assert.True(t, os.IsNotExist(err))
+			assert.Contains(t, logbuf.String(), "failed to stop serve containers for slot 1")
 		})
 	})
 }

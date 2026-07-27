@@ -14,6 +14,8 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen"
 	"go-boilerplate/internal/observability"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -54,16 +56,25 @@ func (s *server) PatchPurchasesShip(
 		return nil, err
 	}
 
-	return gen.PatchPurchasesShip200JSONResponse(toShipResponse(view)), nil
+	res, err := toShipResponse(view)
+	if err != nil {
+		return nil, err
+	}
+	return gen.PatchPurchasesShip200JSONResponse(res), nil
 }
 
 // toShipResponse は、発送後の購入 DTO を HTTP レスポンスへ変換します。
-func toShipResponse(v purchaseuc.ShipPurchaseView) gen.PurchaseShipResponse {
+// 数量が int32 に収まらない場合はエラーを返します。
+func toShipResponse(v purchaseuc.ShipPurchaseView) (gen.PurchaseShipResponse, error) {
 	details := make([]gen.PurchaseDetailResponse, len(v.Details))
 	for i, d := range v.Details {
+		quantity, err := safecast.IntToInt32(d.Quantity)
+		if err != nil {
+			return gen.PurchaseShipResponse{}, xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
 		details[i] = gen.PurchaseDetailResponse{
 			ProductId: d.ProductID.ToPrimitive(),
-			Quantity:  toInt32(d.Quantity),
+			Quantity:  quantity,
 			UnitPrice: d.UnitPrice.String(),
 		}
 	}
@@ -82,22 +93,6 @@ func toShipResponse(v purchaseuc.ShipPurchaseView) gen.PurchaseShipResponse {
 		TotalAmount:    int64(v.TotalAmount),
 		Details:        details,
 		OrderedAt:      v.OrderedAt,
-		ShippedAt:      shippedAt(v.ShippedAt),
-	}
-}
-
-// shippedAt は、発送日時（*time.Time）をレスポンスの time.Time へ変換します。
-// 発送成功時は常に非 nil ですが、防御的に nil はゼロ値へ倒します。
-func shippedAt(t *time.Time) time.Time {
-	if t == nil {
-		return time.Time{}
-	}
-	return *t
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される購入数量由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は int32 の DB 列由来でありオーバーフローしません
-	return int32(v)
+		ShippedAt:      ptr.Deref(v.ShippedAt, time.Time{}),
+	}, nil
 }

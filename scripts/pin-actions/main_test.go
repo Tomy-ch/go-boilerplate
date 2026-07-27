@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"go-boilerplate/pkg/xerrors"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,6 +17,9 @@ const (
 	shaSetupGo  = "2222222222222222222222222222222222222222"
 	shaCodeQL   = "3333333333333333333333333333333333333333"
 )
+
+// errAge は、ageFn の失敗伝播を検証するためのセンチネルです。
+var errAge = xerrors.New("age lookup failed")
 
 func testLock() map[string]string {
 	return map[string]string{
@@ -158,6 +163,168 @@ func TestReadLock(t *testing.T) {
 			t.Parallel()
 			_, err := readLock(filepath.Join(t.TempDir(), "absent.toml"))
 			require.Error(t, err)
+		})
+	})
+}
+
+func TestQuarantine(t *testing.T) {
+	t.Parallel()
+
+	const (
+		key       = "actions/checkout@v7.0.0"
+		candidate = shaCheckout
+		prev      = "9999999999999999999999999999999999999999"
+	)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("minAgeDays<=0 なら ageFn を呼ばず候補をそのまま採用する", func(t *testing.T) {
+			t.Parallel()
+			called := false
+			ageFn := func() (int, error) { called = true; return 0, nil }
+
+			use, note, err := quarantine(ageFn, key, candidate, 0, nil)
+
+			require.NoError(t, err)
+			assert.Equal(t, candidate, use)
+			assert.Empty(t, note)
+			assert.False(t, called, "minAgeDays<=0 では ageFn を呼ばない")
+		})
+
+		t.Run("解決先が十分に古ければ候補を採用する", func(t *testing.T) {
+			t.Parallel()
+			ageFn := func() (int, error) { return 30, nil }
+
+			use, note, err := quarantine(ageFn, key, candidate, 14, nil)
+
+			require.NoError(t, err)
+			assert.Equal(t, candidate, use)
+			assert.Empty(t, note)
+		})
+
+		t.Run("新しすぎる場合は既存ピンを維持しノートを返す", func(t *testing.T) {
+			t.Parallel()
+			ageFn := func() (int, error) { return 3, nil }
+			existing := map[string]string{key: prev}
+
+			use, note, err := quarantine(ageFn, key, candidate, 14, existing)
+
+			require.NoError(t, err)
+			assert.Equal(t, prev, use)
+			assert.Contains(t, note, "既存ピンを維持")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("新しすぎて既存ピンも無ければ skip しノートを返す", func(t *testing.T) {
+			t.Parallel()
+			ageFn := func() (int, error) { return 3, nil }
+
+			use, note, err := quarantine(ageFn, key, candidate, 14, nil)
+
+			require.NoError(t, err)
+			assert.Empty(t, use)
+			assert.Contains(t, note, "skip")
+		})
+
+		t.Run("ageFn の失敗はそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+			ageFn := func() (int, error) { return 0, errAge }
+
+			use, note, err := quarantine(ageFn, key, candidate, 14, nil)
+
+			require.ErrorIs(t, err, errAge)
+			assert.Empty(t, use)
+			assert.Empty(t, note)
+		})
+	})
+}
+
+func TestSelectSHA(t *testing.T) {
+	t.Parallel()
+
+	const (
+		tag         = "v7.0.0"
+		derefSHA    = shaCheckout
+		lightTagSHA = shaSetupGo
+		headSHA     = shaCodeQL
+	)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("annotated tag の deref を最優先で採用する", func(t *testing.T) {
+			t.Parallel()
+			out := lightTagSHA + "\trefs/tags/" + tag + "\n" +
+				derefSHA + "\trefs/tags/" + tag + "^{}\n"
+			sha, err := selectSHA(out, tag)
+			require.NoError(t, err)
+			assert.Equal(t, derefSHA, sha)
+		})
+
+		t.Run("deref が無ければ軽量 tag を採用する", func(t *testing.T) {
+			t.Parallel()
+			out := lightTagSHA + "\trefs/tags/" + tag + "\n"
+			sha, err := selectSHA(out, tag)
+			require.NoError(t, err)
+			assert.Equal(t, lightTagSHA, sha)
+		})
+
+		t.Run("tag が無ければ branch head へフォールバックする", func(t *testing.T) {
+			t.Parallel()
+			out := headSHA + "\trefs/heads/" + tag + "\n"
+			sha, err := selectSHA(out, tag)
+			require.NoError(t, err)
+			assert.Equal(t, headSHA, sha)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("該当 ref が無ければ未発見エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := selectSHA("", tag)
+			require.ErrorContains(t, err, tag)
+		})
+
+		t.Run("無関係な ref のみなら未発見エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			out := headSHA + "\trefs/heads/main\n"
+			_, err := selectSHA(out, tag)
+			require.Error(t, err)
+		})
+	})
+}
+
+func TestIsIgnorableLockErr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nil は無視可能", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isIgnorableLockErr(nil))
+		})
+
+		t.Run("ファイル不在は無視可能", func(t *testing.T) {
+			t.Parallel()
+			_, err := os.Open(filepath.Join(t.TempDir(), "absent.toml"))
+			require.Error(t, err)
+			assert.True(t, isIgnorableLockErr(err))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("不在以外のエラーは無視不可（fail-close）", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isIgnorableLockErr(errAge))
 		})
 	})
 }

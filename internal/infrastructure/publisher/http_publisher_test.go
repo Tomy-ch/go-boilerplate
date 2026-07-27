@@ -72,6 +72,40 @@ func Test_httpPublisher_Publish(t *testing.T) {
 
 			require.NoError(t, err)
 		})
+
+		t.Run("機微ヘッダ(Authorization/Cookie等)は egress で落とし通常ヘッダは伝搬する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			msgID := uuid.NewTestFromSalt(t, "msg")
+
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+					assert.NotContains(t, req.Header(), "Authorization")
+					assert.NotContains(t, req.Header(), "authorization")
+					assert.NotContains(t, req.Header(), "Cookie")
+					assert.NotContains(t, req.Header(), "Proxy-Authorization")
+					assert.NotContains(t, req.Header(), "Set-Cookie")
+					assert.Equal(t, []string{"00-x"}, req.Header()["traceparent"])
+					return &httpclient.Response{StatusCode: 200}, nil
+				})
+
+			err := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+				Publish(context.Background(), pubbndry.Message{
+					MessageID: msgID,
+					EventType: "e.v1",
+					Payload:   []byte(`{"v":1}`),
+					Headers: map[string]string{
+						"traceparent":         "00-x",
+						"Authorization":       "Bearer secret",
+						"Cookie":              "session=abc",
+						"Proxy-Authorization": "Basic zzz",
+						"Set-Cookie":          "a=b",
+					},
+				})
+
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

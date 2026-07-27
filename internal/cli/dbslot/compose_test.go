@@ -59,11 +59,13 @@ func TestExecCompose_DownServe(t *testing.T) { //nolint:paralleltest // stubDock
 			assert.Contains(t, string(b), "proj=gobp-wt-1")
 			assert.Contains(t, string(b), "-f docker-compose.yaml -f docker-compose.attach.yaml down")
 		})
+	})
 
-		t.Run("down が失敗してもエラーにしない（冪等）", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("down が実失敗（docker 非 0 終了）ならエラーを伝播する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			stubDocker(t, 1)
 
-			require.NoError(t, ExecCompose{}.DownServe(context.Background(), "gobp-wt-1"))
+			require.Error(t, ExecCompose{}.DownServe(context.Background(), "gobp-wt-1"))
 		})
 	})
 }

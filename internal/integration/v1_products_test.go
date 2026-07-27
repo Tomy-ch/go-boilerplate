@@ -97,7 +97,7 @@ func TestV1Products_Integration(t *testing.T) {
 			nextCursor := "next-opaque-cursor"
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(
-				&productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}, NextCursor: &nextCursor}, nil,
+				productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}, NextCursor: &nextCursor}, nil,
 			)
 
 			productshandler.BindHandler(e, tf, mockUC)
@@ -116,7 +116,7 @@ func TestV1Products_Integration(t *testing.T) {
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(
-				&productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}, NextCursor: nil}, nil,
+				productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}, NextCursor: nil}, nil,
 			)
 
 			productshandler.BindHandler(e, tf, mockUC)
@@ -134,7 +134,7 @@ func TestV1Products_Integration(t *testing.T) {
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(
-				&productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil,
+				productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil,
 			)
 
 			productshandler.BindHandler(e, tf, mockUC)
@@ -157,9 +157,9 @@ func TestV1Products_Integration(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.ListProductsParams) (*productuc.ProductListView, error) {
+				func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
-					return &productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
+					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				},
 			)
 
@@ -267,7 +267,7 @@ func TestV1Products_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(productuc.ProductListView{}, apperror.ErrInternal)
 
 			productshandler.BindHandler(e, tf, mockUC)
 

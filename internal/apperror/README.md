@@ -229,6 +229,8 @@ When adding, document the following in README:
 | `ErrNotFound` | Target does not exist | 404 Not Found |
 | `ErrConflict` | Conflict (unique constraint violation, concurrent update conflict, etc.) | 409 Conflict |
 | `ErrValidation` | Domain / Usecase validation failure | 422 Unprocessable Entity |
+| `ErrUnsupportedMediaType` | Unsupported Content-Type / media format | 415 Unsupported Media Type |
+| `ErrPayloadTooLarge` | Request payload exceeds the allowed size | 413 Payload Too Large |
 | `ErrTooManyRequests` | Too many requests (request throttling, upstream API throttling propagation, etc.) | 429 Too Many Requests |
 | `ErrCanceled` | Client cancelled / disconnected the request | 499 Client Closed Request |
 | `ErrInternal` | Unexpected internal error | 500 Internal Server Error |

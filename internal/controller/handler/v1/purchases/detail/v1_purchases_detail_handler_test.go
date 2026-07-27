@@ -2,6 +2,7 @@ package detail
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -141,6 +143,24 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
+
+		t.Run("レスポンス変換が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			view := detailViewFixture(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			uc.EXPECT().GetPurchaseDetail(gomock.Any(), gomock.Any(), gomock.Any()).Return(view, nil)
+
+			userID := uuid.NewTestFromSalt(t, "hd_user_overflow")
+			_, err := s.GetPurchasesDetail(authnContext(t, userID), gen.GetPurchasesDetailRequestObject{
+				PurchaseId: uuid.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 	})
 }
 
@@ -154,7 +174,8 @@ func Test_toPurchaseGetDetailResponse(t *testing.T) {
 			t.Parallel()
 
 			view := detailViewFixture(t)
-			r := toPurchaseGetDetailResponse(view)
+			r, err := toPurchaseGetDetailResponse(view)
+			require.NoError(t, err)
 			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
@@ -183,10 +204,24 @@ func Test_toPurchaseGetDetailResponse(t *testing.T) {
 			view.PaidAt = nil
 			view.CanceledAt = &canceledAt
 
-			r := toPurchaseGetDetailResponse(view)
+			r, err := toPurchaseGetDetailResponse(view)
+			require.NoError(t, err)
 			assert.Nil(t, r.PaidAt)
 			require.NotNil(t, r.CanceledAt)
 			assert.Equal(t, canceledAt, *r.CanceledAt)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("数量がint32範囲を超える場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			view := detailViewFixture(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			_, err := toPurchaseGetDetailResponse(view)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 	})
 }

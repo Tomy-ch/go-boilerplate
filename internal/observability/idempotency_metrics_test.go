@@ -52,6 +52,7 @@ func TestNewIdempotencyMetrics(t *testing.T) {
 				"idempotency.requests",
 				"idempotency.failures",
 				"idempotency.expired_cleanup",
+				"idempotency.expired_cleanup_failure",
 			} {
 				assert.Contains(t, names, want)
 			}
@@ -208,24 +209,31 @@ func TestNewIdempotencyMetrics(t *testing.T) {
 
 				assert.Equal(t, "complete", attributeOf(t, rm, "idempotency.failures", "phase"))
 			})
+		})
 
-			t.Run("IncExpiredCleanupFailure は phase=gc_cleanup", func(t *testing.T) {
-				t.Parallel()
+		t.Run("IncExpiredCleanupFailure は専用カウンタに job=idempotency_gc を emit する", func(t *testing.T) {
+			t.Parallel()
 
-				ctx := context.Background()
-				reader := sdkmetric.NewManualReader()
-				provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 
-				im, err := observability.NewIdempotencyMetrics(provider)
-				require.NoError(t, err)
+			im, err := observability.NewIdempotencyMetrics(provider)
+			require.NoError(t, err)
 
-				im.IncExpiredCleanupFailure(ctx)
+			im.IncExpiredCleanupFailure(ctx)
 
-				var rm metricdata.ResourceMetrics
-				require.NoError(t, reader.Collect(ctx, &rm))
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
 
-				assert.Equal(t, "gc_cleanup", attributeOf(t, rm, "idempotency.failures", "phase"))
-			})
+			// GC 失敗は per-request の failures ではなく専用カウンタへ計上され、
+			// operation_id="unknown" を帯びず job ラベルで成功と対称になる。
+			assert.Equal(t, "idempotency_gc", attributeOf(t, rm, "idempotency.expired_cleanup_failure", "job"))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "idempotency.expired_cleanup_failure"))
+			// 併せて per-request の idempotency.failures には一切 emit されないことを固定する
+			// （GC 失敗を専用カウンタと failures の両方へ計上する二重計上の回帰を検出する）。
+			assert.False(t, metricPresent(rm, "idempotency.failures"),
+				"GC 失敗が per-request failures へ二重計上されないこと")
 		})
 
 		t.Run("IncExpiredCleanup は job=idempotency_gc を emit する", func(t *testing.T) {
@@ -299,6 +307,18 @@ func operationIDOf(t *testing.T, rm metricdata.ResourceMetrics, name string) str
 	}
 	t.Fatalf("metric %s not found", name)
 	return ""
+}
+
+// metricPresent は、指定名の metric が収集結果に存在する（＝データ点が 1 つ以上 emit された）かを返します。
+func metricPresent(rm metricdata.ResourceMetrics, name string) bool {
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // counterValueOf は、指定 counter の全データ点の合計値を返します。

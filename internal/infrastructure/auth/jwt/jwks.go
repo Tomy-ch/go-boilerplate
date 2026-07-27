@@ -43,6 +43,10 @@ var (
 	errJWKSNoKeys = xerrors.New("jwks: no usable keys with kid")
 	// errJWKSDuplicateKID は、JWKS に重複した kid が含まれる場合のエラーです（文書ごと不採用）。
 	errJWKSDuplicateKID = xerrors.New("jwks: duplicate kid")
+	// errJWKSKIDKnownAbsent は、現世代の JWKS で不在が確定済みの kid を要求された場合のエラーです。
+	errJWKSKIDKnownAbsent = xerrors.New("jwks: kid known-absent in current key set")
+	// errJWKSNoMatchingKID は、取得した JWKS に kid に対応する鍵が無い場合のエラーです。
+	errJWKSNoMatchingKID = xerrors.New("jwks: no matching key for kid")
 )
 
 // jwksResolver は、JWKS エンドポイントから kid で公開鍵を解決する KeyResolver 実装です。
@@ -92,16 +96,30 @@ func RequiredDownstream() httpclient.Downstream {
 }
 
 // newJWKSResolver は、JWKS 解決器を生成します（この時点では取得しません＝遅延取得）。
-func newJWKSResolver(client httpclient.Client, urlFn func(context.Context) (string, error), cacheTTL time.Duration, clk clock.Clock) *jwksResolver {
+// cacheTTL / cooldown が非正、allowedAlgs が空のときは、それぞれ既定値へフォールバックします。
+func newJWKSResolver(
+	client httpclient.Client,
+	urlFn func(context.Context) (string, error),
+	cacheTTL time.Duration,
+	allowedAlgs []string,
+	cooldown time.Duration,
+	clk clock.Clock,
+) *jwksResolver {
 	if cacheTTL <= 0 {
 		cacheTTL = defaultJWKSCacheTTL
+	}
+	if cooldown <= 0 {
+		cooldown = jwksRefreshCooldown
+	}
+	if len(allowedAlgs) == 0 {
+		allowedAlgs = defaultAllowedAlgs
 	}
 	return &jwksResolver{
 		client:      client,
 		urlFn:       urlFn,
 		cacheTTL:    cacheTTL,
-		cooldown:    jwksRefreshCooldown,
-		allowedAlgs: defaultAllowedAlgs,
+		cooldown:    cooldown,
+		allowedAlgs: allowedAlgs,
 		clk:         clk,
 		keys:        map[string]crypto.PublicKey{},
 	}
@@ -109,17 +127,19 @@ func newJWKSResolver(client httpclient.Client, urlFn func(context.Context) (stri
 
 // ResolveKey は、kid に対応する署名検証用公開鍵を返します（KeyResolver 実装）。
 // キャッシュに無い / 期限切れの場合は JWKS を再取得します。
+// 返すエラーは keyFunc → ParseWithClaims 経由で Authenticate の境界へ伝播し、そこで
+// ErrJWTAuthenticatorInvalidToken へ一括正規化するため、ここでは原因のみを持つ素の error を返します。
 func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.PublicKey, error) {
 	if key := r.lookup(kid); key != nil {
 		return key, nil
 	}
 	// 現世代で不在が確定済みの kid は再取得せず即座に拒否する（再取得連打の抑止）。
 	if r.negativelyCached(kid) {
-		return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "kid known-absent in current JWKS")
+		return nil, errJWKSKIDKnownAbsent
 	}
 	fetched, err := r.refresh(ctx)
 	if err != nil {
-		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidToken, err)
+		return nil, err
 	}
 	if key := r.lookup(kid); key != nil {
 		return key, nil
@@ -129,7 +149,7 @@ func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.Publi
 	if fetched {
 		r.recordAbsent(kid)
 	}
-	return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "no matching JWKS key for kid")
+	return nil, errJWKSNoMatchingKID
 }
 
 // negativelyCached は、現世代（鮮度内）で kid が不在確定として記録済みかを返します。

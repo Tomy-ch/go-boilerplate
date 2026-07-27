@@ -17,3 +17,12 @@ func UintToInt(x uint) (int, error) {
 	}
 	return int(x), nil
 }
+
+// IntToInt32 は、intをint32に安全に変換します。
+// int32 の範囲外の場合はエラーを返します。
+func IntToInt32(x int) (int32, error) {
+	if x < math.MinInt32 || x > math.MaxInt32 {
+		return 0, xerrors.Wrap(ErrOverflow, fmt.Sprintf("int %d exceeds int32 range [%d,%d]", x, math.MinInt32, math.MaxInt32))
+	}
+	return int32(x), nil
+}

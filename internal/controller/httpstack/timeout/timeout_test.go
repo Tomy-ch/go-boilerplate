@@ -59,6 +59,8 @@ func TestMiddleware(t *testing.T) {
 			})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			// 503 マッピング用のセンチネルを重ねつつ、観測性のため原因エラーを保持する。
+			require.ErrorIs(t, err, context.DeadlineExceeded)
 		})
 
 		t.Run("期限超過前に非タイムアウトエラーを返した場合は元のエラーを保持する", func(t *testing.T) {

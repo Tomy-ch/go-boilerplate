@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/pkg/xerrors"
@@ -60,6 +62,10 @@ func (m *queryMetrics) Observe(_ context.Context, attrs driver.QueryAttrs) {
 
 // registerOrExisting は、コレクタを登録します。既に同一コレクタが登録済みの場合は、
 // 新規生成したものではなく登録済みのコレクタを返し、複数回初期化されても同じメトリクスへ記録できるようにします。
+//
+// 「同名で既存だが型が一致しない」および AlreadyRegistered 以外の登録失敗（descriptor 不整合等）は、
+// メトリクス初期化パスの設定バグです。黙って別インスタンスへ記録し続けると計測が二重化し発見が遅れるため、
+// 起動時に panic で表面化させます（panic 値に対象コレクタの FQName を含めます）。
 func registerOrExisting[T prometheus.Collector](reg prometheus.Registerer, c T) T {
 	err := reg.Register(c)
 	if err == nil {
@@ -71,6 +77,25 @@ func registerOrExisting[T prometheus.Collector](reg prometheus.Registerer, c T) 
 		if existing, ok := alreadyRegisteredErr.ExistingCollector.(T); ok {
 			return existing
 		}
+		panic(xerrors.New(fmt.Sprintf(
+			"registerOrExisting: collector [%s] is already registered with an incompatible type %T",
+			collectorFQNames(c), alreadyRegisteredErr.ExistingCollector)))
 	}
-	return c
+	panic(xerrors.Wrap(err, fmt.Sprintf(
+		"registerOrExisting: failed to register collector [%s]", collectorFQNames(c))))
+}
+
+// collectorFQNames は、panic メッセージ用にコレクタの descriptor（FQName 含む）を文字列化します。
+func collectorFQNames(c prometheus.Collector) string {
+	ch := make(chan *prometheus.Desc, 1)
+	go func() {
+		c.Describe(ch)
+		close(ch)
+	}()
+
+	descs := make([]string, 0, 1)
+	for d := range ch {
+		descs = append(descs, d.String())
+	}
+	return strings.Join(descs, ", ")
 }

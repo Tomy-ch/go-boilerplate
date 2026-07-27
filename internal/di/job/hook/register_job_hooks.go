@@ -13,6 +13,8 @@ import (
 	"go-boilerplate/internal/usecase/boundary/job"
 )
 
+const loggerName = "job.Hooks"
+
 // RegisterJobHooks は、ジョブのライフサイクルフックを登録します。
 //
 // OnStop で実行 context がキャンセルされるため、`--timeout` 超過で cli が
@@ -45,7 +47,7 @@ func runJobAndShutdown(
 ) {
 	name, args, done := state.Snapshot()
 	if done == nil {
-		logger.Named("job.Hooks").Info(
+		logger.Named(loggerName).Info(
 			jobCtx,
 			"No job to run",
 			logging.String(logging.EventTypeKey, logging.EventTypeStart),
@@ -69,7 +71,7 @@ func runJobAndShutdown(
 // エラーは黙殺せずログ記録する。
 func shutdown(ctx context.Context, sd shutdowner.Shutdowner, logger logging.Logger) {
 	if err := sd.Shutdown(); err != nil {
-		logger.Named("job.Hooks").Error(
+		logger.Named(loggerName).Error(
 			ctx,
 			"failed to shutdown",
 			logging.Error(logging.JobErrorKey, err),

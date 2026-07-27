@@ -98,7 +98,10 @@ func (p *Pool) Release(ctx context.Context) error {
 		return nil
 	}
 	// serve した app コンテナを停止する（放置すると再割当て・reinit 後の DB を孤児が掴む）。
-	_ = p.comp.DownServe(ctx, serveProject(slot))
+	// 停止失敗（docker 未起動・権限不足など）は孤児コンテナ検知のためログへ可視化し、リース解放自体は続行する。
+	if err := p.comp.DownServe(ctx, serveProject(slot)); err != nil {
+		p.logf("failed to stop serve containers for slot %d: %v", slot, err)
+	}
 	p.reg.Release(slot)
 	_ = os.Remove(p.slotFilePath())
 	p.logf("released slot %d (databases left warm for reuse)", slot)

@@ -124,6 +124,24 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			assert.Nil(t, got.NextCursor)
 		})
 
+		t.Run("ゼロ値Cursor混入時もfeed末尾のpanicを避けItems空nextCursor_nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// ゼロ値 Cursor（limit=0）では Limit()=0 かつ Repository へは limit+1=1 件要求される。
+			// 1 件返ると hasNext=len(1)>0=true・切り詰めで feed が空になり、len(feed)>0 の安全弁が無いと
+			// feed[len-1] が feed[-1] で panic する。安全弁により panic せず空一覧を返すことを固定する。
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				[]domainpurchase.FeedItem{feedItem(t, "a", base)}, nil)
+
+			u := &usecase{tracer: lt, repo: repo}
+			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), &paging.Cursor{})
+			require.NoError(t, err)
+			assert.Empty(t, got.Items)
+			assert.Nil(t, got.NextCursor)
+		})
+
 		t.Run("afterカーソルが復号されuserIDとkeyset境界がRepositoryへ渡る", func(t *testing.T) {
 			t.Parallel()
 

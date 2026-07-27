@@ -487,26 +487,32 @@ func Test_authenticator_keyFunc(t *testing.T) {
 
 		// alg allowlist(WithValidMethods)は第 1 層。ここでは allowlist をすり抜けて keyFunc に
 		// 到達した場合の第 2 層(鍵種別不一致)の防御だけを直接検証する（鍵混同攻撃対策の regression）。
+		// keyFunc は原因のみを持つ素の error を返し、ErrJWTAuthenticatorInvalidToken への正規化は
+		// Authenticate の境界一箇所に集約する。ここでは内側でセンチネルを付けない契約を固定する
+		// （境界での正規化は Test_authenticator_Authenticate の HS256 ケースで担保）。
 		t.Run("HS256(対称鍵)は allowlist をすり抜けても鍵種別不一致で拒否する", func(t *testing.T) {
 			t.Parallel()
 			got, err := a.keyFunc(context.Background())(&jwtlib.Token{Method: jwtlib.SigningMethodHS256})
 			assert.Nil(t, got)
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			assert.ErrorContains(t, err, "unexpected signing method type")
+			require.Error(t, err)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			assert.ErrorIs(t, err, errUnexpectedSigningMethod)
 		})
 
 		t.Run("ES256(ECDSA)は鍵種別不一致で拒否する", func(t *testing.T) {
 			t.Parallel()
 			got, err := a.keyFunc(context.Background())(&jwtlib.Token{Method: jwtlib.SigningMethodES256})
 			assert.Nil(t, got)
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.Error(t, err)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 		})
 
 		t.Run("alg=none は鍵種別不一致で拒否する", func(t *testing.T) {
 			t.Parallel()
 			got, err := a.keyFunc(context.Background())(&jwtlib.Token{Method: jwtlib.SigningMethodNone})
 			assert.Nil(t, got)
-			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+			require.Error(t, err)
+			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 		})
 	})
 }

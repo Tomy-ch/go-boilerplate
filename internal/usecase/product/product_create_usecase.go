@@ -91,7 +91,9 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 }
 
 // resolveRefs は、status / category の ID から名称を解決し、商品ステータス参照・カテゴリ参照を構築します。
-// マスタ不在は参照整合性破れ（errMissingStatus / errMissingCategory）としてサーバ内部エラーへ正規化します。
+// マスタ不在に加え、取得できたマスタの名称が参照不変条件（NewStatusRef / NewCategoryRef の検証）に
+// 反する場合も、いずれもサーバ側データ不整合による参照整合性破れ（errMissingStatus / errMissingCategory）
+// としてサーバ内部エラーへ正規化します。クライアント起因の入力エラーではないため 4xx へは露出させません。
 func (u *usecase) resolveRefs(
 	ctx context.Context, statusID, categoryID uuid.UUID,
 ) (product.StatusRef, product.CategoryRef, error) {
@@ -104,7 +106,7 @@ func (u *usecase) resolveRefs(
 	}
 	statusRef, err := product.NewStatusRef(statusEntity.ID(), statusEntity.Name())
 	if err != nil {
-		return product.StatusRef{}, product.CategoryRef{}, err
+		return product.StatusRef{}, product.CategoryRef{}, errMissingStatus
 	}
 
 	categoryEntity, err := u.categoryRepo.FindByID(ctx, categoryID)
@@ -116,7 +118,7 @@ func (u *usecase) resolveRefs(
 	}
 	categoryRef, err := product.NewCategoryRef(categoryEntity.ID(), categoryEntity.Name())
 	if err != nil {
-		return product.StatusRef{}, product.CategoryRef{}, err
+		return product.StatusRef{}, product.CategoryRef{}, errMissingCategory
 	}
 
 	return statusRef, categoryRef, nil

@@ -10,7 +10,6 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
-	"go-boilerplate/pkg/envutil"
 	"go-boilerplate/pkg/fs"
 
 	"github.com/spf13/cobra"
@@ -88,23 +87,10 @@ func openSeedDB(logger logging.Logger, database string) (driver.DatabaseDriver, 
 
 // newConfigForSeed は seed 用の設定を読み込み、CLI オプションの DB 名上書きを反映します。
 func newConfigForSeed(logger logging.Logger, database string) (*config.Config, error) {
-	// CLI 設定ロード時点では trace span は無いため context.Background() を用いる。
-	ctx := context.Background()
-	if err := config.Load(); err != nil {
-		logger.Named("dbSeedRun.configLoad").Error(ctx, "failed to load config", logging.Error(logging.ErrorKey, err))
-		return nil, err
-	}
-	if database != "" {
-		restore, oerr := envutil.Override("DB_NAME", database)
-		if oerr != nil {
-			logger.Named("dbSeedRun.setenv").Error(ctx, "failed to override DB_NAME env", logging.Error(logging.ErrorKey, oerr))
-			return nil, oerr
-		}
-		defer restore()
-	}
-	cfg, err := config.New()
+	cfg, err := newCLIConfig(database)
 	if err != nil {
-		logger.Named("dbSeedRun.configNew").Error(ctx, "failed to load config", logging.Error(logging.ErrorKey, err))
+		// CLI 設定ロード時点では trace span は無いため context.Background() を用いる。
+		logger.Named("dbSeedRun.config").Error(context.Background(), "failed to load config", logging.Error(logging.ErrorKey, err))
 		return nil, err
 	}
 	return cfg, nil

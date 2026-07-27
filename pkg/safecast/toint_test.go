@@ -47,3 +47,50 @@ func TestUintToInt(t *testing.T) {
 		})
 	})
 }
+
+func TestIntToInt32(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("0は0を返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt32(0)
+			require.NoError(t, err)
+			assert.Equal(t, int32(0), result)
+		})
+
+		t.Run("MaxInt32と等しい値はMaxInt32を返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt32(math.MaxInt32)
+			require.NoError(t, err)
+			assert.Equal(t, int32(math.MaxInt32), result)
+		})
+
+		t.Run("MinInt32と等しい値はMinInt32を返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt32(math.MinInt32)
+			require.NoError(t, err)
+			assert.Equal(t, int32(math.MinInt32), result)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("MaxInt32+1はオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt32(math.MaxInt32 + 1)
+			require.ErrorIs(t, err, ErrOverflow)
+			assert.Zero(t, result)
+		})
+
+		t.Run("MinInt32-1はオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt32(math.MinInt32 - 1)
+			require.ErrorIs(t, err, ErrOverflow)
+			assert.Zero(t, result)
+		})
+	})
+}

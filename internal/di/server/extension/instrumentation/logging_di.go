@@ -10,8 +10,7 @@ import (
 )
 
 // loggingPriority は、ロギングミドルウェアの適用順序です。
-// redmetrics(8) より内側（後）に置くことで、redmetrics の After フックが logging の After より
-// 先に発火し、計測した duration に logging の I/O が混入しないようにする。
+// 順序設計の根拠は README「Priority Order」を参照してください。
 const loggingPriority = 9
 
 // LoggingModule は、ロギング制御のミドルウェアを提供するfxモジュールを返します。

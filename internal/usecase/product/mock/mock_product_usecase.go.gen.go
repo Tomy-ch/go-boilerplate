@@ -74,10 +74,10 @@ func (mr *MockUsecaseMockRecorder) GetProduct(ctx, id any) *gomock.Call {
 }
 
 // ListProducts mocks base method.
-func (m *MockUsecase) ListProducts(ctx context.Context, params product.ListProductsParams) (*product.ProductListView, error) {
+func (m *MockUsecase) ListProducts(ctx context.Context, params product.ListProductsParams) (product.ProductListView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListProducts", ctx, params)
-	ret0, _ := ret[0].(*product.ProductListView)
+	ret0, _ := ret[0].(product.ProductListView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

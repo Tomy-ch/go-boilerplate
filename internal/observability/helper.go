@@ -84,10 +84,13 @@ func (tc *TraceContext) ParentSpanID() string {
 // 抑止します。
 func NewTraceExtractor(obsCfg *config.ObservabilityConfig) logging.TraceExtractor {
 	return func(ctx context.Context) (string, string, bool) {
-		if !ShouldLogWithSpan(ctx, obsCfg) {
+		if !obsCfg.Enabled() {
 			return "", "", false
 		}
-		tc := ExtractTraceContext(ctx)
-		return tc.TraceID(), tc.SpanID(), true
+		spanCtx := trace.SpanFromContext(ctx).SpanContext()
+		if !spanCtx.IsValid() {
+			return "", "", false
+		}
+		return spanCtx.TraceID().String(), spanCtx.SpanID().String(), true
 	}
 }

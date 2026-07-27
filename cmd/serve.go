@@ -45,7 +45,7 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	)
 	defer stop()
 
-	stopMetrics := server.ResolveMetricsStop(appCfg, func() (func(), func(context.Context)) {
+	stopMetrics := server.StartMetricsAndResolveStop(appCfg, func() (func(), func(context.Context)) {
 		return server.NewMetricsServer(mtcCfg, logger)
 	})
 

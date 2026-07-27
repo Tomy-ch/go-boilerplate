@@ -123,21 +123,25 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		}
 
 		resp, err = c.attempt(ctx, req, profile)
-		serverFault := isRetryableOutcome(resp, err)
-		br.record(!serverFault, c.clk.Now(), generation)
+		// retryable は retry 継続判定に加え breaker への計上も兼ねる（!retryable を成功として記録するため、
+		// 429 や応答未取得の transport 失敗は breaker 上の失敗、4xx は成功扱いになる）。
+		retryable := isRetryableOutcome(resp, err)
+		br.record(!retryable, c.clk.Now(), generation)
 
-		if !retrySafe || !serverFault {
+		if !retrySafe || !retryable {
 			return resp, err
 		}
 		if attempt == maxAttempts {
 			return resp, err
 		}
-		if !c.budget.tryConsume(req.downstream) {
-			return resp, err
-		}
 
+		// budget は「retry を実際に行うとき」だけ消費する。副作用のない overall デッドライン判定を
+		// 先に済ませ、待機で期限超過して retry しない場合にトークンを無駄消費しないようにする。
 		wait := retryWait(attempt, profile, resp, c.clk.Now())
 		if !c.canRetryWithin(overallDeadline, wait) {
+			return resp, err
+		}
+		if !c.budget.tryConsume(req.downstream) {
 			return resp, err
 		}
 
@@ -175,7 +179,12 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 
 	body, err := readBody(httpResp.Body, profile.MaxResponseBytes)
 	if err != nil {
-		return nil, xerrors.Join(apperror.ErrUnavailable, err)
+		// 上限超過は決定的失敗なのでそのまま返す（非 retry 化は isRetryableOutcome が担う）。
+		// それ以外は応答未完了の transport 失敗として正規化する（Do 失敗経路と一貫）。
+		if xerrors.Is(err, errResponseTooLarge) {
+			return nil, err
+		}
+		return nil, normalizeTransportError(err)
 	}
 
 	resp := &Response{

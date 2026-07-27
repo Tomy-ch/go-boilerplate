@@ -16,7 +16,7 @@ func TestHTTPRedMetricsMiddleware(t *testing.T) {
 	t.Parallel()
 
 	out := HTTPRedMetricsMiddleware(redmetrics.NewPrometheusRecorder())
-	assert.Equal(t, httpREDMetricsPriority, out.Middleware.Priority)
+	assert.Equal(t, httpRedMetricsPriority, out.Middleware.Priority)
 	assert.Equal(t, "httpredmetrics", out.Middleware.Name)
 	assert.NotNil(t, out.Middleware.Middleware)
 }

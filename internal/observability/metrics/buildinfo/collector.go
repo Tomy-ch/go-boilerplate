@@ -25,28 +25,25 @@ type Collector struct {
 
 // NewCollector は、ラベル値を結線時に一度だけ解決・正規化して Collector を生成します。
 func NewCollector(appCfg *config.ApplicationConfig, bi system.BuildInfo) *Collector {
+	// ラベル名と値を 1 箇所で対にし、位置依存の取り違え（version に revision 値が
+	// 入る等のサイレントな順序ずれ）を構造的に排除します。
+	pairs := []struct{ name, value string }{
+		{labelService, normalize(appCfg.Name())},
+		{labelEnvironment, normalize(appCfg.Env())},
+		{labelVersion, normalize(bi.Version())},
+		{labelRevision, normalize(bi.Revision())},
+		{labelBuildDate, normalize(bi.BuildDate())},
+		{labelGoVersion, normalize(runtime.Version())},
+	}
+	names := make([]string, len(pairs))
+	values := make([]string, len(pairs))
+	for i, p := range pairs {
+		names[i] = p.name
+		values[i] = p.value
+	}
 	return &Collector{
-		desc: prometheus.NewDesc(
-			metricName,
-			metricHelp,
-			[]string{
-				labelService,
-				labelEnvironment,
-				labelVersion,
-				labelRevision,
-				labelBuildDate,
-				labelGoVersion,
-			},
-			nil,
-		),
-		labelValues: []string{
-			normalize(appCfg.Name()),
-			normalize(appCfg.Env()),
-			normalize(bi.Version()),
-			normalize(bi.Revision()),
-			normalize(bi.BuildDate()),
-			normalize(runtime.Version()),
-		},
+		desc:        prometheus.NewDesc(metricName, metricHelp, names, nil),
+		labelValues: values,
 	}
 }
 

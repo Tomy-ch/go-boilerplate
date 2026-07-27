@@ -75,6 +75,11 @@ func (r *run) loop(parent context.Context) error {
 			r.onPollError(ctx, err)
 			continue
 		}
+		if len(msgs) == 0 {
+			// Half-open の probe が空振りしたので probing を解除し、次周で再 probe させる。
+			r.cb.abortProbe()
+			continue
+		}
 		r.dispatchAll(ctx, msgs)
 	}
 }
@@ -103,7 +108,18 @@ func (r *run) acquire(ctx context.Context) (int, bool) {
 		case phaseOpen:
 			continue // スロット待ちの間に Open へ遷移したので Receive せず再評価
 		case phaseHalfOpen:
-			return min(r.e.set.CircuitHalfOpenProbe, free), true
+			if r.cb.tryBeginProbe() {
+				return min(r.e.set.CircuitHalfOpenProbe, free), true
+			}
+			// 既に probe 投入済み（probing 中）。結果が確定して Closed/Open へ遷移するまで新規 Receive を
+			// 止め、in-flight 解放（probe 結果の到来で slotFreed が鳴る）で起床して再評価する。
+			select {
+			case <-ctx.Done():
+				return 0, false
+			case <-r.slotFreed:
+				r.e.markProgress() // probing 待機からの起床は進捗とみなし、probe 待ちの間の readiness stale を避ける
+			}
+			continue
 		default:
 			return min(r.e.set.BatchSize, free), true
 		}

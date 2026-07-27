@@ -2,6 +2,7 @@ package pay
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -140,6 +142,24 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			})
 			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
+
+		t.Run("レスポンス変換が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			view := payViewFixture(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			uc.EXPECT().PayPurchase(gomock.Any(), gomock.Any()).Return(view, nil)
+
+			userID := uuid.NewTestFromSalt(t, "hp_user_overflow")
+			_, err := s.PatchPurchasesPay(authnContext(t, userID), gen.PatchPurchasesPayRequestObject{
+				PurchaseId: uuid.NewTestFromSalt(t, "hp_purchase_overflow").ToPrimitive(),
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 	})
 }
 
@@ -153,7 +173,8 @@ func Test_toPayResponse(t *testing.T) {
 			t.Parallel()
 
 			view := payViewFixture(t)
-			r := toPayResponse(view)
+			r, err := toPayResponse(view)
+			require.NoError(t, err)
 			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
@@ -164,24 +185,28 @@ func Test_toPayResponse(t *testing.T) {
 			require.Len(t, r.Details, 1)
 			assert.Equal(t, view.Details[0].ProductID.ToPrimitive(), r.Details[0].ProductId)
 		})
+
+		t.Run("支払い日時がnilの場合はゼロ値へ倒す", func(t *testing.T) {
+			t.Parallel()
+
+			view := payViewFixture(t)
+			view.PaidAt = nil
+			r, err := toPayResponse(view)
+			require.NoError(t, err)
+			assert.Zero(t, r.PaidAt)
+		})
 	})
-}
 
-func Test_paidAt(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("非nilの場合は値を返す", func(t *testing.T) {
+		t.Run("数量がint32範囲を超える場合はエラーを返す", func(t *testing.T) {
 			t.Parallel()
-			tm := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
-			assert.Equal(t, tm, paidAt(&tm))
-		})
 
-		t.Run("nilの場合はゼロ値を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, time.Time{}, paidAt(nil))
+			view := payViewFixture(t)
+			view.Details[0].Quantity = math.MaxInt32 + 1
+			_, err := toPayResponse(view)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 	})
 }

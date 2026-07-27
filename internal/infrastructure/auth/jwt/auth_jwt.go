@@ -41,6 +41,10 @@ var (
 	ErrJWTAuthenticatorInvalidPublicKey = xerrors.New("jwt authenticator: invalid public key")
 	// ErrJWTAuthenticatorInvalidParams は、コンストラクタの必須パラメータが不足している場合の設定エラーです。
 	ErrJWTAuthenticatorInvalidParams = xerrors.New("jwt authenticator: invalid params")
+
+	// errUnexpectedSigningMethod は、署名方式が RSA 系（RS* / PS*）でない場合のエラーです。
+	// ErrJWTAuthenticatorInvalidToken への正規化は Authenticate の境界が行うため、ここでは内包しません。
+	errUnexpectedSigningMethod = xerrors.New("unexpected signing method type")
 )
 
 // Params は、JWT Authenticator の検証パラメータです。
@@ -141,13 +145,7 @@ func NewJWKS(params JWKSParams, client httpclient.Client) (authbd.Authenticator,
 		return nil, err
 	}
 
-	resolver := newJWKSResolver(client, urlFn, params.CacheTTL, params.Clock)
-	if len(params.AllowedAlgs) > 0 {
-		resolver.allowedAlgs = params.AllowedAlgs
-	}
-	if params.UnknownKidCooldown > 0 {
-		resolver.cooldown = params.UnknownKidCooldown
-	}
+	resolver := newJWKSResolver(client, urlFn, params.CacheTTL, params.AllowedAlgs, params.UnknownKidCooldown, params.Clock)
 	return NewWithKeyResolver(params.Params, resolver)
 }
 
@@ -244,6 +242,8 @@ func (a *authenticator) Authenticate(ctx context.Context, cred *authbd.Credentia
 // keyFunc は、ctx を捕捉した jwtlib.Keyfunc を返します。署名検証に用いる公開鍵を KeyResolver 経由で解決します。
 // 解決する鍵は RSA 公開鍵であるため、RSA 系（RS* / PS*）以外の署名方式は
 // alg allowlist をすり抜けても鍵種別不一致として拒否します（鍵混同の防御）。
+// keyFunc / KeyResolver が返すエラーは ParseWithClaims 経由で Authenticate の境界へ伝播し、
+// そこで ErrJWTAuthenticatorInvalidToken へ一括正規化するため、ここでは原因のみを持つ素の error を返します。
 func (a *authenticator) keyFunc(ctx context.Context) jwtlib.Keyfunc {
 	return func(token *jwtlib.Token) (any, error) {
 		switch token.Method.(type) {
@@ -251,7 +251,7 @@ func (a *authenticator) keyFunc(ctx context.Context) jwtlib.Keyfunc {
 			kid, _ := token.Header["kid"].(string)
 			return a.keyResolver.ResolveKey(ctx, kid)
 		default:
-			return nil, xerrors.Wrap(ErrJWTAuthenticatorInvalidToken, "unexpected signing method type")
+			return nil, errUnexpectedSigningMethod
 		}
 	}
 }

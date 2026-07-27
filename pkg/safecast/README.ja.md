@@ -10,6 +10,6 @@ Go の組み込み数値変換は、オーバーフロー時に黙って値を�
 
 ## 注意点
 
-値が `math.MaxInt` を超える場合に `ErrOverflow` を返します。
+値が変換先の型の範囲外になる場合に `ErrOverflow` を返します。
 
 エラーラップのため `pkg/xerrors` に依存します — これは `pkg/` → `pkg/` 依存で唯一許可された例外です（depguard `independent_pkg` で強制）。
