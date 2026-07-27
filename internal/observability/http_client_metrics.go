@@ -5,8 +5,6 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	"go-boilerplate/pkg/xerrors"
 )
 
 // httpClientMeterName は、外部 HTTP client substrate 計装の meter 名です。
@@ -78,16 +76,4 @@ func (m *HTTPClientMetrics) InFlightAdd(ctx context.Context, downstream string, 
 // SetBreakerState は、circuit breaker の状態を Downstream 別に記録します（0:closed 1:half-open 2:open）。
 func (m *HTTPClientMetrics) SetBreakerState(ctx context.Context, downstream string, state int64) {
 	m.breakerState.Record(ctx, state, metric.WithAttributes(attribute.String("downstream", downstream)))
-}
-
-func (b *meterBuilder) gauge(name, desc string) metric.Int64Gauge {
-	if b.err != nil {
-		return nil
-	}
-	g, err := b.m.Int64Gauge(name, metric.WithDescription(desc))
-	if err != nil {
-		b.err = xerrors.Wrap(err, name)
-		return nil
-	}
-	return g
 }
