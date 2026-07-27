@@ -109,6 +109,37 @@ type Users []*User
 - Package name should be the domain name
 - Constructor name should be `New`
 
+### Bundle attributes into a struct when positional arguments can be swapped
+
+A constructor or behavior method that takes **two or more parameters of the same type** — especially
+adjacent same-typed pointers such as `description *string` and `imagePath *string` — lets a call site
+swap them without the compiler or the linter noticing. Callers that fill the arguments mechanically in
+column order (a Repository rebuilding an entity from a DB row) are the most exposed: the swap
+silently persists each value under the wrong attribute, and tests stay green unless they assert two
+distinct values.
+
+Bundle the attributes into a value struct so every call site names each field, which turns a swap into
+a compile error. The same struct is shared by the creation, reconstruction, and update entry points so
+they cannot drift apart.
+
+```go
+// The attribute set shared by the constructor and the behavior methods.
+type Attributes struct {
+    Name        string
+    Description *string
+    // ...
+    ImagePath   *string
+}
+
+func New(id uuid.UUID, attrs Attributes) (*Entity, error)
+func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
+func (e *Entity) Update(attrs Attributes) error
+```
+
+This applies only where a swap is actually possible. When every parameter has a distinct type the
+compiler already rejects a swap, so keep the positional form — bundling every constructor by reflex is
+not the rule.
+
 ### Do not set outside constructor
 
 - Invariants are guaranteed in `New(...)`

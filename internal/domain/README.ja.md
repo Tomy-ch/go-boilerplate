@@ -102,6 +102,34 @@ type Users []*User
 - パッケージ名はドメイン名
 - コンストラクタは `New`
 
+### 位置引数を取り違えうる場合は属性を構造体へ束ねる
+
+**同型の引数を 2 つ以上取る**コンストラクタ・振る舞いメソッド（特に `description *string` と
+`imagePath *string` のように同型のポインタが並ぶもの）は、呼び出し側で入れ替えてもコンパイラにも
+lint にも検出されない。とりわけ引数を列順に機械的に流し込む呼び出し側（DB 行からエンティティを
+再構築する Repository）で危険で、取り違えると各値が誤った属性としてサイレントに永続化される。
+テストが異なる 2 値を検証していない限り green のまま通る。
+
+属性を値構造体へ束ね、各呼び出し側にフィールド名を書かせることで、取り違えをコンパイルエラーに
+できる。生成・再構築・更新の各入口が同じ構造体を共有するため、入口ごとの乖離も防げる。
+
+```go
+// コンストラクタと振る舞いメソッドが共有する属性一式。
+type Attributes struct {
+    Name        string
+    Description *string
+    // ...
+    ImagePath   *string
+}
+
+func New(id uuid.UUID, attrs Attributes) (*Entity, error)
+func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
+func (e *Entity) Update(attrs Attributes) error
+```
+
+適用するのは実際に取り違えが起こりうる箇所のみ。全引数の型が相異なる場合は入れ替えをコンパイラが
+弾くため位置引数のままでよく、あらゆるコンストラクタを反射的に構造体化するルールではない。
+
 ### コンストラクタ経由以外でセットしない
 
 - 不変条件は `New(...)` で保証
