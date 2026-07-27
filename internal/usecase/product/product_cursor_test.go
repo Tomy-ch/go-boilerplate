@@ -100,10 +100,16 @@ func Test_encodeProductCursor(t *testing.T) {
 			require.NoError(t, err)
 			category, err := product.NewCategoryRef(uuid.NewTestFromSalt(t, "encode_category"), "電子機器")
 			require.NoError(t, err)
-			last, err := product.New(
-				id, "商品名", ptr.To("説明"), mustPrice(t, "5.00"), 3, ptr.To(1),
-				status, category, ptr.To(publishedAt), nil,
-			)
+			last, err := product.New(id, product.Attributes{
+				Name:                  "商品名",
+				Description:           ptr.To("説明"),
+				Price:                 mustPrice(t, "5.00"),
+				Quantity:              3,
+				StockWarningThreshold: ptr.To(1),
+				Status:                status,
+				Category:              category,
+				PublishedAt:           ptr.To(publishedAt),
+			})
 			require.NoError(t, err)
 
 			encoded := encodeProductCursor(last)

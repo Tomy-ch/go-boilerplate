@@ -82,17 +82,17 @@ func (u *usecase) UpdateProduct(
 			return err
 		}
 
-		if err = entity.Update(
-			ptr.Deref(params.Name, entity.Name()),
-			params.Description.Resolve(entity.Description()),
-			ptr.Deref(price, entity.Price()),
-			ptr.Deref(params.Quantity, entity.Quantity()),
-			params.StockWarningThreshold.Resolve(entity.StockWarningThreshold()),
-			statusRef,
-			categoryRef,
-			params.PublishedAt.Resolve(entity.PublishedAt()),
-			params.ImagePath.Resolve(entity.ImagePath()),
-		); err != nil {
+		if err = entity.Update(product.Attributes{
+			Name:                  ptr.Deref(params.Name, entity.Name()),
+			Description:           params.Description.Resolve(entity.Description()),
+			Price:                 ptr.Deref(price, entity.Price()),
+			Quantity:              ptr.Deref(params.Quantity, entity.Quantity()),
+			StockWarningThreshold: params.StockWarningThreshold.Resolve(entity.StockWarningThreshold()),
+			Status:                statusRef,
+			Category:              categoryRef,
+			PublishedAt:           params.PublishedAt.Resolve(entity.PublishedAt()),
+			ImagePath:             params.ImagePath.Resolve(entity.ImagePath()),
+		}); err != nil {
 			return err
 		}
 

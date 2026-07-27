@@ -195,19 +195,17 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
 
-	entity, err := product.Reconstruct(
-		row.p.ID,
-		row.p.Name,
-		row.p.Description,
-		price,
-		int(row.p.Quantity),
-		int32PtrToIntPtr(row.p.StockWarningThreshold),
-		status,
-		category,
-		row.p.PublishedAt,
-		row.p.ImagePath,
-		int(row.p.LockVersion),
-	)
+	entity, err := product.Reconstruct(row.p.ID, product.Attributes{
+		Name:                  row.p.Name,
+		Description:           row.p.Description,
+		Price:                 price,
+		Quantity:              int(row.p.Quantity),
+		StockWarningThreshold: int32PtrToIntPtr(row.p.StockWarningThreshold),
+		Status:                status,
+		Category:              category,
+		PublishedAt:           row.p.PublishedAt,
+		ImagePath:             row.p.ImagePath,
+	}, int(row.p.LockVersion))
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}

@@ -256,6 +256,44 @@ Boundary clarifications (common misreads):
 - Do not pass sqlc generated types to Usecase / Domain
 - Always convert to Domain Entity or DTO
 
+## Function Signature Rules
+
+Layer-independent: this applies to constructors, behavior methods, usecase functions, and helpers alike.
+
+A function taking **two or more parameters of the same type** lets a call site swap them with no compile
+or lint error. Bundle those parameters into a value struct so every call site states which one each value
+is. This does not hand the check to the compiler — a same-typed field filled with the wrong value still
+compiles — but it removes the position-dependent binding that let adjacent same-typed arguments
+transpose, so what remains is a named mistake visible in review rather than an invisible ordering one.
+Keep call sites keyed: an unkeyed composite literal reintroduces the ordering dependency this removes.
+
+**When it applies.** The trigger is two or more parameters of one type in a single signature; compare the
+resolved types, since two distinct named types are distinct even when both wrap a string. Beyond the
+trigger, weigh how likely a swap is to survive undetected:
+
+- **Optional / pointer parameters** — `nil` is valid for either, so nothing at runtime rejects the swap.
+- **Free-form values** — no validation would reject the other parameter's value.
+- **A caller that maps positionally** — a Repository rebuilding an entity from a DB row, a seed, or any
+  code that fills arguments in column order rather than by meaning.
+- **Adjacent parameters** — neighbours are easier to transpose than distant ones.
+
+**When it does not apply.**
+
+- **Every parameter has a distinct type.** The compiler already rejects a swap, so keep the positional
+  form. This is the common case, and bundling by reflex is not the rule.
+- **A swap cannot survive construction.** The invariants reject the transposed values, so the mistake
+  fails fast instead of propagating.
+- **The signature is merely long.** Parameter count alone is not the criterion.
+
+**Choosing the remedy.** Give the parameters distinct types (a VO each) when the value deserves an
+invariant of its own — that removes the swap risk as a side effect. Bundle into a struct when a VO would
+add no invariant and the value really is a plain primitive. Either way, lock the mapping with a test that
+passes **distinct** values for the same-typed parameters and asserts each one — including at the
+persistence boundary, where field names still allow a wrong assignment.
+
+Per-layer application: `internal/domain/README.md` (attribute structs on entities),
+`internal/usecase/README.md` (Params DTO structs on usecase inputs).
+
 ## Package / Directory Naming Rules
 
 - Go package identifiers are a single lowercase word with **no underscores** (staticcheck ST1003).
@@ -329,6 +367,8 @@ upstream <https://go.dev/doc/comment>).
   - **Where it is called from** — call-site / registration notes coupled to organization: `// 〜の登録は di 層が担う`.
   - **Change history / development 経緯** — migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため` — these rot and belong in the PR / commit log.
   - **Restatement / tautology** — `// 内部表現は [16]byte`, `// User は User です`; or a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (an unresolved, legitimate TODO is not flagged).
+- **Volume is itself a cost.** A comment is re-read every time the code is, so length raises cognitive load even when each line is individually defensible. State the contract in as few words as it takes and stop. Two habits produce most of the bloat: spelling out a **repo-wide rationale** at every declaration that follows it (state it once here and let the code stay silent — link, do not repeat), and **narrating the mechanism** of a language feature the reader already knows. A comment the reader must work through to reach a fact the signature already gave them is a net loss.
+- **Idiomatic code needs no explanation.** The routine surface of building an API — an entity constructor, a Params / attribute struct, a Repository's row-to-entity conversion, a handler's bind → usecase → response, a table of validated fields — is conventional, and a reader fluent in this codebase already knows what it is for. Comment only what **departs** from the convention, or what the convention cannot express. This is **suppression, not elimination**: an exported declaration still carries its `Name`-prefixed contract, and a genuinely non-obvious Why still stays. Conversely, the further code sits from the idiom (a workaround, a deliberate deviation, a constraint imposed from outside), the more a comment earns its space.
 - **Correct outranks everything.** A doc comment that lies about or has drifted from the actual behavior is worse than no comment — the highest-priority finding.
 - **A non-obvious Why is the one addition godoc does not mandate but this repo keeps** — the reason behind a decision the code cannot convey (a load-bearing constraint / intent). OK: `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"). Include it only when genuinely non-obvious.
 - **Never invent a Why.** A Why is kept only when it is non-obvious **and** verifiable — derivable from the code, a design document, or the configuration. A rationale you cannot establish is a guess, and a plausible guess is worse than silence: a comment reads as authoritative, so a wrong Why misleads every later reader and survives longer than the code it explains. When a defensive branch or a magic value looks like it needs a reason you cannot pin down, leave the comment out and raise the gap in review instead of writing something that sounds right. Restating only the part you can verify is not a fix either — that lands back on **restatement**.
