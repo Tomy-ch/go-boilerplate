@@ -496,7 +496,7 @@ func Test_authenticator_keyFunc(t *testing.T) {
 			assert.Nil(t, got)
 			require.Error(t, err)
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			assert.ErrorContains(t, err, "unexpected signing method type")
+			assert.ErrorIs(t, err, errUnexpectedSigningMethod)
 		})
 
 		t.Run("ES256(ECDSA)は鍵種別不一致で拒否する", func(t *testing.T) {

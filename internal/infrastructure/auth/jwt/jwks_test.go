@@ -597,7 +597,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 
 			_, err := r.ResolveKey(context.Background(), "absent-kid")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "no matching JWKS key")
+			require.ErrorIs(t, err, errJWKSNoMatchingKID)
 		})
 
 		t.Run("直近取得が成功なら cooldown 中の未知 kid は再取得せず拒否する", func(t *testing.T) {
@@ -615,7 +615,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			require.NoError(t, err)
 			_, err = r.ResolveKey(context.Background(), "unknown-kid")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "no matching JWKS key")
+			require.ErrorIs(t, err, errJWKSNoMatchingKID)
 		})
 	})
 }
@@ -636,14 +636,14 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			// 初回の未知 kid は 1 度だけ再取得し、不在を確定して negative へ記録する。
 			_, err := r.ResolveKey(context.Background(), "absent-kid")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "no matching JWKS key")
+			require.ErrorIs(t, err, errJWKSNoMatchingKID)
 			require.Equal(t, 1, cc.count())
 
 			// cooldown を跨いでも、同一の不在確定 kid は再取得しない（negative cache が抑止する）。
 			clk.advance(jwksRefreshCooldown + time.Second)
 			_, err = r.ResolveKey(context.Background(), "absent-kid")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "kid known-absent")
+			require.ErrorIs(t, err, errJWKSKIDKnownAbsent)
 			assert.Equal(t, 1, cc.count(), "不在確定 kid は cooldown 経過後も再取得しない")
 		})
 
@@ -661,7 +661,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			// 現世代 {testKID} で kid-2 は不在確定（negative 記録）。
 			_, err := r.ResolveKey(context.Background(), "kid-2")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "no matching JWKS key")
+			require.ErrorIs(t, err, errJWKSNoMatchingKID)
 			require.Equal(t, 1, cc.count())
 
 			// cacheTTL 経過で世代が失効 → 再取得で鍵集合が変わり negative はクリアされ kid-2 を解決する。
@@ -692,7 +692,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			clk.advance(jwksRefreshCooldown / 2)
 			_, err = r.ResolveKey(context.Background(), "kid-2")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "no matching JWKS key")
+			require.ErrorIs(t, err, errJWKSNoMatchingKID)
 			require.Equal(t, 1, cc.count(), "cooldown 中は再取得しない")
 
 			// cooldown 明け（provider が kid-2 を追加）→ 再取得して kid-2 を解決できる（取りこぼさない）。
@@ -713,7 +713,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			// 初回取得で bogus kid の不在を確定（negative 記録）。
 			_, err := r.ResolveKey(context.Background(), "bogus")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "no matching JWKS key")
+			require.ErrorIs(t, err, errJWKSNoMatchingKID)
 			require.Equal(t, 1, cc.count())
 
 			// cacheTTL 経過で世代失効 → 同一集合を再取得（negative は破棄されない）。
@@ -725,7 +725,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			// 集合不変のため negative は保持され、bogus kid は再取得を誘発しない。
 			_, err = r.ResolveKey(context.Background(), "bogus")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-			require.ErrorContains(t, err, "kid known-absent")
+			require.ErrorIs(t, err, errJWKSKIDKnownAbsent)
 			assert.Equal(t, 2, cc.count(), "集合不変なら bogus kid の negative を保持し再取得しない")
 		})
 

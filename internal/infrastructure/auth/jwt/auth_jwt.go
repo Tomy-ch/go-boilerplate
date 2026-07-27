@@ -41,6 +41,10 @@ var (
 	ErrJWTAuthenticatorInvalidPublicKey = xerrors.New("jwt authenticator: invalid public key")
 	// ErrJWTAuthenticatorInvalidParams は、コンストラクタの必須パラメータが不足している場合の設定エラーです。
 	ErrJWTAuthenticatorInvalidParams = xerrors.New("jwt authenticator: invalid params")
+
+	// errUnexpectedSigningMethod は、署名方式が RSA 系（RS* / PS*）でない場合のエラーです。
+	// ErrJWTAuthenticatorInvalidToken への正規化は Authenticate の境界が行うため、ここでは内包しません。
+	errUnexpectedSigningMethod = xerrors.New("unexpected signing method type")
 )
 
 // Params は、JWT Authenticator の検証パラメータです。
@@ -247,7 +251,7 @@ func (a *authenticator) keyFunc(ctx context.Context) jwtlib.Keyfunc {
 			kid, _ := token.Header["kid"].(string)
 			return a.keyResolver.ResolveKey(ctx, kid)
 		default:
-			return nil, xerrors.New("unexpected signing method type")
+			return nil, errUnexpectedSigningMethod
 		}
 	}
 }
