@@ -38,6 +38,29 @@ func labelValue(m *dto.Metric, name string) string {
 	return ""
 }
 
+func Test_collectorFQNames(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("コレクタの FQName を含む descriptor 文字列を返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := prometheus.NewCounter(prometheus.CounterOpts{
+				Namespace: "rdb",
+				Subsystem: "query",
+				Name:      "test_total",
+				Help:      "テスト用カウンタ",
+			})
+
+			got := collectorFQNames(c)
+
+			assert.Contains(t, got, "rdb_query_test_total")
+		})
+	})
+}
+
 func TestNewQueryRecorder(t *testing.T) {
 	t.Parallel()
 
