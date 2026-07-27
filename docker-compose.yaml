@@ -97,19 +97,17 @@ services:
       - auth
 
   garage: # S3 互換オブジェクトストレージ（ローカル開発用。テストは gofakes3 in-process を使う）
-    build:
-      context: .
-      dockerfile: docker/garage/Dockerfile
-    entrypoint: ["/usr/local/bin/garage", "-c", "/etc/garage.toml", "server"]
+    image: dxflrs/garage:v1.0.1@sha256:a5706cf1f3d7b349ac5133ec59ad8181b709270b75e5f2fa7b3e1a5c07d67137
+    entrypoint: ["/garage", "-c", "/etc/garage.toml", "server"]
     ports:
       - "3900:3900" # S3 API
-      - "3903:3903" # Admin API
+      - "3902:3902" # Web API（匿名 read の公開配信）
     volumes:
       - ./docker/garage/garage.toml:/etc/garage.toml:ro
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
     healthcheck:
-      test: ["CMD", "/usr/local/bin/garage", "-c", "/etc/garage.toml", "status"]
+      test: ["CMD", "/garage", "-c", "/etc/garage.toml", "status"]
       interval: 2s
       timeout: 2s
       retries: 30
@@ -120,20 +118,20 @@ services:
 
   garage_init: # Garage の初期プロビジョニング（レイアウト / バケット / アクセスキー・冪等・one-shot）
     build:
-      context: .
-      dockerfile: docker/garage/Dockerfile
+      context: docker/garage
     entrypoint: ["/bin/sh", "/usr/local/bin/garage-init.sh"]
     depends_on:
       garage:
         condition: service_healthy
     volumes:
       - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      # イメージに焼かずマウントで渡し、再ビルド忘れで古いプロビジョニングが走るのを避ける。
+      - ./docker/garage/init.sh:/usr/local/bin/garage-init.sh:ro
       # garage server が生成したノード鍵を CLI が読むため meta を共有する。
       - garage_meta:/var/lib/garage/meta
-    environment:
-      OBJECT_STORAGE_BUCKET: gobp-local
-      OBJECT_STORAGE_ACCESS_KEY_ID: GK1234567890abcdef12345678
-      OBJECT_STORAGE_SECRET_ACCESS_KEY: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+    # バケット / アクセスキーは Go 側と同一の値でなければならないため、値を再掲せず env/.env を直接渡す。
+    env_file:
+      - env/.env
     restart: "no"
     profiles:
       - development

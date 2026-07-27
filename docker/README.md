@@ -55,8 +55,8 @@ The following table maps services defined in docker-compose.yaml to their corres
 |`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-4000}`|Mock OIDC auth server (JWT test provider)|
 |`database`|infra|`postgres:18.3-bookworm`|5432|PostgreSQL database|
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|Local observability stack (OTLP endpoint / Grafana) for o11y verification|
-|`garage`|infra|`docker/garage/Dockerfile`|3900, 3903|S3-compatible object storage (S3 API / Admin API)|
-|`garage_init`|infra|`docker/garage/Dockerfile`|-|One-shot provisioning of the garage layout / bucket / access key (idempotent)|
+|`garage`|infra|`dxflrs/garage`|3900, 3902|S3-compatible object storage (S3 API / Web API)|
+|`garage_init`|infra|`docker/garage/Dockerfile`|-|One-shot provisioning of the garage layout / bucket / access key / website access (idempotent)|
 
 The app layer host ports are the ones a DB slot shifts (`8080+N` / `4000+N` / `2345+N` / `6060+N`); the container-internal ports never move.
 
@@ -128,9 +128,31 @@ Container for the documentation portal.
 
 S3-compatible object storage for local development (tests use in-process gofakes3 instead).
 
-- Base image: `alpine:3.24` with the `garage` binary copied from `dxflrs/garage`. The official image is `scratch`-based and has no shell, so the provisioning script could not run in it
-- `garage.toml`: single-node configuration (`replication_factor = 1`, S3 API `3900` / Admin API `3903`), mounted read-only
-- `init.sh`: idempotent provisioning run by the `garage_init` service (layout assignment → bucket creation → fixed access key import → bucket permission). The values must match `OBJECT_STORAGE_*` in `env/.env`
+- The server itself runs the official `dxflrs/garage` image. `garage_init` is the one that needs a build: the official image is `scratch`-based and has no shell, so the provisioning script cannot run in it — the Dockerfile copies the `garage` binary onto `alpine:3.24` for that
+- `garage.toml`: single-node configuration (`replication_factor = 1`, S3 API `3900` / Web API `3902`), mounted read-only
+- `init.sh`: idempotent provisioning run by the `garage_init` service (layout assignment → bucket creation → fixed access key import → bucket permission → website permission), mounted the same way so that editing it needs no image rebuild. It reads `OBJECT_STORAGE_*` straight from `env/.env` (passed via `env_file`) and fails immediately if one is unset, so the bucket and key can never drift from what the Go side connects with
+
+### Public delivery (anonymous read)
+
+The Web API (`3902`, Garage's `[s3_web]`) serves bucket objects **without credentials**, so a browser can load
+product images straight from the object storage, the way a CDN fronts S3 in production. Writing still goes through
+`POST /v1/products/images` (BearerAuth + admin); only reading is open.
+
+- Delivery origin: `http://gobp-local.web.garage.localhost:3902` — an object is `<origin>/<object key>`, e.g.
+  `http://gobp-local.web.garage.localhost:3902/products/{uuid}.png`. This is the value the frontend puts in its
+  media-origin setting; the API never returns a full URL, only the object key (`imagePath`)
+- **Virtual-host addressing only.** Garage's web endpoint resolves the bucket from the `Host` header
+  (`<bucket>.<root_domain>` or `<bucket>`), so path style (`localhost:3902/<bucket>/<key>`) does not work.
+  macOS and the major browsers resolve `*.localhost` to `127.0.0.1` on their own, so no `/etc/hosts` entry is
+  needed. From inside a glibc Linux container, which does not, either send the header explicitly
+  (`curl -H 'Host: gobp-local' http://<host>:3902/products/...`) or add `127.0.0.1 gobp-local.web.garage.localhost`
+  to `/etc/hosts`
+- Listing stays closed: the web endpoint never lists, and an anonymous `ListObjects` against the S3 API is
+  unsigned and rejected. Object keys carry a UUIDv7, whose ~74 random bits put enumeration out of reach —
+  but note that the remaining bits are a millisecond timestamp, so a key is opaque, not secret. Treat
+  anything in this bucket as world-readable to whoever holds the key
+- **Website permission is per bucket, not per object** — every object in `gobp-local` becomes anonymously
+  readable. The bucket holds nothing but product images; storing non-public objects would require a second bucket
 
 ## mock-auth-server
 

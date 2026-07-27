@@ -5,8 +5,11 @@ import (
 
 	"go-boilerplate/internal/cli/seed"
 	"go-boilerplate/internal/config"
+	objectstorageinfra "go-boilerplate/internal/infrastructure/objectstorage"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	"go-boilerplate/pkg/envutil"
 	"go-boilerplate/pkg/fs"
 
@@ -36,7 +39,38 @@ func newDBSeedCommand() *cobra.Command {
 func dbSeedRun(database string) error {
 	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 
-	return seed.RunDBSeed(logger, fs.OS{}, database, openSeedDB)
+	if err := seed.RunDBSeed(logger, fs.OS{}, database, openSeedDB); err != nil {
+		return err
+	}
+
+	endpoint, put, err := openSeedObjectStorage(logger, database)
+	if err != nil {
+		return err
+	}
+
+	return seed.RunObjectSeed(logger, fs.OS{}, endpoint, put)
+}
+
+// openSeedObjectStorage は、seed 用設定を読み込みオブジェクトストレージ実装を組み立てる実依存の口です。
+// 併せて接続先エンドポイントを返し、実環境のバケットへ投入しない判断を呼び出し先へ委ねます。
+func openSeedObjectStorage(logger logging.Logger, database string) (string, seed.PutObjectFunc, error) {
+	cfg, err := newConfigForSeed(logger, database)
+	if err != nil {
+		return "", nil, err
+	}
+	osCfg := config.NewObjectStorageConfig(cfg)
+	storage := objectstorageinfra.New(osCfg, observability.NewDisabledTracerFactory())
+
+	put := func(ctx context.Context, obj seed.ObjectToPut) error {
+		_, perr := storage.Put(ctx, objectstorage.PutObject{
+			Key:         obj.Key,
+			Body:        obj.Body,
+			ContentType: obj.ContentType,
+		})
+		return perr
+	}
+
+	return osCfg.Endpoint(), put, nil
 }
 
 // openSeedDB は、seed 用設定を読み込み DB 接続を確立する実依存の口です。

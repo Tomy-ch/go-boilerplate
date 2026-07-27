@@ -66,13 +66,19 @@ func (s *storage) Put(ctx context.Context, obj boundary.PutObject) (boundary.Pat
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	_, err := s.client.PutObject(ctx, &awss3.PutObjectInput{
+	input := &awss3.PutObjectInput{
 		Bucket:        aws.String(s.bucket),
 		Key:           aws.String(obj.Key),
 		Body:          bytes.NewReader(obj.Body),
 		ContentType:   aws.String(obj.ContentType),
 		ContentLength: aws.Int64(int64(len(obj.Body))),
-	})
+	}
+	// 空の Cache-Control ヘッダを送るとキャッシュ指示の無い状態と区別できないため、未指定のままにする。
+	if obj.CacheControl != "" {
+		input.CacheControl = aws.String(obj.CacheControl)
+	}
+
+	_, err := s.client.PutObject(ctx, input)
 	if err != nil {
 		return "", xerrors.Wrap(apperror.ErrUnavailable, "objectstorage put failed: "+err.Error())
 	}

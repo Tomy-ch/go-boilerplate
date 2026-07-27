@@ -22,7 +22,7 @@ graph TB
   subgraph infra["infra layer - project gobp-shared (one instance for all checkouts)"]
     db[("database<br/>PostgreSQL 18<br/>:5432 fixed")]
     obs["observability<br/>otel-lgtm<br/>Grafana :3000 / OTLP :4317,:4318"]
-    gar["garage (+ garage_init)<br/>S3-compatible storage<br/>:3900 / :3903"]
+    gar["garage (+ garage_init)<br/>S3-compatible storage<br/>:3900 / :3902"]
     docs["docs_viewer :7001"]
     sql["sql_editor :7000"]
     er["er_diagram_generator :5433"]
@@ -81,8 +81,8 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-4000}:4000` (internal 4000) | Mock OIDC auth server (JWT test provider); the JWKS-verification counterpart of the RS side |
 | `database` | infra | `postgres:18.3-bookworm` | `5432` fixed | A **single** instance shared by all checkouts (parallelism is by DB name — see the slot ring below) |
 | `observability` | infra | `grafana/otel-lgtm` | `3000` (Grafana UI) / `4317` (OTLP gRPC) / `4318` (OTLP HTTP) / `3200` (Tempo API) | Sink for traces / metrics / logs of every checkout. profile: `development` |
-| `garage` | infra | build `docker/garage/Dockerfile` | `3900` (S3 API) / `3903` (Admin API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead) |
-| `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key |
+| `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |
+| `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key / website access |
 | `docs_viewer` | infra | build `docker/document/Dockerfile` | `7001:80` | Development documentation viewer |
 | `sql_editor` | infra | `sosedoff/pgweb` | `7000:8081` | Browser DB client |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `5433:3000` | ER diagram generation |

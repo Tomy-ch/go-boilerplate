@@ -148,9 +148,8 @@ export const SAMPLE_DOMAINS = {
 
       "internal/domain/product",
       "internal/usecase/product",
-      "internal/usecase/boundary/objectstorage",
-      "internal/infrastructure/objectstorage",
-      "internal/di/module/objectstorage.go",
+      "storage/seed/products",
+
       "internal/infrastructure/rdb/repository/product",
       "internal/usecase/product/ranking",
       "internal/infrastructure/rdb/query_service/product",

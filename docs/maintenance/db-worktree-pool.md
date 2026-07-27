@@ -6,7 +6,7 @@ The mechanism that lets several git worktrees (and the main checkout) use a **si
 in parallel without colliding. Compose services are split into two layers:
 
 - **infra layer** — the services that can only run on fixed ports (`database` 5432 / `observability`
-  3000, 4317, 4318, 3200 / `garage` 3900, 3903). They live in the fixed compose project
+  3000, 4317, 4318, 3200 / `garage` 3900, 3902). They live in the fixed compose project
   `gobp-shared`, with **one instance for all checkouts**.
 - **app layer** — `api_server` / `mock_auth_server`, which every checkout needs for itself. They are
   split into a per-checkout compose project and started in parallel on shifted host ports.
@@ -144,7 +144,10 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   their connections.
 - **Object storage is shared**: the `garage` bucket is common to every checkout (unlike a database it
   has no schema, so it does not break across branches). Point a branch at a different
-  `OBJECT_STORAGE_BUCKET` to isolate it.
+  `OBJECT_STORAGE_BUCKET` to isolate it. The access key is shared the same way — `garage_init` imports
+  it under one fixed key name from the running checkout's `env/.env`, so a branch that edits
+  `OBJECT_STORAGE_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` changes what every other checkout authenticates
+  with. Isolate by bucket, not by credential.
 - `sql_editor` / `docs_viewer` have been moved into the 7000 range so they do not collide with the
   API band 8080–8087.
 - The wiring spans `docker/`, `internal/cli/dbslot`, and `.makefiles/`, so update this document

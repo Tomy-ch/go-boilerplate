@@ -28,3 +28,13 @@ db-seed
 - Seed files are loaded from the `database/seed` directory.
 - If a target table does not exist, the corresponding seed file is skipped and a warning is logged.
 - Always verify seed data contents before running against shared environments.
+
+### Seed objects
+
+After the SQL files, the command uploads everything under `storage/seed`, deriving each object key from
+the path relative to that directory — see [`storage/README.md`](../../../storage/README.md). It only
+uploads; a column that holds an object key is written by the SQL, like any other column.
+
+Nothing is uploaded when the directory holds no file, or when `OBJECT_STORAGE_ENDPOINT` is empty. An
+empty endpoint means SDK-default resolution, i.e. a real AWS S3 account, and seed content must never be
+pushed there — which is also why CI, whose endpoint is empty, only ever seeds the database.
