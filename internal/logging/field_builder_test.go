@@ -325,7 +325,7 @@ func fieldKeys(fs []*Field) []string {
 	return keys
 }
 
-func Test_buildCompactQuery(t *testing.T) {
+func Test_logFieldBuilder_buildCompactQuery(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)

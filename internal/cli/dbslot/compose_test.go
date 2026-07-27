@@ -112,3 +112,27 @@ func TestExecCompose_run(t *testing.T) { //nolint:paralleltest // stubDocker が
 		})
 	})
 }
+
+func TestExecCompose_output(t *testing.T) { //nolint:paralleltest // stubDockerStdout が t.Setenv を使うため並列化不可
+	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("docker compose の標準出力をそのまま返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			stubDockerStdout(t, "abc123\ndef456\n", 0)
+
+			got, err := ExecCompose{}.output(context.Background(), "gobp-wt-1", "ps", "-q")
+
+			require.NoError(t, err)
+			assert.Equal(t, "abc123\ndef456\n", got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("docker が非 0 終了なら出力を捨ててエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			stubDockerStdout(t, "partial output", 1)
+
+			got, err := ExecCompose{}.output(context.Background(), "gobp-wt-1", "ps")
+
+			require.Error(t, err)
+			assert.Empty(t, got) // 失敗時は途中出力を呼び出し元へ渡さない
+		})
+	})
+}
