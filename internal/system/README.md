@@ -139,18 +139,20 @@ Characteristics
 - Does not depend on Infrastructure
 - Accessible from the entire application
 
-## Testing
+## Test Strategy
 
-Since `BuildInfo` is an interface, mocks can be used in tests.
+The values this package exposes are injected at link time (`-ldflags`), so a test binary is built **without** them. That is the defining constraint: the unset case is the one every test actually runs under, and it must be a documented value rather than an accident.
 
-`go:generate mockgen`
+- **Unset (test-binary) values** — `NewBuildInfo` with no injected values yields the documented placeholder for each field, not an empty string that silently reaches `/version` or a build-info metric. Assert the placeholder explicitly.
+- **Injected values** — each getter returns the value it was constructed with, one `TestXxx` per accessor (per `docs/testing-conventions.md` §1; do not fold them into a single accessor test).
+- **Consumers mock the interface** — `BuildInfo` is an interface with a `go:generate mockgen` directive, so packages that merely read build info use the generated mock rather than depending on link-time injection:
 
-Example
+  ```go
+  mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
+  mockBuildInfo.EXPECT().Version().Return("1.0.0")
+  ```
 
-```go
-mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
-mockBuildInfo.EXPECT().Version().Return("1.0.0")
-```
+The build-info **metric** built on top of this lives in `internal/observability/metrics/buildinfo` and is tested there, not here.
 
 ## Security Considerations
 
