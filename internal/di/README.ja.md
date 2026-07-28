@@ -236,10 +236,17 @@ internal/di
   で登録したときにのみ結線され、depth/DLQ メトリクスは `queuemetrics.Target` を
   `provideQueueStatsTargets` で登録したときのみ出力されます。既定の worker グラフは
   adapter なしで動作します。
-- **環境ゲート付きのスタブ** — `authzModule` は allow-all の `authz` authorizer を
-  local / CI / test のときだけ結線し、本番相当の環境では **fail closed**（エラーを返す）
-  として、実際の RBAC / ポリシー adapter への差し替えを強制します。`core.AuthnModule`
-  も同じ fail-closed パターンに従います。
+- **環境ゲート付きのスタブ** — `authzModule` と `core.AuthnModule` は環境ごとに実装を
+  選択し、自身の `switch` が名前を挙げていない環境に対しては **fail closed**（エラーを
+  返す）ことで、未設定の環境が寛容なデフォルトのまま起動するのを防ぎます。どの環境を
+  名前で挙げるかは両者で異なり、サンプル API の有無で境界が動きます。サンプルがある
+  状態では `provideAuthorizer` は CI / test に allow-all を、local から production には
+  `user_roles` authorizer を結線します。`make setup-remove-sample-api` 後は `user_roles`
+  の case が除かれ、local / CI / test が allow-all、本番相当の環境は実際の RBAC /
+  ポリシー adapter を結線するまで fail-closed になります。`core.provideAuthenticator`
+  はこれとは独立にゲートされ、CI / test はスタブ、local / development は JWKS
+  authenticator、staging / production は fail-closed です。共通の境界を前提とせず
+  `switch` を読んでください。
 
 ## Do / Don't
 

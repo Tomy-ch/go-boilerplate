@@ -315,3 +315,12 @@ run the actual binary through `SetUpConfig`).
 ## Notes
 
 - For security reasons, do not hardcode sensitive information (e.g., API keys or passwords) in code. Manage them via environment variables.
+
+## Test Strategy
+
+Config is the one place that reads the process environment and the filesystem, so its tests are the exception to the parallel mandate rather than the rule.
+
+- **Per-validator boundaries** — each `validate*` function has its own `TestXxx` asserting both sides of every rule it enforces (accepted value and the specific rejection). A validator tested only on the happy path leaves a misconfiguration to be discovered at runtime, which is what these functions exist to prevent.
+- **Env / CWD mutation is serial by necessity** — subjects that call `t.Setenv` / `t.Chdir` (config loading and the test-support helpers such as `EnsureRepoRootAndEnv`) cannot call `t.Parallel()`. Mark them `//nolint:paralleltest` with the one-line reason, per `docs/testing-conventions.md` §3. Do not work around this by mutating `os.Environ` directly.
+- **Loading precedence** — when a value can come from more than one source, assert which one wins, not merely that a value was produced.
+- **Test doubles are the ones this package ships** — other layers consume `MockConfigForTest(t)` and the `Set*(t, …)` setters rather than constructing a `Config` by hand; the setters restore via `t.Cleanup`, and that restoration is itself part of the contract to assert. See [Test Support](#test-support) for the inventory — do not duplicate it here.

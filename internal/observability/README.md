@@ -532,3 +532,15 @@ Do not include the following in trace information.
 - private keys
 
 If necessary, apply **masking processing**.
+
+## Test Strategy
+
+Telemetry has no user-visible behavior, so "it did not crash" is not a result. Tests assert the emitted signal itself, using the OTel SDK's in-memory plumbing rather than an exporter or a collector.
+
+- **Metrics through a manual reader** — build an `sdkmetric.NewMeterProvider` with `sdkmetric.NewManualReader`, exercise the subject, then collect and assert over `metricdata`: the instrument name, the data point value, and the attribute set. Asserting only that recording did not error leaves a wrong metric name or a wrong label undetected, and those are the failures that break a dashboard.
+- **Spans through a syncing tracer provider** — build an `sdktrace.NewTracerProvider` with `sdktrace.WithSyncer` over an in-memory recorder and assert the span name, attributes, and parent linkage on the resulting `sdktrace.ReadOnlySpan`.
+- **Attribute cardinality is part of the contract** — where the design bounds a label set, assert that an unbounded input (a raw path, an ID) does not reach the attribute. A cardinality regression is invisible locally and expensive in production.
+- **Redaction vs propagation** — the outbound HTTP transport redacts secrets from the span while leaving the actual request untouched. Assert **both** halves in the same test; asserting only the redaction cannot distinguish it from having mangled the request.
+- **Conditional propagator** — the two directions are not symmetric, and the asymmetry is the contract: `Inject` branches on the flag (suppressed only when it is explicitly false) and needs both sides asserted, because the suppressed branch is the one that silently drops trace continuity; `Extract` delegates unconditionally, so assert the delegation rather than inventing a second branch for it.
+
+Two neighbouring sections govern the rest and must not be duplicated here: the helpers this package offers other layers are in [Test Support](#test-support), and the approved uncovered branches — plus the sign-off rule for adding one — are in [Test coverage exception (extraordinary measure)](#test-coverage-exception-extraordinary-measure).

@@ -23,7 +23,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 - `docs/testing-conventions.md` — **section 10（意味的品質のバー / アンチパターン）を含む**。 Lens 3 と Lens 4 軸B（意味網羅）の SSOT であり、`scaffold-test` と共有する。
 - `.claude/skills/scaffold-test/SKILL.md` — 生成側 canonical ルール（parallel 必須 / `t.Run` per subcase / 正常系・異常系 グルーピング / 日本語命名 / require vs assert / mock 方針 / for-loop 方針 / 1 関数 = 1 `TestXxx`）。本スキルはこれらに対してレビューする（重複定義しない）。
-- 層 README。**対象テストファイルから上位へ歩き、Test Strategy 節を持つ最も近い祖先 `README.md`** を採用する（見出しの表記は README ごとに揺れる — `Test Strategy` / `Test strategy` / `Testing strategy` / `Testing Strategy` — 厳密な文字列一致ではなく意味で判定すること。`scaffold-test/SKILL.md` と同じ規則であり、両者は歩調を合わせる）。節を持たないより近い README も、そのパッケージ固有の規約のために併読する。下記は現時点で walk が着地する先のスナップショットであり固定マップではない。一覧に無いパスは walk の対象であって、対象外ではない。
+- 層 README。**対象テストファイルから上位へ歩き、Test Strategy 節を持つ最も近い祖先 `README.md`** を採用する（見出しの表記は README ごとに揺れる — `Test Strategy` / `Test strategy` / `Testing strategy` / `Testing Strategy` / `Testing Policy` — ので意味で判定すること。その層のテスト戦略そのものであれば名前が何であれ該当し、他のドキュメントが名前で参照している節をこの規則に合わせて改名するのは誤った直し方である。`scaffold-test/SKILL.md` と同じ規則であり、両者は歩調を合わせる）。節を持たないより近い README も、そのパッケージ固有の規約のために併読する。下記は現時点で walk が着地する先のスナップショットであり固定マップではない。一覧に無いパスは walk の対象であって、対象外ではない。
   - `internal/domain/README.md`（Testing strategy）
   - `internal/usecase/README.md`（Testing Strategy）
   - `internal/controller/handler/README.md`（Test Strategy）はハンドラ用。`internal/controller/outbox/**` / `internal/controller/worker/**` の解決先は `internal/controller/README.md`（Test Strategy、層の基準）であり、HTTP 側ではなくループ駆動のサブセクションを読むこと
@@ -31,6 +31,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
   - `internal/controller/server/README.md`（Test Strategy）
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md`（Test Strategy）
   - `internal/di/README.md`（Test Strategy、層の基準）— 配下の対象では `internal/di/module/README.md` / `internal/di/server/hook/README.md` が優先される
+  - `internal/apperror/` / `internal/cli/` / `internal/config/` / `internal/logging/` / `internal/observability/` / `internal/system/` — 横断的な基盤。各パッケージルートに自前の節を持つ
   - `pkg/**` については `scaffold-test/SKILL.md` 参照 — `pkg/README.md` は意図的に Test Strategy 節を持たず、sibling tests + `pkg/<name>/README.md` から観点派生。**pkg では gap 警告を出さない**。
 - 対象 `*_test.go`。
 - 対応する subject ソース (`<subject>.go` / `<subject>_test.go` 対）— コード起点 2 レンズ（Lens 4 分岐×意味 / Lens 5 シンボル網羅）で「何が test されていないか」を判定するために必須。
