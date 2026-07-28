@@ -257,6 +257,7 @@ Points:
 |---|---|---|
 |`MockConfigForTest(t)`|`config_testing_mock.go`|Create a test `*Config` with default values for all fields|
 |`NewTestLocation(t)`|`test_kit.go`|Create a test timezone `*time.Location`|
+|`ResolvedAuthIssuer(t)`|`test_kit.go`|Resolve `AUTH_ISSUER` for this run (runtime env first, embedded `env/.env` as fallback)|
 |`EnsureRepoRootAndEnv(t, env)`|`test_kit.go`|Move to repo root and set ENV environment variable|
 
 ### Test Setters

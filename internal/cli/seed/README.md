@@ -29,6 +29,14 @@ db-seed
 - If a target table does not exist, the corresponding seed file is skipped and a warning is logged.
 - Always verify seed data contents before running against shared environments.
 
+### Placeholders
+
+Before executing a file, the command expands every `${NAME}` it contains — see
+[`database/seed/README.md`](../../../database/seed/README.md). The runner substitutes only the names it
+is handed, so which environment-dependent value exists is decided here, at the command (`AUTH_ISSUER` =
+the JWT issuer read from the configuration), not by the runner. A placeholder with no value — undefined
+or empty — aborts the run rather than being inserted as an empty string.
+
 ### Seed objects
 
 After the SQL files, the command uploads everything under `storage/seed`, deriving each object key from
