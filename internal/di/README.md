@@ -231,10 +231,19 @@ are opt-in through the Optional seams above.
   registered via `provideWorkers`, and its depth/DLQ metrics only when a
   `queuemetrics.Target` is registered via `provideQueueStatsTargets`. The
   default worker graph runs with no adapter.
-- **Environment-gated stubs** — `authzModule` wires the allow-all `authz`
-  authorizer only for local / CI / test and **fails closed** (returns an error)
-  in production-like environments, forcing a real RBAC / policy adapter to be
-  wired instead. `core.AuthnModule` follows the same fail-closed pattern.
+- **Environment-gated stubs** — `authzModule` and `core.AuthnModule` select an
+  implementation per environment and **fail closed** (return an error) for any
+  environment their `switch` does not name, so an unconfigured environment
+  cannot start with a permissive default. Which environments are named differs
+  between the two, and the sample API moves the boundary: with the sample
+  present, `provideAuthorizer` wires the allow-all authorizer for CI / test and
+  the `user_roles` authorizer for local through production; after
+  `make setup-remove-sample-api` the `user_roles` case is removed, leaving
+  local / CI / test on allow-all and every production-like environment
+  fail-closed until a real RBAC / policy adapter is wired.
+  `core.provideAuthenticator` is gated independently: CI / test get the stub,
+  local / development get the JWKS authenticator, and staging / production are
+  fail-closed. Read the `switch` rather than assuming a shared boundary.
 
 ## Do / Don't
 
