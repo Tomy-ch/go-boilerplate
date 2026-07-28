@@ -57,6 +57,8 @@ Two steps (opt-in; an endpoint without the steps is unchanged):
    })
    ```
 
+`T` is stored as JSON and rebuilt from JSON on replay, so **every field of `T` must survive a JSON round-trip**. A value object with only unexported fields and no `MarshalJSON` silently degrades to `{}` and replays as a zero value — `pkg/uuid` and `pkg/decimal` implement the pair for this reason.
+
 `PostUsers` (`internal/controller/handler/v1/users/v1_users_handler.go`) is the reference adoption. The middleware only triggers when the `Idempotency-Key` header is present; without it `Run` just runs `businessFn` (non-breaking).
 
 ## 4. Client contract
