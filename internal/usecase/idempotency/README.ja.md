@@ -57,6 +57,8 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
    })
    ```
 
+`T` は JSON として保存され replay 時に JSON から復元されるため、**`T` の全フィールドが JSON 往復に耐える必要があります**。非公開フィールドのみを持ち `MarshalJSON` を実装しない値オブジェクトは黙って `{}` へ縮退し、replay ではゼロ値になります（`pkg/uuid` / `pkg/decimal` が対を実装しているのはこのためです）。
+
 `PostUsers`（`internal/controller/handler/v1/users/v1_users_handler.go`）が参照採用です。middleware は `Idempotency-Key` ヘッダがある時だけ反応し、無ければ `Run` は `businessFn` を素通し実行します（非破壊）。
 
 ## 4. クライアント向け契約

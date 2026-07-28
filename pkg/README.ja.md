@@ -227,6 +227,7 @@ UUIDv7 を生成し、データベース連携（`sql.Scanner` / `driver.Valuer`
 |`Bytes`|生の `[16]byte` を返す|
 |`ToPtr`|値へのポインタを返す|
 |`ToPrimitive` / `FromPrimitive`|`github.com/google/uuid` との相互変換（sqlc 連携など）|
+|`MarshalJSON` / `UnmarshalJSON`|JSON 文字列のワイヤ表現（文字列以外は拒否、`null` は no-op）|
 |`Scan` / `Value`|DB 連携用インターフェース実装|
 
 ### xerrors

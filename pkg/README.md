@@ -231,6 +231,7 @@ Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valu
 |`Bytes`|Return the raw `[16]byte`|
 |`ToPtr`|Return a pointer to the value|
 |`ToPrimitive` / `FromPrimitive`|Convert to / from `github.com/google/uuid` (e.g. sqlc integration)|
+|`MarshalJSON` / `UnmarshalJSON`|JSON string wire representation (rejects a non-string value; `null` is a no-op)|
 |`Scan` / `Value`|DB integration interface implementation|
 
 ### xerrors

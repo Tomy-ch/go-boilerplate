@@ -2,6 +2,7 @@ package outbound
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"go-boilerplate/internal/config"
@@ -34,37 +35,50 @@ func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	assert.NotNil(t, e.HTTPErrorHandler)
 }
 
+// newDetailOptInSpec は、GET /probe の 400 レスポンスだけが details を opt-in した最小 spec を返します。
+func newDetailOptInSpec(t *testing.T) *openapi3.T {
+	t.Helper()
+
+	op := openapi3.NewOperation()
+	op.OperationID = "Probe"
+	op.Responses = openapi3.NewResponses(openapi3.WithStatus(http.StatusBadRequest, &openapi3.ResponseRef{
+		Value: openapi3.NewResponse().WithJSONSchema(
+			openapi3.NewObjectSchema().WithProperty("details", openapi3.NewStringSchema()),
+		),
+	}))
+
+	spec := &openapi3.T{Paths: openapi3.NewPaths()}
+	spec.Paths.Set("/probe", &openapi3.PathItem{Get: op})
+	return spec
+}
+
 func Test_provideDetailPolicy(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("解析可能な spec から DetailPolicy を構築して返す", func(t *testing.T) {
+		t.Run("引数の spec から構築した DetailPolicy を返す", func(t *testing.T) {
 			t.Parallel()
-
-			spec := &openapi3.T{Paths: openapi3.NewPaths()}
-			spec.Paths.Set("/v1/things", &openapi3.PathItem{Get: openapi3.NewOperation()})
-
-			policy, err := provideDetailPolicy(spec)
-
+			policy, err := provideDetailPolicy(newDetailOptInSpec(t))
 			require.NoError(t, err)
-			assert.NotNil(t, policy)
+			require.NotNil(t, policy)
+
+			// /probe は実 spec に存在しないため、引数を無視して別の spec を使う実装では false になる。
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/probe", nil)
+			assert.True(t, policy.Allows(req))
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("router 構築に失敗する spec ではエラーを伝播し fx の起動を中断させる", func(t *testing.T) {
+		t.Run("router 構築に失敗する spec の場合、エラーを握り潰さず返す", func(t *testing.T) {
 			t.Parallel()
-
-			// gorilla/mux がコンパイルできない正規表現をパス変数に含む spec は router 構築に失敗する。
 			spec := &openapi3.T{Paths: openapi3.NewPaths()}
 			spec.Paths.Set("/{id:(}", &openapi3.PathItem{Get: openapi3.NewOperation()})
 
 			policy, err := provideDetailPolicy(spec)
-
 			require.Error(t, err)
 			assert.Nil(t, policy)
 		})
