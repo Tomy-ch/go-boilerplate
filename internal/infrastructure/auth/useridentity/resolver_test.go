@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
@@ -14,11 +15,14 @@ import (
 )
 
 const (
-	testIssuerJWT  = "http://localhost:4000"
 	testIssuerMock = "mock"
 	// johnUserID は JWT/mock 両 issuer に登録された未削除ユーザー（John Doe）の内部 ID。
 	johnUserID = "550e8400-e29b-41d4-a716-446655440000"
 )
+
+// seed が投入する JWT identity の issuer は環境の AUTH_ISSUER で、worktree の DB スロットでポートがずれる。
+// テスト用 DB を seed するのも値を渡すのも make のため、DB を使う本テストは make test / make test-cached
+// 経由で実行する（素の go test は make の渡す値を受け取らない）。
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -67,7 +71,7 @@ func Test_resolver_Resolve(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				resolved, err := repo.Resolve(ctx, newAuthn(t, testIssuerJWT, "user-john-doe"))
+				resolved, err := repo.Resolve(ctx, newAuthn(t, config.ResolvedAuthIssuer(t), "user-john-doe"))
 				require.NoError(t, err)
 				require.True(t, resolved.HasUserID())
 				userID, err := resolved.UserID()
@@ -97,7 +101,7 @@ func Test_resolver_Resolve(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				resolved, err := repo.Resolve(ctx, newAuthn(t, testIssuerJWT, "user-charlie-davis"))
+				resolved, err := repo.Resolve(ctx, newAuthn(t, config.ResolvedAuthIssuer(t), "user-charlie-davis"))
 				assert.Nil(t, resolved)
 				require.ErrorIs(t, err, authbd.ErrUserUnavailable)
 			})
@@ -107,7 +111,7 @@ func Test_resolver_Resolve(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				resolved, err := repo.Resolve(ctx, newAuthn(t, testIssuerJWT, "user-nonexistent"))
+				resolved, err := repo.Resolve(ctx, newAuthn(t, config.ResolvedAuthIssuer(t), "user-nonexistent"))
 				assert.Nil(t, resolved)
 				require.ErrorIs(t, err, authbd.ErrIdentityNotFound)
 			})
@@ -129,7 +133,7 @@ func Test_resolver_Resolve(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			resolved, err := repo.Resolve(ctx, newAuthn(t, testIssuerJWT, "user-john-doe"))
+			resolved, err := repo.Resolve(ctx, newAuthn(t, config.ResolvedAuthIssuer(t), "user-john-doe"))
 			assert.Nil(t, resolved)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})

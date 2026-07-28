@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +29,25 @@ func TestNewTestLocation(t *testing.T) {
 
 			actual := NewTestLocation(t)
 			assert.Equal(t, expected, actual)
+		})
+	})
+}
+
+func TestResolvedAuthIssuer(t *testing.T) {
+	// t.Setenv でプロセス状態を書き換えるため Parallel は使用しない。
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("実行時の環境変数があればその値を返す", func(t *testing.T) {
+			t.Setenv(authIssuerEnvKey, "http://localhost:4007")
+
+			assert.Equal(t, "http://localhost:4007", ResolvedAuthIssuer(t))
+		})
+
+		t.Run("環境変数が無ければ埋め込み env の値を返す", func(t *testing.T) {
+			t.Setenv(authIssuerEnvKey, "")
+
+			kv, err := godotenv.Read(filepath.Join(repoRoot(t), "env", ".env"))
+			require.NoError(t, err)
+			assert.Equal(t, kv[authIssuerEnvKey], ResolvedAuthIssuer(t))
 		})
 	})
 }

@@ -1,15 +1,21 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	root "go-boilerplate"
+
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 )
+
+// authIssuerEnvKey は、JWT の issuer を持つ環境変数のキーです。
+const authIssuerEnvKey = "AUTH_ISSUER"
 
 // NewTestLocation は、テスト用のタイムゾーンロケーションを生成します。
 func NewTestLocation(t *testing.T) *time.Location {
@@ -20,6 +26,25 @@ func NewTestLocation(t *testing.T) *time.Location {
 	loc, err := NewTimeLocation(osCfg)
 	require.NoError(t, err)
 	return loc
+}
+
+// ResolvedAuthIssuer は、この実行環境の AUTH_ISSUER を返します。解決順は Load と同じく実行時 env が先で、
+// 無ければ埋め込み env/.env の値です。issuer は worktree の DB スロットでポートがずれる（実行時 env は
+// make が渡す）ため、環境固有の issuer に依存するテストは値をリテラルで固定せずここから取ります。
+func ResolvedAuthIssuer(t *testing.T) string {
+	t.Helper()
+
+	if v := os.Getenv(authIssuerEnvKey); v != "" {
+		return v
+	}
+
+	b, err := root.FS.ReadFile(embeddedEnvFile)
+	require.NoError(t, err)
+	kv, err := godotenv.Parse(bytes.NewReader(b))
+	require.NoError(t, err)
+	require.NotEmpty(t, kv[authIssuerEnvKey])
+
+	return kv[authIssuerEnvKey]
 }
 
 // EnsureRepoRootAndEnv は、go.mod のあるリポジトリルートへ作業ディレクトリを移動し、
