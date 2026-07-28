@@ -147,5 +147,18 @@ func TestNewDownstreamProfile(t *testing.T) {
 
 func TestRequiredDownstream(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("outbox downstream を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, httpclient.Downstream("outbox"), publisher.RequiredDownstream())
+		})
+
+		t.Run("NewDownstreamProfile が登録する profile 名と一致する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, publisher.NewDownstreamProfile().Name, publisher.RequiredDownstream())
+		})
+	})
 }

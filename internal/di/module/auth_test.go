@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/auth/jwt"
 	"go-boilerplate/internal/infrastructure/httpclient"
 )
 
@@ -76,5 +77,37 @@ func Test_provideJWKSDownstreamProfile(t *testing.T) {
 
 func Test_authModule(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	// profile コンストラクタが ApplicationConfig を要求するため、value group の収集にも設定を供給する。
+	moduleWithConfig := func(t *testing.T) fx.Option {
+		t.Helper()
+		return fx.Options(
+			authModule(),
+			fx.Provide(func() *config.ApplicationConfig {
+				return config.NewApplicationConfig(config.MockConfigForTest(t))
+			}),
+		)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("JWKS 取得を required downstream として宣言する", func(t *testing.T) {
+			t.Parallel()
+
+			required := collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, moduleWithConfig(t))
+
+			assert.Equal(t, []httpclient.Downstream{jwt.RequiredDownstream()}, required)
+		})
+
+		t.Run("宣言した required downstream には対応する profile が揃っている", func(t *testing.T) {
+			t.Parallel()
+
+			// required だけ寄与して profile を欠くと registry 構築が起動時に失敗する。
+			profiles := collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, moduleWithConfig(t))
+			required := collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, moduleWithConfig(t))
+
+			assert.Empty(t, httpclient.MissingDownstreams(profiles, required))
+		})
+	})
 }

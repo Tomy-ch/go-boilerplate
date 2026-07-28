@@ -98,20 +98,70 @@ func TestNewCategoryRef(t *testing.T) {
 
 func TestCategoryRef_ID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時のカテゴリ ID を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "category_ref_id")
+			ref, err := NewCategoryRef(id, "電子機器")
+			require.NoError(t, err)
+
+			assert.Equal(t, id, ref.ID())
+		})
+	})
 }
 
 func TestCategoryRef_Name(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時のカテゴリ名称を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ref, err := NewCategoryRef(uuid.NewTestFromSalt(t, "category_ref_id"), "電子機器")
+			require.NoError(t, err)
+
+			assert.Equal(t, "電子機器", ref.Name())
+		})
+	})
 }
 
 func TestStatusRef_ID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時のステータス ID を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "status_ref_id")
+			ref, err := NewStatusRef(id, "在庫あり")
+			require.NoError(t, err)
+
+			assert.Equal(t, id, ref.ID())
+		})
+	})
 }
 
 func TestStatusRef_Name(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時のステータス名称を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ref, err := NewStatusRef(uuid.NewTestFromSalt(t, "status_ref_id"), "在庫あり")
+			require.NoError(t, err)
+
+			assert.Equal(t, "在庫あり", ref.Name())
+		})
+	})
 }

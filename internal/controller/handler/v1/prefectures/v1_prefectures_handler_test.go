@@ -106,5 +106,19 @@ func Test_server_GetPrefectures(t *testing.T) {
 
 func Test_toPrefectureResponse(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("都道府県DTOの全項目をレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "prefecture_conv")
+			actual := toPrefectureResponse(prefectureuc.PrefectureDTO{ID: id, Code: 13, Name: "東京都"})
+
+			assert.Equal(t, id.ToPrimitive(), actual.Id)
+			assert.Equal(t, 13, actual.Code)
+			assert.Equal(t, "東京都", actual.Name)
+		})
+	})
 }

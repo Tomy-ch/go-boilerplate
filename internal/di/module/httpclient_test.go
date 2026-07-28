@@ -218,7 +218,35 @@ func newHTTPClientTestApp(t *testing.T, extra ...fx.Option) *fx.App {
 	}, extra...)...)
 }
 
+// value group 経由で登録した profile が registry へ反映されるかを見るため実アプリを起動する。
+// 起動を伴うケースは global registerer 競合を避けるため非並列にする。
+//
+//nolint:paralleltest // 上記の理由により fx アプリ起動ケースは非並列
 func Test_httpClientModule(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("value group に集めた profile を引ける Registry を提供する", func(t *testing.T) {
+			var registry httpclient.Registry
+			app := newHTTPClientTestApp(t,
+				provideHTTPClientProfiles(func() httpclient.DownstreamProfile {
+					return httpclient.DownstreamProfile{Name: "svc", Profile: httpclient.DefaultProfile()}
+				}),
+				fx.Populate(&registry),
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+
+			require.NotNil(t, registry)
+			assert.Equal(t, httpclient.DefaultProfile(), registry.Profile("svc"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("未配線では Registry が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			var registry httpclient.Registry
+
+			opts := append(commonDeps(), clockModule(), fx.Populate(&registry), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
 }

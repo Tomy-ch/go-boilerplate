@@ -346,17 +346,49 @@ func TestRegisterStatsCollector(t *testing.T) {
 	})
 }
 
+// drainDescs は、Describe が channel へ送出した Desc を全件読み出します。
+// Describe は consumer が読むまでブロックし得るため、送出側を別 goroutine に置きます。
+func drainDescs(t *testing.T, describe func(chan<- *prometheus.Desc)) []*prometheus.Desc {
+	t.Helper()
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		describe(ch)
+		close(ch)
+	}()
+	var got []*prometheus.Desc
+	for d := range ch {
+		got = append(got, d)
+	}
+	return got
+}
+
 func TestStatsCollector_Describe(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
 
-func TestStatsCollector_collectDepth(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-func TestStatsCollector_recordFailure(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+		t.Run("depth gauge と収集失敗 counter の Desc を通知する", func(t *testing.T) {
+			t.Parallel()
+
+			got := drainDescs(t, queuemetrics.NewStatsCollector(nil).Describe)
+
+			require.Len(t, got, 2)
+			descs := []string{got[0].String(), got[1].String()}
+			// fqName と label 次元まで含めて、公開する系列の契約を固定する。
+			assert.Contains(t, descs[0], `fqName: "worker_queue_depth"`)
+			assert.Contains(t, descs[0], "variableLabels: {worker,adapter,queue,state}")
+			assert.Contains(t, descs[1], `fqName: "worker_queue_stats_collection_failures_total"`)
+			assert.Contains(t, descs[1], "variableLabels: {worker,adapter,queue}")
+		})
+
+		t.Run("収集対象が無くても Desc は通知する", func(t *testing.T) {
+			t.Parallel()
+
+			// Describe は target の有無に依らず固定の Desc を返す（未登録扱いにならない）。
+			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{})
+
+			assert.Len(t, drainDescs(t, c.Describe), 2)
+		})
+	})
 }

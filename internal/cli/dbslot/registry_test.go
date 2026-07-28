@@ -207,25 +207,133 @@ func TestRegistry_Release(t *testing.T) {
 
 func TestRegistry_Exists(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("取得済みスロットは true、未取得スロットは false", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRegistry(t, "/w/a", time.Unix(1000, 0))
+			require.True(t, r.TryAcquireFresh(1))
+
+			assert.True(t, r.Exists(1))
+			assert.False(t, r.Exists(2))
+		})
+
+		t.Run("解放後は false になる", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRegistry(t, "/w/a", time.Unix(1000, 0))
+			require.True(t, r.TryAcquireFresh(1))
+			require.NoError(t, r.WriteMeta(1))
+			r.Release(1)
+
+			assert.False(t, r.Exists(1))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロックと同名のファイルはディレクトリでないため false", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRegistry(t, "/w/a", time.Unix(1000, 0))
+			require.NoError(t, os.WriteFile(r.lockDir(1), []byte("not a dir"), 0o600))
+
+			assert.False(t, r.Exists(1))
+		})
+	})
 }
 
 func TestRegistry_MaxSlots(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時に渡したスロット数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			r := NewRegistry("/pool", "/w/a", "b", time.Minute, 4, nil)
+
+			assert.Equal(t, 4, r.MaxSlots())
+		})
+	})
 }
 
 func TestRegistry_OwnedBySelf(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("自分が meta を書いたスロットは true", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRegistry(t, "/w/self", time.Unix(1000, 0))
+			require.True(t, r.TryAcquireFresh(1))
+			require.NoError(t, r.WriteMeta(1))
+
+			assert.True(t, r.OwnedBySelf(1))
+		})
+
+		t.Run("別 worktree が meta を書いたスロットは false", func(t *testing.T) {
+			t.Parallel()
+
+			now := time.Unix(1000, 0)
+			owner := newTestRegistry(t, "/w/other", now)
+			require.True(t, owner.TryAcquireFresh(1))
+			require.NoError(t, owner.WriteMeta(1))
+
+			viewer := NewRegistry(owner.dir, "/w/me", "b", 30*time.Minute, 8, func() time.Time { return now })
+			assert.False(t, viewer.OwnedBySelf(1))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("meta が無いスロットは false", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRegistry(t, "/w/self", time.Unix(1000, 0))
+			require.True(t, r.TryAcquireFresh(1))
+
+			assert.False(t, r.OwnedBySelf(1))
+		})
+	})
 }
 
 func TestRegistry_lockDir(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("プールディレクトリ直下の slot-<N>.lock を指す", func(t *testing.T) {
+			t.Parallel()
+
+			r := NewRegistry("/pool", "/w/a", "b", time.Minute, 8, nil)
+
+			assert.Equal(t, "/pool/slot-3.lock", r.lockDir(3))
+		})
+	})
 }
 
 func TestRegistry_metaPath(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロックディレクトリ内の meta を指す", func(t *testing.T) {
+			t.Parallel()
+
+			r := NewRegistry("/pool", "/w/a", "b", time.Minute, 8, nil)
+
+			assert.Equal(t, "/pool/slot-3.lock/meta", r.metaPath(3))
+		})
+	})
 }

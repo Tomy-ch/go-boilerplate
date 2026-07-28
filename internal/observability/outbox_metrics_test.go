@@ -62,50 +62,6 @@ func TestNewOutboxMetrics(t *testing.T) {
 				assert.Contains(t, names, want)
 			}
 		})
-
-		t.Run("SetLagSeconds は outbox.lag_seconds を Gauge[int64] として値を記録する", func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-			reader := sdkmetric.NewManualReader()
-			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
-
-			om, err := observability.NewOutboxMetrics(provider)
-			require.NoError(t, err)
-
-			om.SetLagSeconds(ctx, 42)
-
-			var rm metricdata.ResourceMetrics
-			require.NoError(t, reader.Collect(ctx, &rm))
-
-			// Gauge[int64] への型アサートで、型誤実装（Sum 化等）を検出可能にする。
-			g, ok := metricByName(t, rm, "outbox.lag_seconds").Data.(metricdata.Gauge[int64])
-			require.True(t, ok)
-			require.NotEmpty(t, g.DataPoints)
-			assert.Equal(t, int64(42), g.DataPoints[0].Value)
-		})
-
-		t.Run("IncDead は outbox.dead を Sum[int64] として 1 加算する", func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-			reader := sdkmetric.NewManualReader()
-			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
-
-			om, err := observability.NewOutboxMetrics(provider)
-			require.NoError(t, err)
-
-			om.IncDead(ctx)
-
-			var rm metricdata.ResourceMetrics
-			require.NoError(t, reader.Collect(ctx, &rm))
-
-			// Sum[int64] への型アサートで、型誤実装（Gauge 化等）を検出可能にする。
-			s, ok := metricByName(t, rm, "outbox.dead").Data.(metricdata.Sum[int64])
-			require.True(t, ok)
-			require.NotEmpty(t, s.DataPoints)
-			assert.Equal(t, int64(1), s.DataPoints[0].Value)
-		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -138,10 +94,107 @@ func metricByName(t *testing.T, rm metricdata.ResourceMetrics, name string) metr
 
 func TestOutboxMetrics_IncDead(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("outbox.dead を Sum[int64] として 1 加算する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.IncDead(ctx)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			// Sum[int64] への型アサートで、型誤実装（Gauge 化等）を検出可能にする。
+			s, ok := metricByName(t, rm, "outbox.dead").Data.(metricdata.Sum[int64])
+			require.True(t, ok)
+			require.NotEmpty(t, s.DataPoints)
+			assert.Equal(t, int64(1), s.DataPoints[0].Value)
+			// lag gauge 側へ取り違えて計上していないこと。
+			assert.False(t, metricPresent(rm, "outbox.lag_seconds"))
+		})
+
+		t.Run("複数回の計上は累積する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.IncDead(ctx)
+			om.IncDead(ctx)
+			om.IncDead(ctx)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			assert.Equal(t, int64(3), counterValueOf(t, rm, "outbox.dead"))
+		})
+	})
 }
 
 func TestOutboxMetrics_SetLagSeconds(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("outbox.lag_seconds を Gauge[int64] として値を記録する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.SetLagSeconds(ctx, 42)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			// Gauge[int64] への型アサートで、型誤実装（Sum 化等）を検出可能にする。
+			g, ok := metricByName(t, rm, "outbox.lag_seconds").Data.(metricdata.Gauge[int64])
+			require.True(t, ok)
+			require.NotEmpty(t, g.DataPoints)
+			assert.Equal(t, int64(42), g.DataPoints[0].Value)
+			// dead counter 側へ取り違えて計上していないこと。
+			assert.False(t, metricPresent(rm, "outbox.dead"))
+		})
+
+		t.Run("後の記録で上書きされ累積しない", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.SetLagSeconds(ctx, 42)
+			// pending 無しは 0 を記録する運用のため、直近値へ落ちることを固定する。
+			om.SetLagSeconds(ctx, 0)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			g, ok := metricByName(t, rm, "outbox.lag_seconds").Data.(metricdata.Gauge[int64])
+			require.True(t, ok)
+			require.NotEmpty(t, g.DataPoints)
+			assert.Equal(t, int64(0), g.DataPoints[0].Value)
+		})
+	})
 }

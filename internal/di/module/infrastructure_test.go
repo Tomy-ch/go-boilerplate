@@ -2,6 +2,16 @@ package module
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
+
+	"go-boilerplate/internal/infrastructure/httpclient"
+	authzbd "go-boilerplate/internal/usecase/boundary/authz"
+	"go-boilerplate/internal/usecase/boundary/clock"
+	objectstoragebd "go-boilerplate/internal/usecase/boundary/objectstorage"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	publisherbd "go-boilerplate/internal/usecase/boundary/publisher"
 )
 
 func TestInfrastructureModule_GraphIsValid(t *testing.T) {
@@ -17,5 +27,37 @@ func TestInfrastructureModule_GraphIsValid(t *testing.T) {
 
 func TestInfrastructureModule(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("集約した各 concern の代表型を単体で提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				store   outboxbndry.Store       // persistence
+				clk     clock.Clock             // clock
+				client  httpclient.Client       // httpclient
+				storage objectstoragebd.Storage // objectstorage
+				authz   authzbd.Authorizer      // authz
+			)
+
+			validateGraph(t, append(commonDeps(), InfrastructureModule(),
+				fx.Populate(&store, &clk, &client, &storage, &authz))...)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("relay 専用の outbox publisher は含まず解決できない", func(t *testing.T) {
+			t.Parallel()
+
+			// publisher は非標準の httpclient profile を寄与するため、relay 以外へ漏らさない。
+			var publisher publisherbd.Publisher
+
+			opts := append(commonDeps(), InfrastructureModule(), fx.Populate(&publisher), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
 }

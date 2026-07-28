@@ -2,6 +2,7 @@ package observability_test
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -175,47 +176,228 @@ func histogramSumOf(t *testing.T, rm metricdata.ResourceMetrics, name string) fl
 	return 0
 }
 
-func TestWorkerMetrics_DLQ(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+// metricNamesOf は、収集結果に現れた metric 名を昇順で返します。
+// manual reader は測定のあった計装のみ出力するため、「どの計装へ計上されたか」を排他的に固定できます。
+func metricNamesOf(t *testing.T, rm metricdata.ResourceMetrics) []string {
+	t.Helper()
+	var names []string
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			names = append(names, m.Name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
-func TestWorkerMetrics_ExtendError(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+// newWorkerMetricsForTest は、収集器付きの WorkerMetrics を生成します。
+func newWorkerMetricsForTest(t *testing.T) (*observability.WorkerMetrics, *sdkmetric.ManualReader) {
+	t.Helper()
+	reader := sdkmetric.NewManualReader()
+	wm, err := observability.NewWorkerMetrics(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	require.NoError(t, err)
+	return wm, reader
 }
 
-func TestWorkerMetrics_Failed(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestWorkerMetrics_InFlightAdd(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestWorkerMetrics_PollError(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestWorkerMetrics_Processed(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+// collectWorkerMetrics は、reader から収集結果を取り出します。
+func collectWorkerMetrics(t *testing.T, reader *sdkmetric.ManualReader) metricdata.ResourceMetrics {
+	t.Helper()
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	return rm
 }
 
 func TestWorkerMetrics_Received(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.received のみへ引数の件数を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			// 固定値 1 ではなく引数 n を加算することを、1 以外の値で固定する。
+			wm.Received(context.Background(), 5)
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.received"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(5), counterValueOf(t, rm, "worker.received"))
+		})
+	})
 }
 
-func TestWorkerMetrics_RecordLatencyMs(t *testing.T) {
+func TestWorkerMetrics_Processed(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.processed のみへ 1 を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.Processed(context.Background())
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.processed"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "worker.processed"))
+		})
+	})
+}
+
+func TestWorkerMetrics_Failed(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.failed のみへ 1 を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.Failed(context.Background())
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.failed"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "worker.failed"))
+		})
+	})
 }
 
 func TestWorkerMetrics_Retried(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.retried のみへ 1 を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.Retried(context.Background())
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.retried"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "worker.retried"))
+		})
+	})
+}
+
+func TestWorkerMetrics_DLQ(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.dlq のみへ 1 を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.DLQ(context.Background())
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.dlq"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "worker.dlq"))
+		})
+	})
+}
+
+func TestWorkerMetrics_PollError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.poll_errors のみへ 1 を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.PollError(context.Background())
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.poll_errors"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "worker.poll_errors"))
+		})
+	})
+}
+
+func TestWorkerMetrics_ExtendError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.extend_errors のみへ 1 を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.ExtendError(context.Background())
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.extend_errors"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "worker.extend_errors"))
+		})
+	})
+}
+
+func TestWorkerMetrics_RecordLatencyMs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.processing_latency_ms のみへ処理時間を histogram として記録する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.RecordLatencyMs(context.Background(), 12.5)
+			wm.RecordLatencyMs(context.Background(), 7.5)
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.processing_latency_ms"}, metricNamesOf(t, rm))
+			// 2 回の記録が 1 つの分布へ集約される（Sum=20.0 / Count=2）。
+			assert.InDelta(t, 20.0, histogramSumOf(t, rm, "worker.processing_latency_ms"), 1e-9)
+		})
+	})
+}
+
+func TestWorkerMetrics_InFlightAdd(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker.in_flight のみへ delta を加算する", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			wm.InFlightAdd(context.Background(), 3)
+
+			rm := collectWorkerMetrics(t, reader)
+			assert.Equal(t, []string{"worker.in_flight"}, metricNamesOf(t, rm))
+			assert.Equal(t, int64(3), counterValueOf(t, rm, "worker.in_flight"))
+		})
+
+		t.Run("負の delta で減算できる", func(t *testing.T) {
+			t.Parallel()
+
+			wm, reader := newWorkerMetricsForTest(t)
+
+			// 単調増加の counter ではなく UpDownCounter であること（処理中数は減る）。
+			wm.InFlightAdd(context.Background(), 3)
+			wm.InFlightAdd(context.Background(), -2)
+
+			assert.Equal(t, int64(1), counterValueOf(t, collectWorkerMetrics(t, reader), "worker.in_flight"))
+		})
+	})
 }

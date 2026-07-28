@@ -18,6 +18,7 @@ import (
 	idempotencyuc "go-boilerplate/internal/usecase/idempotency"
 	mock_idempotencyuc "go-boilerplate/internal/usecase/idempotency/mock"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -399,6 +400,46 @@ func TestMiddleware(t *testing.T) {
 			require.NoError(t, runErr)
 
 			assert.Equal(t, testOperationID, gotOperationID)
+		})
+
+		t.Run("同一factoryから生成したwrapperはそれぞれの後段を呼び分ける", func(t *testing.T) {
+			t.Parallel()
+
+			mw := Middleware()
+			firstCalled, secondCalled := false, false
+			first := mw(NextFunc(func(*echo.Context, any) (any, error) {
+				firstCalled = true
+				return "FIRST", nil
+			}), "PostResources")
+			second := mw(NextFunc(func(*echo.Context, any) (any, error) {
+				secondCalled = true
+				return "SECOND", nil
+			}), "PutResources")
+
+			gotFirst, err := first(newEcho("key-1", true, testUserID), spyRequest{})
+			require.NoError(t, err)
+			gotSecond, err := second(newEcho("key-2", true, testUserID), spyRequest{})
+			require.NoError(t, err)
+
+			assert.Equal(t, "FIRST", gotFirst)
+			assert.Equal(t, "SECOND", gotSecond)
+			assert.True(t, firstCalled)
+			assert.True(t, secondCalled)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("後段が返したerrorをそのまま透過する", func(t *testing.T) {
+			t.Parallel()
+
+			boom := xerrors.New("handler boom")
+			next := NextFunc(func(*echo.Context, any) (any, error) { return nil, boom })
+
+			_, err := Middleware()(next, "PostResources")(newEcho("key-1", true, testUserID), spyRequest{})
+
+			require.ErrorIs(t, err, boom)
 		})
 	})
 }

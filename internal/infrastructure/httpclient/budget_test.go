@@ -148,5 +148,18 @@ func Test_retryBudget_tryConsume(t *testing.T) {
 
 func Test_newRetryBudget(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("トークンを1件も持たない初期化済みのbudgetを返す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newRetryBudget()
+
+			assert.NotNil(t, b.tokens)
+			assert.Empty(t, b.tokens)
+			assert.False(t, b.tryConsume("d"), "補充前は消費できない")
+		})
+	})
 }

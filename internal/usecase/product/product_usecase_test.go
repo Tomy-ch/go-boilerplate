@@ -515,5 +515,76 @@ func Test_usecase_GetProduct(t *testing.T) {
 
 func Test_toProductView(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	published := time.Date(2026, time.January, 10, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("エンティティの属性とステータス・カテゴリの名称を展開したDTOへ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			status, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, "to_view_status"), "在庫あり")
+			require.NoError(t, err)
+			category, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, "to_view_category"), "電子機器")
+			require.NoError(t, err)
+			p, err := domainproduct.Reconstruct(uuid.NewTestFromSalt(t, "to_view"), domainproduct.Attributes{
+				Name:                  "商品-to_view",
+				Description:           ptr.To("説明-to_view"),
+				Price:                 mustPrice(t, "12.34"),
+				Quantity:              5,
+				StockWarningThreshold: ptr.To(2),
+				Status:                status,
+				Category:              category,
+				PublishedAt:           ptr.To(published),
+				ImagePath:             ptr.To("products/to_view.png"),
+			}, 7)
+			require.NoError(t, err)
+
+			actual := toProductView(p)
+
+			assert.Equal(t, p.ID(), actual.ID)
+			assert.Equal(t, "商品-to_view", actual.Name)
+			require.NotNil(t, actual.Description)
+			assert.Equal(t, "説明-to_view", *actual.Description)
+			assert.Equal(t, "12.34", actual.Price.String())
+			assert.Equal(t, 5, actual.Quantity)
+			require.NotNil(t, actual.StockWarningThreshold)
+			assert.Equal(t, 2, *actual.StockWarningThreshold)
+			assert.Equal(t, status.ID(), actual.StatusID)
+			assert.Equal(t, "在庫あり", actual.StatusName)
+			assert.Equal(t, category.ID(), actual.CategoryID)
+			assert.Equal(t, "電子機器", actual.CategoryName)
+			require.NotNil(t, actual.PublishedAt)
+			assert.Equal(t, published, *actual.PublishedAt)
+			require.NotNil(t, actual.ImagePath)
+			assert.Equal(t, "products/to_view.png", *actual.ImagePath)
+			assert.Equal(t, 7, actual.Version)
+		})
+
+		t.Run("任意項目が未設定のエンティティはDTOでもnilのまま変換する", func(t *testing.T) {
+			t.Parallel()
+
+			status, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, "to_view_nil_status"), "在庫なし")
+			require.NoError(t, err)
+			category, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, "to_view_nil_category"), "書籍")
+			require.NoError(t, err)
+			p, err := domainproduct.New(uuid.NewTestFromSalt(t, "to_view_nil"), domainproduct.Attributes{
+				Name:     "商品-to_view_nil",
+				Price:    mustPrice(t, "0.00"),
+				Quantity: 0,
+				Status:   status,
+				Category: category,
+			})
+			require.NoError(t, err)
+
+			actual := toProductView(p)
+
+			assert.Nil(t, actual.Description)
+			assert.Nil(t, actual.StockWarningThreshold)
+			assert.Nil(t, actual.PublishedAt)
+			assert.Nil(t, actual.ImagePath)
+			assert.Equal(t, "在庫なし", actual.StatusName)
+		})
+	})
 }

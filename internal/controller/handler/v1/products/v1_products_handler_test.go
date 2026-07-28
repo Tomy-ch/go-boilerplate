@@ -2,6 +2,7 @@ package products
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"testing"
 	"time"
@@ -261,15 +262,74 @@ func Test_server_GetProducts(t *testing.T) {
 
 func Test_isAscending(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("sortがnilの場合はfalse(降順)を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isAscending(nil))
+		})
+
+		t.Run("sortがpublishedAtの場合はtrue(昇順)を返す", func(t *testing.T) {
+			t.Parallel()
+			sort := gen.GetProductsParamsSortPublishedAt
+			assert.True(t, isAscending(&sort))
+		})
+
+		t.Run("sortが-publishedAtの場合はfalse(降順)を返す", func(t *testing.T) {
+			t.Parallel()
+			sort := gen.GetProductsParamsSortMinusPublishedAt
+			assert.False(t, isAscending(&sort))
+		})
+	})
 }
 
 func Test_toInt32(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("int32範囲内の値はそのままint32として返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(1234), toInt32(1234))
+		})
+
+		t.Run("int32の最小値と最大値も値を保ったまま返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(math.MinInt32), toInt32(math.MinInt32))
+			assert.Equal(t, int32(math.MaxInt32), toInt32(math.MaxInt32))
+		})
+	})
 }
 
 func Test_toProductResponse(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全項目が設定されたDTOをレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+			dto := newProductView(t, "conv_full")
+			assert.Equal(t, wantProductResponse(dto), toProductResponse(dto))
+		})
+
+		t.Run("任意項目がnilのDTOはレスポンスでもnilのまま写像する", func(t *testing.T) {
+			t.Parallel()
+			dto := newProductView(t, "conv_nil")
+			dto.Description = nil
+			dto.StockWarningThreshold = nil
+			dto.PublishedAt = nil
+			dto.ImagePath = nil
+
+			actual := toProductResponse(dto)
+			assert.Nil(t, actual.Description)
+			assert.Nil(t, actual.StockWarningThreshold)
+			assert.Nil(t, actual.PublishedAt)
+			assert.Nil(t, actual.ImagePath)
+			assert.Equal(t, dto.ID.ToPrimitive(), actual.Id)
+		})
+	})
 }

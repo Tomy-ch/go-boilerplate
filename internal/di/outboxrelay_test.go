@@ -10,6 +10,9 @@ import (
 	"go.uber.org/fx"
 
 	config "go-boilerplate/internal/config"
+	outboxengine "go-boilerplate/internal/controller/outbox"
+	"go-boilerplate/internal/di/module"
+	outboxuc "go-boilerplate/internal/usecase/outbox"
 )
 
 func TestNewOutboxRelayCore(t *testing.T) {
@@ -73,5 +76,35 @@ func TestRunOutboxReplay(t *testing.T) {
 
 func Test_outboxRelayCommonOptions(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("replay ワンショットが必要とする依存だけで結線が成立する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				replay outboxuc.ReplayUsecase
+				appCfg *config.ApplicationConfig
+			)
+
+			opts := append(outboxRelayCommonOptions(),
+				fx.Populate(&replay, &appCfg), fx.WithLogger(NewFxEventLogger))
+
+			require.NoError(t, fx.ValidateApp(opts...))
+		})
+
+		t.Run("relay engine は共通モジュールに含まれずOutboxRelayModuleが要る", func(t *testing.T) {
+			t.Parallel()
+
+			var engine *outboxengine.Engine
+
+			withoutRelay := append(outboxRelayCommonOptions(), fx.Populate(&engine), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(withoutRelay...))
+
+			withRelay := append(outboxRelayCommonOptions(),
+				module.OutboxRelayModule(), fx.Populate(&engine), fx.NopLogger)
+			require.NoError(t, fx.ValidateApp(withRelay...))
+		})
+	})
 }

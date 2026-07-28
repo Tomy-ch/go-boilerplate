@@ -943,5 +943,19 @@ func Test_rowsToProducts(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡したドライバとinfra層トレーサーを保持した実装を返す", func(t *testing.T) {
+			t.Parallel()
+
+			testDB := testkit.NewTestDB(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			actual := New(testDB, tf)
+
+			assert.Equal(t, &repository{db: testDB, tracer: tf.Infra()}, actual)
+		})
+	})
 }

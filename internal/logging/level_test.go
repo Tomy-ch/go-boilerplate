@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestParseLevel(t *testing.T) {
@@ -74,20 +75,57 @@ func TestParseLevel(t *testing.T) {
 
 func TestLevelDebug(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("zapcoreのDebugレベルを保持したLevelを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, zapcore.DebugLevel, LevelDebug().zl)
+		})
+	})
 }
 
 func TestLevelError(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("zapcoreのErrorレベルを保持したLevelを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, zapcore.ErrorLevel, LevelError().zl)
+		})
+	})
 }
 
 func TestLevelInfo(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("zapcoreのInfoレベルを保持したLevelを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, zapcore.InfoLevel, LevelInfo().zl)
+		})
+
+		t.Run("Levelのゼロ値と等価である", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, Level{}, LevelInfo())
+		})
+	})
 }
 
 func TestLevelWarn(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("zapcoreのWarnレベルを保持したLevelを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, zapcore.WarnLevel, LevelWarn().zl)
+		})
+	})
 }

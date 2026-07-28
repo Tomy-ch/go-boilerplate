@@ -808,15 +808,94 @@ func Test_validatePortRange(t *testing.T) {
 
 func TestValidateServerShutdown(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("シャットダウン猶予がリクエスト予算を上回る場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			appCfg := &ApplicationConfig{shutdownTimeout: 90 * time.Second}
+			srvCfg := &ServerConfig{requestTimeout: 60 * time.Second}
+
+			require.NoError(t, ValidateServerShutdown(appCfg, srvCfg))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("シャットダウン猶予がリクエスト予算を下回る場合、ErrShutdownTimeoutBelowRequestTimeoutを返す", func(t *testing.T) {
+			t.Parallel()
+
+			appCfg := &ApplicationConfig{shutdownTimeout: 60*time.Second - time.Second}
+			srvCfg := &ServerConfig{requestTimeout: 60 * time.Second}
+
+			err := ValidateServerShutdown(appCfg, srvCfg)
+			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
+		})
+	})
 }
 
 func TestValidateUploadBodyLimit(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限を上回る場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			srvCfg := &ServerConfig{bodyLimitMB: 6}
+			objCfg := &ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
+
+			require.NoError(t, ValidateUploadBodyLimit(srvCfg, objCfg))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限と同値の場合、ErrBodyLimitBelowMaxUploadBytesを返す", func(t *testing.T) {
+			t.Parallel()
+
+			srvCfg := &ServerConfig{bodyLimitMB: 5}
+			objCfg := &ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
+
+			err := ValidateUploadBodyLimit(srvCfg, objCfg)
+			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
+		})
+	})
 }
 
 func Test_isActiveExporter(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("exporter名が指定されている場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, isActiveExporter("otlp"))
+		})
+
+		t.Run("未設定を表す空文字の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isActiveExporter(""))
+		})
+
+		t.Run("明示的な無効化を表すnoneの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isActiveExporter(exporterNone))
+		})
+
+		t.Run("noneと大文字小文字だけが異なる場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isActiveExporter("NoNe"))
+		})
+	})
 }

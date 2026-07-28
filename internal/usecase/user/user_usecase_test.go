@@ -1072,5 +1072,74 @@ func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
 
 func Test_toUserView(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	building := "building_name"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("エンティティの属性と引数の都道府県名からDTOを構築する", func(t *testing.T) {
+			t.Parallel()
+
+			u, err := user.New(uuid.NewTestFromSalt(t, "to_user_view_user"), user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "first_name",
+					LastName:     "last_name",
+					Email:        "user@example.com",
+					Phone:        "phone_number",
+					PrefectureID: uuid.NewTestFromSalt(t, "to_user_view_prefecture"),
+					City:         "city_name",
+					Street:       "town_address",
+					Building:     &building,
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+			})
+			require.NoError(t, err)
+
+			actual := toUserView(u, "prefecture_name")
+
+			assert.Equal(t, "first_name", actual.FirstName)
+			assert.Equal(t, "last_name", actual.LastName)
+			assert.Equal(t, "user@example.com", actual.Email)
+			assert.Equal(t, "phone_number", actual.Phone)
+			assert.Equal(t, "150-0001", actual.PostalCode)
+			assert.Equal(t, "prefecture_name", actual.PrefectureName)
+			assert.Equal(t, "city_name", actual.City)
+			assert.Equal(t, "town_address", actual.Street)
+			require.NotNil(t, actual.Building)
+			assert.Equal(t, building, *actual.Building)
+			assert.Nil(t, actual.DeletedAt)
+		})
+
+		t.Run("削除済みエンティティの場合、DeletedAtを引き継ぐ", func(t *testing.T) {
+			t.Parallel()
+
+			deletedAt := now.Add(24 * time.Hour)
+			u, err := user.New(uuid.NewTestFromSalt(t, "to_user_view_deleted"), user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "first_name",
+					LastName:     "last_name",
+					Email:        "deleted@example.com",
+					Phone:        "phone_number",
+					PrefectureID: uuid.NewTestFromSalt(t, "to_user_view_prefecture"),
+					City:         "city_name",
+					Street:       "town_address",
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+				DeletedAt: &deletedAt,
+			})
+			require.NoError(t, err)
+
+			actual := toUserView(u, "prefecture_name")
+
+			assert.Nil(t, actual.Building)
+			require.NotNil(t, actual.DeletedAt)
+			assert.Equal(t, deletedAt, *actual.DeletedAt)
+		})
+	})
 }

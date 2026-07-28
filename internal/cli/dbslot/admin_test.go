@@ -165,10 +165,43 @@ func TestPgxAdmin_ActiveConnections(t *testing.T) {
 
 func TestNewPgxAdmin(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡した接続パラメータをそのまま保持した PgxAdmin を返す", func(t *testing.T) {
+			t.Parallel()
+
+			expected := &PgxAdmin{
+				host: "db.example", port: 5433,
+				user: "admin", password: "secret", maintenanceDB: "postgres",
+			}
+
+			assert.Equal(t, expected, NewPgxAdmin("db.example", 5433, "admin", "secret", "postgres"))
+		})
+	})
 }
 
 func TestPgxAdmin_dsn(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("接続先データベース名を差し替えた DSN を組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			a := NewPgxAdmin("db.example", 5433, "admin", "secret", "postgres")
+
+			assert.Equal(t, "postgres://admin:secret@db.example:5433/wt1_test?sslmode=disable", a.dsn("wt1_test"))
+		})
+
+		t.Run("IPv6 ホストはポートと区別できるよう括弧で囲む", func(t *testing.T) {
+			t.Parallel()
+
+			a := NewPgxAdmin("::1", 5433, "admin", "secret", "postgres")
+
+			assert.Equal(t, "postgres://admin:secret@[::1]:5433/postgres?sslmode=disable", a.dsn("postgres"))
+		})
+	})
 }

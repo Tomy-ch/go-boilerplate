@@ -190,5 +190,38 @@ func Test_ignoreAlreadyRegistered(t *testing.T) {
 
 func TestPrometheusRecorder_Collect(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("counterとhistogramの両方を収集する", func(t *testing.T) {
+			t.Parallel()
+
+			rec := NewPrometheusRecorder()
+			rec.Observe(http.MethodGet, "/users/:id", 200, "2xx", 5*time.Millisecond)
+
+			collected := collectMetrics(t, rec)
+			assert.Len(t, collected, 2)
+
+			names := make([]string, 0, len(collected))
+			for _, m := range collected {
+				names = append(names, m.Desc().String())
+			}
+			joined := strings.Join(names, "\n")
+
+			assert.Contains(t, joined, "http_server_requests_total")
+			assert.Contains(t, joined, "http_server_request_duration_seconds")
+		})
+
+		t.Run("label 組み合わせごとの系列をすべて収集する", func(t *testing.T) {
+			t.Parallel()
+
+			rec := NewPrometheusRecorder()
+			rec.Observe(http.MethodGet, "/users/:id", 200, "2xx", 5*time.Millisecond)
+			rec.Observe(http.MethodPost, "/users", 500, "5xx", 5*time.Millisecond)
+
+			// 2 系列 x (counter + histogram) = 4 件。
+			assert.Len(t, collectMetrics(t, rec), 4)
+		})
+	})
 }

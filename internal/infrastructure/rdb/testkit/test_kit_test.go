@@ -72,5 +72,26 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 
 func Test_getTestDB(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("接続可能なドライバを返す", func(t *testing.T) {
+			t.Parallel()
+
+			db := getTestDB(t)
+
+			require.NotNil(t, db)
+			require.NoError(t, db.Ping(context.Background()))
+		})
+
+		t.Run("複数回呼び出しても同一のドライバを共有する", func(t *testing.T) {
+			t.Parallel()
+
+			first := getTestDB(t)
+			second := getTestDB(t)
+
+			assert.Same(t, first, second)
+		})
+	})
 }

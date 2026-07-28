@@ -586,45 +586,285 @@ func TestProduct_Version(t *testing.T) {
 
 func TestProduct_Category(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時のカテゴリ参照をIDと名称ごと返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Equal(t, attrs.Category, p.Category())
+			assert.Equal(t, "電子機器", p.Category().Name())
+		})
+	})
 }
 
 func TestProduct_Description(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時の商品説明を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			require.NotNil(t, p.Description())
+			assert.Equal(t, "ノイズキャンセリング対応", *p.Description())
+		})
+
+		t.Run("未設定の場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.Description = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Nil(t, p.Description())
+		})
+
+		t.Run("返り値のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			got := p.Description()
+			*got = "書き換え後の説明"
+
+			require.NotNil(t, p.Description())
+			assert.NotEqual(t, *got, *p.Description())
+			assert.Equal(t, "ノイズキャンセリング対応", *p.Description())
+		})
+	})
 }
 
 func TestProduct_ID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時のIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Equal(t, id, p.ID())
+		})
+	})
 }
 
 func TestProduct_ImagePath(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時の画像パスを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			require.NotNil(t, p.ImagePath())
+			assert.Equal(t, "products/earphone.png", *p.ImagePath())
+		})
+
+		t.Run("未設定の場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.ImagePath = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Nil(t, p.ImagePath())
+		})
+
+		t.Run("返り値のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			got := p.ImagePath()
+			*got = "products/mutated.png"
+
+			require.NotNil(t, p.ImagePath())
+			assert.NotEqual(t, *got, *p.ImagePath())
+			assert.Equal(t, "products/earphone.png", *p.ImagePath())
+		})
+	})
 }
 
 func TestProduct_Name(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時の商品名を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Equal(t, "ワイヤレスイヤホン", p.Name())
+		})
+	})
 }
 
 func TestProduct_PublishedAt(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時の公開日時を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			require.NotNil(t, p.PublishedAt())
+			assert.Equal(t, publishedAt, *p.PublishedAt())
+		})
+
+		t.Run("未公開の場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.PublishedAt = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Nil(t, p.PublishedAt())
+		})
+
+		t.Run("返り値のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			got := p.PublishedAt()
+			*got = time.Date(2030, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+			require.NotNil(t, p.PublishedAt())
+			assert.NotEqual(t, *got, *p.PublishedAt())
+			assert.Equal(t, publishedAt, *p.PublishedAt())
+		})
+	})
 }
 
 func TestProduct_Quantity(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時の在庫数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Equal(t, 100, p.Quantity())
+		})
+
+		t.Run("在庫数が下限値の場合、その値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.Quantity = minQuantity
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Equal(t, minQuantity, p.Quantity())
+		})
+	})
 }
 
 func TestProduct_Status(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時のステータス参照をIDと名称ごと返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Equal(t, attrs.Status, p.Status())
+			assert.Equal(t, "在庫あり", p.Status().Name())
+		})
+	})
 }
 
 func TestProduct_StockWarningThreshold(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成時の在庫警告閾値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			require.NotNil(t, p.StockWarningThreshold())
+			assert.Equal(t, 10, *p.StockWarningThreshold())
+		})
+
+		t.Run("未設定の場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Nil(t, p.StockWarningThreshold())
+		})
+
+		t.Run("返り値のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			got := p.StockWarningThreshold()
+			*got = minThreshold
+
+			require.NotNil(t, p.StockWarningThreshold())
+			assert.NotEqual(t, *got, *p.StockWarningThreshold())
+			assert.Equal(t, 10, *p.StockWarningThreshold())
+		})
+	})
 }

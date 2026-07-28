@@ -350,15 +350,116 @@ func Test_stripLeadingSQLComments(t *testing.T) {
 
 func Test_isConstraintViolation(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("整合性制約違反(23xxx)はtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isConstraintViolation(&pgconn.PgError{Code: "23505"}))
+		})
+
+		t.Run("ラップされていても連鎖を辿ってtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isConstraintViolation(xerrors.Wrap(&pgconn.PgError{Code: "23503"}, "insert failed")))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("23xxx以外のSQLSTATEはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isConstraintViolation(&pgconn.PgError{Code: "57014"}))
+		})
+
+		t.Run("PostgreSQL由来でないエラーはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isConstraintViolation(xerrors.New("boom")))
+		})
+
+		t.Run("nilはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isConstraintViolation(nil))
+		})
+	})
 }
 
 func Test_isStatementTimeout(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("query_canceled(57014)はtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isStatementTimeout(&pgconn.PgError{Code: "57014"}))
+		})
+
+		t.Run("ラップされていても連鎖を辿ってtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isStatementTimeout(xerrors.Wrap(&pgconn.PgError{Code: "57014"}, "query failed")))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("lock_timeout失効(55P03)はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isStatementTimeout(&pgconn.PgError{Code: "55P03"}))
+		})
+
+		t.Run("PostgreSQL由来でないエラーはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isStatementTimeout(context.DeadlineExceeded))
+		})
+
+		t.Run("nilはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isStatementTimeout(nil))
+		})
+	})
 }
 
 func Test_isTimeout(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("contextの期限切れはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isTimeout(context.DeadlineExceeded))
+		})
+
+		t.Run("lock_timeout失効(55P03)はtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isTimeout(&pgconn.PgError{Code: "55P03"}))
+		})
+
+		t.Run("statement_timeout失効(57014)はtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isTimeout(&pgconn.PgError{Code: "57014"}))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("contextのキャンセルはtrueを返さない", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isTimeout(context.Canceled))
+		})
+
+		t.Run("タイムアウト以外のSQLSTATEはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isTimeout(&pgconn.PgError{Code: "23505"}))
+		})
+
+		t.Run("nilはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isTimeout(nil))
+		})
+	})
 }

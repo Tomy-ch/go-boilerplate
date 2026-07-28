@@ -7,87 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConstructor(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		cfg := MockConfigForTest(t)
-
-		t.Run("OS設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			osCfg := NewOperatingSystemConfig(cfg)
-			assert.Same(t, &cfg.os, osCfg)
-		})
-
-		t.Run("サーバー設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			serverCfg := NewServerConfig(cfg)
-			assert.Same(t, &cfg.server, serverCfg)
-		})
-
-		t.Run("メトリクス設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			metricsCfg := NewMetricsConfig(cfg)
-			assert.Same(t, &cfg.metrics, metricsCfg)
-		})
-
-		t.Run("オブザーバビリティ設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			observabilityCfg := NewObservabilityConfig(cfg)
-			assert.Same(t, &cfg.observability, observabilityCfg)
-		})
-
-		t.Run("アプリケーション設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			appCfg := NewApplicationConfig(cfg)
-			assert.Same(t, &cfg.app, appCfg)
-		})
-
-		t.Run("データベース設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			dbCfg := NewDatabaseConfig(cfg)
-			assert.Same(t, &cfg.database, dbCfg)
-		})
-
-		t.Run("DBコネクション設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			dbConnCfg := NewDBConnectionConfig(cfg)
-			assert.Same(t, &cfg.dbconnection, dbConnCfg)
-		})
-
-		t.Run("セキュリティ設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			securityCfg := NewSecurityConfig(cfg)
-			assert.Same(t, &cfg.security, securityCfg)
-		})
-
-		t.Run("セキュアCookie設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			secureCookieCfg := NewSecureCookieConfig(cfg)
-			assert.Same(t, &cfg.secureCookie, secureCookieCfg)
-		})
-
-		t.Run("worker設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			workerCfg := NewWorkerConfig(cfg)
-			assert.Same(t, &cfg.worker, workerCfg)
-		})
-
-		t.Run("outbox設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			outboxCfg := NewOutboxConfig(cfg)
-			assert.Same(t, &cfg.outbox, outboxCfg)
-		})
-
-		t.Run("認証設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
-			t.Parallel()
-			authCfg := NewAuthConfig(cfg)
-			assert.Same(t, &cfg.auth, authCfg)
-		})
-	})
-}
-
 func TestOperatingSystemConfig_TimeZone(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -1177,102 +1096,242 @@ func TestObservabilityConfig_Enabled(t *testing.T) {
 	})
 }
 
-func TestNewApplicationConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewAuthConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewDBConnectionConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewDatabaseConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewMetricsConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewObjectStorageConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewObservabilityConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
 func TestNewOperatingSystemConfig(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持する OS 設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.os, NewOperatingSystemConfig(cfg))
+		})
+	})
 }
 
-func TestNewOutboxConfig(t *testing.T) {
+func TestNewApplicationConfig(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewSecureCookieConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestNewSecurityConfig(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するアプリケーション設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.app, NewApplicationConfig(cfg))
+		})
+	})
 }
 
 func TestNewServerConfig(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するサーバー設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.server, NewServerConfig(cfg))
+		})
+	})
+}
+
+func TestNewMetricsConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するメトリクス設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.metrics, NewMetricsConfig(cfg))
+		})
+	})
+}
+
+func TestNewObservabilityConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するオブザーバビリティ設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.observability, NewObservabilityConfig(cfg))
+		})
+	})
+}
+
+func TestNewDatabaseConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するデータベース設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.database, NewDatabaseConfig(cfg))
+		})
+	})
+}
+
+func TestNewDBConnectionConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するDBコネクション設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.dbconnection, NewDBConnectionConfig(cfg))
+		})
+	})
+}
+
+func TestNewSecurityConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するセキュリティ設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.security, NewSecurityConfig(cfg))
+		})
+	})
+}
+
+func TestNewSecureCookieConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するセキュアクッキー設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.secureCookie, NewSecureCookieConfig(cfg))
+		})
+	})
 }
 
 func TestNewWorkerConfig(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持する worker 設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.worker, NewWorkerConfig(cfg))
+		})
+	})
 }
 
-func TestObjectStorageConfig_AccessKeyID(t *testing.T) {
+func TestNewOutboxConfig(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持する outbox 設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.outbox, NewOutboxConfig(cfg))
+		})
+	})
 }
 
-func TestObjectStorageConfig_Bucket(t *testing.T) {
+func TestNewAuthConfig(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持する認証設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.auth, NewAuthConfig(cfg))
+		})
+	})
+}
+
+func TestNewObjectStorageConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持するオブジェクトストレージ設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.objectStorage, NewObjectStorageConfig(cfg))
+		})
+	})
 }
 
 func TestObjectStorageConfig_Endpoint(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
-func TestObjectStorageConfig_MaxUploadBytes(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("エンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			objectStorage := MockConfigForTest(t).objectStorage
+			assert.Equal(t, expectedObjectStorageEndpoint, objectStorage.Endpoint())
+		})
+	})
 }
 
 func TestObjectStorageConfig_Region(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("リージョンを取得できる", func(t *testing.T) {
+			t.Parallel()
+			objectStorage := MockConfigForTest(t).objectStorage
+			assert.Equal(t, expectedObjectStorageRegion, objectStorage.Region())
+		})
+	})
+}
+
+func TestObjectStorageConfig_Bucket(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("バケット名を取得できる", func(t *testing.T) {
+			t.Parallel()
+			objectStorage := MockConfigForTest(t).objectStorage
+			assert.Equal(t, expectedObjectStorageBucket, objectStorage.Bucket())
+		})
+	})
+}
+
+func TestObjectStorageConfig_AccessKeyID(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("アクセスキーIDを取得できる", func(t *testing.T) {
+			t.Parallel()
+			objectStorage := MockConfigForTest(t).objectStorage
+			assert.Equal(t, expectedObjectStorageAccessKeyID, objectStorage.AccessKeyID())
+		})
+	})
 }
 
 func TestObjectStorageConfig_SecretAccessKey(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("シークレットアクセスキーを取得できる", func(t *testing.T) {
+			t.Parallel()
+			objectStorage := MockConfigForTest(t).objectStorage
+			assert.Equal(t, expectedObjectStorageSecretAccessKey, objectStorage.SecretAccessKey())
+		})
+	})
 }
 
 func TestObjectStorageConfig_UsePathStyle(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("path-styleアクセス設定を取得できる", func(t *testing.T) {
+			t.Parallel()
+			objectStorage := MockConfigForTest(t).objectStorage
+			assert.Equal(t, expectedObjectStorageUsePathStyle, objectStorage.UsePathStyle())
+		})
+	})
+}
+
+func TestObjectStorageConfig_MaxUploadBytes(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("アップロード最大バイト数を取得できる", func(t *testing.T) {
+			t.Parallel()
+			objectStorage := MockConfigForTest(t).objectStorage
+			assert.Equal(t, expectedObjectStorageMaxUploadBytes, objectStorage.MaxUploadBytes())
+		})
+	})
 }

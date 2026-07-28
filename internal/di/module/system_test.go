@@ -83,5 +83,40 @@ func Test_logBuildInfo(t *testing.T) {
 
 func TestSystemModule(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("起動時にビルド情報を1行ログへ出力する", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			app := fx.New(
+				SystemModule(),
+				fx.Provide(func() logging.Logger { return logger }),
+				fx.Provide(func() *config.ApplicationConfig {
+					return config.NewApplicationConfig(config.MockConfigForTest(t))
+				}),
+				fx.NopLogger,
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+
+			assert.Len(t, observed.FilterMessage("application build info").All(), 1)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未配線では BuildInfo が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var bi system.BuildInfo
+
+			require.Error(t, fx.ValidateApp(fx.Populate(&bi), fx.NopLogger))
+		})
+	})
 }

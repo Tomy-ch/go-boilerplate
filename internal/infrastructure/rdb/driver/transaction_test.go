@@ -323,5 +323,39 @@ func Test_txManager_rollback(t *testing.T) {
 
 func Test_withTx(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡したトランザクションをcontextから取り出せる形で保持する", func(t *testing.T) {
+			t.Parallel()
+
+			tx := &stubTx{}
+
+			got, ok := withTx(context.Background(), tx).Value(txKey{}).(pgx.Tx)
+
+			require.True(t, ok)
+			assert.Same(t, tx, got)
+		})
+
+		t.Run("元のcontextは書き換えずトランザクションを持たないまま残る", func(t *testing.T) {
+			t.Parallel()
+
+			base := context.Background()
+			withTx(base, &stubTx{})
+
+			assert.Nil(t, base.Value(txKey{}))
+		})
+
+		t.Run("入れ子で設定した場合は内側のトランザクションが有効になる", func(t *testing.T) {
+			t.Parallel()
+
+			outer, inner := &stubTx{}, &stubTx{}
+
+			got, ok := withTx(withTx(context.Background(), outer), inner).Value(txKey{}).(pgx.Tx)
+
+			require.True(t, ok)
+			assert.Same(t, inner, got)
+		})
+	})
 }

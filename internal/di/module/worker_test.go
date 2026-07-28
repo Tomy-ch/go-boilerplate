@@ -4,7 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
 
+	workercontroller "go-boilerplate/internal/controller/worker"
 	queuemetrics "go-boilerplate/internal/observability/metrics/queue"
 	workerboundary "go-boilerplate/internal/usecase/boundary/worker"
 )
@@ -125,5 +128,38 @@ func Test_provideQueueStatsTargets(t *testing.T) {
 
 func TestWorkerModule(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	workerDeps := func() []fx.Option {
+		return append(commonDeps(), InfrastructureModule(), UsecaseModule())
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("worker engine / State / queue 統計収集器を提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				engine    *workercontroller.Engine
+				state     workerboundary.State
+				collector *queuemetrics.StatsCollector
+			)
+
+			validateGraph(t, append(workerDeps(), WorkerModule(),
+				fx.Populate(&engine, &state, &collector))...)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未配線では worker engine が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var engine *workercontroller.Engine
+
+			opts := append(workerDeps(), fx.Populate(&engine), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
 }

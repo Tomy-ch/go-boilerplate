@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -126,5 +127,51 @@ func TestNewConsoleLogger(t *testing.T) {
 
 func Test_encoderConfig(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("JSON/console共通のログキー名を返す", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := encoderConfig(zapcore.LowercaseLevelEncoder)
+
+			assert.Equal(t, "ts", cfg.TimeKey)
+			assert.Equal(t, "level", cfg.LevelKey)
+			assert.Equal(t, "logger", cfg.NameKey)
+			assert.Equal(t, "caller", cfg.CallerKey)
+			assert.Equal(t, "msg", cfg.MessageKey)
+			assert.Equal(t, stacktraceKey, cfg.StacktraceKey)
+		})
+
+		t.Run("渡したencodeLevelがそのままレベルエンコーダに設定される", func(t *testing.T) {
+			t.Parallel()
+
+			called := false
+			cfg := encoderConfig(func(zapcore.Level, zapcore.PrimitiveArrayEncoder) { called = true })
+
+			require.NotNil(t, cfg.EncodeLevel)
+			cfg.EncodeLevel(zapcore.InfoLevel, nil)
+			assert.True(t, called)
+		})
+
+		t.Run("時刻はISO8601形式でエンコードされる", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := encoderConfig(zapcore.LowercaseLevelEncoder)
+			enc := zapcore.NewJSONEncoder(cfg)
+
+			buf, err := enc.EncodeEntry(zapcore.Entry{
+				Level:   zapcore.InfoLevel,
+				Time:    time.Date(2026, time.July, 28, 9, 30, 0, 0, time.UTC),
+				Message: "hello",
+			}, nil)
+			require.NoError(t, err)
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), "\n"), &got))
+			assert.Equal(t, "2026-07-28T09:30:00.000Z", got["ts"])
+			assert.Equal(t, "info", got["level"])
+		})
+	})
 }
