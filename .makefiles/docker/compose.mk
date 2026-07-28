@@ -21,6 +21,10 @@ LOAD_SLOT = set -a; if [ -f .gobp-db-slot ]; then . ./.gobp-db-slot; fi; set +a
 APP_PROJECT_DEFAULT = gobp-app-$(notdir $(CURDIR))
 # ホスト公開ポートの既定値は docker-compose.attach.yaml 側の ${VAR:-...} が持つ（多重定義を避ける）。
 APP_PROJECT_SH = $${SERVE_PROJECT:-$(APP_PROJECT_DEFAULT)}
+# トークンの iss は mock 認証サーバーのホスト公開 URL で、スロット毎にずれる。seed が投入する
+# user_identities の issuer と host 実行の go test が同じ値を見るよう、導出をここ 1 箇所に置く
+# （app コンテナ側の同じ導出は docker-compose.attach.yaml が持つ）。LOAD_SLOT の後に展開すること。
+AUTH_ISSUER_SH = http://localhost:$${MOCK_AUTH_HOST_PORT:-4000}
 
 # イメージビルド時、mise は GitHub Releases API でツールを解決する。未認証 60 req/hour（IP 単位）は
 # ビルド 1 回分に足りず 403 で落ちるため、ホストの gh からトークンを借りる。
