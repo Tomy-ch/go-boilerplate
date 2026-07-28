@@ -431,6 +431,10 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
 	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
+	// Auth（make がスロットの issuer を渡すため、実行環境の値が混ざらないよう期待値へ固定する）
+	t.Setenv(authIssuerEnvKey, expectedAuthIssuer)
+	t.Setenv("AUTH_AUDIENCE", expectedAuthAudience)
+	t.Setenv("AUTH_JWKS_URL", expectedAuthJWKSURL)
 	// Object Storage
 	t.Setenv("OBJECT_STORAGE_ENDPOINT", expectedObjectStorageEndpoint)
 	t.Setenv("OBJECT_STORAGE_REGION", expectedObjectStorageRegion)

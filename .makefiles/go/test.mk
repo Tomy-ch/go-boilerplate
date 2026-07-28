@@ -11,19 +11,23 @@ GO_TEST_EXCLUDE := /(gen|cmd|mock|apperror|scripts)(/|$$)
 # カバレッジゲートの下限（docs/rules.md の 90% フロア）
 COVERAGE_THRESHOLD := 90
 
+# DB を使うテストはテスト用 DB の seed を fixture として読む。その seed の issuer はスロットのポートに
+# 追従する（.makefiles/database/seed.mk）ため、host 実行の go test にも同じ値を渡す。
+GO_TEST_ENV = $(LOAD_SLOT); export AUTH_ISSUER="$(AUTH_ISSUER_SH)";
+
 test:
-	@TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
+	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	go test $$TGT_PKGS -race -cover -count=1
 
 test-cached:
-	@TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
+	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	go test $$TGT_PKGS -cover
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
 	go clean -testcache
 	rm -f docs/coverage/coverage.out
-	TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
+	$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	COVER_PKGS="$$(go list ./... \
 		| grep -Ev '$(GO_TEST_EXCLUDE)' \
 		| tr '\n' ',' \
@@ -34,7 +38,7 @@ gen-test-repo:
 	@echo "✅ テストレポートの生成が完了しました。"
 
 test-cover-ci:
-	@TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
+	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	COVER_PKGS="$$(go list ./... \
 		| grep -Ev '$(GO_TEST_EXCLUDE)' \
 		| tr '\n' ',' \

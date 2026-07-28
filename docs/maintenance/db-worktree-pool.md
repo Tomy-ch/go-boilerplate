@@ -54,6 +54,17 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
   - `COMPOSE_PROJECT_NAME` = `gobp-shared` (moves the default project to the infra layer so DB
     tooling — migrate / seed / psql / gen — runs on the shared infra's network; `compose.mk` sets the
     same default even when no slot is held)
+- **persisted data that follows the shifted ports**: a host port is not only something to connect to —
+  it can also be *stored* in the database. The JWT issuer is one such value: the mock auth server
+  publishes on `4000+N`, so the `iss` of the tokens it issues shifts with the slot, and the
+  `user_identities` row that the resolver matches on `(issuer, subject)` has to shift with it — with a
+  pinned literal, every authenticated endpoint answers 401 in a worktree that holds a slot. The seed
+  file therefore stores `${AUTH_ISSUER}` instead of the URL and `make db-seed` passes this slot's value
+  in (see `database/seed/README.md`), so `db-reinit` / `db-seed` / `slot-acquire` all leave an identity
+  that matches the environment. Data of this kind that you add later has to follow the slot the same
+  way, rather than pinning the default port. Like the database name, the value reaches a host-run
+  `go test` only through `make` (`make test` / `test-cached` export it) — run DB-backed tests through
+  those targets, since a bare `go test` gets neither `DB_NAME_TEST` nor the slot's issuer.
 - **extension / timezone bootstrap**: after `CREATE DATABASE` (guarded by an existence check) for
   `wt<N>_local` / `wt<N>_test`, acquire sets the `pg_trgm` extension and the `Asia/Tokyo` timezone on
   each database (the same things the init script applies to `local` / `test`; a dynamically created

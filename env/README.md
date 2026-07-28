@@ -163,7 +163,7 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string||Code default empty. Set per environment that wires the JWT authenticator|
+|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string||Code default empty. Set per environment that wires the JWT authenticator. `db-seed` also expands it into the `user_identities` seed, so an environment that seeds needs it even when it stubs authentication (CI)|
 |AUTH_AUDIENCE|Expected `aud` claim value|string||Code default empty. Required together with the issuer|
 |AUTH_JWKS_URL|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string||Code default empty. Internal service URL in compose (e.g. `http://mock_auth_server:4000/.well-known/jwks.json`)|
 |AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|[]string|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|

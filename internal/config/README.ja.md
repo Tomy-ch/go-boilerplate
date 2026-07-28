@@ -258,6 +258,7 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |---|---|---|
 |`MockConfigForTest(t)`|`config_testing_mock.go`|全項目にデフォルト値を設定したテスト用 `*Config` を生成|
 |`NewTestLocation(t)`|`test_kit.go`|テスト用タイムゾーン `*time.Location` を生成|
+|`ResolvedAuthIssuer(t)`|`test_kit.go`|この実行環境の `AUTH_ISSUER` を解決（実行時 env が先、無ければ埋め込み `env/.env`）|
 |`EnsureRepoRootAndEnv(t, env)`|`test_kit.go`|リポジトリルートに移動し、ENV 環境変数を設定|
 
 ### テスト用 Setter

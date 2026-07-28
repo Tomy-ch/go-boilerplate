@@ -163,7 +163,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string||Code default は空。JWT authenticator を配線する環境で設定する|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string||Code default は空。JWT authenticator を配線する環境で設定する。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
 |AUTH_AUDIENCE|検証する `aud` クレームの期待値|string||Code default は空。issuer と対で必須|
 |AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string||Code default は空。compose では内部サービス URL（例 `http://mock_auth_server:4000/.well-known/jwks.json`）|
 |AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|[]string|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|

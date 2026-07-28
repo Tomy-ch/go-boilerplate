@@ -45,6 +45,16 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   - `SERVE_PROJECT` = `gobp-wt-N`（app 層の compose プロジェクト = `APP_PROJECT`）
   - `COMPOSE_PROJECT_NAME` = `gobp-shared`（DB ツーリング migrate/seed/psql/gen が共有インフラのネットワークで
     動くよう既定プロジェクトを infra 層へ寄せる。未取得時も compose.mk が同じ既定を置く）
+- **ずれたポートに追随する永続データ**: ホスト公開ポートは接続先であるだけでなく、DB に**保存される**値でも
+  ある。JWT の issuer がそれで、mock 認証サーバーは `4000+N` で公開されるため発行トークンの `iss` はスロットで
+  ずれ、resolver が `(issuer, subject)` で突き合わせる `user_identities` の行も一緒にずれていなければならない
+  （リテラル固定だと、スロットを取った worktree では認証を要求する全エンドポイントが 401 になる）。そのため
+  seed ファイルは URL ではなく `${AUTH_ISSUER}` を持ち、`make db-seed` がそのスロットの値を渡す
+  （`database/seed/README.md` を参照）。`db-reinit` / `db-seed` / `slot-acquire` のいずれを通っても環境に一致する
+  identity が入る。この種のデータを足すときも、既定ポートを焼き込まず同じようにスロットへ追随させること。
+  DB 名と同じく、この値が host 実行の `go test` に届くのは `make` 経由だけ（`make test` / `test-cached` が
+  export する）。素の `go test` は `DB_NAME_TEST` も スロットの issuer も受け取らないため、DB を使うテストは
+  これらのターゲットから実行すること。
 - **拡張・timezone のブートストラップ**: acquire は `wt<N>_local` / `wt<N>_test` を CREATE DATABASE
   （存在ガード）した後、各 DB に `pg_trgm` 拡張と `Asia/Tokyo` timezone を設定する（init スクリプトが
   `local` / `test` に施すのと同じもの。動的に作る worktree DB には明示設定が必要）。
