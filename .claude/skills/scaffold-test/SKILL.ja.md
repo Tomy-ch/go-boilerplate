@@ -24,10 +24,10 @@
 
 - `docs/testing-conventions.md`（parallel 必須・命名・require vs assert・mock 方針・層構造ルール）**および section 10 の意味的品質バー / アンチパターン** — 生成テストが満たすべき SSOT（各ケースはその分岐固有の outcome を assert し、列挙されたアンチパターンを出力しない）。 `test-review` も同じ節を読んでレビューするため、生成器とレビュアは対称に保たれる — 観点・アンチパターンのリストを本スキルへ複製しない。
 - 対象ソースファイル（シグネチャ・引数・戻り値・エラーセンチネル・package 内ヘルパを抽出）。
-- 層別 README。**対象ファイルから上位ディレクトリへ歩き、`Test Strategy` / `Testing strategy` 節を実際に持つ最も近い祖先 `README.md`** を採用する。節を持たないより近い README も併読する（観点は祖先から来ても、そのパッケージの命名・ヘルパ・不変条件の規約はそこが持つ）。解決は lookup ではなく walk で行う: 下記は現時点で walk が着地する先のスナップショットであり、一覧に無い層は「歩いて辿る対象」であって「対象外」ではない。
+- 層別 README。**対象ファイルから上位ディレクトリへ歩き、Test Strategy 節を実際に持つ最も近い祖先 `README.md`** を採用する（見出しの表記は README ごとに揺れる — `Test Strategy` / `Test strategy` / `Testing strategy` / `Testing Strategy` — 厳密な文字列一致ではなく意味で判定すること）。節を持たないより近い README も併読する（観点は祖先から来ても、そのパッケージの命名・ヘルパ・不変条件の規約はそこが持つ）。解決は lookup ではなく walk で行う: 下記は現時点で walk が着地する先のスナップショットであり、一覧に無い層は「歩いて辿る対象」であって「対象外」ではない。
   - `internal/domain/README.md` （`internal/domain/**`）
   - `internal/usecase/README.md`（＋ `internal/usecase/boundary/README.md`）（`internal/usecase/**`）
-  - `internal/controller/README.md`（＋ `internal/controller/handler/README.md`）（`internal/controller/handler/**`）
+  - `internal/controller/README.md` — controller 層の基準。駆動方式ごとにスコープされる: HTTP ハンドラ（＋ `internal/controller/handler/README.md`）は `internal/controller/handler/**`、ループ駆動の controller は `internal/controller/outbox/**` / `internal/controller/worker/**`
   - `internal/controller/httpstack/README.md`（`internal/controller/httpstack/**`）— 各ミドルウェアのサブパッケージはこの親へ解決される
   - `internal/controller/server/README.md`（`internal/controller/server/**`）
   - `internal/infrastructure/README.md`（＋ `internal/infrastructure/rdb/README.md`）（`internal/infrastructure/**`）

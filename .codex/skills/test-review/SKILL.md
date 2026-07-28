@@ -29,10 +29,10 @@ Do NOT use this skill for:
 
 - `docs/testing-conventions.md` — the project-wide testing conventions, **including section 10 (Semantic quality bar / anti-patterns)** — the SSOT for Lens 3 and Lens 4 Axis B (意味網羅), shared with `scaffold-test`.
 - `.codex/skills/scaffold-test/SKILL.md` — the canonical generation rules (parallel mandate, `t.Run` per subcase, 正常系 / 異常系 grouping, Japanese naming, require vs assert, mock policy, `for`-loop policy, one-`TestXxx`-per-subject policy). This skill reviews against those same rules — no duplication.
-- The nearest layer README, resolved by **walking up from each target test file to the closest ancestor `README.md` that carries a `Test Strategy` / `Testing strategy` section** (the same rule `scaffold-test/SKILL.md` applies — keep the two in step). A nearer README without the section is still read for that package's own conventions. The list below is a snapshot of where the walk currently lands, not a closed map; a path that is not listed is walked, never treated as out of scope:
+- The nearest layer README, resolved by **walking up from each target test file to the closest ancestor `README.md` that carries a Test Strategy section (the heading text varies across READMEs — `Test Strategy`, `Test strategy`, `Testing strategy`, `Testing Strategy` — match on meaning, not on an exact string)** (the same rule `scaffold-test/SKILL.md` applies — keep the two in step). A nearer README without the section is still read for that package's own conventions. The list below is a snapshot of where the walk currently lands, not a closed map; a path that is not listed is walked, never treated as out of scope:
   - `internal/domain/README.md` (Testing strategy)
   - `internal/usecase/README.md` (Testing Strategy)
-  - `internal/controller/handler/README.md` (Test Strategy)
+  - `internal/controller/handler/README.md` (Test Strategy) for handlers; `internal/controller/README.md` (Test Strategy, layer baseline) is what `internal/controller/outbox/**` / `internal/controller/worker/**` resolve to — read its loop-driven sub-section, not the HTTP one
   - `internal/controller/httpstack/README.md` (Test Strategy) — the resolution target for every middleware sub-package
   - `internal/controller/server/README.md` (Test Strategy)
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` (Test Strategy)

@@ -80,4 +80,4 @@ Bind an OS-assigned port (`:0`) rather than a fixed one so the package stays `t.
 ## Notes
 
 - `RegisterHTTPServerHooks` depends on the `AppliedServerExtends` token, so it executes after extension application
-- The HTTP server starts in a goroutine; startup failures are logged but the Start hook itself does not return an error
+- Opening the listener happens synchronously, so a bind failure is returned from the Start hook and aborts startup; only `Serve`, which runs in a goroutine after that, can fail with nothing to return the error to — those failures are logged

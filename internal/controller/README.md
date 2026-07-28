@@ -70,6 +70,10 @@ no HTTP-level detail worth adding, omit it rather than restating.
 
 ## Test Strategy
 
+This is the layer baseline. A controller is any inbound adapter, and they do not all speak HTTP, so read the sub-section that matches the driver before applying anything below. Sub-trees with their own section own their viewpoints outright: [`handler/`](handler/README.md), [`job/`](job/README.md), [`httpstack/`](httpstack/README.md), [`server/`](server/README.md).
+
+### HTTP handlers
+
 Handler tests mock the usecase and drive the handler through Echo (`testkit/testecho` + `testkit/testassert`); business logic lives in the usecase and is not re-tested here. Each handler test verifies:
 
 - HTTP I/O conversion — request binding (path / query / body) → usecase input, and usecase output → response DTO / status
@@ -78,3 +82,12 @@ Handler tests mock the usecase and drive the handler through Echo (`testkit/test
 - middleware-supplied context — values the handler reads from context (auth principal / request id / idempotency)
 
 Boundary-level HTTP wiring (Router → Middleware → Handler → Presenter) is covered separately by the `internal/integration` HTTP-boundary tests.
+
+### Loop-driven controllers (`outbox/`, `worker/`)
+
+These adapters are driven by a poll / consume loop rather than a request, so nothing above about Echo, binding, or HTTP status applies to them. The usecase and the boundary ports (`usecase/boundary/clock`, `usecase/boundary/worker`) are mocked, the logger is `logging.NewTestLogger`, the tracer is `observability.NewNoopTracerFactory`, and the in-memory fakes under `usecase/boundary/worker/testkit` stand in for a real broker. The loop is what is under test, so exercise it as a loop:
+
+- **One iteration's effect** — a poll that finds work dispatches it; a poll that finds none backs off by the configured interval. Assert through the mocked sleeper, never by sleeping in the test.
+- **Stop semantics** — cancelling the context ends the loop and returns, and an in-flight item finishes or is abandoned according to the drain contract the package documents. This is the branch a `SupervisedRunner`-driven shutdown depends on.
+- **Error handling per iteration** — a usecase error backs off and continues rather than killing the loop; the failure path documented by the package (retry / circuit / failure handler) is asserted by its distinctive outcome, not just by "no panic".
+- **Settings clamping** — a value outside the accepted range is clamped to the documented bound, and the clamp is visible (logged / reflected in the effective setting), not silent.

@@ -524,7 +524,7 @@ DI レイヤは配線を行うのみで、計算はしない。したがって�
 - **グラフの妥当性** — モジュール単位の `fx.ValidateApp`。コンストラクタもライフサイクルフックも実行せずにグラフを解決するため、配線の充足だけを証明し、それ以上は証明しない。[`module/README.ja.md`](module/README.ja.md) を参照。
 - **独自ロジックを持つ provider / `fx.Invoke` の本体** — まさにグラフ検証が到達しない箇所。単体テストで関数を直接呼ぶこと。グラフ上にしか登場しない本体は未テストである。
 - **ライフサイクルフック** — `lifecycle.Registrar` のモックで登録された start / stop クロージャを捕捉して駆動する。[`server/hook/README.ja.md`](server/hook/README.ja.md) を参照。`job` / `worker` / `outboxrelay` の各フックは `lifecycle.SupervisedRunner` の上で同じ形を取り、drain 経路（cancel → grace 上限つきの wait）が固定すべき分岐となる。
-- **環境ゲート付きの配線** — local / CI / test 以外で fail closed するモジュール（`authzModule`、`core.AuthnModule`）はゲートの **両側** を検証する。安全側に倒すこと自体が防御であり、許可側しか通らないテストは要点を何も担保しない。
+- **環境ゲート付きの配線** — 環境ごとに実装を選び、担ってはならない環境では拒否（エラーを返す）する provider（`provideAuthorizer`、`core.provideAuthenticator`）は、拒否を含むゲートの **全ケース** を検証する。安全側に倒すこと自体が防御であり、解決に成功する環境しか通らないテストは要点を何も担保しない。現在の境界は推測せずゲート自身の `switch` を読むこと — どの環境がどの case に落ちるかは sample-api マーカーによって変わる。
 
 実 Echo と実 DB を使ったプロセス全体の起動はここでは対象外 —— それは [`internal/integration`](../integration/README.ja.md) の担当。
 

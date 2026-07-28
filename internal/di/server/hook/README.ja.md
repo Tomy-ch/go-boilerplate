@@ -80,4 +80,4 @@ fx.Invoke(
 ## 注意点
 
 - `RegisterHTTPServerHooks` は `AppliedServerExtends` トークンに依存するため、extension 適用後に実行される
-- HTTP サーバーは goroutine で起動するため、起動失敗はログに出力されるが Start フック自体はエラーを返さない
+- リスナのオープンは同期的に行うため、bind 失敗は Start フックからエラーとして返り起動を中断する。goroutine で走るのはその後の `Serve` だけであり、エラーの返し先が無いためこちらの失敗はログに出力される
