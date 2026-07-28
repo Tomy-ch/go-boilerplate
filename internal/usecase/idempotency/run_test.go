@@ -13,6 +13,7 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/idempotency"
 	mock_idempotencyuc "go-boilerplate/internal/usecase/idempotency/mock"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,11 @@ var fixedNow = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 type payload struct {
 	V string `json:"v"`
+}
+
+// uuidPayload は、非公開フィールドのみを持つ値オブジェクト（`uuid.UUID`）を含む DTO です。
+type uuidPayload struct {
+	ID uuid.UUID `json:"id"`
 }
 
 // unmarshalable は、json.Marshal が必ず失敗する（func フィールドを持つ）型です。
@@ -171,6 +177,43 @@ func TestRun(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, replayed)
 			assert.Equal(t, "replayed", res.V)
+		})
+
+		t.Run("保存した DTO は UUID を含んでいても replay で同じ値に復元される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+			want := uuidPayload{ID: uuid.NewTestFromSalt(t, "purchase-1")}
+			fp := []byte("fingerprint")
+
+			var stored []byte
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+			store.EXPECT().Complete(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, p idempotencybndry.CompleteParams) error {
+					stored = p.ResponsePayload
+					return nil
+				})
+
+			_, _, err := idempotency.Run(reqCtx(fp), newDeps(t, store), statusCreated,
+				func(context.Context) (uuidPayload, error) { return want, nil })
+			require.NoError(t, err)
+
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+			store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(&idempotencybndry.Record{
+				Status:          idempotencybndry.StatusCompleted,
+				ResponsePayload: stored,
+				Fingerprint:     fp,
+			}, nil)
+
+			res, replayed, err := idempotency.Run(reqCtx(fp), newDeps(t, store), statusCreated,
+				func(context.Context) (uuidPayload, error) {
+					t.Fatal("業務処理は呼ばれてはならない")
+					return uuidPayload{}, nil
+				})
+
+			require.NoError(t, err)
+			assert.True(t, replayed)
+			assert.True(t, want.ID.Equal(res.ID))
 		})
 
 		t.Run("completed への再送は IncHit を計上する", func(t *testing.T) {
