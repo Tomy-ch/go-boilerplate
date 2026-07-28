@@ -83,6 +83,37 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 |IP 抽出|直接抽出|X-Forwarded-For + CIDR|
 |リカバリスタック|10KB（フル）|4KB（制限）|
 
+## テスト戦略
+
+各サブパッケージは **単体のミドルウェアとして独立に**テストする。登録順序と組み上がったチェーンは `internal/di/server/extension` の担当であり、合成後のスタックは `internal/integration` の HTTP 境界テストで検証する — どちらもここで再テストしないこと。
+
+### 実体を使う対象とモックにする対象
+
+|依存|方法|
+|---|---|
+|`*echo.Echo` / ルータ / `*echo.Context`|実体（`echo.New()` + `httptest`）|
+|後続ハンドラ（`next`）|受け取った内容を記録する / 固定エラーを返すテスト用クロージャ|
+|`logging.Logger`|`logging.NewTestLogger` / `NewObservedTestLogger` — observed エントリ（メッセージ・フィールド）で検証し、整形済みログ文字列では検証しない|
+|`config.*Config`|`config.MockConfigForTest` + `Set*(t, …)` セッタ|
+|パッケージが宣言する協調オブジェクトのインターフェース（例: `redmetrics.Recorder`）|`*/mock/` の生成モック|
+
+戻り値のエラーを検証するときはミドルウェアを直接駆動し（`Middleware(...)(next)(c)`）、実際に書き出されたレスポンス（status / ヘッダ / ボディ）を検証するときは `e.ServeHTTP` 経由で駆動する — レスポンスが commit されるのは実 Echo 経路のみ。oapi-codegen の `StrictMiddleware` スロットに入るミドルウェア（`idempotency`）は `e.Use` ではなくそのシグネチャ経由で駆動する。
+
+### 全ミドルウェア共通で押さえる観点
+
+- **素通し** — ミドルウェアが介入しないリクエストは変更されずに `next` へ届き、`next` の戻り値がそのまま伝播すること。
+- **運用系パスの除外** — `ops.IsOpsPath` を参照するミドルウェア（`logging` / `redmetrics`、および `oapi/skipper` の skipper）は両側を検証する。運用系パス（`/health`・`/metrics` 等）ではログ／メトリクスが出ず、アプリケーションパスでは出ること。
+- **`server.ResponseOf` の縮退** — Echo のレスポンスを取り出すミドルウェアは、ライタを unwrap できない場合に単なる素通しへ縮退する。`c.SetResponse(httptest.NewRecorder())` で再現し、失敗もせず何も記録しないことを検証する。この分岐は本番スタック経由では到達しないため、パッケージ単体テストだけが担保となる。
+- **環境依存の分岐** — 設定によって振る舞いが切り替わる場合（`recovery` のスタックサイズ、`ipextractor` の抽出方式）は、config セッタで各モードを網羅する。不明モードのフォールバックも含めること。
+
+### `Before` / `After` フックの観点
+
+`server.ResponseOf(c).Before(...)` / `.After(...)` は遅延実行を登録するため、検証はミドルウェア呼び出しの戻り後ではなく、レスポンス書き出し後に置く。
+
+- **発火条件** — `Before` は `WriteHeader` の直前に走り、ヘッダを補正できる最後の地点である（`forcejson`）。`After` は status 確定後の `Write` で走るため、エラーハンドラ／リカバリが最終的に決めた status を観測できる（`logging` / `redmetrics`）。
+- **複数回の発火** — `After` は `Write` ごとに発火するため、チャンク／ストリーミング応答では複数回呼ばれる。1 リクエスト 1 回であるべき効果は、1 回に留まることを検証する（`redmetrics` は `sync.Once` で担保）。
+- **発火しない経路** — ボディ無し応答（204 / 304）は `Write` が呼ばれないため `After` が走らない。それが観測欠落を招く場合、その欠落はフックの仕様上の限界として文書化し、暗黙にせずテストで固定する。
+
 ## 補足
 
 - 新規ミドルウェアは独立したサブパッケージとして追加。1 パッケージに複数の関心事を詰め込まないこと

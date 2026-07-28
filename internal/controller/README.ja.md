@@ -68,6 +68,10 @@ detail を参照）。ハンドラのメソッドは非公開の `server` に対
 
 ## テスト戦略
 
+ここに書くのは層の基準である。controller は inbound adapter の総称であり、全てが HTTP を話すわけではない。以下を適用する前に、駆動方式に対応するサブセクションを読むこと。独自の節を持つサブツリーはその節が観点を専有する: [`handler/`](handler/README.ja.md)、[`job/`](job/README.ja.md)、[`httpstack/`](httpstack/README.ja.md)、[`server/`](server/README.ja.md)。
+
+### HTTP ハンドラ
+
 ハンドラテストは usecase を mock し、Echo 経由でハンドラを駆動する（`testkit/testecho` + `testkit/testassert`）。ビジネスロジックは usecase 側にありここでは再テストしない。各ハンドラテストが検証する観点:
 
 - HTTP I/O 変換 — リクエストの bind（path / query / body）→ usecase 入力、usecase 出力 → レスポンス DTO / status
@@ -76,3 +80,12 @@ detail を参照）。ハンドラのメソッドは非公開の `server` に対
 - middleware が乗せる context — ハンドラが context から読む値（auth principal / request id / idempotency）
 
 境界レベルの HTTP 結線（Router → Middleware → Handler → Presenter）は `internal/integration` の HTTP 境界テストで別途カバーする。
+
+### ループ駆動の controller（`outbox/` / `worker/`）
+
+これらの adapter はリクエストではなく poll / consume ループで駆動されるため、上記の Echo・bind・HTTP status に関する記述は一切当てはまらない。usecase と boundary ポート（`usecase/boundary/clock`・`usecase/boundary/worker`）を mock し、ロガーは `logging.NewTestLogger`、トレーサは `observability.NewNoopTracerFactory`、実ブローカの代わりに `usecase/boundary/worker/testkit` の in-memory fake を使う。テスト対象はループそのものなので、ループとして駆動して検証する。
+
+- **1 反復の効果** — 処理対象を見つけた poll はディスパッチし、見つからなかった poll は設定された間隔だけバックオフすること。検証は mock した sleeper を通して行い、テスト内で実際に sleep しないこと。
+- **停止のセマンティクス** — context のキャンセルでループが終了して return すること、処理中の要素が各パッケージの文書化された drain 契約どおりに完了 or 放棄されること。`SupervisedRunner` 駆動の shutdown が依存しているのがこの分岐。
+- **反復ごとのエラー処理** — usecase のエラーはバックオフして継続し、ループを殺さないこと。パッケージが文書化する失敗経路（retry / circuit / failure handler）は「panic しない」ではなくその分岐固有の outcome で検証すること。
+- **設定値の clamp** — 受理範囲外の値が文書化された境界へ clamp され、その clamp が黙って行われず観測可能（ログ／実効設定への反映）であること。

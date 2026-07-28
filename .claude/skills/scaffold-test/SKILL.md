@@ -29,11 +29,14 @@ Do NOT use this skill for:
 
 - `docs/testing-conventions.md` — the project-wide testing conventions (parallel mandate, naming, require vs assert, generated-mock policy, architectural rules) **and its section 10 semantic quality bar / anti-patterns** — the SSOT the generated tests must satisfy (each case asserts its branch's distinctive outcome; none of the listed anti-patterns is emitted). `test-review` reads the same section to review against it, so generator and reviewer stay symmetric — no viewpoint or anti-pattern list is duplicated into this skill.
 - The target source file — to extract the function/method signature, parameters, return types, error sentinels, and any in-package helpers.
-- The nearest layer README, resolved by walking up from the target file:
+- The nearest layer README, resolved by **walking up from the target file to the closest ancestor `README.md` that actually carries a Test Strategy section (the heading text varies across READMEs — `Test Strategy`, `Test strategy`, `Testing strategy`, `Testing Strategy` — match on meaning, not on an exact string)**. Also read any nearer README that lacks the section — it still owns that package's naming, helper, and invariant conventions even when the viewpoints come from an ancestor. Resolve by walking, not by lookup: the list below is a snapshot of where the walk currently lands, and a layer absent from it is a layer to walk to, never a layer to skip.
   - `internal/domain/README.md` for `internal/domain/**`
   - `internal/usecase/README.md` (+ `internal/usecase/boundary/README.md`) for `internal/usecase/**`
-  - `internal/controller/README.md` (+ `internal/controller/handler/README.md`) for `internal/controller/handler/**`
+  - `internal/controller/README.md` — the controller-layer baseline, scoped per driver: HTTP handlers (+ `internal/controller/handler/README.md`) for `internal/controller/handler/**`, loop-driven controllers for `internal/controller/outbox/**` and `internal/controller/worker/**`
+  - `internal/controller/httpstack/README.md` for `internal/controller/httpstack/**` — every middleware sub-package resolves to this parent
+  - `internal/controller/server/README.md` for `internal/controller/server/**`
   - `internal/infrastructure/README.md` (+ `internal/infrastructure/rdb/README.md`) for `internal/infrastructure/**`
+  - `internal/di/README.md` for `internal/di/**`, superseded by the nearer `internal/di/module/README.md` or `internal/di/server/hook/README.md` when the target sits under one of those
   - `pkg/README.md` (+ nearest sub-`pkg/<name>/README.md`) for `pkg/**`
 - Sibling test files in the **same package** — secondary structural template for imports, helper style (e.g. `newValidUser(t)`), assertion phrasing, fixture conventions. README wins on any conflict.
 - Existing mocks under `<package>/mock/*_mock.go` when the target depends on injected interfaces — to wire them up without writing custom mocks (per `docs/testing-conventions.md`).
@@ -64,7 +67,7 @@ Unless invoked with target context from a chained scaffold-* skill, the first ac
   - 「ファイル内の特定関数 / メソッドのみ」 — free-text `<file>:<symbol>`; the skill generates one `TestXxx` for that single subject.
   - 「キャンセル」.
 
-After resolution, detect the layer from the file path (the regex bands match the README lookup table above) and store it for downstream steps.
+After resolution, detect the layer by applying the walk-up rule above to the file path (do not pattern-match against a fixed set of layer prefixes) and store the resolved README(s) for downstream steps.
 
 If the target file does not exist, abort and ask the user to confirm the path.
 
@@ -92,7 +95,10 @@ Prompt content (Japanese):
   - `internal/domain/README.md` → `## Testing strategy` (Getter contract / Immutable guarantee / Domain behavior / Error classification / Test design policy / Test Fixture / Invariant preservation)
   - `internal/usecase/README.md` → `## Testing Strategy` (Test dependencies / Testing goals / Test targets / Test structure / What not to test)
   - `internal/controller/handler/README.md` → `## Test Strategy` (Test Dependencies / Test Targets / Test Structure / Router Test / Handler Test / Error Test / Thin Controller Test Scope / Observability Test / Test Policy / Not Covered in Controller Tests / Test Kit testkit / testassert / testauth / testecho / testspan)
+  - `internal/controller/httpstack/README.md` → `## Test Strategy` (Real vs mocked / Viewpoints every middleware covers / Viewpoints for `Before` / `After` hooks) — middleware is tested as an isolated unit; ops-path exclusion, `server.ResponseOf` nil degradation, and hook firing / repeat-firing / non-firing are the recurring viewpoints
+  - `internal/controller/server/README.md` → `## Test Strategy` (Echo context utilities / Server construction)
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` → `## Test Strategy` / `### 7. Test Strategy (Integration-based)`
+  - `internal/di/README.md` → `## Test Strategy` (the DI-layer baseline: graph validity vs provider bodies vs lifecycle hooks vs environment-gated wiring), with `internal/di/module/README.md` and `internal/di/server/hook/README.md` carrying the detail for their sub-trees — the latter names the three HTTP-hook paths (bind failure / graceful shutdown / log-only `Serve` exit)
   - `pkg/README.md` → **intentionally has no Test Strategy section**. `pkg/` is framework-agnostic pure utilities (per `docs/testing-conventions.md`), and the test viewpoints reduce to the standard Go pattern — input-output verification, edge / boundary values, nil / zero handling — which is well-covered by sibling tests (the existing `pkg/datetime`, `pkg/envutil`, `pkg/ptr`, `pkg/uuid`, `pkg/xerrors`, etc. tests demonstrate the pattern). The subagent derives viewpoints from sibling tests + `docs/testing-conventions.md` here and does NOT surface a gap warning — this is the layer's normal mode, not a documentation hole. Any per-package sub-`pkg/<name>/README.md` should still be consulted for package-specific invariants.
   These cross-references are descriptive (current state of the READMEs at the time this skill was written) and are NOT a hard map — when the READMEs change, the subagent reads the up-to-date headings and adapts. If a heading is renamed, removed, or added, the subagent uses what is actually in the README on the day it runs.
 - Sibling test patterns observed in Step 1 (as secondary reference).
@@ -103,7 +109,7 @@ Expected return: a structured list of `TestXxx → t.Run(正常系) → t.Run(ca
 Fallback behavior:
 
 - **Layer is `pkg/**`** — the README intentionally has no Test Strategy section because the test viewpoints are the standard Go pattern (input-output, edge cases, nil / zero handling). The subagent derives viewpoints from sibling tests + per-package sub-`pkg/<name>/README.md` (if present) + `docs/testing-conventions.md` and the skill does NOT surface a warning. This is the layer's normal mode.
-- **Layer is `internal/<layer>/**` where Test Strategy is expected but missing** — surface the gap to the user (`「<README path> に Test Strategy 節がないため、sibling テストパターン + docs/testing-conventions.md からフォールバックで観点を導出しています。README を補完する余地があります」`). The expectation: `internal/domain/` / `internal/usecase/` / `internal/controller/handler/` / `internal/infrastructure/` all currently have Test Strategy sections, so absence here signals a documentation gap worth flagging.
+- **Target is anywhere under `internal/**` and the walk up reaches the repository root without finding a Test Strategy section** — surface the gap to the user (`「<walked path> のいずれにも Test Strategy 節がないため、sibling テストパターン + docs/testing-conventions.md からフォールバックで観点を導出しています。README を補完する余地があります」`). **Every `internal/**` layer is expected to have one**, with `pkg/**` as the single documented exemption — do not narrow this to a list of layers that happen to have one today. That narrowing is exactly what let whole layers (middleware / server lifecycle / DI wiring) sit without a comparison baseline while the check reported nothing: an unlisted layer looked exempt instead of undocumented. Name the READMEs the walk passed through, so the user can see where the section belongs.
 - If the subagent returns no viewpoints at all (regardless of layer), fall back to a minimal default (one 正常系 success + one 異常系 catchall) and warn the user.
 
 ## Step 3. Plan the Test Structure

@@ -83,6 +83,37 @@ Do not register middleware directly within `httpstack`. This can cause dependenc
 |IP extraction|Direct|X-Forwarded-For + CIDR|
 |Recovery stack|10KB (full)|4KB (limited)|
 
+## Test Strategy
+
+Each sub-package is tested **in isolation as a single middleware**. Registration order and the assembled chain belong to `internal/di/server/extension`, and the composed stack is verified by the `internal/integration` HTTP-boundary tests — do not re-test either here.
+
+### Real vs mocked
+
+|Dependency|Method|
+|---|---|
+|`*echo.Echo` / router / `*echo.Context`|real (`echo.New()` + `httptest`)|
+|Downstream handler (`next`)|a test closure that records what it received / returns a fixed error|
+|`logging.Logger`|`logging.NewTestLogger` / `NewObservedTestLogger` — assert on observed entries (message, field), never on a formatted log string|
+|`config.*Config`|`config.MockConfigForTest` + the `Set*(t, …)` setters|
+|A collaborator interface the package declares (e.g. `redmetrics.Recorder`)|generated mock under `*/mock/`|
+
+Drive the middleware directly (`Middleware(...)(next)(c)`) when the assertion is about the returned error, and through `e.ServeHTTP` when it is about the response actually written (status / header / body) — the response is only committed on the real Echo path. A middleware that occupies the oapi-codegen `StrictMiddleware` slot (`idempotency`) is driven through that signature instead of `e.Use`.
+
+### Viewpoints every middleware covers
+
+- **Pass-through** — a request the middleware does not act on reaches `next` unchanged, and `next`'s return value is propagated verbatim.
+- **Ops-path exclusion** — for middleware that consults `ops.IsOpsPath` (`logging` / `redmetrics`, and the `oapi/skipper` skipper), assert both sides: an ops path (`/health`, `/metrics`, …) produces no log / no metric, an application path does.
+- **`server.ResponseOf` degradation** — middleware that unwraps the Echo response degrades to a plain pass-through when the writer cannot be unwrapped. Reproduce it with `c.SetResponse(httptest.NewRecorder())` and assert the middleware neither fails nor records anything. This branch is unreachable through the production stack, so the package-level test is the only thing holding it.
+- **Environment-dependent branches** — when config selects a variant (`recovery` stack size, `ipextractor` extraction mode), exercise each mode through the config setters, including the unknown-mode fallback.
+
+### Viewpoints for `Before` / `After` hooks
+
+`server.ResponseOf(c).Before(...)` / `.After(...)` register deferred work, so the assertion belongs after the response is written — not after the middleware call returns.
+
+- **Firing condition** — `Before` runs immediately before `WriteHeader`, which is the last point a header can still be corrected (`forcejson`); `After` runs on `Write`, once the status is final, so it observes the status the error handler / recovery ultimately produced (`logging` / `redmetrics`).
+- **Repeat firing** — `After` fires per `Write`, so a chunked / streaming response invokes it more than once. A once-per-request effect must be asserted to stay once-per-request (`redmetrics` guards this with `sync.Once`).
+- **Non-firing** — a body-less response (204 / 304) never calls `Write`, so `After` does not run. Where that costs an observation, the gap is a documented limitation of the hook and is pinned by a test rather than left implicit.
+
 ## Notes
 
 - Add new middleware as its own sub-package; do not stuff multiple concerns into one package.

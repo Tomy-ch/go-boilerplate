@@ -24,11 +24,14 @@
 
 - `docs/testing-conventions.md`（parallel 必須・命名・require vs assert・mock 方針・層構造ルール）**および section 10 の意味的品質バー / アンチパターン** — 生成テストが満たすべき SSOT（各ケースはその分岐固有の outcome を assert し、列挙されたアンチパターンを出力しない）。 `test-review` も同じ節を読んでレビューするため、生成器とレビュアは対称に保たれる — 観点・アンチパターンのリストを本スキルへ複製しない。
 - 対象ソースファイル（シグネチャ・引数・戻り値・エラーセンチネル・package 内ヘルパを抽出）。
-- ファイルパスから自動解決する層別 README:
+- 層別 README。**対象ファイルから上位ディレクトリへ歩き、Test Strategy 節を実際に持つ最も近い祖先 `README.md`** を採用する（見出しの表記は README ごとに揺れる — `Test Strategy` / `Test strategy` / `Testing strategy` / `Testing Strategy` — 厳密な文字列一致ではなく意味で判定すること）。節を持たないより近い README も併読する（観点は祖先から来ても、そのパッケージの命名・ヘルパ・不変条件の規約はそこが持つ）。解決は lookup ではなく walk で行う: 下記は現時点で walk が着地する先のスナップショットであり、一覧に無い層は「歩いて辿る対象」であって「対象外」ではない。
   - `internal/domain/README.md` （`internal/domain/**`）
   - `internal/usecase/README.md`（＋ `internal/usecase/boundary/README.md`）（`internal/usecase/**`）
-  - `internal/controller/README.md`（＋ `internal/controller/handler/README.md`）（`internal/controller/handler/**`）
+  - `internal/controller/README.md` — controller 層の基準。駆動方式ごとにスコープされる: HTTP ハンドラ（＋ `internal/controller/handler/README.md`）は `internal/controller/handler/**`、ループ駆動の controller は `internal/controller/outbox/**` / `internal/controller/worker/**`
+  - `internal/controller/httpstack/README.md`（`internal/controller/httpstack/**`）— 各ミドルウェアのサブパッケージはこの親へ解決される
+  - `internal/controller/server/README.md`（`internal/controller/server/**`）
   - `internal/infrastructure/README.md`（＋ `internal/infrastructure/rdb/README.md`）（`internal/infrastructure/**`）
+  - `internal/di/README.md`（`internal/di/**`）。対象が配下にある場合はより近い `internal/di/module/README.md` / `internal/di/server/hook/README.md` が優先される
   - `pkg/README.md`（＋ 最寄りの `pkg/<name>/README.md`）（`pkg/**`）
 - 同一パッケージ内の他 test ファイル（import 構成、ヘルパスタイル `newValidUser(t)` 等、assertion 文体、fixture 慣例）。README と矛盾するときは **README 優先**。
 - `<package>/mock/*_mock.go` （対象が DI 注入インタフェースを使う場合のみ）。
@@ -59,7 +62,7 @@
   - 「ファイル内の特定関数 / メソッドのみ」 — free-text `<file>:<symbol>`。指定の 1 件に対してのみ `TestXxx` 生成。
   - 「キャンセル」。
 
-解決後、ファイルパスから層キー（domain / usecase / controller / infra / pkg）を判定して以降のステップで使う。
+解決後、上述の walk 規則をファイルパスに適用して層を判定し（固定の層プレフィックス集合とのパターンマッチはしない）、解決された README を以降のステップで使う。
 
 対象ファイルが存在しない場合は中断してパス確認。
 
@@ -87,7 +90,10 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
   - `internal/domain/README.md` → `## Testing strategy`（Getter contract / Immutable guarantee / Domain behavior / Error classification / Test design policy / Test Fixture / Invariant preservation）
   - `internal/usecase/README.md` → `## Testing Strategy`（Test dependencies / Testing goals / Test targets / Test structure / What not to test）
   - `internal/controller/handler/README.md` → `## Test Strategy`（Test Dependencies / Test Targets / Test Structure / Router Test / Handler Test / Error Test / Thin Controller Test Scope / Observability Test / Test Policy / Not Covered in Controller Tests / Test Kit testkit / testassert / testauth / testecho / testspan）
+  - `internal/controller/httpstack/README.md` → `## Test Strategy`（実体を使う対象とモックにする対象 / 全ミドルウェア共通で押さえる観点 / `Before` `After` フックの観点）— ミドルウェアは単体として独立にテストし、運用系パス除外・`server.ResponseOf` の nil 縮退・フックの発火/複数回発火/非発火が反復して現れる観点
+  - `internal/controller/server/README.md` → `## Test Strategy`（Echo コンテキストのユーティリティ / サーバーの構築）
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` → `## Test Strategy` / `### 7. Test Strategy (Integration-based)`
+  - `internal/di/README.md` → `## Test Strategy`（DI レイヤの基準: グラフ妥当性 / provider 本体 / ライフサイクルフック / 環境ゲート付き配線）。サブツリーの詳細は `internal/di/module/README.md` と `internal/di/server/hook/README.md` が持ち、後者は HTTP フックの 3 経路（bind 失敗 / graceful shutdown / ログのみの `Serve` 終了）を明示する
   - `pkg/README.md` → **意図的に Test Strategy 節を持たない**。`pkg/` は framework-agnostic な pure utility (`docs/testing-conventions.md`) で、観点は標準 Go テストパターン（input-output 検証 / edge / boundary 値 / nil / zero ハンドリング）に帰着し、sibling tests（`pkg/datetime` / `pkg/envutil` / `pkg/ptr` / `pkg/uuid` / `pkg/xerrors` 等の既存テスト）でパターンが明示されている。subagent は sibling tests + `docs/testing-conventions.md` から観点を派生する。ドキュメントの穴ではなく **層として正常**なので、gap 警告は出さない。 package 個別の不変条件は `pkg/<name>/README.md` を併読する。
   この一覧は本スキル作成時点の READMEs を記述したもので、固定マッピングではない — README が更新されれば subagent はその時点の見出しを読んで適応する。見出しが renamed / removed / added されても、subagent は実行時点の README をそのまま使う。
 - Step 1 で確認した sibling のテストパターン（補助参照）。
@@ -98,7 +104,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 フォールバック:
 
 - **層が `pkg/**`** — README が意図的に Test Strategy 節を持たない。観点は標準 Go パターン（input-output / edge / nil / zero）に帰着するので、 sibling tests + 該当する `pkg/<name>/README.md`（あれば）+ `docs/testing-conventions.md` から派生し、**警告は出さない**。これが pkg 層の正常モード。
-- **層が `internal/<layer>/**` で Test Strategy が期待されているのに無い場合** — gap として user に surface（`「<README path> に Test Strategy 節がないため、sibling テストパターン + docs/testing-conventions.md からフォールバックで観点を導出しています。README を補完する余地があります」`）。 現状 `internal/domain/` / `internal/usecase/` / `internal/controller/handler/` / `internal/infrastructure/` の各 README は Test Strategy 節を持っているので、ここで欠落していたらドキュメント側の補完候補としてユーザに知らせる。
+- **対象が `internal/**` 配下で、上位へ歩いてもリポジトリルートまで Test Strategy 節が見つからない場合** — gap として user に surface（`「<歩いたパス> のいずれにも Test Strategy 節がないため、sibling テストパターン + docs/testing-conventions.md からフォールバックで観点を導出しています。README を補完する余地があります」`）。**`internal/**` の全ての層が節を持つことを期待する**。唯一の免除は `pkg/**`。今たまたま節を持っている層のリストへ狭めないこと — その狭め方こそが、ミドルウェア / サーバライフサイクル / DI 配線といった層まるごとを比較基準の無いまま放置させ、しかもチェックは何も報告しない状態を作った原因である（未列挙の層が「未文書」ではなく「免除」に見えてしまう）。節を置くべき場所がユーザに分かるよう、歩いて通過した README を明示する。
 - subagent が観点を返さない場合（層を問わず）、最小デフォルト（正常系成功 1 件 + 異常系全捕捉 1 件）にフォールバックしてユーザに警告。
 
 ## Step 3. テスト構造の設計

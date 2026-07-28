@@ -63,7 +63,21 @@ fx.Invoke(
 )
 ```
 
+## Test Strategy
+
+Hooks are tested by **capturing the registered closures and calling them**, never by booting fx: a `lifecycle.Registrar` mock records the `RegisterStart` / `RegisterStop` arguments (`gomock.AssignableToTypeOf`), and the test then drives those functions directly. This keeps registration and behavior as two separate contracts — a hook silently dropped from the wiring fails the registration test even when its body still works.
+
+The logger is the generated `logging.Logger` mock with the expected `Named(...)` / `CallerSkip(...)` chain, so log identity (name, message) is part of the asserted contract, not incidental output.
+
+`RegisterHTTPServerHooks` has three paths, and each needs its own case because they fail in different directions:
+
+1. **Bind failure aborts startup** — the start function returns the `listen` error. Reproduce it by occupying the port with a listener of your own first. This is the only server error that propagates to fx, so it is what stops a half-started process from being reported healthy.
+2. **Graceful shutdown** — the stop function returns nil once no connection is in flight, and returns the error *plus* an error log when `Shutdown` cannot drain within the context deadline. Reproduce the latter by holding a handler open and passing an already-tight context.
+3. **Abnormal `Serve` exit is log-only** — `serveHTTP` runs in a goroutine, so its failure cannot surface as a start error. Assert that a normal stop (`http.ErrServerClosed`) logs nothing and that any other exit logs an error; a closed listener reproduces the latter.
+
+Bind an OS-assigned port (`:0`) rather than a fixed one so the package stays `t.Parallel()`-safe; when the port number is needed before binding, take it from a listener and close it. Start a real listener and issue a real request when the assertion is "the server actually serves" — a successful `Listen` alone does not prove the handler chain is reachable.
+
 ## Notes
 
 - `RegisterHTTPServerHooks` depends on the `AppliedServerExtends` token, so it executes after extension application
-- The HTTP server starts in a goroutine; startup failures are logged but the Start hook itself does not return an error
+- Opening the listener happens synchronously, so a bind failure is returned from the Start hook and aborts startup; only `Serve`, which runs in a goroutine after that, can fail with nothing to return the error to — those failures are logged
