@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/controller/server"
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
 
 	"github.com/labstack/echo/v5"
@@ -292,7 +293,43 @@ func Test_newStopServerFunc(t *testing.T) {
 
 func Test_lifecycleEventFields(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("イベント種別とタイムゾーンを引数の値で付与する", func(t *testing.T) {
+			t.Parallel()
+
+			logger, logs := logging.NewObservedTestLogger(t)
+			logger.Info(context.Background(), "lifecycle event",
+				lifecycleEventFields(logging.EventTypeStart, "Asia/Tokyo")...)
+
+			require.Equal(t, 1, logs.Len())
+			fields := logs.All()[0].ContextMap()
+			assert.Equal(t, logging.EventTypeStart, fields[logging.EventTypeKey])
+			assert.Equal(t, "Asia/Tokyo", fields[logging.EventTzKey])
+		})
+
+		t.Run("発生時刻に呼び出し時点の現在時刻を付与する", func(t *testing.T) {
+			t.Parallel()
+
+			logger, logs := logging.NewObservedTestLogger(t)
+
+			before := time.Now()
+			fields := lifecycleEventFields(logging.EventTypeEnd, "UTC")
+			after := time.Now()
+			logger.Info(context.Background(), "lifecycle event", fields...)
+
+			require.Equal(t, 1, logs.Len())
+			rawAt, ok := logs.All()[0].ContextMap()[logging.EventAtKey].(string)
+			require.True(t, ok)
+
+			eventAt, err := time.Parse(time.RFC3339Nano, rawAt)
+			require.NoError(t, err)
+			assert.False(t, eventAt.Before(before))
+			assert.False(t, eventAt.After(after))
+		})
+	})
 }
 
 // newTestHTTPServer は、テスト用の HTTP サーバーを Echo とともに構築します。

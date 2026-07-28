@@ -2,6 +2,7 @@ package purchase
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -523,15 +524,67 @@ func Test_toPurchaseDetails(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡したドライバとinfra層トレーサーを保持した実装を返す", func(t *testing.T) {
+			t.Parallel()
+
+			testDB := testkit.NewTestDB(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			actual := New(testDB, tf)
+
+			assert.Equal(t, &repository{db: testDB, tracer: tf.Infra()}, actual)
+		})
+	})
 }
 
 func Test_toFeedItem(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入履歴フィードの行を読み取りモデルの各フィールドへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			id := mustParse(t, "e3000000-0000-4000-8000-000000000001")
+			statusID := mustParse(t, "e3000000-0000-4000-8000-0000000000a1")
+			orderedAt := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+
+			item := toFeedItem(id, "feed-code-1", 176500, orderedAt, statusID, "未処理")
+
+			assert.Equal(t, domainpurchase.FeedItem{
+				ID:          id,
+				Code:        "feed-code-1",
+				TotalAmount: 176500,
+				StatusID:    statusID,
+				StatusName:  "未処理",
+				OrderedAt:   orderedAt,
+			}, item)
+		})
+	})
 }
 
 func Test_toInt16(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入ステータスコードを同値のint16へ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int16(7), toInt16(7))
+		})
+
+		t.Run("int16の下限と上限の値をそのまま変換する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int16(math.MinInt16), toInt16(math.MinInt16))
+			assert.Equal(t, int16(math.MaxInt16), toInt16(math.MaxInt16))
+		})
+	})
 }

@@ -160,5 +160,49 @@ func Test_cacheGateway_GetRate(t *testing.T) {
 
 func TestNewCache(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("引数のinner_gatewayへ委譲したレートを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			inner := mock_exchangerate.NewMockGateway(ctrl)
+			inner.EXPECT().
+				GetRate(gomock.Any(), "USD", "JPY").
+				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: decimaltestkit.MustParse(t, "150.5"), Date: "2026-07-21"}, nil).
+				Times(1)
+
+			cached := exchangerate.NewCache(inner, testkit.NewStepClock(clockStart, 0))
+			require.NotNil(t, cached)
+
+			rate, err := cached.GetRate(context.Background(), "USD", "JPY")
+			require.NoError(t, err)
+			require.NotNil(t, rate)
+			assert.Equal(t, "150.5", rate.Value.String())
+		})
+
+		t.Run("生成ごとに独立したキャッシュを持ち他インスタンスの取得結果を共有しない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			inner := mock_exchangerate.NewMockGateway(ctrl)
+			// 別インスタンスはキャッシュを共有しないため、同一ペアでも inner が 2 回呼ばれる。
+			inner.EXPECT().
+				GetRate(gomock.Any(), "USD", "JPY").
+				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: decimaltestkit.MustParse(t, "150.5"), Date: "2026-07-21"}, nil).
+				Times(2)
+
+			clk := testkit.NewStepClock(clockStart, 0)
+			first := exchangerate.NewCache(inner, clk)
+			second := exchangerate.NewCache(inner, clk)
+
+			_, err := first.GetRate(context.Background(), "USD", "JPY")
+			require.NoError(t, err)
+
+			_, err = second.GetRate(context.Background(), "USD", "JPY")
+			require.NoError(t, err)
+		})
+	})
 }

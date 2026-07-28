@@ -2,6 +2,7 @@ package purchase
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -459,15 +460,61 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡したドライバとinfra層トレーサーを保持した実装を返す", func(t *testing.T) {
+			t.Parallel()
+
+			testDB := testkit.NewTestDB(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			actual := New(testDB, tf)
+
+			assert.Equal(t, &commandService{db: testDB, tracer: tf.Infra()}, actual)
+		})
+	})
 }
 
 func Test_toInt16(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入ステータスコードを同値のint16へ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int16(7), toInt16(7))
+		})
+
+		t.Run("int16の下限と上限の値をそのまま変換する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int16(math.MinInt16), toInt16(math.MinInt16))
+			assert.Equal(t, int16(math.MaxInt16), toInt16(math.MaxInt16))
+		})
+	})
 }
 
 func Test_toInt32(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("数量を同値のint32へ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int32(3), toInt32(3))
+		})
+
+		t.Run("int32の下限と上限の値をそのまま変換する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, int32(math.MinInt32), toInt32(math.MinInt32))
+			assert.Equal(t, int32(math.MaxInt32), toInt32(math.MaxInt32))
+		})
+	})
 }

@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
@@ -70,43 +72,80 @@ func TestNewApplicationCore(t *testing.T) {
 	})
 }
 
-func TestNewApplicationServer_WrapsAppStartStop(t *testing.T) {
+func TestNewApplicationServer(t *testing.T) {
 	t.Parallel()
 
 	// ライフサイクルフックの発火有無で、ラッパーが実際に app.Start / app.Stop を駆動したことを検証する。
 	// 空アプリだと start/stop が常に nil を返し、駆動していなくても通ってしまうため。
-	var started, stopped bool
-	app := fx.New(
-		fx.Invoke(func(lc fx.Lifecycle) {
-			lc.Append(fx.Hook{
-				OnStart: func(context.Context) error { started = true; return nil },
-				OnStop:  func(context.Context) error { stopped = true; return nil },
-			})
-		}),
-		fx.NopLogger,
-	)
+	newHookedApp := func(started, stopped *bool) *fx.App {
+		return fx.New(
+			fx.Invoke(func(lc fx.Lifecycle) {
+				lc.Append(fx.Hook{
+					OnStart: func(context.Context) error { *started = true; return nil },
+					OnStop:  func(context.Context) error { *stopped = true; return nil },
+				})
+			}),
+			fx.NopLogger,
+		)
+	}
 
-	start, stop := NewApplicationServer(app)
-	require.NotNil(t, start)
-	require.NotNil(t, stop)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	require.NoError(t, start(ctx))
-	assert.True(t, started, "start ラッパーが app.Start を呼びライフサイクルが起動すること")
+		t.Run("返した start/stop が app のライフサイクルを起動・停止する", func(t *testing.T) {
+			t.Parallel()
 
-	stopCtx, stopCancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer stopCancel()
-	require.NoError(t, stop(stopCtx))
-	assert.True(t, stopped, "stop ラッパーが app.Stop を呼びライフサイクルが停止すること")
-}
+			var started, stopped bool
+			start, stop := NewApplicationServer(newHookedApp(&started, &stopped))
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
 
-func TestNewApplicationServer(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			require.NoError(t, start(ctx))
+			assert.True(t, started, "start ラッパーが app.Start を呼びライフサイクルが起動すること")
+
+			stopCtx, stopCancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer stopCancel()
+			require.NoError(t, stop(stopCtx))
+			assert.True(t, stopped, "stop ラッパーが app.Stop を呼びライフサイクルが停止すること")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストの start は app.Start のエラーをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			var started, stopped bool
+			start, _ := NewApplicationServer(newHookedApp(&started, &stopped))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			require.ErrorIs(t, start(ctx), context.Canceled)
+			assert.False(t, started, "起動前に中断されフックへ到達しないこと")
+		})
+	})
 }
 
 func Test_applicationCoreOptions(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("server プロファイル固有のHTTPスタックを結線する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				e   *echo.Echo
+				srv *http.Server
+			)
+
+			opts := append(applicationCoreOptions(), fx.Populate(&e, &srv), fx.NopLogger)
+			require.NoError(t, fx.ValidateApp(opts...))
+		})
+	})
 }

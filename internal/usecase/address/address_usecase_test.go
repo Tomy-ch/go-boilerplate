@@ -171,5 +171,32 @@ func Test_usecase_LookupByPostalCode(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("引数のgatewayと都道府県リポジトリを結線したユースケースを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			gw := mock_address.NewMockGateway(ctrl)
+			repo := mock_prefecture.NewMockRepository(ctrl)
+
+			pref := newPrefecture(t, "東京都", 13)
+			gw.EXPECT().Lookup(gomock.Any(), "1000001").
+				Return([]*boundary.Candidate{{PrefectureName: "東京都", City: "千代田区", Town: "千代田"}}, nil)
+			repo.EXPECT().FindByName(gomock.Any(), "東京都").Return(pref, nil)
+
+			uc := address.New(gw, repo, observability.NewNoopTracerFactory(t))
+			require.NotNil(t, uc)
+
+			result, err := uc.LookupByPostalCode(context.Background(), "1000001")
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.Len(t, result.Candidates, 1)
+			require.NotNil(t, result.Candidates[0].PrefectureID)
+			assert.Equal(t, pref.ID(), *result.Candidates[0].PrefectureID)
+			assert.Equal(t, "千代田区", result.Candidates[0].City)
+		})
+	})
 }

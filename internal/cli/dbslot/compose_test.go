@@ -1,6 +1,7 @@
 package dbslot
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -115,7 +116,32 @@ func TestExecCompose_run(t *testing.T) { //nolint:paralleltest // stubDocker が
 
 func Test_newComposeCmd(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("docker compose に引数を連結しプロジェクトを環境変数で与える", func(t *testing.T) {
+			t.Parallel()
+
+			var stdout bytes.Buffer
+
+			cmd := newComposeCmd(context.Background(), "gobp-wt-1", &stdout, "ps", "-q", "--status", "running")
+
+			assert.Equal(t, []string{"docker", "compose", "ps", "-q", "--status", "running"}, cmd.Args)
+			assert.Contains(t, cmd.Env, "COMPOSE_PROJECT_NAME=gobp-wt-1")
+		})
+
+		t.Run("標準出力は引数の writer へ、進捗ログは stderr へ振り分ける", func(t *testing.T) {
+			t.Parallel()
+
+			var stdout bytes.Buffer
+
+			cmd := newComposeCmd(context.Background(), "gobp-wt-1", &stdout, "ps")
+
+			assert.Same(t, &stdout, cmd.Stdout)
+			assert.Same(t, os.Stderr, cmd.Stderr)
+		})
+	})
 }
 
 func TestExecCompose_output(t *testing.T) { //nolint:paralleltest // stubDockerStdout が t.Setenv を使うため並列化不可

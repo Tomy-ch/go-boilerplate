@@ -648,5 +648,29 @@ func Test_toMessage(t *testing.T) {
 
 func Test_visibilitySeconds(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("秒未満の端数は切り上げる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(3), visibilitySeconds(2*time.Second+1*time.Nanosecond))
+		})
+
+		t.Run("端数のない値はそのままの秒数を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(30), visibilitySeconds(30*time.Second))
+		})
+
+		t.Run("サブ秒は即時再配送を避けるため下限1秒へ丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(1), visibilitySeconds(time.Millisecond))
+		})
+
+		t.Run("0以下の値も下限1秒へ丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(1), visibilitySeconds(0))
+			assert.Equal(t, int32(1), visibilitySeconds(-5*time.Second))
+		})
+	})
 }

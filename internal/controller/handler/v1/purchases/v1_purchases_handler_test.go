@@ -323,5 +323,28 @@ func Test_toReferenceAmount(t *testing.T) {
 
 func Test_toPurchaseSummaryResponse(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("概要DTOをステータス名込みのレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			statusID := uuid.NewTestFromSalt(t, "summary_status")
+			orderedAt := time.Date(2026, time.July, 24, 10, 30, 0, 0, time.UTC)
+			actual := toPurchaseSummaryResponse(purchaseuc.PurchaseSummaryView{
+				Code:        "summary-code",
+				TotalAmount: 176500,
+				StatusID:    statusID,
+				StatusName:  "支払い済み",
+				OrderedAt:   orderedAt,
+			})
+
+			assert.Equal(t, "summary-code", actual.Code)
+			assert.Equal(t, int64(176500), actual.TotalAmount)
+			assert.Equal(t, statusID.ToPrimitive(), actual.Status.Id)
+			assert.Equal(t, "支払い済み", actual.Status.Name)
+			assert.Equal(t, orderedAt, actual.OrderedAt)
+		})
+	})
 }

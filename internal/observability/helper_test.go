@@ -227,39 +227,69 @@ func TestStartSpanWithParent(t *testing.T) {
 	})
 }
 
-func TestTraceContext_IDs(t *testing.T) {
+func TestTraceContext_TraceID(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("TraceID/SpanIDのgetterはコンストラクタに渡した値を返す", func(t *testing.T) {
+		t.Run("保持しているtraceIDを返す", func(t *testing.T) {
 			t.Parallel()
 
-			traceID := "trace-id-123"
-			spanID := "span-id-456"
-			tc := TraceContext{
-				traceID: traceID,
-				spanID:  spanID,
-			}
+			// spanID / parentSpanID と取り違えていないことを、異なる値を与えて区別する。
+			tc := TraceContext{traceID: "trace-id-123", spanID: "span-id-456", parentSpanID: "parent-span-id-789"}
 
-			assert.Equal(t, traceID, tc.TraceID())
-			assert.Equal(t, spanID, tc.SpanID())
+			assert.Equal(t, "trace-id-123", tc.TraceID())
+		})
+
+		t.Run("未設定の場合は空文字を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, (&TraceContext{}).TraceID())
+		})
+	})
+}
+
+func TestTraceContext_SpanID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("保持しているspanIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			tc := TraceContext{traceID: "trace-id-123", spanID: "span-id-456", parentSpanID: "parent-span-id-789"}
+
+			assert.Equal(t, "span-id-456", tc.SpanID())
+		})
+
+		t.Run("未設定の場合は空文字を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, (&TraceContext{}).SpanID())
 		})
 	})
 }
 
 func TestTraceContext_ParentSpanID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
 
-func TestTraceContext_SpanID(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-func TestTraceContext_TraceID(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+		t.Run("保持しているparentSpanIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			tc := TraceContext{traceID: "trace-id-123", spanID: "span-id-456", parentSpanID: "parent-span-id-789"}
+
+			assert.Equal(t, "parent-span-id-789", tc.ParentSpanID())
+		})
+
+		t.Run("親spanが無く未設定の場合は空文字を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, (&TraceContext{}).ParentSpanID())
+		})
+	})
 }

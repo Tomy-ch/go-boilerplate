@@ -230,5 +230,47 @@ func Test_usecase_GetPurchases(t *testing.T) {
 
 func Test_encodePurchaseCursor(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("注文日時とIDを符号化したカーソルはナノ秒精度のまま復号できる", func(t *testing.T) {
+			t.Parallel()
+
+			orderedAt := time.Date(2099, time.January, 2, 3, 4, 5, 123456789, time.UTC)
+			id := uuid.NewTestFromSalt(t, "encode_cursor_last")
+
+			encoded := encodePurchaseCursor(domainpurchase.FeedItem{OrderedAt: orderedAt, ID: id})
+			assert.NotEmpty(t, encoded)
+
+			first := 2
+			cursor, err := paging.NewCursor(&encoded, &first)
+			require.NoError(t, err)
+
+			decoded, err := decodePurchaseCursor(cursor)
+			require.NoError(t, err)
+			require.NotNil(t, decoded)
+			assert.True(t, orderedAt.Equal(decoded.orderedAt))
+			assert.Equal(t, id, decoded.id)
+		})
+
+		t.Run("keyset境界は末尾行の注文日時とIDのみで決まりステータスなど他項目に影響されない", func(t *testing.T) {
+			t.Parallel()
+
+			orderedAt := time.Date(2099, time.January, 2, 3, 4, 5, 0, time.UTC)
+			id := uuid.NewTestFromSalt(t, "encode_cursor_same_key")
+
+			base := encodePurchaseCursor(domainpurchase.FeedItem{OrderedAt: orderedAt, ID: id})
+			other := encodePurchaseCursor(domainpurchase.FeedItem{
+				Code:        "code-other",
+				TotalAmount: 999,
+				StatusID:    uuid.NewTestFromSalt(t, "encode_cursor_other_status"),
+				StatusName:  "キャンセル",
+				OrderedAt:   orderedAt,
+				ID:          id,
+			})
+
+			assert.Equal(t, base, other)
+		})
+	})
 }

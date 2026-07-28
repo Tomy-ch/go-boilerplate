@@ -26,43 +26,53 @@ func TestNewBuildInfo(t *testing.T) {
 	})
 }
 
-func Test_buildInfo_Methods(t *testing.T) {
+// newTestBuildInfo は、3 項目を互いに区別できる値で埋めた buildInfo を返します。
+func newTestBuildInfo() *buildInfo {
+	return &buildInfo{
+		version:   "1.0.0",
+		revision:  "abc123",
+		buildDate: "2024-12-31T21:00:00Z",
+	}
+}
+
+func Test_buildInfo_BuildDate(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Version/Revision/BuildDateはコンストラクタで渡した値を返す", func(t *testing.T) {
+		t.Run("構築時に渡したビルド日時を返す", func(t *testing.T) {
 			t.Parallel()
 
-			expectedVersion := "1.0.0"
-			expectedRevision := "abc123"
-			expectedBuildDate := "2024-12-31T21:00:00Z"
-
-			actual := &buildInfo{
-				version:   expectedVersion,
-				revision:  expectedRevision,
-				buildDate: expectedBuildDate,
-			}
-
-			assert.Equal(t, expectedVersion, actual.Version())
-			assert.Equal(t, expectedRevision, actual.Revision())
-			assert.Equal(t, expectedBuildDate, actual.BuildDate())
+			assert.Equal(t, "2024-12-31T21:00:00Z", newTestBuildInfo().BuildDate())
 		})
 	})
 }
 
-func Test_buildInfo_BuildDate(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
-
 func Test_buildInfo_Revision(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時に渡したリビジョンを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "abc123", newTestBuildInfo().Revision())
+		})
+	})
 }
 
 func Test_buildInfo_Version(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時に渡したバージョンを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "1.0.0", newTestBuildInfo().Version())
+		})
+	})
 }

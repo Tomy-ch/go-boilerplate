@@ -9,10 +9,11 @@ import (
 	"go-boilerplate/internal/infrastructure/authz/allowall"
 	"go-boilerplate/internal/infrastructure/authz/userrole" // sample-api:line
 	"go-boilerplate/internal/logging"
+	authzbd "go-boilerplate/internal/usecase/boundary/authz"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/fx"          // sample-api:line
+	"go.uber.org/fx"
 	"go.uber.org/mock/gomock" // sample-api:line
 )
 
@@ -142,5 +143,34 @@ func Test_provideAuthorizer(t *testing.T) {
 
 func Test_authzModule(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("usecase 層が参照する Authorizer を提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var authorizer authzbd.Authorizer
+
+			opts := append(commonDeps(),
+				fx.Provide(func() user.RoleRepository { return nil }), // sample-api:line
+				authzModule(),
+				fx.Populate(&authorizer),
+			)
+			validateGraph(t, opts...)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未配線では Authorizer が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var authorizer authzbd.Authorizer
+
+			opts := append(commonDeps(), fx.Populate(&authorizer), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
 }

@@ -2,6 +2,13 @@ package module
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
+
+	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	"go-boilerplate/internal/usecase/healthcheck/query"
 )
 
 func Test_persistenceModule_GraphIsValid(t *testing.T) {
@@ -16,5 +23,34 @@ func Test_persistenceModule_GraphIsValid(t *testing.T) {
 
 func Test_persistenceModule(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("system_cqrs のヘルスチェック / 冪等 / outbox ストアを提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				dbsq        query.DBSystemCqrs
+				idempotency idempotencybndry.Store
+				outbox      outboxbndry.Store
+			)
+
+			validateGraph(t, append(commonDeps(), persistenceModule(),
+				fx.Populate(&dbsq, &idempotency, &outbox))...)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未配線では outbox ストアが解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var outbox outboxbndry.Store
+
+			opts := append(commonDeps(), fx.Populate(&outbox), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
 }

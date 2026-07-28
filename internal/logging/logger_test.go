@@ -469,5 +469,33 @@ func Test_logger_injectTrace(t *testing.T) {
 
 func Test_levelGatedCore_Enabled(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	newCore := func(t *testing.T, innerLevel, gateLevel zapcore.Level) levelGatedCore {
+		t.Helper()
+		enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+		inner := zapcore.NewCore(enc, zapcore.AddSync(&bytes.Buffer{}), innerLevel)
+		return levelGatedCore{Core: inner, min: gateLevel}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("min以上かつ内側coreも有効なレベルはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			gated := newCore(t, zapcore.DebugLevel, zapcore.WarnLevel)
+			assert.True(t, gated.Enabled(zapcore.WarnLevel))
+		})
+
+		t.Run("min未満のレベルは内側coreが有効でもfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			gated := newCore(t, zapcore.DebugLevel, zapcore.WarnLevel)
+			assert.False(t, gated.Enabled(zapcore.InfoLevel))
+		})
+
+		t.Run("min以上でも内側coreが無効ならfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			gated := newCore(t, zapcore.ErrorLevel, zapcore.WarnLevel)
+			assert.False(t, gated.Enabled(zapcore.WarnLevel))
+		})
+	})
 }

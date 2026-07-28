@@ -455,5 +455,35 @@ func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
 
 func Test_newCookieRewriteWriter(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("origとcfgを保持しヘッダ未書き込みの状態で構築する", func(t *testing.T) {
+			t.Parallel()
+			orig := newFakeOrig()
+			cfg := &SecurityCookie{applyToAll: true}
+
+			w := newCookieRewriteWriter(orig, cfg)
+
+			assert.Same(t, orig, w.orig)
+			assert.Same(t, cfg, w.cfg)
+			assert.False(t, w.wroteHdr)
+		})
+
+		t.Run("内部ヘッダはorigとは独立した空のヘッダで初期化される", func(t *testing.T) {
+			t.Parallel()
+			orig := newFakeOrig()
+			orig.Header().Set("X-From-Orig", "v")
+
+			w := newCookieRewriteWriter(orig, &SecurityCookie{})
+
+			assert.NotNil(t, w.hdr)
+			// orig の既存ヘッダを引き継がず、書き込みも orig へ漏らさない
+			// （Set-Cookie の書き換えを flush まで遅延できる前提）。
+			assert.Empty(t, w.hdr)
+			w.Header().Set("X-Buffered", "v")
+			assert.Empty(t, orig.Header().Get("X-Buffered"))
+		})
+	})
 }

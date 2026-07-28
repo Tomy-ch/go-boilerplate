@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/v1/users/feed/gen"
@@ -171,5 +172,37 @@ func Test_server_GetUsersFeed(t *testing.T) {
 
 func Test_toUserResponse(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全項目が設定されたDTOをレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			deletedAt := time.Date(2026, time.March, 4, 5, 6, 7, 0, time.UTC)
+			dto := user.UserView{
+				FirstName: "太郎", LastName: "山田", Email: "taro@example.com", Phone: "1234567890",
+				PostalCode: "100-0001", PrefectureName: "東京都", City: "千代田区", Street: "1-1",
+				Building: new("ビルA"), DeletedAt: &deletedAt,
+			}
+
+			assert.Equal(t, wantUserResponse(dto), toUserResponse(dto))
+		})
+
+		t.Run("任意項目がnilのDTOはレスポンスでもnilのまま写像する", func(t *testing.T) {
+			t.Parallel()
+
+			dto := user.UserView{
+				FirstName: "花子", LastName: "鈴木", Email: "hanako@example.com", Phone: "0987654321",
+				PostalCode: "200-0002", PrefectureName: "大阪府", City: "北区", Street: "2-2",
+				Building: nil, DeletedAt: nil,
+			}
+
+			actual := toUserResponse(dto)
+			assert.Nil(t, actual.Building)
+			assert.Nil(t, actual.DeletedAt)
+			assert.Equal(t, types.Email("hanako@example.com"), actual.Email)
+			assert.Equal(t, "大阪府", actual.Prefecture)
+		})
+	})
 }

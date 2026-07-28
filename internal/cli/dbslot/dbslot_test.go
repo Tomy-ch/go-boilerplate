@@ -352,30 +352,106 @@ func TestPool_slotFileHasNoTrailingSpace(t *testing.T) {
 
 func TestNewPool(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡した依存・設定・2 つの出力先をそのまま保持した Pool を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			admin := mock_dbslot.NewMockDBAdmin(ctrl)
+			comp := mock_dbslot.NewMockCompose(ctrl)
+			reg := NewRegistry(t.TempDir(), "/w/self", "branch", 30*time.Minute, 8,
+				func() time.Time { return time.Unix(1_000_000, 0) })
+			cfg := Config{Root: "/w/self", SharedProject: "gobp-shared", APIBasePort: 8080}
+			var out, logw bytes.Buffer
+
+			pool := NewPool(reg, admin, comp, cfg, &out, &logw)
+
+			assert.Equal(t, &Pool{reg: reg, admin: admin, comp: comp, cfg: cfg, out: &out, logw: &logw}, pool)
+		})
+	})
 }
 
 func TestPool_logf(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("[db-slot] 接頭辞付きの 1 行を標準出力ではなく進捗ログへ書く", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			reg := NewRegistry(t.TempDir(), "/w/self", "branch", 30*time.Minute, 8,
+				func() time.Time { return time.Unix(1_000_000, 0) })
+			var out, logw bytes.Buffer
+			pool := NewPool(reg, mock_dbslot.NewMockDBAdmin(ctrl), mock_dbslot.NewMockCompose(ctrl),
+				Config{Root: "/w/self"}, &out, &logw)
+
+			pool.logf("reclaim stale slot %d", 3)
+
+			assert.Equal(t, "[db-slot] reclaim stale slot 3\n", logw.String())
+			assert.Empty(t, out.String())
+		})
+	})
 }
 
 func TestPool_slotFilePath(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("自 worktree ルート直下の .gobp-db-slot を指す", func(t *testing.T) {
+			t.Parallel()
+
+			pool, _, _ := newMockPool(t, "/w/self", "")
+
+			assert.Equal(t, "/w/self/.gobp-db-slot", pool.slotFilePath())
+		})
+	})
 }
 
 func Test_dbLocal(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロット番号から local データベース名を組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "wt3_local", dbLocal(3))
+		})
+	})
 }
 
 func Test_dbTest(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロット番号から test データベース名を組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "wt3_test", dbTest(3))
+		})
+	})
 }
 
 func Test_serveProject(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロット番号から serve 用 compose プロジェクト名を組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "gobp-wt-3", serveProject(3))
+		})
+	})
 }

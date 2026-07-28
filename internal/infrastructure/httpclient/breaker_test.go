@@ -386,30 +386,156 @@ func Test_breakerManager_get(t *testing.T) {
 
 func Test_breaker_currentState(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
 
-func Test_breaker_toClosed(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
-}
+	base := time.Unix(1000, 0)
 
-func Test_breaker_toHalfOpen(t *testing.T) {
-	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成直後はclosedを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, breakerClosed, newBreaker(testBreakerConfig()).currentState())
+		})
+
+		t.Run("open化した後はopenを返す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			b.toOpen(base)
+
+			assert.Equal(t, breakerOpen, b.currentState())
+		})
+
+		t.Run("half-openへ遷移した後はhalf-openを返す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			b.toHalfOpen()
+
+			assert.Equal(t, breakerHalfOpen, b.currentState())
+		})
+	})
 }
 
 func Test_breaker_toOpen(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	openedAt := time.Unix(2000, 0)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("openへ倒しopen開始時刻を記録しエポックを進めプローブ計数を初期化する", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			b.toHalfOpen()
+			b.halfOpenProbes = 2
+			b.halfOpenSuccess = 1
+			before := b.generation
+
+			b.toOpen(openedAt)
+
+			assert.Equal(t, breakerOpen, b.currentState())
+			assert.Equal(t, openedAt, b.openedAt)
+			assert.Equal(t, before+1, b.generation)
+			assert.Zero(t, b.halfOpenProbes)
+			assert.Zero(t, b.halfOpenSuccess)
+		})
+	})
+}
+
+func Test_breaker_toHalfOpen(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("half-openへ遷移しエポックを進めプローブ計数を初期化する", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			b.toOpen(time.Unix(2000, 0))
+			b.halfOpenProbes = 2
+			b.halfOpenSuccess = 1
+			before := b.generation
+
+			b.toHalfOpen()
+
+			assert.Equal(t, breakerHalfOpen, b.currentState())
+			assert.Equal(t, before+1, b.generation)
+			assert.Zero(t, b.halfOpenProbes)
+			assert.Zero(t, b.halfOpenSuccess)
+		})
+	})
+}
+
+func Test_breaker_toClosed(t *testing.T) {
+	t.Parallel()
+
+	base := time.Unix(1000, 0)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("closedへ戻しエポックを進めて失敗率の集計をリセットする", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig()) // MinRequests=4
+			recordClosedFailures(b, 3, base)     // MinRequests 未満の失敗を積む
+			b.toHalfOpen()
+			b.halfOpenProbes = 2
+			b.halfOpenSuccess = 2
+			before := b.generation
+
+			b.toClosed()
+
+			assert.Equal(t, breakerClosed, b.currentState())
+			assert.Equal(t, before+1, b.generation)
+			assert.Zero(t, b.requests)
+			assert.Zero(t, b.failures)
+			assert.Zero(t, b.halfOpenProbes)
+			assert.Zero(t, b.halfOpenSuccess)
+		})
+	})
 }
 
 func Test_newBreaker(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡した設定を保持しclosed状態のbreakerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			config := testBreakerConfig()
+
+			b := newBreaker(config)
+
+			require.NotNil(t, b)
+			assert.Equal(t, config, b.config)
+			assert.Equal(t, breakerClosed, b.currentState())
+			assert.Zero(t, b.requests)
+			assert.Zero(t, b.failures)
+		})
+	})
 }
 
 func Test_newBreakerManager(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("breakerを1件も持たない初期化済みのmanagerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			m := newBreakerManager()
+
+			assert.NotNil(t, m.breakers)
+			assert.Empty(t, m.breakers)
+		})
+	})
 }

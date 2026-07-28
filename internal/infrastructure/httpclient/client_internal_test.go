@@ -403,3 +403,64 @@ func Test_client_recordOutcome(t *testing.T) {
 		})
 	})
 }
+
+func Test_client_canRetryWithin(t *testing.T) {
+	t.Parallel()
+
+	base := time.Unix(1000, 0)
+
+	// newFixedClockClient は、時刻が進まない clock を持つ client を返す。
+	newFixedClockClient := func() *client {
+		return &client{clk: clocktestkit.NewStepClock(base, 0)}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("backoff待機後も期限より前なら次の試行を許可する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, newFixedClockClient().canRetryWithin(base.Add(time.Second), 999*time.Millisecond))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("backoff待機後が期限ちょうどなら次の試行を許可しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, newFixedClockClient().canRetryWithin(base.Add(time.Second), time.Second))
+		})
+
+		t.Run("backoff待機後が期限を超えるなら次の試行を許可しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, newFixedClockClient().canRetryWithin(base.Add(time.Second), 2*time.Second))
+		})
+
+		t.Run("既に期限を過ぎている場合は待機なしでも次の試行を許可しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, newFixedClockClient().canRetryWithin(base.Add(-time.Second), 0))
+		})
+	})
+}
+
+func Test_noFollowRedirect(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("リダイレクトを追従せず最終レスポンスを返す指示を返す", func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequestWithContext(
+				context.Background(), http.MethodGet, "https://example.com/redirected", nil)
+			require.NoError(t, err)
+
+			require.ErrorIs(t, noFollowRedirect(req, []*http.Request{req}), http.ErrUseLastResponse)
+		})
+	})
+}

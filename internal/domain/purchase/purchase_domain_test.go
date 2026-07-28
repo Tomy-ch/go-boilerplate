@@ -13,6 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// accessorOrderedAt は、ゲッター検証用の固定注文日時です。
+var accessorOrderedAt = time.Date(2026, time.July, 23, 1, 2, 3, 0, time.UTC)
+
 // mustPrice は、テスト用に十進文字列（ドル）から非負の money.Price を構築します。
 func mustPrice(t *testing.T, s string) money.Price {
 	t.Helper()
@@ -996,102 +999,462 @@ func TestPurchase_ShippedAt(t *testing.T) {
 	})
 }
 
+// accessorPurchaseWith は、ゲッター検証用の購入集約を任意の状態で再構築します。
+// statusCode と各日時は Reconstruct の不変条件を満たす組で渡します。金額・日時・ID は
+// ゲッターの取り違えを検出できるよう互いに異なる値にしています。
+func accessorPurchaseWith(t *testing.T, statusCode int, paidAt, canceledAt *time.Time) *Purchase {
+	t.Helper()
+
+	details := []PurchaseDetail{
+		NewPurchaseDetail(
+			uuid.NewTestFromSalt(t, "acc_detail"),
+			uuid.NewTestFromSalt(t, "acc_product"),
+			2, mustPrice(t, "800"),
+		),
+	}
+	p, err := Reconstruct(
+		uuid.NewTestFromSalt(t, "acc_id"), "acc-code-001",
+		uuid.NewTestFromSalt(t, "acc_user"), uuid.NewTestFromSalt(t, "acc_status"),
+		statusCode, 160000, 16000, 500, 176500, details,
+		accessorOrderedAt, paidAt, canceledAt, nil, nil,
+	)
+	require.NoError(t, err)
+	return p
+}
+
+// accessorPurchase は、ゲッター検証用に支払い済みの購入集約を再構築します。
+// 既定値と区別できるよう、statusCode は未処理ではなく支払い済みにしています。
+func accessorPurchase(t *testing.T) *Purchase {
+	t.Helper()
+
+	paidAt := time.Date(2026, time.July, 25, 4, 5, 6, 0, time.UTC)
+	return accessorPurchaseWith(t, StatusCodePaid, &paidAt, nil)
+}
+
 func TestLockedProduct_ID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロック時の商品IDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "lp_id")
+			l := NewLockedProduct(id, mustPrice(t, "19.99"), 5)
+
+			assert.Equal(t, id, l.ID())
+		})
+	})
 }
 
 func TestLockedProduct_Quantity(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロック時点の在庫数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewLockedProduct(uuid.NewTestFromSalt(t, "lp_quantity"), mustPrice(t, "19.99"), 7)
+
+			assert.Equal(t, 7, l.Quantity())
+		})
+
+		t.Run("在庫切れの場合、0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewLockedProduct(uuid.NewTestFromSalt(t, "lp_quantity_zero"), mustPrice(t, "19.99"), 0)
+
+			assert.Equal(t, 0, l.Quantity())
+		})
+	})
 }
 
 func TestNewLockedProduct(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("入力した商品ID・単価・在庫数を保持したスナップショットを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "new_lp_id")
+
+			actual := NewLockedProduct(id, mustPrice(t, "1.005"), 3)
+
+			assert.Equal(t, id, actual.ID())
+			assert.Equal(t, "1.005", actual.Price().String())
+			assert.Equal(t, 3, actual.Quantity())
+		})
+	})
 }
 
 func TestNewPurchaseDetail(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("入力した明細ID・商品ID・数量・単価を保持した明細を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "new_pd_id")
+			productID := uuid.NewTestFromSalt(t, "new_pd_product")
+
+			actual := NewPurchaseDetail(id, productID, 4, mustPrice(t, "1.005"))
+
+			assert.Equal(t, id, actual.ID())
+			assert.Equal(t, productID, actual.ProductID())
+			assert.Equal(t, 4, actual.Quantity())
+			assert.Equal(t, "1.005", actual.UnitPrice().String())
+		})
+	})
 }
 
 func TestPurchaseDetail_ID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("商品IDではなく明細IDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "pd_detail_id")
+			productID := uuid.NewTestFromSalt(t, "pd_detail_product")
+			d := NewPurchaseDetail(id, productID, 2, mustPrice(t, "800"))
+
+			assert.Equal(t, id, d.ID())
+			assert.NotEqual(t, productID, d.ID())
+		})
+	})
 }
 
 func TestPurchaseDetail_ProductID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細IDではなく商品IDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "pd_product_detail")
+			productID := uuid.NewTestFromSalt(t, "pd_product_id")
+			d := NewPurchaseDetail(id, productID, 2, mustPrice(t, "800"))
+
+			assert.Equal(t, productID, d.ProductID())
+			assert.NotEqual(t, id, d.ProductID())
+		})
+	})
 }
 
 func TestPurchaseDetail_Quantity(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細の購入数量を返す", func(t *testing.T) {
+			t.Parallel()
+
+			d := NewPurchaseDetail(
+				uuid.NewTestFromSalt(t, "pd_quantity_id"),
+				uuid.NewTestFromSalt(t, "pd_quantity_product"),
+				9, mustPrice(t, "800"),
+			)
+
+			assert.Equal(t, 9, d.Quantity())
+		})
+	})
 }
 
 func TestPurchase_CanceledAt(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未キャンセルの場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, accessorPurchase(t).CanceledAt())
+		})
+
+		t.Run("キャンセル済みの場合、キャンセル日時を返す", func(t *testing.T) {
+			t.Parallel()
+
+			canceledAt := time.Date(2026, time.July, 26, 7, 8, 9, 0, time.UTC)
+			p := accessorPurchaseWith(t, StatusCodeCanceled, nil, &canceledAt)
+
+			require.NotNil(t, p.CanceledAt())
+			assert.Equal(t, canceledAt, *p.CanceledAt())
+		})
+
+		t.Run("返り値のポインタを書き換えても購入のcanceledAtは変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			canceledAt := time.Date(2026, time.July, 26, 7, 8, 9, 0, time.UTC)
+			p := accessorPurchaseWith(t, StatusCodeCanceled, nil, &canceledAt)
+
+			got := p.CanceledAt()
+			*got = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+			require.NotNil(t, p.CanceledAt())
+			assert.NotEqual(t, *got, *p.CanceledAt())
+			assert.Equal(t, canceledAt, *p.CanceledAt())
+		})
+	})
 }
 
 func TestPurchase_Code(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の購入コードを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "acc-code-001", accessorPurchase(t).Code())
+		})
+	})
 }
 
 func TestPurchase_Details(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の明細を保持したまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			details := accessorPurchase(t).Details()
+
+			require.Len(t, details, 1)
+			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_detail"), details[0].ID())
+			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_product"), details[0].ProductID())
+			assert.Equal(t, 2, details[0].Quantity())
+			assert.Equal(t, "800", details[0].UnitPrice().String())
+		})
+
+		t.Run("返り値のスライスを書き換えても購入の明細は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			p := accessorPurchase(t)
+
+			got := p.Details()
+			require.Len(t, got, 1)
+			got[0] = NewPurchaseDetail(
+				uuid.NewTestFromSalt(t, "acc_detail_mutated"),
+				uuid.NewTestFromSalt(t, "acc_product_mutated"),
+				99, mustPrice(t, "1"),
+			)
+
+			require.Len(t, p.Details(), 1)
+			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_detail"), p.Details()[0].ID())
+			assert.Equal(t, 2, p.Details()[0].Quantity())
+		})
+	})
 }
 
 func TestPurchase_ID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の購入IDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_id"), accessorPurchase(t).ID())
+		})
+	})
 }
 
 func TestPurchase_OrderedAt(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の注文日時を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, accessorOrderedAt, accessorPurchase(t).OrderedAt())
+		})
+
+		t.Run("Newで生成した集約の場合、ゼロ値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, code, userID, inputs, locked := validNewArgs(t)
+			p, err := New(id, code, userID, inputs, locked)
+			require.NoError(t, err)
+
+			assert.True(t, p.OrderedAt().IsZero())
+		})
+	})
 }
 
 func TestPurchase_PaidAt(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未支払いの場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, accessorPurchaseWith(t, StatusCodeUnprocessed, nil, nil).PaidAt())
+		})
+
+		t.Run("支払い済みの場合、支払い日時を返す", func(t *testing.T) {
+			t.Parallel()
+
+			paidAt := time.Date(2026, time.July, 25, 4, 5, 6, 0, time.UTC)
+			p := accessorPurchaseWith(t, StatusCodePaid, &paidAt, nil)
+
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, paidAt, *p.PaidAt())
+		})
+
+		t.Run("返り値のポインタを書き換えても購入のpaidAtは変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			paidAt := time.Date(2026, time.July, 25, 4, 5, 6, 0, time.UTC)
+			p := accessorPurchaseWith(t, StatusCodePaid, &paidAt, nil)
+
+			got := p.PaidAt()
+			*got = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+			require.NotNil(t, p.PaidAt())
+			assert.NotEqual(t, *got, *p.PaidAt())
+			assert.Equal(t, paidAt, *p.PaidAt())
+		})
+	})
 }
 
 func TestPurchase_ShippingFee(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の送料（USDセント）を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, 500, accessorPurchase(t).ShippingFee())
+		})
+	})
 }
 
 func TestPurchase_StatusCode(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時のステータスコードを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, StatusCodePaid, accessorPurchase(t).StatusCode())
+		})
+
+		t.Run("Newで生成した集約の場合、未処理を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, code, userID, inputs, locked := validNewArgs(t)
+			p, err := New(id, code, userID, inputs, locked)
+			require.NoError(t, err)
+
+			assert.Equal(t, StatusCodeUnprocessed, p.StatusCode())
+		})
+	})
 }
 
 func TestPurchase_StatusID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時のステータスIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_status"), accessorPurchase(t).StatusID())
+		})
+
+		t.Run("Newで生成した集約の場合、ステータスIDは未解決のためゼロ値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, code, userID, inputs, locked := validNewArgs(t)
+			p, err := New(id, code, userID, inputs, locked)
+			require.NoError(t, err)
+
+			assert.True(t, p.StatusID().IsNil())
+		})
+	})
 }
 
 func TestPurchase_SubtotalAmount(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の小計（USDセント）を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, 160000, accessorPurchase(t).SubtotalAmount())
+		})
+	})
 }
 
 func TestPurchase_TaxAmount(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の税額（USDセント）を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, 16000, accessorPurchase(t).TaxAmount())
+		})
+	})
 }
 
 func TestPurchase_TotalAmount(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の合計（USDセント）を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, 176500, accessorPurchase(t).TotalAmount())
+		})
+	})
 }
 
 func TestPurchase_UserID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入IDではなく購入したユーザーのIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := accessorPurchase(t)
+
+			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_user"), p.UserID())
+			assert.NotEqual(t, p.ID(), p.UserID())
+		})
+	})
 }

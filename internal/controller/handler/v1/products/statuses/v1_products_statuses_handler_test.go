@@ -106,5 +106,20 @@ func Test_server_GetProductStatuses(t *testing.T) {
 
 func Test_toProductStatusResponse(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ステータスDTOの全項目をレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "status_conv")
+			actual := toProductStatusResponse(statusuc.StatusDTO{ID: id, Code: 8, Name: "検討中", SortKey: 3})
+
+			assert.Equal(t, id.ToPrimitive(), actual.Id)
+			assert.Equal(t, 8, actual.Code)
+			assert.Equal(t, "検討中", actual.Name)
+			assert.Equal(t, 3, actual.SortKey)
+		})
+	})
 }

@@ -353,5 +353,37 @@ func Test_logFieldBuilder_buildCompactQuery(t *testing.T) {
 
 func Test_logFieldBuilder_buildEventHeader(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	cfg := config.MockConfigForTest(t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
+	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	require.True(t, ok)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("イベント種別/発生時刻/タイムゾーンをこの順で返す", func(t *testing.T) {
+			t.Parallel()
+
+			at := time.Date(2026, time.July, 28, 9, 30, 0, 0, time.UTC)
+
+			got := impl.buildEventHeader(EventTypeStart, at)
+
+			assert.Equal(t, []*Field{
+				String(EventTypeKey, EventTypeStart),
+				Time(EventAtKey, at),
+				String(EventTzKey, osCfg.TimeZone()),
+			}, got)
+		})
+
+		t.Run("イベント種別は引数の値がそのまま反映される", func(t *testing.T) {
+			t.Parallel()
+
+			got := impl.buildEventHeader(EventTypePanic, time.Time{})
+
+			require.NotEmpty(t, got)
+			assert.Equal(t, String(EventTypeKey, EventTypePanic), got[0])
+		})
+	})
 }

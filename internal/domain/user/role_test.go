@@ -143,20 +143,91 @@ func TestRoles_HasAdmin(t *testing.T) {
 
 func TestRole_Code(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	validID := uuid.NewTestFromSalt(t, "role")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("管理者コードで構築した場合、RoleCodeAdmin を返す", func(t *testing.T) {
+			t.Parallel()
+
+			role, err := NewRole(validID, "管理者", int(RoleCodeAdmin))
+			require.NoError(t, err)
+
+			assert.Equal(t, RoleCodeAdmin, role.Code())
+		})
+
+		t.Run("一般コードで構築した場合、RoleCodeGeneral を返す", func(t *testing.T) {
+			t.Parallel()
+
+			role, err := NewRole(validID, "一般", int(RoleCodeGeneral))
+			require.NoError(t, err)
+
+			assert.Equal(t, RoleCodeGeneral, role.Code())
+		})
+	})
 }
 
 func TestRole_ID(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時の id を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "role_id")
+			role, err := NewRole(id, "管理者", int(RoleCodeAdmin))
+			require.NoError(t, err)
+
+			assert.Equal(t, id, role.ID())
+		})
+	})
 }
 
 func TestRole_IsAdmin(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	validID := uuid.NewTestFromSalt(t, "role")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("管理者コードの場合、true を返す", func(t *testing.T) {
+			t.Parallel()
+
+			role, err := NewRole(validID, "管理者", int(RoleCodeAdmin))
+			require.NoError(t, err)
+
+			assert.True(t, role.IsAdmin())
+		})
+
+		t.Run("一般コードの場合、false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			role, err := NewRole(validID, "一般", int(RoleCodeGeneral))
+			require.NoError(t, err)
+
+			assert.False(t, role.IsAdmin())
+		})
+	})
 }
 
 func TestRole_Name(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時のロール名を返す", func(t *testing.T) {
+			t.Parallel()
+
+			role, err := NewRole(uuid.NewTestFromSalt(t, "role_name"), "運用管理者", int(RoleCodeAdmin))
+			require.NoError(t, err)
+
+			assert.Equal(t, "運用管理者", role.Name())
+		})
+	})
 }

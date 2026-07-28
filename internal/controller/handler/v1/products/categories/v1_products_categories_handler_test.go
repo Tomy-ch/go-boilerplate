@@ -106,5 +106,20 @@ func Test_server_GetProductCategories(t *testing.T) {
 
 func Test_toProductCategoryResponse(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("カテゴリDTOの全項目をレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "category_conv")
+			actual := toProductCategoryResponse(categoryuc.CategoryDTO{ID: id, Code: 2, Name: "電子機器", SortKey: 7})
+
+			assert.Equal(t, id.ToPrimitive(), actual.Id)
+			assert.Equal(t, 2, actual.Code)
+			assert.Equal(t, "電子機器", actual.Name)
+			assert.Equal(t, 7, actual.SortKey)
+		})
+	})
 }

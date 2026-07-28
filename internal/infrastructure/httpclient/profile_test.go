@@ -2,6 +2,7 @@ package httpclient_test
 
 import (
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/infrastructure/httpclient"
 
@@ -122,5 +123,30 @@ func TestMissingDownstreams(t *testing.T) {
 
 func TestDefaultProfile(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未登録Downstreamへ適用される安全側の既定値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, httpclient.Profile{
+				PerAttemptTimeout:   3 * time.Second,
+				OverallTimeout:      10 * time.Second,
+				MaxAttempts:         3,
+				BaseBackoff:         100 * time.Millisecond,
+				MaxBackoff:          2 * time.Second,
+				RetryBudgetRatio:    0.1,
+				MaxResponseBytes:    4 << 20,
+				PropagateTrace:      true,
+				AllowPrivateNetwork: true,
+				Breaker: httpclient.BreakerConfig{
+					FailureThreshold: 0.5,
+					MinRequests:      20,
+					OpenDuration:     5 * time.Second,
+					HalfOpenProbes:   3,
+				},
+			}, httpclient.DefaultProfile())
+		})
+	})
 }

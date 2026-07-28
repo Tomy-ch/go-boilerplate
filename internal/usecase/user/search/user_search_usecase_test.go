@@ -503,5 +503,78 @@ func Test_usecase_toSearchResults(t *testing.T) {
 
 func Test_toSearchResult(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	createdAt := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	updatedAt := createdAt.Add(time.Hour)
+	building := "building_name"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("エンティティの属性と引数の都道府県名から検索結果DTOを構築する", func(t *testing.T) {
+			t.Parallel()
+
+			u, err := user.New(uuid.NewTestFromSalt(t, "to_search_result_user"), user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "Grace",
+					LastName:     "Lee",
+					Email:        "grace.lee@example.com",
+					Phone:        "090-1234-5678",
+					PrefectureID: uuid.NewTestFromSalt(t, "to_search_result_prefecture"),
+					City:         "city_name",
+					Street:       "town_address",
+					Building:     &building,
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: createdAt,
+				UpdatedAt: updatedAt,
+			})
+			require.NoError(t, err)
+
+			actual := toSearchResult(u, "prefecture_name")
+			require.NotNil(t, actual)
+
+			assert.Equal(t, "Grace", actual.FirstName)
+			assert.Equal(t, "Lee", actual.LastName)
+			assert.Equal(t, "grace.lee@example.com", actual.Email)
+			assert.Equal(t, "090-1234-5678", actual.Phone)
+			assert.Equal(t, "150-0001", actual.PostalCode)
+			assert.Equal(t, "prefecture_name", actual.PrefectureName)
+			assert.Equal(t, "city_name", actual.City)
+			assert.Equal(t, "town_address", actual.Street)
+			require.NotNil(t, actual.Building)
+			assert.Equal(t, building, *actual.Building)
+			assert.Equal(t, createdAt, actual.RegisteredAt)
+			assert.Nil(t, actual.DeletedAt)
+		})
+
+		t.Run("削除済みエンティティの場合、DeletedAtを引き継ぐ", func(t *testing.T) {
+			t.Parallel()
+
+			deletedAt := updatedAt.Add(time.Hour)
+			u, err := user.New(uuid.NewTestFromSalt(t, "to_search_result_deleted"), user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "Grace",
+					LastName:     "Lee",
+					Email:        "deleted@example.com",
+					Phone:        "090-1234-5678",
+					PrefectureID: uuid.NewTestFromSalt(t, "to_search_result_prefecture"),
+					City:         "city_name",
+					Street:       "town_address",
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: createdAt,
+				UpdatedAt: updatedAt,
+				DeletedAt: &deletedAt,
+			})
+			require.NoError(t, err)
+
+			actual := toSearchResult(u, "prefecture_name")
+			require.NotNil(t, actual)
+
+			assert.Nil(t, actual.Building)
+			require.NotNil(t, actual.DeletedAt)
+			assert.Equal(t, deletedAt, *actual.DeletedAt)
+		})
+	})
 }
