@@ -16,6 +16,7 @@ import (
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	idempotencyuc "go-boilerplate/internal/usecase/idempotency"
+	mock_idempotencyuc "go-boilerplate/internal/usecase/idempotency/mock"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v5"
@@ -33,6 +34,8 @@ const (
 	sentinel = "SENTINEL"
 	// testUserID は、内部 UserID 解決済みの Authn を作るためのテスト用 UUID subject です。
 	testUserID = "550e8400-e29b-41d4-a716-446655440000"
+	// testOperationID は、operationID の伝播を追うための任意値です。
+	testOperationID = "PostResources"
 )
 
 type spyRequest struct {
@@ -356,5 +359,46 @@ func Test_fingerprint(t *testing.T) {
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
-	t.Skip("architest の 1:1 検証を全 func / method へ拡張した際の宣言。実テストは #724 で追加する")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("捕捉した next と operationID を handle へ渡す", func(t *testing.T) {
+			t.Parallel()
+			called := false
+			next := NextFunc(func(*echo.Context, any) (any, error) {
+				called = true
+				return sentinel, nil
+			})
+			ec := newEcho("key-mw", true, testUserID)
+
+			res, err := Middleware()(next, testOperationID)(ec, spyRequest{Name: "alice"})
+			require.NoError(t, err)
+			assert.True(t, called)
+			assert.Equal(t, sentinel, res)
+
+			// operationID は ctx に stash された Request 経由でしか観測できないため、Run に渡して
+			// o11y カウンタへ届いたラベルを見る。
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+			txm := mock_tx.NewMockManager(ctrl)
+			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
+
+			var gotOperationID string
+			metrics.EXPECT().IncMiss(gomock.Any(), gomock.Any()).Do(
+				func(_ context.Context, operationID string) { gotOperationID = operationID })
+
+			deps := idempotencyuc.Deps{Txm: txm, Store: store, Clock: clk, Metrics: metrics}
+			_, _, runErr := idempotencyuc.Run(ec.Request().Context(), deps, 201,
+				func(context.Context) (string, error) { return "ok", nil })
+			require.NoError(t, runErr)
+
+			assert.Equal(t, testOperationID, gotOperationID)
+		})
+	})
 }
