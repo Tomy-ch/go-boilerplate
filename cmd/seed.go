@@ -15,6 +15,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// authIssuerPlaceholder は、seed ファイル中で JWT の issuer を指すプレースホルダ名です。
+const authIssuerPlaceholder = "AUTH_ISSUER"
+
 // newDBSeedCommand は、データベースに初期データを投入するためのコマンドを生成します。
 func newDBSeedCommand() *cobra.Command {
 	var database string
@@ -38,7 +41,12 @@ func newDBSeedCommand() *cobra.Command {
 func dbSeedRun(database string) error {
 	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 
-	if err := seed.RunDBSeed(logger, fs.OS{}, database, openSeedDB); err != nil {
+	vars, err := seedVars(logger, database)
+	if err != nil {
+		return err
+	}
+
+	if err := seed.RunDBSeed(logger, fs.OS{}, database, vars, openSeedDB); err != nil {
 		return err
 	}
 
@@ -48,6 +56,20 @@ func dbSeedRun(database string) error {
 	}
 
 	return seed.RunObjectSeed(logger, fs.OS{}, endpoint, put)
+}
+
+// seedVars は、seed ファイルのプレースホルダへ渡す環境固有の値を設定から組み立てます。
+// issuer は mock 認証サーバーの公開ポート（worktree のスロットでずれる）に追従するため、
+// seed ファイルへ直書きせず投入時の設定値から解決します。
+func seedVars(logger logging.Logger, database string) (map[string]string, error) {
+	cfg, err := newConfigForSeed(logger, database)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]string{
+		authIssuerPlaceholder: config.NewAuthConfig(cfg).Issuer(),
+	}, nil
 }
 
 // openSeedObjectStorage は、seed 用設定を読み込みオブジェクトストレージ実装を組み立てる実依存の口です。
