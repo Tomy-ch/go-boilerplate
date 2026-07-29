@@ -167,7 +167,14 @@ type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405JSONResponse ErrorResponse
+type MethodNotAllowed405ResponseHeaders struct {
+	Allow string
+}
+type MethodNotAllowed405JSONResponse struct {
+	Body ErrorResponse
+
+	Headers MethodNotAllowed405ResponseHeaders
+}
 
 type PayloadTooLarge413JSONResponse ErrorResponse
 
@@ -222,10 +229,11 @@ type GetProducts405JSONResponse struct {
 func (response GetProducts405JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
 	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
@@ -334,10 +342,11 @@ type PostProducts405JSONResponse struct {
 func (response PostProducts405JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
 	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
@@ -462,10 +471,11 @@ type PostProductsImages405JSONResponse struct {
 func (response PostProductsImages405JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
 	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err

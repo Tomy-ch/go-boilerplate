@@ -151,7 +151,14 @@ type Conflict409JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405JSONResponse ErrorResponse
+type MethodNotAllowed405ResponseHeaders struct {
+	Allow string
+}
+type MethodNotAllowed405JSONResponse struct {
+	Body ErrorResponse
+
+	Headers MethodNotAllowed405ResponseHeaders
+}
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
@@ -216,10 +223,11 @@ type GetPurchases405JSONResponse struct {
 func (response GetPurchases405JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
 	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
@@ -315,10 +323,11 @@ type PostPurchases405JSONResponse struct {
 func (response PostPurchases405JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
 	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err

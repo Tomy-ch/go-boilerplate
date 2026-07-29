@@ -103,7 +103,14 @@ type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405JSONResponse ErrorResponse
+type MethodNotAllowed405ResponseHeaders struct {
+	Allow string
+}
+type MethodNotAllowed405JSONResponse struct {
+	Body ErrorResponse
+
+	Headers MethodNotAllowed405ResponseHeaders
+}
 
 type NotFound404JSONResponse ErrorResponse
 
@@ -194,10 +201,11 @@ type PatchPurchasesShip405JSONResponse struct {
 func (response PatchPurchasesShip405JSONResponse) VisitPatchPurchasesShipResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
 	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err

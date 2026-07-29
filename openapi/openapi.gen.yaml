@@ -2798,6 +2798,15 @@ components:
   responses:
     MethodNotAllowed405:
       description: 許可されていないリクエスト方法です。
+      headers:
+        Allow:
+          description: |
+            このリソースが許可する HTTP メソッドの一覧（RFC 9110 §15.5.6）。
+            OPTIONS を含み、カンマ区切りで返します。
+          required: true
+          schema:
+            type: string
+            example: OPTIONS, GET
       content:
         application/json:
           schema:

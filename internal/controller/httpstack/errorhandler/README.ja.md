@@ -85,6 +85,39 @@ operation を解決し、opt-in していない限り**クライアント wire �
 spec 複製から作るため Host 非依存で、proxy / test の Host でもパス + メソッドで解決できる。
 理由: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md)。
 
+### 405 の `Allow` ヘッダー
+
+RFC 9110 §15.5.6 は、405 レスポンスに対象リソースが許可するメソッド一覧を `Allow` ヘッダーとして
+返すことを要求する。Echo 自身の `methodNotAllowedHandler` はこれをセットするが、405 を短絡させる
+ミドルウェアの下流にあるため到達しない経路がある — OpenAPI バリデーションミドルウェアは自前の
+router が `ErrMethodNotAllowed` を返した時点で 405 を返す。そのため、ハンドラが書き出すすべての 405
+に対して body 書き込み前に `Allow` を自身でセットする。
+
+405 を判断し得る router は 2 つあるため、値の情報源も 2 つあり、この順で解決する：
+
+1. **Echo の router** — `echo.ContextKeyHeaderAllow`。`Use` ミドルウェアの実行前に解決済みなので、
+   どの層が 405 を送出したかによらず読める。Echo 自身が 405 と判断した場合にのみ設定されるため、
+   値がある場合はそれが正しい（OpenAPI バリデーションを丸ごとスキップする運用系パスは常にこちら）。
+2. **OpenAPI spec**（`AllowPolicy` / `allow_methods.go`）— 起動時に組み立てたパステンプレート →
+   `Allow` 値のマップ。Echo が答えを持てないケースを埋める：静的パスと可変パスが重なる位置
+   （`/v1/users/me` と `/v1/users/{userId}`）では、静的パス側に無いメソッドが可変パス側のルートへ
+   マッチし得るため、Echo は 405 branch に入らず、405 と判断するのは OpenAPI の router だけになる。
+   405 のリクエストは定義上どのルートにも解決しないので、他メソッドで探索してパステンプレートを
+   特定し、事前計算した値を引く。
+
+`OPTIONS` は常に先頭に置く（Echo が spec の定義有無によらず自動応答するため）。
+
+spec はこのヘッダーを `required: true` と宣言しており、2つの情報源はこれを満たす: Echo のルータ由来の
+405 は `ContextKeyHeaderAllow` を必ず伴い、OpenAPI のルータ由来の 405 はそのパスが spec に載っている
+ことが前提なので probe が必ず解決する。この主張は、実 spec の全パスを走査して `Allow` が非空である
+ことを確かめる契約テストで固定している。破れるのは「spec に無いルートを Echo に登録した」場合だけで、
+それは解決の問題ではなく spec 迂回の問題。
+
+spec がヘッダーを宣言しているため、oapi-codegen は `Headers.Allow` を持つ
+`MethodNotAllowed405JSONResponse` を生成し、生成された `Visit…Response` はこのフィールドを無条件で
+書き出す。405 は全てここで書くのでこの型を構築するハンドラは存在しないが、strict handler から
+`Headers` をゼロ値のまま返すと空の `Allow` が出て、上記 2 つの情報源を迂回することになる。
+
 ## ログ出力
 
 エラーログは `ObservabilityConfig.TargetStatusCodeSet()` で制御されます：
@@ -115,7 +148,11 @@ spec 複製から作るため Host 非依存で、proxy / test の Host でも�
 |---|---|
 |`http_error_handler.go`|メインハンドラ、正規化ディスパッチ、ログ出力|
 |`echo_http_error_handler.go`|HTTP ステータスを持つエラー → `HTTPErrorResponse` の正規化|
-|`detail_exposure.go`|`DetailPolicy` — OpenAPI spec から解決するエンドポイントごとの `details` opt-in|
+|`detail_exposure.go`|`DetailPolicy` — OpenAPI spec から解決するエンドポイントごとの `details` opt-in、および両ポリシーが共有する Host 非依存 router のコンストラクタ|
+|`allow_methods.go`|`AllowPolicy` — OpenAPI spec から解決するパスごとの `Allow` ヘッダー値|
+
+spec 由来のポリシーは `Policies` 一つにまとめてハンドラへ渡すため、ポリシーを追加しても `New` の
+シグネチャは再び広がらない。
 
 ## カバレッジ例外
 
