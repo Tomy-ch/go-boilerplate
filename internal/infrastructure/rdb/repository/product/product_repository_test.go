@@ -1132,7 +1132,8 @@ func Test_repository_UpdateStock_concurrentRowLock(t *testing.T) {
 		_, err := repo.LockByID(ctx, productID)
 		return err
 	})
-	require.ErrorIs(t, timeoutErr, apperror.ErrUnavailable, "ロック待ちのタイムアウトは一時的な失敗として扱う")
+	require.ErrorIs(t, timeoutErr, apperror.ErrUnavailable, "ロック待ちのタイムアウト(55P03)は待てば解消しうる一時障害として扱う")
+	require.NotErrorIs(t, timeoutErr, apperror.ErrInternal, "サーバ内部エラー(500)として露出させない")
 
 	contenderDone := make(chan error, 1)
 	go func() {

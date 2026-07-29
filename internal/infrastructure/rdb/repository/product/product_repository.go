@@ -4,7 +4,6 @@ package product
 import (
 	"context"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/kernel/money"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -121,11 +120,6 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*product.Produ
 	db := gen.New(driver.New(ctx, r.db))
 	row, err := db.GetProductByIDForUpdate(ctx, id)
 	if err != nil {
-		// lock_timeout の失効は、先行トランザクションの完了を待てば解消しうる一時的な失敗です。
-		// NormalizeError は 55P03 を分類しないため、内部障害へ落ちる前にここで判定します。
-		if pgerror.IsLockNotAvailable(err) {
-			return nil, xerrors.Join(apperror.ErrUnavailable, err)
-		}
 		return nil, pgerror.NormalizeError(err)
 	}
 
