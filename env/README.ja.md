@@ -13,7 +13,7 @@
   - `csv` → `[]string`（`,` 区切り、空白トリム後分割）
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
-- `env/.env.<env>` ファイル間で値が異なってよいものは、その理由を備考欄に書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）
+- `env/.env.<env>` ファイル間で値が異なってよいものは、備考欄に **Per-environment value** と明記し、続けて異なる理由を書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）。このマーカーは `TestEnvPerEnvironmentValuePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーは、それを記載する全 env ファイルで同じ値でなければならず、マーカーのあるキーは実際に値が割れていなければならない（値を揃えた後にマーカーだけ残った状態も落ちる）。一部の環境がシークレットマネージャーから受け取るキーは「異なる」のではなく「無い」ため、不在は比較対象にしない
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `default:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
 
 ## 新規変数を追加する手順
@@ -37,17 +37,17 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|APP_MODE|実行モード|string|development / production|ログや挙動切り替え|
-|APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
+|APP_MODE|実行モード|string|development / production|ログや挙動切り替え。Per-environment value — `stg` 以降は `production` とし、本番前の環境を本番と同じログ形式・挙動で動かす。local / ci / dev は `development`|
+|APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定。Per-environment value — `stg` までは本番前の調査のため `debug`、`prd` は本番のログ量を抑えるため `info`|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
-|APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
+|APP_ENV|環境識別子|string|local / staging / prod|環境区別用。Per-environment value — 環境識別子そのものであり、定義上すべて異なる|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。HTTP サーバーでは `SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だとサーバー起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 
 ### Server
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|SERVER_HOST|バインドホスト|string|localhost|Dockerでは0.0.0.0推奨|
+|SERVER_HOST|バインドホスト|string|localhost|Dockerでは0.0.0.0推奨。Per-environment value — 各環境の到達先ホスト|
 |SERVER_PORT|ポート番号|int|8080||
 |SERVER_READ_HEADER_TIMEOUT|ヘッダ読み取りタイムアウト|duration|5s|Code default `5s`。Slowloris対策|
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s|Code default `10s`|
@@ -60,7 +60,7 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|METRICS_HOST|metrics bind host|string|0.0.0.0||
+|METRICS_HOST|metrics bind host|string|0.0.0.0|Per-environment value — 各環境が metrics を公開するホスト|
 |METRICS_PORT|metrics port|int|6060||
 |METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
 |METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
@@ -69,26 +69,26 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OBS_TRACES_EXPORTER|trace の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でトレース無効（軽量構成）|
-|OBS_METRICS_EXPORTER|metric の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でメトリクス無効（軽量構成）|
-|OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）|
-|OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|<http://observability:4318>|exporter 有効時に使用|
+|OBS_TRACES_EXPORTER|trace の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でトレース無効（軽量構成）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
+|OBS_METRICS_EXPORTER|metric の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でメトリクス無効（軽量構成）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
+|OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
+|OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|<http://observability:4318>|exporter 有効時に使用。Per-environment value — 各環境の collector。exporter が無効な環境では空|
 |OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
-|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要|
-|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。**環境間で意図的に揃えていない** — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
+|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要。Per-environment value — local / ci だけ `false`。クエリやテスト失敗の調査では生の SQL 引数が見えること自体が目的のため。`dev` 以降は `true` とし、実データがトレースバックエンドへ届かないようにする。上位環境をローカル側の値に揃えてはならない|
+|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。Per-environment value — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
 
 ### Database
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |DB_DRIVER|DBドライバ|string|pgx|Code default `pgx`。固定推奨|
-|DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）|
+|DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）。Per-environment value — `local` は compose のサービス名、`ci` は `localhost`。deploy 環境はデプロイ時に注入|
 |DB_PORT|DBポート|int|5432||
 |DB_USER|ユーザー|string|postgres|シークレット管理推奨|
 |DB_PASSWORD|パスワード|string|postgres-password|シークレット管理必須|
-|DB_NAME|DB名|string|local|シークレット管理推奨|
+|DB_NAME|DB名|string|local|シークレット管理推奨。Per-environment value — `local` は開発用、`ci` はテスト用のデータベースを指す。deploy 環境はデプロイ時に注入|
 |DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨|
-|DB_PING_TIMEOUT|接続確認タイムアウト|duration|10s||
+|DB_PING_TIMEOUT|接続確認タイムアウト|duration|10s|Per-environment value — local / ci は DB が同一ホスト（compose サービス / localhost）にあり、ping が遅いことは起動不全を意味するため、早く落として顕在化させる `5s`。`dev` 以降はネットワーク越しのマネージド DB で一時的な遅延がありうるため `10s`|
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|Code default `500ms`。observability連携|
 |DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|Code default `30s`。ctx を無視する query への SQL 層 backstop。0 で無効|
 |DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|Code default `10s`。長時間ロック待ちへの backstop。0 で無効|
@@ -109,11 +109,11 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|SECURITY_ALLOWED_ORIGINS|CORS許可|csv|<http://localhost:3000,http://localhost:8000>||
+|SECURITY_ALLOWED_ORIGINS|CORS許可|csv|<http://localhost:3000,http://localhost:8000>|Per-environment value — 各環境のフロントエンド origin|
 |SECURITY_CIDR|許可IPレンジ|string|127.0.0.0/8||
 |SECURITY_CONTENT_TYPE_NOSNIFF|X-Content-Type-Options|string|nosniff||
 |SECURITY_X_FRAME_OPTIONS|clickjacking対策|string|DENY||
-|SECURITY_HSTS_MAX_AGE|HSTS期間|duration|8760h||
+|SECURITY_HSTS_MAX_AGE|HSTS期間|duration|8760h|Per-environment value — local / ci は平文 http で提供するため `0` で HSTS を無効化する（一度ヘッダをキャッシュしたブラウザは以降ロードを拒否するため）。`dev` 以降は前段で TLS を終端するため `8760h`（1 年）。上位環境をローカル側の値に揃えてはならない（本番の HSTS が消える）|
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|サブドメイン除外|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|preload有効|bool|false||
 |SECURITY_REFERRER_POLICY|referrer制御|string|no-referrer||
@@ -124,7 +124,7 @@
 |---|---|---|---|---|
 |SECURE_COOKIE_SECURE|HTTPS限定|bool|true|本番必須|
 |SECURE_COOKIE_SAME_SITE|SameSite設定|string|Strict||
-|SECURE_COOKIE_DOMAIN|Cookieドメイン|string|example.com||
+|SECURE_COOKIE_DOMAIN|Cookieドメイン|string|example.com|Per-environment value — 各環境の Cookie ドメイン|
 
 ### Worker
 
@@ -179,21 +179,20 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。`local` は Garage の compose サービス、deploy は空|
-|OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`|
-|OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`|
-|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。デプロイ時に注入|
-|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。デプロイ時に注入|
-|OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`|
+|OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
+|OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`。Per-environment value — local / ci は Garage 用のサンプルリージョン、`dev` 以降は各環境の AWS リージョン|
+|OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`。Per-environment value — 環境ごとに 1 バケット|
+|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。デプロイ時に注入。Per-environment value — 資格情報は環境ごとに異なる|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。デプロイ時に注入。Per-environment value — 資格情報は環境ごとに異なる|
+|OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`。Per-environment value — local / ci は Garage が path-style を要求するため `true`、`dev` 以降は AWS S3 のため `false`|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない|
 
 配信はこれらの変数の管轄外です。API はオブジェクトキー（`imagePath`）だけを返しフル URL を返さないため、フロントが `<配信オリジン>/<オブジェクトキー>` を組み立てます。したがって配信オリジンの変数はこちら側に存在せず、フロントが持ちます（`local` は `http://gobp-local.web.garage.localhost:3902`、デプロイ環境では CDN のドメイン）。ローカルの配信エンドポイントを匿名 read で開く方法は [`docker/README.md`](../docker/README.md) を参照してください。
 
 ## 補足
 
-- 例欄の値はローカル開発向け。本番では Secret / CIDR / Cookie ドメイン / origin 等は基本的に別の値になります
+- 例欄の値はローカル開発向け。環境ごとに異なる値を設定する必要があるものは表側に **Per-environment value** と明記してある。マーカーの無い項目は、本番を含め全環境で同じ値である前提
 - `csv` 型は `,` 区切りで空白トリム後に分割。値そのものに `,` を含めないこと
 - `duration` 型は Go `time.ParseDuration` 構文（`500ms`, `1h30m`）。素の数値は不可
 - 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
-- `APP_LOG_LEVEL` は環境ごとに明示指定する。local / ci / dev と **staging** は `debug`（本番前診断のための詳細 JSON ログ）、production は `info`。出力方式（JSON / console）はレベルとは独立に `APP_MODE` が決定する
 - env ファイルはビルド時にバイナリへ埋め込まれる（`embed.go`）。`env/.env` がローカル既定かつ唯一の埋め込み対象で、`env/.env.<env>` は各環境のソース。Docker の `builder` ステージが `APP_ENV` ビルド引数で対象を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）。Docker 以外（`go run` / `go test`）はコミット済みの local `env/.env` を埋め込むため、別環境が必要な CI は同様に焼き直す（例: `cp env/.env.ci env/.env`）。実行時の環境変数は埋め込み値より優先される
