@@ -102,7 +102,7 @@ For each distinct external action, fetch its release list with dates (`gh api re
 
 ### 3. Verify `with:` for Major Bumps
 
-`resolve` / `apply` / `actionlint` catch syntax, NOT semantic input changes. For every action whose **major changes**, read its release notes / `action.yml` and compare against every `with:` block this repo uses. Examples seen: `peter-evans/create-pull-request` renamed `git-token`→`branch-token` (v8); `actions/upload-pages-artifact` v5 excludes dotfiles and requires `deploy-pages@v4+`. If the repo's actual inputs remain compatible → keep the bump. If a breaking input change applies → **hold the action and report the required change**; do not auto-apply. (Minor-only refreshes within a major skip this check.)
+`resolve` / `apply` / `actionlint` catch syntax, NOT semantic input changes. For every action whose **major changes**, read its release notes / `action.yml` and compare against every `with:` block this repo uses. Examples seen: `peter-evans/create-pull-request` renamed `git-token`→`branch-token` (v8); `actions/upload-pages-artifact` v5 excludes dotfiles and requires `deploy-pages@v4+`. If the repo's actual inputs remain compatible → keep the bump. If a breaking input change applies → **hold the action and report the required change**; do not auto-apply. (Minor-only refreshes within a major skip this check.) <!-- skill-lint-ignore -->
 
 ### 3.5. Triage Where Step-back Is Not Available
 

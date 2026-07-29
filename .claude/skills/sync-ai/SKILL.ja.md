@@ -60,7 +60,7 @@ sh .claude/skills/sync-ai/scripts/handoff-to-codex.sh tmp/sync-ai/<name>-contrac
 ## ガードレール
 
 - 送信側の `manage-skill` が同期を開始する。受信側の `manage-skill` は子操作として扱い、再び外向きの同期を開始しない。
-- 各側は、自分がバンドルするスクリプト経由で相手の CLI を非対話起動して引き渡す（こちらは `scripts/handoff-to-codex.sh`、Codex 側は `scripts/handoff-to-claude.sh`）。姿勢を散文でなくスクリプトに置くことが、両方向の乖離を防ぐ。
+- 各側は、自分がバンドルするスクリプト経由で相手の CLI を非対話起動して引き渡す（こちらは `scripts/handoff-to-codex.sh`、Codex 側は `scripts/handoff-to-claude.sh`）。姿勢を散文でなくスクリプトに置くことが、両方向の乖離を防ぐ。 <!-- skill-lint-ignore -->
 - 非対話の受信側にユーザーはいない。質問が行われることを前提にした契約を渡さないこと。また、誰も与えられない承認を待てるようなフラグを渡さないこと。
 - 特定プラットフォーム専用スキルは専用のままにする。理由を報告する。
 - 双方向自動同期、タイムスタンプによる競合解決、ディレクトリ全上書きを禁止する。

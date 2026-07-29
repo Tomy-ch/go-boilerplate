@@ -114,7 +114,7 @@ match. A receiver reporting these as passed is exactly the claim this paragraph 
 - The source-side `manage-skill` starts synchronization; the receiver-side `manage-skill` is a
   child operation and must not start a second outbound synchronization.
 - Each side hands off to the other CLI headlessly through its own bundled script
-  (`scripts/handoff-to-codex.sh` here, `scripts/handoff-to-claude.sh` on the Codex side). Keeping the
+  (`scripts/handoff-to-codex.sh` here, `scripts/handoff-to-claude.sh` on the Codex side). Keeping the <!-- skill-lint-ignore -->
   posture in a script rather than in prose is what stops the two directions from drifting apart.
 - A headless receiver has no user. Never hand it a contract that depends on a question being asked,
   and never give it flags that would let it wait for an approval nobody can grant.

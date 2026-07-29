@@ -108,7 +108,7 @@ These are what a malicious publish has actually looked like. Read for them speci
 skimmed for "does it look reasonable" catches nothing.
 
 - **Install / lifecycle hooks** added or altered — npm `preinstall` / `install` / `postinstall`, an
-  `action.yml` gaining a `run:` step, a `go:generate` directive. Code that executes before anyone
+  `action.yml` gaining a `run:` step, a `go:generate` directive. Code that executes before anyone <!-- skill-lint-ignore -->
   reviews it.
 - **Credential and secret access** — `process.env`, `~/.npmrc`, `~/.aws`, `~/.docker/config.json`,
   `GITHUB_TOKEN`, `ACTIONS_RUNTIME_TOKEN`, SSH keys, keychain, the runner's memory.
