@@ -129,7 +129,7 @@ make fix
 make test
 ```
 
-> **Environment note:** `make test` requires the dev environment to be running for the DB-backed suites in the same run; bring it up with the dedicated make targets (`make serve` → **`make db-init`**, which migrates **and seeds** both local & test DBs — seed data is assumed by the suite), **not raw `docker compose`** and not a bare `db-*-migrate-up`. If `make fix` / `make test` fails on a tool version mismatch (e.g. `golangci-lint` v1/v2 config error), realign with `make install-tools` (`make sync-tools` first if `tools.yaml` changed) rather than hand-editing `PATH`.
+> **Environment note:** `make test` requires the dev environment to be running for the DB-backed suites in the same run; bring it up with the dedicated make targets (`make serve` → **`make db-init`**, which migrates **and seeds** both local & test DBs — seed data is assumed by the suite), **not raw `docker compose`** and not a bare `db-*-migrate-up`. If `make fix` / `make test` fails on a tool version mismatch (e.g. `golangci-lint` v1/v2 config error), realign with `make install-tools` (`make sync-versions` first if `mise.toml` changed) rather than hand-editing `PATH`.
 
 On failure: surface the failing test output + leave a `// TODO:` at the problem case + FB summary. No auto-rollback.
 

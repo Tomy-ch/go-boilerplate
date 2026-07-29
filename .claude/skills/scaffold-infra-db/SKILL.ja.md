@@ -56,7 +56,7 @@ skill が書き込み前に検証:
 
 > **環境に関する注記:** `make gen-query` は `pg_dump` で稼働中の DB スキーマをダンプするため、先に DB が起動している必要がある。準備は**生 `docker compose` ではなく専用 make ターゲット**で行うこと: `make serve`（development プロファイル、`database` サービス含む）→ **`make db-init`** → `make gen-query`。`make db-init` は local/test 両 DB を一括で migrate **かつ seed** する。本 skill が書く integration テスト（`make test`）も稼働中かつ **seed 済み**の test DB を要するため、`db-*-migrate-up` 単体ではなく `db-init` が正しい準備手順。
 >
-> **ツールチェーンに関する注記:** 最終の `make fix` / `make test`（または `make lint`）がツールのバージョン不整合（例: `golangci-lint` の v1/v2 config エラー）で失敗した場合は、`PATH` の手動書き換えではなく `make install-tools` でローカルのツールを揃えてから再実行する（`tools.yaml` を変更した場合は先に `make sync-tools`）。
+> **ツールチェーンに関する注記:** 最終の `make fix` / `make test`（または `make lint`）がツールのバージョン不整合（例: `golangci-lint` の v1/v2 config エラー）で失敗した場合は、`PATH` の手動書き換えではなく `make install-tools` でローカルのツールを揃えてから再実行する（`mise.toml` を変更した場合は先に `make sync-versions`）。
 
 ## 最初のステップ: identity 確認
 

@@ -123,7 +123,7 @@ make fix
 make test
 ```
 
-> **環境に関する注記:** `make test` は同一実行内の DB 依存スイートのために開発環境が起動している必要がある。**生 `docker compose` ではなく専用 make ターゲット**で起動する（`make serve` → **`make db-init`**。local/test 両 DB を migrate **かつ seed** する。スイートは seed 前提のため、`db-*-migrate-up` 単体では不十分）。`make fix` / `make test` がツールのバージョン不整合（例: `golangci-lint` の v1/v2 config エラー）で失敗した場合は、`PATH` の手動書き換えではなく `make install-tools` で揃えてから再実行する（`tools.yaml` 変更時は先に `make sync-tools`）。
+> **環境に関する注記:** `make test` は同一実行内の DB 依存スイートのために開発環境が起動している必要がある。**生 `docker compose` ではなく専用 make ターゲット**で起動する（`make serve` → **`make db-init`**。local/test 両 DB を migrate **かつ seed** する。スイートは seed 前提のため、`db-*-migrate-up` 単体では不十分）。`make fix` / `make test` がツールのバージョン不整合（例: `golangci-lint` の v1/v2 config エラー）で失敗した場合は、`PATH` の手動書き換えではなく `make install-tools` で揃えてから再実行する（`mise.toml` 変更時は先に `make sync-versions`）。
 
 失敗時: 失敗テスト出力を surface + 該当ケースに `// TODO:` + FB サマリ。自動 rollback はしない。
 

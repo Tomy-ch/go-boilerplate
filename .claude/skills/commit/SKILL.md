@@ -100,7 +100,7 @@ git diff --name-only
 
 Treat the following as **rider files** — they never form their own commit, but ride along with the source change that produced them:
 
-- Generated files: `**/*.gen.go`, `**/*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/portal/links/implements/`
+- Generated files: `**/*.gen.go`, `**/*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/portal/guides/`
 - Vendored content: `vendor/**`
 
 Example: an `openapi/**/*.yaml` change brings its `*.gen.go` outputs with it in the same commit. A `database/dml/**/*.sql` change brings its `internal/infrastructure/rdb/sqlc/gen/*.gen.go` outputs in the same commit.
@@ -117,8 +117,8 @@ Use exactly **one** of the following prefixes per commit (capitalized, English, 
 | `Perf:` | Performance improvement | Query optimization, N+1 elimination, allocation reduction |
 | `Docs:` | Documentation change | `README*`, `docs/`, `*.ja.md`, code comments, release notes |
 | `Test:` | Adding or fixing tests | `*_test.go`, test fixtures, test helpers |
-| `Build:` | Build system, dependencies, tooling | `Dockerfile`, `go.mod` / `go.sum`, `Makefile`, `.makefiles/**`, `tools.yaml` |
-| `CI:` | CI/CD configuration | `.github/workflows/**`, `lefthook.yml`, GitHub Actions related |
+| `Build:` | Build system, dependencies, tooling | `Dockerfile`, `go.mod` / `go.sum`, `makefile`, `.makefiles/**`, `mise.toml` |
+| `CI:` | CI/CD configuration | `.github/workflows/**`, `.lefthook.yaml`, GitHub Actions related |
 | `Chore:` | Miscellaneous chores | `.gitignore`, editor settings, `.claude/**`, other small tasks |
 | `Style:` | Formatting-only changes that do not affect logic | Output of `make fix`, `gofmt`, `goimports` |
 | `Revert:` | Undoing an existing commit | Output of `git revert`, or an equivalent manual revert |
@@ -135,8 +135,8 @@ Do not invent prefixes outside this list. When ambiguous, choose the closest mat
 | `database/migrations/**/*.sql` | `Feat` (schema change) |
 | `database/dml/**/*.sql` | `Feat` / `Refactor` (new query vs. cleanup) |
 | `docs/**/*.md`, `README*.md`, `*.ja.md` | `Docs` |
-| `Dockerfile`, `docker/**`, `go.mod`, `go.sum`, `Makefile`, `.makefiles/**`, `tools.yaml` | `Build` |
-| `.github/workflows/**`, `lefthook.yml`, `.lefthook.yaml` | `CI` |
+| `Dockerfile`, `docker/**`, `go.mod`, `go.sum`, `makefile`, `.makefiles/**`, `mise.toml` | `Build` |
+| `.github/workflows/**`, `.lefthook.yaml` | `CI` |
 | `.gitignore`, `.claude/**`, editor settings | `Chore` |
 
 ## Step 4. Propose Grouping

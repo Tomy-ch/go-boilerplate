@@ -92,7 +92,7 @@ git diff --name-only
 
 以下は **rider ファイル** として扱う — それ単独でコミットを構成せず、それを生成したソース変更に相乗りする:
 
-- 生成ファイル: `**/*.gen.go`、`**/*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、`docs/portal/links/implements/` 配下の生成物
+- 生成ファイル: `**/*.gen.go`、`**/*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、`docs/portal/guides/` 配下の生成物
 - vendored コンテンツ: `vendor/**`
 
 例: `openapi/**/*.yaml` の変更は、その `*.gen.go` 出力を同じコミットに持ち込む。`database/dml/**/*.sql` の変更は、その `internal/infrastructure/rdb/sqlc/gen/*.gen.go` 出力を同じコミットに持ち込む。
@@ -109,8 +109,8 @@ git diff --name-only
 | `Perf:` | パフォーマンス改善 | クエリ最適化、N+1 解消、アロケーション削減 |
 | `Docs:` | ドキュメント変更 | `README*`、`docs/`、`*.ja.md`、コードコメント、リリースノート |
 | `Test:` | テストの追加・修正 | `*_test.go`、テストフィクスチャ、テストヘルパー |
-| `Build:` | ビルドシステム・依存・ツール | `Dockerfile`、`go.mod` / `go.sum`、`Makefile`、`.makefiles/**`、`tools.yaml` |
-| `CI:` | CI/CD 設定 | `.github/workflows/**`、`lefthook.yml`、GitHub Actions 関連 |
+| `Build:` | ビルドシステム・依存・ツール | `Dockerfile`、`go.mod` / `go.sum`、`makefile`、`.makefiles/**`、`mise.toml` |
+| `CI:` | CI/CD 設定 | `.github/workflows/**`、`.lefthook.yaml`、GitHub Actions 関連 |
 | `Chore:` | 雑多な作業 | `.gitignore`、エディタ設定、`.claude/**`、その他の小タスク |
 | `Style:` | ロジックに影響しないフォーマットのみの変更 | `make fix` / `gofmt` / `goimports` の出力 |
 | `Revert:` | 既存コミットの取り消し | `git revert` の出力、または同等の手動 revert |
@@ -127,8 +127,8 @@ git diff --name-only
 | `database/migrations/**/*.sql` | `Feat`（スキーマ変更） |
 | `database/dml/**/*.sql` | `Feat` / `Refactor`（新クエリ vs 整理） |
 | `docs/**/*.md`、`README*.md`、`*.ja.md` | `Docs` |
-| `Dockerfile`、`docker/**`、`go.mod`、`go.sum`、`Makefile`、`.makefiles/**`、`tools.yaml` | `Build` |
-| `.github/workflows/**`、`lefthook.yml`、`.lefthook.yaml` | `CI` |
+| `Dockerfile`、`docker/**`、`go.mod`、`go.sum`、`makefile`、`.makefiles/**`、`mise.toml` | `Build` |
+| `.github/workflows/**`、`.lefthook.yaml` | `CI` |
 | `.gitignore`、`.claude/**`、エディタ設定 | `Chore` |
 
 ## Step 4. コミット分割の提案
