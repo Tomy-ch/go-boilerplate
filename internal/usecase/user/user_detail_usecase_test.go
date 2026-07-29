@@ -2,12 +2,14 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
+	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
@@ -15,7 +17,11 @@ import (
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	"go-boilerplate/internal/usecase/outbox"
+	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
 	"go-boilerplate/internal/usecase/testkit"
+	"go-boilerplate/internal/usecase/user/event"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
@@ -457,10 +463,17 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		return a
 	}
 
+	// noInProgressPurchase は、進行中の購入を持たないユーザーを表す購入 Repository モックを返します。
+	noInProgressPurchase := func(ctrl *gomock.Controller) *mock_purchase.MockRepository {
+		r := mock_purchase.NewMockRepository(ctrl)
+		r.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, nil)
+		return r
+	}
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("論理削除が成功する", func(t *testing.T) {
+		t.Run("論理削除と退会イベントの発行が単一トランザクションで完了する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
@@ -470,9 +483,36 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
-			err := uc.DeleteUser(ctx, authn, id)
-			require.NoError(t, err)
+			var emitted outbox.EmitInput
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, in outbox.EmitInput) (uuid.UUID, error) {
+					emitted = in
+					return uuid.UUID{}, nil
+				})
+
+			// 論理削除とイベント発行を別々の tx に分けると退会だけが残るため、tx は 1 回に固定する。
+			singleTx := mock_tx.NewMockManager(ctrl)
+			singleTx.EXPECT().Do(gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
+				func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) })
+
+			uc := &usecase{
+				tracer: lt, txm: singleTx, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
+			}
+			require.NoError(t, uc.DeleteUser(ctx, authn, id))
+
+			assert.Equal(t, "user", emitted.AggregateType)
+			assert.Equal(t, id.String(), emitted.AggregateID)
+			assert.Equal(t, event.TypeWithdrawn, emitted.EventType)
+
+			var payload struct {
+				UserID    string `json:"userId"`
+				DeletedAt string `json:"deletedAt"`
+			}
+			require.NoError(t, json.Unmarshal(emitted.Payload, &payload))
+			assert.Equal(t, id.String(), payload.UserID)
+			assert.Equal(t, now.Format(time.RFC3339Nano), payload.DeletedAt)
 		})
 	})
 
@@ -490,6 +530,99 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			uc := &usecase{tracer: lt, txm: txm, authorizer: authorizer, userRepo: userRepo}
 			err := uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
+		t.Run("進行中の購入が残っている場合_ErrConflict", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			// 退会を拒否するため論理削除もイベント発行も行わない。
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(true, nil)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
+			err := uc.DeleteUser(ctx, authn, id)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+			assert.Nil(t, u.DeletedAt())
+		})
+
+		t.Run("進行中の購入の確認でエラー", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			expectedErr := xerrors.New("purchase lookup failed")
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, expectedErr)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
+		})
+
+		t.Run("トランザクションの実行に失敗した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			expectedErr := testkit.ExpectedDBError()
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			// tx.Manager 自体が失敗する経路（接続断等）。fn は実行されないため repo 呼び出しはない。
+			failingTx := mock_tx.NewMockManager(ctrl)
+			failingTx.EXPECT().Do(gomock.Any(), gomock.Any()).Return(expectedErr)
+
+			uc := &usecase{tracer: lt, txm: failingTx, clock: clock, authorizer: allowAuthorizer(ctrl)}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
+		})
+
+		t.Run("論理削除の永続化でエラー", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			expectedErr := xerrors.New("update failed")
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				// 永続化に失敗した場合はイベントを発行しない（EXPECT を張らず未呼び出しを担保する）。
+				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
+		})
+
+		t.Run("退会イベントの発行でエラー", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			expectedErr := xerrors.New("emit failed")
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, expectedErr)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
+			}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
 		})
 
 		t.Run("authnがnilの場合_ErrUnauthenticated", func(t *testing.T) {
@@ -538,7 +671,10 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(deletedUser, nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
 			err = uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, user.ErrAlreadyDeleted)
 		})
