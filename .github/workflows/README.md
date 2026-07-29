@@ -12,6 +12,7 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 | Security | per-tool matrix (see below) | Surface vulnerabilities in code, dependencies, images, workflow definitions, and committed secrets |
 | Deployment | push to `production` / `staging` / `develop` | Build artifacts, run migration, deploy app or docs portal |
 | Documentation | push to `release/*` | Regenerate OpenAPI / ER / portal docs and open an auto-sync PR |
+| Assistant | `@claude` mentioned on a pull request | Answer or investigate on demand, restricted to accounts with write access |
 
 ## Workflow List
 
@@ -160,6 +161,12 @@ Every job in this directory starts with `step-security/harden-runner` in `egress
 |---|---|---|---|
 |Auto-generate Docs|`auto-generate-docs.yaml`|push to release/* branches|Sync OpenAPI `info.version` from the `release/vX.Y.Z` branch name, then auto-generate the OpenAPI bundle / embedded spec / docs, ER diagrams, portal docs|
 
+### Assistant (Comment)
+
+|Workflow|File|Trigger|Description|
+|---|---|---|---|
+|Claude|`claude.yaml`|`@claude` in a pull-request comment or review|Run Claude Code against the pull request on demand|
+
 ## Shared Composite Actions
 
 Reusable composite actions live under [`.github/actions/`](../actions/):
@@ -188,5 +195,6 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
 - The `Detect changes` step in `auto-generate-docs.yaml` excludes coverage HTML and SchemaSpy timestamp churn so cosmetic regenerations do not open noise PRs.
 - GitHub disables scheduled workflows automatically after 60 days without a commit, and it does so silently. Keeping them alive is out of scope for this template — no keepalive job is provided — so a fork that goes quiet should expect to re-enable them from the Actions tab.
 - A repository created from a fork or template starts with every workflow in `disabled_fork` state, where nothing runs at all. `make enable-workflows` enumerates and enables them; it is idempotent and safe to re-run.
+- **`claude.yaml` authorization.** Who may invoke Claude is decided by the action's own write-permission check, not by an allowlist in the workflow. Both alternatives break under forking: a hardcoded list of accounts locks a fork owner out of their own repository, and a repository variable holding that list is never inherited by a fork, so it resolves empty and nobody can invoke anything. A permission check resolves against whichever repository the workflow runs in and therefore needs no configuration to be correct anywhere. Two inputs would undo this and are deliberately left unset: `allowed_non_write_users` bypasses the check outright, and `allowed_bots` admits Apps that need neither installation nor write access. The workflow's own `if:` reads only the `github` context, so no comment starts a runner; it grants no authority. Restricting *who* cannot address prompt injection carried in a fork pull request — the invoker is trusted, the diff Claude reads is not — which is why `contents` stays read-only.
 - `.spectral.yaml` and `.trivyignore.yaml` follow the same policy as `.github/zizmor.yml`: nothing is disabled in bulk, every entry carries the ADR or implementation that justifies it, and suppressions are scoped to a path (or a JSON pointer) so a new file hitting the same rule still fails.
 - `fuzz.yaml` is scheduled rather than run per PR: a fuzz run explores a random corpus, so gating a merge on it would make the verdict depend on a coin flip. Crash reproducers are committed under `testdata/fuzz/` and replay as ordinary regression tests.
