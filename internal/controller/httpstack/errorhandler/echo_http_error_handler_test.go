@@ -66,6 +66,16 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			assert.Equal(t, expectedBase.Code, actual.Code)
 			assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
 		})
+
+		t.Run("メソッド不許可の場合、405とMETHOD_NOT_ALLOWEDが返る", func(t *testing.T) {
+			t.Parallel()
+
+			actual := normalizeEchoHTTPError(echo.ErrMethodNotAllowed)
+			require.NotNil(t, actual)
+
+			assert.Equal(t, http.StatusMethodNotAllowed, actual.HTTPStatus)
+			assert.Equal(t, "METHOD_NOT_ALLOWED", actual.Code)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

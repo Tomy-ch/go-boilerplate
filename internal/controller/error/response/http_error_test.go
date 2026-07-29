@@ -40,10 +40,28 @@ func Test_lookupErrorMetaByHTTPStatus(t *testing.T) {
 			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusNotFound))
 		})
 
+		t.Run("405の場合、MethodNotAllowedが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusMethodNotAllowed, Code: codeMethodNotAllowed, Message: errorMessageMethodNotAllowed}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusMethodNotAllowed))
+		})
+
 		t.Run("409の場合、Conflictが返される", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusConflict, Code: codeResourceConflict, Message: errorMessageResourceConflict}
 			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusConflict))
+		})
+
+		t.Run("413の場合、PayloadTooLargeが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusRequestEntityTooLarge, Code: codePayloadTooLarge, Message: errorMessagePayloadTooLarge}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusRequestEntityTooLarge))
+		})
+
+		t.Run("415の場合、UnsupportedMediaTypeが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusUnsupportedMediaType, Code: codeUnsupportedMediaType, Message: errorMessageUnsupportedMediaType}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusUnsupportedMediaType))
 		})
 
 		t.Run("422の場合、ValidationFailedが返される", func(t *testing.T) {
