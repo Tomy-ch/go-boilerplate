@@ -154,6 +154,8 @@ type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
+type MethodNotAllowed405JSONResponse ErrorResponse
+
 type ServiceUnavailable503JSONResponse ErrorResponse
 
 type Unauthorized401JSONResponse ErrorResponse
@@ -220,6 +222,22 @@ func (response GetUsers403JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsers405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetUsers405JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -317,6 +335,22 @@ func (response PostUsers403JSONResponse) VisitPostUsersResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostUsers405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response PostUsers405JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }

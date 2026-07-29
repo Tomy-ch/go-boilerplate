@@ -89,6 +89,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 type InternalServerError500JSONResponse ErrorResponse
 
+type MethodNotAllowed405JSONResponse ErrorResponse
+
 type ServiceUnavailable503JSONResponse ErrorResponse
 
 type Unauthorized401JSONResponse ErrorResponse
@@ -124,6 +126,22 @@ func (response GetUsersMePurchasesSummary401JSONResponse) VisitGetUsersMePurchas
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersMePurchasesSummary405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetUsersMePurchasesSummary405JSONResponse) VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }

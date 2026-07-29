@@ -99,6 +99,8 @@ type BadRequest400JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
+type MethodNotAllowed405JSONResponse ErrorResponse
+
 type ServiceUnavailable503JSONResponse ErrorResponse
 
 type GetAddressesRequestObject struct {
@@ -133,6 +135,22 @@ func (response GetAddresses400JSONResponse) VisitGetAddressesResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAddresses405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetAddresses405JSONResponse) VisitGetAddressesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }

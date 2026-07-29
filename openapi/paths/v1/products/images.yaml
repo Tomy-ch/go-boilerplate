@@ -29,6 +29,8 @@ post:
       $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
     '403':
       $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
     '413':
       $ref: '../../../components/schemas/errors/PayloadTooLarge413.yaml'
     '415':

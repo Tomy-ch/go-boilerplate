@@ -12,3 +12,5 @@ get:
         application/json:
           schema:
             $ref: '../components/responses/health-check/HealthResponse.yaml'
+    '405':
+      $ref: '../components/schemas/errors/MethodNotAllowed405.yaml'

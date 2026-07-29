@@ -1,0 +1,5 @@
+description: 許可されていないリクエスト方法です。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

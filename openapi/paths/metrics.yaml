@@ -14,3 +14,5 @@ get:
           schema:
             type: string
             description: メトリクス情報を含むプレーンテキスト
+    '405':
+      $ref: '../components/schemas/errors/MethodNotAllowed405.yaml'
