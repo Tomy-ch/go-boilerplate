@@ -31,7 +31,7 @@ This directory is the canonical reference for every environment variable read by
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OS_TZ|Timezone setting|string|Asia/Tokyo|Code default `Asia/Tokyo`. Time reference for container / application. The env files still set it explicitly in every environment, so the timezone is visible where an operator looks for it rather than only in code|
+|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application. The deployment region varies per project, so it is `required` and stated in every env file rather than code-defaulted — the timezone stays where an operator looks for it. Rejected when empty, because an empty value would silently fall back to UTC|
 
 ### Application
 
