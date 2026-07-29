@@ -13,6 +13,7 @@ This directory is the canonical reference for every environment variable read by
   - `csv` → `[]string` (split on `,` after whitespace trim)
 - Variables marked **Secret management required** MUST be loaded from a secret manager in production — never commit them to plain `.env` files.
 - Variables marked **Secret management recommended** should be rotated periodically.
+- A value that legitimately differs between `env/.env.<env>` files states why in its Notes cell. Nothing else records whether a key is a per-environment policy or a value that should match everywhere, so an undocumented difference reads as a propagation miss and should be treated as one.
 - Variables marked **Code default `<value>`** carry a `default:` tag in `internal/config/envspec.go` and are intentionally omitted from the `.env` files. They are framework-level constants that any project derived from this boilerplate keeps unchanged, so the default applies automatically; add an explicit entry to a `.env` file only when a project needs to override it. Every other variable is `required` and must be present in the relevant env file(s).
 
 ## Adding a New Variable
@@ -30,7 +31,7 @@ This directory is the canonical reference for every environment variable read by
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application|
+|OS_TZ|Timezone setting|string|Asia/Tokyo|Code default `Asia/Tokyo`. Time reference for container / application. The env files still set it explicitly in every environment, so the timezone is visible where an operator looks for it rather than only in code|
 
 ### Application
 
@@ -74,7 +75,7 @@ This directory is the canonical reference for every environment variable read by
 |OBS_OTLP_ENDPOINT|OTLP export endpoint URL|string|<http://observability:4318>|Used when an exporter is enabled|
 |OBS_OTLP_PROTOCOL|OTLP protocol (`http/protobuf` or `grpc`)|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|true|Security critical|
-|OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,405,409,422,429,500,501,503|For error monitoring|
+|OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,405,409,422,429,500,501,503|For error monitoring. **Deliberately not identical across environments** — the set narrows monotonically as the environment gets closer to production, so a mismatch between files is the intent rather than a propagation miss. `local` / `ci` monitor the full set for development and test visibility; `dev` / `stg` drop `429`; `prd` additionally drops `403` / `404` / `405`, keeping production monitoring on server-side and contract failures rather than on client-driven noise that dominates at production traffic volume. A lower environment never monitors a code its upper environment ignores. `TestEnvTargetStatusCodesPolicy` (`internal/architest`) enforces the policy, so adding a code to some env files but not others fails the build; excluding a new code from an environment on purpose requires updating the policy declaration in that test as well|
 
 ### Database
 

@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -174,13 +173,10 @@ func isGeneratedGo(path string, lines []string) bool {
 	return false
 }
 
-// moduleSubdirs は、本テストファイル位置（internal/architest）からモジュールルートを辿り、
-// 指定サブディレクトリの絶対パス群を返す。
+// moduleSubdirs は、モジュールルート配下の指定サブディレクトリの絶対パス群を返す。
 func moduleSubdirs(t *testing.T, subs ...string) []string {
 	t.Helper()
-	_, thisFile, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	root := filepath.Join(filepath.Dir(thisFile), "..", "..") // internal/architest -> module root
+	root := moduleRoot(t)
 	out := make([]string, 0, len(subs))
 	for _, s := range subs {
 		out = append(out, filepath.Join(root, s))
