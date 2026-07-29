@@ -74,7 +74,7 @@
 |OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|<http://observability:4318>|exporter 有効時に使用|
 |OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要|
-|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,409,422,500,501,503|エラー監視用|
+|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用|
 
 ### Database
 

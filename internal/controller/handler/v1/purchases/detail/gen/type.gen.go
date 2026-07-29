@@ -99,6 +99,9 @@ type PurchaseIdParam = openapi_types.UUID
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
 
+// MethodNotAllowed405 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type MethodNotAllowed405 = ErrorResponse
+
 // NotFound404 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type NotFound404 = ErrorResponse
 

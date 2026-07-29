@@ -85,6 +85,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 }
 
+type MethodNotAllowed405JSONResponse ErrorResponse
+
 type GetHealthRequestObject struct {
 }
 
@@ -102,6 +104,22 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetHealth405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetHealth405JSONResponse) VisitGetHealthResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }

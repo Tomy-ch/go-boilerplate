@@ -98,6 +98,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
   /healthz:
     get:
       operationId: GetHealthz
@@ -113,6 +115,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
   /metrics:
     get:
       operationId: GetMetrics
@@ -130,6 +134,8 @@ paths:
               schema:
                 type: string
                 description: メトリクス情報を含むプレーンテキスト
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
   /ready:
     get:
       operationId: GetReady
@@ -145,6 +151,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReadyResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
   /version:
     get:
       operationId: GetVersion
@@ -160,6 +168,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VersionResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
   /_internal/types/error-response:
     get:
       summary: （内部用）ErrorResponse型生成用エンドポイント
@@ -202,6 +212,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '403':
           $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -235,6 +247,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '403':
           $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '422':
@@ -269,6 +283,8 @@ paths:
           $ref: '#/components/responses/Forbidden403'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -304,6 +320,8 @@ paths:
           $ref: '#/components/responses/Forbidden403'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '422':
@@ -343,6 +361,8 @@ paths:
           $ref: '#/components/responses/Forbidden403'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '422':
@@ -372,6 +392,8 @@ paths:
           $ref: '#/components/responses/Forbidden403'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '500':
@@ -398,6 +420,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -429,6 +453,8 @@ paths:
                 $ref: '#/components/schemas/PurchaseAggregateResponse'
         '401':
           $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -460,6 +486,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '403':
           $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -489,6 +517,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '403':
           $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -510,6 +540,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PrefecturesResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -531,6 +563,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductsStatusesResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -552,6 +586,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductsCategoriesResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -585,6 +621,8 @@ paths:
                 $ref: '#/components/schemas/ProductListResponse'
         '400':
           $ref: '#/components/responses/BadRequest400'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -620,6 +658,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '403':
           $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
         '500':
@@ -650,6 +690,8 @@ paths:
           $ref: '#/components/responses/BadRequest400'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -691,6 +733,8 @@ paths:
           $ref: '#/components/responses/Forbidden403'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '422':
@@ -723,6 +767,8 @@ paths:
                 $ref: '#/components/schemas/ProductRankingResponse'
         '400':
           $ref: '#/components/responses/BadRequest400'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -759,6 +805,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '403':
           $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '413':
           $ref: '#/components/responses/PayloadTooLarge413'
         '415':
@@ -825,6 +873,8 @@ paths:
                 $ref: '#/components/schemas/ExchangeRateResponse'
         '400':
           $ref: '#/components/responses/BadRequest400'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -852,6 +902,8 @@ paths:
                 $ref: '#/components/schemas/AddressCandidatesResponse'
         '400':
           $ref: '#/components/responses/BadRequest400'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -885,6 +937,8 @@ paths:
           $ref: '#/components/responses/BadRequest400'
         '401':
           $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -922,6 +976,8 @@ paths:
           $ref: '#/components/responses/BadRequest400'
         '401':
           $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '422':
@@ -957,6 +1013,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -991,6 +1049,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '500':
@@ -1026,6 +1086,8 @@ paths:
           $ref: '#/components/responses/Unauthorized401'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '500':
@@ -1063,6 +1125,8 @@ paths:
           $ref: '#/components/responses/Forbidden403'
         '404':
           $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
         '500':
@@ -2732,6 +2796,12 @@ components:
           description: 発送日時
           example: '2026-07-26T00:00:00Z'
   responses:
+    MethodNotAllowed405:
+      description: 許可されていないリクエスト方法です。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     BadRequest400:
       description: リクエストが不正です。
       content:

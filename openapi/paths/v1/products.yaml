@@ -26,6 +26,8 @@ get:
             $ref: '../../components/responses/products/ProductListResponse.yaml'
     '400':
       $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
     '500':
       $ref: '../../components/schemas/errors/InternalServerError500.yaml'
     '503':
@@ -61,6 +63,8 @@ post:
       $ref: '../../components/schemas/errors/Unauthorized401.yaml'
     '403':
       $ref: '../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
     '422':
       $ref: '../../components/schemas/errors/UnprocessableEntity422.yaml'
     '500':

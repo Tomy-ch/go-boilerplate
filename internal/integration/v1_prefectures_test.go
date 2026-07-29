@@ -65,5 +65,22 @@ func TestV1Prefectures_Integration(t *testing.T) {
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/prefectures", nil, nil)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
+
+		t.Run("DELETE /v1/prefectures が 405 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			// 本番の 405 は Echo のルータではなく OpenAPI バリデーションミドルウェアが送出するため、
+			// 実経路を再現するにはこのミドルウェアの配線が要る。
+			useOpenAPIValidation(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			prefectureshandler.BindHandler(e, tf, mock_prefecture.NewMockUsecase(ctrl))
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, "/v1/prefectures", nil, nil)
+			AssertErrorResponse(t, actual, http.StatusMethodNotAllowed)
+		})
 	})
 }

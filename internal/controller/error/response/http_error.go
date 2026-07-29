@@ -16,6 +16,8 @@ const (
 	codeAccessDenied = "ACCESS_DENIED"
 	// codeNotFound は、指定されたリソースが存在しない場合に使用されるエラーコードです。
 	codeNotFound = "NOT_FOUND"
+	// codeMethodNotAllowed は、パスに対して許可されていないHTTPメソッドが使われた場合に使用されるエラーコードです。
+	codeMethodNotAllowed = "METHOD_NOT_ALLOWED"
 	// codeResourceConflict は、既に存在するリソースとの競合が発生した場合に使用されるエラーコードです。
 	codeResourceConflict = "RESOURCE_CONFLICT"
 	// codeValidationFailed は、入力値の検証に失敗した場合に使用されるエラーコードです。
@@ -48,6 +50,8 @@ const (
 	errorMessageAccessDenied = "この操作を行う権限がありません。"
 	// errorMessageNotFound は、指定されたリソースが存在しない場合に使用されるエラーメッセージです。
 	errorMessageNotFound = "お探しの情報が見つかりませんでした。"
+	// errorMessageMethodNotAllowed は、パスに対して許可されていないHTTPメソッドが使われた場合のエラーメッセージです。
+	errorMessageMethodNotAllowed = "許可されていないリクエスト方法です。"
 	// errorMessageResourceConflict は、既に存在するリソースとの競合が発生した場合に使用されるエラーメッセージです。
 	errorMessageResourceConflict = "既に同じ情報が登録されています。"
 	// errorMessageValidationFailed は、入力値の検証に失敗した場合のエラーメッセージです。
@@ -88,6 +92,12 @@ var errorMeta = map[int]httpErrorMeta{
 		Status:  http.StatusNotFound,
 		Code:    codeNotFound,
 		Message: errorMessageNotFound,
+	},
+	// 405 は apperror sentinel を持たず、ルーティングで解決される(echo.ErrMethodNotAllowed)。
+	http.StatusMethodNotAllowed: {
+		Status:  http.StatusMethodNotAllowed,
+		Code:    codeMethodNotAllowed,
+		Message: errorMessageMethodNotAllowed,
 	},
 	http.StatusConflict: {
 		Status:  http.StatusConflict,

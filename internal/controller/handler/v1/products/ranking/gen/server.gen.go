@@ -106,6 +106,8 @@ type BadRequest400JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
+type MethodNotAllowed405JSONResponse ErrorResponse
+
 type ServiceUnavailable503JSONResponse ErrorResponse
 
 type GetProductsRankingRequestObject struct {
@@ -140,6 +142,22 @@ func (response GetProductsRanking400JSONResponse) VisitGetProductsRankingRespons
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsRanking405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetProductsRanking405JSONResponse) VisitGetProductsRankingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }

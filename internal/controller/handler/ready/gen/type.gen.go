@@ -28,6 +28,18 @@ func (e ReadyResponseStatus) Valid() bool {
 	}
 }
 
+// ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type ErrorResponse struct {
+	// Code 機械的に処理可能なエラーコード
+	Code string `json:"code"`
+
+	// Message 人間が読めるエラーメッセージ
+	Message string `json:"message"`
+
+	// RequestId リクエストID
+	RequestId string `json:"requestId"`
+}
+
 // ReadyResponse サーバーのレディネスチェック用のレスポンスです。
 type ReadyResponse struct {
 	// ApplicationTime アプリケーションサーバーの現在時刻
@@ -45,6 +57,9 @@ type ReadyResponse struct {
 
 // ReadyResponseStatus サーバーのレディネス状態
 type ReadyResponseStatus string
+
+// MethodNotAllowed405 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type MethodNotAllowed405 = ErrorResponse
 
 // basicAuthContextKey is the context key for BasicAuth security scheme
 type basicAuthContextKey string

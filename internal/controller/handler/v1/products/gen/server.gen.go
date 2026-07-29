@@ -167,6 +167,8 @@ type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
+type MethodNotAllowed405JSONResponse ErrorResponse
+
 type PayloadTooLarge413JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
@@ -209,6 +211,22 @@ func (response GetProducts400JSONResponse) VisitGetProductsResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProducts405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetProducts405JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -305,6 +323,22 @@ func (response PostProducts403JSONResponse) VisitPostProductsResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProducts405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response PostProducts405JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -417,6 +451,22 @@ func (response PostProductsImages403JSONResponse) VisitPostProductsImagesRespons
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsImages405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response PostProductsImages405JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }

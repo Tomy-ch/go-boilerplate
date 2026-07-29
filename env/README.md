@@ -74,7 +74,7 @@ This directory is the canonical reference for every environment variable read by
 |OBS_OTLP_ENDPOINT|OTLP export endpoint URL|string|<http://observability:4318>|Used when an exporter is enabled|
 |OBS_OTLP_PROTOCOL|OTLP protocol (`http/protobuf` or `grpc`)|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|true|Security critical|
-|OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,409,422,500,501,503|For error monitoring|
+|OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,405,409,422,429,500,501,503|For error monitoring|
 
 ### Database
 

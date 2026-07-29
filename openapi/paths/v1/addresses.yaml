@@ -20,6 +20,8 @@ get:
             $ref: '../../components/responses/addresses/AddressCandidatesResponse.yaml'
     '400':
       $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
     '500':
       $ref: '../../components/schemas/errors/InternalServerError500.yaml'
     '503':

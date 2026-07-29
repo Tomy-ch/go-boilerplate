@@ -27,6 +27,8 @@ patch:
       $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
     '404':
       $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
     '409':
       $ref: '../../../../components/schemas/errors/Conflict409.yaml'
     '500':

@@ -101,6 +101,8 @@ type Conflict409JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
+type MethodNotAllowed405JSONResponse ErrorResponse
+
 type NotFound404JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
@@ -167,6 +169,22 @@ func (response PatchPurchasesPay404JSONResponse) VisitPatchPurchasesPayResponse(
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchPurchasesPay405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response PatchPurchasesPay405JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }

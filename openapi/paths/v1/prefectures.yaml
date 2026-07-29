@@ -14,6 +14,8 @@ get:
         application/json:
           schema:
             $ref: '../../components/responses/prefecture/PrefecturesResponse.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
     '500':
       $ref: '../../components/schemas/errors/InternalServerError500.yaml'
     '503':

@@ -23,6 +23,8 @@ get:
       $ref: '../../components/schemas/errors/Unauthorized401.yaml'
     '403':
       $ref: '../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
     '500':
       $ref: '../../components/schemas/errors/InternalServerError500.yaml'
     '503':
@@ -56,6 +58,8 @@ post:
       $ref: '../../components/schemas/errors/Unauthorized401.yaml'
     '403':
       $ref: '../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
     '409':
       $ref: '../../components/schemas/errors/Conflict409.yaml'
     '422':
