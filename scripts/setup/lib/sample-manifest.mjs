@@ -287,6 +287,30 @@ export const SAMPLE_DOMAINS = {
     ],
   },
 
+  dashboard: {
+    description:
+      "サンプル admin ダッシュボード集計 API（GET /v1/dashboard/summary・backend 合成/1画面1API。購入と商品を横断する集計 read）",
+    paths: [
+      // Go 各層
+      "internal/usecase/dashboard",
+      "internal/infrastructure/rdb/query_service/dashboard",
+      "internal/controller/handler/v1/dashboard",
+      "internal/integration/v1_dashboard_summary_test.go",
+      // DML
+      "database/dml/query_service/dashboard",
+      // 生成物（sqlc。openapi.yaml / DI 各ファイルの登録はマーカーで除去される）
+      "internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go",
+      "database/gen/dashboard_query_service.gen.sql",
+      // OpenAPI
+      "openapi/paths/v1/dashboard",
+      "openapi/components/parameters/dashboard",
+      "openapi/components/responses/dashboard",
+      "openapi/components/schemas/dashboard",
+
+      "docs/spec/dashboard",
+    ],
+  },
+
   sampleTooling: {
     description: "サンプル削除ツール自身（削除完了後は不要）",
     paths: [
