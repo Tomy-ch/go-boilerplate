@@ -13,6 +13,7 @@
   - `csv` → `[]string`（`,` 区切り、空白トリム後分割）
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
+- 例欄には**ローカル実効値**を書く。`env/.env` に記載があればその値、無ければ `internal/config/envspec.go` の `envDefault` タグの値。単一の値であって選択肢の集合ではないため、取りうる値は説明欄に書く（`APP_MODE` / `OBS_TRACES_EXPORTER` の書き方に倣う）。唯一の例外は備考に **Example is a placeholder** とある行で、実値を書くとシークレットスキャナが `env/.env` で既に追跡している資格情報を二重に持つことになる場合に限る（ローカルスタックが実際に使う値は `env/.env` を参照）。**Secret management required** であること自体は例外ではない — ローカルの `.env` にどのみち平文で入っている以上、それらの行も実値を載せる。この規約は `TestEnvReadmeExamples`（`internal/architest`）が全変数について機械検証するため、`env/.env` や `envDefault` タグの値だけを変えて表を直し忘れるとビルドが落ちる
 - `env/.env.<env>` ファイル間で値が異なってよいものは、その理由を備考欄に書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `default:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
 
@@ -37,10 +38,10 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|APP_MODE|実行モード|string|development / production|ログや挙動切り替え|
-|APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
+|APP_MODE|実行モード（`development` または `production`）|string|development|ログや挙動切り替え|
+|APP_LOG_LEVEL|ログ出力レベル（`debug` / `info` / `warn` / `error`）|string|debug|出力方式は Mode が決定、レベルは環境ごとに明示指定|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
-|APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
+|APP_ENV|環境識別子（`local` / `ci` / `dev` / `stg` / `prd`）|string|local|環境区別用。埋め込み env の出所ガードにも使う（補足を参照）|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。HTTP サーバーでは `SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だとサーバー起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 
 ### Server
@@ -72,9 +73,9 @@
 |OBS_TRACES_EXPORTER|trace の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でトレース無効（軽量構成）|
 |OBS_METRICS_EXPORTER|metric の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でメトリクス無効（軽量構成）|
 |OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）|
-|OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|<http://observability:4318>|exporter 有効時に使用|
+|OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|`http://observability:4318`|exporter 有効時に使用|
 |OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
-|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要|
+|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|false|セキュリティ重要|
 |OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。**環境間で意図的に揃えていない** — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
 
 ### Database
@@ -88,7 +89,7 @@
 |DB_PASSWORD|パスワード|string|postgres-password|シークレット管理必須|
 |DB_NAME|DB名|string|local|シークレット管理推奨|
 |DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨|
-|DB_PING_TIMEOUT|接続確認タイムアウト|duration|10s||
+|DB_PING_TIMEOUT|接続確認タイムアウト|duration|5s||
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|Code default `500ms`。observability連携|
 |DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|Code default `30s`。ctx を無視する query への SQL 層 backstop。0 で無効|
 |DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|Code default `10s`。長時間ロック待ちへの backstop。0 で無効|
@@ -109,11 +110,11 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|SECURITY_ALLOWED_ORIGINS|CORS許可|csv|<http://localhost:3000,http://localhost:8000>||
+|SECURITY_ALLOWED_ORIGINS|CORS許可|csv|`http://localhost:3000,http://localhost:8000`||
 |SECURITY_CIDR|許可IPレンジ|string|127.0.0.0/8||
 |SECURITY_CONTENT_TYPE_NOSNIFF|X-Content-Type-Options|string|nosniff||
 |SECURITY_X_FRAME_OPTIONS|clickjacking対策|string|DENY||
-|SECURITY_HSTS_MAX_AGE|HSTS期間|duration|8760h||
+|SECURITY_HSTS_MAX_AGE|HSTS期間|duration|0||
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|サブドメイン除外|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|preload有効|bool|false||
 |SECURITY_REFERRER_POLICY|referrer制御|string|no-referrer||
@@ -124,7 +125,7 @@
 |---|---|---|---|---|
 |SECURE_COOKIE_SECURE|HTTPS限定|bool|true|本番必須|
 |SECURE_COOKIE_SAME_SITE|SameSite設定|string|Strict||
-|SECURE_COOKIE_DOMAIN|Cookieドメイン|string|example.com||
+|SECURE_COOKIE_DOMAIN|Cookieドメイン|string|localhost||
 
 ### Worker
 
@@ -164,9 +165,9 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string||Code default は空。JWT authenticator を配線する環境で設定する。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
-|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string||Code default は空。issuer と対で必須|
-|AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string||Code default は空。compose では内部サービス URL（例 `http://mock_auth_server:4000/.well-known/jwks.json`）|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:4000`|Code default は空。JWT authenticator を配線する環境で設定する。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
+|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須|
+|AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default は空。compose では内部サービス URL|
 |AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|[]string|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
 |AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
 |AUTH_JWKS_CACHE_TTL|取得した JWKS をキャッシュする期間|duration|1h|Code default `1h`|
@@ -182,8 +183,8 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。`local` は Garage の compose サービス、deploy は空|
 |OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`|
 |OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`|
-|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。デプロイ時に注入|
-|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。デプロイ時に注入|
+|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。シークレット管理必須 — デプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。シークレット管理必須 — デプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える|
 |OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない|
 
@@ -191,7 +192,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 ## 補足
 
-- 例欄の値はローカル開発向け。本番では Secret / CIDR / Cookie ドメイン / origin 等は基本的に別の値になります
+- 例欄はローカルの値であってデプロイにそのまま使える値ではありません。特に Secret / CIDR / Cookie ドメイン / origin は本番で別の値になります。列の定義は「命名・型の規約」を参照
 - `csv` 型は `,` 区切りで空白トリム後に分割。値そのものに `,` を含めないこと
 - `duration` 型は Go `time.ParseDuration` 構文（`500ms`, `1h30m`）。素の数値は不可
 - 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
