@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
+	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
@@ -16,6 +17,7 @@ import (
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
@@ -38,16 +40,20 @@ func TestNew(t *testing.T) {
 		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 		userRepo := mock_user.NewMockRepository(ctrl)
 		pftRepo := mock_prefecture.NewMockRepository(ctrl)
+		purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+		emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
 		expected := &usecase{
-			tracer:     tf.Usecase(),
-			txm:        mockTxManager,
-			clock:      clock,
-			authorizer: authorizer,
-			userRepo:   userRepo,
-			pftRepo:    pftRepo,
+			tracer:       tf.Usecase(),
+			txm:          mockTxManager,
+			clock:        clock,
+			authorizer:   authorizer,
+			userRepo:     userRepo,
+			pftRepo:      pftRepo,
+			purchaseRepo: purchaseRepo,
+			emit:         emit,
 		}
-		actual := New(tf, mockTxManager, clock, authorizer, userRepo, pftRepo)
+		actual := New(tf, mockTxManager, clock, authorizer, userRepo, pftRepo, purchaseRepo, emit)
 
 		assert.Equal(t, expected, actual)
 	})
