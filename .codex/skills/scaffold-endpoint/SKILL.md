@@ -64,7 +64,7 @@ If any precondition fails when the core starts, the relevant child skill will su
 
 > **Environment note (preconditions 3–5):** `make gen-query` dumps the live DB schema via `pg_dump`, so the database **must be running** — `make gen-query` (and `make test`) fail with `could not translate host name "database"` when it is not. Bring the environment up with the **dedicated make targets, not raw `docker compose`**: `make serve` (starts the development profile incl. the `database` service), then **`make db-init`** — which migrates **and seeds** both the local and test DBs (the test suite assumes seed data exists; piecemeal `db-*-migrate-up` alone is insufficient) — and only then `make gen-query` / `make gen-api`.
 >
-> **Toolchain note (final `make fix` / `make test`):** if `make fix` or `make lint` fails on a **tool version mismatch** (e.g. `golangci-lint` reporting "you are using a configuration file for golangci-lint v2 with golangci-lint v1"), do **not** work around it — align the local toolchain with `make install-tools` (installs the versions pinned in `tools.yaml`; run `make sync-tools` first if `tools.yaml` itself changed), then re-run. Do not hand-edit `PATH` or invoke version-specific binaries as a substitute.
+> **Toolchain note (final `make fix` / `make test`):** if `make fix` or `make lint` fails on a **tool version mismatch** (e.g. `golangci-lint` reporting "you are using a configuration file for golangci-lint v2 with golangci-lint v1"), do **not** work around it — align the local toolchain with `make install-tools` (installs the versions pinned in `mise.toml`; run `make sync-versions` first if `mise.toml` itself changed), then re-run. Do not hand-edit `PATH` or invoke version-specific binaries as a substitute.
 
 ---
 
