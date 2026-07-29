@@ -50,3 +50,8 @@ Newly enabled plugins load on the **next** Claude Code session.
   applies this repo's placement, frontmatter, translation-pair, and eval-artifact conventions.
 - **Discovering what exists.** Run `/tool-map` for a full inventory of skills / agents / commands and a
   dependency map, instead of maintaining a hand-written list here.
+- **Definitions are linted against reality.** `make md-skill-lint` (part of `make md-lint`, so it runs
+  on the `pre-commit` hook) checks frontmatter, translation-pair heading structure, and the existence
+  of every `make` target and path this directory's prose references. A skill is an instruction sheet —
+  a reference that has rotted makes an agent execute the wrong step. Scope and the
+  `<!-- skill-lint-ignore -->` directive are documented in [`scripts/README.md`](../scripts/README.md).

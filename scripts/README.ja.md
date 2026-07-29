@@ -16,6 +16,7 @@ scripts/
 ├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
 ├── make_help.mjs                # Make ターゲットのヘルプ出力生成
 ├── mermaid-lint.mjs            # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
+├── skill-lint.mjs              # .claude/** のスキル / エージェント定義を実態と突き合わせて検証
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
 ├── pin-actions/                # GitHub Actions の `uses:` 参照を commit SHA へ固定（Go）
 ├── pin-images/                 # Dockerfile の `FROM` base image を digest へ固定（Go）
@@ -44,6 +45,19 @@ scripts/
 |スクリプト|説明|実行元|
 |---|---|---|
 |`mermaid-lint.mjs`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
+|`skill-lint.mjs`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。依存なしの ESM。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査していない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
+
+#### Skill Lint
+
+`skill-lint.mjs` は、Makefile のターゲット一覧・ファイルシステム・見出し抽出から機械的に導出できることだけを主張する（文面の良し悪しは判断しない）。参照検査が読むのは**コードフェンス外のインラインコードスパン**に限る（フェンス内は例示・出力サンプルであり実在性を保証しない）。
+
+パス参照は、パスであることが一意に決まるときだけ検査する: 先頭セグメントがリポジトリルート直下の実在エントリであり、かつ末尾が `/` か basename にドットを含むもの。これにより Go の import パス（`database/sql`）、パッケージ修飾シンボル（`pkg/ptr.Copy`）、省略記法（`internal/controller/handler/...`）、文脈相対のファイル名（`SKILL.md`）は意図的に対象外となる — いずれも解決先が一意に決まらない。`<placeholder>` / `*` / `**` / `{a,b}` はパターンとして解決し、パスは参照元ファイルからの相対でも解決を試みる（スキルが同梱する `scripts/` を指せるようにするため）。
+
+仮定の例示・任意配置・対向 AI ツール側リポジトリのファイルなど、意図的に不在な参照には、その行のどこかに ignore ディレクティブを置く:
+
+```markdown
+- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
+```
 
 ### バージョニング
 
