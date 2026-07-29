@@ -123,15 +123,10 @@ func Test_injectToCarrier(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // otel グローバル状態(Propagator)を差し替えるため並列化不可
 func TestExtractFromCarrier(t *testing.T) {
-	t.Parallel()
-
 	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
 		t.Run("グローバル伝播器で attrs の traceparent から trace を復元する", func(t *testing.T) {
-			t.Parallel()
-
 			// 公開関数は otel.GetTextMapPropagator() を参照するため、TraceContext を一時登録する。
 			prev := otel.GetTextMapPropagator()
 			otel.SetTextMapPropagator(propagation.TraceContext{})
@@ -160,11 +155,7 @@ func TestExtractFromCarrier(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
 		t.Run("attrs が空なら ctx をそのまま返す", func(t *testing.T) {
-			t.Parallel()
-
 			ctx := context.Background()
 
 			// グローバル伝播器を変更せず公開経路（otel.GetTextMapPropagator 利用）を通す。
@@ -173,15 +164,10 @@ func TestExtractFromCarrier(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // otel グローバル状態(Propagator)を差し替えるため並列化不可
 func TestInjectTraceContextToCarrier(t *testing.T) {
-	t.Parallel()
-
 	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
 		t.Run("trace context を inject しつつ baggage は転送しない", func(t *testing.T) {
-			t.Parallel()
-
 			// span が無いと traceparent も書かれず NotContains が疑似陽性になるため、
 			// span 有りで traceparent が書かれた上で baggage だけが落ちることを検証する。
 			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
@@ -209,8 +195,6 @@ func TestInjectTraceContextToCarrier(t *testing.T) {
 		})
 
 		t.Run("グローバル伝播器に依らず TraceContext 限定で inject する", func(t *testing.T) {
-			t.Parallel()
-
 			// グローバル伝播器を Baggage 単独に差し替えても traceparent が書かれる。
 			// すなわち traceContextPropagator 固定で otel.GetTextMapPropagator を見ない。
 			prev := otel.GetTextMapPropagator()
@@ -235,11 +219,7 @@ func TestInjectTraceContextToCarrier(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
 		t.Run("attrs が nil なら何もせずパニックしない", func(t *testing.T) {
-			t.Parallel()
-
 			assert.NotPanics(t, func() { InjectTraceContextToCarrier(newSampledContext(), nil) })
 		})
 	})
