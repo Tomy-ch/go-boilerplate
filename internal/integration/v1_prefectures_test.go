@@ -71,6 +71,9 @@ func TestV1Prefectures_Integration(t *testing.T) {
 
 			e := echo.New()
 			UseAppErrorHandler(t, e)
+			// 本番の 405 は Echo のルータではなく OpenAPI バリデーションミドルウェアが送出するため、
+			// 実経路を再現するにはこのミドルウェアの配線が要る。
+			useOpenAPIValidation(t, e)
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 

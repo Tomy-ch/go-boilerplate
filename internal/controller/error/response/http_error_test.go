@@ -225,6 +225,13 @@ func TestErrorMetaLiteralContract(t *testing.T) {
 			assert.Equal(t, "この操作を行う権限がありません。", meta.Message)
 		})
 
+		t.Run("405のCodeとMessageのリテラル値を契約として固定する", func(t *testing.T) {
+			t.Parallel()
+			meta := lookupErrorMetaByHTTPStatus(http.StatusMethodNotAllowed)
+			assert.Equal(t, "METHOD_NOT_ALLOWED", meta.Code)
+			assert.Equal(t, "許可されていないリクエスト方法です。", meta.Message)
+		})
+
 		t.Run("503のCodeとMessageのリテラル値を契約として固定する", func(t *testing.T) {
 			t.Parallel()
 			meta := lookupErrorMetaByAppError(apperror.ErrUnavailable)
