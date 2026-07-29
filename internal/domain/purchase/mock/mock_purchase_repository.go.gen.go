@@ -42,6 +42,21 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// ExistsInProgressByUserID mocks base method.
+func (m *MockRepository) ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsInProgressByUserID", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsInProgressByUserID indicates an expected call of ExistsInProgressByUserID.
+func (mr *MockRepositoryMockRecorder) ExistsInProgressByUserID(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsInProgressByUserID", reflect.TypeOf((*MockRepository)(nil).ExistsInProgressByUserID), ctx, userID)
+}
+
 // FindByID mocks base method.
 func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()

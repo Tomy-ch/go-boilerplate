@@ -45,3 +45,9 @@ const (
 	// minQuantity は、明細 1 件あたりの最小購入数量です。
 	minQuantity = 1
 )
+
+// TerminalStatusCodes は、購入がそこから他の状態へ遷移しない終端ステータスのコードを返します。
+// 終端でないステータスの購入は進行中として扱います。
+func TerminalStatusCodes() []int {
+	return []int{StatusCodeCompleted, StatusCodeCanceled, StatusCodeDelivered}
+}

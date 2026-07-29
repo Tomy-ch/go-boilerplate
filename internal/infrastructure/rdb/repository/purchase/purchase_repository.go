@@ -261,6 +261,29 @@ func (r *repository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, par
 	return items, nil
 }
 
+// ExistsInProgressByUserID は、指定ユーザーに進行中の購入が存在するかを 1 クエリで判定します。
+// 進行中はドメインが定める終端ステータスの否定で表し、コードは purchase_statuses との結合で解決します。
+func (r *repository) ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	terminalCodes := purchase.TerminalStatusCodes()
+	codes := make([]int16, len(terminalCodes))
+	for i, c := range terminalCodes {
+		codes[i] = toInt16(c)
+	}
+
+	db := gen.New(driver.New(ctx, r.db))
+	exists, err := db.ExistsInProgressPurchaseByUserID(ctx, &gen.ExistsInProgressPurchaseByUserIDParams{
+		UserID:              userID,
+		TerminalStatusCodes: codes,
+	})
+	if err != nil {
+		return false, pgerror.NormalizeError(err)
+	}
+	return exists, nil
+}
+
 // toFeedItem は、購入履歴フィードの行（First / After で別型・同一フィールド）を読み取りモデルへ変換します。
 // 合計金額は決済スケール（BIGINT セント）を int へ、ステータス ID / 名称は購入ステータスマスタ由来です。
 func toFeedItem(id uuid.UUID, code string, totalAmount int64, orderedAt time.Time, statusID uuid.UUID, statusName string) purchase.FeedItem {

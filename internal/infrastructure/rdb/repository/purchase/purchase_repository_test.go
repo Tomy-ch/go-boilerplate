@@ -473,6 +473,123 @@ func Test_repository_UpdateShipped(t *testing.T) {
 	})
 }
 
+func Test_repository_ExistsInProgressByUserID(t *testing.T) {
+	t.Parallel()
+
+	// 購入ステータスマスタ（seed 済み）。進行中は終端（完了 / キャンセル / 配達済み）の否定で判定する。
+	const (
+		seedCompletedSID = "1904bf76-7d37-4288-bc15-359d2512ac91"
+		seedCanceledSID  = "e9d72547-adfe-48d9-9037-bd1f55d4158b"
+		seedShippedSID   = "5c9a1f3b-2d4e-4b6f-9c8a-3e0d1f2b4c5d"
+		seedDeliveredSID = "6d0b2a4c-3e5f-4c7a-ad9b-4f1e2a3c5d6e"
+	)
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{tracer: lt, db: testDB}
+
+	orderedAt := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未処理の購入を持つユーザーはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				userID := "fa000000-0000-4000-8000-000000000001"
+				insertFeedUser(ctx, t, drv, userID)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000001", userID, seedUnprocessedSID, 100, orderedAt)
+
+				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				require.NoError(t, err)
+				assert.True(t, exists)
+			})
+		})
+
+		t.Run("発送済みの購入しか持たないユーザーもtrueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				userID := "fa000000-0000-4000-8000-000000000002"
+				insertFeedUser(ctx, t, drv, userID)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000002", userID, seedShippedSID, 100, orderedAt)
+
+				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				require.NoError(t, err)
+				assert.True(t, exists)
+			})
+		})
+
+		t.Run("終端ステータスの購入しか持たないユーザーはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				userID := "fa000000-0000-4000-8000-000000000003"
+				insertFeedUser(ctx, t, drv, userID)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000003", userID, seedCompletedSID, 100, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000004", userID, seedCanceledSID, 200, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000005", userID, seedDeliveredSID, 300, orderedAt)
+
+				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				require.NoError(t, err)
+				assert.False(t, exists)
+			})
+		})
+
+		t.Run("購入を1件も持たないユーザーはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				userID := "fa000000-0000-4000-8000-000000000004"
+				insertFeedUser(ctx, t, drv, userID)
+
+				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				require.NoError(t, err)
+				assert.False(t, exists)
+			})
+		})
+
+		t.Run("他ユーザーの進行中購入は判定に含めない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				subject := "fa000000-0000-4000-8000-000000000005"
+				other := "fa000000-0000-4000-8000-000000000006"
+				insertFeedUser(ctx, t, drv, subject)
+				insertFeedUser(ctx, t, drv, other)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000006", subject, seedCompletedSID, 100, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000007", other, seedUnprocessedSID, 200, orderedAt)
+
+				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, subject))
+				require.NoError(t, err)
+				assert.False(t, exists)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, seedUserID))
+			assert.False(t, exists)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
 func Test_toPurchaseDetails(t *testing.T) {
 	t.Parallel()
 
