@@ -183,6 +183,13 @@ fields:
     ID から購入詳細（読み取りモデル Detail）を明細込みで取得する。ステータス名は購入ステータスマスタとの
     JOIN で解決する（FindFeedByUserID と同じ子参照マスタ例外）。存在しない場合は NotFound。キャンセル後の
     状態名解決・レスポンスの取得元に用いる（GET 詳細 #569 でも再利用可能）。
+- name: ExistsInProgressByUserID
+  signature: ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error)
+  behavior: |
+    指定ユーザーに進行中の購入が 1 件でも存在するかを返す（退会の可否判定の取得元）。進行中は
+    TerminalStatusCodes（完了 / キャンセル / 配達済み）の否定として判定するため、ステータスが増えた場合は
+    既定で進行中側に倒れる。ステータスコードは購入ステータスマスタとの JOIN で解決する
+    （FindFeedByUserID と同じ子参照マスタ例外により単一集約の Repository read）。
 ```
 
 なお、状態遷移に伴う購入行の悲観ロック（`FOR UPDATE`）は、書き込みが集約を跨ぐかで担い手が分かれる（[ADR-0029] の判定軸）:

@@ -32,4 +32,7 @@ type Repository interface {
 	// （購入ステータスは購入集約に属する固定参照マスタのため、単一集約の Repository read です）。
 	// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。
 	FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
+	// ExistsInProgressByUserID は、指定ユーザーに進行中の購入が 1 件でも存在するかを返します。
+	// 進行中は TerminalStatusCodes のいずれでもないステータスの購入を指します。
+	ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error)
 }

@@ -219,6 +219,60 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			assert.Equal(t, []string{domainuser.FieldFirstName}, *errResp.Details)
 		})
 
+		t.Run("DELETE /v1/users/{userId}が進行中購入の衝突(usecase)を409へ変換する", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(apperror.ErrConflict)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-delete-409"))
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
+			AssertErrorResponse(t, actual, http.StatusConflict)
+		})
+
+		t.Run("DELETE /v1/users/{userId}が権限エラー(usecase)を403へ変換する", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(apperror.ErrPermissionDenied)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-delete-403"))
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
+			AssertErrorResponse(t, actual, http.StatusForbidden)
+		})
+
+		t.Run("DELETE /v1/users/{userId}が退会済み(usecase)を404へ変換する", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(apperror.ErrNotFound)
+
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-delete-404"))
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
+			AssertErrorResponse(t, actual, http.StatusNotFound)
+		})
+
 		t.Run("details未対応のGETはMeta付きエラーでもdetailsを返さない(fail-closed)", func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()

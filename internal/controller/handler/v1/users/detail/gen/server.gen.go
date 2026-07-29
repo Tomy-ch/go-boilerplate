@@ -19,7 +19,7 @@ type ServerInterface interface {
 	// 認証ユーザー自身の取得
 	// (GET /v1/users/me)
 	GetUsersMe(ctx *echo.Context) error
-	// 単一ユーザーの削除
+	// ユーザーの退会
 	// (DELETE /v1/users/{userId})
 	DeleteUsersDetail(ctx *echo.Context, userId UserIdParam) error
 	// 単一ユーザーの取得
@@ -882,7 +882,7 @@ type StrictServerInterface interface {
 	// 認証ユーザー自身の取得
 	// (GET /v1/users/me)
 	GetUsersMe(ctx context.Context, request GetUsersMeRequestObject) (GetUsersMeResponseObject, error)
-	// 単一ユーザーの削除
+	// ユーザーの退会
 	// (DELETE /v1/users/{userId})
 	DeleteUsersDetail(ctx context.Context, request DeleteUsersDetailRequestObject) (DeleteUsersDetailResponseObject, error)
 	// 単一ユーザーの取得

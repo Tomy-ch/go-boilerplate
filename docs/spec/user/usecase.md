@@ -1,7 +1,7 @@
 # User — Usecase Spec
 
-> 既存実装（`internal/usecase/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの GetUser / UpdateUser / UpdateUserPartially / DeleteUser を追記したもの。
-> 追記分は scaffold の入力となる目標仕様。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一。認証は外部の OIDC/JWT に委譲し、ユーザーの認証情報は本ユースケースでは扱わない。
+> 既存実装（`internal/usecase/user`）を spec 化したベースに、詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの GetUser / UpdateUser / UpdateUserPartially / DeleteUser を追記したもの。
+> 更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一。認証は外部の OIDC/JWT に委譲し、ユーザーの認証情報は本ユースケースでは扱わない。
 > 論理削除済みユーザーは detail 系（GET / PUT / PATCH / DELETE）の対象外とし、`FindByID` / `Update` の SQL で `deleted_at IS NULL` をフィルタする。これにより削除済みへの取得・更新・再削除はすべて `NotFound`（404）に統一される（GET で削除済みを返したり、更新でエラー種別がぶれることを防ぐ）。
 
 ## Overview
@@ -22,15 +22,15 @@ methods:
     signature: CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
   - name: CountUsers
     signature: CountUsers(ctx context.Context, active *bool) (int64, error)
-  # 詳細系エンドポイント向け（追記分）
+  # 詳細系エンドポイント向け（追記分。いずれも認可判定のため認証主体 authn を受け取る）
   - name: GetUser
-    signature: GetUser(ctx context.Context, id uuid.UUID) (UserView, error)
+    signature: GetUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) (UserView, error)
   - name: UpdateUser
-    signature: UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
+    signature: UpdateUser(ctx context.Context, authn *auth.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
   - name: UpdateUserPartially
-    signature: UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
+    signature: UpdateUserPartially(ctx context.Context, authn *auth.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
   - name: DeleteUser
-    signature: DeleteUser(ctx context.Context, id uuid.UUID) error
+    signature: DeleteUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) error
 ```
 
 ## DTOs
@@ -124,8 +124,11 @@ methods:
 - tracer            # observability.TracerFactory -> LayerTracer（メソッドごとに span）
 - tx_manager        # boundary/tx.Manager
 - clock             # boundary/clock.Clock
+- authorizer        # boundary/authz.Authorizer（詳細系の認可判定。admin または対象ユーザー本人）
 - user_repository   # domain/user.Repository
 - prefecture_repository  # domain/prefecture.Repository
+- purchase_repository    # domain/purchase.Repository（退会時の進行中購入の確認）
+- outbox_emit       # usecase/outbox.EmitUsecase（退会イベントの発行）
 ```
 
 ## Workflow
@@ -246,17 +249,25 @@ errors:
 ```yaml
 tx_required: true
 steps:
+  - authorizer.Authorize で退会の認可を確認（対象ユーザーを所有者とするリソース。admin または本人のみ許可。authn が nil なら ErrUnauthenticated）
   - clock.Now で現在時刻を取得
-  - トランザクション内で
+  - トランザクション内で（論理削除・イベント発行・拒否判定を単一 tx にまとめ、退会だけが成立してイベントが失われることを防ぐ）
       - user_repository.FindByID で対象を取得（存在しない / 論理削除済みなら NotFound 伝播。FindByID が deleted_at IS NULL でフィルタするため、削除済みへの再 DELETE は NotFound になる）
+      - purchase_repository.ExistsInProgressByUserID で進行中の購入を確認し、残っていれば Conflict で退会を拒否（論理削除もイベントも残さない）
       - user.MarkAsDeleted で deletedAt を設定（ドメイン不変条件として既削除なら ErrAlreadyDeleted を返すが、FindByID フィルタにより通常経路では到達しない防御的チェック）
       - user_repository.Update で永続化（論理削除）
+      - event.BuildWithdrawn で自己完結スナップショットを構築し、outbox_emit.Emit で user.withdrawn.v1 を発行（退会に伴う関連データの後始末は受信側の結果整合に委ねる）
 calls:
+  - authorizer.Authorize
   - clock.Now
   - tx_manager.Do
   - user_repository.FindByID
+  - purchase_repository.ExistsInProgressByUserID
   - user.MarkAsDeleted
   - user_repository.Update
+  - outbox_emit.Emit
 errors:
-  - FindByID(NotFound) / MarkAsDeleted(ErrAlreadyDeleted) / Update を伝播
+  - authn が nil なら ErrUnauthenticated / Authorize 拒否は ErrForbidden(PermissionDenied) を伝播
+  - 進行中の購入が残っている場合は ErrConflict
+  - FindByID(NotFound) / ExistsInProgressByUserID / MarkAsDeleted(ErrAlreadyDeleted) / Update / Emit を伝播
 ```
