@@ -50,13 +50,13 @@ jobs:
       - name: Check configuration
         id: config
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_TOKEN: ${{ secrets.CLAUDE_CODE_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+          if [ -n "${CLAUDE_CODE_TOKEN}" ]; then
             echo 'configured=true' >> "${GITHUB_OUTPUT}"
           else
-            echo '::notice::CLAUDE_CODE_OAUTH_TOKEN is not configured; skipping.'
+            echo '::notice::CLAUDE_CODE_TOKEN is not configured; skipping.'
             echo 'configured=false' >> "${GITHUB_OUTPUT}"
           fi
 
@@ -71,5 +71,5 @@ jobs:
         if: steps.config.outputs.configured == 'true'
         uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_TOKEN }}
           claude_args: "--max-turns 15"
