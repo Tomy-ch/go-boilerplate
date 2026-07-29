@@ -15,6 +15,8 @@ const (
 	ActionProductUpdate Action = "product:update"
 	// ActionPurchaseShip は、購入の発送操作（admin）を表します。
 	ActionPurchaseShip Action = "purchase:ship"
+	// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。
+	ActionDashboardRead Action = "dashboard:read"
 )
 
 // Action は、認可対象の操作を表す値オブジェクトです（例: "user:delete"）。
