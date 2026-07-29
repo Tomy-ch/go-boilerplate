@@ -13,6 +13,7 @@
   - `csv` → `[]string`（`,` 区切り、空白トリム後分割）
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
+- `env/.env.<env>` ファイル間で値が異なってよいものは、その理由を備考欄に書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `default:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
 
 ## 新規変数を追加する手順
@@ -30,7 +31,7 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準|
+|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|Code default `Asia/Tokyo`。コンテナ / アプリの時刻基準。env ファイル側でも全環境に明示記載しており、タイムゾーンをコードの中だけでなく運用者が見る場所に置いている|
 
 ### Application
 
@@ -74,7 +75,7 @@
 |OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|<http://observability:4318>|exporter 有効時に使用|
 |OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要|
-|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用|
+|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。**環境間で意図的に揃えていない** — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
 
 ### Database
 
