@@ -89,6 +89,32 @@ func (s *server) PatchProductsDetail(
 	return gen.PatchProductsDetail200JSONResponse(toProductResponse(dto)), nil
 }
 
+// PatchProductsStock は、指定された UUID に該当する商品の在庫を増減します。
+// delta は正で補充、負で差し引きを表し、増減後の在庫が負になる要求はユースケースが 422 で拒否します。
+func (s *server) PatchProductsStock(
+	ctx context.Context,
+	request gen.PatchProductsStockRequestObject,
+) (gen.PatchProductsStockResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
+	id := conv.UUID(request.ProductId)
+
+	params := productuc.UpdateProductStockParams{Delta: int(request.Body.Delta)}
+
+	dto, err := s.uc.UpdateProductStock(ctx, &authn, id, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.PatchProductsStock200JSONResponse(toProductResponse(dto)), nil
+}
+
 // toPatchField は、リクエストの 3 状態フィールドを部分更新の指定状態へ変換します。
 func toPatchField[T any](v nullable.Nullable[T]) patch.Field[T] {
 	if !v.IsSpecified() {

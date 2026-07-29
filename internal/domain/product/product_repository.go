@@ -40,9 +40,15 @@ type Repository interface {
 	// FindByID は、ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
 	// 公開日時の設定そのものを更新対象とするため、FindPublishedByID と異なり未公開商品も返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Product, error)
+	// LockByID は、更新のために ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
+	// 同一商品への並行更新は、先行する更新が終わるまで待機したうえで最新の状態を取得します。
+	LockByID(ctx context.Context, id uuid.UUID) (*Product, error)
 	// Create は、商品を新規登録します。
 	Create(ctx context.Context, p *Product) error
 	// Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
 	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。
 	Update(ctx context.Context, p *Product) (int, error)
+	// UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。
+	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。
+	UpdateStock(ctx context.Context, p *Product) (int, error)
 }

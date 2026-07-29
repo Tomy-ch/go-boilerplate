@@ -164,6 +164,17 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
 
+		t.Run("OS_TZが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
+			// 空文字は required を通過するうえ、time.LoadLocation("") が UTC を返して
+			// 設定ミスが無警告で通るため、notEmpty で起動時に落とす。
+			setEnvVarsForTesting(t)
+			t.Setenv("OS_TZ", "")
+
+			actual, err := New()
+			assert.Nil(t, actual)
+			require.ErrorContains(t, err, "OS_TZ")
+		})
+
 		t.Run("METRICS_USERNAMEが空文字の場合、notEmptyでエラーになること", func(t *testing.T) {
 			setEnvVarsForTesting(t)
 			t.Setenv("METRICS_USERNAME", "") // 空文字は required を通過するが notEmpty で弾く

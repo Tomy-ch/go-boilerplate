@@ -1,0 +1,16 @@
+type: object
+description: |
+  商品在庫の補充リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+  delta は符号付きで、正の値で在庫を補充し、負の値で在庫を差し引きます。
+  増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は業務不変条件違反として 422 を返します。
+  在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+required:
+  - delta
+properties:
+  delta:
+    type: integer
+    format: int32
+    description: >-
+      在庫の増減量。正の値で補充、負の値で差し引きます。
+      増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる場合は 422 を返します。
+    example: 50

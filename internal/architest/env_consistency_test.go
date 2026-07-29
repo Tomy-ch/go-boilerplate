@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	pkgexec "go-boilerplate/pkg/exec"
 	pkgfs "go-boilerplate/pkg/fs"
 
 	"github.com/joho/godotenv"
@@ -27,12 +28,26 @@ const envSpecFile = "internal/config/envspec.go"
 // targetStatusCodesKey は、絞り込みの形まで宣言された環境別ポリシーを持つキーです。
 const targetStatusCodesKey = "OBS_TARGET_STATUS_CODES"
 
-// perEnvValueMarker は、env ファイル間で値が異なることを宣言する Notes 列のマーカーです。
+// perEnvValueMarker は、env ファイル間で値が異なることを宣言する Notes 列の記法です。
 const perEnvValueMarker = "Per-environment value"
+
+// envLocalFile は、ローカル実効値のうち env ファイル側の出所です。
+const envLocalFile = "env/.env"
+
+// appEnvKey / envLocalProvenance は、env/.env がローカル既定のままかを判別する組です。
+// CI は埋め込みのため env/.env を env/.env.<APP_ENV> で上書きするので、作業ツリーの内容が
+// ローカル既定であるとは限りません。
+const (
+	appEnvKey          = "APP_ENV"
+	envLocalProvenance = "local"
+)
+
+// placeholderMarker は、Example 列が実値ではなくプレースホルダであることを宣言する Notes 列の記法です。
+const placeholderMarker = "Example is a placeholder"
 
 var (
 	// envValueFiles は、値を突き合わせる env ファイルの全件です（ローカル既定と各環境ファイル）。
-	envValueFiles = []string{"env/.env", "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"}
+	envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"}
 	// loaderPrefixRe は、Loader のサブシステムフィールドから型名と envPrefix を捕捉します。
 	loaderPrefixRe = regexp.MustCompile("^\\s+\\w+\\s+(\\w+)\\s+`envPrefix:\"([^\"]*)\"`$")
 	// structDeclRe は、構造体宣言 type <名前> struct { から名前を捕捉します。
@@ -74,6 +89,13 @@ type readmeRow struct {
 	notes   string
 }
 
+// envSpecField は、envspec.go が宣言する 1 キーの既定値です。hasDefault が false のキーは
+// envDefault タグを持たず、env ファイルへの記載が必須になります。
+type envSpecField struct {
+	def        string
+	hasDefault bool
+}
+
 // TestEnvTargetStatusCodesPolicy は、OBS_TARGET_STATUS_CODES の値が env ファイル間で宣言された
 // 環境別ポリシーどおりに分岐していることを機械検証します。
 // env ファイルは互いに独立した手書きテキストで、キーの値が環境ごとに違ってよいのか揃うべきなのかを
@@ -82,7 +104,7 @@ type readmeRow struct {
 func TestEnvTargetStatusCodesPolicy(t *testing.T) {
 	t.Parallel()
 
-	values := readEnvFileValues(t, moduleRoot(t))
+	root := moduleRoot(t)
 
 	var upper []string
 	for i, tier := range targetStatusCodesPolicy {
@@ -92,7 +114,7 @@ func TestEnvTargetStatusCodesPolicy(t *testing.T) {
 		}
 
 		for _, file := range tier.files {
-			got := readStatusCodes(t, values, file)
+			got := readStatusCodes(t, root, file)
 			if i == 0 {
 				require.NotEmptyf(t, got, "%s の %s が空で、以降の段の検証が空振りする", file, targetStatusCodesKey)
 				continue
@@ -102,7 +124,7 @@ func TestEnvTargetStatusCodesPolicy(t *testing.T) {
 					"意図的な変更なら targetStatusCodesPolicy と env/README.md の Notes を更新すること",
 				file, targetStatusCodesKey, strings.Join(tier.excluded, ","))
 		}
-		upper = readStatusCodes(t, values, tier.files[0])
+		upper = readStatusCodes(t, root, tier.files[0])
 	}
 }
 
@@ -150,19 +172,45 @@ func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 	}
 }
 
-// TestEnvReadmeTargetStatusCodesExample は、env/README.md の Example 列が env/.env の実値と
-// 一致することを検証します。Example 列はローカル既定を載せる規約ですが、実体は env ファイルの
-// 複製であり、片方だけ更新しても何も検知しません。
-func TestEnvReadmeTargetStatusCodesExample(t *testing.T) {
+// TestEnvReadmeExamples は、env/README.md の Example 列が全キーでローカル実効値と一致し、
+// 表のキー集合が envspec.go と 1:1 であることを検証します。
+// Example 列は env ファイルと envDefault タグの複製であり、片方だけ更新しても何も検知しません。
+// Notes 列がプレースホルダを宣言する行だけは、値の一致ではなく非空を固定します。
+func TestEnvReadmeExamples(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
-	values := readEnvFileValues(t, root)
+	rows := parseEnvReadmeRows(t, root)
+	local := readLocalEnv(t, root)
+	spec := parseEnvSpec(t, root)
 
-	row, ok := parseEnvReadmeRows(t, root)[targetStatusCodesKey]
-	require.Truef(t, ok, "%s の行が %s に無い", targetStatusCodesKey, envReadmeFile)
-	assert.Equalf(t, strings.Join(readStatusCodes(t, values, "env/.env"), ","), row.example,
-		"%s の Example 列が env/.env の実値と一致しない", targetStatusCodesKey)
+	for key, field := range spec {
+		row, ok := rows[key]
+		if !assert.Truef(t, ok, "%s は envspec.go が宣言しているが %s に行が無い", key, envReadmeFile) {
+			continue
+		}
+
+		example := unwrapExample(row.example)
+		if strings.Contains(row.notes, placeholderMarker) {
+			assert.NotEmptyf(t, example, "%s は Example をプレースホルダと宣言しているが空になっている", key)
+			continue
+		}
+
+		want, ok := local[key]
+		if !ok {
+			if !assert.Truef(t, field.hasDefault,
+				"%s は %s に無く envDefault も持たないため、Example に載せるローカル実効値が定まらない", key, envLocalFile) {
+				continue
+			}
+			want = field.def
+		}
+		assert.Equalf(t, want, example, "%s の Example がローカル実効値と一致しない", key)
+	}
+
+	for key := range rows {
+		_, ok := spec[key]
+		assert.Truef(t, ok, "%s は %s に行があるが envspec.go が宣言していない", key, envReadmeFile)
+	}
 }
 
 // TestEnvReadmeCodeDefaults は、env/README.md の Notes 列にある Code default の記載が
@@ -173,54 +221,51 @@ func TestEnvReadmeCodeDefaults(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
-	declared := parseEnvDefaults(t, root)
+	spec := parseEnvSpec(t, root)
 	documented := collectCodeDefaults(t, root)
 
-	for key, want := range declared {
-		got, ok := documented[key]
-		if !assert.Truef(t, ok, "%s は envDefault:%q を持つが %s に Code default の記載が無い", key, want, envReadmeFile) {
+	for key, field := range spec {
+		if !field.hasDefault {
 			continue
 		}
-		assert.Equalf(t, want, got, "%s の Code default が envspec.go の envDefault と一致しない", key)
+		got, ok := documented[key]
+		if !assert.Truef(t, ok, "%s は envDefault:%q を持つが %s に Code default の記載が無い", key, field.def, envReadmeFile) {
+			continue
+		}
+		assert.Equalf(t, field.def, got, "%s の Code default が envspec.go の envDefault と一致しない", key)
 	}
 
 	for key := range documented {
-		_, ok := declared[key]
-		assert.Truef(t, ok, "%s は %s に Code default と記載されているが envspec.go に envDefault が無い", key, envReadmeFile)
+		assert.Truef(t, spec[key].hasDefault,
+			"%s は %s に Code default と記載されているが envspec.go に envDefault が無い", key, envReadmeFile)
 	}
 }
 
 // readStatusCodes は、env ファイルの OBS_TARGET_STATUS_CODES をカンマ区切りで分解して返します。
-func readStatusCodes(t *testing.T, values map[string]map[string]string, file string) []string {
+func readStatusCodes(t *testing.T, root, file string) []string {
 	t.Helper()
 
-	value, ok := values[targetStatusCodesKey][file]
+	value, ok := parseEnvFile(t, root, file)[targetStatusCodesKey]
 	require.Truef(t, ok, "%s に %s が無い", file, targetStatusCodesKey)
-
 	return strings.Split(value, ",")
 }
 
-// excludeStatusCodes は、codes から excluded を除いた並びを返します。excluded に codes へ含まれない
-// コードがあれば、ポリシー宣言が陳腐化して除外が空振りしているため失敗させます。
-func excludeStatusCodes(t *testing.T, codes, excluded []string) []string {
+// readLocalEnv は、env/README.md の Example 列が記述するローカル既定の env 値を返します。
+// CI は埋め込みのため env/.env を env/.env.<APP_ENV> で上書きする（make materialize-env）ので、
+// 作業ツリーの APP_ENV がローカルでなければコミット済みの内容を読み直します。
+func readLocalEnv(t *testing.T, root string) map[string]string {
 	t.Helper()
 
-	for _, code := range excluded {
-		require.Containsf(t, codes, code,
-			"ポリシーが除外する %s が 1 つ上の段に無く、除外指定が空振りしている", code)
+	values := parseEnvContent(t, envLocalFile, readRepoFile(t, root, envLocalFile))
+	if values[appEnvKey] == envLocalProvenance {
+		return values
 	}
-
-	out := make([]string, 0, len(codes))
-	for _, code := range codes {
-		if !slices.Contains(excluded, code) {
-			out = append(out, code)
-		}
-	}
-	return out
+	return parseEnvContent(t, envLocalFile, readCommittedFile(t, root, envLocalFile))
 }
 
 // readEnvFileValues は、env ファイル群をキーごとの「ファイル → 値」へ読み替えて返します。
-// 解釈は godotenv に委ね、末尾コメントの扱いを含めて実行時ローダー（internal/config）と揃えます。
+// env/.env だけは readLocalEnv を通します。CI は埋め込みのため作業ツリーの env/.env を対象環境の
+// ファイルで上書きしており、そのまま読むと local と当該環境の差が消えて検証が空振りするためです。
 func readEnvFileValues(t *testing.T, root string) map[string]map[string]string {
 	t.Helper()
 
@@ -228,9 +273,10 @@ func readEnvFileValues(t *testing.T, root string) map[string]map[string]string {
 
 	values := map[string]map[string]string{}
 	for _, file := range envValueFiles {
-		kv, err := godotenv.Parse(strings.NewReader(readRepoFile(t, root, file)))
-		require.NoErrorf(t, err, "%s を env として解釈できない", file)
-		require.NotEmptyf(t, kv, "%s からキーを 1 件も読めず、検証が空振りする", file)
+		kv := parseEnvFile(t, root, file)
+		if file == envLocalFile {
+			kv = readLocalEnv(t, root)
+		}
 
 		for key, value := range kv {
 			if values[key] == nil {
@@ -282,6 +328,65 @@ func describeValueSplit(byFile map[string]string) []string {
 	return split
 }
 
+// readCommittedFile は、リポジトリにコミットされた時点のファイル内容を返します。
+func readCommittedFile(t *testing.T, root, file string) string {
+	t.Helper()
+
+	out, err := pkgexec.OS{}.Output(t.Context(), root, nil, "git", []string{"show", "HEAD:" + file})
+	require.NoErrorf(t, err, "%s のコミット済み内容を git から取得できない", file)
+	return string(out)
+}
+
+// parseEnvFile は、env ファイルをキーと値の対応へ分解して返します。
+func parseEnvFile(t *testing.T, root, file string) map[string]string {
+	t.Helper()
+
+	return parseEnvContent(t, file, readRepoFile(t, root, file))
+}
+
+// parseEnvContent は、env ファイルの内容をキーと値の対応へ分解して返します。
+// アプリ本体のローダー（internal/config）と同じ godotenv で解釈します。独自パーサだと
+// クォートやコメントの扱いが分かれ、テストだけが実行時と違う値を見ることになります。
+func parseEnvContent(t *testing.T, file, content string) map[string]string {
+	t.Helper()
+
+	values, err := godotenv.Parse(strings.NewReader(content))
+	require.NoErrorf(t, err, "%s を dotenv として解釈できない", file)
+	require.NotEmptyf(t, values, "%s から代入行を 1 件も抽出できず、検証が空振りする", file)
+	return values
+}
+
+// unwrapExample は、Example 列のセルからバッククォート囲みを外した値を返します。
+// URL は markdownlint が裸置きを許さないため囲みが要り、囲みの有無は値の一部ではありません。
+func unwrapExample(cell string) string {
+	cell = strings.TrimSpace(cell)
+	if inner, ok := strings.CutPrefix(cell, "`"); ok {
+		if inner, ok = strings.CutSuffix(inner, "`"); ok {
+			return inner
+		}
+	}
+	return cell
+}
+
+// excludeStatusCodes は、codes から excluded を除いた並びを返します。excluded に codes へ含まれない
+// コードがあれば、ポリシー宣言が陳腐化して除外が空振りしているため失敗させます。
+func excludeStatusCodes(t *testing.T, codes, excluded []string) []string {
+	t.Helper()
+
+	for _, code := range excluded {
+		require.Containsf(t, codes, code,
+			"ポリシーが除外する %s が 1 つ上の段に無く、除外指定が空振りしている", code)
+	}
+
+	out := make([]string, 0, len(codes))
+	for _, code := range codes {
+		if !slices.Contains(excluded, code) {
+			out = append(out, code)
+		}
+	}
+	return out
+}
+
 // parseEnvReadmeRows は、env/README.md の変数表をキーごとの行へ分解して返します。
 func parseEnvReadmeRows(t *testing.T, root string) map[string]readmeRow {
 	t.Helper()
@@ -329,32 +434,33 @@ func collectCodeDefaults(t *testing.T, root string) map[string]string {
 	return defaults
 }
 
-// parseEnvDefaults は、envspec.go が envDefault タグ付きで宣言する env キーと既定値を返します。
+// parseEnvSpec は、envspec.go が宣言する env キーと、その envDefault の有無・値を返します。
 // キーは Loader のサブシステムフィールドが持つ envPrefix を連ねた完全形にします。
 // depguard が go/ast を禁じるため、gofmt 済みソースのテキスト走査で抽出します（既存 architest と同方針）。
-func parseEnvDefaults(t *testing.T, root string) map[string]string {
+func parseEnvSpec(t *testing.T, root string) map[string]envSpecField {
 	t.Helper()
 
 	lines := strings.Split(readRepoFile(t, root, envSpecFile), "\n")
 	prefixes := collectEnvPrefixes(lines)
 	require.NotEmpty(t, prefixes, "Loader から envPrefix を 1 件も抽出できず、検証が空振りする")
 
-	defaults := map[string]string{}
+	spec := map[string]envSpecField{}
 	current := ""
+	inSubsystem := false
 	for _, line := range lines {
 		if m := structDeclRe.FindStringSubmatch(line); m != nil {
-			current = prefixes[m[1]]
+			current, inSubsystem = prefixes[m[1]]
 			continue
 		}
-		key, value, ok := parseEnvDefaultField(line)
-		if !ok || current == "" {
+		key, field, ok := parseEnvSpecField(line)
+		if !ok || !inSubsystem {
 			continue
 		}
-		defaults[current+key] = value
+		spec[current+key] = field
 	}
 
-	require.NotEmpty(t, defaults, "envspec.go から envDefault を 1 件も抽出できず、検証が空振りする")
-	return defaults
+	require.NotEmpty(t, spec, "envspec.go から env キーを 1 件も抽出できず、検証が空振りする")
+	return spec
 }
 
 // collectEnvPrefixes は、Loader のサブシステムフィールドから型名 → envPrefix の対応を返します。
@@ -368,15 +474,17 @@ func collectEnvPrefixes(lines []string) map[string]string {
 	return prefixes
 }
 
-// parseEnvDefaultField は、フィールド宣言行から env キー名と envDefault 値を取り出します。
-// envDefault を持たない行と、caarlos0/env が読み飛ばす env:"-" は対象外です。
-func parseEnvDefaultField(line string) (string, string, bool) {
+// parseEnvSpecField は、フィールド宣言行から env キー名と envDefault の有無・値を取り出します。
+// caarlos0/env が読み飛ばす env:"-" は対象外です。
+func parseEnvSpecField(line string) (string, envSpecField, bool) {
 	tag := envTagRe.FindStringSubmatch(line)
-	def := envDefaultRe.FindStringSubmatch(line)
-	if tag == nil || def == nil || tag[1] == "-" {
-		return "", "", false
+	if tag == nil || tag[1] == "-" {
+		return "", envSpecField{}, false
 	}
-	return tag[1], def[1], true
+	if def := envDefaultRe.FindStringSubmatch(line); def != nil {
+		return tag[1], envSpecField{def: def[1], hasDefault: true}, true
+	}
+	return tag[1], envSpecField{}, true
 }
 
 // readRepoFile は、モジュールルートからの相対パスでリポジトリ内のファイルを読みます。

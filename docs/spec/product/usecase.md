@@ -13,6 +13,8 @@ sort は `-publishedAt`（既定=降順）/ `publishedAt`（昇順）の 2 値�
 
 商品作成（`POST /v1/products`）は admin 認可のうえ、`tx.Manager` の境界内で商品ステータス / カテゴリの名称を ID から解決し、`Product` を構築して登録する write ユースケース。マスタ不在はサーバ側整合性異常（500）、価格・在庫などの業務不変条件違反は 422 に落とす。
 
+在庫の増減（`PATCH /v1/products/{productId}/stock`）は admin 認可のうえ、`tx.Manager` の境界内で対象商品を悲観ロックしてから在庫を増減する write ユースケース。購入による在庫減算と同じ行を対象とするため、取得〜更新が直列化され、並行する増減は失われず合成される（ADR-0100）。待てば解消しうる競合は一時障害（503）、取得後の変化を検出した恒久的な衝突は 409 として露出する。
+
 商品部分更新（`PATCH /v1/products/{productId}`）は admin 認可のうえ、`tx.Manager` の境界内で read-modify-write を行う write ユースケース。読み込み時点のバージョンを条件に更新することで、並行編集による上書き（lost update）を防ぐ。送られたフィールドのみを反映し、未送信は現在値を据え置き、null 明示はクリアする 3 状態の解決は usecase が担う（domain へは解決後の確定値のみを渡す）。参照の再解決は `statusId` / `categoryId` が指定された場合に限る。
 
 ## Interface
@@ -29,6 +31,8 @@ methods:
     signature: CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error)
   - name: UpdateProduct
     signature: UpdateProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams) (ProductView, error)
+  - name: UpdateProductStock
+    signature: UpdateProductStock(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductStockParams) (ProductView, error)
 ```
 
 ## DTOs
@@ -118,6 +122,11 @@ methods:
       type: "patch.Field[time.Time]"  # null 明示でクリア（未公開へ戻す）
     - name: ImagePath
       type: "patch.Field[string]"     # null 明示でクリア
+- name: UpdateProductStockParams
+  description: 在庫の増減の入力。
+  fields:
+    - name: Delta
+      type: int                       # 在庫の増減量。正で補充、負で差し引き。増減後が負になる要求は 422
 - name: ProductListView
   description: 公開商品一覧（cursor ページネーション）の取得結果。
   fields:
@@ -131,11 +140,11 @@ methods:
 
 ```yaml
 - tracer              # observability.TracerFactory -> LayerTracer
-- txm                 # boundary/tx.Manager（CreateProduct / UpdateProduct のトランザクション境界）
-- product_repository  # domain/product.Repository（FindPublishedList / FindPublishedByID / FindByID / Create / Update）
+- txm                 # boundary/tx.Manager（CreateProduct / UpdateProduct / UpdateProductStock のトランザクション境界）
+- product_repository  # domain/product.Repository（FindPublishedList / FindPublishedByID / FindByID / LockByID / Create / Update / UpdateStock）
 - category_repository # domain/product/category.Repository（FindByID でカテゴリ名称を解決）
 - status_repository   # domain/product/status.Repository（FindByID でステータス名称を解決）
-- authorizer          # boundary/authz.Authorizer（CreateProduct / UpdateProduct の admin 認可）
+- authorizer          # boundary/authz.Authorizer（CreateProduct / UpdateProduct / UpdateProductStock の admin 認可）
 ```
 
 ## Workflow
@@ -232,3 +241,37 @@ errors:
 >
 > 409（バージョン不一致）は、`tx.Manager` が透過的にリトライする serialization_failure（ADR-0029）とは別物で、
 > 同じ内容の再送では解消しない。クライアントは最新を取得し直してからやり直す必要がある。
+
+### UpdateProductStock
+
+```yaml
+tx_required: true
+steps:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）を返す
+  - authorizer.Authorize（ActionProductStockUpdate / resource=product）で admin 認可を確認する（拒否は 403）
+  - txm.Do 内で以下を実行する:
+      - product_repository.LockByID で対象商品を悲観ロックして取得する（未存在は 404。未公開商品も対象）
+      - product.AdjustStock(delta) で在庫を増減する（増減後が負になる場合は 422。この時点で書き込みへ進まない）
+      - product_repository.UpdateStock で取得時点のバージョンを条件に在庫を更新し、採番後のバージョンを受け取る（0 行は 409）
+  - Product を ProductView へ写像し、Version を採番後の値で上書きして返す
+calls:
+  - product_repository.LockByID
+  - product_repository.UpdateStock
+errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）
+  - 認可拒否は authz 由来の apperror.ErrPermissionDenied（403）
+  - 未存在は apperror.ErrNotFound（404）
+  - 取得後に他者が更新していた場合は product.ErrVersionConflict（apperror.ErrConflict → 409）
+  - 増減後の在庫が保持できる範囲を外れる場合は product.ErrInvalidQuantity（apperror.ErrValidation → 422）
+  - 直列化の待機が解消できない場合は apperror.ErrUnavailable（503）
+```
+
+> 行ロックで取得〜更新を直列化するため、並行する在庫の増減は失われず合成される。行ロック競合
+> （serialization_failure / deadlock）は `tx.Manager` が透過的にリトライし、枯渇した場合とロック待ちが
+> タイムアウトした場合のみ一時障害（503）として露出する。
+>
+> 409（バージョン不一致）は、直列化を経てもなお取得後の変化を検出した場合の fail-closed な応答であり、
+> 一時障害と異なり同じ内容の再送では解消しない。クライアントは最新を取得し直してからやり直す。
+>
+> 在庫の更新もバージョンを進めるため、更新前のバージョンを持つ部分更新（`UpdateProduct`）は 409 で弾かれる。
+> これにより、悲観ロック（同時更新の直列化）と楽観ロック（読み込み後の変化の検出）が同じ行で噛み合う。

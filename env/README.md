@@ -13,6 +13,7 @@ This directory is the canonical reference for every environment variable read by
   - `csv` → `[]string` (split on `,` after whitespace trim)
 - Variables marked **Secret management required** MUST be loaded from a secret manager in production — never commit them to plain `.env` files.
 - Variables marked **Secret management recommended** should be rotated periodically.
+- The Example column carries the **effective local value**: the value `env/.env` assigns to the key, or the `envDefault` tag in `internal/config/envspec.go` when the key is absent from `env/.env`. It is a single value, not a set — write the accepted values in the Description column instead (as `APP_MODE` and `OBS_TRACES_EXPORTER` do). A row whose Notes say **Example is a placeholder** is the sole exception, and only where copying the real value here would duplicate a credential the secret scanner already tracks in `env/.env`; read `env/.env` for what the local stack uses. Marking a variable **Secret management required** is *not* an exception on its own — those rows still show their real local value, because the local `.env` files commit them anyway. `TestEnvReadmeExamples` (`internal/architest`) enforces the column over every variable, so changing a value in `env/.env` or in an `envDefault` tag without updating the table fails the build.
 - A value that legitimately differs between `env/.env.<env>` files is marked **Per-environment value** in its Notes cell, followed by why it differs. Nothing else records whether a key is a per-environment policy or a value that should match everywhere, so an undocumented difference reads as a propagation miss and should be treated as one. `TestEnvPerEnvironmentValuePolicy` (`internal/architest`) enforces the marker in both directions: an unmarked key must hold the same value in every env file that declares it, and a marked key must actually differ, so a marker left behind after the values were aligned fails too. A key that some environments receive from a secret manager is absent rather than different, and absence is not compared.
 - Variables marked **Code default `<value>`** carry a `default:` tag in `internal/config/envspec.go` and are intentionally omitted from the `.env` files. They are framework-level constants that any project derived from this boilerplate keeps unchanged, so the default applies automatically; add an explicit entry to a `.env` file only when a project needs to override it. Every other variable is `required` and must be present in the relevant env file(s).
 
@@ -31,16 +32,16 @@ This directory is the canonical reference for every environment variable read by
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OS_TZ|Timezone setting|string|Asia/Tokyo|Code default `Asia/Tokyo`. Time reference for container / application. The env files still set it explicitly in every environment, so the timezone is visible where an operator looks for it rather than only in code|
+|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application. The deployment region varies per project, so it is `required` and stated in every env file rather than code-defaulted — the timezone stays where an operator looks for it. Rejected when empty, because an empty value would silently fall back to UTC|
 
 ### Application
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|APP_MODE|Execution mode|string|development / production|Switch logs and behavior. Per-environment value — `production` from `stg` onward so pre-production runs on the same log format and behavior as production; `development` in local / ci / dev|
-|APP_LOG_LEVEL|Log output level|string|debug / info / warn / error|Output format follows Mode. Per-environment value — `debug` through `stg` for pre-production diagnosis, `info` in `prd` to hold production log volume down|
+|APP_MODE|Execution mode (`development` or `production`)|string|development|Switch logs and behavior. Per-environment value — `production` from `stg` onward so pre-production runs on the same log format and behavior as production; `development` in local / ci / dev|
+|APP_LOG_LEVEL|Log output level (`debug` / `info` / `warn` / `error`)|string|debug|Output format follows Mode. Per-environment value — `debug` through `stg` for pre-production diagnosis, `info` in `prd` to hold production log volume down|
 |APP_NAME|Application name|string|Boilerplate|Used for log / metrics identification|
-|APP_ENV|Environment identifier|string|local / ci / dev / stg / prd|For environment distinction. Also used as the embedded-env provenance guard (see Notes). Per-environment value — the environment identifier itself, so it differs by definition|
+|APP_ENV|Environment identifier (`local` / `ci` / `dev` / `stg` / `prd`)|string|local|For environment distinction. Also used as the embedded-env provenance guard (see Notes). Per-environment value — the environment identifier itself, so it differs by definition|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown duration|duration|65s|Code default `65s`. Wait time on SIGTERM. On the HTTP server it must be `>= SERVER_REQUEST_TIMEOUT` (server startup fails otherwise) so drain never truncates an in-budget request|
 
 ### Server
@@ -72,9 +73,9 @@ This directory is the canonical reference for every environment variable read by
 |OBS_TRACES_EXPORTER|Trace OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables tracing (lightweight). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
 |OBS_METRICS_EXPORTER|Metric OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables metrics (lightweight). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
 |OBS_LOGS_EXPORTER|Log OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables log export (zap stdout only). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
-|OBS_OTLP_ENDPOINT|OTLP export endpoint URL|string|<http://observability:4318>|Used when an exporter is enabled. Per-environment value — the collector of each environment; empty where no exporter is enabled|
+|OBS_OTLP_ENDPOINT|OTLP export endpoint URL|string|`http://observability:4318`|Used when an exporter is enabled. Per-environment value — the collector of each environment; empty where no exporter is enabled|
 |OBS_OTLP_PROTOCOL|OTLP protocol (`http/protobuf` or `grpc`)|string|http/protobuf|Code default `http/protobuf`|
-|OBS_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|true|Security critical. Per-environment value — `false` only in local / ci, where seeing the raw SQL arguments is the point while debugging a query or a failing test; `true` from `dev` onward so real payloads never reach the trace backend. Never align the upper environments down to the local value|
+|OBS_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|false|Security critical. Per-environment value — `false` only in local / ci, where seeing the raw SQL arguments is the point while debugging a query or a failing test; `true` from `dev` onward so real payloads never reach the trace backend. Never align the upper environments down to the local value|
 |OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,405,409,422,429,500,501,503|For error monitoring. Per-environment value — the set narrows monotonically as the environment gets closer to production, so a mismatch between files is the intent rather than a propagation miss. `local` / `ci` monitor the full set for development and test visibility; `dev` / `stg` drop `429`; `prd` additionally drops `403` / `404` / `405`, keeping production monitoring on server-side and contract failures rather than on client-driven noise that dominates at production traffic volume. A lower environment never monitors a code its upper environment ignores. `TestEnvTargetStatusCodesPolicy` (`internal/architest`) enforces the policy, so adding a code to some env files but not others fails the build; excluding a new code from an environment on purpose requires updating the policy declaration in that test as well|
 
 ### Database
@@ -88,7 +89,7 @@ This directory is the canonical reference for every environment variable read by
 |DB_PASSWORD|Password|string|postgres-password|Secret management required|
 |DB_NAME|DB name|string|local|Secret management recommended. Per-environment value — `local` uses the development database and `ci` the test database; deploy environments inject it|
 |DB_SSL_MODE|SSL setting|string|disable|require recommended in production|
-|DB_PING_TIMEOUT|Connection check timeout|duration|10s|Per-environment value — `5s` in local / ci, where the database sits on the same host (compose service / localhost) so a slow ping means a broken startup and failing fast surfaces it; `10s` from `dev` onward, where a managed database is reached over the network and a transient delay is expected|
+|DB_PING_TIMEOUT|Connection check timeout|duration|5s|Per-environment value — `5s` in local / ci, where the database sits on the same host (compose service / localhost) so a slow ping means a broken startup and failing fast surfaces it; `10s` from `dev` onward, where a managed database is reached over the network and a transient delay is expected|
 |DB_SLOW_QUERY_WARN_THRESHOLD|Slow query warning threshold|duration|500ms|Code default `500ms`. Integrated with observability|
 |DB_STATEMENT_TIMEOUT|Per-statement execution timeout (`statement_timeout`)|duration|30s|Code default `30s`. SQL-level backstop for queries that ignore ctx; 0 disables|
 |DB_LOCK_TIMEOUT|Lock acquisition wait timeout (`lock_timeout`)|duration|10s|Code default `10s`. Backstop against long lock waits; 0 disables|
@@ -109,11 +110,11 @@ This directory is the canonical reference for every environment variable read by
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|SECURITY_ALLOWED_ORIGINS|CORS allow|csv|<http://localhost:3000,http://localhost:8000>|Per-environment value — the frontend origin of each environment|
+|SECURITY_ALLOWED_ORIGINS|CORS allow|csv|`http://localhost:3000,http://localhost:8000`|Per-environment value — the frontend origin of each environment|
 |SECURITY_CIDR|Allowed IP range|string|127.0.0.0/8||
 |SECURITY_CONTENT_TYPE_NOSNIFF|X-Content-Type-Options|string|nosniff||
 |SECURITY_X_FRAME_OPTIONS|Clickjacking protection|string|DENY||
-|SECURITY_HSTS_MAX_AGE|HSTS duration|duration|8760h|Per-environment value — `0` disables HSTS in local / ci because they serve plain http, and a browser that once cached the header would refuse to load them; `8760h` (1 year) from `dev` onward, where TLS terminates in front. Never align the upper environments down to the local value — that drops HSTS in production|
+|SECURITY_HSTS_MAX_AGE|HSTS duration|duration|0|Per-environment value — `0` disables HSTS in local / ci because they serve plain http, and a browser that once cached the header would refuse to load them; `8760h` (1 year) from `dev` onward, where TLS terminates in front. Never align the upper environments down to the local value — that drops HSTS in production|
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|Exclude subdomains|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|Enable preload|bool|false||
 |SECURITY_REFERRER_POLICY|Referrer control|string|no-referrer||
@@ -124,7 +125,7 @@ This directory is the canonical reference for every environment variable read by
 |---|---|---|---|---|
 |SECURE_COOKIE_SECURE|HTTPS only|bool|true|Required in production|
 |SECURE_COOKIE_SAME_SITE|SameSite setting|string|Strict||
-|SECURE_COOKIE_DOMAIN|Cookie domain|string|example.com|Per-environment value — the cookie domain of each environment|
+|SECURE_COOKIE_DOMAIN|Cookie domain|string|localhost|Per-environment value — the cookie domain of each environment|
 
 ### Worker
 
@@ -164,9 +165,9 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string||Code default empty. Set per environment that wires the JWT authenticator. `db-seed` also expands it into the `user_identities` seed, so an environment that seeds needs it even when it stubs authentication (CI)|
-|AUTH_AUDIENCE|Expected `aud` claim value|string||Code default empty. Required together with the issuer|
-|AUTH_JWKS_URL|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string||Code default empty. Internal service URL in compose (e.g. `http://mock_auth_server:4000/.well-known/jwks.json`)|
+|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:4000`|Code default empty. Set per environment that wires the JWT authenticator. `db-seed` also expands it into the `user_identities` seed, so an environment that seeds needs it even when it stubs authentication (CI)|
+|AUTH_AUDIENCE|Expected `aud` claim value|string|go-boilerplate-api|Code default empty. Required together with the issuer|
+|AUTH_JWKS_URL|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default empty. Internal service URL in compose|
 |AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|[]string|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
 |AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|
 |AUTH_JWKS_CACHE_TTL|Cache lifetime for a fetched JWKS|duration|1h|Code default `1h`|
@@ -182,8 +183,8 @@ S3-compatible object storage for uploaded assets (product images). The usecase d
 |OBJECT_STORAGE_ENDPOINT|S3-compatible endpoint URL; empty means SDK default resolution (AWS S3)|string|`http://garage:3900`|`required` (empty allowed). Per-environment value — `local` points at the Garage compose service; every other environment leaves it empty so the SDK resolves AWS S3|
 |OBJECT_STORAGE_REGION|Signing region|string|us-east-1|`required,notEmpty`. Per-environment value — the Garage sample region in local / ci, the AWS region of the environment from `dev` onward|
 |OBJECT_STORAGE_BUCKET|Bucket that stores objects|string|gobp-local|`required,notEmpty`. Per-environment value — one bucket per environment|
-|OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|`required,notEmpty`. Injected at deploy time. Per-environment value — each environment has its own credential|
-|OBJECT_STORAGE_SECRET_ACCESS_KEY|Static-credential secret access key|string|gobp-local-secret-key|`required,notEmpty`. Injected at deploy time. Per-environment value — each environment has its own credential|
+|OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|`required,notEmpty`. Secret management required — injected at deploy time. Example is a placeholder: `local` uses a fixed Garage credential (`GK` + 24 hex) held in `env/.env`. Per-environment value — each environment has its own credential|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|Static-credential secret access key|string|gobp-local-secret-key|`required,notEmpty`. Secret management required — injected at deploy time. Example is a placeholder: `local` uses a fixed Garage credential (64 hex) held in `env/.env`, and copying it here would add a second entry to `.gitleaksignore`. Per-environment value — each environment has its own credential|
 |OBJECT_STORAGE_USE_PATH_STYLE|Use path-style addressing (Garage / MinIO require true; AWS S3 uses false)|bool|true|`required`. Per-environment value — `true` in local / ci where Garage requires path-style addressing, `false` from `dev` onward for AWS S3|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|Maximum accepted upload size in bytes|int|5242880|`required,notEmpty`. 5 MiB in the sample. Must stay below the global `SERVER_BODY_LIMIT_MB` (bytes, decimal) minus multipart overhead, otherwise the global body limit rejects first and this check never fires. Enforced at server startup by `config.ValidateUploadBodyLimit`|
 
@@ -191,7 +192,7 @@ Delivery is separate from these variables: the API returns only the object key (
 
 ## Notes
 
-- The Example column shows values appropriate for local development. An entry an environment genuinely needs to set differently is marked **Per-environment value** in the table; an unmarked entry is expected to hold the same value everywhere, production included.
+- The Example column is a local value and never a deploy-ready one; see Conventions for what the column is defined to hold. Which keys an environment genuinely sets differently is recorded by the **Per-environment value** marker in the table, so read the marker rather than assuming a category of variables differs.
 - The `csv` type splits on `,` after trimming whitespace; do not embed commas inside individual values.
 - The `duration` type accepts Go `time.ParseDuration` syntax (`500ms`, `1h30m`); plain numbers are invalid.
 - When introducing a new subsystem section, keep the table column layout (`Variable Name | Description | Type | Example | Notes`) so the doc stays scannable.

@@ -9,6 +9,7 @@ on:
       - 'docker/tools/Dockerfile'
       - 'mise.toml'
       - '.makefiles/github/lint.mk'
+      - 'scripts/pr-comment-secret-lint.mjs'
   workflow_dispatch:
 
 permissions:
@@ -43,25 +44,26 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install actionlint
-        run: mise install actionlint
+      # node runs the PR-comment secret check, which actionlint cannot express.
+      - name: Install actionlint and node
+        run: mise install actionlint node
 
-      - name: Run actionlint
-        id: actionlint
+      - name: Run Actions lint
+        id: actions-lint
         shell: bash
         run: |
           set +e
 
-          make actions-lint-ci 2>&1 | tee /tmp/actionlint.log
+          make actions-lint-ci 2>&1 | tee /tmp/actions-lint.log
 
           code=${PIPESTATUS[0]}
 
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
-            echo "title=## ✅ Actions lint: PASS (actionlint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Actions lint: PASS (actionlint + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
-            echo "title=## ❌ Actions lint: FAIL (actionlint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Actions lint: FAIL (actionlint + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0
@@ -73,10 +75,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- actions-lint-result -->'
-          title: ${{ steps.actionlint.outputs.title }}
-          body-file: /tmp/actionlint.log
-          details-summary: 'actionlint log'
+          title: ${{ steps.actions-lint.outputs.title }}
+          body-file: /tmp/actions-lint.log
+          details-summary: 'Actions lint log'
 
-      - name: Fail if actionlint failed
-        if: always() && steps.actionlint.outputs.status != 'success'
+      - name: Fail if Actions lint failed
+        if: always() && steps.actions-lint.outputs.status != 'success'
         run: exit 1

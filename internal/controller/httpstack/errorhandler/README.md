@@ -117,6 +117,32 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 |`echo_http_error_handler.go`|Normalize errors carrying an HTTP status to `HTTPErrorResponse`|
 |`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec|
 
+## Test Strategy
+
+This package is not a middleware: it replaces `e.HTTPErrorHandler`, so there is no `next` and none of the pass-through / `Before` / `After` viewpoints in [`httpstack/README.md`](../README.md) apply. Its *Real vs mocked* table still does. Two subjects live here and they fail in different directions — a policy precomputed once at startup from the OpenAPI spec and consulted per request (`DetailPolicy`), and the terminal confluence of normalize → write → log (`handleHTTPError`).
+
+Drive the handler through `e.ServeHTTP` (after `New(e, …)`) when the assertion is about what the client actually receives — the response is only committed on the real Echo path — and call `handleHTTPError` directly with an `httptest`-built `*echo.Context` when the assertion is about a branch that produces no distinguishable response (re-entrance, commit state, log suppression). Use the real spec (`oapi/validator.GetValidator()`) when the policy is the subject, and a package-local stub returning a fixed verdict when the handler is.
+
+### The policy fails closed
+
+Every way of *not* resolving an opt-in must land on "no details". Two of them are reachable through the real spec and router and each needs its own case: a request matching no route, and a request whose operation resolves but has not opted in. A gate loosened to default-allow still answers every request successfully, so only these negative cases can detect it. Rationale: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
+
+The other rejection reasons listed on `DetailPolicy.Allows` are not separate cases. An empty `OperationID` is rejected by the same map lookup as a non-opted-in one, because `buildDetailExposureMap` never records an empty ID — and `redocly.yaml` fails the spec lint on a missing `operationId`, so the real spec cannot produce one anyway. A nil route or a nil `Operation` alongside a nil error is a defensive guard the gorillamux router cannot produce: it sets `Operation` on every match, and builds its method set from the path item's operations. Reaching either would take a hand-written `routers.Router` injected past the constructor; leave them uncovered per `docs/testing-conventions.md` §9 rather than contriving one.
+
+Pin the strip as **wire-only**: `details` disappear from the body handed to the client while `resp` and the log fields keep them. This one is asserted on the handler side — `Allows` returns a bool and can observe none of it — so it belongs with `handleHTTPError`, not with the policy tests. Asserting only the response body would stay green if the handler started clearing `details` on `resp` in place, which takes them away from the operator too, the opposite of what the gate is for.
+
+**Host independence** is invisible unless a test says so. The router is built from a servers-stripped copy of the spec, so a policy test's request must carry a host matching no `servers` entry (`httptest.NewRequest`'s default `example.com` matches neither `localhost:8080` nor `api.example.com`) and the case name must state that the host is irrelevant. A regression that restores host matching makes every endpoint fail closed behind a proxy — still a valid response, still a green suite.
+
+`buildDetailExposureMap` additionally carries a contract test against the spec itself: the set of operations it accepts is compared with the set referencing the `ErrorResponseWithDetails` schema, derived independently from the spec. It has no production counterpart by design — it is what catches an endpoint that declares the schema but never reaches the map as the spec grows.
+
+### The handler
+
+- **Normalization priority** — the arms of `normalizeHTTPError` are selected by error shape, so each gets its own case: an already-wrapped `HTTPErrorResponse`, an error carrying a status (`echo.HTTPError`, Echo's predefined errors whose type is unexported, an OpenAPI validation failure), and everything else. The out-of-range correction — a `HTTPErrorResponse` whose status falls outside 400-599 is re-derived from `Internal` while its `Details` survive — is its own case, being the only path that overrides a status the caller chose.
+- **Re-entrance** — invoking the handler twice on one context must write the response exactly once. That count is the whole contract: a second successful write is indistinguishable from the outside, and the guard is what keeps an error raised *while writing the error response* from recursing.
+- **Recovery coordination** — with the `Recovered` sentinel set the 500 is still written but no error line is logged; without it both happen. Assert both directions, since a dropped 500 and a duplicated panic log are each real defects and a one-sided test hides one of them.
+- **Commit state** — an already-committed response skips the write entirely, and a failing write is logged without committing a second time. Reproduce the failure with a `ResponseWriter` whose `Write` always errors. The fallback `WriteHeader(500)` nested inside that failure is a separate matter — see *Coverage exceptions* below for why it is not reachable from here.
+- **Log gating** — `ObservabilityConfig.TargetStatusCodeSet()` decides whether anything is logged at all, and the 500 boundary decides `Error` vs `Warn`. Exercise a status inside and outside the set plus both sides of the boundary, asserting on the observed entry's message (`errorhandler.server_error` / `errorhandler.client_error`) — that string is what alerting keys on, not the level alone.
+
 ## Coverage exceptions
 
 Per `docs/testing-conventions.md` §9, the following infallible defensive branch is left uncovered (no contrived tests):
