@@ -13,6 +13,32 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
+const countProducts = `-- name: CountProducts :one
+SELECT
+    COUNT(*)::BIGINT AS total_count,
+    (COUNT(*) FILTER (WHERE published_at IS NOT NULL))::BIGINT AS published_count
+FROM products
+`
+
+type CountProductsRow struct {
+	TotalCount     int64
+	PublishedCount int64
+}
+
+// === source: database/dml/repository/product/count_product.sql ===
+// 登録済みの商品総数と、そのうち公開済み（published_at 設定済み）の商品数を返します。
+//
+//	SELECT
+//	    COUNT(*)::BIGINT AS total_count,
+//	    (COUNT(*) FILTER (WHERE published_at IS NOT NULL))::BIGINT AS published_count
+//	FROM products
+func (q *Queries) CountProducts(ctx context.Context) (*CountProductsRow, error) {
+	row := q.db.QueryRow(ctx, countProducts)
+	var i CountProductsRow
+	err := row.Scan(&i.TotalCount, &i.PublishedCount)
+	return &i, err
+}
+
 const createProduct = `-- name: CreateProduct :exec
 INSERT INTO products (
     id,
