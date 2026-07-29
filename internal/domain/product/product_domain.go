@@ -100,11 +100,8 @@ func validateAttributes(attrs Attributes) error {
 	if ok, msg := stringkit.ValidateInRange(attrs.Name, minNameLength, maxNameLength); !ok {
 		return xerrors.Wrap(ErrInvalidName, msg)
 	}
-	if attrs.Quantity < minQuantity {
-		return xerrors.Wrap(
-			ErrInvalidQuantity,
-			fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, attrs.Quantity),
-		)
+	if err := validateQuantity(int64(attrs.Quantity)); err != nil {
+		return err
 	}
 	if attrs.StockWarningThreshold != nil && *attrs.StockWarningThreshold < minThreshold {
 		return xerrors.Wrap(
@@ -139,6 +136,33 @@ func (p *Product) Update(attrs Attributes) error {
 	p.publishedAt = ptr.Copy(attrs.PublishedAt)
 	p.imagePath = ptr.Copy(attrs.ImagePath)
 
+	return nil
+}
+
+// AdjustStock は、在庫数を delta の分だけ増減します。delta は正で補充、負で差し引きを表します。
+// 増減後の在庫が負になる場合は、在庫を変更せずに検証エラーを返します。
+// バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
+func (p *Product) AdjustStock(delta int) error {
+	// 増減の途中結果は在庫の表現範囲を超えうるため、検証を通すまでは広い幅で保持します。
+	adjusted := int64(p.quantity) + int64(delta)
+	if err := validateQuantity(adjusted); err != nil {
+		return err
+	}
+
+	p.quantity = int(adjusted)
+
+	return nil
+}
+
+// validateQuantity は、在庫数が保持できる範囲に収まることを検証します。
+// 生成・更新・在庫の増減のいずれの変更点でも同一の条件を課します。
+func validateQuantity(quantity int64) error {
+	if quantity < minQuantity || quantity > maxQuantity {
+		return xerrors.Wrap(
+			ErrInvalidQuantity,
+			fmt.Sprintf("quantity must be between %d and %d, got %d", minQuantity, maxQuantity, quantity),
+		)
+	}
 	return nil
 }
 

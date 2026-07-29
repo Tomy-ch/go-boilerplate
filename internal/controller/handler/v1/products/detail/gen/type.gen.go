@@ -134,6 +134,15 @@ type ProductStatusRef struct {
 	Name string `json:"name"`
 }
 
+// ProductStockPatchRequest 商品在庫の補充リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+// delta は符号付きで、正の値で在庫を補充し、負の値で在庫を差し引きます。
+// 増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は業務不変条件違反として 422 を返します。
+// 在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+type ProductStockPatchRequest struct {
+	// Delta 在庫の増減量。正の値で補充、負の値で差し引きます。 増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる場合は 422 を返します。
+	Delta int32 `json:"delta"`
+}
+
 // ProductIdParam defines model for ProductIdParam.
 type ProductIdParam = openapi_types.UUID
 
@@ -172,3 +181,6 @@ type bearerAuthContextKey string
 
 // PatchProductsDetailJSONRequestBody defines body for PatchProductsDetail for application/json ContentType.
 type PatchProductsDetailJSONRequestBody = ProductPatchRequest
+
+// PatchProductsStockJSONRequestBody defines body for PatchProductsStock for application/json ContentType.
+type PatchProductsStockJSONRequestBody = ProductStockPatchRequest

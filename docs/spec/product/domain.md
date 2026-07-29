@@ -1,8 +1,8 @@
 # Product — Domain Spec
 
 > `GET /v1/products`（公開商品一覧・cursor + フィルタ + keyword + sort）の read source、および
-> `POST /v1/products`（admin 商品作成）/ `PATCH /v1/products/{productId}`（admin 商品部分更新）の write target と
-> なる商品集約の spec。`statusID` / `categoryID` は ID と名称の参照（`StatusRef` / `CategoryRef`）で保持し、
+> `POST /v1/products`（admin 商品作成）/ `PATCH /v1/products/{productId}`（admin 商品部分更新）/
+> `PATCH /v1/products/{productId}/stock`（admin 在庫の増減）の write target となる商品集約の spec。`statusID` / `categoryID` は ID と名称の参照（`StatusRef` / `CategoryRef`）で保持し、
 > 名称は作成・更新時に usecase が別集約（商品ステータス / 商品カテゴリのマスタ）から解決して埋める。
 
 ## Overview
@@ -36,7 +36,8 @@ fields:
   - name: quantity
     type: int
     required: true
-    min: 0                  # 負数は ErrInvalidQuantity
+    min: 0                  # 範囲外（負数 / 32bit 整数幅の上限超過）は ErrInvalidQuantity
+    max: 2147483647         # 在庫は 32bit 整数幅で表現する
   - name: stockWarningThreshold
     type: "*int"
     required: false         # nil 許容。非 nil の場合のみ 0 以上を検証（ErrInvalidStockWarningThreshold）
@@ -80,6 +81,15 @@ fields:
     （未送信と null 明示の区別は usecase が解決する。domain は 3 状態を知らない）。
     生成時と同一の不変条件を課し、違反時はエンティティを変更せず ErrValidation 系（422）を返す。
     version はここでは進めない（採番は Repository.Update の条件付き UPDATE が行う）。
+
+- name: AdjustStock
+  signature: AdjustStock(delta int) error
+  behavior: |
+    在庫数を delta の分だけ増減する（正で補充、負で差し引き）。
+    増減後の在庫が保持できる範囲（0 以上、32bit 整数幅の上限以下）を外れる場合は、
+    エンティティを変更せず ErrInvalidQuantity（422）を返す。生成・更新と同一の検証を共有する。
+    version はここでは進めない（採番は Repository.UpdateStock の条件付き UPDATE が行う）。
+    在庫の増減は取得から更新までを直列化したうえで行う前提であり、直列化は Repository.LockByID が担う。
 
 - name: EnsureVersion
   signature: EnsureVersion(expected int) error
@@ -126,6 +136,15 @@ fields:
     公開日時の設定そのものを更新対象とするため、FindPublishedByID と異なり未公開商品も返す。
     admin の read-modify-write（部分更新）の read に用いる経路であり、存在秘匿は認可（403）が担う。
 
+- name: LockByID
+  signature: LockByID(ctx context.Context, id uuid.UUID) (*Product, error)
+  behavior: |
+    更新のために、ID から公開状態を問わない単一商品を悲観ロック（SELECT ... FOR UPDATE）して取得する。
+    未存在は NotFound を返す。同一商品を対象とする他の書き込み（購入の在庫減算・在庫の増減）は、
+    先行トランザクションの commit まで待たされるため、取得〜更新の read-modify-write が直列化される
+    （ADR-0100: 購入と在庫補充は同じ行を同じロック規律で扱う）。
+    結合する固定参照マスタ（ステータス / カテゴリ）はロック対象に含めない。
+
 - name: Create
   signature: Create(ctx context.Context, p *Product) error
   behavior: |
@@ -141,6 +160,15 @@ fields:
     条件に一致する行が無い場合は、読み込み後に他トランザクションが更新したものとして ErrVersionConflict（409）を返す
     （存在は同一トランザクション内の FindByID で確認済みのため、0 行はバージョン不一致のみを意味する）。
     この衝突は tx.Manager が透過リトライする serialization_failure（ADR-0029）と異なり、同じ内容の再送では解消しない。
+
+- name: UpdateStock
+  signature: UpdateStock(ctx context.Context, p *Product) (int, error)
+  behavior: |
+    p が保持するバージョンを条件に在庫数のみを更新し（WHERE id = ... AND version = ...）、採番後のバージョンを返す。
+    在庫の更新でも version を進めるため、更新前のバージョンを条件とする部分更新（Update）は在庫の変化を
+    上書きできず 0 行で弾かれる（悲観ロックと楽観ロックが同じ行で噛み合う）。
+    LockByID で取得した行に対して呼ぶ前提であり、その経路では条件が外れることはない。
+    ロックを取らずに呼ばれた場合の 0 行は ErrVersionConflict（409）として返し、在庫の上書きを防ぐ。
 
 # ListParams（domain の read クエリ条件。不透明カーソルは持たず、境界を primitive で受け取る）
 - struct: ListParams
