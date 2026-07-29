@@ -115,15 +115,22 @@ delete:
   operationId: DeleteUsersDetail
   tags:
     - v1/users/detail
-  summary: 単一ユーザーの削除
-  description: 指定されたUUIDに該当するユーザーを削除します。
+  summary: ユーザーの退会
+  description: |
+    ユーザーを退会させます。認証必須で、管理者（admin）または本人のみ実行できます。
+    ユーザーを論理削除し、同時に退会イベントを発行します（両者は同一トランザクションで、
+    退会だけが成立してイベントが失われることはありません）。
+    退会に伴う関連データの後始末は、このイベントを受け取る側で結果整合として行います。
+    進行中の購入（完了 / キャンセル / 配達済みのいずれでもない購入）が 1 件でも残っている場合は
+    409 で拒否します。退会済みユーザーおよび存在しないユーザーは 404 を返します。
+    管理者でない主体が他ユーザーを退会させようとした場合は 403 で拒否します。
   security:
     - BearerAuth: []
   parameters:
     - $ref: '../../../components/parameters/user/UserIdParam.yaml'
   responses:
     '204':
-      description: ユーザーの削除に成功しました
+      description: ユーザーの退会に成功しました
     '400':
       $ref: '../../../components/schemas/errors/BadRequest400.yaml'
     '401':
