@@ -334,3 +334,18 @@ handler を直接呼ぶのではなく `httptest.Server` を利用します。
 - `gen.HealthResponse`
 - `gen.VersionResponse`
 - feature ハンドラの `gen` パッケージが公開するレスポンス型 — `gen.<Xxx>Response`（1 テストファイルで複数 handler の `gen` を import する場合は `detailgen.<Xxx>Response` のようにエイリアス）
+
+### 5 ミドルウェア順序の契約は手書きせず DI provider から配線する
+
+ここでのテストの多くは、エンドポイントに必要なミドルウェアだけをテストが書いた順序で登録します。
+アサーション対象が 1 つのミドルウェアに閉じている限りはそれで十分ですが、「ミドルウェア A が B の
+外側で動く」ことによってのみ成立する契約は、手書きの順序では検証できません。実際の優先度が背後で
+変わってもテストは通り続けてしまいます。
+
+そうしたテストでは、ミドルウェアを各 DI provider（`instrumentation.RequestIDMiddleware()`、
+`security.CookieMiddleware(...)` など）から取得し、本番と同じ `Priority` ソートを行う
+`extension.ApplyUseMiddlewares` で適用します。順序が実サーバーと同一の出所から決まるため、
+スタックの並べ替えは、それに依存するテストを壊します。
+
+統合テストが `internal/di` に触れてよいのはこのケースだけです。DI コンテナで usecase や
+infrastructure を組み立ててよいという意味ではなく、それらは上記のポリシーどおり mock のままです。
