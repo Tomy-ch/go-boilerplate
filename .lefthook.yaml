@@ -17,6 +17,7 @@ pre-commit:
       glob:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
+        - "scripts/pr-comment-secret-lint.mjs"
       run: make actions-lint
     oapi-lint:
       glob:
