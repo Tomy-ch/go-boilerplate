@@ -52,6 +52,13 @@ Examples:
 - Decimal → `pkg/decimal`
 - Error → `pkg/xerrors`
 
+- A domain package must **not** import another aggregate (enforced by depguard: `internal/domain/`
+  is denied). Business-semantic value objects shared across aggregates — e.g. `money.Price`, which
+  cannot live in `pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
+  [`internal/domain/kernel`](kernel/README.md), which every domain package may import. Admission to
+  the kernel is deliberately narrow (see its README); it is not a `shared` / `common` junk drawer.
+  Rationale: [ADR-0104](../../docs/adr/0104-domain-shared-kernel.md).
+
 ## Domain boundaries
 
 The Domain layer is a layer that **expresses business rules and state transitions**.
@@ -101,6 +108,37 @@ type Users []*User
 - Repository interface name should be `Repository`
 - Package name should be the domain name
 - Constructor name should be `New`
+
+### Bundle attributes into a struct when positional arguments can be swapped
+
+The criteria — when a same-typed-parameter swap is a real risk, when it is not, and whether to remedy it
+with distinct VO types or with a struct — are layer-independent and live in `docs/rules.md`
+("Function Signature Rules"). This section covers only how the domain layer applies them.
+
+An entity whose attributes trigger the rule bundles them into a value struct shared by every entry point,
+so creation, reconstruction, and update cannot drift apart:
+
+```go
+// The attribute set shared by the constructor and the behavior methods.
+type Attributes struct {
+    Name        string
+    Description *string
+    // ...
+    ImagePath   *string
+}
+
+func New(id uuid.UUID, attrs Attributes) (*Entity, error)
+func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
+func (e *Entity) Update(attrs Attributes) error
+```
+
+The identity (`id`) and the optimistic-lock version stay positional — they are distinctly typed and are
+not part of the attribute set the update entry point replaces. When only a subset of the attributes is
+replaceable, name that subset as its own struct and embed it (`user.Profile` inside `user.Attributes`)
+rather than declaring two overlapping structs.
+
+Reconstruction from a DB row is the most exposed caller in this layer, so the mapping test the rule
+requires belongs on the Repository's row-to-entity conversion as well as on the constructor.
 
 ### Do not set outside constructor
 
@@ -228,7 +266,7 @@ return apperror.WithDetails(xerrors.Join(errs...), fields...)
 
 The field identifiers are domain constants (`FieldEmail = "email"`) matching the API
 request property names; the reason text stays in the wrapped error message (log-only).
-Server-internal invariants (id, timestamps, password hash) keep first-error return —
+Server-internal invariants (id, timestamps) keep first-error return —
 they are not user-correctable input.
 
 ### Invariants (Domain Invariant)
@@ -402,6 +440,28 @@ Place them in:
 - QueryService
 - ReadModel
 
+### Doc comments stay in domain vocabulary
+
+The SQL shapes above bound **what the Infrastructure implementation may do**; they are not the
+vocabulary of the doc comments written here. A Repository interface is the seam to persistence, which
+is exactly why its doc comment must contract the **guarantee** in domain vocabulary and leave the
+**mechanism** to the implementation: `LockByID` states that it takes a pessimistic lock and what that
+lock serializes, not that the lock is a `SELECT … FOR UPDATE`; a feed method states "ordered by
+ordered-at descending, tie-broken by ID", not `(ordered_at DESC, id DESC)`. Table names, column
+names, and SQL fragments belong to the Infrastructure doc comment that already states them — see
+[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail, and [`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
+implementation for the rule this mirrors.
+
+Two consequences are specific to Domain:
+
+- **A numeric bound whose reason is the storage width is expressed as a Go integer width**, not as a
+  SQL type name — `1..32767` is documented as the positive range of a signed 16-bit integer. That
+  keeps the constant from reading as a magic number while staying technology-neutral. Put the reason
+  on the constant so the exported constructor's doc stays a pure contract.
+- **A reference master is named by its domain name** (the product-status master), never by its table
+  (`product_statuses`).
+
 ## Callable layers
 
 Called from:
@@ -447,7 +507,9 @@ require.ErrorIs(t, err, ErrInvalidEmail)
 
 ### Getter contract test
 
-Target:
+One `TestXxx` **per getter** (`TestUser_ID`, `TestUser_Email`, …). Do **not** bundle getters into a single `*_Accessors` / `*_Getters` test (1:1 rule — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md) §1, enforced by `internal/architest`).
+
+Target (one dedicated test each):
 
 ```go
 func (u *User) ID() uuid.UUID
@@ -458,6 +520,8 @@ func (u *User) UpdatedAt() time.Time
 ```
 
 ### Immutable guarantee test
+
+For pointer / reference-returning getters, assert immutability **inside that getter's own `TestXxx`** (folded into e.g. `TestUser_Building`) — not as a separate bundled `TestImmutableAccessors`.
 
 Target:
 
@@ -537,7 +601,6 @@ func newTestUser(t *testing.T)*User {
         id,
         "John",
         "Doe",
-        "hashed_password",
         "john@example.com",
         "1234567890",
         prefectureID,
@@ -593,7 +656,7 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 - state transition via behavior methods
 - ensure consistency via Value Objects
 - Repository abstraction
-- table-driven tests
+- sequential `t.Run` cases (no table-driven `for` loops — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md))
 
 ### Don’t
 
@@ -612,20 +675,15 @@ Forbidden:
 package user
 
 const (
-    minLength             = 1
-    maxFirstNameLength    = 100
-    maxLastNameLength     = 100
-    maxPasswordHashLength = 255
-    maxEmailLength        = 100
-    maxPhoneLength        = 20
-    maxCityLength         = 100
-    maxStreetLength       = 255
-    maxBuildingLength     = 255
-    maxPostalCodeLength   = 8
-
-    // 値オブジェクト RawPassword の文字数境界
-    MaxRawPasswordLength = 64
-    MinRawPasswordLength = 8
+    minLength           = 1
+    maxFirstNameLength  = 100
+    maxLastNameLength   = 100
+    maxEmailLength      = 100
+    maxPhoneLength      = 20
+    maxCityLength       = 100
+    maxStreetLength     = 255
+    maxBuildingLength   = 255
+    maxPostalCodeLength = 8
 )
 ```
 
@@ -644,7 +702,6 @@ var (
     ErrInvalidID           = xerrors.Wrap(errInvalid, "id failed")
     ErrInvalidFirstName    = xerrors.Wrap(errInvalid, "first name failed")
     ErrInvalidLastName     = xerrors.Wrap(errInvalid, "last name failed")
-    ErrInvalidPasswordHash = xerrors.Wrap(errInvalid, "password hash failed")
     ErrInvalidEmail        = xerrors.Wrap(errInvalid, "email failed")
     ErrInvalidPhone        = xerrors.Wrap(errInvalid, "phone failed")
     ErrInvalidPrefectureID = xerrors.Wrap(errInvalid, "prefecture id failed")
@@ -655,12 +712,8 @@ var (
     ErrInvalidUpdatedAt    = xerrors.Wrap(errInvalid, "updated at failed")
     ErrInvalidDeletedAt    = xerrors.Wrap(errInvalid, "deleted at failed")
 
-    // 値オブジェクト RawPassword 固有の検証エラー（errInvalid を経由しない）
-    ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
-
     // ビジネスルール違反
-    ErrAlreadyDeleted          = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
-    ErrCurrentPasswordMismatch = xerrors.Wrap(apperror.ErrValidation, "current password does not match")
+    ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
 )
 ```
 
@@ -684,7 +737,6 @@ type User struct {
     id           uuid.UUID
     firstName    string
     lastName     string
-    passwordHash string
     email        string
     phone        string
     prefectureID uuid.UUID
@@ -697,38 +749,43 @@ type User struct {
     deletedAt    *time.Time
 }
 
+// 置き換え可能な属性の部分集合（New / UpdateProfile で共有）。
+// firstName / lastName / phone / city / street は同型のため、フィールド名指定を要求する。
+type Profile struct {
+    FirstName    string
+    LastName     string
+    Email        string
+    Phone        string
+    PrefectureID uuid.UUID
+    City         string
+    Street       string
+    Building     *string
+    PostalCode   string
+}
+
+// 生成に必要な属性一式。createdAt / updatedAt も同型のため同じ扱いとする。
+type Attributes struct {
+    Profile
+
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+}
+
 // ファクトリ: 不変条件を満たすときだけ実体を生成
-func New(
-    id uuid.UUID,
-    firstName string,
-    lastName string,
-    passwordHash string,
-    email string,
-    phone string,
-    prefectureID uuid.UUID,
-    city string,
-    street string,
-    building *string,
-    postalCode string,
-    createdAt time.Time,
-    updatedAt time.Time,
-    deletedAt *time.Time,
-) (*User, error) {
+func New(id uuid.UUID, attrs Attributes) (*User, error) {
     if id.IsNil() {
         return nil, xerrors.Wrap(ErrInvalidID, "id is required")
     }
     // フィールド検証（New / UpdateProfile で共有）
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(attrs.Profile); err != nil {
         return nil, err
     }
-    if err := validatePasswordHash(passwordHash); err != nil {
-        return nil, err
-    }
-    if updatedAt.Before(createdAt) {
+    if attrs.UpdatedAt.Before(attrs.CreatedAt) {
         return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
     }
-    if deletedAt != nil {
-        if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+    if attrs.DeletedAt != nil {
+        if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
             return nil, err
         }
     }
@@ -736,9 +793,9 @@ func New(
     // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
     return &User{
         id:        id,
-        building:  ptr.Copy(building),
-        deletedAt: ptr.Copy(deletedAt),
-        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
+        building:  ptr.Copy(attrs.Building),
+        deletedAt: ptr.Copy(attrs.DeletedAt),
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も attrs から設定（例示のため省略）
     }, nil
 }
 
@@ -749,19 +806,12 @@ func (u *User) Building() *string { return ptr.Copy(u.building) }
 func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
 // 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
-// ビジネスロジック（振る舞い）: プロフィール一括更新（パスワードは対象外）
-func (u *User) UpdateProfile(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-    updatedAt time.Time,
-) error {
+// ビジネスロジック（振る舞い）: プロフィール一括更新
+func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
     if err := u.ensureNotDeleted(); err != nil {
         return err
     }
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(profile); err != nil {
         return err
     }
     if err := u.ensureUpdatedAt(updatedAt); err != nil {
@@ -774,8 +824,7 @@ func (u *User) UpdateProfile(
 }
 
 // 振る舞いの兄弟（UpdateProfile と同じ ensure → 検証 → 置換 の idiom）。シグネチャのみ示す。
-func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error // パスワードハッシュ更新
-func (u *User) MarkAsDeleted(deletedAt time.Time) error                       // 論理削除（既に削除済みなら ErrAlreadyDeleted）
+func (u *User) MarkAsDeleted(deletedAt time.Time) error // 論理削除（既に削除済みなら ErrAlreadyDeleted）
 
 // 不変条件ガード（例示）: updatedAt は createdAt 以降かつ単調非減少
 func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
@@ -790,18 +839,12 @@ func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
 
 // バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
-func validateProfileFields(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-) error {
-    if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+func validateProfileFields(profile Profile) error {
+    if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
         return xerrors.Wrap(ErrInvalidFirstName, msg)
     }
     // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
-    if prefectureID.IsNil() {
+    if profile.PrefectureID.IsNil() {
         return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
     }
     if building != nil { // building は任意
@@ -811,7 +854,6 @@ func validateProfileFields(
     }
     return nil
 }
-func validatePasswordHash(passwordHash string) error                   // maxPasswordHashLength で検証
 func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // createdAt / updatedAt 以降
 ```
 

@@ -100,6 +100,18 @@ export GITHUB_TOKEN="$(gh auth token)"
 
 `resolve` / `apply` / `actionlint` は構文を見るが**入力のセマンティクス変更は見ない**。**メジャーが変わる**全アクションについて、リリースノート / `action.yml` を読み、当repo が使う全 `with:` ブロックと突き合わせる。実例: `peter-evans/create-pull-request` は v8 で `git-token`→`branch-token` 改名、`actions/upload-pages-artifact` v5 は dotfile 除外 + `deploy-pages@v4+` 要求。実入力が互換なら更新を維持。破壊的な入力変更があれば**そのアクションは保留し、必要な変更を報告**する（自動適用しない）。（メジャー内のマイナーリフレッシュはこの検証を省略。）
 
+### 3.5. ステップバックが使えない場合のトリアージ
+
+ここでの隔離への通常の応答は**ステップバック**（手順 2）——既に aged な最新の exact 版を固定する。これは証拠収集を要さない。窓が既に通したものを採用するだけである。トリアージが受け持つのは、ステップバックが選択肢にならない場合である。
+
+- **手順 3 の保留** — 対象メジャー内に cutoff より古いリリースが無く、待つか出来立てを取るかの選択しかない。退行先として検証済みの代替が存在しない。
+- **修正が出来立ての head にしか存在しない勧告**。待つことが脆弱なままでいることを意味する場合。
+- **`with:` レビュー（手順 3）で保留になったアクション**について、出来立て版がそれ自体安全かをユーザーが後から尋ねた場合。
+
+これらについては、エコシステムに `github-actions`、アクション、候補 tag、そして baseline に **`.github/actions-pin.toml` に現在記録されている SHA** を渡して **`/supply-chain-triage`** を chain する。lockfile の SHA が今日 workflow が実行しているものなのだから、それが差分の正しいもう一方の端である。Actions のトリアージは 4 エコシステム中で最も強力である——artifact が実物の commit range なので、発行者・tag と commit の対応・差分・入力面のすべてが直接答えられる。
+
+トリアージは報告のみ。コメント tag・lockfile・`uses:` 行を編集せず、`resolve` / `apply` も実行しない。バンドは手順 4 の計画へ引き継ぎ、保留か採用かの選択を証拠とともに可視化する。判断は `AskUserQuestion` に残る。
+
 ### 4. 計画の提示と確認
 
 日本語サマリを表示する: 適用する更新（moving `# vM` / exact ステップバック `# vM.x.y`・各々の選定版と経過日数）、保留（理由: 新メジャーがまだ新しい / `with:` 破壊的 / aged 版なし）、変更なし。その上で具体的なセットを `AskUserQuestion` で確認する（独立した複数更新がある場合は `multiSelect: true`）。書き込み前にステップバックと保留の判断を可視化する。
@@ -118,6 +130,8 @@ make pin-actions-apply
 
 `resolve` は参照中の全 tag を再解決する（現行メジャーのアクションもメジャー内の最新 aged SHA に更新）。within-major head が除外期間内のものは `⚠️ ... 既存ピンを維持` と表示されるが想定どおりで失敗ではない。`ref "vN" が見つかりません` で中断したら moving-major タグが無い → そのアクションは手順2の exact 固定にすべき。修正して再実行。vendor 不整合で中断したら手順0の `go mod vendor`。
 
+**lockfile の diff で tag の付け替えを見張る。** moving major タグ（`# v6`）が新しい SHA へ進むのは正当である。**exact** 版コメント tag（`# v4.1.0`）はそうではない。exact tag に対して `resolve` が lockfile 記録済みと異なる SHA を返したなら、バージョン参照は同じままで下のコードが変わったということである。これは tag の付け替えであり、`tj-actions/changed-files` 侵害の形であり、pin のリフレッシュではなくセキュリティ事象である。止まり、`apply` せず、書き込みの前にトリアージする（`/supply-chain-triage`、baseline = lockfile の従前 SHA）——上流への通報を実行可能にするのは旧新の SHA である。
+
 ### 7. 検証
 
 ```sh
@@ -129,11 +143,12 @@ make actions-lint          # actionlint で workflow 検証
 
 ### 8. 最終報告
 
-更新したアクション（moving / exact ステップバック）、SHA リフレッシュしたアクション、保留（理由付き）、検証結果をまとめる。導入した exact 版 pin は、aged 後に見直せるよう一覧化する。commit / stage / push は行わない — ユーザーが手動で `/commit`（`CI:` プレフィックス）を実行する。
+更新したアクション（moving / exact ステップバック）、SHA リフレッシュしたアクション、保留（理由付き・トリアージのバンドとそれを決めた軸があればそれも）、手順 6 で見つかった付け替え済み exact tag、検証結果をまとめる。導入した exact 版 pin は、aged 後に見直せるよう一覧化する。commit / stage / push は行わない — ユーザーが手動で `/commit`（`CI:` プレフィックス）を実行する。
 
 ## 補足
 
-- **隔離への既定の応答は保留ではなくステップバック。** 保留は対象メジャー内に aged 版が一つも無いときだけ。引数設計はこの挙動を前提にしている。
+- **隔離への既定の応答は保留ではなくステップバック。** 保留は対象メジャー内に aged 版が一つも無いときだけ。引数設計はこの挙動を前提にしている。ここでトリアージが規則ではなく例外である理由もこれである——aged な exact 版は窓が既に供給した証拠であり、検証済みの代替がコメント tag の 1 行編集で手に入るなら、出来立ての head についてさらに証拠を集めても何も買えない。
+- **tag は名前であって同一性ではない。** lockfile が存在するのは tag が付け替えられ得るからであり、exact tag の SHA が動くのはそれが捕まえるために作られたケースそのものである（手順 6）。リフレッシュではなくセキュリティ事象として扱う。
 - **隔離 vs 新メジャー**: ゲートは SHA の経過日数で判定し、新メジャーには既存 lockfile エントリが無いため、新メジャーの moving タグは aged になるまで `resolve` に skip される。だからこそ手順2で aged な exact 版を固定する。
 - **すべてのアクションが moving major タグを持つわけではない。** `# vM` が解決できると仮定する前に必ず `vM` タグを `git ls-remote` する（`sigstore/cosign-installer` は既知の例外 → 恒久 exact 固定）。
 - **`actionlint` ≠ セマンティクスの安全。** workflow 構文は検証するが、更新後アクションの入力・挙動が用途と整合するかは見ない。メジャー更新では手順3 の `with:` レビューが必須。
@@ -152,7 +167,9 @@ make actions-lint          # actionlint で workflow 検証
 - [ ] アクションごとに mode で対象メジャーを決め、ターゲット選択規則を適用（moving `# vM` aged → exact ステップバック → 保留）
 - [ ] tag 形式変化（`v` 接頭辞の有無等）と moving タグの実在を考慮
 - [ ] メジャーが変わる各アクションで `with:` 互換を検証し、破壊的なものは保留 + 報告
-- [ ] 計画（更新 / ステップバック / 保留と理由）を提示し `AskUserQuestion` で確認
+- [ ] 手順 3 の保留（および勧告起因の出来立て head）を lockfile の SHA を baseline として `/supply-chain-triage` でトリアージ。ステップバックは設計どおりトリアージ対象外
+- [ ] lockfile の diff で **exact** tag の SHA が動いていないか確認（付け替え → `apply` 前に停止・トリアージ・報告）
+- [ ] 計画（更新 / ステップバック / 保留と理由、トリアージのバンドがあればそれも）を提示し `AskUserQuestion` で確認
 - [ ] 承認した更新のみコメント tag 編集・保留/変更なしは不変
 - [ ] `make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>` + `make pin-actions-apply` を実行
 - [ ] `make pin-actions-check` + `make actions-lint` を実行し報告

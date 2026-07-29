@@ -21,7 +21,7 @@ accepted
 
 ## 決定
 
-`oapi-codegen/echo-middleware` パッケージの `oapimw.OapiRequestValidatorWithOptions` を Echo ミドルウェアとしてワイヤリングし、解析済みの仕様と `openapi3filter.AuthenticationFunc` を渡す。バリデーターが実行される前に、authn コンテキストスロットを注入して `AuthenticationFunc` がリクエストコンテキストに認証結果を書き込めるようにする。
+`oapi-codegen/echo-v5-middleware` パッケージの `oapimw.OapiRequestValidatorWithOptions` を Echo ミドルウェアとしてワイヤリングし、解析済みの仕様と `openapi3filter.AuthenticationFunc` を渡す。バリデーターが実行される前に、authn コンテキストスロットを注入して `AuthenticationFunc` がリクエストコンテキストに認証結果を書き込めるようにする。
 
 ```go
 func Middleware(
@@ -37,7 +37,7 @@ func Middleware(
         },
     })
     return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
+        return func(c *echo.Context) error {
             req := c.Request()
             req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
             c.SetRequest(req)
@@ -62,7 +62,7 @@ func Middleware(
 
 ### ネガティブな影響
 
-- レスポンス値が HTTP パス外で生成された場合（例: レスポンススキーマに違反する値を持つシードされた行）、その違反はサーバー側では見えず、クライアント側にのみ現れる。これを防ぐ方向不変条件については [`openapi/boundary-ownership.md`](../../../openapi/boundary-ownership.md) を参照。
+- レスポンス値が HTTP パス外で生成された場合（例: レスポンススキーマに違反する値を持つシードされた行）、その違反はサーバー側では見えず、クライアント側にのみ現れる。これを防ぐ方向不変条件については [`openapi/boundary-ownership.md`](../../../openapi/boundary-ownership.ja.md) を参照。
 - ミドルウェアはコード生成に使用されるバンドル済み仕様と同じものをワイヤリングした状態に保たれなければならない。起動時に読み込まれた仕様ファイルが生成コードからドリフトした場合、ミドルウェアとハンドラーが静かに不一致になる可能性がある。
 
 ## 検討した代替案
@@ -80,5 +80,5 @@ func Middleware(
 - ミドルウェア実装: [`internal/controller/httpstack/oapi/oapi.go`](../../../internal/controller/httpstack/oapi/oapi.go)。
 - オペレーションパススキッパー: [`internal/controller/httpstack/oapi/skipper/skipper.go`](../../../internal/controller/httpstack/oapi/skipper/skipper.go)。
 - `/metrics` の認証例外（このパイプラインからスキップされ、別の BasicAuth ミドルウェアで保護される）は [ADR-0016](0016-metrics-endpoint-auth-exception.ja.md) に記録されている。
-- セキュリティと境界の注記: [`openapi/README.md`](../../../openapi/README.md)（§ Security）および [`openapi/boundary-ownership.md`](../../../openapi/boundary-ownership.md)。
+- セキュリティと境界の注記: [`openapi/README.md`](../../../openapi/README.ja.md)（§ Security）および [`openapi/boundary-ownership.md`](../../../openapi/boundary-ownership.ja.md)。
 - 親の決定: [ADR-0009](0009-openapi-first.ja.md)（OpenAPI ファースト）。

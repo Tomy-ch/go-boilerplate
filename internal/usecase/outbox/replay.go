@@ -10,10 +10,10 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-// ReplayUsecase は、dead 化した outbox 行を pending へ戻し再 publish 対象に復帰させるユースケースです。
+// ReplayUsecase は、dead 化した outbox エントリを pending へ戻し再 publish 対象に復帰させるユースケースです。
 type ReplayUsecase interface {
-	// ReplayDead は、dead 行を pending へ戻し、戻した件数を返します。
-	// messageID が nil なら全 dead 行、指定時は当該 message_id のみを対象とします。
+	// ReplayDead は、dead のエントリを pending へ戻し、戻した件数を返します。
+	// messageID が nil なら dead のすべて、指定時は当該 message_id のみを対象とします。
 	ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error)
 }
 
@@ -27,7 +27,6 @@ func NewReplay(store outboxbndry.Store, tf observability.TracerFactory) ReplayUs
 	return &replayUsecase{store: store, tracer: tf.Usecase()}
 }
 
-// ReplayDead は、dead 行を pending へ戻し、戻した件数を返します。
 func (u *replayUsecase) ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

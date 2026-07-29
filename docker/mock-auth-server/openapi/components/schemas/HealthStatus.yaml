@@ -1,0 +1,10 @@
+type: object
+description: ヘルスチェックの結果。
+required:
+  - status
+properties:
+  status:
+    type: string
+    enum:
+      - ok
+    example: ok

@@ -173,7 +173,7 @@ internal/di
 │   └── core/            # HTTP-stack common components (authn / basicauth / validator / …)
 ├── server/              # Echo server module (Module / MiddlewareModule / HookModule)
 │   ├── extension/       # Middleware & configurator DI (inbound / outbound / security /
-│   │                    #   instrumentation / nonprod / testkit)
+│   │                    #   instrumentation / testkit)
 │   └── hook/            # Server lifecycle hooks (HTTP start/stop, DB close, o11y shutdown)
 ├── lifecycle/           # Registrar (fx.Lifecycle abstraction) + SupervisedRunner
 ├── shutdowner/          # fx.Shutdowner wrapper (self-stop for one-shot profiles)
@@ -200,7 +200,7 @@ substrate that all profiles depend on.
 |`module.ObservabilityModule()`|Tracer / meter / logger providers + shutdown hook (all profiles)|
 |`module.DatabaseModule()`|`*pgxpool.Pool`, tracer, tx manager, pool metrics + DB-close hook (all profiles)|
 |`module.SystemModule()`|Build info (all profiles)|
-|`module.InfrastructureModule()`|Aggregates `persistence` / `clock` / `httpclient` / `webapi` / `security` / `authz` (all profiles)|
+|`module.InfrastructureModule()`|Aggregates `persistence` / `clock` / `httpclient` / `webapi` / `auth` (JWKS profile) / `security` / `authz` (all profiles)|
 |`module.UsecaseModule()`|Usecase implementations incl. `idempotency` / `outbox` (all profiles)|
 |`module.ControllerModule()` + `core.*` + `server.*`|Full HTTP stack — **Server profile only**|
 
@@ -231,10 +231,19 @@ are opt-in through the Optional seams above.
   registered via `provideWorkers`, and its depth/DLQ metrics only when a
   `queuemetrics.Target` is registered via `provideQueueStatsTargets`. The
   default worker graph runs with no adapter.
-- **Environment-gated stubs** — `authzModule` wires the allow-all `authz`
-  authorizer only for local / CI / test and **fails closed** (returns an error)
-  in production-like environments, forcing a real RBAC / policy adapter to be
-  wired instead. `core.AuthnModule` follows the same fail-closed pattern.
+- **Environment-gated stubs** — `authzModule` and `core.AuthnModule` select an
+  implementation per environment and **fail closed** (return an error) for any
+  environment their `switch` does not name, so an unconfigured environment
+  cannot start with a permissive default. Which environments are named differs
+  between the two, and the sample API moves the boundary: with the sample
+  present, `provideAuthorizer` wires the allow-all authorizer for CI / test and
+  the `user_roles` authorizer for local through production; after
+  `make setup-remove-sample-api` the `user_roles` case is removed, leaving
+  local / CI / test on allow-all and every production-like environment
+  fail-closed until a real RBAC / policy adapter is wired.
+  `core.provideAuthenticator` is gated independently: CI / test get the stub,
+  local / development get the JWKS authenticator, and staging / production are
+  fail-closed. Read the `switch` rather than assuming a shared boundary.
 
 ## Do / Don't
 
@@ -509,6 +518,22 @@ ApplyExtends --> PreMiddlewares
 ApplyExtends --> UseMiddlewares
 ApplyExtends --> ServerConfigurators
 ```
+
+## Test Strategy
+
+This is the layer-wide baseline; a sub-directory that needs more detail states it in its own README
+(`module/` for graph validation, `server/hook/` for lifecycle hooks).
+
+The DI layer wires — it does not compute. Tests therefore verify **that the graph resolves** and
+**that the bodies this layer owns behave**, never business behavior:
+
+- **Graph validity** — `fx.ValidateApp` per module. It resolves the graph without executing constructors or lifecycle hooks, so it proves wiring completeness and nothing else. See [`module/README.md`](module/README.md).
+- **Provider / `fx.Invoke` bodies with their own logic** — precisely what graph validation does *not* reach. Call the function directly in a unit test; a body that only appears in the graph is untested.
+- **Lifecycle hooks** — capture the registered start / stop closures through a `lifecycle.Registrar` mock and drive them. See [`server/hook/README.md`](server/hook/README.md); the `job` / `worker` / `outboxrelay` hooks share that shape on top of `lifecycle.SupervisedRunner`, where the drain path (cancel → wait, bounded by grace) is the branch to pin.
+- **Environment-gated wiring** — a provider that selects an implementation per environment and refuses (returns an error) for the environments it must not serve (`provideAuthorizer`, `core.provideAuthenticator`) is exercised on **every** case of the gate, refusal included. The refusal is the safeguard, so a test that only covers the environments that resolve covers nothing that matters. Read the gate's own `switch` for its current boundary rather than assuming it — the sample-api markers move which environments land in which case.
+
+Whole-process startup against a real Echo and a real database is out of scope here — that is
+[`internal/integration`](../integration/README.md).
 
 ## Design Principles
 

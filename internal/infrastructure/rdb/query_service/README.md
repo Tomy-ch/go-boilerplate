@@ -37,6 +37,13 @@ flowchart TB
 
 QS returns **projections that a usecase needs, not complete Aggregate reconstructions**. This is a Usecase concern, not a Domain concern, so the interface is placed in the Usecase layer (`internal/usecase/<aggregate>/query`).
 
+> **Note (Repository may also return a small read model).** The "Return type = DTO" row above is the
+> *typical* split, not an absolute — a Repository read that JOINs a *fixed reference master* (e.g.
+> `purchases` → `purchase_statuses`) may return a small read model with the resolved display value and
+> still be a single-Aggregate Repository read (not a QS). What moves a read to QS is crossing
+> *independent* Aggregates / a derived projection, not merely returning a non-Entity. See
+> `docs/rules.md` § "Repository / QueryService Rules".
+
 ### Relationship to CQRS
 
 Introducing QS is a **lightweight CQRS (Command Query Responsibility Segregation)** approach.
@@ -54,9 +61,15 @@ Consider QS instead of Repository when:
 - Paginated list retrieval
 - Full-text or keyword search
 - Queries requiring aggregation or grouping
-- Reads that don't need full Aggregate reconstruction
+- Reads whose natural shape is a projection wasteful to reconstruct as a full Aggregate
+  (a few columns from a heavy Aggregate, or a joined view)
 
-Conversely, simple queries like single retrieval by ID or count can remain in Repository.
+Conversely, **simple single-Aggregate reads stay in Repository** — fetch by ID, and simple
+filter / list / count by the Aggregate's own attributes (including an unfiltered full list such
+as `SELECT * FROM <table> ORDER BY ...`). Returning many rows, or mapping the result to a
+response DTO, does **not** by itself move a read to QS — only crossing Aggregates or the
+query-complexity cases above do. See
+[`docs/rules.md`](../../../../docs/rules.md) § "Repository / QueryService Rules".
 
 ## Role
 

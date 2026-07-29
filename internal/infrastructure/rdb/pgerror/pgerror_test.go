@@ -255,6 +255,30 @@ func TestIsLockNotAvailable(t *testing.T) {
 	})
 }
 
+func TestIsNoRows(t *testing.T) {
+	t.Parallel()
+
+	t.Run("pgx.ErrNoRowsはtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsNoRows(pgx.ErrNoRows))
+	})
+
+	t.Run("ラップされたpgx.ErrNoRowsはtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsNoRows(xerrors.Wrap(pgx.ErrNoRows, "wrapped")))
+	})
+
+	t.Run("nilはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsNoRows(nil))
+	})
+
+	t.Run("行なし以外のエラーはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsNoRows(context.Canceled))
+	})
+}
+
 func TestIsRetryableTxError(t *testing.T) {
 	t.Parallel()
 
@@ -342,6 +366,56 @@ func TestNormalizeReconstructError(t *testing.T) {
 			got := NormalizeReconstructError(src)
 
 			assert.Contains(t, got.Error(), "first name failed")
+		})
+	})
+}
+
+func Test_NormalizeError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilはnilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, NormalizeError(nil))
+		})
+
+		t.Run("正規化済みapperrorは分類を保持して素通しする", func(t *testing.T) {
+			t.Parallel()
+			once := NormalizeError(&pgconn.PgError{Code: "23505"})
+			twice := NormalizeError(once)
+			require.ErrorIs(t, twice, apperror.ErrConflict)
+			assert.Equal(t, once, twice)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("pgx.ErrNoRowsはErrNotFoundへ写像する", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, NormalizeError(pgx.ErrNoRows), apperror.ErrNotFound)
+		})
+
+		t.Run("SQLSTATEマップに一致するPgErrorは対応するsentinelへ写像する", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "23505"}), apperror.ErrConflict)
+		})
+
+		t.Run("context.CanceledはErrCanceledへ写像する", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, NormalizeError(context.Canceled), apperror.ErrCanceled)
+		})
+
+		t.Run("接続不可エラーはErrUnavailableへ写像する", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, NormalizeError(context.DeadlineExceeded), apperror.ErrUnavailable)
+		})
+
+		t.Run("分類不能なエラーはErrInternalへ写像する", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, NormalizeError(xerrors.New("boom")), apperror.ErrInternal)
 		})
 	})
 }

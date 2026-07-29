@@ -7,13 +7,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func TestNewConfig(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			setEnvVarsForTesting(t)
+			//nolint:dupl // Config の全フィールドを網羅比較するための構造体リテラルであり、mock 側期待値との重複は不可避
 			expected := &Config{
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
@@ -81,7 +81,6 @@ func TestNewConfig(t *testing.T) {
 					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 					referrerPolicy:        expectedReferrerPolicy,
-					bcryptCost:            expectedBcryptCost,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
@@ -109,6 +108,25 @@ func TestNewConfig(t *testing.T) {
 					pollInterval: expectedOutboxPollInterval,
 					errorBackoff: expectedOutboxErrorBackoff,
 					batchSize:    expectedOutboxBatchSize,
+				},
+				auth: AuthConfig{
+					issuer:             expectedAuthIssuer,
+					audience:           expectedAuthAudience,
+					jwksURL:            expectedAuthJWKSURL,
+					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
+					clockSkew:          expectedAuthClockSkew,
+					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
+					discoveryTTL:       expectedAuthDiscoveryTTL,
+					unknownKidCooldown: expectedAuthUnknownKidCooldown,
+				},
+				objectStorage: ObjectStorageConfig{
+					endpoint:        expectedObjectStorageEndpoint,
+					region:          expectedObjectStorageRegion,
+					bucket:          expectedObjectStorageBucket,
+					accessKeyID:     expectedObjectStorageAccessKeyID,
+					secretAccessKey: expectedObjectStorageSecretAccessKey,
+					usePathStyle:    expectedObjectStorageUsePathStyle,
+					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
 				},
 			}
 
@@ -534,6 +552,40 @@ func Test_validateServerShutdown(t *testing.T) {
 	})
 }
 
+func Test_validateUploadBodyLimit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限を上回る場合は成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateUploadBodyLimit(6, 5_242_880))
+		})
+
+		t.Run("ボディ上限がアップロード上限を1バイト上回る場合は成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateUploadBodyLimit(1, BytesPerMB-1)) // 境界値: 上回れば可
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限と同値の場合はErrBodyLimitBelowMaxUploadBytesを返す", func(t *testing.T) {
+			t.Parallel()
+			err := validateUploadBodyLimit(1, BytesPerMB) // 境界値: 等値はマルチパート分の余裕が無く不可
+			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
+		})
+
+		t.Run("ボディ上限がアップロード上限を下回る場合はErrBodyLimitBelowMaxUploadBytesを返す", func(t *testing.T) {
+			t.Parallel()
+			err := validateUploadBodyLimit(5, 5_242_880)
+			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
+		})
+	})
+}
+
 func Test_validateDatabaseConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -630,32 +682,19 @@ func Test_validateSecurityConfig(t *testing.T) {
 			err := validateSecurityConfig(cfg.Security)
 			require.NoError(t, err)
 		})
+
+		t.Run("localhost以外でもHTTPSは許可されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Security.AllowedOrigins = []string{"https://example.com"} // 非ループバックでも HTTPS なら許可
+
+			err := validateSecurityConfig(cfg.Security)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("BcryptCostが無効な場合", func(t *testing.T) {
-			t.Parallel()
-
-			t.Run("BcryptCostがbcrypt.MinCost未満の場合", func(t *testing.T) {
-				t.Parallel()
-				cfg := mockLoader(t)
-				cfg.Security.BcryptCost = bcrypt.MinCost - 1 // 無効なBcryptCost
-
-				err := validateSecurityConfig(cfg.Security)
-				require.ErrorIs(t, err, ErrInvalidBcryptCost)
-			})
-
-			t.Run("BcryptCostがbcrypt.MaxCostを超えている場合", func(t *testing.T) {
-				t.Parallel()
-				cfg := mockLoader(t)
-				cfg.Security.BcryptCost = bcrypt.MaxCost + 1 // 無効なBcryptCost
-
-				err := validateSecurityConfig(cfg.Security)
-				require.ErrorIs(t, err, ErrInvalidBcryptCost)
-			})
-		})
-
 		t.Run("AllowedOriginsが空の場合", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
@@ -698,4 +737,165 @@ func Test_buildStatusCodeSet(t *testing.T) {
 
 	actual := buildStatusCodeSet(codes)
 	assert.Equal(t, expected, actual)
+}
+
+func Test_parseCIDR(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("有効な CIDR の場合、解析済みの *net.IPNet を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := parseCIDR("192.168.0.0/16")
+			require.NoError(t, err)
+			require.NotNil(t, actual)
+			assert.Equal(t, "192.168.0.0/16", actual.String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("不正な CIDR の場合、ErrFailedToParseCIDR を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := parseCIDR("invalid_cidr")
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrFailedToParseCIDR)
+		})
+	})
+}
+
+func Test_validatePortRange(t *testing.T) {
+	t.Parallel()
+
+	sentinel := ErrInvalidPortRange
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最小ポートの場合、nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validatePortRange(MinPort, sentinel))
+		})
+
+		t.Run("最大ポートの場合、nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validatePortRange(MaxPort, sentinel))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最小ポート未満の場合、渡したエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorIs(t, validatePortRange(MinPort-1, sentinel), sentinel)
+		})
+
+		t.Run("最大ポート超過の場合、渡したエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorIs(t, validatePortRange(MaxPort+1, sentinel), sentinel)
+		})
+	})
+}
+
+func TestValidateServerShutdown(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("シャットダウン猶予がリクエスト予算を上回る場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			appCfg := &ApplicationConfig{shutdownTimeout: 90 * time.Second}
+			srvCfg := &ServerConfig{requestTimeout: 60 * time.Second}
+
+			require.NoError(t, ValidateServerShutdown(appCfg, srvCfg))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("シャットダウン猶予がリクエスト予算を下回る場合、ErrShutdownTimeoutBelowRequestTimeoutを返す", func(t *testing.T) {
+			t.Parallel()
+
+			appCfg := &ApplicationConfig{shutdownTimeout: 60*time.Second - time.Second}
+			srvCfg := &ServerConfig{requestTimeout: 60 * time.Second}
+
+			err := ValidateServerShutdown(appCfg, srvCfg)
+			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
+		})
+	})
+}
+
+func TestValidateUploadBodyLimit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限を上回る場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			srvCfg := &ServerConfig{bodyLimitMB: 6}
+			objCfg := &ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
+
+			require.NoError(t, ValidateUploadBodyLimit(srvCfg, objCfg))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ボディ上限がアップロード上限と同値の場合、ErrBodyLimitBelowMaxUploadBytesを返す", func(t *testing.T) {
+			t.Parallel()
+
+			srvCfg := &ServerConfig{bodyLimitMB: 5}
+			objCfg := &ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
+
+			err := ValidateUploadBodyLimit(srvCfg, objCfg)
+			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
+		})
+	})
+}
+
+func Test_isActiveExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("exporter名が指定されている場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, isActiveExporter("otlp"))
+		})
+
+		t.Run("未設定を表す空文字の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isActiveExporter(""))
+		})
+
+		t.Run("明示的な無効化を表すnoneの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isActiveExporter(exporterNone))
+		})
+
+		t.Run("noneと大文字小文字だけが異なる場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isActiveExporter("NoNe"))
+		})
+	})
 }

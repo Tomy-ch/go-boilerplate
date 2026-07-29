@@ -1,7 +1,7 @@
 ---
 name: commit
 description: >-
-  Analyze the current working-tree changes (staged + unstaged), group them into appropriately-scoped commits with the project's prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), and execute each commit in Japanese after user approval. Pre-flight also checks whether the current branch's PR is already merged and, if so, recommends cutting a fresh branch from the base before committing. Commits are made with `git commit --no-verify` to skip lefthook during the split; after all commits succeed, the command runs the lefthook-defined commands directly plus `make fix` as a final verification gate (lefthook itself is bypassed because it skips checks when nothing is staged). Respects CLAUDE.md's git rules (no direct commits to protected branches, no force-push, no auto-push after PR amend, Co-Authored-By footer, HEREDOC commit messages).
+  Analyze the current working-tree changes (staged + unstaged), group them into appropriately-scoped commits with the project's prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), and execute each commit in Japanese after user approval. Pre-flight also checks whether the current branch's PR is already merged and, if so, recommends cutting a fresh branch from the base before committing. Commits are made with `git commit --no-verify` to skip lefthook during the split; after all commits succeed, the command runs the full lefthook pre-commit hook (`lefthook run pre-commit --force`) plus `make fix` as a final verification gate. Respects CLAUDE.md's git rules (no direct commits to protected branches, no force-push, no auto-push after PR amend, Co-Authored-By footer, HEREDOC commit messages).
 argument-hint: '[--dry-run] [--scope=staged|all]'
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git reset:*), Bash(git fetch:*), Bash(git switch:*), Bash(gh pr view:*), Bash(make fix:*), Bash(make lint:*), Bash(make test:*), Bash(make sql-lint:*), Bash(make check-migration-up-version:*), Bash(make check-migration-down-version:*), Bash(make check-migration-up-gap:*), Bash(make check-migration-down-gap:*), Read, AskUserQuestion
 ---
@@ -14,7 +14,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 
 This command analyzes uncommitted changes in the working tree and produces one or more git commits with appropriate granularity and the project's prefix convention. All commit messages are in Japanese, per `CLAUDE.md`.
 
-This command intentionally bypasses lefthook on every commit (`git commit --no-verify`) so that pre-commit checks (`make lint` / `make test` / `make sql-lint` / migration checks) do not fire N times during multi-commit splits. Instead, after all commits succeed, Step 6 runs each lefthook-defined `pre-commit` command directly plus `make fix` as a single verification pass. We do not call `lefthook run pre-commit` itself because lefthook skips registered commands when nothing is staged (which is exactly the case after this command stages and commits everything).
+This command intentionally bypasses lefthook on every commit (`git commit --no-verify`) so that pre-commit checks (`make lint` / `make test` / `make sql-lint` / migration checks) do not fire N times during multi-commit splits. Instead, after all commits succeed, Step 6 runs the whole pre-commit hook once via `lefthook run pre-commit --force` plus `make fix` as a single verification pass. The `--force` flag is what makes this work: after this command stages and commits everything the working tree is clean, so a bare `lefthook run pre-commit` would skip every command ("no matching staged files") — `--force` runs the hook anyway. Driving the real hook keeps the gate in sync with `.lefthook.yaml` and runs the commands in parallel.
 
 ## Step 0. Auto-format
 
@@ -77,7 +77,7 @@ Interpret the result:
     - 「このブランチのまま続ける」 — the user accepts committing on the merged branch; continue on the current branch.
 - **`state` is `CLOSED`** (closed without merge) → not blocked, but note it to the user once (the branch's PR was closed) and continue.
 
-Read `.lefthook.yaml` (if present) and extract the list of `pre-commit:` command entries. The list is used in two places: (a) displayed in Step 4 so the user knows what is being skipped during the split, and (b) executed directly in Step 6 as the post-commit verification gate. If `.lefthook.yaml` is absent, note that and continue (Step 6 will fall back to running only `make fix`).
+Read `.lefthook.yaml` (if present) and extract the list of `pre-commit:` command entries. The list is displayed in Step 4 so the user knows what is being skipped during the split; Step 6 then re-runs the whole hook via `lefthook run pre-commit --force`. If `.lefthook.yaml` is absent, note that and continue (Step 6 will fall back to running only `make fix`).
 
 Parse `$ARGUMENTS`:
 
@@ -162,12 +162,12 @@ Build a list of proposed commits with appropriate granularity. Each item:
 
 ### Lefthook notice
 
-Along with the grouping proposal, display the lefthook commands that will be **skipped** during the commit phase but **executed directly in Step 6** as a verification gate. Read them dynamically from `.lefthook.yaml` (the list is configuration, not hardcoded). Example output when the current config defines lint/test/sql-lint/migration checks:
+Along with the grouping proposal, display the lefthook commands that will be **skipped** during the commit phase but **re-run together in Step 6** via `lefthook run pre-commit --force` as a verification gate. Read them dynamically from `.lefthook.yaml` (the list is configuration, not hardcoded). Example output when the current config defines lint/test/sql-lint/migration checks:
 
 ```txt
 This command will run `git commit --no-verify` on every commit.
 The following lefthook pre-commit commands will be SKIPPED during commits but
-EXECUTED automatically in Step 6 (verification) after all commits succeed:
+re-run together in Step 6 via `lefthook run pre-commit --force` after all commits succeed:
   - lint                    (make lint)
   - test                    (make test)
   - sql-lint                (make sql-lint)
@@ -235,33 +235,24 @@ If `git add` or `git commit` fails for any group (file-path typo, mid-operation 
 
 ## Step 6. Verification
 
-After all commits succeed, run a verification gate composed of (a) each command defined under `pre-commit:` `commands:` in `.lefthook.yaml` and (b) `make fix` as a final formatting pass. Do NOT run `lefthook run pre-commit` itself — lefthook skips registered commands when nothing is staged (which is the post-commit state), so it would report "no matching staged files" and exit without checking anything. Instead, execute each command directly.
+After all commits succeed, run the full lefthook `pre-commit` hook once with `lefthook run pre-commit --force`, then `make fix` as a final formatting pass. The `--force` flag is essential: the commits were made with `--no-verify` and the working tree is now clean, so a bare `lefthook run pre-commit` skips every command ("no matching staged files"); `--force` runs the whole hook regardless of staging. Driving the real hook (instead of a hand-enumerated command list) keeps this gate in sync with `.lefthook.yaml` — newly added `pre-commit` commands are picked up automatically — and lefthook runs them in parallel (`parallel: true`), which is much faster than a sequential re-run.
 
 ### Procedure
 
-1. Re-read `.lefthook.yaml` and enumerate `pre-commit.commands.*.run` values. Skip this step if `.lefthook.yaml` is absent.
-2. Run each command **sequentially** (clearer output than parallel; the user sees which step failed if any). For each, capture the exit status and a short tail of the output.
-3. After all lefthook-defined commands finish, run `make fix`. If `make fix` modifies any tracked file, surface the diff to the user — it indicates the committed state was not fully formatted, and the user must decide whether to stage and commit those fixes.
-4. Summarize results to the user using a table format:
-
-   ```txt
-   検証コマンドの実行結果:
-     - make lint                                                       → OK / FAIL
-     - make test                                                       → OK / FAIL
-     - make sql-lint                                                   → OK / FAIL
-     - make check-migration-up-version check-migration-down-version    → OK / FAIL
-     - make check-migration-up-gap check-migration-down-gap            → OK / FAIL
-     - make fix                                                        → no changes / changes detected
-   ```
-
-5. If any command **fails**, report the failure summary (exit code + last lines of output) and stop. Do NOT roll back commits — the failure is informational; the user decides whether to add fix-up commits or amend. Tell the user explicitly:
+1. Run `lefthook run pre-commit --force`. It executes every command under `pre-commit.commands.*` against the working tree (which reflects the committed state) and exits non-zero if any command fails. If `.lefthook.yaml` is absent or `lefthook` is not installed, skip to step 3 (run only `make fix`) and note it.
+2. Read lefthook's per-command summary — it lists each command with ✔️ / ❌ and a timing.
+3. Run `make fix`. If it modifies any tracked file, surface the diff to the user — it indicates the committed state was not fully formatted, and the user must decide whether to stage and commit those fixes.
+4. Summarize the outcome to the user: lefthook's pass/fail summary (or the note that lefthook was unavailable) plus whether `make fix` produced changes.
+5. If `lefthook run pre-commit --force` exits non-zero (any command failed), report the failing command (from lefthook's summary) and stop. Do NOT roll back commits — the failure is informational; the user decides whether to add fix-up commits or amend. Tell the user explicitly:
 
    ```txt
    検証で失敗があります。push 前に修正してください。
-   失敗したコマンド: <name> (<command>)
+   失敗したコマンド: <lefthook が ❌ を出したコマンド名>
    ```
 
-6. If all commands **pass** and `make fix` produced no changes, proceed to Step 7.
+6. If lefthook passes and `make fix` produced no changes, proceed to Step 7.
+
+> The repo's `pre-commit` commands are whole-repo `make` targets, so `--force` (which feeds an empty / `{all_files}` set) runs them correctly. If a future command relies on the `{staged_files}` template, revisit this — `--force` would pass it no files.
 
 ### Skipping verification
 
@@ -313,8 +304,8 @@ If the user passes `--no-verify` to `/commit` itself (a future-compatible flag),
 - ✅ Capture `ORIGINAL_HEAD` at Step 1 for safe rollback
 - ✅ At Step 1, detect a current branch whose PR is already merged (`gh pr view`) and recommend cutting a fresh branch from the base before committing (degrade gracefully when `gh` is unavailable)
 - ✅ On failure, propose `git reset --mixed <ORIGINAL_HEAD>` via `AskUserQuestion`
-- ✅ Step 6 runs each lefthook-defined command + `make fix` directly (never `lefthook run pre-commit`)
-- ❌ Do NOT invoke `lefthook run pre-commit` — it skips commands when nothing is staged, which is the post-commit state
+- ✅ Step 6 runs the whole pre-commit hook via `lefthook run pre-commit --force` + `make fix`
+- ✅ Always pass `--force` to `lefthook run pre-commit` in Step 6 — without it, lefthook skips every command against the now-clean post-commit tree
 
 ## Checklist
 
@@ -332,6 +323,6 @@ Before reporting completion, confirm:
 - [ ] Each commit used `--no-verify` and was passed via HEREDOC
 - [ ] `git add` named files explicitly (no `-A` / `.`)
 - [ ] Generated artifacts co-located with their source change
-- [ ] Step 6 verification ran each lefthook-defined command plus `make fix` (or was explicitly skipped)
+- [ ] Step 6 verification ran `lefthook run pre-commit --force` plus `make fix` (or fell back to `make fix` when lefthook / `.lefthook.yaml` was unavailable)
 - [ ] Verification results (OK / FAIL / no changes) were surfaced to the user
 - [ ] No automatic push was performed

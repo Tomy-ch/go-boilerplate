@@ -116,8 +116,64 @@ func Test_provideLogger(t *testing.T) {
 		t.Run("未知のモードはエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			lg, err := provideLogger(newAppCfg(t, "unknown", "info"), nil, nil)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnknownAppMode)
 			assert.Nil(t, lg)
+		})
+	})
+}
+
+func TestLoggingModule(t *testing.T) {
+	t.Parallel()
+
+	newApp := func(t *testing.T, logLevel string, targets ...any) *fx.App {
+		t.Helper()
+
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetApplicationLogLevel(t, logLevel)
+
+		return fx.New(
+			LoggingModule(),
+			fx.Provide(func() testing.TB { return t }),
+			fx.Provide(config.MockConfigForTest),
+			fx.Provide(config.NewObservabilityConfig, config.NewOperatingSystemConfig),
+			fx.Provide(func() *config.ApplicationConfig { return appCfg }),
+			fx.Provide(func() logging.LogCore { return nil }),
+			fx.Provide(func() logging.TraceExtractor { return nil }),
+			fx.Populate(targets...),
+			fx.NopLogger,
+		)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("LogFieldBuilder に注入設定のタイムゾーンが反映される", func(t *testing.T) {
+			t.Parallel()
+
+			var lf logging.LogFieldBuilder
+			app := newApp(t, config.LogLevelInfo, &lf)
+
+			require.NoError(t, app.Start(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+
+			require.NotNil(t, lf)
+			osCfg := config.NewOperatingSystemConfig(config.MockConfigForTest(t))
+			assert.Contains(t,
+				lf.BuildHTTPResponseFields(logging.HTTPResponseLogInput{}),
+				logging.String(logging.EventTzKey, osCfg.TimeZone()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("解釈できない APP_LOG_LEVEL では起動に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			// 既定値へ黙って落とさず、provideLogger のエラーを起動失敗として顕在化させる。
+			var lg logging.Logger
+
+			require.Error(t, newApp(t, "verbose", &lg).Start(context.Background()))
 		})
 	})
 }

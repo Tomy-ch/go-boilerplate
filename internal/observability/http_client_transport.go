@@ -20,6 +20,10 @@ import (
 // private 不許可時のブロック対象として明示的に判定します（クラウド内部用途の SSRF 面を塞ぐ）。
 var cgnatPrefix = netip.MustParsePrefix("100.64.0.0/10")
 
+// nat64WellKnownPrefix は、NAT64 の Well-Known Prefix（RFC 6052）です。埋め込み IPv4 を剥がして
+// 判定しないと 64:ff9b::7f00:1（=127.0.0.1）等で IPv4 ガードを迂回されるため明示判定します。
+var nat64WellKnownPrefix = netip.MustParsePrefix("64:ff9b::/96")
+
 // reservedPrefixes は、bogon/予約帯として常時拒否する CIDR 一覧です。
 // これらは正当な宛先になり得ないため、allowPrivateNetwork フラグに関わらずブロックします。
 var reservedPrefixes = []netip.Prefix{
@@ -32,6 +36,17 @@ var reservedPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("198.18.0.0/15"),   // RFC 2544 ベンチマーク測定用（Benchmarking）
 	netip.MustParsePrefix("2001:db8::/32"),   // RFC 3849 IPv6 ドキュメント用（Documentation）
 }
+
+var (
+	// errSSRFUnparsableAddress は、接続先アドレスをパースできず fail-close で拒否した場合のエラーです。
+	errSSRFUnparsableAddress = xerrors.New("ssrf guard: blocked unparsable address")
+	// errSSRFBlockedAddress は、link-local / unspecified の接続先を拒否した場合のエラーです。
+	errSSRFBlockedAddress = xerrors.New("ssrf guard: blocked address")
+	// errSSRFReservedAddress は、bogon/予約帯の接続先を拒否した場合のエラーです。
+	errSSRFReservedAddress = xerrors.New("ssrf guard: blocked reserved address")
+	// errSSRFPrivateAddress は、loopback / private / CGNAT の接続先を、許可フラグが無いまま拒否した場合のエラーです。
+	errSSRFPrivateAddress = xerrors.New("ssrf guard: blocked private/loopback address")
+)
 
 // dialControl は、接続直前に呼ばれる net.Dialer の ControlContext 関数の型です。
 type dialControl = func(ctx context.Context, network, address string, c syscall.RawConn) error
@@ -52,6 +67,32 @@ type conditionalPropagator struct {
 	inner propagation.TextMapPropagator
 }
 
+// spanQueryRedactionKey は、span 記録用に URL から一時退避した機密構成要素を運ぶ ctx キーです。
+type spanQueryRedactionKey struct{}
+
+// redactedURLParts は、span 記録のために URL から一時退避する機密になり得る構成要素です。
+// フラグメントは実 HTTP リクエストには送出されませんが、url.full には現れるため退避対象に含めます。
+type redactedURLParts struct {
+	rawQuery    string
+	fragment    string
+	rawFragment string
+}
+
+// spanURLRedactingRoundTripper は、otelhttp が span の url.full へ記録する URL からクエリ・フラグメントを除去します。
+// otelhttp は url.full を req.URL.String() から算出するため、otelhttp へ渡す直前にこれらを ctx へ退避して URL から
+// 取り除き（span には現れなくなる）、実送信直前に urlSecretRestoringRoundTripper が復元します。
+// クエリ・フラグメントは機密になり得るため既定で全除去します（httpclient のエラーメッセージ redaction＝redactURL と同方針）。
+// userinfo は otelhttp が url.full 算出時に別途除去するため、ここでは扱いません。
+type spanURLRedactingRoundTripper struct {
+	inner http.RoundTripper
+}
+
+// urlSecretRestoringRoundTripper は、span 記録のために除去した機密構成要素を実送信直前に URL へ復元する base transport です。
+// otelhttp は復元前に url.full を記録済みのため、ここでの復元は span へ影響しません。
+type urlSecretRestoringRoundTripper struct {
+	base http.RoundTripper
+}
+
 // NewHTTPClientTransport は、SSRF ガード付き base transport を otelhttp で計装した outbound transport を生成します。
 //
 // HTTP span 生成は自動化し、traceparent/baggage の outgoing inject は ContextWithTracePropagation の
@@ -62,16 +103,52 @@ func NewHTTPClientTransport(tp trace.TracerProvider, propagator propagation.Text
 }
 
 // newHTTPClientTransport は、dial control を差し替え可能にした内部コンストラクタです。
+//
+// transport チェーンは外側から redact(退避) → otelhttp(span生成) → restore(復元) → guardedBase の順です。
+// otelhttp は span の url.full を req.URL.String() から算出しクエリ・フラグメント込みで記録するため、otelhttp へ
+// 渡す前にこれらを退避・除去し、実送信直前に復元することで span からのみ落とします（実リクエストは無改変）。
+//
+// 不変条件: otelhttp の base には URL をエラーメッセージへ整形しない素の RoundTripper（*http.Transport）を渡します。
+// エラー時 otelhttp は span へ err.Error() を記録するため、base が *url.Error（URL 込み）を返す層（例: http.Client
+// でのラップ）だと復元後のクエリがエラー span へ漏れます。この境界を跨ぐ RoundTripper を挟む改修は避けてください。
 func newHTTPClientTransport(
 	tp trace.TracerProvider, propagator propagation.TextMapPropagator, control dialControl,
 ) *HTTPClientTransport {
 	rt := otelhttp.NewTransport(
-		newGuardedBaseTransport(control),
+		urlSecretRestoringRoundTripper{base: newGuardedBaseTransport(control)},
 		otelhttp.WithTracerProvider(tp),
 		otelhttp.WithMeterProvider(metricnoop.NewMeterProvider()),
 		otelhttp.WithPropagators(conditionalPropagator{inner: propagator}),
 	)
-	return &HTTPClientTransport{rt: rt}
+	return &HTTPClientTransport{rt: spanURLRedactingRoundTripper{inner: rt}}
+}
+
+// RoundTrip は、クエリ・フラグメントを ctx へ退避し URL から除去した clone を otelhttp へ渡します。
+func (rt spanURLRedactingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL == nil || (req.URL.RawQuery == "" && req.URL.Fragment == "" && req.URL.RawFragment == "") {
+		return rt.inner.RoundTrip(req)
+	}
+	// http.RoundTripper は呼び出し元の Request を変更してはならないため clone する。
+	parts := redactedURLParts{
+		rawQuery:    req.URL.RawQuery,
+		fragment:    req.URL.Fragment,
+		rawFragment: req.URL.RawFragment,
+	}
+	cloned := req.Clone(context.WithValue(req.Context(), spanQueryRedactionKey{}, parts))
+	cloned.URL.RawQuery = ""
+	cloned.URL.Fragment = ""
+	cloned.URL.RawFragment = ""
+	return rt.inner.RoundTrip(cloned)
+}
+
+// RoundTrip は、退避済みの機密構成要素があれば URL へ復元してから base へ委譲します。
+func (rt urlSecretRestoringRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if parts, ok := req.Context().Value(spanQueryRedactionKey{}).(redactedURLParts); ok && req.URL != nil {
+		req.URL.RawQuery = parts.rawQuery
+		req.URL.Fragment = parts.fragment
+		req.URL.RawFragment = parts.rawFragment
+	}
+	return rt.base.RoundTrip(req)
 }
 
 // RoundTripper は、ラップしている http.RoundTripper を返します。
@@ -115,6 +192,12 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 	}
 	dialer := &net.Dialer{ControlContext: control}
 	base.DialContext = dialer.DialContext
+	// 不変条件: proxy 経由では dial 先が宛先ではなく proxy になり、guardedDialControl の宛先 IP 検査が
+	// 素通りする（SSRF ガードの無効化）。DefaultTransport から継承した環境変数由来の Proxy を無効化し、
+	// 宛先へ直結してガードを常に宛先 IP に効かせる（ADR-0020 の最終宛先 IP 検査と整合）。
+	// 運用注意: 直接 egress を遮断し forward proxy 必須にした環境では outbound HTTP が全断する
+	// （HTTP_PROXY 注入では復活せず、ネットワーク層での吸収が必要）。
+	base.Proxy = nil
 	return base
 }
 
@@ -124,25 +207,30 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
-		return err
+		return xerrors.Wrap(err, "ssrf guard: blocked malformed address "+address)
 	}
 	addr, err := netip.ParseAddr(host)
 	if err != nil {
-		return xerrors.New("ssrf guard: blocked unparsable address " + host)
+		return xerrors.Wrap(errSSRFUnparsableAddress, host)
 	}
 	// zone を落として family を正規化し、Prefix 判定を IPv4-mapped/zone 付きでも取りこぼさないようにする。
 	addr = addr.Unmap().WithZone("")
+	// 埋め込み IPv4 を取り出し、以降の loopback/private/予約帯判定を実宛先に効かせる。
+	if nat64WellKnownPrefix.Contains(addr) {
+		b := addr.As16()
+		addr = netip.AddrFrom4([4]byte{b[12], b[13], b[14], b[15]})
+	}
 	if addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() || addr.IsUnspecified() {
-		return xerrors.New("ssrf guard: blocked address " + host)
+		return xerrors.Wrap(errSSRFBlockedAddress, host)
 	}
 	// bogon/予約帯は正当な宛先にならないため allowPrivateNetwork フラグに関わらず常時拒否する。
 	for _, p := range reservedPrefixes {
 		if p.Contains(addr) {
-			return xerrors.New("ssrf guard: blocked reserved address " + host)
+			return xerrors.Wrap(errSSRFReservedAddress, host)
 		}
 	}
 	if !allowPrivateNetworkFromContext(ctx) && (addr.IsLoopback() || addr.IsPrivate() || cgnatPrefix.Contains(addr)) {
-		return xerrors.New("ssrf guard: blocked private/loopback address " + host)
+		return xerrors.Wrap(errSSRFPrivateAddress, host)
 	}
 	return nil
 }

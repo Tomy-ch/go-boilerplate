@@ -14,7 +14,7 @@ flowchart LR
 ```
 
 1. `oapi-codegen` generates `gen/validate.gen.go` containing a base64-encoded, gzipped OpenAPI spec
-2. `GetValidator()` calls `gen.GetSwagger()` to decode and return the parsed schema
+2. `GetValidator()` calls `gen.GetSpec()` to decode the schema, then strips `servers` so route resolution stays host-agnostic (keeping them makes the router match on Host, so any listener other than the documented `localhost:8080` answers every request with 404)
 3. `oapi.Middleware()` (parent package) wraps the oapi-codegen request validator with this schema
 
 ## Validation Coverage
@@ -26,7 +26,7 @@ The middleware validates:
 - **Request body** — schema, required fields, content-type
 - **Content-Type header** — must match the OpenAPI spec
 
-Validation errors are returned as `openapi3filter.RequestError` and caught by the `errorhandler`.
+Validation errors are turned into an `echo.HTTPError` by the validation middleware and caught by the `errorhandler`.
 
 ## Code Generation
 

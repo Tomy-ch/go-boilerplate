@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-レイヤー依存関係ルールは [`docs/rules.md`](../../rules.md) に文書化され、`AGENTS.md` に要約されている。ドキュメントだけでは不十分である: コードレビューの規律に依存するルールは、特にコードベースが成長してコントリビューターが変わるにつれ、一貫性なく適用される。レビューをすり抜けるクロスレイヤーインポート — 例えばユースケースパッケージがインフラストラクチャパッケージをインポートする — は、[ADR-0002](0002-onion-architecture.ja.md) と [ADR-0003](0003-interface-based-decoupling.ja.md) が確立したアーキテクチャ境界を静かに侵食する。
+レイヤー依存関係ルールは [`docs/rules.md`](../rules.ja.md) に文書化され、`AGENTS.md` に要約されている。ドキュメントだけでは不十分である: コードレビューの規律に依存するルールは、特にコードベースが成長してコントリビューターが変わるにつれ、一貫性なく適用される。レビューをすり抜けるクロスレイヤーインポート — 例えばユースケースパッケージがインフラストラクチャパッケージをインポートする — は、[ADR-0002](0002-onion-architecture.ja.md) と [ADR-0003](0003-interface-based-decoupling.ja.md) が確立したアーキテクチャ境界を静かに侵食する。
 
 このプロジェクトは、構造的ルールを機械的にチェック可能な制約としてエンコードし、偶発的に迂回されないようにする意図的な選択をした。同じ原則が他の構造的な関心事にも適用される: 生成コードは手動で編集されてはならない（CI の再生成チェックで検証）、API コントラクトは実装より先行しなければならない（OpenAPI ファーストフロー）。
 
@@ -30,7 +30,7 @@ accepted
 - `maintain_a_sound_controller` — コントローラーはインフラストラクチャパッケージをインポートしてはならない。
 - `maintain_a_sound_infrastructure` — インフラストラクチャはコントローラーパッケージをインポートしてはならない。
 
-レイヤーごとに許可・不許可されるものの完全な帰結テーブルは [`docs/rules.md`](../../rules.md) にある; この ADR はドキュメントだけでなくツールによってそれらのルールを強制するという決定のみを記録する。
+レイヤーごとに許可・不許可されるものの完全な帰結テーブルは [`docs/rules.md`](../rules.ja.md) にある; この ADR はドキュメントだけでなくツールによってそれらのルールを強制するという決定のみを記録する。
 
 ## 影響
 
@@ -61,7 +61,7 @@ accepted
 
 ## 補足
 
-- 完全なレイヤールールと根拠: [`docs/rules.md`](../../rules.md) §§「Layer Dependency Rules」「Usecase Dependency Rules」「Domain Layer Constraints」「Infrastructure Implementation Rules」。
+- 完全なレイヤールールと根拠: [`docs/rules.md`](../rules.ja.md) §§「Layer Dependency Rules」「Usecase Dependency Rules」「Domain Layer Constraints」「Infrastructure Implementation Rules」。
 - リンター設定: `.golangci.yaml`（depguard の `rules` ブロック — `maintain_a_sound_domain`、`maintain_a_sound_usecase`、`maintain_a_sound_controller`、`maintain_a_sound_infrastructure`）。
 - ソース: `docs/architecture.md` §「Structural Safety」。
 - ソース: `docs/rules.md` §「Layer Dependency Rules」（強制注記）。

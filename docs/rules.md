@@ -31,6 +31,16 @@ flowchart LR
 
 **The domain layer must always be the most independent layer.**
 
+### Domain shared kernel
+
+A domain package must **not** import another aggregate (`internal/domain/` is denied by depguard).
+Business-semantic value objects shared across aggregates — e.g. `money.Price`, which cannot live in
+`pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
+[`internal/domain/kernel`](../internal/domain/kernel/README.md), which every domain package may
+import (depguard allows `internal/domain/kernel`). Admission to the kernel is deliberately narrow
+(value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README); it is not
+a `shared` / `common` junk drawer. Rationale: [ADR-0104](adr/0104-domain-shared-kernel.md).
+
 ### Rationale
 
 This rule prevents the domain model from depending on frameworks or infrastructure.
@@ -172,14 +182,63 @@ Examples:
 > Rationale: [ADR-0027](adr/0027-lightweight-cqrs.md), [ADR-0028](adr/0028-system-cqrs-dml-category.md).
 
 - Repository handles Aggregate persistence and simple reads of a single Aggregate
-  (fetch by ID, and simple filter / list / count by the Aggregate's own attributes).
-- QueryService handles reads that cross Aggregates or require high query complexity
-  (multi-table joins, aggregation, keyword/full-text search, dedicated read models) -- CQRS read side.
+  (fetch by ID, and simple filter / list / count by the Aggregate's own attributes), **including a
+  uniquely-determined JOIN to a context-nested reference master** (see boundary clarifications).
+- QueryService handles reads that cross *independent* Aggregates or require high query complexity
+  (multi-table joins across independent Aggregates, aggregation, keyword/full-text search, dedicated
+  read models) -- CQRS read side.
 
 Forbidden:
 
-- Writing cross-Aggregate or aggregation/join queries in Repository
+- Writing join / aggregation queries across *independent* Aggregates in Repository — **exempt**: a
+  uniquely-determined JOIN to a context-nested reference master (a child sub-domain lookup, see below)
 - Writing domain logic in QueryService
+
+Boundary clarifications (common misreads):
+
+- **"Returns many rows" is not "crosses Aggregates."** Listing every row of one table
+  (e.g. `SELECT * FROM prefectures ORDER BY code`) is a single-Aggregate `list` and stays in
+  Repository. "Cross-Aggregate" means joining or spanning *different* Aggregates, not returning
+  multiple rows of one.
+- **"The response is a DTO" is not a QueryService trigger.** Every read is eventually mapped to
+  a response DTO. What moves a read to QueryService is a natural shape that would be wasteful to
+  reconstruct as a full Aggregate (heavy Aggregate, joins, pagination) — not the mere fact that
+  the API returns a DTO.
+- Repository reads are **not limited to fetch-by-ID**: simple filter / list / count by the
+  Aggregate's own attributes — including an unfiltered full list — belong to Repository.
+- **The Repository / QueryService split is storage-agnostic.** The discriminator is not the
+  engine (RDB vs NoSQL) or the technique (full-text search), but *what the read targets*: the
+  Aggregate's own system-of-record state, from which the full Aggregate is reconstructable
+  (→ Repository), versus a derived projection / read model — a search index, a separate search
+  store, a denormalized / generated search column, or a cross-Aggregate JOIN view — from which
+  the Aggregate cannot be reconstructed (→ QueryService). A document store used as the
+  Aggregate's system of record stays Repository even when it offers full-text search; an
+  Elasticsearch index built from that store is QueryService because it is a derived projection.
+- **"Keyword / full-text search" is a typical QueryService instance, not the rule.** A plain
+  `ILIKE` on the Aggregate's *own* columns is a single-Aggregate Repository filter. Full-text
+  search becomes QueryService only when it reads a derived search projection (a search index, a
+  search store, or a denormalized / generated search column).
+- **Independent Aggregates: resolve their fields in the Usecase, not via a JOIN.** To attach a
+  *separate* Aggregate's data — one with its own top-level domain and an independent transactional
+  lifecycle (e.g. a prefecture name; `internal/domain/prefecture`) — to a list, batch-fetch it
+  through its own Repository (`FindByIDs`) and merge by key in the Usecase layer, keeping each read
+  a single-Aggregate Repository read. A JOIN spanning two *independent* Aggregates returns a
+  flattened view and is a QueryService read model, not a Repository read.
+- **A reference-master JOIN stays a single-Aggregate Repository read.** A *reference master* —
+  fixed / standing lookup data (an enum-like table such as `purchase_statuses` / `product_statuses`)
+  with no independent write / transactional lifecycle, reached through a mandatory,
+  uniquely-determined FK — is part of the owning Aggregate's semantic set, not a foreign Aggregate.
+  Projecting such a master's display attribute (e.g. the status *name*) by JOINing it into the
+  owner's list / read is a single-Aggregate Repository read — **not** a cross-Aggregate JOIN — and
+  does **not** require a QueryService or a usecase-layer merge. **The criterion is the joined data's
+  *nature*, not how it is modeled in Go.** Whether the master also has its own domain sub-package is
+  irrelevant: `internal/domain/product/status` exists only because products expose a master-list
+  endpoint, whereas `purchases` resolves its status purely by JOIN into a `StatusName string` with no
+  Go type of its own — both qualify equally. Discriminator: an *independent* Aggregate (its own
+  transactional lifecycle, typically its own top-level domain, e.g. `internal/domain/prefecture`)
+  MUST be resolved by a usecase-layer `FindByIDs` merge, never a Repository JOIN; a *fixed reference
+  master* reached by a mandatory uniquely-determined FK MAY be JOINed in the owner's Repository. The
+  merge form remains valid for a reference master too; the JOIN is simply not forbidden.
 
 ## DTO / Type Boundary Rules
 
@@ -196,6 +255,62 @@ Forbidden:
 
 - Do not pass sqlc generated types to Usecase / Domain
 - Always convert to Domain Entity or DTO
+
+## Function Signature Rules
+
+Layer-independent: this applies to constructors, behavior methods, usecase functions, and helpers alike.
+
+A function taking **two or more parameters of the same type** lets a call site swap them with no compile
+or lint error. Bundle those parameters into a value struct so every call site states which one each value
+is. This does not hand the check to the compiler — a same-typed field filled with the wrong value still
+compiles — but it removes the position-dependent binding that let adjacent same-typed arguments
+transpose, so what remains is a named mistake visible in review rather than an invisible ordering one.
+Keep call sites keyed: an unkeyed composite literal reintroduces the ordering dependency this removes.
+
+**When it applies.** The trigger is two or more parameters of one type in a single signature; compare the
+resolved types, since two distinct named types are distinct even when both wrap a string. Beyond the
+trigger, weigh how likely a swap is to survive undetected:
+
+- **Optional / pointer parameters** — `nil` is valid for either, so nothing at runtime rejects the swap.
+- **Free-form values** — no validation would reject the other parameter's value.
+- **A caller that maps positionally** — a Repository rebuilding an entity from a DB row, a seed, or any
+  code that fills arguments in column order rather than by meaning.
+- **Adjacent parameters** — neighbours are easier to transpose than distant ones.
+
+**When it does not apply.**
+
+- **Every parameter has a distinct type.** The compiler already rejects a swap, so keep the positional
+  form. This is the common case, and bundling by reflex is not the rule.
+- **A swap cannot survive construction.** The invariants reject the transposed values, so the mistake
+  fails fast instead of propagating.
+- **The signature is merely long.** Parameter count alone is not the criterion.
+
+**Choosing the remedy.** Give the parameters distinct types (a VO each) when the value deserves an
+invariant of its own — that removes the swap risk as a side effect. Bundle into a struct when a VO would
+add no invariant and the value really is a plain primitive. Either way, lock the mapping with a test that
+passes **distinct** values for the same-typed parameters and asserts each one — including at the
+persistence boundary, where field names still allow a wrong assignment.
+
+Per-layer application: `internal/domain/README.md` (attribute structs on entities),
+`internal/usecase/README.md` (Params DTO structs on usecase inputs).
+
+## Package / Directory Naming Rules
+
+- Go package identifiers are a single lowercase word with **no underscores** (staticcheck ST1003).
+- A multi-word aggregate uses one of two forms:
+  - **Context nesting** — when a bounded context groups several sub-aggregates / masters, nest
+    under the context directory: `internal/<layer>/<context>/<sub>/` with package `<sub>`
+    (e.g. `internal/domain/product/category` → package `category`,
+    `internal/domain/product/status` → package `status`).
+  - **Concatenation** — a standalone multi-word aggregate with no grouping context concatenates
+    into one word (e.g. `useridentity`, `exchangerate`). Existing concatenated packages stay
+    as-is; prefer context nesting once a context gains a second sub-aggregate.
+- Database DML and sqlc-generated directories use **snake_case matching the table name**
+  (`product_category`, `user_identity`), independent of the Go package layout.
+- Controller handler directories match the **HTTP resource (route) name**
+  (`product-categories`, `prefectures`), not the Go package layout.
+- Type names may keep the aggregate noun inside a same-named package
+  (`category.Category`, `prefecture.Prefecture`).
 
 ## Layer Responsibility Rules
 
@@ -235,6 +350,7 @@ Usecase should **avoid direct dependency on Infrastructure**.
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
+- **Never return a `xerrors.New(...)` built inside a function body.** Declare the error as a package-level sentinel (`var errXxx = xerrors.New("...")`) and attach the dynamic context with `xerrors.Wrap(errXxx, ctx)`. An error created in place is unreachable to `errors.Is`, so callers cannot branch on it and tests are forced onto message-string matching — a one-word wording change then breaks the test, and a different error passes it. Enforced mechanically by `internal/architest` (`TestNoInlineXerrorsNew`); there is no allowlist. `_test.go` is out of scope — building an ad-hoc error to inject is a legitimate use there.
 - When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
 - To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0040](adr/0040-error-metadata-code-message-details.md).
 - Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0041](adr/0041-error-details-opt-in-gate.md).
@@ -252,8 +368,11 @@ upstream <https://go.dev/doc/comment>).
   - **Where it is called from** — call-site / registration notes coupled to organization: `// 〜の登録は di 層が担う`.
   - **Change history / development 経緯** — migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため` — these rot and belong in the PR / commit log.
   - **Restatement / tautology** — `// 内部表現は [16]byte`, `// User は User です`; or a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (an unresolved, legitimate TODO is not flagged).
+- **Volume is itself a cost.** A comment is re-read every time the code is, so length raises cognitive load even when each line is individually defensible. State the contract in as few words as it takes and stop. Two habits produce most of the bloat: spelling out a **repo-wide rationale** at every declaration that follows it (state it once here and let the code stay silent — link, do not repeat), and **narrating the mechanism** of a language feature the reader already knows. A comment the reader must work through to reach a fact the signature already gave them is a net loss.
+- **Idiomatic code needs no explanation.** The routine surface of building an API — an entity constructor, a Params / attribute struct, a Repository's row-to-entity conversion, a handler's bind → usecase → response, a table of validated fields — is conventional, and a reader fluent in this codebase already knows what it is for. Comment only what **departs** from the convention, or what the convention cannot express. This is **suppression, not elimination**: an exported declaration still carries its `Name`-prefixed contract, and a genuinely non-obvious Why still stays. Conversely, the further code sits from the idiom (a workaround, a deliberate deviation, a constraint imposed from outside), the more a comment earns its space.
 - **Correct outranks everything.** A doc comment that lies about or has drifted from the actual behavior is worse than no comment — the highest-priority finding.
 - **A non-obvious Why is the one addition godoc does not mandate but this repo keeps** — the reason behind a decision the code cannot convey (a load-bearing constraint / intent). OK: `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"). Include it only when genuinely non-obvious.
+- **Never invent a Why.** A Why is kept only when it is non-obvious **and** verifiable — derivable from the code, a design document, or the configuration. A rationale you cannot establish is a guess, and a plausible guess is worse than silence: a comment reads as authoritative, so a wrong Why misleads every later reader and survives longer than the code it explains. When a defensive branch or a magic value looks like it needs a reason you cannot pin down, leave the comment out and raise the gap in review instead of writing something that sounds right. Restating only the part you can verify is not a fix either — that lands back on **restatement**.
 - **In-function comments are outside godoc's purview.** Write one only when it is **non-obvious AND unclear without it**. The noise list above still applies; a non-obvious Why is the main legitimate case.
 - **Language scope**: godoc governs Go only, but this content standard is **language-agnostic** — it applies to non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). Non-Go is **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same bar — no How narration, no 経緯, no restatement; a non-obvious Why stays.
 - **Enforcement split**: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of doc comments on exported declarations. This **content** rule (godoc-conformant contract + non-obvious Why + no noise) is semantic and cannot be linted — it is enforced by review: `impl-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments and **flags** noise, then auto-fixes the confirmed findings.

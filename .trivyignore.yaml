@@ -1,0 +1,21 @@
+# Trivy ignore policy.
+#
+# Same rule as .github/zizmor.yml: no check is disabled globally. Every entry below
+# is pinned to a specific path so that a NEW file hitting the same check still fails
+# the gate, and every entry carries the reason it is accepted. Remove an entry once
+# the underlying condition changes rather than keeping it as a permanent allowlist.
+
+misconfigurations:
+  - id: DS-0002
+    paths:
+      - "docker/tools/Dockerfile"
+      - "docker/document/Dockerfile"
+      - "docker/garage/Dockerfile"
+    statement: >-
+      Running as root is deliberate for these three images and none of them ships.
+      tools/ is the containerized tool runner: code generation writes into the
+      bind-mounted work tree, so it must own the host uid rather than a fixed
+      in-image user. document/ builds the docs portal and garage/ is a local
+      S3-compatible stand-in; both are dev-only compose services. The image that is
+      actually deployed, docker/server/Dockerfile, runs as the non-root `app` user
+      and is deliberately NOT listed here, so a regression there still fails the gate.

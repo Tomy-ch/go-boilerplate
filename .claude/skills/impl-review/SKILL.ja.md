@@ -68,6 +68,7 @@
 - どの layer/領域が触られたか検出（`internal/controller/**`, `usecase`, `domain`, `infrastructure`, `pkg`, `openapi/**`, `database/**`）。
 - **エンドポイント** が触られたか（controller handler か `openapi/**`）— Step 4 を回すかの判定。
 - **共有** OpenAPI コンポーネント（複数 operation から参照される `components/*`）が編集されたか — Step 4 を全 consumer に広げる判定。
+- **非生成の本番 `.go`**（`internal/**` / `pkg/**` 配下。`*_test.go` / `*.gen.go` / `*.sql.go` / `*_mock.go` を除く）が触られたか — `test-gap` lens を回すかの判定であり、そのコード起点列挙を駆動する変更シンボル一覧を与える。
 
 ## Step 2 — Finder の fan-out（別モデル、lens ごとに1体）
 
@@ -79,8 +80,11 @@
 | `security` | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
 | `architecture` | 常時 |
 | `runtime-gap` | controller / DI / `openapi/**` / `database/**` が触られた時 |
+| `test-gap` | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られた時 |
 
 各 subagent プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`CLAUDE.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。`agentType: "adversarial-reviewer"`、`model:` は規則どおり、`label` は `find:security` のように。
+
+**`test-gap` lens 定義**（本 lens は *コード起点* — test ファイルではなく変更された本番ソースを読む）: diff で追加/変更された各本番シンボルについて、その論理分岐 / error sentinel / 境界条件 / zero 値防御を列挙し、ペアの `*_test.go` が各々を到達し*固有に* assert しているか（`require.ErrorIs` で固有 sentinel、区別される値/state — `require.Error` / `NoError` 止まりでない）を確認する。2 形を報告: diff で変更された本番シンボルに **テストが全く無い**、および変更シンボルの到達可能分岐が **未テスト or 空虚 assert**。 これは **high-signal サブセット** — impl-review は *変更された* コードで test ファイル起点の読みが見落とす到達ギャップを挙げるだけで、パッケージ全体の網羅的なシンボル列挙はしない。 変更が test 中心のとき、または全 subject に対する完全な 2 軸マトリクス（Lens 4 分岐×意味 + Lens 5 シンボル網羅）が欲しいときは `/test-review` に委ねる。 指摘は read-only の提案（自動修正しない）で、diff 内の subject 行にアンカーするため他のコード lens 同様インライン投稿される。
 
 専用 finder を追加で並列起動する: (1) **comment-reviewer**（`agentType: "comment-reviewer"`, `label: "find:comment"`）— diff がコメントを追加/変更した時（ほぼ常時）、指摘は Step 5.5 で自動修正。(2) **type-design-reviewer**（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）— diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で採点し、指摘は suggestion 級（自動修正しない）。
 
@@ -111,7 +115,7 @@
 ```text
 ## ローカルレビュー結果（reviewer: <model> / implementer: <model>）
 
-スコープ: <base>...HEAD（<N> files） / lens: correctness, security, architecture, runtime-gap
+スコープ: <base>...HEAD（<N> files） / lens: correctness, security, architecture, runtime-gap, test-gap
 ランタイム検証: 実施（curl/o11y）/ 対象外（エンドポイント変更なし）
 
 ### CONFIRMED（要対応）

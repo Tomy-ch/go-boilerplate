@@ -1,0 +1,73 @@
+get:
+  operationId: GetPurchases
+  tags:
+    - v1/purchases
+  summary: 購入履歴一覧の取得
+  description: |
+    認証主体（自分）の購入履歴を cursor ページネーションで取得します。認証必須です。
+    注文日時の降順（orderedAt DESC, id DESC）で安定して並び、前ページのレスポンスに含まれる
+    nextCursor を after に渡して次ページを取得します（無限スクロール）。
+    一覧は概要（code / totalAmount / status / orderedAt）のみを返し、明細は含みません。
+    他ユーザーの購入は返しません（所有権フィルタで閉じるため、対象がなければ空一覧です）。
+    totalAmount は USD セント単位の整数です。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../components/parameters/pagination/CursorAfterParam.yaml'
+    - $ref: '../../components/parameters/pagination/CursorFirstParam.yaml'
+  responses:
+    '200':
+      description: cursor ページネーションで取得した自分の購入履歴一覧
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/purchases/PurchaseListResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
+post:
+  operationId: PostPurchases
+  tags:
+    - v1/purchases
+  summary: 購入の作成
+  description: |
+    明細（商品IDと数量）の配列から購入を作成します。認証必須です。
+    在庫減算・購入作成・明細作成を単一トランザクションで原子的に行い、在庫不足（売り越し）は 409 で
+    購入を成立させません。明細の空配列・同一 productId の重複は 422 です。
+    Idempotency-Key により二重 POST を冪等化します。金額はすべて USD セント単位の整数です。
+    displayCurrency 指定時は合計金額の参考換算額（referenceAmount）を返します（非永続・レート障害時は null）。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../components/parameters/idempotency/IdempotencyKeyParam.yaml'
+    - $ref: '../../components/parameters/purchase/DisplayCurrencyParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/requests/purchases/PurchasesPostRequest.yaml'
+  responses:
+    '201':
+      description: 購入の作成に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/PurchaseResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
+    '409':
+      $ref: '../../components/schemas/errors/Conflict409.yaml'
+    '422':
+      $ref: '../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'

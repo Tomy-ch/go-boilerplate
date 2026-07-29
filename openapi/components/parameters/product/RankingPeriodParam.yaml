@@ -1,0 +1,12 @@
+name: period
+in: query
+description: |
+  集計対象期間。`all`（既定）は全期間、`30d` は注文日時が直近30日以内の購入のみを集計します。
+required: false
+schema:
+  type: string
+  enum:
+    - all
+    - 30d
+  default: all
+  example: all

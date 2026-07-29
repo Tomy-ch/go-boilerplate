@@ -25,6 +25,11 @@ jobs:
     env:
       ENV: ci
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -52,19 +57,21 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
-      # PR の source（`.go` 配下、ただし *.gen.go / *_mock.go 等の生成物は除外）が
-      # 触られているかを判定。触られていない場合は generator 側ドリフトの可能性が高い。
+      # Determine whether the PR touched the source (`.go` files, excluding generated output such as
+      # *.gen.go / *_mock.go). If it did not, generator-side drift is the likely cause.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          git fetch --no-tags --depth=200 origin "${BASE_REF}" || true
           changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
-          # 生成物自身は source から除外
+          # Exclude the generated output itself from the source set
           if echo "$changed" | grep -E '\.go$' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|/mock_.+\.go$' | grep -q .; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
@@ -83,17 +90,21 @@ jobs:
             echo "No differences in Go generated output were detected." > "$out"
             exit 0
           fi
+          # Disable SC2016: `make ...` in the notification message is shown literally (must not expand)
+          # shellcheck disable=SC2016
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in Go generated output have been detected" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '`make gen-go-code`（または `make gen`）をローカルで実行し、変更をコミットしてください。' > "$out"
+            printf '%s\n' "Run \`make gen-go-code\` (or \`make gen\`) locally and commit the changes." > "$out"
           else
-            echo "title=## ⚠️ Go 生成物のドリフトを検知（.go source 未変更）" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '本 PR では `.go` source が変更されていないため、generator 側のドリフト（mockgen / oapi-codegen の依存バージョン差・base 側の古い生成物 等）の可能性があります。`make gen-go-code` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+            echo "title=## ⚠️ Drift in Go generated output detected (.go source unchanged)" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR does not modify any \`.go\` source, so this may be generator-side drift (mockgen / oapi-codegen dependency version differences, stale generated artifacts on the base, etc.). Run \`make gen-go-code\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
+          # Disable SC2016: the `%s` that renders the filename as markdown code is literal (must not expand)
+          # shellcheck disable=SC2016
           {
             echo ""
             while IFS= read -r f; do
-              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
             done < /tmp/changed_files.txt
           } >> "$out"
 

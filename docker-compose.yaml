@@ -7,10 +7,14 @@ services:
       context: .
       dockerfile: docker/server/Dockerfile
       target: tooling
+      secrets:
+        - github_token
     ports:
-      - "8080:8080"   # APIポート
-      - "2345:2345"   # デバッグ(dlv)ポート
-      - "6060:6060"   # メトリクス(pprof)ポート
+      # ホスト公開ポートは DB スロットプール（cmd/db-slot）が worktree 毎に割り当てる（既定 8080/2345/6060）。
+      # 複数 worktree で同時に make serve するための分離。コンテナ内部は常に固定。
+      - "${API_HOST_PORT:-8080}:8080"   # APIポート
+      - "${DLV_HOST_PORT:-2345}:2345"   # デバッグ(dlv)ポート
+      - "${PPROF_HOST_PORT:-6060}:6060" # メトリクス(pprof)ポート
     volumes:
       - .:/app
     extra_hosts:
@@ -21,12 +25,21 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      mock_auth_server:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      garage_init:
+        condition: service_completed_successfully
     profiles:
       - development
 
   database: # PostgreSQLデータベース
-    image: postgres:18.3-bookworm
+    image: postgres:18.4-trixie@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
     ports:
+      # 固定ポートを持つ共有インフラ（database / observability / garage）は、全 checkout が
+      # 単一プロジェクト gobp-shared の 1 インスタンスを共有する。worktree の並列化は
+      # per-worktree のデータベース（wt<N>_local / wt<N>_test）で行う（cmd/db-slot）。
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql
@@ -48,7 +61,7 @@ services:
       - tools
 
   observability:
-    image: grafana/otel-lgtm:0.28.0
+    image: grafana/otel-lgtm:0.28.0@sha256:10f48eb2f8670134df542177bb19536c55421b089e43f9dfc2a27d4c078204d8
     ports:
       - "3000:3000" # Grafana UI
       - "4317:4317" # OTLP gRPC
@@ -56,6 +69,73 @@ services:
       - "3200:3200" # Tempo API（任意・スクリプト確認用）
     profiles:
       - development
+
+  mock_auth_server: # 疑似 OIDC 認証サーバー（JWT Test Provider）
+    build:
+      context: .
+      dockerfile: docker/mock-auth-server/Dockerfile
+    ports:
+      # mock 認証サーバーのホスト公開ポートもスロット毎に割り当てる（既定 4000、内部は常に 4000）。
+      - "${MOCK_AUTH_HOST_PORT:-4000}:4000"
+    environment:
+      # issuer はホスト OS / ブラウザから参照する URL。JWKS 取得はコンテナ名で内部解決する
+      # （Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/.well-known/jwks.json）。
+      OIDC_PORT: "4000"
+      OIDC_ISSUER: "http://localhost:4000"
+      OIDC_AUDIENCE: "go-boilerplate-api"
+      OIDC_CLIENT_ID: "go-boilerplate-client"
+      # /bypass/* ・ /admin/* を有効化（opt-out。無効化は "disabled"）。本番モードでは server が起動を拒否する。
+      MOCK_AUTH_DEV_ENDPOINTS: "enabled"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - auth
+
+  garage: # S3 互換オブジェクトストレージ（ローカル開発用。テストは gofakes3 in-process を使う）
+    image: dxflrs/garage:v2.3.0@sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690
+    entrypoint: ["/garage", "-c", "/etc/garage.toml", "server"]
+    ports:
+      - "3900:3900" # S3 API
+      - "3902:3902" # Web API（匿名 read の公開配信）
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "-c", "/etc/garage.toml", "status"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - tools
+
+  garage_init: # Garage の初期プロビジョニング（レイアウト / バケット / アクセスキー・冪等・one-shot）
+    build:
+      context: docker/garage
+    entrypoint: ["/bin/sh", "/usr/local/bin/garage-init.sh"]
+    depends_on:
+      garage:
+        condition: service_healthy
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      # イメージに焼かずマウントで渡し、再ビルド忘れで古いプロビジョニングが走るのを避ける。
+      - ./docker/garage/init.sh:/usr/local/bin/garage-init.sh:ro
+      # garage server が生成したノード鍵を CLI が読むため meta を共有する。
+      - garage_meta:/var/lib/garage/meta
+    # バケット / アクセスキーは Go 側と同一の値でなければならないため、値を再掲せず env/.env を直接渡す。
+    env_file:
+      - env/.env
+    restart: "no"
+    profiles:
+      - development
+      - tools
 
 # -------------------------------------
 # 補助サービス
@@ -67,16 +147,18 @@ services:
       dockerfile: docker/document/Dockerfile
       target: document_viewer
     ports:
-      - "8082:80"
+      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 80）。
+      - "7001:80"
     volumes:
       - ./docs:/usr/share/nginx/html:ro
     profiles:
       - tools
 
   sql_editor:
-    image: sosedoff/pgweb:latest
+    image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
     ports:
-      - "8081:8081"
+      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 8081）。
+      - "7000:8081"
     environment:
       DATABASE_URL: postgres://postgres:postgres-password@database:5432/local?sslmode=disable
     depends_on:
@@ -87,7 +169,7 @@ services:
       - database
 
   er_diagram_generator: # ER図生成ツール
-    image: schemaspy/schemaspy:latest
+    image: schemaspy/schemaspy:7.0.2@sha256:c8f98116a5cfe4b00b379eeb23b2022cdea4c9192cbccb843a75049e752479b7
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5433:3000"
@@ -108,6 +190,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: go_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -123,6 +207,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: node_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -140,6 +226,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: python_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -150,6 +238,15 @@ services:
     profiles:
       - generate
 
+secrets:
+  # mise のツール解決を認証付きにするビルド時トークン。build-arg と違いイメージ履歴に残らない。
+  github_token:
+    environment: GITHUB_TOKEN
+
 volumes:
   pg_data:
+    external: false
+  garage_meta:
+    external: false
+  garage_data:
     external: false

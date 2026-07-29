@@ -7,11 +7,14 @@ on:
       - staging
       - develop
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -24,21 +27,30 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          cache: true
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
 
       - name: Prepare vendor
         run: |
           go mod vendor
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: Define image tag
         id: meta
@@ -132,27 +144,32 @@ jobs:
           name: sbom-summary.md
           path: sbom-summary.md
 
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          image-ref: ${{ steps.meta.outputs.image }}
-          scanners: 'vuln'
-          format: table
-          ignore-unfixed: false
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-image-scan.txt
+          version: 2026.6.0
+          install: false
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install trivy
+        run: mise install aqua:aquasecurity/trivy
+
+      # Scan flags live in .makefiles/security/trivy.mk, same as the filesystem
+      # scans. -s keeps make from echoing the recipe into the output file.
+      - name: Trivy image scan
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: make -s trivy-image-ci TRIVY_IMAGE="${IMAGE}" TRIVY_FORMAT=table > trivy-image-scan.txt
+        shell: bash
 
       - name: Trivy image scan (SARIF)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ steps.meta.outputs.image }}
-          scanners: 'vuln'
-          format: sarif
-          ignore-unfixed: false
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-image-scan.sarif
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: make -s trivy-image-ci TRIVY_IMAGE="${IMAGE}" TRIVY_FORMAT=sarif > trivy-image-scan.sarif
+        shell: bash
 
       - name: Upload Trivy image SARIF to code scanning
         continue-on-error: true
@@ -178,14 +195,26 @@ jobs:
           title: '## Trivy Image Scan (table)'
           details-summary: 'Image Scan Results'
 
+      # On PRs this blocks promotion; on the weekly schedule it surfaces newly published fixable
+      # CRITICAL/HIGH findings on already-merged images as a red scheduled run.
+      # workflow_dispatch is exploratory, so it is not gated.
       - name: Trivy image scan (gate - fixable CRITICAL/HIGH)
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ steps.meta.outputs.image }}
-          scanners: 'vuln'
-          format: table
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: make trivy-image-gate-ci TRIVY_IMAGE="${IMAGE}"
+        shell: bash
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: build
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.build.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: build
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

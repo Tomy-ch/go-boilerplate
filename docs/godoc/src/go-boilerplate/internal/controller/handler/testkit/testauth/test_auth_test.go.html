@@ -82,7 +82,7 @@
 <span id="L25" class="ln">    25  </span>			authn, ok := ctxhelper.GetAuthn(authCtx)
 <span id="L26" class="ln">    26  </span>			assert.True(t, ok)
 <span id="L27" class="ln">    27  </span>			assert.Equal(t, subject, authn.Subject())
-<span id="L28" class="ln">    28  </span>			assert.Equal(t, auth.ProviderMock, authn.Provider())
+<span id="L28" class="ln">    28  </span>			assert.Equal(t, auth.IssuerMock, authn.Issuer())
 <span id="L29" class="ln">    29  </span>		})
 <span id="L30" class="ln">    30  </span>	})
 <span id="L31" class="ln">    31  </span>}

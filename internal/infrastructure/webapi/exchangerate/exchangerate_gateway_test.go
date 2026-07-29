@@ -54,7 +54,7 @@ func Test_gateway_GetRate(t *testing.T) {
 					assert.Equal(t, httpclient.MethodGet(), req.Method())
 					assert.Contains(t, req.URL(), "base=USD")
 					assert.Contains(t, req.URL(), "quote=JPY")
-					return &httpclient.Response{StatusCode: 200, Body: []byte(`{"rate":150.5}`)}, nil
+					return &httpclient.Response{StatusCode: 200, Body: []byte(`{"rate":150.5,"date":"2026-07-21"}`)}, nil
 				})
 
 			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
@@ -64,7 +64,8 @@ func Test_gateway_GetRate(t *testing.T) {
 			require.NotNil(t, rate)
 			assert.Equal(t, "USD", rate.Base)
 			assert.Equal(t, "JPY", rate.Quote)
-			assert.InEpsilon(t, 150.5, rate.Value, 1e-9)
+			assert.Equal(t, "150.5", rate.Value.String())
+			assert.Equal(t, "2026-07-21", rate.Date)
 		})
 	})
 
@@ -129,6 +130,24 @@ func Test_gateway_GetRate(t *testing.T) {
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, rate)
+		})
+	})
+}
+
+func TestRequiredDownstream(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("exchangerate downstream を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, httpclient.Downstream("exchangerate"), exchangerate.RequiredDownstream())
+		})
+
+		t.Run("NewDownstreamProfile が登録する profile 名と一致する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, exchangerate.NewDownstreamProfile().Name, exchangerate.RequiredDownstream())
 		})
 	})
 }

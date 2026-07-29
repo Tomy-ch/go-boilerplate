@@ -102,6 +102,37 @@ type Users []*User
 - パッケージ名はドメイン名
 - コンストラクタは `New`
 
+### 位置引数を取り違えうる場合は属性を構造体へ束ねる
+
+判断基準（同型引数の取り違えが実際にリスクとなるのはどんな場合か、ならないのはどんな場合か、対処を
+VO 化と構造体化のどちらにするか）は層非依存であり `docs/rules.md`（"Function Signature Rules"）に置く。
+この節では domain 層での適用のみを扱う。
+
+ルールのトリガーを満たす属性を持つエンティティは、それらを値構造体へ束ね、全入口で共有する。これに
+より生成・再構築・更新の各入口が乖離しない。
+
+```go
+// コンストラクタと振る舞いメソッドが共有する属性一式。
+type Attributes struct {
+    Name        string
+    Description *string
+    // ...
+    ImagePath   *string
+}
+
+func New(id uuid.UUID, attrs Attributes) (*Entity, error)
+func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
+func (e *Entity) Update(attrs Attributes) error
+```
+
+識別子（`id`）と楽観ロックのバージョンは位置引数のままとする。型が相異なるうえ、更新の入口が置き換える
+属性集合には含まれないためである。置き換え可能なのが属性の一部だけの場合は、その部分集合を独立した
+構造体として命名し埋め込む（`user.Attributes` に `user.Profile` を埋め込む形）。重複するフィールドを
+持つ構造体を 2 つ宣言しないこと。
+
+この層で最も晒されるのは DB 行からの再構築であるため、ルールが要求する写像テストはコンストラクタ側に
+加えて Repository の行→エンティティ変換にも置く。
+
 ### コンストラクタ経由以外でセットしない
 
 - 不変条件は `New(...)` で保証
@@ -228,7 +259,7 @@ return apperror.WithDetails(xerrors.Join(errs...), fields...)
 
 フィールド識別子は API リクエストのプロパティ名と一致するドメイン定数
 （`FieldEmail = "email"`）で、理由文はラップしたエラーメッセージ側に残す（ログ専用）。
-サーバ内部の不変条件（id・タイムスタンプ・パスワードハッシュ）は first-error return の
+サーバ内部の不変条件（id・タイムスタンプ）は first-error return の
 まま — ユーザーが修正できる入力ではないため。
 
 ### 不変条件（Domain Invariant）
@@ -404,6 +435,25 @@ SELECT / WHERE / JOIN
 - QueryService
 - ReadModel
 
+### doc コメントはドメイン語彙で書く
+
+上記の SQL の形は **インフラ層の実装に許される範囲**を定めたものであり、ここに書く doc コメントの語彙では
+ありません。Repository インターフェースは永続化への継ぎ目であり、だからこそその doc コメントは**保証**を
+ドメイン語彙で契約し、**機構**は実装側に委ねます。`LockByID` は悲観ロックを取ることと、そのロックが何を
+直列化するかを述べますが、そのロックが `SELECT … FOR UPDATE` であることは述べません。フィード系メソッドは
+「注文日時の降順（同時刻は ID 降順）」と述べ、`(ordered_at DESC, id DESC)` とは述べません。テーブル名・
+カラム名・SQL 断片は、既にそれを述べているインフラ層の doc コメントに属します
+（[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail、および本ルールの元になった
+[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation を参照）。
+
+ドメイン層に固有の帰結が 2 点あります。
+
+- **数値の境界がストレージ幅に由来する場合は、SQL の型名ではなく Go の整数幅で表現します** — `1〜32767` は
+  符号付き 16bit 整数の正数範囲として記述します。これにより定数がマジックナンバーに見えることを避けつつ、
+  技術非依存を保てます。その理由は定数の側に置き、公開コンストラクタの doc は純粋な契約に保ちます。
+- **参照マスタはドメイン名で呼びます**（商品ステータスマスタ）。テーブル名（`product_statuses`）では呼びません。
+
 ## 呼び出せる層
 
 呼び出し元：
@@ -539,7 +589,6 @@ func newTestUser(t *testing.T)*User {
         id,
         "John",
         "Doe",
-        "hashed_password",
         "john@example.com",
         "1234567890",
         prefectureID,
@@ -595,7 +644,7 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 - 振る舞いメソッドで状態遷移
 - VOで整合性担保
 - Repository抽象化
-- テーブル駆動テスト
+- `t.Run` を並べたケース記述（テーブル駆動の `for` ループは使わない — [`docs/testing-conventions.md`](../../docs/testing-conventions.md) を参照）
 
 ### Don’t
 
@@ -614,20 +663,15 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 package user
 
 const (
-    minLength             = 1
-    maxFirstNameLength    = 100
-    maxLastNameLength     = 100
-    maxPasswordHashLength = 255
-    maxEmailLength        = 100
-    maxPhoneLength        = 20
-    maxCityLength         = 100
-    maxStreetLength       = 255
-    maxBuildingLength     = 255
-    maxPostalCodeLength   = 8
-
-    // 値オブジェクト RawPassword の文字数境界
-    MaxRawPasswordLength = 64
-    MinRawPasswordLength = 8
+    minLength           = 1
+    maxFirstNameLength  = 100
+    maxLastNameLength   = 100
+    maxEmailLength      = 100
+    maxPhoneLength      = 20
+    maxCityLength       = 100
+    maxStreetLength     = 255
+    maxBuildingLength   = 255
+    maxPostalCodeLength = 8
 )
 ```
 
@@ -646,7 +690,6 @@ var (
     ErrInvalidID           = xerrors.Wrap(errInvalid, "id failed")
     ErrInvalidFirstName    = xerrors.Wrap(errInvalid, "first name failed")
     ErrInvalidLastName     = xerrors.Wrap(errInvalid, "last name failed")
-    ErrInvalidPasswordHash = xerrors.Wrap(errInvalid, "password hash failed")
     ErrInvalidEmail        = xerrors.Wrap(errInvalid, "email failed")
     ErrInvalidPhone        = xerrors.Wrap(errInvalid, "phone failed")
     ErrInvalidPrefectureID = xerrors.Wrap(errInvalid, "prefecture id failed")
@@ -657,12 +700,8 @@ var (
     ErrInvalidUpdatedAt    = xerrors.Wrap(errInvalid, "updated at failed")
     ErrInvalidDeletedAt    = xerrors.Wrap(errInvalid, "deleted at failed")
 
-    // 値オブジェクト RawPassword 固有の検証エラー（errInvalid を経由しない）
-    ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
-
     // ビジネスルール違反
-    ErrAlreadyDeleted          = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
-    ErrCurrentPasswordMismatch = xerrors.Wrap(apperror.ErrValidation, "current password does not match")
+    ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
 )
 ```
 
@@ -686,7 +725,6 @@ type User struct {
     id           uuid.UUID
     firstName    string
     lastName     string
-    passwordHash string
     email        string
     phone        string
     prefectureID uuid.UUID
@@ -699,38 +737,43 @@ type User struct {
     deletedAt    *time.Time
 }
 
+// 置き換え可能な属性の部分集合（New / UpdateProfile で共有）。
+// firstName / lastName / phone / city / street は同型のため、フィールド名指定を要求する。
+type Profile struct {
+    FirstName    string
+    LastName     string
+    Email        string
+    Phone        string
+    PrefectureID uuid.UUID
+    City         string
+    Street       string
+    Building     *string
+    PostalCode   string
+}
+
+// 生成に必要な属性一式。createdAt / updatedAt も同型のため同じ扱いとする。
+type Attributes struct {
+    Profile
+
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+}
+
 // ファクトリ: 不変条件を満たすときだけ実体を生成
-func New(
-    id uuid.UUID,
-    firstName string,
-    lastName string,
-    passwordHash string,
-    email string,
-    phone string,
-    prefectureID uuid.UUID,
-    city string,
-    street string,
-    building *string,
-    postalCode string,
-    createdAt time.Time,
-    updatedAt time.Time,
-    deletedAt *time.Time,
-) (*User, error) {
+func New(id uuid.UUID, attrs Attributes) (*User, error) {
     if id.IsNil() {
         return nil, xerrors.Wrap(ErrInvalidID, "id is required")
     }
     // フィールド検証（New / UpdateProfile で共有）
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(attrs.Profile); err != nil {
         return nil, err
     }
-    if err := validatePasswordHash(passwordHash); err != nil {
-        return nil, err
-    }
-    if updatedAt.Before(createdAt) {
+    if attrs.UpdatedAt.Before(attrs.CreatedAt) {
         return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
     }
-    if deletedAt != nil {
-        if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+    if attrs.DeletedAt != nil {
+        if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
             return nil, err
         }
     }
@@ -738,9 +781,9 @@ func New(
     // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
     return &User{
         id:        id,
-        building:  ptr.Copy(building),
-        deletedAt: ptr.Copy(deletedAt),
-        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
+        building:  ptr.Copy(attrs.Building),
+        deletedAt: ptr.Copy(attrs.DeletedAt),
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も attrs から設定（例示のため省略）
     }, nil
 }
 
@@ -751,19 +794,12 @@ func (u *User) Building() *string { return ptr.Copy(u.building) }
 func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
 // 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
-// ビジネスロジック（振る舞い）: プロフィール一括更新（パスワードは対象外）
-func (u *User) UpdateProfile(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-    updatedAt time.Time,
-) error {
+// ビジネスロジック（振る舞い）: プロフィール一括更新
+func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
     if err := u.ensureNotDeleted(); err != nil {
         return err
     }
-    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+    if err := validateProfileFields(profile); err != nil {
         return err
     }
     if err := u.ensureUpdatedAt(updatedAt); err != nil {
@@ -776,8 +812,7 @@ func (u *User) UpdateProfile(
 }
 
 // 振る舞いの兄弟（UpdateProfile と同じ ensure → 検証 → 置換 の idiom）。シグネチャのみ示す。
-func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error // パスワードハッシュ更新
-func (u *User) MarkAsDeleted(deletedAt time.Time) error                       // 論理削除（既に削除済みなら ErrAlreadyDeleted）
+func (u *User) MarkAsDeleted(deletedAt time.Time) error // 論理削除（既に削除済みなら ErrAlreadyDeleted）
 
 // 不変条件ガード（例示）: updatedAt は createdAt 以降かつ単調非減少
 func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
@@ -792,18 +827,12 @@ func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
 
 // バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
-func validateProfileFields(
-    firstName, lastName, email, phone string,
-    prefectureID uuid.UUID,
-    city, street string,
-    building *string,
-    postalCode string,
-) error {
-    if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+func validateProfileFields(profile Profile) error {
+    if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
         return xerrors.Wrap(ErrInvalidFirstName, msg)
     }
     // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
-    if prefectureID.IsNil() {
+    if profile.PrefectureID.IsNil() {
         return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
     }
     if building != nil { // building は任意
@@ -813,7 +842,6 @@ func validateProfileFields(
     }
     return nil
 }
-func validatePasswordHash(passwordHash string) error                   // maxPasswordHashLength で検証
 func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // createdAt / updatedAt 以降
 ```
 

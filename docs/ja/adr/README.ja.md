@@ -114,7 +114,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0077](0077-coverage-hard-gate.ja.md) | 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける | accepted |
 | [0078](0078-ci-real-graph-boot-check.ja.md) | CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証） | accepted |
 | [0079](0079-generated-artifact-drift-gate.ja.md) | 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット | accepted |
-| [0080](0080-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン（到達可能性フィルタ付き govulncheck + スケジュール CodeQL SAST + シークレット + FS スキャン） | accepted |
+| [0080](0080-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン——報告とゲートを分離し、ハードニングされたランナー上で行う | accepted |
 | [0081](0081-sha-pinned-actions.ja.md) | GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する | accepted |
 | [0082](0082-rollback-integration-tests.ja.md) | インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する | accepted |
 | [0083](0083-multi-model-adversarial-review.ja.md) | ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する | accepted |
@@ -132,6 +132,8 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0095](0095-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
 | [0096](0096-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
 | [0097](0097-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
+| [0098](0098-exchange-rate-cache-gateway-decorator.ja.md) | 為替レート gateway を boundary 継ぎ目上の TTL decorator でキャッシュする | accepted |
+| [0099](0099-reference-amount-half-up-rounding.ja.md) | referenceAmount は整数演算で計算し、丸めは 1 箇所で half-up する | accepted |
 
 フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
 Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。

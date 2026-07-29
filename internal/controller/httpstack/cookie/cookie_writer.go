@@ -39,7 +39,6 @@ func (w *cookieRewriteWriter) WriteHeader(code int) {
 	}
 	w.wroteHdr = true
 
-	// Set-Cookie を書き換え
 	w.flushHeadersWithRewrite()
 
 	w.orig.WriteHeader(code)
@@ -74,9 +73,7 @@ func (w *cookieRewriteWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		rawCookies := w.hdr.Values(headerSetCookie)
 		if len(rawCookies) > 0 {
 			w.hdr.Del(headerSetCookie)
-			for _, raw := range rawCookies {
-				w.hdr.Add(headerSetCookie, w.rewriteOrKeep(raw))
-			}
+			w.addRewrittenCookies(w.hdr, rawCookies)
 		}
 	}
 
@@ -137,8 +134,12 @@ func (w *cookieRewriteWriter) flushHeadersWithRewrite() {
 		}
 	}
 
-	// Set-Cookie を rewrite してから追加
-	for _, raw := range w.hdr.Values(headerSetCookie) {
-		w.orig.Header().Add(headerSetCookie, w.rewriteOrKeep(raw))
+	w.addRewrittenCookies(w.orig.Header(), w.hdr.Values(headerSetCookie))
+}
+
+// addRewrittenCookies は、raws の各 Set-Cookie を書き換えて dst へ追加します。
+func (w *cookieRewriteWriter) addRewrittenCookies(dst http.Header, raws []string) {
+	for _, raw := range raws {
+		dst.Add(headerSetCookie, w.rewriteOrKeep(raw))
 	}
 }

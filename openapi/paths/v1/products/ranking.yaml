@@ -1,0 +1,27 @@
+get:
+  operationId: GetProductsRanking
+  tags:
+    - v1/products/ranking
+  summary: 商品売上ランキングの取得
+  description: |
+    購入明細を集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
+    キャンセル済みの購入は集計から除外します。未払いの購入は集計に含みます。
+    period=30d の場合は注文日時が直近30日以内の購入のみを集計します。
+    同一販売数量の商品は商品 ID の昇順で安定的に並びます。
+  security: []
+  parameters:
+    - $ref: '../../../components/parameters/product/RankingPeriodParam.yaml'
+    - $ref: '../../../components/parameters/product/RankingLimitParam.yaml'
+  responses:
+    '200':
+      description: 販売数量の降順で取得した商品ランキング
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/products/ranking/ProductRankingResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

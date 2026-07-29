@@ -51,7 +51,6 @@ func New(dbsq query.DBSystemCqrs, tf observability.TracerFactory, clock clock.Cl
 	}
 }
 
-// CheckHealth は、システムの健全性をチェックするユースケースです。
 func (u *usecase) CheckHealth(ctx context.Context) (*DTO, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

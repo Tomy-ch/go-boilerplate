@@ -324,6 +324,95 @@ func Test_cookieRewriteWriter_Unwrap(t *testing.T) {
 	})
 }
 
+func Test_cookieRewriteWriter_rewriteOrKeep(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き換え成功時は書き換え後の値を返す", func(t *testing.T) {
+			t.Parallel()
+			b := true
+			cfg := &SecurityCookie{applyToAll: true, forceHTTPOnly: &b}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			got := w.rewriteOrKeep("id=1; Path=/")
+			assert.Contains(t, got, "HttpOnly")
+		})
+
+		t.Run("書き換え失敗（空文字）時は元のrawを残す", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			// 不正な Cookie（'=' 無し）なので RewriteSetCookie は "" を返す
+			assert.Equal(t, "NoEquals", w.rewriteOrKeep("NoEquals"))
+		})
+	})
+}
+
+func Test_cookieRewriteWriter_addRewrittenCookies(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全てのSet-Cookieを書き換えて指定ヘッダへ追加する", func(t *testing.T) {
+			t.Parallel()
+			b := true
+			cfg := &SecurityCookie{applyToAll: true, forceHTTPOnly: &b}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			w.addRewrittenCookies(dst, []string{"a=1; Path=/", "b=2; Path=/"})
+
+			got := dst.Values(headerSetCookie)
+			require.Len(t, got, 2)
+			assert.Contains(t, got[0], "a=1")
+			assert.Contains(t, got[0], "HttpOnly")
+			assert.Contains(t, got[1], "b=2")
+			assert.Contains(t, got[1], "HttpOnly")
+		})
+
+		t.Run("書き換え不能なSet-Cookieも欠落させず元のまま追加する", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			w.addRewrittenCookies(dst, []string{"NoEquals"})
+
+			assert.Equal(t, []string{"NoEquals"}, dst.Values(headerSetCookie))
+		})
+
+		t.Run("空のSet-Cookie列では何も追加しない", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			w.addRewrittenCookies(dst, nil)
+
+			assert.Empty(t, dst.Values(headerSetCookie))
+		})
+
+		t.Run("既存のSet-Cookieを保持したまま追記する", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			w := newCookieRewriteWriter(newFakeOrig(), cfg)
+
+			dst := make(http.Header)
+			dst.Add(headerSetCookie, "existing=0; Path=/")
+			w.addRewrittenCookies(dst, []string{"a=1; Path=/"})
+
+			got := dst.Values(headerSetCookie)
+			require.Len(t, got, 2)
+			assert.Contains(t, got[0], "existing=0")
+			assert.Contains(t, got[1], "a=1")
+		})
+	})
+}
+
 func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
 	t.Parallel()
 
@@ -360,6 +449,41 @@ func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
 
 			sc := orig.Header()["Set-Cookie"]
 			assert.Equal(t, []string{"NoEquals"}, sc)
+		})
+	})
+}
+
+func Test_newCookieRewriteWriter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("origとcfgを保持しヘッダ未書き込みの状態で構築する", func(t *testing.T) {
+			t.Parallel()
+			orig := newFakeOrig()
+			cfg := &SecurityCookie{applyToAll: true}
+
+			w := newCookieRewriteWriter(orig, cfg)
+
+			assert.Same(t, orig, w.orig)
+			assert.Same(t, cfg, w.cfg)
+			assert.False(t, w.wroteHdr)
+		})
+
+		t.Run("内部ヘッダはorigとは独立した空のヘッダで初期化される", func(t *testing.T) {
+			t.Parallel()
+			orig := newFakeOrig()
+			orig.Header().Set("X-From-Orig", "v")
+
+			w := newCookieRewriteWriter(orig, &SecurityCookie{})
+
+			assert.NotNil(t, w.hdr)
+			// orig の既存ヘッダを引き継がず、書き込みも orig へ漏らさない
+			// （Set-Cookie の書き換えを flush まで遅延できる前提）。
+			assert.Empty(t, w.hdr)
+			w.Header().Set("X-Buffered", "v")
+			assert.Empty(t, orig.Header().Get("X-Buffered"))
 		})
 	})
 }

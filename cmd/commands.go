@@ -15,5 +15,6 @@ func registerCommands(rootCmd *cobra.Command) {
 		newJobCommand(),
 		newWorkerCommand(),
 		newOutboxRelayCommand(),
+		newDBSlotCommand(),
 	)
 }

@@ -1,6 +1,6 @@
 ---
 name: tools-upgrade
-description: Audit `mise.toml` `[tools]` entries against upstream latest versions, with a configurable supply-chain quarantine. For each tool the latest release is fetched from its backend (GitHub Releases for `aqua:` / `go:` tagged modules, npm registry for `npm:`, PyPI for `pipx:`, language download manifests for `go` / `node` / `python`). Releases newer than `min_age_days` are reported as informational only — never applied automatically — to avoid pulling in newly-published malicious versions before upstream has time to detect and revoke them. Confirms `min_age_days` and the per-tool update set via `AskUserQuestion`, rewrites approved entries in `mise.toml` atomically, runs `make sync-versions` if `go` / `node` / `python` changed, and verifies with `make lint` + `make test`. Use this skill on a routine cadence (monthly / quarterly) or after a security advisory.
+description: Audit `mise.toml` `[tools]` entries against upstream latest versions, with a configurable supply-chain quarantine. For each tool the latest release is fetched from its backend (GitHub Releases for `aqua:` / `go:` tagged modules, npm registry for `npm:`, PyPI for `pipx:`, language download manifests for `go` / `node` / `python`). Releases newer than `min_age_days` are reported as informational only — never applied automatically — to avoid pulling in newly-published malicious versions before upstream has time to detect and revoke them; when an advisory drove the run, each quarantined release is handed to `/supply-chain-triage` for a scored evidence verdict instead of only a day count. Confirms `min_age_days` and the per-tool update set via `AskUserQuestion`, rewrites approved entries in `mise.toml` atomically, runs `make sync-versions` if `go` / `node` / `python` changed, and verifies with `make lint` + `make test`. Use this skill on a routine cadence (monthly / quarterly) or after a security advisory.
 ---
 
 # Tool Version Upgrade
@@ -101,6 +101,7 @@ Print a Japanese-language summary grouped by class. Example:
 
 ⚠️ supply-chain quarantine（公開から 7 日未満、通知のみ）:
   - air: 1.65.3 → 1.66.0 （公開 2026-06-02, 2 日前）
+      ※ 直接証拠での評価が必要なら /supply-chain-triage を実行できます（既定では未実行）
 
 ✓ 既に最新:
   - oapi-codegen 2.7.0
@@ -111,13 +112,24 @@ Print a Japanese-language summary grouped by class. Example:
   - pipx:sqlfluff: PyPI への接続失敗
 ```
 
+### 3.5. Triage Pending Releases the Quarantine Caught
+
+A `pending` classification means the quarantine is holding a release back purely on age. That is a proxy for four questions — did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear — and the proxy can be discharged by answering them directly (`docs/design/security.md` → "Dependencies"). Chain **`/supply-chain-triage`** per pending tool to do that when the answer would change what the user does:
+
+- Always, when the pending release is the reason the skill was invoked (a security advisory naming that tool).
+- Otherwise only on request. A routine monthly audit that reports three pending tools does not need three triages — nobody is deciding anything yet, and next month they will simply be eligible. Say the triage is available rather than spending the run on it.
+
+Pass the backend, tool key, candidate version, the **version currently pinned in `mise.toml`** (the diff's other end), `<MIN_AGE_DAYS>`, and the release date. Triage is report-only: it reads the release artifact without executing it, returns a 0–12 score with a band and citations, and never edits `mise.toml` or applies anything. A pending tool stays pending — the score is what the user weighs, and adoption remains a separate, explicit decision (step 4).
+
 ### 4. Confirm Per-tool Update Set
 
-If **eligible** is empty, skip to step 6 with no writes.
+If **eligible** is empty and nothing pending was triaged into a decision, skip to step 6 with no writes.
 
 Otherwise invoke `AskUserQuestion` with `multiSelect: true`. Each option corresponds to one eligible tool, with the version diff and release date as the description. Default state: all selected.
 
 The user may deselect individual entries (e.g., if a specific bump is known-broken).
+
+A **pending** tool may appear in this question only when it was triaged in step 3.5 and the user is explicitly deciding whether to adopt it early — in that case it is listed separately, **deselected by default**, with its band in the description. Never fold a pending tool into the default-selected eligible set: the quarantine's whole value is that age-based eligibility is the default and early adoption is a deliberate act.
 
 ### 5. Update `mise.toml`
 
@@ -135,9 +147,9 @@ If any of `go` / `node` / `python` was updated, run `make sync-versions`. This p
 
 If only non-runtime tools were updated, skip `make sync-versions`.
 
-### 6.5. Re-pin Base Image Digests if a Runtime Changed
+### 7. Re-pin Base Image Digests if a Runtime Changed
 
-If step 6 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `pin-images` skill's job, chained here):
+If step 6 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `images-pin` skill's job, chained here):
 
 ```sh
 make pin-images-resolve   # run `docker login` first if Docker Hub returns 429
@@ -145,9 +157,15 @@ make pin-images-apply
 make pin-images-check
 ```
 
-The just-published runtime image is normally inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown, so `pin-images-apply` strips the stale digest and leaves the `FROM` on the tag only (quarantined) — `pin-images-check` accepts that. Report it and note that `/pin-images` should be re-run once the image ages. Skip this step entirely when step 6 was skipped (no runtime change → no tag change → digests still valid).
+`sync-versions` rewrites only the version portion of the tag; the trailing `@sha256:...` is left untouched and now names the *old* image. Docker honors the digest, so the tree sits in a tag/digest mismatch that must not be committed.
 
-### 7. Verify
+Resolving that lands on `images-pin`'s **rule 3**: the new tag has no prior lockfile entry and its image was just published, so there is no aged digest to step back to. `pin-images-resolve` **fails closed** (`❌ 退行先の無い出来立て image は採用できません`) rather than adopting the fresh digest or stripping the pin to tag-only, `apply` never runs, and `pin-images-check` rejects the stale digest as `未登録`.
+
+The consequence worth stating plainly: **a runtime bump and its digest pin are coupled.** Unless the new image has already aged past `PIN_IMAGES_MIN_AGE_DAYS`, the run cannot be finished cleanly, and the choice belongs to the user — bootstrap deliberately with `days=0` (which `/images-pin` step 2.5 gates behind a `/supply-chain-triage` evidence check), or hold the runtime bump itself until the image ages. Do not force `resolve` through, and do not leave the mismatched digest in the tree.
+
+Skip this step entirely when step 6 was skipped (no runtime change → no tag change → digests still valid).
+
+### 8. Verify
 
 ```sh
 make lint
@@ -156,12 +174,13 @@ make test
 
 Report the result table to the user (OK / FAIL per command). Do NOT automatically roll back on failure — the user decides whether to amend, revert, or proceed.
 
-### 8. Final Report
+### 9. Final Report
 
 Summarize:
 
 - Number of tools updated
-- Number quarantined (pending, not applied)
+- Number quarantined (pending, not applied), and when each clears the window
+- For any pending tool that was triaged: its band and the axis that drove it (including any axis that came back unanswerable), plus whether the user adopted it early or left it pending
 - Verification result
 - Any failures to surface
 
@@ -184,10 +203,11 @@ Confirm the following before reporting completion:
 - [ ] Every `[tools]` entry's backend was resolved (or surfaced as resolution_failed with a reason)
 - [ ] Each tool was classified (up-to-date / eligible / pending / resolution_failed)
 - [ ] Classification table presented to the user
-- [ ] If eligible set non-empty: user confirmed per-tool update set via `AskUserQuestion`
+- [ ] Pending releases triaged via `/supply-chain-triage` when an advisory drove the run (baseline = the version pinned in `mise.toml`); otherwise offered, not spent
+- [ ] If eligible set non-empty: user confirmed per-tool update set via `AskUserQuestion`; any early-adopted pending tool listed separately and deselected by default with its band
 - [ ] `mise.toml` rewritten atomically with only approved changes, preserving key formats and `v`-prefix convention
 - [ ] `make sync-versions` run if go / node / python was updated
-- [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`); quarantined-until-aged images reported for a later `/pin-images` re-run
+- [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`). A rule 3 fail-closed on the new tag is the expected outcome for a just-published image — surfaced with the coupling (bootstrap via `days=0` after triage, or hold the bump), never forced through, and never left as a tag/digest mismatch
 - [ ] `make lint` + `make test` run after writes
 - [ ] Final result table reported to the user
 - [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync

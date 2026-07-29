@@ -107,6 +107,9 @@
 				<dd><a href="#New">func New(endpoint Endpoint, client httpclient.Client, tf observability.TracerFactory) boundary.Gateway</a></dd>
 			
 				
+				<dd><a href="#NewCache">func NewCache(inner boundary.Gateway, clk clock.Clock) boundary.Gateway</a></dd>
+			
+				
 				<dd><a href="#NewDownstreamProfile">func NewDownstreamProfile() httpclient.DownstreamProfile</a></dd>
 			
 				
@@ -132,6 +135,8 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/cache.go.html">cache.go</a>
+			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/config.go.html">config.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html">exchangerate_gateway.go</a>
@@ -149,7 +154,7 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1887:1995#L42">New</a>
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1915:2023#L43">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -167,7 +172,22 @@
 		
 			
 			
-			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1206:1262#L27">NewDownstreamProfile</a>
+			</p><h2 id="NewCache">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/cache.go.html?s=1863:1934#L35">NewCache</a>
+				<a class="permalink" href="#NewCache">¶</a>
+				
+				
+			</h2>
+			<pre>func NewCache(inner <a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Gateway">Gateway</a>, clk <a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Gateway">Gateway</a></pre>
+			<p>NewCache は、gateway を TTL キャッシュで包んだ boundary.Gateway を返します。
+clk は失効判定の時刻源で、テストでは固定時刻の clock を注入できます。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1234:1290#L28">NewDownstreamProfile</a>
 				<a class="permalink" href="#NewDownstreamProfile">¶</a>
 				
 				
@@ -182,7 +202,7 @@
 		
 			
 			
-			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1729:1776#L37">RequiredDownstream</a>
+			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1757:1804#L38">RequiredDownstream</a>
 				<a class="permalink" href="#RequiredDownstream">¶</a>
 				
 				

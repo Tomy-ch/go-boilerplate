@@ -22,7 +22,7 @@ Hand-written (`authn.go`) — the `Authn` slot:
 - `SetAuthn(ctx, authn) bool` — write into the slot; returns `false` when no slot is present
 - `GetAuthn(ctx) (auth.Authn, bool)` — read from the slot; `ok=false` when unset
 
-Generated (`genctxkey`, defined in `generate.go`) — boolean request-scoped flags. Each name exposes a `context.Context` pair plus an `echo.Context` pair:
+Generated (`genctxkey`, defined in `generate.go`) — boolean request-scoped flags. Each name exposes a `context.Context` pair plus an `*echo.Context` pair:
 
 - `ErrorHandled` — `SetErrorHandled` / `GetErrorHandled`, `SetErrorHandledToEcho` / `GetErrorHandledFromEcho`
 - `Recovered` — `SetRecovered` / `GetRecovered`, `SetRecoveredToEcho` / `GetRecoveredFromEcho`

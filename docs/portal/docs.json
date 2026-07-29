@@ -990,6 +990,20 @@
               "guideId": "0097-outbox-relay-hardening-delegated"
             },
             {
+              "name": "0098 Exchange Rate Cache Gateway Decorator",
+              "path": "../adr/0098-exchange-rate-cache-gateway-decorator.md",
+              "lang": "en",
+              "source": "docs/adr/0098-exchange-rate-cache-gateway-decorator.md",
+              "guideId": "0098-exchange-rate-cache-gateway-decorator"
+            },
+            {
+              "name": "0099 Reference Amount Half Up Rounding",
+              "path": "../adr/0099-reference-amount-half-up-rounding.md",
+              "lang": "en",
+              "source": "docs/adr/0099-reference-amount-half-up-rounding.md",
+              "guideId": "0099-reference-amount-half-up-rounding"
+            },
+            {
               "name": "README",
               "path": "../adr/README.md",
               "lang": "en",
@@ -1688,6 +1702,20 @@
               "lang": "ja",
               "source": "docs/ja/adr/0097-outbox-relay-hardening-delegated.ja.md",
               "guideId": "0097-outbox-relay-hardening-delegated"
+            },
+            {
+              "name": "0098 Exchange Rate Cache Gateway Decorator",
+              "path": "../ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
+              "guideId": "0098-exchange-rate-cache-gateway-decorator"
+            },
+            {
+              "name": "0099 Reference Amount Half Up Rounding",
+              "path": "../ja/adr/0099-reference-amount-half-up-rounding.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/adr/0099-reference-amount-half-up-rounding.ja.md",
+              "guideId": "0099-reference-amount-half-up-rounding"
             },
             {
               "name": "README",
@@ -3165,6 +3193,20 @@
                   "guideId": "0097-outbox-relay-hardening-delegated"
                 },
                 {
+                  "name": "0098 Exchange Rate Cache Gateway Decorator",
+                  "path": "../adr/0098-exchange-rate-cache-gateway-decorator.md",
+                  "lang": "en",
+                  "source": "docs/adr/0098-exchange-rate-cache-gateway-decorator.md",
+                  "guideId": "0098-exchange-rate-cache-gateway-decorator"
+                },
+                {
+                  "name": "0099 Reference Amount Half Up Rounding",
+                  "path": "../adr/0099-reference-amount-half-up-rounding.md",
+                  "lang": "en",
+                  "source": "docs/adr/0099-reference-amount-half-up-rounding.md",
+                  "guideId": "0099-reference-amount-half-up-rounding"
+                },
+                {
                   "name": "0041 Error Details Opt In Gate",
                   "path": "../ja/adr/0041-error-details-opt-in-gate.ja.md",
                   "lang": "ja",
@@ -3177,6 +3219,20 @@
                   "lang": "ja",
                   "source": "docs/ja/adr/0097-outbox-relay-hardening-delegated.ja.md",
                   "guideId": "0097-outbox-relay-hardening-delegated"
+                },
+                {
+                  "name": "0098 Exchange Rate Cache Gateway Decorator",
+                  "path": "../ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
+                  "guideId": "0098-exchange-rate-cache-gateway-decorator"
+                },
+                {
+                  "name": "0099 Reference Amount Half Up Rounding",
+                  "path": "../ja/adr/0099-reference-amount-half-up-rounding.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0099-reference-amount-half-up-rounding.ja.md",
+                  "guideId": "0099-reference-amount-half-up-rounding"
                 }
               ]
             }
@@ -3678,13 +3734,6 @@
               "guideId": "infrastructure-rdb-testkit"
             },
             {
-              "name": "Infrastructure Security",
-              "path": "./guides/infrastructure-security.md",
-              "lang": "en",
-              "source": "internal/infrastructure/security/README.md",
-              "guideId": "infrastructure-security"
-            },
-            {
               "name": "Infrastructure System",
               "path": "./guides/infrastructure-system.md",
               "lang": "en",
@@ -3753,13 +3802,6 @@
               "lang": "ja",
               "source": "internal/infrastructure/rdb/testkit/README.ja.md",
               "guideId": "infrastructure-rdb-testkit"
-            },
-            {
-              "name": "Infrastructure Security",
-              "path": "./guides/ja/infrastructure-security.ja.md",
-              "lang": "ja",
-              "source": "internal/infrastructure/security/README.ja.md",
-              "guideId": "infrastructure-security"
             },
             {
               "name": "Infrastructure System",
@@ -3893,7 +3935,7 @@
               ]
             },
             {
-              "title": "Auth & Security",
+              "title": "Auth",
               "items": [
                 {
                   "name": "Infrastructure Auth",
@@ -3908,20 +3950,6 @@
                   "lang": "ja",
                   "source": "internal/infrastructure/auth/README.ja.md",
                   "guideId": "infrastructure-auth"
-                },
-                {
-                  "name": "Infrastructure Security",
-                  "path": "./guides/infrastructure-security.md",
-                  "lang": "en",
-                  "source": "internal/infrastructure/security/README.md",
-                  "guideId": "infrastructure-security"
-                },
-                {
-                  "name": "Infrastructure Security",
-                  "path": "./guides/ja/infrastructure-security.ja.md",
-                  "lang": "ja",
-                  "source": "internal/infrastructure/security/README.ja.md",
-                  "guideId": "infrastructure-security"
                 }
               ]
             },
@@ -4577,6 +4605,20 @@
               "guideId": "docker-database-sql"
             },
             {
+              "name": "Docker Mock Auth Server",
+              "path": "./guides/docker-mock-auth-server.md",
+              "lang": "en",
+              "source": "docker/mock-auth-server/README.md",
+              "guideId": "docker-mock-auth-server"
+            },
+            {
+              "name": "Docker Mock Auth Server Fixtures",
+              "path": "./guides/docker-mock-auth-server-fixtures.md",
+              "lang": "en",
+              "source": "docker/mock-auth-server/fixtures/README.md",
+              "guideId": "docker-mock-auth-server-fixtures"
+            },
+            {
               "name": "Docker Server",
               "path": "./guides/docker-server.md",
               "lang": "en",
@@ -4603,6 +4645,20 @@
               "lang": "ja",
               "source": "docker/database/sql/README.ja.md",
               "guideId": "docker-database-sql"
+            },
+            {
+              "name": "Docker Mock Auth Server",
+              "path": "./guides/ja/docker-mock-auth-server.ja.md",
+              "lang": "ja",
+              "source": "docker/mock-auth-server/README.ja.md",
+              "guideId": "docker-mock-auth-server"
+            },
+            {
+              "name": "Docker Mock Auth Server Fixtures",
+              "path": "./guides/ja/docker-mock-auth-server-fixtures.ja.md",
+              "lang": "ja",
+              "source": "docker/mock-auth-server/fixtures/README.ja.md",
+              "guideId": "docker-mock-auth-server-fixtures"
             },
             {
               "name": "Docker Server",
@@ -4872,6 +4928,13 @@
               "guideId": "go-upgrade"
             },
             {
+              "name": "Godoc Comment Conventions",
+              "path": "../maintenance/godoc-comment-conventions.md",
+              "lang": "en",
+              "source": "docs/maintenance/godoc-comment-conventions.md",
+              "guideId": "godoc-comment-conventions"
+            },
+            {
               "name": "Portal Manifest",
               "path": "../maintenance/portal-manifest.md",
               "lang": "en",
@@ -4891,6 +4954,13 @@
               "lang": "ja",
               "source": "docs/ja/maintenance/go-upgrade.ja.md",
               "guideId": "go-upgrade"
+            },
+            {
+              "name": "Godoc Comment Conventions",
+              "path": "../ja/maintenance/godoc-comment-conventions.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/maintenance/godoc-comment-conventions.ja.md",
+              "guideId": "godoc-comment-conventions"
             },
             {
               "name": "Portal Manifest",
@@ -5003,6 +5073,13 @@
           "title": "Design",
           "items": [
             {
+              "name": "Auth",
+              "path": "../design/auth.md",
+              "lang": "en",
+              "source": "docs/design/auth.md",
+              "guideId": "auth"
+            },
+            {
               "name": "Idempotency",
               "path": "../design/idempotency.md",
               "lang": "en",
@@ -5050,6 +5127,13 @@
               "lang": "en",
               "source": "docs/design/worker.md",
               "guideId": "worker"
+            },
+            {
+              "name": "Auth",
+              "path": "../ja/design/auth.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/auth.ja.md",
+              "guideId": "auth"
             },
             {
               "name": "Idempotency",

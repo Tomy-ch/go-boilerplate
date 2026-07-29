@@ -26,6 +26,7 @@
 - **アプリケーションジョブ** — [docs/design/job.md](docs/design/job.md)
 - **REST の信頼性**（タイムアウト / ボディ上限 / deadline budget / tx リトライ） — [docs/design/rest.md](docs/design/rest.md)
 - **可観測性**（OpenTelemetry の traces / metrics / logs・config 駆動） — [docs/design/observability.md](docs/design/observability.md)
+- **オブジェクトストレージ**（S3 互換アダプタの背後にある中立な境界。ローカルコンテナ・シード投入・匿名 read の公開配信を同梱） — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **自己完結の単一バイナリ**（env とマイグレーションを埋め込み → 単一イメージ） — [docker/README.md](docker/README.md)
 
 ## 前提条件
@@ -180,6 +181,7 @@ Infra --> External["External Systems"]
 ├── pkg/            # フレームワーク非依存の共有ユーティリティ
 ├── openapi/        # API 契約
 ├── database/       # マイグレーション & SQL（sqlc）
+├── storage/        # バケットへ投入するオブジェクト（ディレクトリ構造 = キー構造）
 ├── env/            # 環境別の環境変数（バイナリへ埋め込み）
 ├── docker/
 ├── docs/
@@ -196,6 +198,7 @@ Infra --> External["External Systems"]
 | 依存性注入 | uber/fx |
 | API 定義 | OpenAPI + oapi-codegen |
 | データベース | PostgreSQL |
+| オブジェクトストレージ | S3 互換（AWS SDK v2・ローカルは Garage） |
 | クエリ | sqlc |
 | マイグレーション | golang-migrate |
 | ロギング | zap（otelzap 経由で OpenTelemetry へ） |

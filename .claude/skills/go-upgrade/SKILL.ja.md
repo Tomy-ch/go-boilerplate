@@ -113,7 +113,7 @@ make tidy-lib
 
 （内部で `go mod tidy` と `go mod vendor` を実行）
 
-### 5.5. （任意）Go モジュール依存の更新
+### 6. （任意）Go モジュール依存の更新
 
 Go ランタイムのアップグレードは依存ライブラリをまとめて更新する好機でもある。**更新するかをユーザーに確認**し、回答に従って実行する。
 
@@ -136,25 +136,25 @@ make tidy-lib          # go mod tidy + go mod vendor を再実行
 
 補足: 本リポジトリは（実 DB を使う infrastructure テストを含む）厚い test + lint を備えており、グリーンならマイナー/パッチ更新は高い信頼度を持つ。ただし保証ではない。DB ドライバ・OpenTelemetry・Web フレームワークのようなランタイム挙動が効くコア依存は、グリーンでも CHANGELOG に目を通すこと。
 
-### 6. Go ツールの再インストール
+### 7. Go ツールの再インストール
 
 ```sh
 make install-tools
 ```
 
-### 7. CI 自動検知の確認
+### 8. CI 自動検知の確認
 
 `.github/workflows` 配下の workflow は `actions/setup-go` の `go-version-file: go.mod` を使用している。ステップ 3 で `go.mod` が書き換わるため、workflow 側の編集は不要。
 
 もし Go バージョンを文字列リテラルで直接書いている workflow ファイルがあれば、それは `<TARGET_VERSION>` に手で揃えること。
 
-### 8. Dockerfile / README 同期確認
+### 9. Dockerfile / README 同期確認
 
 ステップ 3 で Dockerfile の `FROM` タグおよび `docker/**/README.md` の image 参照は書き換え済み。手動編集は不要。
 
-### 8.5. base image digest pin の再固定
+### 10. base image digest pin の再固定
 
-ステップ 3 は `FROM golang:` の**タグ**を変えたが、以前 pin した `@sha256:...` digest は**旧** Go イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先するため、ビルドは旧イメージを黙って pull する）。digest が新タグに追従するよう registry から再 pin する。これは `pin-images` スキルの役目（姉妹関係によりここで chain）:
+ステップ 3 は `FROM golang:` の**タグ**を変えたが、以前 pin した `@sha256:...` digest は**旧** Go イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先するため、ビルドは旧イメージを黙って pull する）。digest が新タグに追従するよう registry から再 pin する。これは `images-pin` スキルの役目（姉妹関係によりここで chain）:
 
 ```sh
 make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`
@@ -162,9 +162,11 @@ make pin-images-apply
 make pin-images-check
 ```
 
-新しい Go イメージは公開直後のため通常 `PIN_IMAGES_MIN_AGE_DAYS`（既定 14 日）の cooldown 内にあり **quarantine** される: `pin-images-apply` は stale な digest を剥がして `FROM` を tag のみに戻し、`pin-images-check` はそれを許容する。ユーザーに報告し、新イメージが窓を越えて古くなったら `/pin-images` を再実行して digest pin を復活させるべき旨を伝える。詳細は `pin-images` スキル参照。
+新しい Go イメージは公開直後のため、再固定は `images-pin` の **ルール 3** に当たる。新しい `golang:` tag には前回の lockfile エントリが無く、イメージは `PIN_IMAGES_MIN_AGE_DAYS`（既定 14 日）の cooldown 内なので、退行先となる aged な digest が存在しない。`pin-images-resolve` は出来立ての digest を採用することも pin を tag のみへ剥がすこともせず **fail-closed** で止まる（`❌ 退行先の無い出来立て image は採用できません`）。`apply` は走らず、`pin-images-check` は残った stale な digest を `未登録` として弾く。
 
-### 9. Docker コンテナの再ビルド
+したがって Go のアップグレードと base image の pin は結合しており、次のいずれかが成り立つまでこのアップグレードはきれいに着地しない——新しい Go イメージが窓を越えて古くなるか、ユーザーが意図的に `days=0` でブートストラップするか（`/images-pin` の手順 2.5 が `/supply-chain-triage` の証拠確認を挟む）。この選択は代わりに決めず提示すること。`resolve` を無理に通さず、tag と digest の食い違いをツリーに残さない。詳細は `images-pin` スキル参照。
+
+### 11. Docker コンテナの再ビルド
 
 Go バージョンアップでは base image タグが変わるため、新しいイメージを確実に pull・再ビルドできるよう `-clean`（`--no-cache --pull`）バリアントを使う:
 
@@ -173,25 +175,25 @@ make serve-build-clean
 make tool-runners-build-clean
 ```
 
-### 10. コード生成の再実行
+### 12. コード生成の再実行
 
 ```sh
 make gen
 ```
 
-### 11. テストの実行
+### 13. テストの実行
 
 ```sh
 make test
 ```
 
-### 12. lint の実行
+### 14. lint の実行
 
 ```sh
 make lint
 ```
 
-### 13. 最終確認
+### 15. 最終確認
 
 以下が全て成功することを確認する。
 
@@ -217,7 +219,7 @@ make tool-runners-build-clean
 - [ ] リリースノート確認
 - [ ] `mise.toml` の `[tools] go` を `<TARGET_VERSION>` に更新
 - [ ] `make sync-versions` 実行（go.mod / Dockerfile / docker/**/README.md へ伝播）
-- [ ] base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）; cooldown 未了で quarantine された新 Go イメージは後日 `/pin-images` 再実行用に報告
+- [ ] base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）。公開直後のイメージでは新 `golang:` tag に対するルール 3 の fail-closed が想定どおりの結果であり、結合（古くなるのを待つか、トリアージのうえ `days=0` でブートストラップするか）とともに提示する。無理に通さず、tag と digest の食い違いを残さない
 - [ ] ローカル Go の更新（`make go-update`、ユーザー作業）
 - [ ] `make tidy-lib` 実行
 - [ ] （任意）Go モジュール依存の更新を `AskUserQuestion` でユーザーに確認。実施する場合は `go get -u[=patch] ./...` + `make tidy-lib` を実行し、`go` directive は `<TARGET_VERSION>` のまま維持

@@ -10,27 +10,27 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// 認証ユーザー自身のパスワード変更
-	// (PUT /v1/users/me/password)
-	PutUsersMePassword(ctx echo.Context) error
+	// 認証ユーザー自身の取得
+	// (GET /v1/users/me)
+	GetUsersMe(ctx *echo.Context) error
 	// 単一ユーザーの削除
 	// (DELETE /v1/users/{userId})
-	DeleteUsersDetail(ctx echo.Context, userId UserIdParam) error
+	DeleteUsersDetail(ctx *echo.Context, userId UserIdParam) error
 	// 単一ユーザーの取得
 	// (GET /v1/users/{userId})
-	GetUsersDetail(ctx echo.Context, userId UserIdParam) error
+	GetUsersDetail(ctx *echo.Context, userId UserIdParam) error
 	// 単一ユーザーの部分更新
 	// (PATCH /v1/users/{userId})
-	PatchUsersDetail(ctx echo.Context, userId UserIdParam) error
+	PatchUsersDetail(ctx *echo.Context, userId UserIdParam) error
 	// 単一ユーザーの更新
 	// (PUT /v1/users/{userId})
-	PutUsersDetail(ctx echo.Context, userId UserIdParam) error
+	PutUsersDetail(ctx *echo.Context, userId UserIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -38,19 +38,19 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// PutUsersMePassword converts echo context to params.
-func (w *ServerInterfaceWrapper) PutUsersMePassword(ctx echo.Context) error {
+// GetUsersMe converts echo context to params.
+func (w *ServerInterfaceWrapper) GetUsersMe(ctx *echo.Context) error {
 	var err error
 
 	ctx.Set(string(BearerAuthScopes), []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PutUsersMePassword(ctx)
+	err = w.Handler.GetUsersMe(ctx)
 	return err
 }
 
 // DeleteUsersDetail converts echo context to params.
-func (w *ServerInterfaceWrapper) DeleteUsersDetail(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) DeleteUsersDetail(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
@@ -68,7 +68,7 @@ func (w *ServerInterfaceWrapper) DeleteUsersDetail(ctx echo.Context) error {
 }
 
 // GetUsersDetail converts echo context to params.
-func (w *ServerInterfaceWrapper) GetUsersDetail(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) GetUsersDetail(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
@@ -86,7 +86,7 @@ func (w *ServerInterfaceWrapper) GetUsersDetail(ctx echo.Context) error {
 }
 
 // PatchUsersDetail converts echo context to params.
-func (w *ServerInterfaceWrapper) PatchUsersDetail(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PatchUsersDetail(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
@@ -104,7 +104,7 @@ func (w *ServerInterfaceWrapper) PatchUsersDetail(ctx echo.Context) error {
 }
 
 // PutUsersDetail converts echo context to params.
-func (w *ServerInterfaceWrapper) PutUsersDetail(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PutUsersDetail(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
@@ -125,15 +125,15 @@ func (w *ServerInterfaceWrapper) PutUsersDetail(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -168,7 +168,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
-	router.PUT(options.BaseURL+"/v1/users/me/password", wrapper.PutUsersMePassword, options.OperationMiddlewares["PutUsersMePassword"]...)
+	router.GET(options.BaseURL+"/v1/users/me", wrapper.GetUsersMe, options.OperationMiddlewares["GetUsersMe"]...)
 	router.DELETE(options.BaseURL+"/v1/users/:userId", wrapper.DeleteUsersDetail, options.OperationMiddlewares["DeleteUsersDetail"]...)
 	router.GET(options.BaseURL+"/v1/users/:userId", wrapper.GetUsersDetail, options.OperationMiddlewares["GetUsersDetail"]...)
 	router.PATCH(options.BaseURL+"/v1/users/:userId", wrapper.PatchUsersDetail, options.OperationMiddlewares["PatchUsersDetail"]...)
@@ -192,39 +192,30 @@ type Unauthorized401JSONResponse ErrorResponse
 
 type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
-type PutUsersMePasswordRequestObject struct {
-	Body *PutUsersMePasswordJSONRequestBody
+type GetUsersMeRequestObject struct {
 }
 
-type PutUsersMePasswordResponseObject interface {
-	VisitPutUsersMePasswordResponse(w http.ResponseWriter) error
+type GetUsersMeResponseObject interface {
+	VisitGetUsersMeResponse(w http.ResponseWriter) error
 }
 
-type PutUsersMePassword204Response struct {
-}
+type GetUsersMe200JSONResponse UserResponse
 
-func (response PutUsersMePassword204Response) VisitPutUsersMePasswordResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type PutUsersMePassword400JSONResponse struct{ BadRequest400JSONResponse }
-
-func (response PutUsersMePassword400JSONResponse) VisitPutUsersMePasswordResponse(w http.ResponseWriter) error {
+func (response GetUsersMe200JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type PutUsersMePassword401JSONResponse struct{ Unauthorized401JSONResponse }
+type GetUsersMe401JSONResponse struct{ Unauthorized401JSONResponse }
 
-func (response PutUsersMePassword401JSONResponse) VisitPutUsersMePasswordResponse(w http.ResponseWriter) error {
+func (response GetUsersMe401JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -236,9 +227,9 @@ func (response PutUsersMePassword401JSONResponse) VisitPutUsersMePasswordRespons
 	return err
 }
 
-type PutUsersMePassword404JSONResponse struct{ NotFound404JSONResponse }
+type GetUsersMe404JSONResponse struct{ NotFound404JSONResponse }
 
-func (response PutUsersMePassword404JSONResponse) VisitPutUsersMePasswordResponse(w http.ResponseWriter) error {
+func (response GetUsersMe404JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -250,25 +241,11 @@ func (response PutUsersMePassword404JSONResponse) VisitPutUsersMePasswordRespons
 	return err
 }
 
-type PutUsersMePassword422JSONResponse ErrorResponse
-
-func (response PutUsersMePassword422JSONResponse) VisitPutUsersMePasswordResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutUsersMePassword500JSONResponse struct {
+type GetUsersMe500JSONResponse struct {
 	InternalServerError500JSONResponse
 }
 
-func (response PutUsersMePassword500JSONResponse) VisitPutUsersMePasswordResponse(w http.ResponseWriter) error {
+func (response GetUsersMe500JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -280,11 +257,11 @@ func (response PutUsersMePassword500JSONResponse) VisitPutUsersMePasswordRespons
 	return err
 }
 
-type PutUsersMePassword503JSONResponse struct {
+type GetUsersMe503JSONResponse struct {
 	ServiceUnavailable503JSONResponse
 }
 
-func (response PutUsersMePassword503JSONResponse) VisitPutUsersMePasswordResponse(w http.ResponseWriter) error {
+func (response GetUsersMe503JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -808,9 +785,9 @@ func (response PutUsersDetail503JSONResponse) VisitPutUsersDetailResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// 認証ユーザー自身のパスワード変更
-	// (PUT /v1/users/me/password)
-	PutUsersMePassword(ctx context.Context, request PutUsersMePasswordRequestObject) (PutUsersMePasswordResponseObject, error)
+	// 認証ユーザー自身の取得
+	// (GET /v1/users/me)
+	GetUsersMe(ctx context.Context, request GetUsersMeRequestObject) (GetUsersMeResponseObject, error)
 	// 単一ユーザーの削除
 	// (DELETE /v1/users/{userId})
 	DeleteUsersDetail(ctx context.Context, request DeleteUsersDetailRequestObject) (DeleteUsersDetailResponseObject, error)
@@ -825,7 +802,7 @@ type StrictServerInterface interface {
 	PutUsersDetail(ctx context.Context, request PutUsersDetailRequestObject) (PutUsersDetailResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -837,29 +814,23 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
-// PutUsersMePassword operation middleware
-func (sh *strictHandler) PutUsersMePassword(ctx echo.Context) error {
-	var request PutUsersMePasswordRequestObject
+// GetUsersMe operation middleware
+func (sh *strictHandler) GetUsersMe(ctx *echo.Context) error {
+	var request GetUsersMeRequestObject
 
-	var body PutUsersMePasswordJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PutUsersMePassword(ctx.Request().Context(), request.(PutUsersMePasswordRequestObject))
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUsersMe(ctx.Request().Context(), request.(GetUsersMeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PutUsersMePassword")
+		handler = middleware(handler, "GetUsersMe")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(PutUsersMePasswordResponseObject); ok {
-		return validResponse.VisitPutUsersMePasswordResponse(ctx.Response())
+	} else if validResponse, ok := response.(GetUsersMeResponseObject); ok {
+		return validResponse.VisitGetUsersMeResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -867,12 +838,12 @@ func (sh *strictHandler) PutUsersMePassword(ctx echo.Context) error {
 }
 
 // DeleteUsersDetail operation middleware
-func (sh *strictHandler) DeleteUsersDetail(ctx echo.Context, userId UserIdParam) error {
+func (sh *strictHandler) DeleteUsersDetail(ctx *echo.Context, userId UserIdParam) error {
 	var request DeleteUsersDetailRequestObject
 
 	request.UserId = userId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.DeleteUsersDetail(ctx.Request().Context(), request.(DeleteUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -892,12 +863,12 @@ func (sh *strictHandler) DeleteUsersDetail(ctx echo.Context, userId UserIdParam)
 }
 
 // GetUsersDetail operation middleware
-func (sh *strictHandler) GetUsersDetail(ctx echo.Context, userId UserIdParam) error {
+func (sh *strictHandler) GetUsersDetail(ctx *echo.Context, userId UserIdParam) error {
 	var request GetUsersDetailRequestObject
 
 	request.UserId = userId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsersDetail(ctx.Request().Context(), request.(GetUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -917,7 +888,7 @@ func (sh *strictHandler) GetUsersDetail(ctx echo.Context, userId UserIdParam) er
 }
 
 // PatchUsersDetail operation middleware
-func (sh *strictHandler) PatchUsersDetail(ctx echo.Context, userId UserIdParam) error {
+func (sh *strictHandler) PatchUsersDetail(ctx *echo.Context, userId UserIdParam) error {
 	var request PatchUsersDetailRequestObject
 
 	request.UserId = userId
@@ -928,7 +899,7 @@ func (sh *strictHandler) PatchUsersDetail(ctx echo.Context, userId UserIdParam) 
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PatchUsersDetail(ctx.Request().Context(), request.(PatchUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -948,7 +919,7 @@ func (sh *strictHandler) PatchUsersDetail(ctx echo.Context, userId UserIdParam) 
 }
 
 // PutUsersDetail operation middleware
-func (sh *strictHandler) PutUsersDetail(ctx echo.Context, userId UserIdParam) error {
+func (sh *strictHandler) PutUsersDetail(ctx *echo.Context, userId UserIdParam) error {
 	var request PutUsersDetailRequestObject
 
 	request.UserId = userId
@@ -959,7 +930,7 @@ func (sh *strictHandler) PutUsersDetail(ctx echo.Context, userId UserIdParam) er
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PutUsersDetail(ctx.Request().Context(), request.(PutUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

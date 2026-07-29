@@ -1,0 +1,34 @@
+patch:
+  operationId: PatchPurchasesPay
+  tags:
+    - v1/purchases/detail/pay
+  summary: 購入の支払い
+  description: |
+    認証主体（本人）の購入を支払い済みへ遷移させます。認証必須です。
+    決済 SDK / PSP 連携は行わず、paidAt のセットと status の「支払い済み」への更新で擬似決済を代替します
+    （金額・決済結果の検証は行いません）。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
+    既に支払い済みの購入は 409（二重支払い）、キャンセル済み・完了・発送済み・配達済みの購入は 409（不正遷移）で拒否します。
+    他ユーザーの購入は 404 で存在を秘匿します。金額はすべて USD セント単位の整数です。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/purchase/PurchaseIdParam.yaml'
+  responses:
+    '200':
+      description: 購入の支払いに成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/schemas/PurchasePayResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '404':
+      $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '409':
+      $ref: '../../../../components/schemas/errors/Conflict409.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'

@@ -179,7 +179,7 @@ internal/di
 │   └── core/            # HTTP スタック共通コンポーネント（authn / basicauth / validator / …）
 ├── server/              # Echo サーバーモジュール（Module / MiddlewareModule / HookModule）
 │   ├── extension/       # ミドルウェア & configurator の DI（inbound / outbound / security /
-│   │                    #   instrumentation / nonprod / testkit）
+│   │                    #   instrumentation / testkit）
 │   └── hook/            # サーバーのライフサイクルフック（HTTP 起動/停止・DB close・o11y shutdown）
 ├── lifecycle/           # Registrar（fx.Lifecycle の抽象化）+ SupervisedRunner
 ├── shutdowner/          # fx.Shutdowner のラッパー（ワンショット系の自己停止）
@@ -206,7 +206,7 @@ internal/di
 |`module.ObservabilityModule()`|Tracer / meter / logger providers + shutdown hook（全プロファイル）|
 |`module.DatabaseModule()`|`*pgxpool.Pool`・tracer・tx manager・pool metrics + DB-close hook（全プロファイル）|
 |`module.SystemModule()`|ビルド情報（全プロファイル）|
-|`module.InfrastructureModule()`|`persistence` / `clock` / `httpclient` / `webapi` / `security` / `authz` を集約（全プロファイル）|
+|`module.InfrastructureModule()`|`persistence` / `clock` / `httpclient` / `webapi` / `auth`（JWKS profile）/ `security` / `authz` を集約（全プロファイル）|
 |`module.UsecaseModule()`|`idempotency` / `outbox` を含む usecase 実装（全プロファイル）|
 |`module.ControllerModule()` + `core.*` + `server.*`|HTTP スタック全体 — **Server プロファイルのみ**|
 
@@ -236,10 +236,17 @@ internal/di
   で登録したときにのみ結線され、depth/DLQ メトリクスは `queuemetrics.Target` を
   `provideQueueStatsTargets` で登録したときのみ出力されます。既定の worker グラフは
   adapter なしで動作します。
-- **環境ゲート付きのスタブ** — `authzModule` は allow-all の `authz` authorizer を
-  local / CI / test のときだけ結線し、本番相当の環境では **fail closed**（エラーを返す）
-  として、実際の RBAC / ポリシー adapter への差し替えを強制します。`core.AuthnModule`
-  も同じ fail-closed パターンに従います。
+- **環境ゲート付きのスタブ** — `authzModule` と `core.AuthnModule` は環境ごとに実装を
+  選択し、自身の `switch` が名前を挙げていない環境に対しては **fail closed**（エラーを
+  返す）ことで、未設定の環境が寛容なデフォルトのまま起動するのを防ぎます。どの環境を
+  名前で挙げるかは両者で異なり、サンプル API の有無で境界が動きます。サンプルがある
+  状態では `provideAuthorizer` は CI / test に allow-all を、local から production には
+  `user_roles` authorizer を結線します。`make setup-remove-sample-api` 後は `user_roles`
+  の case が除かれ、local / CI / test が allow-all、本番相当の環境は実際の RBAC /
+  ポリシー adapter を結線するまで fail-closed になります。`core.provideAuthenticator`
+  はこれとは独立にゲートされ、CI / test はスタブ、local / development は JWKS
+  authenticator、staging / production は fail-closed です。共通の境界を前提とせず
+  `switch` を読んでください。
 
 ## Do / Don't
 
@@ -514,6 +521,19 @@ ApplyExtends --> PreMiddlewares
 ApplyExtends --> UseMiddlewares
 ApplyExtends --> ServerConfigurators
 ```
+
+## テスト戦略
+
+ここに書くのはレイヤ全体の基準であり、より詳細が必要なサブディレクトリは自身の README に記す（グラフ検証は `module/`、ライフサイクルフックは `server/hook/`）。
+
+DI レイヤは配線を行うのみで、計算はしない。したがってテストは **グラフが解決すること** と **このレイヤが所有する処理本体の挙動** を検証し、ビジネス的な振る舞いは検証しない。
+
+- **グラフの妥当性** — モジュール単位の `fx.ValidateApp`。コンストラクタもライフサイクルフックも実行せずにグラフを解決するため、配線の充足だけを証明し、それ以上は証明しない。[`module/README.ja.md`](module/README.ja.md) を参照。
+- **独自ロジックを持つ provider / `fx.Invoke` の本体** — まさにグラフ検証が到達しない箇所。単体テストで関数を直接呼ぶこと。グラフ上にしか登場しない本体は未テストである。
+- **ライフサイクルフック** — `lifecycle.Registrar` のモックで登録された start / stop クロージャを捕捉して駆動する。[`server/hook/README.ja.md`](server/hook/README.ja.md) を参照。`job` / `worker` / `outboxrelay` の各フックは `lifecycle.SupervisedRunner` の上で同じ形を取り、drain 経路（cancel → grace 上限つきの wait）が固定すべき分岐となる。
+- **環境ゲート付きの配線** — 環境ごとに実装を選び、担ってはならない環境では拒否（エラーを返す）する provider（`provideAuthorizer`、`core.provideAuthenticator`）は、拒否を含むゲートの **全ケース** を検証する。安全側に倒すこと自体が防御であり、解決に成功する環境しか通らないテストは要点を何も担保しない。現在の境界は推測せずゲート自身の `switch` を読むこと — どの環境がどの case に落ちるかは sample-api マーカーによって変わる。
+
+実 Echo と実 DB を使ったプロセス全体の起動はここでは対象外 —— それは [`internal/integration`](../integration/README.ja.md) の担当。
 
 ## 設計原則
 

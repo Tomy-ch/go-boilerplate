@@ -292,12 +292,14 @@ CREATE TABLE public.products (
     id uuid NOT NULL,
     name character varying(255) NOT NULL,
     description text,
-    price integer NOT NULL,
+    price numeric NOT NULL,
     quantity integer NOT NULL,
     stock_warning_threshold integer,
     status_id uuid NOT NULL,
     category_id uuid NOT NULL,
     published_at timestamp with time zone,
+    image_path text,
+    lock_version integer DEFAULT 1 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -342,6 +344,14 @@ COMMENT ON COLUMN public.products.category_id IS '商品カテゴリID';
 --
 COMMENT ON COLUMN public.products.published_at IS '公開日時';
 --
+-- Name: COLUMN products.image_path; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.products.image_path IS '画像パス';
+--
+-- Name: COLUMN products.lock_version; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.products.lock_version IS '楽観ロックバージョン';
+--
 -- Name: COLUMN products.created_at; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.products.created_at IS '作成日時';
@@ -357,7 +367,7 @@ CREATE TABLE public.purchase_details (
     purchase_id uuid NOT NULL,
     product_id uuid NOT NULL,
     quantity integer NOT NULL,
-    unit_price integer NOT NULL,
+    unit_price numeric NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -440,10 +450,10 @@ CREATE TABLE public.purchases (
     code character varying(50) NOT NULL,
     user_id uuid NOT NULL,
     status_id uuid NOT NULL,
-    subtotal_amount integer NOT NULL,
-    tax_amount integer NOT NULL,
-    shipping_fee integer NOT NULL,
-    total_amount integer NOT NULL,
+    subtotal_amount bigint NOT NULL,
+    tax_amount bigint NOT NULL,
+    shipping_fee bigint NOT NULL,
+    total_amount bigint NOT NULL,
     ordered_at timestamp with time zone DEFAULT now() NOT NULL,
     paid_at timestamp with time zone,
     canceled_at timestamp with time zone,
@@ -558,6 +568,45 @@ CREATE TABLE public.schema_migrations (
     dirty boolean NOT NULL
 );
 --
+-- Name: user_identities; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.user_identities (
+    id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    issuer character varying(255) NOT NULL,
+    subject character varying(255) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+--
+-- Name: TABLE user_identities; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.user_identities IS '外部ID連携';
+--
+-- Name: COLUMN user_identities.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.id IS 'ID';
+--
+-- Name: COLUMN user_identities.user_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.user_id IS 'ユーザID';
+--
+-- Name: COLUMN user_identities.issuer; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.issuer IS 'トークン発行者（IdP issuer）';
+--
+-- Name: COLUMN user_identities.subject; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.subject IS '認証主体（token の sub）';
+--
+-- Name: COLUMN user_identities.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.created_at IS '作成日時';
+--
+-- Name: COLUMN user_identities.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.user_identities.updated_at IS '更新日時';
+--
 -- Name: user_roles; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.user_roles (
@@ -593,7 +642,6 @@ CREATE TABLE public.users (
     id uuid NOT NULL,
     first_name character varying(100) NOT NULL,
     last_name character varying(100) NOT NULL,
-    password_hash character varying(255) NOT NULL,
     email character varying(100) NOT NULL,
     phone character varying(20) NOT NULL,
     prefecture_id uuid NOT NULL,
@@ -622,10 +670,6 @@ COMMENT ON COLUMN public.users.first_name IS '名前';
 -- Name: COLUMN users.last_name; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.users.last_name IS '苗字';
---
--- Name: COLUMN users.password_hash; Type: COMMENT; Schema: public; Owner: -
---
-COMMENT ON COLUMN public.users.password_hash IS 'パスワードハッシュ';
 --
 -- Name: COLUMN users.email; Type: COMMENT; Schema: public; Owner: -
 --
@@ -806,6 +850,21 @@ ALTER TABLE ONLY public.roles
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
 --
+-- Name: user_identities user_identities_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_id_primary PRIMARY KEY (id);
+--
+-- Name: user_identities user_identities_issuer_subject_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_issuer_subject_unique UNIQUE (issuer, subject);
+--
+-- Name: user_identities user_identities_user_id_issuer_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_user_id_issuer_unique UNIQUE (user_id, issuer);
+--
 -- Name: user_roles user_roles_primary; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.user_roles
@@ -836,6 +895,10 @@ CREATE INDEX outbox_pending_idx ON public.outbox USING btree (id) WHERE (status 
 -- Name: outbox_published_gc_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX outbox_published_gc_idx ON public.outbox USING btree (published_at) WHERE (status = 'published'::text);
+--
+-- Name: purchases_user_id_ordered_at_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree (user_id, ordered_at DESC, id DESC);
 --
 -- Name: users_search_text_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --
@@ -870,6 +933,11 @@ ALTER TABLE ONLY public.purchases
 --
 ALTER TABLE ONLY public.purchases
     ADD CONSTRAINT purchases_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+--
+-- Name: user_identities user_identities_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
 --
 -- Name: user_roles user_roles_role_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

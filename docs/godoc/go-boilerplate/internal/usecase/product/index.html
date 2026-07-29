@@ -1,0 +1,332 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>product - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package product
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/product&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package product は、商品の参照ユースケースを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#ListProductsParams">type ListProductsParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ProductListView">type ProductListView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ProductView">type ProductView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Usecase">type Usecase</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(repo product.Repository, tf observability.TracerFactory) Usecase</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/product/product_cursor.go.html">product_cursor.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/product/product_usecase.go.html">product_usecase.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="ListProductsParams">type <a href="../../../../src/go-boilerplate/internal/usecase/product/product_usecase.go.html?s=1331:2018#L30">ListProductsParams</a>
+				<a class="permalink" href="#ListProductsParams">¶</a>
+				
+				
+			</h2>
+			<p>ListProductsParams は、公開商品一覧取得の入力パラメータです。
+
+			</p><pre>type ListProductsParams struct {
+<span id="ListProductsParams.Cursor"></span>    <span class="comment">// Cursor は、cursor ページネーションの取得件数と境界を表します。</span>
+    Cursor *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Cursor">Cursor</a>
+<span id="ListProductsParams.CategoryID"></span>    <span class="comment">// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。</span>
+    CategoryID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListProductsParams.StatusID"></span>    <span class="comment">// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。</span>
+    StatusID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListProductsParams.Keyword"></span>    <span class="comment">// Keyword は、商品名・説明への部分一致検索キーワードです。nil の場合は絞り込みません。</span>
+    Keyword *<a href="../../../../builtin/#string">string</a>
+<span id="ListProductsParams.Ascending"></span>    <span class="comment">// Ascending は、公開日時の昇順で取得する場合に true、降順の場合に false です。</span>
+    Ascending <a href="../../../../builtin/#bool">bool</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ProductListView">type <a href="../../../../src/go-boilerplate/internal/usecase/product/product_usecase.go.html?s=998:1243#L22">ProductListView</a>
+				<a class="permalink" href="#ProductListView">¶</a>
+				
+				
+			</h2>
+			<p>ProductListView は、公開商品一覧（cursor ページネーション）の取得結果を表します。
+
+			</p><pre>type ProductListView struct {
+<span id="ProductListView.Items"></span>    <span class="comment">// Items は、現在ページの商品一覧です。</span>
+    Items []<a href="#ProductView">ProductView</a>
+<span id="ProductListView.NextCursor"></span>    <span class="comment">// NextCursor は、次ページ取得用の不透明カーソルです。最終ページの場合は nil です。</span>
+    NextCursor *<a href="../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ProductView">type <a href="../../../../src/go-boilerplate/internal/usecase/product/product_usecase.go.html?s=580:882#L9">ProductView</a>
+				<a class="permalink" href="#ProductView">¶</a>
+				
+				
+			</h2>
+			<p>ProductView は、商品 1 件分のユースケース出力 DTO です。price は USD セント単位の整数です。
+
+			</p><pre>type ProductView struct {
+<span id="ProductView.ID"></span>    ID                    <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ProductView.Name"></span>    Name                  <a href="../../../../builtin/#string">string</a>
+<span id="ProductView.Description"></span>    Description           *<a href="../../../../builtin/#string">string</a>
+<span id="ProductView.Price"></span>    Price                 <a href="../../../../builtin/#int">int</a>
+<span id="ProductView.Quantity"></span>    Quantity              <a href="../../../../builtin/#int">int</a>
+<span id="ProductView.StockWarningThreshold"></span>    StockWarningThreshold *<a href="../../../../builtin/#int">int</a>
+<span id="ProductView.StatusID"></span>    StatusID              <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ProductView.CategoryID"></span>    CategoryID            <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ProductView.PublishedAt"></span>    PublishedAt           <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/product/product_usecase.go.html?s=2092:2324#L44">Usecase</a>
+				<a class="permalink" href="#Usecase">¶</a>
+				
+				
+			</h2>
+			<p>Usecase は、商品の参照ユースケースを定義します。
+
+			</p><pre>type Usecase interface {
+    <span class="comment">// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。</span>
+    ListProducts(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#ListProductsParams">ListProductsParams</a>) (*<a href="#ProductListView">ProductListView</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/product/product_usecase.go.html?s=2524:2597#L56">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(repo <a href="../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../go-boilerplate/internal/domain/product/#Repository">Repository</a>, tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="#Usecase">Usecase</a></pre>
+				<p>New は、商品の参照ユースケースを生成します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

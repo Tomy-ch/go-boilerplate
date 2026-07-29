@@ -1,4 +1,7 @@
 type: http
-description: 認証にBearerトークンを使用することを示します。
+description: |
+  認証にBearerトークンを使用することを示します。
+  JWT の検証は RFC8725（JSON Web Token Best Current Practices）に従います。
+  署名アルゴリズムは許可リストで固定し、`alg: none` と鍵の混同を拒否します。
 scheme: bearer
 bearerFormat: JWT

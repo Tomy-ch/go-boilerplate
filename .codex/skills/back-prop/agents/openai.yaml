@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation Drift Review"
+  short_description: "コード・README・スキル間のドリフトを検出して整理する"
+  default_prompt: "$back-prop を使い、変更範囲の文書とスキルのドリフトを確認して。"

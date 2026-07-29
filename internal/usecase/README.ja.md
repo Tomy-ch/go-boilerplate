@@ -21,7 +21,7 @@ flowchart TB
     Usecase["Usecase (Application Service)"]
     Domain1["Domain (Business Rule)"]
     Repo["Repository (Persistence)"]
-    Boundary["Boundary (Tx / Clock / Security / Auth)"]
+    Boundary["Boundary (Tx / Clock / Auth)"]
     Domain2["Domain (Re-evaluation / Composition)"]
     DTO_out["DTO (Output)"]
 
@@ -115,7 +115,7 @@ Domain と Usecase の責務は次のように分離されます。
 ```mermaid
 flowchart TB
     A["ユーザー名の制約"]
-    B["パスワード形式ルール"]
+    B["メール形式ルール"]
     C["状態遷移"]
 ```
 
@@ -125,9 +125,8 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A["パスワードをハッシュ化"]
-    B["トランザクション内で実行"]
-    C["都道府県情報を取得"]
+    A["トランザクション内で実行"]
+    B["都道府県情報を取得"]
 ```
 
 これらは **Usecase 層に実装します。**
@@ -153,7 +152,6 @@ Usecase はこれらの **interface のみ参照**し、実装は Infrastructure
 
 - `Transaction Manager`
 - `Clock`
-- `Security (PasswordHasher 等)`
 - `Auth Context`
 - `Messaging / EventPublisher`
 - `Observability`
@@ -241,7 +239,6 @@ Infrastructure --> BoundaryInterface
 - `CreateUser`
 - `UpdateUser`
 - `DeleteUser`
-- `ChangePassword`
 
 特徴
 
@@ -375,7 +372,6 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    hasher security.Hasher,
     userRepo user.Repository,
     userQS query.UserQueryService,
 ) Usecase {
@@ -383,7 +379,6 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        hasher:    hasher,
         userRepo:  userRepo,
         userQS:    userQS,
     }
@@ -395,7 +390,7 @@ func New(
 - 戻り値は **interface（Usecase定義）**
 - 依存はすべて引数で受け取る（new禁止）
 - Repository / QueryService は interface 経由で受け取る
-- Boundary（tx / clock / security 等）も interface で受け取る
+- Boundary（tx / clock 等）も interface で受け取る
 
 ### DI の流れ
 
@@ -448,6 +443,40 @@ flowchart TB
 - インターフェイスは`Usecase`（例：`user.Usecase`）で統一。
 - インスタンスの生成関数名は `New` で統一し、[di/module/usecase.go](../di/module/usecase.go) で登録する。
 
+### doc コメント：インターフェイス側と実装側
+
+本リポジトリではインターフェイスとその実装が同一パッケージに同居する（`Usecase` と非 export の
+`usecase`）ため、双方が doc コメントを持つ。両者は**読み手が異なる**ので、互いの複製にしてはならない。
+
+- **インターフェイス側 doc ＝ 呼出側契約**（`docs/rules.md` § Comment Rules に準拠）。記述は
+  **アプリケーション語彙**に留めること。Repository / QueryService / Boundary の名指しは可（Usecase が正当に
+  所有する内向きの抽象のため）だが、**インフラ語彙は層を漏らす**ため禁止 — SQL の断片
+  （`SELECT … FOR UPDATE`）、テーブル名、カラム名、keyset の仕組みなど。それらは既にそう書いてある
+  Infrastructure 側の doc コメントの担当である。
+- **実装側 doc ＝ 次にここを触る実装者向け。** アプリケーション語彙のまま、契約より**一段具体**に踏み込ん
+  でよい。どの協力者が保証を担っているか、なぜトランザクション境界がそこにあるか、何が失敗ではなく
+  degrade するか、なぜその競合はリトライで解消しないか、など。`product/product_update_usecase.go` の
+  `UpdateProduct` が参照実装。
+- **インターフェイス側 doc の逐語複製は書かない。** 複製は何も足さず、2 箇所で腐る。足す価値のある具体が
+  無いなら**実装側 doc は省略してよい** — 実装型は非 export のため `revive` の `exported` ルールの対象外。
+
+このインターフェイスと実装の書き分けは**この層固有ではない**。インターフェイスとその非 export な実装が同一
+パッケージに同居する箇所すべてに適用され、`internal/logging` の `Logger` や `internal/observability` の
+provider factory も同じ規則の下にある。層ごとに異なるのは下記の語彙の部分であり、逐語複製を書かないという
+部分はリポジトリ全体の規則である。
+
+同じアプリケーション語彙の規則は、**この層が所有する port インターフェイス** — Boundary / CommandService /
+QueryService — にも適用される。port は外部との接ぎ目であり、だからこそ技術中立に記述しなければならない。
+契約すべきは*保証*であって、現時点でそれを実現している機構ではない。`LockPurchase` は悲観ロックを取ること、
+そのロックが何を直列化するかを述べる（呼出側はその両方に依存する）が、そのロックが `SELECT … FOR UPDATE`
+であることは述べない。`QueryService` は所有権を自身の絞り込みで担保すると述べ、SQL の `WHERE` 述語とは
+書かない。機構は Infrastructure 実装側の doc コメントの担当であり、そちらでは名指ししてよい
+（[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail を参照）。
+
+コメントの内容基準そのもの（契約 + 非自明な Why、How のナレーション / 経緯 / 言い換えは書かない）は
+`docs/rules.md` § Comment Rules にある。本節は**どの doc コメントが何を担うか**だけを定める。
+
 ### ビジネスロジックを実装しない？ → 誤解を避けて明確化
 
 - “ドメインロジック”は Domain 層に置く（エンティティ/VO/ドメインサービスのメソッド）。
@@ -455,7 +484,7 @@ flowchart TB
 
 ### HTTP/DBの要素は持ち込まない
 
-- `http.*`, `echo.Context`, `sqlc` 型、`sql.Null*`、DB列名、OpenAPI生成型…を引数/戻り値に使わない。
+- `http.*`, `*echo.Context`, `sqlc` 型、`sql.Null*`、DB列名、OpenAPI生成型…を引数/戻り値に使わない。
 - 代わりに DTO/VO（Page/Filters/Actor） で表現。
 
 ### エラー方針
@@ -486,7 +515,7 @@ flowchart TB
 ### 呼び出せる層
 
 - Domain（エンティティ/ドメインサービス/Repositoryインタフェース）
-- Boundary（tx / clock / security / auth 等）
+- Boundary（tx / clock / auth 等）
 - QueryService（必要な場合）
 
 ### 呼び出せない層
@@ -548,7 +577,6 @@ ctrl := gomock.NewController(t)
 
 userRepo := mock_user.NewMockRepository(ctrl)
 clock := mock_clock.NewMockClock(ctrl)
-hasher := mock_security.NewMockHasher(ctrl)
 ```
 
 ### テスト対象
@@ -587,7 +615,6 @@ TestListUsers
 
 例：
 
-- Password hash error
 - Repository error
 - Domain validation error
 - Prefecture lookup error
@@ -641,7 +668,7 @@ Usecase テストでは以下を扱いません。
 ### Don’t
 
 - DomainのEntityを直接返す
-- `http.Status` や `echo.Context` を引数に取る/返す
+- `http.Status` や `*echo.Context` を引数に取る/返す
 - `sqlc`生成型や`sql.Null*`を引数/戻り値に使う
 - `openapi/gen`の型を直接返す（DTOに詰め替えるのはControllerの責務）
 - Listで0件をエラー化（`apperror.ErrNotFound`(404)は単体取得のみ）
@@ -737,8 +764,7 @@ type UserMutableFields struct {
 }
 
 type CreateUserParamsDTO struct {
-    UserID   uuid.UUID
-    Password string
+    UserID uuid.UUID
 
     UserMutableFields
 }
@@ -749,7 +775,6 @@ type usecase struct {
     tracer    observability.LayerTracer
     txm       tx.Manager
     clock     clock.Clock
-    hasher    security.Hasher
     userRepo  user.Repository
     pftRepo   prefecture.Repository
     userQS    query.UserQueryService
@@ -770,7 +795,6 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    hasher security.Hasher,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
     userQueryService query.UserQueryService,
@@ -779,7 +803,6 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        hasher:    hasher,
         userRepo:  userRepo,
         pftRepo:   prefectureRepo,
         userQS:    userQueryService,
@@ -875,24 +898,13 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 
     // 時刻の取得はUsecase層で一元管理するルールに従う
     now := u.clock.Now()
-    // パスワードのハッシュ化などはDomain層で定義したルールを呼び出す
-    rawPassword, err := user.NewRawPassword(dto.RawPassword)
-    if err != nil {
-        return MutableFields{}, err
-    }
-
-    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるhasherを使う
-    passwordHash, err := u.hasher.Hash(rawPassword.Value())
-    if err != nil {
-        return MutableFields{}, err
-    }
 
     var (
         userEntity *user.User
         pftDomain  *prefecture.Entity
     )
     // トランザクションの開始と終了をTxManagerに任せる
-    err = u.txm.Do(ctx, func(ctx context.Context) error {
+    err := u.txm.Do(ctx, func(ctx context.Context) error {
         var err error
         pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
         if err != nil {
@@ -903,7 +915,6 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
             dto.UserID,
             dto.FirstName,
             dto.LastName,
-            passwordHash,
             dto.Email,
             dto.Phone,
             pftDomain.ID(),

@@ -1,0 +1,17 @@
+# gitleaks が無視する既知・許容済みフィンガープリントの一覧。
+# https://github.com/gitleaks/gitleaks#gitleaksignore
+#
+# mock-auth-server の固定 RSA 署名鍵は、ローカル開発専用の疑似 OIDC provider が JWT 署名に使う
+# 意図的なサンプル鍵で秘密情報ではない（発行 Token の再現性のため固定しリポジトリで管理する）。
+docker/mock-auth-server/keys/mock-key-1.pem:private-key:1
+docker/mock-auth-server/keys/mock-key-2.pem:private-key:1
+docker/mock-auth-server/keys/mock-key-retired.pem:private-key:1
+# 同じ固定署名鍵の公開部を Go 側ローテーション統合テストが //go:embed で取り込むためのコピー。
+internal/integration/testdata/keys/mock-key-1.pem:private-key:1
+internal/integration/testdata/keys/mock-key-2.pem:private-key:1
+# ローカル開発用 Garage（S3 互換）の固定ダミー資格情報。実秘密ではなく make serve の
+# object storage バックエンド接続用にリポジトリで固定管理する（Garage 形式: rpc_secret=64hex /
+# secret access key=64hex）。テストは gofakes3 を使うため本値は本番・CI に流れない。
+docker/garage/garage.toml:generic-api-key:12
+docker-compose.yaml:generic-api-key:136
+env/.env:generic-api-key:64

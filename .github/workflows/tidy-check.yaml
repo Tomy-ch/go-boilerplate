@@ -26,15 +26,42 @@ jobs:
       security-events: write
       pull-requests: write
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          cache: true
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
+
+      # `go mod verify` only checks modules already present in the local download
+      # cache, and it neither downloads what is missing nor reads go.sum. On its own
+      # it would report "all modules verified" here and mean nothing: this job's path
+      # filter fires when go.sum changes, which is exactly when setup-go's cache key
+      # (a hash of go.sum) misses and the cache is empty.
+      #
+      # `go mod download` is therefore what makes the check real — it fetches every
+      # module named in go.mod and fails if one does not match its go.sum hash.
+      # `go mod verify` then re-checks the fetched cache for tampering after the fact.
+      #
+      # Scope worth knowing: neither command inspects the committed vendor/ tree, and
+      # builds here run in vendor mode. This verifies that go.sum still describes the
+      # real upstream modules; it does NOT prove vendor/ matches them.
+      - name: Verify module checksums
+        run: |
+          go mod download
+          go mod verify
+        shell: bash
 
       - name: Tidy (check only)
         id: tidy
@@ -75,6 +102,6 @@ jobs:
         run: |
           code='${{ steps.tidy.outputs.exit_code }}'
           if [ "$code" != "0" ]; then
-            echo "::error::go.mod/go.sum show differences after running `go mod tidy`"
+            echo "::error::go.mod/go.sum show differences after running \`go mod tidy\`"
             exit 1
           fi

@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package feed は、/v1/users/feed エンドポイントに関連するハンドラを提供します。
 package feed
@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 )
 

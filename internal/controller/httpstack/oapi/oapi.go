@@ -4,12 +4,12 @@ package oapi
 import (
 	"go-boilerplate/internal/controller/ctxhelper"
 
-	echomw "github.com/labstack/echo/v4/middleware"
-	oapimw "github.com/oapi-codegen/echo-middleware"
+	echomw "github.com/labstack/echo/v5/middleware"
+	oapimw "github.com/oapi-codegen/echo-v5-middleware"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // Middleware は、OpenAPI スキーマに基づくリクエストバリデーション（認証は authFunc 経由）を行うミドルウェアを返します。
@@ -28,7 +28,7 @@ func Middleware(
 	})
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			req := c.Request()
 			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 			c.SetRequest(req)

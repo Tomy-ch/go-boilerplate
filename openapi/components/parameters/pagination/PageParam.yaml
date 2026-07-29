@@ -1,9 +1,10 @@
 name: page
 in: query
-description: ページ番号（1から始まる）
+description: ページ番号（1から始まる）。上限を超えた場合は 400 を返します。
 required: false
 schema:
   type: integer
   minimum: 1
+  maximum: 10000
   default: 1
   example: 1

@@ -1,4 +1,4 @@
-// Package user は、ユーザードメインを定義します。User エンティティ（論理削除・パスワード変更・プロフィール更新）・RawPassword 値オブジェクト・FeedCursor 値オブジェクト・Repository インターフェースを提供します。
+// Package user は、ユーザードメインを定義します。User エンティティ（論理削除・プロフィール更新）・FeedCursor 値オブジェクト・Repository インターフェースを提供します。
 package user
 
 import (
@@ -19,7 +19,6 @@ type User struct {
 	id           uuid.UUID
 	firstName    string
 	lastName     string
-	passwordHash string
 	email        Email
 	phone        string
 	prefectureID uuid.UUID
@@ -32,62 +31,66 @@ type User struct {
 	deletedAt    *time.Time
 }
 
+// Profile は、ユーザーのプロフィール属性一式です。New と UpdateProfile が同じ集合を受け取ります。
+// Building は未設定を nil で表し、Email と PostalCode は値オブジェクトへの変換時に検証します。
+type Profile struct {
+	FirstName    string
+	LastName     string
+	Email        string
+	Phone        string
+	PrefectureID uuid.UUID
+	City         string
+	Street       string
+	Building     *string
+	PostalCode   string
+}
+
+// Attributes は、ユーザーの属性一式です。Profile に監査時刻を加えた、生成時に必要な集合を表します。
+// DeletedAt は未削除を nil で表します。
+type Attributes struct {
+	Profile
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
+}
+
 // New は、ユーザーエンティティの検証と生成を行います。
-// updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt および updatedAt 以降である必要があり、違反時はそれぞれ ErrInvalidUpdatedAt / ErrInvalidDeletedAt を返します。
-func New(
-	id uuid.UUID,
-	firstName string,
-	lastName string,
-	passwordHash string,
-	email string,
-	phone string,
-	prefectureID uuid.UUID,
-	city string,
-	street string,
-	building *string,
-	postalCode string,
-	createdAt time.Time,
-	updatedAt time.Time,
-	deletedAt *time.Time,
-) (*User, error) {
+// UpdatedAt は CreatedAt 以降、DeletedAt（非 nil 時）は CreatedAt および UpdatedAt 以降である必要があり、違反時はそれぞれ ErrInvalidUpdatedAt / ErrInvalidDeletedAt を返します。
+func New(id uuid.UUID, attrs Attributes) (*User, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
 
-	emailVO, postalCodeVO, err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode)
+	emailVO, postalCodeVO, err := validateProfileFields(attrs.Profile)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validatePasswordHash(passwordHash); err != nil {
-		return nil, err
-	}
-
-	if updatedAt.Before(createdAt) {
+	if attrs.UpdatedAt.Before(attrs.CreatedAt) {
 		return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
 	}
 
-	if deletedAt != nil {
-		if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+	if attrs.DeletedAt != nil {
+		if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
 			return nil, err
 		}
 	}
 
 	return &User{
 		id:           id,
-		firstName:    firstName,
-		lastName:     lastName,
-		passwordHash: passwordHash,
+		firstName:    attrs.FirstName,
+		lastName:     attrs.LastName,
 		email:        emailVO,
-		phone:        phone,
-		prefectureID: prefectureID,
-		city:         city,
-		street:       street,
-		building:     ptr.Copy(building),
+		phone:        attrs.Phone,
+		prefectureID: attrs.PrefectureID,
+		city:         attrs.City,
+		street:       attrs.Street,
+		building:     ptr.Copy(attrs.Building),
 		postalCode:   postalCodeVO,
-		createdAt:    createdAt,
-		updatedAt:    updatedAt,
-		deletedAt:    ptr.Copy(deletedAt),
+		createdAt:    attrs.CreatedAt,
+		updatedAt:    attrs.UpdatedAt,
+		deletedAt:    ptr.Copy(attrs.DeletedAt),
 	}, nil
 }
 
@@ -99,9 +102,6 @@ func (u *User) FirstName() string { return u.firstName }
 
 // LastName は、ユーザーの名字を返します。
 func (u *User) LastName() string { return u.lastName }
-
-// PasswordHash は、ユーザーのパスワードハッシュを返します。
-func (u *User) PasswordHash() string { return u.passwordHash }
 
 // Email は、ユーザーのメールアドレスを返します。
 func (u *User) Email() string { return u.email.Value() }
@@ -137,19 +137,12 @@ func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 func (u *User) FullName() string { return u.firstName + " " + u.lastName }
 
 // UpdateProfile は、プロフィール（氏名・連絡先・住所・都道府県ID）と更新日時を一括で置き換えます。
-// パスワードは変更しません。各フィールドは New と同じ不変条件で検証します。論理削除済みユーザーには ErrAlreadyDeleted を返します。
-func (u *User) UpdateProfile(
-	firstName, lastName, email, phone string,
-	prefectureID uuid.UUID,
-	city, street string,
-	building *string,
-	postalCode string,
-	updatedAt time.Time,
-) error {
+// 各フィールドは New と同じ不変条件で検証します。論理削除済みユーザーには ErrAlreadyDeleted を返します。
+func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
 	if err := u.ensureNotDeleted(); err != nil {
 		return err
 	}
-	emailVO, postalCodeVO, err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode)
+	emailVO, postalCodeVO, err := validateProfileFields(profile)
 	if err != nil {
 		return err
 	}
@@ -157,32 +150,15 @@ func (u *User) UpdateProfile(
 		return err
 	}
 
-	u.firstName = firstName
-	u.lastName = lastName
+	u.firstName = profile.FirstName
+	u.lastName = profile.LastName
 	u.email = emailVO
-	u.phone = phone
-	u.prefectureID = prefectureID
-	u.city = city
-	u.street = street
-	u.building = ptr.Copy(building)
+	u.phone = profile.Phone
+	u.prefectureID = profile.PrefectureID
+	u.city = profile.City
+	u.street = profile.Street
+	u.building = ptr.Copy(profile.Building)
 	u.postalCode = postalCodeVO
-	u.updatedAt = updatedAt
-	return nil
-}
-
-// ChangePassword は、パスワードハッシュと更新日時を置き換えます。論理削除済みユーザーには ErrAlreadyDeleted を返します。updatedAt は現在値以降（単調非減少）である必要があり、違反時は ErrInvalidUpdatedAt を返します。
-func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error {
-	if err := u.ensureNotDeleted(); err != nil {
-		return err
-	}
-	if err := validatePasswordHash(passwordHash); err != nil {
-		return err
-	}
-	if err := u.ensureUpdatedAt(updatedAt); err != nil {
-		return err
-	}
-
-	u.passwordHash = passwordHash
 	u.updatedAt = updatedAt
 	return nil
 }
@@ -236,52 +212,46 @@ func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error {
 // 失敗があった場合は各フィールドの検証エラーを結合し、不正フィールドの識別子を
 // apperror.Meta の Details として付与して返します（理由文はエラーメッセージ側にのみ残ります）。
 // email / postalCode は値オブジェクトの factory で検証し、成功時は構築済みの VO を返します。
-func validateProfileFields(
-	firstName, lastName, email, phone string,
-	prefectureID uuid.UUID,
-	city, street string,
-	building *string,
-	postalCode string,
-) (Email, PostalCode, error) {
+func validateProfileFields(profile Profile) (Email, PostalCode, error) {
 	var errs []error
 	var fields []string
 
-	if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+	if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
 		errs = append(errs, xerrors.Wrap(ErrInvalidFirstName, msg))
 		fields = append(fields, FieldFirstName)
 	}
-	if ok, msg := stringkit.ValidateInRange(lastName, minLength, maxLastNameLength); !ok {
+	if ok, msg := stringkit.ValidateInRange(profile.LastName, minLength, maxLastNameLength); !ok {
 		errs = append(errs, xerrors.Wrap(ErrInvalidLastName, msg))
 		fields = append(fields, FieldLastName)
 	}
-	emailVO, emailErr := NewEmail(email)
+	emailVO, emailErr := NewEmail(profile.Email)
 	if emailErr != nil {
 		errs = append(errs, emailErr)
 		fields = append(fields, FieldEmail)
 	}
-	if ok, msg := stringkit.ValidateInRange(phone, minLength, maxPhoneLength); !ok {
+	if ok, msg := stringkit.ValidateInRange(profile.Phone, minLength, maxPhoneLength); !ok {
 		errs = append(errs, xerrors.Wrap(ErrInvalidPhone, msg))
 		fields = append(fields, FieldPhone)
 	}
-	if prefectureID.IsNil() {
+	if profile.PrefectureID.IsNil() {
 		errs = append(errs, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required"))
 		fields = append(fields, FieldPrefectureID)
 	}
-	if ok, msg := stringkit.ValidateInRange(city, minLength, maxCityLength); !ok {
+	if ok, msg := stringkit.ValidateInRange(profile.City, minLength, maxCityLength); !ok {
 		errs = append(errs, xerrors.Wrap(ErrInvalidCity, msg))
 		fields = append(fields, FieldCity)
 	}
-	if ok, msg := stringkit.ValidateInRange(street, minLength, maxStreetLength); !ok {
+	if ok, msg := stringkit.ValidateInRange(profile.Street, minLength, maxStreetLength); !ok {
 		errs = append(errs, xerrors.Wrap(ErrInvalidStreet, msg))
 		fields = append(fields, FieldStreet)
 	}
-	if building != nil {
-		if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok {
+	if profile.Building != nil {
+		if ok, msg := stringkit.ValidateInRange(*profile.Building, minLength, maxBuildingLength); !ok {
 			errs = append(errs, xerrors.Wrap(ErrInvalidBuilding, msg))
 			fields = append(fields, FieldBuilding)
 		}
 	}
-	postalCodeVO, postalCodeErr := NewPostalCode(postalCode)
+	postalCodeVO, postalCodeErr := NewPostalCode(profile.PostalCode)
 	if postalCodeErr != nil {
 		errs = append(errs, postalCodeErr)
 		fields = append(fields, FieldPostalCode)
@@ -291,12 +261,4 @@ func validateProfileFields(
 		return Email{}, PostalCode{}, apperror.WithDetails(xerrors.Join(errs...), fields...)
 	}
 	return emailVO, postalCodeVO, nil
-}
-
-// validatePasswordHash は、パスワードハッシュの不変条件を検証します。
-func validatePasswordHash(passwordHash string) error {
-	if ok, msg := stringkit.ValidateInRange(passwordHash, minLength, maxPasswordHashLength); !ok {
-		return xerrors.Wrap(ErrInvalidPasswordHash, msg)
-	}
-	return nil
 }

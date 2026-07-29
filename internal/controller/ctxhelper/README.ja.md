@@ -22,7 +22,7 @@ ctxhelperは「contextの利用を制御する境界レイヤ」です。
 - `SetAuthn(ctx, authn) bool` — スロットへ書き込む。スロットが無ければ `false`
 - `GetAuthn(ctx) (auth.Authn, bool)` — スロットから読む。未設定なら `ok=false`
 
-生成（`genctxkey`、`generate.go` に定義）— リクエストスコープの真偽値フラグ。各名前は `context.Context` 用と `echo.Context` 用のペアを提供します:
+生成（`genctxkey`、`generate.go` に定義）— リクエストスコープの真偽値フラグ。各名前は `context.Context` 用と `*echo.Context` 用のペアを提供します:
 
 - `ErrorHandled` — `SetErrorHandled` / `GetErrorHandled`、`SetErrorHandledToEcho` / `GetErrorHandledFromEcho`
 - `Recovered` — `SetRecovered` / `GetRecovered`、`SetRecoveredToEcho` / `GetRecoveredFromEcho`

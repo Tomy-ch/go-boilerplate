@@ -1,0 +1,233 @@
+name: Notify
+
+# Reusable notification for the security workflows, in two modes.
+#
+#   failure   (`failed-job`) — a scanner that runs on a weekly schedule broke. A PR
+#             failure is already visible to its author; a scheduled failure is not
+#             visible to anyone, so it needs to be pushed somewhere a human reads.
+#   detection (`detected` + `details`) — a scanner that deliberately does NOT fail the
+#             build found something. Its job ends green, so failure mode would never
+#             fire, yet the finding still has to reach the role that owns the decision.
+#
+# This is the repository's only workflow_call; everything else shared between
+# workflows is a composite action under .github/actions/. The difference is
+# deliberate. A composite action would run as a step inside the scanner's own job,
+# which means the Slack webhook would sit on the same runner that just unpacked
+# vulnerable dependencies and container images. workflow_call always gets its own
+# runner, so the only thing sharing a machine with the webhook is this file, whose
+# permissions are contents: read and which never checks out the repository.
+#
+# The file is split in two on purpose:
+#
+#   1. "Build notification payload" and everything above it are transport-agnostic.
+#      They decide WHAT happened and WHERE to look, and nothing more.
+#   2. "Resolve notification backend" and "Send to Slack" are backend-specific, as is
+#      the `slack-webhook-url` secret name in the workflow_call interface.
+#
+# Swapping Slack for another mechanism therefore touches those three places plus the
+# `secrets:` line in each calling workflow — but never part 1. Keep that boundary
+# intact when editing this file.
+#
+# Failure mode carries no scan output: the run URL is the only pointer, so a secret or
+# a vulnerability detail can never reach the notification backend. Detection mode has
+# to carry `details`, because a notification that cannot say WHAT was found does not
+# identify the event it reports. What keeps that safe is the caller — it chooses what
+# goes in, and must pass identifiers only (a package name and version, a file path),
+# never a matched secret value.
+
+on:
+  workflow_call:
+    inputs:
+      failed-job:
+        description: >-
+          Name of the job that failed, as written in the calling workflow. Selects
+          failure mode. Mutually exclusive with `detected`.
+        required: false
+        type: string
+        default: ''
+      detected:
+        description: >-
+          One-line description of what was detected, e.g. "npm cooldown bypass
+          detected (2 findings)". Selects detection mode. Mutually exclusive with
+          `failed-job`.
+        required: false
+        type: string
+        default: ''
+      details:
+        description: >-
+          Markdown body naming what was detected, one item per line. Detection mode
+          only. Identifiers only — never a matched secret value.
+        required: false
+        type: string
+        default: ''
+    secrets:
+      slack-webhook-url:
+        description: >-
+          Slack incoming webhook URL. When it is not configured the notification is
+          skipped and the run is left green: a missing webhook is a setup gap, not a
+          scan result, and must not mask the event it was meant to report.
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      # Transport-agnostic. In a reusable workflow the github context belongs to the
+      # caller, so the workflow name / trigger / actor / run id below identify the
+      # scanner that reported rather than this file.
+      #
+      # The two modes differ only in the headline and the field list; everything after
+      # this step is shared. Detection mode carries actor and commit as well, because
+      # its whole purpose is attribution — naming who introduced what, on which branch.
+      - name: Build notification payload
+        id: payload
+        env:
+          WORKFLOW_NAME: ${{ github.workflow }}
+          TRIGGER: ${{ github.event_name }}
+          FAILED_JOB: ${{ inputs.failed-job }}
+          DETECTED: ${{ inputs.detected }}
+          DETAILS: ${{ inputs.details }}
+          ACTOR: ${{ github.actor }}
+          COMMIT: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # Rejected rather than defaulted: silently picking one mode would send a
+          # notification that misdescribes what happened, which is worse than no
+          # notification at all.
+          if [ -n "${FAILED_JOB}" ] && [ -n "${DETECTED}" ]; then
+            echo "::error::notify.yaml takes either failed-job or detected, not both."
+            exit 1
+          fi
+          if [ -z "${FAILED_JOB}" ] && [ -z "${DETECTED}" ]; then
+            echo "::error::notify.yaml needs one of failed-job or detected."
+            exit 1
+          fi
+
+          # Fields are (label, value) pairs so the renderers below stay mode-agnostic.
+          if [ -n "${FAILED_JOB}" ]; then
+            headline="🚨 ${WORKFLOW_NAME} failed"
+            headline_md="🚨 *${WORKFLOW_NAME}* failed"
+            fields=$(jq -n \
+              --arg repo "${REPOSITORY}" \
+              --arg ref "${REF_NAME}" \
+              --arg trigger "${TRIGGER}" \
+              --arg job "${FAILED_JOB}" \
+              '[["Repository", $repo], ["Ref", $ref], ["Trigger", $trigger], ["Failed job", $job]]')
+          else
+            headline="⚠️ ${DETECTED}"
+            headline_md="⚠️ *${DETECTED}*"
+            fields=$(jq -n \
+              --arg repo "${REPOSITORY}" \
+              --arg ref "${REF_NAME}" \
+              --arg commit "${COMMIT}" \
+              --arg actor "${ACTOR}" \
+              --arg trigger "${TRIGGER}" \
+              --arg at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+              '[["Repository", $repo], ["Ref", $ref], ["Commit", $commit], ["Actor", $actor], ["Trigger", $trigger], ["Detected at", $at]]')
+          fi
+
+          # jq builds the JSON so that a value containing a quote or a newline cannot
+          # break out of the payload. Slack rejects a text object over 3000 characters,
+          # so details are cut well short of it; the run URL carries the full report.
+          jq -n \
+            --arg headline "${headline}" \
+            --arg headline_md "${headline_md}" \
+            --argjson fields "${fields}" \
+            --arg details "${DETAILS}" \
+            --arg repo "${REPOSITORY}" \
+            --arg ref "${REF_NAME}" \
+            --arg url "${RUN_URL}" \
+            '
+            def truncate: if (. | length) > 2500 then .[0:2500] + "\n… (truncated, see the run)" else . end;
+            {
+              text: "\($headline) — \($repo) (\($ref))",
+              blocks: (
+                [{
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: ($headline_md + "\n" + ($fields | map("*\(.[0]):* \(.[1])") | join("\n")))
+                  }
+                }]
+                + (if $details == "" then [] else [{
+                    type: "section",
+                    text: { type: "mrkdwn", text: ($details | truncate) }
+                  }] end)
+                + [{
+                    type: "section",
+                    text: { type: "mrkdwn", text: "<\($url)|View run logs>" }
+                  }]
+              )
+            }' > notification.json
+
+          {
+            echo "## ${headline}"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "${fields}" | jq -r '.[] | "| \(.[0]) | \(.[1]) |"'
+            echo "| Run | ${RUN_URL} |"
+            if [ -n "${DETAILS}" ]; then
+              echo
+              echo "${DETAILS}"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      # Kept separate from the send step so that "is the backend configured?" is
+      # answered without the secret ever reaching an `if:` expression.
+      - name: Resolve notification backend
+        id: backend
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.slack-webhook-url }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::No notification backend is configured (secret SLACK_WEBHOOK_URL is unset); skipping delivery."
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
+            echo "> Notification was not delivered: secret \`SLACK_WEBHOOK_URL\` is unset." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+        shell: bash
+
+      # ---------------------------------------------------------------------------
+      # Backend-specific: replace this step wholesale to notify somewhere else, and
+      # leave "Build notification payload" untouched.
+      # ---------------------------------------------------------------------------
+      - name: Send to Slack
+        if: ${{ steps.backend.outputs.configured == 'true' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.slack-webhook-url }}
+        run: |
+          set -euo pipefail
+          # --fail-with-body surfaces Slack's rejection reason; -sS keeps the log free
+          # of a progress meter while still printing errors.
+          #
+          # The URL is fed through `--config -` rather than passed as an argument,
+          # because a process argument is world-readable through /proc on the runner
+          # for as long as curl lives. Nothing else should be sharing this runner —
+          # the job checks out no code and runs only pinned actions — but the webhook
+          # is the one secret here, and keeping it out of argv costs a pipe.
+          printf 'url = "%s"\n' "${SLACK_WEBHOOK_URL}" | curl --config - \
+            --fail-with-body -sS \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data @notification.json
+        shell: bash

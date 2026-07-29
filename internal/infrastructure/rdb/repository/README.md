@@ -46,6 +46,13 @@ Repository handles **Aggregate persistence (CRUD)**. Read-only queries for searc
 
 This separation allows Repository to focus on Aggregate integrity while delegating search performance optimization to QS.
 
+> **Reference-master exception (return type / JOIN).** A Repository read MAY JOIN a *fixed reference
+> master* (enum-like lookup data with no independent write lifecycle, reached by a mandatory
+> uniquely-determined FK — e.g. `purchases` joining `purchase_statuses`) and return a small read model
+> carrying the resolved display value (e.g. a `StatusName`), rather than a full Domain Entity. This is
+> still a single-Aggregate Repository read, not a cross-Aggregate QueryService. The criterion is the
+> joined data's nature, not its Go modeling. See `docs/rules.md` § "Repository / QueryService Rules".
+
 ## Role
 
 Repository is the layer that **implements the Domain persistence abstraction (Repository Interface) in Infrastructure**.
@@ -114,7 +121,8 @@ Repository does not perform the following:
 
 - Business rules
 - Aggregation processing
-- DTO generation
+- DTO generation (exception: a small read model resolving a *reference-master* JOIN — see the
+  Reference-master exception above)
 - Usecase logic
 
 These are the **responsibility of Usecase / Domain**.
@@ -735,7 +743,7 @@ Repository **does not depend on HTTP layer**.
 NG example
 
 ```go
-func (r *repository) Create(ctx echo.Context)
+func (r *repository) Create(ctx *echo.Context)
 ```
 
 Repository is implemented as a **pure Go interface**.

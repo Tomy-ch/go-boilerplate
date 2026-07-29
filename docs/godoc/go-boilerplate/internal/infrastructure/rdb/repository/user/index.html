@@ -106,6 +106,9 @@
 				
 				<dd><a href="#New">func New(db driver.DatabaseDriver, tf observability.TracerFactory) user.Repository</a></dd>
 			
+				
+				<dd><a href="#NewRoleRepository">func NewRoleRepository(db driver.DatabaseDriver, tf observability.TracerFactory) user.RoleRepository</a></dd>
+			
 			
 			
 			</dl>
@@ -120,6 +123,8 @@
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_repository.go.html">user_repository.go</a>
 			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_role_repository.go.html">user_role_repository.go</a>
+			
 			</span>
 			</p>
 		
@@ -133,7 +138,7 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_repository.go.html?s=571:658#L11">New</a>
+			<h2 id="New">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_repository.go.html?s=622:709#L12">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -143,6 +148,23 @@
     tf <a href="../../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
 ) <a href="../../../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../../../go-boilerplate/internal/domain/user/#Repository">Repository</a></pre>
 			<p>New は、user.Repository の RDB 実装を生成して返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewRoleRepository">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_role_repository.go.html?s=495:600#L10">NewRoleRepository</a>
+				<a class="permalink" href="#NewRoleRepository">¶</a>
+				
+				
+			</h2>
+			<pre>func NewRoleRepository(
+    db <a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/">driver</a>.<a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/#DatabaseDriver">DatabaseDriver</a>,
+    tf <a href="../../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+) <a href="../../../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../../../go-boilerplate/internal/domain/user/#RoleRepository">RoleRepository</a></pre>
+			<p>NewRoleRepository は、user.RoleRepository の RDB 実装を生成して返します。
 
 			
 			

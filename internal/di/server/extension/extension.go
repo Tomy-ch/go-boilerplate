@@ -10,12 +10,15 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/fx"
 )
 
 // callerSkip は、applyMiddlewares → ApplyPreMiddlewares/ApplyUseMiddlewares の呼び出し経路で挟まるフレームを飛ばし、ログの caller を実呼び出し位置に合わせる段数。
 const callerSkip = 2
+
+// errDuplicateMiddlewarePriority は、同一種別のミドルウェアに Priority の重複がある場合のエラーです。
+var errDuplicateMiddlewarePriority = xerrors.New("duplicate middleware priorities")
 
 // ServerExtends は、サーバーの拡張機能を表します。
 type ServerExtends struct {
@@ -88,8 +91,8 @@ type middlewareEntry struct {
 	middleware echo.MiddlewareFunc
 }
 
-// ApplyExtends は、サーバー拡張を適用します。
-// ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数を Priority 昇順に Echo へ適用する。同一 kind 内で Priority が重複するミドルウェアが存在する場合はエラーを返す。
+// ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数を Priority 昇順に Echo へ適用します。
+// 同一 kind 内で Priority が重複するミドルウェアが存在する場合はエラーを返します。
 func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*AppliedServerExtends, error) {
 	if err := ApplyPreMiddlewares(e, logger, extends.PreList); err != nil {
 		return nil, err
@@ -101,8 +104,8 @@ func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*
 	return &AppliedServerExtends{}, nil
 }
 
-// ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
-// ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
+// ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用します。
+// Priority が重複するエントリが存在する場合はエラーを返します。
 func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error {
 	entries := make([]middlewareEntry, len(mws))
 	for i, mw := range mws {
@@ -111,8 +114,8 @@ func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddlewar
 	return applyMiddlewares(logger, "pre", entries, e.Pre)
 }
 
-// ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
-// ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
+// ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用します。
+// Priority が重複するエントリが存在する場合はエラーを返します。
 func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error {
 	entries := make([]middlewareEntry, len(mws))
 	for i, mw := range mws {
@@ -161,9 +164,8 @@ func validatePriorityConflicts(kind string, mws []middlewareEntry) error {
 	conflicts := extractPriorityConflicts(byPriority)
 
 	if len(conflicts) > 0 {
-		return xerrors.New(fmt.Sprintf("duplicate %s middleware priorities: %s",
-			kind, strings.Join(conflicts, "; "),
-		))
+		return xerrors.Wrap(errDuplicateMiddlewarePriority,
+			fmt.Sprintf("%s (%s)", kind, strings.Join(conflicts, "; ")))
 	}
 
 	return nil

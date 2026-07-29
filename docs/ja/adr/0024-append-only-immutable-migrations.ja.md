@@ -21,7 +21,7 @@ accepted
 
 ## 決定
 
-`database/migrations/`配下のすべてのマイグレーションファイルは**追記専用かつイミュータブル**である。ファイルが一度コミットされたら決して変更してはならない。修正・カラム名変更・制約の変更を含むすべてのスキーマ変更は新しいマイグレーションファイルとして表現しなければならない。権威ある規則と根拠は[`docs/rules.md`](../../rules.md)の§ "Database Migration"を参照。
+`database/migrations/`配下のすべてのマイグレーションファイルは**追記専用かつイミュータブル**である。ファイルが一度コミットされたら決して変更してはならない。修正・カラム名変更・制約の変更を含むすべてのスキーマ変更は新しいマイグレーションファイルとして表現しなければならない。権威ある規則と根拠は[`docs/rules.md`](../rules.ja.md)の§ "Database Migration"を参照。
 
 ## 影響
 
@@ -49,4 +49,4 @@ accepted
 ## 補足
 
 - CIで`migration-check.yaml`によって強制される（採番の規律については[ADR-0025](0025-sequential-migration-ids.ja.md)参照）。
-- Source: [`docs/rules.md`](../../rules.md)の§ "Database Migration"；[`database/migrations/README.md`](../../../database/migrations/README.md)の§ "Rules"。
+- Source: [`docs/rules.md`](../rules.ja.md)の§ "Database Migration"；[`database/migrations/README.md`](../../../database/migrations/README.ja.md)の§ "Rules"。

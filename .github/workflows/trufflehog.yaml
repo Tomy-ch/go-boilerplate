@@ -1,0 +1,155 @@
+name: Secret Scan (TruffleHog)
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trufflehog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Full history is required by both modes: a PR run resolves the base commit
+          # for --since-commit, and the scheduled run walks the whole history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install trufflehog
+        shell: bash
+        run: mise install aqua:trufflesecurity/trufflehog
+
+      - name: Run TruffleHog
+        id: trufflehog
+        shell: bash
+        env:
+          # Untrusted / event-provided values are passed through env, never expanded
+          # directly into the script body.
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+
+          # --results=verified reports only credentials TruffleHog confirmed to be live
+          # against the issuing service. Regex-shaped detection is already covered by
+          # gitleaks (secret-scan.yaml), so restricting the output here avoids duplicating
+          # that noise and keeps this workflow on TruffleHog's unique value: proving that a
+          # leaked credential is actually usable.
+          args=(git "file://${PWD}" --results=verified --json --no-update --no-color --fail)
+
+          # pull_request: scan only the commits the PR adds on top of its base.
+          # schedule / workflow_dispatch: no --since-commit, i.e. scan the whole history.
+          if [ -n "${PR_BASE_SHA}" ]; then
+            args+=(--since-commit "${PR_BASE_SHA}")
+          fi
+
+          set +e
+
+          # Findings are written to a file, never to stdout: the JSON carries the raw
+          # secret (Raw / RawV2 / SecretParts) and must not reach the job log.
+          trufflehog "${args[@]}" 2> trufflehog-scan.log | tee trufflehog-findings.json > /dev/null
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Secret scan: PASS (TruffleHog, verified only)" >> "$GITHUB_OUTPUT"
+            echo "No verified secrets found." > trufflehog-summary.md
+          elif [ "$code" -eq 183 ]; then
+            # 183 is TruffleHog's dedicated "results found" exit code for --fail;
+            # any other non-zero code means the scan itself failed.
+            count=$(jq -rs 'length' trufflehog-findings.json)
+
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## 🚨 Secret scan: FOUND (TruffleHog verified: ${count})" >> "$GITHUB_OUTPUT"
+
+            # Only non-sensitive locator fields are extracted (detector, path, line,
+            # commit). The secret value itself is deliberately never emitted, so neither
+            # the PR comment nor the uploaded artifact can leak it.
+            jq -rs '
+              map({
+                detector: (.DetectorName // "unknown"),
+                file: (.SourceMetadata.Data.Git.file // "unknown"),
+                line: (.SourceMetadata.Data.Git.line // 0),
+                commit: ((.SourceMetadata.Data.Git.commit // "unknown")[0:8])
+              })
+              | unique
+              | sort_by(.detector, .file, .line)
+              | .[]
+              | "- [\(.detector)] \(.file):\(.line) (commit \(.commit))"
+            ' trufflehog-findings.json > trufflehog-summary.md
+          else
+            echo "status=error" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Secret scan: ERROR (TruffleHog exited ${code})" >> "$GITHUB_OUTPUT"
+            echo "TruffleHog exited with code ${code}. See the workflow log for details." > trufflehog-summary.md
+
+            # Scanner diagnostics stay in the job log only; they are not published to the
+            # PR comment or the artifact.
+            tail -n 30 trufflehog-scan.log
+          fi
+
+          # Drop the raw findings so no later step can publish them by accident.
+          rm -f trufflehog-findings.json
+
+          exit 0
+
+      - name: Upload TruffleHog summary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: trufflehog
+          path: trufflehog-summary.md
+
+      - name: Comment TruffleHog result on PR
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- trufflehog-result -->'
+          title: ${{ steps.trufflehog.outputs.title }}
+          body-file: trufflehog-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Fail if TruffleHog failed
+        if: always() && steps.trufflehog.outputs.status != 'success'
+        shell: bash
+        run: exit 1
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: trufflehog
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.trufflehog.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: trufflehog
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

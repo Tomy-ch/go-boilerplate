@@ -92,7 +92,7 @@ func TestMigrateUpRun(t *testing.T) {
 			}
 
 			err := MigrateUpRun(-1, "", logging.NewTestLogger(t), factory)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNegativeSteps)
 			assert.False(t, called)
 		})
 
@@ -195,7 +195,7 @@ func TestMigrateDownRun(t *testing.T) {
 			}
 
 			err := MigrateDownRun(-2, "", logging.NewTestLogger(t), factory)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNegativeSteps)
 			assert.False(t, called)
 		})
 
@@ -227,6 +227,120 @@ func TestMigrateDownRun(t *testing.T) {
 
 			err := MigrateDownRun(3, "", logging.NewTestLogger(t), factoryReturning(m))
 			require.ErrorIs(t, err, errBoom)
+		})
+	})
+}
+
+func Test_executeMigrateUp(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ステップ未指定なら全件Upを実行する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Up().Return(nil)
+
+			require.NoError(t, executeMigrateUp(m, 0))
+		})
+
+		t.Run("全件Upで無変更ならErrNoChangeを握りつぶし成功扱いとする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Up().Return(migrate.ErrNoChange)
+
+			require.NoError(t, executeMigrateUp(m, 0))
+		})
+
+		t.Run("正のステップ数なら段数指定でUpを実行する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Steps(2).Return(nil)
+
+			require.NoError(t, executeMigrateUp(m, 2))
+		})
+
+		t.Run("段数指定Upで無変更ならErrNoChangeを握りつぶし成功扱いとする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Steps(1).Return(migrate.ErrNoChange)
+
+			require.NoError(t, executeMigrateUp(m, 1))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全件Upが失敗した場合はそのエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Up().Return(errBoom)
+
+			require.ErrorIs(t, executeMigrateUp(m, 0), errBoom)
+		})
+
+		t.Run("段数指定Upが失敗した場合はそのエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Steps(3).Return(errBoom)
+
+			require.ErrorIs(t, executeMigrateUp(m, 3), errBoom)
+		})
+	})
+}
+
+func Test_executeMigrateDownSteps(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("正のステップ数なら負数へ反転してDownを実行する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Steps(-2).Return(nil)
+
+			require.NoError(t, executeMigrateDownSteps(m, 2))
+		})
+
+		t.Run("無変更ならErrNoChangeを握りつぶし成功扱いとする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Steps(-1).Return(migrate.ErrNoChange)
+
+			require.NoError(t, executeMigrateDownSteps(m, 1))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Downが失敗した場合はそのエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Steps(-3).Return(errBoom)
+
+			require.ErrorIs(t, executeMigrateDownSteps(m, 3), errBoom)
 		})
 	})
 }

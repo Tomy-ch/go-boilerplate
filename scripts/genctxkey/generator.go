@@ -22,6 +22,22 @@ const (
 	filePerm = 0o644
 )
 
+var (
+	wordSepRe   = regexp.MustCompile(`[^\p{L}\p{N}]+`)
+	qualifierRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*\.`)
+)
+
+var (
+	// errMissingNameOrType は、name / type のいずれかが未指定の場合のエラーです。
+	errMissingNameOrType = xerrors.New("name and type are required")
+	// errInvalidName は、名前から識別子を組み立てられなかった場合のエラーです。
+	errInvalidName = xerrors.New("invalid name")
+	// errInvalidIdentifier は、組み立てた識別子が Go の識別子として不正な場合のエラーです。
+	errInvalidIdentifier = xerrors.New("invalid identifier")
+	// errQualifierAliasMismatch は、型の修飾子と import alias が食い違う場合のエラーです。
+	errQualifierAliasMismatch = xerrors.New("type qualifier does not match alias")
+)
+
 //go:embed template_ctx.tpl
 var ctxTpl string
 
@@ -30,7 +46,6 @@ var testTpl string
 
 type Param struct {
 	NameLower        string
-	NameFlat         string
 	NameCamel        string
 	Type             string
 	ImportPath       string
@@ -41,7 +56,7 @@ type Param struct {
 
 func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string) error {
 	if name == "" || typ == "" {
-		return xerrors.New("name and type are required")
+		return errMissingNameOrType
 	}
 
 	if outDir == "" {
@@ -72,7 +87,6 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 
 	p := Param{
 		NameLower:        lower,
-		NameFlat:         lower,
 		NameCamel:        camel,
 		Type:             typeExpr,
 		ImportPath:       importPath,
@@ -82,14 +96,14 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 	}
 
 	if err := os.MkdirAll(outDir, dirPerm); err != nil {
+		return xerrors.Wrap(err, "mkdir "+outDir)
+	}
+
+	if err := writeFile(filepath.Join(outDir, p.NameLower+"_ctx.gen.go"), ctxTpl, p); err != nil {
 		return err
 	}
 
-	if err := writeFile(filepath.Join(outDir, p.NameFlat+"_ctx.gen.go"), ctxTpl, p); err != nil {
-		return err
-	}
-
-	if err := writeFile(filepath.Join(outDir, p.NameFlat+"_ctx_test.go"), testTpl, p); err != nil {
+	if err := writeFile(filepath.Join(outDir, p.NameLower+"_ctx_test.go"), testTpl, p); err != nil {
 		return err
 	}
 
@@ -101,12 +115,12 @@ func writeFile(path, tpl string, p Param) error {
 
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, p); err != nil {
-		return err
+		return xerrors.Wrap(err, "execute template "+path)
 	}
 
 	src, err := format.Source(buf.Bytes())
 	if err != nil {
-		return err
+		return xerrors.Wrap(err, "format "+path)
 	}
 
 	if existing, err := os.ReadFile(path); err == nil { //nolint:gosec // generator writes/reads controlled path
@@ -115,46 +129,52 @@ func writeFile(path, tpl string, p Param) error {
 		}
 	}
 
-	return os.WriteFile(path, src, filePerm)
+	if err := os.WriteFile(path, src, filePerm); err != nil {
+		return xerrors.Wrap(err, "write "+path)
+	}
+	return nil
 }
 
-func toExportedName(s string) (string, error) {
-	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
-
-	var sb strings.Builder
+// splitWords は、非英数字区切りで語に分割し、空要素を除去して返します。
+func splitWords(s string) []string {
+	parts := wordSepRe.Split(s, -1)
+	words := make([]string, 0, len(parts))
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
+		words = append(words, p)
+	}
+	return words
+}
+
+func toExportedName(s string) (string, error) {
+	var sb strings.Builder
+	for _, p := range splitWords(s) {
 		runes := []rune(p)
 		sb.WriteString(strings.ToUpper(string(runes[0])) + string(runes[1:]))
 	}
 	out := sb.String()
 
 	if out == "" {
-		return "", xerrors.New("invalid name: " + s)
+		return "", xerrors.Wrap(errInvalidName, s)
 	}
 
 	if !isValidIdentifier(out) {
-		return "", xerrors.New("invalid identifier: " + out)
+		return "", xerrors.Wrap(errInvalidIdentifier, out)
 	}
 
 	return out, nil
 }
 
 func toIdentifierLower(s string) (string, error) {
-	// split on non-alnum, join, and lower
-	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
 	var sb strings.Builder
-	for _, p := range parts {
-		if p == "" {
-			continue
-		}
+	for _, p := range splitWords(s) {
 		sb.WriteString(strings.ToLower(p))
 	}
 	out := sb.String()
 	if out == "" {
-		return "", xerrors.New("invalid name: " + s)
+		return "", xerrors.Wrap(errInvalidName, s)
 	}
 	// ensure starts with a letter or '_'
 	runes := []rune(out)
@@ -162,7 +182,7 @@ func toIdentifierLower(s string) (string, error) {
 		out = "x" + out
 	}
 	if !isValidIdentifier(out) {
-		return "", xerrors.New("invalid identifier: " + out)
+		return "", xerrors.Wrap(errInvalidIdentifier, out)
 	}
 	return out, nil
 }
@@ -217,7 +237,7 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 	// Alias provided: validate against qualifier when present
 	if qualifier != "" && qualifier != importAlias {
-		return "", xerrors.New(fmt.Sprintf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias))
+		return "", xerrors.Wrap(errQualifierAliasMismatch, fmt.Sprintf("qualifier=%s alias=%s", qualifier, importAlias))
 	}
 
 	return importAlias, nil
@@ -225,8 +245,7 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 func extractQualifier(t string) string {
 	// find last occurrence of identifier followed by '.'
-	re := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*\.`)
-	matches := re.FindAllString(t, -1)
+	matches := qualifierRe.FindAllString(t, -1)
 	if len(matches) == 0 {
 		return ""
 	}
@@ -249,7 +268,7 @@ func resolveTestValue(t, nameLower, override string) (string, string) {
 		return "true", "false"
 	default:
 		// 任意型は意味ある success 値を自動合成できない。
-		// 呼び出し側が -test-value を渡せば success に採用し、未指定なら従来通り zero 値にフォールバックする。
+		// override があれば success に採用し、無ければ zero 値（*new(T)）を success/fail 双方に用いる。
 		fail := "*new(" + t + ")"
 		if override != "" {
 			return override, fail

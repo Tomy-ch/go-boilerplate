@@ -63,22 +63,27 @@ FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149a
 # CGO_ENABLED=0: `go:` backend のツールを静的バイナリにする（go_tools_builder と対称）
 ENV CGO_ENABLED=0
 
-# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
-SHELL ["/bin/ash", "-o", "pipefail", "-c"]
-
 RUN apk add --no-cache bash ca-certificates curl git
 
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
+# パイプのままだとリトライ時に部分受信分が sh へ流れ込むため、ファイルへ落としてから実行する。
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION=v2026.6.0 sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install air \
+# 未認証の GitHub API（60 req/hour・IP 単位）ではこの install 群を賄えず 403 になる。トークンは
+# イメージ履歴に焼き込む build-arg を避け secret で渡す（未指定なら従来どおり未認証で成立）。
+RUN --mount=type=secret,id=github_token \
+  github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
+  if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
+  mise install air \
   && mise install aqua:go-delve/delve \
   && mise install golines \
   && mise install gofumpt \

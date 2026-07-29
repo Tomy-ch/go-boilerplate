@@ -100,6 +100,7 @@ GitHub Releases 系は `gh api` を優先する（`GITHUB_TOKEN` 経由で認証
 
 ⚠️ supply-chain quarantine（公開から 7 日未満、通知のみ）:
   - air: 1.65.3 → 1.66.0 （公開 2026-06-02, 2 日前）
+      ※ 直接証拠での評価が必要なら /supply-chain-triage を実行できます（既定では未実行）
 
 ✓ 既に最新:
   - oapi-codegen 2.7.0
@@ -110,13 +111,24 @@ GitHub Releases 系は `gh api` を優先する（`GITHUB_TOKEN` 経由で認証
   - pipx:sqlfluff: PyPI への接続失敗
 ```
 
+### 3.5. 隔離が捕捉した pending リリースをトリアージする
+
+`pending` 分類は、隔離が経過日数だけを理由にリリースを留めていることを意味する。それは四つの問い——発行者は変わったか、artifact は source と一致するか、実際に何が変わったか、新しい依存が増えたか——の代理指標であり、直接答えることで置換できる（`docs/design/security.md` → 「Dependencies」）。答えがユーザーの行動を変える場合に、pending ツールごとに **`/supply-chain-triage`** を chain する。
+
+- pending リリースがこのスキルを起動した理由そのものであるとき（当該ツールを名指しするセキュリティ勧告）は常に実行する。
+- それ以外は要求されたときのみ。3 つの pending を報告する定例の月次監査で 3 回のトリアージは不要である——まだ誰も何も判断しておらず、来月にはただ eligible になる。run を費やす代わりに「トリアージが可能である」と述べる。
+
+backend、ツールキー、候補バージョン、**`mise.toml` で現在ピンしているバージョン**（差分のもう一方の端）、`<MIN_AGE_DAYS>`、公開日を渡す。トリアージは報告のみ——リリース artifact を実行せずに読み、バンドと根拠を伴う 0–12 のスコアを返し、`mise.toml` の編集も適用も行わない。pending のツールは pending のままである——スコアはユーザーが秤にかけるものであり、採用は別の明示的な判断（ステップ 4）として残る。
+
 ### 4. 適用候補の per-tool 確認
 
-**eligible** が空ならステップ 6 へスキップし、書き換えは行わない。
+**eligible** が空で、かつトリアージから判断へ進んだ pending も無ければ、ステップ 6 へスキップし書き換えは行わない。
 
 そうでなければ `AskUserQuestion` を `multiSelect: true` で呼ぶ。各 option は 1 つの eligible ツールに対応し、description にバージョン差分と公開日を載せる。既定状態: 全選択。
 
 ユーザーは個別 deselect 可能（特定 bump が既知の壊れもの等）。
+
+**pending** のツールをこの質問に載せてよいのは、ステップ 3.5 でトリアージ済みで、かつ早期採用するかをユーザーが明示的に判断している場合のみ。その場合は別枠に並べ、**既定では未選択**とし、description にバンドを載せる。pending を既定選択の eligible 集合へ混ぜてはならない——隔離の価値は、経過日数による eligible が既定であり早期採用が意図的な行為であることそのものにある。
 
 ### 5. `mise.toml` の更新
 
@@ -134,9 +146,9 @@ GitHub Releases 系は `gh api` を優先する（`GITHUB_TOKEN` 経由で認証
 
 非ランタイムのツールだけが更新された場合は `make sync-versions` は不要。
 
-### 6.5. ランタイムが変わったら base image digest を再固定
+### 7. ランタイムが変わったら base image digest を再固定
 
-ステップ 6 で `make sync-versions` が走った（＝`go` / `node` / `python` bump で `FROM` の**タグ**が変わった）場合、以前 pin した `@sha256:...` digest は**旧**イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先）。registry から再 pin する（`pin-images` スキルの役目、ここで chain）:
+ステップ 6 で `make sync-versions` が走った（＝`go` / `node` / `python` bump で `FROM` の**タグ**が変わった）場合、以前 pin した `@sha256:...` digest は**旧**イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先）。registry から再 pin する（`images-pin` スキルの役目、ここで chain）:
 
 ```sh
 make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`
@@ -144,9 +156,15 @@ make pin-images-apply
 make pin-images-check
 ```
 
-公開直後のランタイムイメージは通常 `PIN_IMAGES_MIN_AGE_DAYS` の cooldown 内なので、`pin-images-apply` は stale な digest を剥がして `FROM` を tag のみに戻す（quarantine）——`pin-images-check` はそれを許容する。その旨を報告し、イメージが古くなったら `/pin-images` を再実行すべきことを伝える。ステップ 6 をスキップした場合（ランタイム変更なし → タグ変更なし → digest は有効）は本ステップも丸ごとスキップする。
+`sync-versions` が書き換えるのは tag のバージョン部分だけで、末尾の `@sha256:...` はそのまま残り、*古い* イメージを指したままになる。Docker は digest を優先するため、ツリーは tag と digest が食い違った状態にあり、この状態でコミットしてはならない。
 
-### 7. 検証
+これを解消しようとすると `images-pin` の **ルール 3** に当たる。新しい tag には前回の lockfile エントリが無く、イメージは公開直後なので、退行先となる aged な digest が存在しない。`pin-images-resolve` は出来立ての digest を採用することも pin を tag のみへ剥がすこともせず、**fail-closed** で止まる（`❌ 退行先の無い出来立て image は採用できません`）。`apply` は走らず、`pin-images-check` は stale な digest を `未登録` として弾く。
+
+明言すべき帰結はこれである。**ランタイム bump と digest pin は結合している。** 新イメージが既に `PIN_IMAGES_MIN_AGE_DAYS` を越えている場合を除き、この run はきれいに終われず、選択はユーザーのものである——意図的に `days=0` でブートストラップするか（`/images-pin` の手順 2.5 が `/supply-chain-triage` の証拠確認を挟む）、イメージが古くなるまでランタイム bump 自体を保留するか。`resolve` を無理に通さないこと。tag と digest の食い違いをツリーに残さないこと。
+
+ステップ 6 をスキップした場合（ランタイム変更なし → タグ変更なし → digest は有効）は本ステップも丸ごとスキップする。
+
+### 8. 検証
 
 ```sh
 make lint
@@ -155,12 +173,13 @@ make test
 
 結果テーブル（OK / FAIL）をユーザーに報告する。失敗しても自動ロールバックはしない — どう扱うか（修正コミット追加 / revert / そのまま）はユーザーが判断する。
 
-### 8. 最終レポート
+### 9. 最終レポート
 
 以下をまとめて報告する。
 
 - 更新したツール数
-- quarantine（pending）で見送ったツール数
+- quarantine（pending）で見送ったツール数と、各々が窓を出る時期
+- トリアージした pending ツールについて、そのバンドとそれを決めた軸（答えられなかった軸があればそれも）、およびユーザーが早期採用したか pending のまま残したか
 - 検証結果
 - 失敗があれば内容
 
@@ -183,10 +202,11 @@ make test
 - [ ] `[tools]` 全エントリの backend を resolve（不能なら理由付きで resolution_failed に分類）
 - [ ] 各ツールを up-to-date / eligible / pending / resolution_failed のいずれかに分類
 - [ ] 分類結果テーブルをユーザーに提示
-- [ ] eligible が非空なら、per-tool 適用候補を `AskUserQuestion` で確定
+- [ ] 勧告が run の契機なら pending リリースを `/supply-chain-triage` でトリアージ（baseline = `mise.toml` のピン済みバージョン）。そうでなければ実行せず提示にとどめる
+- [ ] eligible が非空なら、per-tool 適用候補を `AskUserQuestion` で確定。早期採用する pending は別枠・既定未選択・バンド付きで提示
 - [ ] `mise.toml` を承認分のみ atomic に書き換え、key 形式と `v` prefix 慣習を保持
 - [ ] go / node / python が更新されたなら `make sync-versions` を実行
-- [ ] ランタイム bump 時は base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）; cooldown 未了で quarantine されたイメージは後日 `/pin-images` 再実行用に報告
+- [ ] ランタイム bump 時は base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）。公開直後のイメージでは新 tag に対するルール 3 の fail-closed が想定どおりの結果であり、結合（トリアージのうえ `days=0` でブートストラップするか bump を保留するか）とともに提示する。無理に通さず、tag と digest の食い違いを残さない
 - [ ] `make lint` + `make test` を実行
 - [ ] 最終結果テーブルをユーザーに報告
 - [ ] `SKILL.md` 更新時は `SKILL.ja.md` も同期

@@ -1,0 +1,28 @@
+type: object
+description: >
+  UserInfo レスポンス（OIDC Core）。返却フィールドは whitelist に限定し、
+  additionalProperties: false で余剰クレームの漏洩を防ぐ。
+additionalProperties: false
+required:
+  - sub
+properties:
+  sub:
+    type: string
+    description: Subject 識別子。
+    example: user-john-doe
+  email:
+    type: string
+    format: email
+    example: john.doe@example.com
+  email_verified:
+    type: boolean
+    example: true
+  given_name:
+    type: string
+    example: John
+  family_name:
+    type: string
+    example: Doe
+  name:
+    type: string
+    example: John Doe

@@ -43,6 +43,8 @@ Comments should be **What** (the contract) + **Why** (non-obvious rationale), ne
 - **`内部表現メモ`** — leaks an internal representation that is not part of the contract (`// 内部表現は [16]byte`).
 - **`トートロジー`** — says nothing (`// User は User です`).
 - **`解決済みTODO/FIXME` (rot)** — a `// TODO:` / `// FIXME:` whose condition the code below already satisfies: a marker left behind after the implementation caught up. Flag it ONLY when you can quote the code that already resolves it. An unresolved, legitimate `// TODO:` is not a finding, and `//nolint` / other directives are never touched.
+- **`過剰な分量`** — the comment is longer than the fact it delivers. Length is a cost even when every line is individually true, so judge volume, not just content: a multi-line doc comment on a declaration whose signature already conveys the contract, a **repo-wide rationale restated** at a declaration that merely follows it (the rule belongs in `docs/rules.md`; the code should link or stay silent), or a **language-feature mechanism narrated** to a reader who knows Go. Propose the compressed wording, not deletion, when a shorter form still carries the contract.
+- **`慣用コードへの説明`** — an explanation attached to the routine surface of building an API (entity constructor, Params / attribute struct, Repository row-to-entity conversion, handler bind → usecase → response, validated-field enumeration). These follow the codebase's own conventions and a fluent reader needs no narration. Flag the explanation, **not** the `Name`-prefixed contract itself — this is suppression, not elimination, and a genuinely non-obvious Why still stays. Do NOT flag a comment on code that *departs* from the idiom; that is where a comment earns its space.
 
 ### C. godoc / pkgsite conventions (Go only)
 

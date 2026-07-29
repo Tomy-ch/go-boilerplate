@@ -179,19 +179,37 @@
 				
 				
 					
-					<dd>    <a href="#AuthConfig.AllowedHeaderBearer">func (a *AuthConfig) AllowedHeaderBearer() bool</a></dd>
+					<dd>    <a href="#AuthConfig.AllowedAlgorithms">func (a *AuthConfig) AllowedAlgorithms() []string</a></dd>
 				
 					
-					<dd>    <a href="#AuthConfig.CookieName">func (a *AuthConfig) CookieName() string</a></dd>
+					<dd>    <a href="#AuthConfig.Audience">func (a *AuthConfig) Audience() string</a></dd>
 				
 					
-					<dd>    <a href="#AuthConfig.HeaderName">func (a *AuthConfig) HeaderName() string</a></dd>
+					<dd>    <a href="#AuthConfig.ClockSkew">func (a *AuthConfig) ClockSkew() time.Duration</a></dd>
 				
 					
-					<dd>    <a href="#AuthConfig.SetAllowedHeaderBearer">func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool)</a></dd>
+					<dd>    <a href="#AuthConfig.DiscoveryTTL">func (a *AuthConfig) DiscoveryTTL() time.Duration</a></dd>
 				
 					
-					<dd>    <a href="#AuthConfig.SetHeaderName">func (a *AuthConfig) SetHeaderName(tb testing.TB, headerName string)</a></dd>
+					<dd>    <a href="#AuthConfig.Issuer">func (a *AuthConfig) Issuer() string</a></dd>
+				
+					
+					<dd>    <a href="#AuthConfig.JWKSCacheTTL">func (a *AuthConfig) JWKSCacheTTL() time.Duration</a></dd>
+				
+					
+					<dd>    <a href="#AuthConfig.JWKSURL">func (a *AuthConfig) JWKSURL() string</a></dd>
+				
+					
+					<dd>    <a href="#AuthConfig.SetAuthAudience">func (a *AuthConfig) SetAuthAudience(tb testing.TB, audience string)</a></dd>
+				
+					
+					<dd>    <a href="#AuthConfig.SetAuthIssuer">func (a *AuthConfig) SetAuthIssuer(tb testing.TB, issuer string)</a></dd>
+				
+					
+					<dd>    <a href="#AuthConfig.SetAuthJWKSURL">func (a *AuthConfig) SetAuthJWKSURL(tb testing.TB, jwksURL string)</a></dd>
+				
+					
+					<dd>    <a href="#AuthConfig.UnknownKidCooldown">func (a *AuthConfig) UnknownKidCooldown() time.Duration</a></dd>
 				
 			
 				
@@ -821,11 +839,6 @@
         errInvalidConfig,
         &#34;failed to parse CIDR&#34;,
     )
-    <span class="comment">// ErrAuthConfigMissing は、認証設定が不足していることに関するエラーを表します。</span>
-    <span id="ErrAuthConfigMissing">ErrAuthConfigMissing</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
-        errInvalidConfig,
-        &#34;invalid auth config, either cookie name or header name must be provided&#34;,
-    )
     <span class="comment">// ErrEmbeddedEnvMismatch は、production モードなのに非本番の env がバイナリへ埋め込まれている（materialize-env 忘れ）ことを示すエラーです。</span>
     <span id="ErrEmbeddedEnvMismatch">ErrEmbeddedEnvMismatch</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
         errInvalidConfig,
@@ -896,7 +909,7 @@ env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（l
 		
 			
 			
-			</p><h2 id="ValidateServerShutdown">func <a href="../../../src/go-boilerplate/internal/config/config.go.html?s=8597:8679#L246">ValidateServerShutdown</a>
+			</p><h2 id="ValidateServerShutdown">func <a href="../../../src/go-boilerplate/internal/config/config.go.html?s=8751:8833#L247">ValidateServerShutdown</a>
 				<a class="permalink" href="#ValidateServerShutdown">¶</a>
 				
 				
@@ -913,7 +926,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 		
 			
 			
-			</p><h2 id="Application">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=2871:3189#L43">Application</a>
+			</p><h2 id="Application">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=3809:4127#L57">Application</a>
 				<a class="permalink" href="#Application">¶</a>
 				
 				
@@ -965,7 +978,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				<h3 id="NewApplicationConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5018:5075#L146">NewApplicationConfig</a>
+				<h3 id="NewApplicationConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5293:5350#L152">NewApplicationConfig</a>
 					<a class="permalink" href="#NewApplicationConfig">¶</a>
 					
 					
@@ -979,7 +992,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				</p><h3 id="ApplicationConfig.Env">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5213:5253#L149">Env</a>
+				</p><h3 id="ApplicationConfig.Env">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5488:5528#L155">Env</a>
 					<a class="permalink" href="#ApplicationConfig.Env">¶</a>
 					
 					
@@ -992,7 +1005,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="ApplicationConfig.IsDevelopmentMode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6273:6325#L169">IsDevelopmentMode</a>
+				</p><h3 id="ApplicationConfig.IsDevelopmentMode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6548:6600#L175">IsDevelopmentMode</a>
 					<a class="permalink" href="#ApplicationConfig.IsDevelopmentMode">¶</a>
 					
 					
@@ -1005,7 +1018,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="ApplicationConfig.IsProductionMode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6077:6128#L164">IsProductionMode</a>
+				</p><h3 id="ApplicationConfig.IsProductionMode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6352:6403#L170">IsProductionMode</a>
 					<a class="permalink" href="#ApplicationConfig.IsProductionMode">¶</a>
 					
 					
@@ -1018,7 +1031,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="ApplicationConfig.LogLevel">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5576:5621#L155">LogLevel</a>
+				</p><h3 id="ApplicationConfig.LogLevel">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5851:5896#L161">LogLevel</a>
 					<a class="permalink" href="#ApplicationConfig.LogLevel">¶</a>
 					
 					
@@ -1031,7 +1044,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="ApplicationConfig.Mode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5416:5457#L152">Mode</a>
+				</p><h3 id="ApplicationConfig.Mode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5691:5732#L158">Mode</a>
 					<a class="permalink" href="#ApplicationConfig.Mode">¶</a>
 					
 					
@@ -1044,7 +1057,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="ApplicationConfig.Name">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5711:5752#L158">Name</a>
+				</p><h3 id="ApplicationConfig.Name">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5986:6027#L164">Name</a>
 					<a class="permalink" href="#ApplicationConfig.Name">¶</a>
 					
 					
@@ -1099,7 +1112,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="ApplicationConfig.ShutdownTimeout">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5882:5941#L161">ShutdownTimeout</a>
+				</p><h3 id="ApplicationConfig.ShutdownTimeout">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6157:6216#L167">ShutdownTimeout</a>
 					<a class="permalink" href="#ApplicationConfig.ShutdownTimeout">¶</a>
 					
 					
@@ -1114,17 +1127,24 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 		
 			
 			
-			</p><h2 id="Auth">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=7959:8160#L132">Auth</a>
+			</p><h2 id="Auth">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=862:1731#L12">Auth</a>
 				<a class="permalink" href="#Auth">¶</a>
 				
 				
 			</h2>
-			<p>Auth は認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持する。
+			<p>Auth は access token（JWT）検証の設定を保持する。
 
 			</p><pre>type Auth struct {
-<span id="Auth.CookieName"></span>    CookieName          <a href="../../../builtin/#string">string</a> `env:&#34;COOKIE_NAME,required&#34;`
-<span id="Auth.HeaderName"></span>    HeaderName          <a href="../../../builtin/#string">string</a> `env:&#34;HEADER_NAME,required&#34;`
-<span id="Auth.AllowedHeaderBearer"></span>    AllowedHeaderBearer <a href="../../../builtin/#bool">bool</a>   `env:&#34;ALLOWED_HEADER_BEARER,required&#34;`
+<span id="Auth.Issuer"></span>    Issuer            <a href="../../../builtin/#string">string</a>        `env:&#34;ISSUER&#34;             envDefault:&#34;&#34;`
+<span id="Auth.Audience"></span>    Audience          <a href="../../../builtin/#string">string</a>        `env:&#34;AUDIENCE&#34;           envDefault:&#34;&#34;`
+<span id="Auth.JWKSURL"></span>    JWKSURL           <a href="../../../builtin/#string">string</a>        `env:&#34;JWKS_URL&#34;           envDefault:&#34;&#34;`
+<span id="Auth.AllowedAlgorithms"></span>    AllowedAlgorithms []<a href="../../../builtin/#string">string</a>      `env:&#34;ALLOWED_ALGORITHMS&#34; envDefault:&#34;RS256&#34; envSeparator:&#34;,&#34;`
+<span id="Auth.ClockSkew"></span>    ClockSkew         <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a> `env:&#34;CLOCK_SKEW&#34;         envDefault:&#34;60s&#34;`
+<span id="Auth.JWKSCacheTTL"></span>    JWKSCacheTTL      <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a> `env:&#34;JWKS_CACHE_TTL&#34;     envDefault:&#34;1h&#34;`
+<span id="Auth.JWKSDiscoveryTTL"></span>    <span class="comment">// JWKSDiscoveryTTL は OIDC discovery 文書の再取得間隔です（鍵キャッシュとは別軸）。</span>
+    JWKSDiscoveryTTL <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a> `env:&#34;JWKS_DISCOVERY_TTL&#34; envDefault:&#34;24h&#34;`
+<span id="Auth.JWKSUnknownKIDCooldown"></span>    <span class="comment">// JWKSUnknownKIDCooldown は未知 kid での JWKS 再取得の最小間隔です（DoS 抑止）。</span>
+    JWKSUnknownKIDCooldown <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a> `env:&#34;JWKS_UNKNOWN_KID_COOLDOWN&#34; envDefault:&#34;60s&#34;`
 }
 </pre>
 
@@ -1142,12 +1162,13 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 		
 			
 			
-			<h2 id="AuthConfig">type <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=3699:3807#L107">AuthConfig</a>
+			<h2 id="AuthConfig">type <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=4654:4926#L134">AuthConfig</a>
 				<a class="permalink" href="#AuthConfig">¶</a>
 				
 				
 			</h2>
-			<p>AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。
+			<p>AuthConfig は、access token（JWT）検証の設定を保持します。
+Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator を配線せずスタブが使われます（配線判断は DI）。
 
 			</p><pre>type AuthConfig struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -1164,13 +1185,13 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				<h3 id="NewAuthConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16646:16689#L372">NewAuthConfig</a>
+				<h3 id="NewAuthConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20391:20434#L438">NewAuthConfig</a>
 					<a class="permalink" href="#NewAuthConfig">¶</a>
 					
 					
 				</h3>
 				<pre>func NewAuthConfig(cfg *<a href="#Config">Config</a>) *<a href="#AuthConfig">AuthConfig</a></pre>
-				<p>NewAuthConfig は、認証の設定を返します。
+				<p>NewAuthConfig は、認証（JWT 検証）の設定を返します。
 
 				
 				
@@ -1178,52 +1199,104 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				</p><h3 id="AuthConfig.AllowedHeaderBearer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17105:17152#L381">AllowedHeaderBearer</a>
-					<a class="permalink" href="#AuthConfig.AllowedHeaderBearer">¶</a>
+				</p><h3 id="AuthConfig.AllowedAlgorithms">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=21034:21083#L450">AllowedAlgorithms</a>
+					<a class="permalink" href="#AuthConfig.AllowedAlgorithms">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) AllowedHeaderBearer() <a href="../../../builtin/#bool">bool</a></pre>
-				<p>AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) AllowedAlgorithms() []<a href="../../../builtin/#string">string</a></pre>
+				<p>AllowedAlgorithms は、許可する署名アルゴリズムの allowlist を返します。
 
 				
 				
 				
 			
 				
-				</p><h3 id="AuthConfig.CookieName">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16781:16821#L375">CookieName</a>
-					<a class="permalink" href="#AuthConfig.CookieName">¶</a>
+				</p><h3 id="AuthConfig.Audience">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20724:20762#L444">Audience</a>
+					<a class="permalink" href="#AuthConfig.Audience">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) CookieName() <a href="../../../builtin/#string">string</a></pre>
-				<p>CookieName は、認証に使用するCookie名を返します。
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) Audience() <a href="../../../builtin/#string">string</a></pre>
+				<p>Audience は、検証する aud クレームの期待値を返します。
 
 				
 				
 				
 			
 				
-				</p><h3 id="AuthConfig.HeaderName">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16922:16962#L378">HeaderName</a>
-					<a class="permalink" href="#AuthConfig.HeaderName">¶</a>
+				</p><h3 id="AuthConfig.ClockSkew">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=21230:21276#L455">ClockSkew</a>
+					<a class="permalink" href="#AuthConfig.ClockSkew">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) HeaderName() <a href="../../../builtin/#string">string</a></pre>
-				<p>HeaderName は、認証に使用するヘッダー名を返します。
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) ClockSkew() <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a></pre>
+				<p>ClockSkew は、exp / nbf 検証時のクロックずれ許容幅を返します。
 
 				
 				
 				
 			
 				
-				</p><h3 id="AuthConfig.SetAllowedHeaderBearer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7058:7130#L176">SetAllowedHeaderBearer</a>
-					<a class="permalink" href="#AuthConfig.SetAllowedHeaderBearer">¶</a>
+				</p><h3 id="AuthConfig.DiscoveryTTL">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=21547:21596#L461">DiscoveryTTL</a>
+					<a class="permalink" href="#AuthConfig.DiscoveryTTL">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetAllowedHeaderBearer(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, allowed <a href="../../../builtin/#bool">bool</a>)</pre>
-				<p>SetAllowedHeaderBearer は、テスト用に認証の許可されたヘッダベアラーを設定します。
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) DiscoveryTTL() <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a></pre>
+				<p>DiscoveryTTL は、OIDC discovery 文書の再取得間隔を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="AuthConfig.Issuer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20588:20624#L441">Issuer</a>
+					<a class="permalink" href="#AuthConfig.Issuer">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) Issuer() <a href="../../../builtin/#string">string</a></pre>
+				<p>Issuer は、検証する iss クレームの期待値を返します（空なら実 JWT authenticator を配線しない）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="AuthConfig.JWKSCacheTTL">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=21390:21439#L458">JWKSCacheTTL</a>
+					<a class="permalink" href="#AuthConfig.JWKSCacheTTL">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) JWKSCacheTTL() <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a></pre>
+				<p>JWKSCacheTTL は、取得した JWKS をキャッシュする期間を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="AuthConfig.JWKSURL">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20878:20915#L447">JWKSURL</a>
+					<a class="permalink" href="#AuthConfig.JWKSURL">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) JWKSURL() <a href="../../../builtin/#string">string</a></pre>
+				<p>JWKSURL は、公開鍵を取得する JWKS エンドポイント URL を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="AuthConfig.SetAuthAudience">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=9325:9393#L236">SetAuthAudience</a>
+					<a class="permalink" href="#AuthConfig.SetAuthAudience">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetAuthAudience(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, audience <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetAuthAudience は、テスト用に認証の audience を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
 				
@@ -1231,14 +1304,41 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="AuthConfig.SetHeaderName">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=6664:6732#L166">SetHeaderName</a>
-					<a class="permalink" href="#AuthConfig.SetHeaderName">¶</a>
+				</p><h3 id="AuthConfig.SetAuthIssuer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=8984:9048#L226">SetAuthIssuer</a>
+					<a class="permalink" href="#AuthConfig.SetAuthIssuer">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetHeaderName(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, headerName <a href="../../../builtin/#string">string</a>)</pre>
-				<p>SetHeaderName は、テスト用に認証のヘッダ名を設定します。
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetAuthIssuer(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, issuer <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetAuthIssuer は、テスト用に認証の issuer を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="AuthConfig.SetAuthJWKSURL">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=9677:9743#L246">SetAuthJWKSURL</a>
+					<a class="permalink" href="#AuthConfig.SetAuthJWKSURL">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetAuthJWKSURL(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, jwksURL <a href="../../../builtin/#string">string</a>)</pre>
+				<p>SetAuthJWKSURL は、テスト用に認証の JWKS URL を設定します。
+</p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="AuthConfig.UnknownKidCooldown">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=21718:21773#L464">UnknownKidCooldown</a>
+					<a class="permalink" href="#AuthConfig.UnknownKidCooldown">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) UnknownKidCooldown() <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a></pre>
+				<p>UnknownKidCooldown は、未知 kid での JWKS 再取得の最小間隔を返します。
 
 				
 				
@@ -1269,7 +1369,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				<h3 id="MockConfigForTest">func <a href="../../../src/go-boilerplate/internal/config/config_testing_mock.go.html?s=7378:7423#L138">MockConfigForTest</a>
+				<h3 id="MockConfigForTest">func <a href="../../../src/go-boilerplate/internal/config/config_testing_mock.go.html?s=7705:7750#L144">MockConfigForTest</a>
 					<a class="permalink" href="#MockConfigForTest">¶</a>
 					
 					
@@ -1309,7 +1409,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 		
 			
 			
-			</p><h2 id="DBConnection">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=6437:6726#L103">DBConnection</a>
+			</p><h2 id="DBConnection">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=7375:7664#L117">DBConnection</a>
 				<a class="permalink" href="#DBConnection">¶</a>
 				
 				
@@ -1360,7 +1460,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				<h3 id="NewDBConnectionConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13503:13562#L299">NewDBConnectionConfig</a>
+				<h3 id="NewDBConnectionConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13778:13837#L305">NewDBConnectionConfig</a>
 					<a class="permalink" href="#NewDBConnectionConfig">¶</a>
 					
 					
@@ -1374,7 +1474,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				</p><h3 id="DBConnectionConfig.MaxConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13678:13723#L302">MaxConns</a>
+				</p><h3 id="DBConnectionConfig.MaxConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13953:13998#L308">MaxConns</a>
 					<a class="permalink" href="#DBConnectionConfig.MaxConns">¶</a>
 					
 					
@@ -1387,7 +1487,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DBConnectionConfig.MaxIdleTime">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14168:14224#L311">MaxIdleTime</a>
+				</p><h3 id="DBConnectionConfig.MaxIdleTime">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14443:14499#L317">MaxIdleTime</a>
 					<a class="permalink" href="#DBConnectionConfig.MaxIdleTime">¶</a>
 					
 					
@@ -1400,7 +1500,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DBConnectionConfig.MaxLifetime">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13991:14047#L308">MaxLifetime</a>
+				</p><h3 id="DBConnectionConfig.MaxLifetime">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14266:14322#L314">MaxLifetime</a>
 					<a class="permalink" href="#DBConnectionConfig.MaxLifetime">¶</a>
 					
 					
@@ -1413,7 +1513,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DBConnectionConfig.MinConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13840:13885#L305">MinConns</a>
+				</p><h3 id="DBConnectionConfig.MinConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14115:14160#L311">MinConns</a>
 					<a class="permalink" href="#DBConnectionConfig.MinConns">¶</a>
 					
 					
@@ -1442,7 +1542,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 		
 			
 			
-			</p><h2 id="Database">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=5195:6280#L85">Database</a>
+			</p><h2 id="Database">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=6133:7218#L99">Database</a>
 				<a class="permalink" href="#Database">¶</a>
 				
 				
@@ -1504,7 +1604,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				<h3 id="NewDatabaseConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10491:10542#L246">NewDatabaseConfig</a>
+				<h3 id="NewDatabaseConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10766:10817#L252">NewDatabaseConfig</a>
 					<a class="permalink" href="#NewDatabaseConfig">¶</a>
 					
 					
@@ -1518,7 +1618,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				</p><h3 id="DatabaseConfig.DBName">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11281:11321#L264">DBName</a>
+				</p><h3 id="DatabaseConfig.DBName">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11556:11596#L270">DBName</a>
 					<a class="permalink" href="#DatabaseConfig.DBName">¶</a>
 					
 					
@@ -1531,7 +1631,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.Driver">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10643:10683#L249">Driver</a>
+				</p><h3 id="DatabaseConfig.Driver">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10918:10958#L255">Driver</a>
 					<a class="permalink" href="#DatabaseConfig.Driver">¶</a>
 					
 					
@@ -1544,7 +1644,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.Host">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10771:10809#L252">Host</a>
+				</p><h3 id="DatabaseConfig.Host">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11046:11084#L258">Host</a>
 					<a class="permalink" href="#DatabaseConfig.Host">¶</a>
 					
 					
@@ -1557,7 +1657,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.LockTimeout">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=12367:12419#L282">LockTimeout</a>
+				</p><h3 id="DatabaseConfig.LockTimeout">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=12642:12694#L288">LockTimeout</a>
 					<a class="permalink" href="#DatabaseConfig.LockTimeout">¶</a>
 					
 					
@@ -1570,7 +1670,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.Password">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11153:11195#L261">Password</a>
+				</p><h3 id="DatabaseConfig.Password">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11428:11470#L267">Password</a>
 					<a class="permalink" href="#DatabaseConfig.Password">¶</a>
 					
 					
@@ -1583,7 +1683,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.PingTimeout">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11557:11609#L270">PingTimeout</a>
+				</p><h3 id="DatabaseConfig.PingTimeout">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11832:11884#L276">PingTimeout</a>
 					<a class="permalink" href="#DatabaseConfig.PingTimeout">¶</a>
 					
 					
@@ -1596,7 +1696,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.Port">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10898:10933#L255">Port</a>
+				</p><h3 id="DatabaseConfig.Port">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11173:11208#L261">Port</a>
 					<a class="permalink" href="#DatabaseConfig.Port">¶</a>
 					
 					
@@ -1609,7 +1709,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.SSLMode">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11410:11451#L267">SSLMode</a>
+				</p><h3 id="DatabaseConfig.SSLMode">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11685:11726#L273">SSLMode</a>
 					<a class="permalink" href="#DatabaseConfig.SSLMode">¶</a>
 					
 					
@@ -1650,7 +1750,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.SlowQueryWarnThreshold">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11900:11963#L276">SlowQueryWarnThreshold</a>
+				</p><h3 id="DatabaseConfig.SlowQueryWarnThreshold">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=12175:12238#L282">SlowQueryWarnThreshold</a>
 					<a class="permalink" href="#DatabaseConfig.SlowQueryWarnThreshold">¶</a>
 					
 					
@@ -1665,7 +1765,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.StatementTimeout">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=12146:12203#L279">StatementTimeout</a>
+				</p><h3 id="DatabaseConfig.StatementTimeout">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=12421:12478#L285">StatementTimeout</a>
 					<a class="permalink" href="#DatabaseConfig.StatementTimeout">¶</a>
 					
 					
@@ -1678,7 +1778,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.TxMaxRetries">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=12720:12763#L288">TxMaxRetries</a>
+				</p><h3 id="DatabaseConfig.TxMaxRetries">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=12995:13038#L294">TxMaxRetries</a>
 					<a class="permalink" href="#DatabaseConfig.TxMaxRetries">¶</a>
 					
 					
@@ -1693,7 +1793,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.TxRetryBaseBackoff">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13009:13068#L292">TxRetryBaseBackoff</a>
+				</p><h3 id="DatabaseConfig.TxRetryBaseBackoff">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13284:13343#L298">TxRetryBaseBackoff</a>
 					<a class="permalink" href="#DatabaseConfig.TxRetryBaseBackoff">¶</a>
 					
 					
@@ -1707,7 +1807,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.TxRetryMaxBackoff">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13329:13387#L296">TxRetryMaxBackoff</a>
+				</p><h3 id="DatabaseConfig.TxRetryMaxBackoff">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=13604:13662#L302">TxRetryMaxBackoff</a>
 					<a class="permalink" href="#DatabaseConfig.TxRetryMaxBackoff">¶</a>
 					
 					
@@ -1721,7 +1821,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="DatabaseConfig.User">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11022:11060#L258">User</a>
+				</p><h3 id="DatabaseConfig.User">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=11297:11335#L264">User</a>
 					<a class="permalink" href="#DatabaseConfig.User">¶</a>
 					
 					
@@ -1753,9 +1853,9 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 <span id="Loader.DBConnection"></span>    DBConnection  <a href="#DBConnection">DBConnection</a>    `envPrefix:&#34;DBCONN_&#34;`
 <span id="Loader.Security"></span>    Security      <a href="#Security">Security</a>        `envPrefix:&#34;SECURITY_&#34;`
 <span id="Loader.SecureCookie"></span>    SecureCookie  <a href="#SecureCookie">SecureCookie</a>    `envPrefix:&#34;SECURE_COOKIE_&#34;`
-<span id="Loader.Auth"></span>    Auth          <a href="#Auth">Auth</a>            `envPrefix:&#34;AUTH_&#34;`
 <span id="Loader.Worker"></span>    Worker        <a href="#Worker">Worker</a>          `envPrefix:&#34;WORKER_&#34;`
 <span id="Loader.Outbox"></span>    Outbox        <a href="#Outbox">Outbox</a>          `envPrefix:&#34;OUTBOX_&#34;`
+<span id="Loader.Auth"></span>    Auth          <a href="#Auth">Auth</a>            `envPrefix:&#34;AUTH_&#34;`
 }
 </pre>
 
@@ -1773,7 +1873,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 		
 			
 			
-			<h2 id="Metrics">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=4040:4245#L64">Metrics</a>
+			<h2 id="Metrics">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=4978:5183#L78">Metrics</a>
 				<a class="permalink" href="#Metrics">¶</a>
 				
 				
@@ -1824,7 +1924,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				<h3 id="NewMetricsConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7926:7975#L201">NewMetricsConfig</a>
+				<h3 id="NewMetricsConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8201:8250#L207">NewMetricsConfig</a>
 					<a class="permalink" href="#NewMetricsConfig">¶</a>
 					
 					
@@ -1838,7 +1938,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 
 			
 				
-				</p><h3 id="MetricsConfig.Host">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8094:8131#L204">Host</a>
+				</p><h3 id="MetricsConfig.Host">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8369:8406#L210">Host</a>
 					<a class="permalink" href="#MetricsConfig.Host">¶</a>
 					
 					
@@ -1851,7 +1951,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="MetricsConfig.Password">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8572:8613#L213">Password</a>
+				</p><h3 id="MetricsConfig.Password">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8847:8888#L219">Password</a>
 					<a class="permalink" href="#MetricsConfig.Password">¶</a>
 					
 					
@@ -1864,7 +1964,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="MetricsConfig.Port">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8247:8281#L207">Port</a>
+				</p><h3 id="MetricsConfig.Port">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8522:8556#L213">Port</a>
 					<a class="permalink" href="#MetricsConfig.Port">¶</a>
 					
 					
@@ -1891,7 +1991,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 				
 			
 				
-				</p><h3 id="MetricsConfig.UserName">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8404:8445#L210">UserName</a>
+				</p><h3 id="MetricsConfig.UserName">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8679:8720#L216">UserName</a>
 					<a class="permalink" href="#MetricsConfig.UserName">¶</a>
 					
 					
@@ -1906,7 +2006,7 @@ New() では全プロファイル共通に走らせず、server グラフの DI 
 		
 			
 			
-			</p><h2 id="Observability">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=4504:4993#L73">Observability</a>
+			</p><h2 id="Observability">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=5442:5931#L87">Observability</a>
 				<a class="permalink" href="#Observability">¶</a>
 				
 				
@@ -1962,7 +2062,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				<h3 id="NewObservabilityConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8706:8767#L216">NewObservabilityConfig</a>
+				<h3 id="NewObservabilityConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8981:9042#L222">NewObservabilityConfig</a>
 					<a class="permalink" href="#NewObservabilityConfig">¶</a>
 					
 					
@@ -1976,7 +2076,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				</p><h3 id="ObservabilityConfig.Enabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8865:8909#L219">Enabled</a>
+				</p><h3 id="ObservabilityConfig.Enabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9140:9184#L225">Enabled</a>
 					<a class="permalink" href="#ObservabilityConfig.Enabled">¶</a>
 					
 					
@@ -1989,7 +2089,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.LogsEnabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9421:9469#L230">LogsEnabled</a>
+				</p><h3 id="ObservabilityConfig.LogsEnabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9696:9744#L236">LogsEnabled</a>
 					<a class="permalink" href="#ObservabilityConfig.LogsEnabled">¶</a>
 					
 					
@@ -2002,7 +2102,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.MaskedDBQueryArgs">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9981:10035#L239">MaskedDBQueryArgs</a>
+				</p><h3 id="ObservabilityConfig.MaskedDBQueryArgs">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10256:10310#L245">MaskedDBQueryArgs</a>
 					<a class="permalink" href="#ObservabilityConfig.MaskedDBQueryArgs">¶</a>
 					
 					
@@ -2015,7 +2115,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.MetricsEnabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9244:9295#L227">MetricsEnabled</a>
+				</p><h3 id="ObservabilityConfig.MetricsEnabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9519:9570#L233">MetricsEnabled</a>
 					<a class="permalink" href="#ObservabilityConfig.MetricsEnabled">¶</a>
 					
 					
@@ -2028,7 +2128,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.OTLPEndpoint">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9603:9654#L233">OTLPEndpoint</a>
+				</p><h3 id="ObservabilityConfig.OTLPEndpoint">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9878:9929#L239">OTLPEndpoint</a>
 					<a class="permalink" href="#ObservabilityConfig.OTLPEndpoint">¶</a>
 					
 					
@@ -2041,7 +2141,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.OTLPProtocol">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9785:9836#L236">OTLPProtocol</a>
+				</p><h3 id="ObservabilityConfig.OTLPProtocol">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10060:10111#L242">OTLPProtocol</a>
 					<a class="permalink" href="#ObservabilityConfig.OTLPProtocol">¶</a>
 					
 					
@@ -2138,7 +2238,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.TargetStatusCodeSet">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10319:10383#L243">TargetStatusCodeSet</a>
+				</p><h3 id="ObservabilityConfig.TargetStatusCodeSet">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=10594:10658#L249">TargetStatusCodeSet</a>
 					<a class="permalink" href="#ObservabilityConfig.TargetStatusCodeSet">¶</a>
 					
 					
@@ -2152,7 +2252,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.TracesEnabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9063:9113#L224">TracesEnabled</a>
+				</p><h3 id="ObservabilityConfig.TracesEnabled">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=9338:9388#L230">TracesEnabled</a>
 					<a class="permalink" href="#ObservabilityConfig.TracesEnabled">¶</a>
 					
 					
@@ -2167,7 +2267,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 		
 			
 			
-			</p><h2 id="OperatingSystem">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=2647:2730#L38">OperatingSystem</a>
+			</p><h2 id="OperatingSystem">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=3585:3668#L52">OperatingSystem</a>
 				<a class="permalink" href="#OperatingSystem">¶</a>
 				
 				
@@ -2215,7 +2315,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				<h3 id="NewOperatingSystemConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=4717:4782#L140">NewOperatingSystemConfig</a>
+				<h3 id="NewOperatingSystemConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=4992:5057#L146">NewOperatingSystemConfig</a>
 					<a class="permalink" href="#NewOperatingSystemConfig">¶</a>
 					
 					
@@ -2229,7 +2329,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				</p><h3 id="OperatingSystemConfig.TimeZone">func (*OperatingSystemConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=4863:4912#L143">TimeZone</a>
+				</p><h3 id="OperatingSystemConfig.TimeZone">func (*OperatingSystemConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=5138:5187#L149">TimeZone</a>
 					<a class="permalink" href="#OperatingSystemConfig.TimeZone">¶</a>
 					
 					
@@ -2244,7 +2344,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 		
 			
 			
-			</p><h2 id="Outbox">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=864:1149#L12">Outbox</a>
+			</p><h2 id="Outbox">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=1802:2087#L26">Outbox</a>
 				<a class="permalink" href="#Outbox">¶</a>
 				
 				
@@ -2273,7 +2373,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 		
 			
 			
-			<h2 id="OutboxConfig">type <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=4528:4651#L132">OutboxConfig</a>
+			<h2 id="OutboxConfig">type <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=4307:4430#L125">OutboxConfig</a>
 				<a class="permalink" href="#OutboxConfig">¶</a>
 				
 				
@@ -2295,7 +2395,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				<h3 id="NewOutboxConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19901:19948#L429">NewOutboxConfig</a>
+				<h3 id="NewOutboxConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19578:19625#L423">NewOutboxConfig</a>
 					<a class="permalink" href="#NewOutboxConfig">¶</a>
 					
 					
@@ -2309,7 +2409,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				</p><h3 id="OutboxConfig.BatchSize">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20578:20616#L441">BatchSize</a>
+				</p><h3 id="OutboxConfig.BatchSize">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20255:20293#L435">BatchSize</a>
 					<a class="permalink" href="#OutboxConfig.BatchSize">¶</a>
 					
 					
@@ -2322,7 +2422,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.Endpoint">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20063:20103#L432">Endpoint</a>
+				</p><h3 id="OutboxConfig.Endpoint">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19740:19780#L426">Endpoint</a>
 					<a class="permalink" href="#OutboxConfig.Endpoint">¶</a>
 					
 					
@@ -2335,7 +2435,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.ErrorBackoff">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20416:20467#L438">ErrorBackoff</a>
+				</p><h3 id="OutboxConfig.ErrorBackoff">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20093:20144#L432">ErrorBackoff</a>
 					<a class="permalink" href="#OutboxConfig.ErrorBackoff">¶</a>
 					
 					
@@ -2348,7 +2448,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.PollInterval">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=20233:20284#L435">PollInterval</a>
+				</p><h3 id="OutboxConfig.PollInterval">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19910:19961#L429">PollInterval</a>
 					<a class="permalink" href="#OutboxConfig.PollInterval">¶</a>
 					
 					
@@ -2361,7 +2461,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.SetOutboxBatchSize">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7460:7531#L186">SetOutboxBatchSize</a>
+				</p><h3 id="OutboxConfig.SetOutboxBatchSize">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=6677:6748#L166">SetOutboxBatchSize</a>
 					<a class="permalink" href="#OutboxConfig.SetOutboxBatchSize">¶</a>
 					
 					
@@ -2375,7 +2475,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.SetOutboxEndpoint">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=8670:8742#L216">SetOutboxEndpoint</a>
+				</p><h3 id="OutboxConfig.SetOutboxEndpoint">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7887:7959#L196">SetOutboxEndpoint</a>
 					<a class="permalink" href="#OutboxConfig.SetOutboxEndpoint">¶</a>
 					
 					
@@ -2389,7 +2489,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.SetOutboxErrorBackoff">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=8252:8339#L206">SetOutboxErrorBackoff</a>
+				</p><h3 id="OutboxConfig.SetOutboxErrorBackoff">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7469:7556#L186">SetOutboxErrorBackoff</a>
 					<a class="permalink" href="#OutboxConfig.SetOutboxErrorBackoff">¶</a>
 					
 					
@@ -2403,7 +2503,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="OutboxConfig.SetOutboxPollInterval">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7836:7923#L196">SetOutboxPollInterval</a>
+				</p><h3 id="OutboxConfig.SetOutboxPollInterval">func (*OutboxConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=7053:7140#L176">SetOutboxPollInterval</a>
 					<a class="permalink" href="#OutboxConfig.SetOutboxPollInterval">¶</a>
 					
 					
@@ -2419,7 +2519,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 		
 			
 			
-			</p><h2 id="SecureCookie">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=7731:7858#L125">SecureCookie</a>
+			</p><h2 id="SecureCookie">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=8669:8796#L139">SecureCookie</a>
 				<a class="permalink" href="#SecureCookie">¶</a>
 				
 				
@@ -2469,7 +2569,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				<h3 id="NewSecureCookieConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16059:16118#L354">NewSecureCookieConfig</a>
+				<h3 id="NewSecureCookieConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16334:16393#L360">NewSecureCookieConfig</a>
 					<a class="permalink" href="#NewSecureCookieConfig">¶</a>
 					
 					
@@ -2483,7 +2583,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 
 			
 				
-				</p><h3 id="SecureCookieConfig.Domain">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16523:16567#L369">Domain</a>
+				</p><h3 id="SecureCookieConfig.Domain">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16798:16842#L375">Domain</a>
 					<a class="permalink" href="#SecureCookieConfig.Domain">¶</a>
 					
 					
@@ -2496,7 +2596,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="SecureCookieConfig.SameSite">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16391:16437#L366">SameSite</a>
+				</p><h3 id="SecureCookieConfig.SameSite">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16666:16712#L372">SameSite</a>
 					<a class="permalink" href="#SecureCookieConfig.SameSite">¶</a>
 					
 					
@@ -2509,7 +2609,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="SecureCookieConfig.Secure">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16211:16254#L357">Secure</a>
+				</p><h3 id="SecureCookieConfig.Secure">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16486:16529#L363">Secure</a>
 					<a class="permalink" href="#SecureCookieConfig.Secure">¶</a>
 					
 					
@@ -2522,7 +2622,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="SecureCookieConfig.SetDomain">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=9426:9494#L236">SetDomain</a>
+				</p><h3 id="SecureCookieConfig.SetDomain">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=8643:8711#L216">SetDomain</a>
 					<a class="permalink" href="#SecureCookieConfig.SetDomain">¶</a>
 					
 					
@@ -2536,7 +2636,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 				
 			
 				
-				</p><h3 id="SecureCookieConfig.SetSameSite">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=9050:9122#L226">SetSameSite</a>
+				</p><h3 id="SecureCookieConfig.SetSameSite">func (*SecureCookieConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=8267:8339#L206">SetSameSite</a>
 					<a class="permalink" href="#SecureCookieConfig.SetSameSite">¶</a>
 					
 					
@@ -2552,7 +2652,7 @@ DB クエリ引数マスク・監視対象ステータスコードの設定を�
 		
 			
 			
-			</p><h2 id="Security">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=6929:7608#L112">Security</a>
+			</p><h2 id="Security">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=7867:8546#L126">Security</a>
 				<a class="permalink" href="#Security">¶</a>
 				
 				
@@ -2609,7 +2709,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 
 			
 				
-				<h3 id="NewSecurityConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14324:14375#L314">NewSecurityConfig</a>
+				<h3 id="NewSecurityConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14599:14650#L320">NewSecurityConfig</a>
 					<a class="permalink" href="#NewSecurityConfig">¶</a>
 					
 					
@@ -2623,7 +2723,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 
 			
 				
-				</p><h3 id="SecurityConfig.AllowedOrigins">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14488:14538#L317">AllowedOrigins</a>
+				</p><h3 id="SecurityConfig.AllowedOrigins">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14763:14813#L323">AllowedOrigins</a>
 					<a class="permalink" href="#SecurityConfig.AllowedOrigins">¶</a>
 					
 					
@@ -2636,7 +2736,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.BcryptCost">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15909:15950#L351">BcryptCost</a>
+				</p><h3 id="SecurityConfig.BcryptCost">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16184:16225#L357">BcryptCost</a>
 					<a class="permalink" href="#SecurityConfig.BcryptCost">¶</a>
 					
 					
@@ -2649,7 +2749,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.CIDR">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14674:14716#L322">CIDR</a>
+				</p><h3 id="SecurityConfig.CIDR">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14949:14991#L328">CIDR</a>
 					<a class="permalink" href="#SecurityConfig.CIDR">¶</a>
 					
 					
@@ -2662,7 +2762,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.ContentTypeNosniff">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=14960:15012#L333">ContentTypeNosniff</a>
+				</p><h3 id="SecurityConfig.ContentTypeNosniff">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15235:15287#L339">ContentTypeNosniff</a>
 					<a class="permalink" href="#SecurityConfig.ContentTypeNosniff">¶</a>
 					
 					
@@ -2675,7 +2775,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.HSTSExcludeSubdomains">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15434:15487#L342">HSTSExcludeSubdomains</a>
+				</p><h3 id="SecurityConfig.HSTSExcludeSubdomains">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15709:15762#L348">HSTSExcludeSubdomains</a>
 					<a class="permalink" href="#SecurityConfig.HSTSExcludeSubdomains">¶</a>
 					
 					
@@ -2688,7 +2788,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.HSTSMaxAge">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15255:15306#L339">HSTSMaxAge</a>
+				</p><h3 id="SecurityConfig.HSTSMaxAge">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15530:15581#L345">HSTSMaxAge</a>
 					<a class="permalink" href="#SecurityConfig.HSTSMaxAge">¶</a>
 					
 					
@@ -2701,7 +2801,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.HSTSPreloadEnabled">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15614:15664#L345">HSTSPreloadEnabled</a>
+				</p><h3 id="SecurityConfig.HSTSPreloadEnabled">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15889:15939#L351">HSTSPreloadEnabled</a>
 					<a class="permalink" href="#SecurityConfig.HSTSPreloadEnabled">¶</a>
 					
 					
@@ -2714,7 +2814,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.ReferrerPolicy">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15774:15822#L348">ReferrerPolicy</a>
+				</p><h3 id="SecurityConfig.ReferrerPolicy">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16049:16097#L354">ReferrerPolicy</a>
 					<a class="permalink" href="#SecurityConfig.ReferrerPolicy">¶</a>
 					
 					
@@ -2741,7 +2841,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.XFrameOptions">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15121:15168#L336">XFrameOptions</a>
+				</p><h3 id="SecurityConfig.XFrameOptions">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=15396:15443#L342">XFrameOptions</a>
 					<a class="permalink" href="#SecurityConfig.XFrameOptions">¶</a>
 					
 					
@@ -2756,7 +2856,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 		
 			
 			
-			</p><h2 id="Server">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=3319:3916#L52">Server</a>
+			</p><h2 id="Server">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=4257:4854#L66">Server</a>
 				<a class="permalink" href="#Server">¶</a>
 				
 				
@@ -2811,7 +2911,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 
 			
 				
-				<h3 id="NewServerConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6430:6477#L174">NewServerConfig</a>
+				<h3 id="NewServerConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6705:6752#L180">NewServerConfig</a>
 					<a class="permalink" href="#NewServerConfig">¶</a>
 					
 					
@@ -2825,7 +2925,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 
 			
 				
-				</p><h3 id="ServerConfig.BodyLimitMB">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7570:7610#L195">BodyLimitMB</a>
+				</p><h3 id="ServerConfig.BodyLimitMB">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7845:7885#L201">BodyLimitMB</a>
 					<a class="permalink" href="#ServerConfig.BodyLimitMB">¶</a>
 					
 					
@@ -2838,7 +2938,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.Host">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6580:6616#L177">Host</a>
+				</p><h3 id="ServerConfig.Host">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6855:6891#L183">Host</a>
 					<a class="permalink" href="#ServerConfig.Host">¶</a>
 					
 					
@@ -2851,7 +2951,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.IdleTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7374:7424#L192">IdleTimeout</a>
+				</p><h3 id="ServerConfig.IdleTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7649:7699#L198">IdleTimeout</a>
 					<a class="permalink" href="#ServerConfig.IdleTimeout">¶</a>
 					
 					
@@ -2864,7 +2964,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.Port">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6717:6750#L180">Port</a>
+				</p><h3 id="ServerConfig.Port">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6992:7025#L186">Port</a>
 					<a class="permalink" href="#ServerConfig.Port">¶</a>
 					
 					
@@ -2877,7 +2977,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.ReadHeaderTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=6873:6929#L183">ReadHeaderTimeout</a>
+				</p><h3 id="ServerConfig.ReadHeaderTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7148:7204#L189">ReadHeaderTimeout</a>
 					<a class="permalink" href="#ServerConfig.ReadHeaderTimeout">¶</a>
 					
 					
@@ -2890,7 +2990,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.ReadTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7047:7097#L186">ReadTimeout</a>
+				</p><h3 id="ServerConfig.ReadTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7322:7372#L192">ReadTimeout</a>
 					<a class="permalink" href="#ServerConfig.ReadTimeout">¶</a>
 					
 					
@@ -2903,7 +3003,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.RequestTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7774:7827#L198">RequestTimeout</a>
+				</p><h3 id="ServerConfig.RequestTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=8049:8102#L204">RequestTimeout</a>
 					<a class="permalink" href="#ServerConfig.RequestTimeout">¶</a>
 					
 					
@@ -2930,7 +3030,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.WriteTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7210:7261#L189">WriteTimeout</a>
+				</p><h3 id="ServerConfig.WriteTimeout">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=7485:7536#L195">WriteTimeout</a>
 					<a class="permalink" href="#ServerConfig.WriteTimeout">¶</a>
 					
 					
@@ -2945,7 +3045,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 		
 			
 			
-			</p><h2 id="Worker">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=1242:2582#L20">Worker</a>
+			</p><h2 id="Worker">type <a href="../../../src/go-boilerplate/internal/config/envspec.go.html?s=2180:3520#L34">Worker</a>
 				<a class="permalink" href="#Worker">¶</a>
 				
 				
@@ -2984,7 +3084,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 		
 			
 			
-			<h2 id="WorkerConfig">type <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=3911:4446#L114">WorkerConfig</a>
+			<h2 id="WorkerConfig">type <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=3690:4225#L107">WorkerConfig</a>
 				<a class="permalink" href="#WorkerConfig">¶</a>
 				
 				
@@ -3006,7 +3106,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 
 			
 				
-				<h3 id="NewWorkerConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17254:17301#L384">NewWorkerConfig</a>
+				<h3 id="NewWorkerConfig">func <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=16931:16978#L378">NewWorkerConfig</a>
 					<a class="permalink" href="#NewWorkerConfig">¶</a>
 					
 					
@@ -3020,7 +3120,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 
 			
 				
-				</p><h3 id="WorkerConfig.BatchSize">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17714:17752#L393">BatchSize</a>
+				</p><h3 id="WorkerConfig.BatchSize">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17391:17429#L387">BatchSize</a>
 					<a class="permalink" href="#WorkerConfig.BatchSize">¶</a>
 					
 					
@@ -3033,7 +3133,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.CircuitFailureThreshold">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18440:18492#L405">CircuitFailureThreshold</a>
+				</p><h3 id="WorkerConfig.CircuitFailureThreshold">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18117:18169#L399">CircuitFailureThreshold</a>
 					<a class="permalink" href="#WorkerConfig.CircuitFailureThreshold">¶</a>
 					
 					
@@ -3046,7 +3146,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.CircuitHalfOpenProbe">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18974:19023#L414">CircuitHalfOpenProbe</a>
+				</p><h3 id="WorkerConfig.CircuitHalfOpenProbe">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18651:18700#L408">CircuitHalfOpenProbe</a>
 					<a class="permalink" href="#WorkerConfig.CircuitHalfOpenProbe">¶</a>
 					
 					
@@ -3059,7 +3159,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.CircuitOpenBackoffInitial">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18609:18673#L408">CircuitOpenBackoffInitial</a>
+				</p><h3 id="WorkerConfig.CircuitOpenBackoffInitial">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18286:18350#L402">CircuitOpenBackoffInitial</a>
 					<a class="permalink" href="#WorkerConfig.CircuitOpenBackoffInitial">¶</a>
 					
 					
@@ -3072,7 +3172,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.CircuitOpenBackoffMax">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18788:18848#L411">CircuitOpenBackoffMax</a>
+				</p><h3 id="WorkerConfig.CircuitOpenBackoffMax">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18465:18525#L405">CircuitOpenBackoffMax</a>
 					<a class="permalink" href="#WorkerConfig.CircuitOpenBackoffMax">¶</a>
 					
 					
@@ -3085,7 +3185,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.Concurrency">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17407:17447#L387">Concurrency</a>
+				</p><h3 id="WorkerConfig.Concurrency">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17084:17124#L381">Concurrency</a>
 					<a class="permalink" href="#WorkerConfig.Concurrency">¶</a>
 					
 					
@@ -3098,7 +3198,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.DrainTimeout">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18036:18087#L399">DrainTimeout</a>
+				</p><h3 id="WorkerConfig.DrainTimeout">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17713:17764#L393">DrainTimeout</a>
 					<a class="permalink" href="#WorkerConfig.DrainTimeout">¶</a>
 					
 					
@@ -3111,7 +3211,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.ExtendInterval">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17865:17918#L396">ExtendInterval</a>
+				</p><h3 id="WorkerConfig.ExtendInterval">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17542:17595#L390">ExtendInterval</a>
 					<a class="permalink" href="#WorkerConfig.ExtendInterval">¶</a>
 					
 					
@@ -3124,7 +3224,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.HealthListenAddr">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19182:19230#L417">HealthListenAddr</a>
+				</p><h3 id="WorkerConfig.HealthListenAddr">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18859:18907#L411">HealthListenAddr</a>
 					<a class="permalink" href="#WorkerConfig.HealthListenAddr">¶</a>
 					
 					
@@ -3137,7 +3237,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.MaxInFlight">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17565:17605#L390">MaxInFlight</a>
+				</p><h3 id="WorkerConfig.MaxInFlight">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17242:17282#L384">MaxInFlight</a>
 					<a class="permalink" href="#WorkerConfig.MaxInFlight">¶</a>
 					
 					
@@ -3150,7 +3250,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.NackBackoffInitial">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19579:19636#L423">NackBackoffInitial</a>
+				</p><h3 id="WorkerConfig.NackBackoffInitial">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19256:19313#L417">NackBackoffInitial</a>
 					<a class="permalink" href="#WorkerConfig.NackBackoffInitial">¶</a>
 					
 					
@@ -3163,7 +3263,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.NackBackoffMax">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19752:19805#L426">NackBackoffMax</a>
+				</p><h3 id="WorkerConfig.NackBackoffMax">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19429:19482#L420">NackBackoffMax</a>
 					<a class="permalink" href="#WorkerConfig.NackBackoffMax">¶</a>
 					
 					
@@ -3176,7 +3276,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.ProgressStaleAfter">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19373:19430#L420">ProgressStaleAfter</a>
+				</p><h3 id="WorkerConfig.ProgressStaleAfter">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=19050:19107#L414">ProgressStaleAfter</a>
 					<a class="permalink" href="#WorkerConfig.ProgressStaleAfter">¶</a>
 					
 					
@@ -3189,7 +3289,7 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="WorkerConfig.ReceiveCountWarnThreshold">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=18222:18276#L402">ReceiveCountWarnThreshold</a>
+				</p><h3 id="WorkerConfig.ReceiveCountWarnThreshold">func (*WorkerConfig) <a href="../../../src/go-boilerplate/internal/config/model.go.html?s=17899:17953#L396">ReceiveCountWarnThreshold</a>
 					<a class="permalink" href="#WorkerConfig.ReceiveCountWarnThreshold">¶</a>
 					
 					

@@ -9,10 +9,11 @@ import (
 	"go-boilerplate/internal/infrastructure/authz/allowall"
 	"go-boilerplate/internal/infrastructure/authz/userrole" // sample-api:line
 	"go-boilerplate/internal/logging"
+	authzbd "go-boilerplate/internal/usecase/boundary/authz"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/fx"          // sample-api:line
+	"go.uber.org/fx"
 	"go.uber.org/mock/gomock" // sample-api:line
 )
 
@@ -42,19 +43,31 @@ func Test_provideAuthorizer(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("ローカル環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
+		// sample-api:replace-begin
+		t.Run("ローカル環境ではuser_rolesベースAuthorizerが提供されINFOが出る", func(t *testing.T) {
 			t.Parallel()
 
 			logger, logs := logging.NewObservedTestLogger(t)
+			roleRepo := mock_user.NewMockRoleRepository(gomock.NewController(t))
 
-			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger})
+			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger, RoleRepo: roleRepo})
 			require.NoError(t, err)
-			expected, err := allowall.New(newAppCfg(t, config.EnvLocal))
-			require.NoError(t, err)
-			assert.Equal(t, expected, authorizer)
-			// 全許可スタブ配線時に WARN で注意喚起されること。
-			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
+			assert.Equal(t, userrole.New(roleRepo), authorizer)
+			// サンプル在時は local も実 authN と対で user_roles ベース authZ を配線し INFO を出す。
+			assert.Len(t, logs.FilterMessage("user_roles-based authorizer wired").All(), 1)
 		})
+		// sample-api:replace-with
+		// = t.Run("ローカル環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
+		// = 	t.Parallel()
+		// = 	logger, logs := logging.NewObservedTestLogger(t)
+		// = 	authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger})
+		// = 	require.NoError(t, err)
+		// = 	expected, err := allowall.New(newAppCfg(t, config.EnvLocal))
+		// = 	require.NoError(t, err)
+		// = 	assert.Equal(t, expected, authorizer)
+		// = 	assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
+		// = })
+		// sample-api:replace-end
 
 		t.Run("CI環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
 			t.Parallel()
@@ -120,9 +133,44 @@ func Test_provideAuthorizer(t *testing.T) {
 				logger := logging.NewTestLogger(t)
 
 				authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, env), Logger: logger})
-				require.Error(t, err)
+				require.ErrorIs(t, err, errNoAuthorizerForEnv)
+				require.ErrorContains(t, err, env)
 				assert.Nil(t, authorizer)
 			})
 		}
+	})
+}
+
+func Test_authzModule(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("usecase 層が参照する Authorizer を提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var authorizer authzbd.Authorizer
+
+			opts := append(commonDeps(),
+				fx.Provide(func() user.RoleRepository { return nil }), // sample-api:line
+				authzModule(),
+				fx.Populate(&authorizer),
+			)
+			validateGraph(t, opts...)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未配線では Authorizer が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var authorizer authzbd.Authorizer
+
+			opts := append(commonDeps(), fx.Populate(&authorizer), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(opts...))
+		})
 	})
 }

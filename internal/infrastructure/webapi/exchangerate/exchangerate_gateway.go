@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/infrastructure/httpclient"
 	"go-boilerplate/internal/observability"
 	boundary "go-boilerplate/internal/usecase/boundary/exchangerate"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -28,8 +29,10 @@ type gateway struct {
 }
 
 // rateResponse は、外部 API の JSON レスポンスの形を表します。
+// rate は JSON number でも文字列でも桁を保持したまま取り込むため decimal.Decimal で受けます。
 type rateResponse struct {
-	Rate float64 `json:"rate"`
+	Rate decimal.Decimal `json:"rate"`
+	Date string          `json:"date"`
 }
 
 // NewDownstreamProfile は、外部為替サービス向けの resilient プロファイルを返します。
@@ -78,9 +81,9 @@ func (g *gateway) GetRate(ctx context.Context, base, quote string) (*boundary.Ra
 	if uerr := json.Unmarshal(resp.Body, &body); uerr != nil {
 		return nil, xerrors.Wrap(apperror.ErrUnavailable, "invalid exchangerate response: "+uerr.Error())
 	}
-	if body.Rate <= 0 {
+	if body.Rate.Sign() <= 0 {
 		return nil, xerrors.Wrap(apperror.ErrUnavailable, "exchangerate response has non-positive rate")
 	}
 
-	return &boundary.Rate{Base: base, Quote: quote, Value: body.Rate}, nil
+	return &boundary.Rate{Base: base, Quote: quote, Value: body.Rate, Date: body.Date}, nil
 }

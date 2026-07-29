@@ -123,7 +123,7 @@ do X") are tagged `setup-review`.
 | [0077](0077-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
 | [0078](0078-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
 | [0079](0079-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
-| [0080](0080-multi-layer-security-scanning.md) | Multi-layer security scanning (reachability-filtered govulncheck + scheduled CodeQL SAST + secret + fs scans) | accepted |
+| [0080](0080-multi-layer-security-scanning.md) | Multi-layer security scanning, splitting reporting from gating, on hardened runners | accepted |
 | [0081](0081-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
 | [0082](0082-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
 | [0083](0083-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
@@ -141,6 +141,14 @@ do X") are tagged `setup-review`.
 | [0095](0095-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
 | [0096](0096-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
 | [0097](0097-outbox-relay-hardening-delegated.md) | Delegate outbox-relay duplicate-window hardening (multi-layer lease redesign) to production copies | accepted (exclusion) |
+| [0098](0098-exchange-rate-cache-gateway-decorator.md) | Cache the exchange-rate gateway with a TTL decorator on the boundary seam | accepted |
+| [0099](0099-reference-amount-half-up-rounding.md) | referenceAmount is computed in integers with half-up rounding at a single point | superseded by [0103](0103-decimal-half-up-rounding.md) |
+| [0100](0100-purchase-stock-lock-and-amount-contract.md) | Purchase creation locks stock with SELECT FOR UPDATE; settlement money is integer USD cents (unit price revised by [0101](0101-two-scale-money-model.md)) | accepted |
+| [0101](0101-two-scale-money-model.md) | Money is modeled in two scales — pricing (exact decimal) and settlement (integer minor unit) | accepted |
+| [0102](0102-exact-decimal-pkg-wrap.md) | Exact-decimal quantities use a `pkg/decimal` wrapper and a string wire contract | accepted |
+| [0103](0103-decimal-half-up-rounding.md) | referenceAmount and rate application round half-up at a single point, on exact decimals | accepted |
+| [0104](0104-domain-shared-kernel.md) | Cross-aggregate value objects live in a curated domain shared kernel (`internal/domain/kernel`) | accepted |
+| [0105](0105-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

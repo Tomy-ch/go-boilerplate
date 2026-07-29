@@ -10,7 +10,7 @@
 
 ## 補足
 
-- `Middleware()` は StrictMiddleware の構造的シグネチャ `func(next NextFunc, operationID string) NextFunc` で入り口を返します（`NextFunc` は `func(ctx echo.Context, request any) (any, error)`）。`StrictMiddleware[H]()` はそれをパッケージ固有の oapi-codegen `StrictMiddlewareFunc` 型（例: `gen.StrictHandlerFunc`）へ適合させるため、生成された strict handler のミドルウェアスロットに登録されます。`e.Use` 経由では登録しません。
+- `Middleware()` は StrictMiddleware の構造的シグネチャ `func(next NextFunc, operationID string) NextFunc` で入り口を返します（`NextFunc` は `func(ctx *echo.Context, request any) (any, error)`）。`StrictMiddleware[H]()` はそれをパッケージ固有の oapi-codegen `StrictMiddlewareFunc` 型（例: `gen.StrictHandlerFunc`）へ適合させるため、生成された strict handler のミドルウェアスロットに登録されます。`e.Use` 経由では登録しません。
 - `Idempotency-Key` ヘッダが無い場合、リクエストはそのまま素通しされます（非冪等として扱います）。
 - 冪等性は認証済みリクエストに対してのみ発動します。スコープキーに認証済みの `Subject` を用いるため、リクエストコンテキストに認証プリンシパルが存在しない場合は素通しされます。
 - キー検証は違反キーを `400`（`apperror.ErrInvalidArgument`）で拒否します。キーは非空・255 バイト以下・印字可能 ASCII のみで構成されている必要があります。

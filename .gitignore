@@ -11,3 +11,6 @@ tmp/
 # -----ファイル-----
 # ディレクトリの表示管理ファイル
 .DS_Store
+
+# DB スロットプールがworktree毎に書き出す占有情報（scripts/db-pool）
+.gobp-db-slot

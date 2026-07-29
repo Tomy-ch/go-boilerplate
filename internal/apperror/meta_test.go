@@ -17,6 +17,14 @@ type plainError struct{ msg string }
 
 func (e plainError) Error() string { return e.msg }
 
+// asMetaError は、err のチェーンから *MetaError を取り出します（メソッド単体の契約を検証するため）。
+func asMetaError(t *testing.T, err error) *apperror.MetaError {
+	t.Helper()
+	var metaErr *apperror.MetaError
+	require.True(t, xerrors.As(err, &metaErr))
+	return metaErr
+}
+
 func TestNewMeta(t *testing.T) {
 	t.Parallel()
 
@@ -228,6 +236,122 @@ func TestMetaError_Format(t *testing.T) {
 			err := apperror.WithMeta(plainError{msg: "plain"}, apperror.NewMeta("CODE"))
 
 			assert.Equal(t, "plain", fmt.Sprintf("%+v", err))
+		})
+	})
+}
+
+func TestMetaError_Error(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Meta の利用者向け文言ではなく元エラーのメッセージを返す", func(t *testing.T) {
+			t.Parallel()
+			err := apperror.WithMeta(xerrors.New("original failure"),
+				apperror.NewMeta("CUSTOM_CODE", "firstName").WithMessage("利用者向け文言"))
+
+			metaErr := asMetaError(t, err)
+
+			assert.Equal(t, "original failure", metaErr.Error())
+		})
+	})
+}
+
+func TestMetaError_Meta(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("付与した Code / Message / Details をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			err := apperror.WithMeta(apperror.ErrValidation,
+				apperror.NewMeta("CUSTOM_CODE", "firstName", "email").WithMessage("custom message"))
+
+			meta := asMetaError(t, err).Meta()
+
+			assert.Equal(t, "CUSTOM_CODE", meta.Code())
+			assert.Equal(t, "custom message", meta.Message())
+			assert.Equal(t, []string{"firstName", "email"}, meta.Details())
+		})
+
+		t.Run("返した Meta の Details を書き換えても内部状態に影響しない", func(t *testing.T) {
+			t.Parallel()
+			err := apperror.WithMeta(apperror.ErrValidation, apperror.NewMeta("CUSTOM_CODE", "firstName"))
+			metaErr := asMetaError(t, err)
+
+			got := metaErr.Meta().Details()
+			got[0] = "mutated"
+
+			assert.Equal(t, []string{"firstName"}, metaErr.Meta().Details())
+		})
+	})
+}
+
+func TestMetaError_Unwrap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("センチネル分類を保ったままメタ付与前のエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			err := apperror.WithMeta(xerrors.Wrap(apperror.ErrValidation, "invalid"), apperror.NewMeta("CUSTOM_CODE"))
+
+			unwrapped := asMetaError(t, err).Unwrap()
+
+			require.ErrorIs(t, unwrapped, apperror.ErrValidation)
+			_, ok := apperror.MetaFrom(unwrapped)
+			assert.False(t, ok)
+		})
+
+		t.Run("多重付与ではメタ層を 1 段だけ外し内側の Meta が残る", func(t *testing.T) {
+			t.Parallel()
+			inner := apperror.WithMeta(apperror.ErrValidation, apperror.NewMeta("INNER"))
+			outer := apperror.WithMeta(inner, apperror.NewMeta("OUTER"))
+
+			unwrapped := asMetaError(t, outer).Unwrap()
+
+			meta, ok := apperror.MetaFrom(unwrapped)
+			require.True(t, ok)
+			assert.Equal(t, "INNER", meta.Code())
+		})
+	})
+}
+
+func TestMeta_Code(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("NewMeta に渡したコードを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "CUSTOM_CODE", apperror.NewMeta("CUSTOM_CODE", "firstName").Code())
+		})
+
+		t.Run("コード未指定の場合は空文字を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, apperror.NewMeta("", "firstName").Code())
+		})
+	})
+}
+
+func TestMeta_Message(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("WithMessage で設定した文言を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "custom message", apperror.NewMeta("CUSTOM_CODE").WithMessage("custom message").Message())
+		})
+
+		t.Run("WithMessage 未適用の場合は空文字を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, apperror.NewMeta("CUSTOM_CODE", "firstName").Message())
 		})
 	})
 }

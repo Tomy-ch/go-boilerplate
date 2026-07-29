@@ -1,0 +1,4 @@
+type: array
+description: 商品ステータスマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
+items:
+  $ref: '../../../schemas/ProductStatusResponse.yaml'

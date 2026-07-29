@@ -8,9 +8,12 @@ import (
 	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate"
 	"go-boilerplate/internal/controller/handler/v1/exchangerate/gen"
 	"go-boilerplate/internal/observability"
+	exchangerateuc "go-boilerplate/internal/usecase/exchangerate"
 	mock_exchangerate "go-boilerplate/internal/usecase/exchangerate/mock"
+	"go-boilerplate/pkg/decimal"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/mock/gomock"
 )
 
@@ -29,13 +32,61 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 
 			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
-				Convert(gomock.Any(), "USD", "JPY", 100.0).
-				Return(15050.0, nil)
+				Convert(gomock.Any(), exchangerateuc.ConvertInput{Base: "USD", Quote: "JPY", Amount: decimaltestkit.MustParse(t, "100")}).
+				Return(&exchangerateuc.ConvertResult{Converted: decimal.FromInt(15050)}, nil)
 
 			exchangeratehandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet, "/v1/exchange-rates?base=USD&quote=JPY&amount=100", nil, nil,
+			)
+			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
+		})
+
+		t.Run("displayCurrency=JPY 指定でも 200 で ExchangeRateResponse を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
+			mockUC.EXPECT().
+				Convert(gomock.Any(), gomock.Any()).
+				Return(&exchangerateuc.ConvertResult{
+					Converted: decimal.FromInt(15050),
+					Reference: &exchangerateuc.ReferenceAmount{
+						Currency: "JPY", Amount: 15050, Rate: decimaltestkit.MustParse(t, "150.5"), RateDate: "2026-07-21",
+					},
+				}, nil)
+
+			exchangeratehandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet,
+				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&displayCurrency=JPY", nil, nil,
+			)
+			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
+		})
+
+		t.Run("degrade: 参考換算のレート取得失敗でも本体は 200 で継続する", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			// 参考換算のレート取得だけが失敗し reference=nil の degrade を模擬する。本体は 503 でなく 200。
+			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
+			mockUC.EXPECT().
+				Convert(gomock.Any(), gomock.Any()).
+				Return(&exchangerateuc.ConvertResult{Converted: decimal.FromInt(15050), Reference: nil}, nil)
+
+			exchangeratehandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet,
+				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&displayCurrency=JPY", nil, nil,
 			)
 			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
 		})
@@ -52,11 +103,11 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// gateway が外部為替サービス不通で ErrUnavailable を返す実挙動を模擬する。
+			// 本体換算のレート取得が外部為替サービス不通で失敗する実挙動を模擬する。
 			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
-				Convert(gomock.Any(), "USD", "JPY", 100.0).
-				Return(0.0, apperror.ErrUnavailable)
+				Convert(gomock.Any(), gomock.Any()).
+				Return(nil, apperror.ErrUnavailable)
 
 			exchangeratehandler.BindHandler(e, tf, mockUC)
 

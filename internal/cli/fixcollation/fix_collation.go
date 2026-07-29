@@ -16,6 +16,9 @@ const (
 	callerSkipCount = 1
 )
 
+// errInvalidDatabaseName は、許可されていない DB 名が指定された場合のエラーです。
+var errInvalidDatabaseName = xerrors.New("invalid database name")
+
 // RunFix は、DB 名の検証・DSN 解決・collation 修正のオーケストレーションを行います。
 // loadDSN は (パスワード非含有 DSN, パスワード) を返します。
 func RunFix(ctx context.Context, runner exec.Runner, logger logging.Logger, database string, loadDSN func() (string, string, error)) error {
@@ -37,7 +40,7 @@ func validateDatabaseName(name string) error {
 	case "local", "test":
 		return nil
 	default:
-		return xerrors.New("invalid database name: " + name)
+		return xerrors.Wrap(errInvalidDatabaseName, name)
 	}
 }
 

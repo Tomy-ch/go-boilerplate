@@ -1,0 +1,152 @@
+name: Capability Diff
+
+# capslock reports which capabilities (network, exec, unsafe, reflect, file access,
+# …) the dependency graph can actually reach, and diffs that against the base
+# branch. It answers a question none of the other scanners ask: OSV and Trivy ask
+# "is this dependency known-vulnerable", and an SBOM lists what is present — but a
+# freshly compromised package is in neither. What it does show up as is a
+# dependency that suddenly gained the ability to exec a process or open a socket.
+#
+# Report-only, permanently. A new capability is frequently legitimate (a library
+# adds a cache, so it gains FILES), so failing on it would train reviewers to
+# ignore the check. The value is in a human reading "this logging library now
+# reaches EXEC" during review.
+#
+# Go-only by construction: capslock analyses Go call graphs, so the npm side of
+# this repository is not covered. That asymmetry, and why no equivalent tool is
+# adopted for npm, is recorded in ADR-0105.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/capability-diff.yaml'
+      - 'go.mod'
+      - 'go.sum'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capability-diff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      # fetch-depth: 0 so the base commit is available for git worktree. The base
+      # tree is materialized outside the workspace so the head analysis cannot walk
+      # into it.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml (SSOT) — never duplicated here.
+      - name: Install capslock
+        run: mise install go:github.com/google/capslock/cmd/capslock
+
+      # Package granularity keeps the report readable: function granularity emits
+      # thousands of rows for a graph this size, which is the opposite of something
+      # a reviewer will read.
+      - name: Capture the base capability set
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          # The binary is resolved here, in the workspace, and then invoked by
+          # absolute path inside the base worktree. mise reads its config from the
+          # working directory, and the base commit's mise.toml does not necessarily
+          # declare capslock — it did not when this workflow was introduced, so the
+          # shim failed to resolve there. Pinning the path also guarantees both
+          # sides of the diff are produced by the same binary; letting each tree
+          # resolve its own would contaminate the comparison with version drift.
+          CAPSLOCK="$(mise which capslock)"
+
+          git worktree add --detach "${RUNNER_TEMP}/caps-base" "${BASE_SHA}"
+          (
+            cd "${RUNNER_TEMP}/caps-base"
+            "${CAPSLOCK}" -packages ./... -output json -granularity package
+          ) > "${GITHUB_WORKSPACE}/capabilities-base.json"
+        shell: bash
+
+      # capslock's compare mode exits 0 whether or not anything changed, so the
+      # presence of output is the signal rather than the exit code.
+      - name: Diff against the base
+        id: diff
+        run: |
+          set -euo pipefail
+
+          capslock -packages ./... -output compare -granularity package \
+            capabilities-base.json > capability-diff.txt 2>&1 || true
+
+          if [ -s capability-diff.txt ]; then
+            LINES=$(wc -l < capability-diff.txt | tr -d ' ')
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "title=## 🔎 Capability Diff: この PR で依存の capability が変化しました" >> "$GITHUB_OUTPUT"
+            {
+              echo "以下は report-only です。マージはブロックしません。"
+              echo "意図した変更かをレビューで確認してください（例: ログ出力のライブラリが EXEC に到達し始めた等）。"
+              echo
+              echo '```text'
+              head -c 60000 capability-diff.txt
+              echo '```'
+              if [ "${LINES}" -gt 500 ]; then
+                echo
+                echo "> 出力が長いため先頭のみ表示しています。全文は artifact を参照してください。"
+              fi
+            } > capability-diff-summary.md
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Capability Diff: 依存の capability に変化なし" >> "$GITHUB_OUTPUT"
+            echo "この PR は依存の到達可能な capability を変えていません。" > capability-diff-summary.md
+          fi
+
+          cat capability-diff-summary.md >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload capability report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: capability-diff
+          path: |
+            capabilities-base.json
+            capability-diff.txt
+            capability-diff-summary.md
+
+      - name: Comment capability diff on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- capability-diff-result -->'
+          title: ${{ steps.diff.outputs.title }}
+          body-file: capability-diff-summary.md
+          details-summary: '📄 Summary'

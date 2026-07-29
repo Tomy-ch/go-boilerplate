@@ -5,15 +5,16 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	"go-boilerplate/pkg/xerrors"
 )
 
 // httpClientMeterName は、外部 HTTP client substrate 計装の meter 名です。
 const httpClientMeterName = "go-boilerplate/httpclient"
 
-// HTTPClientMetrics は、外部 HTTP client の RED 計装（リクエスト数・エラー数・レイテンシ）に
-// retry 回数と breaker 状態 gauge を加えた計装一式です。
+// HTTPClientMetrics は、外部 HTTP client の計装一式です
+// （RED＝リクエスト数・エラー数・レイテンシに、retry 回数・処理中リクエスト数・breaker 状態 gauge を加えたもの）。
+//
+// downstream には registry で解決される固定の Downstream 名など低カーディナリティな識別子のみを
+// 渡します。生の URL やリクエスト固有の値を渡すとメトリクスのカーディナリティが際限なく増えます。
 type HTTPClientMetrics struct {
 	requests     metric.Int64Counter
 	errors       metric.Int64Counter
@@ -75,16 +76,4 @@ func (m *HTTPClientMetrics) InFlightAdd(ctx context.Context, downstream string, 
 // SetBreakerState は、circuit breaker の状態を Downstream 別に記録します（0:closed 1:half-open 2:open）。
 func (m *HTTPClientMetrics) SetBreakerState(ctx context.Context, downstream string, state int64) {
 	m.breakerState.Record(ctx, state, metric.WithAttributes(attribute.String("downstream", downstream)))
-}
-
-func (b *meterBuilder) gauge(name, desc string) metric.Int64Gauge {
-	if b.err != nil {
-		return nil
-	}
-	g, err := b.m.Int64Gauge(name, metric.WithDescription(desc))
-	if err != nil {
-		b.err = xerrors.Wrap(err, name)
-		return nil
-	}
-	return g
 }

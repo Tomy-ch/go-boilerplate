@@ -2,7 +2,7 @@
 
 English | [日本語](../ja/get-started/setup-repository.ja.md)
 
-For details of Make commands, refer to [Make Target List](.makefiles/README.md).
+For details of Make commands, refer to [Make Target List](../../.makefiles/README.md).
 
 ## Phase 1: Tool Setup
 
@@ -54,11 +54,15 @@ make db-init
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
 
-Replace ORG and REPO as appropriate. Only change derived settings if necessary.
+Replace ORG, REPO, and CODE_OWNERS as appropriate. Only change derived settings if necessary.
 
 ```sh
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
+
+# CODEOWNERS owner — a user (@name) or a team (@org/team). An organization itself
+# cannot own a path, so a fork owned by one must name a team.
+export CODE_OWNERS=<@your-org/tech-leads>
 
 export MODULE=${REPO}
 export APP_NAME=${REPO}
@@ -71,6 +75,7 @@ make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib
@@ -91,7 +96,7 @@ curl http://localhost:8080/ready
 ## Phase 5: Manual Rewrites
 
 1. Rewrite the contents of README.md according to your project.
-2. Rewrite the contents of [openapi.yaml](openapi/openapi.yaml) according to your project.
+2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
     - Rewrite the entire Info section according to your project.
         - title
         - termsOfService
@@ -102,9 +107,9 @@ curl http://localhost:8080/ready
 
 ## Phase 6: Rewrite env Files
 
-Rewrite the files in the [env/](env/) directory according to your project.
+Rewrite the files in the [env/](../../env/) directory according to your project.
 
-For the meaning of configuration values, refer to [env/README.md](env/README.md).
+For the meaning of configuration values, refer to [env/README.md](../../env/README.md).
 
 ### Review the clamped config values
 
@@ -145,7 +150,7 @@ This boilerplate adopts a configuration that does not depend on a specific cloud
 
 Therefore, deployment settings do not include a specific deployment target. Add necessary settings according to your project's deployment destination.
 
-Deployment CI/CD: Complete [.github/workflows/deploy-app.yaml](.github/workflows/deploy-app.yaml).
+Deployment CI/CD: Complete [.github/workflows/deploy-app.yaml](../../.github/workflows/deploy-app.yaml).
 
 `Note: Please modify this section according to your environment` indicates sections that need to be modified according to your environment.
 
@@ -162,23 +167,23 @@ This is an intentional forcing function — it guarantees a signature-skipping a
 
 This boilerplate includes sample code using JWT as an example implementation of authentication. Implement authentication according to your project requirements.
 
-Create authentication functionality by implementing the usecase [Authenticator](internal/usecase/boundary/auth/authenticator.go) interface.
+Create authentication functionality by implementing the usecase [Authenticator](../../internal/usecase/boundary/auth/authenticator.go) interface.
 
-- Reference: [internal/infrastructure/auth/README.md](internal/infrastructure/auth/README.md)
-- Stub example (local, signature-less): [internal/infrastructure/auth/local/auth_local.go](internal/infrastructure/auth/local/auth_local.go)
+- Reference: [internal/infrastructure/auth/README.md](../../internal/infrastructure/auth/README.md)
+- Stub example (local, signature-less): [internal/infrastructure/auth/local/auth_local.go](../../internal/infrastructure/auth/local/auth_local.go)
 - Add your `stg` / `prd` implementations (JWT / OAuth2 / OIDC / Cognito / Auth0 など) under `internal/infrastructure/auth/{stg,prd}/`.
-- Wire them per environment by editing the [authentication DI module](internal/di/module/core/auth.go) (`provideAuthenticator`): replace the `default` fail-closed branch with `case config.EnvDevelopment / EnvStaging / EnvProduction` returning your real `Authenticator`.
+- Wire them per environment by editing the [authentication DI module](../../internal/di/module/core/auth.go) (`provideAuthenticator`): replace the `default` fail-closed branch with `case config.EnvDevelopment / EnvStaging / EnvProduction` returning your real `Authenticator`.
 
 ### 9.2 Authorization (authz)
 
 This boilerplate ships an **allow-all** authorizer as a development stub. Implement a real policy decision point (PDP) for your project.
 
-Create authorization functionality by implementing the usecase [Authorizer](internal/usecase/boundary/authz/authorizer.go) interface.
+Create authorization functionality by implementing the usecase [Authorizer](../../internal/usecase/boundary/authz/authorizer.go) interface.
 
-- Reference: [internal/infrastructure/authz/README.md](internal/infrastructure/authz/README.md)
-- Stub example (allow-all): [internal/infrastructure/authz/allowall/authz_allowall.go](internal/infrastructure/authz/allowall/authz_allowall.go)
+- Reference: [internal/infrastructure/authz/README.md](../../internal/infrastructure/authz/README.md)
+- Stub example (allow-all): [internal/infrastructure/authz/allowall/authz_allowall.go](../../internal/infrastructure/authz/allowall/authz_allowall.go)
 - Add your `stg` / `prd` implementations (RBAC from claims / ownership check / external policy engine such as OPA / Cedar) under `internal/infrastructure/authz/{stg,prd}/`.
-- Wire them per environment by editing the [authorization DI module](internal/di/module/authz.go) (`provideAuthorizer`): replace the `default` fail-closed branch with `case config.EnvDevelopment / EnvStaging / EnvProduction` returning your real `Authorizer`.
+- Wire them per environment by editing the [authorization DI module](../../internal/di/module/authz.go) (`provideAuthorizer`): replace the `default` fail-closed branch with `case config.EnvDevelopment / EnvStaging / EnvProduction` returning your real `Authorizer`.
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
@@ -186,7 +191,7 @@ The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries t
 
 Beyond authentication / authorization (Phase 9) and deployment (Phase 8), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
 
-Each such non-choice is recorded as an **exclusion ADR** under [docs/adr/](docs/adr/), tagged `setup-review`. List them with:
+Each such non-choice is recorded as an **exclusion ADR** under [docs/adr/](../../docs/adr/), tagged `setup-review`. List them with:
 
 ```sh
 grep -rl "setup-review" docs/adr/
@@ -199,7 +204,20 @@ For your project, review each and decide:
 
 The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
-## Phase 11: Remove Sample APIs
+## Phase 11: Decide the dependency-license policy
+
+The dependency-license scan (`make trivy-license`, and the `trivy-license` job in [.github/workflows/trivy-fs.yaml](../../.github/workflows/trivy-fs.yaml)) is **report-only, permanently**. It enumerates every dependency's license into the job summary and a PR comment, and never fails the build.
+
+That is a deliberate non-choice, not an unfinished gate. Which licenses are acceptable is a legal question owned by the organization adopting this template: copyleft that is disqualifying for a distributed binary can be entirely acceptable for a service whose binary never leaves your infrastructure, and the answer varies by company, product, and distribution model. Picking a threshold here would bake one company's legal posture into every fork, so the template ships the inventory and leaves the judgement to the adopter.
+
+If your organization has (or needs) a prohibited-license policy, gate it yourself:
+
+1. Decide the acceptable set in terms of Trivy's own classification (`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`), and decide whether shipped artifacts and build-only tooling get the same bar. They may not: the classifications outside `notice` / `unencumbered` in this repository come from `docker/tools/`, which is build-only and never shipped.
+2. Treat Trivy's classification as a starting point, not an authority. `BlueOak-1.0.0` lands in `unknown` even though it is OSI-approved and permissive, so decide such cases explicitly instead of letting the bucket decide for you.
+3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
+4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0080](../adr/0080-multi-layer-security-scanning.md), which both currently state that no policy exists.
+
+## Phase 12: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 
@@ -207,7 +225,7 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
 
 ### Removal Procedure
 
-Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-api.mjs](scripts/setup/lib/sample-api.mjs), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
+Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-api.mjs](../../scripts/setup/lib/sample-api.mjs), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
 
 > **The DB container must be running** before you run this — the final `gen-query` step dumps the **live** schema with `pg_dump`, so a stopped DB fails with `connection refused`.
 
@@ -237,7 +255,7 @@ Notes:
 <details>
 <summary>Manual procedure (reference — no longer required)</summary>
 
-1. Remove sample API definitions from [openapi.yaml](openapi/openapi.yaml)
+1. Remove sample API definitions from [openapi.yaml](../../openapi/openapi.yaml)
     - Remove Path definitions under `サンプルAPI用のパス` and delete the referenced YAML files.
     - Remove Parameter definitions under `サンプルAPI用のパラメーター定義` and delete the referenced YAML files.
     - Remove Schema definitions under `サンプルAPI用の型定義` and recursively delete the referenced YAML files.
@@ -245,18 +263,18 @@ Notes:
     1. Run `make gen-api` to regenerate code and remove sample API Controller code.
     2. Delete Usecase files referenced by the sample API and their test files.
         - Also delete mock files.
-    3. If there are files causing errors in [internal/integration](internal/integration/), delete those files as well.
+    3. If there are files causing errors in [internal/integration](../../internal/integration/), delete those files as well.
     4. Delete handler files and test files affected by the absence of generated sample API code.
     5. If reference errors occur in the Infra layer (QueryService or CommandService interface errors), remove files used by the sample API and their test code from those interfaces.
 3. Remove sample API Infra code
     1. Run `make db-test-migrate-down` and `make db-local-migrate-down` to reset the DB to a clean state.
     2. Delete execution SQL in `dml`.
-        - Delete directories under [database/dml/repository](database/dml/repository).
-        - Delete directories under [database/dml/query_service](database/dml/query_service).
-        - Delete directories under [database/dml/command_service](database/dml/command_service).
+        - Delete directories under [database/dml/repository](../../database/dml/repository).
+        - Delete directories under [database/dml/query_service](../../database/dml/query_service).
+        - Delete directories under [database/dml/command_service](../../database/dml/command_service).
     3. Run `make gen-query` to regenerate SQLC code and remove sample SQLC code.
     4. Remove sample Infra code and its test code that now cause errors.
 4. Remove sample API domain code
-    - Delete code used by the sample API and its test code under [internal/domain/](internal/domain/). Since directories under this path contain only sample domain code, you may delete entire directories.
+    - Delete code used by the sample API and its test code under [internal/domain/](../../internal/domain/). Since directories under this path contain only sample domain code, you may delete entire directories.
 
 </details>

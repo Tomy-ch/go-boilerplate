@@ -39,7 +39,7 @@ methods exist. Components receive narrowly scoped SubConfig values (e.g.,
 `*Config` object.
 
 `validateConfig()` enforces constraints (port ranges, CIDR format, timeout ordering,
-bcrypt cost bounds, etc.) and returns an error immediately if any constraint is violated.
+allowed-origins non-empty, etc.) and returns an error immediately if any constraint is violated.
 The application **fails to start** on any validation error or missing required field,
 rather than running in a degraded or misconfigured state.
 

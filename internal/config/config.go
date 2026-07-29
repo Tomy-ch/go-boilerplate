@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
-	"golang.org/x/crypto/bcrypt"
 
 	"go-boilerplate/pkg/xerrors"
 )
@@ -16,7 +15,8 @@ import (
 // exporterNone は、送出を明示的に無効化する exporter 値。
 const exporterNone = "none"
 
-// New は、アプリケーションの設定を初期化します。
+// New は、環境変数から設定を読み込み、検証したうえで Config を構築して返します。
+// 型変換の失敗、値の範囲・相互整合性の違反、CIDR の解析失敗のいずれでもエラーを返します。
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[Loader]()
 	if err != nil {
@@ -101,7 +101,6 @@ func New() (*Config, error) {
 			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
 			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
 			referrerPolicy:        cfg.Security.ReferrerPolicy,
-			bcryptCost:            cfg.Security.BcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   cfg.SecureCookie.Secure,
@@ -129,6 +128,25 @@ func New() (*Config, error) {
 			pollInterval: cfg.Outbox.PollInterval,
 			errorBackoff: cfg.Outbox.ErrorBackoff,
 			batchSize:    cfg.Outbox.BatchSize,
+		},
+		auth: AuthConfig{
+			issuer:             cfg.Auth.Issuer,
+			audience:           cfg.Auth.Audience,
+			jwksURL:            cfg.Auth.JWKSURL,
+			allowedAlgorithms:  cfg.Auth.AllowedAlgorithms,
+			clockSkew:          cfg.Auth.ClockSkew,
+			jwksCacheTTL:       cfg.Auth.JWKSCacheTTL,
+			discoveryTTL:       cfg.Auth.JWKSDiscoveryTTL,
+			unknownKidCooldown: cfg.Auth.JWKSUnknownKIDCooldown,
+		},
+		objectStorage: ObjectStorageConfig{
+			endpoint:        cfg.ObjectStorage.Endpoint,
+			region:          cfg.ObjectStorage.Region,
+			bucket:          cfg.ObjectStorage.Bucket,
+			accessKeyID:     cfg.ObjectStorage.AccessKeyID,
+			secretAccessKey: cfg.ObjectStorage.SecretAccessKey,
+			usePathStyle:    cfg.ObjectStorage.UsePathStyle,
+			maxUploadBytes:  cfg.ObjectStorage.MaxUploadBytes,
 		},
 	}, nil
 }
@@ -256,6 +274,22 @@ func validateServerShutdown(shutdown, request time.Duration) error {
 	return nil
 }
 
+// ValidateUploadBodyLimit は、リクエストボディ上限がアップロード上限を上回ることを検証します。
+// ValidateServerShutdown と同じ理由で、この制約は HTTP サーバーを組むプロセスにのみ意味を持つため
+// New() では走らせず、server グラフの DI から適用する。
+func ValidateUploadBodyLimit(srvCfg *ServerConfig, objCfg *ObjectStorageConfig) error {
+	return validateUploadBodyLimit(srvCfg.BodyLimitMB(), objCfg.MaxUploadBytes())
+}
+
+// validateUploadBodyLimit は、bodyLimitMB をバイト換算した値が maxUploadBytes を上回ることを検証します。
+// マルチパートのオーバーヘッド分をどれだけ積むかは運用判断のため、ここでは等値も不可とするだけに留めます。
+func validateUploadBodyLimit(bodyLimitMB int, maxUploadBytes int64) error {
+	if int64(bodyLimitMB)*BytesPerMB <= maxUploadBytes {
+		return ErrBodyLimitBelowMaxUploadBytes
+	}
+	return nil
+}
+
 // validateDatabaseConfig は、データベース設定を検証します。
 func validateDatabaseConfig(dbCfg Database) error {
 	if err := validatePortRange(dbCfg.Port, ErrInvalidDBPortRange); err != nil {
@@ -283,10 +317,6 @@ func validateDBConnectionConfig(dbConnCfg DBConnection) error {
 func validateSecurityConfig(secCfg Security) error {
 	if len(secCfg.AllowedOrigins) == 0 {
 		return ErrEmptyAllowedOrigins
-	}
-
-	if secCfg.BcryptCost < bcrypt.MinCost || bcrypt.MaxCost < secCfg.BcryptCost {
-		return ErrInvalidBcryptCost
 	}
 
 	for _, origin := range secCfg.AllowedOrigins {

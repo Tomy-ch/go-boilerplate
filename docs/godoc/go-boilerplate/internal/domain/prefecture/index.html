@@ -288,7 +288,7 @@ ErrInvalidName / ErrInvalidCode を返します。
 		
 			
 			
-			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_repository.go.html?s=298:955#L1">Repository</a>
+			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_repository.go.html?s=298:1076#L1">Repository</a>
 				<a class="permalink" href="#Repository">¶</a>
 				
 				
@@ -302,6 +302,8 @@ ErrInvalidName / ErrInvalidCode を返します。
     FindByIDs(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, ids []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#Prefectures">Prefectures</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// FindByName は、都道府県名から都道府県を取得します。存在しない場合は NotFound を返します。</span>
     FindByName(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>) (*<a href="#Prefecture">Prefecture</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindAll は、全都道府県を code 昇順で取得します。</span>
+    FindAll(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="#Prefectures">Prefectures</a>, <a href="../../../../builtin/#error">error</a>)
 }</pre>
 
 			

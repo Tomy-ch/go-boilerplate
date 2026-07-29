@@ -65,3 +65,53 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		})
 	})
 }
+
+func TestConfigModule(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("宣言した全SubConfigとタイムゾーンを提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				osCfg      *config.OperatingSystemConfig
+				appCfg     *config.ApplicationConfig
+				serverCfg  *config.ServerConfig
+				dbCfg      *config.DatabaseConfig
+				dbConnCfg  *config.DBConnectionConfig
+				metricsCfg *config.MetricsConfig
+				obsCfg     *config.ObservabilityConfig
+				secCfg     *config.SecurityConfig
+				secCookie  *config.SecureCookieConfig
+				workerCfg  *config.WorkerConfig
+				outboxCfg  *config.OutboxConfig
+				authCfg    *config.AuthConfig
+				storageCfg *config.ObjectStorageConfig
+				loc        *time.Location
+			)
+
+			// fx.ValidateApp は結線のみを検証し SetUpConfig を実行しないため、env に依存せず
+			// 「どの SubConfig を提供する module か」だけを固定できる。
+			require.NoError(t, fx.ValidateApp(
+				ConfigModule(),
+				fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg,
+					&secCfg, &secCookie, &workerCfg, &outboxCfg, &authCfg, &storageCfg, &loc),
+				fx.NopLogger,
+			))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未配線ではApplicationConfigが解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var appCfg *config.ApplicationConfig
+
+			require.Error(t, fx.ValidateApp(fx.Populate(&appCfg), fx.NopLogger))
+		})
+	})
+}

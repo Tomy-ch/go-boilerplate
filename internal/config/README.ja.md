@@ -258,6 +258,7 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |---|---|---|
 |`MockConfigForTest(t)`|`config_testing_mock.go`|全項目にデフォルト値を設定したテスト用 `*Config` を生成|
 |`NewTestLocation(t)`|`test_kit.go`|テスト用タイムゾーン `*time.Location` を生成|
+|`ResolvedAuthIssuer(t)`|`test_kit.go`|この実行環境の `AUTH_ISSUER` を解決（実行時 env が先、無ければ埋め込み `env/.env`）|
 |`EnsureRepoRootAndEnv(t, env)`|`test_kit.go`|リポジトリルートに移動し、ENV 環境変数を設定|
 
 ### テスト用 Setter
@@ -312,3 +313,12 @@ composition 境界のエラー分岐であり、失敗注入なしには通せ�
 ## 注意点
 
 - セキュリティ上の理由から、機密情報（例: APIキーやパスワード）は環境変数で管理し、コード内にハードコーディングしないでください。
+
+## テスト戦略
+
+config はプロセスの環境変数とファイルシステムを読む唯一の場所であり、そのテストは並列化必須という原則の例外側になる。
+
+- **バリデータごとの境界** — 各 `validate*` 関数は自身の `TestXxx` を持ち、強制する各ルールについて両側（受理される値と、その具体的な拒否）を検証する。正常系しか通らないバリデータは設定ミスを実行時まで持ち越すが、それを防ぐために存在しているのがこれらの関数である。
+- **環境変数 / CWD の変更は必然的に直列** — `t.Setenv` / `t.Chdir` を呼ぶ対象（config のロード処理と `EnsureRepoRootAndEnv` 等のテスト支援ヘルパ）は `t.Parallel()` を呼べない。`docs/testing-conventions.md` §3 に従い `//nolint:paralleltest` と一行の理由を付す。`os.Environ` を直接いじって回避しないこと。
+- **ロードの優先順位** — 値の供給元が複数あり得る場合、値が生成されたことではなく **どちらが勝つか** を検証する。
+- **テストダブルは本パッケージが提供するもの** — 他層は `Config` を手で組まず `MockConfigForTest(t)` と `Set*(t, …)` セッタを使う。セッタは `t.Cleanup` で復元し、その復元自体も検証すべき契約である。一覧は [テストサポート](#テストサポート) を参照し、ここに再掲しないこと。

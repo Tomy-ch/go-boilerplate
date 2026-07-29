@@ -1,0 +1,30 @@
+get:
+  operationId: GetPurchasesDetail
+  tags:
+    - v1/purchases/detail
+  summary: 購入詳細の取得
+  description: |
+    認証主体（本人）の購入 1 件を明細込みで取得します。認証必須です。
+    status は ID・名称を事前解決済みで、明細には商品名（products との結合で解決した現在名）を含みます。
+    他ユーザーの購入・不存在はいずれも 404 で存在を秘匿します。
+    金額（subtotalAmount / taxAmount / shippingFee / totalAmount）はすべて USD セント単位の整数、
+    明細 unitPrice は購入時点の単価スナップショット（USD ドルの decimal 文字列）です。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../components/parameters/purchase/PurchaseIdParam.yaml'
+  responses:
+    '200':
+      description: 購入詳細の取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/PurchaseGetDetailResponse.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '404':
+      $ref: '../../../components/schemas/errors/NotFound404.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

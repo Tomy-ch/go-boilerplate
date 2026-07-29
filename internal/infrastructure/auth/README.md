@@ -2,8 +2,8 @@
 
 `internal/infrastructure/auth` is a directory that provides **Authentication Infrastructure**.
 
-This directory contains the **implementations of Authenticator** used by the application.  
-Implementations are **separated by verification method (local / jwt, etc.)**, and the DI layer selects which method to wire **per environment**.
+This directory contains the **implementations of the auth Boundary interfaces** (`Authenticator` and `IdentityResolver`) used by the application.  
+Authenticator implementations are **separated by verification method (local / jwt, etc.)**, and the DI layer selects which method to wire **per environment**.
 
 The abstraction interface for authentication is defined as a **Boundary in the Usecase layer**.
 
@@ -42,8 +42,8 @@ and is the concrete implementation directly invoked from the Usecase.
 
 Implementations are separated by **verification method**, and the DI layer chooses which method a given environment uses. This keeps each package focused on one verification strategy while the environment-to-method mapping lives in a single place (`provideAuthenticator`).
 
-- `local` — no signature verification; extracts the subject from the token string. For local development and CI / test only.
-- `jwt` — fixed-public-key JWT verification (de-facto standard core). The production-oriented method.
+- `local` — no signature verification; extracts the subject from the token string. A CI / test stub only.
+- `jwt` — JWT verification (de-facto standard core) with the signing key from either a fixed public key or a JWKS endpoint. The production-oriented method.
 
 ```txt
 internal/infrastructure/auth
@@ -57,19 +57,19 @@ internal/infrastructure/auth
 |Directory|Verification method|
 |---|---|
 |`local`|Development stub — no signature verification|
-|`jwt`|Fixed-public-key JWT verification (standard core)|
+|`jwt`|JWT verification (standard core); key from fixed public key or JWKS|
 
-The environment → method mapping is applied in DI (see "Registration to DI"): non-production environments use `local`, while `jwt` is intended for the environments that wire real token verification.
+The environment → method mapping is applied in DI (see "Registration to DI"): CI / test use the `local` stub, while `jwt` handles local development (verifying real JWTs from the mock auth server) and the environments that wire real token verification.
 
 ## local Implementation
 
-`local` is an **authentication implementation dedicated to local development**.
+`local` is an **authentication stub for CI / test** (no signature verification).
 
 Characteristics
 
 - Does not perform token signature verification
 - Extracts Subject from the token string
-- Used as simple authentication for development
+- Used as a simple stub for CI / test
 
 Example
 
@@ -90,15 +90,23 @@ See `local/README.md` for details.
 
 ## jwt Implementation
 
-`jwt` verifies an access token (JWT) with a **fixed RSA public key**, covering the de-facto standard verification core.
+`jwt` verifies an access token (JWT), covering the de-facto standard verification core. The signing key is resolved from either a **fixed RSA public key** (`New`) or a **JWKS endpoint by `kid`** (`NewJWKS`); the claim-verification logic is shared.
 
 Here, the following are performed.
 
 - signature verification (asymmetric, algorithm allowlist; `alg=none` / `HS256` rejected)
+- key resolution (fixed public key, or JWKS with `kid` lookup / TTL cache, parsed via `go-jose` and fetched lazily through the `httpclient` substrate)
 - claim validation (`iss` / `aud` / `exp` / `nbf` / `sub`)
 - scope extraction (standard `scope` claim)
 
 IdP-specific dialects (Cognito `token_use`, Azure AD `scp`, opaque tokens, EC keys) are out of scope and documented as extension points. See `jwt/README.md` for details.
+
+## IdentityResolver Implementations
+
+Besides `Authenticator`, this directory also holds implementations of the `IdentityResolver` boundary (resolving an authenticated external identity — issuer + subject — to an internal user):
+
+- `identity` — the substrate default (`passthrough`) that leaves the internal UserID unresolved; wired when no user store is present.
+- `useridentity` — resolves the internal user from the `user_identities` table (sample; removed together with the user sample, after which DI falls back to `identity`).
 
 ## Registration to DI
 
@@ -123,7 +131,7 @@ stg
 prd
 ```
 
-the **verification method** is selected (e.g. `local` for local / CI / test).
+the **verification method** is selected (e.g. `local` stub for CI / test; `jwt` for local / development).
 
 ## Design Policy
 

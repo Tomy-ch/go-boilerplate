@@ -1,0 +1,18 @@
+type: object
+description: 鍵ローテーション操作後の鍵状態（現署名鍵 / 公開集合）。
+required:
+  - signing_kid
+  - published_kids
+properties:
+  signing_kid:
+    type: string
+    description: 現在の署名鍵 ID（published_kids に含まれる）。
+    example: mock-key-2
+  published_kids:
+    type: array
+    description: JWKS で公開中の鍵 ID の集合。
+    items:
+      type: string
+    example:
+      - mock-key-1
+      - mock-key-2

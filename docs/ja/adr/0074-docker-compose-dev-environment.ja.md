@@ -34,15 +34,15 @@ PostgreSQL データベース、オブザーバビリティスタック、ドキ
 | サービス | イメージ / Dockerfile | ポート | 説明 |
 | --- | --- | --- | --- |
 | `api_server` | `docker/server/Dockerfile` ターゲット `tooling` | 8080, 2345, 6060 | ホットリロード（air）、デバッガ（dlv）、pprof メトリクス |
-| `database` | `postgres:18.3-bookworm` | 5432 | PostgreSQL。`api_server` 起動前にヘルスチェック済み |
+| `database` | `postgres:18.4-trixie` | 5432 | PostgreSQL。`api_server` 起動前にヘルスチェック済み |
 | `observability` | `grafana/otel-lgtm` | 3000, 4317, 4318, 3200 | Grafana、OTLP gRPC/HTTP、Tempo API |
 
 **プロファイル: `tools`** — 補助的な開発者ツール。`database` サービスを共有する。
 
 | サービス | イメージ / Dockerfile | ポート | 説明 |
 | --- | --- | --- | --- |
-| `docs_viewer` | `docker/document/Dockerfile` ターゲット `document_viewer` | 8082 | `docs/` を配信する nginx。`/portal/` にポータル |
-| `sql_editor` | `sosedoff/pgweb` | 8081 | Web SQL エディター |
+| `docs_viewer` | `docker/document/Dockerfile` ターゲット `document_viewer` | 7001 | `docs/` を配信する nginx。`/portal/` にポータル |
+| `sql_editor` | `sosedoff/pgweb` | 7000 | Web SQL エディター |
 
 （軽量な **`database`** プロファイルも存在する — `database` + `sql_editor` のみ — `api_server` /
 observability スタックなしで DB に対して作業する用途。複数のサービスが 2 つ以上のプロファイルタグを持つ。）
@@ -104,8 +104,8 @@ API サーバーをホスト上で直接実行する（例: `mise` 経由でイ�
 - Docker Compose のサービスとプロファイル定義:
   [`docker-compose.yaml`](../../../docker-compose.yaml)。
 - Dockerfile ターゲットとサービス詳細:
-  [`docker/README.md`](../../../docker/README.md)。
+  [`docker/README.md`](../../../docker/README.ja.md)。
 - コンテナベース再現性の根拠:
   [ADR-0070](0070-containerized-pinned-toolchain.ja.md)。
 - `make serve`（development プロファイル）、`make tools`（tools プロファイル）:
-  [`.makefiles/README.md`](../../../.makefiles/README.md)。
+  [`.makefiles/README.md`](../../../.makefiles/README.ja.md)。

@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
-  title: Boilerplate Go with Onion Architecture, Echo and SQLC
+  title: Go Boilerplate API
   termsOfService: https://github.com/Tomy-ch/go-boilerplate-echo-oapi-sqlc
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
-  version: 2.1.0
+  version: 2.2.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
     It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
@@ -22,12 +22,16 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development server
+    x-internal: true
   - url: https://api.example.com
     description: Production server (replace with actual URL)
+    x-internal: false
   - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
+    x-internal: false
   - url: https://development.api.example.com
     description: Development server (replace with actual URL)
+    x-internal: true
 tags:
   - name: health
     description: ヘルスチェック（liveness）。
@@ -42,15 +46,43 @@ tags:
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
-    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+    description: 単一ユーザー（取得・更新・部分更新・削除）。
   - name: v1/users/feed
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
     description: ユーザー検索（キーワード）。
+  - name: v1/users/me/purchases
+    description: 認証主体自身の購入集計（認証必須・自分絞り込み / query_service サンプル）。
+  - name: v1/prefectures
+    description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products
+    description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/statuses
+    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products/categories
+    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products/detail
+    description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
+  - name: v1/products/ranking
+    description: 商品売上ランキング（認証不要・購入明細の集計 / query_service サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
+  - name: v1/addresses
+    description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
+  - name: v1/purchases
+    description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
+  - name: v1/purchases/detail
+    description: 単一購入の詳細取得（本人のみ・集約跨ぎ QueryService・明細に商品名/未存在は 404 で秘匿）。
+  - name: v1/purchases/detail/cancel
+    description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
+  - name: v1/purchases/detail/pay
+    description: 購入の支払い（本人のみ・状態機械/不正遷移 409・擬似決済）。
+  - name: v1/purchases/detail/ship
+    description: 購入の発送（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
+# ここで設定した認証が全体で適用される。
+security: []
 paths:
   # Operation handlers
   /health:
@@ -72,14 +104,42 @@ paths:
     $ref: './paths/v1/users.yaml'
   /v1/users/{userId}:
     $ref: './paths/v1/users/userId.yaml'
-  /v1/users/me/password:
-    $ref: './paths/v1/users/me/password.yaml'
+  /v1/users/me:
+    $ref: './paths/v1/users/me.yaml'
+  /v1/users/me/purchases/summary:
+    $ref: './paths/v1/users/me/purchases/summary.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
   /v1/users/feed:
     $ref: './paths/v1/users/feed.yaml'
+  /v1/prefectures:
+    $ref: './paths/v1/prefectures.yaml'
+  /v1/products/statuses:
+    $ref: './paths/v1/products/statuses.yaml'
+  /v1/products/categories:
+    $ref: './paths/v1/products/categories.yaml'
+  /v1/products:
+    $ref: './paths/v1/products.yaml'
+  /v1/products/{productId}:
+    $ref: './paths/v1/products/productId.yaml'
+  /v1/products/ranking:
+    $ref: './paths/v1/products/ranking.yaml'
+  /v1/products/images:
+    $ref: './paths/v1/products/images.yaml'
   /v1/exchange-rates:
     $ref: './paths/v1/exchange-rates.yaml'
+  /v1/addresses:
+    $ref: './paths/v1/addresses.yaml'
+  /v1/purchases:
+    $ref: './paths/v1/purchases.yaml'
+  /v1/purchases/{purchaseId}:
+    $ref: './paths/v1/purchases/purchaseId.yaml'
+  /v1/purchases/{purchaseId}/cancel:
+    $ref: './paths/v1/purchases/purchaseId/cancel.yaml'
+  /v1/purchases/{purchaseId}/pay:
+    $ref: './paths/v1/purchases/purchaseId/pay.yaml'
+  /v1/purchases/{purchaseId}/ship:
+    $ref: './paths/v1/purchases/purchaseId/ship.yaml'
   # sample-api:end
 components:
   parameters:
@@ -101,6 +161,16 @@ components:
       $ref: './components/parameters/search/ActiveParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
+    CategoryIdParam:
+      $ref: './components/parameters/product/CategoryIdParam.yaml'
+    StatusIdParam:
+      $ref: './components/parameters/product/StatusIdParam.yaml'
+    SortParam:
+      $ref: './components/parameters/product/SortParam.yaml'
+    PostalCodeParam:
+      $ref: './components/parameters/address/PostalCodeParam.yaml'
+    DisplayCurrencyParam:
+      $ref: './components/parameters/purchase/DisplayCurrencyParam.yaml'
     # sample-api:end
   securitySchemes:
     BearerAuth:
@@ -142,4 +212,62 @@ components:
       $ref: './components/requests/users/UserPatchRequest.yaml'
     ResponseV1ExchangeRate:
       $ref: './components/responses/exchange-rates/ExchangeRateResponse.yaml'
+    PrefectureResponse:
+      $ref: './components/schemas/PrefectureResponse.yaml'
+    ResponseV1Prefectures:
+      $ref: './components/responses/prefecture/PrefecturesResponse.yaml'
+    ProductStatusRef:
+      $ref: './components/schemas/ProductStatusRef.yaml'
+    ProductStatusResponse:
+      $ref: './components/schemas/ProductStatusResponse.yaml'
+    ResponseV1ProductsStatuses:
+      $ref: './components/responses/products/status/ProductsStatusesResponse.yaml'
+    ProductCategoryRef:
+      $ref: './components/schemas/ProductCategoryRef.yaml'
+    ProductCategoryResponse:
+      $ref: './components/schemas/ProductCategoryResponse.yaml'
+    ResponseV1ProductsCategories:
+      $ref: './components/responses/products/category/ProductsCategoriesResponse.yaml'
+    ProductResponse:
+      $ref: './components/schemas/ProductResponse.yaml'
+    ProductListResponse:
+      $ref: './components/responses/products/ProductListResponse.yaml'
+    ProductRankingItem:
+      $ref: './components/schemas/products/ProductRankingItem.yaml'
+    ProductRankingResponse:
+      $ref: './components/responses/products/ranking/ProductRankingResponse.yaml'
+    ProductImageResponse:
+      $ref: './components/schemas/ProductImageResponse.yaml'
+    RequestPostV1ProductImages:
+      $ref: './components/requests/products/ProductImagePostRequest.yaml'
+    RequestPostV1Products:
+      $ref: './components/requests/products/ProductsPostRequest.yaml'
+    AddressCandidate:
+      $ref: './components/schemas/addresses/AddressCandidate.yaml'
+    ResponseV1Addresses:
+      $ref: './components/responses/addresses/AddressCandidatesResponse.yaml'
+    PurchaseResponse:
+      $ref: './components/schemas/PurchaseResponse.yaml'
+    PurchaseStatusRef:
+      $ref: './components/schemas/PurchaseStatusRef.yaml'
+    PurchaseSummaryResponse:
+      $ref: './components/schemas/PurchaseSummaryResponse.yaml'
+    PurchaseListResponse:
+      $ref: './components/responses/purchases/PurchaseListResponse.yaml'
+    PurchaseDetailResponse:
+      $ref: './components/schemas/PurchaseDetailResponse.yaml'
+    PurchaseGetDetailResponse:
+      $ref: './components/schemas/PurchaseGetDetailResponse.yaml'
+    PurchaseDetailItemResponse:
+      $ref: './components/schemas/PurchaseDetailItemResponse.yaml'
+    PurchaseDetailInput:
+      $ref: './components/schemas/PurchaseDetailInput.yaml'
+    RequestPostV1Purchases:
+      $ref: './components/requests/purchases/PurchasesPostRequest.yaml'
+    PurchaseCancelResponse:
+      $ref: './components/schemas/PurchaseCancelResponse.yaml'
+    PurchaseStatusBreakdownResponse:
+      $ref: './components/schemas/PurchaseStatusBreakdownResponse.yaml'
+    PurchaseAggregateResponse:
+      $ref: './components/responses/purchases/PurchaseAggregateResponse.yaml'
     # sample-api:end

@@ -1,0 +1,171 @@
+name: OSV scan
+description: Run osv-scanner, normalize its findings and classify each one against the promotion-gate policy
+
+# Shared by the reporting workflow (osv-scanner.yaml) and the promotion gate
+# (osv-release-gate.yaml) so both read the scanner output through one parser and
+# one severity policy. The caller is responsible for `actions/checkout` and for
+# putting `osv-scanner` on PATH (mise); this action only scans and classifies.
+#
+# Writes to the workspace: osv-scanner.json (raw report), osv-scanner.log,
+# osv-findings.json (normalized, one record per advisory), osv-scanner-summary.md
+# (PR comment body) and osv-gating.md — the gating findings alone, for a caller that
+# must report only those, since the summary interleaves both classes under headings
+# that a line-oriented reader cannot tell apart.
+
+outputs:
+  gating:
+    description: Number of findings that block a promotion into a deploy branch
+    value: ${{ steps.summarize.outputs.gating }}
+  title:
+    description: Heading for the PR comment
+    value: ${{ steps.summarize.outputs.title }}
+
+runs:
+  using: composite
+  steps:
+    # `scan source -r .` walks the repo and extracts every supported manifest:
+    # go.mod plus both package-lock.json files. No exclusion is configured because
+    # the walk honours .gitignore, which already excludes vendor/ and node_modules/;
+    # and even when vendored, `go mod vendor` emits no nested go.mod, so vendor/
+    # cannot produce duplicate findings.
+    #
+    # Exit code 1 means "vulnerabilities found", so it is captured rather than
+    # aborting the job — the report has to be produced before any verdict.
+    - name: Run osv-scanner (JSON)
+      id: scan
+      shell: bash
+      run: |
+        set -uo pipefail
+        set +e
+        osv-scanner scan source -r . \
+          --format json --output-file osv-scanner.json 2>&1 | tee osv-scanner.log
+        code=${PIPESTATUS[0]}
+        set -e
+
+        # Anything other than 0 (clean) / 1 (vulnerabilities found) is a tool failure.
+        if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+          echo "::error::osv-scanner exited with ${code}"
+          exit "${code}"
+        fi
+
+        echo "exit-code=${code}" >> "$GITHUB_OUTPUT"
+
+    # Severity policy, single source of truth for both callers.
+    #
+    # A finding is gating when it is rated HIGH or CRITICAL, regardless of whether a
+    # fix exists: at the promotion boundary a known-severe vulnerability is a
+    # deliberate decision, not a background alert (the same "everything counts" view
+    # trivy-release-gate.yaml takes).
+    #
+    # Severity is read from the advisory's own rating and falls back to the CVSS score
+    # osv-scanner aggregates per group. Advisories from the Go vulnerability database
+    # carry neither, so they cannot be measured against a HIGH threshold at all; those
+    # gate only when a fixed version exists, which keeps an unrateable-and-unfixable
+    # advisory from turning every promotion permanently red while still refusing to
+    # ship one that could simply be updated away.
+    - name: Normalize findings and build the summary
+      id: summarize
+      shell: bash
+      env:
+        SCAN_EXIT_CODE: ${{ steps.scan.outputs.exit-code }}
+      run: |
+        set -euo pipefail
+
+        # Flatten to one record per advisory. `fixed` is resolved by picking the
+        # affected range that actually contains the installed version, because OSV
+        # lists one range per maintained branch; it stays null when the advisory
+        # declares no fixed version at all.
+        jq --arg workspace "${GITHUB_WORKSPACE}/" '
+          def vnum: (sub("^[vV]"; "") | split("-")[0] | split(".") | map(tonumber? // 0));
+          def rank_of_label: {"CRITICAL":4,"HIGH":3,"MODERATE":2,"MEDIUM":2,"LOW":1}[.] // null;
+          def rank_of_score: (tonumber? // null) | if . == null then null
+            elif . >= 9 then 4 elif . >= 7 then 3 elif . >= 4 then 2 elif . > 0 then 1 else 0 end;
+          def label_of_rank: if . == 4 then "CRITICAL" elif . == 3 then "HIGH"
+            elif . == 2 then "MODERATE" elif . == 1 then "LOW" else "NONE" end;
+
+          [ .results[]?
+            | (.source.path | ltrimstr($workspace)) as $src
+            | .packages[]?
+            | .package as $p
+            | ([ .groups[]? | . as $g | $g.ids[]? | { key: ., value: ($g.max_severity // "") } ]
+               | from_entries) as $scores
+            | .vulnerabilities[]?
+            | (.database_specific.severity // "" | ascii_upcase) as $label
+            | ($scores[.id] // "") as $score
+            | ($score | rank_of_score) as $scored
+            | {
+                src: $src,
+                name: $p.name,
+                version: $p.version,
+                id: .id,
+                severity: (if $label != "" then $label
+                           elif $scored != null then "\($scored | label_of_rank) (CVSS \($score))"
+                           else "UNRATED" end),
+                rank: ((($label | rank_of_label) // $scored) // 0),
+                fixed: ([ .affected[]?
+                          | select(.package.name == $p.name and .package.ecosystem == $p.ecosystem)
+                          | .ranges[]?
+                          | ((.events | map(select(has("introduced"))) | first | .introduced) // "0") as $introduced
+                          | ((.events | map(select(has("fixed"))) | first | .fixed) // null) as $fixed
+                          | select(($introduced | vnum) <= ($p.version | vnum))
+                          | select($fixed == null or ($p.version | vnum) < ($fixed | vnum))
+                          | $fixed // empty
+                        ] | first)
+              }
+            | .gating = (.rank >= 3 or (.rank == 0 and .fixed != null))
+          ]
+          | sort_by(-.rank, .name)
+        ' osv-scanner.json > osv-findings.json
+
+        TOTAL=$(jq 'length' osv-findings.json)
+        GATING=$(jq '[ .[] | select(.gating) ] | length' osv-findings.json)
+        REPORTED=$((TOTAL - GATING))
+
+        echo "gating=${GATING}" >> "$GITHUB_OUTPUT"
+
+        # Guard against silently passing on a schema change: the scanner claiming
+        # findings while the summary parses none means this filter stopped matching.
+        if [ "${SCAN_EXIT_CODE}" -ne 0 ] && [ "${TOTAL}" -eq 0 ]; then
+          echo "::error::osv-scanner exited ${SCAN_EXIT_CODE} but no finding could be parsed — the JSON schema may have changed"
+          exit 1
+        fi
+
+        if [ "${TOTAL}" -eq 0 ]; then
+          echo "title=## ✅ OSV Scan: PASS (no known vulnerabilities)" >> "$GITHUB_OUTPUT"
+          echo "No known vulnerabilities found." > osv-scanner-summary.md
+          : > osv-gating.md
+          exit 0
+        fi
+
+        if [ "${GATING}" -eq 0 ]; then
+          echo "title=## ✅ OSV Scan: FOUND (${TOTAL}, none blocks a promotion)" >> "$GITHUB_OUTPUT"
+        else
+          echo "title=## 🚨 OSV Scan: FOUND (blocking: ${GATING} / total: ${TOTAL})" >> "$GITHUB_OUTPUT"
+        fi
+
+        # Rendered to its own file first so that the summary below and any caller that
+        # reports gating findings alone stay one list, not two that can drift apart.
+        jq -r '
+          .[] | select(.gating)
+          | "- [\(.severity)] \(.name) `\(.version)` \(if .fixed then "→ `\(.fixed)`" else "→ no fix released" end) (\(.id)) — \(.src)"
+        ' osv-findings.json > osv-gating.md
+
+        # upsert-pr-comment renders the body inside a code block, so the sections use
+        # plain-text headers instead of Markdown headings.
+        {
+          if [ "${GATING}" -gt 0 ]; then
+            echo "Blocks a PR into develop / staging / production (${GATING})"
+            cat osv-gating.md
+          fi
+
+          if [ "${REPORTED}" -gt 0 ]; then
+            if [ "${GATING}" -gt 0 ]; then
+              echo
+            fi
+            echo "Reported only — does not block (${REPORTED})"
+            jq -r '
+              .[] | select(.gating | not)
+              | "- [\(.severity)] \(.name) `\(.version)` \(if .fixed then "→ `\(.fixed)`" else "→ no fix released" end) (\(.id)) — \(.src)"
+            ' osv-findings.json
+          fi
+        } > osv-scanner-summary.md

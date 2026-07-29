@@ -85,6 +85,7 @@
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package mock_user is a generated GoMock package.
+</p><p>Package mock_user is a generated GoMock package.
 
 				
 			</p></div>
@@ -115,6 +116,9 @@
 					<dd>    <a href="#MockRepository.CountByActive">func (m *MockRepository) CountByActive(ctx context.Context, active *bool) (int64, error)</a></dd>
 				
 					
+					<dd>    <a href="#MockRepository.CountByKeyword">func (m *MockRepository) CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error)</a></dd>
+				
+					
 					<dd>    <a href="#MockRepository.Create">func (m *MockRepository) Create(ctx context.Context, arg1 *user.User) error</a></dd>
 				
 					
@@ -130,6 +134,9 @@
 					<dd>    <a href="#MockRepository.FindFeed">func (m *MockRepository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error)</a></dd>
 				
 					
+					<dd>    <a href="#MockRepository.SearchByKeyword">func (m *MockRepository) SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error)</a></dd>
+				
+					
 					<dd>    <a href="#MockRepository.Update">func (m *MockRepository) Update(ctx context.Context, arg1 *user.User) error</a></dd>
 				
 			
@@ -139,6 +146,9 @@
 				
 					
 					<dd>    <a href="#MockRepositoryMockRecorder.CountByActive">func (mr *MockRepositoryMockRecorder) CountByActive(ctx, active any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.CountByKeyword">func (mr *MockRepositoryMockRecorder) CountByKeyword(ctx, keywords, active any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockRepositoryMockRecorder.Create">func (mr *MockRepositoryMockRecorder) Create(ctx, arg1 any) *gomock.Call</a></dd>
@@ -153,7 +163,32 @@
 					<dd>    <a href="#MockRepositoryMockRecorder.FindFeed">func (mr *MockRepositoryMockRecorder) FindFeed(ctx, after, limit any) *gomock.Call</a></dd>
 				
 					
+					<dd>    <a href="#MockRepositoryMockRecorder.SearchByKeyword">func (mr *MockRepositoryMockRecorder) SearchByKeyword(ctx, keywords, active, limit, offset any) *gomock.Call</a></dd>
+				
+					
 					<dd>    <a href="#MockRepositoryMockRecorder.Update">func (mr *MockRepositoryMockRecorder) Update(ctx, arg1 any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockRoleRepository">type MockRoleRepository</a></dd>
+				
+					
+					<dd>    <a href="#NewMockRoleRepository">func NewMockRoleRepository(ctrl *gomock.Controller) *MockRoleRepository</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRoleRepository.EXPECT">func (m *MockRoleRepository) EXPECT() *MockRoleRepositoryMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockRoleRepository.FindRolesByUserID">func (m *MockRoleRepository) FindRolesByUserID(ctx context.Context, userID uuid.UUID) (user.Roles, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockRoleRepositoryMockRecorder">type MockRoleRepositoryMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRoleRepositoryMockRecorder.FindRolesByUserID">func (mr *MockRoleRepositoryMockRecorder) FindRolesByUserID(ctx, userID any) *gomock.Call</a></dd>
 				
 			
 			
@@ -166,6 +201,8 @@
 			<h3>Package files</h3>
 			<p>
 			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_role_repository.go.gen.go.html">mock_role_repository.go.gen.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html">mock_user_repository.go.gen.go</a>
 			
@@ -232,7 +269,20 @@
 				
 			
 				
-				</p><h3 id="MockRepository.Create">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=1759:1834#L51">Create</a>
+				</p><h3 id="MockRepository.CountByKeyword">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=1767:1875#L51">CountByKeyword</a>
+					<a class="permalink" href="#MockRepository.CountByKeyword">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) CountByKeyword(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, keywords []<a href="../../../../../builtin/#string">string</a>, active *<a href="../../../../../builtin/#bool">bool</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CountByKeyword mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Create">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=2404:2479#L66">Create</a>
 					<a class="permalink" href="#MockRepository.Create">¶</a>
 					
 					
@@ -258,7 +308,7 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindByActive">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=2252:2365#L65">FindByActive</a>
+				</p><h3 id="MockRepository.FindByActive">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=2897:3010#L80">FindByActive</a>
 					<a class="permalink" href="#MockRepository.FindByActive">¶</a>
 					
 					
@@ -271,7 +321,7 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=2904:2992#L80">FindByID</a>
+				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=3549:3637#L95">FindByID</a>
 					<a class="permalink" href="#MockRepository.FindByID">¶</a>
 					
 					
@@ -284,7 +334,7 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindFeed">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=3450:3561#L95">FindFeed</a>
+				</p><h3 id="MockRepository.FindFeed">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=4095:4206#L110">FindFeed</a>
 					<a class="permalink" href="#MockRepository.FindFeed">¶</a>
 					
 					
@@ -297,7 +347,20 @@
 				
 			
 				
-				</p><h3 id="MockRepository.Update">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=4047:4122#L110">Update</a>
+				</p><h3 id="MockRepository.SearchByKeyword">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=4701:4836#L125">SearchByKeyword</a>
+					<a class="permalink" href="#MockRepository.SearchByKeyword">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) SearchByKeyword(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, keywords []<a href="../../../../../builtin/#string">string</a>, active *<a href="../../../../../builtin/#bool">bool</a>, limit, offset <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../../go-boilerplate/internal/domain/user/#Users">Users</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>SearchByKeyword mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Update">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=5421:5496#L140">Update</a>
 					<a class="permalink" href="#MockRepository.Update">¶</a>
 					
 					
@@ -349,7 +412,20 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.Create">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=1991:2063#L59">Create</a>
+				</p><h3 id="MockRepositoryMockRecorder.CountByKeyword">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=2101:2193#L60">CountByKeyword</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.CountByKeyword">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) CountByKeyword(ctx, keywords, active <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CountByKeyword indicates an expected call of CountByKeyword.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Create">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=2636:2708#L74">Create</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.Create">¶</a>
 					
 					
@@ -362,7 +438,7 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.FindByActive">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=2595:2690#L74">FindByActive</a>
+				</p><h3 id="MockRepositoryMockRecorder.FindByActive">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=3240:3335#L89">FindByActive</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindByActive">¶</a>
 					
 					
@@ -375,7 +451,7 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=3191:3263#L89">FindByID</a>
+				</p><h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=3836:3908#L104">FindByID</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindByID">¶</a>
 					
 					
@@ -388,7 +464,7 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.FindFeed">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=3770:3852#L104">FindFeed</a>
+				</p><h3 id="MockRepositoryMockRecorder.FindFeed">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=4415:4497#L119">FindFeed</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindFeed">¶</a>
 					
 					
@@ -401,13 +477,129 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.Update">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=4279:4351#L118">Update</a>
+				</p><h3 id="MockRepositoryMockRecorder.SearchByKeyword">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=5085:5193#L134">SearchByKeyword</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.SearchByKeyword">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) SearchByKeyword(ctx, keywords, active, limit, offset <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SearchByKeyword indicates an expected call of SearchByKeyword.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Update">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.go.gen.go.html?s=5653:5725#L148">Update</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.Update">¶</a>
 					
 					
 				</h3>
 				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Update(ctx, arg1 <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Update indicates an expected call of Update.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRoleRepository">type <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_role_repository.go.gen.go.html?s=512:636#L12">MockRoleRepository</a>
+				<a class="permalink" href="#MockRoleRepository">¶</a>
+				
+				
+			</h2>
+			<p>MockRoleRepository is a mock of RoleRepository interface.
+
+			</p><pre>type MockRoleRepository struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockRoleRepository">func <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_role_repository.go.gen.go.html?s=845:916#L24">NewMockRoleRepository</a>
+					<a class="permalink" href="#NewMockRoleRepository">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockRoleRepository(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockRoleRepository">MockRoleRepository</a></pre>
+				<p>NewMockRoleRepository creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockRoleRepository.EXPECT">func (*MockRoleRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_role_repository.go.gen.go.html?s=1108:1177#L31">EXPECT</a>
+					<a class="permalink" href="#MockRoleRepository.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRoleRepository">MockRoleRepository</a>) EXPECT() *<a href="#MockRoleRepositoryMockRecorder">MockRoleRepositoryMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRoleRepository.FindRolesByUserID">func (*MockRoleRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_role_repository.go.gen.go.html?s=1242:1347#L36">FindRolesByUserID</a>
+					<a class="permalink" href="#MockRoleRepository.FindRolesByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRoleRepository">MockRoleRepository</a>) FindRolesByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../../go-boilerplate/internal/domain/user/#Roles">Roles</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindRolesByUserID mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRoleRepositoryMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_role_repository.go.gen.go.html?s=717:789#L19">MockRoleRepositoryMockRecorder</a>
+				<a class="permalink" href="#MockRoleRepositoryMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRoleRepositoryMockRecorder is the mock recorder for MockRoleRepository.
+
+			</p><pre>type MockRoleRepositoryMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockRoleRepositoryMockRecorder.FindRolesByUserID">func (*MockRoleRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_role_repository.go.gen.go.html?s=1577:1666#L45">FindRolesByUserID</a>
+					<a class="permalink" href="#MockRoleRepositoryMockRecorder.FindRolesByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRoleRepositoryMockRecorder">MockRoleRepositoryMockRecorder</a>) FindRolesByUserID(ctx, userID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindRolesByUserID indicates an expected call of FindRolesByUserID.
 
 				
 				

@@ -215,6 +215,126 @@ func TestSecurityCookie_RewriteSetCookie(t *testing.T) {
 	})
 }
 
+func TestSecurityCookie_targets(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("applyToAll=trueかつskip外は対象になる", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true}
+			assert.True(t, cfg.targets("anything"))
+		})
+
+		t.Run("applyToAll=falseでcookieNamesに含まれれば対象になる", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: false, cookieNames: map[string]struct{}{"foo": {}}}
+			assert.True(t, cfg.targets("foo"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("applyToAll=falseでcookieNamesに含まれなければ対象外", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: false, cookieNames: map[string]struct{}{"foo": {}}}
+			assert.False(t, cfg.targets("bar"))
+		})
+
+		t.Run("skipCookieNamesに含まれれば対象外", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{applyToAll: true, skipCookieNames: map[string]struct{}{"skip": {}}}
+			assert.False(t, cfg.targets("skip"))
+		})
+	})
+}
+
+func TestSecurityCookie_applySameSite(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("forceSameSiteが設定されていれば上書きする", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{forceSameSite: "Lax"}
+			attrs := &cookieAttrs{order: []string{}, kv: map[string]*string{}}
+
+			cfg.applySameSite(attrs)
+			assertKV(t, attrs, "samesite", "Lax")
+			assertNoAttr(t, attrs, "secure")
+		})
+
+		t.Run("実効SameSite=NoneかつenforceでSecureを強制する", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{forceSameSite: "None", enforceSecureWhenSameSiteNone: true}
+			attrs := &cookieAttrs{order: []string{}, kv: map[string]*string{}}
+
+			cfg.applySameSite(attrs)
+			assertKV(t, attrs, "samesite", "None")
+			assertFlag(t, attrs, "secure")
+		})
+
+		t.Run("入力由来のSameSite=NoneでもSecureを強制する", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{enforceSecureWhenSameSiteNone: true}
+			attrs := &cookieAttrs{order: []string{"samesite"}, kv: map[string]*string{"samesite": new("None")}}
+
+			cfg.applySameSite(attrs)
+			assertFlag(t, attrs, "secure")
+		})
+
+		t.Run("enforceが無効ならNoneでもSecureを付けない", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{forceSameSite: "None", enforceSecureWhenSameSiteNone: false}
+			attrs := &cookieAttrs{order: []string{}, kv: map[string]*string{}}
+
+			cfg.applySameSite(attrs)
+			assertNoAttr(t, attrs, "secure")
+		})
+	})
+}
+
+func TestSecurityCookie_applyNamePrefix(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("prefix無しは何も変更しない", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{}
+			attrs := &cookieAttrs{order: []string{"domain"}, kv: map[string]*string{"domain": new("example.com")}}
+
+			cfg.applyNamePrefix("plain", attrs)
+			assertNoAttr(t, attrs, "secure")
+			assertKV(t, attrs, "domain", "example.com")
+		})
+
+		t.Run("__Secure-prefixはSecureを強制する", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{}
+			attrs := &cookieAttrs{order: []string{}, kv: map[string]*string{}}
+
+			cfg.applyNamePrefix("__Secure-a", attrs)
+			assertFlag(t, attrs, "secure")
+		})
+
+		t.Run("__Host-prefixはSecure付与とPath=/上書きとDomain削除を行う", func(t *testing.T) {
+			t.Parallel()
+			cfg := &SecurityCookie{}
+			attrs := &cookieAttrs{order: []string{"domain", "path"}, kv: map[string]*string{"domain": new("example.com"), "path": new("/foo")}}
+
+			cfg.applyNamePrefix("__Host-a", attrs)
+			assertFlag(t, attrs, "secure")
+			assertKV(t, attrs, "path", "/")
+			assertNoAttr(t, attrs, "domain")
+		})
+	})
+}
+
 func Test_normalizeSameSite(t *testing.T) {
 	t.Parallel()
 

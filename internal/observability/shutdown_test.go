@@ -67,7 +67,7 @@ func TestNewProviderShutdowner(t *testing.T) {
 	})
 }
 
-func TestProviderShutdowner_Shutdown(t *testing.T) {
+func Test_providerShutdowner_Shutdown(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

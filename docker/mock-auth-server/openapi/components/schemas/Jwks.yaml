@@ -1,0 +1,38 @@
+type: object
+description: >
+  JSON Web Key Set（RFC 7517）。公開鍵のみを含む。Go 側の署名検証が依存する契約。
+  公開集合は鍵ローテーション（POST /admin/keys/rotate）で変化する（初期は kid=mock-key-1 / RS256 の 1 本）。
+required:
+  - keys
+properties:
+  keys:
+    type: array
+    description: 署名検証用の公開鍵一覧。
+    items:
+      type: object
+      required:
+        - kty
+        - kid
+        - alg
+        - "n"
+        - e
+      properties:
+        kty:
+          type: string
+          example: RSA
+        kid:
+          type: string
+          example: mock-key-1
+        use:
+          type: string
+          example: sig
+        alg:
+          type: string
+          example: RS256
+        "n":
+          type: string
+          description: RSA modulus（base64url）。
+        e:
+          type: string
+          description: RSA exponent（base64url）。
+          example: AQAB

@@ -20,8 +20,8 @@ md-mermaid-lint:
 	@docker compose run --rm node_tool_runner make md-mermaid-lint-ci
 
 # -----CI内で実行するコマンド群-----
-# markdownlint-cli2 の ignore 記法は "#glob"。Make 変数代入では # がコメント開始になるため \# でエスケープする。
-MD_GLOBS := "**/*.md" "\#vendor/**" "\#**/node_modules/**" "\#.git/**" "\#docs/portal/guides/**" "\#docs/coverage/**" "\#docs/db-schema/**" "\#AGENTS.md"
+# 除外は .markdownlint-cli2.yaml の ignores: に集約する（エディタ拡張と同じ結果にするため）。
+MD_GLOBS := "**/*.md"
 
 # markdownlint（体裁）と mermaid（図の構文）の両方を通す。
 md-lint-ci: md-markdownlint-ci md-mermaid-lint-ci

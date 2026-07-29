@@ -37,15 +37,15 @@ need.
 | Service | Image / Dockerfile | Ports | Description |
 | --- | --- | --- | --- |
 | `api_server` | `docker/server/Dockerfile` target `tooling` | 8080, 2345, 6060 | Hot reload (air), debugger (dlv), pprof metrics |
-| `database` | `postgres:18.3-bookworm` | 5432 | PostgreSQL; health-checked before `api_server` starts |
+| `database` | `postgres:18.4-trixie` | 5432 | PostgreSQL; health-checked before `api_server` starts |
 | `observability` | `grafana/otel-lgtm` | 3000, 4317, 4318, 3200 | Grafana, OTLP gRPC/HTTP, Tempo API |
 
 **Profile: `tools`** — auxiliary developer tools; shares the `database` service.
 
 | Service | Image / Dockerfile | Ports | Description |
 | --- | --- | --- | --- |
-| `docs_viewer` | `docker/document/Dockerfile` target `document_viewer` | 8082 | nginx serving `docs/`; portal at `/portal/` |
-| `sql_editor` | `sosedoff/pgweb` | 8081 | Web SQL editor |
+| `docs_viewer` | `docker/document/Dockerfile` target `document_viewer` | 7001 | nginx serving `docs/`; portal at `/portal/` |
+| `sql_editor` | `sosedoff/pgweb` | 7000 | Web SQL editor |
 
 (A lightweight **`database`** profile also exists — `database` + `sql_editor` only — for working
 against the DB without the `api_server` / observability stack; several services carry more than

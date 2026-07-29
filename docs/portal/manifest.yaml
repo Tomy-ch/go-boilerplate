@@ -58,8 +58,8 @@ meta:
           - infrastructure-rdb-repository
           - infrastructure-rdb-query-service
           - infrastructure-rdb-testkit
-      - title: Auth & Security
-        items: [infrastructure-auth, infrastructure-security]
+      - title: Auth
+        items: [infrastructure-auth]
       - title: System
         items: [infrastructure-system]
     di:
@@ -395,8 +395,6 @@ infrastructure:
     dst: docs/portal/guides/infrastructure-rdb-sqlc.md
   - src: internal/infrastructure/rdb/testkit/README.md
     dst: docs/portal/guides/infrastructure-rdb-testkit.md
-  - src: internal/infrastructure/security/README.md
-    dst: docs/portal/guides/infrastructure-security.md
   - src: internal/infrastructure/system/README.md
     dst: docs/portal/guides/infrastructure-system.md
   # Japanese
@@ -418,8 +416,6 @@ infrastructure:
     dst: docs/portal/guides/ja/infrastructure-rdb-sqlc.ja.md
   - src: internal/infrastructure/rdb/testkit/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb-testkit.ja.md
-  - src: internal/infrastructure/security/README.ja.md
-    dst: docs/portal/guides/ja/infrastructure-security.ja.md
   - src: internal/infrastructure/system/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-system.ja.md
 
@@ -557,6 +553,10 @@ docker:
     dst: docs/portal/guides/docker-tools.md
   - src: docker/database/sql/README.md
     dst: docs/portal/guides/docker-database-sql.md
+  - src: docker/mock-auth-server/README.md
+    dst: docs/portal/guides/docker-mock-auth-server.md
+  - src: docker/mock-auth-server/fixtures/README.md
+    dst: docs/portal/guides/docker-mock-auth-server-fixtures.md
   # Japanese
   - src: docker/README.ja.md
     dst: docs/portal/guides/ja/docker.ja.md
@@ -566,6 +566,10 @@ docker:
     dst: docs/portal/guides/ja/docker-tools.ja.md
   - src: docker/database/sql/README.ja.md
     dst: docs/portal/guides/ja/docker-database-sql.ja.md
+  - src: docker/mock-auth-server/README.ja.md
+    dst: docs/portal/guides/ja/docker-mock-auth-server.ja.md
+  - src: docker/mock-auth-server/fixtures/README.ja.md
+    dst: docs/portal/guides/ja/docker-mock-auth-server-fixtures.ja.md
 
 scripts:
   # English

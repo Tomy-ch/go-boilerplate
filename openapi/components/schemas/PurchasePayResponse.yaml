@@ -1,0 +1,70 @@
+type: object
+description: |
+  購入支払い後の購入情報レスポンススキーマ。status は ID・名称を事前解決済みで、
+  別途の名称解決 API 呼び出しは不要です。paidAt に支払日時が入ります。
+  金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
+  すべて USD セント単位の整数です。
+required:
+  - id
+  - code
+  - userId
+  - status
+  - subtotalAmount
+  - taxAmount
+  - shippingFee
+  - totalAmount
+  - details
+  - orderedAt
+  - paidAt
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 購入ID
+    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  code:
+    type: string
+    description: 購入コード（UUIDv7 文字列・一意）
+    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  userId:
+    type: string
+    format: uuid
+    description: 購入したユーザーのID
+    example: "550e8400-e29b-41d4-a716-446655440000"
+  status:
+    $ref: './PurchaseStatusRef.yaml'
+  subtotalAmount:
+    type: integer
+    format: int64
+    description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+    example: 160000
+  taxAmount:
+    type: integer
+    format: int64
+    description: 税額（国内消費税）。USD セント単位の整数です。
+    example: 16000
+  shippingFee:
+    type: integer
+    format: int64
+    description: 送料。USD セント単位の整数です。
+    example: 500
+  totalAmount:
+    type: integer
+    format: int64
+    description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+    example: 176500
+  details:
+    type: array
+    description: 購入明細の配列
+    items:
+      $ref: './PurchaseDetailResponse.yaml'
+  orderedAt:
+    type: string
+    format: date-time
+    description: 注文日時
+    example: "2026-07-23T00:00:00Z"
+  paidAt:
+    type: string
+    format: date-time
+    description: 支払日時
+    example: "2026-07-25T00:00:00Z"

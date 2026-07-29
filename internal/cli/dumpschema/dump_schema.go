@@ -15,6 +15,9 @@ import (
 
 const schemaFilePerm = 0o644 // rw-r--r--
 
+// dumpSchemaLoggerName は dumpSchema のログ発生元名です（<package>.<method> 規約）。
+const dumpSchemaLoggerName = "dumpschema.dumpSchema"
+
 var (
 	dumpCommand = "pg_dump"
 	dumpSubArgs = []string{
@@ -64,30 +67,26 @@ func NewGenerator(logger logging.Logger, workDir string) *Generator {
 
 // RunDump は、DSN 解決・スキーマダンプ・整形を行い、schema.gen.sql を sqlc が読み込める形で書き出します。
 // loadDSN は (パスワード非含有 DSN, パスワード) を返します。
-func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string, error)) error {
+func (g *Generator) RunDump(ctx context.Context, loadDSN func() (string, string, error)) error {
 	dbURL, password, err := loadDSN()
 	if err != nil {
 		return err
 	}
-
-	if err := gen.dumpSchema(ctx, dbURL, password); err != nil {
-		return err
-	}
-	return gen.sanitizeSchemaInPlace(ctx)
+	return g.dumpSchema(ctx, dbURL, password)
 }
 
-// dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
+// dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、sqlc 向けに整形して schema.gen.sql として保存します。
 func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) error {
 	args := append([]string{dbURL}, g.dumpArgs...)
 	env := []string{"PGPASSWORD=" + password}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info(ctx, "start pg_dump schema",
+	g.logger.CallerSkip(g.callerSkipCount).Named(dumpSchemaLoggerName).Info(ctx, "start pg_dump schema",
 		logging.String("out", g.schemaRelPath),
 	)
 
 	out, err := g.runner.Output(ctx, g.workDir, env, g.dumpCommand, args)
 	if err != nil {
-		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn(ctx, "pg_dump failed",
+		g.logger.CallerSkip(g.callerSkipCount).Named(dumpSchemaLoggerName).Warn(ctx, "pg_dump failed",
 			logging.String("out", g.schemaRelPath),
 			logging.Error(logging.ErrorKey, err),
 		)
@@ -95,28 +94,21 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 	}
 
 	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
-	if err := g.fs.WriteFile(schemaAbs, out, g.permission); err != nil {
+	if err := g.fs.WriteFile(schemaAbs, sanitizeSchema(out), g.permission); err != nil {
 		return xerrors.Wrap(err, "failed to write schema file")
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info(ctx, "pg_dump schema completed",
+	g.logger.CallerSkip(g.callerSkipCount).Named(dumpSchemaLoggerName).Info(ctx, "pg_dump schema completed",
 		logging.String("out", g.schemaRelPath),
 	)
 
 	return nil
 }
 
-// sanitizeSchemaInPlace は、schema.sql を sqlc 向けに整形します。
+// sanitizeSchema は、pg_dump 出力を sqlc 向けに整形して返します。
 // trimPrefixes 一致のメタ行に加え、空行（空白のみ・元から空）も除去します（空行除去まで含むのは意図的）。
-func (g *Generator) sanitizeSchemaInPlace(ctx context.Context) error {
-	srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
-
-	b, err := g.fs.ReadFile(srcAbs)
-	if err != nil {
-		return xerrors.Wrap(err, "read schema")
-	}
-
-	lines := strings.Split(string(b), "\n")
+func sanitizeSchema(raw []byte) []byte {
+	lines := strings.Split(string(raw), "\n")
 	out := make([]string, 0, len(lines))
 	for _, ln := range lines {
 		trim := strings.TrimSpace(ln)
@@ -132,12 +124,5 @@ func (g *Generator) sanitizeSchemaInPlace(ctx context.Context) error {
 		out = append(out, ln)
 	}
 
-	if err := g.fs.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
-		return xerrors.Wrap(err, "write sanitized schema")
-	}
-
-	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info(ctx, "schema sanitized for sqlc",
-		logging.String("schema", g.schemaRelPath),
-	)
-	return nil
+	return []byte(strings.Join(out, "\n"))
 }

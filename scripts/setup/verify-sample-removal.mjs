@@ -13,7 +13,7 @@ const SETUP_DIR = path.dirname(SELF_PATH)
 const ROOT_DIR = path.resolve(SETUP_DIR, "../..")
 const SNAPSHOT_PATH = path.join(SETUP_DIR, ".sample-removal-snapshot.json")
 
-// 残留サンプル参照の検出条件（旧 CI shell と同一）。生成物とテストは CI で regen を省くため除外する。
+// 残留サンプル参照の検出条件。生成物とテストは CI で regen を省くため除外する。
 const DANGLING_PATTERN = "usercount|user_roles|prefecture"
 const DANGLING_EXCLUDE = "_test\\.go|\\.gen\\.go"
 

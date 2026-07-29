@@ -13,7 +13,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/security` : Trivy dependency vulnerability scan
-- `.makefiles/docker` : Dockerfile lint (hadolint)
+- `.makefiles/docker` : Compose project / host port definitions / Dockerfile lint (hadolint) / image digest pinning
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/docs` : Portal / Tool information documentation generation
@@ -38,21 +38,30 @@ Make targets are mainly organized into the following units.
 
 This is a group of targets related to application development environment startup and Job execution.
 
+Compose services are split into two layers (see `.makefiles/docker` group below): the shared **infra**
+layer (`database` / `observability` / `garage`) lives once in the fixed `gobp-shared` project, and the
+per-checkout **app** layer (`api_server` / `mock_auth_server`) runs in this checkout's `APP_PROJECT`.
+
 ### Application startup related
 
 | Command | Description | Main Use |
 | --- | --- | --- |
-| `make serve` | Starts Docker Compose services with the `development` profile in the background. | Start normal local development |
-| `make serve-build` | Rebuilds Docker images (cache enabled) and then starts the development environment. | Reflect Dockerfile or dependency changes |
-| `make serve-build-clean` | Cleanly rebuilds Docker images with `--no-cache --pull` and then starts the development environment. | Pick up base image updates (e.g., Go version upgrade) |
-| `make tools` | Starts development support tools with the `tools` profile. | When using development tools |
+| `make serve` | Brings up the shared infra (`infra-up`), then starts this checkout's app services in the background and refreshes the DB slot heartbeat. | Start normal local development |
+| `make serve-build` | Rebuilds the app images (cache enabled), brings up the shared infra, then starts the app services. | Reflect Dockerfile or dependency changes |
+| `make serve-build-clean` | Cleanly rebuilds the app images with `--no-cache --pull`, brings up the shared infra, then starts the app services. | Pick up base image updates (e.g., Go version upgrade) |
+| `make serve-stop` | Stops this checkout's app project only. | Stop the API without touching the shared infra or other checkouts |
+| `make infra-up` | Starts the shared infra services (`--wait`) plus the one-shot `garage_init` in the `gobp-shared` project. | Bring up the shared infra alone (called idempotently by `serve` / `job` / `worker`) |
+| `make infra-down` | Stops the shared infra project (named volumes are kept). | Shut the infra down — **affects every checkout / worktree** |
+| `make tools` | Starts development support tools with the `tools` profile in the shared infra project. | When using development tools (SQL editor `:7000` / docs viewer `:7001`) |
+| `make all` | Starts everything: `tools` followed by `serve-build`. | Bring up the whole local stack at once |
 | `make tool-runners-build` | Builds the on-demand tool runner images (go/node/python, cache enabled, no startup). | When updating tool runner Dockerfile or dependencies |
 | `make tool-runners-build-clean` | Cleanly builds the tool runner images with `--no-cache --pull` (no startup). | Pick up base image updates for tool runners |
 
 #### `make job NAME=<job_name> ARGS="<arguments>"`
 
 Executes an application Job.
-Calls `cmd/main.go job` within the `development` profile network.
+Brings up the shared infra, then runs `cmd/main.go job` in a one-off `api_server` container
+(`run --rm`) of this checkout's app project.
 
 - `NAME`: Job name to execute
 - `ARGS`: Additional arguments passed to the Job (optional)
@@ -66,8 +75,9 @@ make job NAME=batch-import ARGS="--target=local --dry-run"
 
 ### Long-running process (worker / outbox-relay) related
 
-Both are long-running daemons that reside until `SIGTERM` / `Ctrl-C`, run inside the
-`development` profile network (same mechanism as `make job`, via `go run ./cmd/`).
+Both are long-running daemons that reside until `SIGTERM` / `Ctrl-C`. They run in a one-off
+`api_server` container of this checkout's app project after the shared infra is brought up
+(same mechanism as `make job`, via `go run ./cmd/`).
 
 #### `make worker NAME=<worker_name> ARGS="<arguments>"`
 
@@ -242,21 +252,51 @@ This group runs local security scans (Trivy dependency scan, gitleaks secret sca
 | --- | --- | --- |
 | `make trivy-fs` | Scans library dependencies with Trivy fs. | Invokes `make trivy-fs-ci` inside the `go_tool_runner` container. |
 | `make trivy-fs-ci` | Runs `trivy fs` directly. | CI target. Skips `vendor/` to match CI. |
+| `make trivy-fs-release-ci` | Runs `trivy fs` including unfixed vulnerabilities. | CI target for the promotion gate; differs from `trivy-fs-ci` only by dropping `--ignore-unfixed`. |
+| `make trivy-config` | Scans the Dockerfiles for misconfiguration. | Invokes `make trivy-config-ci` inside the `go_tool_runner` container. |
+| `make trivy-config-ci` | Runs `trivy config` directly. | CI target. Gates at `CRITICAL,HIGH`; accepted exceptions live in `.trivyignore.yaml`. |
+| `make trivy-license` | Lists dependency licences. | Invokes `make trivy-license-ci` inside the `go_tool_runner` container. |
+| `make trivy-license-ci` | Runs `trivy fs --scanners license` directly. | CI target. Report-only; no severity threshold until a prohibited-licence policy exists. |
+| `make trivy-image-ci` | Scans a built image for vulnerabilities. | CI target. Pass the image with `TRIVY_IMAGE=`. |
+| `make trivy-image-gate-ci` | Fails on fixable `CRITICAL` / `HIGH` in a built image. | CI target. Pass the image with `TRIVY_IMAGE=`. |
 | `make secret-scan` | Scans the working tree for secrets with gitleaks. | Invokes `make secret-scan-ci` inside the `go_tool_runner` container. |
 | `make secret-scan-ci` | Runs `gitleaks dir . --redact` directly. | CI target. Generated files are allowlisted in `.gitleaks.toml`. |
+| `make secret-scan-history-ci` | Runs `gitleaks git . --redact` directly. | CI target, used by the weekly run. `dir` only sees the working tree, so it misses a secret that was committed and later deleted; `git` walks the whole history. |
+| `make npm-cooldown-audit` | Reports lockfile entries younger than the `min-release-age` declared in their own `.npmrc`. | Runs on the host. Reports only — exits 0 even on a finding, because overriding the cooldown is a deliberate call. |
 
 ## `.makefiles/docker` group
 
-This group lints Dockerfiles with hadolint via the `go_tool_runner` container, and pins the
-`FROM` base images to an immutable digest (supply-chain hardening).
+This group holds the compose project / host port definitions shared by every target, lints
+Dockerfiles with hadolint via the `go_tool_runner` container, and pins the `FROM` base images to
+an immutable digest (supply-chain hardening).
+
+### Compose project definitions (`compose.mk`)
+
+`compose.mk` declares no target — it defines the variables the app / database groups build on, so it
+is `include`d at the top of the top-level `makefile` (the "depended-on files" section). Defaults are
+overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/README.md`).
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `INFRA_PROJECT` | `gobp-shared` | Fixed compose project holding the single shared infra instance. |
+| `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | Per-checkout compose project for the app layer. Becomes `SERVE_PROJECT` (`gobp-wt-N`) when a DB slot is held. |
+| `INFRA_SERVICES` | `database observability garage` | Services that can only run on fixed ports, hence shared. |
+| `APP_SERVICES` | `api_server mock_auth_server` | Services started per checkout. |
+| `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
+| `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | Compose invocation for the app layer. `docker-compose.attach.yaml` points the app services at the shared infra via `host.docker.internal`. |
+| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | Published host ports of the API / mock auth server. |
+| `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | Published host ports of the dlv debug / pprof endpoints. |
+| `COMPOSE_PROJECT_NAME` | `$(INFRA_PROJECT)` | Default project for compose calls that don't pass `-p`, so DB tooling shares the infra network. |
+
+### Dockerfile lint / image pin related
 
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make docker-lint` | Lints `docker/*/Dockerfile` with hadolint. | Invokes `make docker-lint-ci` inside the `go_tool_runner` container. |
 | `make docker-lint-ci` | Runs `hadolint docker/*/Dockerfile` directly. | CI target. Ignored rules are in `.hadolint.yaml`. |
-| `make pin-images-resolve` | Resolves each `FROM` `image:tag` to its current digest and updates the `docker/images-pin.toml` lockfile. | Quarantines digests younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14; 0 disables). Needs registry access (`docker`). |
-| `make pin-images-apply` | Pins `FROM` to `image:tag@sha256:...` from the lockfile (quarantined images stay tag-only). | None |
-| `make pin-images-check` | Verifies `FROM` are pinned per the lockfile (no write). | CI / pre-commit gate. |
+| `make pin-images-resolve` | Resolves each `FROM` and `docker-compose*.yaml` `image:` `image:tag` to its current digest and updates the `docker/images-pin.toml` lockfile. | Quarantines digests younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14; 0 disables). Needs registry access (`docker`). |
+| `make pin-images-apply` | Pins `FROM` / compose `image:` to `image:tag@sha256:...` from the lockfile (quarantined images stay tag-only). | None |
+| `make pin-images-check` | Verifies `FROM` / compose `image:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
 
 ## `.makefiles/openapi` group
 
@@ -268,6 +308,13 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container, a
 | `make gen-bundle-oapi-ci` | Generates `openapi/openapi.gen.yaml` via `redocly bundle`. | CI target |
 | `make gen-api-docs-ci` | Generates `docs/openapi/index.html` via `redocly build-docs`. | CI target |
 | `make lint-oapi-ci` | Runs `redocly lint openapi/openapi.yaml` directly. | CI target |
+| `make lint-oapi-security-ci` | Runs Spectral with the OWASP API Security ruleset. | CI target. Runs outside `node_tool_runner` because Spectral resolves its ruleset from `docker/tools/node_modules`; run `npm ci` there first. |
+| `make gen-mock-auth-oapi` | Bundles the mock-auth-server OpenAPI and generates zod schemas. | Invokes `make gen-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
+| `make gen-mock-auth-oapi-docs` | Generates the mock-auth-server Redoc HTML from its OpenAPI. | Outputs `docs/openapi/mock-auth-server/index.html` via the `node_tool_runner` container. |
+| `make lint-mock-auth-oapi` | Validates the mock-auth-server OpenAPI definition with `redocly lint`. | Invokes `make lint-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
+| `make gen-mock-auth-oapi-ci` | Runs `npm run gen` (redocly bundle + orval) in `docker/mock-auth-server`. | CI target |
+| `make gen-mock-auth-oapi-docs-ci` | Runs `npm run gen:docs` (redocly build-docs) in `docker/mock-auth-server`. | CI target |
+| `make lint-mock-auth-oapi-ci` | Runs `npm run lint:oapi` in `docker/mock-auth-server`. | CI target |
 
 ## `.makefiles/go` group
 
@@ -364,6 +411,7 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container, a
 | `make delete-all-labels` | Deletes all existing labels in the GitHub repository. | None |
 | `make create-default-labels` | Creates default labels based on `.github/settings/labels.json`. | None |
 | `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | None |
+| `make enable-workflows` | Enables every workflow left in `disabled_fork` state. | Idempotent. A fork or template-derived repository starts with all workflows disabled. |
 
 ### GitHub repository initialization related
 
@@ -389,6 +437,7 @@ This is an initial setup command when launching a new repository as a boilerplat
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | Replaces application name and OpenAPI title in batch. | Reflected in README and OpenAPI definitions. |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | Replaces repository references (GitHub URLs, etc.) in batch. | Updates links in README and documentation. |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | Updates LICENSE copyright notation. | Year is optional. |
+| `make setup-replace-codeowners OWNERS='<owners>'` | Replaces the owner of every rule in `.github/CODEOWNERS` in batch. | Takes `@user` / `@org/team` / an email, space-separated for several. Comment lines are left untouched, so the header keeps its example. |
 | `make setup-remove-sample-api` | Removes the sample API (`user`/`product`/`order`) in batch. | Deletes via `node_tool_runner`, then runs `gen-api` → `gen-query` → `fix` → `lint`. **Requires the DB container (`database`) running** (`gen-query` dumps the live schema). After removal, rebuild with `make db-init-local db-init-test && make gen-query` so dropped tables don't linger in generated models. <!-- sample-api:line --> |
 
 ### Release branch related

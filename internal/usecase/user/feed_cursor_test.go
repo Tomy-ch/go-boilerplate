@@ -95,11 +95,20 @@ func Test_encodeFeedCursor(t *testing.T) {
 
 			id := uuid.NewTestFromSalt(t, "encode_feed_cursor_id")
 			createdAt := time.Date(2025, time.March, 4, 5, 6, 7, 800000000, time.UTC)
-			last, err := user.New(
-				id,
-				"first_name", "last_name", "password", "user@example.com", "phone_number",
-				uuid.NewTestFromSalt(t, "encode_feed_cursor_pref"), "city_name", "town_address", nil, "150-0001", createdAt, createdAt, nil,
-			)
+			last, err := user.New(id, user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "first_name",
+					LastName:     "last_name",
+					Email:        "user@example.com",
+					Phone:        "phone_number",
+					PrefectureID: uuid.NewTestFromSalt(t, "encode_feed_cursor_pref"),
+					City:         "city_name",
+					Street:       "town_address",
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: createdAt,
+				UpdatedAt: createdAt,
+			})
 			require.NoError(t, err)
 
 			encoded := encodeFeedCursor(last)

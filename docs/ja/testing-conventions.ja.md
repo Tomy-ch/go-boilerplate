@@ -7,14 +7,16 @@
 スコープ分担(以下を跨いで重複させないこと):
 
 - **本書** — 具体的な *どう書くか*(技法 / 規約)。
-- [`rules.md` → *Testing & Definition of Done*](rules.md) — 非交渉の *どうなれば完了か*(層ごとのテスト・90% ライン・「compiles ≠ done」・実行時 DI 検証・実アプリの smoke test・到達不能分岐の方針)。
+- [`rules.md` → *Testing & Definition of Done*](rules.ja.md) — 非交渉の *どうなれば完了か*(層ごとのテスト・90% ライン・「compiles ≠ done」・実行時 DI 検証・実アプリの smoke test・到達不能分岐の方針)。
 - 各層 `README` → *Test Strategy* — 層ごとの **観点**(その層で何を検証するか)。
 
 canonical な参照テストは [`internal/domain/user/user_domain_test.go`](../../internal/domain/user/user_domain_test.go) です。
 
 ## 1. 構造
 
-- **1 つの関数 / メソッドにつき 1 つの `TestXxx`**。複数対象を 1 つのテスト関数に束ねる場合は、都度の明示的な正当化が必要。
+- **1 つの関数 / メソッドにつき 1 つの `TestXxx` — 厳密に 1:1、束ねない。** getter / accessor も同様: `*_Accessors` / `*_Getters` に束ねず、accessor ごとに 1 つの `TestXxx` を用意する。この 1:1 対応は、production の全関数 / メソッドについて `internal/architest`（`TestUnitTestMappingCompleteness`）が機械的に強制する。分岐なしも対象で、`if` が無い body でも契約は持ちうる（ルート登録だけを行う `BindHandler` はメソッド + パスを固定する）。対象外は `main` / `init` と生成物のみ。
+- **`t.Skip` は、対象が検証不可能であるために到達できない場合のみ許容する** — 例: 失敗経路が `tb.Fatalf` を呼ぶテストヘルパーは、呼び出し側テストの終了を伴うため直接検証できない。skip の理由文には **なぜ検証不可能なのか** を書く。allowlist は持たず、その理由はコードに残す。
+- **「他のテストでカバー済み」は skip の理由にならない。** その skip は対象を別テストの実装に依存させる: カバー元が縮小・削除されても skip は green のままで、カバー元が本当にその分岐を通っているかを機械検証する手段も無く、後から増えた分岐は誰にも検証されないまま無言で通る — 1:1 対応が名前だけの殻になる。呼び出し元 / 統合 / DI グラフテストがたまたま通っていても、テスト可能な対象はテストする。他テストを名指しした skip 理由は `internal/architest`（`TestSkipReasonDoesNotNameCoveringTest`）が失敗させる。
 - すべての論理分岐を網羅する。
 - **最外の `t.Run` グループは literal な `正常系` / `異常系`** — `正常系_xxx` の prefix 形は使わない。その内側にさらに `t.Run` サブケースをネストする。
 
@@ -76,7 +78,7 @@ assert.Equal(t, expected, actual)  // 終端の値検証は assert
 ## 8. カバレッジ
 
 - `make test`(カバレッジ付き)を実行する。カバレッジは現行 baseline から **低下させない**。新規 / 変更パッケージは **90%** 超、handler は ~100% に近づける。
-- ラインを下回るパッケージは不足分岐テストを追加する — 満たすまで止めない。(「完了」の定義は [`rules.md` → Testing & Definition of Done](rules.md)。)
+- ラインを下回るパッケージは不足分岐テストを追加する — 満たすまで止めない。(「完了」の定義は [`rules.md` → Testing & Definition of Done](rules.ja.md)。)
 
 ## 9. カバレッジ例外とガバナンス
 
@@ -113,6 +115,6 @@ section 1〜9 はテストを *well-formed*(整形式)にするが、*meaningful
 - **内部への脆い結合** — 公開 API で足りるのに unexported フィールドを読む / `errors.Is` ではなくログ出力やエラーメッセージ *文字列* を assert する。
 - **over-mocking** — 実(純粋)実装の方がより多くを露わにできる協調オブジェクトを mock する / 実装を固定してしまう粒度の呼び出し回数マッチャ。
 - **time リテラル固定漏れ** — 固定 `baseTime` ではなくアサーション内で `time.Now()` を呼ぶ / システムクロックに依存する比較。
-- **責務クリープ** — 記録された rationale なしに 1 つの `TestXxx` が複数 subject を駆動する(section 1 違反でもある)。
+- **責務クリープ** — 1 つの `TestXxx` が複数 subject を駆動する(section 1 の 1:1 違反)。subject ごとに 1 つの `TestXxx` へ分解し、複数 subject を 1 テストに畳み込まない。
 - **helper 重複** — 3 つ以上の `TestXxx` にまたがり 5 行以上の fixture が重複しており、`t.Helper()` 付き helper にすべき。
-- **冗長なコメント** — コードを言い換える / *why* を語る inline コメント。ケースの意図はコメントではなく日本語の `t.Run` 名に持たせる([`rules.md`](rules.md) の Comment Rules 準拠)。
+- **冗長なコメント** — コードを言い換える / *why* を語る inline コメント。ケースの意図はコメントではなく日本語の `t.Run` 名に持たせる([`rules.md`](rules.ja.md) の Comment Rules 準拠)。

@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -18,10 +18,10 @@ import (
 type ServerInterface interface {
 	// ユーザー一覧の取得
 	// (GET /v1/users)
-	GetUsers(ctx echo.Context, params GetUsersParams) error
+	GetUsers(ctx *echo.Context, params GetUsersParams) error
 	// ユーザーの作成
 	// (POST /v1/users)
-	PostUsers(ctx echo.Context, params PostUsersParams) error
+	PostUsers(ctx *echo.Context, params PostUsersParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -30,8 +30,10 @@ type ServerInterfaceWrapper struct {
 }
 
 // GetUsers converts echo context to params.
-func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) GetUsers(ctx *echo.Context) error {
 	var err error
+
+	ctx.Set(string(BearerAuthScopes), []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetUsersParams
@@ -62,7 +64,7 @@ func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
 }
 
 // PostUsers converts echo context to params.
-func (w *ServerInterfaceWrapper) PostUsers(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PostUsers(ctx *echo.Context) error {
 	var err error
 
 	ctx.Set(string(BearerAuthScopes), []string{})
@@ -96,15 +98,15 @@ func (w *ServerInterfaceWrapper) PostUsers(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -391,7 +393,7 @@ type StrictServerInterface interface {
 	PostUsers(ctx context.Context, request PostUsersRequestObject) (PostUsersResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -404,12 +406,12 @@ type strictHandler struct {
 }
 
 // GetUsers operation middleware
-func (sh *strictHandler) GetUsers(ctx echo.Context, params GetUsersParams) error {
+func (sh *strictHandler) GetUsers(ctx *echo.Context, params GetUsersParams) error {
 	var request GetUsersRequestObject
 
 	request.Params = params
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsers(ctx.Request().Context(), request.(GetUsersRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -429,7 +431,7 @@ func (sh *strictHandler) GetUsers(ctx echo.Context, params GetUsersParams) error
 }
 
 // PostUsers operation middleware
-func (sh *strictHandler) PostUsers(ctx echo.Context, params PostUsersParams) error {
+func (sh *strictHandler) PostUsers(ctx *echo.Context, params PostUsersParams) error {
 	var request PostUsersRequestObject
 
 	request.Params = params
@@ -440,7 +442,7 @@ func (sh *strictHandler) PostUsers(ctx echo.Context, params PostUsersParams) err
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PostUsers(ctx.Request().Context(), request.(PostUsersRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

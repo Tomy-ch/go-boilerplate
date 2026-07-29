@@ -240,7 +240,7 @@ func Test_client_Do_Send(t *testing.T) {
 			assert.Nil(t, resp)
 		})
 
-		t.Run("ボディが上限超過ならErrUnavailableを返す", func(t *testing.T) {
+		t.Run("ボディ上限超過はErrUnavailableを返しレスポンスはnil", func(t *testing.T) {
 			t.Parallel()
 
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -256,10 +256,163 @@ func Test_client_Do_Send(t *testing.T) {
 			client := newClient(t, registry)
 			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "tiny", srv.URL))
 
+			// 下流起因の応答異常なので HTTP 語彙は transport 失敗と同じ ErrUnavailable(503)。
+			// 非 retry 化は isRetryableOutcome が errResponseTooLarge を除外して担う。
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
 		})
 	})
+}
+
+// truncatingHijackServer は、Content-Length を過大申告しつつ本文を途中で切り接続を閉じる（毎回 readBody を
+// 失敗させる真の read 失敗）テストサーバを、到達回数カウンタ付きで生成します。
+func truncatingHijackServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
+	t.Helper()
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			return
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			return
+		}
+		_, _ = buf.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nhello")
+		_ = buf.Flush()
+		_ = conn.Close()
+	}))
+	t.Cleanup(srv.Close)
+	return srv, &hits
+}
+
+func Test_client_Do_ResponseTooLarge(t *testing.T) {
+	t.Parallel()
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("上限超過は決定的失敗なので1回しか試行しない", func(t *testing.T) {
+			t.Parallel()
+
+			srv, hits := countingLargeBodyServer(t)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxResponseBytes = 4
+			profile.MaxAttempts = 3
+			profile.BaseBackoff = time.Millisecond
+			profile.MaxBackoff = time.Millisecond
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"tiny": profile})
+
+			client := newClient(t, registry)
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "tiny", srv.URL))
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Equal(t, int32(1), hits.Load()) // GET でも retry されない
+		})
+
+		t.Run("上限超過を繰り返してもbreakerはopenしない", func(t *testing.T) {
+			t.Parallel()
+
+			srv, hits := countingLargeBodyServer(t)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxResponseBytes = 4
+			profile.MaxAttempts = 1
+			// 1 件の失敗で open する設定。上限超過が失敗計上されないことを、以降もサーバへ到達する事実で確認する。
+			profile.Breaker = httpclient.BreakerConfig{
+				FailureThreshold: 0.5,
+				MinRequests:      1,
+				OpenDuration:     time.Hour,
+				HalfOpenProbes:   1,
+			}
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"tiny": profile})
+			client := newClient(t, registry)
+
+			req := httpclient.NewRequest(httpclient.MethodGet(), "tiny", srv.URL)
+			const rounds = 3
+			for range rounds {
+				_, err := client.Do(context.Background(), req)
+				require.ErrorIs(t, err, apperror.ErrUnavailable)
+			}
+
+			// breaker が open していれば fail-fast でサーバへ到達しなくなる。全リクエストが到達＝open していない。
+			assert.Equal(t, int32(rounds), hits.Load())
+		})
+
+		t.Run("5xxかつ上限超過ボディでもreadBodyが先勝ちしresp_nilでretryもopenもしない", func(t *testing.T) {
+			t.Parallel()
+
+			// attempt は status 分類より先に readBody を行うため、503 とボディ上限超過が同時に起きても
+			// errResponseTooLarge が先勝ちして resp=nil になる（status(503) は観測されない）。
+			var hits atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hits.Add(1)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte("0123456789"))
+			}))
+			t.Cleanup(srv.Close)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxResponseBytes = 4
+			profile.MaxAttempts = 3
+			profile.BaseBackoff = time.Millisecond
+			profile.MaxBackoff = time.Millisecond
+			// 1 件の失敗で open する設定。上限超過が失敗計上されない（＝ breaker 非 open）ことも併せて固定する。
+			profile.Breaker = httpclient.BreakerConfig{
+				FailureThreshold: 0.5,
+				MinRequests:      1,
+				OpenDuration:     time.Hour,
+				HalfOpenProbes:   1,
+			}
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"tiny": profile})
+			client := newClient(t, registry)
+
+			req := httpclient.NewRequest(httpclient.MethodGet(), "tiny", srv.URL)
+			resp, err := client.Do(context.Background(), req)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, resp)                    // status(503) ではなく上限超過失敗が先勝ちするため resp は返らない
+			assert.Equal(t, int32(1), hits.Load()) // 決定的失敗なので retry されない
+
+			// breaker が open していれば 2 回目は fail-fast でサーバへ到達しない。到達＝ open していない。
+			_, err = client.Do(context.Background(), req)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Equal(t, int32(2), hits.Load())
+		})
+
+		t.Run("真のread失敗は従来どおりリトライされる", func(t *testing.T) {
+			t.Parallel()
+
+			srv, hits := truncatingHijackServer(t)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxAttempts = 3
+			profile.BaseBackoff = time.Millisecond
+			profile.MaxBackoff = time.Millisecond
+			profile.RetryBudgetRatio = 100
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"read": profile})
+
+			client := newClient(t, registry)
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "read", srv.URL))
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Equal(t, int32(3), hits.Load()) // 応答未取得の transport 失敗は retry 対象のまま
+		})
+	})
+}
+
+// countingLargeBodyServer は、上限超過用に固定ボディを返しつつ到達回数を数えるテストサーバを生成します。
+func countingLargeBodyServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
+	t.Helper()
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("0123456789"))
+	}))
+	t.Cleanup(srv.Close)
+	return srv, &hits
 }
 
 func Test_client_Do_Redirect(t *testing.T) {
@@ -710,10 +863,11 @@ func Test_client_Do_Timeout(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			profile := httpclient.DefaultProfile()
-			profile.PerAttemptTimeout = 20 * time.Millisecond
-			// overall とリトライを打ち切り要因から外し、per-attempt タイムアウト単独の打ち切りを分離検証する
+			// per-attempt は接続確立に十分な余裕を持たせる（短すぎるとサーバ到達前に発火し hits=0 で
+			// フレークする）。overall とは大きく離し、per-attempt 単独の打ち切りを経過時間で分離検証する
 			// （overall で打ち切られる構成だと per-attempt を外しても同じ ErrUnavailable が返り区別できない）。
-			profile.OverallTimeout = 2 * time.Second
+			profile.PerAttemptTimeout = 200 * time.Millisecond
+			profile.OverallTimeout = 5 * time.Second
 			profile.MaxAttempts = 1
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"slow": profile})
 
@@ -725,8 +879,9 @@ func Test_client_Do_Timeout(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
 			assert.Equal(t, int32(1), hits.Load())
-			// per-attempt(20ms) が打ち切り要因であることを、overall(2s) より大幅に短い経過時間で確認する。
-			assert.Less(t, elapsed, 500*time.Millisecond)
+			// per-attempt(200ms) が打ち切り要因であることを、overall(5s) より大幅に短い経過時間で確認する
+			// （上限は per-attempt の 10 倍・overall の半分未満に取り、負荷変動に耐える）。
+			assert.Less(t, elapsed, 2*time.Second)
 		})
 	})
 }

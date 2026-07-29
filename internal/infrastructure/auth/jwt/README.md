@@ -1,8 +1,8 @@
-# jwt (Fixed Public Key JWT Authentication)
+# jwt (JWT Authentication)
 
 English | [日本語](README.ja.md)
 
-This directory contains an `Authenticator` implementation that verifies an access token (JWT) with a **fixed RSA public key**. It is the production-oriented counterpart to the development-only `local` implementation, and covers the **de-facto standard verification core** only.
+This directory contains an `Authenticator` implementation that verifies an access token (JWT). The signing key is resolved either from a **fixed RSA public key** (`New`) or **dynamically from a JWKS endpoint by `kid`** (`NewJWKS`). It is the production-oriented counterpart to the development-only `local` implementation, and covers the **de-facto standard verification core** only.
 
 ## Role
 
@@ -23,9 +23,15 @@ This implementation intentionally supports the **de-facto standard profile** onl
 
 Time is injected via the `clock.Clock` boundary so that `exp` / `nbf` validation is deterministic in tests.
 
-## Constructor
+## Constructors
 
-`New(Params)` returns the `Authenticator` (or a construction error). `Params` carries the verification parameters (public key PEM, issuer, audience, allowed algorithms, leeway, expected type, clock). Construction fails when the PEM is invalid or a required parameter (clock / issuer / audience) is missing — these are configuration errors, distinct from authentication errors.
+The signing key is resolved through an injected `keyResolver`; the claim-verification logic is shared across every constructor.
+
+- `New(Params)` — fixed RSA public key. `Params` carries the verification parameters (public key PEM, issuer, audience, allowed algorithms, leeway, expected type, clock). Fails when the PEM is invalid.
+- `NewJWKS(JWKSParams, httpclient.Client)` — dynamic key resolution from a JWKS endpoint (`kid` lookup, TTL cache, lazy fetch). The JWK Set is parsed with [`github.com/go-jose/go-jose/v4`](https://github.com/go-jose/go-jose) and fetched through the resilient `httpclient` substrate (`net/http` is banned in the infrastructure layer), so the HTTP timeout / retry / circuit breaker / budget come from the `jwks` downstream profile (`NewDownstreamProfile`), not a param. `JWKSParams` embeds `Params` (PublicKeyPEM unused) and adds the JWKS URL, cache TTL, discovery TTL, and unknown-`kid` cooldown. When the JWKS URL is empty, the `jwks_uri` is derived from the issuer via OIDC discovery (issuer strict-match + https + same-origin, cached on its own TTL); a non-empty URL is used verbatim as an override (split-horizon). Fetch is lazy (on first use / cache miss), so no background goroutine or lifecycle binding is needed.
+- `NewWithKeyResolver(Params, KeyResolver)` — the underlying seam that accepts any `KeyResolver` (`ResolveKey(ctx, kid) (crypto.PublicKey, error)`, an in-package interface) directly. It decouples key resolution from the JWT library and propagates `ctx` into the fetch; `New` injects a fixed-key resolver, `NewJWKS` a JWKS-backed one, and tests inject a double.
+
+Construction fails when a required parameter (clock / issuer / audience) is missing — these are configuration errors, distinct from authentication errors.
 
 ## Error Handling
 
@@ -42,5 +48,6 @@ The following are **out of scope** for the standard core and left to the templat
 
 ## Notes
 
-- JWKS-based dynamic key resolution is not handled here; it replaces the fixed public key in a later phase.
+- JWKS key resolution (`NewJWKS`) verifies the same standard claim set as the fixed-key path; only the key source differs. JWK parsing is delegated to `go-jose/v4` and the fetch to the `httpclient` substrate; the `kid` lookup + TTL cache + unknown-`kid` refetch (throttled by a cooldown) are kept in-package, and the RSA signing-method guard is still applied on top (key-confusion defense). The JWK Set is filtered to signing keys (`use=sig`, RSA, unique `kid` — a duplicate `kid` rejects the whole document), so a JWKS that publishes multiple `kid`s (key rotation) is handled.
+- Key rotation is handled without re-fetching on every request: a known `kid` is served from the TTL cache, and concurrent fetches collapse to one (fetch serialized + cooldown-deduplicated). A `kid` confirmed absent within the current cache generation is remembered in a **negative cache** so repeated bogus/`kid` probes don't each trigger a refetch; the negative set is discarded whenever a successful fetch changes the published key set, and it never applies to a stale cache — so a `kid` added by a rotation is still picked up on the next fetch (bounded by the cache TTL) rather than being permanently rejected. A `kid` dropped by a rotation is rejected once the cache generation refreshes and the key is gone.
 - Internal user-ID resolution (`sub` → application user ID via DB) is a separate concern handled by the identity-resolution phase; this implementation returns a verified-but-unresolved `Authn`.

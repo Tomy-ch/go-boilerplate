@@ -10,6 +10,7 @@ English | [日本語](README.ja.md)
 |---|---|---|
 |`paging/`|Pagination (page/perPage → limit/offset conversion)|[README](paging/README.md)|
 |`search/`|Search keyword tokenization (split, dedup, limit)|[README](search/README.md)|
+|`money/`|Money arithmetic (integer minor-unit, half-up rate application)|[README](money/README.md)|
 
 ## Design Policy
 

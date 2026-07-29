@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,20 +29,12 @@ func TestMiddleware(t *testing.T) {
 
 			assert.NotNil(t, Middleware(logger, lf))
 		})
-	})
-}
-
-func Test_loggingMiddleware(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("非運用系APIでは2xxをInfoレベルで出力する", func(t *testing.T) {
 			t.Parallel()
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			next := func(c echo.Context) error {
+			next := func(c *echo.Context) error {
 				return c.String(http.StatusOK, "ok")
 			}
 
@@ -54,7 +47,7 @@ func Test_loggingMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := loggingMiddleware(logger, lf)(next)
+			handler := Middleware(logger, lf)(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
@@ -66,7 +59,7 @@ func Test_loggingMiddleware(t *testing.T) {
 			t.Parallel()
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			next := func(c echo.Context) error {
+			next := func(c *echo.Context) error {
 				return c.String(http.StatusOK, "ok")
 			}
 
@@ -79,17 +72,21 @@ func Test_loggingMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := loggingMiddleware(logger, lf)(next)
+			handler := Middleware(logger, lf)(next)
 			require.NoError(t, handler(c))
 
 			assert.Zero(t, observed.Len())
 		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
 		t.Run("5xxレスポンスではErrorレベルで出力される", func(t *testing.T) {
 			t.Parallel()
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			next := func(c echo.Context) error {
+			next := func(c *echo.Context) error {
 				return c.String(http.StatusInternalServerError, "err")
 			}
 
@@ -102,12 +99,34 @@ func Test_loggingMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := loggingMiddleware(logger, lf)(next)
+			handler := Middleware(logger, lf)(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
 			require.Equal(t, 1, handled.Len())
 			assert.Equal(t, "error", handled.All()[0].Level.String())
+		})
+
+		t.Run("レスポンスを取り出せない場合はログを出さず素通しする", func(t *testing.T) {
+			t.Parallel()
+			lf := logging.NewTestLogFieldBuilder(t)
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/mw", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+			// Echo のレスポンスへ辿れないライタへ差し替える。
+			c.SetResponse(httptest.NewRecorder())
+
+			called := false
+			handler := Middleware(logger, lf)(func(_ *echo.Context) error {
+				called = true
+				return nil
+			})
+			require.NoError(t, handler(c))
+
+			assert.True(t, called, "ログを出せなくても後続ハンドラは実行される")
+			assert.Equal(t, 0, observed.Len())
 		})
 	})
 }
@@ -149,9 +168,9 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	// 各サブテストは並列実行されるため、共有の echo.Context を使うと Response() の
+	// 各サブテストは並列実行されるため、共有の *echo.Context を使うと Response() の
 	// ステータス/ヘッダ書き込みが競合する。サブテストごとに専用の Context を生成する。
-	newContext := func() echo.Context {
+	newContext := func() *echo.Context {
 		e := echo.New()
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/resp", nil)
@@ -169,15 +188,19 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			c := newContext()
 			expectedStatus := http.StatusCreated
 			expectedRequestID := "req-123"
+			expectedEventAt := time.Date(2026, time.July, 27, 12, 0, 0, 0, time.UTC)
 
-			c.Response().Status = expectedStatus
+			res := server.ResponseOf(c)
+			require.NotNil(t, res)
+			res.Status = expectedStatus
 			c.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-			l := requestLog{c: c, lf: lf}
-			fields := l.buildResponseLogFields(150 * time.Millisecond)
+			l := requestLog{c: c, res: res, lf: lf}
+			fields := l.buildResponseLogFields(expectedEventAt, 150*time.Millisecond)
 
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
 			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+			assert.Contains(t, fields, logging.Time(logging.EventAtKey, expectedEventAt))
 		})
 	})
 }

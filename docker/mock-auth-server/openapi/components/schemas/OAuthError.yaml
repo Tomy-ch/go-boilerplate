@@ -1,0 +1,22 @@
+type: object
+description: >
+  OAuth2 / OIDC のエラーレスポンス（RFC 6749）。リダイレクト不能時は JSON body として、
+  リダイレクト可能時は error / error_description / state を query に載せて 302 で返す。
+required:
+  - error
+properties:
+  error:
+    type: string
+    description: 機械可読なエラーコード（RFC 6749）。
+    example: invalid_request
+  error_description:
+    type: string
+    description: 人間可読の補足説明。
+    example: "code_challenge is required"
+  error_uri:
+    type: string
+    format: uri
+    description: エラー詳細ドキュメントの URI（任意）。
+  state:
+    type: string
+    description: リクエストの state を反映する（CSRF 対策・任意）。

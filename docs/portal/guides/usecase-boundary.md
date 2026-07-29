@@ -48,7 +48,6 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
-|`security`|`Hasher`|Password hashing and comparison|`internal/infrastructure/security/`|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|
 
@@ -61,18 +60,19 @@ Provides interfaces and value objects for authentication.
 |Type / Function|Description|
 |---|---|
 |`Authenticator`|Interface to generate `Authn` from `Credential`|
-|`Authn`|Authentication result (subject / id / provider / scopes / claims)|
-|`New(subject, provider, scopes, claims)`|Create `Authn` (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
-|`Credential`|Value object holding access token|
-|`NewCredential(accessToken)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
+|`Authn`|Authentication result (subject / userID / issuer / scopes / claims)|
+|`New(subject, issuer, scopes, claims)`|Create `Authn` with the UserID unresolved (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
+|`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved|
+|`Credential`|Value object holding the auth scheme + token|
+|`NewCredential(scheme, token)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
 
 Errors:
 
 |Error|Description|
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|Subject is empty|
-|`ErrSubjectNotUUID`|Subject cannot be parsed as UUID|
-|`ErrTokenMissing`|Access token is empty|
+|`ErrUserIDUnresolved`|Internal UserID is unresolved|
+|`ErrTokenMissing`|Token is empty|
 
 ### authz
 
@@ -161,17 +161,6 @@ Outbound publish boundary for domain events plus a substrate-agnostic message en
 |`Publisher`|Boundary that sends a message to its destination|
 |`Publish(ctx, m)`|Send `m` to the destination; on failure returns an error and the relay re-sends on its next poll (at-least-once)|
 |`Message`|Substrate-agnostic message envelope built from an outbox row (exposes no `net/http` types)|
-
-### security
-
-```go
-type Hasher interface {
-    Hash(password string) (string, error)
-    Compare(hash, password string) (bool, error)
-}
-```
-
-Password hashing and comparison. Hides implementation details (e.g., bcrypt) from Usecase.
 
 ### tx
 

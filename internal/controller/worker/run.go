@@ -75,6 +75,11 @@ func (r *run) loop(parent context.Context) error {
 			r.onPollError(ctx, err)
 			continue
 		}
+		if len(msgs) == 0 {
+			// Half-open の probe が空振りしたので probing を解除し、次周で再 probe させる。
+			r.cb.abortProbe()
+			continue
+		}
 		r.dispatchAll(ctx, msgs)
 	}
 }
@@ -103,7 +108,18 @@ func (r *run) acquire(ctx context.Context) (int, bool) {
 		case phaseOpen:
 			continue // スロット待ちの間に Open へ遷移したので Receive せず再評価
 		case phaseHalfOpen:
-			return min(r.e.set.CircuitHalfOpenProbe, free), true
+			if r.cb.tryBeginProbe() {
+				return min(r.e.set.CircuitHalfOpenProbe, free), true
+			}
+			// 既に probe 投入済み（probing 中）。結果が確定して Closed/Open へ遷移するまで新規 Receive を
+			// 止め、in-flight 解放（probe 結果の到来で slotFreed が鳴る）で起床して再評価する。
+			select {
+			case <-ctx.Done():
+				return 0, false
+			case <-r.slotFreed:
+				r.e.markProgress() // probing 待機からの起床は進捗とみなし、probe 待ちの間の readiness stale を避ける
+			}
+			continue
 		default:
 			return min(r.e.set.BatchSize, free), true
 		}
@@ -217,7 +233,11 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 
 	ticker := time.NewTicker(interval)
 	done := make(chan struct{})
+	// stopped は goroutine の終了を通知する。停止クロージャがこれを待つことで、worker 停止後に
+	// heartbeat goroutine が残らないこと（graceful-stop 契約）を保証する。
+	stopped := make(chan struct{})
 	go func() {
+		defer close(stopped)
 		for {
 			select {
 			case <-done:
@@ -244,6 +264,7 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 	return func() {
 		ticker.Stop()
 		close(done)
+		<-stopped // goroutine の完全終了を待つ（停止後に heartbeat が残らないことを保証）
 	}
 }
 
@@ -268,7 +289,13 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 		r.e.met.Retried(ctx)
 		r.e.log.Named("worker.process").Warn(ctx, "retryable failure, nacked", fields...)
 	case catPermanent:
-		r.routePermanent(ctx, m, err) // A5
+		if ferr := r.routePermanent(ctx, m, err); ferr != nil { // A5
+			// dead-letter 退避に失敗した。実際には退避できていないため DLQ 計上・成功ログは出さず、
+			// Ack もしない（暗黙の再配送へ委ねる）。退避先障害は下流失敗として circuit へ計上する。
+			r.cb.onFailure()
+			r.e.log.Named("worker.process").Error(ctx, "permanent failure, dead-letter routing failed", fields...)
+			return
+		}
 		r.cb.onSuccess()
 		r.e.met.DLQ(ctx)
 		r.e.log.Named("worker.process").Warn(ctx, "permanent failure, routed to dead-letter", fields...)
@@ -278,15 +305,17 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 	}
 }
 
-// routePermanent は、Permanent を FailureHandler へ退避してから Ack します（退避失敗時は Ack しない）。
-func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) {
+// routePermanent は、Permanent を FailureHandler へ退避してから Ack します。
+// 退避に失敗した場合は Ack せず、その error を返します（呼び出し元が circuit / ログを分岐する）。
+func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error) error {
 	if r.failure != nil {
 		if err := r.failure.Fail(ctx, m, cause); err != nil {
 			r.logErr(ctx, "worker.failure", "failure handler error", err)
-			return
+			return err
 		}
 	}
 	r.ack(ctx, m)
+	return nil
 }
 
 func (r *run) ack(ctx context.Context, m worker.Message) {

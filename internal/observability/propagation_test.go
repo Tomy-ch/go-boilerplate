@@ -40,35 +40,7 @@ func Test_extractFromCarrier(t *testing.T) {
 			got := extractFromCarrier(context.Background(), map[string]string(carrier), prop)
 
 			gsc := trace.SpanContextFromContext(got)
-			require.True(t, gsc.HasTraceID())
-			assert.Equal(t, traceID, gsc.TraceID())
-		})
-
-		t.Run("公開関数はグローバル伝播器で attrs の traceparent から trace を復元する", func(t *testing.T) {
-			t.Parallel()
-
-			// 公開関数は otel.GetTextMapPropagator() を参照するため、TraceContext を一時登録する。
-			prev := otel.GetTextMapPropagator()
-			otel.SetTextMapPropagator(propagation.TraceContext{})
-			t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
-
-			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
-			require.NoError(t, err)
-			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
-			require.NoError(t, err)
-			sc := trace.NewSpanContext(trace.SpanContextConfig{
-				TraceID:    traceID,
-				SpanID:     spanID,
-				TraceFlags: trace.FlagsSampled,
-				Remote:     true,
-			})
-			carrier := propagation.MapCarrier{}
-			propagation.TraceContext{}.Inject(trace.ContextWithSpanContext(context.Background(), sc), carrier)
-
-			got := ExtractFromCarrier(context.Background(), map[string]string(carrier))
-
-			gsc := trace.SpanContextFromContext(got)
-			require.True(t, gsc.HasTraceID())
+			assert.True(t, gsc.HasTraceID())
 			assert.Equal(t, traceID, gsc.TraceID())
 		})
 	})
@@ -82,15 +54,6 @@ func Test_extractFromCarrier(t *testing.T) {
 			got := extractFromCarrier(context.Background(), nil, prop)
 
 			assert.False(t, trace.SpanContextFromContext(got).HasTraceID())
-		})
-
-		t.Run("公開関数はグローバル伝播器を用い、attrs が空なら ctx をそのまま返す", func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-
-			// グローバル伝播器を変更せず公開経路（otel.GetTextMapPropagator 利用）を通す。
-			assert.Equal(t, ctx, ExtractFromCarrier(ctx, nil))
 		})
 	})
 }
@@ -157,15 +120,66 @@ func Test_injectToCarrier(t *testing.T) {
 
 			assert.NotPanics(t, func() { injectToCarrier(context.Background(), nil, prop) })
 		})
+	})
+}
 
-		t.Run("公開関数は TraceContext 限定の伝播器を用いる", func(t *testing.T) {
+func TestExtractFromCarrier(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("グローバル伝播器で attrs の traceparent から trace を復元する", func(t *testing.T) {
 			t.Parallel()
 
-			// グローバル伝播器に依らず TraceContext 限定で inject する公開経路を通す。
-			assert.NotPanics(t, func() { InjectTraceContextToCarrier(context.Background(), map[string]string{}) })
-		})
+			// 公開関数は otel.GetTextMapPropagator() を参照するため、TraceContext を一時登録する。
+			prev := otel.GetTextMapPropagator()
+			otel.SetTextMapPropagator(propagation.TraceContext{})
+			t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
 
-		t.Run("公開関数は trace context を inject しつつ baggage は転送しない", func(t *testing.T) {
+			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
+			require.NoError(t, err)
+			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
+			require.NoError(t, err)
+			sc := trace.NewSpanContext(trace.SpanContextConfig{
+				TraceID:    traceID,
+				SpanID:     spanID,
+				TraceFlags: trace.FlagsSampled,
+				Remote:     true,
+			})
+			carrier := propagation.MapCarrier{}
+			propagation.TraceContext{}.Inject(trace.ContextWithSpanContext(context.Background(), sc), carrier)
+
+			got := ExtractFromCarrier(context.Background(), map[string]string(carrier))
+
+			gsc := trace.SpanContextFromContext(got)
+			assert.True(t, gsc.HasTraceID())
+			assert.Equal(t, traceID, gsc.TraceID())
+			assert.Equal(t, spanID, gsc.SpanID())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("attrs が空なら ctx をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			// グローバル伝播器を変更せず公開経路（otel.GetTextMapPropagator 利用）を通す。
+			assert.Equal(t, ctx, ExtractFromCarrier(ctx, nil))
+		})
+	})
+}
+
+func TestInjectTraceContextToCarrier(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("trace context を inject しつつ baggage は転送しない", func(t *testing.T) {
 			t.Parallel()
 
 			// span が無いと traceparent も書かれず NotContains が疑似陽性になるため、
@@ -192,6 +206,93 @@ func Test_injectToCarrier(t *testing.T) {
 
 			assert.Contains(t, attrs, "traceparent")
 			assert.NotContains(t, attrs, "baggage")
+		})
+
+		t.Run("グローバル伝播器に依らず TraceContext 限定で inject する", func(t *testing.T) {
+			t.Parallel()
+
+			// グローバル伝播器を Baggage 単独に差し替えても traceparent が書かれる。
+			// すなわち traceContextPropagator 固定で otel.GetTextMapPropagator を見ない。
+			prev := otel.GetTextMapPropagator()
+			otel.SetTextMapPropagator(propagation.Baggage{})
+			t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
+
+			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
+			require.NoError(t, err)
+			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
+			require.NoError(t, err)
+			sc := trace.NewSpanContext(trace.SpanContextConfig{
+				TraceID:    traceID,
+				SpanID:     spanID,
+				TraceFlags: trace.FlagsSampled,
+			})
+
+			attrs := map[string]string{}
+			InjectTraceContextToCarrier(trace.ContextWithSpanContext(context.Background(), sc), attrs)
+
+			assert.Contains(t, attrs, "traceparent")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("attrs が nil なら何もせずパニックしない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotPanics(t, func() { InjectTraceContextToCarrier(newSampledContext(), nil) })
+		})
+	})
+}
+
+func Test_mapCarrier_Get(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("保持しているキーの値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := mapCarrier{"traceparent": "v1", "tracestate": "v2"}
+
+			assert.Equal(t, "v1", c.Get("traceparent"))
+			assert.Equal(t, "v2", c.Get("tracestate"))
+		})
+
+		t.Run("未登録のキーは空文字を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, mapCarrier{}.Get("traceparent"))
+		})
+	})
+}
+
+func Test_mapCarrier_Set(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キーと値を書き込む", func(t *testing.T) {
+			t.Parallel()
+
+			c := mapCarrier{}
+
+			c.Set("traceparent", "v1")
+
+			assert.Equal(t, "v1", c.Get("traceparent"))
+		})
+
+		t.Run("同じキーへの再設定は値を上書きする", func(t *testing.T) {
+			t.Parallel()
+
+			c := mapCarrier{"traceparent": "v1"}
+
+			c.Set("traceparent", "v2")
+
+			assert.Equal(t, "v2", c.Get("traceparent"))
+			assert.Len(t, c.Keys(), 1)
 		})
 	})
 }

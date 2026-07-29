@@ -1,7 +1,8 @@
 # Prefecture — Domain Spec
 
-> 既存実装（`internal/domain/prefecture`）を spec 化したもの。手書き実装から逆生成した現状仕様。
-> `prefecture` は単独の usecase パッケージを持たず、`user` usecase 等の依存集約として参照される（usecase spec は持たない）。
+> `user` usecase 等の依存集約として参照される。`GET /v1/prefectures`（一覧取得 usecase は `usecase.md`）の
+> 全件一覧は QueryService ではなく Repository の simple list（`FindAll`）として提供する（ADR-0027 /
+> `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 
@@ -56,4 +57,7 @@ fields:
 - name: FindByName
   signature: FindByName(ctx context.Context, name string) (*Prefecture, error)
   behavior: 都道府県名から都道府県を 1 件取得する（user 作成時の名前→ID 解決で使用）。
+- name: FindAll
+  signature: FindAll(ctx context.Context) (Prefectures, error)
+  behavior: 全都道府県を code 昇順で取得する（GET /v1/prefectures の全件一覧。単一集約・無フィルタ・無ページングの simple list）。
 ```

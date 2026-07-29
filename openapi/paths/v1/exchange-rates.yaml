@@ -6,6 +6,7 @@ get:
   description: |
     base 通貨建ての amount を quote 通貨へ換算した結果を返します。
     外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+  security: []
   parameters:
     - name: base
       in: query
@@ -24,11 +25,26 @@ get:
     - name: amount
       in: query
       required: true
-      description: 換算する金額（base 通貨建て）
+      description: |
+        換算する金額（base 通貨建て）。正確な十進量を保つため decimal 文字列で受け付けます。
+        JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。
       schema:
-        type: number
-        format: double
-        example: 100
+        type: string
+        # 桁数を有界にし、巨大入力による big.Int 十進解析（O(n^2)）を用いた未認証 DoS を防ぐ。
+        maxLength: 40
+        pattern: '^\d{1,20}(\.\d{1,18})?$'
+        example: "100"
+    - name: displayCurrency
+      in: query
+      required: false
+      description: |
+        指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
+        現状は JPY のみサポートします。
+      schema:
+        type: string
+        enum:
+          - JPY
+        example: JPY
   responses:
     '200':
       description: 換算結果を返します。

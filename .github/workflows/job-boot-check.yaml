@@ -25,7 +25,7 @@ jobs:
       ENV: ci
     services:
       database:
-        image: postgres:18.3-bookworm
+        image: postgres:18.4-trixie
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres-password
@@ -43,8 +43,15 @@ jobs:
           --health-start-period=20s
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -55,7 +62,7 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
-      # 特定のサンプルジョブ名に依存しないため、存在しないジョブ名で起動する。
+      # Boot with a non-existent job name so this check does not depend on any sample job name.
       - name: Boot job entrypoint and expect "unknown job"
         run: |
           set -uo pipefail
@@ -69,13 +76,13 @@ jobs:
           echo "----------------------"
 
           if [ "${code}" -eq 0 ]; then
-            echo "FAIL: 未知ジョブなのに exit 0 が返った（dispatch が機能していない可能性）"
+            echo "FAIL: exit 0 returned for an unknown job (dispatch may not be working)"
             exit 1
           fi
 
           if ! echo "${output}" | grep -q "unknown job"; then
-            echo "FAIL: non-zero 終了だが 'unknown job' 経路ではない（起動/DI/DB 接続の失敗の可能性）"
+            echo "FAIL: non-zero exit but not via the 'unknown job' path (boot / DI / DB connection may have failed)"
             exit 1
           fi
 
-          echo "OK: ジョブのエントリポイントが起動（DI/DB 構築）し、未知ジョブを正しく拒否した"
+          echo "OK: the job entrypoint booted (DI / DB constructed) and correctly rejected an unknown job"

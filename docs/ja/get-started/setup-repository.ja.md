@@ -2,7 +2,7 @@
 
 [English](../../get-started/setup-repository.md) | 日本語
 
-Makeコマンド詳細は [Makeターゲット一覧](.makefiles/README.ja.md) を参照してください。
+Makeコマンド詳細は [Makeターゲット一覧](../../../.makefiles/README.ja.md) を参照してください。
 
 ## Phase 1: ツールのセットアップ
 
@@ -54,11 +54,15 @@ make db-init
 
 下記コマンドで、Goモジュール名を一括置換するスクリプトを実行してください。
 
-ORGとREPOは適宜置き換えてください。派生設定は気になる箇所のみ変更してください。
+ORG・REPO・CODE_OWNERS は適宜置き換えてください。派生設定は気になる箇所のみ変更してください。
 
 ```sh
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
+
+# CODEOWNERS の所有者。ユーザー(@name)かチーム(@org/team)を指定します。
+# 組織そのものは所有者になれないため、組織が持つ fork ではチームを指定してください。
+export CODE_OWNERS=<@your-org/tech-leads>
 
 export MODULE=${REPO}
 export APP_NAME=${REPO}
@@ -71,6 +75,7 @@ make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib
@@ -90,11 +95,11 @@ curl http://localhost:8080/ready
 
 ## Phase 5: 手動書き換え
 
-1. [README.md](README.md), [README.ja.md](README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
-2. [README.md](README.md) は英語で書かれているので、必要に応じて [README.ja.md](README.ja.md) を [README.md](README.md) に置換しても構いません。
-    - ただし、[gen-docs-json.mjs](scripts/gen-docs-json.mjs) やその生成元になる [manifest.yaml](docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
+1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
+2. [README.md](../../../README.md) は英語で書かれているので、必要に応じて [README.ja.md](../../../README.ja.md) を [README.md](../../../README.md) に置換しても構いません。
+    - ただし、[gen-docs-json.mjs](../../../scripts/gen-docs-json.mjs) やその生成元になる [manifest.yaml](../../../docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
     - また、portal表示のReactも EnとJp切り替えを持つので、README.mdを日本語にする場合は、portal表示のReactも書き換える必要があります。
-3. [openapi.yaml](openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。
+3. [openapi.yaml](../../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。
     - Infoセクション全体をプロジェクトに合わせて書き換えてください。
         - title
         - termsOfService
@@ -105,9 +110,9 @@ curl http://localhost:8080/ready
 
 ## Phase 6: envファイルの書き換え
 
-[env/](env/) ディレクトリ内のファイルをプロジェクトに合わせて書き換えてください。
+[env/](../../../env/) ディレクトリ内のファイルをプロジェクトに合わせて書き換えてください。
 
-設定値の意味については、[env/README.ja.md](env/README.ja.md) を参照してください。
+設定値の意味については、[env/README.ja.md](../../../env/README.ja.md) を参照してください。
 
 ## Phase 7: リポジトリの初期化
 
@@ -140,7 +145,7 @@ make branch-minor
 
 そのため、デプロイ設定には具体的なデプロイ先が反映されていません。プロジェクトのデプロイ先に合わせて、必要な設定を追加してください。
 
-デプロイCI/CD: [.github/workflows/deploy-app.yaml](.github/workflows/deploy-app.yaml) を完成させてください。
+デプロイCI/CD: [.github/workflows/deploy-app.yaml](../../../.github/workflows/deploy-app.yaml) を完成させてください。
 
 `Note: Please modify this section according to your environment` と書かれている箇所が、環境に合わせて変更が必要な箇所になります。
 
@@ -157,23 +162,23 @@ make branch-minor
 
 この boilerplate には認証の実装例として JWT を使用したサンプルコードが含まれています。プロジェクトの要件に合わせて認証を実装してください。
 
-usecase の [Authenticator](internal/usecase/boundary/auth/authenticator.go) インターフェースを実装する形で認証機能を作成します。
+usecase の [Authenticator](../../../internal/usecase/boundary/auth/authenticator.go) インターフェースを実装する形で認証機能を作成します。
 
-- 参照: [internal/infrastructure/auth/README.ja.md](internal/infrastructure/auth/README.ja.md)
-- スタブ実装例（local・署名なし）: [internal/infrastructure/auth/local/auth_local.go](internal/infrastructure/auth/local/auth_local.go)
+- 参照: [internal/infrastructure/auth/README.ja.md](../../../internal/infrastructure/auth/README.ja.md)
+- スタブ実装例（local・署名なし）: [internal/infrastructure/auth/local/auth_local.go](../../../internal/infrastructure/auth/local/auth_local.go)
 - `stg` / `prd` 実装（JWT / OAuth2 / OIDC / Cognito / Auth0 など）を `internal/infrastructure/auth/{stg,prd}/` 配下に追加します。
-- 環境ごとの配線は [認証の DI モジュール](internal/di/module/core/auth.go)（`provideAuthenticator`）を編集し、`default` の fail-closed 分岐を `case config.EnvDevelopment / EnvStaging / EnvProduction` に置き換えて本物の `Authenticator` を返します。
+- 環境ごとの配線は [認証の DI モジュール](../../../internal/di/module/core/auth.go)（`provideAuthenticator`）を編集し、`default` の fail-closed 分岐を `case config.EnvDevelopment / EnvStaging / EnvProduction` に置き換えて本物の `Authenticator` を返します。
 
 ### 9.2 認可（authz）
 
 この boilerplate は開発用スタブとして **許可オール（allow-all）** の認可器を同梱しています。自プロジェクト向けに本物の Policy Decision Point（PDP）を実装してください。
 
-usecase の [Authorizer](internal/usecase/boundary/authz/authorizer.go) インターフェースを実装する形で認可機能を作成します。
+usecase の [Authorizer](../../../internal/usecase/boundary/authz/authorizer.go) インターフェースを実装する形で認可機能を作成します。
 
-- 参照: [internal/infrastructure/authz/README.ja.md](internal/infrastructure/authz/README.ja.md)
-- スタブ実装例（許可オール）: [internal/infrastructure/authz/allowall/authz_allowall.go](internal/infrastructure/authz/allowall/authz_allowall.go)
+- 参照: [internal/infrastructure/authz/README.ja.md](../../../internal/infrastructure/authz/README.ja.md)
+- スタブ実装例（許可オール）: [internal/infrastructure/authz/allowall/authz_allowall.go](../../../internal/infrastructure/authz/allowall/authz_allowall.go)
 - `stg` / `prd` 実装（claims からの RBAC / 所有者チェック / OPA・Cedar などの外部ポリシーエンジン）を `internal/infrastructure/authz/{stg,prd}/` 配下に追加します。
-- 環境ごとの配線は [認可の DI モジュール](internal/di/module/authz.go)（`provideAuthorizer`）を編集し、`default` の fail-closed 分岐を `case config.EnvDevelopment / EnvStaging / EnvProduction` に置き換えて本物の `Authorizer` を返します。
+- 環境ごとの配線は [認可の DI モジュール](../../../internal/di/module/authz.go)（`provideAuthorizer`）を編集し、`default` の fail-closed 分岐を `case config.EnvDevelopment / EnvStaging / EnvProduction` に置き換えて本物の `Authorizer` を返します。
 
 `Authorize(ctx, *auth.Authn, Action, *Resource)` のシグネチャは既に完全な `Authn`（subject / scopes / claims）と対象 `Resource`（任意の `OwnerID` 付き）を運ぶため、RBAC と所有者（オブジェクトレベル）モデルの双方を呼び出し箇所を変えずに表現できます。
 
@@ -181,7 +186,7 @@ usecase の [Authorizer](internal/usecase/boundary/authz/authorizer.go) イン�
 
 認証・認可（Phase 9）やデプロイ（Phase 8）以外にも、このテンプレートはいくつかの**意図的な非選択**をしています。例：アプリ内レート制限器を持たない / 汎用 Cache 抽象を持たない / scheduled job の並走制御はスケジューラに委譲 / push・streaming ブローカーは worker の対象外。
 
-これらは [docs/adr/](docs/adr/) 配下の **exclusion ADR** として記録され、`setup-review` タグが付いています。次で一覧できます：
+これらは [docs/adr/](../../../docs/adr/) 配下の **exclusion ADR** として記録され、`setup-review` タグが付いています。次で一覧できます：
 
 ```sh
 grep -rl "setup-review" docs/adr/
@@ -194,7 +199,20 @@ grep -rl "setup-review" docs/adr/
 
 不変（元 ADR は編集せず supersede する新 ADR を追加）モデルは、**運用開始後**に決定を見直すときに適用します。セットアップ時の一度きりの再ベースライン化には適用しません。
 
-## Phase 11: サンプルAPIの削除
+## Phase 11: 依存ライセンス方針の決定
+
+依存ライセンススキャン（`make trivy-license` と [.github/workflows/trivy-fs.yaml](../../../.github/workflows/trivy-fs.yaml) の `trivy-license` ジョブ）は**恒久的に報告専用**です。全依存のライセンスをジョブサマリと PR コメントへ列挙するだけで、ビルドを落とすことはありません。
+
+これは未完成のゲートではなく、**意図的な非選択**です。どのライセンスを許容するかは、このテンプレートを採用する組織が持つ法務判断です。配布されるバイナリでは失格となる copyleft が、バイナリが自社インフラの外へ出ないサービスでは全く問題にならないこともあり、答えは会社・製品・配布形態ごとに変わります。ここで閾値を決めることは、ある一社の法務スタンスを全 fork へ焼き込むことになるため、テンプレートは棚卸しだけを提供し、判断は採用側に委ねます。
+
+自組織に禁止ライセンス方針がある（あるいは必要な）場合は、次のように自分でゲート化してください：
+
+1. 許容する集合を Trivy 自身の分類（`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`）で決め、**出荷物とビルド専用ツールに同じ基準を当てるか**を判断する。同じでなくてよい：本リポジトリで `notice` / `unencumbered` 以外に分類される依存は、出荷されないビルド専用の `docker/tools/` 由来です。
+2. Trivy の分類は出発点であり権威ではないものとして扱う。`BlueOak-1.0.0` は OSI 承認の permissive ライセンスでありながら `unknown` に落ちるため、この種のケースは分類任せにせず明示的に決める。
+3. [.makefiles/security/trivy.mk](../../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../../.trivyignore.yaml) へ記録する。
+4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0080](../../../docs/adr/0080-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
+
+## Phase 12: サンプルAPIの削除
 
 このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
 
@@ -202,7 +220,7 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
 
 ### 削除手順
 
-自動コマンドを使用します。[scripts/setup/lib/sample-api.mjs](scripts/setup/lib/sample-api.mjs) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
+自動コマンドを使用します。[scripts/setup/lib/sample-api.mjs](../../../scripts/setup/lib/sample-api.mjs) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
 
 > 実行前に **DB コンテナが起動している必要があります** — 末尾の `gen-query` は `pg_dump` で**ライブ**スキーマをダンプするため、DB 停止状態では `connection refused` で失敗します。
 
@@ -232,7 +250,7 @@ make gen-query
 <details>
 <summary>手動手順（参考・現在は不要）</summary>
 
-1. [openapi.yaml](openapi/openapi.yaml) のサンプルAPI定義の削除
+1. [openapi.yaml](../../../openapi/openapi.yaml) のサンプルAPI定義の削除
     - `サンプルAPI用のパス` の下に書かれているPath定義を削除し、そのリンク先のyamlファイルも削除してください。
     - `サンプルAPI用のパラメーター定義` の下に書かれているParameter定義を削除し、そのリンク先のyamlファイルも削除してください。
     - `サンプルAPI用の型定義` の下に書かれているSchema定義を削除し、そのリンク先のyamlファイルも回帰的に削除してください。
@@ -240,18 +258,18 @@ make gen-query
     1. `make gen-api` でコードを再生成して、サンプルAPIのControllerコードを削除してください。
     2. サンプルAPIが参照している、Usecaseファイルとそのテストファイルを削除してください。
         - mockファイルも削除してください。
-    3. [internal/integration](internal/integration/) でエラーを起こしているファイルがあれば、そのファイルも削除してください。
+    3. [internal/integration](../../../internal/integration/) でエラーを起こしているファイルがあれば、そのファイルも削除してください。
     4. サンプルAPIの生成コードがないことで影響を出しているハンドラファイルおよびテストファイルを削除してください。
     5. この時、Infra層で参照エラー(QueryServiceやCommandServiceのインターフェースエラー)が出る場合は、これらのインターフェースからサンプルAPIで使っているファイルとそのテストコードを削除してください。
 3. サンプルAPIのInfraコードの削除
     1. `make db-test-migrate-down` と `make db-local-migrate-down` を実行して、DBをクリーンな状態にする。
     2. `dml` にある実行SQLを削除する。
-        - [database/dml/repository](database/dml/repository) の配下のディレクトリを削除してください。
-        - [database/dml/query_service](database/dml/query_service) の配下のディレクトリを削除してください。
-        - [database/dml/command_service](database/dml/command_service) の配下のディレクトリを削除してください。
+        - [database/dml/repository](../../../database/dml/repository) の配下のディレクトリを削除してください。
+        - [database/dml/query_service](../../../database/dml/query_service) の配下のディレクトリを削除してください。
+        - [database/dml/command_service](../../../database/dml/command_service) の配下のディレクトリを削除してください。
     3. `make gen-query` を実行して、SQLCのコードを再生成して、サンプル用のSQLCコードを削除する。
     4. サンプル用のInfraコードがエラーになるので、そのコードとそのテストコードを削除する。
 4. サンプルAPIのドメインコードの削除。
-    - [internal/domain/](internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
+    - [internal/domain/](../../../internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
 
 </details>

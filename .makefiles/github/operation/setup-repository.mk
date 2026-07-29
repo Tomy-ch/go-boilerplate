@@ -4,6 +4,7 @@
 .PHONY: setup-replace-app-metadata ## node_tool_runnerでAPP_NAMEやOpenAPIタイトルの置換を実行
 .PHONY: setup-replace-repository-reference ## node_tool_runnerでリポジトリ参照の置換を実行
 .PHONY: setup-replace-license-copyright ## node_tool_runnerでLICENSEの著作権表示更新を実行
+.PHONY: setup-replace-codeowners ## node_tool_runnerでCODEOWNERSの所有者の一括置換を実行
 .PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
@@ -93,6 +94,10 @@ setup-repo:
 	fi
 	@echo "✅ リリースノートの初期化を終了します。"
 
+	@echo "🔧 ワークフローの有効化を開始します..."
+	@$(MAKE) enable-workflows
+	@echo "✅ ワークフローの有効化を終了します。"
+
 	@git remote remove upstream || true
 	@echo "✅ Initialization complete. Default branch: production"
 
@@ -132,6 +137,15 @@ setup-replace-license-copyright:
 		$(if $(COPYRIGHT_YEAR),--year $(COPYRIGHT_YEAR),) \
 		$(SETUP_DRY_RUN_FLAG)
 
+setup-replace-codeowners:
+	@if [ -z "$(OWNERS)" ]; then \
+		echo "❌ OWNERS を指定してください。例: make setup-replace-codeowners OWNERS='@example-org/tech-leads'"; \
+		exit 1; \
+	fi
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-codeowners.mjs \
+		--owners "$(OWNERS)" \
+		$(SETUP_DRY_RUN_FLAG)
+
 # sample-api:begin
 # サンプルAPIの削除はコンテナ内（node_tool_runner）で行い、削除後の再生成・整形・検証・DB 再構築は
 # Go ツールチェーンが必要なためホスト側の make ターゲットを連鎖させる。
@@ -143,6 +157,8 @@ setup-remove-sample-api:
 	@if [ -n "$(DRY_RUN)" ]; then \
 		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
 	else \
+		echo "🔧 mock-auth-server の固定ユーザーを中立な既定へリセットします..."; \
+		make reset-mock-auth-users; \
 		echo "🔧 再生成・整形・検証・DB 再構築を実行します..."; \
 		$(MAKE) db-local-reinit db-test-reinit; \
 		$(MAKE) gen-api gen-query fix lint; \

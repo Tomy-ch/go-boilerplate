@@ -65,3 +65,29 @@ func TestNewEmail(t *testing.T) {
 		})
 	})
 }
+
+func TestEmail_Value(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("構築時のメールアドレス文字列を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := NewEmail("john.doe@example.com")
+			require.NoError(t, err)
+
+			assert.Equal(t, "john.doe@example.com", actual.Value())
+		})
+
+		t.Run("大文字を含む場合、正規化せず入力値のまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := NewEmail("John.Doe@Example.COM")
+			require.NoError(t, err)
+
+			assert.Equal(t, "John.Doe@Example.COM", actual.Value())
+		})
+	})
+}

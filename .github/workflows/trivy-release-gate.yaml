@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
   pull-requests: write
 
 concurrency:
@@ -21,19 +20,33 @@ jobs:
   trivy-fs-release:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Trivy FS scan (JSON, include unfixed)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          scan-type: fs
-          scanners: 'vuln'
-          format: json
-          ignore-unfixed: false
-          vuln-type: 'library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-fs-release.json
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install trivy
+        run: mise install aqua:aquasecurity/trivy
+
+      # trivy-fs-release-ci differs from trivy-fs-ci only in dropping
+      # --ignore-unfixed; both live in .makefiles/security/trivy.mk so the gate and
+      # the reporting scan cannot drift apart. -s keeps make from echoing the recipe
+      # into the JSON.
+      - name: Trivy FS scan (JSON, include unfixed)
+        run: make -s trivy-fs-release-ci TRIVY_FORMAT=json > trivy-fs-release.json
+        shell: bash
 
       - name: Create Trivy summary (Markdown)
         id: summarize
@@ -98,3 +111,11 @@ jobs:
           title: ${{ steps.summarize.outputs.title }}
           body-file: trivy-fs-release-summary.md
           details-summary: '📄 Summary'
+
+      # release-gate is the strict gate for PRs targeting a deploy branch. It fails on every finding,
+      # including unfixed ones (osv-scanner.yaml justifies dropping unfixed by relying on this
+      # "everything counts" view). It also fails when summarize did not run and count is empty, so a
+      # failed scan / aggregation is never mistaken for a pass.
+      - name: Fail if any vulnerability was found
+        if: always() && steps.summarize.outputs.count != '0'
+        run: exit 1

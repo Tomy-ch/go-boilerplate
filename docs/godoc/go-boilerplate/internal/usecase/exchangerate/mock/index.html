@@ -112,7 +112,7 @@
 				
 				
 					
-					<dd>    <a href="#MockUsecase.Convert">func (m *MockUsecase) Convert(ctx context.Context, base, quote string, amount float64) (float64, error)</a></dd>
+					<dd>    <a href="#MockUsecase.Convert">func (m *MockUsecase) Convert(ctx context.Context, in exchangerate.ConvertInput) (*exchangerate.ConvertResult, error)</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecase.EXPECT">func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder</a></dd>
@@ -123,7 +123,7 @@
 				
 				
 					
-					<dd>    <a href="#MockUsecaseMockRecorder.Convert">func (mr *MockUsecaseMockRecorder) Convert(ctx, base, quote, amount any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockUsecaseMockRecorder.Convert">func (mr *MockUsecaseMockRecorder) Convert(ctx, in any) *gomock.Call</a></dd>
 				
 			
 			
@@ -153,7 +153,7 @@
 		
 			
 			
-			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=461:571#L10">MockUsecase</a>
+			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=522:632#L11">MockUsecase</a>
 				<a class="permalink" href="#MockUsecase">¶</a>
 				
 				
@@ -175,7 +175,7 @@
 
 			
 				
-				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=745:802#L22">NewMockUsecase</a>
+				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=806:863#L23">NewMockUsecase</a>
 					<a class="permalink" href="#NewMockUsecase">¶</a>
 					
 					
@@ -189,12 +189,12 @@
 
 			
 				
-				</p><h3 id="MockUsecase.Convert">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=1090:1193#L34">Convert</a>
+				</p><h3 id="MockUsecase.Convert">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=1151:1268#L35">Convert</a>
 					<a class="permalink" href="#MockUsecase.Convert">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) Convert(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, base, quote <a href="../../../../../builtin/#string">string</a>, amount <a href="../../../../../builtin/#float64">float64</a>) (<a href="../../../../../builtin/#float64">float64</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) Convert(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, in <a href="../../../../../go-boilerplate/internal/usecase/exchangerate/">exchangerate</a>.<a href="../../../../../go-boilerplate/internal/usecase/exchangerate/#ConvertInput">ConvertInput</a>) (*<a href="../../../../../go-boilerplate/internal/usecase/exchangerate/">exchangerate</a>.<a href="../../../../../go-boilerplate/internal/usecase/exchangerate/#ConvertResult">ConvertResult</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>Convert mocks base method.
 
 				
@@ -202,7 +202,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=980:1035#L29">EXPECT</a>
+				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=1041:1096#L30">EXPECT</a>
 					<a class="permalink" href="#MockUsecase.EXPECT">¶</a>
 					
 					
@@ -217,7 +217,7 @@
 		
 			
 			
-			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=638:696#L17">MockUsecaseMockRecorder</a>
+			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=699:757#L18">MockUsecaseMockRecorder</a>
 				<a class="permalink" href="#MockUsecaseMockRecorder">¶</a>
 				
 				
@@ -241,12 +241,12 @@
 
 			
 				
-				<h3 id="MockUsecaseMockRecorder.Convert">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=1403:1488#L43">Convert</a>
+				<h3 id="MockUsecaseMockRecorder.Convert">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/exchangerate/mock/mock_exchangerate_usecase.go.gen.go.html?s=1481:1549#L44">Convert</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.Convert">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) Convert(ctx, base, quote, amount <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) Convert(ctx, in <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Convert indicates an expected call of Convert.
 
 				

@@ -57,6 +57,8 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
    })
    ```
 
+`T` は JSON として保存され replay 時に JSON から復元されるため、**`T` の全フィールドが JSON 往復に耐える必要があります**。非公開フィールドのみを持ち `MarshalJSON` を実装しない値オブジェクトは黙って `{}` へ縮退し、replay ではゼロ値になります（`pkg/uuid` / `pkg/decimal` が対を実装しているのはこのためです）。
+
 `PostUsers`（`internal/controller/handler/v1/users/v1_users_handler.go`）が参照採用です。middleware は `Idempotency-Key` ヘッダがある時だけ反応し、無ければ `Run` は `businessFn` を素通し実行します（非破壊）。
 
 ## 4. クライアント向け契約
@@ -73,12 +75,12 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 
 ## 6. 運用
 
-- **GC ジョブ** `idempotency-gc`（`internal/controller/job/idempotencygc/`）が失効行をバッチ削除。外部スケジューラから `cmd job idempotency-gc`（`--batch-size=N`、既定 10,000）で起動。推奨間隔は**毎時**（TTL 24h ゆえリアルタイム不要）。
+- **GC ジョブ** `idempotency-gc`（`internal/controller/job/idempotencygc/`）が失効したエントリをバッチ削除。外部スケジューラから `cmd job idempotency-gc`（`--batch-size=N`、既定 10,000）で起動。推奨間隔は**毎時**（TTL 24h ゆえリアルタイム不要）。
 - **TTL = 24h** = リトライ許容窓。TTL 経過後の再送は新規実行になる。
 - **メトリクス**: 冪等性の判定結果 / 内部失敗 / GC 削除カウンタは、HTTP ステータスからの推測ではなく usecase 境界で観測する（hit/miss/conflict は `Claim`/`Get`/`Complete` の結果を見ないと確定できないため）。
-  - `Run[T]` は `Deps.Metrics`（`idempotency.Metrics`）へ計上する: `IncMiss`（新規 claim）/ `IncHit`（completed の replay）/ `IncConflict`（ロックタイムアウト・claimed のまま・claim 直後に行が消失）/ `IncFingerprintMismatch` / `IncClaimFailure`（`ErrLockTimeout` 以外の claim エラー）/ `IncCompleteFailure`。
+  - `Run[T]` は `Deps.Metrics`（`idempotency.Metrics`）へ計上する: `IncMiss`（新規 claim）/ `IncHit`（completed の replay）/ `IncConflict`（ロックタイムアウト・claimed のまま・claim 直後にエントリが消失）/ `IncFingerprintMismatch` / `IncClaimFailure`（`ErrLockTimeout` 以外の claim エラー）/ `IncCompleteFailure`。
   - `GCUsecase` は `GCMetrics` へ計上する: バッチ成功ごとに `IncExpiredCleanup(count)`、削除エラー時に `IncExpiredCleanupFailure()`。
-  - 配線済みの実装は `observability.NewIdempotencyMetrics`（`internal/di/module/usecase.go` で両 interface として提供）。OpenTelemetry カウンタ `idempotency.requests{operation_id,result}` / `idempotency.failures{operation_id,phase}` / `idempotency.expired_cleanup{job}` を出力する。高カーディナリティ・秘匿値（Idempotency-Key・scope・fingerprint・PII・raw error）は**ラベルにしない**。空の `operation_id` は `unknown` に丸める。
+  - 配線済みの実装は `observability.NewIdempotencyMetrics`（`internal/di/module/usecase.go` で両 interface として提供）。OpenTelemetry カウンタ `idempotency.requests{operation_id,result}` / `idempotency.failures{operation_id,phase}`（per-request 失敗: `phase=claim/complete`）/ `idempotency.expired_cleanup{job}` / `idempotency.expired_cleanup_failure{job}`（GC バッチ失敗 — per-request の `failures` に畳まず GC 成功と同じく `job` ラベルで対称に保つ）を出力する。高カーディナリティ・秘匿値（Idempotency-Key・scope・fingerprint・PII・raw error）は**ラベルにしない**。空の `operation_id` は `unknown` に丸める。
   - `Deps.Metrics` も `GCMetrics` 引数も任意のまま: `nil` は **no-op**（観測性バックエンド無しでも `Run`/`GC` は動作する）。
 - **オペレーションごとに成功ステータスは1つ**: `Run[T]` は `successStatus` を1つ記録し、`PostUsers` は常に 201 を返す。成功ステータスが複数あり得る（例: 200 と 201）エンドポイントに `Run[T]` を採用する場合は、保存ステータスで分岐するようハンドラを拡張すること（現状の replay はハンドラ固定のレスポンス型で再描画する）。
 

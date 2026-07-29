@@ -1,0 +1,71 @@
+type: object
+description: 商品情報のレスポンススキーマ
+required:
+  - id
+  - name
+  - description
+  - price
+  - quantity
+  - stockWarningThreshold
+  - status
+  - category
+  - publishedAt
+  - imagePath
+  - version
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 商品ID
+    example: "b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"
+  name:
+    type: string
+    description: 商品名
+    maxLength: 255
+    example: "ワイヤレスイヤホン"
+  description:
+    type: string
+    nullable: true
+    description: 商品説明。未設定の場合は null です。
+    example: "ノイズキャンセリング対応の Bluetooth イヤホン"
+  price:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: >-
+      価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。
+      JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+    example: "19.99"
+  quantity:
+    type: integer
+    format: int32
+    description: 在庫数
+    example: 100
+  stockWarningThreshold:
+    type: integer
+    format: int32
+    nullable: true
+    description: 在庫警告閾値。未設定の場合は null です。
+    example: 10
+  status:
+    $ref: './ProductStatusRef.yaml'
+  category:
+    $ref: './ProductCategoryRef.yaml'
+  publishedAt:
+    type: string
+    format: date-time
+    nullable: true
+    description: 公開日時。未公開の場合は null です。
+    example: "2026-01-01T00:00:00Z"
+  imagePath:
+    type: string
+    nullable: true
+    description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
+    example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"
+  version:
+    type: integer
+    format: int32
+    description: >-
+      楽観ロック用のバージョン。更新のたびに 1 つ進みます。
+      部分更新（PATCH /v1/products/{productId}）へそのまま渡すことで、
+      読み込み後に他者が更新していた場合の上書き（lost update）を 409 として検出できます。
+    example: 1

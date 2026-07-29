@@ -16,7 +16,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -150,29 +150,28 @@ func (c *EchoTestClient) QueryParams(params []EchoTestParam) *EchoTestClient {
 	return c
 }
 
-// Build はテスト用のHTTPリクエストとレスポンスレコーダー、echo.Contextを構築します。
+// Build はテスト用のHTTPリクエストとレスポンスレコーダー、*echo.Contextを構築します。
 //
-// requestURL モードではルータ解決により echo.Context のパスが設定されます。
-func (c *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, echo.Context) {
+// requestURL モードではルータ解決により *echo.Context のパスが設定されます。
+func (c *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, *echo.Context) {
 	c.t.Helper()
 
 	req, rec := c.buildRequest()
 	ec := c.e.NewContext(req, rec)
 
 	if c.requestURL != "" {
-		c.e.Router().Find(c.method, req.URL.Path, ec)
+		// 戻り値のハンドラは使わず、ルータがコンテキストへ設定する経路情報だけを利用する。
+		c.e.Router().Route(ec)
 		return req, rec, ec
 	}
 
 	ec.SetPath(c.routePattern)
 	if len(c.pathParams) > 0 {
-		names := make([]string, len(c.pathParams))
-		values := make([]string, len(c.pathParams))
+		values := make(echo.PathValues, len(c.pathParams))
 		for i, p := range c.pathParams {
-			names[i], values[i] = p.Name, p.Value
+			values[i] = echo.PathValue{Name: p.Name, Value: p.Value}
 		}
-		ec.SetParamNames(names...)
-		ec.SetParamValues(values...)
+		ec.SetPathValues(values)
 	}
 
 	return req, rec, ec

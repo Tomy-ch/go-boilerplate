@@ -5,7 +5,7 @@ English | [日本語](README.ja.md)
 ## Role in Onion Architecture
 
 - A **one-shot GC entry point** (Controller layer / CLI driving adapter): another entry point into the Usecase layer, not a new architectural layer.
-- It is the **housekeeping half** of the [idempotency](../../../../docs/design/idempotency.md) subsystem. The request path stamps a TTL (`expires_at`) on each `idempotency_keys` row; this job batch-deletes the rows whose TTL has already expired so the table does not grow without bound.
+- It is the **housekeeping half** of the [idempotency](../../../../docs/design/idempotency.md) subsystem. The request path stamps a TTL on each idempotency-key entry; this job batch-deletes the entries whose TTL has already expired so the store does not grow without bound.
 - An external scheduler (k8s CronJob / cron) runs it as a **cron, not a daemon** — a single `cmd job idempotency-gc` invocation sweeps and exits.
 - The job owns only **args parsing, span start/end, and result logging**; the `claim → sweep → count` business is fully delegated to `idempotency.GCUsecase`. It never touches the store or transactions directly.
 
@@ -20,7 +20,7 @@ English | [日本語](README.ja.md)
 
 | Dependency | Purpose |
 | --- | --- |
-| `idempotency.GCUsecase` | `SweepExpired(ctx, batchSize) (int64, error)` — deletes expired rows in batches of `batchSize` and returns the total deleted count |
+| `idempotency.GCUsecase` | `SweepExpired(ctx, batchSize) (int64, error)` — deletes expired entries in batches of `batchSize` and returns the total deleted count |
 | `logging.Logger` | structured result log |
 | `observability.TracerFactory` | Controller-layer tracer via `tf.Controller()` |
 
@@ -45,5 +45,5 @@ Only `--batch-size=N` is accepted:
 
 ## Notes
 
-- Idempotent by design: re-running only deletes already-expired rows, so retries are safe.
+- Idempotent by design: re-running only deletes already-expired entries, so retries are safe.
 - Documents only what this job does. The request-path orchestration, the `Store` seam, and its infrastructure impl live in the idempotency usecase / infrastructure layers — see the [design reference](../../../../docs/design/idempotency.md).

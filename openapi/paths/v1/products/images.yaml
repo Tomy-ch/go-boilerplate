@@ -1,0 +1,41 @@
+post:
+  operationId: PostProductsImages
+  tags:
+    - v1/products
+  summary: 商品画像のアップロード
+  description: |
+    admin が商品画像をアップロードし、格納先のパスを取得します。認証必須（admin のみ・非 admin は 403）。
+    返却された imagePath を商品作成 / 更新の imagePath に渡します。表示 URL はフロントが配信ベース URL と
+    組み立てます。対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です
+    （超過は 413、非対応形式は 415、空ファイル等は 422）。
+  security:
+    - BearerAuth: []
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          $ref: '../../../components/requests/products/ProductImagePostRequest.yaml'
+  responses:
+    '201':
+      description: 画像のアップロードに成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ProductImageResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '413':
+      $ref: '../../../components/schemas/errors/PayloadTooLarge413.yaml'
+    '415':
+      $ref: '../../../components/schemas/errors/UnsupportedMediaType415.yaml'
+    '422':
+      $ref: '../../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

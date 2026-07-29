@@ -15,6 +15,7 @@ import (
 )
 
 // NewLoggerProvider は LoggerProvider を構築して返す。
+// LogsEnabled が偽の場合は processor を持たない no-op 相当の LoggerProvider を返す。
 func NewLoggerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdklog.LoggerProvider, error) {
 	opts := []sdklog.LoggerProviderOption{sdklog.WithResource(res)}
 

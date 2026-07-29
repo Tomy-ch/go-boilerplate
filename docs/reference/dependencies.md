@@ -16,8 +16,8 @@ single responsibility each fulfils. Unlike an ADR, this list is *expected to dri
 
 | Area | Library | Responsibility |
 | --- | --- | --- |
-| Web / API | `labstack/echo/v4` | HTTP web framework (see [ADR-0017](../adr/0017-echo-http-framework.md)) |
-| Web / API | `oapi-codegen/echo-middleware` | OpenAPI request-validation middleware for Echo |
+| Web / API | `labstack/echo/v5` | HTTP web framework (see [ADR-0017](../adr/0017-echo-http-framework.md)) |
+| Web / API | `oapi-codegen/echo-v5-middleware` | OpenAPI request-validation middleware for Echo |
 | Web / API | `oapi-codegen/runtime` | Runtime support for oapi-codegen generated code |
 | Web / API | `getkin/kin-openapi` | OpenAPI 3 document model / loader |
 | Config | `caarlos0/env/v11` | Env var → struct decoding |
@@ -60,7 +60,7 @@ exceptions per [ADR-0069](../adr/0069-bridge-instrumentation-exceptions.md).
 
 | Library | Coupling | Role |
 | --- | --- | --- |
-| `contrib/instrumentation/github.com/labstack/echo/otelecho` | Echo `MiddlewareFunc` × otel trace | Root server span per request (status / path normalization / W3C propagation) |
+| `labstack/echo-opentelemetry` | Echo `MiddlewareFunc` × otel trace | Root server span per request (status / path normalization / W3C propagation) |
 | `contrib/instrumentation/net/http/otelhttp` | `net/http` `RoundTripper`/`Handler` × otel trace | Outbound/inbound `net/http` instrumentation (client transport + handler spans) |
 | `exaring/otelpgx` | pgx `QueryTracer` × otel trace | SQL query spans via the pgx tracer hook |
 | `contrib/bridges/otelzap` | zap `zapcore.Core` × otel/log | Bridges zap records into OTel log records for OTLP export |

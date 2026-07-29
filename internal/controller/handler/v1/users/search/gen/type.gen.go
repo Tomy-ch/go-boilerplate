@@ -9,6 +9,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
+)
+
 // ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
@@ -150,13 +154,13 @@ type bearerAuthContextKey string
 
 // GetUsersSearchParams defines parameters for GetUsersSearch.
 type GetUsersSearchParams struct {
-	// Keyword 全文検索キーワード
+	// Keyword 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
 	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`
 
 	// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
 	Active *ActiveParam `form:"active,omitempty" json:"active,omitempty"`
 
-	// Page ページ番号（1から始まる）
+	// Page ページ番号（1から始まる）。上限を超えた場合は 400 を返します。
 	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
 
 	// PerPage 1ページあたりの取得件数

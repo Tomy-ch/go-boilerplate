@@ -4,7 +4,7 @@
 
 ## 役割
 
-Infrastructure 層は、**外部技術（DB・外部API・認証・セキュリティ等）へのアクセス実装**を担う層です。
+Infrastructure 層は、**外部技術（DB・外部API・認証等）へのアクセス実装**を担う層です。
 
 この層は以下の責務を持ちます。
 
@@ -80,7 +80,7 @@ Infrastructure 層では以下の可観測性を提供します。
 
 主に driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span、ログ出力はクエリ失敗とスロークエリのみ）で実現します。
 
-driver 層のトレーサーに加え、各 I/O コンポーネント（Repository / QueryService / SystemQuery / 外部 gateway / queue / publisher）は public メソッドごとにアプリケーション層の span を発行します。具体的には `observability.LayerTracer` フィールドをコンストラクタで `tf.Infra()` から初期化し、各メソッド先頭で `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()` を書きます。実 I/O を持たない純粋なメモリ内コンポーネント（例: パスワードハッシュ化）は対象外です。
+driver 層のトレーサーに加え、各 I/O コンポーネント（Repository / QueryService / SystemQuery / 外部 gateway / queue / publisher）は public メソッドごとにアプリケーション層の span を発行します。具体的には `observability.LayerTracer` フィールドをコンストラクタで `tf.Infra()` から初期化し、各メソッド先頭で `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()` を書きます。実 I/O を持たない純粋なメモリ内コンポーネントは対象外です。
 
 ## 禁止事項
 
@@ -100,6 +100,24 @@ Infrastructure 層では以下を行ってはいけません。
 - context を必ず伝搬する
 - 外部エラーは必ず正規化する
 
+### doc コメントに技術的詳細を書いてよい
+
+技術的詳細の隠蔽（*設計原則まとめ § 1*）が意味するのは、外側の層がそれを**見ない**ことであって、この層が
+それを**書き残さない**ことではない。Repository / QueryService / CommandService の doc コメントは SQL を
+保守する人間が読むので、保証を担っている仕組みを名指ししてよい — 取得するロック（`FOR UPDATE OF p`）、
+所有権を担保する述語、ページネーションを安定させる keyset の順序、N+1 を避ける固定クエリ数など。
+
+境界は方向性を持つ — この詳細は**ここに留める**。Usecase や Domain の doc コメントがこれを繰り返していれば
+それは層漏れである。[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
+implementation を参照。
+
+この層で警戒すべきはその裏返しである。内側のインターフェイスが保証をアプリケーション語彙で述べている以上、
+その言い換えに留まる実装側 doc は**何も足していない** — 2 箇所で腐る複製でしかない。したがって実装側 doc は
+**機構を名指しする**（`FindByID` は `LockByID` と異なりロックを取らずに読む、`SearchByKeyword` は `active` の
+値で 3 つの固定クエリへ振り分ける、`Update` は影響行数 0 を NotFound へ正規化する、など）か、**省略する**かの
+どちらかである。Repository 型は非 export なので `revive` の `exported` ルールは doc を要求しない。
+インターフェイスの言い換えだけが、常に誤りである。
+
 ## ディレクトリ構成
 
 ```mermaid
@@ -108,20 +126,20 @@ flowchart TB
     Auth["auth/"]
     Authz["authz/"]
     HTTP["httpclient/"]
+    ObjStorage["objectstorage/"]
     Pub["publisher/"]
     Queue["queue/"]
     RDB["rdb/"]
-    Sec["security/"]
     Sys["system/"]
     Web["webapi/"]
 
     Root --> Auth
     Root --> Authz
     Root --> HTTP
+    Root --> ObjStorage
     Root --> Pub
     Root --> Queue
     Root --> RDB
-    Root --> Sec
     Root --> Sys
     Root --> Web
 ```
@@ -133,10 +151,10 @@ flowchart TB
 |`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
 |`authz/`|認可基盤（Authorizer 実装。本番以外はデフォルトの `allowall`）|Usecase boundary|[README](authz/README.ja.md)|
 |`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|—|
+|`objectstorage/`|オブジェクトストレージ adapter（`boundary.Storage` 実装。endpoint / 資格情報の差し替えで Garage / MinIO / 本番 S3 に接続）|Usecase boundary|[README](objectstorage/README.md)|
 |`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|—|
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
-|`security/`|パスワードハッシュ化（bcrypt）|Usecase boundary|[README](security/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
 |`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|—|
 
@@ -160,7 +178,7 @@ flowchart TB
 
 ### 1. 技術詳細のカプセル化
 
-DB / API / 認証 / セキュリティ  
+DB / API / 認証  
 → Infrastructure に閉じ込める
 
 ### 2. 依存関係の逆転

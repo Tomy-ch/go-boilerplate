@@ -43,7 +43,7 @@ flowchart TB
 |---|---|
 |`kin-openapi/openapi3`|OpenAPI 3.x schema model|
 |`kin-openapi/openapi3filter`|Request validation and auth filter|
-|`oapi-codegen/echo-middleware`|Echo adapter for OpenAPI validation|
+|`oapi-codegen/echo-v5-middleware`|Echo adapter for OpenAPI validation|
 |`ctxhelper`|Authn slot injection & get/set on the request context|
 |`boundary/auth`|Authentication interface and `Authn` value object|
 

@@ -116,7 +116,6 @@ This directory is the canonical reference for every environment variable read by
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|Exclude subdomains|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|Enable preload|bool|false||
 |SECURITY_REFERRER_POLICY|Referrer control|string|no-referrer||
-|SECURITY_BCRYPT_COST|bcrypt cost|int|12||
 
 ### Cookie
 
@@ -125,14 +124,6 @@ This directory is the canonical reference for every environment variable read by
 |SECURE_COOKIE_SECURE|HTTPS only|bool|true|Required in production|
 |SECURE_COOKIE_SAME_SITE|SameSite setting|string|Strict||
 |SECURE_COOKIE_DOMAIN|Cookie domain|string|example.com||
-
-### Auth
-
-|Variable Name|Description|Type|Example|Notes|
-|---|---|---|---|---|
-|AUTH_COOKIE_NAME|Auth cookie name|string|auth_token||
-|AUTH_HEADER_NAME|Header name|string|Authorization||
-|AUTH_ALLOWED_HEADER_BEARER|Allow Bearer|bool|true||
 
 ### Worker
 
@@ -165,6 +156,21 @@ Settings for the transactional outbox relay.
 |OUTBOX_POLL_INTERVAL|Wait before the next poll after draining pending rows|duration|1s|Code default `1s`|
 |OUTBOX_ERROR_BACKOFF|Wait after a relay batch returns an error|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|Pending rows claimed per poll|int|100|Code default `100`|
+
+### Auth (JWT)
+
+Access-token (JWT) verification settings. CI / test wire a non-signature stub; `local` / `development` wire the real JWKS-backed JWT authenticator (local development verifies the mock auth server) and fail closed at startup when `AUTH_ISSUER` / `AUTH_AUDIENCE` are missing; the wiring decision lives in DI (`internal/di/module/core/auth.go`). `AUTH_JWKS_URL` is an override — when empty, the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery (issuer strict-match + https + same-origin; `local` allows plain http to the mock provider). The JWKS / discovery fetch goes through the `httpclient` substrate, so its HTTP timeout / retry / circuit breaker / budget come from the `jwks` downstream profile (`NewDownstreamProfile`), not an env var; that profile also blocks private-network SSRF outside `local` / `ci` / `test`.
+
+|Variable Name|Description|Type|Example|Notes|
+|---|---|---|---|---|
+|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string||Code default empty. Set per environment that wires the JWT authenticator|
+|AUTH_AUDIENCE|Expected `aud` claim value|string||Code default empty. Required together with the issuer|
+|AUTH_JWKS_URL|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string||Code default empty. Internal service URL in compose (e.g. `http://mock_auth_server:4000/.well-known/jwks.json`)|
+|AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|[]string|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
+|AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|
+|AUTH_JWKS_CACHE_TTL|Cache lifetime for a fetched JWKS|duration|1h|Code default `1h`|
+|AUTH_JWKS_DISCOVERY_TTL|Cache lifetime for the OIDC discovery document (separate axis from the key cache)|duration|24h|Code default `24h`. Only used when the jwks_uri is derived via discovery|
+|AUTH_JWKS_UNKNOWN_KID_COOLDOWN|Minimum interval before re-fetching JWKS on an unknown `kid` (DoS throttle)|duration|60s|Code default `60s`|
 
 ## Notes
 

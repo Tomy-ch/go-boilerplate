@@ -116,7 +116,7 @@ make tidy-lib
 
 (Internally runs `go mod tidy` and `go mod vendor`.)
 
-### 5.5. (Optional) Update Go Module Dependencies
+### 6. (Optional) Update Go Module Dependencies
 
 A Go runtime upgrade is a natural point to also refresh the module dependencies. **Ask the user whether to update**, then act on the answer.
 
@@ -139,25 +139,25 @@ After running, **review the `go.mod` diff**: the `go` directive must remain at `
 
 Note: this repository has a thick test + lint suite (including real-DB infrastructure tests), so a green run gives high confidence for minor/patch updates — but it is not a guarantee. For runtime-sensitive core deps (DB driver, OpenTelemetry, web framework), skim their CHANGELOG even when green.
 
-### 6. Reinstall Go Tools
+### 7. Reinstall Go Tools
 
 ```sh
 make install-tools
 ```
 
-### 7. Confirm CI Auto-detection
+### 8. Confirm CI Auto-detection
 
 GitHub Actions workflows under `.github/workflows` use `actions/setup-go` with `go-version-file: go.mod`. Because step 3 already rewrote `go.mod`, the workflows pick up `<TARGET_VERSION>` automatically. No manual workflow edit is required.
 
 If a workflow file hard-codes a Go version somewhere (string literal), align it to `<TARGET_VERSION>` manually.
 
-### 8. Confirm Dockerfile / README Sync
+### 9. Confirm Dockerfile / README Sync
 
 Step 3 already rewrote the Dockerfile `FROM` tags and the `docker/**/README.md` image references. No manual edit is required.
 
-### 8.5. Refresh Base Image Digest Pins
+### 10. Refresh Base Image Digest Pins
 
-Step 3 changed the `FROM golang:` **tag**, but the previously-pinned `@sha256:...` digest still points at the OLD Go image — a tag/digest mismatch (Docker honors the digest, so a build would silently pull the old image). Re-pin from the registry so the digest tracks the new tag. This is the `pin-images` skill's job (chained here per its sibling relationship):
+Step 3 changed the `FROM golang:` **tag**, but the previously-pinned `@sha256:...` digest still points at the OLD Go image — a tag/digest mismatch (Docker honors the digest, so a build would silently pull the old image). Re-pin from the registry so the digest tracks the new tag. This is the `images-pin` skill's job (chained here per its sibling relationship):
 
 ```sh
 make pin-images-resolve   # run `docker login` first if Docker Hub returns 429
@@ -165,9 +165,11 @@ make pin-images-apply
 make pin-images-check
 ```
 
-The new Go image was just published, so it is normally inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown (default 14 days) and gets **quarantined**: `pin-images-apply` strips the now-stale digest and leaves the `FROM` on the tag only, which `pin-images-check` accepts. Report this to the user and note that `/pin-images` should be re-run once the new image ages past the window to restore the digest pin. See the `pin-images` skill for detail.
+The new Go image was just published, so re-pinning hits `images-pin`'s **rule 3**: the new `golang:` tag has no prior lockfile entry and its image is inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown (default 14 days), so there is no aged digest to step back to. `pin-images-resolve` **fails closed** (`❌ 退行先の無い出来立て image は採用できません`) rather than adopting the fresh digest or stripping the pin to tag-only; `apply` never runs, and `pin-images-check` rejects the surviving stale digest as `未登録`.
 
-### 9. Rebuild Docker Containers
+So a Go upgrade and its base-image pin are coupled, and the upgrade cannot be landed cleanly until one of two things holds: the new Go image has aged past the window, or the user deliberately bootstraps it with `days=0` — which `/images-pin` step 2.5 gates behind a `/supply-chain-triage` evidence check. Surface that choice rather than deciding it; do not force `resolve` through, and do not leave the tag/digest mismatch in the tree. See the `images-pin` skill for detail.
+
+### 11. Rebuild Docker Containers
 
 Because the Go base image tag changes with this upgrade, use the clean (`--no-cache --pull`) variants so the new image is actually pulled and rebuilt:
 
@@ -176,25 +178,25 @@ make serve-build-clean
 make tool-runners-build-clean
 ```
 
-### 10. Re-run Code Generation
+### 12. Re-run Code Generation
 
 ```sh
 make gen
 ```
 
-### 11. Run Tests
+### 13. Run Tests
 
 ```sh
 make test
 ```
 
-### 12. Run Lint
+### 14. Run Lint
 
 ```sh
 make lint
 ```
 
-### 13. Final Verification
+### 15. Final Verification
 
 Confirm all of the following commands succeed:
 
@@ -220,7 +222,7 @@ Confirm the following before reporting completion:
 - [ ] Release notes reviewed
 - [ ] `mise.toml` `[tools] go` updated to `<TARGET_VERSION>`
 - [ ] `make sync-versions` executed (propagates to go.mod / Dockerfile / docker/**/README.md)
-- [ ] Base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`); new Go image quarantined-until-aged is reported for a later `/pin-images` re-run
+- [ ] Base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`). A rule 3 fail-closed on the new `golang:` tag is the expected outcome for a just-published image — the coupling is surfaced (wait for it to age, or `days=0` bootstrap after triage), never forced through, and no tag/digest mismatch is left behind
 - [ ] Local Go updated via `make go-update` (user task)
 - [ ] `make tidy-lib` executed
 - [ ] (Optional) Go module dependency update confirmed with the user via `AskUserQuestion`; if chosen, executed (`go get -u[=patch] ./...` + `make tidy-lib`) with the `go` directive left at `<TARGET_VERSION>`

@@ -11,17 +11,16 @@ import (
 	"go-boilerplate/internal/observability"
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_search "go-boilerplate/internal/usecase/user/search/mock"
-	"go-boilerplate/internal/usecase/user/search/query"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/mock/gomock"
 )
 
 func TestV1UsersSearch_Integration(t *testing.T) {
 	t.Parallel()
 
-	expectedDTO := query.UserSearchResults{
-		&query.UserSearchResult{
+	expectedDTO := usecase_search.UserSearchResults{
+		&usecase_search.UserSearchResult{
 			FirstName:      "User1",
 			LastName:       "One",
 			Email:          "user1@example.com",

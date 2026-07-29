@@ -39,8 +39,11 @@ accepted
 ### QueryService（クエリ / 読み込みパス）
 
 - インターフェースは**ユースケースレイヤー**で定義する（`internal/usecase/<aggregate>/query/`）。読み込みモデルはドメインのInvariantではなくユースケースの関心事であるため、ドメインではなくユースケースに属する。
-- 集約境界をまたぐ読み込み・複数テーブルのJOIN・ページネーション・全文検索・APIレスポンス形状のDTOを返す読み込みを扱う。
+- 集約境界をまたぐ読み込み・複数テーブルのJOIN・ページネーション・全文検索、または full aggregate として再構築するのが無駄になる read-model の projection（重い集約のサブセット/再成形、または結合ビュー）を返す読み込みを扱う。
 - ドメインエンティティではなくDTOを返す。
+- 結果がDTOとして返されるという理由*だけ*では QueryService ケースにはならない — あらゆる読み込みは最終的にレスポンスDTOへ写像される。単一集約の単純な読み込み（IDによる取得、および集約自身の属性によるフィルタ・一覧・件数取得。無フィルタの全件一覧を含む）は Repository に留まる。多数の行を返すことは「集約をまたぐ」ことではない — またぐとは *異なる* 集約にわたることを意味する。
+- この判別は**ストレージ非依存**である：Repository か QueryService かを決めるのは、読み込みが集約の正本（system of record）の状態を対象とし full aggregate を再構築できるか（→ Repository）、それとも正本から派生した projection / read model — 検索インデックス・別の検索ストア・非正規化 / 生成された検索列・集約横断の JOIN ビュー — で集約を再構築できないか（→ QueryService）である。全文検索が*典型的な* QueryService ケースなのは、通常それが派生した検索射影に乗るからであって「検索」が本質的に読み込み側の関心事だからではない。集約自身の列への素のフィルタは Repository に留まる。
+- 集約横断のフィールド解決（例: 一覧へ関連集約の名称を付与する）は、関連集約をその Repository（`FindByIDs`）で一括取得し**Usecase レイヤー**でキー突合して行う — 各読み込みを単一集約の Repository read のまま保つ — のであって、QueryService の SQL JOIN では行わない。
 - 実装は`internal/infrastructure/rdb/query_service/<aggregate>/`に置く。
 
 ### Command Service（コマンド / 書き込みパス）
@@ -54,7 +57,7 @@ accepted
 
 Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0032](0032-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
 
-日々の境界適用ルールは[`docs/rules.md`](../../rules.md)の§ "Repository / QueryService Rules"参照。
+日々の境界適用ルールは[`docs/rules.md`](../rules.ja.md)の§ "Repository / QueryService Rules"参照。
 
 ## 影響
 
@@ -99,7 +102,7 @@ Repositoryから読み込みメソッドを完全に排除し、すべての読�
 
 ## 補足
 
-- Source: [`internal/infrastructure/rdb/query_service/README.md`](../../../internal/infrastructure/rdb/query_service/README.md)の§ "Relationship to CQRS"および§ "When to Use QS Over Repository"。
-- Source: [`docs/rules.md`](../../rules.md)の§ "Repository / QueryService Rules"。
+- Source: [`internal/infrastructure/rdb/query_service/README.md`](../../../internal/infrastructure/rdb/query_service/README.ja.md)の§ "Relationship to CQRS"および§ "When to Use QS Over Repository"。
+- Source: [`docs/rules.md`](../rules.ja.md)の§ "Repository / QueryService Rules"。
 - DI登録: [`internal/di/module/persistence.go`](../../../internal/di/module/persistence.go)。
 - 関連: [ADR-0028](0028-system-cqrs-dml-category.ja.md)（CQRSの外に位置する第4カテゴリとしてのsystem_cqrs）。

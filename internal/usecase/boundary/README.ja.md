@@ -46,9 +46,9 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`exchangerate`|`Gateway`|外部為替レート取得サービスへの意味的 gateway（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/exchangerate/`|
 |`idempotency`|`Store`|冪等性キーの永続化境界（claim / replay / 競合判定）|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
+|`objectstorage`|`Storage`|実体非依存のオブジェクトストレージ境界（キー指定でオブジェクトを `Put` し、保存先 `Path` を返す）|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
-|`security`|`Hasher`|パスワードのハッシュ化・比較|`internal/infrastructure/security/`|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|broker 非依存の worker seam（pull-ack）|`internal/infrastructure/queue/sqs/`|
 
@@ -135,6 +135,16 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |`Runner`|`Run(ctx, jobName, args)` + `Names()` でジョブを実行・一覧|
 |`State`|`Set(name, args, done)` + `Snapshot()` でジョブ実行状態を管理|
 
+### objectstorage
+
+実体非依存のオブジェクトストレージ境界。Usecase はこのポートにのみ依存し、S3 互換 adapter（infrastructure）が実装する。bucket / region / etag などの vendor 語彙は境界を越えて漏れない。
+
+|型 / 関数|説明|
+|---|---|
+|`Storage`|`Put(ctx, PutObject) (Path, error)` でオブジェクトをキー配下へ保存する。失敗時は `apperror` sentinel（例 `ErrUnavailable`）を返す|
+|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType` / `CacheControl`）。`Key` は呼び出し側が採番し（例 `products/{uuid}.png`）、`CacheControl` も呼び出し側が決める。キャッシュ可否はキーの採番方針から導かれるため（空なら未設定）|
+|`Path`|保存されたオブジェクトのパス（キー）。表示 URL は上位が別途組み立てる|
+
 ### outbox
 
 トランザクショナル outbox テーブルの永続化境界。emit usecase と relay engine（controller 層）の双方が依存します。
@@ -162,17 +172,6 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |`Publisher`|メッセージを publish 先へ送る境界|
 |`Publish(ctx, m)`|`m` を publish 先へ送る。失敗時はエラーを返し relay の次 poll で再送（at-least-once）|
 |`Message`|outbox 行から構築する publish 先非依存のメッセージ封筒（`net/http` 等の型を露出しない）|
-
-### security
-
-```go
-type Hasher interface {
-    Hash(password string) (string, error)
-    Compare(hash, password string) (bool, error)
-}
-```
-
-パスワードのハッシュ化と比較。bcrypt 等の実装詳細を Usecase から隠蔽。
 
 ### tx
 

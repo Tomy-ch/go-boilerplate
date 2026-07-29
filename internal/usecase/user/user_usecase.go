@@ -14,7 +14,6 @@ import (
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
-	"go-boilerplate/internal/usecase/boundary/security"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/ptr"
@@ -70,11 +69,10 @@ type UpdateProfileParams struct {
 type CreateParamsDTO struct {
 	UpdateProfileParams
 
-	UserID      uuid.UUID
-	RawPassword string
+	UserID uuid.UUID
 }
 
-// PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
+// PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません。
 type PatchParamsDTO struct {
 	FirstName      *string
 	LastName       *string
@@ -92,7 +90,6 @@ type usecase struct {
 	tracer     observability.LayerTracer
 	txm        tx.Manager
 	clock      clock.Clock
-	encrypter  security.Hasher
 	authorizer authz.Authorizer
 	userRepo   user.Repository
 	pftRepo    prefecture.Repository
@@ -113,14 +110,13 @@ type Usecase interface {
 	// GetUser は、認可を確認したうえで ID から単一ユーザーを取得します。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) (UserView, error)
-	// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します（パスワードは含みません）。
+	// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
-	// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します（パスワードは更新しません）。
+	// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します。指定されたフィールドのみを
+	// 反映し、未指定 / null は据え置きます（値のクリアは非対応で、クリアには全更新の UpdateUser を使います）。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
-	// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。
-	ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error
 	// DeleteUser は、認可を確認したうえでユーザーを論理削除します。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error
@@ -131,7 +127,6 @@ func New(
 	tf observability.TracerFactory,
 	txm tx.Manager,
 	clock clock.Clock,
-	encrypter security.Hasher,
 	authorizer authz.Authorizer,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
@@ -140,7 +135,6 @@ func New(
 		tracer:     tf.Usecase(),
 		txm:        txm,
 		clock:      clock,
-		encrypter:  encrypter,
 		authorizer: authorizer,
 		userRepo:   userRepo,
 		pftRepo:    prefectureRepo,
@@ -163,49 +157,38 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Page
 	return u.toUserViews(ctx, us)
 }
 
-// CreateUser は、ユーザーを作成するユースケースです。
 func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
 	now := u.clock.Now()
-	rawPassword, err := user.NewRawPassword(dto.RawPassword)
-	if err != nil {
-		return UserView{}, err
-	}
-
-	passwordHash, err := u.encrypter.Hash(rawPassword.Value())
-	if err != nil {
-		return UserView{}, err
-	}
 
 	var (
 		userEntity *user.User
 		pftName    string
 	)
-	err = u.txm.Do(ctx, func(ctx context.Context) error {
+	err := u.txm.Do(ctx, func(ctx context.Context) error {
 		pftDomain, err := u.pftRepo.FindByName(ctx, dto.PrefectureName)
 		if err != nil {
 			return err
 		}
 		pftName = pftDomain.Name()
 
-		userEntity, err = user.New(
-			dto.UserID,
-			dto.FirstName,
-			dto.LastName,
-			passwordHash,
-			dto.Email,
-			dto.Phone,
-			pftDomain.ID(),
-			dto.City,
-			dto.Street,
-			dto.Building,
-			dto.PostalCode,
-			now,
-			now,
-			nil,
-		)
+		userEntity, err = user.New(dto.UserID, user.Attributes{
+			Profile: user.Profile{
+				FirstName:    dto.FirstName,
+				LastName:     dto.LastName,
+				Email:        dto.Email,
+				Phone:        dto.Phone,
+				PrefectureID: pftDomain.ID(),
+				City:         dto.City,
+				Street:       dto.Street,
+				Building:     dto.Building,
+				PostalCode:   dto.PostalCode,
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
 		if err != nil {
 			return err
 		}
@@ -219,14 +202,12 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserVie
 	return toUserView(userEntity, pftName), nil
 }
 
-// CountUsers は、ユーザーの総件数を返すユースケースです。
 func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 	return u.userRepo.CountByActive(ctx, active)
 }
 
-// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
 func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -242,7 +223,6 @@ func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *pa
 	return &UserListView{Items: items, Total: total}, nil
 }
 
-// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
 func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error) {
 	if cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
@@ -281,7 +261,6 @@ func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*Us
 	return &UserFeedView{Items: items, NextCursor: nextCursor}, nil
 }
 
-// GetUser は、IDから単一ユーザーを取得するユースケースです。
 func (u *usecase) GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -306,7 +285,6 @@ func (u *usecase) GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID
 	return toUserView(userEntity, pftDomain.Name()), nil
 }
 
-// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
 func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -334,18 +312,17 @@ func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 		}
 		pftName = pftDomain.Name()
 
-		if err = userEntity.UpdateProfile(
-			dto.FirstName,
-			dto.LastName,
-			dto.Email,
-			dto.Phone,
-			pftDomain.ID(),
-			dto.City,
-			dto.Street,
-			dto.Building,
-			dto.PostalCode,
-			now,
-		); err != nil {
+		if err = userEntity.UpdateProfile(user.Profile{
+			FirstName:    dto.FirstName,
+			LastName:     dto.LastName,
+			Email:        dto.Email,
+			Phone:        dto.Phone,
+			PrefectureID: pftDomain.ID(),
+			City:         dto.City,
+			Street:       dto.Street,
+			Building:     dto.Building,
+			PostalCode:   dto.PostalCode,
+		}, now); err != nil {
 			return err
 		}
 
@@ -358,50 +335,6 @@ func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 	return toUserView(userEntity, pftName), nil
 }
 
-// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更するユースケースです。
-func (u *usecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error {
-	ctx, endSpan := u.tracer.Start(ctx)
-	defer endSpan()
-
-	now := u.clock.Now()
-	// 現パスワードも newPassword と同じ長さ制約で検証する（bcrypt の 72 バイト切り詰めを避け、入力の対称性を保つ）。
-	if _, err := user.NewRawPassword(currentPassword); err != nil {
-		return err
-	}
-	rawNew, err := user.NewRawPassword(newPassword)
-	if err != nil {
-		return err
-	}
-
-	return u.txm.Do(ctx, func(ctx context.Context) error {
-		userEntity, err := u.userRepo.FindByID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		matched, err := u.encrypter.Compare(userEntity.PasswordHash(), currentPassword)
-		if err != nil {
-			return err
-		}
-		if !matched {
-			return user.ErrCurrentPasswordMismatch
-		}
-
-		newHash, err := u.encrypter.Hash(rawNew.Value())
-		if err != nil {
-			return err
-		}
-
-		if err = userEntity.ChangePassword(newHash, now); err != nil {
-			return err
-		}
-
-		return u.userRepo.Update(ctx, userEntity)
-	})
-}
-
-// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
-// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは全更新用の UpdateUser を使う）。password は更新しない。
 func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -437,18 +370,17 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, 
 			building = dto.Building
 		}
 
-		if err = userEntity.UpdateProfile(
-			ptr.Deref(dto.FirstName, userEntity.FirstName()),
-			ptr.Deref(dto.LastName, userEntity.LastName()),
-			ptr.Deref(dto.Email, userEntity.Email()),
-			ptr.Deref(dto.Phone, userEntity.Phone()),
-			prefectureID,
-			ptr.Deref(dto.City, userEntity.City()),
-			ptr.Deref(dto.Street, userEntity.Street()),
-			building,
-			ptr.Deref(dto.PostalCode, userEntity.PostalCode()),
-			now,
-		); err != nil {
+		if err = userEntity.UpdateProfile(user.Profile{
+			FirstName:    ptr.Deref(dto.FirstName, userEntity.FirstName()),
+			LastName:     ptr.Deref(dto.LastName, userEntity.LastName()),
+			Email:        ptr.Deref(dto.Email, userEntity.Email()),
+			Phone:        ptr.Deref(dto.Phone, userEntity.Phone()),
+			PrefectureID: prefectureID,
+			City:         ptr.Deref(dto.City, userEntity.City()),
+			Street:       ptr.Deref(dto.Street, userEntity.Street()),
+			Building:     building,
+			PostalCode:   ptr.Deref(dto.PostalCode, userEntity.PostalCode()),
+		}, now); err != nil {
 			return err
 		}
 		return u.userRepo.Update(ctx, userEntity)
@@ -460,7 +392,6 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, 
 	return toUserView(userEntity, pftName), nil
 }
 
-// DeleteUser は、ユーザーを論理削除します。
 func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

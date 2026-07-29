@@ -108,6 +108,18 @@ func Test_lookupErrorMetaByAppError(t *testing.T) {
 			assert.Equal(t, want, lookupErrorMetaByAppError(apperror.ErrValidation))
 		})
 
+		t.Run("ErrUnsupportedMediaTypeの場合、UnsupportedMediaType(415)が返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusUnsupportedMediaType, Code: codeUnsupportedMediaType, Message: errorMessageUnsupportedMediaType}
+			assert.Equal(t, want, lookupErrorMetaByAppError(apperror.ErrUnsupportedMediaType))
+		})
+
+		t.Run("ErrPayloadTooLargeの場合、RequestEntityTooLarge(413)が返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusRequestEntityTooLarge, Code: codePayloadTooLarge, Message: errorMessagePayloadTooLarge}
+			assert.Equal(t, want, lookupErrorMetaByAppError(apperror.ErrPayloadTooLarge))
+		})
+
 		t.Run("ErrUnauthenticatedの場合、Unauthorizedが返される", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusUnauthorized, Code: codeUnauthorized, Message: errorMessageUnauthorized}

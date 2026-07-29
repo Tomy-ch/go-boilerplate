@@ -1,0 +1,294 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>address - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package address
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/address&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package address は、郵便番号 lookup gateway を用いた住所補完ユースケースのサンプルです。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#CandidateView">type CandidateView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Result">type Result</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Usecase">type Usecase</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(gateway boundary.Gateway, prefectureQ prefecture.Repository, tf observability.TracerFactory) Usecase</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/address/address_usecase.go.html">address_usecase.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="CandidateView">type <a href="../../../../src/go-boilerplate/internal/usecase/address/address_usecase.go.html?s=1308:1676#L23">CandidateView</a>
+				<a class="permalink" href="#CandidateView">¶</a>
+				
+				
+			</h2>
+			<p>CandidateView は、住所候補 1 件の出力 DTO です。
+
+			</p><pre>type CandidateView struct {
+<span id="CandidateView.PrefectureID"></span>    <span class="comment">// PrefectureID は、都道府県ID です。県名を prefectures マスタで解決できなかった場合は nil です。</span>
+    PrefectureID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CandidateView.PrefectureName"></span>    <span class="comment">// PrefectureName は、都道府県名（フル表記）です。</span>
+    PrefectureName <a href="../../../../builtin/#string">string</a>
+<span id="CandidateView.City"></span>    <span class="comment">// City は、市区町村です。</span>
+    City <a href="../../../../builtin/#string">string</a>
+<span id="CandidateView.Town"></span>    <span class="comment">// Town は、町域です。</span>
+    Town <a href="../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Result">type <a href="../../../../src/go-boilerplate/internal/usecase/address/address_usecase.go.html?s=952:1241#L15">Result</a>
+				<a class="permalink" href="#Result">¶</a>
+				
+				
+			</h2>
+			<p>Result は、住所補完結果の出力 DTO です。
+
+			</p><pre>type Result struct {
+<span id="Result.Candidates"></span>    <span class="comment">// Candidates は、住所候補の一覧です。該当なし・degrade 時は空スライスです。</span>
+    Candidates []*<a href="#CandidateView">CandidateView</a>
+<span id="Result.IsFallback"></span>    <span class="comment">// IsFallback は、lookup 機構が機能しなかった（外部不通・不正応答）場合に true です。</span>
+    IsFallback <a href="../../../../builtin/#bool">bool</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/address/address_usecase.go.html?s=581:892#L8">Usecase</a>
+				<a class="permalink" href="#Usecase">¶</a>
+				
+				
+			</h2>
+			<p>Usecase は、郵便番号住所補完ユースケースを表します。
+
+			</p><pre>type Usecase interface {
+    <span class="comment">// LookupByPostalCode は、正規化済み 7 桁の郵便番号から住所候補を返します。</span>
+    <span class="comment">// 外部 lookup 障害時はエラーを返さず IsFallback: true の空候補で degrade します。</span>
+    LookupByPostalCode(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, postalCode <a href="../../../../builtin/#string">string</a>) (*<a href="#Result">Result</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/address/address_usecase.go.html?s=1916:2031#L42">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(
+    gateway <a href="../../../../go-boilerplate/internal/usecase/boundary/address/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/address/#Gateway">Gateway</a>,
+    prefectureQ <a href="../../../../go-boilerplate/internal/domain/prefecture/">prefecture</a>.<a href="../../../../go-boilerplate/internal/domain/prefecture/#Repository">Repository</a>,
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+) <a href="#Usecase">Usecase</a></pre>
+				<p>New は、住所補完ユースケースを生成します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

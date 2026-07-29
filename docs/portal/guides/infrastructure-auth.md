@@ -2,8 +2,8 @@
 
 `internal/infrastructure/auth` is a directory that provides **Authentication Infrastructure**.
 
-This directory contains the **implementations of Authenticator** used by the application.  
-Implementations are **separated by environment (local / stg / prd, etc.)**.
+This directory contains the **implementations of the auth Boundary interfaces** (`Authenticator` and `IdentityResolver`) used by the application.  
+Authenticator implementations are **separated by verification method (local / jwt, etc.)**, and the DI layer selects which method to wire **per environment**.
 
 The abstraction interface for authentication is defined as a **Boundary in the Usecase layer**.
 
@@ -17,8 +17,8 @@ In the Infrastructure layer, this Boundary is **implemented concretely**.
 
 The responsibilities of this directory are as follows.
 
-- Provide **environment-specific implementations** of `Authenticator`
-- Implement integration with external authentication systems (JWT / OAuth / Cognito, etc.)
+- Provide **method-specific implementations** of `Authenticator`
+- Implement integration with external authentication systems (JWT / OAuth / OIDC, etc.)
 - Generate **Authn information from authentication tokens**
 
 This layer **does not handle business logic**.
@@ -38,36 +38,38 @@ Infrastructure["Infrastructure (auth implementation)"] -. implements .-> Boundar
 Infrastructure **only implements the Boundary**,  
 and is the concrete implementation directly invoked from the Usecase.
 
-## Directory Structure
+## Separation Axis: Method, not Environment
 
-The future structure will be as follows.
+Implementations are separated by **verification method**, and the DI layer chooses which method a given environment uses. This keeps each package focused on one verification strategy while the environment-to-method mapping lives in a single place (`provideAuthenticator`).
+
+- `local` — no signature verification; extracts the subject from the token string. A CI / test stub only.
+- `jwt` — JWT verification (de-facto standard core) with the signing key from either a fixed public key or a JWKS endpoint. The production-oriented method.
 
 ```txt
 internal/infrastructure/auth
 ├── README.md
 ├── local
 │   └── auth_local.go
-├── stg
-│   └── auth_stg.go
-└── prd
-    └── auth_prd.go
+└── jwt
+    └── auth_jwt.go
 ```
 
-|Directory|Purpose|
+|Directory|Verification method|
 |---|---|
-|`local`|Simple authentication for local development|
-|`stg`|Authentication for staging environments|
-|`prd`|Authentication for production environments|
+|`local`|Development stub — no signature verification|
+|`jwt`|JWT verification (standard core); key from fixed public key or JWKS|
 
-## Local Implementation
+The environment → method mapping is applied in DI (see "Registration to DI"): CI / test use the `local` stub, while `jwt` handles local development (verifying real JWTs from the mock auth server) and the environments that wire real token verification.
 
-`local` is an **authentication implementation dedicated to local development**.
+## local Implementation
+
+`local` is an **authentication stub for CI / test** (no signature verification).
 
 Characteristics
 
 - Does not perform token signature verification
 - Extracts Subject from the token string
-- Used as simple authentication for development
+- Used as a simple stub for CI / test
 
 Example
 
@@ -84,23 +86,27 @@ provider = mock
 
 Authn is generated.
 
-## Staging / Production Implementation
+See `local/README.md` for details.
 
-In stg / prd, authentication such as the following is typically implemented.
+## jwt Implementation
 
-Example
-
-- JWT verification
-- OAuth2
-- OpenID Connect
-- AWS Cognito
-- Auth0
+`jwt` verifies an access token (JWT), covering the de-facto standard verification core. The signing key is resolved from either a **fixed RSA public key** (`New`) or a **JWKS endpoint by `kid`** (`NewJWKS`); the claim-verification logic is shared.
 
 Here, the following are performed.
 
-- signature verification
-- token validation
-- claims extraction
+- signature verification (asymmetric, algorithm allowlist; `alg=none` / `HS256` rejected)
+- key resolution (fixed public key, or JWKS with `kid` lookup / TTL cache, parsed via `go-jose` and fetched lazily through the `httpclient` substrate)
+- claim validation (`iss` / `aud` / `exp` / `nbf` / `sub`)
+- scope extraction (standard `scope` claim)
+
+IdP-specific dialects (Cognito `token_use`, Azure AD `scp`, opaque tokens, EC keys) are out of scope and documented as extension points. See `jwt/README.md` for details.
+
+## IdentityResolver Implementations
+
+Besides `Authenticator`, this directory also holds implementations of the `IdentityResolver` boundary (resolving an authenticated external identity — issuer + subject — to an internal user):
+
+- `identity` — the substrate default (`passthrough`) that leaves the internal UserID unresolved; wired when no user store is present.
+- `useridentity` — resolves the internal user from the `user_identities` table (sample; removed together with the user sample, after which DI falls back to `identity`).
 
 ## Registration to DI
 
@@ -116,7 +122,7 @@ Example
 func provideAuthenticator(...) auth.Authenticator
 ```
 
-Based on environment variables or configuration,
+Based on the environment,
 
 ```txt
 local
@@ -125,7 +131,7 @@ stg
 prd
 ```
 
-the implementation is switched.
+the **verification method** is selected (e.g. `local` stub for CI / test; `jwt` for local / development).
 
 ## Design Policy
 
@@ -151,14 +157,20 @@ The following are not handled.
 
 These are handled in the **Usecase layer**.
 
-### 3 Separate by environment
+### 3 Separate by verification method
 
-Since authentication methods may differ by environment,
+Since authentication may use different verification strategies,
 
 ```txt
 local
-stg
-prd
+jwt
 ```
 
-they are separated into directories.
+they are separated into directories by method, and DI selects the method per environment.
+
+### 4 Constructor convention
+
+Authenticator constructors follow a consistent shape based on their inputs:
+
+- A lightweight constructor that takes no verification parameters returns the interface only — `func New() Authenticator` (e.g. `local`).
+- A constructor that takes verification parameters requiring validation (key parsing, required fields) returns `(Authenticator, error)` and fails at construction time — `func New(Params) (Authenticator, error)` (e.g. `jwt`).

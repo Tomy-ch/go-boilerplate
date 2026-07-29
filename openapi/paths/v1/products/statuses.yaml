@@ -1,0 +1,20 @@
+get:
+  operationId: GetProductStatuses
+  tags:
+    - v1/products/statuses
+  summary: 商品ステータスマスタ一覧の取得
+  description: |
+    商品ステータスマスタの全件を sortKey（表示順）昇順で返します。
+    認証不要の公開エンドポイントであり、ページネーションは行いません（全 10 件を返します）。
+  security: []
+  responses:
+    '200':
+      description: 商品ステータスマスタの一覧（sortKey 昇順）
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/products/status/ProductsStatusesResponse.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

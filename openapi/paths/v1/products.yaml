@@ -1,0 +1,69 @@
+get:
+  operationId: GetProducts
+  tags:
+    - v1/products
+  summary: 商品一覧の取得
+  description: |
+    公開済みの商品を cursor ページネーションで取得します。認証不要の公開エンドポイントです。
+    既定では公開日時の降順（publishedAt DESC, id DESC）で並び、sort=publishedAt で昇順に切り替えられます。
+    categoryId / statusId でフィルタ、keyword で商品名・説明の部分一致検索ができます。
+    公開日時が未設定（未公開）の商品は返しません。ステータスによる可視範囲の絞り込みは今後対応予定です。
+    price は USD セント単位の整数です。
+  security: []
+  parameters:
+    - $ref: '../../components/parameters/pagination/CursorAfterParam.yaml'
+    - $ref: '../../components/parameters/pagination/CursorFirstParam.yaml'
+    - $ref: '../../components/parameters/product/CategoryIdParam.yaml'
+    - $ref: '../../components/parameters/product/StatusIdParam.yaml'
+    - $ref: '../../components/parameters/search/KeywordParam.yaml'
+    - $ref: '../../components/parameters/product/SortParam.yaml'
+  responses:
+    '200':
+      description: cursor ページネーションで取得した公開商品一覧
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/products/ProductListResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'
+post:
+  operationId: PostProducts
+  tags:
+    - v1/products
+  summary: 商品の作成
+  description: |
+    商品を作成します。認証必須（admin のみ・非 admin は 403）。
+    description はリッチテキスト HTML を許容し、そのまま格納します（表示側でサニタイズします）。
+    imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+    price の非数値は 400、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+  security:
+    - BearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/requests/products/ProductsPostRequest.yaml'
+  responses:
+    '201':
+      description: 商品の作成に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ProductResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../components/schemas/errors/Forbidden403.yaml'
+    '422':
+      $ref: '../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'

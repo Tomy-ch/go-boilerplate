@@ -1,19 +1,10 @@
 description: ユーザー情報の新規作成
 allOf:
   - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - properties:
-      password:
-        description: ユーザーのパスワード
-        type: string
-        format: password
-        minLength: 8
-        maxLength: 64
-        example: "P@ssw0rd!"
-    required:
+  - required:
       - firstName
       - lastName
       - email
-      - password
       - phone
       - prefecture
       - city

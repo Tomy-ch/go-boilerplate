@@ -127,8 +127,9 @@ make gen-query
 **なぜ最初か:** lean A では domain と usecase の実装はこれらの spec に対して検証され（`/verify-spec`）、
 spec の Entity フィールド表は SQL マイグレーションに対して照合されるソフト契約である。これらを最初に
 書くことで、以降の全ステップに目標が与えられる。例えば Entity セクションは、`prefectureID` を ID 参照
-としてのみ保持すること、そして平文パスワードではなく `passwordHash` を永続化する資格情報とすることを
-固定する。
+としてのみ保持することを固定する。`User` 集約は自前のクレデンシャルを一切持たない: 認証は外部の OIDC
+provider に委譲され、トークンの `(issuer, subject)` から内部ユーザーへの対応は別テーブル
+`user_identities` が所有する（[`docs/design/auth.md`](../design/auth.ja.md) を参照）。
 
 **検証:** まだなし（Markdown）。スキルがあれば `/verify-spec user` が形式 + 相互参照を確認する。
 
@@ -143,9 +144,9 @@ spec の Entity フィールド表は SQL マイグレーションに対して�
 
 **ファイル:**
 
-- `openapi/paths/v1/users.yaml`（一覧 + 作成）、`openapi/paths/v1/users/user_id.yaml`
-  （取得/更新/部分更新/削除）、`openapi/paths/v1/users/me/password.yaml`、
-  `openapi/paths/v1/users/search.yaml`。
+- `openapi/paths/v1/users.yaml`（一覧 + 作成）、`openapi/paths/v1/users/userId.yaml`
+  （取得/更新/部分更新/削除）、`openapi/paths/v1/users/me.yaml`（認証済み自己取得）、
+  `openapi/paths/v1/users/search.yaml`、`openapi/paths/v1/users/feed.yaml`。
 - `openapi/components/schemas/{UserBaseInputRequest,UserResponse}.yaml`、加えて users と search 向けの
   `requests/`・`responses/`・`parameters/` 断片。
 - `openapi/openapi.yaml` —— 上記を `$ref` するルート文書。ここのサンプルエントリは `paths`・
@@ -220,7 +221,8 @@ sentinel エラー、定数、そして Repository インターフェース。
 - `user_domain.go` —— `User` 構造体 + `New(...)` コンストラクタ + getter + 振る舞いメソッド。
 - `constant.go` —— spec のフィールド制約から導いた `min*/max*` の長さ境界。
 - `error.go` —— `ErrInvalid<Field>` sentinel + `ErrAlreadyDeleted` など。
-- `raw_password.go` —— `RawPassword` 値オブジェクト（長さ検証済みの平文。ハッシュ化は外側のレイヤー）。
+- `email.go` / `postal_code.go` —— 値オブジェクト（`Email` / `PostalCode`）。生の文字列をファクトリ
+  （`NewEmail` / `NewPostalCode`）で検証し `Value()` で公開するため、不正な形式は決して構築できない。
 - `user_repository.go` —— Repository インターフェース。`//go:generate mockgen` ディレクティブを持つ
   （→ `mock/`）。
 - `*_test.go` —— 不変条件、振る舞いメソッド、VO 境界。
@@ -249,9 +251,9 @@ func New(id uuid.UUID, firstName /* … */ string, /* … */ ) (*User, error) {
 }
 ```
 
-変更は不変条件を再チェックするメソッドである（例: `UpdateProfile`、`ChangePassword`、
-`MarkAsDeleted` —— いずれも最初に `ensureNotDeleted` を呼ぶ）。実ファイルを読むこと: それが将来の
-あらゆる集約の正典テンプレートである。
+変更は不変条件を再チェックするメソッドである（例: `UpdateProfile`、`MarkAsDeleted` —— いずれも
+最初に `ensureNotDeleted` を呼ぶ）。実ファイルを読むこと: それが将来のあらゆる集約の正典テンプレート
+である。
 
 **検証:**
 
@@ -331,21 +333,20 @@ go test ./internal/infrastructure/rdb/repository/user/... \
 
 - **DTO を返す。ドメインエンティティは決して返さない。** `*user.User` → `UserView` へマップしてから
   返す。
-- **時刻とトランザクションは boundary 経由で来る**。標準ライブラリではない: `u.clock.Now()`
-  （`time.Now()` ではない）、トランザクション境界には `u.txm.Do(ctx, fn)`、パスワードハッシュ化には
-  `u.encrypter.Hash(...)`。決定性とテスト容易性はこれに依存する。
+- **時刻とトランザクションは boundary 経由で来る**。標準ライブラリではない: 現在時刻には
+  `u.clock.Now()`（`time.Now()` ではない）、トランザクション境界には `u.txm.Do(ctx, fn)`。非決定的
+  または外部の依存はすべて `boundary/` インターフェースとして届く。決定性とテスト容易性はこれに依存する。
 - **usecase がトランザクション境界を所有する**。domain は `tx` を何も知らない。
 - **オーケストレーションせよ、ルールを再実装するな。** ドメインの振る舞いメソッドを呼ぶのはよい。
   新しい不変条件をここに符号化するのはダメ —— それは domain に属する。
 
-書き込みユースケースの形 —— 時刻を取得し、ハッシュ化し、トランザクション内で実行する:
+書き込みユースケースの形 —— clock boundary から時刻を取得し、トランザクション内で実行する:
 
 ```go
 // 形のみ —— 実本体は user_usecase.go を参照
 func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
  ctx, endSpan := u.tracer.Start(ctx); defer endSpan()
  now := u.clock.Now()                                   // time.Now() ではなく boundary
- hash, err := u.encrypter.Hash(dto.RawPassword)         // boundary
  // … u.txm.Do(ctx, func(ctx) { user.New(...now...); u.repo.Create(...) }) …
  return toUserView(entity /* … */), nil                 // DTO を返す
 }

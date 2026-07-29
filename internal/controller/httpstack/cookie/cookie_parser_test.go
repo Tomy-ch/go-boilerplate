@@ -132,6 +132,42 @@ func Test_splitAttr(t *testing.T) {
 	})
 }
 
+func Test_upsertAttr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("新規キーはorderに追加されキーは小文字化される", func(t *testing.T) {
+			t.Parallel()
+			attrs := &cookieAttrs{order: []string{}, kv: map[string]*string{}}
+
+			upsertAttr(attrs, "Path", new("/"))
+			assert.Equal(t, []string{"path"}, attrs.order)
+			assertKV(t, attrs, "path", "/")
+		})
+
+		t.Run("既存キーの更新ではorderに重複追加されない", func(t *testing.T) {
+			t.Parallel()
+			attrs := &cookieAttrs{order: []string{}, kv: map[string]*string{}}
+
+			upsertAttr(attrs, "path", new("/a"))
+			upsertAttr(attrs, "PATH", new("/b"))
+			assert.Equal(t, []string{"path"}, attrs.order)
+			assertKV(t, attrs, "path", "/b")
+		})
+
+		t.Run("nil値でフラグ属性として設定される", func(t *testing.T) {
+			t.Parallel()
+			attrs := &cookieAttrs{order: []string{}, kv: map[string]*string{}}
+
+			upsertAttr(attrs, "Secure", nil)
+			assert.Equal(t, []string{"secure"}, attrs.order)
+			assertFlag(t, attrs, "secure")
+		})
+	})
+}
+
 func Test_setBoolAttr(t *testing.T) {
 	t.Parallel()
 

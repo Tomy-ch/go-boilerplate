@@ -57,6 +57,21 @@ func (mr *MockRepositoryMockRecorder) CountByActive(ctx, active any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByActive", reflect.TypeOf((*MockRepository)(nil).CountByActive), ctx, active)
 }
 
+// CountByKeyword mocks base method.
+func (m *MockRepository) CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountByKeyword", ctx, keywords, active)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountByKeyword indicates an expected call of CountByKeyword.
+func (mr *MockRepositoryMockRecorder) CountByKeyword(ctx, keywords, active any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByKeyword", reflect.TypeOf((*MockRepository)(nil).CountByKeyword), ctx, keywords, active)
+}
+
 // Create mocks base method.
 func (m *MockRepository) Create(ctx context.Context, arg1 *user.User) error {
 	m.ctrl.T.Helper()
@@ -114,6 +129,21 @@ func (m *MockRepository) FindFeed(ctx context.Context, after *user.FeedCursor, l
 func (mr *MockRepositoryMockRecorder) FindFeed(ctx, after, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeed", reflect.TypeOf((*MockRepository)(nil).FindFeed), ctx, after, limit)
+}
+
+// SearchByKeyword mocks base method.
+func (m *MockRepository) SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchByKeyword", ctx, keywords, active, limit, offset)
+	ret0, _ := ret[0].(user.Users)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchByKeyword indicates an expected call of SearchByKeyword.
+func (mr *MockRepositoryMockRecorder) SearchByKeyword(ctx, keywords, active, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchByKeyword", reflect.TypeOf((*MockRepository)(nil).SearchByKeyword), ctx, keywords, active, limit, offset)
 }
 
 // Update mocks base method.

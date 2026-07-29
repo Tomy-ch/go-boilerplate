@@ -14,13 +14,30 @@ SELECT COUNT(*)
 FROM users AS u
 WHERE u.deleted_at IS NOT NULL;
 
+-- === source: database/dml/repository/user/count_users_by_keyword.sql ===
+-- name: CountSearchUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT []);
+
+-- name: CountSearchActiveUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+    AND u.deleted_at IS NULL;
+
+-- name: CountSearchDeletedUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+    AND u.deleted_at IS NOT NULL;
+
 -- === source: database/dml/repository/user/insert_user.sql ===
 -- name: CreateUser :exec
 INSERT INTO users (
     id,
     first_name,
     last_name,
-    password_hash,
     email,
     phone,
     prefecture_id,
@@ -35,7 +52,6 @@ INSERT INTO users (
     sqlc.arg('id'),
     sqlc.arg('first_name'),
     sqlc.arg('last_name'),
-    sqlc.arg('password_hash'),
     sqlc.arg('email'),
     sqlc.arg('phone'),
     sqlc.arg('prefecture_id'),
@@ -86,6 +102,30 @@ WHERE u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 
+-- === source: database/dml/repository/user/select_users_by_keyword.sql ===
+-- name: SearchUsers :many
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+ORDER BY u.created_at DESC
+LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
+
+-- name: SearchActiveUsers :many
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+    AND u.deleted_at IS NULL
+ORDER BY u.created_at DESC
+LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
+
+-- name: SearchDeletedUsers :many
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+    AND u.deleted_at IS NOT NULL
+ORDER BY u.created_at DESC
+LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
+
 -- === source: database/dml/repository/user/select_users_feed.sql ===
 -- name: ListUsersFeedFirst :many
 SELECT sqlc.embed(u)
@@ -112,7 +152,6 @@ UPDATE users
 SET
     first_name = sqlc.arg('first_name'),
     last_name = sqlc.arg('last_name'),
-    password_hash = sqlc.arg('password_hash'),
     email = sqlc.arg('email'),
     phone = sqlc.arg('phone'),
     prefecture_id = sqlc.arg('prefecture_id'),

@@ -9,12 +9,8 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-const (
-	// IssuerMock はモック認証の発行者（issuer）を示します。
-	IssuerMock = "mock"
-	// ProviderJWT は JWT 検証による認証プロバイダを示します。
-	ProviderJWT = "jwt"
-)
+// IssuerMock はモック認証の発行者（issuer）を示します。
+const IssuerMock = "mock"
 
 // Authn は、認証結果を表します。
 // 中核は認証主体 Subject・発行者 Issuer・内部ユーザー UserID の三点です。

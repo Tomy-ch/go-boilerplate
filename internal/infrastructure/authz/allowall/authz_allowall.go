@@ -12,6 +12,9 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// errNonLocalEnv は、全許可 Authorizer を local / ci / test 以外の環境で生成しようとした場合のエラーです。
+var errNonLocalEnv = xerrors.New("allow-all authorizer must not run outside local/ci/test")
+
 // authorizer は、すべての認可要求を許可する Authorizer です（ローカル/開発用の割り切り実装）。
 type authorizer struct{}
 
@@ -26,7 +29,7 @@ func New(appCfg *config.ApplicationConfig) (authzbd.Authorizer, error) {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
 		return &authorizer{}, nil
 	default:
-		return nil, xerrors.New("allow-all authorizer must not run outside local/ci/test: " + appCfg.Env())
+		return nil, xerrors.Wrap(errNonLocalEnv, appCfg.Env())
 	}
 }
 

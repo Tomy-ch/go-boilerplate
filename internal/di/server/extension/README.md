@@ -25,7 +25,7 @@ flowchart TB
 
 - **Pre middleware**: Executed before routing (`e.Pre()`)
 - **Use middleware**: Executed after routing (`e.Use()`)
-- **Configurator**: Configuration applied to Echo instance (debug mode, etc.)
+- **Configurator**: Configuration applied to Echo instance (client IP extraction, error handler, etc.)
 - Duplicate priorities are automatically detected and cause an error
 
 ## Subdirectory List
@@ -64,12 +64,6 @@ flowchart TB
 |`Module()`|Use|Security headers (HSTS, etc.)|
 |`CORSModule()`|Use|CORS configuration|
 |`CookieModule()`|Use|Cookie security attributes|
-
-### nonprod (Non-production)
-
-|Module|Type|Description|
-|---|---|---|
-|`DebugModeModule()`|Configurator|Enable debug mode in development|
 
 ## Notes
 

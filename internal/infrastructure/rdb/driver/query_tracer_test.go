@@ -20,6 +20,14 @@ import (
 
 var errQueryForTest = xerrors.New("query failed for test")
 
+type fakeQueryRecorder struct {
+	observed int
+}
+
+func (f *fakeQueryRecorder) Observe(_ context.Context, _ QueryAttrs) {
+	f.observed++
+}
+
 func newTestQueryTracer(t *testing.T) (*queryTracer, *mock_logging.MockLogger) {
 	t.Helper()
 
@@ -281,6 +289,56 @@ func Test_queryTracer_endFields_Mask(t *testing.T) {
 			// マスク時は args 件数キーが付かず、非マスク時は付く。
 			assert.NotContains(t, maskedEntries[0].ContextMap(), logging.QueryArgsCountKey)
 			assert.Contains(t, plainEntries[0].ContextMap(), logging.QueryArgsCountKey)
+		})
+	})
+}
+
+func Test_queryTracer_recordQueryMetric(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("recorderが設定されている場合はObserveが呼ばれる", func(t *testing.T) {
+			t.Parallel()
+
+			rec := &fakeQueryRecorder{}
+			qt := &queryTracer{recorder: rec}
+			qt.recordQueryMetric(context.Background(), "SELECT 1", time.Millisecond, nil)
+
+			assert.Equal(t, 1, rec.observed)
+		})
+
+		t.Run("recorderがnilの場合は何もしない", func(t *testing.T) {
+			t.Parallel()
+
+			qt := &queryTracer{recorder: nil}
+			// nil recorder でも panic せず no-op で終了する。
+			qt.recordQueryMetric(context.Background(), "SELECT 1", time.Millisecond, nil)
+		})
+	})
+}
+
+func Test_queryTracer_endFields(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		ld := queryLogData{sql: "SELECT $1", args: []any{"secret"}, start: time.Now()}
+
+		t.Run("maskArgsがfalseの場合はargs件数フィールドを含むフィールド列を返す", func(t *testing.T) {
+			t.Parallel()
+
+			qt, _ := newTestQueryTracer(t)
+			qt.maskArgs = false
+			plain := qt.endFields(ld, time.Millisecond, nil)
+
+			qt.maskArgs = true
+			masked := qt.endFields(ld, time.Millisecond, nil)
+
+			// マスク時は args を nil にするため args_count フィールドが 1 つ減る。
+			assert.Len(t, masked, len(plain)-1)
 		})
 	})
 }

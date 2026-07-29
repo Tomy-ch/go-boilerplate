@@ -2,6 +2,8 @@
 .DEFAULT_GOAL := help
 
 # 依存されるファイル
+# Docker関連
+include .makefiles/docker/compose.mk
 # DB関連
 include .makefiles/database/vars.mk
 # Go言語関連
@@ -14,10 +16,12 @@ include .makefiles/database/dml-merge.mk
 include .makefiles/database/seed.mk
 include .makefiles/database/fix.mk
 include .makefiles/database/gen.mk
+include .makefiles/database/pool.mk
 # Application関連
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk
 include .makefiles/app/worker.mk
+include .makefiles/app/mock-auth.mk
 include .makefiles/app/env.mk
 # GitHub関連
 include .makefiles/github/operation/release-branch.mk
@@ -28,6 +32,7 @@ include .makefiles/github/setting/label-setting.mk
 include .makefiles/github/lint.mk
 include .makefiles/github/commitlint.mk
 include .makefiles/github/pin.mk
+include .makefiles/github/workflows.mk
 # Go言語関連
 include .makefiles/go/fmt.mk
 include .makefiles/go/gen.mk
@@ -40,6 +45,7 @@ include .makefiles/go/sqlc.mk
 include .makefiles/docs/gen.mk
 # OpenAPI関連
 include .makefiles/openapi/gen.mk
+include .makefiles/openapi/mock-auth.mk
 # SQL関連
 include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk
@@ -48,6 +54,7 @@ include .makefiles/markdown/lint.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
+include .makefiles/security/npm-cooldown.mk
 # Docker関連
 include .makefiles/docker/lint.mk
 include .makefiles/docker/pin.mk

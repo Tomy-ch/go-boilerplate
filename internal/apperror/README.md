@@ -229,6 +229,8 @@ When adding, document the following in README:
 | `ErrNotFound` | Target does not exist | 404 Not Found |
 | `ErrConflict` | Conflict (unique constraint violation, concurrent update conflict, etc.) | 409 Conflict |
 | `ErrValidation` | Domain / Usecase validation failure | 422 Unprocessable Entity |
+| `ErrUnsupportedMediaType` | Unsupported Content-Type / media format | 415 Unsupported Media Type |
+| `ErrPayloadTooLarge` | Request payload exceeds the allowed size | 413 Payload Too Large |
 | `ErrTooManyRequests` | Too many requests (request throttling, upstream API throttling propagation, etc.) | 429 Too Many Requests |
 | `ErrCanceled` | Client cancelled / disconnected the request | 499 Client Closed Request |
 | `ErrInternal` | Unexpected internal error | 500 Internal Server Error |
@@ -265,3 +267,15 @@ Separately from the HTTP taxonomy above, the package defines three sentinels use
 | `ErrFatal` | Process cannot continue | Drain and stop the engine |
 
 These are **not** part of the HTTP error taxonomy: they have no HTTP status mapping and are excluded from `IsAppError`.
+
+## Test Strategy
+
+This package defines sentinels and the metadata carried alongside them; it performs no I/O and knows nothing about HTTP. Tests are pure unit tests with no mocks — the subjects are the sentinel set, `Meta`, and the wrapping helpers.
+
+- **Sentinel identity survives wrapping** — assert with `errors.Is` after the error has passed through `WithMeta` / `WithDetails` and an outer `%w` wrap. Comparing error strings would pass even when the sentinel is lost, which is the failure this layer exists to prevent.
+- **Mapping completeness** — every sentinel has an entry in the mapping table, verified mechanically rather than by eye (`TestAppErrorsCompleteness`). A sentinel added without an entry must fail the build; this is the one test that must be extended whenever the taxonomy grows.
+- **`Meta` derivation is non-destructive** — `Meta.WithMessage` returns a derived `Meta` and leaves the receiver untouched. Assert the original after deriving, not just the derived value. (`WithDetails` is a different shape — it attaches a freshly built `Meta` to an *error*, so what it must preserve is the wrapped error's sentinel classification, covered by the first bullet.)
+- **Unwrap chain and formatting** — `MetaError` exposes the wrapped error via `Unwrap` and renders the documented form under `%v` / `%+v`. Assert the chain with `errors.Is` / `errors.As`; assert formatting only where the format itself is the contract.
+- **Classification boundary** — `IsAppError` accepts the HTTP taxonomy and rejects what is deliberately outside it (the worker sentinels `ErrRetryable` / `ErrPermanent` / `ErrFatal`). Assert both sides; the rejection is what keeps worker failures from being mapped to an HTTP status.
+
+HTTP status mapping is **not** tested here — it belongs to the controller layer's error handler.

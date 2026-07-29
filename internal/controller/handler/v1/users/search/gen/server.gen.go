@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -18,7 +18,7 @@ import (
 type ServerInterface interface {
 	// ユーザー一覧の取得
 	// (GET /v1/users/search)
-	GetUsersSearch(ctx echo.Context, params GetUsersSearchParams) error
+	GetUsersSearch(ctx *echo.Context, params GetUsersSearchParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -27,8 +27,10 @@ type ServerInterfaceWrapper struct {
 }
 
 // GetUsersSearch converts echo context to params.
-func (w *ServerInterfaceWrapper) GetUsersSearch(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) GetUsersSearch(ctx *echo.Context) error {
 	var err error
+
+	ctx.Set(string(BearerAuthScopes), []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetUsersSearchParams
@@ -69,15 +71,15 @@ func (w *ServerInterfaceWrapper) GetUsersSearch(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -229,7 +231,7 @@ type StrictServerInterface interface {
 	GetUsersSearch(ctx context.Context, request GetUsersSearchRequestObject) (GetUsersSearchResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -242,12 +244,12 @@ type strictHandler struct {
 }
 
 // GetUsersSearch operation middleware
-func (sh *strictHandler) GetUsersSearch(ctx echo.Context, params GetUsersSearchParams) error {
+func (sh *strictHandler) GetUsersSearch(ctx *echo.Context, params GetUsersSearchParams) error {
 	var request GetUsersSearchRequestObject
 
 	request.Params = params
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsersSearch(ctx.Request().Context(), request.(GetUsersSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

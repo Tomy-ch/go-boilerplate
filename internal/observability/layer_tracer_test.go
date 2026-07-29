@@ -208,33 +208,63 @@ func TestLayerTracer_makeSpanName(t *testing.T) {
 	})
 }
 
-func Test_startSpan(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("LayerTracerの設定でspanContextと終了関数を返す", func(t *testing.T) {
-			t.Parallel()
-
-			tracer, shutdown := newTestTracer(t)
-			defer shutdown()
-
-			lt := LayerTracer{
-				tracer: tracer,
-				layer:  Usecase, pkgName: "pkg", funcName: "func",
-			}
-
-			spanCtx, end := lt.startSpan(context.Background(), "optional")
-			end()
-			require.NotNil(t, spanCtx)
-		})
-	})
-}
-
 func newTestTracer(t *testing.T) (trace.Tracer, func()) {
 	t.Helper()
 	tp := sdktrace.NewTracerProvider()
 	tracer := tp.Tracer("test")
 	return tracer, func() { _ = tp.Shutdown(context.Background()) }
+}
+
+func TestLayerTracer_startSpan(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("optionalNameを付与したspan名で子spanを開始し終了関数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			exp := &recordingExporter{}
+			tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+			defer func() { _ = tp.Shutdown(context.Background()) }()
+
+			lt := LayerTracer{
+				tracer: tp.Tracer("test"),
+				layer:  Usecase, pkgName: "pkg", funcName: "func",
+			}
+
+			spanCtx, end := lt.startSpan(context.Background(), "optional")
+
+			// end を呼ぶまで span は終了せず exporter へ出ない。
+			assert.Empty(t, exp.recorded())
+			end()
+
+			assert.True(t, trace.SpanFromContext(spanCtx).SpanContext().IsValid())
+			assert.Equal(t, []string{"usecase.pkg.func.optional"}, exp.recorded())
+		})
+
+		t.Run("親spanのある場合は同一traceの子spanになる", func(t *testing.T) {
+			t.Parallel()
+
+			exp := &recordingExporter{}
+			tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+			defer func() { _ = tp.Shutdown(context.Background()) }()
+
+			lt := LayerTracer{
+				tracer: tp.Tracer("test"),
+				layer:  Infra, pkgName: "pkg", funcName: "func",
+			}
+			parentCtx, parentSpan := tp.Tracer("test").Start(context.Background(), "parent")
+			defer parentSpan.End()
+
+			spanCtx, end := lt.startSpan(parentCtx, "")
+			end()
+
+			childSC := trace.SpanFromContext(spanCtx).SpanContext()
+			assert.Equal(t, parentSpan.SpanContext().TraceID(), childSC.TraceID())
+			assert.NotEqual(t, parentSpan.SpanContext().SpanID(), childSC.SpanID())
+			// optionalName が空ならサフィックスは付かない。
+			assert.Equal(t, []string{"infrastructure.pkg.func"}, exp.recorded())
+		})
+	})
 }

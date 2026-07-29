@@ -12,9 +12,13 @@ type Gateway interface {
 type Rate struct {
     Base  string
     Quote string
-    Value float64
+    Value decimal.Decimal
 }
 ```
+
+`Value` は `float64` ではなく正確な `pkg/decimal.Decimal` です。レートはマネー経路の乗数であり、
+float は取込時点で値を破壊するためです（[ADR-0102](../../../../docs/adr/0102-exact-decimal-pkg-wrap.md) /
+[ADR-0103](../../../../docs/adr/0103-decimal-half-up-rounding.md)）。
 
 ## なぜ抽象化するのか
 

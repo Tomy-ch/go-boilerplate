@@ -1,4 +1,13 @@
 
+-- === source: database/dml/repository/prefecture/select_all_prefectures.sql ===
+-- name: GetPrefectureDomainAll :many
+SELECT
+    p.id,
+    p.name,
+    p.code
+FROM prefectures AS p
+ORDER BY p.code ASC;
+
 -- === source: database/dml/repository/prefecture/select_prefecture_by_id.sql ===
 -- name: GetPrefectureDomainByID :one
 SELECT

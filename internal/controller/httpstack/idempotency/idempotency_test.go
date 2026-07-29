@@ -16,9 +16,11 @@ import (
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	idempotencyuc "go-boilerplate/internal/usecase/idempotency"
+	mock_idempotencyuc "go-boilerplate/internal/usecase/idempotency/mock"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -33,6 +35,8 @@ const (
 	sentinel = "SENTINEL"
 	// testUserID は、内部 UserID 解決済みの Authn を作るためのテスト用 UUID subject です。
 	testUserID = "550e8400-e29b-41d4-a716-446655440000"
+	// testOperationID は、operationID の伝播を追うための任意値です。
+	testOperationID = "PostResources"
 )
 
 type spyRequest struct {
@@ -40,12 +44,12 @@ type spyRequest struct {
 }
 
 // strictHandlerFunc は、oapi-codegen 生成の gen.StrictHandlerFunc と同型のテスト用型です。
-type strictHandlerFunc func(ec echo.Context, request any) (any, error)
+type strictHandlerFunc func(ec *echo.Context, request any) (any, error)
 
-// newEcho は、テスト用の echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
+// newEcho は、テスト用の *echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
 // withAuthn なら subject を持つ Authn を ctx に仕込みます。subject が UUID として解釈できる場合は
 // 内部 UserID も解決済みにします（冪等性スコープは内部 UserID を使うため）。
-func newEcho(key string, withAuthn bool, subject string) echo.Context {
+func newEcho(key string, withAuthn bool, subject string) *echo.Context {
 	ctx := context.Background()
 	if withAuthn {
 		ctx = ctxhelper.WithAuthn(ctx)
@@ -72,7 +76,7 @@ func TestStrictMiddleware(t *testing.T) {
 			t.Parallel()
 
 			called := false
-			h := strictHandlerFunc(func(echo.Context, any) (any, error) {
+			h := strictHandlerFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -97,7 +101,7 @@ func Test_handle(t *testing.T) {
 		t.Run("ヘッダ無しは素通しし後段をそのまま呼ぶ", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -113,7 +117,7 @@ func Test_handle(t *testing.T) {
 		t.Run("空白のみのキーは素通しし後段をそのまま呼ぶ", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -131,7 +135,7 @@ func Test_handle(t *testing.T) {
 		t.Run("認証が無ければ冪等性は発動せず素通しする", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -147,7 +151,7 @@ func Test_handle(t *testing.T) {
 		t.Run("認証ありでも内部UserID未解決なら冪等性は発動せず素通しする", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -164,7 +168,7 @@ func Test_handle(t *testing.T) {
 		t.Run("有効キー+UserID解決済みなら Request を ctx に載せて後段へ渡す", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -211,7 +215,7 @@ func Test_handle(t *testing.T) {
 		t.Run("255文字超のキーは400で後段を呼ばない", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -226,7 +230,7 @@ func Test_handle(t *testing.T) {
 		t.Run("非印字ASCIIを含むキーは400で後段を呼ばない", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -241,7 +245,7 @@ func Test_handle(t *testing.T) {
 		t.Run("指紋生成に失敗するリクエストは500で後段を呼ばない(fail-closed)", func(t *testing.T) {
 			t.Parallel()
 			called := false
-			next := NextFunc(func(echo.Context, any) (any, error) {
+			next := NextFunc(func(*echo.Context, any) (any, error) {
 				called = true
 				return sentinel, nil
 			})
@@ -350,6 +354,92 @@ func Test_fingerprint(t *testing.T) {
 			t.Parallel()
 			_, err := fingerprint(http.MethodPost, testPath, make(chan int))
 			require.Error(t, err)
+		})
+	})
+}
+
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("捕捉した next と operationID を handle へ渡す", func(t *testing.T) {
+			t.Parallel()
+			called := false
+			next := NextFunc(func(*echo.Context, any) (any, error) {
+				called = true
+				return sentinel, nil
+			})
+			ec := newEcho("key-mw", true, testUserID)
+
+			res, err := Middleware()(next, testOperationID)(ec, spyRequest{Name: "alice"})
+			require.NoError(t, err)
+			assert.True(t, called)
+			assert.Equal(t, sentinel, res)
+
+			// operationID は ctx に stash された Request 経由でしか観測できないため、Run に渡して
+			// o11y カウンタへ届いたラベルを見る。
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+			txm := mock_tx.NewMockManager(ctrl)
+			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
+
+			var gotOperationID string
+			metrics.EXPECT().IncMiss(gomock.Any(), gomock.Any()).Do(
+				func(_ context.Context, operationID string) { gotOperationID = operationID })
+
+			deps := idempotencyuc.Deps{Txm: txm, Store: store, Clock: clk, Metrics: metrics}
+			_, _, runErr := idempotencyuc.Run(ec.Request().Context(), deps, 201,
+				func(context.Context) (string, error) { return "ok", nil })
+			require.NoError(t, runErr)
+
+			assert.Equal(t, testOperationID, gotOperationID)
+		})
+
+		t.Run("同一factoryから生成したwrapperはそれぞれの後段を呼び分ける", func(t *testing.T) {
+			t.Parallel()
+
+			mw := Middleware()
+			firstCalled, secondCalled := false, false
+			first := mw(NextFunc(func(*echo.Context, any) (any, error) {
+				firstCalled = true
+				return "FIRST", nil
+			}), "PostResources")
+			second := mw(NextFunc(func(*echo.Context, any) (any, error) {
+				secondCalled = true
+				return "SECOND", nil
+			}), "PutResources")
+
+			gotFirst, err := first(newEcho("key-1", true, testUserID), spyRequest{})
+			require.NoError(t, err)
+			gotSecond, err := second(newEcho("key-2", true, testUserID), spyRequest{})
+			require.NoError(t, err)
+
+			assert.Equal(t, "FIRST", gotFirst)
+			assert.Equal(t, "SECOND", gotSecond)
+			assert.True(t, firstCalled)
+			assert.True(t, secondCalled)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("後段が返したerrorをそのまま透過する", func(t *testing.T) {
+			t.Parallel()
+
+			boom := xerrors.New("handler boom")
+			next := NextFunc(func(*echo.Context, any) (any, error) { return nil, boom })
+
+			_, err := Middleware()(next, "PostResources")(newEcho("key-1", true, testUserID), spyRequest{})
+
+			require.ErrorIs(t, err, boom)
 		})
 	})
 }

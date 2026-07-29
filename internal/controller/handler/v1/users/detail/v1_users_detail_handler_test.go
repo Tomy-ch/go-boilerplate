@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/testkit/testauth"
@@ -15,7 +16,7 @@ import (
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,8 +59,8 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	got := make(map[string]bool, len(e.Routes()))
-	for _, r := range e.Routes() {
+	got := make(map[string]bool, len(e.Router().Routes()))
+	for _, r := range e.Router().Routes() {
 		got[r.Method+" "+r.Path] = true
 	}
 
@@ -68,10 +69,10 @@ func TestBindHandler(t *testing.T) {
 		http.MethodPut + " " + targetPath,
 		http.MethodPatch + " " + targetPath,
 		http.MethodDelete + " " + targetPath,
-		http.MethodPut + " /v1/users/me/password",
+		http.MethodGet + " /v1/users/me",
 	}
 
-	assert.Len(t, e.Routes(), len(expected))
+	assert.Len(t, e.Router().Routes(), len(expected))
 	for _, route := range expected {
 		assert.Contains(t, got, route)
 	}
@@ -125,6 +126,71 @@ func Test_server_GetUsersDetail(t *testing.T) {
 			resp, err := s.GetUsersDetail(
 				testauth.MakeAvailableAuthn(context.Background(), t, subject),
 				gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)},
+			)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+	})
+}
+
+func Test_server_GetUsersMe(t *testing.T) {
+	t.Parallel()
+
+	dto := user.UserView{
+		FirstName: "Me", LastName: "Self", Email: "me@example.com", Phone: "09000000000",
+		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3", Building: new("B1"),
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("認証ユーザー自身の詳細が取得できる", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(dto, nil)
+
+			resp, err := s.GetUsersMe(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.GetUsersMeRequestObject{},
+			)
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.GetUsersMe200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, wantUserResponse(dto), gen.UserResponse(actual))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.GetUsersMe(context.Background(), gen.GetUsersMeRequestObject{})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
+		t.Run("内部UserIDが未解決でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
+			s, _ := newServer(t)
+
+			resp, err := s.GetUsersMe(ctx, gen.GetUsersMeRequestObject{})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
+		})
+
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(user.UserView{}, apperror.ErrNotFound)
+
+			resp, err := s.GetUsersMe(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.GetUsersMeRequestObject{},
 			)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
@@ -301,69 +367,6 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 	})
 }
 
-func Test_server_PutUsersMePassword(t *testing.T) {
-	t.Parallel()
-
-	const subject = "11111111-1111-1111-1111-111111111111"
-	body := &gen.PutUsersMePasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
-		CurrentPassword: "current_password",
-		NewPassword:     "new_valid_password",
-	}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("認証ユーザーのパスワード変更が成功する場合_204が返る", func(t *testing.T) {
-			t.Parallel()
-			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-			s, mockApp := newServer(t)
-			mockApp.EXPECT().
-				ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
-				Return(nil)
-
-			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-			require.NoError(t, err)
-
-			_, ok := resp.(gen.PutUsersMePassword204Response)
-			assert.True(t, ok)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("認証情報がない場合_エラーが返る", func(t *testing.T) {
-			t.Parallel()
-			s, _ := newServer(t)
-			resp, err := s.PutUsersMePassword(context.Background(), gen.PutUsersMePasswordRequestObject{Body: body})
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
-		})
-
-		t.Run("内部UserIDが未解決でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
-			t.Parallel()
-			ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
-			s, _ := newServer(t)
-			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
-		})
-
-		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
-			t.Parallel()
-			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-			s, mockApp := newServer(t)
-			mockApp.EXPECT().
-				ChangePassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(apperror.ErrValidation)
-
-			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, apperror.ErrValidation)
-		})
-	})
-}
-
 func Test_server_DeleteUsersDetail(t *testing.T) {
 	t.Parallel()
 
@@ -406,6 +409,43 @@ func Test_server_DeleteUsersDetail(t *testing.T) {
 			resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+	})
+}
+
+func Test_toUserResponse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全項目が設定されたDTOをレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			deletedAt := time.Date(2026, time.March, 4, 5, 6, 7, 0, time.UTC)
+			dto := user.UserView{
+				FirstName: "太郎", LastName: "山田", Email: "taro@example.com", Phone: "1234567890",
+				PostalCode: "100-0001", PrefectureName: "東京都", City: "千代田区", Street: "1-1",
+				Building: new("ビルA"), DeletedAt: &deletedAt,
+			}
+
+			assert.Equal(t, wantUserResponse(dto), toUserResponse(dto))
+		})
+
+		t.Run("任意項目がnilのDTOはレスポンスでもnilのまま写像する", func(t *testing.T) {
+			t.Parallel()
+
+			dto := user.UserView{
+				FirstName: "花子", LastName: "鈴木", Email: "hanako@example.com", Phone: "0987654321",
+				PostalCode: "200-0002", PrefectureName: "大阪府", City: "北区", Street: "2-2",
+				Building: nil, DeletedAt: nil,
+			}
+
+			actual := toUserResponse(dto)
+			assert.Nil(t, actual.Building)
+			assert.Nil(t, actual.DeletedAt)
+			assert.Equal(t, types.Email("hanako@example.com"), actual.Email)
+			assert.Equal(t, "大阪府", actual.Prefecture)
 		})
 	})
 }

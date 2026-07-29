@@ -49,6 +49,7 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 		t.Parallel()
 		txm := &testTxRunner{
 			inner: innerTxm,
+			db:    db,
 			t:     t,
 		}
 		txm.WithinTx(func(_ context.Context) {})
@@ -66,5 +67,31 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 			t:     t,
 		}
 		txm.WithinTx(func(_ context.Context) {})
+	})
+}
+
+func Test_getTestDB(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("接続可能なドライバを返す", func(t *testing.T) {
+			t.Parallel()
+
+			db := getTestDB(t)
+
+			require.NotNil(t, db)
+			require.NoError(t, db.Ping(context.Background()))
+		})
+
+		t.Run("複数回呼び出しても同一のドライバを共有する", func(t *testing.T) {
+			t.Parallel()
+
+			first := getTestDB(t)
+			second := getTestDB(t)
+
+			assert.Same(t, first, second)
+		})
 	})
 }

@@ -7,15 +7,16 @@
 ## `schemas/` との役割境界
 
 - `schemas/` — 小さく再利用できる部品（例：`UserBaseInputRequest.yaml`）。
-- `requests/` — **エンドポイント固有**の形。多くは `allOf` で基底部品を合成し、操作固有のフィールドを足す。
+- `requests/` — **エンドポイント固有**の形。多くは `allOf` で基底部品を合成し、操作固有の制約（例：`required` リスト）を足す。
 
 ```yaml
 # requests/users/UsersPostRequest.yaml
 allOf:
   - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - properties:
-      password:        # 「ユーザー作成」固有のフィールド
-        type: string
+  - required:          # 「ユーザー作成」で必須となるフィールド
+      - firstName
+      - lastName
+      - email
 ```
 
 ## ディレクトリ内容
@@ -23,10 +24,9 @@ allOf:
 ```text
 requests/
 └── users/
-    ├── UsersPostRequest.yaml      # ユーザー作成（基底 ＋ password）
+    ├── UsersPostRequest.yaml      # ユーザー作成（基底 ＋ 必須フィールド）
     ├── UserPutRequest.yaml        # 全項目更新（全フィールド必須）
-    ├── UserPatchRequest.yaml      # 部分更新（基底・フィールド任意）
-    └── UserPasswordPutRequest.yaml # パスワード変更（現＋新）
+    └── UserPatchRequest.yaml      # 部分更新（基底・フィールド任意）
 ```
 
 > `users/` は**サンプル実装**です。独自リソースでも同じ構造に倣ってください。

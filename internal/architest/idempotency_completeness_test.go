@@ -27,8 +27,8 @@ var handlerMethodRe = regexp.MustCompile(`^func \([^)]*\) (\w+)\(`)
 // OpenAPI のヘッダ宣言を source of truth とし、Run 呼び忘れのような silent な dedup 欠落を loud な失敗に変える。
 //
 // 対象操作は 0 件でも許容する（サンプル API 削除後は該当が無くなり得る）が、検出ロジックの空振りを
-// 防ぐため `<Op>Params struct` を最低 1 件検出できることを別途 assert する。depguard が go/ast を
-// 禁止するため、AST ではなく gofmt 済みソースのテキスト走査で検出する。
+// 防ぐため、param 検出用の正規表現が既知の生成形にマッチすることを別途 assert する。depguard が
+// go/ast を禁止するため、AST ではなく gofmt 済みソースのテキスト走査で検出する。
 func TestIdempotencyCompleteness(t *testing.T) {
 	t.Parallel()
 
@@ -62,9 +62,12 @@ func TestIdempotencyCompleteness(t *testing.T) {
 	require.NoError(t, err)
 
 	// マーカー検出ロジックが生成コードの命名変更等で陳腐化して空振りすると、完全性検証が
-	// 常に成功してしまう。IdempotencyKey の有無に依らず `<Op>Params struct` を最低 1 件は
-	// 検出できること（正規表現が生きていること）を保証する。marked が空（冪等操作 0 件）でも可。
-	require.Positive(t, totalParamsSeen, "生成コードから `<Op>Params struct` を1件も検出できない（正規表現の陳腐化を疑う）")
+	// 常に成功してしまう。これを防ぐため、param 検出の正規表現が既知の生成形にマッチすることを
+	// 直接検証する。サンプル API を全削除すると param を持つ操作は 0 件になり得る（totalParamsSeen==0）
+	// ため、リポジトリ走査の件数ではなく正規表現の自己検査で陳腐化を検出する。
+	t.Logf("param 構造体の検出数: %d（サンプル全削除後は 0 になり得る）", totalParamsSeen)
+	require.NotEmpty(t, paramsStructRe.FindStringSubmatch("type XxxParams struct {"),
+		"paramsStructRe が `<Op>Params struct {` 形にマッチしない（正規表現の陳腐化を疑う）")
 
 	for op, file := range marked {
 		_, ok := wrapped[op]

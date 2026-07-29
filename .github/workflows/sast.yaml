@@ -1,0 +1,226 @@
+name: SAST
+
+# Opengrep (a Semgrep fork) over the repository's own source. It complements the
+# dependency scanners: those ask "is a library we pull in known-vulnerable", this
+# asks "does the code we wrote contain a vulnerable pattern".
+#
+# Scope is deliberately narrow, and each exclusion was chosen against a measured
+# full-repository run rather than guessed:
+#
+#   - Only internal / pkg / cmd / database / openapi are scanned. A whole-repo run
+#     returned 347 findings, 335 of which were plaintext-HTTP links inside the
+#     generated SchemaSpy HTML under docs/db-schema/.
+#   - Dockerfiles are NOT scanned here even though the rulesets cover them. Every
+#     Dockerfile finding duplicated a Trivy DS-0002 result, and trivy-config.yaml
+#     already owns that surface with its own gate and its own documented
+#     exceptions. Two gates on one finding is one gate too many.
+#   - Generated Go and the bundled OpenAPI are excluded: they are not editable, so
+#     a finding there is not actionable.
+#
+# With that scope the baseline is zero findings, which is the point — a new finding
+# is signal rather than something to scroll past. Accepted exceptions are pinned in
+# source with `// nosemgrep: <rule-id>` next to the reason, so they stay visible at
+# the code and still reach code scanning as suppressed SARIF results.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/sast.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'openapi/**'
+      - 'database/**'
+  pull_request:
+    paths:
+      - '.github/workflows/sast.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'openapi/**'
+      - 'database/**'
+  schedule:
+    # Monday 10:00 UTC — the next free slot after the scanners staggered by #677
+    # (00:00 through 09:00). New rules can turn existing code into a finding, so a
+    # scheduled run earns its place even when nothing changed.
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml (SSOT) — never duplicated here.
+      - name: Install opengrep
+        run: mise install aqua:opengrep/opengrep
+
+      # Rulesets are fetched from the Semgrep registry at scan time, so this step
+      # needs network access. --taint-intrafile turns on inter-procedural taint
+      # tracking within a file, which is what makes the injection rules able to
+      # follow a value from source to sink instead of matching a single line.
+      #
+      # opengrep exits 0 whether or not it finds anything (--error would change
+      # that, but it keys off WARNING rather than the ERROR threshold we gate on),
+      # so the verdict is computed from the JSON below.
+      - name: Opengrep scan (JSON)
+        run: |
+          opengrep scan \
+            --config p/golang \
+            --config p/owasp-top-ten \
+            --taint-intrafile \
+            --exclude '*.gen.go' \
+            --exclude '*.sql.go' \
+            --exclude '*_mock.go' \
+            --exclude 'openapi.gen.yaml' \
+            --json \
+            --output opengrep.json \
+            internal pkg cmd database openapi
+        shell: bash
+
+      - name: Create SAST summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          # Findings live under .results[]; severity is nested in .extra. Suppressed
+          # findings are already absent from the JSON (they survive only in SARIF).
+          TOTAL=$(jq '(.results // []) | length' opengrep.json)
+          GATING=$(jq '[(.results // [])[] | select(.extra.severity == "ERROR")] | length' opengrep.json)
+
+          echo "gating=${GATING}" >> "$GITHUB_OUTPUT"
+
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "title=## ✅ SAST: PASS (no findings)" >> "$GITHUB_OUTPUT"
+            echo "No findings." > opengrep-summary.md
+          else
+            if [ "$GATING" -eq 0 ]; then
+              echo "title=## ⚠️ SAST: ${TOTAL} finding(s), none gating" >> "$GITHUB_OUTPUT"
+            else
+              echo "title=## 🚨 SAST: ${GATING} ERROR of ${TOTAL} finding(s)" >> "$GITHUB_OUTPUT"
+            fi
+
+            jq -r '
+              (.results // [])
+              | sort_by({ERROR: 0, WARNING: 1, MEDIUM: 2, INFO: 3}[.extra.severity] // 4)
+              | .[]
+              | "- [\(.extra.severity)] `\(.path):\(.start.line)` \(.check_id)\n  - \(.extra.message | gsub("\n"; " "))"
+            ' opengrep.json > opengrep-summary.md
+          fi
+
+          cat opengrep-summary.md >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload SAST report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: opengrep
+          path: |
+            opengrep.json
+            opengrep-summary.md
+
+      - name: Comment SAST result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- sast-result -->'
+          title: ${{ steps.summarize.outputs.title }}
+          body-file: opengrep-summary.md
+          details-summary: '📄 Summary'
+
+      # opengrep still emits findings suppressed by an in-source `// nosemgrep`,
+      # tagging them with suppressions[].kind = inSource. GitHub code scanning does
+      # NOT honour that tag — the alert lands as state=open with no dismissal — so an
+      # accepted exception would sit in the alert list forever and defeat the
+      # zero-baseline this workflow relies on. They are therefore dropped before the
+      # upload, which also matches the JSON the gate above reads (suppressions are
+      # already applied there). The exception stays visible where it belongs: next to
+      # the code, with the rule id and the reason.
+      - name: Opengrep scan (SARIF)
+        if: always()
+        run: |
+          set -euo pipefail
+
+          opengrep scan \
+            --config p/golang \
+            --config p/owasp-top-ten \
+            --taint-intrafile \
+            --exclude '*.gen.go' \
+            --exclude '*.sql.go' \
+            --exclude '*_mock.go' \
+            --exclude 'openapi.gen.yaml' \
+            --sarif \
+            --output opengrep-raw.sarif \
+            internal pkg cmd database openapi
+
+          jq '.runs[]?.results |= map(select((.suppressions // []) | length == 0))' \
+            opengrep-raw.sarif > opengrep.sarif
+        shell: bash
+
+      - name: Upload SAST SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: opengrep.sarif
+          category: opengrep
+
+      # ERROR is Semgrep's high-severity band. WARNING findings are reported but do
+      # not block: they are advisory patterns whose applicability depends on
+      # context, and blocking on them would push contributors toward blanket
+      # suppression.
+      - name: Fail if a gating finding was found
+        if: always() && steps.summarize.outputs.gating != '0'
+        run: exit 1
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: sast
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.sast.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: sast
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -79,6 +79,29 @@ func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.P
 	return rowToPrefecture(row.ID, row.Name, row.Code)
 }
 
+// FindAll は、全都道府県エンティティを code 昇順で取得します。
+func (r *repository) FindAll(ctx context.Context) (prefecture.Prefectures, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	rows, err := db.GetPrefectureDomainAll(ctx)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	prefectures := make(prefecture.Prefectures, len(rows))
+	for i, row := range rows {
+		prefectureEntity, err := rowToPrefecture(row.ID, row.Name, row.Code)
+		if err != nil {
+			return nil, err
+		}
+		prefectures[i] = prefectureEntity
+	}
+
+	return prefectures, nil
+}
+
 // rowToPrefecture は、DB 行の値からドメインエンティティを再構築します。
 // 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToPrefecture(id uuid.UUID, name string, code int16) (*prefecture.Prefecture, error) {

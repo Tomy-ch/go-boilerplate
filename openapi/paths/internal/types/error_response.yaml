@@ -6,6 +6,7 @@ get:
   tags:
     - internal/types/error-response
   operationId: GenerateErrorSchema
+  security: []
   responses:
     '200':
       description: このレスポンスの型を生成するためです。

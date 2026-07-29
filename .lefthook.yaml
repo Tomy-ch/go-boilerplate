@@ -1,10 +1,10 @@
 pre-commit:
   parallel: true
   commands:
-    lint:
+    go-lint:
       glob: "*.go"
       run: make lint
-    test:
+    go-test:
       glob: "*.go"
       run: make test-cached
     sql-lint:
@@ -18,6 +18,14 @@ pre-commit:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
       run: make actions-lint
+    oapi-lint:
+      glob:
+        - "openapi/**/*.yaml"
+      run: make lint-oapi
+    mock-auth-oapi-lint:
+      glob:
+        - "docker/mock-auth-server/openapi/**/*.yaml"
+      run: make lint-mock-auth-oapi
     docker-lint:
       glob:
         - "docker/**/Dockerfile"
@@ -32,6 +40,7 @@ pre-commit:
     pin-images:
       glob:
         - "docker/**/Dockerfile"
+        - "docker-compose*.yaml"
         - "docker/images-pin.toml"
       run: make pin-images-check
     migration-check-version:
@@ -55,6 +64,12 @@ pre-push:
       glob: "*.go"
       run: make test
     gen-go-check:
+      glob:
+        - "*.go"
+        - "openapi/**/*.yaml"
       run: make gen-bundle-oapi gen-go-code && git diff --exit-code -- '*.gen.go' '*/mock/mock_*.go' '*_mock.go' openapi/openapi.gen.yaml
     tidy-check:
+      glob:
+        - "go.mod"
+        - "go.sum"
       run: go mod tidy && git diff --exit-code go.mod go.sum

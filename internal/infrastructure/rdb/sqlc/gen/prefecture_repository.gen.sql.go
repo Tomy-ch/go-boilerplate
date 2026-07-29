@@ -11,6 +11,49 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
+const getPrefectureDomainAll = `-- name: GetPrefectureDomainAll :many
+SELECT
+    p.id,
+    p.name,
+    p.code
+FROM prefectures AS p
+ORDER BY p.code ASC
+`
+
+type GetPrefectureDomainAllRow struct {
+	ID   uuid.UUID
+	Name string
+	Code int16
+}
+
+// === source: database/dml/repository/prefecture/select_all_prefectures.sql ===
+//
+//	SELECT
+//	    p.id,
+//	    p.name,
+//	    p.code
+//	FROM prefectures AS p
+//	ORDER BY p.code ASC
+func (q *Queries) GetPrefectureDomainAll(ctx context.Context) ([]*GetPrefectureDomainAllRow, error) {
+	rows, err := q.db.Query(ctx, getPrefectureDomainAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*GetPrefectureDomainAllRow
+	for rows.Next() {
+		var i GetPrefectureDomainAllRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Code); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPrefectureDomainByID = `-- name: GetPrefectureDomainByID :one
 SELECT
     p.id,

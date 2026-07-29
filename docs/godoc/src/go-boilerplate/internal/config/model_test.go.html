@@ -125,613 +125,1127 @@
 <span id="L68" class="ln">    68  </span>			assert.Same(t, &amp;cfg.secureCookie, secureCookieCfg)
 <span id="L69" class="ln">    69  </span>		})
 <span id="L70" class="ln">    70  </span>
-<span id="L71" class="ln">    71  </span>		t.Run(&#34;認証設定のコンストラクタが内部フィールドへの参照を返す&#34;, func(t *testing.T) {
+<span id="L71" class="ln">    71  </span>		t.Run(&#34;worker設定のコンストラクタが内部フィールドへの参照を返す&#34;, func(t *testing.T) {
 <span id="L72" class="ln">    72  </span>			t.Parallel()
-<span id="L73" class="ln">    73  </span>			authCfg := NewAuthConfig(cfg)
-<span id="L74" class="ln">    74  </span>			assert.Same(t, &amp;cfg.auth, authCfg)
+<span id="L73" class="ln">    73  </span>			workerCfg := NewWorkerConfig(cfg)
+<span id="L74" class="ln">    74  </span>			assert.Same(t, &amp;cfg.worker, workerCfg)
 <span id="L75" class="ln">    75  </span>		})
 <span id="L76" class="ln">    76  </span>
-<span id="L77" class="ln">    77  </span>		t.Run(&#34;worker設定のコンストラクタが内部フィールドへの参照を返す&#34;, func(t *testing.T) {
+<span id="L77" class="ln">    77  </span>		t.Run(&#34;outbox設定のコンストラクタが内部フィールドへの参照を返す&#34;, func(t *testing.T) {
 <span id="L78" class="ln">    78  </span>			t.Parallel()
-<span id="L79" class="ln">    79  </span>			workerCfg := NewWorkerConfig(cfg)
-<span id="L80" class="ln">    80  </span>			assert.Same(t, &amp;cfg.worker, workerCfg)
+<span id="L79" class="ln">    79  </span>			outboxCfg := NewOutboxConfig(cfg)
+<span id="L80" class="ln">    80  </span>			assert.Same(t, &amp;cfg.outbox, outboxCfg)
 <span id="L81" class="ln">    81  </span>		})
 <span id="L82" class="ln">    82  </span>
-<span id="L83" class="ln">    83  </span>		t.Run(&#34;outbox設定のコンストラクタが内部フィールドへの参照を返す&#34;, func(t *testing.T) {
+<span id="L83" class="ln">    83  </span>		t.Run(&#34;認証設定のコンストラクタが内部フィールドへの参照を返す&#34;, func(t *testing.T) {
 <span id="L84" class="ln">    84  </span>			t.Parallel()
-<span id="L85" class="ln">    85  </span>			outboxCfg := NewOutboxConfig(cfg)
-<span id="L86" class="ln">    86  </span>			assert.Same(t, &amp;cfg.outbox, outboxCfg)
+<span id="L85" class="ln">    85  </span>			authCfg := NewAuthConfig(cfg)
+<span id="L86" class="ln">    86  </span>			assert.Same(t, &amp;cfg.auth, authCfg)
 <span id="L87" class="ln">    87  </span>		})
 <span id="L88" class="ln">    88  </span>	})
 <span id="L89" class="ln">    89  </span>}
 <span id="L90" class="ln">    90  </span>
-<span id="L91" class="ln">    91  </span>func TestGetterMethods(t *testing.T) {
+<span id="L91" class="ln">    91  </span>func TestOperatingSystemConfig_TimeZone(t *testing.T) {
 <span id="L92" class="ln">    92  </span>	t.Parallel()
 <span id="L93" class="ln">    93  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L94" class="ln">    94  </span>		t.Parallel()
-<span id="L95" class="ln">    95  </span>
-<span id="L96" class="ln">    96  </span>		cfg := MockConfigForTest(t)
-<span id="L97" class="ln">    97  </span>
-<span id="L98" class="ln">    98  </span>		t.Run(&#34;OS設定&#34;, func(t *testing.T) {
-<span id="L99" class="ln">    99  </span>			t.Parallel()
-<span id="L100" class="ln">   100  </span>			os := cfg.os
-<span id="L101" class="ln">   101  </span>			t.Run(&#34;タイムゾーンを取得できる&#34;, func(t *testing.T) {
-<span id="L102" class="ln">   102  </span>				t.Parallel()
-<span id="L103" class="ln">   103  </span>				assert.Equal(t, expectedOSTimeZone, os.TimeZone())
-<span id="L104" class="ln">   104  </span>			})
-<span id="L105" class="ln">   105  </span>		})
-<span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span>		t.Run(&#34;サーバー設定&#34;, func(t *testing.T) {
+<span id="L95" class="ln">    95  </span>		t.Run(&#34;タイムゾーンを取得できる&#34;, func(t *testing.T) {
+<span id="L96" class="ln">    96  </span>			t.Parallel()
+<span id="L97" class="ln">    97  </span>			os := MockConfigForTest(t).os
+<span id="L98" class="ln">    98  </span>			assert.Equal(t, expectedOSTimeZone, os.TimeZone())
+<span id="L99" class="ln">    99  </span>		})
+<span id="L100" class="ln">   100  </span>	})
+<span id="L101" class="ln">   101  </span>}
+<span id="L102" class="ln">   102  </span>
+<span id="L103" class="ln">   103  </span>func TestServerConfig_Host(t *testing.T) {
+<span id="L104" class="ln">   104  </span>	t.Parallel()
+<span id="L105" class="ln">   105  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L106" class="ln">   106  </span>		t.Parallel()
+<span id="L107" class="ln">   107  </span>		t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
 <span id="L108" class="ln">   108  </span>			t.Parallel()
-<span id="L109" class="ln">   109  </span>			server := cfg.server
-<span id="L110" class="ln">   110  </span>			t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
-<span id="L111" class="ln">   111  </span>				t.Parallel()
-<span id="L112" class="ln">   112  </span>				assert.Equal(t, expectedServerHost, server.Host())
-<span id="L113" class="ln">   113  </span>			})
+<span id="L109" class="ln">   109  </span>			server := MockConfigForTest(t).server
+<span id="L110" class="ln">   110  </span>			assert.Equal(t, expectedServerHost, server.Host())
+<span id="L111" class="ln">   111  </span>		})
+<span id="L112" class="ln">   112  </span>	})
+<span id="L113" class="ln">   113  </span>}
 <span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>			t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
-<span id="L116" class="ln">   116  </span>				t.Parallel()
-<span id="L117" class="ln">   117  </span>				assert.Equal(t, expectedServerPort, server.Port())
-<span id="L118" class="ln">   118  </span>			})
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>			t.Run(&#34;ヘッダー読み取りタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L121" class="ln">   121  </span>				t.Parallel()
-<span id="L122" class="ln">   122  </span>				assert.Equal(t, expectedServerReadHeaderTimeout, server.ReadHeaderTimeout())
-<span id="L123" class="ln">   123  </span>			})
-<span id="L124" class="ln">   124  </span>
-<span id="L125" class="ln">   125  </span>			t.Run(&#34;読み取りタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L126" class="ln">   126  </span>				t.Parallel()
-<span id="L127" class="ln">   127  </span>				assert.Equal(t, expectedServerReadTimeout, server.ReadTimeout())
-<span id="L128" class="ln">   128  </span>			})
-<span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span>			t.Run(&#34;書き込みタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L131" class="ln">   131  </span>				t.Parallel()
-<span id="L132" class="ln">   132  </span>				assert.Equal(t, expectedServerWriteTimeout, server.WriteTimeout())
-<span id="L133" class="ln">   133  </span>			})
-<span id="L134" class="ln">   134  </span>
-<span id="L135" class="ln">   135  </span>			t.Run(&#34;アイドルタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L136" class="ln">   136  </span>				t.Parallel()
-<span id="L137" class="ln">   137  </span>				assert.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
-<span id="L138" class="ln">   138  </span>			})
-<span id="L139" class="ln">   139  </span>
-<span id="L140" class="ln">   140  </span>			t.Run(&#34;ボディ上限MBを取得できる&#34;, func(t *testing.T) {
-<span id="L141" class="ln">   141  </span>				t.Parallel()
-<span id="L142" class="ln">   142  </span>				assert.Equal(t, expectedServerBodyLimitMB, server.BodyLimitMB())
-<span id="L143" class="ln">   143  </span>			})
-<span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>			t.Run(&#34;リクエストタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L146" class="ln">   146  </span>				t.Parallel()
-<span id="L147" class="ln">   147  </span>				assert.Equal(t, expectedServerRequestTimeout, server.RequestTimeout())
-<span id="L148" class="ln">   148  </span>			})
-<span id="L149" class="ln">   149  </span>		})
+<span id="L115" class="ln">   115  </span>func TestServerConfig_Port(t *testing.T) {
+<span id="L116" class="ln">   116  </span>	t.Parallel()
+<span id="L117" class="ln">   117  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L118" class="ln">   118  </span>		t.Parallel()
+<span id="L119" class="ln">   119  </span>		t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
+<span id="L120" class="ln">   120  </span>			t.Parallel()
+<span id="L121" class="ln">   121  </span>			server := MockConfigForTest(t).server
+<span id="L122" class="ln">   122  </span>			assert.Equal(t, expectedServerPort, server.Port())
+<span id="L123" class="ln">   123  </span>		})
+<span id="L124" class="ln">   124  </span>	})
+<span id="L125" class="ln">   125  </span>}
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>func TestServerConfig_ReadHeaderTimeout(t *testing.T) {
+<span id="L128" class="ln">   128  </span>	t.Parallel()
+<span id="L129" class="ln">   129  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L130" class="ln">   130  </span>		t.Parallel()
+<span id="L131" class="ln">   131  </span>		t.Run(&#34;ヘッダー読み取りタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L132" class="ln">   132  </span>			t.Parallel()
+<span id="L133" class="ln">   133  </span>			server := MockConfigForTest(t).server
+<span id="L134" class="ln">   134  </span>			assert.Equal(t, expectedServerReadHeaderTimeout, server.ReadHeaderTimeout())
+<span id="L135" class="ln">   135  </span>		})
+<span id="L136" class="ln">   136  </span>	})
+<span id="L137" class="ln">   137  </span>}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>func TestServerConfig_ReadTimeout(t *testing.T) {
+<span id="L140" class="ln">   140  </span>	t.Parallel()
+<span id="L141" class="ln">   141  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L142" class="ln">   142  </span>		t.Parallel()
+<span id="L143" class="ln">   143  </span>		t.Run(&#34;読み取りタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L144" class="ln">   144  </span>			t.Parallel()
+<span id="L145" class="ln">   145  </span>			server := MockConfigForTest(t).server
+<span id="L146" class="ln">   146  </span>			assert.Equal(t, expectedServerReadTimeout, server.ReadTimeout())
+<span id="L147" class="ln">   147  </span>		})
+<span id="L148" class="ln">   148  </span>	})
+<span id="L149" class="ln">   149  </span>}
 <span id="L150" class="ln">   150  </span>
-<span id="L151" class="ln">   151  </span>		t.Run(&#34;メトリクス設定&#34;, func(t *testing.T) {
-<span id="L152" class="ln">   152  </span>			t.Parallel()
-<span id="L153" class="ln">   153  </span>			metrics := cfg.metrics
-<span id="L154" class="ln">   154  </span>
-<span id="L155" class="ln">   155  </span>			t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
-<span id="L156" class="ln">   156  </span>				t.Parallel()
-<span id="L157" class="ln">   157  </span>				assert.Equal(t, expectedMetricsHost, metrics.Host())
-<span id="L158" class="ln">   158  </span>			})
-<span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>			t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
-<span id="L161" class="ln">   161  </span>				t.Parallel()
-<span id="L162" class="ln">   162  </span>				assert.Equal(t, expectedMetricsPort, metrics.Port())
-<span id="L163" class="ln">   163  </span>			})
-<span id="L164" class="ln">   164  </span>
-<span id="L165" class="ln">   165  </span>			t.Run(&#34;ユーザー名を取得できる&#34;, func(t *testing.T) {
-<span id="L166" class="ln">   166  </span>				t.Parallel()
-<span id="L167" class="ln">   167  </span>				assert.Equal(t, expectedMetricsUserName, metrics.UserName())
-<span id="L168" class="ln">   168  </span>			})
-<span id="L169" class="ln">   169  </span>
-<span id="L170" class="ln">   170  </span>			t.Run(&#34;パスワードを取得できる&#34;, func(t *testing.T) {
-<span id="L171" class="ln">   171  </span>				t.Parallel()
-<span id="L172" class="ln">   172  </span>				assert.Equal(t, expectedMetricsPassword, metrics.Password())
-<span id="L173" class="ln">   173  </span>			})
-<span id="L174" class="ln">   174  </span>		})
-<span id="L175" class="ln">   175  </span>
-<span id="L176" class="ln">   176  </span>		t.Run(&#34;オブザーバビリティ設定&#34;, func(t *testing.T) {
-<span id="L177" class="ln">   177  </span>			t.Parallel()
-<span id="L178" class="ln">   178  </span>			observability := cfg.observability
-<span id="L179" class="ln">   179  </span>
-<span id="L180" class="ln">   180  </span>			t.Run(&#34;trace exporter が有効値なら有効を取得できる&#34;, func(t *testing.T) {
-<span id="L181" class="ln">   181  </span>				t.Parallel()
-<span id="L182" class="ln">   182  </span>				assert.True(t, observability.TracesEnabled())
-<span id="L183" class="ln">   183  </span>			})
-<span id="L184" class="ln">   184  </span>
-<span id="L185" class="ln">   185  </span>			t.Run(&#34;metric exporter が有効値なら有効を取得できる&#34;, func(t *testing.T) {
-<span id="L186" class="ln">   186  </span>				t.Parallel()
-<span id="L187" class="ln">   187  </span>				assert.True(t, observability.MetricsEnabled())
-<span id="L188" class="ln">   188  </span>			})
-<span id="L189" class="ln">   189  </span>
-<span id="L190" class="ln">   190  </span>			t.Run(&#34;log exporter が有効値なら有効を取得できる&#34;, func(t *testing.T) {
-<span id="L191" class="ln">   191  </span>				t.Parallel()
-<span id="L192" class="ln">   192  </span>				assert.True(t, observability.LogsEnabled())
-<span id="L193" class="ln">   193  </span>			})
-<span id="L194" class="ln">   194  </span>
-<span id="L195" class="ln">   195  </span>			t.Run(&#34;いずれかの exporter が有効値なら全体有効を取得できる&#34;, func(t *testing.T) {
-<span id="L196" class="ln">   196  </span>				t.Parallel()
-<span id="L197" class="ln">   197  </span>				assert.True(t, observability.Enabled())
-<span id="L198" class="ln">   198  </span>			})
-<span id="L199" class="ln">   199  </span>
-<span id="L200" class="ln">   200  </span>			t.Run(&#34;OTLPエンドポイントを取得できる&#34;, func(t *testing.T) {
-<span id="L201" class="ln">   201  </span>				t.Parallel()
-<span id="L202" class="ln">   202  </span>				assert.Equal(t, expectedObservabilityOTLPEndpoint, observability.OTLPEndpoint())
-<span id="L203" class="ln">   203  </span>			})
-<span id="L204" class="ln">   204  </span>
-<span id="L205" class="ln">   205  </span>			t.Run(&#34;OTLPプロトコルを取得できる&#34;, func(t *testing.T) {
-<span id="L206" class="ln">   206  </span>				t.Parallel()
-<span id="L207" class="ln">   207  </span>				assert.Equal(t, expectedObservabilityOTLPProtocol, observability.OTLPProtocol())
-<span id="L208" class="ln">   208  </span>			})
-<span id="L209" class="ln">   209  </span>
-<span id="L210" class="ln">   210  </span>			t.Run(&#34;DBクエリ引数マスク設定を取得できる&#34;, func(t *testing.T) {
-<span id="L211" class="ln">   211  </span>				t.Parallel()
-<span id="L212" class="ln">   212  </span>				assert.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
-<span id="L213" class="ln">   213  </span>			})
-<span id="L214" class="ln">   214  </span>
-<span id="L215" class="ln">   215  </span>			t.Run(&#34;対象ステータスコード集合を取得できる&#34;, func(t *testing.T) {
-<span id="L216" class="ln">   216  </span>				t.Parallel()
-<span id="L217" class="ln">   217  </span>				assert.Equal(t, expectedObservabilityTargetStatusCodeSet, observability.TargetStatusCodeSet())
-<span id="L218" class="ln">   218  </span>			})
+<span id="L151" class="ln">   151  </span>func TestServerConfig_WriteTimeout(t *testing.T) {
+<span id="L152" class="ln">   152  </span>	t.Parallel()
+<span id="L153" class="ln">   153  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L154" class="ln">   154  </span>		t.Parallel()
+<span id="L155" class="ln">   155  </span>		t.Run(&#34;書き込みタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L156" class="ln">   156  </span>			t.Parallel()
+<span id="L157" class="ln">   157  </span>			server := MockConfigForTest(t).server
+<span id="L158" class="ln">   158  </span>			assert.Equal(t, expectedServerWriteTimeout, server.WriteTimeout())
+<span id="L159" class="ln">   159  </span>		})
+<span id="L160" class="ln">   160  </span>	})
+<span id="L161" class="ln">   161  </span>}
+<span id="L162" class="ln">   162  </span>
+<span id="L163" class="ln">   163  </span>func TestServerConfig_IdleTimeout(t *testing.T) {
+<span id="L164" class="ln">   164  </span>	t.Parallel()
+<span id="L165" class="ln">   165  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L166" class="ln">   166  </span>		t.Parallel()
+<span id="L167" class="ln">   167  </span>		t.Run(&#34;アイドルタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L168" class="ln">   168  </span>			t.Parallel()
+<span id="L169" class="ln">   169  </span>			server := MockConfigForTest(t).server
+<span id="L170" class="ln">   170  </span>			assert.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
+<span id="L171" class="ln">   171  </span>		})
+<span id="L172" class="ln">   172  </span>	})
+<span id="L173" class="ln">   173  </span>}
+<span id="L174" class="ln">   174  </span>
+<span id="L175" class="ln">   175  </span>func TestServerConfig_BodyLimitMB(t *testing.T) {
+<span id="L176" class="ln">   176  </span>	t.Parallel()
+<span id="L177" class="ln">   177  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L178" class="ln">   178  </span>		t.Parallel()
+<span id="L179" class="ln">   179  </span>		t.Run(&#34;ボディ上限MBを取得できる&#34;, func(t *testing.T) {
+<span id="L180" class="ln">   180  </span>			t.Parallel()
+<span id="L181" class="ln">   181  </span>			server := MockConfigForTest(t).server
+<span id="L182" class="ln">   182  </span>			assert.Equal(t, expectedServerBodyLimitMB, server.BodyLimitMB())
+<span id="L183" class="ln">   183  </span>		})
+<span id="L184" class="ln">   184  </span>	})
+<span id="L185" class="ln">   185  </span>}
+<span id="L186" class="ln">   186  </span>
+<span id="L187" class="ln">   187  </span>func TestServerConfig_RequestTimeout(t *testing.T) {
+<span id="L188" class="ln">   188  </span>	t.Parallel()
+<span id="L189" class="ln">   189  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L190" class="ln">   190  </span>		t.Parallel()
+<span id="L191" class="ln">   191  </span>		t.Run(&#34;リクエストタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L192" class="ln">   192  </span>			t.Parallel()
+<span id="L193" class="ln">   193  </span>			server := MockConfigForTest(t).server
+<span id="L194" class="ln">   194  </span>			assert.Equal(t, expectedServerRequestTimeout, server.RequestTimeout())
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>	})
+<span id="L197" class="ln">   197  </span>}
+<span id="L198" class="ln">   198  </span>
+<span id="L199" class="ln">   199  </span>func TestMetricsConfig_Host(t *testing.T) {
+<span id="L200" class="ln">   200  </span>	t.Parallel()
+<span id="L201" class="ln">   201  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L202" class="ln">   202  </span>		t.Parallel()
+<span id="L203" class="ln">   203  </span>		t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
+<span id="L204" class="ln">   204  </span>			t.Parallel()
+<span id="L205" class="ln">   205  </span>			metrics := MockConfigForTest(t).metrics
+<span id="L206" class="ln">   206  </span>			assert.Equal(t, expectedMetricsHost, metrics.Host())
+<span id="L207" class="ln">   207  </span>		})
+<span id="L208" class="ln">   208  </span>	})
+<span id="L209" class="ln">   209  </span>}
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>func TestMetricsConfig_Port(t *testing.T) {
+<span id="L212" class="ln">   212  </span>	t.Parallel()
+<span id="L213" class="ln">   213  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L214" class="ln">   214  </span>		t.Parallel()
+<span id="L215" class="ln">   215  </span>		t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
+<span id="L216" class="ln">   216  </span>			t.Parallel()
+<span id="L217" class="ln">   217  </span>			metrics := MockConfigForTest(t).metrics
+<span id="L218" class="ln">   218  </span>			assert.Equal(t, expectedMetricsPort, metrics.Port())
 <span id="L219" class="ln">   219  </span>		})
-<span id="L220" class="ln">   220  </span>
-<span id="L221" class="ln">   221  </span>		t.Run(&#34;アプリケーション設定&#34;, func(t *testing.T) {
-<span id="L222" class="ln">   222  </span>			t.Parallel()
-<span id="L223" class="ln">   223  </span>			app := cfg.app
-<span id="L224" class="ln">   224  </span>			t.Run(&#34;環境を取得できる&#34;, func(t *testing.T) {
-<span id="L225" class="ln">   225  </span>				t.Parallel()
-<span id="L226" class="ln">   226  </span>				assert.Equal(t, expectedApplicationEnv, app.Env())
-<span id="L227" class="ln">   227  </span>			})
-<span id="L228" class="ln">   228  </span>
-<span id="L229" class="ln">   229  </span>			t.Run(&#34;名前を取得できる&#34;, func(t *testing.T) {
-<span id="L230" class="ln">   230  </span>				t.Parallel()
-<span id="L231" class="ln">   231  </span>				assert.Equal(t, expectedApplicationName, app.Name())
-<span id="L232" class="ln">   232  </span>			})
-<span id="L233" class="ln">   233  </span>
-<span id="L234" class="ln">   234  </span>			t.Run(&#34;モードを取得できる&#34;, func(t *testing.T) {
-<span id="L235" class="ln">   235  </span>				t.Parallel()
-<span id="L236" class="ln">   236  </span>				assert.Equal(t, expectedApplicationMode, app.Mode())
-<span id="L237" class="ln">   237  </span>			})
-<span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span>			t.Run(&#34;ログレベルを取得できる&#34;, func(t *testing.T) {
-<span id="L240" class="ln">   240  </span>				t.Parallel()
-<span id="L241" class="ln">   241  </span>				assert.Equal(t, expectedApplicationLogLevel, app.LogLevel())
-<span id="L242" class="ln">   242  </span>			})
-<span id="L243" class="ln">   243  </span>
-<span id="L244" class="ln">   244  </span>			t.Run(&#34;シャットダウンタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L245" class="ln">   245  </span>				t.Parallel()
-<span id="L246" class="ln">   246  </span>				assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
-<span id="L247" class="ln">   247  </span>			})
-<span id="L248" class="ln">   248  </span>		})
-<span id="L249" class="ln">   249  </span>
-<span id="L250" class="ln">   250  </span>		t.Run(&#34;データベース設定&#34;, func(t *testing.T) { <span class="comment">//nolint:dupl // 逐次t.Runが規約(table-driven禁止)。getter群が他設定ブロックと同型でも重複を許容</span>
-<span id="L251" class="ln">   251  </span>			t.Parallel()
-<span id="L252" class="ln">   252  </span>			database := cfg.database
-<span id="L253" class="ln">   253  </span>			t.Run(&#34;ドライバーを取得できる&#34;, func(t *testing.T) {
-<span id="L254" class="ln">   254  </span>				t.Parallel()
-<span id="L255" class="ln">   255  </span>				assert.Equal(t, expectedDBDriver, database.Driver())
-<span id="L256" class="ln">   256  </span>			})
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>			t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
-<span id="L259" class="ln">   259  </span>				t.Parallel()
-<span id="L260" class="ln">   260  </span>				assert.Equal(t, expectedDBHost, database.Host())
-<span id="L261" class="ln">   261  </span>			})
-<span id="L262" class="ln">   262  </span>
-<span id="L263" class="ln">   263  </span>			t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
-<span id="L264" class="ln">   264  </span>				t.Parallel()
-<span id="L265" class="ln">   265  </span>				assert.Equal(t, expectedDBPort, database.Port())
-<span id="L266" class="ln">   266  </span>			})
-<span id="L267" class="ln">   267  </span>
-<span id="L268" class="ln">   268  </span>			t.Run(&#34;ユーザーを取得できる&#34;, func(t *testing.T) {
-<span id="L269" class="ln">   269  </span>				t.Parallel()
-<span id="L270" class="ln">   270  </span>				assert.Equal(t, expectedDBUser, database.User())
-<span id="L271" class="ln">   271  </span>			})
-<span id="L272" class="ln">   272  </span>
-<span id="L273" class="ln">   273  </span>			t.Run(&#34;パスワードを取得できる&#34;, func(t *testing.T) {
-<span id="L274" class="ln">   274  </span>				t.Parallel()
-<span id="L275" class="ln">   275  </span>				assert.Equal(t, expectedDBPassword, database.Password())
-<span id="L276" class="ln">   276  </span>			})
-<span id="L277" class="ln">   277  </span>
-<span id="L278" class="ln">   278  </span>			t.Run(&#34;データベース名を取得できる&#34;, func(t *testing.T) {
-<span id="L279" class="ln">   279  </span>				t.Parallel()
-<span id="L280" class="ln">   280  </span>				assert.Equal(t, expectedDBName, database.DBName())
-<span id="L281" class="ln">   281  </span>			})
+<span id="L220" class="ln">   220  </span>	})
+<span id="L221" class="ln">   221  </span>}
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span>func TestMetricsConfig_UserName(t *testing.T) {
+<span id="L224" class="ln">   224  </span>	t.Parallel()
+<span id="L225" class="ln">   225  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L226" class="ln">   226  </span>		t.Parallel()
+<span id="L227" class="ln">   227  </span>		t.Run(&#34;ユーザー名を取得できる&#34;, func(t *testing.T) {
+<span id="L228" class="ln">   228  </span>			t.Parallel()
+<span id="L229" class="ln">   229  </span>			metrics := MockConfigForTest(t).metrics
+<span id="L230" class="ln">   230  </span>			assert.Equal(t, expectedMetricsUserName, metrics.UserName())
+<span id="L231" class="ln">   231  </span>		})
+<span id="L232" class="ln">   232  </span>	})
+<span id="L233" class="ln">   233  </span>}
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>func TestMetricsConfig_Password(t *testing.T) {
+<span id="L236" class="ln">   236  </span>	t.Parallel()
+<span id="L237" class="ln">   237  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>		t.Parallel()
+<span id="L239" class="ln">   239  </span>		t.Run(&#34;パスワードを取得できる&#34;, func(t *testing.T) {
+<span id="L240" class="ln">   240  </span>			t.Parallel()
+<span id="L241" class="ln">   241  </span>			metrics := MockConfigForTest(t).metrics
+<span id="L242" class="ln">   242  </span>			assert.Equal(t, expectedMetricsPassword, metrics.Password())
+<span id="L243" class="ln">   243  </span>		})
+<span id="L244" class="ln">   244  </span>	})
+<span id="L245" class="ln">   245  </span>}
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>func TestObservabilityConfig_TracesEnabled(t *testing.T) {
+<span id="L248" class="ln">   248  </span>	t.Parallel()
+<span id="L249" class="ln">   249  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L250" class="ln">   250  </span>		t.Parallel()
+<span id="L251" class="ln">   251  </span>		t.Run(&#34;trace exporter が有効値なら有効を取得できる&#34;, func(t *testing.T) {
+<span id="L252" class="ln">   252  </span>			t.Parallel()
+<span id="L253" class="ln">   253  </span>			observability := MockConfigForTest(t).observability
+<span id="L254" class="ln">   254  </span>			assert.True(t, observability.TracesEnabled())
+<span id="L255" class="ln">   255  </span>		})
+<span id="L256" class="ln">   256  </span>	})
+<span id="L257" class="ln">   257  </span>}
+<span id="L258" class="ln">   258  </span>
+<span id="L259" class="ln">   259  </span>func TestObservabilityConfig_MetricsEnabled(t *testing.T) {
+<span id="L260" class="ln">   260  </span>	t.Parallel()
+<span id="L261" class="ln">   261  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L262" class="ln">   262  </span>		t.Parallel()
+<span id="L263" class="ln">   263  </span>		t.Run(&#34;metric exporter が有効値なら有効を取得できる&#34;, func(t *testing.T) {
+<span id="L264" class="ln">   264  </span>			t.Parallel()
+<span id="L265" class="ln">   265  </span>			observability := MockConfigForTest(t).observability
+<span id="L266" class="ln">   266  </span>			assert.True(t, observability.MetricsEnabled())
+<span id="L267" class="ln">   267  </span>		})
+<span id="L268" class="ln">   268  </span>	})
+<span id="L269" class="ln">   269  </span>}
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>func TestObservabilityConfig_LogsEnabled(t *testing.T) {
+<span id="L272" class="ln">   272  </span>	t.Parallel()
+<span id="L273" class="ln">   273  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L274" class="ln">   274  </span>		t.Parallel()
+<span id="L275" class="ln">   275  </span>		t.Run(&#34;log exporter が有効値なら有効を取得できる&#34;, func(t *testing.T) {
+<span id="L276" class="ln">   276  </span>			t.Parallel()
+<span id="L277" class="ln">   277  </span>			observability := MockConfigForTest(t).observability
+<span id="L278" class="ln">   278  </span>			assert.True(t, observability.LogsEnabled())
+<span id="L279" class="ln">   279  </span>		})
+<span id="L280" class="ln">   280  </span>	})
+<span id="L281" class="ln">   281  </span>}
 <span id="L282" class="ln">   282  </span>
-<span id="L283" class="ln">   283  </span>			t.Run(&#34;SSLモードを取得できる&#34;, func(t *testing.T) {
-<span id="L284" class="ln">   284  </span>				t.Parallel()
-<span id="L285" class="ln">   285  </span>				assert.Equal(t, expectedDBSSLMode, database.SSLMode())
-<span id="L286" class="ln">   286  </span>			})
-<span id="L287" class="ln">   287  </span>
-<span id="L288" class="ln">   288  </span>			t.Run(&#34;Pingタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L289" class="ln">   289  </span>				t.Parallel()
-<span id="L290" class="ln">   290  </span>				assert.Equal(t, expectedDBPingTimeout, database.PingTimeout())
-<span id="L291" class="ln">   291  </span>			})
-<span id="L292" class="ln">   292  </span>
-<span id="L293" class="ln">   293  </span>			t.Run(&#34;スロークエリ警告閾値を取得できる&#34;, func(t *testing.T) {
-<span id="L294" class="ln">   294  </span>				t.Parallel()
-<span id="L295" class="ln">   295  </span>				assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
-<span id="L296" class="ln">   296  </span>			})
-<span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>			t.Run(&#34;statement_timeout を取得できる&#34;, func(t *testing.T) {
-<span id="L299" class="ln">   299  </span>				t.Parallel()
-<span id="L300" class="ln">   300  </span>				assert.Equal(t, expectedDBStatementTimeout, database.StatementTimeout())
-<span id="L301" class="ln">   301  </span>			})
-<span id="L302" class="ln">   302  </span>
-<span id="L303" class="ln">   303  </span>			t.Run(&#34;lock_timeout を取得できる&#34;, func(t *testing.T) {
-<span id="L304" class="ln">   304  </span>				t.Parallel()
-<span id="L305" class="ln">   305  </span>				assert.Equal(t, expectedDBLockTimeout, database.LockTimeout())
-<span id="L306" class="ln">   306  </span>			})
-<span id="L307" class="ln">   307  </span>
-<span id="L308" class="ln">   308  </span>			t.Run(&#34;トランザクションリトライ最大試行回数を取得できる&#34;, func(t *testing.T) {
-<span id="L309" class="ln">   309  </span>				t.Parallel()
-<span id="L310" class="ln">   310  </span>				assert.Equal(t, expectedDBTxMaxRetries, database.TxMaxRetries())
-<span id="L311" class="ln">   311  </span>			})
-<span id="L312" class="ln">   312  </span>
-<span id="L313" class="ln">   313  </span>			t.Run(&#34;トランザクションリトライbackoff初期値を取得できる&#34;, func(t *testing.T) {
-<span id="L314" class="ln">   314  </span>				t.Parallel()
-<span id="L315" class="ln">   315  </span>				assert.Equal(t, expectedDBTxRetryBaseBackoff, database.TxRetryBaseBackoff())
-<span id="L316" class="ln">   316  </span>			})
-<span id="L317" class="ln">   317  </span>
-<span id="L318" class="ln">   318  </span>			t.Run(&#34;トランザクションリトライbackoff上限値を取得できる&#34;, func(t *testing.T) {
-<span id="L319" class="ln">   319  </span>				t.Parallel()
-<span id="L320" class="ln">   320  </span>				assert.Equal(t, expectedDBTxRetryMaxBackoff, database.TxRetryMaxBackoff())
-<span id="L321" class="ln">   321  </span>			})
-<span id="L322" class="ln">   322  </span>		})
-<span id="L323" class="ln">   323  </span>
-<span id="L324" class="ln">   324  </span>		t.Run(&#34;DBコネクション設定&#34;, func(t *testing.T) {
-<span id="L325" class="ln">   325  </span>			t.Parallel()
-<span id="L326" class="ln">   326  </span>			connection := cfg.dbconnection
-<span id="L327" class="ln">   327  </span>			t.Run(&#34;最大コネクション数を取得できる&#34;, func(t *testing.T) {
-<span id="L328" class="ln">   328  </span>				t.Parallel()
-<span id="L329" class="ln">   329  </span>				assert.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
-<span id="L330" class="ln">   330  </span>			})
-<span id="L331" class="ln">   331  </span>
-<span id="L332" class="ln">   332  </span>			t.Run(&#34;最小コネクション数を取得できる&#34;, func(t *testing.T) {
-<span id="L333" class="ln">   333  </span>				t.Parallel()
-<span id="L334" class="ln">   334  </span>				assert.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
-<span id="L335" class="ln">   335  </span>			})
-<span id="L336" class="ln">   336  </span>
-<span id="L337" class="ln">   337  </span>			t.Run(&#34;最大ライフタイムを取得できる&#34;, func(t *testing.T) {
-<span id="L338" class="ln">   338  </span>				t.Parallel()
-<span id="L339" class="ln">   339  </span>				assert.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
-<span id="L340" class="ln">   340  </span>			})
-<span id="L341" class="ln">   341  </span>
-<span id="L342" class="ln">   342  </span>			t.Run(&#34;最大アイドル時間を取得できる&#34;, func(t *testing.T) {
-<span id="L343" class="ln">   343  </span>				t.Parallel()
-<span id="L344" class="ln">   344  </span>				assert.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
-<span id="L345" class="ln">   345  </span>			})
-<span id="L346" class="ln">   346  </span>		})
-<span id="L347" class="ln">   347  </span>
-<span id="L348" class="ln">   348  </span>		t.Run(&#34;セキュリティ設定&#34;, func(t *testing.T) {
-<span id="L349" class="ln">   349  </span>			t.Parallel()
-<span id="L350" class="ln">   350  </span>			security := cfg.security
-<span id="L351" class="ln">   351  </span>			t.Run(&#34;許可オリジンを取得できる&#34;, func(t *testing.T) {
-<span id="L352" class="ln">   352  </span>				t.Parallel()
-<span id="L353" class="ln">   353  </span>				assert.Equal(
-<span id="L354" class="ln">   354  </span>					t,
-<span id="L355" class="ln">   355  </span>					strings.Split(expectedAllowedOrigins, &#34;,&#34;),
-<span id="L356" class="ln">   356  </span>					security.AllowedOrigins(),
-<span id="L357" class="ln">   357  </span>				)
-<span id="L358" class="ln">   358  </span>			})
-<span id="L359" class="ln">   359  </span>
-<span id="L360" class="ln">   360  </span>			t.Run(&#34;CIDRを取得できる&#34;, func(t *testing.T) {
-<span id="L361" class="ln">   361  </span>				t.Parallel()
-<span id="L362" class="ln">   362  </span>				assert.Equal(t, expectedCIDR, security.CIDR())
-<span id="L363" class="ln">   363  </span>			})
-<span id="L364" class="ln">   364  </span>
-<span id="L365" class="ln">   365  </span>			t.Run(&#34;ContentTypeNosniffを取得できる&#34;, func(t *testing.T) {
-<span id="L366" class="ln">   366  </span>				t.Parallel()
-<span id="L367" class="ln">   367  </span>				assert.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
-<span id="L368" class="ln">   368  </span>			})
-<span id="L369" class="ln">   369  </span>
-<span id="L370" class="ln">   370  </span>			t.Run(&#34;XFrameOptionsを取得できる&#34;, func(t *testing.T) {
-<span id="L371" class="ln">   371  </span>				t.Parallel()
-<span id="L372" class="ln">   372  </span>				assert.Equal(t, expectedXFrameOptions, security.XFrameOptions())
-<span id="L373" class="ln">   373  </span>			})
-<span id="L374" class="ln">   374  </span>
-<span id="L375" class="ln">   375  </span>			t.Run(&#34;HSTS最大期間を取得できる&#34;, func(t *testing.T) {
-<span id="L376" class="ln">   376  </span>				t.Parallel()
-<span id="L377" class="ln">   377  </span>				assert.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
-<span id="L378" class="ln">   378  </span>			})
-<span id="L379" class="ln">   379  </span>
-<span id="L380" class="ln">   380  </span>			t.Run(&#34;HSTSサブドメイン除外設定を取得できる&#34;, func(t *testing.T) {
-<span id="L381" class="ln">   381  </span>				t.Parallel()
-<span id="L382" class="ln">   382  </span>				assert.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
-<span id="L383" class="ln">   383  </span>			})
-<span id="L384" class="ln">   384  </span>
-<span id="L385" class="ln">   385  </span>			t.Run(&#34;HSTSプリロード有効設定を取得できる&#34;, func(t *testing.T) {
-<span id="L386" class="ln">   386  </span>				t.Parallel()
-<span id="L387" class="ln">   387  </span>				assert.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
-<span id="L388" class="ln">   388  </span>			})
-<span id="L389" class="ln">   389  </span>
-<span id="L390" class="ln">   390  </span>			t.Run(&#34;リファラーポリシーを取得できる&#34;, func(t *testing.T) {
-<span id="L391" class="ln">   391  </span>				t.Parallel()
-<span id="L392" class="ln">   392  </span>				assert.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
-<span id="L393" class="ln">   393  </span>			})
-<span id="L394" class="ln">   394  </span>
-<span id="L395" class="ln">   395  </span>			t.Run(&#34;bcryptコストを取得できる&#34;, func(t *testing.T) {
-<span id="L396" class="ln">   396  </span>				t.Parallel()
-<span id="L397" class="ln">   397  </span>				assert.Equal(t, expectedBcryptCost, security.BcryptCost())
-<span id="L398" class="ln">   398  </span>			})
+<span id="L283" class="ln">   283  </span>func TestObservabilityConfig_OTLPEndpoint(t *testing.T) {
+<span id="L284" class="ln">   284  </span>	t.Parallel()
+<span id="L285" class="ln">   285  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L286" class="ln">   286  </span>		t.Parallel()
+<span id="L287" class="ln">   287  </span>		t.Run(&#34;OTLPエンドポイントを取得できる&#34;, func(t *testing.T) {
+<span id="L288" class="ln">   288  </span>			t.Parallel()
+<span id="L289" class="ln">   289  </span>			observability := MockConfigForTest(t).observability
+<span id="L290" class="ln">   290  </span>			assert.Equal(t, expectedObservabilityOTLPEndpoint, observability.OTLPEndpoint())
+<span id="L291" class="ln">   291  </span>		})
+<span id="L292" class="ln">   292  </span>	})
+<span id="L293" class="ln">   293  </span>}
+<span id="L294" class="ln">   294  </span>
+<span id="L295" class="ln">   295  </span>func TestObservabilityConfig_OTLPProtocol(t *testing.T) {
+<span id="L296" class="ln">   296  </span>	t.Parallel()
+<span id="L297" class="ln">   297  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L298" class="ln">   298  </span>		t.Parallel()
+<span id="L299" class="ln">   299  </span>		t.Run(&#34;OTLPプロトコルを取得できる&#34;, func(t *testing.T) {
+<span id="L300" class="ln">   300  </span>			t.Parallel()
+<span id="L301" class="ln">   301  </span>			observability := MockConfigForTest(t).observability
+<span id="L302" class="ln">   302  </span>			assert.Equal(t, expectedObservabilityOTLPProtocol, observability.OTLPProtocol())
+<span id="L303" class="ln">   303  </span>		})
+<span id="L304" class="ln">   304  </span>	})
+<span id="L305" class="ln">   305  </span>}
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span>func TestObservabilityConfig_MaskedDBQueryArgs(t *testing.T) {
+<span id="L308" class="ln">   308  </span>	t.Parallel()
+<span id="L309" class="ln">   309  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L310" class="ln">   310  </span>		t.Parallel()
+<span id="L311" class="ln">   311  </span>		t.Run(&#34;DBクエリ引数マスク設定を取得できる&#34;, func(t *testing.T) {
+<span id="L312" class="ln">   312  </span>			t.Parallel()
+<span id="L313" class="ln">   313  </span>			observability := MockConfigForTest(t).observability
+<span id="L314" class="ln">   314  </span>			assert.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
+<span id="L315" class="ln">   315  </span>		})
+<span id="L316" class="ln">   316  </span>	})
+<span id="L317" class="ln">   317  </span>}
+<span id="L318" class="ln">   318  </span>
+<span id="L319" class="ln">   319  </span>func TestObservabilityConfig_TargetStatusCodeSet(t *testing.T) {
+<span id="L320" class="ln">   320  </span>	t.Parallel()
+<span id="L321" class="ln">   321  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L322" class="ln">   322  </span>		t.Parallel()
+<span id="L323" class="ln">   323  </span>		t.Run(&#34;対象ステータスコード集合を取得できる&#34;, func(t *testing.T) {
+<span id="L324" class="ln">   324  </span>			t.Parallel()
+<span id="L325" class="ln">   325  </span>			observability := MockConfigForTest(t).observability
+<span id="L326" class="ln">   326  </span>			assert.Equal(t, expectedObservabilityTargetStatusCodeSet, observability.TargetStatusCodeSet())
+<span id="L327" class="ln">   327  </span>		})
+<span id="L328" class="ln">   328  </span>	})
+<span id="L329" class="ln">   329  </span>}
+<span id="L330" class="ln">   330  </span>
+<span id="L331" class="ln">   331  </span>func TestApplicationConfig_Env(t *testing.T) {
+<span id="L332" class="ln">   332  </span>	t.Parallel()
+<span id="L333" class="ln">   333  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L334" class="ln">   334  </span>		t.Parallel()
+<span id="L335" class="ln">   335  </span>		t.Run(&#34;環境を取得できる&#34;, func(t *testing.T) {
+<span id="L336" class="ln">   336  </span>			t.Parallel()
+<span id="L337" class="ln">   337  </span>			app := MockConfigForTest(t).app
+<span id="L338" class="ln">   338  </span>			assert.Equal(t, expectedApplicationEnv, app.Env())
+<span id="L339" class="ln">   339  </span>		})
+<span id="L340" class="ln">   340  </span>	})
+<span id="L341" class="ln">   341  </span>}
+<span id="L342" class="ln">   342  </span>
+<span id="L343" class="ln">   343  </span>func TestApplicationConfig_Name(t *testing.T) {
+<span id="L344" class="ln">   344  </span>	t.Parallel()
+<span id="L345" class="ln">   345  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L346" class="ln">   346  </span>		t.Parallel()
+<span id="L347" class="ln">   347  </span>		t.Run(&#34;名前を取得できる&#34;, func(t *testing.T) {
+<span id="L348" class="ln">   348  </span>			t.Parallel()
+<span id="L349" class="ln">   349  </span>			app := MockConfigForTest(t).app
+<span id="L350" class="ln">   350  </span>			assert.Equal(t, expectedApplicationName, app.Name())
+<span id="L351" class="ln">   351  </span>		})
+<span id="L352" class="ln">   352  </span>	})
+<span id="L353" class="ln">   353  </span>}
+<span id="L354" class="ln">   354  </span>
+<span id="L355" class="ln">   355  </span>func TestApplicationConfig_Mode(t *testing.T) {
+<span id="L356" class="ln">   356  </span>	t.Parallel()
+<span id="L357" class="ln">   357  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L358" class="ln">   358  </span>		t.Parallel()
+<span id="L359" class="ln">   359  </span>		t.Run(&#34;モードを取得できる&#34;, func(t *testing.T) {
+<span id="L360" class="ln">   360  </span>			t.Parallel()
+<span id="L361" class="ln">   361  </span>			app := MockConfigForTest(t).app
+<span id="L362" class="ln">   362  </span>			assert.Equal(t, expectedApplicationMode, app.Mode())
+<span id="L363" class="ln">   363  </span>		})
+<span id="L364" class="ln">   364  </span>	})
+<span id="L365" class="ln">   365  </span>}
+<span id="L366" class="ln">   366  </span>
+<span id="L367" class="ln">   367  </span>func TestApplicationConfig_LogLevel(t *testing.T) {
+<span id="L368" class="ln">   368  </span>	t.Parallel()
+<span id="L369" class="ln">   369  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L370" class="ln">   370  </span>		t.Parallel()
+<span id="L371" class="ln">   371  </span>		t.Run(&#34;ログレベルを取得できる&#34;, func(t *testing.T) {
+<span id="L372" class="ln">   372  </span>			t.Parallel()
+<span id="L373" class="ln">   373  </span>			app := MockConfigForTest(t).app
+<span id="L374" class="ln">   374  </span>			assert.Equal(t, expectedApplicationLogLevel, app.LogLevel())
+<span id="L375" class="ln">   375  </span>		})
+<span id="L376" class="ln">   376  </span>	})
+<span id="L377" class="ln">   377  </span>}
+<span id="L378" class="ln">   378  </span>
+<span id="L379" class="ln">   379  </span>func TestApplicationConfig_ShutdownTimeout(t *testing.T) {
+<span id="L380" class="ln">   380  </span>	t.Parallel()
+<span id="L381" class="ln">   381  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L382" class="ln">   382  </span>		t.Parallel()
+<span id="L383" class="ln">   383  </span>		t.Run(&#34;シャットダウンタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L384" class="ln">   384  </span>			t.Parallel()
+<span id="L385" class="ln">   385  </span>			app := MockConfigForTest(t).app
+<span id="L386" class="ln">   386  </span>			assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
+<span id="L387" class="ln">   387  </span>		})
+<span id="L388" class="ln">   388  </span>	})
+<span id="L389" class="ln">   389  </span>}
+<span id="L390" class="ln">   390  </span>
+<span id="L391" class="ln">   391  </span>func TestDatabaseConfig_Driver(t *testing.T) {
+<span id="L392" class="ln">   392  </span>	t.Parallel()
+<span id="L393" class="ln">   393  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L394" class="ln">   394  </span>		t.Parallel()
+<span id="L395" class="ln">   395  </span>		t.Run(&#34;ドライバーを取得できる&#34;, func(t *testing.T) {
+<span id="L396" class="ln">   396  </span>			t.Parallel()
+<span id="L397" class="ln">   397  </span>			database := MockConfigForTest(t).database
+<span id="L398" class="ln">   398  </span>			assert.Equal(t, expectedDBDriver, database.Driver())
 <span id="L399" class="ln">   399  </span>		})
-<span id="L400" class="ln">   400  </span>
-<span id="L401" class="ln">   401  </span>		t.Run(&#34;セキュアCookie設定&#34;, func(t *testing.T) {
-<span id="L402" class="ln">   402  </span>			t.Parallel()
-<span id="L403" class="ln">   403  </span>			secureCookie := cfg.secureCookie
-<span id="L404" class="ln">   404  </span>
-<span id="L405" class="ln">   405  </span>			t.Run(&#34;Secure属性を取得できる&#34;, func(t *testing.T) {
-<span id="L406" class="ln">   406  </span>				t.Parallel()
-<span id="L407" class="ln">   407  </span>				assert.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
-<span id="L408" class="ln">   408  </span>			})
-<span id="L409" class="ln">   409  </span>
-<span id="L410" class="ln">   410  </span>			t.Run(&#34;SameSite属性を取得できる&#34;, func(t *testing.T) {
-<span id="L411" class="ln">   411  </span>				t.Parallel()
-<span id="L412" class="ln">   412  </span>				assert.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
-<span id="L413" class="ln">   413  </span>			})
+<span id="L400" class="ln">   400  </span>	})
+<span id="L401" class="ln">   401  </span>}
+<span id="L402" class="ln">   402  </span>
+<span id="L403" class="ln">   403  </span>func TestDatabaseConfig_Host(t *testing.T) {
+<span id="L404" class="ln">   404  </span>	t.Parallel()
+<span id="L405" class="ln">   405  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L406" class="ln">   406  </span>		t.Parallel()
+<span id="L407" class="ln">   407  </span>		t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
+<span id="L408" class="ln">   408  </span>			t.Parallel()
+<span id="L409" class="ln">   409  </span>			database := MockConfigForTest(t).database
+<span id="L410" class="ln">   410  </span>			assert.Equal(t, expectedDBHost, database.Host())
+<span id="L411" class="ln">   411  </span>		})
+<span id="L412" class="ln">   412  </span>	})
+<span id="L413" class="ln">   413  </span>}
 <span id="L414" class="ln">   414  </span>
-<span id="L415" class="ln">   415  </span>			t.Run(&#34;ドメインを取得できる&#34;, func(t *testing.T) {
-<span id="L416" class="ln">   416  </span>				t.Parallel()
-<span id="L417" class="ln">   417  </span>				assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
-<span id="L418" class="ln">   418  </span>			})
-<span id="L419" class="ln">   419  </span>		})
-<span id="L420" class="ln">   420  </span>
-<span id="L421" class="ln">   421  </span>		t.Run(&#34;認証設定&#34;, func(t *testing.T) {
-<span id="L422" class="ln">   422  </span>			t.Parallel()
-<span id="L423" class="ln">   423  </span>			auth := cfg.auth
-<span id="L424" class="ln">   424  </span>
-<span id="L425" class="ln">   425  </span>			t.Run(&#34;Cookie名を取得できる&#34;, func(t *testing.T) {
-<span id="L426" class="ln">   426  </span>				t.Parallel()
-<span id="L427" class="ln">   427  </span>				assert.Equal(t, expectedAuthCookieName, auth.CookieName())
-<span id="L428" class="ln">   428  </span>			})
-<span id="L429" class="ln">   429  </span>
-<span id="L430" class="ln">   430  </span>			t.Run(&#34;ヘッダー名を取得できる&#34;, func(t *testing.T) {
-<span id="L431" class="ln">   431  </span>				t.Parallel()
-<span id="L432" class="ln">   432  </span>				assert.Equal(t, expectedAuthHeaderName, auth.HeaderName())
-<span id="L433" class="ln">   433  </span>			})
-<span id="L434" class="ln">   434  </span>
-<span id="L435" class="ln">   435  </span>			t.Run(&#34;Bearerヘッダー許可を取得できる&#34;, func(t *testing.T) {
-<span id="L436" class="ln">   436  </span>				t.Parallel()
-<span id="L437" class="ln">   437  </span>				assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
-<span id="L438" class="ln">   438  </span>			})
-<span id="L439" class="ln">   439  </span>		})
-<span id="L440" class="ln">   440  </span>
-<span id="L441" class="ln">   441  </span>		t.Run(&#34;worker設定&#34;, func(t *testing.T) { <span class="comment">//nolint:dupl // 逐次t.Runが規約(table-driven禁止)。getter群が他設定ブロックと同型でも重複を許容</span>
-<span id="L442" class="ln">   442  </span>			t.Parallel()
-<span id="L443" class="ln">   443  </span>			worker := cfg.worker
-<span id="L444" class="ln">   444  </span>
-<span id="L445" class="ln">   445  </span>			t.Run(&#34;並行実行数を取得できる&#34;, func(t *testing.T) {
-<span id="L446" class="ln">   446  </span>				t.Parallel()
-<span id="L447" class="ln">   447  </span>				assert.Equal(t, expectedWorkerConcurrency, worker.Concurrency())
-<span id="L448" class="ln">   448  </span>			})
-<span id="L449" class="ln">   449  </span>
-<span id="L450" class="ln">   450  </span>			t.Run(&#34;最大インフライト数を取得できる&#34;, func(t *testing.T) {
-<span id="L451" class="ln">   451  </span>				t.Parallel()
-<span id="L452" class="ln">   452  </span>				assert.Equal(t, expectedWorkerMaxInFlight, worker.MaxInFlight())
-<span id="L453" class="ln">   453  </span>			})
-<span id="L454" class="ln">   454  </span>
-<span id="L455" class="ln">   455  </span>			t.Run(&#34;バッチサイズを取得できる&#34;, func(t *testing.T) {
-<span id="L456" class="ln">   456  </span>				t.Parallel()
-<span id="L457" class="ln">   457  </span>				assert.Equal(t, expectedWorkerBatchSize, worker.BatchSize())
-<span id="L458" class="ln">   458  </span>			})
-<span id="L459" class="ln">   459  </span>
-<span id="L460" class="ln">   460  </span>			t.Run(&#34;Extend周期を取得できる&#34;, func(t *testing.T) {
-<span id="L461" class="ln">   461  </span>				t.Parallel()
-<span id="L462" class="ln">   462  </span>				assert.Equal(t, expectedWorkerExtendInterval, worker.ExtendInterval())
-<span id="L463" class="ln">   463  </span>			})
-<span id="L464" class="ln">   464  </span>
-<span id="L465" class="ln">   465  </span>			t.Run(&#34;ドレインタイムアウトを取得できる&#34;, func(t *testing.T) {
-<span id="L466" class="ln">   466  </span>				t.Parallel()
-<span id="L467" class="ln">   467  </span>				assert.Equal(t, expectedWorkerDrainTimeout, worker.DrainTimeout())
-<span id="L468" class="ln">   468  </span>			})
-<span id="L469" class="ln">   469  </span>
-<span id="L470" class="ln">   470  </span>			t.Run(&#34;再配送回数の警告閾値を取得できる&#34;, func(t *testing.T) {
-<span id="L471" class="ln">   471  </span>				t.Parallel()
-<span id="L472" class="ln">   472  </span>				assert.Equal(t, expectedWorkerReceiveCountWarnThreshold, worker.ReceiveCountWarnThreshold())
-<span id="L473" class="ln">   473  </span>			})
+<span id="L415" class="ln">   415  </span>func TestDatabaseConfig_Port(t *testing.T) {
+<span id="L416" class="ln">   416  </span>	t.Parallel()
+<span id="L417" class="ln">   417  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L418" class="ln">   418  </span>		t.Parallel()
+<span id="L419" class="ln">   419  </span>		t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
+<span id="L420" class="ln">   420  </span>			t.Parallel()
+<span id="L421" class="ln">   421  </span>			database := MockConfigForTest(t).database
+<span id="L422" class="ln">   422  </span>			assert.Equal(t, expectedDBPort, database.Port())
+<span id="L423" class="ln">   423  </span>		})
+<span id="L424" class="ln">   424  </span>	})
+<span id="L425" class="ln">   425  </span>}
+<span id="L426" class="ln">   426  </span>
+<span id="L427" class="ln">   427  </span>func TestDatabaseConfig_User(t *testing.T) {
+<span id="L428" class="ln">   428  </span>	t.Parallel()
+<span id="L429" class="ln">   429  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L430" class="ln">   430  </span>		t.Parallel()
+<span id="L431" class="ln">   431  </span>		t.Run(&#34;ユーザーを取得できる&#34;, func(t *testing.T) {
+<span id="L432" class="ln">   432  </span>			t.Parallel()
+<span id="L433" class="ln">   433  </span>			database := MockConfigForTest(t).database
+<span id="L434" class="ln">   434  </span>			assert.Equal(t, expectedDBUser, database.User())
+<span id="L435" class="ln">   435  </span>		})
+<span id="L436" class="ln">   436  </span>	})
+<span id="L437" class="ln">   437  </span>}
+<span id="L438" class="ln">   438  </span>
+<span id="L439" class="ln">   439  </span>func TestDatabaseConfig_Password(t *testing.T) {
+<span id="L440" class="ln">   440  </span>	t.Parallel()
+<span id="L441" class="ln">   441  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L442" class="ln">   442  </span>		t.Parallel()
+<span id="L443" class="ln">   443  </span>		t.Run(&#34;パスワードを取得できる&#34;, func(t *testing.T) {
+<span id="L444" class="ln">   444  </span>			t.Parallel()
+<span id="L445" class="ln">   445  </span>			database := MockConfigForTest(t).database
+<span id="L446" class="ln">   446  </span>			assert.Equal(t, expectedDBPassword, database.Password())
+<span id="L447" class="ln">   447  </span>		})
+<span id="L448" class="ln">   448  </span>	})
+<span id="L449" class="ln">   449  </span>}
+<span id="L450" class="ln">   450  </span>
+<span id="L451" class="ln">   451  </span>func TestDatabaseConfig_DBName(t *testing.T) {
+<span id="L452" class="ln">   452  </span>	t.Parallel()
+<span id="L453" class="ln">   453  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L454" class="ln">   454  </span>		t.Parallel()
+<span id="L455" class="ln">   455  </span>		t.Run(&#34;データベース名を取得できる&#34;, func(t *testing.T) {
+<span id="L456" class="ln">   456  </span>			t.Parallel()
+<span id="L457" class="ln">   457  </span>			database := MockConfigForTest(t).database
+<span id="L458" class="ln">   458  </span>			assert.Equal(t, expectedDBName, database.DBName())
+<span id="L459" class="ln">   459  </span>		})
+<span id="L460" class="ln">   460  </span>	})
+<span id="L461" class="ln">   461  </span>}
+<span id="L462" class="ln">   462  </span>
+<span id="L463" class="ln">   463  </span>func TestDatabaseConfig_SSLMode(t *testing.T) {
+<span id="L464" class="ln">   464  </span>	t.Parallel()
+<span id="L465" class="ln">   465  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L466" class="ln">   466  </span>		t.Parallel()
+<span id="L467" class="ln">   467  </span>		t.Run(&#34;SSLモードを取得できる&#34;, func(t *testing.T) {
+<span id="L468" class="ln">   468  </span>			t.Parallel()
+<span id="L469" class="ln">   469  </span>			database := MockConfigForTest(t).database
+<span id="L470" class="ln">   470  </span>			assert.Equal(t, expectedDBSSLMode, database.SSLMode())
+<span id="L471" class="ln">   471  </span>		})
+<span id="L472" class="ln">   472  </span>	})
+<span id="L473" class="ln">   473  </span>}
 <span id="L474" class="ln">   474  </span>
-<span id="L475" class="ln">   475  </span>			t.Run(&#34;サーキット失敗閾値を取得できる&#34;, func(t *testing.T) {
-<span id="L476" class="ln">   476  </span>				t.Parallel()
-<span id="L477" class="ln">   477  </span>				assert.Equal(t, expectedWorkerCircuitFailureThreshold, worker.CircuitFailureThreshold())
-<span id="L478" class="ln">   478  </span>			})
-<span id="L479" class="ln">   479  </span>
-<span id="L480" class="ln">   480  </span>			t.Run(&#34;サーキットOpen初回backoffを取得できる&#34;, func(t *testing.T) {
-<span id="L481" class="ln">   481  </span>				t.Parallel()
-<span id="L482" class="ln">   482  </span>				assert.Equal(t, expectedWorkerCircuitOpenBackoffInitial, worker.CircuitOpenBackoffInitial())
-<span id="L483" class="ln">   483  </span>			})
-<span id="L484" class="ln">   484  </span>
-<span id="L485" class="ln">   485  </span>			t.Run(&#34;サーキットOpen backoff上限を取得できる&#34;, func(t *testing.T) {
-<span id="L486" class="ln">   486  </span>				t.Parallel()
-<span id="L487" class="ln">   487  </span>				assert.Equal(t, expectedWorkerCircuitOpenBackoffMax, worker.CircuitOpenBackoffMax())
-<span id="L488" class="ln">   488  </span>			})
-<span id="L489" class="ln">   489  </span>
-<span id="L490" class="ln">   490  </span>			t.Run(&#34;Half-open試行数を取得できる&#34;, func(t *testing.T) {
-<span id="L491" class="ln">   491  </span>				t.Parallel()
-<span id="L492" class="ln">   492  </span>				assert.Equal(t, expectedWorkerCircuitHalfOpenProbe, worker.CircuitHalfOpenProbe())
-<span id="L493" class="ln">   493  </span>			})
-<span id="L494" class="ln">   494  </span>
-<span id="L495" class="ln">   495  </span>			t.Run(&#34;health listener待ち受けアドレスを取得できる&#34;, func(t *testing.T) {
-<span id="L496" class="ln">   496  </span>				t.Parallel()
-<span id="L497" class="ln">   497  </span>				assert.Equal(t, expectedWorkerHealthListenAddr, worker.HealthListenAddr())
-<span id="L498" class="ln">   498  </span>			})
-<span id="L499" class="ln">   499  </span>
-<span id="L500" class="ln">   500  </span>			t.Run(&#34;進捗停滞判定時間を取得できる&#34;, func(t *testing.T) {
-<span id="L501" class="ln">   501  </span>				t.Parallel()
-<span id="L502" class="ln">   502  </span>				assert.Equal(t, expectedWorkerProgressStaleAfter, worker.ProgressStaleAfter())
-<span id="L503" class="ln">   503  </span>			})
-<span id="L504" class="ln">   504  </span>
-<span id="L505" class="ln">   505  </span>			t.Run(&#34;Nack初回backoffを取得できる&#34;, func(t *testing.T) {
-<span id="L506" class="ln">   506  </span>				t.Parallel()
-<span id="L507" class="ln">   507  </span>				assert.Equal(t, expectedWorkerNackBackoffInitial, worker.NackBackoffInitial())
-<span id="L508" class="ln">   508  </span>			})
-<span id="L509" class="ln">   509  </span>
-<span id="L510" class="ln">   510  </span>			t.Run(&#34;Nack backoff上限を取得できる&#34;, func(t *testing.T) {
-<span id="L511" class="ln">   511  </span>				t.Parallel()
-<span id="L512" class="ln">   512  </span>				assert.Equal(t, expectedWorkerNackBackoffMax, worker.NackBackoffMax())
-<span id="L513" class="ln">   513  </span>			})
-<span id="L514" class="ln">   514  </span>		})
-<span id="L515" class="ln">   515  </span>
-<span id="L516" class="ln">   516  </span>		t.Run(&#34;outbox設定&#34;, func(t *testing.T) {
-<span id="L517" class="ln">   517  </span>			t.Parallel()
-<span id="L518" class="ln">   518  </span>			outbox := cfg.outbox
-<span id="L519" class="ln">   519  </span>
-<span id="L520" class="ln">   520  </span>			t.Run(&#34;エンドポイントを取得できる&#34;, func(t *testing.T) {
-<span id="L521" class="ln">   521  </span>				t.Parallel()
-<span id="L522" class="ln">   522  </span>				assert.Equal(t, expectedOutboxEndpoint, outbox.Endpoint())
-<span id="L523" class="ln">   523  </span>			})
-<span id="L524" class="ln">   524  </span>
-<span id="L525" class="ln">   525  </span>			t.Run(&#34;ポーリング間隔を取得できる&#34;, func(t *testing.T) {
-<span id="L526" class="ln">   526  </span>				t.Parallel()
-<span id="L527" class="ln">   527  </span>				assert.Equal(t, expectedOutboxPollInterval, outbox.PollInterval())
-<span id="L528" class="ln">   528  </span>			})
-<span id="L529" class="ln">   529  </span>
-<span id="L530" class="ln">   530  </span>			t.Run(&#34;エラーbackoffを取得できる&#34;, func(t *testing.T) {
-<span id="L531" class="ln">   531  </span>				t.Parallel()
-<span id="L532" class="ln">   532  </span>				assert.Equal(t, expectedOutboxErrorBackoff, outbox.ErrorBackoff())
-<span id="L533" class="ln">   533  </span>			})
+<span id="L475" class="ln">   475  </span>func TestDatabaseConfig_PingTimeout(t *testing.T) {
+<span id="L476" class="ln">   476  </span>	t.Parallel()
+<span id="L477" class="ln">   477  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L478" class="ln">   478  </span>		t.Parallel()
+<span id="L479" class="ln">   479  </span>		t.Run(&#34;Pingタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L480" class="ln">   480  </span>			t.Parallel()
+<span id="L481" class="ln">   481  </span>			database := MockConfigForTest(t).database
+<span id="L482" class="ln">   482  </span>			assert.Equal(t, expectedDBPingTimeout, database.PingTimeout())
+<span id="L483" class="ln">   483  </span>		})
+<span id="L484" class="ln">   484  </span>	})
+<span id="L485" class="ln">   485  </span>}
+<span id="L486" class="ln">   486  </span>
+<span id="L487" class="ln">   487  </span>func TestDatabaseConfig_SlowQueryWarnThreshold(t *testing.T) {
+<span id="L488" class="ln">   488  </span>	t.Parallel()
+<span id="L489" class="ln">   489  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L490" class="ln">   490  </span>		t.Parallel()
+<span id="L491" class="ln">   491  </span>		t.Run(&#34;スロークエリ警告閾値を取得できる&#34;, func(t *testing.T) {
+<span id="L492" class="ln">   492  </span>			t.Parallel()
+<span id="L493" class="ln">   493  </span>			database := MockConfigForTest(t).database
+<span id="L494" class="ln">   494  </span>			assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
+<span id="L495" class="ln">   495  </span>		})
+<span id="L496" class="ln">   496  </span>	})
+<span id="L497" class="ln">   497  </span>}
+<span id="L498" class="ln">   498  </span>
+<span id="L499" class="ln">   499  </span>func TestDatabaseConfig_StatementTimeout(t *testing.T) {
+<span id="L500" class="ln">   500  </span>	t.Parallel()
+<span id="L501" class="ln">   501  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L502" class="ln">   502  </span>		t.Parallel()
+<span id="L503" class="ln">   503  </span>		t.Run(&#34;statement_timeout を取得できる&#34;, func(t *testing.T) {
+<span id="L504" class="ln">   504  </span>			t.Parallel()
+<span id="L505" class="ln">   505  </span>			database := MockConfigForTest(t).database
+<span id="L506" class="ln">   506  </span>			assert.Equal(t, expectedDBStatementTimeout, database.StatementTimeout())
+<span id="L507" class="ln">   507  </span>		})
+<span id="L508" class="ln">   508  </span>	})
+<span id="L509" class="ln">   509  </span>}
+<span id="L510" class="ln">   510  </span>
+<span id="L511" class="ln">   511  </span>func TestDatabaseConfig_LockTimeout(t *testing.T) {
+<span id="L512" class="ln">   512  </span>	t.Parallel()
+<span id="L513" class="ln">   513  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L514" class="ln">   514  </span>		t.Parallel()
+<span id="L515" class="ln">   515  </span>		t.Run(&#34;lock_timeout を取得できる&#34;, func(t *testing.T) {
+<span id="L516" class="ln">   516  </span>			t.Parallel()
+<span id="L517" class="ln">   517  </span>			database := MockConfigForTest(t).database
+<span id="L518" class="ln">   518  </span>			assert.Equal(t, expectedDBLockTimeout, database.LockTimeout())
+<span id="L519" class="ln">   519  </span>		})
+<span id="L520" class="ln">   520  </span>	})
+<span id="L521" class="ln">   521  </span>}
+<span id="L522" class="ln">   522  </span>
+<span id="L523" class="ln">   523  </span>func TestDatabaseConfig_TxMaxRetries(t *testing.T) {
+<span id="L524" class="ln">   524  </span>	t.Parallel()
+<span id="L525" class="ln">   525  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L526" class="ln">   526  </span>		t.Parallel()
+<span id="L527" class="ln">   527  </span>		t.Run(&#34;トランザクションリトライ最大試行回数を取得できる&#34;, func(t *testing.T) {
+<span id="L528" class="ln">   528  </span>			t.Parallel()
+<span id="L529" class="ln">   529  </span>			database := MockConfigForTest(t).database
+<span id="L530" class="ln">   530  </span>			assert.Equal(t, expectedDBTxMaxRetries, database.TxMaxRetries())
+<span id="L531" class="ln">   531  </span>		})
+<span id="L532" class="ln">   532  </span>	})
+<span id="L533" class="ln">   533  </span>}
 <span id="L534" class="ln">   534  </span>
-<span id="L535" class="ln">   535  </span>			t.Run(&#34;バッチサイズを取得できる&#34;, func(t *testing.T) {
-<span id="L536" class="ln">   536  </span>				t.Parallel()
-<span id="L537" class="ln">   537  </span>				assert.Equal(t, expectedOutboxBatchSize, outbox.BatchSize())
-<span id="L538" class="ln">   538  </span>			})
-<span id="L539" class="ln">   539  </span>		})
-<span id="L540" class="ln">   540  </span>	})
-<span id="L541" class="ln">   541  </span>}
-<span id="L542" class="ln">   542  </span>
-<span id="L543" class="ln">   543  </span>func TestApplicationConfig_IsProductionMode(t *testing.T) {
-<span id="L544" class="ln">   544  </span>	t.Parallel()
-<span id="L545" class="ln">   545  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L546" class="ln">   546  </span>		t.Parallel()
-<span id="L547" class="ln">   547  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
-<span id="L548" class="ln">   548  </span>			t.Parallel()
-<span id="L549" class="ln">   549  </span>			cfg := Config{}
-<span id="L550" class="ln">   550  </span>			cfg.app.mode = ProductionMode
-<span id="L551" class="ln">   551  </span>			assert.True(t, cfg.app.IsProductionMode())
-<span id="L552" class="ln">   552  </span>		})
-<span id="L553" class="ln">   553  </span>
-<span id="L554" class="ln">   554  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
-<span id="L555" class="ln">   555  </span>			t.Parallel()
-<span id="L556" class="ln">   556  </span>			cfg := Config{}
-<span id="L557" class="ln">   557  </span>			cfg.app.mode = DevelopmentMode
-<span id="L558" class="ln">   558  </span>			assert.False(t, cfg.app.IsProductionMode())
-<span id="L559" class="ln">   559  </span>		})
-<span id="L560" class="ln">   560  </span>	})
-<span id="L561" class="ln">   561  </span>}
-<span id="L562" class="ln">   562  </span>
-<span id="L563" class="ln">   563  </span>func TestApplicationConfig_IsDevelopmentMode(t *testing.T) {
-<span id="L564" class="ln">   564  </span>	t.Parallel()
-<span id="L565" class="ln">   565  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L566" class="ln">   566  </span>		t.Parallel()
-<span id="L567" class="ln">   567  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
-<span id="L568" class="ln">   568  </span>			t.Parallel()
-<span id="L569" class="ln">   569  </span>			cfg := Config{}
-<span id="L570" class="ln">   570  </span>			cfg.app.mode = DevelopmentMode
-<span id="L571" class="ln">   571  </span>			assert.True(t, cfg.app.IsDevelopmentMode())
-<span id="L572" class="ln">   572  </span>		})
-<span id="L573" class="ln">   573  </span>
-<span id="L574" class="ln">   574  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
-<span id="L575" class="ln">   575  </span>			t.Parallel()
-<span id="L576" class="ln">   576  </span>			cfg := Config{}
-<span id="L577" class="ln">   577  </span>			cfg.app.mode = ProductionMode
-<span id="L578" class="ln">   578  </span>			assert.False(t, cfg.app.IsDevelopmentMode())
+<span id="L535" class="ln">   535  </span>func TestDatabaseConfig_TxRetryBaseBackoff(t *testing.T) {
+<span id="L536" class="ln">   536  </span>	t.Parallel()
+<span id="L537" class="ln">   537  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L538" class="ln">   538  </span>		t.Parallel()
+<span id="L539" class="ln">   539  </span>		t.Run(&#34;トランザクションリトライbackoff初期値を取得できる&#34;, func(t *testing.T) {
+<span id="L540" class="ln">   540  </span>			t.Parallel()
+<span id="L541" class="ln">   541  </span>			database := MockConfigForTest(t).database
+<span id="L542" class="ln">   542  </span>			assert.Equal(t, expectedDBTxRetryBaseBackoff, database.TxRetryBaseBackoff())
+<span id="L543" class="ln">   543  </span>		})
+<span id="L544" class="ln">   544  </span>	})
+<span id="L545" class="ln">   545  </span>}
+<span id="L546" class="ln">   546  </span>
+<span id="L547" class="ln">   547  </span>func TestDatabaseConfig_TxRetryMaxBackoff(t *testing.T) {
+<span id="L548" class="ln">   548  </span>	t.Parallel()
+<span id="L549" class="ln">   549  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L550" class="ln">   550  </span>		t.Parallel()
+<span id="L551" class="ln">   551  </span>		t.Run(&#34;トランザクションリトライbackoff上限値を取得できる&#34;, func(t *testing.T) {
+<span id="L552" class="ln">   552  </span>			t.Parallel()
+<span id="L553" class="ln">   553  </span>			database := MockConfigForTest(t).database
+<span id="L554" class="ln">   554  </span>			assert.Equal(t, expectedDBTxRetryMaxBackoff, database.TxRetryMaxBackoff())
+<span id="L555" class="ln">   555  </span>		})
+<span id="L556" class="ln">   556  </span>	})
+<span id="L557" class="ln">   557  </span>}
+<span id="L558" class="ln">   558  </span>
+<span id="L559" class="ln">   559  </span>func TestDBConnectionConfig_MaxConns(t *testing.T) {
+<span id="L560" class="ln">   560  </span>	t.Parallel()
+<span id="L561" class="ln">   561  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L562" class="ln">   562  </span>		t.Parallel()
+<span id="L563" class="ln">   563  </span>		t.Run(&#34;最大コネクション数を取得できる&#34;, func(t *testing.T) {
+<span id="L564" class="ln">   564  </span>			t.Parallel()
+<span id="L565" class="ln">   565  </span>			connection := MockConfigForTest(t).dbconnection
+<span id="L566" class="ln">   566  </span>			assert.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
+<span id="L567" class="ln">   567  </span>		})
+<span id="L568" class="ln">   568  </span>	})
+<span id="L569" class="ln">   569  </span>}
+<span id="L570" class="ln">   570  </span>
+<span id="L571" class="ln">   571  </span>func TestDBConnectionConfig_MinConns(t *testing.T) {
+<span id="L572" class="ln">   572  </span>	t.Parallel()
+<span id="L573" class="ln">   573  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L574" class="ln">   574  </span>		t.Parallel()
+<span id="L575" class="ln">   575  </span>		t.Run(&#34;最小コネクション数を取得できる&#34;, func(t *testing.T) {
+<span id="L576" class="ln">   576  </span>			t.Parallel()
+<span id="L577" class="ln">   577  </span>			connection := MockConfigForTest(t).dbconnection
+<span id="L578" class="ln">   578  </span>			assert.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
 <span id="L579" class="ln">   579  </span>		})
 <span id="L580" class="ln">   580  </span>	})
 <span id="L581" class="ln">   581  </span>}
 <span id="L582" class="ln">   582  </span>
-<span id="L583" class="ln">   583  </span>func TestSecurityConfig_CIDR(t *testing.T) {
+<span id="L583" class="ln">   583  </span>func TestDBConnectionConfig_MaxLifetime(t *testing.T) {
 <span id="L584" class="ln">   584  </span>	t.Parallel()
 <span id="L585" class="ln">   585  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L586" class="ln">   586  </span>		t.Parallel()
-<span id="L587" class="ln">   587  </span>		t.Run(&#34;cidrがnilの場合_nilを返す&#34;, func(t *testing.T) {
+<span id="L587" class="ln">   587  </span>		t.Run(&#34;最大ライフタイムを取得できる&#34;, func(t *testing.T) {
 <span id="L588" class="ln">   588  </span>			t.Parallel()
-<span id="L589" class="ln">   589  </span>			s := &amp;SecurityConfig{}
-<span id="L590" class="ln">   590  </span>			assert.Nil(t, s.CIDR())
+<span id="L589" class="ln">   589  </span>			connection := MockConfigForTest(t).dbconnection
+<span id="L590" class="ln">   590  </span>			assert.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
 <span id="L591" class="ln">   591  </span>		})
 <span id="L592" class="ln">   592  </span>	})
 <span id="L593" class="ln">   593  </span>}
 <span id="L594" class="ln">   594  </span>
-<span id="L595" class="ln">   595  </span>func TestSecureCookieConfig_Secure(t *testing.T) {
+<span id="L595" class="ln">   595  </span>func TestDBConnectionConfig_MaxIdleTime(t *testing.T) {
 <span id="L596" class="ln">   596  </span>	t.Parallel()
 <span id="L597" class="ln">   597  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L598" class="ln">   598  </span>		t.Parallel()
-<span id="L599" class="ln">   599  </span>		t.Run(&#34;secureがnilの場合_nilを返す&#34;, func(t *testing.T) {
+<span id="L599" class="ln">   599  </span>		t.Run(&#34;最大アイドル時間を取得できる&#34;, func(t *testing.T) {
 <span id="L600" class="ln">   600  </span>			t.Parallel()
-<span id="L601" class="ln">   601  </span>			s := &amp;SecureCookieConfig{}
-<span id="L602" class="ln">   602  </span>			assert.Nil(t, s.Secure())
+<span id="L601" class="ln">   601  </span>			connection := MockConfigForTest(t).dbconnection
+<span id="L602" class="ln">   602  </span>			assert.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
 <span id="L603" class="ln">   603  </span>		})
 <span id="L604" class="ln">   604  </span>	})
 <span id="L605" class="ln">   605  </span>}
 <span id="L606" class="ln">   606  </span>
-<span id="L607" class="ln">   607  </span>func TestObservabilityConfig_Enabled(t *testing.T) {
+<span id="L607" class="ln">   607  </span>func TestSecurityConfig_AllowedOrigins(t *testing.T) {
 <span id="L608" class="ln">   608  </span>	t.Parallel()
-<span id="L609" class="ln">   609  </span>
-<span id="L610" class="ln">   610  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L611" class="ln">   611  </span>		t.Parallel()
-<span id="L612" class="ln">   612  </span>
-<span id="L613" class="ln">   613  </span>		t.Run(&#34;全部otlpなら全て有効&#34;, func(t *testing.T) {
-<span id="L614" class="ln">   614  </span>			t.Parallel()
-<span id="L615" class="ln">   615  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;otlp&#34;, metricsExporter: &#34;otlp&#34;, logsExporter: &#34;otlp&#34;}
-<span id="L616" class="ln">   616  </span>			assert.True(t, o.TracesEnabled())
-<span id="L617" class="ln">   617  </span>			assert.True(t, o.MetricsEnabled())
-<span id="L618" class="ln">   618  </span>			assert.True(t, o.LogsEnabled())
-<span id="L619" class="ln">   619  </span>			assert.True(t, o.Enabled())
-<span id="L620" class="ln">   620  </span>		})
-<span id="L621" class="ln">   621  </span>
-<span id="L622" class="ln">   622  </span>		t.Run(&#34;traceのみ有効&#34;, func(t *testing.T) {
-<span id="L623" class="ln">   623  </span>			t.Parallel()
-<span id="L624" class="ln">   624  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;otlp&#34;, metricsExporter: &#34;&#34;, logsExporter: &#34;&#34;}
-<span id="L625" class="ln">   625  </span>			assert.True(t, o.TracesEnabled())
-<span id="L626" class="ln">   626  </span>			assert.False(t, o.MetricsEnabled())
-<span id="L627" class="ln">   627  </span>			assert.False(t, o.LogsEnabled())
-<span id="L628" class="ln">   628  </span>			assert.True(t, o.Enabled())
-<span id="L629" class="ln">   629  </span>		})
+<span id="L609" class="ln">   609  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L610" class="ln">   610  </span>		t.Parallel()
+<span id="L611" class="ln">   611  </span>		t.Run(&#34;許可オリジンを取得できる&#34;, func(t *testing.T) {
+<span id="L612" class="ln">   612  </span>			t.Parallel()
+<span id="L613" class="ln">   613  </span>			security := MockConfigForTest(t).security
+<span id="L614" class="ln">   614  </span>			assert.Equal(t, strings.Split(expectedAllowedOrigins, &#34;,&#34;), security.AllowedOrigins())
+<span id="L615" class="ln">   615  </span>		})
+<span id="L616" class="ln">   616  </span>	})
+<span id="L617" class="ln">   617  </span>}
+<span id="L618" class="ln">   618  </span>
+<span id="L619" class="ln">   619  </span>func TestSecurityConfig_ContentTypeNosniff(t *testing.T) {
+<span id="L620" class="ln">   620  </span>	t.Parallel()
+<span id="L621" class="ln">   621  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L622" class="ln">   622  </span>		t.Parallel()
+<span id="L623" class="ln">   623  </span>		t.Run(&#34;ContentTypeNosniffを取得できる&#34;, func(t *testing.T) {
+<span id="L624" class="ln">   624  </span>			t.Parallel()
+<span id="L625" class="ln">   625  </span>			security := MockConfigForTest(t).security
+<span id="L626" class="ln">   626  </span>			assert.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
+<span id="L627" class="ln">   627  </span>		})
+<span id="L628" class="ln">   628  </span>	})
+<span id="L629" class="ln">   629  </span>}
 <span id="L630" class="ln">   630  </span>
-<span id="L631" class="ln">   631  </span>		t.Run(&#34;metricのみ有効&#34;, func(t *testing.T) {
-<span id="L632" class="ln">   632  </span>			t.Parallel()
-<span id="L633" class="ln">   633  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;&#34;, metricsExporter: &#34;otlp&#34;, logsExporter: &#34;&#34;}
-<span id="L634" class="ln">   634  </span>			assert.False(t, o.TracesEnabled())
-<span id="L635" class="ln">   635  </span>			assert.True(t, o.MetricsEnabled())
-<span id="L636" class="ln">   636  </span>			assert.False(t, o.LogsEnabled())
-<span id="L637" class="ln">   637  </span>			assert.True(t, o.Enabled())
-<span id="L638" class="ln">   638  </span>		})
-<span id="L639" class="ln">   639  </span>
-<span id="L640" class="ln">   640  </span>		t.Run(&#34;logのみ有効&#34;, func(t *testing.T) {
-<span id="L641" class="ln">   641  </span>			t.Parallel()
-<span id="L642" class="ln">   642  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;&#34;, metricsExporter: &#34;&#34;, logsExporter: &#34;otlp&#34;}
-<span id="L643" class="ln">   643  </span>			assert.False(t, o.TracesEnabled())
-<span id="L644" class="ln">   644  </span>			assert.False(t, o.MetricsEnabled())
-<span id="L645" class="ln">   645  </span>			assert.True(t, o.LogsEnabled())
-<span id="L646" class="ln">   646  </span>			assert.True(t, o.Enabled())
-<span id="L647" class="ln">   647  </span>		})
-<span id="L648" class="ln">   648  </span>
-<span id="L649" class="ln">   649  </span>		t.Run(&#34;全部空なら無効&#34;, func(t *testing.T) {
-<span id="L650" class="ln">   650  </span>			t.Parallel()
-<span id="L651" class="ln">   651  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;&#34;, metricsExporter: &#34;&#34;, logsExporter: &#34;&#34;}
-<span id="L652" class="ln">   652  </span>			assert.False(t, o.TracesEnabled())
-<span id="L653" class="ln">   653  </span>			assert.False(t, o.MetricsEnabled())
-<span id="L654" class="ln">   654  </span>			assert.False(t, o.LogsEnabled())
-<span id="L655" class="ln">   655  </span>			assert.False(t, o.Enabled())
-<span id="L656" class="ln">   656  </span>		})
-<span id="L657" class="ln">   657  </span>
-<span id="L658" class="ln">   658  </span>		t.Run(&#34;noneは無効として扱う&#34;, func(t *testing.T) {
-<span id="L659" class="ln">   659  </span>			t.Parallel()
-<span id="L660" class="ln">   660  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;none&#34;, metricsExporter: &#34;none&#34;, logsExporter: &#34;none&#34;}
-<span id="L661" class="ln">   661  </span>			assert.False(t, o.TracesEnabled())
-<span id="L662" class="ln">   662  </span>			assert.False(t, o.MetricsEnabled())
-<span id="L663" class="ln">   663  </span>			assert.False(t, o.LogsEnabled())
-<span id="L664" class="ln">   664  </span>			assert.False(t, o.Enabled())
-<span id="L665" class="ln">   665  </span>		})
+<span id="L631" class="ln">   631  </span>func TestSecurityConfig_XFrameOptions(t *testing.T) {
+<span id="L632" class="ln">   632  </span>	t.Parallel()
+<span id="L633" class="ln">   633  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L634" class="ln">   634  </span>		t.Parallel()
+<span id="L635" class="ln">   635  </span>		t.Run(&#34;XFrameOptionsを取得できる&#34;, func(t *testing.T) {
+<span id="L636" class="ln">   636  </span>			t.Parallel()
+<span id="L637" class="ln">   637  </span>			security := MockConfigForTest(t).security
+<span id="L638" class="ln">   638  </span>			assert.Equal(t, expectedXFrameOptions, security.XFrameOptions())
+<span id="L639" class="ln">   639  </span>		})
+<span id="L640" class="ln">   640  </span>	})
+<span id="L641" class="ln">   641  </span>}
+<span id="L642" class="ln">   642  </span>
+<span id="L643" class="ln">   643  </span>func TestSecurityConfig_HSTSMaxAge(t *testing.T) {
+<span id="L644" class="ln">   644  </span>	t.Parallel()
+<span id="L645" class="ln">   645  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L646" class="ln">   646  </span>		t.Parallel()
+<span id="L647" class="ln">   647  </span>		t.Run(&#34;HSTS最大期間を取得できる&#34;, func(t *testing.T) {
+<span id="L648" class="ln">   648  </span>			t.Parallel()
+<span id="L649" class="ln">   649  </span>			security := MockConfigForTest(t).security
+<span id="L650" class="ln">   650  </span>			assert.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
+<span id="L651" class="ln">   651  </span>		})
+<span id="L652" class="ln">   652  </span>	})
+<span id="L653" class="ln">   653  </span>}
+<span id="L654" class="ln">   654  </span>
+<span id="L655" class="ln">   655  </span>func TestSecurityConfig_HSTSExcludeSubdomains(t *testing.T) {
+<span id="L656" class="ln">   656  </span>	t.Parallel()
+<span id="L657" class="ln">   657  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L658" class="ln">   658  </span>		t.Parallel()
+<span id="L659" class="ln">   659  </span>		t.Run(&#34;HSTSサブドメイン除外設定を取得できる&#34;, func(t *testing.T) {
+<span id="L660" class="ln">   660  </span>			t.Parallel()
+<span id="L661" class="ln">   661  </span>			security := MockConfigForTest(t).security
+<span id="L662" class="ln">   662  </span>			assert.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
+<span id="L663" class="ln">   663  </span>		})
+<span id="L664" class="ln">   664  </span>	})
+<span id="L665" class="ln">   665  </span>}
 <span id="L666" class="ln">   666  </span>
-<span id="L667" class="ln">   667  </span>		t.Run(&#34;大文字NONEも無効として扱う&#34;, func(t *testing.T) {
-<span id="L668" class="ln">   668  </span>			t.Parallel()
-<span id="L669" class="ln">   669  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;NONE&#34;, metricsExporter: &#34;None&#34;, logsExporter: &#34;nOnE&#34;}
-<span id="L670" class="ln">   670  </span>			assert.False(t, o.TracesEnabled())
-<span id="L671" class="ln">   671  </span>			assert.False(t, o.MetricsEnabled())
-<span id="L672" class="ln">   672  </span>			assert.False(t, o.LogsEnabled())
-<span id="L673" class="ln">   673  </span>			assert.False(t, o.Enabled())
-<span id="L674" class="ln">   674  </span>		})
-<span id="L675" class="ln">   675  </span>	})
-<span id="L676" class="ln">   676  </span>}
-<span id="L677" class="ln">   677  </span>
+<span id="L667" class="ln">   667  </span>func TestSecurityConfig_HSTSPreloadEnabled(t *testing.T) {
+<span id="L668" class="ln">   668  </span>	t.Parallel()
+<span id="L669" class="ln">   669  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L670" class="ln">   670  </span>		t.Parallel()
+<span id="L671" class="ln">   671  </span>		t.Run(&#34;HSTSプリロード有効設定を取得できる&#34;, func(t *testing.T) {
+<span id="L672" class="ln">   672  </span>			t.Parallel()
+<span id="L673" class="ln">   673  </span>			security := MockConfigForTest(t).security
+<span id="L674" class="ln">   674  </span>			assert.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
+<span id="L675" class="ln">   675  </span>		})
+<span id="L676" class="ln">   676  </span>	})
+<span id="L677" class="ln">   677  </span>}
+<span id="L678" class="ln">   678  </span>
+<span id="L679" class="ln">   679  </span>func TestSecurityConfig_ReferrerPolicy(t *testing.T) {
+<span id="L680" class="ln">   680  </span>	t.Parallel()
+<span id="L681" class="ln">   681  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L682" class="ln">   682  </span>		t.Parallel()
+<span id="L683" class="ln">   683  </span>		t.Run(&#34;リファラーポリシーを取得できる&#34;, func(t *testing.T) {
+<span id="L684" class="ln">   684  </span>			t.Parallel()
+<span id="L685" class="ln">   685  </span>			security := MockConfigForTest(t).security
+<span id="L686" class="ln">   686  </span>			assert.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
+<span id="L687" class="ln">   687  </span>		})
+<span id="L688" class="ln">   688  </span>	})
+<span id="L689" class="ln">   689  </span>}
+<span id="L690" class="ln">   690  </span>
+<span id="L691" class="ln">   691  </span>func TestSecurityConfig_BcryptCost(t *testing.T) {
+<span id="L692" class="ln">   692  </span>	t.Parallel()
+<span id="L693" class="ln">   693  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L694" class="ln">   694  </span>		t.Parallel()
+<span id="L695" class="ln">   695  </span>		t.Run(&#34;bcryptコストを取得できる&#34;, func(t *testing.T) {
+<span id="L696" class="ln">   696  </span>			t.Parallel()
+<span id="L697" class="ln">   697  </span>			security := MockConfigForTest(t).security
+<span id="L698" class="ln">   698  </span>			assert.Equal(t, expectedBcryptCost, security.BcryptCost())
+<span id="L699" class="ln">   699  </span>		})
+<span id="L700" class="ln">   700  </span>	})
+<span id="L701" class="ln">   701  </span>}
+<span id="L702" class="ln">   702  </span>
+<span id="L703" class="ln">   703  </span>func TestSecureCookieConfig_SameSite(t *testing.T) {
+<span id="L704" class="ln">   704  </span>	t.Parallel()
+<span id="L705" class="ln">   705  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L706" class="ln">   706  </span>		t.Parallel()
+<span id="L707" class="ln">   707  </span>		t.Run(&#34;SameSite属性を取得できる&#34;, func(t *testing.T) {
+<span id="L708" class="ln">   708  </span>			t.Parallel()
+<span id="L709" class="ln">   709  </span>			secureCookie := MockConfigForTest(t).secureCookie
+<span id="L710" class="ln">   710  </span>			assert.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
+<span id="L711" class="ln">   711  </span>		})
+<span id="L712" class="ln">   712  </span>	})
+<span id="L713" class="ln">   713  </span>}
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span>func TestSecureCookieConfig_Domain(t *testing.T) {
+<span id="L716" class="ln">   716  </span>	t.Parallel()
+<span id="L717" class="ln">   717  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L718" class="ln">   718  </span>		t.Parallel()
+<span id="L719" class="ln">   719  </span>		t.Run(&#34;ドメインを取得できる&#34;, func(t *testing.T) {
+<span id="L720" class="ln">   720  </span>			t.Parallel()
+<span id="L721" class="ln">   721  </span>			secureCookie := MockConfigForTest(t).secureCookie
+<span id="L722" class="ln">   722  </span>			assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
+<span id="L723" class="ln">   723  </span>		})
+<span id="L724" class="ln">   724  </span>	})
+<span id="L725" class="ln">   725  </span>}
+<span id="L726" class="ln">   726  </span>
+<span id="L727" class="ln">   727  </span>func TestWorkerConfig_Concurrency(t *testing.T) {
+<span id="L728" class="ln">   728  </span>	t.Parallel()
+<span id="L729" class="ln">   729  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L730" class="ln">   730  </span>		t.Parallel()
+<span id="L731" class="ln">   731  </span>		t.Run(&#34;並行実行数を取得できる&#34;, func(t *testing.T) {
+<span id="L732" class="ln">   732  </span>			t.Parallel()
+<span id="L733" class="ln">   733  </span>			worker := MockConfigForTest(t).worker
+<span id="L734" class="ln">   734  </span>			assert.Equal(t, expectedWorkerConcurrency, worker.Concurrency())
+<span id="L735" class="ln">   735  </span>		})
+<span id="L736" class="ln">   736  </span>	})
+<span id="L737" class="ln">   737  </span>}
+<span id="L738" class="ln">   738  </span>
+<span id="L739" class="ln">   739  </span>func TestWorkerConfig_MaxInFlight(t *testing.T) {
+<span id="L740" class="ln">   740  </span>	t.Parallel()
+<span id="L741" class="ln">   741  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L742" class="ln">   742  </span>		t.Parallel()
+<span id="L743" class="ln">   743  </span>		t.Run(&#34;最大インフライト数を取得できる&#34;, func(t *testing.T) {
+<span id="L744" class="ln">   744  </span>			t.Parallel()
+<span id="L745" class="ln">   745  </span>			worker := MockConfigForTest(t).worker
+<span id="L746" class="ln">   746  </span>			assert.Equal(t, expectedWorkerMaxInFlight, worker.MaxInFlight())
+<span id="L747" class="ln">   747  </span>		})
+<span id="L748" class="ln">   748  </span>	})
+<span id="L749" class="ln">   749  </span>}
+<span id="L750" class="ln">   750  </span>
+<span id="L751" class="ln">   751  </span>func TestWorkerConfig_BatchSize(t *testing.T) {
+<span id="L752" class="ln">   752  </span>	t.Parallel()
+<span id="L753" class="ln">   753  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L754" class="ln">   754  </span>		t.Parallel()
+<span id="L755" class="ln">   755  </span>		t.Run(&#34;バッチサイズを取得できる&#34;, func(t *testing.T) {
+<span id="L756" class="ln">   756  </span>			t.Parallel()
+<span id="L757" class="ln">   757  </span>			worker := MockConfigForTest(t).worker
+<span id="L758" class="ln">   758  </span>			assert.Equal(t, expectedWorkerBatchSize, worker.BatchSize())
+<span id="L759" class="ln">   759  </span>		})
+<span id="L760" class="ln">   760  </span>	})
+<span id="L761" class="ln">   761  </span>}
+<span id="L762" class="ln">   762  </span>
+<span id="L763" class="ln">   763  </span>func TestWorkerConfig_ExtendInterval(t *testing.T) {
+<span id="L764" class="ln">   764  </span>	t.Parallel()
+<span id="L765" class="ln">   765  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L766" class="ln">   766  </span>		t.Parallel()
+<span id="L767" class="ln">   767  </span>		t.Run(&#34;Extend周期を取得できる&#34;, func(t *testing.T) {
+<span id="L768" class="ln">   768  </span>			t.Parallel()
+<span id="L769" class="ln">   769  </span>			worker := MockConfigForTest(t).worker
+<span id="L770" class="ln">   770  </span>			assert.Equal(t, expectedWorkerExtendInterval, worker.ExtendInterval())
+<span id="L771" class="ln">   771  </span>		})
+<span id="L772" class="ln">   772  </span>	})
+<span id="L773" class="ln">   773  </span>}
+<span id="L774" class="ln">   774  </span>
+<span id="L775" class="ln">   775  </span>func TestWorkerConfig_DrainTimeout(t *testing.T) {
+<span id="L776" class="ln">   776  </span>	t.Parallel()
+<span id="L777" class="ln">   777  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L778" class="ln">   778  </span>		t.Parallel()
+<span id="L779" class="ln">   779  </span>		t.Run(&#34;ドレインタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L780" class="ln">   780  </span>			t.Parallel()
+<span id="L781" class="ln">   781  </span>			worker := MockConfigForTest(t).worker
+<span id="L782" class="ln">   782  </span>			assert.Equal(t, expectedWorkerDrainTimeout, worker.DrainTimeout())
+<span id="L783" class="ln">   783  </span>		})
+<span id="L784" class="ln">   784  </span>	})
+<span id="L785" class="ln">   785  </span>}
+<span id="L786" class="ln">   786  </span>
+<span id="L787" class="ln">   787  </span>func TestWorkerConfig_ReceiveCountWarnThreshold(t *testing.T) {
+<span id="L788" class="ln">   788  </span>	t.Parallel()
+<span id="L789" class="ln">   789  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L790" class="ln">   790  </span>		t.Parallel()
+<span id="L791" class="ln">   791  </span>		t.Run(&#34;再配送回数の警告閾値を取得できる&#34;, func(t *testing.T) {
+<span id="L792" class="ln">   792  </span>			t.Parallel()
+<span id="L793" class="ln">   793  </span>			worker := MockConfigForTest(t).worker
+<span id="L794" class="ln">   794  </span>			assert.Equal(t, expectedWorkerReceiveCountWarnThreshold, worker.ReceiveCountWarnThreshold())
+<span id="L795" class="ln">   795  </span>		})
+<span id="L796" class="ln">   796  </span>	})
+<span id="L797" class="ln">   797  </span>}
+<span id="L798" class="ln">   798  </span>
+<span id="L799" class="ln">   799  </span>func TestWorkerConfig_CircuitFailureThreshold(t *testing.T) {
+<span id="L800" class="ln">   800  </span>	t.Parallel()
+<span id="L801" class="ln">   801  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L802" class="ln">   802  </span>		t.Parallel()
+<span id="L803" class="ln">   803  </span>		t.Run(&#34;サーキット失敗閾値を取得できる&#34;, func(t *testing.T) {
+<span id="L804" class="ln">   804  </span>			t.Parallel()
+<span id="L805" class="ln">   805  </span>			worker := MockConfigForTest(t).worker
+<span id="L806" class="ln">   806  </span>			assert.Equal(t, expectedWorkerCircuitFailureThreshold, worker.CircuitFailureThreshold())
+<span id="L807" class="ln">   807  </span>		})
+<span id="L808" class="ln">   808  </span>	})
+<span id="L809" class="ln">   809  </span>}
+<span id="L810" class="ln">   810  </span>
+<span id="L811" class="ln">   811  </span>func TestWorkerConfig_CircuitOpenBackoffInitial(t *testing.T) {
+<span id="L812" class="ln">   812  </span>	t.Parallel()
+<span id="L813" class="ln">   813  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L814" class="ln">   814  </span>		t.Parallel()
+<span id="L815" class="ln">   815  </span>		t.Run(&#34;サーキットOpen初回backoffを取得できる&#34;, func(t *testing.T) {
+<span id="L816" class="ln">   816  </span>			t.Parallel()
+<span id="L817" class="ln">   817  </span>			worker := MockConfigForTest(t).worker
+<span id="L818" class="ln">   818  </span>			assert.Equal(t, expectedWorkerCircuitOpenBackoffInitial, worker.CircuitOpenBackoffInitial())
+<span id="L819" class="ln">   819  </span>		})
+<span id="L820" class="ln">   820  </span>	})
+<span id="L821" class="ln">   821  </span>}
+<span id="L822" class="ln">   822  </span>
+<span id="L823" class="ln">   823  </span>func TestWorkerConfig_CircuitOpenBackoffMax(t *testing.T) {
+<span id="L824" class="ln">   824  </span>	t.Parallel()
+<span id="L825" class="ln">   825  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L826" class="ln">   826  </span>		t.Parallel()
+<span id="L827" class="ln">   827  </span>		t.Run(&#34;サーキットOpen backoff上限を取得できる&#34;, func(t *testing.T) {
+<span id="L828" class="ln">   828  </span>			t.Parallel()
+<span id="L829" class="ln">   829  </span>			worker := MockConfigForTest(t).worker
+<span id="L830" class="ln">   830  </span>			assert.Equal(t, expectedWorkerCircuitOpenBackoffMax, worker.CircuitOpenBackoffMax())
+<span id="L831" class="ln">   831  </span>		})
+<span id="L832" class="ln">   832  </span>	})
+<span id="L833" class="ln">   833  </span>}
+<span id="L834" class="ln">   834  </span>
+<span id="L835" class="ln">   835  </span>func TestWorkerConfig_CircuitHalfOpenProbe(t *testing.T) {
+<span id="L836" class="ln">   836  </span>	t.Parallel()
+<span id="L837" class="ln">   837  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L838" class="ln">   838  </span>		t.Parallel()
+<span id="L839" class="ln">   839  </span>		t.Run(&#34;Half-open試行数を取得できる&#34;, func(t *testing.T) {
+<span id="L840" class="ln">   840  </span>			t.Parallel()
+<span id="L841" class="ln">   841  </span>			worker := MockConfigForTest(t).worker
+<span id="L842" class="ln">   842  </span>			assert.Equal(t, expectedWorkerCircuitHalfOpenProbe, worker.CircuitHalfOpenProbe())
+<span id="L843" class="ln">   843  </span>		})
+<span id="L844" class="ln">   844  </span>	})
+<span id="L845" class="ln">   845  </span>}
+<span id="L846" class="ln">   846  </span>
+<span id="L847" class="ln">   847  </span>func TestWorkerConfig_HealthListenAddr(t *testing.T) {
+<span id="L848" class="ln">   848  </span>	t.Parallel()
+<span id="L849" class="ln">   849  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L850" class="ln">   850  </span>		t.Parallel()
+<span id="L851" class="ln">   851  </span>		t.Run(&#34;health listener待ち受けアドレスを取得できる&#34;, func(t *testing.T) {
+<span id="L852" class="ln">   852  </span>			t.Parallel()
+<span id="L853" class="ln">   853  </span>			worker := MockConfigForTest(t).worker
+<span id="L854" class="ln">   854  </span>			assert.Equal(t, expectedWorkerHealthListenAddr, worker.HealthListenAddr())
+<span id="L855" class="ln">   855  </span>		})
+<span id="L856" class="ln">   856  </span>	})
+<span id="L857" class="ln">   857  </span>}
+<span id="L858" class="ln">   858  </span>
+<span id="L859" class="ln">   859  </span>func TestWorkerConfig_ProgressStaleAfter(t *testing.T) {
+<span id="L860" class="ln">   860  </span>	t.Parallel()
+<span id="L861" class="ln">   861  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L862" class="ln">   862  </span>		t.Parallel()
+<span id="L863" class="ln">   863  </span>		t.Run(&#34;進捗停滞判定時間を取得できる&#34;, func(t *testing.T) {
+<span id="L864" class="ln">   864  </span>			t.Parallel()
+<span id="L865" class="ln">   865  </span>			worker := MockConfigForTest(t).worker
+<span id="L866" class="ln">   866  </span>			assert.Equal(t, expectedWorkerProgressStaleAfter, worker.ProgressStaleAfter())
+<span id="L867" class="ln">   867  </span>		})
+<span id="L868" class="ln">   868  </span>	})
+<span id="L869" class="ln">   869  </span>}
+<span id="L870" class="ln">   870  </span>
+<span id="L871" class="ln">   871  </span>func TestWorkerConfig_NackBackoffInitial(t *testing.T) {
+<span id="L872" class="ln">   872  </span>	t.Parallel()
+<span id="L873" class="ln">   873  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L874" class="ln">   874  </span>		t.Parallel()
+<span id="L875" class="ln">   875  </span>		t.Run(&#34;Nack初回backoffを取得できる&#34;, func(t *testing.T) {
+<span id="L876" class="ln">   876  </span>			t.Parallel()
+<span id="L877" class="ln">   877  </span>			worker := MockConfigForTest(t).worker
+<span id="L878" class="ln">   878  </span>			assert.Equal(t, expectedWorkerNackBackoffInitial, worker.NackBackoffInitial())
+<span id="L879" class="ln">   879  </span>		})
+<span id="L880" class="ln">   880  </span>	})
+<span id="L881" class="ln">   881  </span>}
+<span id="L882" class="ln">   882  </span>
+<span id="L883" class="ln">   883  </span>func TestWorkerConfig_NackBackoffMax(t *testing.T) {
+<span id="L884" class="ln">   884  </span>	t.Parallel()
+<span id="L885" class="ln">   885  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L886" class="ln">   886  </span>		t.Parallel()
+<span id="L887" class="ln">   887  </span>		t.Run(&#34;Nack backoff上限を取得できる&#34;, func(t *testing.T) {
+<span id="L888" class="ln">   888  </span>			t.Parallel()
+<span id="L889" class="ln">   889  </span>			worker := MockConfigForTest(t).worker
+<span id="L890" class="ln">   890  </span>			assert.Equal(t, expectedWorkerNackBackoffMax, worker.NackBackoffMax())
+<span id="L891" class="ln">   891  </span>		})
+<span id="L892" class="ln">   892  </span>	})
+<span id="L893" class="ln">   893  </span>}
+<span id="L894" class="ln">   894  </span>
+<span id="L895" class="ln">   895  </span>func TestOutboxConfig_Endpoint(t *testing.T) {
+<span id="L896" class="ln">   896  </span>	t.Parallel()
+<span id="L897" class="ln">   897  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L898" class="ln">   898  </span>		t.Parallel()
+<span id="L899" class="ln">   899  </span>		t.Run(&#34;エンドポイントを取得できる&#34;, func(t *testing.T) {
+<span id="L900" class="ln">   900  </span>			t.Parallel()
+<span id="L901" class="ln">   901  </span>			outbox := MockConfigForTest(t).outbox
+<span id="L902" class="ln">   902  </span>			assert.Equal(t, expectedOutboxEndpoint, outbox.Endpoint())
+<span id="L903" class="ln">   903  </span>		})
+<span id="L904" class="ln">   904  </span>	})
+<span id="L905" class="ln">   905  </span>}
+<span id="L906" class="ln">   906  </span>
+<span id="L907" class="ln">   907  </span>func TestOutboxConfig_PollInterval(t *testing.T) {
+<span id="L908" class="ln">   908  </span>	t.Parallel()
+<span id="L909" class="ln">   909  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L910" class="ln">   910  </span>		t.Parallel()
+<span id="L911" class="ln">   911  </span>		t.Run(&#34;ポーリング間隔を取得できる&#34;, func(t *testing.T) {
+<span id="L912" class="ln">   912  </span>			t.Parallel()
+<span id="L913" class="ln">   913  </span>			outbox := MockConfigForTest(t).outbox
+<span id="L914" class="ln">   914  </span>			assert.Equal(t, expectedOutboxPollInterval, outbox.PollInterval())
+<span id="L915" class="ln">   915  </span>		})
+<span id="L916" class="ln">   916  </span>	})
+<span id="L917" class="ln">   917  </span>}
+<span id="L918" class="ln">   918  </span>
+<span id="L919" class="ln">   919  </span>func TestOutboxConfig_ErrorBackoff(t *testing.T) {
+<span id="L920" class="ln">   920  </span>	t.Parallel()
+<span id="L921" class="ln">   921  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L922" class="ln">   922  </span>		t.Parallel()
+<span id="L923" class="ln">   923  </span>		t.Run(&#34;エラーbackoffを取得できる&#34;, func(t *testing.T) {
+<span id="L924" class="ln">   924  </span>			t.Parallel()
+<span id="L925" class="ln">   925  </span>			outbox := MockConfigForTest(t).outbox
+<span id="L926" class="ln">   926  </span>			assert.Equal(t, expectedOutboxErrorBackoff, outbox.ErrorBackoff())
+<span id="L927" class="ln">   927  </span>		})
+<span id="L928" class="ln">   928  </span>	})
+<span id="L929" class="ln">   929  </span>}
+<span id="L930" class="ln">   930  </span>
+<span id="L931" class="ln">   931  </span>func TestOutboxConfig_BatchSize(t *testing.T) {
+<span id="L932" class="ln">   932  </span>	t.Parallel()
+<span id="L933" class="ln">   933  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L934" class="ln">   934  </span>		t.Parallel()
+<span id="L935" class="ln">   935  </span>		t.Run(&#34;バッチサイズを取得できる&#34;, func(t *testing.T) {
+<span id="L936" class="ln">   936  </span>			t.Parallel()
+<span id="L937" class="ln">   937  </span>			outbox := MockConfigForTest(t).outbox
+<span id="L938" class="ln">   938  </span>			assert.Equal(t, expectedOutboxBatchSize, outbox.BatchSize())
+<span id="L939" class="ln">   939  </span>		})
+<span id="L940" class="ln">   940  </span>	})
+<span id="L941" class="ln">   941  </span>}
+<span id="L942" class="ln">   942  </span>
+<span id="L943" class="ln">   943  </span>func TestAuthConfig_Issuer(t *testing.T) {
+<span id="L944" class="ln">   944  </span>	t.Parallel()
+<span id="L945" class="ln">   945  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L946" class="ln">   946  </span>		t.Parallel()
+<span id="L947" class="ln">   947  </span>		t.Run(&#34;issuerを取得できる&#34;, func(t *testing.T) {
+<span id="L948" class="ln">   948  </span>			t.Parallel()
+<span id="L949" class="ln">   949  </span>			auth := MockConfigForTest(t).auth
+<span id="L950" class="ln">   950  </span>			assert.Equal(t, expectedAuthIssuer, auth.Issuer())
+<span id="L951" class="ln">   951  </span>		})
+<span id="L952" class="ln">   952  </span>	})
+<span id="L953" class="ln">   953  </span>}
+<span id="L954" class="ln">   954  </span>
+<span id="L955" class="ln">   955  </span>func TestAuthConfig_Audience(t *testing.T) {
+<span id="L956" class="ln">   956  </span>	t.Parallel()
+<span id="L957" class="ln">   957  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L958" class="ln">   958  </span>		t.Parallel()
+<span id="L959" class="ln">   959  </span>		t.Run(&#34;audienceを取得できる&#34;, func(t *testing.T) {
+<span id="L960" class="ln">   960  </span>			t.Parallel()
+<span id="L961" class="ln">   961  </span>			auth := MockConfigForTest(t).auth
+<span id="L962" class="ln">   962  </span>			assert.Equal(t, expectedAuthAudience, auth.Audience())
+<span id="L963" class="ln">   963  </span>		})
+<span id="L964" class="ln">   964  </span>	})
+<span id="L965" class="ln">   965  </span>}
+<span id="L966" class="ln">   966  </span>
+<span id="L967" class="ln">   967  </span>func TestAuthConfig_JWKSURL(t *testing.T) {
+<span id="L968" class="ln">   968  </span>	t.Parallel()
+<span id="L969" class="ln">   969  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L970" class="ln">   970  </span>		t.Parallel()
+<span id="L971" class="ln">   971  </span>		t.Run(&#34;JWKS URLを取得できる&#34;, func(t *testing.T) {
+<span id="L972" class="ln">   972  </span>			t.Parallel()
+<span id="L973" class="ln">   973  </span>			auth := MockConfigForTest(t).auth
+<span id="L974" class="ln">   974  </span>			assert.Equal(t, expectedAuthJWKSURL, auth.JWKSURL())
+<span id="L975" class="ln">   975  </span>		})
+<span id="L976" class="ln">   976  </span>	})
+<span id="L977" class="ln">   977  </span>}
+<span id="L978" class="ln">   978  </span>
+<span id="L979" class="ln">   979  </span>func TestAuthConfig_AllowedAlgorithms(t *testing.T) {
+<span id="L980" class="ln">   980  </span>	t.Parallel()
+<span id="L981" class="ln">   981  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L982" class="ln">   982  </span>		t.Parallel()
+<span id="L983" class="ln">   983  </span>		t.Run(&#34;許可アルゴリズムを取得できる&#34;, func(t *testing.T) {
+<span id="L984" class="ln">   984  </span>			t.Parallel()
+<span id="L985" class="ln">   985  </span>			auth := MockConfigForTest(t).auth
+<span id="L986" class="ln">   986  </span>			assert.Equal(t, expectedAuthAllowedAlgorithms, auth.AllowedAlgorithms())
+<span id="L987" class="ln">   987  </span>		})
+<span id="L988" class="ln">   988  </span>	})
+<span id="L989" class="ln">   989  </span>}
+<span id="L990" class="ln">   990  </span>
+<span id="L991" class="ln">   991  </span>func TestAuthConfig_ClockSkew(t *testing.T) {
+<span id="L992" class="ln">   992  </span>	t.Parallel()
+<span id="L993" class="ln">   993  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L994" class="ln">   994  </span>		t.Parallel()
+<span id="L995" class="ln">   995  </span>		t.Run(&#34;クロックスキューを取得できる&#34;, func(t *testing.T) {
+<span id="L996" class="ln">   996  </span>			t.Parallel()
+<span id="L997" class="ln">   997  </span>			auth := MockConfigForTest(t).auth
+<span id="L998" class="ln">   998  </span>			assert.Equal(t, expectedAuthClockSkew, auth.ClockSkew())
+<span id="L999" class="ln">   999  </span>		})
+<span id="L1000" class="ln">  1000  </span>	})
+<span id="L1001" class="ln">  1001  </span>}
+<span id="L1002" class="ln">  1002  </span>
+<span id="L1003" class="ln">  1003  </span>func TestAuthConfig_JWKSCacheTTL(t *testing.T) {
+<span id="L1004" class="ln">  1004  </span>	t.Parallel()
+<span id="L1005" class="ln">  1005  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1006" class="ln">  1006  </span>		t.Parallel()
+<span id="L1007" class="ln">  1007  </span>		t.Run(&#34;JWKSキャッシュTTLを取得できる&#34;, func(t *testing.T) {
+<span id="L1008" class="ln">  1008  </span>			t.Parallel()
+<span id="L1009" class="ln">  1009  </span>			auth := MockConfigForTest(t).auth
+<span id="L1010" class="ln">  1010  </span>			assert.Equal(t, expectedAuthJWKSCacheTTL, auth.JWKSCacheTTL())
+<span id="L1011" class="ln">  1011  </span>		})
+<span id="L1012" class="ln">  1012  </span>	})
+<span id="L1013" class="ln">  1013  </span>}
+<span id="L1014" class="ln">  1014  </span>
+<span id="L1015" class="ln">  1015  </span>func TestAuthConfig_DiscoveryTTL(t *testing.T) {
+<span id="L1016" class="ln">  1016  </span>	t.Parallel()
+<span id="L1017" class="ln">  1017  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1018" class="ln">  1018  </span>		t.Parallel()
+<span id="L1019" class="ln">  1019  </span>		t.Run(&#34;discovery TTL を取得できる&#34;, func(t *testing.T) {
+<span id="L1020" class="ln">  1020  </span>			t.Parallel()
+<span id="L1021" class="ln">  1021  </span>			auth := MockConfigForTest(t).auth
+<span id="L1022" class="ln">  1022  </span>			assert.Equal(t, expectedAuthDiscoveryTTL, auth.DiscoveryTTL())
+<span id="L1023" class="ln">  1023  </span>		})
+<span id="L1024" class="ln">  1024  </span>	})
+<span id="L1025" class="ln">  1025  </span>}
+<span id="L1026" class="ln">  1026  </span>
+<span id="L1027" class="ln">  1027  </span>func TestAuthConfig_UnknownKidCooldown(t *testing.T) {
+<span id="L1028" class="ln">  1028  </span>	t.Parallel()
+<span id="L1029" class="ln">  1029  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1030" class="ln">  1030  </span>		t.Parallel()
+<span id="L1031" class="ln">  1031  </span>		t.Run(&#34;未知 kid cooldown を取得できる&#34;, func(t *testing.T) {
+<span id="L1032" class="ln">  1032  </span>			t.Parallel()
+<span id="L1033" class="ln">  1033  </span>			auth := MockConfigForTest(t).auth
+<span id="L1034" class="ln">  1034  </span>			assert.Equal(t, expectedAuthUnknownKidCooldown, auth.UnknownKidCooldown())
+<span id="L1035" class="ln">  1035  </span>		})
+<span id="L1036" class="ln">  1036  </span>	})
+<span id="L1037" class="ln">  1037  </span>}
+<span id="L1038" class="ln">  1038  </span>
+<span id="L1039" class="ln">  1039  </span>func TestApplicationConfig_IsProductionMode(t *testing.T) {
+<span id="L1040" class="ln">  1040  </span>	t.Parallel()
+<span id="L1041" class="ln">  1041  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1042" class="ln">  1042  </span>		t.Parallel()
+<span id="L1043" class="ln">  1043  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
+<span id="L1044" class="ln">  1044  </span>			t.Parallel()
+<span id="L1045" class="ln">  1045  </span>			cfg := Config{}
+<span id="L1046" class="ln">  1046  </span>			cfg.app.mode = ProductionMode
+<span id="L1047" class="ln">  1047  </span>			assert.True(t, cfg.app.IsProductionMode())
+<span id="L1048" class="ln">  1048  </span>		})
+<span id="L1049" class="ln">  1049  </span>
+<span id="L1050" class="ln">  1050  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
+<span id="L1051" class="ln">  1051  </span>			t.Parallel()
+<span id="L1052" class="ln">  1052  </span>			cfg := Config{}
+<span id="L1053" class="ln">  1053  </span>			cfg.app.mode = DevelopmentMode
+<span id="L1054" class="ln">  1054  </span>			assert.False(t, cfg.app.IsProductionMode())
+<span id="L1055" class="ln">  1055  </span>		})
+<span id="L1056" class="ln">  1056  </span>	})
+<span id="L1057" class="ln">  1057  </span>}
+<span id="L1058" class="ln">  1058  </span>
+<span id="L1059" class="ln">  1059  </span>func TestApplicationConfig_IsDevelopmentMode(t *testing.T) {
+<span id="L1060" class="ln">  1060  </span>	t.Parallel()
+<span id="L1061" class="ln">  1061  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1062" class="ln">  1062  </span>		t.Parallel()
+<span id="L1063" class="ln">  1063  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
+<span id="L1064" class="ln">  1064  </span>			t.Parallel()
+<span id="L1065" class="ln">  1065  </span>			cfg := Config{}
+<span id="L1066" class="ln">  1066  </span>			cfg.app.mode = DevelopmentMode
+<span id="L1067" class="ln">  1067  </span>			assert.True(t, cfg.app.IsDevelopmentMode())
+<span id="L1068" class="ln">  1068  </span>		})
+<span id="L1069" class="ln">  1069  </span>
+<span id="L1070" class="ln">  1070  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
+<span id="L1071" class="ln">  1071  </span>			t.Parallel()
+<span id="L1072" class="ln">  1072  </span>			cfg := Config{}
+<span id="L1073" class="ln">  1073  </span>			cfg.app.mode = ProductionMode
+<span id="L1074" class="ln">  1074  </span>			assert.False(t, cfg.app.IsDevelopmentMode())
+<span id="L1075" class="ln">  1075  </span>		})
+<span id="L1076" class="ln">  1076  </span>	})
+<span id="L1077" class="ln">  1077  </span>}
+<span id="L1078" class="ln">  1078  </span>
+<span id="L1079" class="ln">  1079  </span>func TestSecurityConfig_CIDR(t *testing.T) {
+<span id="L1080" class="ln">  1080  </span>	t.Parallel()
+<span id="L1081" class="ln">  1081  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1082" class="ln">  1082  </span>		t.Parallel()
+<span id="L1083" class="ln">  1083  </span>		t.Run(&#34;CIDRを取得できる&#34;, func(t *testing.T) {
+<span id="L1084" class="ln">  1084  </span>			t.Parallel()
+<span id="L1085" class="ln">  1085  </span>			security := MockConfigForTest(t).security
+<span id="L1086" class="ln">  1086  </span>			assert.Equal(t, expectedCIDR, security.CIDR())
+<span id="L1087" class="ln">  1087  </span>		})
+<span id="L1088" class="ln">  1088  </span>
+<span id="L1089" class="ln">  1089  </span>		t.Run(&#34;cidrがnilの場合_nilを返す&#34;, func(t *testing.T) {
+<span id="L1090" class="ln">  1090  </span>			t.Parallel()
+<span id="L1091" class="ln">  1091  </span>			s := &amp;SecurityConfig{}
+<span id="L1092" class="ln">  1092  </span>			assert.Nil(t, s.CIDR())
+<span id="L1093" class="ln">  1093  </span>		})
+<span id="L1094" class="ln">  1094  </span>	})
+<span id="L1095" class="ln">  1095  </span>}
+<span id="L1096" class="ln">  1096  </span>
+<span id="L1097" class="ln">  1097  </span>func TestSecureCookieConfig_Secure(t *testing.T) {
+<span id="L1098" class="ln">  1098  </span>	t.Parallel()
+<span id="L1099" class="ln">  1099  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1100" class="ln">  1100  </span>		t.Parallel()
+<span id="L1101" class="ln">  1101  </span>		t.Run(&#34;Secure属性を取得できる&#34;, func(t *testing.T) {
+<span id="L1102" class="ln">  1102  </span>			t.Parallel()
+<span id="L1103" class="ln">  1103  </span>			secureCookie := MockConfigForTest(t).secureCookie
+<span id="L1104" class="ln">  1104  </span>			assert.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
+<span id="L1105" class="ln">  1105  </span>		})
+<span id="L1106" class="ln">  1106  </span>
+<span id="L1107" class="ln">  1107  </span>		t.Run(&#34;secureがnilの場合_nilを返す&#34;, func(t *testing.T) {
+<span id="L1108" class="ln">  1108  </span>			t.Parallel()
+<span id="L1109" class="ln">  1109  </span>			s := &amp;SecureCookieConfig{}
+<span id="L1110" class="ln">  1110  </span>			assert.Nil(t, s.Secure())
+<span id="L1111" class="ln">  1111  </span>		})
+<span id="L1112" class="ln">  1112  </span>	})
+<span id="L1113" class="ln">  1113  </span>}
+<span id="L1114" class="ln">  1114  </span>
+<span id="L1115" class="ln">  1115  </span>func TestObservabilityConfig_Enabled(t *testing.T) {
+<span id="L1116" class="ln">  1116  </span>	t.Parallel()
+<span id="L1117" class="ln">  1117  </span>
+<span id="L1118" class="ln">  1118  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1119" class="ln">  1119  </span>		t.Parallel()
+<span id="L1120" class="ln">  1120  </span>
+<span id="L1121" class="ln">  1121  </span>		t.Run(&#34;いずれかの exporter が有効値なら全体有効を取得できる&#34;, func(t *testing.T) {
+<span id="L1122" class="ln">  1122  </span>			t.Parallel()
+<span id="L1123" class="ln">  1123  </span>			observability := MockConfigForTest(t).observability
+<span id="L1124" class="ln">  1124  </span>			assert.True(t, observability.Enabled())
+<span id="L1125" class="ln">  1125  </span>		})
+<span id="L1126" class="ln">  1126  </span>
+<span id="L1127" class="ln">  1127  </span>		t.Run(&#34;全部otlpなら全て有効&#34;, func(t *testing.T) {
+<span id="L1128" class="ln">  1128  </span>			t.Parallel()
+<span id="L1129" class="ln">  1129  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;otlp&#34;, metricsExporter: &#34;otlp&#34;, logsExporter: &#34;otlp&#34;}
+<span id="L1130" class="ln">  1130  </span>			assert.True(t, o.TracesEnabled())
+<span id="L1131" class="ln">  1131  </span>			assert.True(t, o.MetricsEnabled())
+<span id="L1132" class="ln">  1132  </span>			assert.True(t, o.LogsEnabled())
+<span id="L1133" class="ln">  1133  </span>			assert.True(t, o.Enabled())
+<span id="L1134" class="ln">  1134  </span>		})
+<span id="L1135" class="ln">  1135  </span>
+<span id="L1136" class="ln">  1136  </span>		t.Run(&#34;traceのみ有効&#34;, func(t *testing.T) {
+<span id="L1137" class="ln">  1137  </span>			t.Parallel()
+<span id="L1138" class="ln">  1138  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;otlp&#34;, metricsExporter: &#34;&#34;, logsExporter: &#34;&#34;}
+<span id="L1139" class="ln">  1139  </span>			assert.True(t, o.TracesEnabled())
+<span id="L1140" class="ln">  1140  </span>			assert.False(t, o.MetricsEnabled())
+<span id="L1141" class="ln">  1141  </span>			assert.False(t, o.LogsEnabled())
+<span id="L1142" class="ln">  1142  </span>			assert.True(t, o.Enabled())
+<span id="L1143" class="ln">  1143  </span>		})
+<span id="L1144" class="ln">  1144  </span>
+<span id="L1145" class="ln">  1145  </span>		t.Run(&#34;metricのみ有効&#34;, func(t *testing.T) {
+<span id="L1146" class="ln">  1146  </span>			t.Parallel()
+<span id="L1147" class="ln">  1147  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;&#34;, metricsExporter: &#34;otlp&#34;, logsExporter: &#34;&#34;}
+<span id="L1148" class="ln">  1148  </span>			assert.False(t, o.TracesEnabled())
+<span id="L1149" class="ln">  1149  </span>			assert.True(t, o.MetricsEnabled())
+<span id="L1150" class="ln">  1150  </span>			assert.False(t, o.LogsEnabled())
+<span id="L1151" class="ln">  1151  </span>			assert.True(t, o.Enabled())
+<span id="L1152" class="ln">  1152  </span>		})
+<span id="L1153" class="ln">  1153  </span>
+<span id="L1154" class="ln">  1154  </span>		t.Run(&#34;logのみ有効&#34;, func(t *testing.T) {
+<span id="L1155" class="ln">  1155  </span>			t.Parallel()
+<span id="L1156" class="ln">  1156  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;&#34;, metricsExporter: &#34;&#34;, logsExporter: &#34;otlp&#34;}
+<span id="L1157" class="ln">  1157  </span>			assert.False(t, o.TracesEnabled())
+<span id="L1158" class="ln">  1158  </span>			assert.False(t, o.MetricsEnabled())
+<span id="L1159" class="ln">  1159  </span>			assert.True(t, o.LogsEnabled())
+<span id="L1160" class="ln">  1160  </span>			assert.True(t, o.Enabled())
+<span id="L1161" class="ln">  1161  </span>		})
+<span id="L1162" class="ln">  1162  </span>
+<span id="L1163" class="ln">  1163  </span>		t.Run(&#34;全部空なら無効&#34;, func(t *testing.T) {
+<span id="L1164" class="ln">  1164  </span>			t.Parallel()
+<span id="L1165" class="ln">  1165  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;&#34;, metricsExporter: &#34;&#34;, logsExporter: &#34;&#34;}
+<span id="L1166" class="ln">  1166  </span>			assert.False(t, o.TracesEnabled())
+<span id="L1167" class="ln">  1167  </span>			assert.False(t, o.MetricsEnabled())
+<span id="L1168" class="ln">  1168  </span>			assert.False(t, o.LogsEnabled())
+<span id="L1169" class="ln">  1169  </span>			assert.False(t, o.Enabled())
+<span id="L1170" class="ln">  1170  </span>		})
+<span id="L1171" class="ln">  1171  </span>
+<span id="L1172" class="ln">  1172  </span>		t.Run(&#34;noneは無効として扱う&#34;, func(t *testing.T) {
+<span id="L1173" class="ln">  1173  </span>			t.Parallel()
+<span id="L1174" class="ln">  1174  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;none&#34;, metricsExporter: &#34;none&#34;, logsExporter: &#34;none&#34;}
+<span id="L1175" class="ln">  1175  </span>			assert.False(t, o.TracesEnabled())
+<span id="L1176" class="ln">  1176  </span>			assert.False(t, o.MetricsEnabled())
+<span id="L1177" class="ln">  1177  </span>			assert.False(t, o.LogsEnabled())
+<span id="L1178" class="ln">  1178  </span>			assert.False(t, o.Enabled())
+<span id="L1179" class="ln">  1179  </span>		})
+<span id="L1180" class="ln">  1180  </span>
+<span id="L1181" class="ln">  1181  </span>		t.Run(&#34;大文字NONEも無効として扱う&#34;, func(t *testing.T) {
+<span id="L1182" class="ln">  1182  </span>			t.Parallel()
+<span id="L1183" class="ln">  1183  </span>			o := &amp;ObservabilityConfig{tracesExporter: &#34;NONE&#34;, metricsExporter: &#34;None&#34;, logsExporter: &#34;nOnE&#34;}
+<span id="L1184" class="ln">  1184  </span>			assert.False(t, o.TracesEnabled())
+<span id="L1185" class="ln">  1185  </span>			assert.False(t, o.MetricsEnabled())
+<span id="L1186" class="ln">  1186  </span>			assert.False(t, o.LogsEnabled())
+<span id="L1187" class="ln">  1187  </span>			assert.False(t, o.Enabled())
+<span id="L1188" class="ln">  1188  </span>		})
+<span id="L1189" class="ln">  1189  </span>	})
+<span id="L1190" class="ln">  1190  </span>}
+<span id="L1191" class="ln">  1191  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/model_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

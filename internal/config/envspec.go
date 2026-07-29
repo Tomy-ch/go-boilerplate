@@ -15,6 +15,36 @@ type Loader struct {
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
 	Worker        Worker          `envPrefix:"WORKER_"`
 	Outbox        Outbox          `envPrefix:"OUTBOX_"`
+	Auth          Auth            `envPrefix:"AUTH_"`
+	ObjectStorage ObjectStorage   `envPrefix:"OBJECT_STORAGE_"`
+}
+
+// ObjectStorage は、画像等を格納する S3 互換オブジェクトストレージ（ローカルは Garage）の接続設定と
+// アップロード上限を保持する。中立境界の実装は S3 アダプタだが、env 名は vendor 非依存にする。
+type ObjectStorage struct {
+	// Endpoint は S3 互換エンドポイントです。空の場合は SDK 既定のエンドポイント解決に委ねる（本番 AWS S3 等）
+	// という意味を持つため、空文字を許容する（required のみ・notEmpty は付けない）。
+	Endpoint        string `env:"ENDPOINT,required"`
+	Region          string `env:"REGION,required,notEmpty"`
+	Bucket          string `env:"BUCKET,required,notEmpty"`
+	AccessKeyID     string `env:"ACCESS_KEY_ID,required,notEmpty"`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY,required,notEmpty"`
+	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
+	MaxUploadBytes  int64  `env:"MAX_UPLOAD_BYTES,required,notEmpty"`
+}
+
+// Auth は access token（JWT）検証の設定を保持する。
+type Auth struct {
+	Issuer            string        `env:"ISSUER"             envDefault:""`
+	Audience          string        `env:"AUDIENCE"           envDefault:""`
+	JWKSURL           string        `env:"JWKS_URL"           envDefault:""`
+	AllowedAlgorithms []string      `env:"ALLOWED_ALGORITHMS" envDefault:"RS256" envSeparator:","`
+	ClockSkew         time.Duration `env:"CLOCK_SKEW"         envDefault:"60s"`
+	JWKSCacheTTL      time.Duration `env:"JWKS_CACHE_TTL"     envDefault:"1h"`
+	// JWKSDiscoveryTTL は OIDC discovery 文書の再取得間隔です（鍵キャッシュとは別軸）。
+	JWKSDiscoveryTTL time.Duration `env:"JWKS_DISCOVERY_TTL" envDefault:"24h"`
+	// JWKSUnknownKIDCooldown は未知 kid での JWKS 再取得の最小間隔です（DoS 抑止）。
+	JWKSUnknownKIDCooldown time.Duration `env:"JWKS_UNKNOWN_KID_COOLDOWN" envDefault:"60s"`
 }
 
 // Outbox は transactional outbox relay の設定を保持する。
@@ -65,7 +95,7 @@ type Server struct {
 	ReadTimeout       time.Duration `env:"READ_TIMEOUT"        envDefault:"10s"`
 	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT"       envDefault:"65s"`
 	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT"        envDefault:"60s"`
-	BodyLimitMB       int           `env:"BODY_LIMIT_MB"       envDefault:"5"`
+	BodyLimitMB       int           `env:"BODY_LIMIT_MB"       envDefault:"6"`
 	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT"     envDefault:"60s"`
 }
 
@@ -117,7 +147,7 @@ type DBConnection struct {
 }
 
 // Security は CORS 許可オリジン・CIDR 制限・セキュリティヘッダー（HSTS・X-Frame-Options 等）・
-// Referrer Policy および bcrypt コストパラメータを保持する。
+// Referrer Policy を保持する。
 type Security struct {
 	AllowedOrigins        []string      `env:"ALLOWED_ORIGINS,required"         envSeparator:","`
 	CIDR                  string        `env:"CIDR,required"`
@@ -127,7 +157,6 @@ type Security struct {
 	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
 	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
 	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
-	BcryptCost            int           `env:"BCRYPT_COST,required"`
 }
 
 // SecureCookie はセキュアクッキーの属性（Secure / SameSite / Domain）の上書き設定を保持する。

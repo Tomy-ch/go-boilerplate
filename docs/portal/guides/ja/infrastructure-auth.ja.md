@@ -1,29 +1,33 @@
-# auth ディレクトリ
+# auth Directory
 
-`internal/infrastructure/auth` は **認証基盤 (Authentication Infrastructure)** を提供するディレクトリです。
+[English](README.md) | 日本語
 
-このディレクトリには、アプリケーションが利用する **Authenticator の実装**を配置します。  
-実装は **環境ごと（local / stg / prd など）に分離**されます。
+> このファイルは canonical な [README.md](README.md) の日本語訳です。直接編集せず、更新は README.md 側から反映してください。
 
-認証の抽象インターフェースは **Usecase 層の Boundary** に定義されています。
+`internal/infrastructure/auth` は **認証インフラストラクチャ** を提供するディレクトリです。
+
+このディレクトリは、アプリケーションで用いる **auth Boundary インターフェース（`Authenticator` と `IdentityResolver`）の実装** を格納します。  
+Authenticator の実装は **検証方式（local / jwt など）ごとに分離** され、DI 層がどの方式を配線するかを **環境ごとに** 選択します。
+
+認証の抽象インターフェースは **Usecase 層の Boundary** として定義されます。
 
 ```txt
 internal/usecase/boundary/auth
 ```
 
-Infrastructure 層では、この Boundary を **具体実装**します。
+Infrastructure 層では、この Boundary を **具体的に実装** します。
 
 ## 役割
 
-このディレクトリの責務は次の通りです。
+このディレクトリの責務は次のとおりです。
 
-- `Authenticator` の **環境別実装**を提供する
-- 外部認証基盤（JWT / OAuth / Cognito など）との連携を実装する
-- 認証トークンから **Authn 情報を生成**する
+- `Authenticator` の **方式別実装** を提供する
+- 外部認証システム（JWT / OAuth / OIDC など）との連携を実装する
+- **認証トークンから Authn 情報を生成** する
 
-ここでは **ビジネスロジックは扱いません。**
+この層は **ビジネスロジックを扱いません**。
 
-## アーキテクチャ上の位置
+## アーキテクチャ上の位置づけ
 
 認証処理は次の層構造で実装されます。
 
@@ -35,39 +39,40 @@ Usecase --> Boundary["Boundary (Authenticator interface)"]
 Infrastructure["Infrastructure (auth implementation)"] -. implements .-> Boundary
 ```
 
-Infrastructure は **Boundary を実装するだけ**であり、  
-Usecase から直接呼ばれる具体実装となります。
+Infrastructure は **Boundary を実装するのみ** であり、Usecase から直接呼び出される具体実装です。
 
-## ディレクトリ構成
+## 分離軸: 環境ではなく方式
 
-将来的な構成は次のようになります。
+実装は **検証方式** ごとに分離され、DI 層が各環境でどの方式を使うかを選択します。これにより各パッケージは 1 つの検証戦略に専念でき、環境と方式の対応付けは 1 箇所（`provideAuthenticator`）に集約されます。
+
+- `local` — 署名検証を行わず、トークン文字列から subject を抽出する。CI / test 用のスタブのみ。
+- `jwt` — JWT 検証（デファクト標準のコア）。署名鍵は固定公開鍵か JWKS エンドポイントのいずれかから解決する。本番向けの方式。
 
 ```txt
 internal/infrastructure/auth
 ├── README.md
 ├── local
 │   └── auth_local.go
-├── stg
-│   └── auth_stg.go
-└── prd
-    └── auth_prd.go
+└── jwt
+    └── auth_jwt.go
 ```
 
-|ディレクトリ|用途|
+|ディレクトリ|検証方式|
 |---|---|
-|`local`|ローカル開発用の簡易認証|
-|`stg`|ステージング環境の認証|
-|`prd`|本番環境の認証|
+|`local`|開発用スタブ — 署名検証なし|
+|`jwt`|JWT 検証（標準コア）。鍵は固定公開鍵または JWKS から取得|
 
-## Local 実装
+環境 → 方式の対応付けは DI で適用されます（「DI への登録」を参照）。CI / test は `local` スタブを使い、`jwt` はローカル開発（mock 認証サーバーの実 JWT を検証）と、実トークン検証を配線する環境を担当します。
 
-`local` は **ローカル開発専用の認証実装**です。
+## local 実装
+
+`local` は **CI / test 用の認証スタブ** です（署名検証なし）。
 
 特徴
 
 - トークンの署名検証を行わない
-- トークン文字列から Subject を抽出
-- 開発用の簡易認証として利用
+- トークン文字列から Subject を抽出する
+- CI / test 用の簡易スタブとして使う
 
 例
 
@@ -82,31 +87,33 @@ subject = user123
 provider = mock
 ```
 
-の Authn が生成されます。
+として Authn を生成します。
 
-## Staging / Production 実装
+詳細は `local/README.md` を参照してください。
 
-stg / prd では通常、次のような認証を実装します。
+## jwt 実装
 
-例
+`jwt` は access token（JWT）を検証し、デファクト標準の検証コアをカバーします。署名鍵は **固定 RSA 公開鍵**（`New`）か **`kid` による JWKS エンドポイント**（`NewJWKS`）のいずれかから解決し、クレーム検証ロジックは共通です。
 
-- JWT 検証
-- OAuth2
-- OpenID Connect
-- AWS Cognito
-- Auth0
+ここでは次を行います。
 
-ここでは
+- 署名検証（非対称・アルゴリズム allowlist。`alg=none` / `HS256` は拒否）
+- 鍵解決（固定公開鍵、または `kid` ルックアップ / TTL キャッシュ付き JWKS。`go-jose` でパースし `httpclient` substrate 経由で遅延取得）
+- クレーム検証（`iss` / `aud` / `exp` / `nbf` / `sub`）
+- スコープ抽出（標準 `scope` クレーム）
 
-- 署名検証
-- token validation
-- claims 抽出
+IdP 固有の方言（Cognito `token_use`、Azure AD `scp`、opaque token、EC 鍵）は対象外で、拡張ポイントとして文書化されています。詳細は `jwt/README.md` を参照してください。
 
-などを行います。
+## IdentityResolver 実装
+
+`Authenticator` に加えて、このディレクトリは `IdentityResolver` Boundary の実装（認証済みの外部アイデンティティ — issuer + subject — を内部ユーザーへ解決する）も格納します。
+
+- `identity` — substrate 既定（`passthrough`）。内部 UserID を未解決のまま通す。ユーザーストアが無い場合に配線される。
+- `useridentity` — `user_identities` テーブルから内部ユーザーを解決する（サンプル。user サンプルと同梱削除され、削除後は DI が `identity` にフォールバックする）。
 
 ## DI への登録
 
-Authenticator は DI モジュールで登録されます。
+Authenticator は DI モジュールに登録されます。
 
 ```txt
 internal/di/module/core/auth.go
@@ -118,7 +125,7 @@ internal/di/module/core/auth.go
 func provideAuthenticator(...) auth.Authenticator
 ```
 
-環境変数や設定に応じて
+環境
 
 ```txt
 local
@@ -127,42 +134,46 @@ stg
 prd
 ```
 
-の実装を切り替えます。
+に応じて **検証方式** が選択されます（例: CI / test は `local` スタブ、local / development は `jwt`）。
 
-## 設計ポリシー
+## 設計方針
 
-このディレクトリは次の方針で設計されています。
+このディレクトリは次の方針に基づいて設計されています。
 
 ### 1 Boundary を実装する
 
-Infrastructure は
+Infrastructure は次の `Authenticator` を実装します。
 
 ```txt
 usecase/boundary/auth
 ```
 
-の `Authenticator` を実装します。
+### 2 ビジネスロジックを含めない
 
-### 2 ビジネスロジックを持たない
+このパッケージは **認証処理のみ** を責務とします。
 
-このパッケージは **認証処理のみ**を担当します。
+次は扱いません。
 
-以下は扱いません。
-
-- 権限チェック
+- 認可チェック
 - ロール判定
 - ビジネスルール
 
-それらは **Usecase 層**で処理します。
+これらは **Usecase 層** で扱います。
 
-### 3 環境ごとに分離
+### 3 検証方式ごとに分離する
 
-認証方式は環境ごとに異なる場合があるため
+認証は異なる検証戦略を取りうるため、
 
 ```txt
 local
-stg
-prd
+jwt
 ```
 
-のディレクトリで分離します。
+を方式ごとにディレクトリ分離し、DI が環境ごとに方式を選択します。
+
+### 4 コンストラクタ規約
+
+Authenticator のコンストラクタは、入力に応じた一貫した形をとります。
+
+- 検証パラメータを取らない軽量なコンストラクタはインターフェースのみを返す — `func New() Authenticator`（例: `local`）。
+- 検証を要するパラメータ（鍵パース・必須項目）を取るコンストラクタは `(Authenticator, error)` を返し、構築時に失敗する — `func New(Params) (Authenticator, error)`（例: `jwt`）。

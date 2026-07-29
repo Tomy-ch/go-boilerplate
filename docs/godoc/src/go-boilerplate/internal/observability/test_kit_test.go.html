@@ -164,69 +164,85 @@
 <span id="L107" class="ln">   107  </span>	})
 <span id="L108" class="ln">   108  </span>}
 <span id="L109" class="ln">   109  </span>
-<span id="L110" class="ln">   110  </span>func TestNewNoopOutboxMetrics(t *testing.T) {
+<span id="L110" class="ln">   110  </span>func TestNewNoopHTTPClientMetrics(t *testing.T) {
 <span id="L111" class="ln">   111  </span>	t.Parallel()
 <span id="L112" class="ln">   112  </span>
 <span id="L113" class="ln">   113  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L114" class="ln">   114  </span>		t.Parallel()
 <span id="L115" class="ln">   115  </span>
-<span id="L116" class="ln">   116  </span>		t.Run(&#34;no-op MeterProvider から OutboxMetrics を生成する&#34;, func(t *testing.T) {
+<span id="L116" class="ln">   116  </span>		t.Run(&#34;no-op MeterProvider から HTTPClientMetrics を生成する&#34;, func(t *testing.T) {
 <span id="L117" class="ln">   117  </span>			t.Parallel()
 <span id="L118" class="ln">   118  </span>
-<span id="L119" class="ln">   119  </span>			om := NewNoopOutboxMetrics(t)
-<span id="L120" class="ln">   120  </span>			assert.NotNil(t, om)
-<span id="L121" class="ln">   121  </span>		})
-<span id="L122" class="ln">   122  </span>	})
-<span id="L123" class="ln">   123  </span>}
-<span id="L124" class="ln">   124  </span>
-<span id="L125" class="ln">   125  </span>func TestNewNoopHTTPClientTransport(t *testing.T) {
-<span id="L126" class="ln">   126  </span>	t.Parallel()
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L129" class="ln">   129  </span>		t.Parallel()
-<span id="L130" class="ln">   130  </span>
-<span id="L131" class="ln">   131  </span>		t.Run(&#34;SSRFガードを無効化し loopback 宛ての実接続を許可する&#34;, func(t *testing.T) {
-<span id="L132" class="ln">   132  </span>			t.Parallel()
-<span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-<span id="L135" class="ln">   135  </span>				w.WriteHeader(http.StatusNoContent)
-<span id="L136" class="ln">   136  </span>			}))
-<span id="L137" class="ln">   137  </span>			defer srv.Close()
-<span id="L138" class="ln">   138  </span>
-<span id="L139" class="ln">   139  </span>			transport := NewNoopHTTPClientTransport(t)
-<span id="L140" class="ln">   140  </span>			require.NotNil(t, transport)
-<span id="L141" class="ln">   141  </span>
-<span id="L142" class="ln">   142  </span>			<span class="comment">// permissive な dial control により loopback(httptest) 宛ての実 dial が拒否されず接続できる。</span>
-<span id="L143" class="ln">   143  </span>			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-<span id="L144" class="ln">   144  </span>			require.NoError(t, err)
-<span id="L145" class="ln">   145  </span>			resp, err := (&amp;http.Client{Transport: transport.RoundTripper()}).Do(req)
-<span id="L146" class="ln">   146  </span>			require.NoError(t, err)
-<span id="L147" class="ln">   147  </span>			defer func() { _ = resp.Body.Close() }()
-<span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span>			assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-<span id="L150" class="ln">   150  </span>		})
-<span id="L151" class="ln">   151  </span>	})
-<span id="L152" class="ln">   152  </span>}
-<span id="L153" class="ln">   153  </span>
-<span id="L154" class="ln">   154  </span>func TestNewStubSpanContext(t *testing.T) {
-<span id="L155" class="ln">   155  </span>	t.Parallel()
-<span id="L156" class="ln">   156  </span>
-<span id="L157" class="ln">   157  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L158" class="ln">   158  </span>		t.Parallel()
-<span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>		t.Run(&#34;有効なSpanContextを保持するcontextとspan終了関数を返す&#34;, func(t *testing.T) {
-<span id="L161" class="ln">   161  </span>			t.Parallel()
-<span id="L162" class="ln">   162  </span>			ctx, span := NewStubSpanContext(t)
-<span id="L163" class="ln">   163  </span>			require.NotEmpty(t, ctx)
-<span id="L164" class="ln">   164  </span>			require.NotNil(t, span)
-<span id="L165" class="ln">   165  </span>			defer span()
-<span id="L166" class="ln">   166  </span>
-<span id="L167" class="ln">   167  </span>			spanCtx := trace.SpanFromContext(ctx)
-<span id="L168" class="ln">   168  </span>			assert.True(t, spanCtx.SpanContext().IsValid())
-<span id="L169" class="ln">   169  </span>		})
-<span id="L170" class="ln">   170  </span>	})
-<span id="L171" class="ln">   171  </span>}
+<span id="L119" class="ln">   119  </span>			hm := NewNoopHTTPClientMetrics(t)
+<span id="L120" class="ln">   120  </span>			require.NotNil(t, hm)
+<span id="L121" class="ln">   121  </span>			assert.NotPanics(t, func() { hm.RecordRetry(context.Background(), &#34;sample&#34;) })
+<span id="L122" class="ln">   122  </span>		})
+<span id="L123" class="ln">   123  </span>	})
+<span id="L124" class="ln">   124  </span>}
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>func TestNewNoopOutboxMetrics(t *testing.T) {
+<span id="L127" class="ln">   127  </span>	t.Parallel()
+<span id="L128" class="ln">   128  </span>
+<span id="L129" class="ln">   129  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L130" class="ln">   130  </span>		t.Parallel()
+<span id="L131" class="ln">   131  </span>
+<span id="L132" class="ln">   132  </span>		t.Run(&#34;no-op MeterProvider から OutboxMetrics を生成する&#34;, func(t *testing.T) {
+<span id="L133" class="ln">   133  </span>			t.Parallel()
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>			om := NewNoopOutboxMetrics(t)
+<span id="L136" class="ln">   136  </span>			assert.NotNil(t, om)
+<span id="L137" class="ln">   137  </span>		})
+<span id="L138" class="ln">   138  </span>	})
+<span id="L139" class="ln">   139  </span>}
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span>func TestNewNoopHTTPClientTransport(t *testing.T) {
+<span id="L142" class="ln">   142  </span>	t.Parallel()
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L145" class="ln">   145  </span>		t.Parallel()
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>		t.Run(&#34;SSRFガードを無効化し loopback 宛ての実接続を許可する&#34;, func(t *testing.T) {
+<span id="L148" class="ln">   148  </span>			t.Parallel()
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+<span id="L151" class="ln">   151  </span>				w.WriteHeader(http.StatusNoContent)
+<span id="L152" class="ln">   152  </span>			}))
+<span id="L153" class="ln">   153  </span>			defer srv.Close()
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>			transport := NewNoopHTTPClientTransport(t)
+<span id="L156" class="ln">   156  </span>			require.NotNil(t, transport)
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>			<span class="comment">// permissive な dial control により loopback(httptest) 宛ての実 dial が拒否されず接続できる。</span>
+<span id="L159" class="ln">   159  </span>			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+<span id="L160" class="ln">   160  </span>			require.NoError(t, err)
+<span id="L161" class="ln">   161  </span>			resp, err := (&amp;http.Client{Transport: transport.RoundTripper()}).Do(req)
+<span id="L162" class="ln">   162  </span>			require.NoError(t, err)
+<span id="L163" class="ln">   163  </span>			defer func() { _ = resp.Body.Close() }()
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>			assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+<span id="L166" class="ln">   166  </span>		})
+<span id="L167" class="ln">   167  </span>	})
+<span id="L168" class="ln">   168  </span>}
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>func TestNewStubSpanContext(t *testing.T) {
+<span id="L171" class="ln">   171  </span>	t.Parallel()
 <span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L174" class="ln">   174  </span>		t.Parallel()
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>		t.Run(&#34;有効なSpanContextを保持するcontextとspan終了関数を返す&#34;, func(t *testing.T) {
+<span id="L177" class="ln">   177  </span>			t.Parallel()
+<span id="L178" class="ln">   178  </span>			ctx, span := NewStubSpanContext(t)
+<span id="L179" class="ln">   179  </span>			require.NotEmpty(t, ctx)
+<span id="L180" class="ln">   180  </span>			require.NotNil(t, span)
+<span id="L181" class="ln">   181  </span>			defer span()
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>			spanCtx := trace.SpanFromContext(ctx)
+<span id="L184" class="ln">   184  </span>			assert.True(t, spanCtx.SpanContext().IsValid())
+<span id="L185" class="ln">   185  </span>		})
+<span id="L186" class="ln">   186  </span>	})
+<span id="L187" class="ln">   187  </span>}
+<span id="L188" class="ln">   188  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/test_kit_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -200,3 +200,95 @@ func Test_jobImpl_Execute(t *testing.T) {
 		})
 	})
 }
+
+func Test_parseFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("フラグ未指定の場合、nil（全件）を返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{})
+			require.NoError(t, err)
+			assert.Nil(t, active)
+		})
+
+		t.Run("--active-only指定の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{"--active-only"})
+			require.NoError(t, err)
+			require.NotNil(t, active)
+			assert.True(t, *active)
+		})
+
+		t.Run("--inactive-only指定の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{"--inactive-only"})
+			require.NoError(t, err)
+			require.NotNil(t, active)
+			assert.False(t, *active)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同一フラグ（--active-only）重複の場合、duplicateエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{"--active-only", "--active-only"})
+			require.ErrorIs(t, err, errDuplicateFlag)
+			require.ErrorContains(t, err, activeOnlyFlag)
+			assert.Nil(t, active)
+		})
+
+		t.Run("同一フラグ（--inactive-only）重複の場合、duplicateエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{"--inactive-only", "--inactive-only"})
+			require.ErrorIs(t, err, errDuplicateFlag)
+			require.ErrorContains(t, err, inactiveOnlyFlag)
+			assert.Nil(t, active)
+		})
+
+		t.Run("両フラグ併用の場合、conflictingエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{"--active-only", "--inactive-only"})
+			require.ErrorIs(t, err, errConflictingFilterFlags)
+			assert.Nil(t, active)
+		})
+
+		t.Run("未知フラグの場合、unknownエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			active, err := parseFilter([]string{"--nope"})
+			require.ErrorIs(t, err, errUnknownFlag)
+			require.ErrorContains(t, err, "--nope")
+			assert.Nil(t, active)
+		})
+	})
+}
+
+func Test_filterLabel(t *testing.T) {
+	t.Parallel()
+
+	active := true
+	inactive := false
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilの場合、allを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "all", filterLabel(nil))
+		})
+
+		t.Run("trueの場合、activeを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "active", filterLabel(&active))
+		})
+
+		t.Run("falseの場合、inactiveを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "inactive", filterLabel(&inactive))
+		})
+	})
+}

@@ -15,8 +15,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +64,7 @@ func TestNew(t *testing.T) {
 			c := e.NewContext(httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/t", nil), rec)
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
-			e.HTTPErrorHandler(apperror.ErrNotFound, c)
+			e.HTTPErrorHandler(c, apperror.ErrNotFound)
 			assert.Equal(t, http.StatusNotFound, rec.Code)
 		})
 	})
@@ -91,7 +90,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler(xerrors.New("some error"), c)
+			handler(c, xerrors.New("some error"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -107,6 +106,48 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			require.True(t, ok)
 			// リクエストIDミドルウェア未経由のため空だが、文字列フィールドとして必ず出力される。
 			assert.Empty(t, requestID)
+		})
+	})
+}
+
+func Test_responseCommitted(t *testing.T) {
+	t.Parallel()
+
+	newCtx := func() *echo.Context {
+		e := echo.New()
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/committed", nil)
+		return e.NewContext(req, httptest.NewRecorder())
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未送出のレスポンスはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, responseCommitted(newCtx()))
+		})
+
+		t.Run("送出済みのレスポンスはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCtx()
+			c.Response().WriteHeader(http.StatusOK)
+
+			assert.True(t, responseCommitted(c))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Echoのレスポンスへ辿れない場合は未送出として扱う", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCtx()
+			c.SetResponse(httptest.NewRecorder())
+
+			assert.False(t, responseCommitted(c))
 		})
 	})
 }
@@ -369,48 +410,6 @@ func Test_normalizeHTTPError(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 
-		t.Run("Echo.HTTPErrorのInternalにOpenAPIエラーがある場合_RequestErrorは400で正規化される", func(t *testing.T) {
-			t.Parallel()
-			reqErr := &openapi3filter.RequestError{}
-			echoErr := &echo.HTTPError{Code: http.StatusBadRequest, Internal: reqErr}
-
-			actual := normalizeHTTPError(echoErr, expectedRequestID)
-
-			assert.Equal(t, http.StatusBadRequest, actual.HTTPStatus)
-			expected := response.NewHTTPErrorFromStatus(http.StatusBadRequest, nil)
-			expected.RequestId = expectedRequestID
-			expected.Internal = echoErr
-			assert.Equal(t, expected, actual)
-		})
-
-		t.Run("Echo.HTTPErrorのInternalにOpenAPIエラーがある場合_SecurityRequirementsErrorは401で正規化される", func(t *testing.T) {
-			t.Parallel()
-			secErr := &openapi3filter.SecurityRequirementsError{}
-			echoErr := &echo.HTTPError{Code: http.StatusUnauthorized, Internal: secErr}
-
-			actual := normalizeHTTPError(echoErr, expectedRequestID)
-
-			assert.Equal(t, http.StatusUnauthorized, actual.HTTPStatus)
-			expected := response.NewHTTPErrorFromStatus(http.StatusUnauthorized, nil)
-			expected.RequestId = expectedRequestID
-			expected.Internal = echoErr
-			assert.Equal(t, expected, actual)
-		})
-
-		t.Run("Echo.HTTPErrorのInternalにOpenAPIエラーがある場合_ResponseErrorは500で正規化される", func(t *testing.T) {
-			t.Parallel()
-			respErr := &openapi3filter.ResponseError{}
-			echoErr := &echo.HTTPError{Code: http.StatusInternalServerError, Internal: respErr}
-
-			actual := normalizeHTTPError(echoErr, expectedRequestID)
-
-			assert.Equal(t, http.StatusInternalServerError, actual.HTTPStatus)
-			expected := response.NewHTTPErrorFromStatus(http.StatusInternalServerError, nil)
-			expected.RequestId = expectedRequestID
-			expected.Internal = echoErr
-			assert.Equal(t, expected, actual)
-		})
-
 		t.Run("HTTPErrorResponseでステータスがエラー範囲外ならInternalを真として再正規化される", func(t *testing.T) {
 			t.Parallel()
 
@@ -506,14 +505,14 @@ func Test_normalizeHTTPError(t *testing.T) {
 			assert.Equal(t, expectedRequestID, actual.RequestId)
 		})
 
-		t.Run("echo.HTTPErrorのInternalに通常エラーがある場合_statusベースで返却されInternalは非nilになる", func(t *testing.T) {
+		t.Run("echo.HTTPErrorが通常エラーを内包する場合_statusベースで返却されInternalは非nilになる", func(t *testing.T) {
 			t.Parallel()
 
 			inner := xerrors.New("boom")
-			echoErr := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
+			echoErr := echo.NewHTTPError(http.StatusForbidden, "").Wrap(inner)
 
 			actual := normalizeHTTPError(echoErr, expectedRequestID)
-			expected := response.NewHTTPErrorFromStatus(echoErr.Code, nil)
+			expected := response.NewHTTPErrorFromStatus(http.StatusForbidden, nil)
 			expected.RequestId = expectedRequestID
 
 			assert.Equal(t, expected.HTTPStatus, actual.HTTPStatus)
@@ -530,7 +529,7 @@ func Test_logHTTPError(t *testing.T) {
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	newEchoCtx := func(t *testing.T) (echo.Context, func()) {
+	newEchoCtx := func(t *testing.T) (*echo.Context, func()) {
 		t.Helper()
 		e := echo.New()
 		ctx := context.Background()
@@ -648,7 +647,7 @@ func Test_httpErrorField(t *testing.T) {
 
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	newEchoCtx := func(t *testing.T) echo.Context {
+	newEchoCtx := func(t *testing.T) *echo.Context {
 		t.Helper()
 		e := echo.New()
 		ctx := context.Background()

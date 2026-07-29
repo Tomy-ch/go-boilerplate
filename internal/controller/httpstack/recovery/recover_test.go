@@ -13,8 +13,8 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,6 +35,28 @@ func TestMiddleware(t *testing.T) {
 			require.NotNil(t, Middleware(logger, lf, appCfg))
 		})
 
+		t.Run("パニックが無ければ後続の戻り値をそのまま返しログも残さない", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			lf := logging.NewTestLogFieldBuilder(t)
+			obsLogger, observed := logging.NewObservedTestLogger(t)
+
+			wantErr := xerrors.New("handler error")
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/ok", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+
+			handler := Middleware(obsLogger, lf, appCfg)(func(_ *echo.Context) error { return wantErr })
+
+			require.ErrorIs(t, handler(c), wantErr)
+			assert.Equal(t, 0, observed.Len())
+			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+			assert.False(t, recovered)
+		})
+
 		t.Run("パニックがリカバーされ可読スタックがログに残る", func(t *testing.T) {
 			t.Parallel()
 
@@ -45,7 +67,7 @@ func TestMiddleware(t *testing.T) {
 
 			e := echo.New()
 			e.Use(Middleware(obsLogger, lf, appCfg))
-			e.GET("/panic", func(_ echo.Context) error { panic("boom-panic") })
+			e.GET("/panic", func(_ *echo.Context) error { panic("boom-panic") })
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
 			e.ServeHTTP(httptest.NewRecorder(), req)
@@ -87,7 +109,7 @@ func TestMiddleware(t *testing.T) {
 			e := echo.New()
 			errorhandler.New(e, policy, obsLogger, lf, obsCfg)
 			e.Use(Middleware(obsLogger, lf, appCfg))
-			e.GET("/panic", func(_ echo.Context) error { panic("boom-panic") })
+			e.GET("/panic", func(_ *echo.Context) error { panic("boom-panic") })
 
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
@@ -101,6 +123,30 @@ func TestMiddleware(t *testing.T) {
 			assert.Equal(t, 0, observed.FilterMessage("errorhandler.server_error").Len())
 		})
 
+		t.Run("エラーハンドラへはスタックを含まない元のパニックエラーが渡る", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			lf := logging.NewTestLogFieldBuilder(t)
+			obsLogger, _ := logging.NewObservedTestLogger(t)
+
+			panicked := xerrors.New("boom-panic")
+
+			e := echo.New()
+			var got error
+			e.HTTPErrorHandler = func(_ *echo.Context, err error) { got = err }
+			e.Use(Middleware(obsLogger, lf, appCfg))
+			e.GET("/panic", func(_ *echo.Context) error { panic(panicked) })
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
+			e.ServeHTTP(httptest.NewRecorder(), req)
+
+			require.ErrorIs(t, got, panicked)
+			var pse *middleware.PanicStackError
+			assert.False(t, xerrors.As(got, &pse), "スタックを抱えたままのエラーは伝播しない")
+		})
+
 		t.Run("http.ErrAbortHandlerのパニックはリカバーせず再パニックしログも残さない", func(t *testing.T) {
 			t.Parallel()
 
@@ -111,7 +157,7 @@ func TestMiddleware(t *testing.T) {
 
 			e := echo.New()
 			e.Use(Middleware(obsLogger, lf, appCfg))
-			e.GET("/abort", func(_ echo.Context) error { panic(http.ErrAbortHandler) })
+			e.GET("/abort", func(_ *echo.Context) error { panic(http.ErrAbortHandler) })
 
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/abort", nil)
@@ -120,52 +166,51 @@ func TestMiddleware(t *testing.T) {
 			assert.PanicsWithValue(t, http.ErrAbortHandler, func() {
 				e.ServeHTTP(rec, req)
 			})
-			// 再パニックされるため LogErrorFunc は呼ばれず "panic recovered" ログは出力されない。
+			// 再パニックされるためログ関数は呼ばれず "panic recovered" ログは出力されない。
 			assert.Equal(t, 0, observed.FilterMessage("panic recovered").Len())
 		})
 	})
 }
 
-func Test_newRecoverLogErrorFunc(t *testing.T) {
+func Test_newPanicLogFunc(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.NewTestLogger(t)
 	lf := logging.NewTestLogFieldBuilder(t)
 	e := echo.New()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("RemoteAddrがある場合、元errを返しリカバリ済みを記録する", func(t *testing.T) {
+		t.Run("RemoteAddrがある場合、パニックをログしリカバリ済みを記録する", func(t *testing.T) {
 			t.Parallel()
 
+			obsLogger, observed := logging.NewObservedTestLogger(t)
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path", nil)
 			req.RemoteAddr = "9.8.7.6:1234"
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := xerrors.New("boom")
-			f := newRecoverLogErrorFunc(logger, lf)
-			err := f(c, inErr, []byte("stack"))
-			require.ErrorIs(t, err, inErr)
+			newPanicLogFunc(obsLogger, lf)(c, xerrors.New("boom"), []byte("stack"))
+
+			assert.Equal(t, 1, observed.FilterMessage("panic recovered").Len())
 			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
 			assert.True(t, recovered)
 		})
 
-		t.Run("X-Real-Ipヘッダがある場合、元errを返しリカバリ済みを記録する", func(t *testing.T) {
+		t.Run("X-Real-Ipヘッダがある場合、パニックをログしリカバリ済みを記録する", func(t *testing.T) {
 			t.Parallel()
 
+			obsLogger, observed := logging.NewObservedTestLogger(t)
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/other", nil)
 			req.Header.Set("X-Real-Ip", "10.0.0.1")
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := xerrors.New("boom2")
-			f := newRecoverLogErrorFunc(logger, lf)
-			err := f(c, inErr, []byte("stack2"))
-			require.ErrorIs(t, err, inErr)
+			newPanicLogFunc(obsLogger, lf)(c, xerrors.New("boom2"), []byte("stack2"))
+
+			assert.Equal(t, 1, observed.FilterMessage("panic recovered").Len())
 			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
 			assert.True(t, recovered)
 		})
@@ -256,28 +301,18 @@ func Test_productionConfig(t *testing.T) {
 		t.Run("本番設定でもruntimeスタックが捕捉される", func(t *testing.T) {
 			t.Parallel()
 
-			lf := logging.NewTestLogFieldBuilder(t)
-			obsLogger, observed := logging.NewObservedTestLogger(t)
-
-			cnf := productionConfig()
-			cnf.LogErrorFunc = newRecoverLogErrorFunc(obsLogger, lf)
-
 			e := echo.New()
-			e.Use(middleware.RecoverWithConfig(cnf))
-			e.GET("/panic", func(_ echo.Context) error { panic("prod-panic") })
+			handler := middleware.RecoverWithConfig(productionConfig())(
+				func(_ *echo.Context) error { panic("prod-panic") },
+			)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
-			e.ServeHTTP(httptest.NewRecorder(), req)
+			c := e.NewContext(req, httptest.NewRecorder())
 
-			entries := observed.FilterMessage("panic recovered").All()
-			require.Len(t, entries, 1)
-			stackLines, ok := entries[0].ContextMap()[logging.InternalStackTraceKey].([]any)
-			require.True(t, ok)
-			require.NotEmpty(t, stackLines)
-			first, ok := stackLines[0].(string)
-			require.True(t, ok)
+			var pse *middleware.PanicStackError
+			require.ErrorAs(t, handler(c), &pse)
 			// 本番設定(DisablePrintStack=false)でも runtime スタックが捕捉される。
-			assert.Contains(t, first, "goroutine")
+			assert.Contains(t, string(pse.Stack), "goroutine")
 		})
 	})
 }

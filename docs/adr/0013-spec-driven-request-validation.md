@@ -30,7 +30,7 @@ described in the OpenAPI spec.
 
 ## Decision
 
-Wire `oapimw.OapiRequestValidatorWithOptions` from the `oapi-codegen/echo-middleware`
+Wire `oapimw.OapiRequestValidatorWithOptions` from the `oapi-codegen/echo-v5-middleware`
 package as an Echo middleware, passing the parsed spec and an `openapi3filter.AuthenticationFunc`.
 Before the validator runs, an authn context slot is injected so the `AuthenticationFunc`
 can write authentication results into the request context.
@@ -49,7 +49,7 @@ func Middleware(
         },
     })
     return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
+        return func(c *echo.Context) error {
             req := c.Request()
             req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
             c.SetRequest(req)

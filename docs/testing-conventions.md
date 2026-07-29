@@ -15,7 +15,9 @@ The canonical reference test is [`internal/domain/user/user_domain_test.go`](../
 
 ## 1. Structure
 
-- **One `TestXxx` per function or method.** Bundling multiple subjects into one test function requires explicit case-by-case justification.
+- **One `TestXxx` per function or method — strictly 1:1; no bundling.** This applies to getters / accessors as well: do not group them into a `*_Accessors` / `*_Getters` test — one `TestXxx` per accessor. The 1:1 mapping is enforced mechanically by `internal/architest` (`TestUnitTestMappingCompleteness`) over every production function / method — branchless ones included, since a body without an `if` can still carry a contract (a `BindHandler` that only registers a route pins its method + path). Only `main` / `init` and generated files are out of scope.
+- **`t.Skip` is allowed only when the subject is unverifiable and therefore unreachable** — e.g. a test helper whose failure path calls `tb.Fatalf`, which terminates the calling test. The skip reason states **why the subject cannot be verified**; there is no allowlist, so that reason stays in the code.
+- **"Covered by another test" is not a valid skip reason.** Such a skip makes the subject depend on another test's implementation: it stays green after the covering test shrinks or is deleted, nothing mechanically confirms the covering test really reaches the branch, and a branch added later goes unverified in silence — which reduces the 1:1 mapping to a name-only shell. If the subject is testable, test it, even when a caller / integration / DI-graph test already happens to exercise it. `internal/architest` (`TestSkipReasonDoesNotNameCoveringTest`) fails the build on a skip reason that names another test.
 - Every logical branch is exercised.
 - The **outermost `t.Run` groups are the literal strings `正常系` / `異常系`** — not a `正常系_xxx` prefixed form. Nest further `t.Run` subcases inside them.
 
@@ -121,6 +123,6 @@ lifts coverage yet reveals nothing.
 - **Brittle internals coupling** — reading unexported fields when the public API would do; asserting on log output or error-message *strings* instead of `errors.Is`.
 - **Over-mocking** — mocking a collaborator a real (pure) implementation would cover more revealingly; call-count matchers at a granularity that locks the implementation in place.
 - **Time-literal pinning leak** — `time.Now()` called inside the assertion instead of a fixed `baseTime`; comparisons relying on the system clock.
-- **Responsibility creep** — one `TestXxx` driving multiple subjects without the recorded rationale (also a section-1 violation).
+- **Responsibility creep** — one `TestXxx` driving multiple subjects (a section-1 1:1 violation). Decompose into one `TestXxx` per subject; do not fold multiple subjects into one test.
 - **Helper duplication** — a 5+-line fixture repeated across 3+ `TestXxx` functions that should be a `t.Helper()`-tagged helper.
 - **Redundant comments** — inline comments that restate the code or narrate *why*; case intent belongs in the Japanese `t.Run` name, not in comments (per the Comment Rules in [`rules.md`](rules.md)).

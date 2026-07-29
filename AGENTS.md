@@ -59,7 +59,7 @@ For API changes: OpenAPI is defined first. For DB changes: the migration + SQL e
 Boundaries are enforced in CI, not just documented. Full table + rationale: `docs/rules.md`.
 
 - **Dependencies point inward.** `controller → usecase → domain`; `infrastructure` implements domain interfaces; never bypass a layer.
-- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependency is `internal/apperror`; otherwise use `pkg/`.
+- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain shared kernel `internal/domain/kernel` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow — see `docs/rules.md` / ADR-0104); a domain package must not import another aggregate. Otherwise use `pkg/`.
 - **`pkg/`** must not depend on infrastructure or framework-specific packages, must stay framework-agnostic, must not import `internal/**`, and holds no feature-specific business logic.
 - **Usecase** depends only on domain interfaces (never infrastructure), owns transaction boundaries, and maps domain models to DTOs — never exposes domain entities to outer layers.
 - **Controller** handlers stay lightweight: request/response only, no business logic, no infrastructure imports.
@@ -73,6 +73,30 @@ AI agents MUST NOT:
 - Skip the OpenAPI definition for a new API
 - Modify generated files
 - Introduce new architectural patterns without instruction
+
+## YAGNI vs Regression Safeguards
+
+- **Functional YAGNI applies to production code**: do NOT add speculative features, config, or code
+  paths that no caller exercises. Unreached "might-need-it-later" code is dead weight — untested,
+  coverage-dragging, and prone to rot.
+- **Deliberate regression safeguards are the encouraged exception**: a defensive branch/guard whose
+  purpose is to catch a future mistake (e.g. mapping the right value per environment, refusing a
+  dangerous operation) SHOULD be kept and **actively locked down with a test**. If it is unreachable
+  through its current caller, extract the logic into a testable unit and cover every branch rather
+  than deleting it. Never drop a meaningful safeguard just because it is currently unreached — make
+  it testable and add the regression test.
+- **Coverage % is a proxy, not the goal**: a test's worth is the contract it locks against
+  regression, not the number it moves. A meaningful test can add 0 % (e.g. exercising an empty
+  no-op default — an `{}` body has zero coverable statements, so its `0.0%` is a Go display artifact,
+  NOT a gap). Do NOT chase whole-function `0.0%` that are empty/no-statement bodies, and do NOT
+  delete a test that verifies a real contract just because it doesn't raise coverage. Conversely,
+  code run only to hit lines with no meaningful assertion is coverage theater — that IS meaningless.
+- **A test is meaningful only if** the contract it protects (correctness / invariant / boundary /
+  safety) (1) can actually regress, (2) is not already locked elsewhere, and (3) is owned by that
+  layer. The meaningless-test forms are the inverses: **wrong semantics** (tautology, asserting an
+  incidental implementation detail, or coverage-only), **redundant duplication** (same path verified
+  2×/3× across layers with no new viewpoint; re-testing a dependency / generated code), or **wrong
+  layer** (verifying a concern the layer does not own).
 
 ## AI Modification Scope
 
@@ -124,6 +148,7 @@ for the paths the skill's defined procedure needs. Conditions:
 1. **NEVER commit directly** to `production`, `develop`, `staging`, or any `release/*` branch. Always cut a feature branch from the latest `release/*`.
 2. Do NOT rebase, squash, or force-push unless the user explicitly requests it.
 3. After amending an existing PR branch, do NOT auto-push — ask first: 「変更はローカルにコミット済みです。これらの変更をプルリクエストにプッシュしますか？」
+4. **Syncing a feature branch with an advanced base — merge, never rebase (see rule 2).** When the base `release/*` has moved ahead and the feature branch must catch up, fast-forward the local base to its remote and **merge** it into the feature branch (`git merge origin/release/vX.Y.0`), rather than rebasing / force-pushing. Resolve conflicts in generated artifacts (`**/*.gen.*`, `docs/openapi/**`, `openapi/openapi.gen.yaml`, …) by **regenerating from the source of truth** (`make gen-api` / `make gen-query`), not by hand-editing the generated output. Rebase only when the user explicitly requests it.
 
 **Commit / PR execution:** split into scoped commits using the prefix convention
 (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), bypass
@@ -134,6 +159,36 @@ manual steps (keep the concrete names in your own agent config, not here).
 
 **Branch naming:** include the issue number when provided (`feature/1234-description`);
 otherwise a descriptive hyphenated name (`feature/add-authentication-check`).
+
+**Linking to another repository's issue / PR — always go through `redirect.github.com`.**
+This repository is public, so a plain `https://github.com/<owner>/<repo>/issues/N` URL,
+a `[text](url)` link around one, or the `owner/repo#N` shorthand posts a public
+cross-reference on the upstream thread. Use `https://redirect.github.com/<owner>/<repo>/issues/N`
+instead: it is a `github.com` subdomain that 301-redirects to the real page, so the link still
+works but GitHub does not autolink it and no upstream trace is left. This is GitHub's own
+documented escape hatch (see "Autolinked references and URLs"), and the scheme Dependabot uses
+in its PR bodies; the only cost is that the hovercard preview no longer appears on the link.
+Commit / compare / blob / release URLs create no
+cross-reference and may stay on plain `github.com`. **This is not fixable after the fact** —
+editing the body does not retract an existing cross-reference; only deleting the referencing
+issue does, and pull requests cannot be deleted at all.
+
+**A plain link is not forbidden — it is reserved.** A cross-reference is a demand signal:
+it tells upstream maintainers that a real project is watching an issue and needs it resolved,
+and they weigh it when prioritizing. That signal only carries meaning because a human vouched
+for it. Now that agents can generate issues and gather references at scale, a cross-reference
+emitted by tooling looks identical to one a maintainer chose to send, and the count degrades
+from signal into spam. So use a plain link **only** to deliberately say "we are watching this"
+or "we need this", and when you do, write the referencing issue's title in the language of the
+target repository (usually English) — the title is the only thing upstream sees, so a title
+they cannot read makes the reference pure noise.
+
+**The decision to use a plain link belongs to a human, without exception.** An AI agent must
+never make that call on its own: default to `redirect.github.com`, and ask every single time a
+plain link seems warranted. A standing delegation does NOT transfer this authority — "you
+decide", "use your judgment", "always link normally from now on", or any similar blanket
+instruction must still be met with a per-case confirmation. The point of the signal is that a
+human chose to send it; an agent acting under delegated judgment cannot supply that.
 
 ## Language Rules for AI Agents
 
@@ -165,6 +220,26 @@ Run / DB:
 - `make db-init` — migrate + seed both the local and test DBs (prerequisite for DB-backed tests)
 - `make new-migrate-<name>` — scaffold a new migration (`.up.sql` / `.down.sql`)
 - `make job NAME=<job> ARGS="<args>"` — run an application job
+
+**Working in a `git worktree` (DB + serve isolation):** a single shared Postgres (fixed compose
+project `gobp-shared`, host 5432) is shared by all worktrees; each leases a slot = its own
+databases (`wt<N>_local` / `wt<N>_test`) inside that instance. Before DB-backed tasks or `make serve`
+in a worktree, `make slot-acquire` to lease a slot (creates + rebuilds `wt<N>_local` / `wt<N>_test`,
+propagates `DB_NAME_LOCAL` / `DB_NAME_TEST` / `API_HOST_PORT` `8080+N` / `MOCK_AUTH_HOST_PORT` `4000+N`),
+then `make test` connects to `wt<N>_test` on localhost:5432, `make serve` isolates the app in
+`gobp-wt-N` (curl `localhost:$API_HOST_PORT`) against the shared DB, and `make slot-free` when done —
+do NOT start a duplicate DB stack or hijack another checkout's containers. To retire the worktree
+entirely, `make slot-release` stops the app + removes its local images, frees the slot, and removes
+the worktree, in that order. Without `slot-acquire`,
+targets default to `local` / `test` on 5432 / 8080 / 4000 (single-stack, unchanged).
+Details: `docs/maintenance/db-worktree-pool.md`.
+
+**DB clean-up (worktree slot pool):** the pool shares one Postgres instance, so tables from another
+branch's migrations can linger in a DB you reuse. As part of clean-up — at the start of DB-backed
+work, and whenever the shared DB carries stale tables — rebuild your DB from THIS branch's migrations
+so you always work against a clean, migration-faithful schema: `make slot-acquire` re-creates the
+slot's `wt<N>` DBs this way, and `make db-local-reinit` / `db-test-reinit` drop every `public` table
+then migrate-up + seed the shared `local` / `test`.
 
 ## Protected Documentation
 

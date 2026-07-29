@@ -1,43 +1,83 @@
 name: Dependency Scan
 
 on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/trivy-fs.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
   pull_request:
     paths:
       - '.github/workflows/trivy-fs.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+      - 'docker/tools/package-lock.json'
+      - 'docker/mock-auth-server/package-lock.json'
   schedule:
     - cron: '0 0 * * 1'
   workflow_dispatch:
 
 permissions:
   contents: read
-  security-events: write
-  actions: read
-  pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   trivy-fs:
     runs-on: ubuntu-latest
+    # Job-scoped rather than workflow-scoped: once this file gained a second job,
+    # zizmor's excessive-permissions audit rates a workflow-level pull-requests:
+    # write as overly broad, because it would then also cover jobs that never
+    # comment.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Trivy FS scan (JSON)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          scan-type: fs
-          scanners: 'vuln'
-          format: json
-          ignore-unfixed: true
-          vuln-type: 'library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-fs.json
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install trivy
+        run: mise install aqua:aquasecurity/trivy
+
+      # Scan flags live in .makefiles/security/trivy.mk so that the local
+      # `make trivy-fs` and this job cannot drift apart. -s keeps make from echoing
+      # the recipe into the JSON.
+      - name: Trivy FS scan (JSON)
+        run: make -s trivy-fs-ci TRIVY_FORMAT=json > trivy-fs.json
+        shell: bash
 
       - name: Create Trivy summary (Markdown)
         id: summarize
@@ -74,6 +114,13 @@ jobs:
 
         shell: bash
 
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: trivy-fs-summary.md
+
       - name: Upload Trivy FS report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -95,15 +142,8 @@ jobs:
 
       - name: Trivy FS scan (SARIF)
         if: always()
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: fs
-          scanners: 'vuln'
-          format: sarif
-          ignore-unfixed: true
-          vuln-type: 'library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-fs.sarif
+        run: make -s trivy-fs-ci TRIVY_FORMAT=sarif > trivy-fs.sarif
+        shell: bash
 
       - name: Upload Trivy FS SARIF to code scanning
         if: always()
@@ -112,3 +152,148 @@ jobs:
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
+
+  # License inventory shares this workflow's trigger because it asks about the very
+  # same files, but it is a separate job so that its exit code, PR comment and
+  # artifact never mix with the vulnerability verdict above.
+  #
+  # Report-only, permanently so until a prohibited-license policy exists. It writes
+  # no SARIF either: every dependency carries a license, so code scanning would fill
+  # with hundreds of alerts that nobody has agreed are problems yet.
+  trivy-license:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install trivy
+        run: mise install aqua:aquasecurity/trivy
+
+      - name: Trivy license scan (JSON)
+        run: make -s trivy-license-ci TRIVY_FORMAT=json > trivy-license.json
+        shell: bash
+
+      - name: Create license summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          # License findings arrive in Results whose Class is "license". The same
+          # targets also appear with Class "lang-pkgs" carrying no Licenses key, so
+          # selecting on Class is what keeps the count honest. Results itself is
+          # absent — not empty — when no dependency manifest is detected at all.
+          LICENSES=$(jq '
+            [(.Results // [])[] | select(.Class == "license") | .Licenses[]]
+          ' trivy-license.json)
+
+          TOTAL=$(printf '%s' "${LICENSES}" | jq 'length')
+
+          # Trivy classifies every license into notice / unencumbered / permissive /
+          # reciprocal / restricted / forbidden / unknown. The first two impose no
+          # obligation worth a human's attention; the rest do.
+          REVIEW=$(printf '%s' "${LICENSES}" | jq '
+            map(select(.Category != "notice" and .Category != "unencumbered"))
+          ')
+          REVIEW_COUNT=$(printf '%s' "${REVIEW}" | jq 'length')
+
+          BREAKDOWN=$(printf '%s' "${LICENSES}" | jq -r '
+            group_by(.Category)
+            | map("\(.[0].Category) \(length)")
+            | join(" / ")
+          ')
+
+          echo "title=## 📄 License Scan: ${TOTAL} licenses (${BREAKDOWN})" >> "$GITHUB_OUTPUT"
+
+          {
+            if [ "${REVIEW_COUNT}" -eq 0 ]; then
+              echo "All licenses are notice / unencumbered; nothing needs review."
+            else
+              echo "Licenses outside notice / unencumbered (${REVIEW_COUNT}):"
+              echo
+              printf '%s' "${REVIEW}" | jq -r '
+                sort_by(.Category, .Name)
+                | .[]
+                | "- [\(.Severity)] `\(.Name)` (\(.Category)) — \(.PkgName) in `\(.FilePath)`"
+              '
+            fi
+          } > trivy-license-summary.md
+
+          cat trivy-license-summary.md >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload license report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: trivy-license
+          path: |
+            trivy-license.json
+            trivy-license-summary.md
+
+      - name: Comment license result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- trivy-license-result -->'
+          title: ${{ steps.summarize.outputs.title }}
+          body-file: trivy-license-summary.md
+          details-summary: '📄 Summary'
+
+  # This job is report-only, so a finding leaves it green and the failure notification
+  # below can never fire for one. On a PR that is fine — the finding is in a comment
+  # addressed to the author, who introduced the dependency. On the weekly run there is
+  # no author and no change: the finding is a newly published advisory against code
+  # that stood still, which is the one case nothing else surfaces. Hence schedule only.
+  notify-detection:
+    needs: trivy-fs
+    if: ${{ github.event_name == 'schedule' && needs.trivy-fs.outputs.count != '' && needs.trivy-fs.outputs.count != '0' }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      detected: Trivy FS found ${{ needs.trivy-fs.outputs.count }} fixable vulnerabilities
+      details: ${{ needs.trivy-fs.outputs.detail }}
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # PR / push failures are deliberately excluded: they are already visible.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure, and that is precisely the silent breakage this
+  # notification exists to surface.
+  notify-failure:
+    needs: trivy-fs
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.trivy-fs.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: trivy-fs
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # The license job never fails on a finding, so reaching here means the scanner
+  # itself broke — exactly the silent weekly breakage this notification exists for.
+  notify-failure-license:
+    needs: trivy-license
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.trivy-license.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: trivy-license
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

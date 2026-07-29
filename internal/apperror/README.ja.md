@@ -237,6 +237,8 @@ flowchart TB
 | `ErrNotFound` | 対象が存在しない | 404 Not Found |
 | `ErrConflict` | 競合（ユニーク制約違反・同時更新衝突など） | 409 Conflict |
 | `ErrValidation` | ドメイン/ユースケースの検証失敗 | 422 Unprocessable Entity |
+| `ErrUnsupportedMediaType` | サポートされていない Content-Type / メディア形式 | 415 Unsupported Media Type |
+| `ErrPayloadTooLarge` | リクエストペイロードが許容サイズを超過 | 413 Payload Too Large |
 | `ErrTooManyRequests` | リクエスト過多（流量制限・外部 API のスロットリング応答の伝播など） | 429 Too Many Requests |
 | `ErrCanceled` | クライアントがリクエストをキャンセル/切断 | 499 Client Closed Request |
 | `ErrInternal` | 想定外の内部エラー | 500 Internal Server Error |
@@ -273,3 +275,15 @@ apperror.IsAppError(apperror.ErrRetryable)                       // false
 | `ErrFatal` | プロセス継続不能 | drain して engine を停止 |
 
 これらは HTTP エラー taxonomy には **含まれません**。HTTP ステータス対応を持たず、`IsAppError` の対象外です。
+
+## テスト戦略
+
+本パッケージはセンチネルとそれに付随するメタデータを定義するのみで、I/O を行わず HTTP を知らない。テストはモックを使わない純粋な単体テストで、対象はセンチネル集合・`Meta`・ラップ用ヘルパである。
+
+- **ラップを跨いでセンチネルの同一性が保たれること** — `WithMeta` / `WithDetails` を通し、さらに外側で `%w` ラップした後に `errors.Is` で検証する。エラー文字列の比較ではセンチネルが失われても通ってしまい、それこそが本層の防ごうとしている失敗である。
+- **マッピングの網羅性** — 全センチネルがマッピング表に登録されていることを目視でなく機械的に検証する（`TestAppErrorsCompleteness`）。表に無いセンチネルを追加したらビルドが落ちること。taxonomy が増えるたびに拡張が要る唯一のテストがこれ。
+- **`Meta` の派生が非破壊であること** — `Meta.WithMessage` は派生した `Meta` を返し、レシーバを変更しない。派生後の値だけでなく元の値も検証する。（`WithDetails` は形が異なり、新規に構築した `Meta` を **エラー** へ付与する関数である。保たれるべきはラップ元のセンチネル分類であり、それは 1 つ目の箇条書きが担当する。）
+- **Unwrap 連鎖とフォーマット** — `MetaError` は `Unwrap` でラップ元を公開し、`%v` / `%+v` で文書化された形へ整形する。連鎖は `errors.Is` / `errors.As` で検証し、整形自体が契約である箇所に限りフォーマットを検証する。
+- **分類の境界** — `IsAppError` は HTTP taxonomy を受理し、意図的に対象外としたもの（worker センチネル `ErrRetryable` / `ErrPermanent` / `ErrFatal`）を拒否する。両側を検証すること。この拒否が worker の失敗を HTTP ステータスへ写してしまうのを防いでいる。
+
+HTTP ステータスへのマッピングはここでは **検証しない** —— controller 層のエラーハンドラの担当である。

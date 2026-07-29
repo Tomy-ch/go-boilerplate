@@ -15,7 +15,6 @@ import (
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
-	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -49,10 +48,21 @@ func newTestAuthn(t *testing.T) *authbd.Authn {
 
 func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User {
 	t.Helper()
-	u, err := user.New(
-		id, "John", "Doe", "hashed_password", "john@example.com", "1234567890",
-		prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001", ts, ts, nil,
-	)
+	u, err := user.New(id, user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "John",
+			LastName:     "Doe",
+			Email:        "john@example.com",
+			Phone:        "1234567890",
+			PrefectureID: prefID,
+			City:         "Shibuya",
+			Street:       "1-2-3",
+			Building:     new("Building A"),
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: ts,
+		UpdatedAt: ts,
+	})
 	require.NoError(t, err)
 	return u
 }
@@ -272,161 +282,6 @@ func Test_usecase_UpdateUser(t *testing.T) {
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
 			_, err := uc.UpdateUser(ctx, authn, id, newUpdateDTO(prefName))
-			require.ErrorIs(t, err, expectedErr)
-		})
-	})
-}
-
-func Test_usecase_ChangePassword(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	lt := observability.NewMockUsecaseLayerTracer(t)
-	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
-
-	const (
-		currentPassword = "current_password"
-		newPassword     = "new_valid_password" //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
-		storedHash      = "hashed_password"    // newActiveUser が設定する passwordHash
-	)
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("パスワード変更が成功する", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("new_hashed", nil)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-			userRepo.EXPECT().Update(gomock.Any(), gomock.AssignableToTypeOf(u)).Return(nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.NoError(t, err)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("現パスワードの検証エラー", func(t *testing.T) {
-			t.Parallel()
-			clock := clocktest.NewMockClockOnce(t, now)
-
-			uc := &usecase{tracer: lt, clock: clock}
-			err := uc.ChangePassword(ctx, id, "short", newPassword)
-			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
-		})
-
-		t.Run("新パスワードの検証エラー", func(t *testing.T) {
-			t.Parallel()
-			clock := clocktest.NewMockClockOnce(t, now)
-
-			uc := &usecase{tracer: lt, clock: clock}
-			err := uc.ChangePassword(ctx, id, currentPassword, "short")
-			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
-		})
-
-		t.Run("対象ユーザーが存在しない", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("not found")
-			clock := clocktest.NewMockClockOnce(t, now)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, expectedErr)
-		})
-
-		t.Run("現パスワードが一致しない", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(false, nil)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, user.ErrCurrentPasswordMismatch)
-		})
-
-		t.Run("パスワード照合でエラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("compare failed")
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(false, expectedErr)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, expectedErr)
-		})
-
-		t.Run("新パスワードのハッシュ化エラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("hash failed")
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("", expectedErr)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, expectedErr)
-		})
-
-		t.Run("ドメインのパスワード変更で検証エラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("", nil) // 空ハッシュ → ドメイン ChangePassword で失敗
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, user.ErrInvalidPasswordHash)
-		})
-
-		t.Run("永続化エラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("update failed")
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("new_hashed", nil)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
 			require.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -661,11 +516,22 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("既に削除済みの場合_ErrAlreadyDeleted", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
-			deletedUser, err := user.New(
-				id, "John", "Doe", "hashed_password", "john@example.com", "1234567890",
-				prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001",
-				now, now, new(now),
-			)
+			deletedUser, err := user.New(id, user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "John",
+					LastName:     "Doe",
+					Email:        "john@example.com",
+					Phone:        "1234567890",
+					PrefectureID: prefID,
+					City:         "Shibuya",
+					Street:       "1-2-3",
+					Building:     new("Building A"),
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+				DeletedAt: new(now),
+			})
 			require.NoError(t, err)
 
 			clock := clocktest.NewMockClockOnce(t, now.Add(time.Hour))

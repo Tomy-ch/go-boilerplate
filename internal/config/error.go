@@ -5,8 +5,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/xerrors"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -32,11 +30,6 @@ var (
 	)
 	// ErrEmptyAllowedOrigins は、許可されたオリジンが空であってはならないことを示すエラーです。
 	ErrEmptyAllowedOrigins = xerrors.Wrap(errInvalidConfig, "allowed origins must not be empty")
-	// ErrInvalidBcryptCost は、無効な bcrypt コストに関するエラーを表します。
-	ErrInvalidBcryptCost = xerrors.Wrap(
-		errInvalidConfig,
-		fmt.Sprintf("invalid bcrypt cost, must be between %d and %d", bcrypt.MinCost, bcrypt.MaxCost),
-	)
 	// ErrHTTPOnlyAllowedForLocalhost は、HTTP スキームが localhost（127.0.0.1 含む）以外のオリジンに使用されたことを示す検証エラーです。
 	ErrHTTPOnlyAllowedForLocalhost = xerrors.Wrap(
 		errInvalidConfig,
@@ -91,6 +84,15 @@ var (
 	ErrShutdownTimeoutBelowRequestTimeout = xerrors.Wrap(
 		errInvalidConfig,
 		"shutdown timeout must be greater than or equal to request timeout",
+	)
+	// ErrBodyLimitBelowMaxUploadBytes は、リクエストボディ上限（SERVER_BODY_LIMIT_MB）が
+	// アップロード上限（OBJECT_STORAGE_MAX_UPLOAD_BYTES）以下であることを示すエラーです。
+	// ボディ上限は Pre ミドルウェアとして全リクエストへ先に適用されるため、これを下回るとアップロード
+	// 上限に達する前に 413 が返り、エンドポイント側の上限が到達不能になります。マルチパートの
+	// オーバーヘッド分の余裕も必要です。server グラフの起動時に検証されます（ValidateUploadBodyLimit）。
+	ErrBodyLimitBelowMaxUploadBytes = xerrors.Wrap(
+		errInvalidConfig,
+		"server body limit must be greater than object storage max upload bytes",
 	)
 	// ErrInvalidMetricsPortRange は、メトリクスサーバーの無効なポート範囲に関するエラーを表します。
 	ErrInvalidMetricsPortRange = xerrors.Wrap(

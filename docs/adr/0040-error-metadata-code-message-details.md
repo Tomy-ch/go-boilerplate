@@ -57,8 +57,8 @@ Three constraints keep ADR-0039 intact:
 
 Supporting change: `user.validateProfileFields` now validates **all** profile fields
 and joins the per-field sentinel errors (`xerrors.Join`), attaching the collected field
-identifiers via `WithDetails`. Server-internal invariants (id, updatedAt, deletedAt,
-passwordHash) keep first-error return — they are not user-correctable input. As a
+identifiers via `WithDetails`. Server-internal invariants (id, updatedAt, deletedAt)
+keep first-error return — they are not user-correctable input. As a
 side effect, `POST /v1/users` (creation) also reports invalid fields in `details`;
 this is an intended improvement.
 

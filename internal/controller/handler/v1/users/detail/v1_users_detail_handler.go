@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/users/detail --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package detail は、/v1/users/{userId} エンドポイントに関連するハンドラを提供します。
 package detail
@@ -15,7 +15,7 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 )
 
@@ -55,7 +55,29 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 	return gen.GetUsersDetail200JSONResponse(toUserResponse(dto)), nil
 }
 
-// PutUsersDetail は、指定されたUUIDに該当するユーザーのプロフィールを全て更新します（パスワードは含みません）。
+// GetUsersMe は、認証コンテキストの内部 UserID に該当するユーザー自身の詳細情報を取得します。
+func (s *server) GetUsersMe(ctx context.Context, _ gen.GetUsersMeRequestObject) (gen.GetUsersMeResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+	id, err := authn.UserID()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+	}
+
+	dto, err := s.uc.GetUser(ctx, &authn, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.GetUsersMe200JSONResponse(toUserResponse(dto)), nil
+}
+
+// PutUsersDetail は、指定されたUUIDに該当するユーザーのプロフィールを全て更新します。
 func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailRequestObject) (gen.PutUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -87,7 +109,7 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 	return gen.PutUsersDetail200JSONResponse(toUserResponse(res)), nil
 }
 
-// PatchUsersDetail は、指定されたUUIDに該当するユーザーの情報を部分的に更新します（パスワードは更新しません）。
+// PatchUsersDetail は、指定されたUUIDに該当するユーザーの情報を部分的に更新します。
 func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDetailRequestObject) (gen.PatchUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -117,27 +139,6 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 	}
 
 	return gen.PatchUsersDetail200JSONResponse(toUserResponse(res)), nil
-}
-
-// PutUsersMePassword は、認証ユーザー自身のパスワードを変更します（現パスワード照合あり）。
-func (s *server) PutUsersMePassword(ctx context.Context, request gen.PutUsersMePasswordRequestObject) (gen.PutUsersMePasswordResponseObject, error) {
-	ctx, endSpan := s.tracer.Start(ctx)
-	defer endSpan()
-
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
-	}
-	id, err := authn.UserID()
-	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
-	}
-
-	if err := s.uc.ChangePassword(ctx, id, request.Body.CurrentPassword, request.Body.NewPassword); err != nil {
-		return nil, err
-	}
-
-	return gen.PutUsersMePassword204Response{}, nil
 }
 
 // DeleteUsersDetail は、指定されたUUIDに該当するユーザーを論理削除します。

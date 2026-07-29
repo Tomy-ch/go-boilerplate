@@ -1,0 +1,10 @@
+name: statusId
+in: query
+description: 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+required: false
+schema:
+  type: string
+  format: uuid
+  pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+  maxLength: 36
+  example: "093170fb-83a2-4864-a2b3-53236eaf3597"

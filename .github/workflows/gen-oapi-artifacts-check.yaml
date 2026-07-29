@@ -21,6 +21,11 @@ jobs:
     env:
       ENV: ci
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -45,18 +50,20 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
-      # PR の source（openapi/ 配下）が触られているかを判定する。
-      # 触られている場合は「make gen-api を忘れた」可能性が高く、触られていない
-      # 場合は generator 側のドリフト（非決定的出力 / 依存更新）の可能性が高い。
+      # Determine whether the PR touched the source (under openapi/).
+      # If it did, a forgotten "make gen-api" is the likely cause; if it did not,
+      # generator-side drift (non-deterministic output / dependency update) is more likely.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          git fetch --no-tags --depth=200 origin "${BASE_REF}" || true
           changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
           if echo "$changed" | grep -qE '^openapi/'; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
@@ -76,17 +83,21 @@ jobs:
             echo "No differences in OpenAPI generated output were detected." > "$out"
             exit 0
           fi
+          # Disable SC2016: `make ...` in the notification message is shown literally (must not expand)
+          # shellcheck disable=SC2016
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '`make gen-bundle-oapi && make gen-api-docs` をローカルで実行し、変更をコミットしてください。' > "$out"
+            printf '%s\n' "Run \`make gen-bundle-oapi && make gen-api-docs\` locally and commit the changes." > "$out"
           else
-            echo "title=## ⚠️ OpenAPI 生成物のドリフトを検知（openapi/ 未変更）" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '本 PR では `openapi/` 配下が変更されていないため、generator 側のドリフト（非決定的出力・依存バージョン差・base 側の古い生成物 等）の可能性があります。`make gen-bundle-oapi && make gen-api-docs` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+            echo "title=## ⚠️ Drift in OpenAPI generated output detected (openapi/ unchanged)" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR does not modify anything under \`openapi/\`, so this may be generator-side drift (non-deterministic output, dependency version differences, stale generated artifacts on the base, etc.). Run \`make gen-bundle-oapi && make gen-api-docs\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
+          # Disable SC2016: the `%s` that renders the filename as markdown code is literal (must not expand)
+          # shellcheck disable=SC2016
           {
             echo ""
             while IFS= read -r f; do
-              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
             done < /tmp/changed_files.txt
           } >> "$out"
 

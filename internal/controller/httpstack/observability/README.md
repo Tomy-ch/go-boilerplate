@@ -10,4 +10,5 @@ Distributed tracing must wrap every request uniformly to be useful, and threadin
 
 ## Notes
 
-- `Middleware(serviceName)` returns the OTel (`otelecho`) tracing middleware; `PassthroughMiddleware()` returns a no-op middleware that simply forwards to the next handler. The DI layer selects the passthrough when tracing is disabled (`ObservabilityConfig.TracesEnabled()` is false), so the middleware slot is always filled without a conditional at the registration site.
+- `Middleware()` returns the OTel (`echootel`) tracing middleware; `PassthroughMiddleware()` returns a no-op middleware that simply forwards to the next handler. The DI layer selects the passthrough when tracing is disabled (`ObservabilityConfig.TracesEnabled()` is false), so the middleware slot is always filled without a conditional at the registration site.
+- The middleware takes no server name. `echootel`'s `Config.ServerName` is the server's canonical host name used for the `server.address` / `server.port` attributes, not the service name (that one belongs to the OTel resource); leaving it empty resolves both from the request's `Host`.

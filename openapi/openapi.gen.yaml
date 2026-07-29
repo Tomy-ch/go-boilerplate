@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
-  title: Boilerplate Go with Onion Architecture, Echo and SQLC
+  title: Go Boilerplate API
   termsOfService: https://github.com/Tomy-ch/go-boilerplate-echo-oapi-sqlc
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
-  version: 2.1.0
+  version: 2.2.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
     It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
@@ -22,12 +22,17 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local development server
+    x-internal: true
   - url: https://api.example.com
     description: Production server (replace with actual URL)
+    x-internal: false
   - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
+    x-internal: false
   - url: https://development.api.example.com
     description: Development server (replace with actual URL)
+    x-internal: true
+security: []
 tags:
   - name: health
     description: ヘルスチェック（liveness）。
@@ -42,13 +47,39 @@ tags:
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
-    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+    description: 単一ユーザー（取得・更新・部分更新・削除）。
   - name: v1/users/feed
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
     description: ユーザー検索（キーワード）。
+  - name: v1/users/me/purchases
+    description: 認証主体自身の購入集計（認証必須・自分絞り込み / query_service サンプル）。
+  - name: v1/prefectures
+    description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products
+    description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/statuses
+    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products/categories
+    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
+  - name: v1/products/detail
+    description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
+  - name: v1/products/ranking
+    description: 商品売上ランキング（認証不要・購入明細の集計 / query_service サンプル）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
+  - name: v1/addresses
+    description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
+  - name: v1/purchases
+    description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
+  - name: v1/purchases/detail
+    description: 単一購入の詳細取得（本人のみ・集約跨ぎ QueryService・明細に商品名/未存在は 404 で秘匿）。
+  - name: v1/purchases/detail/cancel
+    description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
+  - name: v1/purchases/detail/pay
+    description: 購入の支払い（本人のみ・状態機械/不正遷移 409・擬似決済）。
+  - name: v1/purchases/detail/ship
+    description: 購入の発送（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -59,6 +90,7 @@ paths:
         - health
       summary: サーバーのヘルスチェック
       description: サーバーが正常に稼働しているかを確認するためのECSやALB向けのヘルスチェックエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーは正常に稼働しています。
@@ -73,6 +105,7 @@ paths:
         - healthz
       summary: サーバーのヘルスチェック
       description: サーバーが正常に稼働しているかを確認するためのEKS向けのヘルスチェックエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーは正常に稼働しています。
@@ -104,6 +137,7 @@ paths:
         - ready
       summary: サーバー全体のレディネスチェック
       description: サーバー全体がリクエストを受け付ける準備ができているかを確認するためのレディネスチェックエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーはリクエストを受け付ける準備ができています。
@@ -118,6 +152,7 @@ paths:
         - version
       summary: サーバーのバージョン情報を取得します。
       description: サーバーのバージョン情報を取得するためのエンドポイントです。
+      security: []
       responses:
         '200':
           description: サーバーのバージョン情報を返します。
@@ -133,6 +168,7 @@ paths:
       tags:
         - internal/types/error-response
       operationId: GenerateErrorSchema
+      security: []
       responses:
         '200':
           description: このレスポンスの型を生成するためです。
@@ -147,6 +183,8 @@ paths:
         - v1/users
       summary: ユーザー一覧の取得
       description: ユーザーの一覧を取得します。ページネーションを指定できます。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/ActiveParam'
         - $ref: '#/components/parameters/PageParam'
@@ -340,36 +378,57 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/users/me/password:
-    put:
-      operationId: PutUsersMePassword
+  /v1/users/me:
+    get:
+      operationId: GetUsersMe
       tags:
         - v1/users/detail
-      summary: 認証ユーザー自身のパスワード変更
-      description: 認証中のユーザー自身のパスワードを変更します。現在のパスワードを照合し、一致した場合のみ更新します。
+      summary: 認証ユーザー自身の取得
+      description: 認証コンテキスト（Bearer トークン）の内部 UserID に該当するユーザー自身の詳細情報を取得します。
       security:
         - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserPasswordPutRequest'
       responses:
-        '204':
-          description: パスワードの変更に成功しました
-        '400':
-          $ref: '#/components/responses/BadRequest400'
+        '200':
+          description: ユーザーの取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
         '401':
           $ref: '#/components/responses/Unauthorized401'
         '404':
           $ref: '#/components/responses/NotFound404'
-        '422':
-          description: 現在のパスワードが一致しません。
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/users/me/purchases/summary:
+    get:
+      operationId: GetUsersMePurchasesSummary
+      tags:
+        - v1/users/me/purchases
+      summary: 認証ユーザー自身の購入集計の取得
+      description: |
+        認証コンテキスト（Bearer トークン）の内部 UserID に該当するユーザー自身の購入を集計して取得します。
+        マイページの集計カード表示を想定した最小集計で、購入一覧そのものは返しません（履歴は購入履歴一覧 API）。
+        パスに他者の識別子を持たないため、他ユーザーの集計は取得できません。
+        合計金額は USD セント単位の整数です。キャンセル済みの購入も総件数・合計金額に含めます
+        （キャンセルはステータス別内訳の 1 要素として件数・金額とも返るため、キャンセルを除いた値が必要な
+        クライアントは内訳から差し引けます）。
+        購入が 1 件もない場合はエラーではなくゼロ値（件数 0・合計 0・内訳は空配列）を返します。
+        本 op 自体は DB の集計 SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 認証ユーザー自身の購入集計の取得に成功しました
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/PurchaseAggregateResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -381,6 +440,8 @@ paths:
         - v1/users/search
       summary: ユーザー一覧の取得
       description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/KeywordParam'
         - $ref: '#/components/parameters/ActiveParam'
@@ -432,6 +493,282 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/prefectures:
+    get:
+      operationId: GetPrefectures
+      tags:
+        - v1/prefectures
+      summary: 都道府県マスタ一覧の取得
+      description: |
+        都道府県マスタの全件を code 昇順で返します。
+        認証不要の公開エンドポイントであり、ページネーションは行いません（全 47 件を返します）。
+      security: []
+      responses:
+        '200':
+          description: 都道府県マスタの一覧（code 昇順）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrefecturesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/statuses:
+    get:
+      operationId: GetProductStatuses
+      tags:
+        - v1/products/statuses
+      summary: 商品ステータスマスタ一覧の取得
+      description: |
+        商品ステータスマスタの全件を sortKey（表示順）昇順で返します。
+        認証不要の公開エンドポイントであり、ページネーションは行いません（全 10 件を返します）。
+      security: []
+      responses:
+        '200':
+          description: 商品ステータスマスタの一覧（sortKey 昇順）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductsStatusesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/categories:
+    get:
+      operationId: GetProductCategories
+      tags:
+        - v1/products/categories
+      summary: 商品カテゴリマスタ一覧の取得
+      description: |
+        商品カテゴリマスタの全件を sortKey（表示順）昇順で返します。
+        認証不要の公開エンドポイントであり、ページネーションは行いません（全件を返します）。
+      security: []
+      responses:
+        '200':
+          description: 商品カテゴリマスタの一覧（sortKey 昇順）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductsCategoriesResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products:
+    get:
+      operationId: GetProducts
+      tags:
+        - v1/products
+      summary: 商品一覧の取得
+      description: |
+        公開済みの商品を cursor ページネーションで取得します。認証不要の公開エンドポイントです。
+        既定では公開日時の降順（publishedAt DESC, id DESC）で並び、sort=publishedAt で昇順に切り替えられます。
+        categoryId / statusId でフィルタ、keyword で商品名・説明の部分一致検索ができます。
+        公開日時が未設定（未公開）の商品は返しません。ステータスによる可視範囲の絞り込みは今後対応予定です。
+        price は USD セント単位の整数です。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CursorAfterParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+        - $ref: '#/components/parameters/CategoryIdParam'
+        - $ref: '#/components/parameters/StatusIdParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: cursor ページネーションで取得した公開商品一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+    post:
+      operationId: PostProducts
+      tags:
+        - v1/products
+      summary: 商品の作成
+      description: |
+        商品を作成します。認証必須（admin のみ・非 admin は 403）。
+        description はリッチテキスト HTML を許容し、そのまま格納します（表示側でサニタイズします）。
+        imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+        price の非数値は 400、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductsPostRequest'
+      responses:
+        '201':
+          description: 商品の作成に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/{productId}:
+    get:
+      operationId: GetProductsDetail
+      tags:
+        - v1/products/detail
+      summary: 単一商品の取得
+      description: |
+        指定された UUID に該当する公開済み商品の詳細情報を取得します。認証不要の公開エンドポイントです。
+        公開日時が未設定（未公開）の商品、および存在しない商品はいずれも 404 を返し、存在を秘匿します。
+        price は USD セント単位の整数です。statusId / categoryId の名称はマスタ API で解決します。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '200':
+          description: 公開済み商品の詳細取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+    patch:
+      operationId: PatchProductsDetail
+      tags:
+        - v1/products/detail
+      summary: 単一商品の部分更新
+      description: |
+        指定された UUID に該当する商品の属性を部分更新します。admin のみ実行できます（非 admin は 403）。
+        送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
+        description / stockWarningThreshold / publishedAt / imagePath は null を明示するとクリアします。
+        公開日時そのものを更新対象とするため、取得系と異なり未公開商品も更新できます。
+        version が DB の現在値と一致しない場合は他者の更新と競合したものとして 409 を返します。
+        409 は再送では解消しないため、クライアントは再取得してから送り直してください。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPatchRequest'
+      responses:
+        '200':
+          description: 商品の部分更新に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/ranking:
+    get:
+      operationId: GetProductsRanking
+      tags:
+        - v1/products/ranking
+      summary: 商品売上ランキングの取得
+      description: |
+        購入明細を集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
+        キャンセル済みの購入は集計から除外します。未払いの購入は集計に含みます。
+        period=30d の場合は注文日時が直近30日以内の購入のみを集計します。
+        同一販売数量の商品は商品 ID の昇順で安定的に並びます。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RankingPeriodParam'
+        - $ref: '#/components/parameters/RankingLimitParam'
+      responses:
+        '200':
+          description: 販売数量の降順で取得した商品ランキング
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRankingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/images:
+    post:
+      operationId: PostProductsImages
+      tags:
+        - v1/products
+      summary: 商品画像のアップロード
+      description: |
+        admin が商品画像をアップロードし、格納先のパスを取得します。認証必須（admin のみ・非 admin は 403）。
+        返却された imagePath を商品作成 / 更新の imagePath に渡します。表示 URL はフロントが配信ベース URL と
+        組み立てます。対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です
+        （超過は 413、非対応形式は 415、空ファイル等は 422）。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductImagePostRequest'
+      responses:
+        '201':
+          description: 画像のアップロードに成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge413'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType415'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/exchange-rates:
     get:
       operationId: GetExchangeRates
@@ -441,6 +778,7 @@ paths:
       description: |
         base 通貨建ての amount を quote 通貨へ換算した結果を返します。
         外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+      security: []
       parameters:
         - name: base
           in: query
@@ -459,11 +797,25 @@ paths:
         - name: amount
           in: query
           required: true
-          description: 換算する金額（base 通貨建て）
+          description: |
+            換算する金額（base 通貨建て）。正確な十進量を保つため decimal 文字列で受け付けます。
+            JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。
           schema:
-            type: number
-            format: double
-            example: 100
+            type: string
+            maxLength: 40
+            pattern: ^\d{1,20}(\.\d{1,18})?$
+            example: '100'
+        - name: displayCurrency
+          in: query
+          required: false
+          description: |
+            指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
+            現状は JPY のみサポートします。
+          schema:
+            type: string
+            enum:
+              - JPY
+            example: JPY
       responses:
         '200':
           description: 換算結果を返します。
@@ -477,16 +829,255 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/addresses:
+    get:
+      operationId: GetAddresses
+      tags:
+        - v1/addresses
+      summary: 郵便番号から住所候補を補完します。
+      description: |
+        郵便番号（postalCode）から住所候補（都道府県・市区町村・町域）を補完して返します。
+        外部の郵便番号 lookup サービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+        登録画面（郵便番号入力→住所オートフィル）で利用するため認証不要で、外部 lookup 障害時は
+        503 ではなく `200 + 空 candidates + isFallback: true` で degrade します（外部が落ちても登録を止めない）。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PostalCodeParam'
+      responses:
+        '200':
+          description: '住所候補（degrade 時は空 candidates + isFallback: true）を返します。'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressCandidatesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases:
+    get:
+      operationId: GetPurchases
+      tags:
+        - v1/purchases
+      summary: 購入履歴一覧の取得
+      description: |
+        認証主体（自分）の購入履歴を cursor ページネーションで取得します。認証必須です。
+        注文日時の降順（orderedAt DESC, id DESC）で安定して並び、前ページのレスポンスに含まれる
+        nextCursor を after に渡して次ページを取得します（無限スクロール）。
+        一覧は概要（code / totalAmount / status / orderedAt）のみを返し、明細は含みません。
+        他ユーザーの購入は返しません（所有権フィルタで閉じるため、対象がなければ空一覧です）。
+        totalAmount は USD セント単位の整数です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CursorAfterParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+      responses:
+        '200':
+          description: cursor ページネーションで取得した自分の購入履歴一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+    post:
+      operationId: PostPurchases
+      tags:
+        - v1/purchases
+      summary: 購入の作成
+      description: |
+        明細（商品IDと数量）の配列から購入を作成します。認証必須です。
+        在庫減算・購入作成・明細作成を単一トランザクションで原子的に行い、在庫不足（売り越し）は 409 で
+        購入を成立させません。明細の空配列・同一 productId の重複は 422 です。
+        Idempotency-Key により二重 POST を冪等化します。金額はすべて USD セント単位の整数です。
+        displayCurrency 指定時は合計金額の参考換算額（referenceAmount）を返します（非永続・レート障害時は null）。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyParam'
+        - $ref: '#/components/parameters/DisplayCurrencyParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchasesPostRequest'
+      responses:
+        '201':
+          description: 購入の作成に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/{purchaseId}:
+    get:
+      operationId: GetPurchasesDetail
+      tags:
+        - v1/purchases/detail
+      summary: 購入詳細の取得
+      description: |
+        認証主体（本人）の購入 1 件を明細込みで取得します。認証必須です。
+        status は ID・名称を事前解決済みで、明細には商品名（products との結合で解決した現在名）を含みます。
+        他ユーザーの購入・不存在はいずれも 404 で存在を秘匿します。
+        金額（subtotalAmount / taxAmount / shippingFee / totalAmount）はすべて USD セント単位の整数、
+        明細 unitPrice は購入時点の単価スナップショット（USD ドルの decimal 文字列）です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchaseIdParam'
+      responses:
+        '200':
+          description: 購入詳細の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseGetDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/{purchaseId}/cancel:
+    patch:
+      operationId: PatchPurchasesCancel
+      tags:
+        - v1/purchases/detail/cancel
+      summary: 購入のキャンセル
+      description: |
+        認証主体（本人）の購入をキャンセルします。認証必須です。
+        キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 / 支払い済み）からのみ遷移でき、
+        status を「キャンセル」へ更新し canceledAt をセットします。完了・キャンセル済み、および
+        発送済み（shippedAt）・配達済み（deliveredAt）の購入は 409 で拒否します。
+        キャンセル時に購入明細分の在庫を復元します（作成時の在庫減算と対称・同一トランザクションで強整合）。
+        他ユーザーの購入は 404 で存在を秘匿します。金額はすべて USD セント単位の整数です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchaseIdParam'
+      responses:
+        '200':
+          description: 購入のキャンセルに成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseCancelResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/{purchaseId}/pay:
+    patch:
+      operationId: PatchPurchasesPay
+      tags:
+        - v1/purchases/detail/pay
+      summary: 購入の支払い
+      description: |
+        認証主体（本人）の購入を支払い済みへ遷移させます。認証必須です。
+        決済 SDK / PSP 連携は行わず、paidAt のセットと status の「支払い済み」への更新で擬似決済を代替します
+        （金額・決済結果の検証は行いません）。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
+        既に支払い済みの購入は 409（二重支払い）、キャンセル済み・完了・発送済み・配達済みの購入は 409（不正遷移）で拒否します。
+        他ユーザーの購入は 404 で存在を秘匿します。金額はすべて USD セント単位の整数です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchaseIdParam'
+      responses:
+        '200':
+          description: 購入の支払いに成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchasePayResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/{purchaseId}/ship:
+    patch:
+      operationId: PatchPurchasesShip
+      tags:
+        - v1/purchases/detail/ship
+      summary: 購入の発送
+      description: |
+        購入を発送済みへ遷移させます。認証必須で、管理者（admin）のみ実行できます。
+        支払い済みからのみ遷移でき、status を「発送済み」へ更新し shippedAt をセットします。
+        未払い相当（未処理 / 受付中 / 確認中 / 処理中）・完了・キャンセル済み・配達済みの購入は 409（不正遷移）、
+        既に発送済みの購入も 409（二重発送）で拒否します。配送追跡（追跡番号 / 配送業者 / 追跡 URL）は扱いません。
+        購入者本人であっても管理者でなければ 403 で拒否します。金額はすべて USD セント単位の整数です。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchaseIdParam'
+      responses:
+        '200':
+          description: 購入の発送に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseShipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
 components:
   parameters:
     PageParam:
       name: page
       in: query
-      description: ページ番号（1から始まる）
+      description: ページ番号（1から始まる）。上限を超えた場合は 400 を返します。
       required: false
       schema:
         type: integer
         minimum: 1
+        maximum: 10000
         default: 1
         example: 1
     PerPageParam:
@@ -507,6 +1098,8 @@ components:
       required: false
       schema:
         type: string
+        pattern: ^[A-Za-z0-9_-]+$
+        maxLength: 512
     CursorFirstParam:
       name: first
       in: query
@@ -528,16 +1121,19 @@ components:
       required: false
       schema:
         type: string
+        pattern: ^[\x21-\x7E]+$
         minLength: 1
         maxLength: 255
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
     KeywordParam:
       name: keyword
       in: query
-      description: 全文検索キーワード
+      description: 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
       required: false
       schema:
         type: string
+        minLength: 1
+        maxLength: 255
         example: example keyword
     ActiveParam:
       name: active
@@ -555,11 +1151,123 @@ components:
       schema:
         type: string
         format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
         example: 123e4567-e89b-12d3-a456-426614174000
+    CategoryIdParam:
+      name: categoryId
+      in: query
+      description: 商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+      required: false
+      schema:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
+        example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
+    StatusIdParam:
+      name: statusId
+      in: query
+      description: 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+      required: false
+      schema:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
+        example: 093170fb-83a2-4864-a2b3-53236eaf3597
+    SortParam:
+      name: sort
+      in: query
+      description: |
+        並び順。`-publishedAt`（既定）は公開日時の降順、`publishedAt` は公開日時の昇順です。
+        いずれも同一公開日時の商品は ID で安定ソートします。
+      required: false
+      schema:
+        type: string
+        enum:
+          - '-publishedAt'
+          - publishedAt
+        default: '-publishedAt'
+        example: '-publishedAt'
+    PostalCodeParam:
+      name: postalCode
+      in: query
+      required: true
+      description: |
+        検索対象の郵便番号。ハイフンあり（`123-4567`）・なし（`1234567`）の両方を受け付けます。
+        ハイフン除去の正規化は handler が行い、内層（usecase / gateway）へは 7 桁の数字列を渡します。
+      schema:
+        type: string
+        pattern: ^[0-9]{3}-?[0-9]{4}$
+        minLength: 7
+        maxLength: 8
+        example: 100-0001
+    DisplayCurrencyParam:
+      name: displayCurrency
+      in: query
+      description: |
+        指定時のみ、購入合計金額（totalAmount）のその通貨での参考換算額を referenceAmount として返します（非永続）。
+        現状は JPY のみサポートします。レート取得に失敗した場合は referenceAmount = null で degrade し、購入自体は成立させます。
+      required: false
+      schema:
+        type: string
+        enum:
+          - JPY
+        example: JPY
+    ProductIdParam:
+      name: productId
+      in: path
+      required: true
+      description: 商品のUUID
+      schema:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
+        example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+    RankingPeriodParam:
+      name: period
+      in: query
+      description: |
+        集計対象期間。`all`（既定）は全期間、`30d` は注文日時が直近30日以内の購入のみを集計します。
+      required: false
+      schema:
+        type: string
+        enum:
+          - all
+          - 30d
+        default: all
+        example: all
+    RankingLimitParam:
+      name: limit
+      in: query
+      description: 取得する上位件数。売上数量の降順で上位 limit 件を返します。
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 10
+    PurchaseIdParam:
+      name: purchaseId
+      in: path
+      required: true
+      description: 購入のUUID
+      schema:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+        maxLength: 36
+        example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
   securitySchemes:
     BearerAuth:
       type: http
-      description: 認証にBearerトークンを使用することを示します。
+      description: |
+        認証にBearerトークンを使用することを示します。
+        JWT の検証は RFC8725（JSON Web Token Best Current Practices）に従います。
+        署名アルゴリズムは許可リストで固定し、`alg: none` と鍵の混同を拒否します。
       scheme: bearer
       bearerFormat: JWT
     BasicAuth:
@@ -597,9 +1305,10 @@ components:
     UserBaseInputRequest:
       description: |
         ユーザー情報の基本入力スキーマ。
-        allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
-        JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
-        additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
+        POST / PUT / PATCH は allOf でこのスキーマを継承し required リストのみを兄弟スキーマで足す
+        （新規プロパティは追加しない）ため、この基底に additionalProperties: false を置いても
+        兄弟の追加プロパティと衝突せず、未知フィールドを全 consumer で一律に拒否できる。
+      additionalProperties: false
       properties:
         firstName:
           description: 名前
@@ -765,6 +1474,670 @@ components:
       $ref: '#/components/schemas/UserPatchRequest'
     ResponseV1ExchangeRate:
       $ref: '#/components/schemas/ExchangeRateResponse'
+    PrefectureResponse:
+      type: object
+      description: 都道府県マスタ 1 件分のレスポンスです。
+      required:
+        - id
+        - code
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 都道府県ID
+          example: 101caa1e-84e7-4ceb-9108-50d40b6be1a3
+        code:
+          type: integer
+          description: JIS X 0401 都道府県コード（1〜47）
+          example: 13
+        name:
+          type: string
+          description: 都道府県名
+          example: 東京都
+    ResponseV1Prefectures:
+      $ref: '#/components/schemas/PrefecturesResponse'
+    ProductStatusRef:
+      type: object
+      description: 商品に紐づくステータスです。
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品ステータスID
+          example: 093170fb-83a2-4864-a2b3-53236eaf3597
+        name:
+          type: string
+          description: 商品ステータス名
+          example: 在庫あり
+    ProductStatusResponse:
+      type: object
+      description: 商品ステータスマスタ 1 件分のレスポンスです。
+      allOf:
+        - $ref: '#/components/schemas/ProductStatusRef'
+        - type: object
+          description: 商品ステータスマスタの詳細情報です。
+          required:
+            - code
+            - sortKey
+          properties:
+            code:
+              type: integer
+              description: 商品ステータスコード（正の SMALLINT）
+              example: 1
+            sortKey:
+              type: integer
+              description: 表示順（sortKey 昇順で一覧を並べる。code とは非連動）
+              example: 5
+    ResponseV1ProductsStatuses:
+      $ref: '#/components/schemas/ProductsStatusesResponse'
+    ProductCategoryRef:
+      type: object
+      description: 商品に紐づくカテゴリです。
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品カテゴリID
+          example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
+        name:
+          type: string
+          description: 商品カテゴリ名
+          example: 電子機器
+    ProductCategoryResponse:
+      type: object
+      description: 商品カテゴリマスタ 1 件分のレスポンスです。
+      allOf:
+        - $ref: '#/components/schemas/ProductCategoryRef'
+        - type: object
+          description: 商品カテゴリマスタの詳細情報です。
+          required:
+            - code
+            - sortKey
+          properties:
+            code:
+              type: integer
+              description: 商品カテゴリコード
+              example: 1
+            sortKey:
+              type: integer
+              description: 表示順
+              example: 1
+    ResponseV1ProductsCategories:
+      $ref: '#/components/schemas/ProductsCategoriesResponse'
+    ProductResponse:
+      type: object
+      description: 商品情報のレスポンススキーマ
+      required:
+        - id
+        - name
+        - description
+        - price
+        - quantity
+        - stockWarningThreshold
+        - status
+        - category
+        - publishedAt
+        - imagePath
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        name:
+          type: string
+          description: 商品名
+          maxLength: 255
+          example: ワイヤレスイヤホン
+        description:
+          type: string
+          nullable: true
+          description: 商品説明。未設定の場合は null です。
+          example: ノイズキャンセリング対応の Bluetooth イヤホン
+        price:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+          example: '19.99'
+        quantity:
+          type: integer
+          format: int32
+          description: 在庫数
+          example: 100
+        stockWarningThreshold:
+          type: integer
+          format: int32
+          nullable: true
+          description: 在庫警告閾値。未設定の場合は null です。
+          example: 10
+        status:
+          $ref: '#/components/schemas/ProductStatusRef'
+        category:
+          $ref: '#/components/schemas/ProductCategoryRef'
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公開日時。未公開の場合は null です。
+          example: '2026-01-01T00:00:00Z'
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+        version:
+          type: integer
+          format: int32
+          description: 楽観ロック用のバージョン。更新のたびに 1 つ進みます。 部分更新（PATCH /v1/products/{productId}）へそのまま渡すことで、 読み込み後に他者が更新していた場合の上書き（lost update）を 409 として検出できます。
+          example: 1
+    ProductListResponse:
+      description: 商品一覧（cursor ページネーション）のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - products
+          properties:
+            products:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProductResponse'
+        - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    ProductRankingItem:
+      type: object
+      description: 売上ランキング 1 商品分の項目です。
+      required:
+        - productId
+        - name
+        - price
+        - soldQuantity
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        name:
+          type: string
+          description: 商品名
+          maxLength: 255
+          example: ワイヤレスイヤホン
+        price:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+          example: '19.99'
+        soldQuantity:
+          type: integer
+          format: int64
+          description: 集計期間内の販売数量（キャンセル済みの購入を除く合算値）。
+          example: 42
+    ProductRankingResponse:
+      type: object
+      description: 売上ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
+      required:
+        - rankings
+      properties:
+        rankings:
+          type: array
+          description: 販売数量の降順で並んだ商品ランキングです。
+          items:
+            $ref: '#/components/schemas/ProductRankingItem'
+    ProductImageResponse:
+      type: object
+      description: |
+        画像アップロード結果。格納されたオブジェクトのパスを返します。
+        表示 URL はフロントが配信ベース URL とこのパスから組み立てます（backend はフル URL を保持しません）。
+      required:
+        - imagePath
+      properties:
+        imagePath:
+          type: string
+          description: 格納されたオブジェクトのパス（オブジェクトキー）。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+    RequestPostV1ProductImages:
+      $ref: '#/components/schemas/ProductImagePostRequest'
+    RequestPostV1Products:
+      $ref: '#/components/schemas/ProductsPostRequest'
+    AddressCandidate:
+      type: object
+      description: |
+        郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、
+        解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
+      required:
+        - prefectureId
+        - prefectureName
+        - city
+        - town
+      properties:
+        prefectureId:
+          type: string
+          format: uuid
+          nullable: true
+          description: 都道府県ID。県名を prefectures マスタで完全一致解決できなかった場合は null。
+          example: 101caa1e-84e7-4ceb-9108-50d40b6be1a3
+        prefectureName:
+          type: string
+          description: 都道府県名（外部 lookup が返すフル表記、例 "東京都"）
+          example: 東京都
+        city:
+          type: string
+          description: 市区町村
+          example: 千代田区
+        town:
+          type: string
+          description: 町域
+          example: 千代田
+    ResponseV1Addresses:
+      $ref: '#/components/schemas/AddressCandidatesResponse'
+    PurchaseResponse:
+      type: object
+      description: |
+        購入情報のレスポンススキーマ。金額（subtotalAmount / taxAmount / shippingFee / totalAmount /
+        明細 unitPrice）はすべて USD セント単位の整数です。
+      required:
+        - id
+        - code
+        - userId
+        - statusId
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+        - referenceAmount
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        statusId:
+          type: string
+          format: uuid
+          description: 購入ステータスID。作成直後は「未処理」です。名称は購入ステータスマスタで解決します。
+          example: a66c996c-86b2-41d8-9bdd-9b685fb7c47d
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列
+          items:
+            $ref: '#/components/schemas/PurchaseDetailResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        referenceAmount:
+          $ref: '#/components/schemas/ReferenceAmount'
+    PurchaseStatusRef:
+      type: object
+      description: 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ステータスID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        name:
+          type: string
+          description: 購入ステータス名
+          example: 完了
+    PurchaseSummaryResponse:
+      type: object
+      description: |
+        購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
+        （明細は購入詳細 API で取得します）。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+      required:
+        - code
+        - totalAmount
+        - status
+        - orderedAt
+      properties:
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+    PurchaseListResponse:
+      description: 購入履歴一覧（cursor ページネーション）のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - items
+          properties:
+            items:
+              type: array
+              description: 購入履歴の概要一覧（注文日時の降順）。購入がない場合は空配列です。
+              items:
+                $ref: '#/components/schemas/PurchaseSummaryResponse'
+        - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    PurchaseDetailResponse:
+      type: object
+      description: 購入明細のレスポンス。unitPrice は購入時点の価格スナップショットです。
+      required:
+        - productId
+        - quantity
+        - unitPrice
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: 5266f905-1af4-477a-bc7c-e69729e22a2b
+        quantity:
+          type: integer
+          format: int32
+          description: 購入数量
+          example: 2
+        unitPrice:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: |
+            購入時点の単価スナップショット。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "800.00"）。
+            購入成立後に商品価格が変わっても本値は不変です。
+          example: '800.00'
+    PurchaseGetDetailResponse:
+      type: object
+      description: |
+        購入詳細（GET）のレスポンススキーマ。status は ID・名称を事前解決済みで、明細には商品名
+        （products との結合で解決した現在名）を含みます。paidAt は未支払いなら null、canceledAt は
+        未キャンセルなら null です。金額（subtotalAmount / taxAmount / shippingFee / totalAmount）は
+        すべて USD セント単位の整数、明細 unitPrice は購入時点の単価スナップショット（USD ドルの decimal 文字列）です。
+      required:
+        - id
+        - code
+        - userId
+        - status
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列（商品名込み）
+          items:
+            $ref: '#/components/schemas/PurchaseDetailItemResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 支払日時。未支払いの場合は null です。
+          example: '2026-07-25T00:00:00Z'
+        canceledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: キャンセル日時。未キャンセルの場合は null です。
+          example: '2026-07-26T00:00:00Z'
+    PurchaseDetailItemResponse:
+      type: object
+      description: |
+        購入詳細（GET）専用の購入明細レスポンス。productName は products との結合で解決した現在の商品名です。
+        unitPrice は購入時点の単価スナップショットです。
+      required:
+        - productId
+        - productName
+        - quantity
+        - unitPrice
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: 5266f905-1af4-477a-bc7c-e69729e22a2b
+        productName:
+          type: string
+          description: 商品名（products との結合で解決した現在名）
+          example: ワイヤレスイヤホン
+        quantity:
+          type: integer
+          format: int32
+          description: 購入数量
+          example: 2
+        unitPrice:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: |
+            購入時点の単価スナップショット。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "800.00"）。
+            購入成立後に商品価格が変わっても本値は不変です。
+          example: '800.00'
+    PurchaseDetailInput:
+      type: object
+      description: 購入明細の入力。購入する商品IDと数量の組です。
+      required:
+        - productId
+        - quantity
+      properties:
+        productId:
+          type: string
+          format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
+          description: 購入する商品のID
+          example: 5266f905-1af4-477a-bc7c-e69729e22a2b
+        quantity:
+          type: integer
+          format: int32
+          description: 購入数量。1 以上の整数です（0 以下はドメインで検証し 422 を返します）。
+          example: 2
+    RequestPostV1Purchases:
+      $ref: '#/components/schemas/PurchasesPostRequest'
+    PurchaseCancelResponse:
+      type: object
+      description: |
+        購入キャンセル後の購入情報レスポンススキーマ。status は ID・名称を事前解決済みで、
+        別途の名称解決 API 呼び出しは不要です。canceledAt にキャンセル日時が入ります。
+        金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
+        すべて USD セント単位の整数です。
+      required:
+        - id
+        - code
+        - userId
+        - status
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+        - canceledAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列
+          items:
+            $ref: '#/components/schemas/PurchaseDetailResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        canceledAt:
+          type: string
+          format: date-time
+          description: キャンセル日時
+          example: '2026-07-25T00:00:00Z'
+    PurchaseStatusBreakdownResponse:
+      type: object
+      description: |
+        購入集計のステータス別内訳の 1 要素。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+      required:
+        - status
+        - count
+        - totalAmount
+      properties:
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        count:
+          type: integer
+          format: int64
+          description: 当該ステータスの購入件数
+          example: 4
+        totalAmount:
+          type: integer
+          format: int64
+          description: 当該ステータスの購入金額の合計。USD セント単位の整数です。
+          example: 706000
+    PurchaseAggregateResponse:
+      description: |
+        認証ユーザー自身の購入集計のレスポンススキーマ。件数・合計金額・ステータス別内訳のみを返し、
+        購入一覧・明細は含みません。金額は USD セント単位の整数です。
+      type: object
+      required:
+        - totalCount
+        - totalAmount
+        - statusBreakdown
+      properties:
+        totalCount:
+          type: integer
+          format: int64
+          description: 購入総件数（キャンセル済みを含む）。statusBreakdown の count の総和と一致します。購入がない場合は 0 です。
+          example: 12
+        totalAmount:
+          type: integer
+          format: int64
+          description: |
+            購入金額の合計（キャンセル済みを含む）。statusBreakdown の totalAmount の総和と一致します。
+            USD セント単位の整数です。購入がない場合は 0 です。
+          example: 2118000
+        statusBreakdown:
+          type: array
+          description: |
+            ステータス別の内訳（購入ステータスマスタの表示順）。購入に出現したステータスのみを含むため、
+            購入がない場合は空配列です。
+          items:
+            $ref: '#/components/schemas/PurchaseStatusBreakdownResponse'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。
@@ -903,19 +2276,10 @@ components:
       description: ユーザー情報の新規作成
       allOf:
         - $ref: '#/components/schemas/UserBaseInputRequest'
-        - properties:
-            password:
-              description: ユーザーのパスワード
-              type: string
-              format: password
-              minLength: 8
-              maxLength: 64
-              example: P@ssw0rd!
-          required:
+        - required:
             - firstName
             - lastName
             - email
-            - password
             - phone
             - prefecture
             - city
@@ -940,27 +2304,6 @@ components:
             - city
             - street
             - building
-    UserPasswordPutRequest:
-      description: ユーザーのパスワード変更（現パスワード照合あり）
-      additionalProperties: false
-      properties:
-        currentPassword:
-          description: 現在のパスワード（照合用）
-          type: string
-          format: password
-          minLength: 8
-          maxLength: 64
-          example: P@ssw0rd!
-        newPassword:
-          description: 新しいパスワード
-          type: string
-          format: password
-          minLength: 8
-          maxLength: 64
-          example: N3wP@ssw0rd!
-      required:
-        - currentPassword
-        - newPassword
     UsersSearchResponseItem:
       description: 検索条件に基づいて取得したユーザー情報
       allOf:
@@ -973,6 +2316,213 @@ components:
               description: 登録日時
               type: string
               format: date-time
+    PrefecturesResponse:
+      type: array
+      description: 都道府県マスタの一覧（code 昇順）。全件を返し、ページネーションは行いません。
+      items:
+        $ref: '#/components/schemas/PrefectureResponse'
+    ProductsStatusesResponse:
+      type: array
+      description: 商品ステータスマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
+      items:
+        $ref: '#/components/schemas/ProductStatusResponse'
+    ProductsCategoriesResponse:
+      type: array
+      description: 商品カテゴリマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
+      items:
+        $ref: '#/components/schemas/ProductCategoryResponse'
+    ProductsPostRequest:
+      type: object
+      description: |
+        商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+        price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+        imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。表示 URL はフロントが組み立てます。
+      required:
+        - name
+        - price
+        - quantity
+        - categoryId
+        - statusId
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: 商品名
+          example: ワイヤレスイヤホン
+        description:
+          type: string
+          nullable: true
+          description: 商品説明（リッチテキスト HTML を許容）。未設定の場合は null です。
+          example: <p>ノイズキャンセリング対応の Bluetooth イヤホン</p>
+        price:
+          type: string
+          pattern: ^-?\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99"）。 非数値は 400、負値は業務不変条件違反として 422 を返します。
+          example: '19.99'
+        quantity:
+          type: integer
+          format: int32
+          description: 在庫数。負値は業務不変条件違反として 422 を返します。
+          example: 100
+        stockWarningThreshold:
+          type: integer
+          format: int32
+          nullable: true
+          description: 在庫警告閾値。未設定の場合は null です。
+          example: 10
+        categoryId:
+          type: string
+          format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
+          description: 商品カテゴリ ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        statusId:
+          type: string
+          format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
+          description: 商品ステータス ID
+          example: c2e5f1a3-4d6b-5c7e-9f80-2b3c4d5e6f7a
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公開日時。未公開の場合は null です。
+          example: '2026-01-01T00:00:00Z'
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。未設定の場合は null です。画像アップロードで得たパスを渡します。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+    ProductPatchRequest:
+      type: object
+      description: |
+        商品部分更新リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+        送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
+        description / stockWarningThreshold / publishedAt / imagePath は null を明示すると値をクリアします
+        （未送信＝据え置きと null＝クリアは区別されます）。
+        version には更新対象を読み込んだ時点の値を渡します。DB の現在値と一致しない場合は他者の更新と競合した
+        ものとして 409 を返します（再取得したうえで送り直してください）。
+        負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          format: int32
+          description: 楽観ロック用のバージョン。更新対象を読み込んだ時点の値を渡します。 DB の現在値と一致しない場合は 409 を返します。
+          example: 1
+        name:
+          type: string
+          maxLength: 255
+          description: 商品名
+          example: ワイヤレスイヤホン
+        description:
+          type: string
+          nullable: true
+          description: 商品説明（リッチテキスト HTML を許容）。null を指定すると説明をクリアします。
+          example: <p>ノイズキャンセリング対応の Bluetooth イヤホン</p>
+          x-go-type: nullable.Nullable[string]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
+        price:
+          type: string
+          pattern: ^-?\d+(\.\d+)?$
+          description: 価格。サブセント精度を保持する decimal 文字列で表します（例 "19.99"）。 非数値は 400、負値は業務不変条件違反として 422 を返します。
+          example: '19.99'
+        quantity:
+          type: integer
+          format: int32
+          description: 在庫数。負値は業務不変条件違反として 422 を返します。
+          example: 100
+        stockWarningThreshold:
+          type: integer
+          format: int32
+          nullable: true
+          description: 在庫警告閾値。null を指定すると閾値をクリアします。
+          example: 10
+          x-go-type: nullable.Nullable[int32]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
+        categoryId:
+          type: string
+          format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
+          description: 商品カテゴリ ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        statusId:
+          type: string
+          format: uuid
+          pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+          maxLength: 36
+          description: 商品ステータス ID
+          example: c2e5f1a3-4d6b-5c7e-9f80-2b3c4d5e6f7a
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公開日時。null を指定すると未公開に戻します。
+          example: '2026-01-01T00:00:00Z'
+          x-go-type: nullable.Nullable[time.Time]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
+        imagePath:
+          type: string
+          nullable: true
+          description: 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 null を指定すると画像をクリアします。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+          x-go-type: nullable.Nullable[string]
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
+          x-go-type-skip-optional-pointer: true
+    ProductImagePostRequest:
+      type: object
+      description: |
+        商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
+        対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
+      required:
+        - image
+      properties:
+        image:
+          type: string
+          format: binary
+          description: アップロードする画像ファイル（png / jpeg / webp）。
+    ReferenceAmount:
+      type: object
+      nullable: true
+      description: |
+        表示通貨での参考換算額です。`displayCurrency` 指定時のみ算出し、非永続で返します。
+        保存値はあくまで USD セント整数であり、本フィールドは参考表示専用です。
+        レート取得に失敗した場合は degrade として null を返します。
+      required:
+        - currency
+        - amount
+        - rate
+        - rateDate
+      properties:
+        currency:
+          type: string
+          description: 参考換算額の通貨コード
+          example: JPY
+        amount:
+          type: integer
+          format: int64
+          description: 参考換算額。通貨の最小単位（JPY は円）の丸め後整数です。
+          example: 15050
+        rate:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 換算に用いたレート（base 1 単位あたりの表示通貨換算値）。正確な十進量を保つため decimal 文字列で表します。
+          example: '150.5'
+        rateDate:
+          type: string
+          description: レートの基準日（外部レートサービスの公表日）
+          example: '2026-07-21'
     ExchangeRateResponse:
       type: object
       description: 為替換算結果のレスポンスです。
@@ -981,6 +2531,7 @@ components:
         - quote
         - amount
         - converted
+        - referenceAmount
       properties:
         base:
           type: string
@@ -991,15 +2542,195 @@ components:
           description: 換算先の通貨コード
           example: JPY
         amount:
-          type: number
-          format: double
-          description: 換算元の金額
-          example: 100
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 換算元の金額。正確な十進量を保つため decimal 文字列で表します。
+          example: '100'
         converted:
-          type: number
-          format: double
-          description: 換算後の金額
-          example: 15050
+          type: string
+          pattern: ^-?\d+(\.\d+)?$
+          description: 換算後の金額。正確な十進量を保つため decimal 文字列で表します。
+          example: '15050'
+        referenceAmount:
+          $ref: '#/components/schemas/ReferenceAmount'
+    AddressCandidatesResponse:
+      type: object
+      description: |
+        郵便番号 lookup による住所候補のレスポンスです。
+        外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `isFallback: true` で degrade し、
+        登録フローを止めません（外部が落ちても縦一本のジャーニーを進めるためのフォールバック）。
+      required:
+        - candidates
+        - isFallback
+      properties:
+        candidates:
+          type: array
+          description: 住所候補の一覧。該当なし・degrade 時は空配列。
+          items:
+            $ref: '#/components/schemas/AddressCandidate'
+        isFallback:
+          type: boolean
+          description: |
+            lookup 機構が機能しなかった（外部不通・不正応答）場合に true。true のときフロントは全項目手入力へ倒します。
+            正常応答で候補が 0 件（該当なし）の場合や、候補はあるが県名解決に失敗した場合は false です。
+          example: false
+    PurchasesPostRequest:
+      type: object
+      description: |
+        購入作成リクエスト。明細（商品IDと数量）の配列を受け取ります。
+        明細は 1 件以上必須で、同一 productId の重複は許可しません（いずれも 422）。
+      required:
+        - details
+      properties:
+        details:
+          type: array
+          description: |
+            購入明細の配列。1 件以上必須で、同一 productId の重複は不可です。
+            空配列・重複はドメインで検証し 422 を返します（スキーマでは制約せず単一の検証責務に集約）。
+          items:
+            $ref: '#/components/schemas/PurchaseDetailInput'
+    PurchasePayResponse:
+      type: object
+      description: |
+        購入支払い後の購入情報レスポンススキーマ。status は ID・名称を事前解決済みで、
+        別途の名称解決 API 呼び出しは不要です。paidAt に支払日時が入ります。
+        金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
+        すべて USD セント単位の整数です。
+      required:
+        - id
+        - code
+        - userId
+        - status
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+        - paidAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列
+          items:
+            $ref: '#/components/schemas/PurchaseDetailResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        paidAt:
+          type: string
+          format: date-time
+          description: 支払日時
+          example: '2026-07-25T00:00:00Z'
+    PurchaseShipResponse:
+      type: object
+      description: |
+        購入発送後の購入情報レスポンススキーマ。status は ID・名称を事前解決済みで、
+        別途の名称解決 API 呼び出しは不要です。shippedAt に発送日時が入ります。
+        金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
+        すべて USD セント単位の整数です。
+      required:
+        - id
+        - code
+        - userId
+        - status
+        - subtotalAmount
+        - taxAmount
+        - shippingFee
+        - totalAmount
+        - details
+        - orderedAt
+        - shippedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        userId:
+          type: string
+          format: uuid
+          description: 購入したユーザーのID
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: 小計。明細（単価×数量）の合計。USD セント単位の整数です。
+          example: 160000
+        taxAmount:
+          type: integer
+          format: int64
+          description: 税額（国内消費税）。USD セント単位の整数です。
+          example: 16000
+        shippingFee:
+          type: integer
+          format: int64
+          description: 送料。USD セント単位の整数です。
+          example: 500
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        details:
+          type: array
+          description: 購入明細の配列
+          items:
+            $ref: '#/components/schemas/PurchaseDetailResponse'
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+        shippedAt:
+          type: string
+          format: date-time
+          description: 発送日時
+          example: '2026-07-26T00:00:00Z'
   responses:
     BadRequest400:
       description: リクエストが不正です。
@@ -1045,6 +2776,18 @@ components:
             $ref: '#/components/schemas/ErrorResponseWithDetails'
     NotFound404:
       description: 指定されたリソースが存在しません。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PayloadTooLarge413:
+      description: ファイルサイズが大きすぎます。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnsupportedMediaType415:
+      description: サポートされていないファイル形式です。
       content:
         application/json:
           schema:

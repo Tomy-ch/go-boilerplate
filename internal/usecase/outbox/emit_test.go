@@ -101,6 +101,39 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			assert.Equal(t, want, got)
 		})
 
+		t.Run("機微ヘッダ（Authorization/Cookie 等）は大文字小文字を問わず除外し、他ヘッダは保持する", func(t *testing.T) {
+			t.Parallel()
+			// egress 起点として、誤って混入した既知の機微ヘッダは denylist で落とし外部へ送出しない。
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			want := uuid.NewTestFromSalt(t, "msg_denylist")
+
+			store.EXPECT().
+				Insert(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p outboxbndry.EmitParams) (uuid.UUID, error) {
+					var h map[string]string
+					require.NoError(t, json.Unmarshal(p.Headers, &h))
+					assert.Equal(t, map[string]string{"traceparent": "00-abc", "x-custom": "keep"}, h)
+					return want, nil
+				})
+
+			got, err := outbox.NewEmit(store, observability.NewNoopTracerFactory(t)).
+				Emit(context.Background(), outbox.EmitInput{
+					EventType: "e.v1",
+					Payload:   []byte(`{}`),
+					Headers: map[string]string{
+						"traceparent":   "00-abc",
+						"x-custom":      "keep",
+						"Authorization": "Bearer secret",
+						"cookie":        "sid=abc",
+						"Set-Cookie":    "sid=abc",
+					},
+				})
+
+			require.NoError(t, err)
+			assert.Equal(t, want, got)
+		})
+
 		t.Run("有効スパン環境では Headers が無くても traceparent を注入して INSERT する", func(t *testing.T) {
 			t.Parallel()
 			// 有効なスパンを持つ ctx では InjectTraceContextToCarrier が traceparent を headers へ載せる。

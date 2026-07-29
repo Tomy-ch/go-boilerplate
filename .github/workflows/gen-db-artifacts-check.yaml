@@ -27,7 +27,7 @@ jobs:
 
     services:
       database:
-        image: postgres:18.3-bookworm
+        image: postgres:18.4-trixie
         env:
           POSTGRES_USER: ${{ env.DB_USER }}
           POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
@@ -45,6 +45,11 @@ jobs:
           --health-start-period=20s
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -84,7 +89,7 @@ jobs:
         run: make sqlc-generate-ci
       - name: Format generated code
         run: make fmt
-      # 材料化した env/.env は生成物ではないため、ドリフト判定の対象から外す。
+      # The materialized env/.env is not generated output, so exclude it from the drift check.
       - name: Restore embedded env
         run: make restore-env
       - name: Detect generated changes (file list)
@@ -101,17 +106,19 @@ jobs:
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
             : > /tmp/changed_files.txt
           fi
-      # PR の source（database/**/*.sql / docker/database/**/*.sql）が触られているかを判定。
-      # 触られていない場合は generator 側（sqlc）のドリフトの可能性が高い。
+      # Determine whether the PR touched the source (database/**/*.sql / docker/database/**/*.sql).
+      # If it did not, generator-side (sqlc) drift is the likely cause.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          git fetch --no-tags --depth=200 origin "${BASE_REF}" || true
           changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
           if echo "$changed" | grep -qE '^(database|docker/database)/.*\.sql$'; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
@@ -130,17 +137,21 @@ jobs:
             echo "No differences in database output were found." > "$out"
             exit 0
           fi
+          # Disable SC2016: `make ...` in the notification message is shown literally (must not expand)
+          # shellcheck disable=SC2016
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in database output have been detected" >> "$GITHUB_OUTPUT"
-            printf '%s\n' 'データベース生成コマンド（例: `make gen` / `make gen-query`）をローカルで実行し、変更をコミットしてください。' > "$out"
+            printf '%s\n' "Run the database generation command (e.g. \`make gen\` / \`make gen-query\`) locally and commit the changes." > "$out"
           else
-            echo "title=## ⚠️ DB 生成物のドリフトを検知（SQL source 未変更）" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '本 PR では SQL source が変更されていないため、generator 側（sqlc バージョン差・base 側の古い生成物 等）のドリフトの可能性があります。`make gen-query` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+            echo "title=## ⚠️ Drift in DB generated output detected (SQL source unchanged)" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR does not modify any SQL source, so this may be generator-side drift (sqlc version differences, stale generated artifacts on the base, etc.). Run \`make gen-query\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
+          # Disable SC2016: the `%s` that renders the filename as markdown code is literal (must not expand)
+          # shellcheck disable=SC2016
           {
             echo ""
             while IFS= read -r f; do
-              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
             done < /tmp/changed_files.txt
           } >> "$out"
 

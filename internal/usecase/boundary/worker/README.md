@@ -41,6 +41,13 @@ type State interface {
 }
 ```
 
+> **`State.args` is a reserved seam — not consumed by the worker engine today.** The CLI passes
+> `args` through `Set`, but the hook discards it on `Snapshot` and `engine.Run` takes only the worker
+> name. It is kept deliberately to mirror the sibling `job` boundary and as a forward seam for future
+> per-invocation parameters (e.g. shard / replay-offset / mode selection). Workers are currently
+> configured via env, not `args`; before relying on `args`, wire an actual consumer through to
+> `engine.Run` (and cover it with a test) rather than reading it off `Snapshot` alone.
+
 ## Why Abstract?
 
 - Ensure testability of the engine's receive → process → ack/nack loop without a real broker

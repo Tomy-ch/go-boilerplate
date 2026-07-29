@@ -83,5 +83,5 @@ CI パリティが保証される。
 
 - ソース: `.lefthook.yaml` の 1〜55 行目。
 - バイパス後に一度検証するパターンは `CLAUDE.md` の「Commit / PR execution」に記述されている。
-- マイグレーションギャップとバージョンチェックは [`docs/rules.md`](../../rules.md) に文書化された
+- マイグレーションギャップとバージョンチェックは [`docs/rules.md`](../rules.ja.md) に文書化された
   ルールを強制する。

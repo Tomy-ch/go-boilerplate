@@ -7,6 +7,7 @@ package gen
 import (
 	"time"
 
+	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 )
 
@@ -121,7 +122,7 @@ type Products struct {
 	// 説明
 	Description *string
 	// 価格
-	Price int32
+	Price decimal.Decimal
 	// 在庫数
 	Quantity int32
 	// 在庫警告閾値
@@ -132,6 +133,10 @@ type Products struct {
 	CategoryID uuid.UUID
 	// 公開日時
 	PublishedAt *time.Time
+	// 画像パス
+	ImagePath *string
+	// 楽観ロックバージョン
+	LockVersion int32
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -149,7 +154,7 @@ type PurchaseDetails struct {
 	// 数量
 	Quantity int32
 	// 単価
-	UnitPrice int32
+	UnitPrice decimal.Decimal
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -183,13 +188,13 @@ type Purchases struct {
 	// 購入ステータスID
 	StatusID uuid.UUID
 	// 小計金額
-	SubtotalAmount int32
+	SubtotalAmount int64
 	// 税金額
-	TaxAmount int32
+	TaxAmount int64
 	// 配送料
-	ShippingFee int32
+	ShippingFee int64
 	// 合計金額
-	TotalAmount int32
+	TotalAmount int64
 	// 注文日時
 	OrderedAt time.Time
 	// 支払日時
@@ -225,6 +230,22 @@ type SchemaMigrations struct {
 	Dirty   bool
 }
 
+// 外部ID連携
+type UserIdentities struct {
+	// ID
+	ID uuid.UUID
+	// ユーザID
+	UserID uuid.UUID
+	// トークン発行者（IdP issuer）
+	Issuer string
+	// 認証主体（token の sub）
+	Subject string
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 // ユーザロール
 type UserRoles struct {
 	// ユーザID
@@ -245,8 +266,6 @@ type Users struct {
 	FirstName string
 	// 苗字
 	LastName string
-	// パスワードハッシュ
-	PasswordHash string
 	// メールアドレス
 	Email string
 	// 電話番号

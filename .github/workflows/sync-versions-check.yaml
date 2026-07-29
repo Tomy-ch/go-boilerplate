@@ -27,8 +27,15 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -50,11 +57,11 @@ jobs:
           fi
           echo "status=drift" >> "$GITHUB_OUTPUT"
           {
-            echo "mise.toml を正とした各ファイルへの同期に差分があります（mise.toml 更新の未反映、または下流ファイルの不整合な編集が原因）。"
+            echo "There is drift when syncing each file from mise.toml (the source of truth) — caused by an unpropagated mise.toml update, or an inconsistent edit to a downstream file."
             echo ""
-            echo "ローカルで \`make sync-versions\` を実行してコミットしてください。"
+            echo "Run \`make sync-versions\` locally and commit the changes."
             echo ""
-            echo "差分のあるファイル一覧:"
+            echo "Files with drift:"
             git diff --name-only | sed 's/^/  - /'
           } | tee /tmp/sync-versions-drift.md
           exit 1

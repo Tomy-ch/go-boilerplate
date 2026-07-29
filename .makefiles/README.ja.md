@@ -13,7 +13,7 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/security` : Trivy 依存脆弱性スキャン
-- `.makefiles/docker` : Dockerfile Lint（hadolint）
+- `.makefiles/docker` : compose プロジェクト / ホストポート定義・Dockerfile Lint（hadolint）・image digest 固定
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
@@ -38,21 +38,30 @@ Make ターゲットは主に以下の単位で整理されています。
 
 アプリケーションの開発環境起動や Job 実行に関するターゲット群です。
 
+compose のサービスは 2 層に分かれます（後述の `.makefiles/docker` 系を参照）。共有の **infra 層**
+（`database` / `observability` / `garage`）は固定プロジェクト `gobp-shared` に 1 インスタンスだけ置き、
+checkout 毎の **app 層**（`api_server` / `mock_auth_server`）は自 checkout の `APP_PROJECT` で起動します。
+
 ### アプリケーション起動関連
 
 | コマンド | 説明 | 主な用途 |
 | --- | --- | --- |
-| `make serve` | `development` プロファイルの Docker Compose サービスをバックグラウンドで起動します。 | 通常のローカル開発開始 |
-| `make serve-build` | Docker イメージをキャッシュを利用して再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
-| `make serve-build-clean` | `--no-cache --pull` でクリーンビルドしたうえで開発環境を起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
-| `make tools` | `tools` プロファイルの開発支援ツール群を起動します。 | 開発ツール利用時 |
+| `make serve` | 共有インフラを起動（`infra-up`）したうえで、自 checkout の app サービスをバックグラウンド起動し、DB スロットの heartbeat を更新します。 | 通常のローカル開発開始 |
+| `make serve-build` | app イメージをキャッシュ利用で再ビルドし、共有インフラを起動したうえで app サービスを起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build-clean` | app イメージを `--no-cache --pull` でクリーンビルドし、共有インフラを起動したうえで app サービスを起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
+| `make serve-stop` | 自 checkout の app プロジェクトだけを停止します。 | 共有インフラや他 checkout に触れず API を止める |
+| `make infra-up` | 共有インフラのサービス（`--wait`）と one-shot の `garage_init` を `gobp-shared` プロジェクトで起動します。 | 共有インフラだけを起動する（`serve` / `job` / `worker` が冪等に呼びます） |
+| `make infra-down` | 共有インフラのプロジェクトを停止します（名前付きボリュームは保持）。 | インフラを落とす。**全 checkout / worktree に影響します** |
+| `make tools` | `tools` プロファイルの開発支援ツール群を共有インフラのプロジェクトで起動します。 | 開発ツール利用時（SQL editor `:7000` / docs viewer `:7001`） |
+| `make all` | `tools` → `serve-build` の順に全サービスを一括起動します。 | ローカルスタック全体を一度に立ち上げる |
 | `make tool-runners-build` | オンデマンド実行のツールランナー画像(go/node/python)をキャッシュ利用でビルドします（起動はしません）。 | ツールランナーの Dockerfile や依存変更の反映 |
 | `make tool-runners-build-clean` | ツールランナー画像を `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールランナーの base image 更新の取り込み |
 
 #### `make job NAME=<job名> ARGS="<引数>"`
 
 アプリケーションの Job を実行します。
-`development` プロファイルのネットワーク内で `cmd/main.go job` を呼び出します。
+共有インフラを起動したうえで、自 checkout の app プロジェクトの使い捨て `api_server` コンテナ
+（`run --rm`）で `cmd/main.go job` を呼び出します。
 
 - `NAME`: 実行する Job 名
 - `ARGS`: Job に渡す追加引数（任意）
@@ -66,8 +75,9 @@ make job NAME=batch-import ARGS="--target=local --dry-run"
 
 ### 常駐プロセス(worker / outbox-relay)関連
 
-いずれも `SIGTERM` / `Ctrl-C` まで常駐するデーモンで、`development` プロファイルの
-ネットワーク内（`make job` と同じ `go run ./cmd/` 方式）で実行します。
+いずれも `SIGTERM` / `Ctrl-C` まで常駐するデーモンで、共有インフラを起動したうえで自 checkout の
+app プロジェクトの使い捨て `api_server` コンテナ内（`make job` と同じ `go run ./cmd/` 方式）で
+実行します。
 
 #### `make worker NAME=<worker名> ARGS="<引数>"`
 
@@ -242,21 +252,51 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | --- | --- | --- |
 | `make trivy-fs` | ライブラリ依存を Trivy fs でスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-fs-ci` を呼び出します。 |
 | `make trivy-fs-ci` | `trivy fs` を直接実行します。 | CI 用ターゲット。CI と揃えるため `vendor/` を除外します。 |
+| `make trivy-fs-release-ci` | 修正版のない脆弱性も含めて `trivy fs` を実行します。 | 昇格ゲート用の CI ターゲット。`trivy-fs-ci` との差は `--ignore-unfixed` の有無だけです。 |
+| `make trivy-config` | Dockerfile の設定不備をスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-config-ci` を呼び出します。 |
+| `make trivy-config-ci` | `trivy config` を直接実行します。 | CI 用ターゲット。`CRITICAL,HIGH` でゲートし、許容する例外は `.trivyignore.yaml` に置きます。 |
+| `make trivy-license` | 依存ライブラリのライセンスを列挙します。 | `go_tool_runner` コンテナ内で `make trivy-license-ci` を呼び出します。 |
+| `make trivy-license-ci` | `trivy fs --scanners license` を直接実行します。 | CI 用ターゲット。禁止ライセンス方針が未策定のため報告専用で、severity では絞りません。 |
+| `make trivy-image-ci` | ビルド済みイメージの脆弱性をスキャンします。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
+| `make trivy-image-gate-ci` | ビルド済みイメージの修正版のある `CRITICAL` / `HIGH` で失敗します。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
 | `make secret-scan` | ワーキングツリーのシークレットを gitleaks でスキャンします。 | `go_tool_runner` コンテナ内で `make secret-scan-ci` を呼び出します。 |
 | `make secret-scan-ci` | `gitleaks dir . --redact` を直接実行します。 | CI 用ターゲット。生成ファイルは `.gitleaks.toml` で allowlist。 |
+| `make secret-scan-history-ci` | `gitleaks git . --redact` を直接実行します。 | CI 用ターゲット。週次実行が使用。`dir` は作業ツリーしか見ないためコミット後に消したシークレットを取りこぼすが、`git` は履歴全体を走査する。 |
+| `make npm-cooldown-audit` | lockfile のエントリのうち、同階層 `.npmrc` の `min-release-age` を満たさないものを報告します。 | ホスト上で実行。報告のみで、検出があっても 0 で終了します（cooldown の解除は意図的な判断であるため）。 |
 
 ## `.makefiles/docker` 系
 
-`go_tool_runner` コンテナ経由で hadolint により Dockerfile を lint し、`FROM` の base image を
-不変の digest へ固定します（サプライチェーン対策）。
+全ターゲットが共有する compose プロジェクト / ホストポートの定義を持ち、`go_tool_runner` コンテナ経由で
+hadolint により Dockerfile を lint し、`FROM` の base image を不変の digest へ固定します
+（サプライチェーン対策）。
+
+### compose プロジェクト定義（`compose.mk`）
+
+`compose.mk` はターゲットを持たず、app / database 系が土台にする変数を定義するため、トップレベル
+`makefile` の冒頭（「依存されるファイル」セクション）で `include` されます。DB スロット保持時は
+`.gobp-db-slot` が既定値を上書きします（`internal/cli/dbslot/README.ja.md` 参照）。
+
+| 変数 | 既定 | 説明 |
+| --- | --- | --- |
+| `INFRA_PROJECT` | `gobp-shared` | 共有インフラの唯一のインスタンスを置く固定 compose プロジェクト。 |
+| `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | app 層の checkout 毎 compose プロジェクト。DB スロット保持時は `SERVE_PROJECT`（`gobp-wt-N`）になります。 |
+| `INFRA_SERVICES` | `database observability garage` | 固定ポートでしか動けないため共有するサービス。 |
+| `APP_SERVICES` | `api_server mock_auth_server` | checkout 毎に起動するサービス。 |
+| `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | infra 層向けの compose 呼び出し。 |
+| `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | app 層向けの compose 呼び出し。`docker-compose.attach.yaml` が app サービスの接続先を `host.docker.internal` 経由の共有インフラへ差し替えます。 |
+| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | API / mock 認証サーバーのホスト公開ポート。 |
+| `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | dlv デバッグ / pprof のホスト公開ポート。 |
+| `COMPOSE_PROJECT_NAME` | `$(INFRA_PROJECT)` | `-p` を渡さない compose 呼び出しの既定プロジェクト。DB ツーリングが共有インフラのネットワークで動くようにします。 |
+
+### Dockerfile Lint / image 固定関連
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make docker-lint` | `docker/*/Dockerfile` を hadolint で lint します。 | `go_tool_runner` コンテナ内で `make docker-lint-ci` を呼び出します。 |
 | `make docker-lint-ci` | `hadolint docker/*/Dockerfile` を直接実行します。 | CI 用ターゲット。無効化ルールは `.hadolint.yaml`。 |
-| `make pin-images-resolve` | 各 `FROM` の `image:tag` を現在の digest へ解決し `docker/images-pin.toml` lockfile を更新します。 | `PIN_IMAGES_MIN_AGE_DAYS`（既定 14；0 で無効）日未満の digest は quarantine。registry アクセス（`docker`）が必要。 |
-| `make pin-images-apply` | lockfile を元に `FROM` を `image:tag@sha256:...` へ固定します（quarantine 中の image は tag のまま）。 | なし |
-| `make pin-images-check` | `FROM` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit gate。 |
+| `make pin-images-resolve` | `docker/*/Dockerfile` の `FROM` と `docker-compose*.yaml` の `image:` の `image:tag` を現在の digest へ解決し `docker/images-pin.toml` lockfile を更新します。 | `PIN_IMAGES_MIN_AGE_DAYS`（既定 14；0 で無効）日未満の digest は quarantine。registry アクセス（`docker`）が必要。 |
+| `make pin-images-apply` | lockfile を元に `FROM` / compose `image:` を `image:tag@sha256:...` へ固定します（quarantine 中の image は tag のまま）。 | なし |
+| `make pin-images-check` | `FROM` / compose `image:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit gate。 |
 
 ## `.makefiles/openapi` 系
 
@@ -268,6 +308,13 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make gen-bundle-oapi-ci` | `redocly bundle` により `openapi/openapi.gen.yaml` を生成します。 | CI 用ターゲットです。 |
 | `make gen-api-docs-ci` | `redocly build-docs` により `docs/openapi/index.html` を生成します。 | CI 用ターゲットです。 |
 | `make lint-oapi-ci` | `redocly lint openapi/openapi.yaml` を直接実行します。 | CI 用ターゲットです。 |
+| `make lint-oapi-security-ci` | Spectral + OWASP API Security ルールセットで検証します。 | CI 用ターゲット。Spectral が ruleset を `docker/tools/node_modules` から解決するためコンテナを介さず実行します。事前に同ディレクトリで `npm ci` が必要です。 |
+| `make gen-mock-auth-oapi` | mock-auth-server の OpenAPI をバンドルし zod スキーマを生成します。 | `node_tool_runner` コンテナ内で `make gen-mock-auth-oapi-ci` を呼び出します。 |
+| `make gen-mock-auth-oapi-docs` | mock-auth-server の OpenAPI から Redoc HTML を生成します。 | `node_tool_runner` コンテナ経由で `docs/openapi/mock-auth-server/index.html` を出力します。 |
+| `make lint-mock-auth-oapi` | mock-auth-server の OpenAPI 定義を `redocly lint` で検証します。 | `node_tool_runner` コンテナ内で `make lint-mock-auth-oapi-ci` を呼び出します。 |
+| `make gen-mock-auth-oapi-ci` | `docker/mock-auth-server` で `npm run gen`（redocly bundle + orval）を実行します。 | CI 用ターゲットです。 |
+| `make gen-mock-auth-oapi-docs-ci` | `docker/mock-auth-server` で `npm run gen:docs`（redocly build-docs）を実行します。 | CI 用ターゲットです。 |
+| `make lint-mock-auth-oapi-ci` | `docker/mock-auth-server` で `npm run lint:oapi` を実行します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/go` 系
 
@@ -364,6 +411,7 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make delete-all-labels` | GitHub リポジトリ上の既存ラベルをすべて削除します。 | なし |
 | `make create-default-labels` | `.github/settings/labels.json` をもとに、デフォルトラベルを作成します。 | なし |
 | `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | なし |
+| `make enable-workflows` | `disabled_fork` 状態のワークフローを一括で有効化します。 | 冪等です。fork / テンプレート由来のリポジトリは全ワークフローが無効の状態で作られます。 |
 
 ### GitHub リポジトリ初期化関連
 
@@ -389,6 +437,7 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。 |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。 |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。 |
+| `make setup-replace-codeowners OWNERS='<owners>'` | `.github/CODEOWNERS` の全ルールの所有者を一括置換します。 | `@user` / `@org/team` / メールアドレスを指定でき、空白区切りで複数指定できます。コメント行は対象外なので、ヘッダーの記載例は書き換わりません。 |
 | `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`gen-api` → `gen-query` → `fix` → `lint` を実行します。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。削除後は `make db-init-local db-init-test && make gen-query` で再構築し、削除済みテーブルが生成モデルに残らないようにします。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
 
 ### リリースブランチ関連

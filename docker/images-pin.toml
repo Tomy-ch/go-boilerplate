@@ -1,7 +1,12 @@
-# Docker base image の pin 対象 digest（SSOT）。
-# make pin-images-resolve で解決・make pin-images-apply で Dockerfile へ反映する。
+# Docker base image / docker compose image の pin 対象 digest（SSOT）。
+# make pin-images-resolve で解決・make pin-images-apply で Dockerfile / docker-compose へ反映する。
 "alpine:3.24" = "sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b"
+"dxflrs/garage:v2.3.0" = "sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690"
 "golang:1.26.5-alpine" = "sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"
+"grafana/otel-lgtm:0.28.0" = "sha256:10f48eb2f8670134df542177bb19536c55421b089e43f9dfc2a27d4c078204d8"
 "nginx:1.31-alpine" = "sha256:54f2a904c251d5a34adf545a72d32515a15e08418dae0266e23be2e18c66fefa"
 "node:24.18.0-alpine" = "sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd"
+"postgres:18.4-trixie" = "sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a"
 "python:3.14.6-slim" = "sha256:d3400aa122fa42cf0af0dbe8ec3091b047eac5c8f7e3539f7135e86d855dc015"
+"schemaspy/schemaspy:7.0.2" = "sha256:c8f98116a5cfe4b00b379eeb23b2022cdea4c9192cbccb843a75049e752479b7"
+"sosedoff/pgweb:0.17.0" = "sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b"

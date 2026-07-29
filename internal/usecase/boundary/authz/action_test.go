@@ -26,5 +26,15 @@ func TestAction_String(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "user:delete", ActionUserDelete.String())
 		})
+
+		t.Run("ActionProductCreateの文字列表現を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "product:create", ActionProductCreate.String())
+		})
+
+		t.Run("ActionPurchaseShipの文字列表現を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "purchase:ship", ActionPurchaseShip.String())
+		})
 	})
 }

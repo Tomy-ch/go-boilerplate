@@ -8,6 +8,7 @@ import (
 	config "go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
+	"go-boilerplate/internal/logging"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
@@ -124,6 +125,47 @@ func TestRunJob(t *testing.T) {
 			assert.False(t, ok)
 
 			_ = stop(context.Background())
+		})
+	})
+}
+
+func Test_jobEventFields(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("イベント種別とタイムゾーンを引数の値で付与する", func(t *testing.T) {
+			t.Parallel()
+
+			logger, logs := logging.NewObservedTestLogger(t)
+			logger.Info(context.Background(), "job event",
+				jobEventFields(logging.EventTypeStart, "Asia/Tokyo")...)
+
+			require.Equal(t, 1, logs.Len())
+			fields := logs.All()[0].ContextMap()
+			assert.Equal(t, logging.EventTypeStart, fields[logging.EventTypeKey])
+			assert.Equal(t, "Asia/Tokyo", fields[logging.EventTzKey])
+		})
+
+		t.Run("発生時刻に呼び出し時点の現在時刻を付与する", func(t *testing.T) {
+			t.Parallel()
+
+			logger, logs := logging.NewObservedTestLogger(t)
+
+			before := time.Now()
+			fields := jobEventFields(logging.EventTypeEnd, "UTC")
+			after := time.Now()
+			logger.Info(context.Background(), "job event", fields...)
+
+			require.Equal(t, 1, logs.Len())
+			rawAt, ok := logs.All()[0].ContextMap()[logging.EventAtKey].(string)
+			require.True(t, ok)
+
+			eventAt, err := time.Parse(time.RFC3339Nano, rawAt)
+			require.NoError(t, err)
+			assert.False(t, eventAt.Before(before))
+			assert.False(t, eventAt.After(after))
 		})
 	})
 }

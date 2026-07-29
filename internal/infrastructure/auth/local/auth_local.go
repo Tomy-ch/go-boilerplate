@@ -7,7 +7,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
-	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -40,18 +39,9 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 		return nil, ErrLocalMockAuthenticatorInvalidToken
 	}
 
-	authn, err := authbd.New(sub, authbd.IssuerMock, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// IdentityResolver が配線されるまでのローカル専用の暫定措置。
-	// subject を UUID として解釈できる場合に限り内部 UserID として解決する。
-	if id, perr := uuid.Parse(sub); perr == nil {
-		authn = authn.WithUserID(id)
-	}
-
-	return authn, nil
+	// 内部 UserID の解決は IdentityResolver（issuer + subject → 内部ユーザー）の責務であり、
+	// ここでは subject / issuer のみを持つ未解決の Authn を返す。
+	return authbd.New(sub, authbd.IssuerMock, nil, nil)
 }
 
 // resolveSubject は token から localPrefix を除いた Subject を抽出します。
