@@ -76,30 +76,20 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
-
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/products/statuses", wrapper.GetProductStatuses, options.OperationMiddlewares["GetProductStatuses"]...)
-
 }
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405ResponseHeaders struct {
-	Allow string
-}
-type MethodNotAllowed405JSONResponse struct {
-	Body ErrorResponse
-
-	Headers MethodNotAllowed405ResponseHeaders
-}
+type MethodNotAllowed405JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
-type GetProductStatusesRequestObject struct {
-}
+type GetProductStatusesRequestObject struct{}
 
 type GetProductStatusesResponseObject interface {
 	VisitGetProductStatusesResponse(w http.ResponseWriter) error
@@ -108,13 +98,12 @@ type GetProductStatusesResponseObject interface {
 type GetProductStatuses200JSONResponse ProductsStatusesResponse
 
 func (response GetProductStatuses200JSONResponse) VisitGetProductStatusesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -124,14 +113,12 @@ type GetProductStatuses405JSONResponse struct {
 }
 
 func (response GetProductStatuses405JSONResponse) VisitGetProductStatusesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -141,13 +128,12 @@ type GetProductStatuses500JSONResponse struct {
 }
 
 func (response GetProductStatuses500JSONResponse) VisitGetProductStatusesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -157,13 +143,12 @@ type GetProductStatuses503JSONResponse struct {
 }
 
 func (response GetProductStatuses503JSONResponse) VisitGetProductStatusesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -175,8 +160,10 @@ type StrictServerInterface interface {
 	GetProductStatuses(ctx context.Context, request GetProductStatusesRequestObject) (GetProductStatusesResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
-type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+type (
+	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
+	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+)
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -191,7 +178,7 @@ type strictHandler struct {
 func (sh *strictHandler) GetProductStatuses(ctx *echo.Context) error {
 	var request GetProductStatusesRequestObject
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.GetProductStatuses(ctx.Request().Context(), request.(GetProductStatusesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

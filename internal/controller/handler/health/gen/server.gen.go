@@ -76,26 +76,16 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
-
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/health", wrapper.GetHealth, options.OperationMiddlewares["GetHealth"]...)
-
 }
 
-type MethodNotAllowed405ResponseHeaders struct {
-	Allow string
-}
-type MethodNotAllowed405JSONResponse struct {
-	Body ErrorResponse
+type MethodNotAllowed405JSONResponse ErrorResponse
 
-	Headers MethodNotAllowed405ResponseHeaders
-}
-
-type GetHealthRequestObject struct {
-}
+type GetHealthRequestObject struct{}
 
 type GetHealthResponseObject interface {
 	VisitGetHealthResponse(w http.ResponseWriter) error
@@ -104,13 +94,12 @@ type GetHealthResponseObject interface {
 type GetHealth200JSONResponse HealthResponse
 
 func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -120,14 +109,12 @@ type GetHealth405JSONResponse struct {
 }
 
 func (response GetHealth405JSONResponse) VisitGetHealthResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -139,8 +126,10 @@ type StrictServerInterface interface {
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
-type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+type (
+	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
+	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+)
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -155,7 +144,7 @@ type strictHandler struct {
 func (sh *strictHandler) GetHealth(ctx *echo.Context) error {
 	var request GetHealthRequestObject
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.GetHealth(ctx.Request().Context(), request.(GetHealthRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

@@ -192,14 +192,13 @@ func Test_buildAllowMap(t *testing.T) {
 	})
 }
 
-// Test_openAPIAllowPolicy_Allow_satisfiesRequiredHeaderContract は、OpenAPI が 405 の Allow ヘッダーを
-// required: true と宣言している契約(MethodNotAllowed405.yaml)を、実 spec の全パスに対して実装が
-// 満たすことを固定する契約テストです。
+// Test_openAPIAllowPolicy_Allow_coversEverySpecPath は、RFC 9110 §15.5.6 が 405 に MUST とする
+// Allow ヘッダーを、実 spec の全パスに対して解決できることを固定する契約テストです。
 //
 // 405 は「Echo のルータが送出する(ContextKeyHeaderAllow が必ず埋まる)」か「OpenAPI のルータが送出する
 // (そのパスが spec に載っていることが前提)」のいずれかなので、spec 上の全パスが解決できることは
 // 「405 を返すとき Allow は必ず非空」と等価です。
-func Test_openAPIAllowPolicy_Allow_satisfiesRequiredHeaderContract(t *testing.T) {
+func Test_openAPIAllowPolicy_Allow_coversEverySpecPath(t *testing.T) {
 	t.Parallel()
 
 	spec, err := validator.GetValidator()
@@ -229,7 +228,7 @@ func Test_openAPIAllowPolicy_Allow_satisfiesRequiredHeaderContract(t *testing.T)
 				}
 			}
 
-			assert.Empty(t, unresolved, "Allow を解決できないパスは required: true の契約に違反する")
+			assert.Empty(t, unresolved, "Allow を解決できないパスは RFC 9110 §15.5.6 の MUST に違反する")
 			// spec が空、あるいはパス抽出が壊れて 0 件を検査して通る空振りを防ぐ。
 			assert.NotZero(t, checked)
 		})

@@ -107,16 +107,18 @@ router が `ErrMethodNotAllowed` を返した時点で 405 を返す。そのた
 
 `OPTIONS` は常に先頭に置く（Echo が spec の定義有無によらず自動応答するため）。
 
-spec はこのヘッダーを `required: true` と宣言しており、2つの情報源はこれを満たす: Echo のルータ由来の
-405 は `ContextKeyHeaderAllow` を必ず伴い、OpenAPI のルータ由来の 405 はそのパスが spec に載っている
-ことが前提なので probe が必ず解決する。この主張は、実 spec の全パスを走査して `Allow` が非空である
-ことを確かめる契約テストで固定している。破れるのは「spec に無いルートを Echo に登録した」場合だけで、
+RFC 9110 はこのヘッダーを MUST としており、2つの情報源はこれを満たす: Echo のルータ由来の 405 は
+`ContextKeyHeaderAllow` を必ず伴い、OpenAPI のルータ由来の 405 はそのパスが spec に載っていることが
+前提なので probe が必ず解決する。この主張は、実 spec の全パスを走査して `Allow` が非空であることを
+確かめる契約テストで固定している。破れるのは「spec に無いルートを Echo に登録した」場合だけで、
 それは解決の問題ではなく spec 迂回の問題。
 
-spec がヘッダーを宣言しているため、oapi-codegen は `Headers.Allow` を持つ
-`MethodNotAllowed405JSONResponse` を生成し、生成された `Visit…Response` はこのフィールドを無条件で
-書き出す。405 は全てここで書くのでこの型を構築するハンドラは存在しないが、strict handler から
-`Headers` をゼロ値のまま返すと空の `Allow` が出て、上記 2 つの情報源を迂回することになる。
+OpenAPI spec 側ではこのヘッダーを宣言しない。宣言すると oapi-codegen が 405 レスポンス型に `Headers`
+構造体を生成し、`Visit…Response` がそれを無条件で書き出すため、strict handler がゼロ値のまま返すと
+空の `Allow` が出る（ここで付与されないより悪い）。加えて `owasp:api8:2023-define-cors-origin` に
+抵触する。このルールは `headers` を宣言したレスポンスだけを検査するため、宣言した途端にこの 1 件だけ
+`Access-Control-Allow-Origin` を要求されるが、CORS は `cors` ミドルウェアがスタック全体へ横断的に
+適用するものであってレスポンス個別の契約ではない。
 
 ## ログ出力
 

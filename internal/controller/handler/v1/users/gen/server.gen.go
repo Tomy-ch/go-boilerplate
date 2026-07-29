@@ -39,21 +39,45 @@ func (w *ServerInterfaceWrapper) GetUsers(ctx *echo.Context) error {
 	var params GetUsersParams
 	// ------------- Optional query parameter "active" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "active", ctx.QueryParams(), &params.Active, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"active",
+		ctx.QueryParams(),
+		&params.Active,
+		runtime.BindQueryParameterOptions{Type: "boolean", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter active: %s", err))
 	}
 
 	// ------------- Optional query parameter "page" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", ctx.QueryParams(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"page",
+		ctx.QueryParams(),
+		&params.Page,
+		runtime.BindQueryParameterOptions{Type: "integer", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
 	}
 
 	// ------------- Optional query parameter "perPage" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", ctx.QueryParams(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"perPage",
+		ctx.QueryParams(),
+		&params.PerPage,
+		runtime.BindQueryParameterOptions{Type: "integer", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter perPage: %s", err))
 	}
@@ -81,7 +105,19 @@ func (w *ServerInterfaceWrapper) PostUsers(ctx *echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions(
+			"simple",
+			"Idempotency-Key",
+			valueList[0],
+			&IdempotencyKey,
+			runtime.BindStyledParameterOptions{
+				ParamLocation: runtime.ParamLocationHeader,
+				Explode:       false,
+				Required:      false,
+				Type:          "string",
+				Format:        "",
+			},
+		)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
 		}
@@ -136,14 +172,12 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
-
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/users", wrapper.GetUsers, options.OperationMiddlewares["GetUsers"]...)
 	router.POST(options.BaseURL+"/v1/users", wrapper.PostUsers, options.OperationMiddlewares["PostUsers"]...)
-
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -154,14 +188,7 @@ type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405ResponseHeaders struct {
-	Allow string
-}
-type MethodNotAllowed405JSONResponse struct {
-	Body ErrorResponse
-
-	Headers MethodNotAllowed405ResponseHeaders
-}
+type MethodNotAllowed405JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
@@ -180,13 +207,12 @@ type GetUsersResponseObject interface {
 type GetUsers200JSONResponse UsersResponse
 
 func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -194,13 +220,12 @@ func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 type GetUsers400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetUsers400JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -208,13 +233,12 @@ func (response GetUsers400JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 type GetUsers401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -222,13 +246,12 @@ func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 type GetUsers403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response GetUsers403JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
+	w.WriteHeader(http.StatusForbidden)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -238,14 +261,12 @@ type GetUsers405JSONResponse struct {
 }
 
 func (response GetUsers405JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -255,13 +276,12 @@ type GetUsers500JSONResponse struct {
 }
 
 func (response GetUsers500JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -271,13 +291,12 @@ type GetUsers503JSONResponse struct {
 }
 
 func (response GetUsers503JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -294,13 +313,12 @@ type PostUsersResponseObject interface {
 type PostUsers201JSONResponse UserResponse
 
 func (response PostUsers201JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.WriteHeader(http.StatusCreated)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -308,13 +326,12 @@ func (response PostUsers201JSONResponse) VisitPostUsersResponse(w http.ResponseW
 type PostUsers400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PostUsers400JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -322,13 +339,12 @@ func (response PostUsers400JSONResponse) VisitPostUsersResponse(w http.ResponseW
 type PostUsers401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PostUsers401JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -336,13 +352,12 @@ func (response PostUsers401JSONResponse) VisitPostUsersResponse(w http.ResponseW
 type PostUsers403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response PostUsers403JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
+	w.WriteHeader(http.StatusForbidden)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -352,14 +367,12 @@ type PostUsers405JSONResponse struct {
 }
 
 func (response PostUsers405JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -367,13 +380,12 @@ func (response PostUsers405JSONResponse) VisitPostUsersResponse(w http.ResponseW
 type PostUsers409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response PostUsers409JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
+	w.WriteHeader(http.StatusConflict)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -383,13 +395,12 @@ type PostUsers422JSONResponse struct {
 }
 
 func (response PostUsers422JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
+	w.WriteHeader(http.StatusUnprocessableEntity)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -399,13 +410,12 @@ type PostUsers500JSONResponse struct {
 }
 
 func (response PostUsers500JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -415,13 +425,12 @@ type PostUsers503JSONResponse struct {
 }
 
 func (response PostUsers503JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -436,8 +445,10 @@ type StrictServerInterface interface {
 	PostUsers(ctx context.Context, request PostUsersRequestObject) (PostUsersResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
-type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+type (
+	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
+	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+)
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -454,7 +465,7 @@ func (sh *strictHandler) GetUsers(ctx *echo.Context, params GetUsersParams) erro
 
 	request.Params = params
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.GetUsers(ctx.Request().Context(), request.(GetUsersRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -485,7 +496,7 @@ func (sh *strictHandler) PostUsers(ctx *echo.Context, params PostUsersParams) er
 	}
 	request.Body = &body
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.PostUsers(ctx.Request().Context(), request.(PostUsersRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

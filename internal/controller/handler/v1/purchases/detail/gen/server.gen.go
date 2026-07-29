@@ -32,7 +32,13 @@ func (w *ServerInterfaceWrapper) GetPurchasesDetail(ctx *echo.Context) error {
 	// ------------- Path parameter "purchaseId" -------------
 	var purchaseId PurchaseIdParam
 
-	err = runtime.BindStyledParameterWithOptions("simple", "purchaseId", ctx.Param("purchaseId"), &purchaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	err = runtime.BindStyledParameterWithOptions(
+		"simple",
+		"purchaseId",
+		ctx.Param("purchaseId"),
+		&purchaseId,
+		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter purchaseId: %s", err))
 	}
@@ -86,25 +92,16 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
-
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/purchases/:purchaseId", wrapper.GetPurchasesDetail, options.OperationMiddlewares["GetPurchasesDetail"]...)
-
 }
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405ResponseHeaders struct {
-	Allow string
-}
-type MethodNotAllowed405JSONResponse struct {
-	Body ErrorResponse
-
-	Headers MethodNotAllowed405ResponseHeaders
-}
+type MethodNotAllowed405JSONResponse ErrorResponse
 
 type NotFound404JSONResponse ErrorResponse
 
@@ -123,13 +120,12 @@ type GetPurchasesDetailResponseObject interface {
 type GetPurchasesDetail200JSONResponse PurchaseGetDetailResponse
 
 func (response GetPurchasesDetail200JSONResponse) VisitGetPurchasesDetailResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -137,13 +133,12 @@ func (response GetPurchasesDetail200JSONResponse) VisitGetPurchasesDetailRespons
 type GetPurchasesDetail401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetPurchasesDetail401JSONResponse) VisitGetPurchasesDetailResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -151,13 +146,12 @@ func (response GetPurchasesDetail401JSONResponse) VisitGetPurchasesDetailRespons
 type GetPurchasesDetail404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response GetPurchasesDetail404JSONResponse) VisitGetPurchasesDetailResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
+	w.WriteHeader(http.StatusNotFound)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -167,14 +161,12 @@ type GetPurchasesDetail405JSONResponse struct {
 }
 
 func (response GetPurchasesDetail405JSONResponse) VisitGetPurchasesDetailResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -184,13 +176,12 @@ type GetPurchasesDetail500JSONResponse struct {
 }
 
 func (response GetPurchasesDetail500JSONResponse) VisitGetPurchasesDetailResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -200,13 +191,12 @@ type GetPurchasesDetail503JSONResponse struct {
 }
 
 func (response GetPurchasesDetail503JSONResponse) VisitGetPurchasesDetailResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -218,8 +208,10 @@ type StrictServerInterface interface {
 	GetPurchasesDetail(ctx context.Context, request GetPurchasesDetailRequestObject) (GetPurchasesDetailResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
-type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+type (
+	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
+	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+)
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -236,7 +228,7 @@ func (sh *strictHandler) GetPurchasesDetail(ctx *echo.Context, purchaseId Purcha
 
 	request.PurchaseId = purchaseId
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.GetPurchasesDetail(ctx.Request().Context(), request.(GetPurchasesDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

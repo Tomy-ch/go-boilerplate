@@ -36,28 +36,60 @@ func (w *ServerInterfaceWrapper) GetUsersSearch(ctx *echo.Context) error {
 	var params GetUsersSearchParams
 	// ------------- Optional query parameter "keyword" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", ctx.QueryParams(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"keyword",
+		ctx.QueryParams(),
+		&params.Keyword,
+		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter keyword: %s", err))
 	}
 
 	// ------------- Optional query parameter "active" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "active", ctx.QueryParams(), &params.Active, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"active",
+		ctx.QueryParams(),
+		&params.Active,
+		runtime.BindQueryParameterOptions{Type: "boolean", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter active: %s", err))
 	}
 
 	// ------------- Optional query parameter "page" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", ctx.QueryParams(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"page",
+		ctx.QueryParams(),
+		&params.Page,
+		runtime.BindQueryParameterOptions{Type: "integer", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
 	}
 
 	// ------------- Optional query parameter "perPage" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "perPage", ctx.QueryParams(), &params.PerPage, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"perPage",
+		ctx.QueryParams(),
+		&params.PerPage,
+		runtime.BindQueryParameterOptions{Type: "integer", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter perPage: %s", err))
 	}
@@ -109,13 +141,11 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
-
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/users/search", wrapper.GetUsersSearch, options.OperationMiddlewares["GetUsersSearch"]...)
-
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -124,14 +154,7 @@ type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405ResponseHeaders struct {
-	Allow string
-}
-type MethodNotAllowed405JSONResponse struct {
-	Body ErrorResponse
-
-	Headers MethodNotAllowed405ResponseHeaders
-}
+type MethodNotAllowed405JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
@@ -148,13 +171,12 @@ type GetUsersSearchResponseObject interface {
 type GetUsersSearch200JSONResponse UsersSearchResponse
 
 func (response GetUsersSearch200JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -162,13 +184,12 @@ func (response GetUsersSearch200JSONResponse) VisitGetUsersSearchResponse(w http
 type GetUsersSearch400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetUsersSearch400JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -176,13 +197,12 @@ func (response GetUsersSearch400JSONResponse) VisitGetUsersSearchResponse(w http
 type GetUsersSearch401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsersSearch401JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -190,13 +210,12 @@ func (response GetUsersSearch401JSONResponse) VisitGetUsersSearchResponse(w http
 type GetUsersSearch403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response GetUsersSearch403JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
+	w.WriteHeader(http.StatusForbidden)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -206,14 +225,12 @@ type GetUsersSearch405JSONResponse struct {
 }
 
 func (response GetUsersSearch405JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -223,13 +240,12 @@ type GetUsersSearch500JSONResponse struct {
 }
 
 func (response GetUsersSearch500JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -239,13 +255,12 @@ type GetUsersSearch503JSONResponse struct {
 }
 
 func (response GetUsersSearch503JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -257,8 +272,10 @@ type StrictServerInterface interface {
 	GetUsersSearch(ctx context.Context, request GetUsersSearchRequestObject) (GetUsersSearchResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
-type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+type (
+	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
+	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+)
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -275,7 +292,7 @@ func (sh *strictHandler) GetUsersSearch(ctx *echo.Context, params GetUsersSearch
 
 	request.Params = params
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.GetUsersSearch(ctx.Request().Context(), request.(GetUsersSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

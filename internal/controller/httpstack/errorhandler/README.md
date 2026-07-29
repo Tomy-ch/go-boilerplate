@@ -109,16 +109,18 @@ Two routers can decide a 405, so the value has two sources, tried in order:
 `OPTIONS` is always listed first, matching Echo (which answers `OPTIONS` itself regardless of the
 spec).
 
-The spec declares this header `required: true`, and the two sources together satisfy that: a 405 from
-Echo's router always carries `ContextKeyHeaderAllow`, and a 405 from the OpenAPI router implies the
-path is in the spec, so the probe resolves it. That claim is pinned by a contract test which sweeps
-every path in the real spec and asserts a non-empty `Allow` — a route registered on Echo but absent
-from the spec is the one way to break it, which is a spec-bypass problem rather than a resolution one.
+RFC 9110 makes the header a MUST, and the two sources together satisfy that: a 405 from Echo's router
+always carries `ContextKeyHeaderAllow`, and a 405 from the OpenAPI router implies the path is in the
+spec, so the probe resolves it. That claim is pinned by a contract test which sweeps every path in the
+real spec and asserts a non-empty `Allow` — a route registered on Echo but absent from the spec is the
+one way to break it, which is a spec-bypass problem rather than a resolution one.
 
-Because the spec declares the header, oapi-codegen generates a `MethodNotAllowed405JSONResponse`
-carrying a `Headers.Allow` field, and the generated `Visit…Response` writes that field
-unconditionally. No handler constructs that type — every 405 is written here — so returning it from a
-strict handler with a zero-value `Headers` would emit an empty `Allow` and bypass both sources above.
+The OpenAPI spec does not declare this header. Declaring it would make oapi-codegen generate a
+`Headers` struct on the 405 response type whose `Visit…Response` writes the field unconditionally, so
+a strict handler returning the zero value would emit an empty `Allow` — worse than the header being
+supplied here. Declaring it also trips `owasp:api8:2023-define-cors-origin`, which only inspects
+responses that declare a `headers` block and would then demand `Access-Control-Allow-Origin` on this
+one response alone (CORS is applied across the stack by the `cors` middleware, not per response).
 
 ## Logging
 

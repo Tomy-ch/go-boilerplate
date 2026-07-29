@@ -39,14 +39,30 @@ func (w *ServerInterfaceWrapper) GetPurchases(ctx *echo.Context) error {
 	var params GetPurchasesParams
 	// ------------- Optional query parameter "after" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "after", ctx.QueryParams(), &params.After, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"after",
+		ctx.QueryParams(),
+		&params.After,
+		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after: %s", err))
 	}
 
 	// ------------- Optional query parameter "first" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "first", ctx.QueryParams(), &params.First, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"first",
+		ctx.QueryParams(),
+		&params.First,
+		runtime.BindQueryParameterOptions{Type: "integer", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter first: %s", err))
 	}
@@ -66,7 +82,15 @@ func (w *ServerInterfaceWrapper) PostPurchases(ctx *echo.Context) error {
 	var params PostPurchasesParams
 	// ------------- Optional query parameter "displayCurrency" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "displayCurrency", ctx.QueryParams(), &params.DisplayCurrency, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"displayCurrency",
+		ctx.QueryParams(),
+		&params.DisplayCurrency,
+		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter displayCurrency: %s", err))
 	}
@@ -80,7 +104,19 @@ func (w *ServerInterfaceWrapper) PostPurchases(ctx *echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions(
+			"simple",
+			"Idempotency-Key",
+			valueList[0],
+			&IdempotencyKey,
+			runtime.BindStyledParameterOptions{
+				ParamLocation: runtime.ParamLocationHeader,
+				Explode:       false,
+				Required:      false,
+				Type:          "string",
+				Format:        "",
+			},
+		)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
 		}
@@ -135,14 +171,12 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
-
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/purchases", wrapper.GetPurchases, options.OperationMiddlewares["GetPurchases"]...)
 	router.POST(options.BaseURL+"/v1/purchases", wrapper.PostPurchases, options.OperationMiddlewares["PostPurchases"]...)
-
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -151,14 +185,7 @@ type Conflict409JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405ResponseHeaders struct {
-	Allow string
-}
-type MethodNotAllowed405JSONResponse struct {
-	Body ErrorResponse
-
-	Headers MethodNotAllowed405ResponseHeaders
-}
+type MethodNotAllowed405JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
@@ -177,13 +204,12 @@ type GetPurchasesResponseObject interface {
 type GetPurchases200JSONResponse PurchaseListResponse
 
 func (response GetPurchases200JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -191,13 +217,12 @@ func (response GetPurchases200JSONResponse) VisitGetPurchasesResponse(w http.Res
 type GetPurchases400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetPurchases400JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -205,13 +230,12 @@ func (response GetPurchases400JSONResponse) VisitGetPurchasesResponse(w http.Res
 type GetPurchases401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetPurchases401JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -221,14 +245,12 @@ type GetPurchases405JSONResponse struct {
 }
 
 func (response GetPurchases405JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -238,13 +260,12 @@ type GetPurchases500JSONResponse struct {
 }
 
 func (response GetPurchases500JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -254,13 +275,12 @@ type GetPurchases503JSONResponse struct {
 }
 
 func (response GetPurchases503JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -277,13 +297,12 @@ type PostPurchasesResponseObject interface {
 type PostPurchases201JSONResponse PurchaseResponse
 
 func (response PostPurchases201JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.WriteHeader(http.StatusCreated)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -291,13 +310,12 @@ func (response PostPurchases201JSONResponse) VisitPostPurchasesResponse(w http.R
 type PostPurchases400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PostPurchases400JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -305,13 +323,12 @@ func (response PostPurchases400JSONResponse) VisitPostPurchasesResponse(w http.R
 type PostPurchases401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PostPurchases401JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -321,14 +338,12 @@ type PostPurchases405JSONResponse struct {
 }
 
 func (response PostPurchases405JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -336,13 +351,12 @@ func (response PostPurchases405JSONResponse) VisitPostPurchasesResponse(w http.R
 type PostPurchases409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response PostPurchases409JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
+	w.WriteHeader(http.StatusConflict)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -352,13 +366,12 @@ type PostPurchases422JSONResponse struct {
 }
 
 func (response PostPurchases422JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
+	w.WriteHeader(http.StatusUnprocessableEntity)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -368,13 +381,12 @@ type PostPurchases500JSONResponse struct {
 }
 
 func (response PostPurchases500JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -384,13 +396,12 @@ type PostPurchases503JSONResponse struct {
 }
 
 func (response PostPurchases503JSONResponse) VisitPostPurchasesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -405,8 +416,10 @@ type StrictServerInterface interface {
 	PostPurchases(ctx context.Context, request PostPurchasesRequestObject) (PostPurchasesResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
-type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+type (
+	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
+	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+)
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -423,7 +436,7 @@ func (sh *strictHandler) GetPurchases(ctx *echo.Context, params GetPurchasesPara
 
 	request.Params = params
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.GetPurchases(ctx.Request().Context(), request.(GetPurchasesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -454,7 +467,7 @@ func (sh *strictHandler) PostPurchases(ctx *echo.Context, params PostPurchasesPa
 	}
 	request.Body = &body
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.PostPurchases(ctx.Request().Context(), request.(PostPurchasesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

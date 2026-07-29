@@ -41,42 +41,90 @@ func (w *ServerInterfaceWrapper) GetProducts(ctx *echo.Context) error {
 	var params GetProductsParams
 	// ------------- Optional query parameter "after" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "after", ctx.QueryParams(), &params.After, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"after",
+		ctx.QueryParams(),
+		&params.After,
+		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after: %s", err))
 	}
 
 	// ------------- Optional query parameter "first" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "first", ctx.QueryParams(), &params.First, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"first",
+		ctx.QueryParams(),
+		&params.First,
+		runtime.BindQueryParameterOptions{Type: "integer", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter first: %s", err))
 	}
 
 	// ------------- Optional query parameter "categoryId" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "categoryId", ctx.QueryParams(), &params.CategoryId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"categoryId",
+		ctx.QueryParams(),
+		&params.CategoryId,
+		runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter categoryId: %s", err))
 	}
 
 	// ------------- Optional query parameter "statusId" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "statusId", ctx.QueryParams(), &params.StatusId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"statusId",
+		ctx.QueryParams(),
+		&params.StatusId,
+		runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter statusId: %s", err))
 	}
 
 	// ------------- Optional query parameter "keyword" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", ctx.QueryParams(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"keyword",
+		ctx.QueryParams(),
+		&params.Keyword,
+		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter keyword: %s", err))
 	}
 
 	// ------------- Optional query parameter "sort" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", ctx.QueryParams(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions(
+		"form",
+		true,
+		false,
+		"sort",
+		ctx.QueryParams(),
+		&params.Sort,
+		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
+	)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sort: %s", err))
 	}
@@ -150,7 +198,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
-
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
@@ -158,7 +205,6 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/products", wrapper.GetProducts, options.OperationMiddlewares["GetProducts"]...)
 	router.POST(options.BaseURL+"/v1/products", wrapper.PostProducts, options.OperationMiddlewares["PostProducts"]...)
 	router.POST(options.BaseURL+"/v1/products/images", wrapper.PostProductsImages, options.OperationMiddlewares["PostProductsImages"]...)
-
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -167,14 +213,7 @@ type Forbidden403JSONResponse ErrorResponse
 
 type InternalServerError500JSONResponse ErrorResponse
 
-type MethodNotAllowed405ResponseHeaders struct {
-	Allow string
-}
-type MethodNotAllowed405JSONResponse struct {
-	Body ErrorResponse
-
-	Headers MethodNotAllowed405ResponseHeaders
-}
+type MethodNotAllowed405JSONResponse ErrorResponse
 
 type PayloadTooLarge413JSONResponse ErrorResponse
 
@@ -197,13 +236,12 @@ type GetProductsResponseObject interface {
 type GetProducts200JSONResponse ProductListResponse
 
 func (response GetProducts200JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -211,13 +249,12 @@ func (response GetProducts200JSONResponse) VisitGetProductsResponse(w http.Respo
 type GetProducts400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetProducts400JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -227,14 +264,12 @@ type GetProducts405JSONResponse struct {
 }
 
 func (response GetProducts405JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -244,13 +279,12 @@ type GetProducts500JSONResponse struct {
 }
 
 func (response GetProducts500JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -260,13 +294,12 @@ type GetProducts503JSONResponse struct {
 }
 
 func (response GetProducts503JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -282,13 +315,12 @@ type PostProductsResponseObject interface {
 type PostProducts201JSONResponse ProductResponse
 
 func (response PostProducts201JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.WriteHeader(http.StatusCreated)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -296,13 +328,12 @@ func (response PostProducts201JSONResponse) VisitPostProductsResponse(w http.Res
 type PostProducts400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PostProducts400JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -310,13 +341,12 @@ func (response PostProducts400JSONResponse) VisitPostProductsResponse(w http.Res
 type PostProducts401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PostProducts401JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -324,13 +354,12 @@ func (response PostProducts401JSONResponse) VisitPostProductsResponse(w http.Res
 type PostProducts403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response PostProducts403JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
+	w.WriteHeader(http.StatusForbidden)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -340,14 +369,12 @@ type PostProducts405JSONResponse struct {
 }
 
 func (response PostProducts405JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -357,13 +384,12 @@ type PostProducts422JSONResponse struct {
 }
 
 func (response PostProducts422JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
+	w.WriteHeader(http.StatusUnprocessableEntity)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -373,13 +399,12 @@ type PostProducts500JSONResponse struct {
 }
 
 func (response PostProducts500JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -389,13 +414,12 @@ type PostProducts503JSONResponse struct {
 }
 
 func (response PostProducts503JSONResponse) VisitPostProductsResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -411,13 +435,12 @@ type PostProductsImagesResponseObject interface {
 type PostProductsImages201JSONResponse ProductImageResponse
 
 func (response PostProductsImages201JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.WriteHeader(http.StatusCreated)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -425,13 +448,12 @@ func (response PostProductsImages201JSONResponse) VisitPostProductsImagesRespons
 type PostProductsImages400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PostProductsImages400JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
+	w.WriteHeader(http.StatusBadRequest)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -439,13 +461,12 @@ func (response PostProductsImages400JSONResponse) VisitPostProductsImagesRespons
 type PostProductsImages401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PostProductsImages401JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(http.StatusUnauthorized)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -453,13 +474,12 @@ func (response PostProductsImages401JSONResponse) VisitPostProductsImagesRespons
 type PostProductsImages403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response PostProductsImages403JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
+	w.WriteHeader(http.StatusForbidden)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -469,14 +489,12 @@ type PostProductsImages405JSONResponse struct {
 }
 
 func (response PostProductsImages405JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Allow", fmt.Sprint(response.Headers.Allow))
-	w.WriteHeader(405)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -484,13 +502,12 @@ func (response PostProductsImages405JSONResponse) VisitPostProductsImagesRespons
 type PostProductsImages413JSONResponse struct{ PayloadTooLarge413JSONResponse }
 
 func (response PostProductsImages413JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(413)
+	w.WriteHeader(http.StatusRequestEntityTooLarge)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -500,13 +517,12 @@ type PostProductsImages415JSONResponse struct {
 }
 
 func (response PostProductsImages415JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(415)
+	w.WriteHeader(http.StatusUnsupportedMediaType)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -516,13 +532,12 @@ type PostProductsImages422JSONResponse struct {
 }
 
 func (response PostProductsImages422JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
+	w.WriteHeader(http.StatusUnprocessableEntity)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -532,13 +547,12 @@ type PostProductsImages500JSONResponse struct {
 }
 
 func (response PostProductsImages500JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -548,13 +562,12 @@ type PostProductsImages503JSONResponse struct {
 }
 
 func (response PostProductsImages503JSONResponse) VisitPostProductsImagesResponse(w http.ResponseWriter) error {
-
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(503)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -572,8 +585,10 @@ type StrictServerInterface interface {
 	PostProductsImages(ctx context.Context, request PostProductsImagesRequestObject) (PostProductsImagesResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
-type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+type (
+	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
+	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+)
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -590,7 +605,7 @@ func (sh *strictHandler) GetProducts(ctx *echo.Context, params GetProductsParams
 
 	request.Params = params
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.GetProducts(ctx.Request().Context(), request.(GetProductsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -619,7 +634,7 @@ func (sh *strictHandler) PostProducts(ctx *echo.Context) error {
 	}
 	request.Body = &body
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.PostProducts(ctx.Request().Context(), request.(PostProductsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -648,7 +663,7 @@ func (sh *strictHandler) PostProductsImages(ctx *echo.Context) error {
 		request.Body = reader
 	}
 
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request any) (any, error) {
 		return sh.ssi.PostProductsImages(ctx.Request().Context(), request.(PostProductsImagesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
