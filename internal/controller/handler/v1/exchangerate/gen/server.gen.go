@@ -34,60 +34,28 @@ func (w *ServerInterfaceWrapper) GetExchangeRates(ctx *echo.Context) error {
 	var params GetExchangeRatesParams
 	// ------------- Required query parameter "base" -------------
 
-	err = runtime.BindQueryParameterWithOptions(
-		"form",
-		true,
-		true,
-		"base",
-		ctx.QueryParams(),
-		&params.Base,
-		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
-	)
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "base", ctx.QueryParams(), &params.Base, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter base: %s", err))
 	}
 
 	// ------------- Required query parameter "quote" -------------
 
-	err = runtime.BindQueryParameterWithOptions(
-		"form",
-		true,
-		true,
-		"quote",
-		ctx.QueryParams(),
-		&params.Quote,
-		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
-	)
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "quote", ctx.QueryParams(), &params.Quote, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter quote: %s", err))
 	}
 
 	// ------------- Required query parameter "amount" -------------
 
-	err = runtime.BindQueryParameterWithOptions(
-		"form",
-		true,
-		true,
-		"amount",
-		ctx.QueryParams(),
-		&params.Amount,
-		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
-	)
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "amount", ctx.QueryParams(), &params.Amount, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter amount: %s", err))
 	}
 
 	// ------------- Optional query parameter "displayCurrency" -------------
 
-	err = runtime.BindQueryParameterWithOptions(
-		"form",
-		true,
-		false,
-		"displayCurrency",
-		ctx.QueryParams(),
-		&params.DisplayCurrency,
-		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
-	)
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "displayCurrency", ctx.QueryParams(), &params.DisplayCurrency, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter displayCurrency: %s", err))
 	}
@@ -139,11 +107,13 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/exchange-rates", wrapper.GetExchangeRates, options.OperationMiddlewares["GetExchangeRates"]...)
+
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -165,12 +135,13 @@ type GetExchangeRatesResponseObject interface {
 type GetExchangeRates200JSONResponse ExchangeRateResponse
 
 func (response GetExchangeRates200JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -178,12 +149,13 @@ func (response GetExchangeRates200JSONResponse) VisitGetExchangeRatesResponse(w 
 type GetExchangeRates400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetExchangeRates400JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -193,12 +165,13 @@ type GetExchangeRates405JSONResponse struct {
 }
 
 func (response GetExchangeRates405JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -208,12 +181,13 @@ type GetExchangeRates500JSONResponse struct {
 }
 
 func (response GetExchangeRates500JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -223,12 +197,13 @@ type GetExchangeRates503JSONResponse struct {
 }
 
 func (response GetExchangeRates503JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -240,10 +215,8 @@ type StrictServerInterface interface {
 	GetExchangeRates(ctx context.Context, request GetExchangeRatesRequestObject) (GetExchangeRatesResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -260,7 +233,7 @@ func (sh *strictHandler) GetExchangeRates(ctx *echo.Context, params GetExchangeR
 
 	request.Params = params
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetExchangeRates(ctx.Request().Context(), request.(GetExchangeRatesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

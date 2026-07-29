@@ -76,11 +76,13 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/prefectures", wrapper.GetPrefectures, options.OperationMiddlewares["GetPrefectures"]...)
+
 }
 
 type InternalServerError500JSONResponse ErrorResponse
@@ -89,7 +91,8 @@ type MethodNotAllowed405JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
-type GetPrefecturesRequestObject struct{}
+type GetPrefecturesRequestObject struct {
+}
 
 type GetPrefecturesResponseObject interface {
 	VisitGetPrefecturesResponse(w http.ResponseWriter) error
@@ -98,12 +101,13 @@ type GetPrefecturesResponseObject interface {
 type GetPrefectures200JSONResponse PrefecturesResponse
 
 func (response GetPrefectures200JSONResponse) VisitGetPrefecturesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -113,12 +117,13 @@ type GetPrefectures405JSONResponse struct {
 }
 
 func (response GetPrefectures405JSONResponse) VisitGetPrefecturesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -128,12 +133,13 @@ type GetPrefectures500JSONResponse struct {
 }
 
 func (response GetPrefectures500JSONResponse) VisitGetPrefecturesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -143,12 +149,13 @@ type GetPrefectures503JSONResponse struct {
 }
 
 func (response GetPrefectures503JSONResponse) VisitGetPrefecturesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -160,10 +167,8 @@ type StrictServerInterface interface {
 	GetPrefectures(ctx context.Context, request GetPrefecturesRequestObject) (GetPrefecturesResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -178,7 +183,7 @@ type strictHandler struct {
 func (sh *strictHandler) GetPrefectures(ctx *echo.Context) error {
 	var request GetPrefecturesRequestObject
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetPrefectures(ctx.Request().Context(), request.(GetPrefecturesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

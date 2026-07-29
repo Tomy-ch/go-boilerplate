@@ -55,13 +55,7 @@ func (w *ServerInterfaceWrapper) DeleteUsersDetail(ctx *echo.Context) error {
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions(
-		"simple",
-		"userId",
-		ctx.Param("userId"),
-		&userId,
-		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
-	)
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
@@ -79,13 +73,7 @@ func (w *ServerInterfaceWrapper) GetUsersDetail(ctx *echo.Context) error {
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions(
-		"simple",
-		"userId",
-		ctx.Param("userId"),
-		&userId,
-		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
-	)
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
@@ -103,13 +91,7 @@ func (w *ServerInterfaceWrapper) PatchUsersDetail(ctx *echo.Context) error {
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions(
-		"simple",
-		"userId",
-		ctx.Param("userId"),
-		&userId,
-		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
-	)
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
@@ -127,13 +109,7 @@ func (w *ServerInterfaceWrapper) PutUsersDetail(ctx *echo.Context) error {
 	// ------------- Path parameter "userId" -------------
 	var userId UserIdParam
 
-	err = runtime.BindStyledParameterWithOptions(
-		"simple",
-		"userId",
-		ctx.Param("userId"),
-		&userId,
-		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
-	)
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
 	}
@@ -187,6 +163,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
@@ -196,6 +173,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/users/:userId", wrapper.GetUsersDetail, options.OperationMiddlewares["GetUsersDetail"]...)
 	router.PATCH(options.BaseURL+"/v1/users/:userId", wrapper.PatchUsersDetail, options.OperationMiddlewares["PatchUsersDetail"]...)
 	router.PUT(options.BaseURL+"/v1/users/:userId", wrapper.PutUsersDetail, options.OperationMiddlewares["PutUsersDetail"]...)
+
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -216,7 +194,8 @@ type Unauthorized401JSONResponse ErrorResponse
 
 type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
-type GetUsersMeRequestObject struct{}
+type GetUsersMeRequestObject struct {
+}
 
 type GetUsersMeResponseObject interface {
 	VisitGetUsersMeResponse(w http.ResponseWriter) error
@@ -225,12 +204,13 @@ type GetUsersMeResponseObject interface {
 type GetUsersMe200JSONResponse UserResponse
 
 func (response GetUsersMe200JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -238,12 +218,13 @@ func (response GetUsersMe200JSONResponse) VisitGetUsersMeResponse(w http.Respons
 type GetUsersMe401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsersMe401JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -251,12 +232,13 @@ func (response GetUsersMe401JSONResponse) VisitGetUsersMeResponse(w http.Respons
 type GetUsersMe404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response GetUsersMe404JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -266,12 +248,13 @@ type GetUsersMe405JSONResponse struct {
 }
 
 func (response GetUsersMe405JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -281,12 +264,13 @@ type GetUsersMe500JSONResponse struct {
 }
 
 func (response GetUsersMe500JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -296,12 +280,13 @@ type GetUsersMe503JSONResponse struct {
 }
 
 func (response GetUsersMe503JSONResponse) VisitGetUsersMeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -314,22 +299,24 @@ type DeleteUsersDetailResponseObject interface {
 	VisitDeleteUsersDetailResponse(w http.ResponseWriter) error
 }
 
-type DeleteUsersDetail204Response struct{}
+type DeleteUsersDetail204Response struct {
+}
 
 func (response DeleteUsersDetail204Response) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(204)
 	return nil
 }
 
 type DeleteUsersDetail400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response DeleteUsersDetail400JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -337,12 +324,13 @@ func (response DeleteUsersDetail400JSONResponse) VisitDeleteUsersDetailResponse(
 type DeleteUsersDetail401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response DeleteUsersDetail401JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -350,12 +338,13 @@ func (response DeleteUsersDetail401JSONResponse) VisitDeleteUsersDetailResponse(
 type DeleteUsersDetail403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response DeleteUsersDetail403JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -363,12 +352,13 @@ func (response DeleteUsersDetail403JSONResponse) VisitDeleteUsersDetailResponse(
 type DeleteUsersDetail404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response DeleteUsersDetail404JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -378,12 +368,13 @@ type DeleteUsersDetail405JSONResponse struct {
 }
 
 func (response DeleteUsersDetail405JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -391,12 +382,13 @@ func (response DeleteUsersDetail405JSONResponse) VisitDeleteUsersDetailResponse(
 type DeleteUsersDetail409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response DeleteUsersDetail409JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusConflict)
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -406,12 +398,13 @@ type DeleteUsersDetail500JSONResponse struct {
 }
 
 func (response DeleteUsersDetail500JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -421,12 +414,13 @@ type DeleteUsersDetail503JSONResponse struct {
 }
 
 func (response DeleteUsersDetail503JSONResponse) VisitDeleteUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -442,12 +436,13 @@ type GetUsersDetailResponseObject interface {
 type GetUsersDetail200JSONResponse UserResponse
 
 func (response GetUsersDetail200JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -455,12 +450,13 @@ func (response GetUsersDetail200JSONResponse) VisitGetUsersDetailResponse(w http
 type GetUsersDetail400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetUsersDetail400JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -468,12 +464,13 @@ func (response GetUsersDetail400JSONResponse) VisitGetUsersDetailResponse(w http
 type GetUsersDetail401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsersDetail401JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -481,12 +478,13 @@ func (response GetUsersDetail401JSONResponse) VisitGetUsersDetailResponse(w http
 type GetUsersDetail403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response GetUsersDetail403JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -494,12 +492,13 @@ func (response GetUsersDetail403JSONResponse) VisitGetUsersDetailResponse(w http
 type GetUsersDetail404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response GetUsersDetail404JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -509,12 +508,13 @@ type GetUsersDetail405JSONResponse struct {
 }
 
 func (response GetUsersDetail405JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -524,12 +524,13 @@ type GetUsersDetail500JSONResponse struct {
 }
 
 func (response GetUsersDetail500JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -539,12 +540,13 @@ type GetUsersDetail503JSONResponse struct {
 }
 
 func (response GetUsersDetail503JSONResponse) VisitGetUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -561,12 +563,13 @@ type PatchUsersDetailResponseObject interface {
 type PatchUsersDetail200JSONResponse UserResponse
 
 func (response PatchUsersDetail200JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -574,12 +577,13 @@ func (response PatchUsersDetail200JSONResponse) VisitPatchUsersDetailResponse(w 
 type PatchUsersDetail400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PatchUsersDetail400JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -587,12 +591,13 @@ func (response PatchUsersDetail400JSONResponse) VisitPatchUsersDetailResponse(w 
 type PatchUsersDetail401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PatchUsersDetail401JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -600,12 +605,13 @@ func (response PatchUsersDetail401JSONResponse) VisitPatchUsersDetailResponse(w 
 type PatchUsersDetail403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response PatchUsersDetail403JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -613,12 +619,13 @@ func (response PatchUsersDetail403JSONResponse) VisitPatchUsersDetailResponse(w 
 type PatchUsersDetail404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response PatchUsersDetail404JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -628,12 +635,13 @@ type PatchUsersDetail405JSONResponse struct {
 }
 
 func (response PatchUsersDetail405JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -641,12 +649,13 @@ func (response PatchUsersDetail405JSONResponse) VisitPatchUsersDetailResponse(w 
 type PatchUsersDetail409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response PatchUsersDetail409JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusConflict)
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -656,12 +665,13 @@ type PatchUsersDetail422JSONResponse struct {
 }
 
 func (response PatchUsersDetail422JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnprocessableEntity)
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -671,12 +681,13 @@ type PatchUsersDetail500JSONResponse struct {
 }
 
 func (response PatchUsersDetail500JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -686,12 +697,13 @@ type PatchUsersDetail503JSONResponse struct {
 }
 
 func (response PatchUsersDetail503JSONResponse) VisitPatchUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -708,12 +720,13 @@ type PutUsersDetailResponseObject interface {
 type PutUsersDetail200JSONResponse UserResponse
 
 func (response PutUsersDetail200JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -721,12 +734,13 @@ func (response PutUsersDetail200JSONResponse) VisitPutUsersDetailResponse(w http
 type PutUsersDetail400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PutUsersDetail400JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -734,12 +748,13 @@ func (response PutUsersDetail400JSONResponse) VisitPutUsersDetailResponse(w http
 type PutUsersDetail401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PutUsersDetail401JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -747,12 +762,13 @@ func (response PutUsersDetail401JSONResponse) VisitPutUsersDetailResponse(w http
 type PutUsersDetail403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response PutUsersDetail403JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -760,12 +776,13 @@ func (response PutUsersDetail403JSONResponse) VisitPutUsersDetailResponse(w http
 type PutUsersDetail404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response PutUsersDetail404JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -775,12 +792,13 @@ type PutUsersDetail405JSONResponse struct {
 }
 
 func (response PutUsersDetail405JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -788,12 +806,13 @@ func (response PutUsersDetail405JSONResponse) VisitPutUsersDetailResponse(w http
 type PutUsersDetail409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response PutUsersDetail409JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusConflict)
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -803,12 +822,13 @@ type PutUsersDetail422JSONResponse struct {
 }
 
 func (response PutUsersDetail422JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnprocessableEntity)
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -818,12 +838,13 @@ type PutUsersDetail500JSONResponse struct {
 }
 
 func (response PutUsersDetail500JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -833,12 +854,13 @@ type PutUsersDetail503JSONResponse struct {
 }
 
 func (response PutUsersDetail503JSONResponse) VisitPutUsersDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -862,10 +884,8 @@ type StrictServerInterface interface {
 	PutUsersDetail(ctx context.Context, request PutUsersDetailRequestObject) (PutUsersDetailResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -880,7 +900,7 @@ type strictHandler struct {
 func (sh *strictHandler) GetUsersMe(ctx *echo.Context) error {
 	var request GetUsersMeRequestObject
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsersMe(ctx.Request().Context(), request.(GetUsersMeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -905,7 +925,7 @@ func (sh *strictHandler) DeleteUsersDetail(ctx *echo.Context, userId UserIdParam
 
 	request.UserId = userId
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.DeleteUsersDetail(ctx.Request().Context(), request.(DeleteUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -930,7 +950,7 @@ func (sh *strictHandler) GetUsersDetail(ctx *echo.Context, userId UserIdParam) e
 
 	request.UserId = userId
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsersDetail(ctx.Request().Context(), request.(GetUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -961,7 +981,7 @@ func (sh *strictHandler) PatchUsersDetail(ctx *echo.Context, userId UserIdParam)
 	}
 	request.Body = &body
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PatchUsersDetail(ctx.Request().Context(), request.(PatchUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -992,7 +1012,7 @@ func (sh *strictHandler) PutUsersDetail(ctx *echo.Context, userId UserIdParam) e
 	}
 	request.Body = &body
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PutUsersDetail(ctx.Request().Context(), request.(PutUsersDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

@@ -109,7 +109,7 @@ export const SAMPLE_DOMAINS = {
   },
 
   product: {
-    description: "サンプル 商品ドメイン（GET /v1/products/statuses 商品ステータスマスタ一覧 / GET /v1/products/categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉 / GET /v1/products/{productId} 公開商品詳細〈未存在・非公開は 404 秘匿〉）",
+    description: "サンプル 商品ドメイン（GET /v1/products/statuses 商品ステータスマスタ一覧 / GET /v1/products/categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉 / GET /v1/products/{productId} 公開商品詳細〈未存在・非公開は 404 秘匿〉 / PATCH /v1/products/{productId}/stock 在庫の増減〈admin・行ロックで直列化〉）",
     paths: [
       "internal/domain/product/status",
       "internal/usecase/product/status",
@@ -156,6 +156,7 @@ export const SAMPLE_DOMAINS = {
       "internal/controller/handler/v1/products",
       "internal/integration/v1_products_test.go",
       "internal/integration/v1_products_detail_test.go",
+      "internal/integration/v1_products_stock_test.go",
       "internal/integration/v1_products_ranking_test.go",
       "database/dml/repository/product",
       "database/dml/query_service/product",
@@ -167,6 +168,7 @@ export const SAMPLE_DOMAINS = {
 
       "openapi/paths/v1/products.yaml",
       "openapi/paths/v1/products/productId.yaml",
+      "openapi/paths/v1/products/productId/stock.yaml",
       "openapi/paths/v1/products/images.yaml",
       "openapi/paths/v1/products/ranking.yaml",
       "openapi/components/parameters/product",

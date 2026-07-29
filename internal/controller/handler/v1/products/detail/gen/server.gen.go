@@ -22,6 +22,9 @@ type ServerInterface interface {
 	// 単一商品の部分更新
 	// (PATCH /v1/products/{productId})
 	PatchProductsDetail(ctx *echo.Context, productId ProductIdParam) error
+	// 商品在庫の補充
+	// (PATCH /v1/products/{productId}/stock)
+	PatchProductsStock(ctx *echo.Context, productId ProductIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -35,13 +38,7 @@ func (w *ServerInterfaceWrapper) GetProductsDetail(ctx *echo.Context) error {
 	// ------------- Path parameter "productId" -------------
 	var productId ProductIdParam
 
-	err = runtime.BindStyledParameterWithOptions(
-		"simple",
-		"productId",
-		ctx.Param("productId"),
-		&productId,
-		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
-	)
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
 	}
@@ -57,13 +54,7 @@ func (w *ServerInterfaceWrapper) PatchProductsDetail(ctx *echo.Context) error {
 	// ------------- Path parameter "productId" -------------
 	var productId ProductIdParam
 
-	err = runtime.BindStyledParameterWithOptions(
-		"simple",
-		"productId",
-		ctx.Param("productId"),
-		&productId,
-		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
-	)
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
 	}
@@ -72,6 +63,24 @@ func (w *ServerInterfaceWrapper) PatchProductsDetail(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PatchProductsDetail(ctx, productId)
+	return err
+}
+
+// PatchProductsStock converts echo context to params.
+func (w *ServerInterfaceWrapper) PatchProductsStock(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PatchProductsStock(ctx, productId)
 	return err
 }
 
@@ -117,12 +126,15 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/products/:productId", wrapper.GetProductsDetail, options.OperationMiddlewares["GetProductsDetail"]...)
 	router.PATCH(options.BaseURL+"/v1/products/:productId", wrapper.PatchProductsDetail, options.OperationMiddlewares["PatchProductsDetail"]...)
+	router.PATCH(options.BaseURL+"/v1/products/:productId/stock", wrapper.PatchProductsStock, options.OperationMiddlewares["PatchProductsStock"]...)
+
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -154,12 +166,13 @@ type GetProductsDetailResponseObject interface {
 type GetProductsDetail200JSONResponse ProductResponse
 
 func (response GetProductsDetail200JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -167,12 +180,13 @@ func (response GetProductsDetail200JSONResponse) VisitGetProductsDetailResponse(
 type GetProductsDetail400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetProductsDetail400JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -180,12 +194,13 @@ func (response GetProductsDetail400JSONResponse) VisitGetProductsDetailResponse(
 type GetProductsDetail404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response GetProductsDetail404JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -195,12 +210,13 @@ type GetProductsDetail405JSONResponse struct {
 }
 
 func (response GetProductsDetail405JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -210,12 +226,13 @@ type GetProductsDetail500JSONResponse struct {
 }
 
 func (response GetProductsDetail500JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -225,12 +242,13 @@ type GetProductsDetail503JSONResponse struct {
 }
 
 func (response GetProductsDetail503JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -247,12 +265,13 @@ type PatchProductsDetailResponseObject interface {
 type PatchProductsDetail200JSONResponse ProductResponse
 
 func (response PatchProductsDetail200JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -260,12 +279,13 @@ func (response PatchProductsDetail200JSONResponse) VisitPatchProductsDetailRespo
 type PatchProductsDetail400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PatchProductsDetail400JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -273,12 +293,13 @@ func (response PatchProductsDetail400JSONResponse) VisitPatchProductsDetailRespo
 type PatchProductsDetail401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PatchProductsDetail401JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -286,12 +307,13 @@ func (response PatchProductsDetail401JSONResponse) VisitPatchProductsDetailRespo
 type PatchProductsDetail403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response PatchProductsDetail403JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -299,12 +321,13 @@ func (response PatchProductsDetail403JSONResponse) VisitPatchProductsDetailRespo
 type PatchProductsDetail404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response PatchProductsDetail404JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -314,12 +337,13 @@ type PatchProductsDetail405JSONResponse struct {
 }
 
 func (response PatchProductsDetail405JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -327,12 +351,13 @@ func (response PatchProductsDetail405JSONResponse) VisitPatchProductsDetailRespo
 type PatchProductsDetail409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response PatchProductsDetail409JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusConflict)
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -342,12 +367,13 @@ type PatchProductsDetail422JSONResponse struct {
 }
 
 func (response PatchProductsDetail422JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnprocessableEntity)
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -357,12 +383,13 @@ type PatchProductsDetail500JSONResponse struct {
 }
 
 func (response PatchProductsDetail500JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -372,12 +399,170 @@ type PatchProductsDetail503JSONResponse struct {
 }
 
 func (response PatchProductsDetail503JSONResponse) VisitPatchProductsDetailResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStockRequestObject struct {
+	ProductId ProductIdParam `json:"productId"`
+	Body      *PatchProductsStockJSONRequestBody
+}
+
+type PatchProductsStockResponseObject interface {
+	VisitPatchProductsStockResponse(w http.ResponseWriter) error
+}
+
+type PatchProductsStock200JSONResponse ProductResponse
+
+func (response PatchProductsStock200JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response PatchProductsStock400JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response PatchProductsStock401JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response PatchProductsStock403JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock404JSONResponse struct{ NotFound404JSONResponse }
+
+func (response PatchProductsStock404JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response PatchProductsStock405JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock409JSONResponse struct{ Conflict409JSONResponse }
+
+func (response PatchProductsStock409JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock422JSONResponse struct {
+	UnprocessableEntity422JSONResponse
+}
+
+func (response PatchProductsStock422JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response PatchProductsStock500JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchProductsStock503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response PatchProductsStock503JSONResponse) VisitPatchProductsStockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -390,12 +575,13 @@ type StrictServerInterface interface {
 	// 単一商品の部分更新
 	// (PATCH /v1/products/{productId})
 	PatchProductsDetail(ctx context.Context, request PatchProductsDetailRequestObject) (PatchProductsDetailResponseObject, error)
+	// 商品在庫の補充
+	// (PATCH /v1/products/{productId}/stock)
+	PatchProductsStock(ctx context.Context, request PatchProductsStockRequestObject) (PatchProductsStockResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -412,7 +598,7 @@ func (sh *strictHandler) GetProductsDetail(ctx *echo.Context, productId ProductI
 
 	request.ProductId = productId
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProductsDetail(ctx.Request().Context(), request.(GetProductsDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -443,7 +629,7 @@ func (sh *strictHandler) PatchProductsDetail(ctx *echo.Context, productId Produc
 	}
 	request.Body = &body
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PatchProductsDetail(ctx.Request().Context(), request.(PatchProductsDetailRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -456,6 +642,37 @@ func (sh *strictHandler) PatchProductsDetail(ctx *echo.Context, productId Produc
 		return err
 	} else if validResponse, ok := response.(PatchProductsDetailResponseObject); ok {
 		return validResponse.VisitPatchProductsDetailResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PatchProductsStock operation middleware
+func (sh *strictHandler) PatchProductsStock(ctx *echo.Context, productId ProductIdParam) error {
+	var request PatchProductsStockRequestObject
+
+	request.ProductId = productId
+
+	var body PatchProductsStockJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PatchProductsStock(ctx.Request().Context(), request.(PatchProductsStockRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PatchProductsStock")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PatchProductsStockResponseObject); ok {
+		return validResponse.VisitPatchProductsStockResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

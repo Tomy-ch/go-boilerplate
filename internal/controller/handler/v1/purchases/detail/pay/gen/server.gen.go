@@ -32,13 +32,7 @@ func (w *ServerInterfaceWrapper) PatchPurchasesPay(ctx *echo.Context) error {
 	// ------------- Path parameter "purchaseId" -------------
 	var purchaseId PurchaseIdParam
 
-	err = runtime.BindStyledParameterWithOptions(
-		"simple",
-		"purchaseId",
-		ctx.Param("purchaseId"),
-		&purchaseId,
-		runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"},
-	)
+	err = runtime.BindStyledParameterWithOptions("simple", "purchaseId", ctx.Param("purchaseId"), &purchaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter purchaseId: %s", err))
 	}
@@ -92,11 +86,13 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.PATCH(options.BaseURL+"/v1/purchases/:purchaseId/pay", wrapper.PatchPurchasesPay, options.OperationMiddlewares["PatchPurchasesPay"]...)
+
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -124,12 +120,13 @@ type PatchPurchasesPayResponseObject interface {
 type PatchPurchasesPay200JSONResponse PurchasePayResponse
 
 func (response PatchPurchasesPay200JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -137,12 +134,13 @@ func (response PatchPurchasesPay200JSONResponse) VisitPatchPurchasesPayResponse(
 type PatchPurchasesPay400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PatchPurchasesPay400JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -150,12 +148,13 @@ func (response PatchPurchasesPay400JSONResponse) VisitPatchPurchasesPayResponse(
 type PatchPurchasesPay401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PatchPurchasesPay401JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -163,12 +162,13 @@ func (response PatchPurchasesPay401JSONResponse) VisitPatchPurchasesPayResponse(
 type PatchPurchasesPay404JSONResponse struct{ NotFound404JSONResponse }
 
 func (response PatchPurchasesPay404JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -178,12 +178,13 @@ type PatchPurchasesPay405JSONResponse struct {
 }
 
 func (response PatchPurchasesPay405JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -191,12 +192,13 @@ func (response PatchPurchasesPay405JSONResponse) VisitPatchPurchasesPayResponse(
 type PatchPurchasesPay409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response PatchPurchasesPay409JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusConflict)
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -206,12 +208,13 @@ type PatchPurchasesPay500JSONResponse struct {
 }
 
 func (response PatchPurchasesPay500JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -221,12 +224,13 @@ type PatchPurchasesPay503JSONResponse struct {
 }
 
 func (response PatchPurchasesPay503JSONResponse) VisitPatchPurchasesPayResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -238,10 +242,8 @@ type StrictServerInterface interface {
 	PatchPurchasesPay(ctx context.Context, request PatchPurchasesPayRequestObject) (PatchPurchasesPayResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -258,7 +260,7 @@ func (sh *strictHandler) PatchPurchasesPay(ctx *echo.Context, purchaseId Purchas
 
 	request.PurchaseId = purchaseId
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PatchPurchasesPay(ctx.Request().Context(), request.(PatchPurchasesPayRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

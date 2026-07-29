@@ -17,6 +17,7 @@ scripts/
 ├── make_help.mjs                # Make ターゲットのヘルプ出力生成
 ├── mermaid-lint.mjs            # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
 ├── skill-lint.mjs              # .claude/** のスキル / エージェント定義を実態と突き合わせて検証
+├── pr-comment-secret-lint.mjs  # PR コメントを投稿するワークフロージョブへの secret 混入を検出
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
 ├── pin-actions/                # GitHub Actions の `uses:` 参照を commit SHA へ固定（Go）
 ├── pin-images/                 # Dockerfile の `FROM` base image を digest へ固定（Go）
@@ -46,6 +47,7 @@ scripts/
 |---|---|---|
 |`mermaid-lint.mjs`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
 |`skill-lint.mjs`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。依存なしの ESM。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査していない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
+|`pr-comment-secret-lint.mjs`|`.github/workflows/` の各ワークフローをジョブ単位に切り出し、`./.github/actions/upsert-pr-comment` を使うジョブが `GITHUB_TOKEN` 以外の secret を参照していれば失敗する（ワークフロー全体の `env:` も対象）。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `${{ }}` 式に現れる secrets の直接参照（`secrets.NAME` / `secrets['NAME']` / `toJSON(secrets)` のようなコンテキスト全体）。別ジョブで読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えず、検査を通る。|`make actions-lint` / `make actions-comment-secret-lint`|
 
 #### Skill Lint
 

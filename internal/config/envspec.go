@@ -75,7 +75,7 @@ type Worker struct {
 
 // OperatingSystem は OS レベルの設定を保持する。
 type OperatingSystem struct {
-	Timezone string `env:"TZ" envDefault:"Asia/Tokyo"`
+	Timezone string `env:"TZ,required,notEmpty"`
 }
 
 // Application はアプリケーション識別・動作モードおよびシャットダウン制御に関する設定を保持する。

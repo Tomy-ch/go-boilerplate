@@ -18,6 +18,8 @@ import (
 	responsegen "go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/di/server/extension/instrumentation"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/pkg/uuid"
@@ -253,12 +255,23 @@ func isJSONNull(raw json.RawMessage) bool {
 	return len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null"))
 }
 
-// UseAppErrorHandler は、本番相当の HTTPErrorHandler を Echo に登録する。
+// UseAppErrorHandler は、本番相当の HTTPErrorHandler と、それが返すエラー応答の契約が
+// 成立するために必要なミドルウェアを Echo に登録する。
 //
 // 既定の echo.New() は標準のエラーハンドラを持つため、異常系で apperror → HTTP ステータスの
 // マッピングを実経路で検証するには、production と同じハンドラを配線する必要がある。
-func UseAppErrorHandler(t *testing.T, e *echo.Echo) {
+//
+// ハンドラは requestId を、requestid ミドルウェアがレスポンスヘッダへ書いた値を読み戻して
+// 埋める。ハンドラだけを配線しても requestId は常に空になり、[AssertErrorResponseBody] が
+// 守る契約が成立しないため、両者をここで一体に配線する。
+//
+// extra には、この契約に相乗りさせたい本番ミドルウェアを DI provider から渡す。適用順は
+// 本番と同じ Priority ソートが決めるので、呼び出し側は順序を書かない。
+func UseAppErrorHandler(t *testing.T, e *echo.Echo, extra ...extension.UseMiddleware) {
 	t.Helper()
+
+	mws := append([]extension.UseMiddleware{instrumentation.RequestIDMiddleware().Middleware}, extra...)
+	require.NoError(t, extension.ApplyUseMiddlewares(e, logging.NewTestLogger(t), mws))
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
@@ -299,5 +312,8 @@ func AssertErrorResponseBody(t *testing.T, actualResponse *http.Response, wantSt
 	var errResp responsegen.ErrorResponseWithDetails
 	require.NoError(t, json.Unmarshal(resBody, &errResp), "エラーレスポンスが ErrorResponse 形式でシリアライズされていません。")
 	assert.NotEmpty(t, errResp.Code)
+	assert.Equal(t, actualResponse.Header.Get(echo.HeaderXRequestID), errResp.RequestId,
+		"エラーボディの requestId がワイヤ上の X-Request-Id と食い違っています。")
+	assert.NotEmpty(t, errResp.RequestId)
 	return errResp
 }

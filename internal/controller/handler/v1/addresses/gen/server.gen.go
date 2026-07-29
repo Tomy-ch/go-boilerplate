@@ -34,15 +34,7 @@ func (w *ServerInterfaceWrapper) GetAddresses(ctx *echo.Context) error {
 	var params GetAddressesParams
 	// ------------- Required query parameter "postalCode" -------------
 
-	err = runtime.BindQueryParameterWithOptions(
-		"form",
-		true,
-		true,
-		"postalCode",
-		ctx.QueryParams(),
-		&params.PostalCode,
-		runtime.BindQueryParameterOptions{Type: "string", Format: ""},
-	)
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "postalCode", ctx.QueryParams(), &params.PostalCode, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter postalCode: %s", err))
 	}
@@ -94,11 +86,13 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(options.BaseURL+"/v1/addresses", wrapper.GetAddresses, options.OperationMiddlewares["GetAddresses"]...)
+
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -120,12 +114,13 @@ type GetAddressesResponseObject interface {
 type GetAddresses200JSONResponse AddressCandidatesResponse
 
 func (response GetAddresses200JSONResponse) VisitGetAddressesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -133,12 +128,13 @@ func (response GetAddresses200JSONResponse) VisitGetAddressesResponse(w http.Res
 type GetAddresses400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response GetAddresses400JSONResponse) VisitGetAddressesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -148,12 +144,13 @@ type GetAddresses405JSONResponse struct {
 }
 
 func (response GetAddresses405JSONResponse) VisitGetAddressesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -163,12 +160,13 @@ type GetAddresses500JSONResponse struct {
 }
 
 func (response GetAddresses500JSONResponse) VisitGetAddressesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -178,12 +176,13 @@ type GetAddresses503JSONResponse struct {
 }
 
 func (response GetAddresses503JSONResponse) VisitGetAddressesResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -195,10 +194,8 @@ type StrictServerInterface interface {
 	GetAddresses(ctx context.Context, request GetAddressesRequestObject) (GetAddressesResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -215,7 +212,7 @@ func (sh *strictHandler) GetAddresses(ctx *echo.Context, params GetAddressesPara
 
 	request.Params = params
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetAddresses(ctx.Request().Context(), request.(GetAddressesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

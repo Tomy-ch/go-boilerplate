@@ -26,7 +26,10 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const targetPath = "/v1/products/:productId"
+const (
+	targetPath = "/v1/products/:productId"
+	stockPath  = "/v1/products/:productId/stock"
+)
 
 // patchPublishedAt は、部分更新リクエストに載せる固定の公開日時です。
 var patchPublishedAt = time.Date(2026, time.February, 3, 4, 5, 6, 0, time.UTC)
@@ -118,13 +121,14 @@ func TestBindHandler(t *testing.T) {
 	BindHandler(e, tf, mockApp)
 
 	routes := e.Router().Routes()
-	require.Len(t, routes, 2)
+	require.Len(t, routes, 3)
 	registered := make(map[string]bool, len(routes))
 	for _, r := range routes {
 		registered[r.Method+" "+r.Path] = true
 	}
 	assert.True(t, registered[http.MethodGet+" "+targetPath])
 	assert.True(t, registered[http.MethodPatch+" "+targetPath])
+	assert.True(t, registered[http.MethodPatch+" "+stockPath])
 }
 
 func Test_server_GetProductsDetail(t *testing.T) {
@@ -331,6 +335,93 @@ func Test_server_PatchProductsDetail(t *testing.T) {
 			resp, err := s.PatchProductsDetail(authnContext(t), newPatchProductsDetailRequest(t, targetID))
 			assert.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+	})
+}
+
+func Test_server_PatchProductsStock(t *testing.T) {
+	t.Parallel()
+
+	targetID := uuid.NewTestFromSalt(t, "stock_target")
+
+	newRequest := func(delta int32) gen.PatchProductsStockRequestObject {
+		return gen.PatchProductsStockRequestObject{
+			ProductId: targetID.ToPrimitive(),
+			Body:      &gen.ProductStockPatchRequest{Delta: delta},
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("正のdeltaの場合_UpdateProductStockParamsへ詰め替えて200と更新結果を返す", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			view := newProductView(t, "stock_replenished")
+
+			mockApp.EXPECT().
+				UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(),
+					gomock.AssignableToTypeOf(productuc.UpdateProductStockParams{})).
+				DoAndReturn(func(
+					_ context.Context, authn *auth.Authn, id uuid.UUID, p productuc.UpdateProductStockParams,
+				) (productuc.ProductView, error) {
+					require.NotNil(t, authn)
+					assert.Equal(t, "subject-1", authn.Subject())
+					assert.Equal(t, targetID, id)
+					assert.Equal(t, 50, p.Delta)
+
+					return view, nil
+				})
+
+			resp, err := s.PatchProductsStock(authnContext(t), newRequest(50))
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.PatchProductsStock200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, wantProductResponse(view), gen.ProductResponse(actual))
+		})
+
+		t.Run("負のdeltaの場合_符号を保ったままユースケースへ渡る", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+
+			mockApp.EXPECT().
+				UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(
+					_ context.Context, _ *auth.Authn, _ uuid.UUID, p productuc.UpdateProductStockParams,
+				) (productuc.ProductView, error) {
+					assert.Equal(t, -3, p.Delta)
+					return newProductView(t, "stock_decreased"), nil
+				})
+
+			_, err := s.PatchProductsStock(authnContext(t), newRequest(-3))
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnが無い場合_認証エラーを返しユースケースを呼ばない", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.PatchProductsStock(context.Background(), newRequest(1))
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("Usecaseが不変条件違反を返す場合_そのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().
+				UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.ProductView{}, apperror.ErrValidation)
+
+			resp, err := s.PatchProductsStock(authnContext(t), newRequest(-100))
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 	})
 }

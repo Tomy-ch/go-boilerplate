@@ -78,14 +78,13 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
-	router.GET(
-		options.BaseURL+"/v1/users/me/purchases/summary",
-		wrapper.GetUsersMePurchasesSummary,
-		options.OperationMiddlewares["GetUsersMePurchasesSummary"]...)
+	router.GET(options.BaseURL+"/v1/users/me/purchases/summary", wrapper.GetUsersMePurchasesSummary, options.OperationMiddlewares["GetUsersMePurchasesSummary"]...)
+
 }
 
 type InternalServerError500JSONResponse ErrorResponse
@@ -96,7 +95,8 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 
 type Unauthorized401JSONResponse ErrorResponse
 
-type GetUsersMePurchasesSummaryRequestObject struct{}
+type GetUsersMePurchasesSummaryRequestObject struct {
+}
 
 type GetUsersMePurchasesSummaryResponseObject interface {
 	VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error
@@ -105,12 +105,13 @@ type GetUsersMePurchasesSummaryResponseObject interface {
 type GetUsersMePurchasesSummary200JSONResponse PurchaseAggregateResponse
 
 func (response GetUsersMePurchasesSummary200JSONResponse) VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -118,12 +119,13 @@ func (response GetUsersMePurchasesSummary200JSONResponse) VisitGetUsersMePurchas
 type GetUsersMePurchasesSummary401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsersMePurchasesSummary401JSONResponse) VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -133,12 +135,13 @@ type GetUsersMePurchasesSummary405JSONResponse struct {
 }
 
 func (response GetUsersMePurchasesSummary405JSONResponse) VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -148,12 +151,13 @@ type GetUsersMePurchasesSummary500JSONResponse struct {
 }
 
 func (response GetUsersMePurchasesSummary500JSONResponse) VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -163,12 +167,13 @@ type GetUsersMePurchasesSummary503JSONResponse struct {
 }
 
 func (response GetUsersMePurchasesSummary503JSONResponse) VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -180,10 +185,8 @@ type StrictServerInterface interface {
 	GetUsersMePurchasesSummary(ctx context.Context, request GetUsersMePurchasesSummaryRequestObject) (GetUsersMePurchasesSummaryResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -198,7 +201,7 @@ type strictHandler struct {
 func (sh *strictHandler) GetUsersMePurchasesSummary(ctx *echo.Context) error {
 	var request GetUsersMePurchasesSummaryRequestObject
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsersMePurchasesSummary(ctx.Request().Context(), request.(GetUsersMePurchasesSummaryRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
