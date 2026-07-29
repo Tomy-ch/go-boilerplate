@@ -342,3 +342,21 @@ Responses are verified using **OpenAPI types**.
 - `gen.HealthResponse`
 - `gen.VersionResponse`
 - a feature handler's response type from its `gen` package — `gen.<Xxx>Response` (aliased, e.g. `detailgen.<Xxx>Response`, when one test file imports several handler `gen` packages)
+
+### 5 Wire a middleware-order contract from the DI providers, not by hand
+
+Most tests here register only the middleware the endpoint needs, in the order the
+test writes them. That is fine while the assertion is about one middleware, but a
+contract that only holds because middleware A runs outside middleware B is not
+verified by a hand-written order — the test would keep passing after the real
+priorities changed underneath it.
+
+For those tests, take the middleware from its own DI provider
+(`instrumentation.RequestIDMiddleware()`, `security.CookieMiddleware(...)`, …) and
+apply it with `extension.ApplyUseMiddlewares`, which performs the same `Priority`
+sort production does. The ordering then comes from the same source of truth as the
+running server, so reordering the stack breaks the test that depends on it.
+
+This is the one case where an integration test reaches into `internal/di`; it does
+not license using the DI container to assemble usecases or infrastructure, which
+stays mocked per the policies above.
