@@ -24,6 +24,7 @@ var sqlstateToAppError = map[string]error{
 	"42501": apperror.ErrPermissionDenied,
 	"40001": apperror.ErrUnavailable,
 	"40P01": apperror.ErrUnavailable,
+	"55P03": apperror.ErrUnavailable,
 	"57014": apperror.ErrUnavailable,
 }
 

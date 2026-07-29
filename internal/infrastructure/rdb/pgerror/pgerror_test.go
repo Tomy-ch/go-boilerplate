@@ -127,6 +127,13 @@ func TestNormalizePgError(t *testing.T) {
 			require.ErrorIs(t, got, apperror.ErrUnavailable)
 		})
 
+		t.Run("ロック待ちのタイムアウト", func(t *testing.T) {
+			t.Parallel()
+			got := NormalizeError(&pgconn.PgError{Code: "55P03", Message: "lock not available"})
+			require.Error(t, got)
+			require.ErrorIs(t, got, apperror.ErrUnavailable)
+		})
+
 		t.Run("クエリのキャンセル", func(t *testing.T) {
 			t.Parallel()
 			got := NormalizeError(&pgconn.PgError{Code: "57014", Message: "query canceled"})
