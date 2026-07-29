@@ -266,10 +266,12 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo) {
 
 	spec, err := validator.GetValidator()
 	require.NoError(t, err)
-	policy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+	detailPolicy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+	require.NoError(t, err)
+	allowPolicy, err := errorhandler.NewOpenAPIAllowPolicy(spec)
 	require.NoError(t, err)
 
-	errorhandler.New(e, policy, logging.NewTestLogger(t), lf, obsCfg)
+	errorhandler.New(e, errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}, logging.NewTestLogger(t), lf, obsCfg)
 }
 
 // AssertErrorResponse は、異常系レスポンスの HTTP ステータスが wantStatus と一致し、
