@@ -1,0 +1,75 @@
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  claude:
+    # Cheap pre-gate on the github context only, so unrelated comments never
+    # start a runner. Authorization itself is delegated to the action's built-in
+    # write-permission requirement: it resolves against whichever repository the
+    # workflow runs in, so a fork inherits the correct member set with no
+    # configuration. An allowlist hardcoded here would lock a fork owner out of
+    # their own repository instead.
+    if: >-
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' &&
+       contains(github.event.review.body, '@claude'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Read-only on contents: Claude answers and comments but does not push.
+      # Raise to write only when committing from the action is actually wanted —
+      # it is also the blast radius of a prompt injection carried in a fork PR.
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      # A fork inherits this workflow but not the secret, so skip quietly rather
+      # than failing red. The secrets context is unavailable in `if:`, hence the
+      # detour through a run step output.
+      - name: Check configuration
+        id: config
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo 'configured=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo '::notice::CLAUDE_CODE_OAUTH_TOKEN is not configured; skipping.'
+            echo 'configured=false' >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Checkout
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Claude
+        if: steps.config.outputs.configured == 'true'
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--max-turns 15"
