@@ -24,7 +24,7 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   `docker-compose.attach.yaml` を重ね、共有インフラを `host.docker.internal` のホスト公開ポート経由で参照する
   （`DB_HOST` / `OBS_OTLP_ENDPOINT` / `OBJECT_STORAGE_ENDPOINT` を実行時 env で上書きする。`loader.go` は
   実行時 env を `env/.env` より優先する）。
-- **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 8 = wt1〜wt8）。
+- **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 12 = wt1〜wt12）。
   スロットを取らない checkout は既定の `local` / `test` をそのまま使うため、スロット取得は**並列作業のための
   opt-in** に留まる。
 - **実装** = ホスト実行の Go CLI `cmd/db-slot`（コアは `internal/cli/dbslot`）。リース判定・DB 作成・
@@ -121,7 +121,7 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
 | `GOBP_MOCK_AUTH_POOL_BASE` | `4000` | `MOCK_AUTH_HOST_PORT` のベース |
 | `GOBP_DLV_POOL_BASE` | `2345` | `DLV_HOST_PORT` のベース |
 | `GOBP_PPROF_POOL_BASE` | `6060` | `PPROF_HOST_PORT` のベース |
-| `GOBP_DB_POOL_MAX` | `8` | スロット数（=同時並列数の上限） |
+| `GOBP_DB_POOL_MAX` | `12` | スロット数（=同時並列数の上限） |
 | `GOBP_DB_POOL_TTL` | `1800` | stale 判定の heartbeat 猶予（秒） |
 
 ## 注意
@@ -139,5 +139,5 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   名前付きボリュームは残るためデータは失われないが、稼働中 app の接続は切れる。
 - **オブジェクトストレージは共有**: `garage` のバケットは全 checkout で共通（DB と違いスキーマを持たないため
   ブランチ間で壊れない）。ブランチ毎に隔離したい場合は `OBJECT_STORAGE_BUCKET` を分ける。
-- API 帯 8080–8087 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
+- API 帯 8080–8092 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
 - `docker/`・`internal/cli/dbslot`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。
