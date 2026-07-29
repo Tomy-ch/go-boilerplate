@@ -1,0 +1,10 @@
+name: from
+in: query
+description: |
+  集計対象期間の開始日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+  日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。
+required: false
+schema:
+  type: string
+  format: date
+  example: "2026-07-01"
