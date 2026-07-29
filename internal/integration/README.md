@@ -264,16 +264,24 @@ Usage example:
 AssertJSONResponseType[gen.HealthResponse](t, actual)
 ```
 
-### `UseAppErrorHandler(t, e)`
+### `UseAppErrorHandler(t, e, extra ...extension.UseMiddleware)`
 
 Installs the production `HTTPErrorHandler` on the Echo instance. The bare
 `echo.New()` only carries Echo's default error handler, so error-path tests
 that need to observe the real `apperror` → HTTP status mapping must wire the
 production handler first.
 
-The set of error responses an endpoint is expected to produce is defined by the
-**OpenAPI contract** (each operation's `responses`); error-path tests target the
-status codes the contract declares for that operation, not arbitrary ones.
+It also wires the production `requestid` middleware, because the handler alone
+cannot produce a conformant error response: it fills the body's `requestId` by
+**reading back** the `X-Request-Id` that the middleware wrote onto the response.
+Wire only the handler and every error body carries an empty `requestId`. The two
+are one contract, so they are wired together here instead of being left for each
+test to remember.
+
+Pass `extra` to add further production middleware to that stack — take each one
+from its own DI provider and let `extension.ApplyUseMiddlewares` sort them (see
+"Wire a middleware-order contract from the DI providers, not by hand" below).
+Call sites never write the order themselves.
 
 ### `AssertErrorResponse(t, actual, wantStatus)`
 
@@ -282,6 +290,14 @@ deserializes into the JSON error shape (`ErrorResponse`). As with
 `AssertJSONResponseType`, only the boundary concern is checked — the
 `apperror` → status mapping and the error body's shape — while the correctness
 of the `code` / `message` values stays the responsibility of the unit tests.
+
+It additionally asserts that the body's `requestId` is non-empty **and equals
+the `X-Request-Id` header on the wire**. This is a boundary concern rather than
+a value assertion: the header and the body are produced by two different
+components (a middleware and the error handler) that only meet at the HTTP
+boundary, so nothing below this layer can catch them disagreeing. Because every
+error-path test funnels through this helper, the guarantee holds across the
+whole suite rather than in one dedicated test.
 
 Usage example:
 
