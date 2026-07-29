@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.43.0
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.30
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.0
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.45.0
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.46.0
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cockroachdb/errors v1.14.0
 	github.com/exaring/otelpgx v0.11.1
@@ -22,7 +22,7 @@ require (
 	github.com/labstack/echo/v5 v5.3.1
 	github.com/oapi-codegen/echo-v5-middleware v0.1.1
 	github.com/oapi-codegen/nullable v1.1.0
-	github.com/oapi-codegen/runtime v1.4.2
+	github.com/oapi-codegen/runtime v1.6.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/shopspring/decimal v1.4.0
