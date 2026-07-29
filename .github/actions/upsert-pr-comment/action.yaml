@@ -4,7 +4,7 @@ description: Detect an existing comment by marker and update / create it (PR com
 inputs:
   github-token:
     required: true
-    description: GITHUB_TOKEN used to post the comment
+    description: Token used to post the comment; must post as a bot (GITHUB_TOKEN or a GitHub App token), because the existing comment is matched on a bot author
   marker:
     required: true
     description: HTML comment marker used to detect the same comment
@@ -81,8 +81,21 @@ runs:
           const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
           const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
+          // A body reproduced verbatim inside a fixed three-backtick fence can close that
+          // fence itself: a linter or compiler echoes source lines, so a pull request author
+          // controls what lands here, and everything after a ``` line would render as live
+          // Markdown — mentions notifying third parties, fabricated headings and links posted
+          // under the CI bot's name. Fencing with one more backtick than the longest run in
+          // the body leaves no run able to close it.
+          const fenceFor = (text) => {
+            const longestRun = (text.match(/`+/g) || [])
+              .reduce((max, run) => Math.max(max, run.length), 0);
+            return '`'.repeat(Math.max(3, longestRun + 1));
+          };
+
+          const fence = fenceFor(content);
           const main = detailsSummary
-            ? [`<details><summary>${detailsSummary}</summary>`, '', '```', content, '```', '', '</details>'].join('\n')
+            ? [`<details><summary>${detailsSummary}</summary>`, '', fence, content, fence, '', '</details>'].join('\n')
             : content;
 
           const parts = [marker];
@@ -97,7 +110,14 @@ runs:
             per_page: 100,
           });
 
-          const existing = comments.find(c => (c.body || '').includes(marker));
+          // Anyone can post a comment carrying the marker on a public repository, and every
+          // workflow here comments under the same bot, so a marker found anywhere in a body
+          // identifies nothing: a pull request author who gets one workflow to echo another's
+          // marker into its log steers that other workflow onto the wrong comment. A body this
+          // action wrote always opens with the marker, which the planted one never does.
+          const existing = comments.find(
+            c => (c.body || '').startsWith(marker) && c.user?.type === 'Bot',
+          );
 
           if (existing) {
             await github.rest.issues.updateComment({
