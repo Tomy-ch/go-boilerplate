@@ -65,8 +65,8 @@ var (
 	expectedObservabilityOTLPEndpoint         = "http://localhost:4318"
 	expectedObservabilityOTLPProtocol         = "http/protobuf"
 	expectedObservabilityMaskedDBQueryArgs    = false
-	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
-	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
+	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 405, 409, 422, 429, 500, 501, 503}
+	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,405,409,422,429,500,501,503"
 	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
 	// database
 	expectedDBDriver = "pgx"
