@@ -1,6 +1,6 @@
 ---
 name: new-env
-description: Add a new environment variable to the project end-to-end, keeping the typed config struct, env file samples, and documentation in sync. Touches `internal/config/envspec.go` (Loader field), `internal/config/model.go` (Config struct + private field), `internal/config/config.go` (New() mapping + getter method), `internal/config/config_testing_mock.go` (expected value + mock setter), `env/.env.{local,ci,dev,stg,prd}` (and `.env` if used) for per-environment values, and `env/README.{md,ja.md}` (table row in the matching subsystem). The subsystem (envPrefix → struct), Go type mapping, and naming conventions are derived from the existing `envspec.go` / `model.go` at runtime — the skill hardcodes no subsystem list. Confirms variable name, type, description (en + ja), required vs default, and per-environment values via `AskUserQuestion` before writing. Does NOT auto-add a testing setter helper in `config_testing_setter.go` (the file explicitly limits additions); offers it only on explicit request. Verifies with `make fix` + `make test` at the end.
+description: Add a new environment variable to the project end-to-end, keeping the typed config struct, env file samples, and documentation in sync. Touches `internal/config/envspec.go` (Loader field), `internal/config/model.go` (Config struct + private field), `internal/config/config.go` (New() mapping + getter method), `internal/config/config_testing_mock.go` (expected value + mock setter), `env/.env` (the local default) and `env/.env.{ci,dev,stg,prd}` for per-environment values, and `env/README.{md,ja.md}` (table row in the matching subsystem). The subsystem (envPrefix → struct), Go type mapping, and naming conventions are derived from the existing `envspec.go` / `model.go` at runtime — the skill hardcodes no subsystem list. Confirms variable name, type, description (en + ja), required vs default, and per-environment values via `AskUserQuestion` before writing. Does NOT auto-add a testing setter helper in `config_testing_setter.go` (the file explicitly limits additions); offers it only on explicit request. Verifies with `make fix` + `make test` at the end.
 ---
 
 # New Env
@@ -30,7 +30,7 @@ Do NOT use this skill for:
 - `internal/config/model.go` — Config subsystem inventory (private field naming).
 - `internal/config/config.go` — `New()` body for mapping pattern; existing getters for naming convention.
 - `internal/config/config_testing_mock.go` — expected value variables and mock setter patterns.
-- `env/.env.local`, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env` — per-environment value placement.
+- `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd` — per-environment value placement.
 - `env/README.md`, `env/README.ja.md` — table format and subsystem section names.
 
 **Writes (only with confirmation)**:
@@ -148,7 +148,7 @@ The `expected*` variable comes from the `config_testing_mock.go` addition (Quest
 
 ### env files
 
-For each of `env/.env.local`, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env`:
+For each of `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`:
 
 - Locate the section comment (e.g., `# Application`).
 - Append the new var line under the matching section, preserving alignment.
@@ -187,7 +187,7 @@ Display the full set of proposed changes as a Japanese summary:
   - internal/config/config_test.go (TestNewConfig 期待値構造体に 1 行追加)
   - internal/config/model_test.go (TestGetterMethods に t.Run 追加)
   - internal/config/config_testing_mock_test.go (TestMockConfigForTest 期待値構造体に 1 行追加)
-  - env/.env.local, .env.ci, .env.dev, .env.stg, .env.prd (各 1 行追加)
+  - env/.env, .env.ci, .env.dev, .env.stg, .env.prd (各 1 行追加)
   - env/README.md, env/README.ja.md (Application 表に行追加)
 
 説明の補完:
@@ -211,7 +211,7 @@ For each file, use the `Edit` tool with exact anchor strings derived from the re
 5. `config_test.go` (TestNewConfig literal — coverage maintenance)
 6. `model_test.go` (TestGetterMethods t.Run — coverage maintenance)
 7. `config_testing_mock_test.go` (TestMockConfigForTest literal — coverage maintenance)
-8. env files (one Edit per file: `env/.env.local`, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env`)
+8. env files (one Edit per file: `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`)
 9. `env/README.md` then `env/README.ja.md`
 
 After each file edit, verify the edit landed (the `Edit` tool reports success or failure — if any fails, stop and report).

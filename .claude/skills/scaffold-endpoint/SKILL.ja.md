@@ -58,7 +58,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 > **環境に関する注記（前提 3〜5）:** `make gen-query` は `pg_dump` で稼働中の DB スキーマをダンプするため、**DB が起動している必要がある**（未起動だと `make gen-query` / `make test` が `could not translate host name "database"` で失敗する）。環境は**生 `docker compose` ではなく専用 make ターゲット**で起動すること: `make serve`（development プロファイル、`database` サービス含む）→ **`make db-init`**（local/test 両 DB を migrate **かつ seed**。テストは seed 前提のため、`db-*-migrate-up` 単体では不十分）→ その後に `make gen-query` / `make gen-api`。
 >
-> **ツールチェーンに関する注記（最終 `make fix` / `make test`）:** `make fix` や `make lint` が**ツールのバージョン不整合**（例: `golangci-lint` の "you are using a configuration file for golangci-lint v2 with golangci-lint v1"）で失敗した場合は回避策を取らず、`make install-tools` でローカルのツールを `tools.yaml` 固定バージョンに揃えてから再実行する（`tools.yaml` 自体を変更した場合は先に `make sync-tools`）。`PATH` の手動書き換えやバージョン指定バイナリの直叩きで代替しないこと。
+> **ツールチェーンに関する注記（最終 `make fix` / `make test`）:** `make fix` や `make lint` が**ツールのバージョン不整合**（例: `golangci-lint` の "you are using a configuration file for golangci-lint v2 with golangci-lint v1"）で失敗した場合は回避策を取らず、`make install-tools` でローカルのツールを `mise.toml` 固定バージョンに揃えてから再実行する（`mise.toml` 自体を変更した場合は先に `make sync-versions`）。`PATH` の手動書き換えやバージョン指定バイナリの直叩きで代替しないこと。
 
 ---
 

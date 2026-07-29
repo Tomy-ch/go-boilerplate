@@ -206,7 +206,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
    gh api --method POST repos/<owner>/<repo>/pulls/<PR>/reviews --input payload.json
    ```
 
-   `payload.json`:
+   `payload.json`: <!-- skill-lint-ignore -->
 
    ```json
    {

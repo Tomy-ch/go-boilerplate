@@ -98,7 +98,7 @@ export GITHUB_TOKEN="$(gh auth token)"
 
 ### 3. メジャー更新の `with:` 検証
 
-`resolve` / `apply` / `actionlint` は構文を見るが**入力のセマンティクス変更は見ない**。**メジャーが変わる**全アクションについて、リリースノート / `action.yml` を読み、当repo が使う全 `with:` ブロックと突き合わせる。実例: `peter-evans/create-pull-request` は v8 で `git-token`→`branch-token` 改名、`actions/upload-pages-artifact` v5 は dotfile 除外 + `deploy-pages@v4+` 要求。実入力が互換なら更新を維持。破壊的な入力変更があれば**そのアクションは保留し、必要な変更を報告**する（自動適用しない）。（メジャー内のマイナーリフレッシュはこの検証を省略。）
+`resolve` / `apply` / `actionlint` は構文を見るが**入力のセマンティクス変更は見ない**。**メジャーが変わる**全アクションについて、リリースノート / `action.yml` を読み、当repo が使う全 `with:` ブロックと突き合わせる。実例: `peter-evans/create-pull-request` は v8 で `git-token`→`branch-token` 改名、`actions/upload-pages-artifact` v5 は dotfile 除外 + `deploy-pages@v4+` 要求。実入力が互換なら更新を維持。破壊的な入力変更があれば**そのアクションは保留し、必要な変更を報告**する（自動適用しない）。（メジャー内のマイナーリフレッシュはこの検証を省略。） <!-- skill-lint-ignore -->
 
 ### 3.5. ステップバックが使えない場合のトリアージ
 

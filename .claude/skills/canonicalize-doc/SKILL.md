@@ -22,7 +22,7 @@ Supported document types:
 - Claude Code skill files: `SKILL.md` / `SKILL.ja.md` (under `.claude/skills/<name>/`)
 - READMEs: `README.md` / `README.ja.md` (co-located in the same directory, e.g. `docker/server/`)
 - Generic Markdown docs with the `*.ja.md` suffix convention (co-located).
-- `docs/**` documents using the parallel directory convention (`docs/**/foo.md` and `docs/ja/**/foo.ja.md`).
+- `docs/**` documents using the parallel directory convention (`docs/**/<name>.md` and `docs/ja/**/<name>.ja.md`).
 
 ## First Step: Confirm Input
 
@@ -143,7 +143,7 @@ make md-fix
 make md-lint
 ```
 
-`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint.yaml`.
+`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint-cli2.yaml`.
 
 If `make md-lint` reports remaining errors:
 

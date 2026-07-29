@@ -33,7 +33,7 @@
 
 | 種別 | パス glob | エントリファイル |
 | --- | --- | --- |
-| commands | `.claude/commands/` | `<name>.md` |
+| commands | `.claude/commands/` | `<name>.md` <!-- skill-lint-ignore --> |
 | skills | `.claude/skills/` | `<name>/SKILL.md`（`SKILL.ja.md` など `*.ja.md` 翻訳ファイルは除外） |
 | agents | `.claude/agents/` | `<name>.md` |
 
@@ -152,7 +152,7 @@ make md-fix
 make md-lint
 ```
 
-`make md-fix` はリポジトリ全体に `markdownlint-cli2 --fix` を走らせ、よくある問題（見出し / リスト / コードブロック周りの空行、末尾空白、ファイル末尾改行など）を自動修正する。`make md-lint` はその結果が `.markdownlint.yaml` に対してクリーンかを検証する。
+`make md-fix` はリポジトリ全体に `markdownlint-cli2 --fix` を走らせ、よくある問題（見出し / リスト / コードブロック周りの空行、末尾空白、ファイル末尾改行など）を自動修正する。`make md-lint` はその結果が `.markdownlint-cli2.yaml` に対してクリーンかを検証する。
 
 `make md-lint` が残るエラーを報告した場合:
 
@@ -172,7 +172,7 @@ make md-lint
 - スキャン範囲は **プロジェクトレベルのみ**。`~/.claude/` 配下は読み取りも列挙もしない。
 - プラグイン提供のエントリは対象外。
 - スキャンしたエントリを一切変更しない。このコマンドは検査のみ。
-- `.claude/commands/`・`.claude/skills/`・`.claude/agents/` が存在しない場合、そのエントリ数を 0 として扱い、エラーにせずレポートに注記する。
+- `.claude/commands/`・`.claude/skills/`・`.claude/agents/` が存在しない場合、そのエントリ数を 0 として扱い、エラーにせずレポートに注記する。 <!-- skill-lint-ignore -->
 
 ## Checklist
 

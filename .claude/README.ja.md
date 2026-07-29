@@ -49,3 +49,8 @@ bash .claude/scripts/bootstrap-plugins.sh
   リポジトリの配置・frontmatter・翻訳ペア・eval 成果物の規約を適用します。
 - **既存物の探索。** 手書きの一覧を本 README で保守する代わりに、`/tool-map` を実行すると skill / agent /
   command の全インベントリと依存マップが得られます。
+- **定義は実態と突き合わせて lint されます。** `make md-skill-lint`（`make md-lint` に含まれるため
+  `pre-commit` フックで走ります）が、frontmatter・対訳ペアの見出し構造・本ディレクトリの本文が参照する
+  `make` ターゲットとパスの実在性を検査します。skill は指示書であり、腐った参照はエージェントに誤った手順を
+  実行させます。検査範囲と `<!-- skill-lint-ignore -->` ディレクティブは
+  [`scripts/README.md`](../scripts/README.md) に記載しています。

@@ -202,7 +202,7 @@ Observed convention (verify per group at runtime):
 Where `<flat-hyphenated-name>` is the src path with the layer prefix stripped and `/` replaced by `-`. Examples from the existing manifest:
 
 - `internal/controller/handler/README.md` → `docs/portal/guides/controller-handler.md`
-- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added)
+- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
 - `internal/controller/README.md` → `docs/portal/guides/controller.md`
 
 If a group's dsts deviate from this pattern, follow that group's actual convention. Some groups use bespoke names (e.g., `database/dml/README.md` → `sqlc-query-guide.md`); do not try to mechanically rename — show the convention literally.

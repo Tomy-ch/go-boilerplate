@@ -64,7 +64,7 @@
 
 以下は、悪意ある公開が実際に取ってきた形である。これらを名指しで探すこと。「妥当に見えるか」で流し読みした差分は何も捕まえない。
 
-- **install / lifecycle フック**の追加・改変——npm の `preinstall` / `install` / `postinstall`、`action.yml` への `run:` 追加、`go:generate` ディレクティブ。誰のレビューよりも先に実行されるコード。
+- **install / lifecycle フック**の追加・改変——npm の `preinstall` / `install` / `postinstall`、`action.yml` への `run:` 追加、`go:generate` ディレクティブ。誰のレビューよりも先に実行されるコード。 <!-- skill-lint-ignore -->
 - **資格情報・秘密へのアクセス**——`process.env`、`~/.npmrc`、`~/.aws`、`~/.docker/config.json`、`GITHUB_TOKEN`、`ACTIONS_RUNTIME_TOKEN`、SSH 鍵、keychain、runner のメモリ。
 - **新規の外向き通信**。とくに生 IP、URL 短縮、paste サービス、webhook の受け皿、プロジェクト自身のインフラと無関係なドメイン。
 - **難読化**——他では可読なコードを配っているパッケージ内の packed / minified ソース、長い base64 / hex リテラル、`eval` / `new Function` / `Function(atob(...))`、文字列配列デコーダ、build tag や不自然なプラットフォーム判定の裏に隠れたコード。

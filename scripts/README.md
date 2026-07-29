@@ -16,6 +16,7 @@ scripts/
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
 ├── make_help.mjs                # Generate Make target help output
 ├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
+├── skill-lint.mjs              # Validate .claude/** skill / agent definitions against reality
 ├── genctxkey/                  # Context key code generator (Go)
 ├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)
 ├── pin-images/                 # Pin Dockerfile `FROM` base images to digests (Go)
@@ -44,6 +45,28 @@ scripts/
 |Script|Description|Invoked By|
 |---|---|---|
 |`mermaid-lint.mjs`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
+|`skill-lint.mjs`|Check the skill / agent definitions under `.claude/**` semantically: frontmatter (`name` matches the directory / file name, `name` + `description` present), translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`), and reference existence (every `` `make <target>` `` resolves against `Makefile` / `.makefiles/**`, every repo-root-relative path in inline code exists). Dependency-free ESM. Fills the gap that a skill definition is an agent instruction sheet whose prose nothing else checks against reality. See [Skill Lint](#skill-lint) for scope and the ignore directive.|`make md-lint` / `make md-skill-lint`|
+
+#### Skill Lint
+
+`skill-lint.mjs` only asserts what can be derived mechanically from the Makefile target list, the
+filesystem, and heading extraction — it never judges wording. Reference checks read **inline code
+spans outside fenced blocks** (a fence is an example or a sample output, so it guarantees nothing).
+
+A path reference is checked only when it is unambiguously a path: its first segment is an existing
+repo-root entry, and it either ends with `/` or has a dotted basename. That deliberately leaves Go
+import paths (`database/sql`), package-qualified symbols (`pkg/ptr.Copy`), ellipses
+(`internal/controller/handler/...`), and context-relative filenames (`SKILL.md`) unchecked — none of
+them resolve to a unique path. `<placeholder>` / `*` / `**` / `{a,b}` are resolved as patterns, and a
+path is also tried relative to the referencing file so a skill can point at its own bundled
+`scripts/`.
+
+For a reference that is intentionally absent — a hypothetical example, an optional location, a file
+that lives in the counterpart AI tool's repository — put the ignore directive anywhere on that line:
+
+```markdown
+- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
+```
 
 ### Versioning
 

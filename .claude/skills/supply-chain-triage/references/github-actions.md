@@ -100,7 +100,7 @@ Three action shapes, three places the payload lives:
 
   A large `dist+` against a zero or near-zero `src+` is the shape to escalate on.
 
-- **Composite action** (`runs.using: composite`): read every added `run:` step in `action.yml`.
+- **Composite action** (`runs.using: composite`): read every added `run:` step in `action.yml`. <!-- skill-lint-ignore -->
   A new shell step is arbitrary code execution with the job's credentials.
 
 - **Docker action** (`runs.using: docker`): a changed `image:` or `Dockerfile` moves the analysis to
