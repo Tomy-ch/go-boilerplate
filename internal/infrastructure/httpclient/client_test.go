@@ -885,5 +885,39 @@ func Test_client_Do_Timeout(t *testing.T) {
 			// （上限は per-attempt の 10 倍・overall の半分未満に取り、負荷変動に耐える）。
 			assert.Less(t, elapsed, 2*time.Second)
 		})
+
+		t.Run("overallタイムアウト超過はper-attempt発火前にErrUnavailableを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// overall タイムアウトでリクエスト context がキャンセルされるまでブロックするサーバ。
+			var hits atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				hits.Add(1)
+				<-r.Context().Done()
+			}))
+			t.Cleanup(srv.Close)
+
+			profile := httpclient.DefaultProfile()
+			// per-attempt ケースの対称形。overall は接続確立に十分な余裕を持たせ（短すぎるとサーバ到達前に
+			// 発火し hits=0 でフレークする）、per-attempt とは大きく離して overall 単独の打ち切りを
+			// 経過時間で分離検証する。MaxAttempts=1 により retry 経路（sleeper / budget / breaker /
+			// 注入 clock 基準の canRetryWithin）は非関与で、時間要素は overall の ctx タイマーだけになる。
+			profile.OverallTimeout = 200 * time.Millisecond
+			profile.PerAttemptTimeout = 5 * time.Second
+			profile.MaxAttempts = 1
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"slow": profile})
+
+			client := newClient(t, registry)
+			start := time.Now()
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "slow", srv.URL))
+			elapsed := time.Since(start)
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, resp)
+			assert.Equal(t, int32(1), hits.Load())
+			// overall(200ms) が打ち切り要因であることを、per-attempt(5s) より大幅に短い経過時間で確認する
+			// （上限は overall の 10 倍・per-attempt の半分未満に取り、負荷変動に耐える）。
+			assert.Less(t, elapsed, 2*time.Second)
+		})
 	})
 }
