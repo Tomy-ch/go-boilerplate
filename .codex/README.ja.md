@@ -33,6 +33,18 @@ mise install        # リポジトリで固定したツールチェーンを導�
 
 MCP サーバー、個人のモデル設定、アカウント固有の plugin は、利用者の Codex 設定に置きます。すべての信頼した clone が必要とし、かつ秘密情報やマシン固有の値を含まない場合に限り、プロジェクトレベルの integration を追加します。
 
+### 推奨する外部スキル
+
+本リポジトリは `graphify`（`/graphify`）を公式に推奨します。何をするツールかは [`.claude/README.md`](../.claude/README.md) を参照してください。user スコープ（`~/.codex/skills/graphify/`）へ入るため、信頼した clone には含まれません。
+
+Codex と Claude Code の両方を 1 つの bootstrap で導入し、バージョンは `mise.toml` の pin を読みます:
+
+```bash
+bash .claude/scripts/bootstrap-external-skills.sh
+```
+
+スクリプトが `.claude/` にあるのは、本リポジトリがエージェント用スクリプトをそこへ置いているだけの理由で、対象は全アシスタントです。運用上の注意（グラフの除外対象、ローカル完結のコマンドと LLM API を呼ぶコマンドの区別、uninstall の消し残り）は [`.claude/README.md`](../.claude/README.md) に、バージョン昇格の手続きは [`docs/design/security.md`](../docs/design/security.md) にあります。
+
 ## 規約
 
 - **英語が正典です。** スキルと設定の本文は英語で記述します。実行時にユーザーへ見せる出力は、`AGENTS.md` に従い既定で日本語です。

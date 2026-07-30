@@ -185,6 +185,43 @@ freezes the dependency where it is, so when the pinned version later gets its ow
 pin keeps forcing the now-vulnerable one. Every override is meant to be reclaimed once the parent
 ships a release that pulls the fix natively.
 
+### PyPI
+
+Python tools enter through `mise.toml`'s `pipx:` backend, so they are pinned exactly and their
+version sits in the same SSOT as every other tool. There is no lockfile and no resolver-side
+freshness control, which puts PyPI where Actions and images already are: the window is enforced by
+whoever edits the pin.
+
+**The window is 7 days**, derived the way npm's is — PyPI detects and yanks a malicious publish
+quickly, so the interval to sit out is short. A bump therefore takes the newest release already
+aged past the window, not the newest release. When a pin deliberately trails it says so in a
+comment; that convention is shared across the ecosystems, and `mise.toml`'s `graphifyy` line is
+the PyPI instance of it.
+
+Two properties make freshness sharper here than for a library:
+
+- **A tool runs with the developer's privileges**, not inside the service. A compromised release
+  executes on a workstation that has repo write access and whatever credentials the shell holds.
+- **Cadence can be high enough that the newest version is never aged.** `graphifyy` published 198
+  releases in its first 117 days, so its pin trails by design; the comment saying so is the steady
+  state rather than a one-off note.
+
+Discharging the window early follows the general rule above — answer the four questions with
+`/supply-chain-triage` instead of counting days. A tool that ships an **agent skill** adds one
+question a library does not have: **what it sends off the machine, and on which commands.** Which
+of `graphifyy`'s commands stay local and which reach an API is recorded in
+[`.claude/README.md`](../../.claude/README.md), which also documents the local subset as the
+default path. Its installer additionally writes user-scope agent config (`~/.claude/skills/`,
+`~/.codex/skills/`, `~/.claude/CLAUDE.md`) — outside the repo, and therefore outside every gate
+described here.
+
+The same tool also ships subcommands that write **project** scope: `graphify claude install`
+rewrites `CLAUDE.md`, `graphify codex install` rewrites `AGENTS.md`, and `graphify hook install`
+installs git hooks and a merge driver. A skill an agent can invoke therefore has a documented path
+to edit the very files that define what that agent may do, which is why those forms sit in
+`settings.json`'s `deny` list rather than in prose alone. When a bump changes what the tool writes,
+that list is part of the review.
+
 ## Application runtime
 
 The controls above protect what enters the repository. These protect what the running service

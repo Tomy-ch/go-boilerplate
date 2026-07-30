@@ -41,6 +41,53 @@ bash .claude/scripts/bootstrap-plugins.sh
 
 Newly enabled plugins load on the **next** Claude Code session.
 
+## First-time setup: recommended external skills
+
+An **external skill** is a third-party skill that is not a marketplace plugin, so the plugin
+bootstrap cannot install it. This repo officially recommends one:
+
+- `graphify` (`/graphify`) — parses the repo with tree-sitter into a queryable knowledge graph
+  under `graphify-out/`, then answers structural questions (`query` / `affected` / `god-nodes`)
+  from the graph instead of from repeated greps.
+
+Install it for every assistant this repo supports (Claude Code + Codex CLI) with the idempotent
+bootstrap:
+
+```bash
+bash .claude/scripts/bootstrap-external-skills.sh
+```
+
+Three properties differ from the plugins above and are worth knowing before running it:
+
+- **User scope, not project scope.** The skill is written to `~/.claude/skills/graphify/` (and
+  `~/.codex/skills/graphify/`), so a trusted clone does *not* carry it — every machine runs the
+  bootstrap once. The version is pinned at project scope in `mise.toml`, and the script reads that
+  pin rather than choosing one.
+- **The installer also writes `~/.claude/CLAUDE.md`** (user-global memory) to register the
+  `/graphify` trigger. It does not touch this repository's `CLAUDE.md`.
+- **`graphify uninstall` leaves the Codex copy behind** — remove
+  `~/.codex/skills/graphify/` by hand. `--purge` additionally deletes `graphify-out/`.
+
+Install only through `install --platform <name>`, which is what the bootstrap runs. The
+similarly named `<name> install` subcommands are a different thing: `graphify claude install`
+writes this repository's `CLAUDE.md`, `graphify codex install` (also `opencode` / `aider` /
+`kilo`) writes `AGENTS.md`, and `graphify hook install` adds git hooks and a merge driver — all
+project scope, and `AGENTS.md` / `CLAUDE.md` are hard-protected by `AGENTS.md`. Those forms are
+in `settings.json`'s `deny` list so an agent reading `graphify --help` cannot reach them.
+
+The graph is a derived artifact and is gitignored, so build it locally. `update` and the query
+commands are AST-only and need no API key; the docs / PDF / image extraction, `--mode deep`
+inference, `--wiki`, and community *naming* call an LLM API and send content off the machine, so
+keep those opt-in.
+
+```bash
+mise exec "pipx:graphifyy[sql]" -- graphify update . --no-cluster
+```
+
+What the graph excludes (committed generated artifacts, Japanese mirrors, vendored code) is
+declared in `.graphifyignore`. Changing it requires a full re-extraction — an incremental `update`
+is fail-closed and keeps the now-excluded nodes.
+
 ## Conventions
 
 - **English is canonical.** Skill/README bodies are written in imperative English; the paired

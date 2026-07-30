@@ -48,6 +48,24 @@ MCP servers, personal model preferences, and account-specific plugins belong in 
 configuration. Add a project-level integration only when every trusted clone needs it and its setup
 contains no secret or machine-specific value.
 
+### Recommended external skills
+
+This repo officially recommends `graphify` (`/graphify`); see
+[`.claude/README.md`](../.claude/README.md) for what it does. It installs into user scope
+(`~/.codex/skills/graphify/`), so a trusted clone does not carry it.
+
+One bootstrap covers both Codex and Claude Code, and reads the pinned version from `mise.toml`:
+
+```bash
+bash .claude/scripts/bootstrap-external-skills.sh
+```
+
+The script lives under `.claude/` only because that is where this repo keeps agent-tooling scripts;
+it installs for every supported assistant. Operational notes — what the graph excludes, which
+commands stay local versus call an LLM API, and the uninstall caveat — are in
+[`.claude/README.md`](../.claude/README.md); the version-bump procedure is in
+[`docs/design/security.md`](../docs/design/security.md).
+
 ## Conventions
 
 - **English is canonical.** Skill and configuration bodies are written in English. User-visible

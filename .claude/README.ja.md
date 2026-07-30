@@ -41,6 +41,50 @@ bash .claude/scripts/bootstrap-plugins.sh
 
 新たに有効化したプラグインは **次の** Claude Code セッションで読み込まれます。
 
+## 初回セットアップ: 推奨する外部スキル
+
+**外部スキル**は marketplace プラグインではないサードパーティ製 skill で、プラグインの bootstrap では
+入りません。本リポジトリが公式に推奨するのは 1 つです:
+
+- `graphify`（`/graphify`）— tree-sitter でリポジトリを解析して `graphify-out/` に知識グラフを作り、
+  grep の繰り返しではなくグラフに対して構造の問い合わせ（`query` / `affected` / `god-nodes`）を行います。
+
+本リポジトリが対象とするアシスタント（Claude Code + Codex CLI）の両方へ、冪等な bootstrap で入れます:
+
+```bash
+bash .claude/scripts/bootstrap-external-skills.sh
+```
+
+上のプラグインと異なる性質が 3 つあり、実行前に知っておく価値があります:
+
+- **project スコープではなく user スコープ。** skill は `~/.claude/skills/graphify/`（および
+  `~/.codex/skills/graphify/`）へ書かれるため、信頼済みの clone には**入らず**、マシンごとに一度
+  bootstrap を実行します。バージョンは project スコープの `mise.toml` に固定し、スクリプトは自分で
+  選ばずその pin を読みます。
+- **インストーラは `~/.claude/CLAUDE.md`（user global のメモリ）も書き換え**、`/graphify` の
+  トリガーを登録します。本リポジトリの `CLAUDE.md` には触りません。
+- **`graphify uninstall` は Codex 側の複製を消し残します** — `~/.codex/skills/graphify/` は手で
+  削除します。`--purge` を付けると `graphify-out/` も削除されます。
+
+インストールは bootstrap が実行する `install --platform <名前>` だけを使います。名前の似た
+`<名前> install` は別物で、`graphify claude install` は**本リポジトリの `CLAUDE.md`** を、
+`graphify codex install`（`opencode` / `aider` / `kilo` も同様）は `AGENTS.md` を書き換え、
+`graphify hook install` は git hook と merge driver を追加します。いずれも project スコープで、
+`AGENTS.md` / `CLAUDE.md` は `AGENTS.md` が hard-protected と定めている対象です。これらの形は
+`settings.json` の `deny` に入れており、`graphify --help` を読んだエージェントが到達できません。
+
+グラフは派生物なので gitignore してあり、手元で生成します。`update` と問い合わせ系のコマンドは
+AST のみで API キーを要しません。docs / PDF / 画像の抽出、`--mode deep` の推論、`--wiki`、
+コミュニティの**命名**は LLM API を呼び、内容がマシン外へ出るため opt-in に留めます。
+
+```bash
+mise exec "pipx:graphifyy[sql]" -- graphify update . --no-cluster
+```
+
+グラフから除外する対象（追跡下の生成物、日本語ミラー、ベンダリング）は `.graphifyignore` で
+宣言します。変更した場合は全再抽出が必要です — 差分 `update` は fail-closed で、除外済みの
+ノードを保持します。
+
 ## 規約
 
 - **英語が canonical。** skill / README 本文は命令形の英語で書き、対になる `*.ja.md` は `canonicalize-doc`
