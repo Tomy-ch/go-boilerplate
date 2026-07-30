@@ -6,6 +6,8 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      - '.makefiles/security/zizmor.mk'
+      - 'mise.toml'
   push:
     branches:
       - develop
@@ -16,6 +18,8 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      - '.makefiles/security/zizmor.mk'
+      - 'mise.toml'
   schedule:
     - cron: '0 8 * * 1'
   workflow_dispatch:
@@ -73,8 +77,13 @@ jobs:
       #   - The gate/PR comment is limited to high severity, so CI fails on
       #     high-signal findings only. Exceptions live in .github/zizmor.yml.
       #
+      # Both passes go through make so the gate definition lives in one place and
+      # cannot drift from the pre-commit hook (.makefiles/security/zizmor.mk).
+      # -s keeps make from echoing the recipe line into the SARIF document.
+      #
       # GH_TOKEN enables the online audits (unpinned / stale / archived action
-      # lookups), which need API access.
+      # lookups), which need API access. The hook runs --offline and therefore
+      # covers the offline audits only.
       - name: Run zizmor
         id: zizmor
         shell: bash
@@ -84,11 +93,10 @@ jobs:
           set -uo pipefail
           set +e
 
-          mise exec -- zizmor --format sarif --no-progress . > zizmor.sarif
+          make -s actions-zizmor-sarif-ci > zizmor.sarif
           sarif_code=$?
 
-          # -q keeps the per-file INFO lines out of the PR comment body.
-          mise exec -- zizmor -q --format plain --no-progress --min-severity high . 2>&1 | tee zizmor.log
+          make -s actions-zizmor-gate-ci 2>&1 | tee zizmor.log
           code=${PIPESTATUS[0]}
 
           set -e
