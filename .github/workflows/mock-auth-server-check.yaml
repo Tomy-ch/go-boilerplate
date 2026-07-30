@@ -16,6 +16,7 @@ concurrency:
 jobs:
   mock-auth-server-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     defaults:

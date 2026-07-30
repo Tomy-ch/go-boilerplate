@@ -19,6 +19,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Harden the runner
@@ -39,6 +40,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Only this job talks to the Pages deployment API: `pages: write` creates the
     # deployment and `id-token: write` mints the OIDC token actions/deploy-pages
     # uses to prove its origin. The build job needs neither.

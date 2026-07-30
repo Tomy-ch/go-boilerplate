@@ -36,6 +36,7 @@ concurrency:
 jobs:
   trivy-fs:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Job-scoped rather than workflow-scoped: once this file gained a second job,
     # zizmor's excessive-permissions audit rates a workflow-level pull-requests:
     # write as overly broad, because it would then also cover jobs that never
@@ -162,6 +163,7 @@ jobs:
   # with hundreds of alerts that nobody has agreed are problems yet.
   trivy-license:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write

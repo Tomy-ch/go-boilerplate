@@ -32,6 +32,7 @@ concurrency:
 jobs:
   lockfile-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
