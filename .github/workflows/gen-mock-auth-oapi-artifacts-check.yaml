@@ -139,7 +139,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-mock-auth-oapi-artifacts-filelist -->'
-          title: ${{ steps.comment.outputs.title }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ Generated Mock-Auth OpenAPI Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-mock-auth-oapi-comment.md
 
       - name: Fail if diff exists

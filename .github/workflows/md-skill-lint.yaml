@@ -84,7 +84,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- md-skill-lint-result -->'
-          title: ${{ steps.skill-lint.outputs.title }}
+          title: "${{ steps.skill-lint.outputs.title || '## ⚠️ Skill Definition Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/skill-lint.log
           details-summary: 'skill-lint log'
 

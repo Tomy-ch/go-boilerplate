@@ -69,7 +69,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- pin-actions-result -->'
-          title: ${{ steps.pin.outputs.title }}
+          title: "${{ steps.pin.outputs.title || '## ⚠️ Pin Actions Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/pin-actions.log
           details-summary: 'pin-actions log'
 

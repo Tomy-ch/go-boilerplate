@@ -133,7 +133,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- zizmor-result -->'
-          title: ${{ steps.zizmor.outputs.title }}
+          title: "${{ steps.zizmor.outputs.title || '## ⚠️ Actions Static Analysis: CUT OFF (no result produced)' }}"
           body-file: zizmor.log
           details-summary: 'zizmor log'
 

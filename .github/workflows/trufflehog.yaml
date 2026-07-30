@@ -16,7 +16,7 @@ concurrency:
 jobs:
   trufflehog:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
@@ -132,7 +132,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trufflehog-result -->'
-          title: ${{ steps.trufflehog.outputs.title }}
+          title: "${{ steps.trufflehog.outputs.title || '## ⚠️ Secret Scan (TruffleHog): CUT OFF (no result produced)' }}"
           body-file: trufflehog-summary.md
           details-summary: '📄 Summary'
 

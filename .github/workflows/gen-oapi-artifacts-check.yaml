@@ -138,7 +138,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-oapi-artifacts-filelist -->'
-          title: ${{ steps.comment.outputs.title }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ Generated OpenAPI Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-oapi-comment.md
 
       - name: Fail if diff exists

@@ -137,7 +137,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-fs-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Dependency Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-fs-summary.md
           details-summary: '📄 Summary'
 
@@ -256,7 +256,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-license-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ License Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-license-summary.md
           details-summary: '📄 Summary'
 

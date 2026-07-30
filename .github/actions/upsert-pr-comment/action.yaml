@@ -50,20 +50,21 @@ runs:
             core.setFailed('Not a PR context');
             return;
           }
-          // A job cut off by a timeout, a cancellation or a runner failure can stop before the
-          // step that writes the body file runs, so a missing file is the normal shape of the
-          // very case this comment has to stay visible for. Failing the step instead would leave
-          // the pull request with no trace of the cut-off at all, which is exactly what the
-          // `always()` guard on every calling step exists to prevent. The cost is that a
-          // miswired path surfaces as a cut-off comment on a green run rather than as a step
-          // failure; that is loud enough to catch, and silence on a cut-off is not.
+          // A cut-off job can stop before the step that writes the body file runs, so a missing
+          // file is the normal shape of the very case this comment has to stay visible for.
+          // Failing the step instead would leave the pull request with no trace of the cut-off at
+          // all, which is exactly what the `always()` guard on every calling step exists to
+          // prevent. The cost is that a miswired path surfaces as a cut-off notice on a green run
+          // rather than as a step failure; that is loud enough to catch, and silence is not.
+          // A step that was cut off *while* writing the file leaves one behind, so absence is not
+          // the whole test — the caller's `title` carries the other half (see below).
           const cutOff = !fs.existsSync(bodyFile);
           if (cutOff) {
             core.warning(`${bodyFile} not found; reporting the job as cut off`);
           }
 
           let content = cutOff
-            ? `The job was cut off before it wrote \`${bodyFile}\`, so there is no result to report. See the run log for how far it got.`
+            ? `No result was produced: the job did not reach the step that writes \`${bodyFile}\`. See the run log for how far it got.`
             : fs.readFileSync(bodyFile, 'utf8').trimEnd();
           if (content.length > maxLength) {
             content = content.slice(0, maxLength) + '\n... (truncated)';
@@ -71,10 +72,12 @@ runs:
 
           // With no body there is nothing the caller's heading can still be describing, so the
           // cut-off heading replaces it rather than filling in for a missing one — a literal
-          // title like "Trivy Image Scan" over a cut-off notice reads as a scan that ran.
-          // Folding that one line behind a details block would hide the only thing left to say.
+          // title like "Trivy Image Scan" over a cut-off notice reads as a scan that ran. The
+          // wording names no cause: a body can also be missing because an earlier step failed
+          // outright, and only the run log distinguishes that from a timeout. Folding one line
+          // behind a details block would hide the only thing left to say.
           const heading = cutOff
-            ? `## ⚠️ ${context.workflow}: CUT OFF (job cancelled or timed out)`
+            ? '## ⚠️ CUT OFF (no result produced)'
             : title;
           const summary = cutOff ? '' : detailsSummary;
 

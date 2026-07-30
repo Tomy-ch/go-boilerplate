@@ -135,7 +135,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- npm-cooldown-result -->'
-          title: ${{ steps.audit.outputs.title }}
+          title: "${{ steps.audit.outputs.title || '## ⚠️ npm Cooldown Audit: CUT OFF (no result produced)' }}"
           body-file: npm-cooldown-summary.md
           details-summary: '📄 Summary'
 

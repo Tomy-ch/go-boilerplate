@@ -92,7 +92,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- migration-check-result -->'
-          title: ${{ steps.migration.outputs.title }}
+          title: "${{ steps.migration.outputs.title || '## ⚠️ Migration Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/migration_result.txt
           details-summary: 'migration check log'
 

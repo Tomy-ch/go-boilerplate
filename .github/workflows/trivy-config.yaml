@@ -128,7 +128,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-config-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Config Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-config-summary.md
           details-summary: '📄 Summary'
 

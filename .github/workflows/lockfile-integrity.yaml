@@ -113,7 +113,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- lockfile-integrity-result -->'
-          title: ${{ steps.lint.outputs.title }}
+          title: "${{ steps.lint.outputs.title || '## ⚠️ Lockfile Integrity: CUT OFF (no result produced)' }}"
           body-file: lockfile-lint.log
           details-summary: 'lockfile-lint log'
 

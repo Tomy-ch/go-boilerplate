@@ -82,6 +82,7 @@ jobs:
           upload-artifact: true
 
       - name: Summarize SBOM (Markdown)
+        id: sbom
         run: |
           set -euo pipefail
           FILE=sbom-spdx.json
@@ -138,6 +139,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sbom-summary-spdx -->'
           body-file: sbom-summary.md
+          # Negated on purpose: `cond && '' || X` always yields X, since an empty string is falsy.
+          # The heading has to sit in the truthy branch, so the cut-off case is what gets tested.
+          title: "${{ steps.sbom.outcome != 'success' && '## ⚠️ Image Scan (SBOM): CUT OFF (no result produced)' || '' }}"
 
       - name: Upload SBOM summary artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -161,6 +165,7 @@ jobs:
       # Scan flags live in .makefiles/security/trivy.mk, same as the filesystem
       # scans. -s keeps make from echoing the recipe into the output file.
       - name: Trivy image scan
+        id: trivy
         env:
           IMAGE: ${{ steps.meta.outputs.image }}
         run: make -s trivy-image-ci TRIVY_IMAGE="${IMAGE}" TRIVY_FORMAT=table > trivy-image-scan.txt
@@ -193,7 +198,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-image-scan -->'
           body-file: trivy-image-scan.txt
-          title: '## Trivy Image Scan (table)'
+          title: "${{ steps.trivy.outcome == 'success' && '## Trivy Image Scan (table)' || '## ⚠️ Image Scan (Trivy): CUT OFF (no result produced)' }}"
           details-summary: 'Image Scan Results'
 
       # On PRs this blocks promotion; on the weekly schedule it surfaces newly published fixable

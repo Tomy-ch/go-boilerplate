@@ -133,7 +133,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- osv-scanner-result -->'
-          title: ${{ steps.scan.outputs.title }}
+          title: "${{ steps.scan.outputs.title || '## ⚠️ OSV Scan: CUT OFF (no result produced)' }}"
           body-file: osv-scanner-summary.md
           details-summary: '📄 Summary'
 
@@ -312,7 +312,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- osv-diff-result -->'
-          title: ${{ steps.diff.outputs.title }}
+          title: "${{ steps.diff.outputs.title || '## ⚠️ OSV Diff: CUT OFF (no result produced)' }}"
           body-file: osv-diff-summary.md
           details-summary: '📄 Summary'
 

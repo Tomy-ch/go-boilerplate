@@ -109,7 +109,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-fs-release-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Release Dependency Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-fs-release-summary.md
           details-summary: '📄 Summary'
 

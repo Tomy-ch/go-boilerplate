@@ -163,7 +163,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sast-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ SAST: CUT OFF (no result produced)' }}"
           body-file: opengrep-summary.md
           details-summary: '📄 Summary'
 

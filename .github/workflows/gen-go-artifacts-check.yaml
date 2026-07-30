@@ -141,7 +141,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-go-artifacts-filelist -->'
-          title: ${{ steps.comment.outputs.title }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ Generated Go Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-go-comment.md
 
       - name: Fail if diff exists
