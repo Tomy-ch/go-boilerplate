@@ -176,6 +176,7 @@ powering this session (see the environment/system prompt) so triggering matches 
   validation with this environment as the source. Pass the transfer contract to the receiving
   environment's `manage-skill`. When this invocation is itself the receiving child operation, do
   not invoke `sync-ai` again.
-- `make md-skill-lint` passes. It enforces the previous item's existence half — a skill present in
-  only one environment fails. To declare one deliberately platform-only, follow the Skill Lint
-  section of `scripts/README.md`.
+- `make md-skill-lint` passes. It mechanically enforces the existence aspect of the preceding
+  `sync-ai` requirement: a skill present in only one environment fails. To declare one deliberately
+  platform-only, follow the [Skill Lint section](../../../scripts/README.md#skill-lint) of
+  `scripts/README.md`.
