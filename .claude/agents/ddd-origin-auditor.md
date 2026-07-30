@@ -56,7 +56,7 @@ Read these at the start of every run. Do not rely on a remembered version of any
 | --- | --- |
 | `.agents/ddd-audit/pattern-ledger.yaml` | your pattern's current entry + the `corpus` glob list |
 | the corpus files | layer 2 — the repository's interpretation, wherever it lives |
-| `docs/adr/README.md` | how this repo classifies decision vs rule vs inventory (tells you which doc *should* hold an interpretation) |
+| `docs/adr/README.md` | how this repo classifies decision vs rule vs inventory (tells you which doc _should_ hold an interpretation) |
 
 Only the Evans definition itself comes from your own knowledge — and that is exactly why the next
 section exists.
