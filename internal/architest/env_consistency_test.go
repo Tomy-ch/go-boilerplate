@@ -240,21 +240,26 @@ func TestEnvRequiredKeyPresencePolicy(t *testing.T) {
 			"%s が envValueFiles に無く、不在を許す判定が空振りする", file)
 	}
 
+	required := make([]string, 0, len(spec))
 	for _, key := range slices.Sorted(maps.Keys(spec)) {
 		// 表に行が無いキーは TestEnvReadmeExamples が落とすため、ここでは宣言を読めないものとして飛ばします。
 		row, ok := rows[key]
 		if !ok {
 			continue
 		}
-
-		injected := strings.Contains(row.notes, deployInjectedMarker)
 		if spec[key].hasDefault {
-			assert.Falsef(t, injected,
+			assert.Falsef(t, strings.Contains(row.notes, deployInjectedMarker),
 				"%s は envDefault を持ち全 env ファイルでの不在が正常なので、%q は宣言として意味を成さない",
 				key, deployInjectedMarker)
 			continue
 		}
+		required = append(required, key)
+	}
+	require.NotEmpty(t, required,
+		"envDefault を持たないキーが 1 件も無く、記載の検証が空振りする")
 
+	for _, key := range required {
+		injected := strings.Contains(rows[key].notes, deployInjectedMarker)
 		for _, file := range envValueFiles {
 			_, declared := values[key][file]
 			if injected && slices.Contains(envDeployFiles, file) {
@@ -418,11 +423,12 @@ func TestEnvReadmeTagNames(t *testing.T) {
 
 // TestEnvReadmeTypeVocabulary は、変数表の Type 列が Conventions の定める語彙だけで構成されて
 // いること、およびその語彙が正本・対訳・テスト宣言の三者で一致することを検証します。
-// Type 列が閉じた語彙であって初めて、そこに書かれた値が型を指していると機械的に言えます。語彙外の
-// 値は、未定義の型を書いたか、Markdown のセル分割が崩れて別の列を Type として読んでいるかの
-// どちらかで、後者は表の見た目では気づけません。語彙の宣言を README とテストの双方に置くのは、
-// 語彙を増やす変更に両方を触らせ、README だけを広げて検証が黙って緩むのを防ぐためです。
-// 対訳の列挙まで見るのは、型名がコードの識別子で訳されず、正本と同じ語が並ぶためです。
+// 見るのは語彙に属するかどうかだけで、その語が当のキーの Go フィールド型と対応しているかまでは
+// 見ません。語彙外の値は、未定義の型を書いたか、Markdown のセル分割が崩れて別の列を Type として
+// 読んでいるかのどちらかで、後者は表の見た目では気づけません。語彙の宣言を README とテストの双方に
+// 置くのは、語彙を増やす変更に両方を触らせ、README だけを広げて検証が黙って緩むのを防ぐためです。
+// 対訳の列挙まで見るのは、語彙が Conventions 自身の定める固定のトークンであって訳す対象ではなく、
+// 対訳にも正本と同じ綴りで並ぶためです。
 func TestEnvReadmeTypeVocabulary(t *testing.T) {
 	t.Parallel()
 

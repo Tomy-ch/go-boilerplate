@@ -10,7 +10,7 @@
 - 型欄は `internal/config/` で読み込まれる Go 型に対応。下記の語彙は閉じており、`TestEnvReadmeTypeVocabulary`（`internal/architest`）が双方向に検証する。語彙に無い型欄はビルドを落とし（Markdown のセルがずれた行も同時に落ちる）、この列挙自体も同テストが宣言する語彙と一致していなければならない。型を増やすときは両方を触ることになる:
   - `string` → `string`、`int` → `int`、`bool` → `bool`
   - `duration` → `time.Duration`（`time.ParseDuration` でパース、例: `500ms`, `1h30m`）
-  - `csv` → `[]string`（`,` 区切り、空白トリム後分割）
+  - `csv` → `,` 区切りのスライス（空白トリム後分割）。`[]string`、要素が数値なら `[]int`（`OBS_TARGET_STATUS_CODES`）
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
 - 例欄には**ローカル実効値**を書く。`env/.env` に記載があればその値、無ければ `internal/config/envspec.go` の `envDefault` タグの値。単一の値であって選択肢の集合ではないため、取りうる値は説明欄に書く（`APP_MODE` / `OBS_TRACES_EXPORTER` の書き方に倣う）。唯一の例外は備考に **Example is a placeholder** とある行で、実値を書くとシークレットスキャナが `env/.env` で既に追跡している資格情報を二重に持つことになる場合に限る（ローカルスタックが実際に使う値は `env/.env` を参照）。**Secret management required** であること自体は例外ではない — ローカルの `.env` にどのみち平文で入っている以上、それらの行も実値を載せる。この規約は `TestEnvReadmeExamples`（`internal/architest`）が全変数について機械検証するため、`env/.env` や `envDefault` タグの値だけを変えて表を直し忘れるとビルドが落ちる
