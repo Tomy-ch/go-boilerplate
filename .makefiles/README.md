@@ -392,10 +392,12 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make actions-lint` | Lints workflow / composite-action definitions with actionlint, then checks that no job posting a PR comment receives a secret. | The one lint group whose stages span two tool-runners: it invokes `make actions-actionlint-ci` in `go_tool_runner` and `make actions-comment-secret-lint-ci` in `node_tool_runner`, rather than one `-ci` target in one container, because actionlint is a Go binary and the secret check a node script. |
+| `make actions-lint` | Lints workflow definitions with actionlint, shellchecks the `run:` scripts of every composite action, then checks that no job posting a PR comment receives a secret. | The one lint group whose stages span two tool-runners: it invokes `make actions-actionlint-ci` and `make actions-shellcheck-ci` in `go_tool_runner` and `make actions-comment-secret-lint-ci` in `node_tool_runner`, rather than one `-ci` target in one container, because actionlint / the shellcheck runner are Go tools and the secret check a node script. |
 | `make actions-comment-secret-lint` | Runs the PR-comment secret check alone. | Invokes `make actions-comment-secret-lint-ci` inside the `node_tool_runner` container. |
-| `make actions-lint-ci` | Runs both stages directly. | CI target. |
+| `make actions-shellcheck` | Extracts `runs.steps[].run` from every composite action under `.github/actions/**` and checks each `bash` / `sh` script with `shellcheck`; a step on any other shell is reported as skipped (`scripts/actions-shellcheck`). | Invokes `make actions-shellcheck-ci` inside the `go_tool_runner` container. Covers what `actionlint` cannot see: it only walks `.github/workflows`, and an `action.yaml` handed to it directly is parsed as a workflow. |
+| `make actions-lint-ci` | Runs all three stages directly. | CI target. |
 | `make actions-actionlint-ci` | Runs `actionlint` directly. | CI target. |
+| `make actions-shellcheck-ci` | Runs `scripts/actions-shellcheck` directly. | CI target. |
 | `make actions-comment-secret-lint-ci` | Fails when a job using `upsert-pr-comment` is passed a secret other than `GITHUB_TOKEN` (`scripts/pr-comment-secret-lint.mjs`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
 | `make pin-actions-resolve` | Resolves each `uses:` tag to its commit SHA and updates the `.github/actions-pin.toml` lockfile. | Quarantines refs younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14; 0 disables). |
 | `make pin-actions-apply` | Pins `uses:` to `@<sha> # <tag>` from the lockfile. | None |
