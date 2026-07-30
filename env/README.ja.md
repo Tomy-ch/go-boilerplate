@@ -40,7 +40,7 @@
 1. `env/.env` と全ての `env/.env.<env>` — `OS_TZ` のエントリ（セッションの timezone。`required` なので 5 ファイル全てに存在する）。
 2. `docker-compose.yaml` の `database` サービス — `TZ` と `PGTZ`。`TZ` は `initdb` 時にしか効かないため、volume を作り直すまで既存 volume は旧クラスタ既定を保持する。その手順と worktree 特有の注意は `docs/maintenance/db-worktree-pool.md` が所有する。`PGTZ` は `psql` セッション単位で効くため、古い volume でも即座に反映される。
 3. `.github/workflows/` 配下で DB を用意する各 workflow の PostgreSQL サービス定義 — `TZ` と `PGTZ`。GitHub Actions はサービス定義を workflow 間で共有できないため、値は全ファイルに重複して書かれている。列挙は変数ではなくサービスの image で行うこと（`grep -rl 'image: postgres' .github/workflows/`）— `PGTZ` で grep すると既に設定済みの workflow しか見つからず、まだ設定が要る workflow を黙って取りこぼす。
-4. `docker/server/Dockerfile` — `runtime` / `tooling` の両ステージの `ENV TZ`。両方を挙げているのは別のイメージだからである。`runtime` はデプロイ先が動かすもの、`tooling` は `make serve` が動かすものである。デプロイ先は再ビルドせず実行時に値を上書きできるため、`ENV` は唯一の供給元ではなく既定値として扱うこと。
+4. `docker/server/Dockerfile` — `runtime` / `tooling` の両ステージの `ENV TZ`。両方を挙げているのは別のイメージだからである。`runtime` はデプロイ先が動かすもの、`tooling` は `make serve` が動かすものである。デプロイ先は再ビルドせず実行時に値を上書きできるため、`ENV` は唯一の供給元ではなく既定値として扱うこと。`ENV` はビルド時に焼かれるため、項目 2 の `initdb` と同じく、変更前にビルドしたイメージは旧い値を保持する。`make serve` はキャッシュ済みの `gobp-wt-<N>-api_server` イメージを再利用し、コンテナが旧いタイムゾーンを返したまま成功を報告するので、変更を反映するには `make serve-build` を実行すること。
 5. 値をリテラルで固定しているテストの期待値 — `internal/config/config_testing_mock.go` の `expectedOSTimeZone`、および `internal/di/job_test.go` / `internal/di/server/hook/http_server_hook_test.go` / `internal/infrastructure/rdb/driver/config_test.go` のアサーション。
 
 `internal/architest` は伝播漏れで失敗するため、本番の時刻を読んでではなく `make test` で捕まる。値が食い違う場合は 1 から 4 の項目について `TestTimezoneMechanismValuesMatch` が、宣言そのものが消えた場合は `TestPostgresProvisionersDeclareTimeZone` / `TestDockerfileTzdataStagesDeclareTimeZone` が失敗する。項目 5 は機械検証していない。陳腐化したリテラルは、それを固定しているテストのアサーションが落ちる形で表面化する。
