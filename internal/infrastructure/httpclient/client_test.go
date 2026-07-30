@@ -902,8 +902,7 @@ func Test_client_Do_Timeout(t *testing.T) {
 			profile := httpclient.DefaultProfile()
 			// per-attempt ケースの対称形。overall は接続確立に十分な余裕を持たせ（短すぎるとサーバ到達前に
 			// 発火し hits=0 でフレークする）、per-attempt とは大きく離して overall 単独の打ち切りを
-			// 経過時間で分離検証する。MaxAttempts=1 により retry 経路（sleeper / budget / breaker /
-			// 注入 clock 基準の canRetryWithin）は非関与で、時間要素は overall の ctx タイマーだけになる。
+			// 経過時間で分離検証する（MaxAttempts=1 のため retry は発生しない）。
 			profile.OverallTimeout = 200 * time.Millisecond
 			profile.PerAttemptTimeout = 5 * time.Second
 			profile.MaxAttempts = 1
