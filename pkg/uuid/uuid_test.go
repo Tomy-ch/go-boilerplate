@@ -119,18 +119,26 @@ func TestParse(t *testing.T) {
 	uuid, err := New()
 	require.NoError(t, err)
 
-	t.Run("正常系/問題なく解析ができると、uuidが得られる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		actual, err := Parse(uuid.String())
-		require.NoError(t, err)
-		assert.True(t, uuid.Equal(actual))
+
+		t.Run("問題なく解析ができると、uuidが得られる", func(t *testing.T) {
+			t.Parallel()
+			actual, err := Parse(uuid.String())
+			require.NoError(t, err)
+			assert.True(t, uuid.Equal(actual))
+		})
 	})
 
-	t.Run("異常系/無効な文字列を解析するとエラーが返る", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		actual, err := Parse("invalid-uuid")
-		assert.Empty(t, actual)
-		require.Error(t, err)
+
+		t.Run("無効な文字列を解析するとエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			actual, err := Parse("invalid-uuid")
+			assert.Empty(t, actual)
+			require.Error(t, err)
+		})
 	})
 }
 

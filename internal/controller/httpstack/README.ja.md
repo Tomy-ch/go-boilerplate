@@ -85,7 +85,7 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 
 ## テスト戦略
 
-各サブパッケージは **単体のミドルウェアとして独立に**テストする。登録順序と組み上がったチェーンは `internal/di/server/extension` の担当であり、合成後のスタックは `internal/integration` の HTTP 境界テストで検証する — どちらもここで再テストしないこと。
+各サブパッケージは **単一のユニットとして独立に**テストする。`next` を包むものは単体のミドルウェアとして、それ以外は *ミドルウェアではないサブパッケージ* の類型に従う。登録順序と組み上がったチェーンは `internal/di/server/extension` の担当であり、合成後のスタックは `internal/integration` の HTTP 境界テストで検証する — どちらもここで再テストしないこと。
 
 ### 実体を使う対象とモックにする対象
 
@@ -98,6 +98,16 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 |パッケージが宣言する協調オブジェクトのインターフェース（例: `redmetrics.Recorder`）|`*/mock/` の生成モック|
 
 戻り値のエラーを検証するときはミドルウェアを直接駆動し（`Middleware(...)(next)(c)`）、実際に書き出されたレスポンス（status / ヘッダ / ボディ）を検証するときは `e.ServeHTTP` 経由で駆動する — レスポンスが commit されるのは実 Echo 経路のみ。oapi-codegen の `StrictMiddleware` スロットに入るミドルウェア（`idempotency`）は `e.Use` ではなくそのシグネチャ経由で駆動する。
+
+### ミドルウェアではないサブパッケージ
+
+境界はどの表に載っているかではなく `next` を取るかどうかにある。`oapi` は *OpenAPI 連携* 表に置かれているが `echo.MiddlewareFunc` を返して同じ `e.Use` チェーンに乗るため、以下のミドルウェア向け観点がそのまま適用される。Echo や oapi-codegen が持つスロットに収まるサブパッケージ — `ops` / `oapi/skipper` / `oapi/auth` / `oapi/validator` / `basicauth` / `ipextractor` — は `next` を持たない。素通しと `Before` / `After` の観点は適用されず、*実体を使う対象とモックにする対象* の表は適用される。次の 3 類型に分かれる。
+
+- **述語・抽出関数**（`ops` / `oapi/skipper` / `basicauth` / `ipextractor`）— 構築した関数値を直接呼んで判定結果を検証する。`echo.New()` + `httptest` は関数が受け取る `*echo.Context` を組む材料にすぎない。観点は判定境界の両側であり、正常経路では通らないが呼び出し側からは到達しうる端（末尾スラッシュ・空の資格情報・ルート不一致のパス）を含める。加えて *環境による分岐* に挙げた config 選択の各モードを網羅する。
+- **アダプタのスロットに入る関数**（`oapi/auth`）— Echo ではなくアダプタが要求するシグネチャ（`openapi3filter.AuthenticationFunc`）で駆動する。結果は戻り値ではなくリクエストコンテキストへの副作用として現れることが多いため、書き込まれた値を検証する。拒否経路では「エラーが返った」ではなくエラーの同一性を検証する。
+- **spec プロバイダ**（`oapi/validator`）— 返る `*openapi3.T` そのものが検証対象であり、テストは spec に対する契約になる（例: 公開許可リスト外の全 operation が認証必須の `security` を宣言している）。production 側に対応関数を持たないのは設計どおり。
+
+`errorhandler` は `e.HTTPErrorHandler` を差し替えるもので観点がパッケージ固有になるため、自前の *テスト戦略* 節を持つ — [`errorhandler/README.ja.md`](errorhandler/README.ja.md) を参照。
 
 ### 全ミドルウェア共通で押さえる観点
 

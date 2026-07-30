@@ -111,6 +111,47 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*product.Produ
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
+// LockByID は、GetProductByIDForUpdate で対象行を悲観ロック（FOR UPDATE）したうえで取得します。
+// 未存在は NotFound を返します。
+func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	row, err := db.GetProductByIDForUpdate(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
+}
+
+// UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。
+func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	lockVersion, err := db.UpdateProductStock(ctx, &gen.UpdateProductStockParams{
+		Quantity: int32(p.Quantity()), //nolint:gosec // G115: quantity は int32 の DB 列に収まる範囲で検証済み
+		ID:       p.ID(),
+		//nolint:gosec // G115: version は int32 の DB 列由来であり範囲に収まります
+		CurrentVersion: int32(p.Version()),
+	})
+	if err != nil {
+		// 対象行なしは、取得後に他トランザクションが更新しバージョンが進んだことを意味します
+		// （存在は同一トランザクション内の取得で確認済みです）。
+		// 行ロックを取っている経路では起こりませんが、ロックなしで呼ばれた場合に在庫を上書きしないための
+		// 二重防御として衝突を返します。
+		if pgerror.IsNoRows(err) {
+			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
+		}
+		return 0, pgerror.NormalizeError(err)
+	}
+
+	return int(lockVersion), nil
+}
+
 // Create は、商品を新規登録します。
 func (r *repository) Create(ctx context.Context, p *product.Product) error {
 	ctx, endSpan := r.tracer.Start(ctx)
@@ -167,6 +208,20 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 	}
 
 	return int(lockVersion), nil
+}
+
+// Count は、products の COUNT 集計から登録商品の総数と、published_at が非 NULL の公開済み件数を返します。
+func (r *repository) Count(ctx context.Context) (product.Counts, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	row, err := db.CountProducts(ctx)
+	if err != nil {
+		return product.Counts{}, pgerror.NormalizeError(err)
+	}
+
+	return product.Counts{Total: row.TotalCount, Published: row.PublishedCount}, nil
 }
 
 // intPtrToInt32Ptr は、ドメインの *int を sqlc の *int32 へ変換します（nil はそのまま nil）。

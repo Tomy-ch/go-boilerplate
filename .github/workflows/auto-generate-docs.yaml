@@ -31,6 +31,8 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres-password
           POSTGRES_DB: test
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
         ports:
           - "5432:5432"
         options: >-

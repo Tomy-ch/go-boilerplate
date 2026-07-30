@@ -20,7 +20,7 @@ Prefer the make wrappers (`make slot-acquire` / `slot-free` / `slot-release` / `
 ## Design
 
 - **Lease** (`Registry`) — a lock directory per slot under `~/.cache/gobp-db-pool` (override `GOBP_DB_POOL_DIR`). `os.Mkdir` gives atomic fresh acquisition; stale reclaim atomically re-claims via `rename`, and a `flock` scan lock serialises the whole acquire loop so two worktrees can never double-lease the same slot. Symlinked pool dirs are refused (pre-attack guard); meta files are `0600`.
-- **DB admin** (`DBAdmin` / `PgxAdmin`) — `CREATE DATABASE` + `pg_trgm` extension + `Asia/Tokyo` timezone on each `wt<N>` DB, and a `pg_stat_activity` connection check used when deciding whether a stale slot is safe to reclaim.
+- **DB admin** (`DBAdmin` / `PgxAdmin`) — `CREATE DATABASE` + `pg_trgm` extension on each `wt<N>` DB, and a `pg_stat_activity` connection check used when deciding whether a stale slot is safe to reclaim. Timezone is not among them: the `database` container's `TZ` is the cluster default, which a database created later inherits.
 - **In-use detection** — before reclaiming a stale slot, both its app project (`gobp-wt-N`) is checked for running containers and its databases for live connections. A connection pool empties while idle, so the connection check alone misses a worktree that is still serving; the container check alone misses host-run `go test`.
 - **Compose** (`Compose` / `ExecCompose`) — brings up the shared DB in the fixed infra project (`--wait`) and, on release, tears down the slot's app project (`gobp-wt-N`) via `docker-compose.yaml` + `docker-compose.attach.yaml`.
 - **Slot file** — `acquire` writes `.gobp-db-slot`, a gitignored `KEY=VALUE` file that `make` `-include`s to override the defaults in `.makefiles/docker/compose.mk`: `SLOT`, `DB_NAME_LOCAL` / `DB_NAME_TEST`, the slot-relative host ports `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` / `DLV_HOST_PORT` / `PPROF_HOST_PORT`, `COMPOSE_PROJECT_NAME` (the shared infra project) and `SERVE_PROJECT` (`gobp-wt-N`, the app-layer project).
@@ -32,7 +32,7 @@ Prefer the make wrappers (`make slot-acquire` / `slot-free` / `slot-release` / `
 |---|---|---|
 |`GOBP_DB_POOL_DIR`|`~/.cache/gobp-db-pool`|Lease registry location|
 |`GOBP_DB_SHARED_PROJECT`|`gobp-shared`|Fixed compose project of the shared infra|
-|`GOBP_DB_POOL_MAX`|`8`|Number of slots (max parallel worktrees)|
+|`GOBP_DB_POOL_MAX`|`12`|Number of slots (max parallel worktrees)|
 |`GOBP_DB_POOL_TTL`|`1800`|Heartbeat staleness grace (seconds)|
 |`GOBP_API_POOL_BASE` / `GOBP_MOCK_AUTH_POOL_BASE`|`8080` / `4000`|Base host ports of the API / mock auth server (slot N = base + N)|
 |`GOBP_DLV_POOL_BASE` / `GOBP_PPROF_POOL_BASE`|`2345` / `6060`|Base host ports of the dlv debug / pprof endpoints (slot N = base + N)|

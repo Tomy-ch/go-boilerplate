@@ -2,15 +2,19 @@ package product
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/domain/kernel/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/infrastructure/system"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
@@ -855,6 +859,308 @@ func Test_repository_Update(t *testing.T) {
 	})
 }
 
+func Test_repository_LockByID(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	unpublishedID := "cccccccc-0000-4000-8000-000000000001"
+	versionedID := "cccccccc-0000-4000-8000-000000000002"
+	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非公開(published_atがNULL)の商品も取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+"-LOCK-UNPUB", nil, 1999, statusInStock, categoryElectronics, nil)
+
+				got, err := repo.LockByID(ctx, mustParse(t, unpublishedID))
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, mustParse(t, unpublishedID), got.ID())
+				assert.Equal(t, probeKeyword+"-LOCK-UNPUB", got.Name())
+				assert.Nil(t, got.PublishedAt())
+				assert.Equal(t, "在庫あり", got.Status().Name())
+				assert.Equal(t, "電子機器", got.Category().Name())
+			})
+		})
+
+		t.Run("DBに永続化されたversionがエンティティに反映される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, versionedID, probeKeyword+"-LOCK-VER", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+				// 初期値(1)との区別が付くよう、DB 側のバージョンだけを進めた行を用意する。
+				_, err := drv.Exec(ctx, "UPDATE products SET lock_version = 4 WHERE id = $1", mustParse(t, versionedID))
+				require.NoError(t, err)
+
+				got, err := repo.LockByID(ctx, mustParse(t, versionedID))
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, 4, got.Version())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未存在のIDはNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := repo.LockByID(ctx, uuid.NewTestFromSalt(t, "lock_by_id_missing"))
+				assert.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+			})
+		})
+	})
+}
+
+func Test_repository_UpdateStock(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	adjustedID := "dddddddd-0000-4000-8000-000000000001"
+	conflictID := "dddddddd-0000-4000-8000-000000000002"
+	untouchedID := "dddddddd-0000-4000-8000-000000000003"
+	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("在庫を更新すると採番後のversionを返しDBの行が更新される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, adjustedID, probeKeyword+"-STOCK", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+
+				entity, err := repo.LockByID(ctx, mustParse(t, adjustedID))
+				require.NoError(t, err)
+				before := entity.Quantity()
+				require.Equal(t, 1, entity.Version())
+				require.NoError(t, entity.AdjustStock(7))
+
+				version, err := repo.UpdateStock(ctx, entity)
+				require.NoError(t, err)
+				assert.Equal(t, 2, version)
+
+				got, err := repo.FindByID(ctx, mustParse(t, adjustedID))
+				require.NoError(t, err)
+				assert.Equal(t, before+7, got.Quantity())
+				assert.Equal(t, 2, got.Version())
+			})
+		})
+
+		t.Run("在庫以外の列は更新されない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(
+					ctx,
+					t,
+					drv,
+					untouchedID,
+					probeKeyword+"-STOCK-KEEP",
+					ptr.To("据え置きの説明"),
+					1999,
+					statusInStock,
+					categoryElectronics,
+					ptr.To(base),
+				)
+
+				entity, err := repo.LockByID(ctx, mustParse(t, untouchedID))
+				require.NoError(t, err)
+				require.NoError(t, entity.AdjustStock(1))
+				_, err = repo.UpdateStock(ctx, entity)
+				require.NoError(t, err)
+
+				got, err := repo.FindByID(ctx, mustParse(t, untouchedID))
+				require.NoError(t, err)
+				assert.Equal(t, probeKeyword+"-STOCK-KEEP", got.Name())
+				require.NotNil(t, got.Description())
+				assert.Equal(t, "据え置きの説明", *got.Description())
+				assert.Equal(t, "1999", got.Price().String())
+				assert.Equal(t, mustParse(t, statusInStock), got.Status().ID())
+				require.NotNil(t, got.PublishedAt())
+				assert.True(t, base.Equal(*got.PublishedAt()))
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("古いversionを持つエンティティの在庫更新はErrVersionConflictを返しDBの行を変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, conflictID, probeKeyword+"-STOCK-CONFLICT", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+
+				stale, err := repo.FindByID(ctx, mustParse(t, conflictID))
+				require.NoError(t, err)
+				require.NoError(t, stale.AdjustStock(3))
+
+				// 取得後に他トランザクションが更新し、DB 側のバージョンだけが進んだ状態を再現する。
+				_, err = drv.Exec(ctx,
+					"UPDATE products SET quantity = quantity + 100, lock_version = lock_version + 1 WHERE id = $1",
+					mustParse(t, conflictID),
+				)
+				require.NoError(t, err)
+
+				version, err := repo.UpdateStock(ctx, stale)
+				require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+				assert.Equal(t, 0, version)
+
+				got, err := repo.FindByID(ctx, mustParse(t, conflictID))
+				require.NoError(t, err)
+				assert.Equal(t, 110, got.Quantity())
+				assert.Equal(t, 2, got.Version())
+			})
+		})
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化され衝突とは区別される", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuid.NewTestFromSalt(t, "update_stock_canceled_id")
+			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
+			require.NoError(t, err)
+			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
+			require.NoError(t, err)
+			price, err := money.NewPrice(decimal.FromInt(100))
+			require.NoError(t, err)
+			entity, err := domainproduct.New(id, domainproduct.Attributes{
+				Name:     "キャンセル商品",
+				Price:    price,
+				Quantity: 1,
+				Status:   statusRef,
+				Category: categoryRef,
+			})
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			version, err := repo.UpdateStock(ctx, entity)
+			assert.Equal(t, 0, version)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			require.NotErrorIs(t, err, domainproduct.ErrVersionConflict)
+		})
+	})
+}
+
+//nolint:paralleltest // 両 tx から見える commit 済みの行を使うため非並列
+func Test_repository_UpdateStock_concurrentRowLock(t *testing.T) {
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	repo := &repository{tracer: lt, db: testDB}
+
+	dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+	txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
+
+	// commit する専用行のため、rollback 前提の他テストが使う ID・keyword とは重ならない値にする。
+	productID := mustParse(t, "9a592000-0000-4000-8000-000000000001")
+
+	t.Cleanup(func() {
+		_ = txm.Do(context.Background(), func(ctx context.Context) error {
+			_, err := driver.New(ctx, testDB).Exec(ctx, "DELETE FROM products WHERE id = $1", productID)
+			return err
+		})
+	})
+
+	// 両 tx から見える commit 済みの在庫 10・バージョン 1 の行を用意する。
+	require.NoError(t, txm.Do(context.Background(), func(ctx context.Context) error {
+		_, err := driver.New(ctx, testDB).Exec(ctx, "DELETE FROM products WHERE id = $1", productID)
+		require.NoError(t, err)
+		insertProduct(ctx, t, driver.New(ctx, testDB), productID.String(), "STOCKCONCURRENT592",
+			nil, 1999, statusInStock, categoryElectronics, nil)
+		return nil
+	}))
+
+	holderLocked := make(chan struct{})
+	release := make(chan struct{})
+	holderDone := make(chan error, 1)
+
+	var once sync.Once
+	rel := func() { once.Do(func() { close(release) }) }
+	t.Cleanup(rel) // 失敗時も保持側 goroutine をリークさせない
+
+	go func() {
+		holderDone <- txm.Do(context.Background(), func(ctx context.Context) error {
+			entity, err := repo.LockByID(ctx, productID)
+			if err != nil {
+				return err
+			}
+			close(holderLocked)
+			<-release
+			if err = entity.AdjustStock(5); err != nil {
+				return err
+			}
+			_, err = repo.UpdateStock(ctx, entity)
+			return err
+		})
+	}()
+
+	select {
+	case <-holderLocked:
+	case err := <-holderDone:
+		require.NoError(t, err, "保持側 tx がロック取得前に失敗した")
+		return
+	}
+
+	timeoutErr := txm.Do(context.Background(), func(ctx context.Context) error {
+		if _, err := driver.New(ctx, testDB).Exec(ctx, "SET LOCAL lock_timeout = '50ms'"); err != nil {
+			return err
+		}
+		_, err := repo.LockByID(ctx, productID)
+		return err
+	})
+	require.ErrorIs(t, timeoutErr, apperror.ErrUnavailable, "ロック待ちのタイムアウト(55P03)は待てば解消しうる一時障害として扱う")
+	require.NotErrorIs(t, timeoutErr, apperror.ErrInternal, "サーバ内部エラー(500)として露出させない")
+
+	contenderDone := make(chan error, 1)
+	go func() {
+		contenderDone <- txm.Do(context.Background(), func(ctx context.Context) error {
+			entity, err := repo.LockByID(ctx, productID)
+			if err != nil {
+				return err
+			}
+			assert.Equal(t, 15, entity.Quantity(), "後続 tx は先行 tx の更新後の在庫を読む")
+			if err = entity.AdjustStock(-3); err != nil {
+				return err
+			}
+			_, err = repo.UpdateStock(ctx, entity)
+			return err
+		})
+	}()
+
+	rel()
+	require.NoError(t, <-holderDone)
+	require.NoError(t, <-contenderDone)
+
+	got, err := repo.FindByID(context.Background(), productID)
+	require.NoError(t, err)
+	assert.Equal(t, 12, got.Quantity(), "両 tx の増減が失われず合成される")
+	assert.Equal(t, 3, got.Version(), "在庫更新のたびにバージョンが進む")
+}
+
 func Test_intPtrToInt32Ptr(t *testing.T) {
 	t.Parallel()
 
@@ -937,6 +1243,55 @@ func Test_rowsToProducts(t *testing.T) {
 
 			require.Error(t, err)
 			assert.Nil(t, got)
+		})
+	})
+}
+
+func Test_repository_Count(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開商品は総数と公開数の双方を増やし非公開は総数のみを増やす", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				before, err := repo.Count(ctx)
+				require.NoError(t, err)
+
+				publishedAt := time.Now()
+				insertProduct(ctx, t, drv, "e1000000-0000-4000-8000-000000000001", "集計対象の公開商品",
+					nil, 100, statusInStock, categoryElectronics, &publishedAt)
+				insertProduct(ctx, t, drv, "e1000000-0000-4000-8000-000000000002", "集計対象の非公開商品",
+					nil, 100, statusInStock, categoryElectronics, nil)
+
+				after, err := repo.Count(ctx)
+				require.NoError(t, err)
+
+				assert.Equal(t, before.Total+2, after.Total)
+				assert.Equal(t, before.Published+1, after.Published)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			got, err := repo.Count(ctx)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Zero(t, got.Total)
 		})
 	})
 }

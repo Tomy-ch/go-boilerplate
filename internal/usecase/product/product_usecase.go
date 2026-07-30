@@ -78,6 +78,11 @@ type Usecase interface {
 	// UpdateProduct は、admin が商品の属性を部分更新し、更新後の商品を返します。未認証は 401、非 admin は 403、
 	// 未存在は 404、読み込み後に他者が更新していた場合は 409、業務不変条件違反は 422 を返します。
 	UpdateProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams) (ProductView, error)
+	// UpdateProductStock は、admin が商品の在庫を増減し、更新後の商品を返します。未認証は 401、非 admin は 403、
+	// 未存在は 404、取得後に他者が更新していた場合は 409、増減後の在庫が保持できる範囲を外れる場合は 422 を返します。
+	UpdateProductStock(
+		ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductStockParams,
+	) (ProductView, error)
 }
 
 // usecase は、Usecase の実装です。

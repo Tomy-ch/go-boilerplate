@@ -174,6 +174,27 @@ func Test_authorizer_Authorize(t *testing.T) {
 			require.ErrorIs(t, err, authzbd.ErrForbidden)
 		})
 
+		t.Run("非管理者かつリソースに所有者が設定されていない場合、ErrForbidden を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			subjectID := uuid.NewTestFromSalt(t, "no_owner_subject")
+
+			roleRepo := mock_user.NewMockRoleRepository(ctrl)
+			roleRepo.EXPECT().FindRolesByUserID(gomock.Any(), subjectID).
+				Return(user.Roles{newRole(t, user.RoleCodeGeneral, "一般")}, nil)
+
+			auth := New(roleRepo)
+			err := auth.Authorize(
+				context.Background(),
+				newAuthn(t, subjectID),
+				authzbd.ActionUserGet,
+				authzbd.NewResource("user", nil),
+			)
+			require.ErrorIs(t, err, authzbd.ErrForbidden)
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
 		t.Run("ロール取得がエラーの場合、そのエラーを伝播する", func(t *testing.T) {
 			t.Parallel()
 

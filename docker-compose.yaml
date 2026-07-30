@@ -48,6 +48,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres-password
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      # DB 側の timezone はこの 2 変数だけが供給する（CI の postgres service と同じ機構）。
+      # TZ は initdb 時にしか効かないため、既存 volume では作り直しまで反映されない。
+      # 機構と変更手順は env/README.md の Changing the Timezone を参照。
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
     user: postgres
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", "local"]

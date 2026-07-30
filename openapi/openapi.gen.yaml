@@ -80,6 +80,8 @@ tags:
     description: 購入の支払い（本人のみ・状態機械/不正遷移 409・擬似決済）。
   - name: v1/purchases/detail/ship
     description: 購入の発送（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
+  - name: v1/dashboard
+    description: admin ダッシュボードの横断集計（admin のみ・backend 合成/1画面1API・非 admin は 403）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -750,6 +752,58 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/{productId}/stock:
+    patch:
+      operationId: PatchProductsStock
+      tags:
+        - v1/products/detail
+      summary: 商品在庫の補充
+      description: |
+        指定された UUID に該当する商品の在庫を増減します。認証必須で、管理者（admin）のみ実行できます（非 admin は 403）。
+        delta は符号付きで、正の値で補充、負の値で差し引きます。
+        増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は 422 で拒否します。
+        在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+        購入による在庫減算と同じ行を更新するため、更新は直列化されます。競合はサーバ側で解消され、
+        解消できなかった場合のみ一時的な失敗として 503 を返します（クライアントは時間を空けて再送できます）。
+        直列化を経ても取得後に他の更新が入ったことを検出した場合は 409 を返します。
+        409 は同じ内容の再送では解消しないため、最新を取得し直してからやり直してください。
+        在庫更新はバージョンを進めるため、更新前のバージョンを持つ部分更新（PATCH /v1/products/{productId}）は
+        409 で拒否されます。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductStockPatchRequest'
+      responses:
+        '200':
+          description: 商品在庫の補充に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/products/ranking:
     get:
       operationId: GetProductsRanking
@@ -1138,6 +1192,49 @@ paths:
           $ref: '#/components/responses/Conflict409'
         '500':
           $ref: '#/components/responses/InternalServerError500'
+  /v1/dashboard/summary:
+    get:
+      operationId: GetDashboardSummary
+      tags:
+        - v1/dashboard
+      summary: admin ダッシュボードの横断集計の取得
+      description: |
+        購入・商品を横断した集計を 1 レスポンスに合成して返します（1 画面 1 API）。認証必須で、管理者（admin）のみ
+        実行できます。管理者でなければ 403 で拒否します。数値カード向けの集計値のみを返し、一覧・時系列は含みません。
+        集計対象期間は period で切り替えます。today / month の境界はサーバのタイムゾーン（Asia/Tokyo）基準で
+        算出し、range は from / to の暦日をいずれも含む期間として集計します。range で from / to が欠落している
+        場合、および to が from より前の場合は 400 を返します。
+        売上（salesAmount / salesCount）はキャンセル済みの購入を除外し未払いの購入を含みます。一方
+        purchaseStatusCounts はキャンセル済みも 1 ステータスとして含むため、両者の母集団は一致しません。
+        商品数は期間に依存しないマスタの現在値です。金額は USD セント単位の整数です。
+        対象データがない場合はエラーではなくゼロ値（各件数・金額 0・内訳は空配列）を返します。
+        本 op 自体は DB の集計 SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DashboardPeriodParam'
+        - $ref: '#/components/parameters/DashboardFromParam'
+        - $ref: '#/components/parameters/DashboardToParam'
+      responses:
+        '200':
+          description: admin ダッシュボードの横断集計の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
 components:
   parameters:
     PageParam:
@@ -1286,6 +1383,44 @@ components:
         enum:
           - JPY
         example: JPY
+    DashboardPeriodParam:
+      name: period
+      in: query
+      description: |
+        集計対象期間の区分。`today`（既定）は今日、`month` は今月、`range` は `from` / `to` で指定した期間を集計します。
+        `today` / `month` の境界はサーバのタイムゾーン（Asia/Tokyo）基準で算出します。
+        `range` を指定した場合は `from` / `to` が必須で、欠落時は 400 を返します。
+      required: false
+      schema:
+        type: string
+        enum:
+          - today
+          - month
+          - range
+        default: today
+        example: today
+    DashboardFromParam:
+      name: from
+      in: query
+      description: |
+        集計対象期間の開始日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+        日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。
+      required: false
+      schema:
+        type: string
+        format: date
+        example: '2026-07-01'
+    DashboardToParam:
+      name: to
+      in: query
+      description: |
+        集計対象期間の終了日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+        日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。`from` より前の日付を指定した場合は 400 を返します。
+      required: false
+      schema:
+        type: string
+        format: date
+        example: '2026-07-31'
     ProductIdParam:
       name: productId
       in: path
@@ -2209,6 +2344,66 @@ components:
             購入がない場合は空配列です。
           items:
             $ref: '#/components/schemas/PurchaseStatusBreakdownResponse'
+    DashboardPurchaseStatusCountResponse:
+      type: object
+      description: |
+        購入ステータス別件数の 1 要素。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+      required:
+        - status
+        - count
+      properties:
+        status:
+          $ref: '#/components/schemas/PurchaseStatusRef'
+        count:
+          type: integer
+          format: int64
+          description: 集計対象期間に注文された、当該ステータスの購入件数
+          example: 4
+    DashboardSummaryResponse:
+      description: |
+        admin ダッシュボードの横断集計レスポンススキーマ。売上・購入ステータス別件数・商品数を 1 レスポンスに
+        合成して返し、購入・商品の一覧そのものは含みません。金額は USD セント単位の整数です。
+        指標ごとに集計母集団が異なるため、各プロパティの description を参照してください。
+      type: object
+      required:
+        - salesAmount
+        - salesCount
+        - purchaseStatusCounts
+        - totalProductCount
+        - publishedProductCount
+      properties:
+        salesAmount:
+          type: integer
+          format: int64
+          description: |
+            集計対象期間の売上合計。USD セント単位の整数です。キャンセル済みの購入は除外し、未払いの購入は含みます
+            （商品売上ランキングと同一の母集団）。対象がない場合は 0 です。
+          example: 2118000
+        salesCount:
+          type: integer
+          format: int64
+          description: |
+            salesAmount に算入した購入の件数。salesAmount と同一の母集団（キャンセル除外・未払いを含む）です。
+            キャンセルを含む purchaseStatusCounts の総和とは一致しません。対象がない場合は 0 です。
+          example: 12
+        purchaseStatusCounts:
+          type: array
+          description: |
+            集計対象期間に注文された購入のステータス別件数（購入ステータスマスタの表示順）。
+            salesAmount / salesCount とは異なりキャンセル済みも 1 ステータスとして含みます。
+            期間内に購入が出現したステータスのみを含むため、購入がない場合は空配列です。
+          items:
+            $ref: '#/components/schemas/DashboardPurchaseStatusCountResponse'
+        totalProductCount:
+          type: integer
+          format: int64
+          description: 登録済みの商品総数（未公開を含む）。マスタの現在値であり集計対象期間の影響を受けません。
+          example: 120
+        publishedProductCount:
+          type: integer
+          format: int64
+          description: 公開済みの商品数。マスタの現在値であり集計対象期間の影響を受けません。
+          example: 98
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。
@@ -2551,6 +2746,21 @@ components:
           x-go-type-import:
             path: github.com/oapi-codegen/nullable
           x-go-type-skip-optional-pointer: true
+    ProductStockPatchRequest:
+      type: object
+      description: |
+        商品在庫の補充リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+        delta は符号付きで、正の値で在庫を補充し、負の値で在庫を差し引きます。
+        増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は業務不変条件違反として 422 を返します。
+        在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+      required:
+        - delta
+      properties:
+        delta:
+          type: integer
+          format: int32
+          description: 在庫の増減量。正の値で補充、負の値で差し引きます。 増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる場合は 422 を返します。
+          example: 50
     ProductImagePostRequest:
       type: object
       description: |

@@ -1,0 +1,15 @@
+name: period
+in: query
+description: |
+  集計対象期間の区分。`today`（既定）は今日、`month` は今月、`range` は `from` / `to` で指定した期間を集計します。
+  `today` / `month` の境界はサーバのタイムゾーン（Asia/Tokyo）基準で算出します。
+  `range` を指定した場合は `from` / `to` が必須で、欠落時は 400 を返します。
+required: false
+schema:
+  type: string
+  enum:
+    - today
+    - month
+    - range
+  default: today
+  example: today

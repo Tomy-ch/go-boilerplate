@@ -78,6 +78,7 @@ The following PostgreSQL SQLSTATE values are converted into application errors.
 |42501|insufficient privilege|PermissionDenied|
 |40001|serialization failure|Unavailable|
 |40P01|deadlock detected|Unavailable|
+|55P03|lock not available (`lock_timeout` expiry)|Unavailable|
 |57014|query canceled|Unavailable|
 
 PostgreSQL errors that do not match these cases are converted into `Internal` errors.
@@ -130,7 +131,9 @@ func IsRetryableTxError(err error) bool // 40001 serialization_failure / 40P01 d
 func IsLockNotAvailable(err error) bool // 55P03 lock_not_available (lock_timeout expiry)
 ```
 
-`IsRetryableTxError` is what `driver.NewTransactionManager` uses to decide whether to retry the whole transaction.
+`IsRetryableTxError` is what `driver.NewTransactionManager` uses to decide whether to retry the whole transaction. `55P03` is normalized to `Unavailable` (see the mapping table) but is deliberately **excluded** from it: an immediate retry does not resolve a lock still held by another transaction.
+
+`IsLockNotAvailable` remains a separate predicate because a caller may need `55P03` to mean something narrower than "temporarily unavailable". `system_cqrs/idempotency` checks it **before** `NormalizeError` so a contended claim surfaces as its own `ErrLockTimeout`; every other caller gets `Unavailable` from the mapping table without writing a lock check of its own. Prefer the mapping — a per-call-site check is unreliable here, since a lock wait is not confined to queries that spell out `FOR UPDATE` (an `UPDATE` / `DELETE` against a row another transaction holds waits too).
 
 ## Error Wrapping
 

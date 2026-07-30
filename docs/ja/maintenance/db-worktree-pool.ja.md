@@ -24,7 +24,7 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   `docker-compose.attach.yaml` を重ね、共有インフラを `host.docker.internal` のホスト公開ポート経由で参照する
   （`DB_HOST` / `OBS_OTLP_ENDPOINT` / `OBJECT_STORAGE_ENDPOINT` を実行時 env で上書きする。`loader.go` は
   実行時 env を `env/.env` より優先する）。
-- **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 8 = wt1〜wt8）。
+- **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 12 = wt1〜wt12）。
   スロットを取らない checkout は既定の `local` / `test` をそのまま使うため、スロット取得は**並列作業のための
   opt-in** に留まる。
 - **実装** = ホスト実行の Go CLI `cmd/db-slot`（コアは `internal/cli/dbslot`）。リース判定・DB 作成・
@@ -55,9 +55,15 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   DB 名と同じく、この値が host 実行の `go test` に届くのは `make` 経由だけ（`make test` / `test-cached` が
   export する）。素の `go test` は `DB_NAME_TEST` も スロットの issuer も受け取らないため、DB を使うテストは
   これらのターゲットから実行すること。
-- **拡張・timezone のブートストラップ**: acquire は `wt<N>_local` / `wt<N>_test` を CREATE DATABASE
-  （存在ガード）した後、各 DB に `pg_trgm` 拡張と `Asia/Tokyo` timezone を設定する（init スクリプトが
-  `local` / `test` に施すのと同じもの。動的に作る worktree DB には明示設定が必要）。
+- **拡張のブートストラップ**: acquire は `wt<N>_local` / `wt<N>_test` を CREATE DATABASE
+  （存在ガード）した後、各 DB に `pg_trgm` 拡張を設定する（init スクリプトが `local` / `test` に施すのと
+  同じもの。動的に作る worktree DB には明示設定が必要）。timezone は DB 単位では設定しない。`database`
+  サービスの `TZ` が `initdb` 時に `postgresql.conf` へ書き込まれてクラスタ既定になり、後から作った DB も
+  それを継承するため。結果として、`TZ` を設定する前に初期化された共有 volume は旧クラスタ既定を保持し、
+  そこでリースしたスロットは `psql` でその timezone を表示する（アプリは接続ごとに DSN で timezone を
+  指定するため影響を受けない）。新しい既定を反映するには、全スロットを解放した上で volume を作り直す
+  （`docker compose -p gobp-shared down -v` → `make db-init`）。volume は全 worktree の共有物である点に
+  注意。詳細は `env/README.md` の Changing the Timezone を参照。
 - **スキーマ安全性**: acquire は取得後に `wt<N>_local` / `wt<N>_test` を drop→migrate→seed で
   自ブランチのスキーマへ作り直す。別ブランチが使ったスロットを引き継いでも安全。
 - **スキーマ生成の隔離**: `make gen-query` の `dump-schema` は共有 `local` も自 worktree DB もダンプ
@@ -121,7 +127,7 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
 | `GOBP_MOCK_AUTH_POOL_BASE` | `4000` | `MOCK_AUTH_HOST_PORT` のベース |
 | `GOBP_DLV_POOL_BASE` | `2345` | `DLV_HOST_PORT` のベース |
 | `GOBP_PPROF_POOL_BASE` | `6060` | `PPROF_HOST_PORT` のベース |
-| `GOBP_DB_POOL_MAX` | `8` | スロット数（=同時並列数の上限） |
+| `GOBP_DB_POOL_MAX` | `12` | スロット数（=同時並列数の上限） |
 | `GOBP_DB_POOL_TTL` | `1800` | stale 判定の heartbeat 猶予（秒） |
 
 ## 注意
@@ -139,5 +145,5 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   名前付きボリュームは残るためデータは失われないが、稼働中 app の接続は切れる。
 - **オブジェクトストレージは共有**: `garage` のバケットは全 checkout で共通（DB と違いスキーマを持たないため
   ブランチ間で壊れない）。ブランチ毎に隔離したい場合は `OBJECT_STORAGE_BUCKET` を分ける。
-- API 帯 8080–8087 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
+- API 帯 8080–8092 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
 - `docker/`・`internal/cli/dbslot`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。

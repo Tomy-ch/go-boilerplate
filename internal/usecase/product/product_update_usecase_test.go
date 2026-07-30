@@ -267,6 +267,28 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Equal(t, currentVersion, captured.Version())
 			assert.Equal(t, nextVersion, actual.Version)
 		})
+
+		t.Run("商品更新を所有者なしリソースとして認可する", func(t *testing.T) {
+			t.Parallel()
+
+			u, deps := newUpdateTestUsecase(t)
+			entity := newUpdateTarget(t, currentVersion)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductUpdate, authz.NewResource("product", nil)).
+				Return(nil)
+			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+			deps.repo.EXPECT().FindByID(gomock.Any(), entity.ID()).Return(entity, nil)
+
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
+
+			_, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
+				Version: currentVersion,
+				Name:    ptr.To("認可確認商品"),
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

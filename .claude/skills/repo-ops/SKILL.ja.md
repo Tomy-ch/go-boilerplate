@@ -32,6 +32,7 @@
 | golden JWKS のドリフト / mock-auth の OpenAPI が古い | §15 |
 | 特定環境向けイメージのビルド | §16 |
 | CI で `sync-versions` のドリフト | §17 |
+| 新しい worktree で air やイメージビルドが `go: inconsistent vendoring` になる（`vendor/` 未生成） | §20 |
 | どのドキュメントが答えを決めるのか分からない / `grep` が対訳・生成物に埋もれる | §0 |
 
 ## 0. 正本の見つけ方
@@ -244,6 +245,7 @@ make infra-up                     # 冪等。garage_init の終了まで待つ
 runtime イメージは、ビルド時に `--build-arg APP_ENV=<env>` で選んだ `env/.env.<env>` を1つだけ焼き込む（deploy ワークフローが注入する）。実行時 ENV で切り替える単一イメージ方式ではない。
 
 ```bash
+go mod vendor   # builder ステージは vendor モード + GOPROXY=off。省くと失敗する（§20）
 docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/Dockerfile .
 # .env.stg だけが焼き込まれたか検証する
 ```
@@ -271,6 +273,24 @@ make gen-go-code
 ## 19. `.makefiles` の DRY_RUN 規約
 
 setup / teardown 系ターゲットは `$(if $(DRY_RUN),--dry-run,)` と `[ -n "$(DRY_RUN)" ]` で dry-run を判定するため、**空でない値はすべて真**＝`DRY_RUN=0 make <target>` でも dry-run になる。実際に実行するときは変数自体を付けない。プレビューは `DRY_RUN=1 make <target>`。`setup-repo` はプレビュー不可能なため `DRY_RUN` 自体を拒否する。
+
+## 20. 新しい worktree の `go: inconsistent vendoring` — `make serve` は成功と出るが API が応答しない
+
+`vendor/` は追跡外（`.gitignore`）である——サプライチェーン上の理由は `docs/design/security.md` に記録されている——ため、新しい worktree / clone には最初から存在しない。vendor モードを強制するビルド経路はちょうど 2 つで、air のホットリロードビルド（`.air.toml` の `go build --mod=vendor`）と runtime イメージビルド（`docker/server/Dockerfile` の `go build -mod=vendor`。`GOPROXY=off` 下なので取得へフォールバックできない）。それ以外——`make test`・`make lint`・ホストの `go run`——はモジュールキャッシュから解決して緑のままなので、アプリ本体がビルドされるまで何も警告してくれない:
+
+```txt
+go: inconsistent vendoring in /app:
+        github.com/…: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt
+```
+
+`go.mod` と `vendor/modules.txt` の不一致が延々と並ぶ出力を、マージ事故や依存更新の失敗と読まないこと。通常の原因は単に `vendor/` がまだ無いだけである。なお `make serve` は成功行を出力する——`docker compose up -d` を `--wait` なしで実行するため、air のコンパイル前に戻ってくる。失敗は「API が応答しない」という形で現れ、エラーは `api_server` のログに居る。エディタの LSP も無関係なファイルにまで同じエラーを出す。
+
+```bash
+go mod vendor       # 対処はこれだけ
+make serve
+```
+
+この手順は `make tidy-lib` が所管するが、先に `go mod tidy` を走らせるため `go.mod` を書き換えうる。欠けている `vendor/` を用意するだけなら素の `go mod vendor` を選ぶ。この状態を守る仕組みは無い: フックも CI チェックも `vendor/` を検査せず（`tidy-check.yaml` に明記がある）、イメージをビルドするワークフローは先に作り直すため落ちない。依存が変わるベース取り込みの後は、自分でコマンドを再実行する。同じ罠は手動のイメージビルド（§16）にも当たる——vendor モードの `Dockerfile` を直接叩くためである。
 
 ## 制約
 

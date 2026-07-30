@@ -17,6 +17,7 @@ func ErrorHandlerModule() fx.Option {
 	return fx.Module("server.errorhandler",
 		fx.Provide(
 			provideDetailPolicy,
+			provideAllowPolicy,
 			provideErrorHandlerServeConfig,
 		),
 	)
@@ -28,16 +29,25 @@ func provideDetailPolicy(spec *openapi3.T) (errorhandler.DetailPolicy, error) {
 	return errorhandler.NewOpenAPIDetailPolicy(spec)
 }
 
+// provideAllowPolicy は、OpenAPI spec から [errorhandler.AllowPolicy] を構築して fx に提供します。
+// spec の解析に失敗した場合はエラーを返し、fx がアプリ起動を中断します。
+func provideAllowPolicy(spec *openapi3.T) (errorhandler.AllowPolicy, error) {
+	return errorhandler.NewOpenAPIAllowPolicy(spec)
+}
+
 // provideErrorHandlerServeConfig は、Error Handler のサーバー設定を提供します。
 func provideErrorHandlerServeConfig(
-	policy errorhandler.DetailPolicy,
+	detailPolicy errorhandler.DetailPolicy,
+	allowPolicy errorhandler.AllowPolicy,
 	log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig,
 ) extension.ServeCfgOut {
+	policies := errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}
+
 	return extension.ServeCfgOut{
 		SrvCfg: extension.SrvCfg{
 			Name: "errorhandler",
 			Config: func(e *echo.Echo) {
-				errorhandler.New(e, policy, log, lf, obsCfg)
+				errorhandler.New(e, policies, log, lf, obsCfg)
 			},
 		},
 	}

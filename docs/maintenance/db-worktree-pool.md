@@ -28,8 +28,8 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
   `host.docker.internal` on its host-published ports (`DB_HOST` / `OBS_OTLP_ENDPOINT` /
   `OBJECT_STORAGE_ENDPOINT` are overridden as runtime env; `loader.go` gives runtime env priority
   over `env/.env`).
-- **slot N** = the database-name pair `wt<N>_local` / `wt<N>_test` inside the shared DB (MAX 8 by
-  default = wt1–wt8). A checkout that takes no slot keeps the default `local` / `test`, so acquiring
+- **slot N** = the database-name pair `wt<N>_local` / `wt<N>_test` inside the shared DB (MAX 12 by
+  default = wt1–wt12). A checkout that takes no slot keeps the default `local` / `test`, so acquiring
   a slot stays an **opt-in for parallel work**.
 - **implementation** = the host-run Go CLI `cmd/db-slot` (core in `internal/cli/dbslot`), which owns
   lease decisions, database creation, and compose startup in a testable form. The make targets call
@@ -65,10 +65,16 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
   way, rather than pinning the default port. Like the database name, the value reaches a host-run
   `go test` only through `make` (`make test` / `test-cached` export it) — run DB-backed tests through
   those targets, since a bare `go test` gets neither `DB_NAME_TEST` nor the slot's issuer.
-- **extension / timezone bootstrap**: after `CREATE DATABASE` (guarded by an existence check) for
-  `wt<N>_local` / `wt<N>_test`, acquire sets the `pg_trgm` extension and the `Asia/Tokyo` timezone on
-  each database (the same things the init script applies to `local` / `test`; a dynamically created
-  worktree database needs them set explicitly).
+- **extension bootstrap**: after `CREATE DATABASE` (guarded by an existence check) for
+  `wt<N>_local` / `wt<N>_test`, acquire sets the `pg_trgm` extension on each database (the same thing
+  the init script applies to `local` / `test`; a dynamically created worktree database needs it set
+  explicitly). Timezone is *not* set per database: the `database` service's `TZ` is written into
+  `postgresql.conf` at `initdb` time, so it is the cluster default and a database created later
+  inherits it. The consequence is that a shared volume initialised before `TZ` was set keeps its old
+  cluster default, and a slot leased in it shows that timezone in `psql` — the application is
+  unaffected, because it sets the timezone per connection in the DSN. To pick the new default up,
+  recreate the volume (`docker compose -p gobp-shared down -v` → `make db-init`) once every slot has
+  been freed; the volume is shared by every worktree. See `env/README.md` (Changing the Timezone).
 - **schema safety**: after acquiring, acquire rebuilds `wt<N>_local` / `wt<N>_test` to the current
   branch's schema via drop → migrate → seed. Inheriting a slot another branch used is therefore safe.
 - **schema-generation isolation**: `dump-schema` (behind `make gen-query`) dumps neither the shared
@@ -135,7 +141,7 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
 | `GOBP_MOCK_AUTH_POOL_BASE` | `4000` | Base for `MOCK_AUTH_HOST_PORT` |
 | `GOBP_DLV_POOL_BASE` | `2345` | Base for `DLV_HOST_PORT` |
 | `GOBP_PPROF_POOL_BASE` | `6060` | Base for `PPROF_HOST_PORT` |
-| `GOBP_DB_POOL_MAX` | `8` | Number of slots (= the cap on concurrent parallel work) |
+| `GOBP_DB_POOL_MAX` | `12` | Number of slots (= the cap on concurrent parallel work) |
 | `GOBP_DB_POOL_TTL` | `1800` | Heartbeat grace period for the stale decision (seconds) |
 
 ## Caveats
@@ -160,6 +166,6 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   `OBJECT_STORAGE_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` changes what every other checkout authenticates
   with. Isolate by bucket, not by credential.
 - `sql_editor` / `docs_viewer` have been moved into the 7000 range so they do not collide with the
-  API band 8080–8087.
+  API band 8080–8092.
 - The wiring spans `docker/`, `internal/cli/dbslot`, and `.makefiles/`, so update this document
   whenever it changes.

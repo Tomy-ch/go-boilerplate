@@ -493,3 +493,22 @@ func Test_newTestDetailPolicy(t *testing.T) {
 		})
 	})
 }
+
+func Test_newTestAllowPolicy(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("実specからパスごとの許可メソッドを解決するポリシーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			policy := newTestAllowPolicy(t)
+
+			require.NotNil(t, policy)
+			// 常に空文字を返すスタブではなく、実 spec のメソッド情報を持つポリシーであること。
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/v1/prefectures", nil)
+			assert.Equal(t, "OPTIONS, GET", policy.Allow(req))
+		})
+	})
+}
