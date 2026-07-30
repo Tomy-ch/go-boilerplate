@@ -77,6 +77,42 @@ jobs:
           out=/tmp/sql-lint-comment.md
           : > "$out"
 
+          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, repeated
+          # because that helper only wraps a body on the details-summary path and this body stays
+          # live Markdown so the checklist and the per-category blocks render.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          # The action's length cap slices a body without regard for fences and does not re-fence on
+          # this path, so a body trimmed there loses the closing fence built here. Three logs of
+          # this size stay under the action's 45000 character default.
+          log_limit=12000
+
+          prepare_log() {
+            local src="$1" dst="$2"
+            if [ ! -f "$src" ]; then
+              echo "(log not found)" > "$dst"
+              return
+            fi
+            # iconv: head cuts on a byte boundary and the logs quote SQL carrying Japanese comments,
+            # so an incomplete trailing character would reach the comment as U+FFFD.
+            # sed: a run this long cannot come from a lint message, and a fence built to out-length
+            # one would exceed the size budget above by itself.
+            head -c "$log_limit" "$src" \
+              | iconv -f UTF-8 -t UTF-8 -c \
+              | sed -E 's/`{10,}/[long backtick run elided]/g' > "$dst"
+            if [ "$(wc -c < "$src")" -gt "$log_limit" ]; then
+              printf '\n... (log truncated)\n' >> "$dst"
+            fi
+          }
+
           category_code() {
             case "$1" in
               migrations) echo '${{ steps.lint.outputs.exit_code_migrations }}' ;;
@@ -96,12 +132,15 @@ jobs:
 
           for cat in migrations dml seed; do
             if [ "$(category_code "$cat")" = "0" ]; then icon="✅"; else icon="🚨"; fi
+            body="/tmp/sqlfluff_${cat}_body.log"
+            prepare_log "/tmp/sqlfluff_${cat}.log" "$body"
+            fence="$(fence_for "$body")"
             {
               echo "<details><summary>${icon} ${cat} log</summary>"
               echo ""
-              echo '```text'
-              cat "/tmp/sqlfluff_${cat}.log" 2>/dev/null || echo "(log not found)"
-              echo '```'
+              echo "${fence}text"
+              cat "$body"
+              echo "${fence}"
               echo "</details>"
               echo ""
             } >> "$out"
