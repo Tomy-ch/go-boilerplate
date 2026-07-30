@@ -442,7 +442,9 @@ func Test_handleHTTPError(t *testing.T) {
 			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
-			assert.NotEmpty(t, rec.Body.Bytes())
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			assert.Equal(t, response.NewHTTPErrorFromAppError(nil).Code, got["code"])
 			assert.Equal(t, 0, observed.Len())
 		})
 	})
@@ -453,7 +455,7 @@ func Test_handleHTTPError(t *testing.T) {
 		t.Run("書き込み失敗時もエラーログ出力と500セットが行われる", func(t *testing.T) {
 			t.Parallel()
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			bw := &badWriter{}
 
@@ -467,9 +469,10 @@ func Test_handleHTTPError(t *testing.T) {
 			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom2"))
 
 			assert.Equal(t, []int{http.StatusInternalServerError}, bw.wroteHeaders)
+			assert.Equal(t, 1, observed.FilterMessage("failed to write error response").Len())
 		})
 
-		t.Run("書き込み失敗時にレスポンスへ辿れず未commit扱いの場合、フォールバックの500が書かれる", func(t *testing.T) {
+		t.Run("書き込み失敗時にレスポンスへ辿れず未commit扱いの場合、JSON送出の422に続けてフォールバックの500が書かれる", func(t *testing.T) {
 			t.Parallel()
 
 			logger, observed := logging.NewObservedTestLogger(t)
@@ -481,7 +484,6 @@ func Test_handleHTTPError(t *testing.T) {
 			c := e.NewContext(req, bw)
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
-			// unwrap できない生の ResponseWriter を差し込み、responseCommitted を常に false にする。
 			c.SetResponse(bw)
 
 			handleHTTPError(
@@ -493,7 +495,6 @@ func Test_handleHTTPError(t *testing.T) {
 				xerrors.Wrap(apperror.ErrValidation, "invalid"),
 			)
 
-			// 422 は JSON 書き込みが送出したもので、後続の 500 はフォールバック行以外からは発生しない。
 			assert.Equal(t, []int{http.StatusUnprocessableEntity, http.StatusInternalServerError}, bw.wroteHeaders)
 			assert.Equal(t, 1, observed.FilterMessage("failed to write error response").Len())
 			assert.Equal(t, 0, observed.FilterMessage("errorhandler.client_error").Len())
