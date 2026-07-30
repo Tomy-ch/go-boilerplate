@@ -30,19 +30,23 @@ const (
 var (
 	// handlerImportRe は、controller.go の import 行からエイリアス（省略可）とハンドラの import path を
 	// 捕捉します。サンプル API の import 行は末尾に // sample-api:line を持つため、末尾はアンカーしません。
-	handlerImportRe = regexp.MustCompile(`^\t(?:(\w+)\s+)?"(` + regexp.QuoteMeta(handlerImportPrefix) + `[^"]*)"`)
+	// 接頭辞の直後に / を要求するのは、handler と同じ綴りで始まる兄弟パッケージを取り違えないためです。
+	handlerImportRe = regexp.MustCompile(`^\t(?:(\w+)\s+)?"(` + regexp.QuoteMeta(handlerImportPrefix) + `/[^"]*)"`)
 	// bindHandlerInvokeRe は、fx.Invoke の引数として縦に並んだ <ident>.BindHandler 行を捕捉します。
 	// gofmt は縦並びの引数に末尾カンマを強制するためカンマまで要求し、コメントアウトされた行は
 	// 行頭がタブ + \w に一致しないため拾いません。
 	bindHandlerInvokeRe = regexp.MustCompile(`^\t+(\w+)\.BindHandler,`)
+	// packageClauseRe は、gofmt 済みソースの package 宣言からパッケージ名を捕捉します。
+	packageClauseRe = regexp.MustCompile(`(?m)^package (\w+)$`)
 )
 
 // handlerTreeIndex は、ハンドラツリーの走査結果です。キーはいずれもモジュールルートからの相対
 // パッケージディレクトリで、declared は BindHandler の宣言元ファイル、generated は RegisterHandlers を
-// 持つ生成ファイルを値に取ります。
+// 持つ生成ファイル、packages は宣言元が名乗るパッケージ名を値に取ります。
 type handlerTreeIndex struct {
 	declared  map[string]string
 	generated map[string]string
+	packages  map[string]string
 }
 
 // TestBindHandlerDIParity は、ハンドラの DI 配線が漏れていないことを機械検証する。
@@ -79,12 +83,14 @@ type handlerTreeIndex struct {
 func TestBindHandlerDIParity(t *testing.T) {
 	t.Parallel()
 
+	// 走査が成立したかの確認は require、契約 3 方向の違反は assert で報告する。走査が壊れた状態の
+	// 差集合は配線漏れの一覧ではなく読み取り漏れの一覧で、そのまま出すと誤った修正を促すため。
 	index := scanHandlerTree(t)
 	require.NotEmpty(t, index.declared, "BindHandler の宣言を 1 件も検出できない（走査ルートの誤りを疑う）")
 	require.NotEmpty(t, index.generated, "RegisterHandlers を持つ生成物を 1 件も検出できない（走査ルートの誤りを疑う）")
 
 	src := readRepoFile(t, moduleRoot(t), controllerModuleFile)
-	invoked, unresolved := collectInvokedBindHandlers(src, collectHandlerImports(src))
+	invoked, unresolved := collectInvokedBindHandlers(src, collectHandlerImports(src, index.packages))
 	require.NotEmpty(t, invoked, "fx.Invoke から BindHandler を 1 件も読み取れない（列挙の書式変更を疑う）")
 	require.Empty(t, unresolved,
 		"fx.Invoke が呼ぶ BindHandler のパッケージを import から解決できない。"+
@@ -117,18 +123,33 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\tprefectureshandler \""+handlerImportPrefix+"/v1/prefectures\"", ""))
+				"\tprefectureshandler \""+handlerImportPrefix+"/v1/prefectures\"", ""), nil)
 
 			assert.Equal(t,
 				map[string]string{"prefectureshandler": handlerTreeDir + "/v1/prefectures"},
 				imports)
 		})
 
-		t.Run("エイリアス無しの import はパス最終セグメントをパッケージ名とみなす", func(t *testing.T) {
+		t.Run("エイリアス無しの import は宣言されたパッケージ名で解決する", func(t *testing.T) {
+			t.Parallel()
+
+			// ハンドラのディレクトリ名は HTTP リソース名に合わせる規約のため、パッケージ名と
+			// 食い違う（categories は package productcategories）。ディレクトリ名で代用すると
+			// 正しく配線されたハンドラを解決できず落とすため、宣言名の優先をここで固定する。
+			imports := collectHandlerImports(
+				controllerModuleSource("\t\""+handlerImportPrefix+"/v1/products/categories\"", ""),
+				map[string]string{handlerTreeDir + "/v1/products/categories": "productcategories"})
+
+			assert.Equal(t,
+				map[string]string{"productcategories": handlerTreeDir + "/v1/products/categories"},
+				imports)
+		})
+
+		t.Run("パッケージ名が未知ならパス最終セグメントで近似する", func(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\t\""+handlerImportPrefix+"/v1/users/detail\"", ""))
+				"\t\""+handlerImportPrefix+"/v1/users/detail\"", ""), nil)
 
 			assert.Equal(t, map[string]string{"detail": handlerTreeDir + "/v1/users/detail"}, imports)
 		})
@@ -137,7 +158,7 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\tdashboardhandler \""+handlerImportPrefix+"/v1/dashboard\" // sample-api:line", ""))
+				"\tdashboardhandler \""+handlerImportPrefix+"/v1/dashboard\" // sample-api:line", ""), nil)
 
 			assert.Equal(t,
 				map[string]string{"dashboardhandler": handlerTreeDir + "/v1/dashboard"},
@@ -148,9 +169,44 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\t\"go-boilerplate/internal/usecase/user\"", ""))
+				"\t\"go-boilerplate/internal/usecase/user\"", ""), nil)
 
 			assert.Empty(t, imports)
+		})
+
+		t.Run("接頭辞が同じ綴りで始まる兄弟パッケージは読み取らない", func(t *testing.T) {
+			t.Parallel()
+
+			imports := collectHandlerImports(controllerModuleSource(
+				"\t\""+handlerImportPrefix+"util\"", ""), nil)
+
+			assert.Empty(t, imports)
+		})
+	})
+}
+
+// Test_packageNameOf は、エイリアス無し import の解決に使うパッケージ名の読み取りを固定する。
+func Test_packageNameOf(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ディレクトリ名と異なるパッケージ名を読み取る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "productcategories",
+				packageNameOf("// Package productcategories は …\npackage productcategories\n"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("package 宣言が無ければ空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, packageNameOf("// package sample\n"))
 		})
 	})
 }
@@ -205,15 +261,14 @@ func Test_collectInvokedBindHandlers(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("import へ解決できない列挙を違反として報告する", func(t *testing.T) {
+		t.Run("import へ解決できない列挙を昇順に報告する", func(t *testing.T) {
 			t.Parallel()
 
 			invoked, unresolved := collectInvokedBindHandlers(
-				controllerModuleSource("", "\t\t\tunknownhandler.BindHandler,"), imports)
+				controllerModuleSource("", "\t\t\tzhandler.BindHandler,\n\t\t\tahandler.BindHandler,"), imports)
 
 			assert.Empty(t, invoked)
-			require.Len(t, unresolved, 1)
-			assert.Contains(t, unresolved[0], "unknownhandler.BindHandler")
+			assert.Equal(t, []string{"ahandler.BindHandler,", "zhandler.BindHandler,"}, unresolved)
 		})
 	})
 }
@@ -279,6 +334,7 @@ func Test_handlerTreeIndex_addFile(t *testing.T) {
 			assert.Equal(t,
 				map[string]string{handlerTreeDir + "/health": handlerTreeDir + "/health/health_handler.go"},
 				idx.declared)
+			assert.Equal(t, map[string]string{handlerTreeDir + "/health": "health"}, idx.packages)
 			assert.Empty(t, idx.generated)
 		})
 
@@ -315,6 +371,16 @@ func Test_handlerTreeIndex_addFile(t *testing.T) {
 			idx.addFile(handlerTreeDir+"/health/gen/server.gen.go", "package gen\n\ntype ServerInterface interface{}\n")
 
 			assert.Empty(t, idx.generated)
+		})
+
+		t.Run("BindHandler を宣言しない通常ファイルは取り込まない", func(t *testing.T) {
+			t.Parallel()
+
+			idx := newHandlerTreeIndex()
+			idx.addFile(handlerTreeDir+"/health/response.go", "package health\n\ntype Response struct{}\n")
+
+			assert.Empty(t, idx.declared)
+			assert.Empty(t, idx.packages)
 		})
 	})
 }
@@ -410,11 +476,16 @@ func Test_handlerTreeIndex_generatedWithoutBindHandler(t *testing.T) {
 		t.Run("生成コードを持たないハンドラは違反にならない", func(t *testing.T) {
 			t.Parallel()
 
+			// 生成物の側に実在のエントリを置く。generated が空だと走査が 0 回で終わり、
+			// declared を回す実装へ取り違えても緑のままになる。
 			idx := handlerTreeIndex{
 				declared: map[string]string{
+					handlerTreeDir + "/health":  handlerTreeDir + "/health/health_handler.go",
 					handlerTreeDir + "/metrics": handlerTreeDir + "/metrics/metrics_handler.go",
 				},
-				generated: map[string]string{},
+				generated: map[string]string{
+					handlerTreeDir + "/health": handlerTreeDir + "/health/gen/server.gen.go",
+				},
 			}
 
 			assert.Empty(t, idx.generatedWithoutBindHandler())
@@ -457,6 +528,7 @@ func (idx *handlerTreeIndex) addFile(file, src string) {
 	}
 	if declaresFunc(src, "BindHandler") {
 		idx.declared[path.Dir(file)] = file
+		idx.packages[path.Dir(file)] = packageNameOf(src)
 	}
 }
 
@@ -524,13 +596,22 @@ func scanHandlerTree(t *testing.T) handlerTreeIndex {
 
 // newHandlerTreeIndex は、空の索引を返します。
 func newHandlerTreeIndex() handlerTreeIndex {
-	return handlerTreeIndex{declared: map[string]string{}, generated: map[string]string{}}
+	return handlerTreeIndex{
+		declared:  map[string]string{},
+		generated: map[string]string{},
+		packages:  map[string]string{},
+	}
 }
 
 // collectHandlerImports は、controller.go の import 節から ident → パッケージディレクトリ
-// （モジュールルートからの相対）の対応を返します。エイリアスの無い import は、ハンドラ配下では
-// ディレクトリ名とパッケージ名が一致する規約に従い、パスの最終セグメントを ident とみなします。
-func collectHandlerImports(src string) map[string]string {
+// （モジュールルートからの相対）の対応を返します。
+//
+// エイリアスの無い import が束縛する ident はパッケージが名乗る名前であって、ディレクトリ名では
+// ありません。ハンドラのディレクトリ名は HTTP リソース名に合わせる規約（docs/rules.md）のため
+// 両者は実際に食い違い（categories は package productcategories）、ディレクトリ名で代用すると
+// 正しく配線されたハンドラを解決できずに落とします。そこで走査で得た packages を先に引き、
+// 走査対象外のディレクトリに限りパスの最終セグメントで近似します。
+func collectHandlerImports(src string, packages map[string]string) map[string]string {
 	out := map[string]string{}
 	for line := range strings.SplitSeq(src, "\n") {
 		m := handlerImportRe.FindStringSubmatch(line)
@@ -540,11 +621,23 @@ func collectHandlerImports(src string) map[string]string {
 		dir := handlerTreeDir + strings.TrimPrefix(m[2], handlerImportPrefix)
 		ident := m[1]
 		if ident == "" {
+			ident = packages[dir]
+		}
+		if ident == "" {
 			ident = path.Base(dir)
 		}
 		out[ident] = dir
 	}
 	return out
+}
+
+// packageNameOf は、gofmt 済みソースが宣言するパッケージ名を返します。
+func packageNameOf(src string) string {
+	m := packageClauseRe.FindStringSubmatch(src)
+	if m == nil {
+		return ""
+	}
+	return m[1]
 }
 
 // collectInvokedBindHandlers は、fx.Invoke が列挙する BindHandler の所属パッケージ集合と、
