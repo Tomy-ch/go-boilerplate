@@ -52,6 +52,12 @@ var (
 	readmeRowRe = regexp.MustCompile(`^\|([A-Z][A-Z0-9_]+)\|`)
 	// codeDefaultRe は、Notes 列の Code default 記法からバッククォートで囲まれた値を捕捉します。
 	codeDefaultRe = regexp.MustCompile("Code default `([^`]*)`")
+	// readmeTagRefRe は、README の散文が参照するタグ名を捕捉します。コロンの有無は綴りの揺れであり、
+	// 参照しているタグは同じものとして扱います。
+	readmeTagRefRe = regexp.MustCompile("`([A-Za-z]\\w*):?` tag")
+	// structTagRe / structTagKeyRe は、フィールドタグのリテラルと、そこで使われているタグ名を捕捉します。
+	structTagRe    = regexp.MustCompile("`[^`]*`")
+	structTagKeyRe = regexp.MustCompile(`(\w+):"`)
 )
 
 // targetStatusCodesPolicy は、OBS_TARGET_STATUS_CODES の環境別ポリシーの宣言です。
@@ -188,6 +194,44 @@ func TestEnvReadmeCodeDefaults(t *testing.T) {
 		assert.Truef(t, spec[key].hasDefault,
 			"%s は %s に Code default と記載されているが envspec.go に envDefault が無い", key, envReadmeFile)
 	}
+}
+
+// TestEnvReadmeTagNames は、env/README.md の散文が参照する struct タグ名が
+// internal/config/envspec.go に実在するタグ名であることを検証します。
+// 散文中のタグ名はコードの識別子の手書きの複製で、実在しない名前を書いても Markdown は通り、
+// 既定値の一致を見る TestEnvReadmeCodeDefaults もタグ名そのものは読みません。誤った名前のまま
+// 手順どおりに変数を追加すると、caarlos0/env は未知のタグを黙って読み飛ばし、既定値が効かないまま
+// required でもないフィールドが残ります。
+func TestEnvReadmeTagNames(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+	declared := collectStructTagKeys(t, root)
+
+	referenced := readmeTagRefRe.FindAllStringSubmatch(readRepoFile(t, root, envReadmeFile), -1)
+	require.NotEmptyf(t, referenced, "%s からタグ名の参照を 1 件も抽出できず、検証が空振りする", envReadmeFile)
+
+	for _, m := range referenced {
+		assert.Containsf(t, declared, m[1],
+			"%s が参照するタグ名 %s を %s は使っていない", envReadmeFile, m[1], envSpecFile)
+	}
+}
+
+// collectStructTagKeys は、envspec.go のフィールドタグが使っているタグ名の全件を返します。
+func collectStructTagKeys(t *testing.T, root string) []string {
+	t.Helper()
+
+	keys := []string{}
+	for _, tag := range structTagRe.FindAllString(readRepoFile(t, root, envSpecFile), -1) {
+		for _, m := range structTagKeyRe.FindAllStringSubmatch(tag, -1) {
+			if !slices.Contains(keys, m[1]) {
+				keys = append(keys, m[1])
+			}
+		}
+	}
+
+	require.NotEmptyf(t, keys, "%s からタグ名を 1 件も抽出できず、検証が空振りする", envSpecFile)
+	return keys
 }
 
 // readStatusCodes は、env ファイルの OBS_TARGET_STATUS_CODES をカンマ区切りで分解して返します。
