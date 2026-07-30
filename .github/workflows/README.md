@@ -26,6 +26,7 @@ Because these workflows pin their generators through `mise.toml`, that file is a
 |---|---|---|
 |Go Lint|`go-lint.yaml`|Run golangci-lint on Go code|
 |Go Test|`go-test.yaml`|Run Go tests with coverage reporting|
+|Scripts Test|`scripts-test.yaml`|Run the unit tests of the Go tools under `scripts/`, which the coverage-gated suite excludes|
 |Module Tidy Check|`tidy-check.yaml`|Verify go.mod / go.sum are tidied|
 |SQL Lint|`sql-lint.yaml`|Run sqlfluff on migration / DML / seed SQL files|
 |Actions Lint|`actions-lint.yaml`|Run actionlint on workflow definitions, shellcheck the `run:` scripts of composite actions, plus the PR-comment secret and fence checks|

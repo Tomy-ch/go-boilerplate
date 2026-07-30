@@ -353,13 +353,14 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gen-test-repo` | Executes tests and generates HTML coverage report. | Output is `docs/coverage/index.html`. |
 | `make test-cover-ci` | Executes tests with coverage. | CI target, outputs `coverage.out`. |
 | `make cover-gate` | Fails if total coverage is below the threshold. | CI gate. `COVERAGE_THRESHOLD` (default 90). Requires `coverage.out` (run `test-cover-ci` first). |
+| `make test-scripts` | Executes the tests of the Go tools under `scripts/`. | The one target that runs them: `scripts/` is excluded from every other test target, so it stays out of the coverage gate's denominator. Wired into pre-commit / pre-push and the `Scripts Test` workflow. |
 
 ### Go tool installation related
 
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make go-update` | Installs the Go runtime pinned in `mise.toml` via mise. See `docs/maintenance/go-upgrade.md`. | mise required |
-| `make install-tools` | Installs the host development tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`, `zizmor`. The last two are the tools the pre-commit hook runs on the host because no musl build exists for the Alpine tool-runners. |
+| `make install-tools` | Installs the host development tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`, `zizmor`, `shellcheck`. `golangci-lint` and `zizmor` are the tools the pre-commit hook runs on the host because no musl build exists for the Alpine tool-runners; `shellcheck` is what `make test-scripts` shells out to (its tests skip themselves without it). |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 | `make sync-versions` | Propagates the `mise.toml` go / node / python versions into `go.mod` and the Dockerfile `FROM` lines. | Referenced by the `docs/maintenance/go-upgrade.md` procedure. Runs `scripts/sync-versions`. |
 

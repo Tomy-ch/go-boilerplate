@@ -26,6 +26,7 @@
 |---|---|---|
 |Go Lint|`go-lint.yaml`|golangci-lint による Go コードの静的解析|
 |Go Test|`go-test.yaml`|Go テスト実行とカバレッジレポート|
+|Scripts Test|`scripts-test.yaml`|カバレッジゲート対象から外れている `scripts/` 配下 Go ツールのユニットテスト実行|
 |Module Tidy Check|`tidy-check.yaml`|go.mod / go.sum の整合性検証|
 |SQL Lint|`sql-lint.yaml`|sqlfluff による migration / DML / seed SQL の検証|
 |Actions Lint|`actions-lint.yaml`|actionlint によるワークフロー定義の検証、composite action の `run:` スクリプトの shellcheck 検査、PR コメント本文への secret 混入・固定長フェンスの検査|

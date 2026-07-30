@@ -40,14 +40,15 @@ CI パリティが保証される。
 
 フックステージとそのコマンド:
 
-- `pre-commit`（並列）: `lint`（`.go`）、`test-cached`（`.go`）、`sql-lint`（`.sql`）、
+- `pre-commit`（並列）: `lint`（`.go`）、`test-cached`（`.go`）、`test-scripts`（`scripts/**/*.go`）、`sql-lint`（`.sql`）、
   `md-lint`（`.md`）、`actions-lint`（ワークフロー YAML）、`actions-zizmor`（ワークフロー YAML +
   action YAML + `zizmor.yml`）、`docker-lint`（Dockerfile）、
   `pin-actions`（ワークフロー YAML + action YAML + `actions-pin.toml`）、`migration-check-version`（`.sql`）、
   `migration-check-gap`（`.sql`）。
 - `commit-msg`: `commitlint`。
 - `pre-push`（並列）: `secret-scan`、`test`（完全、キャッシュなし、`.go`）、
-  `gen-go-check`（生成成果物ドリフト）、`tidy-check`（`go.mod` / `go.sum`）。
+  `test-scripts`（`scripts/**/*.go`）、`gen-go-check`（生成成果物ドリフト）、
+  `tidy-check`（`go.mod` / `go.sum`）。
 
 ## 影響
 
