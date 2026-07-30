@@ -359,7 +359,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make go-update` | Installs the Go runtime pinned in `mise.toml` via mise. See `docs/maintenance/go-upgrade.md`. | mise required |
-| `make install-tools` | Installs host development Go tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`. |
+| `make install-tools` | Installs the host development tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`, `zizmor`. The last two are the tools the pre-commit hook runs on the host because no musl build exists for the Alpine tool-runners. |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 | `make sync-versions` | Propagates the `mise.toml` go / node / python versions into `go.mod` and the Dockerfile `FROM` lines. | Referenced by the `docs/maintenance/go-upgrade.md` procedure. Runs `scripts/sync-versions`. |
 

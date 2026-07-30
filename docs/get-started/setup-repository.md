@@ -32,7 +32,7 @@ All tool versions (golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthoo
 
 ```sh
 make go-update       # installs the pinned Go runtime
-make install-tools   # installs gopls / gotests / impl / dlv / lefthook / golangci-lint
+make install-tools   # installs gopls / gotests / impl / dlv / lefthook / golangci-lint / zizmor
 make activate-tools  # runs `lefthook install` to wire git hooks
 ```
 

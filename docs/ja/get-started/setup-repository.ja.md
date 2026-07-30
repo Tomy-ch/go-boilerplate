@@ -32,7 +32,7 @@ which mise
 
 ```sh
 make go-update       # Go ランタイムを mise.toml 記載の pin でインストール
-make install-tools   # gopls / gotests / impl / dlv / lefthook / golangci-lint をインストール
+make install-tools   # gopls / gotests / impl / dlv / lefthook / golangci-lint / zizmor をインストール
 make activate-tools  # `lefthook install` で git hooks を有効化
 ```
 
