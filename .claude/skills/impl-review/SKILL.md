@@ -102,10 +102,11 @@ rather than becoming unconditional. Whichever way it goes, Step 5 records it on 
 - Note whether any **non-generated production `.go`** under `internal/**` / `pkg/**` is touched (exclude `*_test.go`, `*.gen.go`, `*.sql.go`, `*_mock.go`) — this gives the code-origin test analysis its changed-symbol list.
 - Note whether any **`*_test.go`** is touched. Together with the previous bullet this resolves the **test-viewpoint predicate**: `production .go touched OR *_test.go touched`. A test-only change satisfies it through the second disjunct alone, which is the case `test-gap` cannot see (it reads production source) and the one `/test-review` exists for.
   - Predicate true **and** the user chose to delegate in Step 0 → Step 4.5 runs and the `test-gap` lens does **not**.
-  - Predicate true **and** the user declined → `test-gap` runs as the subset, Step 4.5 does not.
+  - Predicate true **and** the user declined **and** production `.go` was touched → `test-gap` runs as the subset, Step 4.5 does not.
+  - Predicate true **and** the user declined **and** only `*_test.go` was touched → neither runs. `test-gap` reads changed production source, so on a test-only diff it has no symbol to enumerate; spawning it would return an empty result that reads as a clean audit. This is the one state where declining leaves the test viewpoint entirely unexamined — say so on the `テスト観点:` line rather than letting an empty lens stand in for it.
   - Predicate false → neither runs; there is no test viewpoint to audit.
 
-  Record which of the three applies — Step 5 reports it verbatim on the `テスト観点:` line.
+  Record which of the four applies — Step 5 reports it on the `テスト観点:` line (the last two both map to `未実施`, with the reason distinguishing them).
 
 ## Step 2 — Fan-out Finders (different model, concurrent)
 
@@ -201,7 +202,7 @@ The **`テスト観点:` line is mandatory** and takes exactly one of three valu
 
 - `委譲実施（/test-review Lens 1-5 / CONFIRMED <n>・PLAUSIBLE <m>）`
 - `test-gap レンズのみ（変更シンボルの高シグナル・サブセット。全シンボル網羅は未実施）`
-- `未実施（テスト関連の変更なし / ユーザーが委譲を辞退し test-gap も対象外）`
+- `未実施（テスト関連の変更なし / テストのみの変更で委譲を辞退したため test-gap にも対象が無い）`
 
 It exists for the same reason the runtime line does: without it, a `lens:` list containing `test-gap` reads as "the tests were audited" when only a subset of the changed symbols was looked at, and a run with no test analysis at all leaves no trace. State the weaker case plainly rather than letting the omission pass for coverage.
 
@@ -234,7 +235,7 @@ If `--no-apply`, skip this step and instead let the comment findings flow into S
 
 By default, after Step 5.5, post the surviving **CONFIRMED + PLAUSIBLE** findings **from the five code lenses** (correctness / security / architecture / runtime-gap / test-gap) to the branch's PR as **inline review comments** — one per finding, anchored to its `path:line`, instead of a single wall-of-text comment. **Never post REFUTED.** Comment quality findings are NOT posted here — they were applied in Step 5.5 (unless `--no-apply` was given, in which case include them in this post). The Step 5 local report is still produced regardless; this step is additive.
 
-**Delegated test findings (Step 4.5)** join this post under one restriction: **only those whose anchor line falls inside a PR diff hunk**. All four severities qualify (修正必須 / 補完推奨 / 再考 / 追加検討) — narrowing to 修正必須 would drop the branch-gap findings the suppressed `test-gap` lens used to post, i.e. a regression in what the PR shows. Prefix them `🔎 [test-review · <severity> · crit <n>]` so they read apart from the code lenses, and keep the severity word as-is.
+**Delegated test findings (Step 4.5)** join this post under one restriction: **only those whose anchor line falls inside a PR diff hunk**. All four severities qualify (修正必須 / 補完推奨 / 再考 / 追加検討) — narrowing to 修正必須 would drop the branch-gap findings the suppressed `test-gap` lens used to post, i.e. a regression in what the PR shows. Prefix them `🔎 [test-review · <severity>]` so they read apart from the code lenses, and keep the severity word as-is. Append `· crit <n>` only to the findings that actually carry a criticality — `/test-review` assigns it to Lens 4 Axis A and Lens 5 findings and explicitly withholds it from structural-compliance ones, so it is a per-finding attribute, not a per-severity one. Never invent a score to fill the slot.
 
 Off-diff test findings — typically Lens 5 symbols in files this PR never touched — stay in the **local report only**. Do not fold them into the review summary `body` the way an off-diff code finding is folded: an off-diff code finding is still a defect this change causes, whereas an untested pre-existing symbol is standing coverage debt that this PR neither introduced nor is the place to argue about. Say in the local report how many were withheld and why, so the omission is visible.
 
@@ -302,7 +303,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`.
 - ✅ Apply comment quality findings in Step 5.5 after one confirmation (delete / rewrite-to-behavior), then `make fix` + `make lint`; skip with `--no-apply`.
 - ✅ By default, post the five code lenses' CONFIRMED + PLAUSIBLE findings to the branch's PR as inline review comments (Step 6); suppress with `--no-comment` or when no open PR exists.
-- ✅ Confirm once before posting to the PR (outward action); anchor each comment to its `path:line`, fold off-diff findings into the review summary.
+- ✅ Confirm once before posting to the PR (outward action); anchor each comment to its `path:line`, fold off-diff **code-lens** findings into the review summary (off-diff *test* findings are excluded — they stay local, per Step 6).
 - ❌ Post REFUTED findings, or use `REQUEST_CHANGES` / `APPROVE` — the posted review is advisory `COMMENT` only.
 - ❌ Auto-fix the five code lenses — those are reported, the user fixes. Only comment quality is auto-applied (Step 5.5).
 - ❌ In Step 5.5, delete a functional directive (`//go:generate` etc.) or an exported-decl doc comment (rewrite it); touch generated files / Markdown / the deny list; or auto-commit.
@@ -316,7 +317,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - [ ] Scope confirmed via `AskUserQuestion`; base ref resolved.
 - [ ] Reviewer model selected in Step 0 and verified ≠ implementer model (warn + confirm if same).
 - [ ] Test-viewpoint delegation asked in Step 0; predicate resolved in Step 1; the resulting state recorded.
-- [ ] Finders fanned out concurrently: the code lenses (`adversarial-reviewer`) + comment quality (`comment-reviewer`) — `test-gap` among them only when the delegation was declined.
+- [ ] Finders fanned out concurrently: the code lenses (`adversarial-reviewer`) + comment quality (`comment-reviewer`) — `test-gap` among them only when the delegation was declined **and** production `.go` was touched.
 - [ ] Every finding independently verified; REFUTED dropped (count kept).
 - [ ] Runtime curl + o11y done for touched endpoints (shared-schema → all consumers); destructive curls confirmed.
 - [ ] Step 4.5 ran when delegated, with `scope` / `base_ref` / `reviewer_model` / `skip_verifier: false` passed and `test-gap` not spawned.
