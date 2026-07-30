@@ -101,6 +101,15 @@ digest lives in a lockfile that is the single source of truth —
 `docker/images-pin.toml`. Both checks are fail-closed, and unpinned versus unregistered are
 distinct errors so neither degrades into the other.
 
+**The quarantine buys time; it does not verify a date.** An action's age is taken as the *newer*
+of its release publication date and its resolved commit date. Neither alone is trustworthy: a
+release object is bound to the tag *name*, so its publication date survives the tag being
+re-pointed — the exact threat the quarantine exists for — while a commit date can be set to any
+past instant by the committer. Taking the newer of the two means the quarantine holds as long as
+either says the target is new, but it is a delay against automated takeover, not a defence
+against a forged date. Detecting the re-point itself is the lockfile's job: the resolved digest
+changes, the diff is small, and a human reads it.
+
 ## Dependencies
 
 ### Two principles that hold for every ecosystem
