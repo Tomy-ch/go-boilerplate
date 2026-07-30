@@ -4,11 +4,7 @@
 
 Makeコマンド詳細は [Makeターゲット一覧](../../../.makefiles/README.ja.md) を参照してください。
 
-## Phase 1: ツールのセットアップ
-
-VSCode開発で必要なツールをインストールします。
-
-### 1.1. mise のインストールとシェル activate
+## Phase 1: mise のインストールとシェル activate
 
 このプロジェクトは [mise](https://mise.jdx.dev) をツール / ランタイムバージョンマネージャとして必須利用します。[公式インストール手順](https://mise.jdx.dev/getting-started.html) で mise をインストールしたあと、**shell init に mise activate を仕込むことが必須です**（任意ではありません）。Make ターゲットは `golangci-lint` / `lefthook` 等を mise の shim 経由で解決しており、activate しない限り shim が `PATH` に載らないためです:
 
@@ -30,7 +26,7 @@ mise --version
 which mise
 ```
 
-### 1.2. Go ランタイムとプロジェクトツールのインストール
+## Phase 2: Go ランタイムとプロジェクトツールのインストール
 
 全ツール（golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthook / ...）のバージョンは [`mise.toml`](../../../mise.toml) を SSOT として管理しています。Dockerfile・ローカルインストーラ (`.makefiles/go/installer.mk`)・CI ワークフローはすべて同じ `mise.toml` を参照し、各環境で必要なものだけを `mise install <tool>` で個別取得します。
 
@@ -40,7 +36,7 @@ make install-tools   # gopls / gotests / impl / dlv / lefthook / golangci-lint �
 make activate-tools  # `lefthook install` で git hooks を有効化
 ```
 
-### 1.3. エージェント設定のインストール（推奨構成）
+## Phase 3: エージェント設定のインストール（推奨構成）
 
 AI 支援レイヤは設定として同梱しています。project スコープの公式プラグイン、本リポジトリ自身のスキル（[`.claude/`](../../../.claude/README.md) / [`.codex/`](../../../.codex/README.md)）、および公式に推奨する外部スキル 1 つ（`graphify`。リポジトリを問い合わせ可能な知識グラフにするツール）です。clone に付いてこない部分は、冪等な bootstrap 2 本で入れます。
 
@@ -58,7 +54,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user ス�
 
 後から外すコストは今外すコストと同じなので、まず推奨構成で入れて後から判断する順序でも安全です。
 
-## Phase 2: ローカル起動確認
+## Phase 4: ローカル起動確認
 
 ローカルで起動してみて、問題なく動作することを確認してください。
 
@@ -68,7 +64,7 @@ make tools
 make db-init
 ```
 
-## Phase 3: ローカライゼーションスクリプトの実行
+## Phase 5: ローカライゼーションスクリプトの実行
 
 下記コマンドで、Goモジュール名を一括置換するスクリプトを実行してください。
 
@@ -99,7 +95,7 @@ make gen-sqlc
 make tidy-lib
 ```
 
-## Phase 4: ローカライゼーションの検証
+## Phase 6: ローカライゼーションの検証
 
 テストと静的解析、コード生成、ヘルスチェックなど、基本的な機能が問題なく動作することを確認してください。
 
@@ -111,7 +107,7 @@ curl http://localhost:8080/health
 curl http://localhost:8080/ready
 ```
 
-## Phase 5: 手動書き換え
+## Phase 7: 手動書き換え
 
 1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
 2. [README.md](../../../README.md) は英語で書かれているので、必要に応じて [README.ja.md](../../../README.ja.md) を [README.md](../../../README.md) に置換しても構いません。
@@ -126,13 +122,13 @@ curl http://localhost:8080/ready
         - description
         - license
 
-## Phase 6: envファイルの書き換え
+## Phase 8: envファイルの書き換え
 
 [env/](../../../env/) ディレクトリ内のファイルをプロジェクトに合わせて書き換えてください。
 
 設定値の意味については、[env/README.ja.md](../../../env/README.ja.md) を参照してください。
 
-## Phase 7: リポジトリの初期化
+## Phase 9: リポジトリの初期化
 
 ここまでの手順を完了したら、ファーストプッシュ後にリポジトリの初期化を行います。
 
@@ -157,7 +153,7 @@ make setup-repo
 make branch-minor
 ```
 
-## Phase 8: デプロイ設定の作成
+## Phase 10: デプロイ設定の作成
 
 このboilerplateでは、各社・各個人のクラウド環境やオンプレ環境に合わせて柔軟にデプロイできるよう、特定のクラウドプロバイダやデプロイ方法に依存しない構成を採用しています。
 
@@ -167,16 +163,16 @@ make branch-minor
 
 `Note: Please modify this section according to your environment` と書かれている箇所が、環境に合わせて変更が必要な箇所になります。
 
-## Phase 9: 認証・認可の実装
+## Phase 11: 認証・認可の実装
 
 この boilerplate は認証（authn）と認可（authz）の双方について **開発用スタブのみ** を同梱しており、それらは `local` / `ci` / `test` 環境に **限って** 配線されています。`development` / `staging` / `production` では DI プロバイダが **fail-closed** です。スタブの配線を拒否してエラーを返すため、本物のコンポーネントを実装・配線するまでアプリケーションは **意図的に起動しません**。
 
 これは意図的な強制装置です。署名を検証しない認証器や許可オールの認可器が本番環境に出荷されることを決して起こさないためのものです。**`development` / `staging` / `production` 向けに両方を実装することは、プロジェクト開始時の必須タスクです。**
 
 > [!IMPORTANT]
-> `Authorizer` は `InfrastructureModule` の内部で提供されるため、**usecase を構築するすべてのプロセス** — HTTP サーバ **と** バックグラウンドの job / worker プロセス — が設定済みの `Authorizer` を必要とします。Phase 9.2 が完了するまで、`APP_ENV=development` / `staging` / `production` でいずれを起動しても Fx 構築時に `no authorizer configured for environment` で終了します（authn も同様に `no authenticator configured for environment`）。本物のコンポーネントを実装する前にこれが表示されるのは想定内であり、バグではありません。
+> `Authorizer` は `InfrastructureModule` の内部で提供されるため、**usecase を構築するすべてのプロセス** — HTTP サーバ **と** バックグラウンドの job / worker プロセス — が設定済みの `Authorizer` を必要とします。後述の認可の手順が完了するまで、`APP_ENV=development` / `staging` / `production` でいずれを起動しても Fx 構築時に `no authorizer configured for environment` で終了します（authn も同様に `no authenticator configured for environment`）。本物のコンポーネントを実装する前にこれが表示されるのは想定内であり、バグではありません。
 
-### 9.1 認証（authn）
+### 認証（authn）
 
 この boilerplate には認証の実装例として JWT を使用したサンプルコードが含まれています。プロジェクトの要件に合わせて認証を実装してください。
 
@@ -187,7 +183,7 @@ usecase の [Authenticator](../../../internal/usecase/boundary/auth/authenticato
 - `stg` / `prd` 実装（JWT / OAuth2 / OIDC / Cognito / Auth0 など）を `internal/infrastructure/auth/{stg,prd}/` 配下に追加します。
 - 環境ごとの配線は [認証の DI モジュール](../../../internal/di/module/core/auth.go)（`provideAuthenticator`）を編集し、`default` の fail-closed 分岐を `case config.EnvDevelopment / EnvStaging / EnvProduction` に置き換えて本物の `Authenticator` を返します。
 
-### 9.2 認可（authz）
+### 認可（authz）
 
 この boilerplate は開発用スタブとして **許可オール（allow-all）** の認可器を同梱しています。自プロジェクト向けに本物の Policy Decision Point（PDP）を実装してください。
 
@@ -200,9 +196,9 @@ usecase の [Authorizer](../../../internal/usecase/boundary/authz/authorizer.go)
 
 `Authorize(ctx, *auth.Authn, Action, *Resource)` のシグネチャは既に完全な `Authn`（subject / scopes / claims）と対象 `Resource`（任意の `OwnerID` 付き）を運ぶため、RBAC と所有者（オブジェクトレベル）モデルの双方を呼び出し箇所を変えずに表現できます。
 
-## Phase 10: テンプレートの意図的な除外（ADR）のレビュー
+## Phase 12: テンプレートの意図的な除外（ADR）のレビュー
 
-認証・認可（Phase 9）やデプロイ（Phase 8）以外にも、このテンプレートはいくつかの**意図的な非選択**をしています。例：アプリ内レート制限器を持たない / 汎用 Cache 抽象を持たない / scheduled job の並走制御はスケジューラに委譲 / push・streaming ブローカーは worker の対象外。
+認証・認可（Phase 11）やデプロイ（Phase 10）以外にも、このテンプレートはいくつかの**意図的な非選択**をしています。例：アプリ内レート制限器を持たない / 汎用 Cache 抽象を持たない / scheduled job の並走制御はスケジューラに委譲 / push・streaming ブローカーは worker の対象外。
 
 これらは [docs/adr/](../../../docs/adr/) 配下の **exclusion ADR** として記録され、`setup-review` タグが付いています。次で一覧できます：
 
@@ -217,7 +213,7 @@ grep -rl "setup-review" docs/adr/
 
 不変（元 ADR は編集せず supersede する新 ADR を追加）モデルは、**運用開始後**に決定を見直すときに適用します。セットアップ時の一度きりの再ベースライン化には適用しません。
 
-## Phase 11: 依存ライセンス方針の決定
+## Phase 13: 依存ライセンス方針の決定
 
 依存ライセンススキャン（`make trivy-license` と [.github/workflows/trivy-fs.yaml](../../../.github/workflows/trivy-fs.yaml) の `trivy-license` ジョブ）は**恒久的に報告専用**です。全依存のライセンスをジョブサマリと PR コメントへ列挙するだけで、ビルドを落とすことはありません。
 
@@ -230,7 +226,7 @@ grep -rl "setup-review" docs/adr/
 3. [.makefiles/security/trivy.mk](../../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../../.trivyignore.yaml) へ記録する。
 4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0080](../../../docs/adr/0080-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
 
-## Phase 12: サンプルAPIの削除
+## Phase 14: サンプルAPIの削除
 
 このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
 

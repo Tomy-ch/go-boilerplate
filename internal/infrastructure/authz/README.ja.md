@@ -38,7 +38,7 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 
 ## local / staging / production の実装
 
-`allowall` は **開発用スタブ**であり、すべてを許可するため配線されるのは `local` / `ci` / `test` のみです。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはありません。さらに `provideAuthorizer` も **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `development` / `staging` / `production` を担います。サンプルを削除すると、自前の実装を配線するまでこれらの環境は fail-closed エラーに戻ります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。
+`allowall` は **開発用スタブ**であり、すべてを許可するため配線されるのは `local` / `ci` / `test` のみです。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはありません。さらに `provideAuthorizer` も **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `development` / `staging` / `production` を担います。サンプルを削除すると、自前の実装を配線するまでこれらの環境は fail-closed エラーに戻ります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 11 の認可を参照）。
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
