@@ -30,6 +30,18 @@ layer 別アーキ適合性チェックの統合スキル。scope に応じて 1
 | `arch-auditor-infra` | `internal/infrastructure/**` | Repository pure template + sqlc gen soft 対応（multi-query / switch dispatch / JOIN 許容）+ pgerror 利用 |
 | `arch-auditor-pkg` | `pkg/**` | `internal/` 依存禁止 + framework 非依存 |
 
+もう 1 つ、層ではなく変更内容に紐づく auditor が相乗りする:
+
+| Auditor subagent | 起動条件 | 検査内容 |
+| --- | --- | --- |
+| `ddd-origin-auditor` | `internal/domain/**` または `docs/adr/**` / `internal/**/README.md` が touched | 層2（ADR / README）の DDD 解釈と Evans 原義との差異、および逸脱宣言の有無 |
+
+その判定は他の 5 つと性質が違う。5 つはリポジトリ自身の規則にコードを照らすが、これはリポジトリの外
+（Evans）を物差しにして**文書のほう**を見る。したがって出力は `violation` ではなく 3 値のフラグであり、
+裁定は含まない。深掘りは専用スキル `ddd-audit` の担当で、ここでは変更に関係するパターンだけを見る
+`quick` モードで回す — 毎回 全パターン × 全コーパスを走らせると arch-check が重くなり、結局
+誰も回さなくなるからである。
+
 これらの auditor は層別の監査ワーカー。**厳密に read-only**（TODO 書き込みなし）なので、5並列実行してもソースへの同時書き込みが発生しない。ソース書き込み（TODO hand-off）は集約後に**この統合スキルが単一スレッドで**実施する。
 
 ## 最初のステップ: scope + TODO opt 確認
@@ -78,7 +90,15 @@ path prefix で layer マッピングし、**per-layer のファイルリスト�
 
 その他 `internal/` パス（cli / system / di / config 等） → 報告のみ、専用 auditor 無し（CLAUDE.md guidance を直接適用）。
 
-「リポジトリ全体」モード: 5 auditor 全部 fan-out（各自が full-layer ファイルリストを解決、または `scope=full` を渡す）。
+これとは別に、同じ diff で変更された **DDD コーパス**を解決する（こちらは `*.go` で絞らない。コーパスは散文である）:
+
+```sh
+git diff --name-only "origin/${BASE}...HEAD" -- 'docs/adr/*.md' 'docs/rules.md' 'docs/architecture.md' '*/README.md' || true
+```
+
+この一覧が空でない、**または** touched layer に `internal/domain/` が含まれるなら、fan-out に `ddd-origin-auditor` を加える。パターン一覧は `.agents/ddd-audit/pattern-ledger.yaml` から読み、`interpreted_by` が変更ファイルを指すパターンに加えて `unexamined` / `uninterpreted` のパターンをすべて選ぶ — 誰も解釈していないパターンは一致するポインタを持たず、しかもそれこそが表に出す価値のある欠落だからである。
+
+「リポジトリ全体」モード: 5 auditor 全部 fan-out（各自が full-layer ファイルリストを解決、または `scope=full` を渡す）。ただし全量の DDD 掃引は**ここからは回さない** — 全パターン × 全コーパスは `ddd-audit` の担当であり、黙って部分監査で済ませずレポートにその旨を書く。
 
 「特定 layer のみ」モード: layer を user に追加質問、該当のみ fan-out。
 
@@ -111,7 +131,10 @@ Agent(subagent_type="arch-auditor-usecase",    prompt=<...usecase>)
 Agent(subagent_type="arch-auditor-controller", prompt=<...controller>)
 Agent(subagent_type="arch-auditor-infra",      prompt=<...infra>)
 Agent(subagent_type="arch-auditor-pkg",        prompt=<...pkg>)
+Agent(subagent_type="ddd-origin-auditor",      prompt=<pattern=<id>, mode=quick, files=<変更コーパス>>)   # 選択パターンごとに 1 つ
 ```
+
+`ddd-origin-auditor` は 1 起動＝1 パターンなので、選択パターンが複数あればその数だけ同じメッセージ内に並べる。
 
 各 auditor の最終メッセージ**が** findings（日本語・構造化）。layer ラベル付きで収集。「違反なし」を返した auditor は空セクション扱い。
 
@@ -142,8 +165,15 @@ arch-check 統合結果（スコープ: <scope>）
 [pkg] violations: N, suggestions: K
   ...
 
-総計: violations <sum>, suggestions <sum>
+[ddd-origin] 差異あり: N, 逸脱宣言あり: K, 差異なし: M（quick / 対象パターン: <ids>）
+  <pattern> — Evans 原義: <前提> / 根拠: <file:line>
+  ※ フラグのみ。裁定はしない。全パターンの棚卸しは `ddd-audit` で実行
+
+総計: violations <sum>, suggestions <sum>, DDD 差異 <sum>
 ```
+
+`[ddd-origin]` の件数は violations の合計に足さない。層2 の差異は「直すべき違反」ではなく
+「意図的な逸脱か見落としかを人間が判定する材料」であり、両者を足すとその区別が消える。
 
 全 clean:
 
@@ -188,6 +218,8 @@ TODO hand-off: 追加 <sum> 件, スキップ <sum> 件（既存コメント）
 - ❌ 各 auditor に `make lint` を再実行させる（共有 `lintOutput` を渡す）
 - ❌ scope + TODO opt `AskUserQuestion` をスキップ
 - ❌ heuristic findings (handler bloat 等) を hard violation 扱い（auditor が `suggestion` ラベル付け、integrator は respect）
+- ❌ `[ddd-origin]` の差異を violation に合算する / TODO hand-off の対象にする（裁定しない検出なので defer 先も無い）
+- ❌ arch-check から全パターン × 全コーパスの DDD 監査を回す（`quick` のみ。全量は `ddd-audit`）
 - ❌ violation 位置への TODO 書き込み（fix 必須、defer 不可）
 - ❌ TODO に AI 識別 prefix を使う（`// TODO:` のみ）
 - ❌ 既存コメントの上書き（3 行以内に既存あれば skip）
@@ -202,6 +234,7 @@ TODO hand-off: 追加 <sum> 件, スキップ <sum> 件（既存コメント）
 - [ ] 変更ファイル or full repo で layer + per-layer ファイルリスト解決
 - [ ] `make lint` を1回だけ実行し `/tmp/arch-check-lint.out` に保存
 - [ ] touched layer の `arch-auditor-*` を **1メッセージ内で並列起動**（scope / files / baseRef / lintOutput を渡す）
+- [ ] domain / ADR / README が touched なら `ddd-origin-auditor` を同じメッセージで並列起動（`quick`、選択パターンごとに1つ）
 - [ ] 各 auditor が自身の README + lean A 規則を適用（read-only）
 - [ ] 集約日本語レポート出力
 - [ ] TODO hand-off は opt-in 時のみ integrator が単一スレッドで実施（domain / controller / infra の suggestion、既存コメントは skip）

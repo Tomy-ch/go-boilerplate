@@ -115,7 +115,7 @@ Do NOT modify other top-level directories (e.g. `cmd/`, `docker/`, `scripts/`, `
 **AI-tool configurations are out of scope** — do NOT create/modify/delete these unless the user explicitly requests it:
 
 - Claude Code: `.claude/` (skills, `settings.json`, `settings.local.json`, …)
-- OpenAI Codex CLI: `.agents/skills/`
+- OpenAI Codex CLI: `.codex/skills/`
 - Cursor: `.cursor/` (incl. `.cursor/rules/*.mdc`), `.cursorrules`
 - GitHub Copilot: `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`
 - Gemini CLI / Code Assist: `.gemini/`, `GEMINI.md`

@@ -1,6 +1,6 @@
 ---
 name: arch-check
-description: Integrator skill for architectural compliance checks. Confirms scope + TODO opt via `AskUserQuestion` (changed files vs full repo), detects which layers are touched, resolves the file list and runs `make lint` ONCE, then fans out the relevant read-only `arch-auditor-*` subagents (`arch-auditor-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + the shared lint output so each auditor skips its own scope question and does not re-run lint. Aggregates findings into a single Japanese report grouped by layer. Each auditor enforces its own README rules + lean A conventions (controller / infra have additional convention enforcement since they're scaffold-derived, not spec-driven). Detection is delegated to the read-only auditor subagents; the integrator itself only writes the optional `// TODO:` hand-off comments (single-threaded, after aggregation) when the user opts in. To audit a single layer, run this integrator and pick that layer in the scope question.
+description: Integrator skill for architectural compliance checks. Confirms scope + TODO opt via `AskUserQuestion` (changed files vs full repo), detects which layers are touched, resolves the file list and runs `make lint` ONCE, then fans out the relevant read-only `arch-auditor-*` subagents (`arch-auditor-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + the shared lint output so each auditor skips its own scope question and does not re-run lint. When domain code or the ADR / README corpus is touched, it additionally fans out `ddd-origin-auditor` in quick mode, so a change that quietly moves the repo's DDD interpretation is caught in the same pass. Aggregates findings into a single Japanese report grouped by layer. Each auditor enforces its own README rules + lean A conventions (controller / infra have additional convention enforcement since they're scaffold-derived, not spec-driven). Detection is delegated to the read-only auditor subagents; the integrator itself only writes the optional `// TODO:` hand-off comments (single-threaded, after aggregation) when the user opts in. To audit a single layer, run this integrator and pick that layer in the scope question.
 ---
 
 # Arch Check
@@ -34,6 +34,18 @@ Detection is delegated to five **read-only worker subagents** under `.claude/age
 | `arch-auditor-controller` | `internal/controller/**` | handler pure template + operationId ↔ method 一致 |
 | `arch-auditor-infra` | `internal/infrastructure/**` | Repository pure template + sqlc gen soft 対応（multi-query / switch dispatch / JOIN 許容）+ pgerror 利用 |
 | `arch-auditor-pkg` | `pkg/**` | `internal/` 依存禁止 + framework 非依存 |
+
+One further auditor rides along, keyed to the change rather than to a layer:
+
+| Auditor subagent | Trigger | 検査内容 |
+| --- | --- | --- |
+| `ddd-origin-auditor` | `internal/domain/**` または `docs/adr/**` / `internal/**/README.md` が touched | 層2（ADR / README）の DDD 解釈と Evans 原義との差異、および逸脱宣言の有無 |
+
+その判定は他の 5 つと性質が違う。5 つはリポジトリ自身の規則にコードを照らすが、これはリポジトリの外
+（Evans）を物差しにして**文書のほう**を見る。したがって出力は `violation` ではなく 3 値のフラグであり、
+裁定は含まない。深掘りは専用スキル `ddd-audit` の担当で、ここでは変更に関係するパターンだけを見る
+`quick` モードで回す — 毎回 全パターン × 全コーパスを走らせると arch-check が重くなり、結局
+誰も回さなくなるからである。
 
 These auditors are the per-layer audit workers. They are **strictly read-only** (no TODO writes) so that running five in parallel never produces concurrent writes to source. Any source write (TODO hand-off) is performed by **this integrator**, single-threaded, after aggregation.
 
@@ -83,7 +95,15 @@ Map to layers by path prefix, and **keep the per-layer file list** (you pass it 
 
 Other `internal/` paths (cli / system / di / config 等) → 報告のみ、専用 auditor 無し（CLAUDE.md guidance を直接適用）。
 
-For "full repo" mode: fan out all 5 auditors (each resolves its own full-layer file list, or pass `scope=full`).
+Separately, resolve the **DDD corpus** changed in the same diff (this one is not `*.go`-filtered — the corpus is prose):
+
+```sh
+git diff --name-only "origin/${BASE}...HEAD" -- 'docs/adr/*.md' 'docs/rules.md' 'docs/architecture.md' '*/README.md' || true
+```
+
+If that list is non-empty, **or** `internal/domain/` is among the touched layers, add `ddd-origin-auditor` to the fan-out. Read the pattern list from `.agents/ddd-audit/pattern-ledger.yaml` and select the patterns whose `interpreted_by` points at a changed file, plus every pattern still `unexamined` or `uninterpreted` — a pattern nobody has interpreted has no pointer to match, and those are exactly the gaps worth surfacing.
+
+For "full repo" mode: fan out all 5 auditors (each resolves its own full-layer file list, or pass `scope=full`). Do **not** run the full DDD sweep from here — a whole-corpus pass over every pattern belongs to `ddd-audit`; say so in the report instead of silently doing a partial one.
 
 For "specific layer" mode: ask user which layer(s), then fan out only those.
 
@@ -116,7 +136,10 @@ Agent(subagent_type="arch-auditor-usecase",    prompt=<...usecase>)
 Agent(subagent_type="arch-auditor-controller", prompt=<...controller>)
 Agent(subagent_type="arch-auditor-infra",      prompt=<...infra>)
 Agent(subagent_type="arch-auditor-pkg",        prompt=<...pkg>)
+Agent(subagent_type="ddd-origin-auditor",      prompt=<pattern=<id>, mode=quick, files=<changed corpus>>)   # 選択パターンごとに 1 つ
 ```
+
+`ddd-origin-auditor` は 1 起動＝1 パターンなので、選択パターンが複数あればその数だけ同じメッセージ内に並べる。
 
 Each auditor's final message **is** its findings (Japanese, structured). Collect them with their layer label. An auditor that returns "違反なし" contributes an empty section.
 
@@ -147,8 +170,15 @@ arch-check 統合結果（スコープ: <scope>）
 [pkg] violations: N, suggestions: K
   ...
 
-総計: violations <sum>, suggestions <sum>
+[ddd-origin] 差異あり: N, 逸脱宣言あり: K, 差異なし: M（quick / 対象パターン: <ids>）
+  <pattern> — Evans 原義: <前提> / 根拠: <file:line>
+  ※ フラグのみ。裁定はしない。全パターンの棚卸しは `ddd-audit` で実行
+
+総計: violations <sum>, suggestions <sum>, DDD 差異 <sum>
 ```
+
+`[ddd-origin]` の件数は violations の合計に足さない。層2 の差異は「直すべき違反」ではなく
+「意図的な逸脱か見落としかを人間が判定する材料」であり、両者を足すとその区別が消える。
 
 If all clean:
 
@@ -193,6 +223,8 @@ If the user opted "TODO 追加なし", skip this step entirely (strictly read-on
 - ❌ 各 auditor に `make lint` を再実行させる（共有 `lintOutput` を渡す）
 - ❌ Skip scope + TODO opt `AskUserQuestion`
 - ❌ Heuristic findings (handler bloat 等) を hard violation 扱い（auditor が `suggestion` ラベル付け、integrator は respect）
+- ❌ `[ddd-origin]` の差異を violation に合算する / TODO hand-off の対象にする（裁定しない検出なので defer 先も無い）
+- ❌ arch-check から全パターン × 全コーパスの DDD 監査を回す（`quick` のみ。全量は `ddd-audit`）
 - ❌ violation 位置への TODO 書き込み（fix 必須、defer 不可）
 - ❌ TODO に AI 識別 prefix を使う（`// TODO:` のみ）
 - ❌ 既存コメントの上書き（3 行以内に既存あれば skip）
@@ -207,6 +239,7 @@ If the user opted "TODO 追加なし", skip this step entirely (strictly read-on
 - [ ] Layer detection + per-layer file list resolved from changed files / full repo
 - [ ] `make lint` を1回だけ実行し `/tmp/arch-check-lint.out` に保存
 - [ ] Touched layers の `arch-auditor-*` を **1メッセージ内で並列起動**（scope / files / baseRef / lintOutput を渡す）
+- [ ] domain / ADR / README が touched なら `ddd-origin-auditor` を同じメッセージで並列起動（`quick`、選択パターンごとに1つ）
 - [ ] 各 auditor が自身の README + lean A 規則を適用（read-only）
 - [ ] Aggregated Japanese report 出力
 - [ ] TODO hand-off は opt-in 時のみ integrator が単一スレッドで実施（domain / controller / infra の suggestion、既存コメントは skip）
