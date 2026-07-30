@@ -147,16 +147,19 @@ func TestParseAction(t *testing.T) {
 			assert.Equal(t, 11, steps[1].colBase)
 		})
 
-		t.Run("引用符付きスカラーの列基準は開き引用符の内側を指す", func(t *testing.T) {
+		t.Run("ダブルクォートのスカラーの列基準は開き引用符の内側を指す", func(t *testing.T) {
 			t.Parallel()
-			double := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: \"echo hi\"\n"
-			steps, err := parseAction("action.yaml", []byte(double))
+			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: \"echo hi\"\n"
+			steps, err := parseAction("action.yaml", []byte(body))
 			require.NoError(t, err)
 			require.Len(t, steps, 1)
 			assert.Equal(t, 12, steps[0].colBase)
+		})
 
-			single := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: 'echo hi'\n"
-			steps, err = parseAction("action.yaml", []byte(single))
+		t.Run("シングルクォートのスカラーの列基準は開き引用符の内側を指す", func(t *testing.T) {
+			t.Parallel()
+			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: 'echo hi'\n"
+			steps, err := parseAction("action.yaml", []byte(body))
 			require.NoError(t, err)
 			require.Len(t, steps, 1)
 			assert.Equal(t, 12, steps[0].colBase)
@@ -206,6 +209,13 @@ func TestParseAction(t *testing.T) {
 		t.Run("空ファイルは対象 0 件", func(t *testing.T) {
 			t.Parallel()
 			steps, err := parseAction("action.yaml", nil)
+			require.NoError(t, err)
+			assert.Empty(t, steps)
+		})
+
+		t.Run("steps キーを持たない composite は対象 0 件", func(t *testing.T) {
+			t.Parallel()
+			steps, err := parseAction("action.yaml", []byte("runs:\n  using: composite\n"))
 			require.NoError(t, err)
 			assert.Empty(t, steps)
 		})
@@ -386,18 +396,22 @@ func TestCountRunSteps(t *testing.T) {
 
 		t.Run("using の値と無関係に run ステップを数える", func(t *testing.T) {
 			t.Parallel()
-			count, err := countRunSteps("action.yaml", []byte(miscasedUsingAction))
+			body := "runs:\n  using: composit\n  steps:\n    - shell: bash\n      run: echo hi\n"
+			count, err := countRunSteps("action.yaml", []byte(body))
 			require.NoError(t, err)
 			assert.Equal(t, 1, count)
 		})
 
-		t.Run("alias とマージキーで継承した run も数える", func(t *testing.T) {
+		t.Run("alias で継承した run も数える", func(t *testing.T) {
 			t.Parallel()
 			count, err := countRunSteps("action.yaml", []byte(aliasAction))
 			require.NoError(t, err)
 			assert.Equal(t, 2, count)
+		})
 
-			count, err = countRunSteps("action.yaml", []byte(mergeAction))
+		t.Run("マージキーで継承した run も数える", func(t *testing.T) {
+			t.Parallel()
+			count, err := countRunSteps("action.yaml", []byte(mergeAction))
 			require.NoError(t, err)
 			assert.Equal(t, 2, count)
 		})
@@ -405,6 +419,14 @@ func TestCountRunSteps(t *testing.T) {
 		t.Run("run を持たないステップは数えない", func(t *testing.T) {
 			t.Parallel()
 			body := "runs:\n  using: composite\n  steps:\n    - uses: actions/checkout@v7\n"
+			count, err := countRunSteps("action.yaml", []byte(body))
+			require.NoError(t, err)
+			assert.Zero(t, count)
+		})
+
+		t.Run("run が文字列でないステップは数えない", func(t *testing.T) {
+			t.Parallel()
+			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: 123\n"
 			count, err := countRunSteps("action.yaml", []byte(body))
 			require.NoError(t, err)
 			assert.Zero(t, count)
@@ -439,6 +461,35 @@ func TestCountRunSteps(t *testing.T) {
 	})
 }
 
+func TestBlockIndentWidth(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("空行を読み飛ばして最初の非空行のインデント幅を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, 8, blockIndentWidth([]byte("run: |\n\n        echo hi\n"), 2))
+		})
+
+		t.Run("本文が空行だけなら 0 を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Zero(t, blockIndentWidth([]byte("run: |\n\n\n"), 2))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("本文開始行が行範囲の外なら 0 を返す", func(t *testing.T) {
+			t.Parallel()
+			data := []byte("run: |\n        echo hi\n")
+			assert.Zero(t, blockIndentWidth(data, 0))
+			assert.Zero(t, blockIndentWidth(data, 99))
+		})
+	})
+}
+
 func TestShellDialect(t *testing.T) {
 	t.Parallel()
 
@@ -463,6 +514,12 @@ func TestShellDialect(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "bash", shellDialect("env FOO=bar bash"))
 			assert.Equal(t, "bash", shellDialect("/usr/bin/env FOO=bar BAZ=qux bash {0}"))
+		})
+
+		t.Run("数字を含む変数名の前置きでも読み飛ばして方言を採る", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "bash", shellDialect("env GO111MODULE=on bash"))
+			assert.Equal(t, "bash", shellDialect("env _X2=1 bash"))
 		})
 	})
 
@@ -502,6 +559,13 @@ func TestShellDialect(t *testing.T) {
 		t.Run("shell が env と変数代入だけ なら方言なしとして扱う", func(t *testing.T) {
 			t.Parallel()
 			_, ok := shebangs[shellDialect("env FOO=bar")]
+			assert.False(t, ok)
+		})
+
+		t.Run("先頭が数字の名前は変数代入とみなさず方言判定をそこで打ち切る", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "2FOO=bar", shellDialect("env 2FOO=bar bash"))
+			_, ok := shebangs[shellDialect("env 2FOO=bar bash")]
 			assert.False(t, ok)
 		})
 
