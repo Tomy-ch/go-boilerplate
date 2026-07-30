@@ -28,7 +28,6 @@ type stubDetailPolicy struct{ allow bool }
 type stubAllowPolicy struct{ allow string }
 
 // badWriter は書き込み時にエラーを返すテスト用の http.ResponseWriter 実装です。
-// wroteHeaders は WriteHeader に渡されたステータスを呼び出し順に保持します。
 type badWriter struct {
 	header       http.Header
 	wroteHeaders []int
@@ -485,7 +484,14 @@ func Test_handleHTTPError(t *testing.T) {
 			// unwrap できない生の ResponseWriter を差し込み、responseCommitted を常に false にする。
 			c.SetResponse(bw)
 
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.Wrap(apperror.ErrValidation, "invalid"))
+			handleHTTPError(
+				c,
+				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}},
+				logger,
+				lf,
+				obsCfg,
+				xerrors.Wrap(apperror.ErrValidation, "invalid"),
+			)
 
 			// 422 は JSON 書き込みが送出したもので、後続の 500 はフォールバック行以外からは発生しない。
 			assert.Equal(t, []int{http.StatusUnprocessableEntity, http.StatusInternalServerError}, bw.wroteHeaders)
