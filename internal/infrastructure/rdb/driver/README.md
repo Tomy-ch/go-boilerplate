@@ -61,6 +61,15 @@ Processing details:
 
 If Ping fails, it returns an error at startup (**fail fast** design).
 
+`DB_PING_TIMEOUT` is the budget for the whole of that sequence, not for `Ping` alone — pool creation
+and `Ping` share one context. `pgxpool` also opens `MinConns` connections concurrently the moment the
+pool is created, so those establishments compete with `Ping` for the same deadline. When many
+processes build a pool against one database at the same instant (parallel `go test`, a fleet of
+replicas cold-starting, reconnection after a failover), the budget can expire on queueing rather than
+on a database that is actually unreachable. Tune `DBCONN_MIN_CONNS` / `DB_PING_TIMEOUT` per
+environment for that shape of load rather than reading the failure as a broken database
+(see `env/README.md`).
+
 ## DatabaseDriver
 
 `DatabaseDriver` is an interface that abstracts `pgxpool.Pool`.
