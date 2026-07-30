@@ -545,7 +545,10 @@ linters:
         text: 'time\.Now'
 
 run:
-  timeout: "3m"
+  # 固定 timeout は持たない（0 = 無効）。所要はリポジトリ規模と有効 linter 数で単調に伸びるため、
+  # 固定秒数を置くと再発する。予算はローカルが make の GOLANGCI_LINT_TIMEOUT、
+  # CI が go-lint ジョブの timeout-minutes で持つ。
+  timeout: "0s"
   issues-exit-code: 1
   tests: true
   allow-parallel-runners: true

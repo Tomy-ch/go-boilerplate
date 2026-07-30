@@ -9,6 +9,8 @@ on:
       - 'go.sum'
       - '.golangci.yaml'
       - '.golangci-full.yaml'
+      - 'makefile'
+      - '.makefiles/go/golangci-lint.mk'
 
 permissions:
   contents: read
@@ -20,6 +22,9 @@ concurrency:
 jobs:
   go-lint:
     runs-on: ubuntu-latest
+    # The only cutoff for this job: golangci-lint itself runs with its timeout disabled.
+    # Measured setup ~2-4m + lint ~2.5m, so 30m leaves room for the repository to grow.
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: write
@@ -61,10 +66,9 @@ jobs:
         run: |
           set +e
 
-          golangci-lint run --config=.golangci-full.yaml \
-            --output.text.print-issued-lines=true \
-            --output.text.print-linter-name=true \
-            2>&1 | tee /tmp/golangci-lint.log
+          # Go through make so the timeout budget lives in one place (see timeout-minutes above).
+          # print-issued-lines / print-linter-name default to true in golangci-lint v2.
+          make lint GOLANGCI_LINT_TIMEOUT=0 2>&1 | tee /tmp/golangci-lint.log
 
           code=${PIPESTATUS[0]}
 
@@ -81,13 +85,15 @@ jobs:
           exit 0
 
       - name: Comment Go lint result on PR
-        if: github.event_name == 'pull_request'
+        # always() is needed for the timeout case: a plain `if:` is implicitly `success() &&`,
+        # so a cut-off job would skip this step and leave the partial log unreachable.
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- golangci-lint-result -->'
-          title: ${{ steps.golangci.outputs.title }}
+          title: "${{ steps.golangci.outputs.title || '## ❌ Go lint: CUT OFF (job timeout)' }}"
           body-file: /tmp/golangci-lint.log
           details-summary: 'golangci-lint log'
 
@@ -96,6 +102,11 @@ jobs:
         shell: bash
         run: |
           code='${{ steps.golangci.outputs.exit_code }}'
+          # Empty means the run never reached its own exit: the job was cut off.
+          if [ -z "$code" ]; then
+            echo "golangci-lint did not finish; the job was cut off (see timeout-minutes)"
+            exit 1
+          fi
           if [ "$code" != "0" ]; then
             echo "golangci-lint failed with exit code $code"
             exit 1

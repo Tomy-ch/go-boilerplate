@@ -22,10 +22,10 @@ At the same time, CI and the team's `make lint` / `make fix` targets must enforc
 authoritative rule set, which is substantially stricter: it enables over 50 linters
 (compared to roughly 20 in the minimal set), enforces additional `depguard` rules that
 guard layer boundaries (e.g. restricting `reflect`, `os`, DI container, and zap logger
-usage to their permitted scopes), runs `forbidigo` patterns, and imposes a 3-minute
-timeout to accommodate the heavier analysis.
+usage to their permitted scopes), and runs `forbidigo` patterns. The heavier analysis takes
+minutes rather than seconds.
 
-Running identical configs in both contexts is not practical: a 3-minute full lint pass
+Running identical configs in both contexts is not practical: a multi-minute full lint pass
 blocks responsive IDE feedback, while a 30-second minimal pass would let CI-only
 violations slip through undetected.
 
@@ -37,9 +37,12 @@ Maintain two golangci-lint configuration files with a clear division of authorit
   a curated minimal set of linters with a 30-second timeout. It is intentionally not
   the gate that fails CI.
 - `.golangci-full.yaml` — the authoritative CI gate. Both `make lint` and `make fix` pass
-  `--config .golangci-full.yaml` explicitly (see `.makefiles/go/golangci-lint.mk` lines 8
-  and 11). This config enables the complete linter set including all `depguard` layer
-  rules and has a 3-minute timeout.
+  `--config .golangci-full.yaml` explicitly (see the `lint` and `fix` targets in
+  `.makefiles/go/golangci-lint.mk`). This config enables the complete linter set including all `depguard` layer
+  rules and carries no fixed timeout of its own: a full run grows with the repository, so
+  a fixed budget in the config would go stale. The cutoff belongs to whichever entry point
+  runs it — `GOLANGCI_LINT_TIMEOUT` in the makefile locally, `timeout-minutes` on the
+  `go-lint` job in CI.
 
 Any rule that must be enforced as a hard gate belongs in `.golangci-full.yaml` only.
 The minimal config may contain a subset; drift between the two is intentional.
@@ -79,7 +82,7 @@ semantics have changed across golangci-lint versions.
 ## Notes
 
 - Source: `.golangci.yaml` (minimal default), `.golangci-full.yaml` (full gate),
-  `.makefiles/go/golangci-lint.mk` lines 8 and 11.
+  the `lint` and `fix` targets in `.makefiles/go/golangci-lint.mk`.
 - The `depguard` rules in `.golangci-full.yaml` are the machine-enforced expression of
   the layer dependency rules documented in [`docs/rules.md`](../rules.md).
 - Related: [ADR-0002](0002-onion-architecture.md) — the layer boundaries that `depguard`
