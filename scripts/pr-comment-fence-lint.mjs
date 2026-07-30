@@ -34,7 +34,8 @@ const FENCE_FOR_BLOCK = /^\s*fence_for\(\)\s*\{$/
 const COMMENT_ACTION_USE = new RegExp(
   `uses:\\s*["']?${COMMENT_ACTION.replace(/[.\/]/g, "\\$&")}["']?\\s*(#.*)?$`,
 )
-const DETAILS_SUMMARY = /^\s*details-summary:/
+const DETAILS_SUMMARY = /^\s*details-summary:\s*(.*)$/
+const STEP_BULLET = /^\s*-\s/
 // バッククォート 1 個で開いて 1 個で閉じる span の中に、シェル変数展開か printf の変換指定がある形。
 const INTERPOLATED_SPAN = /`[^`\n]*(?:\$\{|\$[A-Za-z_]|%[-0-9.*]*[sb])[^`\n]*`/
 
@@ -81,20 +82,40 @@ function findFixedFences(lines) {
   return hits
 }
 
+// アクションがフェンスするのは `details-summary` が空でない値を持つときだけ（action.yaml の
+// `detailsSummary ? ... : content`）。キーの有無で判定すると `details-summary: ''` が「フェンス済み」に
+// 化けて検査が黙る。式は静的に空か判定できないので、フェンスされない側へ倒す。
+function fencesBody(line) {
+  const matched = line.match(DETAILS_SUMMARY)
+  if (matched === null) return false
+
+  const value = matched[1].trim()
+  if (value === "" || value === "''" || value === '""') return false
+  return !value.includes("${{")
+}
+
 // `details-summary` を渡さない呼び出しがあるか。アクションが本文をフェンスするのはこの入力がある
 // ときだけで、無ければ本文はそのまま PR コメントになる。
 function hasPassThroughCall(lines) {
   for (let i = 0; i < lines.length; i++) {
     if (!COMMENT_ACTION_USE.test(lines[i])) continue
 
-    const indent = lines[i].length - lines[i].trimStart().length
+    // ステップの範囲は `uses:` の深さではなく、そのステップを開いた `-` の桁で決める。深さで見ると
+    // `- uses:` から書き始めたステップが自分の `-` の桁を `uses:` の桁として測り、次のステップの `-`
+    // で止まれない。素通しの呼び出しが後続ステップの `details-summary` を拾って隠れる向きに外れる。
+    let bullet = i
+    while (bullet >= 0 && !STEP_BULLET.test(lines[bullet])) bullet--
+    const stepIndent =
+      bullet >= 0 ? lines[bullet].length - lines[bullet].trimStart().length : 0
+
     let fenced = false
     for (let j = i + 1; j < lines.length; j++) {
       const line = lines[j]
-      // `uses:` と `with:` はステップ内の兄弟キーで同じ深さに並ぶので、区切りはそれより浅い
-      // 非空行（次のステップを開く `- name:` など）だけ。
-      if (line.trim() !== "" && line.length - line.trimStart().length < indent) break
-      if (DETAILS_SUMMARY.test(line)) {
+      if (line.trim() === "") continue
+      const indent = line.length - line.trimStart().length
+      // 次のステップを開く `-`（同じ桁）か、ステップより浅いキーに出たらこの呼び出しは終わり。
+      if (indent < stepIndent || (indent === stepIndent && STEP_BULLET.test(line))) break
+      if (fencesBody(line)) {
         fenced = true
         break
       }
