@@ -52,6 +52,8 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 ## First Step: スコープ解決
 
+**呼び手が `scope` payload を渡してきたときは、この質問を丸ごと出さない**（Chainability 参照）— ファイルリストは既に解決済みであり、再度聞くのは呼び手が下した判断についての2つ目のダイアログでしかない。
+
 `AskUserQuestion`:
 
 - 質問: 「test-review の対象スコープを指定してください」
@@ -61,7 +63,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
   - 「特定パス / パッケージ (free-text)」 — user 指定。 ファイルでもディレクトリでも可。
   - 「キャンセル」。
 
-解決後、対象ファイルリストを構築。スコープ内に `*_test.go` がなければ穏便に停止（レビュー対象なし）。
+解決後、対象ファイルリストを構築。スコープ内に `*_test.go` がなければ穏便に停止（レビュー対象なし）。**これは standalone のときだけ**: 呼び手の payload 下では未テストの production ファイルこそが狙いであってスコープが空なのではないため、実行を続ける（Chainability 参照）。
 
 各 test ファイルについて **subject ソース**（同パッケージ・basename `_test` 抜き）も解決。コード起点 2 レンズ（Lens 4 / Lens 5）に必須。
 
@@ -253,13 +255,21 @@ severity マッピング:
 
 ## Chainability
 
-PR レビューフローで `code-review` / `impl-review` / `arch-check` と並んで使う想定。 現状で他スキルを *chain in* する経路は持たない — user がレポートを読んで `scaffold-test`（再生成）or 手編集を判断する。 将来 PR レビュー orchestrator が `code-review` + `arch-check` + `test-review` を並列 fan out して結果統合する可能性はあるが、 まだ存在しない。
+本スキルの呼び手は `impl-review`。 同スキルの Step 4.5 が、自分で監査せずテスト観点をここへ委譲する — 同スキルの `test-gap` lens が「`/test-review` に委ねる」と言っているのはこのこと。 委譲が走っている間 `impl-review` は `test-gap` を停止するので、 本スキルが既に Lens 4 と Lens 5 の間で適用している「所管は1つ」の原則がスキル境界を跨いで伸びる — Lens 5 が「テストが1つも無いシンボル」、 Lens 4 が分岐 × 意味を所管し、 どちらにも3人目の報告者はいない。
 
-将来そういう親から chain される場合、 親は最低限以下を渡す:
+本スキルが他スキルを *chain in* する経路は依然として持たない — user がレポートを読んで `scaffold-test`（再生成）or 手編集を判断する。 `impl-review` へ呼び返すこともしない（レビューフローの入口は常に呼び手側）。
+
+呼び手は以下を渡す:
 
 - `scope` — 解決済みファイルリスト（First Step の `AskUserQuestion` をスキップ）。
 - `base_ref` — branch-vs-base モード時の base ref。
+- `reviewer_model` — 呼び手が reviewer ≠ implementer を保つために解決したモデル。 Step 2 の finder と Step 3 の verifier の両方へ適用し、 既定の `sonnet` を上書きする。
 - `skip_verifier` — boolean。 親が速度優先で verify を切る場合（既定 `false` = verify する）。
+
+payload 下で standalone と挙動が変わるのは次の2点だけ:
+
+- **ペアのテストが無い production ファイルもスコープに残す。** standalone では `*_test.go` 0件で実行を終える。 chain 時は `<subject>_test.go` が存在しない production ソースこそ Lens 5 の subject なので、 残して Lens 5 にテスト不在を報告させる。 Lens 1-3 は test ファイル駆動でそのファイルについて読むものが無い — pass と読める空の結果を返させず、 そのファイルについては skip する。
+- **レポートは呼び手が埋め込む前提で返す**（単体の成果物として描画しない）。 Step 4 と同じ構造で出し、 配置は呼び手に委ねる。 severity は本スキルの語彙（修正必須 / 補完推奨 / 再考 / 追加検討 + criticality）のまま保つ — 呼び手の体系へ写像し直すと「規約に違反している」と「この分岐が未検証」の区別が黙って失われる。
 
 ## 制約（サマリ）
 
@@ -275,7 +285,8 @@ PR レビューフローで `code-review` / `impl-review` / `arch-check` と並�
 - ✅ 最終レポートは日本語、 lens 別グルーピング、 severity tag。
 - ✅ `pkg/` は意図的に「Test Strategy 節なし」層として扱い、 documentation gap として警告しない。
 - ✅ criticality (1-10) は Lens 4 軸A（追加検討）と Lens 5（補完推奨・シンボル未カバー）の finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
-- ✅ コード起点は 2 レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが 1 つも無いシンボル」は Lens 5 が所管し、Lens 1 逆方向 / Lens 4 とは二重報告しない。
+- ✅ コード起点は 2 レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが 1 つも無いシンボル」は Lens 5 が所管し、Lens 1 逆方向 / Lens 4 とは二重報告しない。`impl-review` から chain されている間は同スキルの `test-gap` lens が停止しているため、所管はスキル境界を跨いでも 1 つのまま。
+- ✅ payload 受領時は First Step の質問を出さず、ペアテスト不在の production ファイルもスコープに残し（Lens 5 の対象）、レポートは呼び手が埋め込む前提で自分の severity 語彙のまま返す。
 
 ## チェックリスト
 

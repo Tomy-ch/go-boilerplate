@@ -1,7 +1,7 @@
 ---
 name: test-review
 description: >-
-  Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `docs/testing-conventions.md` + the nearest ancestor README's Test Strategy section (heading wording varies; resolved by walking up from the target, with `pkg/**` the sole documented exemption) + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out five `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap / branch × meaning completeness** (code-origin: reads the subject source itself and builds a per-function two-axis matrix — Axis A 分岐網羅: every branch has a covering case; Axis B 意味網羅: each covered branch's case asserts that branch's distinctive outcome, not just that it executed — surfacing uncovered branches and covered-but-vacuously-asserted branches separately); (5) **subject symbol completeness** (code-origin: builds the subject's public-symbol table and flags every symbol — getter / accessor / provider / env-gate helper included — that has no `TestXxx` at all, the reachable-but-untested code a test-file-first read cannot see; owns "symbol has zero test" so Lens 1 reverse / Lens 4 do not double-report). Lenses 4 and 5 are the two **code-origin (subject-driven)** finders; 1–3 are test-file / README-driven. Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable; designed to slot into a PR review flow alongside `code-review` / `impl-review` / `arch-check`.
+  Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `docs/testing-conventions.md` + the nearest ancestor README's Test Strategy section (heading wording varies; resolved by walking up from the target, with `pkg/**` the sole documented exemption) + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out five `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap / branch × meaning completeness** (code-origin: reads the subject source itself and builds a per-function two-axis matrix — Axis A 分岐網羅: every branch has a covering case; Axis B 意味網羅: each covered branch's case asserts that branch's distinctive outcome, not just that it executed — surfacing uncovered branches and covered-but-vacuously-asserted branches separately); (5) **subject symbol completeness** (code-origin: builds the subject's public-symbol table and flags every symbol — getter / accessor / provider / env-gate helper included — that has no `TestXxx` at all, the reachable-but-untested code a test-file-first read cannot see; owns "symbol has zero test" so Lens 1 reverse / Lens 4 do not double-report). Lenses 4 and 5 are the two **code-origin (subject-driven)** finders; 1–3 are test-file / README-driven. Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable, and also the delegation target of `impl-review`: its Step 4.5 chains here with a `scope` / `base_ref` / `reviewer_model` / `skip_verifier` payload and suppresses its own `test-gap` lens for the run, so Lens 4 + Lens 5 are the single owner of the test viewpoint in that flow (under a payload the First Step question is skipped, a production file whose paired `*_test.go` is missing stays in scope as Lens 5's subject, and the report is returned for the caller to embed with its severities intact).
 ---
 
 # Test Review
@@ -58,6 +58,8 @@ Do NOT use this skill for:
 
 ## First Step: Resolve Scope
 
+**Skip this question entirely when a caller passed a `scope` payload** (see Chainability) — the file list is already resolved, and asking again would be a second dialog for a decision the caller has made.
+
 `AskUserQuestion`:
 
 - Question: 「test-review の対象スコープを指定してください」
@@ -67,7 +69,7 @@ Do NOT use this skill for:
   - 「特定パス / パッケージ (free-text)」 — ユーザがパスを指定。 ファイルでもディレクトリでもよい。
   - 「キャンセル」.
 
-After resolution, build the target list. If no `*_test.go` files are in scope, stop with a friendly message — no tests to review.
+After resolution, build the target list. If no `*_test.go` files are in scope, stop with a friendly message — no tests to review. **Standalone only**: under a caller payload an untested production file is the point rather than an empty scope, so the run continues (see Chainability).
 
 For each target test file, also resolve its **subject source file** (same package, basename without `_test`). Required for the two code-origin lenses (Lens 4 / Lens 5).
 
@@ -259,13 +261,21 @@ End the report with a single concrete suggestion:
 
 ## Chainability
 
-This skill is designed to stand alongside `code-review` / `impl-review` / `arch-check` in a PR review flow. It does not currently chain *into* other skills — the user reads the report and decides whether to invoke `scaffold-test` (regenerate) or hand-edit. A future PR-review orchestrator could fan out `code-review` + `arch-check` + `test-review` in parallel and merge their reports; that orchestrator does not exist yet.
+`impl-review` is this skill's caller: its Step 4.5 delegates the test viewpoint here instead of auditing it itself, which is what that skill's `test-gap` lens means when it says it defers to `/test-review`. While the delegation runs, `impl-review` suppresses `test-gap`, so the single-owner rule this skill already applies between Lens 4 and Lens 5 extends across the skill boundary — Lens 5 owns "the symbol has no test at all", Lens 4 owns branch × meaning, and no third reporter exists for either.
 
-When chained from such an orchestrator in the future, the parent passes a context payload with at least:
+This skill still does not chain *into* anything: the user reads the report and decides whether to invoke `scaffold-test` (regenerate) or hand-edit. It also does not call back into `impl-review` — the review flow's entry point is always the caller.
+
+A caller passes a context payload with:
 
 - `scope` — pre-resolved file list (skips First Step's `AskUserQuestion`).
 - `base_ref` — when running in branch-vs-base mode.
+- `reviewer_model` — the model the caller resolved to keep reviewer ≠ implementer. Apply it to both the Step 2 finders and the Step 3 verifiers, overriding the `sonnet` default.
 - `skip_verifier` — boolean; allows the parent to disable the verify stage for speed (default `false`, i.e. verify by default).
+
+Under a payload, two behaviors differ from a standalone run — everything else is identical:
+
+- **A production file with no paired test stays in scope.** Standalone, an empty `*_test.go` list ends the run. Chained, a production source file whose `<subject>_test.go` does not exist is precisely Lens 5's subject, so keep it and let Lens 5 report the absent test. Lenses 1-3 are test-file-driven and have nothing to read for such a file — skip them for it rather than letting them return an empty result that reads as a pass.
+- **The report is returned for the caller to embed, not rendered as a standalone deliverable.** Produce the same Step 4 structure and let the caller place it as a section in its own report. Keep the severities in this skill's vocabulary (修正必須 / 補完推奨 / 再考 / 追加検討, plus criticality) — never remap them onto the caller's, which would silently lose the distinction between "the rule is violated" and "this branch is unverified".
 
 ## Constraints (Summary)
 
@@ -281,7 +291,8 @@ When chained from such an orchestrator in the future, the parent passes a contex
 - ✅ Final report in Japanese, grouped by lens with severity tags.
 - ✅ Surface `pkg/` as an intentional "no Test Strategy" layer, never as a documentation gap.
 - ✅ criticality (1-10) は Lens 4 Axis A（追加検討）と Lens 5（補完推奨・シンボル未カバー）の finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
-- ✅ コード起点は2レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが1つも無いシンボル」は Lens 5 が所管し、Lens 1 reverse / Lens 4 とは二重報告しない。
+- ✅ コード起点は2レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが1つも無いシンボル」は Lens 5 が所管し、Lens 1 reverse / Lens 4 とは二重報告しない。`impl-review` から chain されている間は同スキルの `test-gap` lens が停止しているので、所管はスキル境界を跨いでも 1 つのまま。
+- ✅ payload 受領時は First Step の質問を出さず、ペアテスト不在の production ファイルもスコープに残し（Lens 5 の対象）、レポートは呼び手が埋め込む前提で自分の severity 語彙のまま返す。
 
 ## Checklist
 
