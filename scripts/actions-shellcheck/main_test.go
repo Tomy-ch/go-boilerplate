@@ -396,7 +396,7 @@ func TestCountRunSteps(t *testing.T) {
 
 		t.Run("using の値と無関係に run ステップを数える", func(t *testing.T) {
 			t.Parallel()
-			body := "runs:\n  using: composit\n  steps:\n    - shell: bash\n      run: echo hi\n"
+			body := "runs:\n  using: COMPOSITE\n  steps:\n    - shell: bash\n      run: echo hi\n"
 			count, err := countRunSteps("action.yaml", []byte(body))
 			require.NoError(t, err)
 			assert.Equal(t, 1, count)
