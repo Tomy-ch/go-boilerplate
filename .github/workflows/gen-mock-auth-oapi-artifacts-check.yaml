@@ -1,11 +1,14 @@
 name: Generated Mock-Auth OpenAPI Artifacts Check
 
+# `paths` lists the generated output as well as the inputs — see README.md for why.
 on:
   pull_request:
     paths:
+      # Inputs
       - '.github/workflows/gen-mock-auth-oapi-artifacts-check.yaml'
       - 'docker/mock-auth-server/openapi/**/*.yaml'
       - 'docker/mock-auth-server/orval.config.ts'
+      - 'docker/mock-auth-server/redocly.yaml'
       - 'docker/mock-auth-server/package.json'
       - 'docker/mock-auth-server/package-lock.json'
       - 'docker/tools/package.json'
@@ -13,6 +16,10 @@ on:
       - 'docker/tools/Dockerfile'
       - 'mise.toml'
       - '.makefiles/openapi/mock-auth.mk'
+      # Generated output. `docker/mock-auth-server/openapi/openapi.gen.yaml` is already covered by
+      # `docker/mock-auth-server/openapi/**/*.yaml` above.
+      - 'docker/mock-auth-server/src/generated/**'
+      - 'docs/openapi/mock-auth-server/**'
   workflow_dispatch:
 
 concurrency:
@@ -33,8 +40,13 @@ jobs:
         with:
           egress-policy: audit
 
+      # fetch-depth: 0 so the PR's base and head commits are present locally. The default
+      # shallow checkout fetches only the merge commit, so the `git diff` that classifies the
+      # cause below cannot resolve either parent.
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Run Mock-Auth OpenAPI Bundle + zod codegen
         run: make gen-mock-auth-oapi
@@ -57,22 +69,37 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
+      # Classify the PR so the report can name the actual cause:
+      #   - source_modified:   hand-written mock-auth-server source changed, so a forgotten
+      #                        `make gen-mock-auth-oapi` is likely
+      #   - artifact_modified: the generated output was edited directly, which is a rule violation
+      #   - neither:           generator-side drift is the likely cause
+      # The bundled spec and the zod schemas are generated output, so they are excluded from the
+      # source set even though they live under `docker/mock-auth-server/`.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${BASE_REF}" || true
-          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
-          if echo "$changed" | grep -qE '^docker/mock-auth-server/'; then
+          # Surface a diff failure rather than degrading to an empty file list, which would
+          # silently misreport every cause below as generator-side drift.
+          if ! changed="$(git diff --name-only "$base_sha" "$head_sha")"; then
+            echo "::warning::failed to diff ${base_sha}..${head_sha}; cause classification skipped"
+            changed=""
+          fi
+          artifacts='^docker/mock-auth-server/(openapi/openapi\.gen\.yaml$|src/generated/)|^docs/openapi/mock-auth-server/'
+          if echo "$changed" | grep -E '^docker/mock-auth-server/' | grep -qvE "$artifacts"; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$changed" | grep -qE "$artifacts"; then
+            echo "artifact_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "artifact_modified=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build PR comment body
@@ -90,6 +117,9 @@ jobs:
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in mock-auth OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
             printf '%s\n' "Run \`make gen-mock-auth-oapi\` locally and commit the changes." > "$out"
+          elif [ "${{ steps.source_mod.outputs.artifact_modified }}" = "true" ]; then
+            echo "title=## ✋ mock-auth OpenAPI generated output was edited directly" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR changes mock-auth OpenAPI generated output without changing any hand-written source under \`docker/mock-auth-server/\`. Generated files must not be hand-edited (see \`AGENTS.md\`). Discard the edit, run \`make gen-mock-auth-oapi\` so the output comes from the generator, and commit that instead." > "$out"
           else
             echo "title=## ⚠️ Drift in mock-auth OpenAPI generated output detected (source unchanged)" >> "$GITHUB_OUTPUT"
             printf '%s\n' "This PR does not modify anything under \`docker/mock-auth-server/\`, so this may be generator-side drift (non-deterministic output, dependency version differences, etc.). Run \`make gen-mock-auth-oapi\` locally and commit the changes." > "$out"

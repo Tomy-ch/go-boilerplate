@@ -1,12 +1,26 @@
 name: Generated Database Artifacts Check
 
+# `paths` lists the generated output as well as the inputs — see README.md for why.
 on:
   pull_request:
     paths:
+      # Inputs
       - '.github/workflows/gen-db-artifacts-check.yaml'
+      - '.github/actions/setup-postgres/**'
       - 'database/**/*.sql'
       - 'docker/database/**/*.sql'
       - '.makefiles/**/*.mk'
+      - 'sqlc.yaml'
+      - 'mise.toml'
+      # `dump-schema` and `merge-dml` are what actually write `database/gen/**`, so their
+      # implementation is an input here. Only these two packages are listed — the rest of the
+      # module is not a generator and watching it would amount to dropping the filter.
+      - 'internal/cli/dumpschema/**'
+      - 'internal/cli/mergedml/**'
+      - 'cmd/dump_schema.go'
+      - 'cmd/merge_dml.go'
+      # Generated output. `database/gen/**` is already covered by `database/**/*.sql` above.
+      - 'internal/infrastructure/rdb/sqlc/gen/**'
   workflow_dispatch:
 
 concurrency:
@@ -50,8 +64,13 @@ jobs:
         with:
           egress-policy: audit
 
+      # fetch-depth: 0 so the PR's base and head commits are present locally. The default
+      # shallow checkout fetches only the merge commit, so the `git diff` that classifies the
+      # cause below cannot resolve either parent.
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -106,24 +125,35 @@ jobs:
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
             : > /tmp/changed_files.txt
           fi
-      # Determine whether the PR touched the source (database/**/*.sql / docker/database/**/*.sql).
-      # If it did not, generator-side (sqlc) drift is the likely cause.
+      # Classify the PR so the report can name the actual cause:
+      #   - source_modified:   the SQL source changed, so a forgotten `make gen-query` is likely
+      #   - artifact_modified: the generated output was edited directly, which is a rule violation
+      #   - neither:           generator-side (sqlc) drift is the likely cause
+      # `database/gen/**` is generated output, so it is excluded from the source set even though it
+      # is SQL under `database/`.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${BASE_REF}" || true
-          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
-          if echo "$changed" | grep -qE '^(database|docker/database)/.*\.sql$'; then
+          # Surface a diff failure rather than degrading to an empty file list, which would
+          # silently misreport every cause below as generator-side drift.
+          if ! changed="$(git diff --name-only "$base_sha" "$head_sha")"; then
+            echo "::warning::failed to diff ${base_sha}..${head_sha}; cause classification skipped"
+            changed=""
+          fi
+          if echo "$changed" | grep -E '^(database|docker/database)/.*\.sql$' | grep -qvE '^database/gen/'; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$changed" | grep -qE '^(database/gen/|internal/infrastructure/rdb/sqlc/gen/)'; then
+            echo "artifact_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "artifact_modified=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Build PR comment body
         id: comment
@@ -142,9 +172,12 @@ jobs:
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in database output have been detected" >> "$GITHUB_OUTPUT"
             printf '%s\n' "Run the database generation command (e.g. \`make gen\` / \`make gen-query\`) locally and commit the changes." > "$out"
+          elif [ "${{ steps.source_mod.outputs.artifact_modified }}" = "true" ]; then
+            echo "title=## ✋ DB generated output was edited directly" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR changes the DB generated output without changing any SQL source. Generated files must not be hand-edited (see \`AGENTS.md\`). Discard the edit, run \`make gen-query\` so the output comes from the generator, and commit that instead." > "$out"
           else
             echo "title=## ⚠️ Drift in DB generated output detected (SQL source unchanged)" >> "$GITHUB_OUTPUT"
-            printf '%s\n' "This PR does not modify any SQL source, so this may be generator-side drift (sqlc version differences, stale generated artifacts on the base, etc.). Run \`make gen-query\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
+            printf '%s\n' "This PR does not modify any SQL source, so this may be generator-side drift (a change to \`sqlc.yaml\` / \`mise.toml\` / the DB setup action, sqlc version differences, stale generated artifacts on the base, etc.). Run \`make gen-query\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
           # Disable SC2016: the `%s` that renders the filename as markdown code is literal (must not expand)
           # shellcheck disable=SC2016
