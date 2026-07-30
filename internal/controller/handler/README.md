@@ -277,6 +277,21 @@ If changes are required, always follow:
 
 OpenAPI → `make gen` → regenerate
 
+### Every Route Must Exist in OpenAPI
+
+Every route registered on Echo **must** have a matching operation (method + path) in the OpenAPI spec. There is no allowlist for exceptions — an allowlist would itself become a drift source.
+
+The rule exists because several parts of the HTTP stack assume "registered route = spec operation" without stating it:
+
+- **`Allow` header on 405** — Echo derives the header from the routes registered for that path, so it advertises the spec's declared methods only while the two sets agree.
+- **Request validation** — a path the spec does not declare is never validated.
+- **`details` opt-in gate** — `DetailPolicy` resolves the operation from the spec and is fail-closed, so an unresolved path silently drops `details`.
+- **404 / 405 decision** — the OpenAPI validation middleware routes with its own router, so a path the spec does not declare answers 404.
+
+Each of these changes behavior at runtime while the tests stay green, so the correspondence is machine-verified by `TestRouteSpecParity` in `internal/architest`. Operations under `/_internal/` are the only ones excluded, and only because the spec itself declares them as code-generation anchors that are never implemented or exposed.
+
+Registering a route by hand is therefore allowed only for an operation the spec already declares (see the `/metrics` carve-out in [Handler Struct Rules](#handler-struct-rules)). Registration forms whose method and path cannot be determined from the source — `Any` / `Match` / `Static` / `Group` / `AddRoute`, `Add` with a runtime method or a `Route` literal, or a non-literal path — cannot be matched against the spec and are rejected by the same test.
+
 ## Observability
 
 ### Observability Flow
@@ -423,7 +438,7 @@ type server struct {
 - Do not instantiate dependencies inside
 - Depend on interface
 
-Exception: operational endpoints that are **not** defined in OpenAPI (e.g. the Prometheus `/metrics` handler) have no generated `ServerInterface`, so they do not follow the `server` struct + `gen.NewStrictHandler` pattern. They register their own `echo.HandlerFunc` (e.g. `echo.WrapHandler(promhttp.Handler())`) directly in `BindHandler`. This carve-out is limited to non-OpenAPI ops endpoints.
+Exception: an operational endpoint whose response is produced by a third-party handler (e.g. the Prometheus `/metrics` handler) runs no oapi-codegen for its package, so it has no generated `ServerInterface` and does not follow the `server` struct + `gen.NewStrictHandler` pattern. It registers its own `echo.HandlerFunc` (e.g. `echo.WrapHandler(promhttp.Handler())`) directly in `BindHandler`. The carve-out is the code generation, **not** the OpenAPI definition — the operation is still declared in the spec, as [Every Route Must Exist in OpenAPI](#every-route-must-exist-in-openapi) requires.
 
 ### Why use fx.Invoke
 
