@@ -117,12 +117,6 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 |`echo_http_error_handler.go`|Normalize errors carrying an HTTP status to `HTTPErrorResponse`|
 |`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec|
 
-## Coverage exceptions
-
-Per `docs/testing-conventions.md` §9, the following infallible defensive branch is left uncovered (no contrived tests):
-
-- `http_error_handler.go` `handleHTTPError` — the nested `WriteHeader(500)` taken only when `writeErrorResponse` fails while the response is not yet committed. The body is the fixed, always-JSON-encodable `gen.ErrorResponseWithDetails` struct, so `c.JSON` can only fail during the write (after `WriteHeader` has already committed the response); the not-yet-committed failure is unreachable. The reachable write-failure path (log + no double commit) is covered.
-
 ## Notes
 
 - If writing the error response fails, a fallback `500` status is returned with the write error logged
