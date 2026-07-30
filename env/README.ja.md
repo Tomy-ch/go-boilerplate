@@ -7,7 +7,7 @@
 ## 命名・型の規約
 
 - 変数名は `{SUBSYSTEM}_{NAME}` の UPPER_SNAKE_CASE
-- 型欄は `internal/config/` で読み込まれる Go 型に対応:
+- 型欄は `internal/config/` で読み込まれる Go 型に対応。下記の語彙は閉じており、`TestEnvReadmeTypeVocabulary`（`internal/architest`）が双方向に検証する。語彙に無い型欄はビルドを落とし（Markdown のセルがずれた行も同時に落ちる）、この列挙自体も同テストが宣言する語彙と一致していなければならない。型を増やすときは両方を触ることになる:
   - `string` → `string`、`int` → `int`、`bool` → `bool`
   - `duration` → `time.Duration`（`time.ParseDuration` でパース、例: `500ms`, `1h30m`）
   - `csv` → `[]string`（`,` 区切り、空白トリム後分割）

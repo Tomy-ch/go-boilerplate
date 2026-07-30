@@ -7,7 +7,7 @@ This directory is the canonical reference for every environment variable read by
 ## Conventions
 
 - Variable names follow `{SUBSYSTEM}_{NAME}` in UPPER_SNAKE_CASE.
-- The Type column maps to a Go type loaded by `internal/config/`:
+- The Type column maps to a Go type loaded by `internal/config/`. The vocabulary below is closed, and `TestEnvReadmeTypeVocabulary` (`internal/architest`) enforces it in both directions: a Type cell outside the vocabulary fails the build — which also catches a row whose Markdown cells have shifted — and the enumeration itself must agree with the vocabulary declared in that test, so adding a type means touching both:
   - `string` → `string`, `int` → `int`, `bool` → `bool`
   - `duration` → `time.Duration` (parsed via `time.ParseDuration`, e.g. `500ms`, `1h30m`)
   - `csv` → `[]string` (split on `,` after whitespace trim)

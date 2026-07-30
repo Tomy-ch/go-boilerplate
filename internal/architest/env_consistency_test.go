@@ -78,10 +78,15 @@ var (
 	// structTagRe / structTagKeyRe は、フィールドタグのリテラルと、そこで使われているタグ名を捕捉します。
 	structTagRe    = regexp.MustCompile("`[^`]*`")
 	structTagKeyRe = regexp.MustCompile(`(\w+):"`)
-	// envReadmeTagNameFiles は、タグ名の表記を突き合わせる env 変数一覧の全件です。翻訳で綴りが分かれる
-	// 目印と違い、タグ名はコードの識別子そのもので訳されないため、対訳側も同じ検証に載せられます。
-	envReadmeTagNameFiles = []string{envReadmeFile, envReadmeTranslationFile}
+	// typeVocabularyRe は、Conventions の型対応列挙から Type 列に書ける語を捕捉します。
+	typeVocabularyRe = regexp.MustCompile("`([a-z][a-z0-9]*)` ?→")
+	// envReadmeFiles は、env 変数一覧の全件です。言語に依らない記載は対訳側も同じ検証に載せられます。
+	envReadmeFiles = []string{envReadmeFile, envReadmeTranslationFile}
 )
+
+// envTypeVocabulary は、変数表の Type 列に書ける語の宣言です。env/README.md の Conventions が
+// 同じ語彙を列挙しており、両者の一致は TestEnvReadmeTypeVocabulary が検証します。
+var envTypeVocabulary = []string{"string", "int", "bool", "duration", "csv"}
 
 // codeDefaultEmptyNotations は、Code default が空であることを表す綴りをファイルごとに宣言します。
 // 空値はバッククォート記法で書けないため散文で綴られ、綴り自体が翻訳で分岐します。言語ごとに綴りを
@@ -330,14 +335,15 @@ func TestEnvReadmeTranslationStructure(t *testing.T) {
 // 散文中のタグ名はコードの識別子の手書きの複製で、実在しない名前を書いても Markdown は通り、
 // 既定値の一致を見る TestEnvReadmeCodeDefaults もタグ名そのものは読みません。誤った名前のまま
 // 手順どおりに変数を追加すると、caarlos0/env は未知のタグを黙って読み飛ばし、既定値が効かないまま
-// required でもないフィールドが残ります。
+// required でもないフィールドが残ります。対訳も同じ検証に載せられるのは、翻訳で綴りが分かれる目印と
+// 違い、タグ名がコードの識別子そのもので訳されないためです。
 func TestEnvReadmeTagNames(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
 	declared := collectStructTagKeys(t, root)
 
-	for _, file := range envReadmeTagNameFiles {
+	for _, file := range envReadmeFiles {
 		referenced := collectReadmeTagRefs(t, root, file)
 		require.NotEmptyf(t, referenced, "%s からタグ名の参照を 1 件も抽出できず、検証が空振りする", file)
 
@@ -346,6 +352,46 @@ func TestEnvReadmeTagNames(t *testing.T) {
 				"%s が参照するタグ名 %s を %s は使っていない", file, name, envSpecFile)
 		}
 	}
+}
+
+// TestEnvReadmeTypeVocabulary は、変数表の Type 列が Conventions の定める語彙だけで構成されて
+// いること、およびその語彙が正本・対訳・テスト宣言の三者で一致することを検証します。
+// Type 列が閉じた語彙であって初めて、そこに書かれた値が型を指していると機械的に言えます。語彙外の
+// 値は、未定義の型を書いたか、Markdown のセル分割が崩れて別の列を Type として読んでいるかの
+// どちらかで、後者は表の見た目では気づけません。語彙の宣言を README とテストの双方に置くのは、
+// 語彙を増やす変更に両方を触らせ、README だけを広げて検証が黙って緩むのを防ぐためです。
+// 対訳の列挙まで見るのは、型名がコードの識別子で訳されず、正本と同じ語が並ぶためです。
+func TestEnvReadmeTypeVocabulary(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+
+	for _, file := range envReadmeFiles {
+		assert.ElementsMatchf(t, envTypeVocabulary, collectTypeVocabulary(t, root, file),
+			"%s の Conventions が列挙する Type 語彙が envTypeVocabulary と一致しない。"+
+				"型を増やしたなら両方を更新すること", file)
+	}
+
+	for _, row := range parseEnvReadmeRows(t, root, envReadmeFile) {
+		assert.Containsf(t, envTypeVocabulary, strings.TrimSpace(row.typ),
+			"%s の %s の Type 列が Conventions の語彙に無い。未定義の型か、セルがずれて別の列を"+
+				"Type として読んでいる", envReadmeFile, row.key)
+	}
+}
+
+// collectTypeVocabulary は、Conventions の型対応列挙が挙げる Type 列の語を重複を除いて返します。
+func collectTypeVocabulary(t *testing.T, root, file string) []string {
+	t.Helper()
+
+	names := []string{}
+	for _, m := range typeVocabularyRe.FindAllStringSubmatch(readRepoFile(t, root, file), -1) {
+		if !slices.Contains(names, m[1]) {
+			names = append(names, m[1])
+		}
+	}
+
+	require.NotEmptyf(t, names, "%s から Type 語彙を 1 件も抽出できず、検証が空振りする", file)
+	return names
 }
 
 // collectReadmeTagRefs は、env 変数一覧の散文が参照するタグ名の全件を重複を除いて返します。
