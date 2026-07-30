@@ -14,6 +14,7 @@
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
 - `env/.env.<env>` ファイル間で値が異なってよいものは、その理由を備考欄に書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）
+- 本ファイルは正本（[README.md](README.md)）の対訳で、値まで含めて表を複製している。このリポジトリの読者の多くは日本語版を読む。散文は翻訳されるが、キー・型・例・`Code default` の値は言語に依らないため正本と一致させること。乖離は `internal/architest`（`TestEnvReadmeTranslationValues`）がビルドを落として検知する。文書構造 — 表を区切るサブシステム見出しと、節・箇条書き項目の個数 — の一致は `TestEnvReadmeTranslationStructure` が検証するので、段落ごと訳し漏らした場合も検知される。`Code default` が空の場合はバッククォートで書けないため、正本では **Code default empty**、対訳では **Code default は空** と綴る。この 2 つの綴りはテストが宣言しており、他の書き方は受け付けない
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `default:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
 
 ## 新規変数を追加する手順
