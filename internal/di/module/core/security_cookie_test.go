@@ -26,9 +26,29 @@ func securityCookieDeps(t *testing.T) fx.Option {
 func TestSecurityCookieModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
-	var sc *cookie.SecurityCookie
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	validateGraph(t, securityCookieDeps(t), SecurityCookieModule(), fx.Populate(&sc))
+		t.Run("モジュールを組み込めば SecurityCookie が解決できる", func(t *testing.T) {
+			t.Parallel()
+
+			var sc *cookie.SecurityCookie
+
+			validateGraph(t, securityCookieDeps(t), SecurityCookieModule(), fx.Populate(&sc))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュール未配線では SecurityCookie が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var sc *cookie.SecurityCookie
+
+			requireGraphIncomplete(t, securityCookieDeps(t), fx.Populate(&sc))
+		})
+	})
 }
 
 func TestSecurityCookieModule(t *testing.T) {

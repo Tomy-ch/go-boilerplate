@@ -78,18 +78,35 @@ func TestAuthnModule_GraphIsValid(t *testing.T) {
 
 	// AuthnModule が登録する 3 つの出力型をすべて要求する。fx は要求された型の依存しか解決しないため、
 	// Authenticator だけを Populate すると IdentityResolver 側の配線が壊れても緑のままになる。
-	var (
-		authenticator authbd.Authenticator
-		resolver      authbd.IdentityResolver
-		authFunc      openapi3filter.AuthenticationFunc
-	)
+	populateAll := func() fx.Option {
+		var (
+			authenticator authbd.Authenticator
+			resolver      authbd.IdentityResolver
+			authFunc      openapi3filter.AuthenticationFunc
+		)
 
-	validateGraph(t,
-		authnDeps(t),
-		resolverDeps(t),
-		AuthnModule(),
-		fx.Populate(&authenticator, &resolver, &authFunc),
-	)
+		return fx.Populate(&authenticator, &resolver, &authFunc)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュールを組み込めば Authenticator と IdentityResolver と AuthenticationFunc が解決できる", func(t *testing.T) {
+			t.Parallel()
+
+			validateGraph(t, authnDeps(t), resolverDeps(t), AuthnModule(), populateAll())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュール未配線では Authenticator が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			requireGraphIncomplete(t, authnDeps(t), resolverDeps(t), populateAll())
+		})
+	})
 }
 
 func TestAuthnModule(t *testing.T) {

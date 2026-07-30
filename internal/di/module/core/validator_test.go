@@ -26,9 +26,29 @@ func validatorDeps(t *testing.T) fx.Option {
 func TestValidatorModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
-	var v *openapi3.T
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	validateGraph(t, validatorDeps(t), ValidatorModule(), fx.Populate(&v))
+		t.Run("モジュールを組み込めば Validator が解決できる", func(t *testing.T) {
+			t.Parallel()
+
+			var v *openapi3.T
+
+			validateGraph(t, validatorDeps(t), ValidatorModule(), fx.Populate(&v))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュール未配線では Validator が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var v *openapi3.T
+
+			requireGraphIncomplete(t, validatorDeps(t), fx.Populate(&v))
+		})
+	})
 }
 
 func TestValidatorModule(t *testing.T) {

@@ -31,8 +31,10 @@ layer cannot afford. Each module therefore carries two sibling tests:
   `fx.ValidateApp` resolves the module's output types **without** executing constructors or lifecycle
   hooks. Because nothing runs, this tier can demand the module's *full* output set against bare mocks:
   `AuthnModule` resolves its `IdentityResolver` and `AuthenticationFunc` here, which a booting test
-  cannot reach without a usable tracer and database driver. For a module whose constructors take no
-  arguments there is no dependency edge left to miss, and the tier is a formality kept for uniformity.
+  cannot reach without a usable tracer and database driver. Each one is asserted from **both sides** —
+  the `異常系` case drops the module and requires the type to stop resolving, which is what proves the
+  module is the provider rather than something else in the graph. Without that half, a module whose
+  constructors take no arguments would have nothing left that could fail.
 - **`Test<Module>`** — starts a minimal `fx.New` app and `fx.Populate`s the provided component, proving
   the constructors actually run and yield a usable value. Most modules assert only that the component is
   non-nil, because their constructor has one possible outcome; `AuthnModule`, whose provider selects an

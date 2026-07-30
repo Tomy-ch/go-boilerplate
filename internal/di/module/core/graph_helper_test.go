@@ -13,3 +13,10 @@ func validateGraph(t *testing.T, opts ...fx.Option) {
 	t.Helper()
 	require.NoError(t, fx.ValidateApp(append(opts, fx.NopLogger)...))
 }
+
+// requireGraphIncomplete は、与えたモジュール群では要求された型を解決できないことを検証する。
+// 対象モジュールを外した構成に用いることで、そのモジュールこそが当該型の供給元であることを示す。
+func requireGraphIncomplete(t *testing.T, opts ...fx.Option) {
+	t.Helper()
+	require.Error(t, fx.ValidateApp(append(opts, fx.NopLogger)...))
+}
