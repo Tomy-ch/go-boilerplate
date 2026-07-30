@@ -15,21 +15,25 @@ import (
 func TestSecurityCookieModule(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fx アプリで SecurityCookie が提供される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		var sc *cookie.SecurityCookie
-		app := fx.New(
-			fx.Provide(func() testing.TB { return t }),
-			fx.Provide(config.MockConfigForTest),
-			fx.Provide(config.NewSecureCookieConfig),
-			SecurityCookieModule(),
-			fx.Populate(&sc),
-			fx.NopLogger,
-		)
+		t.Run("fx アプリで SecurityCookie が提供される", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, app.Start(context.Background()))
-		t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
-		assert.NotNil(t, sc)
+			var sc *cookie.SecurityCookie
+			app := fx.New(
+				fx.Provide(func() testing.TB { return t }),
+				fx.Provide(config.MockConfigForTest),
+				fx.Provide(config.NewSecureCookieConfig),
+				SecurityCookieModule(),
+				fx.Populate(&sc),
+				fx.NopLogger,
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+			assert.NotNil(t, sc)
+		})
 	})
 }
