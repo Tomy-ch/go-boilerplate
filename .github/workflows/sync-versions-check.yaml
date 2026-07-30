@@ -75,7 +75,7 @@ jobs:
           # today. Fencing anyway keeps that out of the safety argument: a path may hold any byte but
           # NUL and `/`, and outside a fence a name is live Markdown — a mention notifying third
           # parties, a fabricated heading or link, posted under the bot's name.
-          # That same literal rule table caps the list at a few dozen paths, so unlike the
+          # That same literal rule table caps the list at roughly a dozen paths, so unlike the
           # gen-*-artifacts checks this body cannot approach the action's length cap and needs no
           # trimming ahead of the fence.
           list=/tmp/sync-versions-files.txt
