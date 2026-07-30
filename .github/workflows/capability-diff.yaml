@@ -102,6 +102,20 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, needed
+          # here for the step summary alone: the PR comment goes through the action's
+          # details-summary path, but GITHUB_STEP_SUMMARY renders the same file with nothing
+          # wrapping it.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
           capslock -packages ./... -output compare -granularity package \
             capabilities-base.json > capability-diff.txt 2>&1 || true
 
@@ -109,13 +123,15 @@ jobs:
             LINES=$(wc -l < capability-diff.txt | tr -d ' ')
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "title=## 🔎 Capability Diff: この PR で依存の capability が変化しました" >> "$GITHUB_OUTPUT"
+            # No fence around the diff: this call passes details-summary, so the action fences the
+            # whole body and one here would render as literal backticks inside it. The limit keeps
+            # the body under the action's 45000 character default so the note below is not
+            # truncated away.
             {
               echo "以下は report-only です。マージはブロックしません。"
               echo "意図した変更かをレビューで確認してください（例: ログ出力のライブラリが EXEC に到達し始めた等）。"
               echo
-              echo '```text'
-              head -c 60000 capability-diff.txt
-              echo '```'
+              head -c 40000 capability-diff.txt | iconv -f UTF-8 -t UTF-8 -c
               if [ "${LINES}" -gt 500 ]; then
                 echo
                 echo "> 出力が長いため先頭のみ表示しています。全文は artifact を参照してください。"
@@ -127,7 +143,12 @@ jobs:
             echo "この PR は依存の到達可能な capability を変えていません。" > capability-diff-summary.md
           fi
 
-          cat capability-diff-summary.md >> "${GITHUB_STEP_SUMMARY}"
+          summary_fence="$(fence_for capability-diff-summary.md)"
+          {
+            echo "${summary_fence}text"
+            cat capability-diff-summary.md
+            echo "${summary_fence}"
+          } >> "${GITHUB_STEP_SUMMARY}"
         shell: bash
 
       - name: Upload capability report
