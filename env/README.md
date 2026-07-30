@@ -187,7 +187,7 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 |AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:4000`|Code default empty. Set per environment that wires the JWT authenticator. `db-seed` also expands it into the `user_identities` seed, so an environment that seeds needs it even when it stubs authentication (CI)|
 |AUTH_AUDIENCE|Expected `aud` claim value|string|go-boilerplate-api|Code default empty. Required together with the issuer|
 |AUTH_JWKS_URL|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default empty. Internal service URL in compose|
-|AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|[]string|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
+|AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|csv|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
 |AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|
 |AUTH_JWKS_CACHE_TTL|Cache lifetime for a fetched JWKS|duration|1h|Code default `1h`|
 |AUTH_JWKS_DISCOVERY_TTL|Cache lifetime for the OIDC discovery document (separate axis from the key cache)|duration|24h|Code default `24h`. Only used when the jwks_uri is derived via discovery|
