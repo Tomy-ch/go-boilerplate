@@ -1,5 +1,8 @@
 name: Generated Go Artifacts Check
 
+# `paths` must list the generated output as well as the inputs (see README.md for why). Here the
+# generated output (*.gen.go / mock/mock_*.gen.go) is Go source too, so `**/*.go` already covers it
+# and no separate entry is needed.
 on:
   pull_request:
     paths:
@@ -9,6 +12,8 @@ on:
       - 'go.sum'
       - '.makefiles/**'
       - 'openapi/**/*.yaml'
+      - 'docker/tools/Dockerfile'
+      - 'mise.toml'
   workflow_dispatch:
 
 concurrency:
@@ -30,8 +35,13 @@ jobs:
         with:
           egress-policy: audit
 
+      # fetch-depth: 0 so the PR's base and head commits are present locally. The default
+      # shallow checkout fetches only the merge commit, so the `git diff` that classifies the
+      # cause below cannot resolve either parent.
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -57,25 +67,38 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
-      # Determine whether the PR touched the source (`.go` files, excluding generated output such as
-      # *.gen.go / *_mock.go). If it did not, generator-side drift is the likely cause.
+      # Classify the PR so the report can name the actual cause:
+      #   - source_modified:   `.go` source changed, so a forgotten `make gen-go-code` is likely
+      #   - artifact_modified: the generated output was edited directly, which is a rule violation
+      #   - neither:           generator-side drift is the likely cause
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${BASE_REF}" || true
-          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
+          # Surface a diff failure rather than degrading to an empty file list, which would
+          # silently misreport every cause below as generator-side drift.
+          if ! changed="$(git diff --name-only "$base_sha" "$head_sha")"; then
+            echo "::warning::failed to diff ${base_sha}..${head_sha}; cause classification skipped"
+            changed=""
+          fi
+          # mockgen writes into a `mock/` directory and its output ends in `.gen.go`, so the two
+          # patterns below cover every generated file. A bare `_mock.go$` must NOT be added: the
+          # only file matching it is the hand-written helper internal/config/config_testing_mock.go.
+          generated='\.gen\.go$|\.sql\.go$|/mock/.+\.go$'
           # Exclude the generated output itself from the source set
-          if echo "$changed" | grep -E '\.go$' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|/mock_.+\.go$' | grep -q .; then
+          if echo "$changed" | grep -E '\.go$' | grep -qvE "$generated"; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$changed" | grep -qE "$generated"; then
+            echo "artifact_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "artifact_modified=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build PR comment body
@@ -95,6 +118,9 @@ jobs:
           if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
             echo "title=## 🧾 Differences in Go generated output have been detected" >> "$GITHUB_OUTPUT"
             printf '%s\n' "Run \`make gen-go-code\` (or \`make gen\`) locally and commit the changes." > "$out"
+          elif [ "${{ steps.source_mod.outputs.artifact_modified }}" = "true" ]; then
+            echo "title=## ✋ Go generated output was edited directly" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR changes Go generated output without changing any \`.go\` source. Generated files must not be hand-edited (see \`AGENTS.md\`). Discard the edit, run \`make gen-go-code\` so the output comes from the generator, and commit that instead." > "$out"
           else
             echo "title=## ⚠️ Drift in Go generated output detected (.go source unchanged)" >> "$GITHUB_OUTPUT"
             printf '%s\n' "This PR does not modify any \`.go\` source, so this may be generator-side drift (mockgen / oapi-codegen dependency version differences, stale generated artifacts on the base, etc.). Run \`make gen-go-code\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"

@@ -37,7 +37,7 @@
 
 ## 0. 正本の見つけ方
 
-このツリーの Markdown の大半は、読んではいけない日本語ミラーか、コードに遅れて追随する生成物のどちらかである。そのためリポジトリ全体を素朴に検索すると、実際に答えを決めている唯一のファイルが埋もれる。追跡されている `*.md` 927 件のうち **409 件が `*.ja.md` 対訳**、**72 件が README を写した生成物 `docs/portal/guides/**`**。さらに `docs/godoc/**` が約 1,250 件、`docs/db-schema/**` が約 390 件ある。
+このツリーの Markdown の大半は、読んではいけない日本語ミラーか、コードに遅れて追随する生成物のどちらかである。そのためリポジトリ全体を素朴に検索すると、実際に答えを決めている唯一のファイルが埋もれる。追跡されている `*.md` はおよそ 1,000 件あり、その **4 割超が `*.ja.md` 対訳**、**72 件が README を写した生成物 `docs/portal/guides/**`**。さらに `docs/godoc/**` が約 1,250 件、`docs/db-schema/**` が約 390 件ある。
 
 ### 正本の所在
 
@@ -48,11 +48,11 @@
 | システム構造とレイヤの責務 | `docs/architecture.md` | — |
 | 変更の進め方（API / DB / ビジネスロジック） | `docs/development-flow.md` | — |
 | テスト規約 | `docs/testing-conventions.md` + 当該レイヤ README の *Test Strategy* | — |
-| なぜその設計なのか | `docs/adr/`（107 レコード。ログは `docs/adr/README.md`） | — |
+| なぜその設計なのか | `docs/adr/`（100 件超のレコード。ログは `docs/adr/README.md`） | — |
 | サブシステムの仕組み（rest / worker / job / outbox / idempotency / o11y / auth） | `docs/design/README.md` と同ディレクトリ | — |
 | ローカルの構成・compose の層分け・ホットリロード | `docs/maintenance/local-environment.md` | — |
 | worktree スロットリングと共有 DB | `docs/maintenance/db-worktree-pool.md` | — |
-| パッケージ単位の詳細と設計意図 | 最も近い `internal/**/README.md` / `pkg/**/README.md`（171 個） | スキル本体 — スキルが README に従うのであって逆ではない |
+| パッケージ単位の詳細と設計意図 | 最も近い `internal/**/README.md` / `pkg/**/README.md`（100 個超） | スキル本体 — スキルが README に従うのであって逆ではない |
 | 環境変数 | `internal/config/envspec.go` + `model.go`、`env/README.md` の表 | `env/.env*` の値だけ |
 | CI ゲートやフックが実際に検査する内容 | `.github/workflows/*.yaml`、`.lefthook.yaml` | — |
 | ツール / ランタイムのバージョン | `mise.toml`（他はすべて派生 — §17） | `go.mod`・Dockerfile・README — いずれも派生物 |
@@ -66,7 +66,7 @@ rg "<pattern>" \
   -g '!docs/godoc/**' -g '!docs/db-schema/**' -g '!docs/openapi/**' -g '!docs/coverage/**'
 ```
 
-実測の効果: `gen-query` は 45 → 19 ヒット、`NormalizeError` は 74 → 33。`rg` は `.gitignore` を尊重するため `vendor/` と `node_modules/` は既に除外されるが、生成された `docs/` 配下は*追跡されている*ので明示的な glob が要る。`*.ja.md` にヒットすること自体は**所在の手がかり**として有用（その話題が文書化されている証拠）だが、`AGENTS.md` の「`*.ja.md` を読まない」規則どおり、隣の英語正本を読むこと。
+典型的な効果: ヒット数は半分以下に減る（例: `gen-query`、`NormalizeError`）。`rg` は `.gitignore` を尊重するため `vendor/` と `node_modules/` は既に除外されるが、生成された `docs/` 配下は*追跡されている*ので明示的な glob が要る。`*.ja.md` にヒットすること自体は**所在の手がかり**として有用（その話題が文書化されている証拠）だが、`AGENTS.md` の「`*.ja.md` を読まない」規則どおり、隣の英語正本を読むこと。
 
 ### 情報源が食い違うとき
 

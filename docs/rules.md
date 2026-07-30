@@ -107,6 +107,7 @@ flowchart TB
 - Do not implement handler before defining the API contract
 - Do not manually edit generated API interfaces
 - Every route registered on Echo must correspond 1:1 to an operation in the spec, with no allowlist for exceptions — machine-verified by `TestRouteSpecParity` in `internal/architest`. Parts of the HTTP stack resolve behavior from the spec, so a route the spec does not declare changes behavior at runtime while the tests stay green. See [the handler guide](../internal/controller/handler/README.md#every-route-must-exist-in-openapi) for what this means when writing a handler.
+- Every handler package that declares a `BindHandler` must be listed in the `fx.Invoke` of `ControllerModule()`, and every package with generated `RegisterHandlers` must have a `BindHandler` implementing it — machine-verified by `TestBindHandlerDIParity` in `internal/architest`. `TestRouteSpecParity` reads the generated route registrations, which `make gen-api` produces from the spec whether or not the handler is wired into DI, so without this check a missing wiring answers 404 at runtime while the tests stay green.
 
 OpenAPI definition is the **single source of truth of API**.
 

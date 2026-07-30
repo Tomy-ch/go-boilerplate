@@ -155,6 +155,18 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
 - **Schema generation cannot run concurrently**: `gen_schema` is a single database name inside the
   shared instance, so two checkouts running `make gen-query` (`dump-schema`) at the same time rebuild
   the same database and corrupt each other's output. Generate schemas one checkout at a time.
+- **Parallel tests contend over establishing connections, not over capacity**: when tests run at the
+  same time, packages unrelated to your change fail with `failed to ping DB`, while `too many clients`
+  never appears. The instance has connections to spare; what saturates is how many are being
+  *established* at the same instant, and the ping budget expires while they queue. It does not take two
+  worktrees — lefthook's `pre-commit` / `pre-push` are `parallel: true`, so `make lint` and `make test`
+  overlap inside a single checkout. The test path is already tuned against this: see `DBCONN_MIN_CONNS`
+  and `DB_PING_TIMEOUT` in `env/README.md` for what `ci` sets and why, mirrored by the test
+  configuration in `internal/config` for the paths that do not load an env file. To diagnose a
+  recurrence: `pgrep -fl "go test"` then
+  `lsof -a -p <pid> -d cwd` identifies which checkout is running tests, sampling `pg_stat_activity`
+  shows whether the peak is a momentary spike rather than a plateau, and a re-run with `go test -p 1`
+  that comes back green means the failure was load rather than the change under test.
 - **Re-creation of the infra layer**: when the checkout that runs `gobp-shared` changes and its
   compose definition differs from last time (a different image digest pin on another branch, say),
   compose re-creates the containers. Named volumes survive, so no data is lost, but running apps lose

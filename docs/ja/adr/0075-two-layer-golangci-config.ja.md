@@ -23,10 +23,10 @@ IDE プラグイン（VS Code、GoLand）および golangci-lint を直接統合
 同時に、CI とチームの `make lint` / `make fix` ターゲットは権威あるルールセットを強制しなければならない。
 このセットは実質的に厳格であり、50 以上のリンターを有効にし（最小セットの約 20 に対して）、
 レイヤー境界を守る追加の `depguard` ルール（例: `reflect`、`os`、DI コンテナ、zap ロガーの使用を
-許可されたスコープに制限）を強制し、`forbidigo` パターンを実行し、重い解析に対応するために 3 分の
-タイムアウトを課す。
+許可されたスコープに制限）を強制し、`forbidigo` パターンを実行する。重い解析のため所要は秒ではなく分の
+オーダーになる。
 
-両方のコンテキストで同一の設定を実行することは実用的でない。3 分の完全リントパスはレスポンシブな
+両方のコンテキストで同一の設定を実行することは実用的でない。数分かかる完全リントパスはレスポンシブな
 IDE フィードバックをブロックし、30 秒の最小パスでは CI 専用の違反が検出されずにすり抜ける。
 
 ## 決定
@@ -36,8 +36,11 @@ IDE フィードバックをブロックし、30 秒の最小パスでは CI 専
 - `.golangci.yaml` — IDE ツーリングが自動的に読み込む暗黙のデフォルト。30 秒のタイムアウトで
   厳選された最小リンタセットを有効にする。CI を失敗させるゲートには意図的にしない。
 - `.golangci-full.yaml` — 権威ある CI ゲート。`make lint` と `make fix` の両方が
-  `--config .golangci-full.yaml` を明示的に渡す（`.makefiles/go/golangci-lint.mk` の 8 行目と 11 行目参照）。
-  この設定はすべての `depguard` レイヤールールを含む完全なリンタセットを有効にし、3 分のタイムアウトを持つ。
+  `--config .golangci-full.yaml` を明示的に渡す（`.makefiles/go/golangci-lint.mk` の `lint` / `fix` ターゲット参照）。
+  この設定はすべての `depguard` レイヤールールを含む完全なリンタセットを有効にし、自身は固定のタイムアウトを
+  持たない。完全実行の所要はリポジトリの成長に伴って伸びるため、設定側に固定の予算を置くと陳腐化する。
+  打ち切りはそれを実行する入口が持つ——ローカルは makefile の `GOLANGCI_LINT_TIMEOUT`、
+  CI は `go-lint` ジョブの `timeout-minutes`。
 
 ハードゲートとして強制しなければならないルールはすべて `.golangci-full.yaml` のみに属する。
 最小設定はそのサブセットを含んでもよく、両者の間のドリフトは意図的である。
@@ -75,7 +78,7 @@ IDE フィードバックをブロックし、30 秒の最小パスでは CI 専
 ## 補足
 
 - ソース: `.golangci.yaml`（最小デフォルト）、`.golangci-full.yaml`（完全ゲート）、
-  `.makefiles/go/golangci-lint.mk` の 8 行目と 11 行目。
+  `.makefiles/go/golangci-lint.mk` の `lint` / `fix` ターゲット。
 - `.golangci-full.yaml` の `depguard` ルールは [`docs/rules.md`](../rules.ja.md) に文書化された
   レイヤー依存ルールの機械強制版である。
 - 関連: [ADR-0002](0002-onion-architecture.ja.md) — `depguard` が強制するレイヤー境界。

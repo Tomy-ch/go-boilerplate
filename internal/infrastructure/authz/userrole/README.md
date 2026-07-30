@@ -13,7 +13,7 @@ An `Authorizer` implementation backed by the `user_roles` table. It is the sampl
 
 `Authorize(ctx, authn, action, resource)` decides as follows:
 
-1. The internal UserID must be resolved (`authn.UserID()`); otherwise deny.
+1. The internal UserID must be resolved (`authn.UserID()`) and non-zero; otherwise deny. A zero-value UUID does not identify a resolved subject, and step 4 compares values only — letting it through would make a zero-value subject match a zero-value owner.
 2. Fetch the subject's roles via `user.RoleRepository`.
 3. If the subject has the admin role (`RoleCodeAdmin`), allow.
 4. Otherwise allow only when the subject owns the resource (`subject == Resource.OwnerID()`).

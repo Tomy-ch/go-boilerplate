@@ -52,7 +52,7 @@ Three facts explain almost everything below:
 
 Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output
 that lags the code, so a naive repo-wide search buries the one file that actually decides the answer.
-Of 927 tracked `*.md`, **409 are `*.ja.md` translations** and **72 are generated
+Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated
 `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and
 `docs/db-schema/**` ~390.
 
@@ -65,11 +65,11 @@ Of 927 tracked `*.md`, **409 are `*.ja.md` translations** and **72 are generated
 | System structure, layer responsibilities | `docs/architecture.md` | — |
 | How to carry out a change (API / DB / business logic) | `docs/development-flow.md` | — |
 | Test conventions | `docs/testing-conventions.md` + the layer README's *Test Strategy* | — |
-| Why something is designed this way | `docs/adr/` (107 records; log at `docs/adr/README.md`) | — |
+| Why something is designed this way | `docs/adr/` (100+ records; log at `docs/adr/README.md`) | — |
 | How a subsystem works (rest / worker / job / outbox / idempotency / o11y / auth) | `docs/design/README.md` and its siblings | — |
 | Local topology, compose layering, hot reload | `docs/maintenance/local-environment.md` | — |
 | Worktree slot ring, shared DB | `docs/maintenance/db-worktree-pool.md` | — |
-| Per-package detail and design intent | the nearest `internal/**/README.md` / `pkg/**/README.md` (171 of them) | a skill body — skills follow READMEs, not the reverse |
+| Per-package detail and design intent | the nearest `internal/**/README.md` / `pkg/**/README.md` (100+ of them) | a skill body — skills follow READMEs, not the reverse |
 | An environment variable | `internal/config/envspec.go` + `model.go`, table in `env/README.md` | a value in `env/.env*` alone |
 | What a CI gate or hook actually checks | `.github/workflows/*.yaml`, `.lefthook.yaml` | — |
 | Tool / runtime versions | `mise.toml` (everything else is derived — §17) | `go.mod`, Dockerfiles, READMEs — all derived |
@@ -83,11 +83,11 @@ rg "<pattern>" \
   -g '!docs/godoc/**' -g '!docs/db-schema/**' -g '!docs/openapi/**' -g '!docs/coverage/**'
 ```
 
-Typical effect: `gen-query` 45 → 19 hits, `NormalizeError` 74 → 33. `rg` honours `.gitignore`, so
-`vendor/` and `node_modules/` are already excluded — but the generated `docs/` trees are *tracked*,
-so they need these explicit globs. Hitting a `*.ja.md` is still useful as a **locator** (it proves the
-topic is documented); read the English original beside it, per `AGENTS.md`'s rule never to read
-`*.ja.md`.
+Typical effect: hit counts drop by half or more (e.g. `gen-query`, `NormalizeError`). `rg` honours
+`.gitignore`, so `vendor/` and `node_modules/` are already excluded — but the generated `docs/` trees
+are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a
+**locator** (it proves the topic is documented); read the English original beside it, per
+`AGENTS.md`'s rule never to read `*.ja.md`.
 
 ### When sources disagree
 

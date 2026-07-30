@@ -448,7 +448,7 @@ Exception: an operational endpoint whose response is produced by a third-party h
 
 ### AI / Developer Rules
 
-- Add new handlers to `fx.Invoke(...)`
+- Add new handlers to `fx.Invoke(...)` — forgetting this answers 404 at runtime, since the generated route registration exists regardless of the wiring; `TestBindHandlerDIParity` in `internal/architest` catches the omission
 - Do not instantiate dependencies in handler
 - Always use constructor (BindHandler)
 - Usecase must be interface-based

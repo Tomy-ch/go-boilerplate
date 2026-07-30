@@ -63,6 +63,13 @@ func NewTracedDB(..., tracer pgx.QueryTracer) (DatabaseDriver, error) // クエ�
 
 Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設計です。
 
+`DB_PING_TIMEOUT` は `Ping` 単体ではなく、この一連の処理全体に対する予算です（プール生成と `Ping` が同一の
+context を共有します）。さらに `pgxpool` はプール生成の直後に `MinConns` 本の接続を並行して張るため、その
+確立も同じ締切を `Ping` と奪い合います。1 つのデータベースに対して多数のプロセスが同時にプールを作る状況
+（並列 `go test`、レプリカ群の同時コールドスタート、フェイルオーバー後の再接続）では、データベースが実際に
+到達不能なのではなく順番待ちで予算を使い切ることがあります。この形の負荷では失敗を「DB が落ちている」と
+読まず、`DBCONN_MIN_CONNS` / `DB_PING_TIMEOUT` を環境ごとに調整してください（`env/README.md` 参照）。
+
 ## DatabaseDriver
 
 `DatabaseDriver` は `pgxpool.Pool` を抽象化したインターフェースです。

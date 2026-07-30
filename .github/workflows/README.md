@@ -14,6 +14,10 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 | Documentation | push to `release/*` | Regenerate OpenAPI / ER / portal docs and open an auto-sync PR |
 | Assistant | `@claude` mentioned on a pull request | Answer or investigate on demand, restricted to accounts with write access |
 
+The `gen-*-artifacts-check` workflows protect the invariant "the committed generated output is reproducible from the generator". That invariant breaks in two directions — the generator inputs change without the output being regenerated, and the output is edited directly — so their `on.pull_request.paths` must list **both the inputs and the generated output**. Watching only the inputs makes the check structurally blind to a PR that touches the output alone, which lets the broken artifact reach the base branch and turns the next unrelated PR red instead.
+
+Because these workflows pin their generators through `mise.toml`, that file is an input to most of them. A `paths` filter matches whole files, so a bump to any unrelated tool in that shared lockfile also triggers them — including the Postgres-backed `gen-db` job. That over-triggering is accepted deliberately: a generator version bump is exactly the change that should be re-verified, and splitting `mise.toml` to narrow the trigger would cost more than the occasional extra run.
+
 ## Workflow List
 
 ### CI Checks (Pull Request)
@@ -30,6 +34,8 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|
 |Generated Database Artifacts Check|`gen-db-artifacts-check.yaml`|Verify generated sqlc code matches committed artifacts|
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
+|Generated Mock-Auth OpenAPI Artifacts Check|`gen-mock-auth-oapi-artifacts-check.yaml`|Verify the mock-auth-server OpenAPI bundle, zod schemas, and docs match committed artifacts|
+|Mock-Auth Server Check|`mock-auth-server-check.yaml`|Type-check the mock-auth-server, run its unit / integration tests, and fail on golden JWKS fixture drift|
 |OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
 |App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
