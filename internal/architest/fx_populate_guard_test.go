@@ -89,7 +89,10 @@ func TestFxPopulateHasConstructionErrorGuard(t *testing.T) {
 // 判定は fx.Populate の呼び出し行を起点に、それを含む関数の終わりまでを走査し、最初の `.Err()`
 // 検査と、最初の populate 対象参照の前後関係を見ます。検査が無い場合も違反です。
 // 対象名を字面として含むだけの行コメントは参照とみなしません。
-func collectUnguardedFxPopulate(lines []string, file string) (sites, analyzed int, violations []string) {
+func collectUnguardedFxPopulate(lines []string, file string) (int, int, []string) {
+	var violations []string
+	sites, analyzed := 0, 0
+
 	for i, line := range lines {
 		if !strings.Contains(line, fxPopulateCall) || strings.HasPrefix(strings.TrimSpace(line), "//") {
 			continue
@@ -145,7 +148,7 @@ func isIdentifier(s string) bool {
 	if s == "" || (s[0] >= '0' && s[0] <= '9') {
 		return false
 	}
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if !isIdentifierChar(s[i]) {
 			return false
 		}
