@@ -1,0 +1,44 @@
+description: |
+  admin ダッシュボードの横断集計レスポンススキーマ。売上・購入ステータス別件数・商品数を 1 レスポンスに
+  合成して返し、購入・商品の一覧そのものは含みません。金額は USD セント単位の整数です。
+  指標ごとに集計母集団が異なるため、各プロパティの description を参照してください。
+type: object
+required:
+  - salesAmount
+  - salesCount
+  - purchaseStatusCounts
+  - totalProductCount
+  - publishedProductCount
+properties:
+  salesAmount:
+    type: integer
+    format: int64
+    description: |
+      集計対象期間の売上合計。USD セント単位の整数です。キャンセル済みの購入は除外し、未払いの購入は含みます
+      （商品売上ランキングと同一の母集団）。対象がない場合は 0 です。
+    example: 2118000
+  salesCount:
+    type: integer
+    format: int64
+    description: |
+      salesAmount に算入した購入の件数。salesAmount と同一の母集団（キャンセル除外・未払いを含む）です。
+      キャンセルを含む purchaseStatusCounts の総和とは一致しません。対象がない場合は 0 です。
+    example: 12
+  purchaseStatusCounts:
+    type: array
+    description: |
+      集計対象期間に注文された購入のステータス別件数（購入ステータスマスタの表示順）。
+      salesAmount / salesCount とは異なりキャンセル済みも 1 ステータスとして含みます。
+      期間内に購入が出現したステータスのみを含むため、購入がない場合は空配列です。
+    items:
+      $ref: '../../schemas/dashboard/DashboardPurchaseStatusCountResponse.yaml'
+  totalProductCount:
+    type: integer
+    format: int64
+    description: 登録済みの商品総数（未公開を含む）。マスタの現在値であり集計対象期間の影響を受けません。
+    example: 120
+  publishedProductCount:
+    type: integer
+    format: int64
+    description: 公開済みの商品数。マスタの現在値であり集計対象期間の影響を受けません。
+    example: 98

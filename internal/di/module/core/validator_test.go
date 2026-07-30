@@ -16,20 +16,24 @@ import (
 func TestValidatorModule(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fx アプリで Validator が提供される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		var v *openapi3.T
-		app := fx.New(
-			fx.Provide(func() testing.TB { return t }),
-			ValidatorModule(),
-			fx.Provide(config.MockConfigForTest),
-			fx.Populate(&v),
-			fx.NopLogger,
-		)
+		t.Run("fx アプリで Validator が提供される", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, app.Start(context.Background()))
-		t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
-		assert.NotNil(t, v)
+			var v *openapi3.T
+			app := fx.New(
+				fx.Provide(func() testing.TB { return t }),
+				ValidatorModule(),
+				fx.Provide(config.MockConfigForTest),
+				fx.Populate(&v),
+				fx.NopLogger,
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+			assert.NotNil(t, v)
+		})
 	})
 }

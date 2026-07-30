@@ -6,6 +6,7 @@ import (
 	"go-boilerplate/internal/controller/handler/metrics"
 	"go-boilerplate/internal/controller/handler/ready"
 	addresseshandler "go-boilerplate/internal/controller/handler/v1/addresses"                     // sample-api:line
+	dashboardhandler "go-boilerplate/internal/controller/handler/v1/dashboard"                     // sample-api:line
 	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate"               // sample-api:line
 	prefectureshandler "go-boilerplate/internal/controller/handler/v1/prefectures"                 // sample-api:line
 	productshandler "go-boilerplate/internal/controller/handler/v1/products"                       // sample-api:line
@@ -57,6 +58,7 @@ func ControllerModule() fx.Option {
 			purchasescancelhandler.BindHandler,
 			purchasespayhandler.BindHandler,
 			purchasesshiphandler.BindHandler,
+			dashboardhandler.BindHandler,
 			// sample-api:end
 		),
 	)

@@ -82,5 +82,22 @@ func TestV1UsersMe_Integration(t *testing.T) {
 			actual := StartServer(t, e).DoJSON(http.MethodGet, mePath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusNotFound)
 		})
+
+		t.Run("DELETE /v1/users/me が Allow ヘッダー付きの 405 を返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			useOpenAPIValidation(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			// Echo のルータは DELETE を兄弟の /v1/users/:userId へマッチさせるため 405 と判断せず、
+			// 405 を出すのは OpenAPI のルータだけになる。この経路では Allow の情報源が spec しかない。
+			detail.BindHandler(e, tf, mock_user.NewMockUsecase(ctrl))
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, mePath, nil, http.Header{})
+			AssertErrorResponse(t, actual, http.StatusMethodNotAllowed)
+			assert.Equal(t, "OPTIONS, GET", actual.Header.Get(echo.HeaderAllow))
+		})
 	})
 }
