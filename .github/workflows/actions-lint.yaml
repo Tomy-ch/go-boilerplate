@@ -11,6 +11,7 @@ on:
       - '.makefiles/github/lint.mk'
       - 'scripts/pr-comment-secret-lint.mjs'
       - 'scripts/pr-comment-fence-lint.mjs'
+      - 'scripts/actions-cutoff-lint.mjs'
       - 'scripts/actions-shellcheck/**'
   workflow_dispatch:
 
@@ -69,16 +70,16 @@ jobs:
 
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
-            echo "title=## ✅ Actions lint: PASS (actionlint + composite-action shellcheck + pr-comment-secret-lint + pr-comment-fence-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Actions lint: PASS (actionlint + composite-action shellcheck + pr-comment-secret-lint + pr-comment-fence-lint + actions-cutoff-lint)" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
-            echo "title=## ❌ Actions lint: FAIL (actionlint + composite-action shellcheck + pr-comment-secret-lint + pr-comment-fence-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Actions lint: FAIL (actionlint + composite-action shellcheck + pr-comment-secret-lint + pr-comment-fence-lint + actions-cutoff-lint)" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0
 
       - name: Comment Actions lint result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
