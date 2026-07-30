@@ -91,9 +91,9 @@ has since appeared in both environments (or in neither) — so the exception lis
 exception. **This is the canonical description of the mechanism; other documents link here rather
 than restating it.**
 
-Agent roles have no such escape hatch: their parity is unconditional. Both environments define the
-same read-only roles for the same layers, so a one-sided agent has never been a deliberate state —
-add the exception mechanism when a real case appears, not before.
+Agent roles have no such escape hatch: their parity is unconditional. No agent has ever been
+deliberately one-sided, so an exception map for them would carry no entries — add the mechanism
+when a real case appears, not before.
 
 ### Versioning
 
