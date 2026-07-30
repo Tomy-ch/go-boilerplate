@@ -24,6 +24,9 @@ import (
 // stubDetailPolicy は、details ゲートのテスト用に許可/拒否を固定する DetailPolicy スタブです。
 type stubDetailPolicy struct{ allow bool }
 
+// stubAllowPolicy は、Allow ヘッダーの解決結果を固定する AllowPolicy スタブです。
+type stubAllowPolicy struct{ allow string }
+
 // badWriter は書き込み時にエラーを返すテスト用の http.ResponseWriter 実装です。
 // wroteHeaders は WriteHeader に渡されたステータスを呼び出し順に保持します。
 type badWriter struct {
@@ -32,6 +35,8 @@ type badWriter struct {
 }
 
 func (s stubDetailPolicy) Allows(*http.Request) bool { return s.allow }
+
+func (s stubAllowPolicy) Allow(*http.Request) string { return s.allow }
 
 func (b *badWriter) Header() http.Header {
 	if b.header == nil {
@@ -57,7 +62,7 @@ func TestNew(t *testing.T) {
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			New(e, stubDetailPolicy{allow: true}, z, lf, obsCfg)
+			New(e, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, z, lf, obsCfg)
 			require.NotNil(t, e.HTTPErrorHandler)
 
 			// echo 既定ハンドラは apperror を解釈しないため、ErrNotFound を 404 へ写像することで
@@ -83,7 +88,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			z := logging.NewTestLogger(t)
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
-			handler := NewHTTPErrorHandler(stubDetailPolicy{allow: true}, z, lf, obsCfg)
+			handler := NewHTTPErrorHandler(Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, z, lf, obsCfg)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -267,10 +272,87 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
+		})
+
+		t.Run("405はAllowPolicyが解決した許可メソッドをAllowヘッダーとして返す", func(t *testing.T) {
+			t.Parallel()
+
+			logger, _ := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			handleHTTPError(
+				c,
+				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				logger,
+				lf,
+				obsCfg,
+				echo.ErrMethodNotAllowed,
+			)
+
+			assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+			assert.Equal(t, "OPTIONS, GET", rec.Header().Get(echo.HeaderAllow))
+		})
+
+		t.Run("レスポンス送出済みの405はAllowヘッダーもボディも書かない", func(t *testing.T) {
+			t.Parallel()
+
+			logger, _ := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+			c.Response().WriteHeader(http.StatusOK)
+
+			handleHTTPError(
+				c,
+				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				logger,
+				lf,
+				obsCfg,
+				echo.ErrMethodNotAllowed,
+			)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Empty(t, rec.Header().Get(echo.HeaderAllow))
+			assert.Empty(t, rec.Body.String())
+		})
+
+		t.Run("405以外はAllowPolicyが値を持っていてもAllowヘッダーを返さない", func(t *testing.T) {
+			t.Parallel()
+
+			logger, _ := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			handleHTTPError(
+				c,
+				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				logger,
+				lf,
+				obsCfg,
+				echo.ErrNotFound,
+			)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+			assert.Empty(t, rec.Header().Get(echo.HeaderAllow))
 		})
 
 		t.Run("details付きエラーはpolicyが拒否するとwireから落ちるがログには残る", func(t *testing.T) {
@@ -286,7 +368,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
-			handleHTTPError(c, stubDetailPolicy{allow: false}, logger, lf, obsCfg, metaErr)
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: false}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, metaErr)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 			var got map[string]any
@@ -312,7 +394,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
-			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, metaErr)
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, metaErr)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 			var got map[string]any
@@ -334,8 +416,8 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
-			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
-			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -383,7 +465,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom2"))
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom2"))
 
 			assert.Equal(t, []int{http.StatusInternalServerError}, bw.wroteHeaders)
 		})

@@ -347,3 +347,62 @@ func Test_buildDetailExposureMap(t *testing.T) {
 		})
 	})
 }
+
+func Test_newHostAgnosticRouter(t *testing.T) {
+	t.Parallel()
+
+	newServersSpec := func(t *testing.T) *openapi3.T {
+		t.Helper()
+
+		paths := openapi3.NewPaths()
+		paths.Set("/items", &openapi3.PathItem{Get: &openapi3.Operation{OperationID: "GetItems"}})
+		return &openapi3.T{
+			OpenAPI: "3.0.0",
+			Info:    &openapi3.Info{Title: "host-agnostic", Version: "1"},
+			Paths:   paths,
+			Servers: openapi3.Servers{{URL: "http://spec-host.example"}},
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("specのserversと異なるHostのリクエストでもルートを解決できる", func(t *testing.T) {
+			t.Parallel()
+
+			router, err := newHostAgnosticRouter(newServersSpec(t))
+			require.NoError(t, err)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "http://request-host.example/items", nil)
+			route, _, err := router.FindRoute(req)
+			require.NoError(t, err)
+			assert.Equal(t, "/items", route.Path)
+		})
+
+		t.Run("引数のspecのserversは書き換えられない", func(t *testing.T) {
+			t.Parallel()
+
+			spec := newServersSpec(t)
+			_, err := newHostAgnosticRouter(spec)
+			require.NoError(t, err)
+
+			require.Len(t, spec.Servers, 1)
+			assert.Equal(t, "http://spec-host.example", spec.Servers[0].URL)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("router構築に失敗するspecの場合、エラーを握り潰さず返す", func(t *testing.T) {
+			t.Parallel()
+
+			spec := &openapi3.T{Paths: openapi3.NewPaths()}
+			spec.Paths.Set("/{id:(}", &openapi3.PathItem{Get: openapi3.NewOperation()})
+
+			router, err := newHostAgnosticRouter(spec)
+			require.Error(t, err)
+			assert.Nil(t, router)
+		})
+	})
+}

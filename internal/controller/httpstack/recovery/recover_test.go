@@ -103,11 +103,13 @@ func TestMiddleware(t *testing.T) {
 
 			spec, err := validator.GetValidator()
 			require.NoError(t, err)
-			policy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+			detailPolicy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+			require.NoError(t, err)
+			allowPolicy, err := errorhandler.NewOpenAPIAllowPolicy(spec)
 			require.NoError(t, err)
 
 			e := echo.New()
-			errorhandler.New(e, policy, obsLogger, lf, obsCfg)
+			errorhandler.New(e, errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}, obsLogger, lf, obsCfg)
 			e.Use(Middleware(obsLogger, lf, appCfg))
 			e.GET("/panic", func(_ *echo.Context) error { panic("boom-panic") })
 
