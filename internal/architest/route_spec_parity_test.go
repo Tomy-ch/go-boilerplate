@@ -8,15 +8,19 @@ import (
 	"strings"
 	"testing"
 
-	"go-boilerplate/internal/controller/httpstack/oapi/validator"
 	pkgfs "go-boilerplate/pkg/fs"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// internalPathPrefix は、コード生成専用として spec に置かれ、実装・公開されない operation のパス接頭辞です。
-const internalPathPrefix = "/_internal/"
+const (
+	// internalPathPrefix は、コード生成専用として spec に置かれ、実装・公開されない operation のパス接頭辞です。
+	internalPathPrefix = "/_internal/"
+	// specSourceFile は、OpenAPI 定義の手書き正本です。
+	specSourceFile = "openapi/openapi.yaml"
+)
 
 var (
 	// echoImportRe は、Echo v5 を import するファイルを判定します。ルート登録形の走査を
@@ -74,6 +78,8 @@ type routeIndex struct {
 // ルートの列挙は実 DI グラフではなくソースの静的走査で行う（depguard が go/ast を禁じるため、
 // 既存 architest と同じく gofmt 済みソースのテキスト走査を採る）。ソースを見る以上、
 // di へ BindHandler を登録し忘れて実行時にルートが生えない配線漏れは、この検証の範囲外になる。
+//
+// spec 側も手書き正本を読むため、サンプル API を削除すると両者は同時に縮み、この契約は保たれる。
 func TestRouteSpecParity(t *testing.T) {
 	t.Parallel()
 
@@ -468,7 +474,10 @@ func (idx *routeIndex) unregisteredIn(spec map[routeRegistration]struct{}) []str
 }
 
 // specRouteSet は、spec が公開する operation を Echo 表記のルート集合として返します。
-// spec の読み出しに validator を使うのは、実行時のミドルウェアが見るものと同じ経路で読むためです。
+//
+// 読み出すのは生成物（openapi.gen.yaml / 埋め込み spec）ではなく手書き正本の openapi.yaml です。
+// 生成物と正本の同期は生成物ドリフト検査が別途担保しており、正本を読めば「定義を削ったが再生成前」の
+// 状態（サンプル API 削除の直後）でも実装側と歩調が合うためです。
 //
 // 除外するのは /_internal/ 配下の operation だけで、これは spec 自身が「コード生成のためだけに存在し、
 // 実際には実装・公開されない」と宣言しているアンカーです。除外は spec 上の宣言から導出するため、
@@ -476,7 +485,8 @@ func (idx *routeIndex) unregisteredIn(spec map[routeRegistration]struct{}) []str
 func specRouteSet(t *testing.T) map[routeRegistration]struct{} {
 	t.Helper()
 
-	spec, err := validator.GetValidator()
+	loader := &openapi3.Loader{IsExternalRefsAllowed: true}
+	spec, err := loader.LoadFromFile(filepath.Join(moduleRoot(t), filepath.FromSlash(specSourceFile)))
 	require.NoError(t, err)
 	require.NotNil(t, spec.Paths)
 
