@@ -88,6 +88,7 @@ flowchart TB
 
 - API 契約を定義する前に handler を実装してはいけません
 - 生成された API インターフェースを手動で編集してはいけません
+- Echo に登録するルートは spec の operation と 1:1 で対応しなければならず、例外のための許可リストは持ちません（`internal/architest` の `TestRouteSpecParity` が機械検証します）。HTTP スタックの一部は挙動を spec から解決するため、spec に無いルートはテストが緑のまま実行時の挙動だけを変えます。ハンドラを書くうえで何を意味するかは [handler ガイド](../../internal/controller/handler/README.ja.md#すべてのルートは-openapi-に存在しなければならない)を参照してください。
 
 OpenAPI 定義は **APIの唯一のソース（Single Source of Truth）** です。
 
