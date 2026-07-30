@@ -2,7 +2,6 @@ package di
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
@@ -175,7 +175,7 @@ func Test_failClosedChan(t *testing.T) {
 		t.Run("渡したエラーを 1 件送信した後クローズ済みのチャンネルを返す", func(t *testing.T) {
 			t.Parallel()
 
-			wantErr := errors.New("build failed")
+			wantErr := xerrors.New("build failed")
 
 			ch := failClosedChan(wantErr)
 			require.ErrorIs(t, <-ch, wantErr)
