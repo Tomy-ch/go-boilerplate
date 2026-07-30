@@ -2,6 +2,7 @@ package module
 
 import (
 	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"             // sample-api:line
+	dashboardqs "go-boilerplate/internal/infrastructure/rdb/query_service/dashboard"              // sample-api:line
 	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking"   // sample-api:line
 	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"          // sample-api:line
 	purchasesummaryqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/summary" // sample-api:line
@@ -46,6 +47,8 @@ func persistenceModule() fx.Option {
 				purchasedetailqs.New,
 				// サンプルのクエリサービス（認証主体自身の購入集計）
 				purchasesummaryqs.New,
+				// サンプルのクエリサービス（購入・商品を横断した admin ダッシュボード集計）
+				dashboardqs.New,
 				// sample-api:end
 			),
 		),

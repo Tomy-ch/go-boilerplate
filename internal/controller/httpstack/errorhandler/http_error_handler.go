@@ -21,28 +21,41 @@ const (
 	errorLevelBoundHTTPStatus = 500
 )
 
+// Policies は、OpenAPI spec から起動時に前計算し、リクエストごとに参照するポリシー群です。
+type Policies struct {
+	// Detail は、レスポンスに details を含めてよいエンドポイントかを判定します(未 opt-in なら fail-closed で落とす)。
+	Detail DetailPolicy
+	// Allow は、405 レスポンスへ返す Allow ヘッダーの値を解決します。
+	Allow AllowPolicy
+}
+
 // New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。
-func New(e *echo.Echo, policy DetailPolicy, log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) {
-	e.HTTPErrorHandler = NewHTTPErrorHandler(policy, log, lf, obsCfg)
+func New(
+	e *echo.Echo,
+	policies Policies,
+	log logging.Logger,
+	lf logging.LogFieldBuilder,
+	obsCfg *config.ObservabilityConfig,
+) {
+	e.HTTPErrorHandler = NewHTTPErrorHandler(policies, log, lf, obsCfg)
 }
 
 // NewHTTPErrorHandler は、echo.HTTPErrorHandler を生成して返します。
-// policy は、レスポンスに details を含めてよいエンドポイントかを判定します(未 opt-in なら fail-closed で落とす)。
 func NewHTTPErrorHandler(
-	policy DetailPolicy,
+	policies Policies,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 	obsCfg *config.ObservabilityConfig,
 ) echo.HTTPErrorHandler {
 	return func(c *echo.Context, err error) {
-		handleHTTPError(c, policy, logger, lf, obsCfg, err)
+		handleHTTPError(c, policies, logger, lf, obsCfg, err)
 	}
 }
 
 // handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
 func handleHTTPError(
 	c *echo.Context,
-	policy DetailPolicy,
+	policies Policies,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 	obsCfg *config.ObservabilityConfig,
@@ -57,9 +70,10 @@ func handleHTTPError(
 
 	// details を持つレスポンスは、エンドポイントが OpenAPI で opt-in している場合のみクライアントへ返す。
 	// resp 本体(とログ)には details を残し、クライアント wire だけを落とす(fail-closed)。
-	exposeDetails := resp.Details == nil || policy.Allows(c.Request())
+	exposeDetails := resp.Details == nil || policies.Detail.Allows(c.Request())
 
 	if !responseCommitted(c) {
+		setAllowHeader(c, policies.Allow, resp.HTTPStatus)
 		if writeErr := writeErrorResponse(c, resp, exposeDetails); writeErr != nil {
 			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError)
 			writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}

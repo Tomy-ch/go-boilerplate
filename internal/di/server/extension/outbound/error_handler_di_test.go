@@ -17,7 +17,12 @@ import (
 // stubDetailPolicy は、DI 配線テスト用の DetailPolicy スタブです。
 type stubDetailPolicy struct{}
 
+// stubAllowPolicy は、DI 配線テスト用の AllowPolicy スタブです。
+type stubAllowPolicy struct{}
+
 func (stubDetailPolicy) Allows(*http.Request) bool { return false }
+
+func (stubAllowPolicy) Allow(*http.Request) string { return "" }
 
 func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	t.Parallel()
@@ -26,7 +31,7 @@ func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	out := provideErrorHandlerServeConfig(stubDetailPolicy{}, log, lf, obsCfg)
+	out := provideErrorHandlerServeConfig(stubDetailPolicy{}, stubAllowPolicy{}, log, lf, obsCfg)
 	require.NotNil(t, out.SrvCfg.Config)
 	assert.Equal(t, "errorhandler", out.SrvCfg.Name)
 
@@ -79,6 +84,39 @@ func Test_provideDetailPolicy(t *testing.T) {
 			spec.Paths.Set("/{id:(}", &openapi3.PathItem{Get: openapi3.NewOperation()})
 
 			policy, err := provideDetailPolicy(spec)
+			require.Error(t, err)
+			assert.Nil(t, policy)
+		})
+	})
+}
+
+func Test_provideAllowPolicy(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("引数の spec から構築した AllowPolicy を返す", func(t *testing.T) {
+			t.Parallel()
+			policy, err := provideAllowPolicy(newDetailOptInSpec(t))
+			require.NoError(t, err)
+			require.NotNil(t, policy)
+
+			// /probe は実 spec に存在しないため、引数を無視して別の spec を使う実装では空文字になる。
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/probe", nil)
+			assert.Equal(t, "OPTIONS, GET", policy.Allow(req))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("router 構築に失敗する spec の場合、エラーを握り潰さず返す", func(t *testing.T) {
+			t.Parallel()
+			spec := &openapi3.T{Paths: openapi3.NewPaths()}
+			spec.Paths.Set("/{id:(}", &openapi3.PathItem{Get: openapi3.NewOperation()})
+
+			policy, err := provideAllowPolicy(spec)
 			require.Error(t, err)
 			assert.Nil(t, policy)
 		})

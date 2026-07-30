@@ -32,7 +32,7 @@ db-slot status      # スロット占有状況を表示
 |---|---|---|
 |`GOBP_DB_POOL_DIR`|`~/.cache/gobp-db-pool`|リースレジストリの置き場所|
 |`GOBP_DB_SHARED_PROJECT`|`gobp-shared`|共有インフラの固定 compose プロジェクト|
-|`GOBP_DB_POOL_MAX`|`8`|スロット数（＝同時並列 worktree の上限）|
+|`GOBP_DB_POOL_MAX`|`12`|スロット数（＝同時並列 worktree の上限）|
 |`GOBP_DB_POOL_TTL`|`1800`|heartbeat stale 判定の猶予（秒）|
 |`GOBP_API_POOL_BASE` / `GOBP_MOCK_AUTH_POOL_BASE`|`8080` / `4000`|API / mock 認証サーバーのホストポートのベース（スロット N = ベース + N）|
 |`GOBP_DLV_POOL_BASE` / `GOBP_PPROF_POOL_BASE`|`2345` / `6060`|dlv デバッグ / pprof のホストポートのベース（スロット N = ベース + N）|

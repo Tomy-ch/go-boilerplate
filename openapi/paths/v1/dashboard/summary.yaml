@@ -1,0 +1,42 @@
+get:
+  operationId: GetDashboardSummary
+  tags:
+    - v1/dashboard
+  summary: admin ダッシュボードの横断集計の取得
+  description: |
+    購入・商品を横断した集計を 1 レスポンスに合成して返します（1 画面 1 API）。認証必須で、管理者（admin）のみ
+    実行できます。管理者でなければ 403 で拒否します。数値カード向けの集計値のみを返し、一覧・時系列は含みません。
+    集計対象期間は period で切り替えます。today / month の境界はサーバのタイムゾーン（Asia/Tokyo）基準で
+    算出し、range は from / to の暦日をいずれも含む期間として集計します。range で from / to が欠落している
+    場合、および to が from より前の場合は 400 を返します。
+    売上（salesAmount / salesCount）はキャンセル済みの購入を除外し未払いの購入を含みます。一方
+    purchaseStatusCounts はキャンセル済みも 1 ステータスとして含むため、両者の母集団は一致しません。
+    商品数は期間に依存しないマスタの現在値です。金額は USD セント単位の整数です。
+    対象データがない場合はエラーではなくゼロ値（各件数・金額 0・内訳は空配列）を返します。
+    本 op 自体は DB の集計 SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../components/parameters/dashboard/DashboardPeriodParam.yaml'
+    - $ref: '../../../components/parameters/dashboard/DashboardFromParam.yaml'
+    - $ref: '../../../components/parameters/dashboard/DashboardToParam.yaml'
+  responses:
+    '200':
+      description: admin ダッシュボードの横断集計の取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/dashboard/DashboardSummaryResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

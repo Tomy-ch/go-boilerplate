@@ -85,6 +85,43 @@ An unmatched route or a non-opted-in operation both fail **closed** (no `details
 router is host-agnostic (built from a servers-stripped spec copy), so proxied / test hosts still
 resolve by path + method. Rationale: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
 
+### `Allow` header on 405
+
+RFC 9110 §15.5.6 requires a 405 response to carry an `Allow` header listing the methods the target
+resource supports. Echo's own `methodNotAllowedHandler` sets it, but it is downstream of middleware
+that can short-circuit a 405 before reaching it — the OpenAPI validation middleware returns 405 the
+moment its own router reports `ErrMethodNotAllowed`. The handler therefore sets `Allow` itself, before
+the body is written, for every 405 it writes.
+
+Two routers can decide a 405, so the value has two sources, tried in order:
+
+1. **Echo's router** — `echo.ContextKeyHeaderAllow`, resolved before any `Use` middleware runs, so it
+   is readable no matter which layer emitted the 405. Echo only populates it when Echo itself decided
+   405, which makes it authoritative when present (the ops paths always take this source, since they
+   skip OpenAPI validation entirely).
+2. **The OpenAPI spec** (`AllowPolicy`, `allow_methods.go`) — a startup-built map from path template
+   to `Allow` value. This covers the case Echo cannot answer: where a static path and a parameterized
+   path overlap (`/v1/users/me` vs `/v1/users/{userId}`), a method missing from the static path may
+   still match the parameterized route, so Echo never takes its 405 branch and only the OpenAPI router
+   reports 405. Because a 405 request resolves to no route by definition, the policy probes the router
+   with the other methods to recover the path template, then looks up the precomputed value.
+
+`OPTIONS` is always listed first, matching Echo (which answers `OPTIONS` itself regardless of the
+spec).
+
+RFC 9110 makes the header a MUST, and the two sources together satisfy that: a 405 from Echo's router
+always carries `ContextKeyHeaderAllow`, and a 405 from the OpenAPI router implies the path is in the
+spec, so the probe resolves it. That claim is pinned by a contract test which sweeps every path in the
+real spec and asserts a non-empty `Allow` — a route registered on Echo but absent from the spec is the
+one way to break it, which is a spec-bypass problem rather than a resolution one.
+
+The OpenAPI spec does not declare this header. Declaring it would make oapi-codegen generate a
+`Headers` struct on the 405 response type whose `Visit…Response` writes the field unconditionally, so
+a strict handler returning the zero value would emit an empty `Allow` — worse than the header being
+supplied here. Declaring it also trips `owasp:api8:2023-define-cors-origin`, which only inspects
+responses that declare a `headers` block and would then demand `Access-Control-Allow-Origin` on this
+one response alone (CORS is applied across the stack by the `cors` middleware, not per response).
+
 ## Logging
 
 Error logging is controlled by `ObservabilityConfig.TargetStatusCodeSet()`:
@@ -115,7 +152,11 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 |---|---|
 |`http_error_handler.go`|Main handler, normalization dispatcher, logging|
 |`echo_http_error_handler.go`|Normalize errors carrying an HTTP status to `HTTPErrorResponse`|
-|`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec|
+|`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec, plus the shared host-agnostic router constructor both policies build on|
+|`allow_methods.go`|`AllowPolicy` — per-path `Allow` header value resolved from the OpenAPI spec|
+
+Both spec-derived policies reach the handler as a single `Policies` value, so adding another one does
+not widen `New`'s signature again.
 
 ## Test Strategy
 

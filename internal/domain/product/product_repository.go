@@ -28,6 +28,13 @@ type ListParams struct {
 	AfterID *uuid.UUID
 }
 
+// Counts は、商品の登録件数の集計です。
+type Counts struct {
+	// Total は未公開を含む登録商品の総数、Published はそのうち公開済みの件数です。
+	Total     int64
+	Published int64
+}
+
 // Repository は、商品の永続化操作を定義するドメインリポジトリインターフェースです。
 type Repository interface {
 	// FindPublishedList は、公開済みの商品を keyset ページネーションで取得します。
@@ -51,4 +58,6 @@ type Repository interface {
 	// UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。
 	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。
 	UpdateStock(ctx context.Context, p *Product) (int, error)
+	// Count は、登録商品の総数と、そのうち公開済みの件数を返します。商品が 1 件もない場合はゼロ値を返します。
+	Count(ctx context.Context) (Counts, error)
 }
