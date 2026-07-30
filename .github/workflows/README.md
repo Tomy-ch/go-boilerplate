@@ -24,7 +24,7 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Go Test|`go-test.yaml`|Run Go tests with coverage reporting|
 |Module Tidy Check|`tidy-check.yaml`|Verify go.mod / go.sum are tidied|
 |SQL Lint|`sql-lint.yaml`|Run sqlfluff on migration / DML / seed SQL files|
-|Actions Lint|`actions-lint.yaml`|Run actionlint on workflow / composite-action definitions, plus the PR-comment secret check|
+|Actions Lint|`actions-lint.yaml`|Run actionlint on workflow definitions, shellcheck the `run:` scripts of composite actions, plus the PR-comment secret check|
 |Migration Check|`migration-check.yaml`|Validate migration files (duplicates, gaps, up/down pairing)|
 |Sync Versions Check|`sync-versions-check.yaml`|Verify mise.toml versions are propagated to go.mod / Dockerfiles / READMEs|
 |Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|

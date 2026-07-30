@@ -9,6 +9,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/error/response"
 	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/handler/testkit/testspan"
@@ -28,8 +29,8 @@ type stubAllowPolicy struct{ allow string }
 
 // badWriter は書き込み時にエラーを返すテスト用の http.ResponseWriter 実装です。
 type badWriter struct {
-	header      http.Header
-	wroteHeader int
+	header       http.Header
+	wroteHeaders []int
 }
 
 func (s stubDetailPolicy) Allows(*http.Request) bool { return s.allow }
@@ -45,7 +46,7 @@ func (b *badWriter) Header() http.Header {
 
 func (b *badWriter) Write([]byte) (int, error) { return 0, xerrors.New("write failed") }
 
-func (b *badWriter) WriteHeader(statusCode int) { b.wroteHeader = statusCode }
+func (b *badWriter) WriteHeader(statusCode int) { b.wroteHeaders = append(b.wroteHeaders, statusCode) }
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -424,6 +425,28 @@ func Test_handleHTTPError(t *testing.T) {
 			require.NoError(t, dec.Decode(&first))
 			assert.False(t, dec.More())
 		})
+
+		t.Run("リカバリ済みパニックの場合、500レスポンスは書かれるがログ出力は抑止される", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+			ctxhelper.SetRecoveredToEcho(c, true)
+
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+
+			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			assert.Equal(t, response.NewHTTPErrorFromAppError(nil).Code, got["code"])
+			assert.Equal(t, 0, observed.Len())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -432,7 +455,7 @@ func Test_handleHTTPError(t *testing.T) {
 		t.Run("書き込み失敗時もエラーログ出力と500セットが行われる", func(t *testing.T) {
 			t.Parallel()
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			bw := &badWriter{}
 
@@ -445,7 +468,36 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom2"))
 
-			assert.Equal(t, http.StatusInternalServerError, bw.wroteHeader)
+			assert.Equal(t, []int{http.StatusInternalServerError}, bw.wroteHeaders)
+			assert.Equal(t, 1, observed.FilterMessage("failed to write error response").Len())
+		})
+
+		t.Run("書き込み失敗時にレスポンスへ辿れず未commit扱いの場合、JSON送出の422に続けてフォールバックの500が書かれる", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			bw := &badWriter{}
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/h3", nil)
+			c := e.NewContext(req, bw)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+			c.SetResponse(bw)
+
+			handleHTTPError(
+				c,
+				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}},
+				logger,
+				lf,
+				obsCfg,
+				xerrors.Wrap(apperror.ErrValidation, "invalid"),
+			)
+
+			assert.Equal(t, []int{http.StatusUnprocessableEntity, http.StatusInternalServerError}, bw.wroteHeaders)
+			assert.Equal(t, 1, observed.FilterMessage("failed to write error response").Len())
+			assert.Equal(t, 0, observed.FilterMessage("errorhandler.client_error").Len())
 		})
 	})
 }
@@ -785,6 +837,53 @@ func Test_httpErrorField(t *testing.T) {
 			assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
 			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, he.Internal.Error()))
 			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, he.Internal))
+		})
+
+		t.Run("Detailsのみがある場合、detailsフィールドが追加されInternal系フィールドは追加されない", func(t *testing.T) {
+			t.Parallel()
+
+			c := newEchoCtx(t)
+			details := []string{"d1", "d2"}
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
+					Code:      "E_DETAILS",
+					Message:   "m3",
+					RequestId: "rid3",
+				},
+				HTTPStatus: http.StatusBadRequest,
+			}
+
+			baseline := httpErrorField(c, lf, he)
+			he.Details = &details
+
+			fields := httpErrorField(c, lf, he)
+
+			assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
+			assert.Len(t, fields, len(baseline)+1)
+		})
+
+		t.Run("Internalのみがある場合、内部エラーとスタックトレースのフィールドが追加されDetailsフィールドは追加されない", func(t *testing.T) {
+			t.Parallel()
+
+			c := newEchoCtx(t)
+			internalErr := xerrors.New("internal err")
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
+					Code:      "E_INTERNAL",
+					Message:   "m4",
+					RequestId: "rid4",
+				},
+				HTTPStatus: http.StatusInternalServerError,
+			}
+
+			baseline := httpErrorField(c, lf, he)
+			he.Internal = internalErr
+
+			fields := httpErrorField(c, lf, he)
+
+			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, internalErr.Error()))
+			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, internalErr))
+			assert.Len(t, fields, len(baseline)+2)
 		})
 	})
 }

@@ -179,14 +179,8 @@ opt-in を解決 *できない* 経路はすべて「details なし」に着地�
 - **正規化の優先順位** — `normalizeHTTPError` の各分岐はエラーの形で選ばれるため、それぞれにケースを置く。すでに `HTTPErrorResponse` で包まれたもの、ステータスを持つエラー（`echo.HTTPError`・型が非公開な Echo の定義済みエラー・OpenAPI バリデーション失敗）、それ以外。400〜599 の外にあるステータスを `Internal` から導出し直しつつ `Details` を温存する矯正は独立したケースにする — 呼び出し側が決めたステータスを上書きする唯一の経路であるため。
 - **再入** — 同一コンテキストで 2 回呼んでもレスポンスの書き出しはちょうど 1 回であること。この回数が契約のすべてで、2 回目の書き込みが成功しても外形からは区別できない。ガードの存在理由は、エラーレスポンスの *書き出し中* に発生したエラーで再帰させないことにある。
 - **リカバリとの協調** — `Recovered` sentinel が立っていれば 500 は返しつつエラーログは出さず、立っていなければ両方行う。500 の欠落もパニックログの二重出力も実害のある壊れ方で、片側だけのテストはもう片側を隠すため、両方向を検証する。
-- **commit 状態** — すでに commit 済みのレスポンスでは書き込み自体を行わず、書き込み失敗はログに出したうえで二重に commit しない。失敗は `Write` が常にエラーを返す `ResponseWriter` で再現する。その失敗の内側にあるフォールバックの `WriteHeader(500)` は別件で、ここから到達できない理由は下記の *カバレッジ例外* を参照。
+- **commit 状態** — すでに commit 済みのレスポンスでは書き込み自体を行わず、書き込み失敗はログに出したうえで二重に commit しない。失敗は `Write` が常にエラーを返す `ResponseWriter` で再現する。その失敗の内側にあるフォールバックの `WriteHeader(500)` にはさらに、レスポンスが unwrap できない状態であることが要る — 同じ writer を `c.SetResponse` でも差し込むと、失敗をまたいで `responseCommitted` が false のままになりフォールバックが動く。JSON の書き込みには 500 以外のステータス（バリデーションエラーでよい）を与える — writer は失敗前に JSON 経路が送ったステータスも記録するため、ステータスが異なることだけが末尾の 500 をフォールバックの結果だと示せる。この縮退状態は本番の serving path からは到達しない（テスト以外に `c.SetResponse` を呼ぶ箇所は無い）ため、フォールバックを支えているのはこのパッケージレベルのテストだけである — [`httpstack/README.md`](../README.md) の `server.ResponseOf` の縮退の観点と同じ立場を、ミドルウェアではなく終端ハンドラに当てはめたものになる。固定できるのはフォールバックが 500 を書くことまでで、その外側の `!responseCommitted` ガード自体は観測できない — `echo.Response.WriteHeader` が commit 済みの二度目の書き込みをすでに拒むためである。
 - **ログのゲート** — そもそもログを出すかは `ObservabilityConfig.TargetStatusCodeSet()` が決め、`Error` か `Warn` かは 500 の境界が決める。集合の内側と外側、境界の両側を網羅し、observed エントリのメッセージ（`errorhandler.server_error` / `errorhandler.client_error`）で検証する — アラートが引くのはレベルだけでなくこの文字列である。
-
-## カバレッジ例外
-
-`docs/testing-conventions.md` §9 に基づき、以下の infallible な防御分岐は未カバーのまま残す(作為的テストは書かない):
-
-- `http_error_handler.go` `handleHTTPError` — `writeErrorResponse` が失敗しつつレスポンス未 commit のときだけ通る入れ子 `WriteHeader(500)`。body は常に JSON 化可能な固定 struct(`gen.ErrorResponseWithDetails`)なので `c.JSON` は書き込み中(= `WriteHeader` で commit 済みの後)にしか失敗できず、未 commit での失敗は到達不能。到達可能な書き込み失敗経路(ログ出力・二重 commit なし)はカバー済み。
 
 ## 注意点
 

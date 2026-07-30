@@ -55,10 +55,6 @@ func TestApplyRateHalfUp(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, int64(-2), actual)
 		})
-	})
-
-	t.Run("境界ケース", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("金額が0なら0を返す", func(t *testing.T) {
 			t.Parallel()

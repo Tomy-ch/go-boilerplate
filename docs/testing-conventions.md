@@ -20,7 +20,10 @@ The canonical reference test is [`internal/domain/user/user_domain_test.go`](../
 - **`t.Skip` is allowed only when the subject is unverifiable and therefore unreachable** — e.g. a test helper whose failure path calls `tb.Fatalf`, which terminates the calling test. The skip reason states **why the subject cannot be verified**; there is no allowlist, so that reason stays in the code.
 - **"Covered by another test" is not a valid skip reason.** Such a skip makes the subject depend on another test's implementation: it stays green after the covering test shrinks or is deleted, nothing mechanically confirms the covering test really reaches the branch, and a branch added later goes unverified in silence — which reduces the 1:1 mapping to a name-only shell. If the subject is testable, test it, even when a caller / integration / DI-graph test already happens to exercise it. `internal/architest` (`TestSkipReasonDoesNotNameCoveringTest`) fails the build on a skip reason that names another test.
 - Every logical branch is exercised.
-- The **outermost `t.Run` groups are the literal strings `正常系` / `異常系`** — not a `正常系_xxx` prefixed form. Nest further `t.Run` subcases inside them.
+- **When a `TestXxx` uses `t.Run` subcases, its outermost groups are the literal strings `正常系` / `異常系`** — not a `正常系_xxx` prefixed form, and not a behavior sentence placed directly under `TestXxx`. Nest further `t.Run` subcases inside them. `境界ケース` is a *viewpoint* (section 10), not a third group: boundary cases are split across `正常系` / `異常系` by the outcome each side produces.
+- **A `TestXxx` covering a single scenario may omit the groups.** A DI graph validity check (`fx.ValidateApp`), a branchless provider whose wiring is the whole contract, or a repository-scanning contract test has nothing to divide, so wrapping it in `正常系` adds no classification and only nests the body one level deeper. The exemption is per *subject*, not per layer — a subject that does have an error branch may not hide it in this shape, which is a section 10 meaning-coverage violation.
+- **The `正常系` / `異常系` split follows whether the subject itself fails**, not whether the input is failure-flavored. A logger that records `OnStart` failures never returns an error, so all of its cases belong under `正常系`.
+- The group structure is enforced mechanically by `internal/architest` (`TestSubtestGroupPolicy`); which side a case belongs on is not machine-checkable and stays with section 10 and review.
 
 ```go
 func TestNewUser(t *testing.T) {
@@ -39,7 +42,7 @@ func TestNewUser(t *testing.T) {
 ## 2. Naming
 
 - All test case names are in **Japanese** and describe the behavior **and** the branch condition.
-- The outer groups are the bare literals `正常系` / `異常系`. **Sub-case names inside them carry no `正常系_` / `異常系_` prefix** — they read as a behavior sentence (e.g. `firstNameの文字数が最小値未満の場合、エラーを返す`).
+- When groups are present, they are the bare literals `正常系` / `異常系`. **Sub-case names inside them carry no `正常系_` / `異常系_` prefix** — they read as a behavior sentence (e.g. `firstNameの文字数が最小値未満の場合、エラーを返す`).
 
 ## 3. Parallelism
 

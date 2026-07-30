@@ -10,6 +10,7 @@ on:
       - 'mise.toml'
       - '.makefiles/github/lint.mk'
       - 'scripts/pr-comment-secret-lint.mjs'
+      - 'scripts/actions-shellcheck/**'
   workflow_dispatch:
 
 permissions:
@@ -37,6 +38,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
       - name: Setup mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
@@ -45,8 +52,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # node runs the PR-comment secret check, which actionlint cannot express.
-      - name: Install actionlint and node
-        run: mise install actionlint node
+      - name: Install actionlint, shellcheck and node
+        run: mise install actionlint shellcheck node
 
       - name: Run Actions lint
         id: actions-lint
@@ -60,10 +67,10 @@ jobs:
 
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
-            echo "title=## ✅ Actions lint: PASS (actionlint + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Actions lint: PASS (actionlint + composite-action shellcheck + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
-            echo "title=## ❌ Actions lint: FAIL (actionlint + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Actions lint: FAIL (actionlint + composite-action shellcheck + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0

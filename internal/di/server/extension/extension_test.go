@@ -327,116 +327,128 @@ func Test_applyMiddlewares(t *testing.T) {
 func Test_validatePriorityConflicts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("priority がユニークならエラーなし", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []middlewareEntry{
-			{name: "A", priority: 10},
-			{name: "B", priority: 20},
-			{name: "C", priority: 30},
-		}
+		t.Run("priority がユニークならエラーなし", func(t *testing.T) {
+			t.Parallel()
 
-		err := validatePriorityConflicts("use", mws)
-		require.NoError(t, err)
+			mws := []middlewareEntry{
+				{name: "A", priority: 10},
+				{name: "B", priority: 20},
+				{name: "C", priority: 30},
+			}
+
+			err := validatePriorityConflicts("use", mws)
+			require.NoError(t, err)
+		})
 	})
 
-	t.Run("同じ priority が複数あればエラー", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []middlewareEntry{
-			{name: "A", priority: 10},
-			{name: "B", priority: 20},
-			{name: "C", priority: 20},
-		}
+		t.Run("同じ priority が複数あればエラー", func(t *testing.T) {
+			t.Parallel()
 
-		err := validatePriorityConflicts("use", mws)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "priority=20")
-		assert.Contains(t, err.Error(), "B")
-		assert.Contains(t, err.Error(), "C")
-	})
+			mws := []middlewareEntry{
+				{name: "A", priority: 10},
+				{name: "B", priority: 20},
+				{name: "C", priority: 20},
+			}
 
-	t.Run("kind 種別がエラー文言へ反映されること", func(t *testing.T) {
-		t.Parallel()
+			err := validatePriorityConflicts("use", mws)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "priority=20")
+			assert.Contains(t, err.Error(), "B")
+			assert.Contains(t, err.Error(), "C")
+		})
 
-		mws := []middlewareEntry{
-			{name: "A", priority: 1},
-			{name: "B", priority: 1},
-		}
+		t.Run("kind 種別がエラー文言へ反映されること", func(t *testing.T) {
+			t.Parallel()
 
-		preErr := validatePriorityConflicts("pre", mws)
-		require.ErrorIs(t, preErr, errDuplicateMiddlewarePriority)
-		require.ErrorContains(t, preErr, "pre")
+			mws := []middlewareEntry{
+				{name: "A", priority: 1},
+				{name: "B", priority: 1},
+			}
 
-		useErr := validatePriorityConflicts("use", mws)
-		require.ErrorIs(t, useErr, errDuplicateMiddlewarePriority)
-		require.ErrorContains(t, useErr, "use")
+			preErr := validatePriorityConflicts("pre", mws)
+			require.ErrorIs(t, preErr, errDuplicateMiddlewarePriority)
+			require.ErrorContains(t, preErr, "pre")
+
+			useErr := validatePriorityConflicts("use", mws)
+			require.ErrorIs(t, useErr, errDuplicateMiddlewarePriority)
+			require.ErrorContains(t, useErr, "use")
+		})
 	})
 }
 
 func Test_extractPriorityConflicts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("重複なしの場合は空スライスを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		input := map[int][]string{
-			1: {"A"},
-			2: {"B"},
-			3: {"C"},
-		}
+		t.Run("重複なしの場合は空スライスを返す", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
-		require.Empty(t, got)
-	})
+			input := map[int][]string{
+				1: {"A"},
+				2: {"B"},
+				3: {"C"},
+			}
 
-	t.Run("重複がある場合はそのpriorityのみ返す", func(t *testing.T) {
-		t.Parallel()
+			got := extractPriorityConflicts(input)
+			require.Empty(t, got)
+		})
 
-		input := map[int][]string{
-			1: {"A", "B"}, // ★ 重複
-			2: {"C"},
-		}
+		t.Run("重複がある場合はそのpriorityのみ返す", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
+			input := map[int][]string{
+				1: {"A", "B"}, // ★ 重複
+				2: {"C"},
+			}
 
-		require.Len(t, got, 1)
-		assert.Contains(t, got[0], "priority=1")
-		assert.Contains(t, got[0], "[A B]") // names の出力
-	})
+			got := extractPriorityConflicts(input)
 
-	t.Run("複数のpriorityが重複している場合は複数返す", func(t *testing.T) {
-		t.Parallel()
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "priority=1")
+			assert.Contains(t, got[0], "[A B]") // names の出力
+		})
 
-		input := map[int][]string{
-			1: {"A", "B"}, // ★ 重複
-			2: {"C"},
-			3: {"X", "Y", "Z"}, // ★ 重複
-		}
+		t.Run("複数のpriorityが重複している場合は複数返す", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
+			input := map[int][]string{
+				1: {"A", "B"}, // ★ 重複
+				2: {"C"},
+				3: {"X", "Y", "Z"}, // ★ 重複
+			}
 
-		require.Len(t, got, 2)
-		assert.Contains(t, got[0], "priority=")
-		assert.Contains(t, got[1], "priority=")
+			got := extractPriorityConflicts(input)
 
-		// priority=1 が含まれていること
-		assert.True(t, containsSubstring(got, "priority=1"))
-		// priority=3 が含まれていること
-		assert.True(t, containsSubstring(got, "priority=3"))
-	})
+			require.Len(t, got, 2)
+			assert.Contains(t, got[0], "priority=")
+			assert.Contains(t, got[1], "priority=")
 
-	t.Run("names が3つ以上の場合でも正しくフォーマットされる", func(t *testing.T) {
-		t.Parallel()
+			// priority=1 が含まれていること
+			assert.True(t, containsSubstring(got, "priority=1"))
+			// priority=3 が含まれていること
+			assert.True(t, containsSubstring(got, "priority=3"))
+		})
 
-		input := map[int][]string{
-			5: {"A", "B", "C"},
-		}
+		t.Run("names が3つ以上の場合でも正しくフォーマットされる", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
-		require.Len(t, got, 1)
-		assert.Contains(t, got[0], "priority=5")
-		assert.Contains(t, got[0], "[A B C]")
+			input := map[int][]string{
+				5: {"A", "B", "C"},
+			}
+
+			got := extractPriorityConflicts(input)
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "priority=5")
+			assert.Contains(t, got[0], "[A B C]")
+		})
 	})
 }
 

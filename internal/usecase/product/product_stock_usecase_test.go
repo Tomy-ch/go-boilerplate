@@ -122,6 +122,24 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 			assert.Equal(t, entity.Category().ID(), actual.CategoryID)
 			assert.Equal(t, entity.PublishedAt(), actual.PublishedAt)
 		})
+
+		t.Run("在庫更新を所有者なしリソースとして認可する", func(t *testing.T) {
+			t.Parallel()
+
+			entity := newUpdateTarget(t, currentVersion)
+			u, deps := newStockTestUsecase(t)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductStockUpdate, authz.NewResource("product", nil)).
+				Return(nil)
+			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+			deps.repo.EXPECT().LockByID(gomock.Any(), entity.ID()).Return(entity, nil)
+			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Return(nextVersion, nil)
+
+			_, err := u.UpdateProductStock(context.Background(), &auth.Authn{}, entity.ID(),
+				UpdateProductStockParams{Delta: 1})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

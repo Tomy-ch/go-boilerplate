@@ -16,14 +16,14 @@ import (
 type DBAdmin interface {
 	// EnsureDatabase は、データベースが無ければ作成します（冪等）。
 	EnsureDatabase(ctx context.Context, name string) error
-	// SetupDatabase は、init スクリプトが local/test に施すのと同じ timezone / 拡張を対象 DB に設定します。
+	// SetupDatabase は、init スクリプトが local/test に施すのと同じ拡張を対象 DB に設定します。
 	SetupDatabase(ctx context.Context, name string) error
 	// ActiveConnections は、指定データベース群への稼働中接続数を返します。
 	ActiveConnections(ctx context.Context, names ...string) (int, error)
 }
 
 // PgxAdmin は、pgx でホストから共有 DB へ接続する DBAdmin 実装です。
-// CREATE DATABASE / pg_stat_activity は maintenance DB へ、timezone/拡張は対象 DB へ接続します。
+// CREATE DATABASE / pg_stat_activity は maintenance DB へ、拡張は対象 DB へ接続します。
 type PgxAdmin struct {
 	host, user, password, maintenanceDB string
 	port                                int
@@ -57,7 +57,8 @@ func (a *PgxAdmin) EnsureDatabase(ctx context.Context, name string) error {
 	return nil
 }
 
-// SetupDatabase は、対象 DB に timezone(Asia/Tokyo) と pg_trgm 拡張を設定します。
+// SetupDatabase は、対象 DB に pg_trgm 拡張を設定します。
+// timezone は DB コンテナの TZ 由来のクラスタ既定を継承するため、ここでは設定しません。
 func (a *PgxAdmin) SetupDatabase(ctx context.Context, name string) error {
 	conn, err := a.connect(ctx, name)
 	if err != nil {
@@ -65,10 +66,6 @@ func (a *PgxAdmin) SetupDatabase(ctx context.Context, name string) error {
 	}
 	defer func() { _ = conn.Close(ctx) }()
 
-	if _, err := conn.Exec(ctx,
-		"ALTER DATABASE "+pgx.Identifier{name}.Sanitize()+" SET timezone TO 'Asia/Tokyo'"); err != nil {
-		return xerrors.Wrap(err, "failed to set timezone on "+name)
-	}
 	if _, err := conn.Exec(ctx, "CREATE EXTENSION IF NOT EXISTS pg_trgm"); err != nil {
 		return xerrors.Wrap(err, "failed to create extension on "+name)
 	}
