@@ -1,0 +1,24 @@
+# graphify の解析対象から外すパス。
+# このリポジトリは生成物を追跡下に置くため、.gitignore では生成物が落ちない。
+
+# 生成ドキュメント。docs/db-schema は SchemaSpy がベンダ同梱の JS を吐く。
+docs/db-schema/
+docs/godoc/
+docs/coverage/
+docs/portal/
+docs/openapi/
+
+# 日本語ミラー。正本（英語）の複製で、AGENTS.md がエージェントに読ませない側と定めている。
+*.ja.md
+docs/ja/
+
+# 生成コード。
+**/*.gen.go
+**/*.sql.go
+**/*_mock.go
+**/gen/
+openapi/openapi.gen.yaml
+database/gen/
+
+# 依存のベンダリング。
+vendor/

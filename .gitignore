@@ -8,6 +8,9 @@ node_modules/
 # ビルド済みのバイナリファイル
 tmp/
 
+# graphify の出力（graph.json / GRAPH_REPORT.md 等）。コード変更ごとに動く派生物
+graphify-out/
+
 # -----ファイル-----
 # ディレクトリの表示管理ファイル
 .DS_Store
