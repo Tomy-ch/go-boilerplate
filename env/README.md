@@ -15,7 +15,7 @@ This directory is the canonical reference for every environment variable read by
 - Variables marked **Secret management recommended** should be rotated periodically.
 - The Example column carries the **effective local value**: the value `env/.env` assigns to the key, or the `envDefault` tag in `internal/config/envspec.go` when the key is absent from `env/.env`. It is a single value, not a set — write the accepted values in the Description column instead (as `APP_MODE` and `OBS_TRACES_EXPORTER` do). A row whose Notes say **Example is a placeholder** is the sole exception, and only where copying the real value here would duplicate a credential the secret scanner already tracks in `env/.env`; read `env/.env` for what the local stack uses. Marking a variable **Secret management required** is *not* an exception on its own — those rows still show their real local value, because the local `.env` files commit them anyway. `TestEnvReadmeExamples` (`internal/architest`) enforces the column over every variable, so changing a value in `env/.env` or in an `envDefault` tag without updating the table fails the build.
 - A value that legitimately differs between `env/.env.<env>` files states why in its Notes cell. Nothing else records whether a key is a per-environment policy or a value that should match everywhere, so an undocumented difference reads as a propagation miss and should be treated as one.
-- Variables marked **Code default `<value>`** carry a `default:` tag in `internal/config/envspec.go` and are intentionally omitted from the `.env` files. They are framework-level constants that any project derived from this boilerplate keeps unchanged, so the default applies automatically; add an explicit entry to a `.env` file only when a project needs to override it. Every other variable is `required` and must be present in the relevant env file(s).
+- Variables marked **Code default `<value>`** carry an `envDefault:` tag in `internal/config/envspec.go` and are intentionally omitted from the `.env` files. They are framework-level constants that any project derived from this boilerplate keeps unchanged, so the default applies automatically; add an explicit entry to a `.env` file only when a project needs to override it. Every other variable is `required` and must be present in the relevant env file(s).
 
 ## Adding a New Variable
 
@@ -23,7 +23,7 @@ This directory is the canonical reference for every environment variable read by
 2. Document it in the table below under the matching subsystem (or add a new subsystem section).
 3. Decide how the value is supplied:
    - **Project-specific or per-environment value** → mark the field `required` and add it to `env/.env` (the local default) and to every per-environment file (`env/.env.<env>`).
-   - **Universal framework default** → give the field a `default:` tag instead, omit it from the `.env` files, and mark it **Code default `<value>`** in the table.
+   - **Universal framework default** → give the field an `envDefault:` tag instead, omit it from the `.env` files, and mark it **Code default `<value>`** in the table.
 4. Run `make test` to confirm the config struct still loads.
 
 ## Variables by Subsystem
