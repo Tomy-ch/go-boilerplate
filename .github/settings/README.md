@@ -18,7 +18,7 @@ gh api /repos/{owner}/{repo}/rulesets
 gh api /repos/{owner}/{repo}/rulesets/{ruleset_id}
 ```
 
-Both are readable with ordinary repository read access on a public repository; a private one needs the `administration: read` permission.
+Both are readable with the repository's ordinary read access — on a public repository, without authenticating at all — so inspecting the live state never needs an administrative token.
 
 ## branch-protection.json
 
@@ -34,7 +34,11 @@ Both are readable with ordinary repository read access on a public repository; a
 
 ### Applying `pull_request` to a single-maintainer repository
 
-GitHub does not let an author approve their own pull request. With `required_approving_review_count: 1` and an empty `bypass_actors`, a repository whose only participant is its owner has nobody who can satisfy the rule, so every pull request targeting a protected branch becomes permanently unmergeable. Before applying this ruleset to such a repository, either list the maintainer in `bypass_actors`, or set the count to `0` and keep the remaining parameters — thread resolution and the merge-method restriction still hold on their own.
+GitHub does not let an author approve their own pull request. With `required_approving_review_count: 1` and an empty `bypass_actors`, a repository whose only participant is its owner has nobody who can satisfy the rule, so every pull request targeting a protected branch becomes permanently unmergeable. Before applying this ruleset to such a repository, either list the maintainer in `bypass_actors`, or drop both parameters that ask for an approval — `required_approving_review_count: 0` and `require_last_push_approval: false`. Thread resolution and the merge-method restriction hold on their own.
+
+### `code_quality` needs its backing feature to be reporting first
+
+GitHub's own guidance is to confirm that the Code Quality workflow is running and reporting results back to pull requests **before** a ruleset declares a Code Quality threshold, because otherwise the rule can block every pull request from merging. Enabling the feature is a repository-level action outside this directory, so check it before applying rather than assuming the rule is inert where the feature is off.
 
 ### CI results do not block merge
 

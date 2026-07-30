@@ -9,7 +9,7 @@
 JSON は一方向の適用に渡す入力であって、GitHub が現在強制している内容のミラーではありません。
 
 - `make apply-branch-protection` が `branch-protection.json` を `branch-protection` という名前のリポジトリルールセットとして送り、`make create-default-labels` が `labels.json` を送ります。いずれも派生リポジトリの初期化時に `make setup-repo` から一度だけ呼ばれます。
-- 以後これらを再実行する仕組みも、実態と突き合わせる仕組みもありません。Web UI からルールが外された場合も、JSON を変更したまま適用を走らせなかった場合も、宣言と実態は何の signal も無いままずれます。
+- 以後これらを再実行する仕組みも、実態と突き合わせる仕組みもありません。Web UI からルールが外された場合も、JSON を変更したまま適用を走らせなかった場合も、宣言と実態は何の兆候も無いままずれます。
 
 したがってこのディレクトリが答えるのは「このリポジトリが何を強制するつもりか」であって、「このリポジトリが何を強制しているか」ではありません。後者は GitHub に直接問い合わせてください。
 
@@ -18,7 +18,7 @@ gh api /repos/{owner}/{repo}/rulesets
 gh api /repos/{owner}/{repo}/rulesets/{ruleset_id}
 ```
 
-public リポジトリであれば通常の read 権限で参照できます。private の場合は `administration: read` 権限が要ります。
+いずれもリポジトリの通常の read 権限で参照でき、public リポジトリなら未認証でも参照できます。実態の確認に管理者権限のトークンは要りません。
 
 ## branch-protection.json
 
@@ -34,7 +34,11 @@ public リポジトリであれば通常の read 権限で参照できます。p
 
 ### 単独メンテナのリポジトリに `pull_request` を適用する場合
 
-GitHub では自分の PR を自分で承認できません。`required_approving_review_count: 1` かつ `bypass_actors` が空の場合、参加者がオーナー 1 人だけのリポジトリではこのルールを満たせる人間が存在せず、保護ブランチ向けの PR がすべて恒久的にマージ不能になります。そうしたリポジトリへ適用する前に、メンテナを `bypass_actors` に列挙するか、承認数を `0` に下げてください。スレッド解決とマージ方法の制限はそれ単体でも効きます。
+GitHub では自分の PR を自分で承認できません。`required_approving_review_count: 1` かつ `bypass_actors` が空の場合、参加者がオーナー 1 人だけのリポジトリではこのルールを満たせる人間が存在せず、保護ブランチ向けの PR がすべて恒久的にマージ不能になります。そうしたリポジトリへ適用する前に、メンテナを `bypass_actors` に列挙するか、承認を要求するパラメータを両方とも下ろしてください（`required_approving_review_count: 0` と `require_last_push_approval: false`）。スレッド解決とマージ方法の制限はそれ単体でも効きます。
+
+### `code_quality` は裏側の機能が先に報告している必要がある
+
+GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に** Code Quality のワークフローが動作し PR へ結果を報告していることを確認せよ、というものです。確認しないまま宣言すると、このルールが全 PR のマージをブロックし得ます。機能の有効化はこのディレクトリの外にあるリポジトリ単位の操作なので、機能が無効なら無害だと仮定せず、適用前に確認してください。
 
 ### CI の結果はマージをブロックしない
 
