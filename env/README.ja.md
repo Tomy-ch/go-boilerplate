@@ -7,14 +7,15 @@
 ## 命名・型の規約
 
 - 変数名は `{SUBSYSTEM}_{NAME}` の UPPER_SNAKE_CASE
-- 型欄は `internal/config/` で読み込まれる Go 型に対応:
+- 型欄は `internal/config/` で読み込まれる Go 型に対応。下記の語彙は閉じており、`TestEnvReadmeTypeVocabulary`（`internal/architest`）が双方向に検証する。語彙に無い型欄はビルドを落とし（Markdown のセルがずれた行も同時に落ちる）、この列挙自体も同テストが宣言する語彙と一致していなければならない。型を増やすときは両方を触ることになる:
   - `string` → `string`、`int` → `int`、`bool` → `bool`
   - `duration` → `time.Duration`（`time.ParseDuration` でパース、例: `500ms`, `1h30m`）
-  - `csv` → `[]string`（`,` 区切り、空白トリム後分割）
+  - `csv` → `,` 区切りのスライス（空白トリム後分割）。`[]string`、要素が数値なら `[]int`（`OBS_TARGET_STATUS_CODES`）
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
 - 例欄には**ローカル実効値**を書く。`env/.env` に記載があればその値、無ければ `internal/config/envspec.go` の `envDefault` タグの値。単一の値であって選択肢の集合ではないため、取りうる値は説明欄に書く（`APP_MODE` / `OBS_TRACES_EXPORTER` の書き方に倣う）。唯一の例外は備考に **Example is a placeholder** とある行で、実値を書くとシークレットスキャナが `env/.env` で既に追跡している資格情報を二重に持つことになる場合に限る（ローカルスタックが実際に使う値は `env/.env` を参照）。**Secret management required** であること自体は例外ではない — ローカルの `.env` にどのみち平文で入っている以上、それらの行も実値を載せる。この規約は `TestEnvReadmeExamples`（`internal/architest`）が全変数について機械検証するため、`env/.env` や `envDefault` タグの値だけを変えて表を直し忘れるとビルドが落ちる
-- `env/.env.<env>` ファイル間で値が異なってよいものは、備考欄に **Per-environment value** と明記し、続けて異なる理由を書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）。このマーカーは `TestEnvPerEnvironmentValuePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーは、それを記載する全 env ファイルで同じ値でなければならず、マーカーのあるキーは実際に値が割れていなければならない（値を揃えた後にマーカーだけ残った状態も落ちる）。一部の環境がシークレットマネージャーから受け取るキーは「異なる」のではなく「無い」ため、不在は比較対象にしない
+- `env/.env.<env>` ファイル間で値が異なってよいものは、備考欄に **Per-environment value** と明記し、続けて異なる理由を書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）。このマーカーは `TestEnvPerEnvironmentValuePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーは、それを記載する全 env ファイルで同じ値でなければならず、マーカーのあるキーは実際に値が割れていなければならない（値を揃えた後にマーカーだけ残った状態も落ちる）。比較は**実効値**で行うため、`Code default` を持つキーは記載の無いファイルでもその既定値を持つものとして数える。1 つの env ファイルだけで既定から外した場合も差であり、同じくマーカーが要る。`Code default` を持たないキーは、記載の無いファイルでは値が外部から注入されて実効値が定まらないため、その不在はここでは比較せず、下の **Injected at deploy time** が扱う
+- `envDefault` を持たないキーは全 env ファイルに記載が必須。唯一の正当な不在は、デプロイ基盤が実行時に注入する値で、備考欄に **Injected at deploy time** と明記して宣言する。宣言が無ければ、欠落と伝播漏れは見分けが付かず、その環境で実際にアプリを起動して `required` バリデーションが落ちるまで顕在化しない。このマーカーは `TestEnvRequiredKeyPresencePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーがどれか 1 つでも env ファイルから欠けていれば落ち、マーカーのあるキーは `local` / `ci` に記載があり `dev` / `stg` / `prd` には無いことが要る。deploy 側のファイルに値が復活した場合も、`Code default` を持つキーにマーカーを付けた場合も落ちる
 - 本ファイルは正本（[README.md](README.md)）の対訳で、値まで含めて表を複製している。このリポジトリの読者の多くは日本語版を読む。散文は翻訳されるが、キー・型・例・`Code default` の値は言語に依らないため正本と一致させること。乖離は `internal/architest`（`TestEnvReadmeTranslationValues`）がビルドを落として検知する。文書構造 — 表を区切るサブシステム見出しと、節・箇条書き項目の個数 — の一致は `TestEnvReadmeTranslationStructure` が検証するので、段落ごと訳し漏らした場合も検知される。`Code default` が空の場合はバッククォートで書けないため、正本では **Code default empty**、対訳では **Code default は空** と綴る。この 2 つの綴りはテストが宣言しており、他の書き方は受け付けない
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `envDefault:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
 
@@ -23,7 +24,7 @@
 1. `internal/config/envspec.go` の対応する構造体にフィールドを追加（あわせて `model.go` の getter 構造体・`config.go` のマッピングも）
 2. 該当サブシステムのテーブル（または新規サブシステム節）に変数を記載
 3. 値の供給方法を決める:
-   - **プロジェクト固有・環境ごとに変わる値** → フィールドを `required` にし、`env/.env`（ローカル既定）と各環境ファイル（`env/.env.<env>`）に追加
+   - **プロジェクト固有・環境ごとに変わる値** → フィールドを `required` にし、`env/.env`（ローカル既定）と各環境ファイル（`env/.env.<env>`）に追加。`env/.env.dev` / `.stg` / `.prd` から外してよいのはデプロイ基盤が実行時に注入する場合だけで、そのときは行に **Injected at deploy time** と明記する
    - **普遍的なフレームワーク既定値** → 代わりに `envDefault:` タグを付与し、`.env` ファイルには記載せず、テーブルに **Code default `<値>`** と明記
 4. `make test` を実行して config 構造体がロードできることを確認
 
@@ -82,8 +83,8 @@
 |---|---|---|---|---|
 |METRICS_HOST|metrics bind host|string|0.0.0.0|Per-environment value — 各環境が metrics を公開するホスト|
 |METRICS_PORT|metrics port|int|6060||
-|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
-|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。local / ci のみ commit し、dev / stg / prd はデプロイ時に注入|
+|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。`local` / `ci` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。`local` / `ci` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 
 ### Observability
 
@@ -102,12 +103,12 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |DB_DRIVER|DBドライバ|string|pgx|Code default `pgx`。固定推奨|
-|DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）。Per-environment value — `local` は compose のサービス名、`ci` は `localhost`。deploy 環境はデプロイ時に注入|
-|DB_PORT|DBポート|int|5432||
-|DB_USER|ユーザー|string|postgres|シークレット管理推奨|
-|DB_PASSWORD|パスワード|string|postgres-password|シークレット管理必須|
-|DB_NAME|DB名|string|local|シークレット管理推奨。Per-environment value — `local` は開発用、`ci` はテスト用のデータベースを指す。deploy 環境はデプロイ時に注入|
-|DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨|
+|DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）。Per-environment value — `local` は compose のサービス名、`ci` は `localhost`。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_PORT|DBポート|int|5432|Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_USER|ユーザー|string|postgres|シークレット管理推奨。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_PASSWORD|パスワード|string|postgres-password|シークレット管理必須。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_NAME|DB名|string|local|シークレット管理推奨。Per-environment value — `local` は開発用、`ci` はテスト用のデータベースを指す。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 |DB_PING_TIMEOUT|接続確認タイムアウト|duration|5s|Per-environment value — `local` は DB が同一の compose サービスにあり、ping が遅いことは起動不全を意味するため、早く落として顕在化させる `5s`。`ci` は 1 つのインスタンスへ多数のテストプロセスが同時にプールを張るため、順番待ちしているだけの接続を「DB が落ちている」と読み違えないよう、その競合を吸収するマージンとして意図的に置いた `30s`（他のタイムアウトから導出した値ではない）。`dev` 以降はネットワーク越しのマネージド DB で一時的な遅延がありうるため `10s`|
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|Code default `500ms`。observability連携|
 |DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|Code default `30s`。ctx を無視する query への SQL 層 backstop。0 で無効|
@@ -121,7 +122,7 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |DBCONN_MAX_CONNS|最大接続数|int|10|Code default `10`|
-|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` は `0`。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
+|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。Per-environment value — pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` だけ `0` へ上書きし他は既定値のまま。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
 |DBCONN_MAX_LIFETIME|接続寿命|duration|30m|Code default `30m`|
 |DBCONN_MAX_IDLE_TIME|アイドル時間|duration|10m|Code default `10m`|
 
@@ -184,10 +185,10 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:4000`|Code default は空。JWT authenticator を配線する環境で設定する。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
-|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須|
-|AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default は空。compose では内部サービス URL|
-|AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|[]string|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:4000`|Code default は空。Per-environment value — `local` / `ci` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
+|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須。Per-environment value — mock の audience を宣言するのは `local` だけで、他は authenticator を配線するまで既定の空のまま|
+|AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default は空。Per-environment value — compose 内部のサービス URL で上書きするのは `local` だけで、他は既定の空のまま `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出する|
+|AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|csv|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
 |AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
 |AUTH_JWKS_CACHE_TTL|取得した JWKS をキャッシュする期間|duration|1h|Code default `1h`|
 |AUTH_JWKS_DISCOVERY_TTL|OIDC discovery 文書をキャッシュする期間（鍵キャッシュとは別軸）|duration|24h|Code default `24h`。jwks_uri を discovery で導出する場合のみ使用|
@@ -202,8 +203,8 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
 |OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`。Per-environment value — local / ci は Garage 用のサンプルリージョン、`dev` 以降は各環境の AWS リージョン|
 |OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`。Per-environment value — 環境ごとに 1 バケット|
-|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。シークレット管理必須 — デプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う。Per-environment value — 資格情報は環境ごとに異なる|
-|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。シークレット管理必須 — デプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える。Per-environment value — 資格情報は環境ごとに異なる|
+|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。シークレット管理必須。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う。Per-environment value — 資格情報は環境ごとに異なる|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。シークレット管理必須。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える。Per-environment value — 資格情報は環境ごとに異なる|
 |OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`。Per-environment value — local / ci は Garage が path-style を要求するため `true`、`dev` 以降は AWS S3 のため `false`|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
 

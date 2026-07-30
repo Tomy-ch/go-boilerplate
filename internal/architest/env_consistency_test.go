@@ -48,9 +48,16 @@ const (
 // placeholderMarker は、Example 列が実値ではなくプレースホルダであることを宣言する Notes 列の記法です。
 const placeholderMarker = "Example is a placeholder"
 
+// deployInjectedMarker は、デプロイ基盤が実行時に値を注入するため env ファイルには書かないことを
+// 宣言する Notes 列の記法です。
+const deployInjectedMarker = "Injected at deploy time"
+
 var (
 	// envValueFiles は、値を突き合わせる env ファイルの全件です（ローカル既定と各環境ファイル）。
 	envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"}
+	// envDeployFiles は、デプロイ基盤が実行時に値を注入しうる環境の env ファイルです。ここに挙がらない
+	// ファイルはリポジトリ自身が値を持つ環境であり、キーの不在をデプロイ時注入として説明できません。
+	envDeployFiles = []string{"env/.env.dev", "env/.env.stg", "env/.env.prd"}
 	// loaderPrefixRe は、Loader のサブシステムフィールドから型名と envPrefix を捕捉します。
 	loaderPrefixRe = regexp.MustCompile("^\\s+\\w+\\s+(\\w+)\\s+`envPrefix:\"([^\"]*)\"`$")
 	// structDeclRe は、構造体宣言 type <名前> struct { から名前を捕捉します。
@@ -78,10 +85,15 @@ var (
 	// structTagRe / structTagKeyRe は、フィールドタグのリテラルと、そこで使われているタグ名を捕捉します。
 	structTagRe    = regexp.MustCompile("`[^`]*`")
 	structTagKeyRe = regexp.MustCompile(`(\w+):"`)
-	// envReadmeTagNameFiles は、タグ名の表記を突き合わせる env 変数一覧の全件です。翻訳で綴りが分かれる
-	// 目印と違い、タグ名はコードの識別子そのもので訳されないため、対訳側も同じ検証に載せられます。
-	envReadmeTagNameFiles = []string{envReadmeFile, envReadmeTranslationFile}
+	// typeVocabularyRe は、Conventions の型対応列挙から Type 列に書ける語を捕捉します。
+	typeVocabularyRe = regexp.MustCompile("`([a-z][a-z0-9]*)` ?→")
+	// envReadmeFiles は、env 変数一覧の全件です。言語に依らない記載は対訳側も同じ検証に載せられます。
+	envReadmeFiles = []string{envReadmeFile, envReadmeTranslationFile}
 )
+
+// envTypeVocabulary は、変数表の Type 列に書ける語の宣言です。env/README.md の Conventions が
+// 同じ語彙を列挙しており、両者の一致は TestEnvReadmeTypeVocabulary が検証します。
+var envTypeVocabulary = []string{"string", "int", "bool", "duration", "csv"}
 
 // codeDefaultEmptyNotations は、Code default が空であることを表す綴りをファイルごとに宣言します。
 // 空値はバッククォート記法で書けないため散文で綴られ、綴り自体が翻訳で分岐します。言語ごとに綴りを
@@ -160,18 +172,21 @@ func TestEnvTargetStatusCodesPolicy(t *testing.T) {
 	}
 }
 
-// TestEnvPerEnvironmentValuePolicy は、env ファイル間で値が割れるキーの集合と、env/README.md の
+// TestEnvPerEnvironmentValuePolicy は、env ファイル間で実効値が割れるキーの集合と、env/README.md の
 // Notes 列に置かれた環境差マーカーの集合が双方向に一致することを機械検証します。
 // env ファイルは互いに独立した手書きテキストで、値が環境ごとに違ってよいのか揃うべきなのかを
 // 表現する場所が無く、伝播漏れと意図的なポリシーが同じ見た目になります。README の Notes に
 // 書かれた宣言だけがその区別を持つため、マーカーの無いキーが割れている状態（伝播漏れ）と、
 // 値が揃ったのにマーカーが残った状態（陳腐化した宣言）の双方を loud な失敗に変えます。
+// 比較するのは記載された値ではなく実効値です。envDefault を持つキーを 1 つの env ファイルだけで
+// 上書きした状態は、記載された値だけを見ると常に 1 種類で、環境差として現れないためです。
 func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
 	rows := envReadmeRowsByKey(parseEnvReadmeRows(t, root, envReadmeFile))
 	values := readEnvFileValues(t, root)
+	spec := parseEnvSpec(t, root)
 
 	for _, key := range slices.Sorted(maps.Keys(values)) {
 		row, ok := rows[key]
@@ -179,7 +194,7 @@ func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 			continue
 		}
 
-		split := describeValueSplit(values[key])
+		split := describeValueSplit(values[key], spec[key])
 		if strings.Contains(row.notes, perEnvValueMarker) {
 			assert.NotEmptyf(t, split,
 				"%s の Notes は %q と宣言しているが、値は全 env ファイルで一致している。"+
@@ -201,6 +216,63 @@ func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 		assert.Truef(t, declared,
 			"%s の Notes は %q と宣言しているが、キーがどの env ファイルにも無い。"+
 				"宣言が陳腐化しているのでマーカーを外すこと", key, perEnvValueMarker)
+	}
+}
+
+// TestEnvRequiredKeyPresencePolicy は、envDefault を持たないキーが全 env ファイルに記載されている
+// ことと、その唯一の例外であるデプロイ時注入が env/README.md の Notes 列で宣言されていることを
+// 双方向に機械検証します。
+// 値の割れと違い、キーが丸ごと欠落した状態は残ったファイルの値と何も矛盾しません。値の突き合わせは
+// 宣言しているファイルしか見ないため欠落は素通りし、その env でアプリを起動して required
+// バリデーションが落ちるまで顕在化しません。マーカーの無いキーの欠落（伝播漏れ）と、マーカーの
+// 陳腐化（deploy 環境のファイルへ値が戻った、記載を持つ環境から消えた、既定値を持つキーに付けた）の
+// 双方を loud な失敗に変えます。
+func TestEnvRequiredKeyPresencePolicy(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+	rows := envReadmeRowsByKey(parseEnvReadmeRows(t, root, envReadmeFile))
+	values := readEnvFileValues(t, root)
+	spec := parseEnvSpec(t, root)
+
+	for _, file := range envDeployFiles {
+		require.Containsf(t, envValueFiles, file,
+			"%s が envValueFiles に無く、不在を許す判定が空振りする", file)
+	}
+
+	required := make([]string, 0, len(spec))
+	for _, key := range slices.Sorted(maps.Keys(spec)) {
+		// 表に行が無いキーは TestEnvReadmeExamples が落とすため、ここでは宣言を読めないものとして飛ばします。
+		row, ok := rows[key]
+		if !ok {
+			continue
+		}
+		if spec[key].hasDefault {
+			assert.NotContainsf(t, row.notes, deployInjectedMarker,
+				"%s は envDefault を持ち全 env ファイルでの不在が正常なので、%q は宣言として意味を成さない",
+				key, deployInjectedMarker)
+			continue
+		}
+		required = append(required, key)
+	}
+	require.NotEmpty(t, required,
+		"envDefault を持たないキーが 1 件も無く、記載の検証が空振りする")
+
+	for _, key := range required {
+		injected := strings.Contains(rows[key].notes, deployInjectedMarker)
+		for _, file := range envValueFiles {
+			_, declared := values[key][file]
+			if injected && slices.Contains(envDeployFiles, file) {
+				assert.Falsef(t, declared,
+					"%s の Notes は %q と宣言しているが %s に記載がある。"+
+						"宣言が陳腐化しているのでマーカーを外すこと", key, deployInjectedMarker, file)
+				continue
+			}
+			assert.Truef(t, declared,
+				"%s は envDefault を持たないのに %s に記載が無い。伝播漏れならその env の値を書き、"+
+					"デプロイ基盤が注入するなら %s の Notes に %q と書くこと",
+				key, file, envReadmeFile, deployInjectedMarker)
+		}
 	}
 }
 
@@ -330,14 +402,15 @@ func TestEnvReadmeTranslationStructure(t *testing.T) {
 // 散文中のタグ名はコードの識別子の手書きの複製で、実在しない名前を書いても Markdown は通り、
 // 既定値の一致を見る TestEnvReadmeCodeDefaults もタグ名そのものは読みません。誤った名前のまま
 // 手順どおりに変数を追加すると、caarlos0/env は未知のタグを黙って読み飛ばし、既定値が効かないまま
-// required でもないフィールドが残ります。
+// required でもないフィールドが残ります。対訳も同じ検証に載せられるのは、翻訳で綴りが分かれる目印と
+// 違い、タグ名がコードの識別子そのもので訳されないためです。
 func TestEnvReadmeTagNames(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
 	declared := collectStructTagKeys(t, root)
 
-	for _, file := range envReadmeTagNameFiles {
+	for _, file := range envReadmeFiles {
 		referenced := collectReadmeTagRefs(t, root, file)
 		require.NotEmptyf(t, referenced, "%s からタグ名の参照を 1 件も抽出できず、検証が空振りする", file)
 
@@ -346,6 +419,47 @@ func TestEnvReadmeTagNames(t *testing.T) {
 				"%s が参照するタグ名 %s を %s は使っていない", file, name, envSpecFile)
 		}
 	}
+}
+
+// TestEnvReadmeTypeVocabulary は、変数表の Type 列が Conventions の定める語彙だけで構成されて
+// いること、およびその語彙が正本・対訳・テスト宣言の三者で一致することを検証します。
+// 見るのは語彙に属するかどうかだけで、その語が当のキーの Go フィールド型と対応しているかまでは
+// 見ません。語彙外の値は、未定義の型を書いたか、Markdown のセル分割が崩れて別の列を Type として
+// 読んでいるかのどちらかで、後者は表の見た目では気づけません。語彙の宣言を README とテストの双方に
+// 置くのは、語彙を増やす変更に両方を触らせ、README だけを広げて検証が黙って緩むのを防ぐためです。
+// 対訳の列挙まで見るのは、語彙が Conventions 自身の定める固定のトークンであって訳す対象ではなく、
+// 対訳にも正本と同じ綴りで並ぶためです。
+func TestEnvReadmeTypeVocabulary(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+
+	for _, file := range envReadmeFiles {
+		assert.ElementsMatchf(t, envTypeVocabulary, collectTypeVocabulary(t, root, file),
+			"%s の Conventions が列挙する Type 語彙が envTypeVocabulary と一致しない。"+
+				"型を増やしたなら両方を更新すること", file)
+	}
+
+	for _, row := range parseEnvReadmeRows(t, root, envReadmeFile) {
+		assert.Containsf(t, envTypeVocabulary, strings.TrimSpace(row.typ),
+			"%s の %s の Type 列が Conventions の語彙に無い。未定義の型か、セルがずれて別の列を"+
+				"Type として読んでいる", envReadmeFile, row.key)
+	}
+}
+
+// collectTypeVocabulary は、Conventions の型対応列挙が挙げる Type 列の語を重複を除いて返します。
+func collectTypeVocabulary(t *testing.T, root, file string) []string {
+	t.Helper()
+
+	names := []string{}
+	for _, m := range typeVocabularyRe.FindAllStringSubmatch(readRepoFile(t, root, file), -1) {
+		if !slices.Contains(names, m[1]) {
+			names = append(names, m[1])
+		}
+	}
+
+	require.NotEmptyf(t, names, "%s から Type 語彙を 1 件も抽出できず、検証が空振りする", file)
+	return names
 }
 
 // collectReadmeTagRefs は、env 変数一覧の散文が参照するタグ名の全件を重複を除いて返します。
@@ -448,25 +562,53 @@ func requireEnvValueFilesCoverDir(t *testing.T, root string) {
 		"env/ 配下の env ファイルと envValueFiles が一致しない。環境を追加したなら envValueFiles にも追記すること")
 }
 
-// describeValueSplit は、1 つのキーの値が env ファイル間で割れているときにその内訳を返します。
-// 値を宣言しないファイルは比較に含めません（deploy 環境が secret manager から受け取るキーは
-// env ファイルに現れず、不在は値の差ではないため）。揃っていれば nil を返します。
-func describeValueSplit(byFile map[string]string) []string {
+// describeValueSplit は、1 つのキーの実効値が env ファイル間で割れているときにその内訳を返します。
+// envDefault を持つキーは、記載の無いファイルを既定値で補完して比較します。記載が無くても実効値は
+// 既定値で確定するため、1 つの env ファイルだけが既定から外れている状態も割れとして現れます。
+// envDefault を持たないキーの不在は、その環境の値が外部から注入されて未知であり値の差ではないため、
+// 比較に含めません（不在そのものは TestEnvRequiredKeyPresencePolicy が見ます）。
+// 揃っていれば nil を返します。
+func describeValueSplit(byFile map[string]string, field envSpecField) []string {
+	effective := effectiveValues(byFile, field)
+
 	distinct := map[string]struct{}{}
-	for _, value := range byFile {
+	for _, value := range effective {
 		distinct[value] = struct{}{}
 	}
 	if len(distinct) <= 1 {
 		return nil
 	}
 
-	split := make([]string, 0, len(byFile))
+	split := make([]string, 0, len(effective))
 	for _, file := range envValueFiles {
-		if value, ok := byFile[file]; ok {
-			split = append(split, fmt.Sprintf("%s=%q", file, value))
+		value, ok := effective[file]
+		if !ok {
+			continue
 		}
+		if _, declared := byFile[file]; !declared {
+			split = append(split, fmt.Sprintf("%s=%q(envDefault)", file, value))
+			continue
+		}
+		split = append(split, fmt.Sprintf("%s=%q", file, value))
 	}
 	return split
+}
+
+// effectiveValues は、1 つのキーが env ファイルごとに持つ実効値を返します。記載の無いファイルは、
+// envDefault があればその値を、無ければ実効値が定まらないものとして落とします。
+func effectiveValues(byFile map[string]string, field envSpecField) map[string]string {
+	effective := make(map[string]string, len(envValueFiles))
+	for _, file := range envValueFiles {
+		value, declared := byFile[file]
+		if declared {
+			effective[file] = value
+			continue
+		}
+		if field.hasDefault {
+			effective[file] = field.def
+		}
+	}
+	return effective
 }
 
 // readCommittedFile は、リポジトリにコミットされた時点のファイル内容を返します。
