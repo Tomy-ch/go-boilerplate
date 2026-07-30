@@ -18,6 +18,28 @@ The `gen-*-artifacts-check` workflows protect the invariant "the committed gener
 
 Because these workflows pin their generators through `mise.toml`, that file is an input to most of them. A `paths` filter matches whole files, so a bump to any unrelated tool in that shared lockfile also triggers them — including the Postgres-backed `gen-db` job. That over-triggering is accepted deliberately: a generator version bump is exactly the change that should be re-verified, and splitting `mise.toml` to narrow the trigger would cost more than the occasional extra run.
 
+## Job Cut-off
+
+A job can stop without reaching a verdict — a timeout, a cancellation, a runner fault. What a reader sees on the pull request in that case is not a property of the tool that was running; it follows from two settings, and leaving either at its default makes the other worse. Both are enforced by `make actions-cutoff-lint`, because keeping every comment step and every job in this directory correct by eye is not something a review can be asked to do.
+
+**Every step that calls `upsert-pr-comment` must be reachable after a cancellation.** Actions prepends an implicit `success() &&` to any custom `if:` that contains no status-check function, so a cut-off job skips the comment step and the pull request keeps no trace at all — while the `Fail if …` step, which usually does carry `always()`, still turns the check red. Red with no readable reason is worse than either half alone. The condition therefore needs `always()` or `cancelled()`; `failure()` does **not** qualify, because it is false for a cancelled job. `sync-versions-check.yaml` is the one condition that is not the plain `always() && github.event_name == 'pull_request'`: it comments only on drift, so it tests the drift status instead of `failure()`, and an empty status — the detection never finished — reads as "comment".
+
+**A missing body file is reported as a cut-off, not as a step failure.** A job cut off early never runs the step that writes the file, so absence is the normal shape of exactly the case the comment has to survive; `upsert-pr-comment` posts a cut-off notice and replaces the caller's heading, since no title the caller set can still describe a body that says the job never ran. The cost is that a miswired `body-file` path surfaces as a cut-off comment on a green run rather than as a failure — loud enough to catch, which silence on a cut-off is not. Under `cancel-in-progress`, a superseded run may post that notice moments before the new run overwrites the same marker; that is the mechanism working, not a defect to fix.
+
+**Every job sets `timeout-minutes`.** Without it a job runs to GitHub's 360-minute default, so one hang holds a runner for six hours. The value is the job's measured maximum × 3, rounded up to the next 5 minutes, with a floor of 10 to absorb setup variance on a contended runner; a job with no recent completed run gets 15. Only the values that depart from that formula are listed here — every other job is at the floor, and a value can be re-derived from the formula rather than looked up.
+
+| Job | Minutes | Why not the formula |
+| --- | --- | --- |
+| `auto-generate-docs.yaml` `generate-docs` | 25 | measured ~7m |
+| `go-test.yaml` `go-test` | 20 | measured ~5m |
+| `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
+| `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in by a fork must not meet a 10-minute cap |
+| `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml` | 15 | no recent completed run to measure |
+| `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
+| `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
+
+A job that starts tripping its limit has outgrown its measurement: re-measure and re-apply the formula rather than nudging the number. Jobs that call a reusable workflow cannot carry `timeout-minutes` at all — the key is invalid there — so the check skips them, and the limit lives in the called workflow's own job.
+
 ## Workflow List
 
 ### CI Checks (Pull Request)
@@ -28,7 +50,7 @@ Because these workflows pin their generators through `mise.toml`, that file is a
 |Go Test|`go-test.yaml`|Run Go tests with coverage reporting|
 |Module Tidy Check|`tidy-check.yaml`|Verify go.mod / go.sum are tidied|
 |SQL Lint|`sql-lint.yaml`|Run sqlfluff on migration / DML / seed SQL files|
-|Actions Lint|`actions-lint.yaml`|Run actionlint on workflow definitions, shellcheck the `run:` scripts of composite actions, plus the PR-comment secret and fence checks|
+|Actions Lint|`actions-lint.yaml`|Run actionlint on workflow definitions, shellcheck the `run:` scripts of composite actions, plus the PR-comment secret and fence checks and the job cut-off check|
 |Migration Check|`migration-check.yaml`|Validate migration files (duplicates, gaps, up/down pairing)|
 |Sync Versions Check|`sync-versions-check.yaml`|Verify mise.toml versions are propagated to go.mod / Dockerfiles / READMEs|
 |Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|

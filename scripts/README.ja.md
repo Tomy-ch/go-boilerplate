@@ -18,6 +18,8 @@ scripts/
 ├── mermaid-lint.mjs            # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
 ├── skill-lint.mjs              # .claude/** のスキル / エージェント定義を実態および .codex/** の対応と突き合わせて検証
 ├── pr-comment-secret-lint.mjs  # PR コメントを投稿するワークフロージョブへの secret 混入を検出
+├── pr-comment-fence-lint.mjs   # PR コメント本文を囲む固定長 Markdown フェンスを検出
+├── actions-cutoff-lint.mjs     # ジョブの timeout 設定と、打ち切りに耐える PR コメントを強制
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
 ├── actions-shellcheck/         # composite action の `run:` スクリプトを shellcheck で検査（Go）
 ├── pin-actions/                # GitHub Actions の `uses:` 参照を commit SHA へ固定（Go）
@@ -50,6 +52,8 @@ scripts/
 |`skill-lint.mjs`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。依存なしの ESM。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
 |`actions-shellcheck/`|`.github/actions/**` の `action.yaml` / `action.yml` を解析し、composite action の `runs.steps[].run` を抽出して各スクリプトを標準入力経由で `shellcheck` に掛け、指摘を `action.yaml` 上の行番号へ写し戻す。`actionlint` は `.github/workflows` しか走査せず、action マニフェストを直接渡してもワークフローとして解釈して失敗するため、composite action 内のシェルはどのゲートにも掛かっていなかった。その死角を埋める。方言はステップの `shell:` から決め、shebang として渡すことで `-s` を使わずに対象シェルを確定させる。`pwsh` / `python` / `cmd` や式で指定された `shell:` は検査せず skip として数える。`${{ }}` 式は行数を保つプレースホルダへ置換する（ワークフローの `run:` に対して `actionlint` が採る方式と同じ）。検査ステップ数が 0 なら非 0 で終了するため、抽出が壊れた状態が「緑」として通ることはない。|`make actions-lint` / `make actions-shellcheck`|
 |`pr-comment-secret-lint.mjs`|`.github/workflows/` の各ワークフローをジョブ単位に切り出し、`./.github/actions/upsert-pr-comment` を使うジョブが `GITHUB_TOKEN` 以外の secret を参照していれば失敗する（ワークフロー全体の `env:` も対象）。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `${{ }}` 式に現れる secrets の直接参照（`secrets.NAME` / `secrets['NAME']` / `toJSON(secrets)` のようなコンテキスト全体）。別ジョブで読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えず、検査を通る。|`make actions-lint` / `make actions-comment-secret-lint`|
+|`pr-comment-fence-lint.mjs`|ワークフローの `run:` ブロックが PR コメント本文を固定長の Markdown フェンスで囲んでいる場合と、複製されている `fence_for` の実装が互いに一致しなくなった場合に失敗する。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、フェンスを囲む本文から算出すべき理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `echo` 中のリテラルなフェンスと、実装同士の文字列一致。ある本文が攻撃者制御かどうかはここでは判定できず、規約に委ねる。|`make actions-lint` / `make actions-comment-fence-lint`|
+|`actions-cutoff-lint.mjs`|ジョブに `timeout-minutes` が無い場合と、`./.github/actions/upsert-pr-comment` を呼ぶステップの `if:` がキャンセルされたジョブから到達できない場合に失敗する。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、打ち切りが何を残すべきかは [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は条件中の `always()` / `cancelled()`。`failure()` は意図的に数えない（キャンセル時は false）。reusable workflow を呼ぶジョブは同キーが invalid なため除外する。到達性を自ら打ち消す条件（`!always()`）は書けてしまい静的には捕まらないので、そこは規約が支える。|`make actions-lint` / `make actions-cutoff-lint`|
 
 #### Skill Lint
 
