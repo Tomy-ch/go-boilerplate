@@ -45,10 +45,8 @@ RUN apk upgrade --no-cache \
     && adduser -S app -G app
 USER app
 
-# コンテナのローカルタイム。tzdata と対で Go の time.Local を決め、シェルの date やログの表示に効く。
-# 実行時 env の TZ で上書きできるため、デプロイ先はここを再ビルドせず環境側で切り替えられる。
-# アプリが読み書きする値は OS_TZ 由来の session timezone が決めるので、この値は表示層に留まる。
-# 機構と変更手順は env/README.md の Changing the Timezone を参照。
+# コンテナのローカルタイム（Go の time.Local）。tzdata と対で決まり、実行時 env の TZ で上書きできる。
+# 機構の役割分担と変更手順は env/README.md の Changing the Timezone を参照。
 ENV TZ=Asia/Tokyo
 
 # env / migrations はバイナリへ埋め込み済みのため、追加コピーは不要。
