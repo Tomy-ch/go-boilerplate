@@ -71,6 +71,20 @@ runs:
       name: second
 `
 
+const quotedDefectAction = `runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: 'x="a b"; echo $x'
+`
+
+const miscasedUsingAction = `runs:
+  using: Composite
+  steps:
+    - shell: bash
+      run: echo hi
+`
+
 func testFS(files map[string]string) fstest.MapFS {
 	fsys := fstest.MapFS{}
 	for path, body := range files {
@@ -108,15 +122,6 @@ func TestParseAction(t *testing.T) {
 			assert.Equal(t, 9, steps[0].firstLine)
 		})
 
-		t.Run("folded ブロックの本文開始行もキー行の次を指す", func(t *testing.T) {
-			t.Parallel()
-			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: >\n        echo folded\n"
-			steps, err := parseAction("action.yaml", []byte(body))
-			require.NoError(t, err)
-			require.Len(t, steps, 1)
-			assert.Equal(t, 6, steps[0].firstLine)
-		})
-
 		t.Run("plain スカラーの本文開始行はキー行そのものを指す", func(t *testing.T) {
 			t.Parallel()
 			steps, err := parseAction("action.yaml", []byte(compositeAction))
@@ -140,6 +145,30 @@ func TestParseAction(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, steps, 2)
 			assert.Equal(t, 11, steps[1].colBase)
+		})
+
+		t.Run("引用符付きスカラーの列基準は開き引用符の内側を指す", func(t *testing.T) {
+			t.Parallel()
+			double := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: \"echo hi\"\n"
+			steps, err := parseAction("action.yaml", []byte(double))
+			require.NoError(t, err)
+			require.Len(t, steps, 1)
+			assert.Equal(t, 12, steps[0].colBase)
+
+			single := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: 'echo hi'\n"
+			steps, err = parseAction("action.yaml", []byte(single))
+			require.NoError(t, err)
+			require.Len(t, steps, 1)
+			assert.Equal(t, 12, steps[0].colBase)
+		})
+
+		t.Run("空行で始まる literal ブロックの列基準は最初の非空行のインデント幅になる", func(t *testing.T) {
+			t.Parallel()
+			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n\n        echo hi\n"
+			steps, err := parseAction("action.yaml", []byte(body))
+			require.NoError(t, err)
+			require.Len(t, steps, 1)
+			assert.Equal(t, 8, steps[0].colBase)
 		})
 
 		t.Run("alias で共有された run はアンカー先の本文を検査対象にする", func(t *testing.T) {
@@ -216,6 +245,23 @@ func TestParseAction(t *testing.T) {
 			_, err := parseAction("action.yaml", []byte("runs: [\n"))
 			require.Error(t, err)
 			require.ErrorContains(t, err, "parse action.yaml")
+		})
+
+		t.Run("folded ブロックの run はエラーにする", func(t *testing.T) {
+			t.Parallel()
+			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: >\n        echo folded\n"
+			_, err := parseAction("action.yaml", []byte(body))
+			require.Error(t, err)
+			require.ErrorIs(t, err, errFoldedRun)
+			require.ErrorContains(t, err, "action.yaml:5")
+		})
+
+		t.Run("using の綴りが composite と一致しない action の run は件数差でエラーにする", func(t *testing.T) {
+			t.Parallel()
+			_, err := parseAction("action.yaml", []byte(miscasedUsingAction))
+			require.Error(t, err)
+			require.ErrorIs(t, err, errStepCountMismatch)
+			require.ErrorContains(t, err, "抽出 0 / 期待 1")
 		})
 	})
 }
@@ -311,39 +357,84 @@ func TestCollectSteps(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("run を持つ composite action から 1 件も抽出できなければエラーにする", func(t *testing.T) {
+		t.Run("steps をマッピングで書いた action はエラーにする", func(t *testing.T) {
 			t.Parallel()
 			body := "runs:\n  using: composite\n  steps: {}\n  extra:\n    - run: echo hi\n"
 			_, _, err := collectSteps(testFS(map[string]string{".github/actions/a/action.yaml": body}))
 			require.Error(t, err)
-			require.ErrorIs(t, err, errExtractorBroken)
+			require.ErrorIs(t, err, errStepsNotSequence)
+		})
+
+		t.Run("他のファイルが健全でも 1 ファイルの抽出破損はエラーにする", func(t *testing.T) {
+			t.Parallel()
+			_, _, err := collectSteps(testFS(map[string]string{
+				".github/actions/a/action.yaml": compositeAction,
+				".github/actions/b/action.yaml": miscasedUsingAction,
+			}))
+			require.Error(t, err)
+			require.ErrorIs(t, err, errStepCountMismatch)
+			require.ErrorContains(t, err, ".github/actions/b/action.yaml")
 		})
 	})
 }
 
-func TestIsComposite(t *testing.T) {
+func TestCountRunSteps(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("using が composite なら true", func(t *testing.T) {
+		t.Run("using の値と無関係に run ステップを数える", func(t *testing.T) {
 			t.Parallel()
-			assert.True(t, isComposite([]byte(compositeAction)))
+			count, err := countRunSteps("action.yaml", []byte(miscasedUsingAction))
+			require.NoError(t, err)
+			assert.Equal(t, 1, count)
+		})
+
+		t.Run("alias とマージキーで継承した run も数える", func(t *testing.T) {
+			t.Parallel()
+			count, err := countRunSteps("action.yaml", []byte(aliasAction))
+			require.NoError(t, err)
+			assert.Equal(t, 2, count)
+
+			count, err = countRunSteps("action.yaml", []byte(mergeAction))
+			require.NoError(t, err)
+			assert.Equal(t, 2, count)
+		})
+
+		t.Run("run を持たないステップは数えない", func(t *testing.T) {
+			t.Parallel()
+			body := "runs:\n  using: composite\n  steps:\n    - uses: actions/checkout@v7\n"
+			count, err := countRunSteps("action.yaml", []byte(body))
+			require.NoError(t, err)
+			assert.Zero(t, count)
+		})
+
+		t.Run("トップレベルがマッピングでない YAML は 0 件", func(t *testing.T) {
+			t.Parallel()
+			count, err := countRunSteps("action.yaml", []byte("- just\n- a list\n"))
+			require.NoError(t, err)
+			assert.Zero(t, count)
+		})
+
+		t.Run("空ファイルは 0 件", func(t *testing.T) {
+			t.Parallel()
+			count, err := countRunSteps("action.yaml", nil)
+			require.NoError(t, err)
+			assert.Zero(t, count)
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("using が composite 以外なら false", func(t *testing.T) {
+		t.Run("steps がリストとして読めなければエラーにする", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, isComposite([]byte("runs:\n  using: node20\n  main: index.js\n")))
-		})
-
-		t.Run("YAML として壊れていれば false", func(t *testing.T) {
-			t.Parallel()
-			assert.False(t, isComposite([]byte("runs: [\n")))
+			body := "runs:\n  using: composite\n  steps: {}\n"
+			_, err := countRunSteps("action.yaml", []byte(body))
+			require.Error(t, err)
+			require.ErrorIs(t, err, errStepsNotSequence)
+			require.ErrorContains(t, err, "action.yaml")
 		})
 	})
 }
@@ -366,6 +457,12 @@ func TestShellDialect(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "bash", shellDialect("/usr/bin/env bash"))
 			assert.Equal(t, "bash", shellDialect("env bash {0}"))
+		})
+
+		t.Run("env の前置き変数代入を読み飛ばして方言を採る", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "bash", shellDialect("env FOO=bar bash"))
+			assert.Equal(t, "bash", shellDialect("/usr/bin/env FOO=bar BAZ=qux bash {0}"))
 		})
 	})
 
@@ -399,6 +496,12 @@ func TestShellDialect(t *testing.T) {
 		t.Run("shell が env のみ なら方言なしとして扱う", func(t *testing.T) {
 			t.Parallel()
 			_, ok := shebangs[shellDialect("env")]
+			assert.False(t, ok)
+		})
+
+		t.Run("shell が env と変数代入だけ なら方言なしとして扱う", func(t *testing.T) {
+			t.Parallel()
+			_, ok := shebangs[shellDialect("env FOO=bar")]
 			assert.False(t, ok)
 		})
 
@@ -653,6 +756,21 @@ func TestCheck(t *testing.T) {
 				assert.Contains(t, finding, ".github/actions/a/action.yaml:8:14:")
 				assert.Contains(t, finding, "SC2086")
 			}
+		})
+
+		t.Run("引用符付きスカラーの run も列位置ごと報告する", func(t *testing.T) {
+			t.Parallel()
+			requireShellcheck(t)
+			_, steps, err := collectSteps(testFS(map[string]string{
+				".github/actions/a/action.yaml": quotedDefectAction,
+			}))
+			require.NoError(t, err)
+			res, err := check(t.Context(), steps)
+			require.NoError(t, err)
+			assert.Equal(t, 1, res.checked)
+			require.Len(t, res.findings, 1)
+			assert.Contains(t, res.findings[0], ".github/actions/a/action.yaml:5:27:")
+			assert.Contains(t, res.findings[0], "SC2086")
 		})
 
 		t.Run("マージキーで継承した plain スカラーの run も列位置ごと報告する", func(t *testing.T) {
