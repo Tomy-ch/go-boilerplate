@@ -94,6 +94,8 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 
 `auth.Authn`（subject / scopes / claims）と対象 `Resource` を渡すことで、RBAC（claims からロール）と所有権（subject == OwnerID）の双方を表現できます。デフォルト実装は全許可であり、本番以外の環境に限定されます。
 
+`NewResource` に `ownerID = nil` を渡すことは、**所有者を持たない**リソースの宣言です。所有権かロールで判定するポリシーの下では所有権の一致が決して成立しなくなるため、判定はロールのみで決まります —— これが usecase から admin 限定の操作を宣言する方法です。失敗の向きは安全側で、所有者の指定漏れはアクセスを広げるのではなく狭めます。
+
 ### clock
 
 ```go

@@ -38,7 +38,7 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 
 ## local / staging / production の実装
 
-`allowall` は **開発用スタブ**であり、すべてを許可するため配線されるのは `local` / `ci` / `test` のみです。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはありません。さらに `provideAuthorizer` も **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `development` / `staging` / `production` を担います。サンプルを削除すると、自前の実装を配線するまでこれらの環境は fail-closed エラーに戻ります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 11 の認可を参照）。
+`allowall` は **開発用スタブ**であり、すべてを許可するため配線されるのは `local` / `ci` / `test` のみです。この制限はスタブ自身が担保します —— `allowall.New` はこれら以外の環境では生成を拒否する（**fail-closed by construction**）ため、配線ミスで `development` / `staging` / `production` に全許可が誤って有効化されることはありません。さらに `provideAuthorizer` も **fail-closed** であり、実装が配線されていない環境は `default` 分岐に落ちて設計上起動エラーになります。`user` サンプルが存在する間は、`user_roles` を裏付けとするサンプル実装 `userrole` が `local` / `development` / `staging` / `production` を担います —— `allowall` を受け取るのは `ci` / `test` だけなので、ローカル実行でも実際の判定経路が働きます。サンプルを削除すると `local` は `allowall` の case に畳み込まれ、本番相当の環境は自前の実装を配線するまで fail-closed エラーに戻ります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 11 の認可を参照）。
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
@@ -66,6 +66,22 @@ internal/di/module/authz.go
 ```
 
 Usecase 層が依存するため `InfrastructureModule()` に含めています。全許可スタブが本番相当の環境に配線されることはありません —— これはプロバイダだけでなく **`allowall.New` 自身が担保します**（fail-closed）。
+
+## Test Strategy
+
+どちらの実装も **実 I/O を持たない純粋な in-memory の判定点**です。`userrole` が DB に触れるのは注入された `user.RoleRepository` 越しだけで、`allowall` は何にも触れません。したがって infrastructure 層の実 DB 戦略はここには適用されません。生成 mock の `RoleRepository` を唯一の seam とする素の単体テストになります。
+
+観点:
+
+- **判定順序を、両側から 1 行ずつ固定する。** 管理者は所有者でなくても許可、非管理者でも所有者なら許可、非管理者かつ非所有者は拒否。拒否は必ず `errors.Is` で `ErrForbidden` を assert し、メッセージ文字列では判定しない。
+- **主体解決のガードが、ロール参照より前に走ることを検証する。** `Authn` が nil のとき・UserID が未解決のとき・UserID がゼロ値のときは、いずれも mock に *呼び出しが無い* ことを期待した上で拒否する。この順序こそが防御なので、戻り値だけを見るテストでは「ロール参照が漏れる」退行を取り逃がす。
+- **所有者を持たないリソースは admin 限定のままであること。** リソースが nil の場合と `OwnerID()` が `nil` の場合の双方が、非管理者に対して拒否する。この契約が固定されているのはここだけで、admin 限定エンドポイント 6 箇所がこれに依存している。
+- **リポジトリのエラーは拒否へ潰さず、そのまま伝播すること。**
+- **`allowall.New` が `local` / `ci` / `test` 以外での生成を拒否すること。** 拒否こそが fail-closed の担保なので、受け入れる環境より拒否すべき環境のほうが重要。
+
+ゼロ値の主体のケースは、稼働中のアプリ経由では再現できない。本番で `WithUserID` を呼ぶ唯一の箇所（`internal/infrastructure/auth/useridentity`）は、ドメインの `IsNil` ガードを既に通過した ID を解決するためである。この分岐を固定しているのは、これらの単体テストだけになる。
+
+どの環境にどの実装が配線されるかは DI 層のスコープであり、そちらで検証する（[`internal/di/README.ja.md`](../../di/README.ja.md) の *環境ゲート付きの配線* を参照）。ここでは扱わない。
 
 ## 設計方針
 

@@ -162,6 +162,8 @@ flowchart TB
 
 ## Test Strategy
 
+These bullets govern the subsystems whose substrate **is** the database. A subsystem built on a different substrate (`httpclient/`, `objectstorage/`) or with no real I/O at all (`authz/`) declares its own *Test Strategy* in its package README; walking up to this section from such a package is a documentation gap to close there, not a licence to require a real database of it.
+
 - Integration Test using real DB
 - State isolation using transaction rollback
 - Use testkit
