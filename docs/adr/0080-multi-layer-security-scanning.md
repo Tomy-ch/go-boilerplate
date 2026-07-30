@@ -227,6 +227,13 @@ unlisted host. Audit first, then narrow.
   [`.github/workflows/README.md`](../../.github/workflows/README.md).
 - zizmor's audit exceptions live in `.github/zizmor.yml`; `ignore` there is file-scoped so
   a new workflow hitting the same audit still fails.
+- zizmor is the only scanner here that also runs pre-commit, through the same `make` target
+  and the same `high` threshold ([ADR-0076](0076-local-hooks-mirror-ci.md)). It earns that
+  because it audits files the developer is editing right then, needs no build and no
+  service, and finishes in well under a second; the hook drops the online audits so it
+  needs no token. The rest of this layer scans dependencies and images, where the finding
+  set changes with the outside world rather than with the edit, and a local run would be
+  neither faster nor more current than CI.
 - Action pinning and the supply-chain quarantine the added actions go through:
   [ADR-0081](0081-sha-pinned-actions.md).
 - Release-image integrity, a separate concern from these scans:

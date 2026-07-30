@@ -36,7 +36,7 @@ English canonical: [security.md](../../design/security.md)
 | リリースゲート（`trivy-release-gate` / `osv-release-gate`） | 強制 | デプロイ先ブランチ宛 PR でのみ |
 | `dependency-review` | 強制 | PR が**追加する**分だけを評価 |
 | シークレットスキャン（gitleaks / TruffleHog） | 強制 | コミットされたシークレットは許容可能な取引ではない |
-| `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で |
+| `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で。pre-commit でもオフライン監査のみでゲートする |
 | 報告系スキャナ（`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL） | 検知 | code scanning と PR には届くが、ブロックしない |
 | `npm-cooldown-audit` | 検知 | 構造としてブロックしない（後述） |
 | `harden-runner`（`egress-policy: audit`） | 検知 | egress を記録する。制限はしない |
