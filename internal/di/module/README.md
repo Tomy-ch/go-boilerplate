@@ -59,6 +59,8 @@ Each module has a sibling `*_test.go` with a `Test<Module>_GraphIsValid` that ca
 
 That same property means a provider / `fx.Invoke` body carrying its own logic (e.g. `provideQueueStatsCollector`) is **not** exercised by the graph-validation test — it needs a direct unit test (call the function) for branch coverage.
 
+Graph validation also only covers what the module *does* enumerate, so a `BindHandler` missing from `ControllerModule()`'s `fx.Invoke` stays invisible to it. That the enumeration is *complete* — one entry per handler package declaring a `BindHandler` — is machine-verified separately by `TestBindHandlerDIParity` in `internal/architest`.
+
 ## Notes
 
 - Each module depends on the `fx.App` Start / Stop lifecycle

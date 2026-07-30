@@ -59,6 +59,8 @@ flowchart TB
 
 同じ性質ゆえ、独自ロジックを持つ provider / `fx.Invoke` 本体（例: `provideQueueStatsCollector`）はグラフ検証テストでは**実行されない** — 分岐網羅には直接の単体テスト（関数を実際に呼ぶ）が要る。
 
+グラフ検証が見るのはモジュールが*列挙している*ものだけなので、`ControllerModule()` の `fx.Invoke` から漏れた `BindHandler` はこのテストからは見えない。列挙が*網羅的である*こと — `BindHandler` を宣言するハンドラパッケージ 1 つにつき 1 エントリ — は `internal/architest` の `TestBindHandlerDIParity` が別途機械検証する。
+
 ## 注意点
 
 - 各モジュールは `fx.App` の Start / Stop ライフサイクルに依存する
