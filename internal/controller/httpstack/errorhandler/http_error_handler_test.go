@@ -598,12 +598,15 @@ func Test_normalizeHTTPError(t *testing.T) {
 				Internal:   internalErr,
 			}
 
+			expected := response.NewHTTPErrorFromAppError(internalErr)
+			expected.RequestId = expectedRequestID
+
 			actual := normalizeHTTPError(unknownError, expectedRequestID)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, actual.HTTPStatus)
 			require.NotNil(t, actual.Details)
 			assert.Equal(t, []string{"firstName"}, *actual.Details)
-			assert.Equal(t, expectedRequestID, actual.RequestId)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("response.HTTPErrorResponseを渡した場合_ステータスがエラー範囲ならそのまま返る", func(t *testing.T) {
@@ -766,6 +769,28 @@ func Test_logHTTPError(t *testing.T) {
 			require.Len(t, entries, 1)
 			assert.Equal(t, 0, observed.FilterMessage("errorhandler.client_error").Len())
 			assert.Equal(t, logging.EventTypeError, entries[0].ContextMap()[logging.EventTypeKey])
+		})
+
+		t.Run("500を超えるステータスもErrorログとして出力される", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			c, end := newEchoCtx(t)
+			defer end()
+
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
+					Code:      "C503",
+					Message:   "M503",
+					RequestId: "r503",
+				},
+				HTTPStatus: http.StatusServiceUnavailable,
+			}
+
+			logHTTPError(c, logger, lf, obsCfg, he)
+
+			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
+			assert.Equal(t, 0, observed.FilterMessage("errorhandler.client_error").Len())
 		})
 
 		t.Run("400〜499はWarnログとして出力される", func(t *testing.T) {

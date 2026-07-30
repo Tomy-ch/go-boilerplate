@@ -110,7 +110,7 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			expectedBase := response.NewHTTPErrorFromStatus(http.StatusBadRequest, nil)
 			assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
 			assert.Equal(t, expectedBase.Code, actual.Code)
-			require.Error(t, actual.Internal)
+			require.ErrorIs(t, actual.Internal, validationErr)
 		})
 	})
 
