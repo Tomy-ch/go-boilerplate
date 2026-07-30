@@ -9,17 +9,16 @@ name: Skill Definition Lint
 # dependency-free ESM and needs nothing but node, whereas markdownlint-cli2 and
 # `mermaid-lint.mjs` need the npm tree that today only the node_tool_runner image
 # builds. Bringing those two into CI is separate work.
+#
+# No `paths` filter, deliberately. The script reads only `.claude/**` prose but
+# resolves the paths and make targets it quotes against the whole repository, so
+# renaming `docs/rules.md` or moving a file under `internal/` breaks it without
+# touching anything a filter could name. The run costs ~0.2s of script time on
+# top of checkout and node install, which is the same bill the other unfiltered
+# jobs already pay.
 
 on:
   pull_request:
-    paths:
-      - '.claude/**'
-      - '.codex/**'
-      - 'scripts/skill-lint.mjs'
-      - '.makefiles/**'
-      - 'makefile'
-      - 'mise.toml'
-      - '.github/workflows/md-skill-lint.yaml'
   workflow_dispatch:
 
 permissions:
