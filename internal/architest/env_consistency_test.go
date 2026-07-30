@@ -1,6 +1,8 @@
 package architest
 
 import (
+	"fmt"
+	"maps"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -23,8 +25,11 @@ const envReadmeFile = "env/README.md"
 // envSpecFile は、env 契約の SSOT である Loader 構造体の宣言元です。
 const envSpecFile = "internal/config/envspec.go"
 
-// targetStatusCodesKey は、環境別ポリシーを持つ唯一のキーです。
+// targetStatusCodesKey は、絞り込みの形まで宣言された環境別ポリシーを持つキーです。
 const targetStatusCodesKey = "OBS_TARGET_STATUS_CODES"
+
+// perEnvValueMarker は、env ファイル間で値が異なることを宣言する Notes 列の記法です。
+const perEnvValueMarker = "Per-environment value"
 
 // envLocalFile は、ローカル実効値のうち env ファイル側の出所です。
 const envLocalFile = "env/.env"
@@ -41,6 +46,8 @@ const (
 const placeholderMarker = "Example is a placeholder"
 
 var (
+	// envValueFiles は、値を突き合わせる env ファイルの全件です（ローカル既定と各環境ファイル）。
+	envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"}
 	// loaderPrefixRe は、Loader のサブシステムフィールドから型名と envPrefix を捕捉します。
 	loaderPrefixRe = regexp.MustCompile("^\\s+\\w+\\s+(\\w+)\\s+`envPrefix:\"([^\"]*)\"`$")
 	// structDeclRe は、構造体宣言 type <名前> struct { から名前を捕捉します。
@@ -118,6 +125,50 @@ func TestEnvTargetStatusCodesPolicy(t *testing.T) {
 				file, targetStatusCodesKey, strings.Join(tier.excluded, ","))
 		}
 		upper = readStatusCodes(t, root, tier.files[0])
+	}
+}
+
+// TestEnvPerEnvironmentValuePolicy は、env ファイル間で値が割れるキーの集合と、env/README.md の
+// Notes 列に置かれた環境差マーカーの集合が双方向に一致することを機械検証します。
+// env ファイルは互いに独立した手書きテキストで、値が環境ごとに違ってよいのか揃うべきなのかを
+// 表現する場所が無く、伝播漏れと意図的なポリシーが同じ見た目になります。README の Notes に
+// 書かれた宣言だけがその区別を持つため、マーカーの無いキーが割れている状態（伝播漏れ）と、
+// 値が揃ったのにマーカーが残った状態（陳腐化した宣言）の双方を loud な失敗に変えます。
+func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+	rows := parseEnvReadmeRows(t, root)
+	values := readEnvFileValues(t, root)
+
+	for _, key := range slices.Sorted(maps.Keys(values)) {
+		row, ok := rows[key]
+		if !assert.Truef(t, ok, "%s が env ファイルにあるが %s の変数表に無い", key, envReadmeFile) {
+			continue
+		}
+
+		split := describeValueSplit(values[key])
+		if strings.Contains(row.notes, perEnvValueMarker) {
+			assert.NotEmptyf(t, split,
+				"%s の Notes は %q と宣言しているが、値は全 env ファイルで一致している。"+
+					"宣言が陳腐化しているのでマーカーを外すこと", key, perEnvValueMarker)
+			continue
+		}
+		assert.Emptyf(t, split,
+			"%s の値が env ファイル間で割れている（%s）が、%s の Notes に理由が書かれていない。"+
+				"伝播漏れなら値を揃え、意図的なら %q と理由を Notes に書くこと",
+			key, strings.Join(split, " / "), envReadmeFile, perEnvValueMarker)
+	}
+
+	// env ファイルから消えたキーは上のループに入らないため、マーカーだけが残った行を別に拾います。
+	for _, key := range slices.Sorted(maps.Keys(rows)) {
+		if !strings.Contains(rows[key].notes, perEnvValueMarker) {
+			continue
+		}
+		_, declared := values[key]
+		assert.Truef(t, declared,
+			"%s の Notes は %q と宣言しているが、キーがどの env ファイルにも無い。"+
+				"宣言が陳腐化しているのでマーカーを外すこと", key, perEnvValueMarker)
 	}
 }
 
@@ -210,6 +261,71 @@ func readLocalEnv(t *testing.T, root string) map[string]string {
 		return values
 	}
 	return parseEnvContent(t, envLocalFile, readCommittedFile(t, root, envLocalFile))
+}
+
+// readEnvFileValues は、env ファイル群をキーごとの「ファイル → 値」へ読み替えて返します。
+// env/.env だけは readLocalEnv を通します。CI は埋め込みのため作業ツリーの env/.env を対象環境の
+// ファイルで上書きしており、そのまま読むと local と当該環境の差が消えて検証が空振りするためです。
+func readEnvFileValues(t *testing.T, root string) map[string]map[string]string {
+	t.Helper()
+
+	requireEnvValueFilesCoverDir(t, root)
+
+	values := map[string]map[string]string{}
+	for _, file := range envValueFiles {
+		kv := parseEnvFile(t, root, file)
+		if file == envLocalFile {
+			kv = readLocalEnv(t, root)
+		}
+
+		for key, value := range kv {
+			if values[key] == nil {
+				values[key] = map[string]string{}
+			}
+			values[key][file] = value
+		}
+	}
+
+	return values
+}
+
+// requireEnvValueFilesCoverDir は、envValueFiles が env/ 配下の env ファイル実体を網羅していることを
+// 確かめます。env ファイルは増える方向にしか壊れません（減れば読み込みが失敗する）。新しい環境の
+// ファイルを足して一覧への追記を忘れると、そのファイルだけ検証対象から静かに外れます。
+func requireEnvValueFilesCoverDir(t *testing.T, root string) {
+	t.Helper()
+
+	found, err := pkgfs.OS{}.Glob(filepath.Join(root, "env", ".env*"))
+	require.NoError(t, err, "env ファイルの一覧を取得できない")
+
+	onDisk := make([]string, 0, len(found))
+	for _, path := range found {
+		onDisk = append(onDisk, filepath.ToSlash(filepath.Join("env", filepath.Base(path))))
+	}
+
+	assert.ElementsMatch(t, envValueFiles, onDisk,
+		"env/ 配下の env ファイルと envValueFiles が一致しない。環境を追加したなら envValueFiles にも追記すること")
+}
+
+// describeValueSplit は、1 つのキーの値が env ファイル間で割れているときにその内訳を返します。
+// 値を宣言しないファイルは比較に含めません（deploy 環境が secret manager から受け取るキーは
+// env ファイルに現れず、不在は値の差ではないため）。揃っていれば nil を返します。
+func describeValueSplit(byFile map[string]string) []string {
+	distinct := map[string]struct{}{}
+	for _, value := range byFile {
+		distinct[value] = struct{}{}
+	}
+	if len(distinct) <= 1 {
+		return nil
+	}
+
+	split := make([]string, 0, len(byFile))
+	for _, file := range envValueFiles {
+		if value, ok := byFile[file]; ok {
+			split = append(split, fmt.Sprintf("%s=%q", file, value))
+		}
+	}
+	return split
 }
 
 // readCommittedFile は、リポジトリにコミットされた時点のファイル内容を返します。

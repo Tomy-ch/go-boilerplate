@@ -32,25 +32,33 @@ func TestExpectedDBError(t *testing.T) {
 func TestNewMockTransactionManager(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Do がコールバックを実行する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		mgr := NewMockTransactionManager(t)
-		called := false
-		err := mgr.Do(context.Background(), func(context.Context) error {
-			called = true
-			return nil
+		t.Run("Do がコールバックを実行する", func(t *testing.T) {
+			t.Parallel()
+
+			mgr := NewMockTransactionManager(t)
+			called := false
+			err := mgr.Do(context.Background(), func(context.Context) error {
+				called = true
+				return nil
+			})
+			require.NoError(t, err)
+			assert.True(t, called)
 		})
-		require.NoError(t, err)
-		assert.True(t, called)
 	})
 
-	t.Run("Do がコールバックの error を透過する", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		mgr := NewMockTransactionManager(t)
-		want := xerrors.New("boom")
-		err := mgr.Do(context.Background(), func(context.Context) error { return want })
-		require.ErrorIs(t, err, want)
+		t.Run("Do がコールバックの error を透過する", func(t *testing.T) {
+			t.Parallel()
+
+			mgr := NewMockTransactionManager(t)
+			want := xerrors.New("boom")
+			err := mgr.Do(context.Background(), func(context.Context) error { return want })
+			require.ErrorIs(t, err, want)
+		})
 	})
 }
