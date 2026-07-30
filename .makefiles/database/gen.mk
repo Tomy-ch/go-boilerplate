@@ -2,7 +2,7 @@
 # -----Dockerコンテナ内で実行するターゲット-----
 .PHONY: gen-db-schema ## スキーマの更新を実行
 .PHONY: dump-schema ## スキーマのダンプを実行
-.PHONY: db-ensure ## 指定DBを無ければ作成し、拡張(pg_trgm)とtimezoneを初期化する
+.PHONY: db-ensure ## 指定DBを無ければ作成し、拡張(pg_trgm)を初期化する
 # ----CI用ターゲット-----
 .PHONY: gen-db-schema-ci ## DBスキーマの生成を実行（CI用）
 .PHONY: dump-schema-ci ## スキーマのダンプを実行（CI用）
@@ -39,13 +39,13 @@ dump-schema:
 	@docker compose run --rm -e DB_NAME=$(SCHEMA_GEN_DB) go_tool_runner make dump-schema-ci work-dir="$(work-dir)"
 	@echo "✅ スキーマのダンプが完了しました。"
 
-# db-ensure: 指定 DB を無ければ作成し、拡張(pg_trgm)と timezone を初期化する。
-# compose 初期化 SQL(docker/database/sql) と同じ拡張・timezone で使い捨てスキーマ DB をブートストラップ
-# する（dbslot の PgxAdmin.SetupDatabase と等価）。DB コンテナが起動している前提（gen-query と同じ）。
+# db-ensure: 指定 DB を無ければ作成し、拡張(pg_trgm)を初期化する。
+# compose 初期化 SQL(docker/database/sql) と同じ拡張で使い捨てスキーマ DB をブートストラップする
+# （dbslot の PgxAdmin.SetupDatabase と等価）。timezone は DB コンテナの TZ 由来のクラスタ既定を
+# そのまま継承するため、ここでは設定しない。DB コンテナが起動している前提（gen-query と同じ）。
 db-ensure:
 	@docker compose exec -T database psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$(DB)'" | grep -q 1 \
 		|| docker compose exec -T database psql -U postgres -c "CREATE DATABASE $(DB)"
-	@docker compose exec -T database psql -U postgres -c "ALTER DATABASE $(DB) SET timezone TO 'Asia/Tokyo';"
 	@docker compose exec -T database psql -U postgres -d $(DB) -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
 # ----CI用ターゲット-----

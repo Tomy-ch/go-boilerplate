@@ -96,16 +96,12 @@ func TestPgxAdmin_SetupDatabase(t *testing.T) {
 	require.NoError(t, a.EnsureDatabase(ctx, name))
 
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // 実 DB 依存
-		t.Run("timezone と pg_trgm 拡張を設定する", func(t *testing.T) { //nolint:paralleltest // 実 DB 依存
+		t.Run("pg_trgm 拡張を設定する", func(t *testing.T) { //nolint:paralleltest // 実 DB 依存
 			require.NoError(t, a.SetupDatabase(ctx, name))
 
 			conn, err := a.connect(ctx, name)
 			require.NoError(t, err)
 			defer func() { _ = conn.Close(ctx) }()
-
-			var tz string
-			require.NoError(t, conn.QueryRow(ctx, "SHOW timezone").Scan(&tz))
-			assert.Equal(t, "Asia/Tokyo", tz)
 
 			var hasExt bool
 			require.NoError(t, conn.QueryRow(ctx,
