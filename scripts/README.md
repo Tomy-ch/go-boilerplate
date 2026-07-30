@@ -80,9 +80,10 @@ checked as a translation pair only when present.
 
 Body correspondence is deliberately **not** checked. `sync-ai` performs a semantic port, not a
 verbatim copy, so `CLAUDE.md` ↔ `AGENTS.md` rewording, adaptation of Claude-only mechanisms, and
-condensed rewrites leave permanent intentional differences — measured on the 34 shared skills, 7
-have heading sets that barely overlap. Existence parity has few enough exceptions to declare, and
-still catches the failure that matters: a skill merged into one environment only.
+condensed rewrites leave permanent intentional differences — for a substantial minority of the
+shared skills the two heading sets do not overlap at all. Existence parity has few enough
+exceptions to declare, and still catches the failure that matters: a skill merged into one
+environment only.
 
 A skill that intentionally lives in one environment goes in the `PLATFORM_ONLY_SKILLS` map in
 `skill-lint.mjs` **with a reason**. An entry with an empty reason fails, and so does one whose skill
