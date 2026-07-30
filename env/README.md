@@ -43,7 +43,7 @@ All three are needed: dropping the first would leave the application at the clus
 4. `docker/server/Dockerfile` — the `ENV TZ` of the `runtime` and `tooling` stages. Both are stated because they are separate images: `runtime` is what a deployment runs, `tooling` is what `make serve` runs. A deployment can override the value at run time without a rebuild, so treat the `ENV` as the default rather than as the only place it can come from.
 5. Test expectations that pin the value as a literal — `expectedOSTimeZone` in `internal/config/config_testing_mock.go`, plus the assertions in `internal/di/job_test.go`, `internal/di/server/hook/http_server_hook_test.go`, and `internal/infrastructure/rdb/driver/config_test.go`.
 
-`TestTimezoneMechanismValuesMatch` in `internal/architest` fails when items 1 through 4 disagree, so a partially propagated change is caught by `make test` rather than by reading a timestamp in production.
+`internal/architest` fails on a partially propagated change, so it is caught by `make test` rather than by reading a timestamp in production: `TestTimezoneMechanismValuesMatch` when items 1 through 4 hold different values, and `TestPostgresProvisionersDeclareTimeZone` / `TestDockerfileTzdataStagesDeclareTimeZone` when a declaration is missing outright. Item 5 is not machine-checked — a stale literal there surfaces as a failing assertion in the test that pins it.
 
 ## Variables by Subsystem
 

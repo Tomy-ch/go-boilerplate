@@ -43,7 +43,7 @@
 4. `docker/server/Dockerfile` — `runtime` / `tooling` の両ステージの `ENV TZ`。両方を挙げているのは別のイメージだからである。`runtime` はデプロイ先が動かすもの、`tooling` は `make serve` が動かすものである。デプロイ先は再ビルドせず実行時に値を上書きできるため、`ENV` は唯一の供給元ではなく既定値として扱うこと。
 5. 値をリテラルで固定しているテストの期待値 — `internal/config/config_testing_mock.go` の `expectedOSTimeZone`、および `internal/di/job_test.go` / `internal/di/server/hook/http_server_hook_test.go` / `internal/infrastructure/rdb/driver/config_test.go` のアサーション。
 
-`internal/architest` の `TestTimezoneMechanismValuesMatch` は 1 から 4 の項目が食い違うと失敗するため、伝播漏れは本番の時刻を読んでではなく `make test` で捕まる。
+`internal/architest` は伝播漏れで失敗するため、本番の時刻を読んでではなく `make test` で捕まる。値が食い違う場合は 1 から 4 の項目について `TestTimezoneMechanismValuesMatch` が、宣言そのものが消えた場合は `TestPostgresProvisionersDeclareTimeZone` / `TestDockerfileTzdataStagesDeclareTimeZone` が失敗する。項目 5 は機械検証していない。陳腐化したリテラルは、それを固定しているテストのアサーションが落ちる形で表面化する。
 
 ## 変数一覧（サブシステム別）
 
