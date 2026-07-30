@@ -83,6 +83,12 @@ func TestEnsureRepoRootAndEnv(t *testing.T) {
 			assert.Equal(t, TestingEnvValue, os.Getenv("APP_ENV"))
 		})
 
+		t.Run("ci 環境はコネクションプールの最小接続数を 0 にする", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+			EnsureRepoRootAndEnv(t, TestingEnvValue)
+
+			assert.Equal(t, "0", os.Getenv("DBCONN_MIN_CONNS"))
+		})
+
 		t.Run("ci 環境で DB_NAME_TEST が設定されていれば DB_NAME をそれへ上書きする", func(t *testing.T) {
 			t.Setenv("DB_NAME_TEST", "wt9_test")
 

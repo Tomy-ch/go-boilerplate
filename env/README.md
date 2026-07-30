@@ -108,7 +108,7 @@ All three are needed: dropping the first would leave the application at the clus
 |DB_PASSWORD|Password|string|postgres-password|Secret management required|
 |DB_NAME|DB name|string|local|Secret management recommended. Per-environment value — `local` uses the development database and `ci` the test database; deploy environments inject it|
 |DB_SSL_MODE|SSL setting|string|disable|require recommended in production|
-|DB_PING_TIMEOUT|Connection check timeout|duration|5s|Per-environment value — `5s` in local / ci, where the database sits on the same host (compose service / localhost) so a slow ping means a broken startup and failing fast surfaces it; `10s` from `dev` onward, where a managed database is reached over the network and a transient delay is expected|
+|DB_PING_TIMEOUT|Connection check timeout|duration|5s|Per-environment value — `5s` in local, where the database sits on the same compose service so a slow ping means a broken startup and failing fast surfaces it; `30s` in `ci`, where many test processes create a pool against one instance at the same moment, so a connect that is merely queued behind the others must not be read as a database that is down — the value is a deliberate margin over that contention, not a budget derived from any other timeout; `10s` from `dev` onward, where a managed database is reached over the network and a transient delay is expected|
 |DB_SLOW_QUERY_WARN_THRESHOLD|Slow query warning threshold|duration|500ms|Code default `500ms`. Integrated with observability|
 |DB_STATEMENT_TIMEOUT|Per-statement execution timeout (`statement_timeout`)|duration|30s|Code default `30s`. SQL-level backstop for queries that ignore ctx; 0 disables|
 |DB_LOCK_TIMEOUT|Lock acquisition wait timeout (`lock_timeout`)|duration|10s|Code default `10s`. Backstop against long lock waits; 0 disables|
@@ -121,7 +121,7 @@ All three are needed: dropping the first would leave the application at the clus
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
 |DBCONN_MAX_CONNS|Maximum connections|int|10|Code default `10`|
-|DBCONN_MIN_CONNS|Minimum connections|int|5|Code default `5`|
+|DBCONN_MIN_CONNS|Minimum connections|int|5|Code default `5`. pgxpool opens this many connections at once right after the pool is created, so `ci` sets `0`: tests do not need a pre-warmed pool, and with test processes running in parallel that burst is load on the instance and nothing else|
 |DBCONN_MAX_LIFETIME|Connection lifetime|duration|30m|Code default `30m`|
 |DBCONN_MAX_IDLE_TIME|Idle time|duration|10m|Code default `10m`|
 

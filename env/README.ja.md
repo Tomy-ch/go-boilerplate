@@ -108,7 +108,7 @@
 |DB_PASSWORD|パスワード|string|postgres-password|シークレット管理必須|
 |DB_NAME|DB名|string|local|シークレット管理推奨。Per-environment value — `local` は開発用、`ci` はテスト用のデータベースを指す。deploy 環境はデプロイ時に注入|
 |DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨|
-|DB_PING_TIMEOUT|接続確認タイムアウト|duration|5s|Per-environment value — local / ci は DB が同一ホスト（compose サービス / localhost）にあり、ping が遅いことは起動不全を意味するため、早く落として顕在化させる `5s`。`dev` 以降はネットワーク越しのマネージド DB で一時的な遅延がありうるため `10s`|
+|DB_PING_TIMEOUT|接続確認タイムアウト|duration|5s|Per-environment value — `local` は DB が同一の compose サービスにあり、ping が遅いことは起動不全を意味するため、早く落として顕在化させる `5s`。`ci` は 1 つのインスタンスへ多数のテストプロセスが同時にプールを張るため、順番待ちしているだけの接続を「DB が落ちている」と読み違えないよう、その競合を吸収するマージンとして意図的に置いた `30s`（他のタイムアウトから導出した値ではない）。`dev` 以降はネットワーク越しのマネージド DB で一時的な遅延がありうるため `10s`|
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|Code default `500ms`。observability連携|
 |DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|Code default `30s`。ctx を無視する query への SQL 層 backstop。0 で無効|
 |DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|Code default `10s`。長時間ロック待ちへの backstop。0 で無効|
@@ -121,7 +121,7 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |DBCONN_MAX_CONNS|最大接続数|int|10|Code default `10`|
-|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`|
+|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` は `0`。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
 |DBCONN_MAX_LIFETIME|接続寿命|duration|30m|Code default `30m`|
 |DBCONN_MAX_IDLE_TIME|アイドル時間|duration|10m|Code default `10m`|
 
