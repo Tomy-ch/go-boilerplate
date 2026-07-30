@@ -1,7 +1,7 @@
 ---
 name: repo-ops
 description: >-
-  Operational runbook for this repository's recurring, easy-to-trip-on gotchas around the two-layer docker compose setup, the shared Postgres + worktree slot ring, generated artifacts, the dockerized tool runners, and the local/CI gates (lefthook hooks + GitHub Actions). Use when a bare `docker compose` command finds nothing or tries to start a second Postgres on 5432, when a generated file drifts (`schema.gen.sql`, sqlc models, mocks, portal guides), when `git` refuses a generated directory because it became root-owned, when `make gen-query` fails or two checkouts fight over schema generation, when tests hit the wrong database after acquiring a DB slot, when a hook or CI check fails for something you did not touch (gitleaks fingerprints, sample-removal manifest, pin lockfiles, migration numbering, sync-versions, golden JWKS), when `env/.env` is unexpectedly dirty, when local golangci-lint disagrees with CI, when building a per-environment image, or when you need to locate the authoritative document for a question and a repo-wide grep drowns in Japanese mirrors and generated copies. Most of it follows from three facts: codegen runs as root inside Docker tool-runner containers, infra is one shared compose project (`gobp-shared`) for every checkout, and lint/format/test run on the host via mise. Read-only knowledge skill — it names the exact command; it does not silently mutate state. Triggers: "schema.gen.sql が diff る / gen-*-artifacts-check が落ちる", "docker compose ps に何も出ない / 5432 が既に使われている", "git が docs/portal や mock を permission denied", "gen-query が DB に繋がらず落ちる", "slot 取得後にテストが別 DB を見る", "secret-scan / sample-removal-check / pin-images-check が落ちる", "commitlint / orval が not found", "per-env イメージのビルド", "どのドキュメントが正本か分からない / grep が対訳・生成物に埋もれる".
+  Operational runbook for this repository's recurring, easy-to-trip-on gotchas around the two-layer docker compose setup, the shared Postgres + worktree slot ring, generated artifacts, the dockerized tool runners, and the local/CI gates (lefthook hooks + GitHub Actions). Use when a bare `docker compose` command finds nothing or tries to start a second Postgres on 5432, when a generated file drifts (`schema.gen.sql`, sqlc models, mocks, portal guides), when `git` refuses a generated directory because it became root-owned, when `make gen-query` fails or two checkouts fight over schema generation, when tests hit the wrong database after acquiring a DB slot, when a fresh worktree's `make serve` reports success but the API never comes up because air's `go build --mod=vendor` dies with `go: inconsistent vendoring` (`vendor/` is untracked and not generated yet), when a hook or CI check fails for something you did not touch (gitleaks fingerprints, sample-removal manifest, pin lockfiles, migration numbering, sync-versions, golden JWKS), when `env/.env` is unexpectedly dirty, when local golangci-lint disagrees with CI, when building a per-environment image, or when you need to locate the authoritative document for a question and a repo-wide grep drowns in Japanese mirrors and generated copies. Most of it follows from three facts: codegen runs as root inside Docker tool-runner containers, infra is one shared compose project (`gobp-shared`) for every checkout, and lint/format/test run on the host via mise. Read-only knowledge skill — it names the exact command; it does not silently mutate state. Triggers: "schema.gen.sql が diff る / gen-*-artifacts-check が落ちる", "docker compose ps に何も出ない / 5432 が既に使われている", "git が docs/portal や mock を permission denied", "gen-query が DB に繋がらず落ちる", "slot 取得後にテストが別 DB を見る", "新しい worktree で make serve しても API が上がらない / air が inconsistent vendoring で落ちる", "secret-scan / sample-removal-check / pin-images-check が落ちる", "commitlint / orval が not found", "per-env イメージのビルド", "どのドキュメントが正本か分からない / grep が対訳・生成物に埋もれる".
 ---
 
 # Repo Ops Runbook
@@ -45,6 +45,7 @@ Three facts explain almost everything below:
 | Golden JWKS drift, mock-auth OpenAPI out of date | §15 |
 | Building an image for a specific environment | §16 |
 | `sync-versions` drift in CI | §17 |
+| `go: inconsistent vendoring` from air or the image build in a fresh worktree (`vendor/` absent) | §20 |
 | Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 |
 
 ## 0. Finding the authoritative source
@@ -346,6 +347,7 @@ The runtime image bakes a single `env/.env.<env>` chosen at build time via `--bu
 (the deploy workflow injects it). There is no single image switched by a runtime ENV.
 
 ```bash
+go mod vendor   # the builder stage is vendor-mode + GOPROXY=off; skip this and it fails (§20)
 docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/Dockerfile .
 # verify only .env.stg was baked in
 ```
@@ -384,6 +386,39 @@ Setup / teardown targets gate dry-run on `$(if $(DRY_RUN),--dry-run,)` plus `[ -
 which treat **any non-empty value as truthy** — `DRY_RUN=0 make <target>` is still a dry-run. To
 actually run, omit the variable entirely; to preview, `DRY_RUN=1 make <target>`. `setup-repo` rejects
 `DRY_RUN` outright because it cannot be previewed.
+
+## 20. `go: inconsistent vendoring` in a fresh worktree — `make serve` reports success but the API never answers
+
+`vendor/` is untracked (`.gitignore`) — deliberately, for the supply-chain reason recorded in
+`docs/design/security.md` — so a fresh worktree or clone starts without it. Exactly two build paths
+force vendor mode: air's hot-reload build
+(`.air.toml`, `go build --mod=vendor`) and the runtime image build (`docker/server/Dockerfile`,
+`go build -mod=vendor` under `GOPROXY=off`, so it cannot fall back to fetching). Everything else —
+`make test`, `make lint`, host `go run` — resolves from the module cache and stays green, which is
+why nothing warns you until the app itself builds:
+
+```txt
+go: inconsistent vendoring in /app:
+        github.com/…: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt
+```
+
+Do not read that wall of `go.mod`-vs-`vendor/modules.txt` lines as a merge or dependency-update
+accident; the usual cause is simply that `vendor/` does not exist yet. Note that `make serve` still
+prints its success line — it runs `docker compose up -d` without `--wait`, so it returns before air
+compiles. The failure surfaces as an API that never answers, with the error in the `api_server`
+logs, and your editor's LSP reports the same thing across unrelated files.
+
+```bash
+go mod vendor       # the whole fix
+make serve
+```
+
+`make tidy-lib` owns this step, but it runs `go mod tidy` first and can therefore rewrite `go.mod`;
+prefer the bare `go mod vendor` when you only need to populate a missing `vendor/`. Nothing guards
+this state: no hook or CI check inspects `vendor/` (`tidy-check.yaml` says so explicitly), and the
+workflows that build the image regenerate it first, so they never fail on it. Re-run the command
+yourself after a base merge that changes dependencies. The same trap hits a manual image build (§16),
+which drives the vendor-mode `Dockerfile` directly.
 
 ## Constraints
 
