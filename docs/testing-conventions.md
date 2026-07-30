@@ -130,3 +130,33 @@ lifts coverage yet reveals nothing.
 - **Responsibility creep** — one `TestXxx` driving multiple subjects (a section-1 1:1 violation). Decompose into one `TestXxx` per subject; do not fold multiple subjects into one test.
 - **Helper duplication** — a 5+-line fixture repeated across 3+ `TestXxx` functions that should be a `t.Helper()`-tagged helper.
 - **Redundant comments** — inline comments that restate the code or narrate *why*; case intent belongs in the Japanese `t.Run` name, not in comments (per the Comment Rules in [`rules.md`](rules.md)).
+
+## 11. Test Strategy sections: ownership and adjudicating drift
+
+Per-layer viewpoints live in each layer README's *Test Strategy* section (see the scope split
+at the top of this document). Generation (`scaffold-test`) and review (`test-review`) resolve
+the governing section by walking up from the package under test to the nearest ancestor README
+that carries one. When that section and the package's actual tests disagree — or no applicable
+section exists — adjudicate by the rules below rather than case by case, so the same situation
+does not get decided two different ways in two different packages.
+
+- **The tests are sound design → amend the declaration.** When the approach the tests take is
+  architecturally justified, the declaration is what failed to describe reality. Fix the README,
+  normally by giving the package its own *Test Strategy* section — and state **the criterion
+  that selects the approach**, not just the approach, so the next package in the same situation
+  applies a rule instead of copying a precedent.
+- **The declaration is the correct intent → amend the tests.** When the deviation has no design
+  justification, the section states what should be true; bring the tests in line with it.
+- **An inherited section governs only where its premises hold.** The nearest ancestor section
+  applies to a sub-package only when its preconditions — substrate, dependencies, real I/O —
+  actually hold there. A strategy written for one substrate (real-database integration tests,
+  say) does not govern a sub-package that has no database. The walk resolving *formally* is not
+  the same as the section applying: treat an inapplicable nearest section exactly like a missing
+  one, as a documentation gap closed by giving the sub-package its own section.
+- **A package that is not a layer still owns its viewpoints.** A test-only package verifying
+  cross-package contracts (`internal/architest`) has no layer README above it by construction.
+  Its viewpoints belong in its own README's *Test Strategy* section like any other package;
+  this document keeps only the cross-cutting structure rules.
+
+Which side an adjudication took, and why, is recorded in the pull request that makes the change —
+neither this document nor the READMEs carry that history.
