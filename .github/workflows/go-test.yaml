@@ -71,6 +71,11 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
+      # scripts/ is excluded from the coverage targets, so its tests need their own step. It runs
+      # before the DB-backed steps because these tools need neither a database nor the coverage gate.
+      - name: Run scripts tool tests
+        run: make test-scripts
+
       - name: Initialize Database Table
         run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 
