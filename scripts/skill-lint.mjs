@@ -8,6 +8,7 @@
 // 1 件でも違反があれば非 0 で終了する。
 import fs from "node:fs"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 
 const REPO_ROOT = process.cwd()
 const CLAUDE_DIR = ".claude"
@@ -18,18 +19,15 @@ const CODEX_SKILLS_DIR = path.join(CODEX_DIR, "skills")
 const CODEX_AGENTS_DIR = path.join(CODEX_DIR, "agents")
 
 // allowlist の在り処。違反メッセージから編集先へ辿れるようにするため、自身のパスを持つ。
-const SKILL_LINT_REL = path.relative(REPO_ROOT, new URL(import.meta.url).pathname)
+// `URL#pathname` はパーセントエンコードを解かず、空白や非 ASCII を含む clone 先で壊れた相対パスになる。
+const SKILL_LINT_REL = path.relative(REPO_ROOT, fileURLToPath(import.meta.url))
 
 // 片側の環境にしか存在しない skill と、その理由。
 // 未移植そのものは異常ではない（`sync-ai` は逐語コピーではなく意味ポートであり、移植には判断が要る）。
 // 異常なのは「未移植であることが宣言されていない」状態なので、理由を書かせたうえで許可する。
 // 両側に揃ったらこの表から消すこと（残すと stale として落ちる）。
 const PLATFORM_ONLY_SKILLS = new Map([
-  [
-    "supply-chain-triage",
-    "581ac113e (2026-07-27) で .claude 側にのみ追加され、Codex へ未移植。" +
-      "Codex 側の冷却窓スキル群（dep-vuln-upgrade / tools-upgrade / actions-pin / images-pin）も本スキルへの連鎖をまだ持たない。",
-  ],
+  ["supply-chain-triage", "Codex へ未移植。Codex 側の冷却窓スキル群が本スキルへの連鎖を持たないため、移植方針の判断が保留されている。"],
 ])
 
 // ファイル索引・参照検査から外すディレクトリ（生成物 / 実行時成果物 / 外部由来）。
@@ -280,7 +278,7 @@ function checkTranslationPair(canonicalRel, translationRel) {
 // 環境間で検査するのは「存在」だけで、本文の追随は見ない。
 // `sync-ai` は逐語コピーではなく意味ポートであり、`CLAUDE.md` ↔ `AGENTS.md` の言い換え・Claude 固有機構
 // （`AskUserQuestion` / `Agent`）の適応・凝縮スタイルへの書き下ろしといった意図的な差分が常に残る。
-// 実測すると共通 34 スキル中 7 件は見出しテキスト集合すら大きく異なり、見出し一致でさえ検査にならない。
+// 見出しテキスト集合の一致まで求めても、その意図的な差分を違反として弾くだけで検査にならない。
 // 存在の対応だけなら例外は宣言可能な件数に収まり、片側だけをマージする事故は確実に捕まる。
 
 // 集合差から片側のみの名前を取り出す。
