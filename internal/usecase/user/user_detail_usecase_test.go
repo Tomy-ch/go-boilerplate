@@ -87,7 +87,7 @@ func Test_usecase_GetUser(t *testing.T) {
 	authn := newTestAuthn(t)
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	id := uuid.NewTestFromSalt(t, "user")
 	prefID := uuid.NewTestFromSalt(t, "prefecture")
 
@@ -182,7 +182,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	id := uuid.NewTestFromSalt(t, "user")
 	prefID := uuid.NewTestFromSalt(t, "prefecture")
 	prefName := "Tokyo"
@@ -300,7 +300,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	id := uuid.NewTestFromSalt(t, "user")
 	prefID := uuid.NewTestFromSalt(t, "prefecture")
 
@@ -451,7 +451,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	id := uuid.NewTestFromSalt(t, "user")
 	prefID := uuid.NewTestFromSalt(t, "prefecture")
 	authn, err := authbd.New(id.String(), authbd.IssuerMock, nil, nil)
