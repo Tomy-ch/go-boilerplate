@@ -31,7 +31,8 @@ func New(
 }
 
 // Resolve は、authn の Issuer と Subject に対応する内部ユーザーを user_identities から解決し、UserID を設定した Authn を返します。
-// 対応するアイデンティティが無い場合は ErrIdentityNotFound、解決したユーザーが削除済みの場合は ErrUserUnavailable を返します。
+// 対応するアイデンティティが無い場合は ErrIdentityNotFound、解決したユーザーが削除済みの場合は ErrUserUnavailable、
+// 解決した UserID がゼロ値の場合は ErrUserIDZero を返します。
 func (r *resolver) Resolve(ctx context.Context, authn *authbd.Authn) (*authbd.Authn, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -54,5 +55,5 @@ func (r *resolver) Resolve(ctx context.Context, authn *authbd.Authn) (*authbd.Au
 		return nil, authbd.ErrUserUnavailable
 	}
 
-	return authn.WithUserID(row.ID), nil
+	return authn.WithUserID(row.ID)
 }

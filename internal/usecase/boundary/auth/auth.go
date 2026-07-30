@@ -14,7 +14,7 @@ const IssuerMock = "mock"
 
 // Authn は、認証結果を表します。
 // 中核は認証主体 Subject・発行者 Issuer・内部ユーザー UserID の三点です。
-// UserID は WithUserID で設定されるまで未解決（nil）です。
+// UserID は WithUserID で設定されるまで未解決（nil）で、解決済みの UserID はゼロ値ではないことが保証されます。
 type Authn struct {
 	subject string         // 認証主体（token の sub）
 	userID  *uuid.UUID     // 内部ユーザー ID。未解決なら nil。
@@ -45,10 +45,15 @@ func New(
 }
 
 // WithUserID は、内部ユーザー ID を解決した複製を返します（元の Authn は変更しません）。
-func (a *Authn) WithUserID(userID uuid.UUID) *Authn {
+// userID がゼロ値の場合は ErrUserIDZero を返します。
+func (a *Authn) WithUserID(userID uuid.UUID) (*Authn, error) {
+	if userID.IsNil() {
+		return nil, ErrUserIDZero
+	}
+
 	cloned := *a
 	cloned.userID = &userID
-	return &cloned
+	return &cloned, nil
 }
 
 // Subject は token の sub を返します。

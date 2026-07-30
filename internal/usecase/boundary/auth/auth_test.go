@@ -75,7 +75,8 @@ func TestAuthn_WithUserID(t *testing.T) {
 			authn, err := New(subject, IssuerMock, []string{"read"}, map[string]any{"role": "user"})
 			require.NoError(t, err)
 
-			resolved := authn.WithUserID(id)
+			resolved, err := authn.WithUserID(id)
+			require.NoError(t, err)
 
 			// 元の Authn は未解決のまま、複製のみ解決済み。
 			assert.False(t, authn.HasUserID())
@@ -89,6 +90,21 @@ func TestAuthn_WithUserID(t *testing.T) {
 			assert.Equal(t, authn.Issuer(), resolved.Issuer())
 			assert.Equal(t, authn.Scopes(), resolved.Scopes())
 			assert.Equal(t, authn.Claims(), resolved.Claims())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("userIDがゼロ値の場合、ErrUserIDZeroを返し元のAuthnは未解決のまま", func(t *testing.T) {
+			t.Parallel()
+			authn, err := New("subject", IssuerMock, []string{}, map[string]any{})
+			require.NoError(t, err)
+
+			resolved, err := authn.WithUserID(uuid.UUID{})
+			require.ErrorIs(t, err, ErrUserIDZero)
+			assert.Nil(t, resolved)
+			assert.False(t, authn.HasUserID())
 		})
 	})
 }
@@ -123,7 +139,8 @@ func TestAuthn_HasUserID(t *testing.T) {
 
 			id, err := uuid.Parse("550e8400-e29b-41d4-a716-446655440000")
 			require.NoError(t, err)
-			authn = authn.WithUserID(id)
+			authn, err = authn.WithUserID(id)
+			require.NoError(t, err)
 
 			assert.True(t, authn.HasUserID())
 		})
@@ -151,7 +168,8 @@ func TestAuthn_UserID(t *testing.T) {
 
 			authn, err := New("subject", IssuerMock, []string{}, map[string]any{})
 			require.NoError(t, err)
-			authn = authn.WithUserID(expectedID)
+			authn, err = authn.WithUserID(expectedID)
+			require.NoError(t, err)
 
 			id, err := authn.UserID()
 			require.NoError(t, err)

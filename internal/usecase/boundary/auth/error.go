@@ -10,6 +10,8 @@ var (
 	ErrUnauthenticatedSubjectMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthenticated: subject missing")
 	// ErrUserIDUnresolved は、内部ユーザー ID が未解決の場合に返す認証エラーです。
 	ErrUserIDUnresolved = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthenticated: user id unresolved")
+	// ErrUserIDZero は、ゼロ値の UUID で内部ユーザー ID を解決しようとした場合に返す認証エラーです。
+	ErrUserIDZero = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthenticated: user id is zero")
 	// ErrTokenMissing は、トークンが指定されていない場合に返す認証エラーです。
 	ErrTokenMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthenticated: token missing")
 	// ErrIdentityNotFound は、issuer + subject に対応する内部ユーザーが存在しない場合に返す認証エラーです。
