@@ -40,9 +40,9 @@ var (
 
 // dockerfileStage は、Dockerfile の 1 ステージから取り出した、ローカルタイムに関わる宣言です。
 type dockerfileStage struct {
-	name          string
-	timeZone      string
-	hasTimeZone   bool
+	name           string
+	timeZone       string
+	hasTimeZone    bool
 	installsTzdata bool
 }
 
