@@ -40,6 +40,24 @@ make install-tools   # gopls / gotests / impl / dlv / lefthook / golangci-lint �
 make activate-tools  # `lefthook install` で git hooks を有効化
 ```
 
+### 1.3. エージェント設定のインストール（推奨構成）
+
+AI 支援レイヤは設定として同梱しています。project スコープの公式プラグイン、本リポジトリ自身のスキル（[`.claude/`](../../../.claude/README.md) / [`.codex/`](../../../.codex/README.md)）、および公式に推奨する外部スキル 1 つ（`graphify`。リポジトリを問い合わせ可能な知識グラフにするツール）です。clone に付いてこない部分は、冪等な bootstrap 2 本で入れます。
+
+```sh
+bash .claude/scripts/bootstrap-plugins.sh          # 公式プラグイン（project スコープ）
+bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user スコープ: Claude Code + Codex）
+```
+
+`graphify` 本体は他のツールと同様に `mise.toml` で pin しているため `mise install` の時点で取得済みで、bootstrap は各アシスタントの設定ディレクトリへ skill を書くだけです。どのコマンドがローカル完結で、どれが LLM API へ出るかは [`.claude/README.md`](../../../.claude/README.md) に記載しています。
+
+**AI 支援レイヤを採らない判断は、導入側のアーキテクトが行います。** 本テンプレートは AI ツール無しでも完全に保守できるよう作られており（レイヤ規約の正本は [docs/rules.md](../../rules.md) であってアシスタント設定ではありません）、上記はビルド・テスト・リリースのいずれにも必須ではありません。採らない fork は、中途半端に設定を残さず意図的に外してください。
+
+- bootstrap 2 本を実行しない（以降のどの Phase もこれらに依存しません）
+- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint.mjs` の `graphify-out/` 記述
+
+後から外すコストは今外すコストと同じなので、まず推奨構成で入れて後から判断する順序でも安全です。
+
 ## Phase 2: ローカル起動確認
 
 ローカルで起動してみて、問題なく動作することを確認してください。

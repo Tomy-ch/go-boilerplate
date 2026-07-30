@@ -52,6 +52,7 @@ const EXCLUDE_PREFIXES = [
   "docs/portal/guides/",
   "docs/coverage/",
   "docs/db-schema/",
+  "graphify-out/",
 ]
 const EXCLUDE_FILES = new Set(["AGENTS.md"])
 

@@ -17,6 +17,7 @@ ignores:
   - "docs/portal/guides/**"
   - "docs/coverage/**"
   - "docs/db-schema/**"
+  - "graphify-out/**"
   # Markdown ではないのに Markdown と誤認され誤検知されるファイル。
   # gitleaks の無視リスト（# はコメント。見出し扱いで MD022 等を誤検知）。
   - ".gitleaksignore"
