@@ -172,18 +172,21 @@ func TestEnvTargetStatusCodesPolicy(t *testing.T) {
 	}
 }
 
-// TestEnvPerEnvironmentValuePolicy は、env ファイル間で値が割れるキーの集合と、env/README.md の
+// TestEnvPerEnvironmentValuePolicy は、env ファイル間で実効値が割れるキーの集合と、env/README.md の
 // Notes 列に置かれた環境差マーカーの集合が双方向に一致することを機械検証します。
 // env ファイルは互いに独立した手書きテキストで、値が環境ごとに違ってよいのか揃うべきなのかを
 // 表現する場所が無く、伝播漏れと意図的なポリシーが同じ見た目になります。README の Notes に
 // 書かれた宣言だけがその区別を持つため、マーカーの無いキーが割れている状態（伝播漏れ）と、
 // 値が揃ったのにマーカーが残った状態（陳腐化した宣言）の双方を loud な失敗に変えます。
+// 比較するのは記載された値ではなく実効値です。envDefault を持つキーを 1 つの env ファイルだけで
+// 上書きした状態は、記載された値だけを見ると常に 1 種類で、環境差として現れないためです。
 func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
 	rows := envReadmeRowsByKey(parseEnvReadmeRows(t, root, envReadmeFile))
 	values := readEnvFileValues(t, root)
+	spec := parseEnvSpec(t, root)
 
 	for _, key := range slices.Sorted(maps.Keys(values)) {
 		row, ok := rows[key]
@@ -191,7 +194,7 @@ func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 			continue
 		}
 
-		split := describeValueSplit(values[key])
+		split := describeValueSplit(values[key], spec[key])
 		if strings.Contains(row.notes, perEnvValueMarker) {
 			assert.NotEmptyf(t, split,
 				"%s の Notes は %q と宣言しているが、値は全 env ファイルで一致している。"+
@@ -553,25 +556,53 @@ func requireEnvValueFilesCoverDir(t *testing.T, root string) {
 		"env/ 配下の env ファイルと envValueFiles が一致しない。環境を追加したなら envValueFiles にも追記すること")
 }
 
-// describeValueSplit は、1 つのキーの値が env ファイル間で割れているときにその内訳を返します。
-// 値を宣言しないファイルは比較に含めません（deploy 環境が secret manager から受け取るキーは
-// env ファイルに現れず、不在は値の差ではないため）。揃っていれば nil を返します。
-func describeValueSplit(byFile map[string]string) []string {
+// describeValueSplit は、1 つのキーの実効値が env ファイル間で割れているときにその内訳を返します。
+// envDefault を持つキーは、記載の無いファイルを既定値で補完して比較します。記載が無くても実効値は
+// 既定値で確定するため、1 つの env ファイルだけが既定から外れている状態も割れとして現れます。
+// envDefault を持たないキーの不在は、その環境の値が外部から注入されて未知であり値の差ではないため、
+// 比較に含めません（不在そのものは TestEnvRequiredKeyPresencePolicy が見ます）。
+// 揃っていれば nil を返します。
+func describeValueSplit(byFile map[string]string, field envSpecField) []string {
+	effective := effectiveValues(byFile, field)
+
 	distinct := map[string]struct{}{}
-	for _, value := range byFile {
+	for _, value := range effective {
 		distinct[value] = struct{}{}
 	}
 	if len(distinct) <= 1 {
 		return nil
 	}
 
-	split := make([]string, 0, len(byFile))
+	split := make([]string, 0, len(effective))
 	for _, file := range envValueFiles {
-		if value, ok := byFile[file]; ok {
-			split = append(split, fmt.Sprintf("%s=%q", file, value))
+		value, ok := effective[file]
+		if !ok {
+			continue
 		}
+		if _, declared := byFile[file]; !declared {
+			split = append(split, fmt.Sprintf("%s=%q(envDefault)", file, value))
+			continue
+		}
+		split = append(split, fmt.Sprintf("%s=%q", file, value))
 	}
 	return split
+}
+
+// effectiveValues は、1 つのキーが env ファイルごとに持つ実効値を返します。記載の無いファイルは、
+// envDefault があればその値を、無ければ実効値が定まらないものとして落とします。
+func effectiveValues(byFile map[string]string, field envSpecField) map[string]string {
+	effective := make(map[string]string, len(envValueFiles))
+	for _, file := range envValueFiles {
+		value, declared := byFile[file]
+		if declared {
+			effective[file] = value
+			continue
+		}
+		if field.hasDefault {
+			effective[file] = field.def
+		}
+	}
+	return effective
 }
 
 // readCommittedFile は、リポジトリにコミットされた時点のファイル内容を返します。

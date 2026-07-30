@@ -14,7 +14,7 @@
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
 - 例欄には**ローカル実効値**を書く。`env/.env` に記載があればその値、無ければ `internal/config/envspec.go` の `envDefault` タグの値。単一の値であって選択肢の集合ではないため、取りうる値は説明欄に書く（`APP_MODE` / `OBS_TRACES_EXPORTER` の書き方に倣う）。唯一の例外は備考に **Example is a placeholder** とある行で、実値を書くとシークレットスキャナが `env/.env` で既に追跡している資格情報を二重に持つことになる場合に限る（ローカルスタックが実際に使う値は `env/.env` を参照）。**Secret management required** であること自体は例外ではない — ローカルの `.env` にどのみち平文で入っている以上、それらの行も実値を載せる。この規約は `TestEnvReadmeExamples`（`internal/architest`）が全変数について機械検証するため、`env/.env` や `envDefault` タグの値だけを変えて表を直し忘れるとビルドが落ちる
-- `env/.env.<env>` ファイル間で値が異なってよいものは、備考欄に **Per-environment value** と明記し、続けて異なる理由を書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）。このマーカーは `TestEnvPerEnvironmentValuePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーは、それを記載する全 env ファイルで同じ値でなければならず、マーカーのあるキーは実際に値が割れていなければならない（値を揃えた後にマーカーだけ残った状態も落ちる）。一部の環境がシークレットマネージャーから受け取るキーは「異なる」のではなく「無い」ため、不在は比較対象にしない
+- `env/.env.<env>` ファイル間で値が異なってよいものは、備考欄に **Per-environment value** と明記し、続けて異なる理由を書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）。このマーカーは `TestEnvPerEnvironmentValuePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーは、それを記載する全 env ファイルで同じ値でなければならず、マーカーのあるキーは実際に値が割れていなければならない（値を揃えた後にマーカーだけ残った状態も落ちる）。比較は**実効値**で行うため、`Code default` を持つキーは記載の無いファイルでもその既定値を持つものとして数える。1 つの env ファイルだけで既定から外した場合も差であり、同じくマーカーが要る。`Code default` を持たないキーは、記載の無いファイルでは値が外部から注入されて実効値が定まらないため、その不在はここでは比較せず、下の **Injected at deploy time** が扱う
 - `envDefault` を持たないキーは全 env ファイルに記載が必須。唯一の正当な不在は、デプロイ基盤が実行時に注入する値で、備考欄に **Injected at deploy time** と明記して宣言する。宣言が無ければ、欠落と伝播漏れは見分けが付かず、その環境で実際にアプリを起動して `required` バリデーションが落ちるまで顕在化しない。このマーカーは `TestEnvRequiredKeyPresencePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーがどれか 1 つでも env ファイルから欠けていれば落ち、マーカーのあるキーは `local` / `ci` に記載があり `dev` / `stg` / `prd` には無いことが要る。deploy 側のファイルに値が復活した場合も、`Code default` を持つキーにマーカーを付けた場合も落ちる
 - 本ファイルは正本（[README.md](README.md)）の対訳で、値まで含めて表を複製している。このリポジトリの読者の多くは日本語版を読む。散文は翻訳されるが、キー・型・例・`Code default` の値は言語に依らないため正本と一致させること。乖離は `internal/architest`（`TestEnvReadmeTranslationValues`）がビルドを落として検知する。文書構造 — 表を区切るサブシステム見出しと、節・箇条書き項目の個数 — の一致は `TestEnvReadmeTranslationStructure` が検証するので、段落ごと訳し漏らした場合も検知される。`Code default` が空の場合はバッククォートで書けないため、正本では **Code default empty**、対訳では **Code default は空** と綴る。この 2 つの綴りはテストが宣言しており、他の書き方は受け付けない
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `envDefault:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
@@ -122,7 +122,7 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |DBCONN_MAX_CONNS|最大接続数|int|10|Code default `10`|
-|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` は `0`。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
+|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。Per-environment value — pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` だけ `0` へ上書きし他は既定値のまま。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
 |DBCONN_MAX_LIFETIME|接続寿命|duration|30m|Code default `30m`|
 |DBCONN_MAX_IDLE_TIME|アイドル時間|duration|10m|Code default `10m`|
 
@@ -185,9 +185,9 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:4000`|Code default は空。JWT authenticator を配線する環境で設定する。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
-|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須|
-|AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default は空。compose では内部サービス URL|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:4000`|Code default は空。Per-environment value — `local` / `ci` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
+|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須。Per-environment value — mock の audience を宣言するのは `local` だけで、他は authenticator を配線するまで既定の空のまま|
+|AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default は空。Per-environment value — compose 内部のサービス URL で上書きするのは `local` だけで、他は既定の空のまま `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出する|
 |AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|csv|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
 |AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
 |AUTH_JWKS_CACHE_TTL|取得した JWKS をキャッシュする期間|duration|1h|Code default `1h`|
