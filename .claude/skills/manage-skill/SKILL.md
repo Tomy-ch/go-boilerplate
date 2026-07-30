@@ -176,3 +176,7 @@ powering this session (see the environment/system prompt) so triggering matches 
   validation with this environment as the source. Pass the transfer contract to the receiving
   environment's `manage-skill`. When this invocation is itself the receiving child operation, do
   not invoke `sync-ai` again.
+- `make md-skill-lint` passes. It enforces the previous item's existence half: a skill present in
+  only one environment fails unless it is registered with a reason in the `PLATFORM_ONLY_SKILLS`
+  map in `scripts/skill-lint.mjs`. Register a deliberately platform-only skill there; remove the
+  entry once it is ported.
