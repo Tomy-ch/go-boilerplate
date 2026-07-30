@@ -67,7 +67,11 @@ jobs:
           exit 1
 
       - name: Comment sync-versions result on PR
-        if: github.event_name == 'pull_request' && failure() && steps.drift.outputs.status == 'drift'
+        # This workflow comments only on drift, so the condition reads the drift status rather
+        # than failure(): failure() is false when the job is cancelled, which would leave the
+        # cut-off silent. An empty status means the detection never finished, so it comments.
+        if: always() && github.event_name == 'pull_request' && steps.drift.outputs.status != 'ok'
+        continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

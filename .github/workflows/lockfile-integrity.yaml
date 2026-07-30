@@ -106,7 +106,7 @@ jobs:
           path: lockfile-lint.log
 
       - name: Comment lockfile result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:

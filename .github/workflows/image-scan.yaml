@@ -130,7 +130,7 @@ jobs:
           echo "Generated sbom-summary.md" && wc -c sbom-summary.md
 
       - name: Comment SBOM result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
@@ -185,7 +185,7 @@ jobs:
           path: trivy-image-scan.txt
 
       - name: Comment Trivy image scan result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:

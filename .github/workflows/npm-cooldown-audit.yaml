@@ -128,7 +128,7 @@ jobs:
       # when something is wrong gives no evidence that the detector still works, and
       # this one is expected to stay silent for its whole life.
       - name: Comment npm cooldown result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
