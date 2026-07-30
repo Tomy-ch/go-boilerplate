@@ -36,10 +36,6 @@ func Test_cacheGateway_store(t *testing.T) {
 			}
 			assert.Len(t, cg.rates, maxCacheEntries)
 		})
-	})
-
-	t.Run("境界ケース", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("上限到達かつ全て有効なら新規は保存しない", func(t *testing.T) {
 			t.Parallel()

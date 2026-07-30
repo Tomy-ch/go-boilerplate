@@ -166,140 +166,160 @@ func TestNormalizePgError(t *testing.T) {
 
 func TestIsUnavailable(t *testing.T) {
 	t.Parallel()
-	t.Run("nilの場合は接続不可ではない", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		got := IsUnavailable(nil)
-		assert.False(t, got)
-	})
 
-	t.Run("コンテキスト期限切れ", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(context.DeadlineExceeded)
-		assert.True(t, got)
-	})
+		t.Run("nilの場合は接続不可ではない", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(nil)
+			assert.False(t, got)
+		})
 
-	t.Run("コンテキストキャンセルはクライアント起因なので接続不可ではない", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(context.Canceled)
-		assert.False(t, got)
-	})
+		t.Run("コンテキスト期限切れ", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(context.DeadlineExceeded)
+			assert.True(t, got)
+		})
 
-	t.Run("ネットワークエラー(タイムアウト)", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(mockNetError{})
-		assert.True(t, got)
-	})
+		t.Run("コンテキストキャンセルはクライアント起因なので接続不可ではない", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(context.Canceled)
+			assert.False(t, got)
+		})
 
-	t.Run("ネットワークエラー(非タイムアウト/接続拒否)", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(mockNonTimeoutNetError{})
-		assert.True(t, got)
-	})
+		t.Run("ネットワークエラー(タイムアウト)", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(mockNetError{})
+			assert.True(t, got)
+		})
 
-	t.Run("Postgres接続エラー", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(&pgconn.PgError{Code: "08003"})
-		assert.True(t, got)
-	})
+		t.Run("ネットワークエラー(非タイムアウト/接続拒否)", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(mockNonTimeoutNetError{})
+			assert.True(t, got)
+		})
 
-	t.Run("Postgres非接続エラー", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(&pgconn.PgError{Code: "23505"})
-		assert.False(t, got)
-	})
+		t.Run("Postgres接続エラー", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(&pgconn.PgError{Code: "08003"})
+			assert.True(t, got)
+		})
 
-	t.Run("その他のエラー", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(xerrors.New("other"))
-		assert.False(t, got)
+		t.Run("Postgres非接続エラー", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(&pgconn.PgError{Code: "23505"})
+			assert.False(t, got)
+		})
+
+		t.Run("その他のエラー", func(t *testing.T) {
+			t.Parallel()
+			got := IsUnavailable(xerrors.New("other"))
+			assert.False(t, got)
+		})
 	})
 }
 
 func Test_isPgConnectionError(t *testing.T) {
 	t.Parallel()
-	t.Run("Postgres接続エラー", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		got := isPgConnectionError(&pgconn.PgError{Code: "08006"})
-		assert.True(t, got)
-	})
 
-	t.Run("Postgres非接続エラー", func(t *testing.T) {
-		t.Parallel()
-		got := isPgConnectionError(&pgconn.PgError{Code: "23505"})
-		assert.False(t, got)
-	})
+		t.Run("Postgres接続エラー", func(t *testing.T) {
+			t.Parallel()
+			got := isPgConnectionError(&pgconn.PgError{Code: "08006"})
+			assert.True(t, got)
+		})
 
-	t.Run("その他のエラー", func(t *testing.T) {
-		t.Parallel()
-		got := isPgConnectionError(xerrors.New("other"))
-		assert.False(t, got)
+		t.Run("Postgres非接続エラー", func(t *testing.T) {
+			t.Parallel()
+			got := isPgConnectionError(&pgconn.PgError{Code: "23505"})
+			assert.False(t, got)
+		})
+
+		t.Run("その他のエラー", func(t *testing.T) {
+			t.Parallel()
+			got := isPgConnectionError(xerrors.New("other"))
+			assert.False(t, got)
+		})
 	})
 }
 
 func TestIsLockNotAvailable(t *testing.T) {
 	t.Parallel()
 
-	t.Run("55P03(lock_not_available)はtrue", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		assert.True(t, IsLockNotAvailable(&pgconn.PgError{Code: "55P03"}))
-	})
 
-	t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, IsLockNotAvailable(&pgconn.PgError{Code: "23505"}))
-	})
+		t.Run("55P03(lock_not_available)はtrue", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsLockNotAvailable(&pgconn.PgError{Code: "55P03"}))
+		})
 
-	t.Run("PgError以外はfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, IsLockNotAvailable(xerrors.New("plain error")))
+		t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsLockNotAvailable(&pgconn.PgError{Code: "23505"}))
+		})
+
+		t.Run("PgError以外はfalse", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsLockNotAvailable(xerrors.New("plain error")))
+		})
 	})
 }
 
 func TestIsNoRows(t *testing.T) {
 	t.Parallel()
 
-	t.Run("pgx.ErrNoRowsはtrue", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		assert.True(t, IsNoRows(pgx.ErrNoRows))
-	})
 
-	t.Run("ラップされたpgx.ErrNoRowsはtrue", func(t *testing.T) {
-		t.Parallel()
-		assert.True(t, IsNoRows(xerrors.Wrap(pgx.ErrNoRows, "wrapped")))
-	})
+		t.Run("pgx.ErrNoRowsはtrue", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsNoRows(pgx.ErrNoRows))
+		})
 
-	t.Run("nilはfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, IsNoRows(nil))
-	})
+		t.Run("ラップされたpgx.ErrNoRowsはtrue", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsNoRows(xerrors.Wrap(pgx.ErrNoRows, "wrapped")))
+		})
 
-	t.Run("行なし以外のエラーはfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, IsNoRows(context.Canceled))
+		t.Run("nilはfalse", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsNoRows(nil))
+		})
+
+		t.Run("行なし以外のエラーはfalse", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsNoRows(context.Canceled))
+		})
 	})
 }
 
 func TestIsRetryableTxError(t *testing.T) {
 	t.Parallel()
 
-	t.Run("40001(serialization_failure)はtrue", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40001"}))
-	})
 
-	t.Run("40P01(deadlock_detected)はtrue", func(t *testing.T) {
-		t.Parallel()
-		assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40P01"}))
-	})
+		t.Run("40001(serialization_failure)はtrue", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40001"}))
+		})
 
-	t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, IsRetryableTxError(&pgconn.PgError{Code: "23505"}))
-	})
+		t.Run("40P01(deadlock_detected)はtrue", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40P01"}))
+		})
 
-	t.Run("PgError以外はfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, IsRetryableTxError(xerrors.New("plain error")))
+		t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsRetryableTxError(&pgconn.PgError{Code: "23505"}))
+		})
+
+		t.Run("PgError以外はfalse", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsRetryableTxError(xerrors.New("plain error")))
+		})
 	})
 }
 
