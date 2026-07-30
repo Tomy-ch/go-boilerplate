@@ -24,7 +24,7 @@
 |Go Test|`go-test.yaml`|Go テスト実行とカバレッジレポート|
 |Module Tidy Check|`tidy-check.yaml`|go.mod / go.sum の整合性検証|
 |SQL Lint|`sql-lint.yaml`|sqlfluff による migration / DML / seed SQL の検証|
-|Actions Lint|`actions-lint.yaml`|actionlint による GitHub Actions 定義（ワークフロー / composite action）の検証と、PR コメント本文への secret 混入・固定長フェンスの検査|
+|Actions Lint|`actions-lint.yaml`|actionlint によるワークフロー定義の検証、composite action の `run:` スクリプトの shellcheck 検査、PR コメント本文への secret 混入・固定長フェンスの検査|
 |Migration Check|`migration-check.yaml`|マイグレーションファイルの検証（重複、欠番、up/down ペア）|
 |Sync Versions Check|`sync-versions-check.yaml`|mise.toml のバージョンが go.mod / 各 Dockerfile / README へ伝播済みか検証|
 |Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|生成済み Go コードとコミット済み成果物の一致検証|

@@ -15,7 +15,8 @@
 - **Secret management recommended** は定期ローテーションを推奨
 - 例欄には**ローカル実効値**を書く。`env/.env` に記載があればその値、無ければ `internal/config/envspec.go` の `envDefault` タグの値。単一の値であって選択肢の集合ではないため、取りうる値は説明欄に書く（`APP_MODE` / `OBS_TRACES_EXPORTER` の書き方に倣う）。唯一の例外は備考に **Example is a placeholder** とある行で、実値を書くとシークレットスキャナが `env/.env` で既に追跡している資格情報を二重に持つことになる場合に限る（ローカルスタックが実際に使う値は `env/.env` を参照）。**Secret management required** であること自体は例外ではない — ローカルの `.env` にどのみち平文で入っている以上、それらの行も実値を載せる。この規約は `TestEnvReadmeExamples`（`internal/architest`）が全変数について機械検証するため、`env/.env` や `envDefault` タグの値だけを変えて表を直し忘れるとビルドが落ちる
 - `env/.env.<env>` ファイル間で値が異なってよいものは、備考欄に **Per-environment value** と明記し、続けて異なる理由を書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）。このマーカーは `TestEnvPerEnvironmentValuePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーは、それを記載する全 env ファイルで同じ値でなければならず、マーカーのあるキーは実際に値が割れていなければならない（値を揃えた後にマーカーだけ残った状態も落ちる）。一部の環境がシークレットマネージャーから受け取るキーは「異なる」のではなく「無い」ため、不在は比較対象にしない
-- 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `default:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
+- 本ファイルは正本（[README.md](README.md)）の対訳で、値まで含めて表を複製している。このリポジトリの読者の多くは日本語版を読む。散文は翻訳されるが、キー・型・例・`Code default` の値は言語に依らないため正本と一致させること。乖離は `internal/architest`（`TestEnvReadmeTranslationValues`）がビルドを落として検知する。文書構造 — 表を区切るサブシステム見出しと、節・箇条書き項目の個数 — の一致は `TestEnvReadmeTranslationStructure` が検証するので、段落ごと訳し漏らした場合も検知される。`Code default` が空の場合はバッククォートで書けないため、正本では **Code default empty**、対訳では **Code default は空** と綴る。この 2 つの綴りはテストが宣言しており、他の書き方は受け付けない
+- 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `envDefault:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
 
 ## 新規変数を追加する手順
 
@@ -23,8 +24,22 @@
 2. 該当サブシステムのテーブル（または新規サブシステム節）に変数を記載
 3. 値の供給方法を決める:
    - **プロジェクト固有・環境ごとに変わる値** → フィールドを `required` にし、`env/.env`（ローカル既定）と各環境ファイル（`env/.env.<env>`）に追加
-   - **普遍的なフレームワーク既定値** → 代わりに `default:` タグを付与し、`.env` ファイルには記載せず、テーブルに **Code default `<値>`** と明記
+   - **普遍的なフレームワーク既定値** → 代わりに `envDefault:` タグを付与し、`.env` ファイルには記載せず、テーブルに **Code default `<値>`** と明記
 4. `make test` を実行して config 構造体がロードできることを確認
+
+## タイムゾーンを変更する手順
+
+タイムゾーンは**別の層を設定する 2 つの独立した機構**から供給されるため、`Asia/Tokyo` から移るプロジェクトは両方を変更する必要がある。リポジトリの他のどこにも全体像が記録されていないため、ここに一覧を置く。
+
+- **セッションの timezone** — `OS_TZ` は、アプリが DB へ接続するときの DSN の `timezone` パラメータになる（`internal/infrastructure/rdb/driver/config.go`）。アプリが読み書きする時刻を決めるのはこの機構だけで、DB 側の設定より優先される。
+- **DB 側の既定値** — PostgreSQL コンテナの `TZ` 環境変数。`initdb` がこれを `postgresql.conf` へ書き込むためクラスタ既定となり、以降に作られる全 DB が継承する（worktree スロットプールの `wt<N>_local` / `wt<N>_test`、`make dump-schema` の `gen_schema`）。timezone を明示しないクライアントの表示にしか影響しないため、目的は `psql` / pgweb / SchemaSpy で時刻を直接読むときの開発体験である。
+
+どちらも必要である。前者を外すとアプリがクラスタ既定に従ってしまい、後者を外すと DB へ直接繋いだセッションが全て UTC 表示になる。次を全て揃えて変更する。
+
+1. `env/.env` と全ての `env/.env.<env>` — `OS_TZ` のエントリ（セッションの timezone。`required` なので 5 ファイル全てに存在する）。
+2. `docker-compose.yaml` の `database` サービス — `TZ` と `PGTZ`。`TZ` は `initdb` 時にしか効かないため、volume を作り直すまで既存 volume は旧クラスタ既定を保持する。その手順と worktree 特有の注意は `docs/maintenance/db-worktree-pool.md` が所有する。`PGTZ` は `psql` セッション単位で効くため、古い volume でも即座に反映される。
+3. `.github/workflows/` 配下で DB を用意する各 workflow の PostgreSQL サービス定義 — `TZ` と `PGTZ`。GitHub Actions はサービス定義を workflow 間で共有できないため、値は全ファイルに重複して書かれている。列挙は変数ではなくサービスの image で行うこと（`grep -rl 'image: postgres' .github/workflows/`）— `PGTZ` で grep すると既に設定済みの workflow しか見つからず、まだ設定が要る workflow を黙って取りこぼす。
+4. 値をリテラルで固定しているテストの期待値 — `internal/config/config_testing_mock.go` の `expectedOSTimeZone`、および `internal/di/job_test.go` / `internal/di/server/hook/http_server_hook_test.go` / `internal/infrastructure/rdb/driver/config_test.go` のアサーション。
 
 ## 変数一覧（サブシステム別）
 
@@ -32,7 +47,7 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準。配置先の地域はプロジェクトごとに変わるため、コード側の既定値ではなく `required` として全 env ファイルに明記し、タイムゾーンを運用者の見る場所に置く。空文字は UTC へ無警告で退行するため拒否する|
+|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準。配置先の地域はプロジェクトごとに変わるため、コード側の既定値ではなく `required` として全 env ファイルに明記し、タイムゾーンを運用者の見る場所に置く。空文字は UTC へ無警告で退行するため拒否する。設定するのはセッションの timezone のみで、DB 側の既定値はコンテナの `TZ` が持つため、`Asia/Tokyo` から移る前に[タイムゾーンを変更する手順](#タイムゾーンを変更する手順)を参照|
 
 ### Application
 
@@ -54,7 +69,7 @@
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s|Code default `10s`|
 |SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|Code default `65s`。SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
 |SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s|Code default `60s`|
-|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|6|Code default `6`。Pre middleware。OpenAPI 検証がボディを読む前に適用。`OBJECT_STORAGE_MAX_UPLOAD_BYTES`（＋ multipart オーバーヘッド）を上回る値に保つこと。下回るとエンドポイント側のアップロード上限が到達不能になる|
+|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|6|Code default `6`。Pre middleware。OpenAPI 検証がボディを読む前に適用。`OBJECT_STORAGE_MAX_UPLOAD_BYTES`（＋ multipart オーバーヘッド）を上回る値に保つこと。下回るとエンドポイント側のアップロード上限が到達不能になる。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
 |SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|Code default `60s`。停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics
@@ -186,7 +201,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。シークレット管理必須 — デプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う。Per-environment value — 資格情報は環境ごとに異なる|
 |OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。シークレット管理必須 — デプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える。Per-environment value — 資格情報は環境ごとに異なる|
 |OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`。Per-environment value — local / ci は Garage が path-style を要求するため `true`、`dev` 以降は AWS S3 のため `false`|
-|OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない|
+|OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
 
 配信はこれらの変数の管轄外です。API はオブジェクトキー（`imagePath`）だけを返しフル URL を返さないため、フロントが `<配信オリジン>/<オブジェクトキー>` を組み立てます。したがって配信オリジンの変数はこちら側に存在せず、フロントが持ちます（`local` は `http://gobp-local.web.garage.localhost:3902`、デプロイ環境では CDN のドメイン）。ローカルの配信エンドポイントを匿名 read で開く方法は [`docker/README.md`](../docker/README.md) を参照してください。
 
@@ -197,3 +212,4 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 - `duration` 型は Go `time.ParseDuration` 構文（`500ms`, `1h30m`）。素の数値は不可
 - 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
 - env ファイルはビルド時にバイナリへ埋め込まれる（`embed.go`）。`env/.env` がローカル既定かつ唯一の埋め込み対象で、`env/.env.<env>` は各環境のソース。Docker の `builder` ステージが `APP_ENV` ビルド引数で対象を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）。Docker 以外（`go run` / `go test`）はコミット済みの local `env/.env` を埋め込むため、別環境が必要な CI は同様に焼き直す（例: `cp env/.env.ci env/.env`）。実行時の環境変数は埋め込み値より優先される
+- 埋め込み env の素性ガード: ローカルの `env/.env`（`APP_ENV=local`）が既定の埋め込み対象であるため、本番ビルド前に材料化し忘れるとローカル既定が黙ってバイナリへ焼き込まれる。これを捕捉するため、config の検証はランタイム env のマージ前に埋め込み値の `APP_ENV` を確保し、実効 `APP_MODE` が `production` のときに非本番の素性を拒否する（deny-list: `local` / `ci` / `test` / `dev` / 空）。deny 方式なので新しい環境ラベルは既定で許容され、`development` モードは無条件で通す（そこではランタイム注入を信頼する）。環境別の `APP_ENV` の値（`local` / `ci` / `dev` / `stg` / `prd`）が正であり、`internal/config/constant.go` の `Env*` 定数はそれを写したもので乖離させてはならない。このガードはランタイムが `APP_MODE=production` を注入したときにのみ発火する。本番デプロイで注入し損ねると実効モードは `development` のままガードは沈黙するため、本番ランタイムでは必ず `APP_MODE=production` を設定すること

@@ -23,8 +23,12 @@ PostgreSQL の `docker-entrypoint-initdb.d` の仕組みにより、コンテナ
 
 これらのスクリプトは固定の `local` / `test` データベースのみを作成・拡張初期化します。DB worktree
 プール（`cmd/db-slot`・コア `internal/cli/dbslot`）は per-worktree のデータベース（`wt<N>_local` / `wt<N>_test`）を起動**後**に
-動的作成するため、同じ拡張と timezone を自身でブートストラップします。この設定は `internal/cli/dbslot`（`PgxAdmin.SetupDatabase`）
+動的作成するため、同じ拡張を自身でブートストラップします。この設定は `internal/cli/dbslot`（`PgxAdmin.SetupDatabase`）
 と同期させてください。詳細は `docs/maintenance/db-worktree-pool.md` を参照。
+
+timezone はここでは意図的に設定しません。`database` サービスの `TZ` 環境変数が `initdb` 時にクラスタ既定と
+なり、後から作られるデータベースもそれを継承するため、スクリプトやツールが個別に繰り返す必要がありません。
+詳細は `env/README.md` の Changing the Timezone を参照。
 
 ## ここに置くもの
 

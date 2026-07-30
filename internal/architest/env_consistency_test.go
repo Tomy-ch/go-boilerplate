@@ -18,9 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// envReadmeFile は、env 変数一覧の正本（英語）です。日本語版 README.ja.md は正本の翻訳であり、
-// 対訳同期は別の手当てに委ねるため検証対象に含めません。
+// envReadmeFile は、env 変数一覧の正本（英語）です。
 const envReadmeFile = "env/README.md"
+
+// envReadmeTranslationFile は、正本の対訳です。散文は翻訳されますが、変数表のキー / Type 列 /
+// Example 列 / Notes 列の Code default は言語に依らない値であり、正本と一致していなければなりません。
+const envReadmeTranslationFile = "env/README.ja.md"
 
 // envSpecFile は、env 契約の SSOT である Loader 構造体の宣言元です。
 const envSpecFile = "internal/config/envspec.go"
@@ -57,9 +60,36 @@ var (
 	envDefaultRe = regexp.MustCompile(`envDefault:"([^"]*)"`)
 	// readmeRowRe は、env 変数表の行からキーを捕捉します。
 	readmeRowRe = regexp.MustCompile(`^\|([A-Z][A-Z0-9_]+)\|`)
+	// subsystemHeadingRe は、変数表を区切るサブシステム見出しから名前を捕捉します。
+	subsystemHeadingRe = regexp.MustCompile(`^### (.+)$`)
+	// sectionHeadingRe / listItemRe は、節と箇条書き項目を数えるために行頭の記法を判定します。
+	sectionHeadingRe = regexp.MustCompile(`^## `)
+	listItemRe       = regexp.MustCompile(`^\s*(?:- |[0-9]+\. )`)
 	// codeDefaultRe は、Notes 列の Code default 記法からバッククォートで囲まれた値を捕捉します。
 	codeDefaultRe = regexp.MustCompile("Code default `([^`]*)`")
+	// notesValidationRe は、Notes 列から caarlos0/env の検証指定を捕捉します。
+	notesValidationRe = regexp.MustCompile("`(required[^`]*)`")
+	// readmeTagColonRe / readmeTagPhraseRe は、README の散文が参照するタグ名を、2 通りの綴りから捕捉します。
+	// コロン付きはタグ名を名乗る綴りが他に無いため文脈を問わず拾い、コロン無しは普通名詞と区別が付かないため
+	// 直後に tag と続く言い回しに限ります。前者を文脈非依存にしてあるのは、言い回しが変わったときに参照が
+	// 黙って抽出対象から外れる（検証が縮む）のを避けるためです。
+	readmeTagColonRe  = regexp.MustCompile("`([A-Za-z]\\w*):`")
+	readmeTagPhraseRe = regexp.MustCompile("`([A-Za-z]\\w*)` ?(?:tag|タグ)")
+	// structTagRe / structTagKeyRe は、フィールドタグのリテラルと、そこで使われているタグ名を捕捉します。
+	structTagRe    = regexp.MustCompile("`[^`]*`")
+	structTagKeyRe = regexp.MustCompile(`(\w+):"`)
+	// envReadmeTagNameFiles は、タグ名の表記を突き合わせる env 変数一覧の全件です。翻訳で綴りが分かれる
+	// 目印と違い、タグ名はコードの識別子そのもので訳されないため、対訳側も同じ検証に載せられます。
+	envReadmeTagNameFiles = []string{envReadmeFile, envReadmeTranslationFile}
 )
+
+// codeDefaultEmptyNotations は、Code default が空であることを表す綴りをファイルごとに宣言します。
+// 空値はバッククォート記法で書けないため散文で綴られ、綴り自体が翻訳で分岐します。言語ごとに綴りを
+// 1 つだけ許可することで、抽出後の値は言語に依らず空文字へ揃います。
+var codeDefaultEmptyNotations = map[string]string{
+	envReadmeFile:            "Code default empty",
+	envReadmeTranslationFile: "Code default は空",
+}
 
 // targetStatusCodesPolicy は、OBS_TARGET_STATUS_CODES の環境別ポリシーの宣言です。
 // 上の段ほど広く監視し、下の段ほど本番の監視ノイズを避けて絞る単調な絞り込みで、その根拠は
@@ -83,8 +113,10 @@ type statusCodeTier struct {
 	excluded []string
 }
 
-// readmeRow は、env 変数表の 1 行から取り出した Example 列と Notes 列です。
+// readmeRow は、env 変数表の 1 行から取り出したセルです。Description 列は翻訳で分岐するため持ちません。
 type readmeRow struct {
+	key     string
+	typ     string
 	example string
 	notes   string
 }
@@ -138,7 +170,7 @@ func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
-	rows := parseEnvReadmeRows(t, root)
+	rows := envReadmeRowsByKey(parseEnvReadmeRows(t, root, envReadmeFile))
 	values := readEnvFileValues(t, root)
 
 	for _, key := range slices.Sorted(maps.Keys(values)) {
@@ -180,7 +212,7 @@ func TestEnvReadmeExamples(t *testing.T) {
 	t.Parallel()
 
 	root := moduleRoot(t)
-	rows := parseEnvReadmeRows(t, root)
+	rows := envReadmeRowsByKey(parseEnvReadmeRows(t, root, envReadmeFile))
 	local := readLocalEnv(t, root)
 	spec := parseEnvSpec(t, root)
 
@@ -222,7 +254,7 @@ func TestEnvReadmeCodeDefaults(t *testing.T) {
 
 	root := moduleRoot(t)
 	spec := parseEnvSpec(t, root)
-	documented := collectCodeDefaults(t, root)
+	documented := collectCodeDefaults(t, root, envReadmeFile)
 
 	for key, field := range spec {
 		if !field.hasDefault {
@@ -239,6 +271,115 @@ func TestEnvReadmeCodeDefaults(t *testing.T) {
 		assert.Truef(t, spec[key].hasDefault,
 			"%s は %s に Code default と記載されているが envspec.go に envDefault が無い", key, envReadmeFile)
 	}
+}
+
+// TestEnvReadmeTranslationValues は、対訳の変数表が正本と同じ値を載せていることを検証します。
+// 対訳は正本の全内容を複製しており、値も同じだけ載っています。このリポジトリの読者は日本語版を読む
+// 前提なので、正本にだけ検証を入れると、誤った既定値を読む確率はむしろ対訳側の方が高くなります。
+// 突き合わせるのはキー / Type / Example / Code default / 検証指定に限ります。Description 列と
+// Notes 列の散文は翻訳で分岐するため、一致を求めれば翻訳そのものを禁じることになります。
+func TestEnvReadmeTranslationValues(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+	canonical := parseEnvReadmeRows(t, root, envReadmeFile)
+	translated := parseEnvReadmeRows(t, root, envReadmeTranslationFile)
+
+	require.Equalf(t, envReadmeKeys(canonical), envReadmeKeys(translated),
+		"変数表のキーが %s と一致しない。行の増減や並べ替えは対訳側だけで起きうる", envReadmeTranslationFile)
+
+	validations := 0
+	for i, want := range canonical {
+		got := translated[i]
+		assert.Equalf(t, want.typ, got.typ, "%s の Type 列が %s と一致しない", want.key, envReadmeFile)
+		assert.Equalf(t, want.example, got.example, "%s の Example 列が %s と一致しない", want.key, envReadmeFile)
+
+		wantValidations := notesValidations(want.notes)
+		validations += len(wantValidations)
+		assert.Equalf(t, wantValidations, notesValidations(got.notes),
+			"%s の Notes 列の検証指定が %s と一致しない", want.key, envReadmeFile)
+	}
+	require.NotEmptyf(t, validations,
+		"%s から Notes 列の検証指定を 1 件も抽出できず、その突き合わせが空振りする", envReadmeFile)
+
+	assert.Equalf(t, collectCodeDefaults(t, root, envReadmeFile), collectCodeDefaults(t, root, envReadmeTranslationFile),
+		"Notes 列の Code default が %s と一致しない", envReadmeFile)
+}
+
+// TestEnvReadmeTranslationStructure は、正本の文書構造が対訳でも保たれていることを検証します。
+// 値の突き合わせは表に載った行しか見ないため、節ごと・項目ごと訳し漏らした場合は差として現れません。
+// サブシステム見出しは区分そのもので、区切り位置が違えば対訳の読者は変数が属するサブシステムを取り違えます。
+// 節と箇条書きは訳文で綴りが変わるため、一致を求められるのは個数だけです。
+func TestEnvReadmeTranslationStructure(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+	canonical := readRepoFile(t, root, envReadmeFile)
+	translated := readRepoFile(t, root, envReadmeTranslationFile)
+
+	assert.Equalf(t, collectSubsystemHeadings(t, root, envReadmeFile), collectSubsystemHeadings(t, root, envReadmeTranslationFile),
+		"サブシステム見出しが %s と一致しない", envReadmeFile)
+	assert.Equalf(t, countLines(canonical, sectionHeadingRe), countLines(translated, sectionHeadingRe),
+		"節の数が %s と一致しない", envReadmeFile)
+	assert.Equalf(t, countLines(canonical, listItemRe), countLines(translated, listItemRe),
+		"箇条書き項目の数が %s と一致しない。項目ごと訳し漏らしている可能性がある", envReadmeFile)
+}
+
+// TestEnvReadmeTagNames は、env 変数一覧の散文が参照する struct タグ名が
+// internal/config/envspec.go に実在するタグ名であることを、正本と対訳の両方について検証します。
+// 散文中のタグ名はコードの識別子の手書きの複製で、実在しない名前を書いても Markdown は通り、
+// 既定値の一致を見る TestEnvReadmeCodeDefaults もタグ名そのものは読みません。誤った名前のまま
+// 手順どおりに変数を追加すると、caarlos0/env は未知のタグを黙って読み飛ばし、既定値が効かないまま
+// required でもないフィールドが残ります。
+func TestEnvReadmeTagNames(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+	declared := collectStructTagKeys(t, root)
+
+	for _, file := range envReadmeTagNameFiles {
+		referenced := collectReadmeTagRefs(t, root, file)
+		require.NotEmptyf(t, referenced, "%s からタグ名の参照を 1 件も抽出できず、検証が空振りする", file)
+
+		for _, name := range referenced {
+			assert.Containsf(t, declared, name,
+				"%s が参照するタグ名 %s を %s は使っていない", file, name, envSpecFile)
+		}
+	}
+}
+
+// collectReadmeTagRefs は、env 変数一覧の散文が参照するタグ名の全件を重複を除いて返します。
+func collectReadmeTagRefs(t *testing.T, root, file string) []string {
+	t.Helper()
+
+	readme := readRepoFile(t, root, file)
+
+	names := []string{}
+	for _, re := range []*regexp.Regexp{readmeTagColonRe, readmeTagPhraseRe} {
+		for _, m := range re.FindAllStringSubmatch(readme, -1) {
+			if !slices.Contains(names, m[1]) {
+				names = append(names, m[1])
+			}
+		}
+	}
+	return names
+}
+
+// collectStructTagKeys は、envspec.go のフィールドタグが使っているタグ名の全件を返します。
+func collectStructTagKeys(t *testing.T, root string) []string {
+	t.Helper()
+
+	keys := []string{}
+	for _, tag := range structTagRe.FindAllString(readRepoFile(t, root, envSpecFile), -1) {
+		for _, m := range structTagKeyRe.FindAllStringSubmatch(tag, -1) {
+			if !slices.Contains(keys, m[1]) {
+				keys = append(keys, m[1])
+			}
+		}
+	}
+
+	require.NotEmptyf(t, keys, "%s からタグ名を 1 件も抽出できず、検証が空振りする", envSpecFile)
+	return keys
 }
 
 // readStatusCodes は、env ファイルの OBS_TARGET_STATUS_CODES をカンマ区切りで分解して返します。
@@ -387,50 +528,112 @@ func excludeStatusCodes(t *testing.T, codes, excluded []string) []string {
 	return out
 }
 
-// parseEnvReadmeRows は、env/README.md の変数表をキーごとの行へ分解して返します。
-func parseEnvReadmeRows(t *testing.T, root string) map[string]readmeRow {
+// parseEnvReadmeRows は、env 変数表を記載順のまま行へ分解して返します。記載順を保つのは、対訳との
+// 突き合わせで行の並べ替えも差として現れるようにするためです。
+func parseEnvReadmeRows(t *testing.T, root, file string) []readmeRow {
 	t.Helper()
 
-	rows := map[string]readmeRow{}
-	for line := range strings.Lines(readRepoFile(t, root, envReadmeFile)) {
+	var rows []readmeRow
+	for line := range strings.Lines(readRepoFile(t, root, file)) {
 		line = strings.TrimRight(line, "\n")
 		m := readmeRowRe.FindStringSubmatch(line)
 		if m == nil {
 			continue
 		}
-		// 行頭と行末の区切りにより前後へ空要素が付くため、Example は 5 番目、Notes は末尾の空要素を除く残り。
+		// 行頭と行末の区切りにより前後へ空要素が付くため、Type は 4 番目、Example は 5 番目、
+		// Notes は末尾の空要素を除く残り。
 		cells := strings.Split(line, "|")
-		require.GreaterOrEqualf(t, len(cells), 7, "%s の行の列数が想定と異なる: %s", envReadmeFile, line)
-		rows[m[1]] = readmeRow{
+		require.GreaterOrEqualf(t, len(cells), 7, "%s の行の列数が想定と異なる: %s", file, line)
+		rows = append(rows, readmeRow{
+			key:     m[1],
+			typ:     cells[3],
 			example: cells[4],
 			notes:   strings.Join(cells[5:len(cells)-1], "|"),
-		}
+		})
 	}
 
-	require.NotEmptyf(t, rows, "%s から変数表の行を 1 件も抽出できず、検証が空振りする", envReadmeFile)
+	require.NotEmptyf(t, rows, "%s から変数表の行を 1 件も抽出できず、検証が空振りする", file)
 	return rows
 }
 
-// collectCodeDefaults は、env/README.md の Notes 列に Code default を持つキーとその値を返します。
-// 値が空であることは Code default empty と綴る規約で、バッククォート記法とは別に受け付けます。
-func collectCodeDefaults(t *testing.T, root string) map[string]string {
+// envReadmeRowsByKey は、変数表の行をキーで引ける形に並べ替えて返します。
+func envReadmeRowsByKey(rows []readmeRow) map[string]readmeRow {
+	byKey := make(map[string]readmeRow, len(rows))
+	for _, row := range rows {
+		byKey[row.key] = row
+	}
+	return byKey
+}
+
+// envReadmeKeys は、変数表の行から記載順のキー列を返します。
+func envReadmeKeys(rows []readmeRow) []string {
+	keys := make([]string, 0, len(rows))
+	for _, row := range rows {
+		keys = append(keys, row.key)
+	}
+	return keys
+}
+
+// notesValidations は、Notes 列に書かれた env タグの検証指定を記載順に返します。`required` /
+// `required,notEmpty` はタグの内容そのもので、周囲の散文と違い翻訳されません。
+func notesValidations(notes string) []string {
+	matches := notesValidationRe.FindAllStringSubmatch(notes, -1)
+	out := make([]string, 0, len(matches))
+	for _, m := range matches {
+		out = append(out, m[1])
+	}
+	return out
+}
+
+// collectSubsystemHeadings は、変数表を区切るサブシステム見出しを記載順に返します。
+func collectSubsystemHeadings(t *testing.T, root, file string) []string {
 	t.Helper()
 
+	var headings []string
+	for line := range strings.Lines(readRepoFile(t, root, file)) {
+		if m := subsystemHeadingRe.FindStringSubmatch(strings.TrimRight(line, "\n")); m != nil {
+			headings = append(headings, m[1])
+		}
+	}
+
+	require.NotEmptyf(t, headings, "%s からサブシステム見出しを 1 件も抽出できず、検証が空振りする", file)
+	return headings
+}
+
+// countLines は、re にマッチする行の数を返します。
+func countLines(content string, re *regexp.Regexp) int {
+	count := 0
+	for line := range strings.Lines(content) {
+		if re.MatchString(line) {
+			count++
+		}
+	}
+	return count
+}
+
+// collectCodeDefaults は、Notes 列に Code default を持つキーとその値を返します。値が空であることは
+// バッククォート記法で書けないため、ファイルごとに宣言した綴りを別途受け付けます。
+func collectCodeDefaults(t *testing.T, root, file string) map[string]string {
+	t.Helper()
+
+	empty, ok := codeDefaultEmptyNotations[file]
+	require.Truef(t, ok, "%s の Code default 空値の綴りが宣言されていない", file)
+
 	defaults := map[string]string{}
-	for key, row := range parseEnvReadmeRows(t, root) {
+	for _, row := range parseEnvReadmeRows(t, root, file) {
 		if !strings.Contains(row.notes, "Code default") {
 			continue
 		}
 		if m := codeDefaultRe.FindStringSubmatch(row.notes); m != nil {
-			defaults[key] = m[1]
+			defaults[row.key] = m[1]
 			continue
 		}
-		require.Containsf(t, row.notes, "Code default empty",
-			"%s の Code default が既定の記法（バッククォート囲み もしくは empty）で書かれていない", key)
-		defaults[key] = ""
+		require.Containsf(t, row.notes, empty,
+			"%s の %s の Code default が既定の記法（バッククォート囲み もしくは %q）で書かれていない", file, row.key, empty)
+		defaults[row.key] = ""
 	}
 
-	require.NotEmptyf(t, defaults, "%s から Code default を 1 件も抽出できず、検証が空振りする", envReadmeFile)
+	require.NotEmptyf(t, defaults, "%s から Code default を 1 件も抽出できず、検証が空振りする", file)
 	return defaults
 }
 

@@ -134,6 +134,33 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			assert.Nil(t, actual.PublishedAt)
 			assert.Nil(t, actual.ImagePath)
 		})
+
+		t.Run("商品作成を所有者なしリソースとして認可する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+
+			params, statusID, categoryID := validParams(t)
+
+			txm := mock_tx.NewMockManager(ctrl)
+			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+			statusRepo := mock_status.NewMockRepository(ctrl)
+			statusRepo.EXPECT().FindByID(gomock.Any(), statusID).Return(mustStatus(t, statusID), nil)
+			categoryRepo := mock_category.NewMockRepository(ctrl)
+			categoryRepo.EXPECT().FindByID(gomock.Any(), categoryID).Return(mustCategory(t, categoryID), nil)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, authz.NewResource("product", nil)).
+				Return(nil)
+
+			u := &usecase{tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo, authorizer: authorizer}
+			_, err := u.CreateProduct(ctx, &auth.Authn{}, params)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

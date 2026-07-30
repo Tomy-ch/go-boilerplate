@@ -106,6 +106,7 @@ flowchart TB
 
 - Do not implement handler before defining the API contract
 - Do not manually edit generated API interfaces
+- Every route registered on Echo must correspond 1:1 to an operation in the spec, with no allowlist for exceptions — machine-verified by `TestRouteSpecParity` in `internal/architest`. Parts of the HTTP stack resolve behavior from the spec, so a route the spec does not declare changes behavior at runtime while the tests stay green. See [the handler guide](../internal/controller/handler/README.md#every-route-must-exist-in-openapi) for what this means when writing a handler.
 
 OpenAPI definition is the **single source of truth of API**.
 

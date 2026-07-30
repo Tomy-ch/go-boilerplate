@@ -15,7 +15,8 @@ This directory is the canonical reference for every environment variable read by
 - Variables marked **Secret management recommended** should be rotated periodically.
 - The Example column carries the **effective local value**: the value `env/.env` assigns to the key, or the `envDefault` tag in `internal/config/envspec.go` when the key is absent from `env/.env`. It is a single value, not a set — write the accepted values in the Description column instead (as `APP_MODE` and `OBS_TRACES_EXPORTER` do). A row whose Notes say **Example is a placeholder** is the sole exception, and only where copying the real value here would duplicate a credential the secret scanner already tracks in `env/.env`; read `env/.env` for what the local stack uses. Marking a variable **Secret management required** is *not* an exception on its own — those rows still show their real local value, because the local `.env` files commit them anyway. `TestEnvReadmeExamples` (`internal/architest`) enforces the column over every variable, so changing a value in `env/.env` or in an `envDefault` tag without updating the table fails the build.
 - A value that legitimately differs between `env/.env.<env>` files is marked **Per-environment value** in its Notes cell, followed by why it differs. Nothing else records whether a key is a per-environment policy or a value that should match everywhere, so an undocumented difference reads as a propagation miss and should be treated as one. `TestEnvPerEnvironmentValuePolicy` (`internal/architest`) enforces the marker in both directions: an unmarked key must hold the same value in every env file that declares it, and a marked key must actually differ, so a marker left behind after the values were aligned fails too. A key that some environments receive from a secret manager is absent rather than different, and absence is not compared.
-- Variables marked **Code default `<value>`** carry a `default:` tag in `internal/config/envspec.go` and are intentionally omitted from the `.env` files. They are framework-level constants that any project derived from this boilerplate keeps unchanged, so the default applies automatically; add an explicit entry to a `.env` file only when a project needs to override it. Every other variable is `required` and must be present in the relevant env file(s).
+- The Japanese translation ([README.ja.md](README.ja.md)) duplicates this table in full, values included, and most readers of this repository read that side. Prose is translated, but the key, Type, Example, and `Code default` values are language-independent and MUST match this file — `internal/architest` (`TestEnvReadmeTranslationValues`) fails the build on a divergence, and `TestEnvReadmeTranslationStructure` does the same for the document structure — the subsystem headings that group the table, plus the section and list-item counts, so a paragraph dropped in translation is caught too. A `Code default` that is empty cannot be written in backticks, so it is spelled out as **Code default empty** here and as **Code default は空** in the translation; those two spellings are declared in the test and are the only accepted forms.
+- Variables marked **Code default `<value>`** carry an `envDefault:` tag in `internal/config/envspec.go` and are intentionally omitted from the `.env` files. They are framework-level constants that any project derived from this boilerplate keeps unchanged, so the default applies automatically; add an explicit entry to a `.env` file only when a project needs to override it. Every other variable is `required` and must be present in the relevant env file(s).
 
 ## Adding a New Variable
 
@@ -23,8 +24,22 @@ This directory is the canonical reference for every environment variable read by
 2. Document it in the table below under the matching subsystem (or add a new subsystem section).
 3. Decide how the value is supplied:
    - **Project-specific or per-environment value** → mark the field `required` and add it to `env/.env` (the local default) and to every per-environment file (`env/.env.<env>`).
-   - **Universal framework default** → give the field a `default:` tag instead, omit it from the `.env` files, and mark it **Code default `<value>`** in the table.
+   - **Universal framework default** → give the field an `envDefault:` tag instead, omit it from the `.env` files, and mark it **Code default `<value>`** in the table.
 4. Run `make test` to confirm the config struct still loads.
+
+## Changing the Timezone
+
+The timezone is supplied by **two independent mechanisms that set different layers**, so a project that moves off `Asia/Tokyo` has to change both. They are listed here because nothing else in the repository records the full set.
+
+- **Session timezone** — `OS_TZ` becomes the `timezone` parameter of the DSN the application uses for every database connection (`internal/infrastructure/rdb/driver/config.go`). This is the only mechanism that decides what the application reads and writes, and it takes precedence over any database-side setting.
+- **Database-side default** — the `TZ` environment variable of the PostgreSQL container. `initdb` writes it into `postgresql.conf`, making it the cluster default that every database created afterwards inherits (`wt<N>_local` / `wt<N>_test` from the worktree slot pool, `gen_schema` from `make dump-schema`). It only affects what a client that does *not* specify a timezone sees, so its purpose is the developer experience of reading timestamps directly through `psql` / pgweb / SchemaSpy.
+
+Both are needed: dropping the first would leave the application at the cluster default, and dropping the second would show UTC in every direct database session. Change all of the following together:
+
+1. `env/.env` and every `env/.env.<env>` — the `OS_TZ` entry (session timezone; `required`, so it exists in all five files).
+2. `docker-compose.yaml`, the `database` service — `TZ` and `PGTZ`. `TZ` only takes effect during `initdb`, so an existing volume keeps its old cluster default until the volume is recreated; `docs/maintenance/db-worktree-pool.md` owns that procedure and its worktree caveat. `PGTZ` applies per `psql` session and therefore takes effect immediately, even on an old volume.
+3. The PostgreSQL service block of each workflow under `.github/workflows/` that provisions a database — `TZ` and `PGTZ`. GitHub Actions cannot share a service definition between workflows, so the value is repeated in every one of them. Enumerate them by the service image rather than by the variable (`grep -rl 'image: postgres' .github/workflows/`) — grepping for `PGTZ` finds only the workflows that already set it and silently skips the one that still needs it.
+4. Test expectations that pin the value as a literal — `expectedOSTimeZone` in `internal/config/config_testing_mock.go`, plus the assertions in `internal/di/job_test.go`, `internal/di/server/hook/http_server_hook_test.go`, and `internal/infrastructure/rdb/driver/config_test.go`.
 
 ## Variables by Subsystem
 
@@ -32,7 +47,7 @@ This directory is the canonical reference for every environment variable read by
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application. The deployment region varies per project, so it is `required` and stated in every env file rather than code-defaulted — the timezone stays where an operator looks for it. Rejected when empty, because an empty value would silently fall back to UTC|
+|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application. The deployment region varies per project, so it is `required` and stated in every env file rather than code-defaulted — the timezone stays where an operator looks for it. Rejected when empty, because an empty value would silently fall back to UTC. Sets the session timezone only; the database-side default is the container's `TZ`, so see [Changing the Timezone](#changing-the-timezone) before moving off `Asia/Tokyo`|
 
 ### Application
 
