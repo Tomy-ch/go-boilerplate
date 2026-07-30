@@ -48,9 +48,16 @@ const (
 // placeholderMarker は、Example 列が実値ではなくプレースホルダであることを宣言する Notes 列の記法です。
 const placeholderMarker = "Example is a placeholder"
 
+// deployInjectedMarker は、デプロイ基盤が実行時に値を注入するため env ファイルには書かないことを
+// 宣言する Notes 列の記法です。
+const deployInjectedMarker = "Injected at deploy time"
+
 var (
 	// envValueFiles は、値を突き合わせる env ファイルの全件です（ローカル既定と各環境ファイル）。
 	envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"}
+	// envDeployFiles は、デプロイ基盤が実行時に値を注入しうる環境の env ファイルです。ここに挙がらない
+	// ファイルはリポジトリ自身が値を持つ環境であり、キーの不在をデプロイ時注入として説明できません。
+	envDeployFiles = []string{"env/.env.dev", "env/.env.stg", "env/.env.prd"}
 	// loaderPrefixRe は、Loader のサブシステムフィールドから型名と envPrefix を捕捉します。
 	loaderPrefixRe = regexp.MustCompile("^\\s+\\w+\\s+(\\w+)\\s+`envPrefix:\"([^\"]*)\"`$")
 	// structDeclRe は、構造体宣言 type <名前> struct { から名前を捕捉します。
@@ -206,6 +213,58 @@ func TestEnvPerEnvironmentValuePolicy(t *testing.T) {
 		assert.Truef(t, declared,
 			"%s の Notes は %q と宣言しているが、キーがどの env ファイルにも無い。"+
 				"宣言が陳腐化しているのでマーカーを外すこと", key, perEnvValueMarker)
+	}
+}
+
+// TestEnvRequiredKeyPresencePolicy は、envDefault を持たないキーが全 env ファイルに記載されている
+// ことと、その唯一の例外であるデプロイ時注入が env/README.md の Notes 列で宣言されていることを
+// 双方向に機械検証します。
+// 値の割れと違い、キーが丸ごと欠落した状態は残ったファイルの値と何も矛盾しません。値の突き合わせは
+// 宣言しているファイルしか見ないため欠落は素通りし、その env でアプリを起動して required
+// バリデーションが落ちるまで顕在化しません。マーカーの無いキーの欠落（伝播漏れ）と、マーカーの
+// 陳腐化（deploy 環境のファイルへ値が戻った、記載を持つ環境から消えた、既定値を持つキーに付けた）の
+// 双方を loud な失敗に変えます。
+func TestEnvRequiredKeyPresencePolicy(t *testing.T) {
+	t.Parallel()
+
+	root := moduleRoot(t)
+	rows := envReadmeRowsByKey(parseEnvReadmeRows(t, root, envReadmeFile))
+	values := readEnvFileValues(t, root)
+	spec := parseEnvSpec(t, root)
+
+	for _, file := range envDeployFiles {
+		require.Containsf(t, envValueFiles, file,
+			"%s が envValueFiles に無く、不在を許す判定が空振りする", file)
+	}
+
+	for _, key := range slices.Sorted(maps.Keys(spec)) {
+		// 表に行が無いキーは TestEnvReadmeExamples が落とすため、ここでは宣言を読めないものとして飛ばします。
+		row, ok := rows[key]
+		if !ok {
+			continue
+		}
+
+		injected := strings.Contains(row.notes, deployInjectedMarker)
+		if spec[key].hasDefault {
+			assert.Falsef(t, injected,
+				"%s は envDefault を持ち全 env ファイルでの不在が正常なので、%q は宣言として意味を成さない",
+				key, deployInjectedMarker)
+			continue
+		}
+
+		for _, file := range envValueFiles {
+			_, declared := values[key][file]
+			if injected && slices.Contains(envDeployFiles, file) {
+				assert.Falsef(t, declared,
+					"%s の Notes は %q と宣言しているが %s に記載がある。"+
+						"宣言が陳腐化しているのでマーカーを外すこと", key, deployInjectedMarker, file)
+				continue
+			}
+			assert.Truef(t, declared,
+				"%s は envDefault を持たないのに %s に記載が無い。伝播漏れならその env の値を書き、"+
+					"デプロイ基盤が注入するなら %s の Notes に %q と書くこと",
+				key, file, envReadmeFile, deployInjectedMarker)
+		}
 	}
 }
 
