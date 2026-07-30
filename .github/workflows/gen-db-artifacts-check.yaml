@@ -179,13 +179,38 @@ jobs:
             echo "title=## ⚠️ Drift in DB generated output detected (SQL source unchanged)" >> "$GITHUB_OUTPUT"
             printf '%s\n' "This PR does not modify any SQL source, so this may be generator-side drift (a change to \`sqlc.yaml\` / \`mise.toml\` / the DB setup action, sqlc version differences, stale generated artifacts on the base, etc.). Run \`make gen-query\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
-          # Disable SC2016: the `%s` that renders the filename as markdown code is literal (must not expand)
-          # shellcheck disable=SC2016
+          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, repeated
+          # because that helper only wraps a body on the details-summary path and this call passes
+          # the body through untouched.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          # A path may hold any byte but NUL and `/`, so a name carrying a backtick closes an inline
+          # code span early and renders the rest as live Markdown under the bot's name — a mention
+          # notifying third parties, a fabricated heading or link. Fencing the list instead, at a
+          # length taken from the list itself, leaves no run able to close it.
+          list=/tmp/gen-db-filelist.txt
+          # The action's length cap slices a body without regard for fences and does not re-fence on
+          # this path, so a list trimmed there would lose the closing fence. Trimming here, before
+          # the fence is sized, keeps the block closed and stays under the 45000 character default.
+          list_limit=40000
+          head -c "$list_limit" /tmp/changed_files.txt > "$list"
+          if [ "$(wc -c < /tmp/changed_files.txt)" -gt "$list_limit" ]; then
+            printf '\n... (file list truncated)\n' >> "$list"
+          fi
+          fence="$(fence_for "$list")"
           {
             echo ""
-            while IFS= read -r f; do
-              [ -n "$f" ] && printf -- "- \`%s\`\n" "$f"
-            done < /tmp/changed_files.txt
+            echo "${fence}text"
+            cat "$list"
+            echo "${fence}"
           } >> "$out"
 
       - name: Comment generated artifacts result on PR
