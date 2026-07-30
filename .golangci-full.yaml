@@ -475,6 +475,13 @@ linters:
           msg: "禁止：現在時刻は clock.Clock（internal/usecase/boundary/clock）の Now() で取得してください。
                 domain / usecase での time.Now() は固定時刻に差し替えられず非決定的なテストを招きます
                 （本ルールは exclusions.rules で domain / usecase 層のみに限定しています）。"
+        - pattern: '^time\.Local$'
+          pkg: '^time$'
+          msg: "禁止：time.Local は使用しないでください。設定（OS_TZ）は Go ランタイムの time.Local へ届かず、
+                コンテナの TZ 次第で UTC になり得ます。タイムゾーンは config が構築した *time.Location
+                （config.NewTimeLocation）を注入して受け取ってください。
+                テストでも time.Local で作った期待値を time.Local で検証すると実行ホストのタイムゾーンに
+                依存して常に緑になるため、time.UTC か固定の Location を使ってください。"
       analyze-types: true
     funcorder:
       constructor: true
