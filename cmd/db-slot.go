@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultPoolMaxSlots      = 8
+	defaultPoolMaxSlots      = 12
 	defaultPoolTTLSeconds    = 1800
 	defaultPoolAPIBasePort   = 8080
 	defaultPoolMockBasePort  = 4000
