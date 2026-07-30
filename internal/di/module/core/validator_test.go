@@ -13,6 +13,24 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
+// validatorDeps は、ValidatorModule の解決に必要な設定依存を返します。
+func validatorDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		fx.Provide(func() testing.TB { return t }),
+		fx.Provide(config.MockConfigForTest),
+	)
+}
+
+func TestValidatorModule_GraphIsValid(t *testing.T) {
+	t.Parallel()
+
+	var v *openapi3.T
+
+	validateGraph(t, validatorDeps(t), ValidatorModule(), fx.Populate(&v))
+}
+
 func TestValidatorModule(t *testing.T) {
 	t.Parallel()
 
@@ -24,9 +42,8 @@ func TestValidatorModule(t *testing.T) {
 
 			var v *openapi3.T
 			app := fx.New(
-				fx.Provide(func() testing.TB { return t }),
+				validatorDeps(t),
 				ValidatorModule(),
-				fx.Provide(config.MockConfigForTest),
 				fx.Populate(&v),
 				fx.NopLogger,
 			)

@@ -57,6 +57,8 @@ flowchart TB
 
 各モジュールには対の `*_test.go` があり、`fx.ValidateApp` を呼ぶ `Test<Module>_GraphIsValid` を持つ（`graph_helper_test.go` の `validateGraph` / `commonDeps` 参照）。これは依存グラフが型欠落なく結線されることを検証する — `fx.ValidateApp` はコンストラクタやライフサイクルフックを実行しないため、実インフラ（DB / ネットワーク）を立てずに済む。
 
+実インフラを避けることがこの形の理由なので、実インフラに依存しないモジュールは追加で最小アプリを起動し、提供コンポーネントを assert してよい。[`core/`](core/README.ja.md) 配下が全てこれに当たり、本ベースラインの上に 2 段目を重ねている。基準はディレクトリではなくモジュールのクロージャにある。
+
 同じ性質ゆえ、独自ロジックを持つ provider / `fx.Invoke` 本体（例: `provideQueueStatsCollector`）はグラフ検証テストでは**実行されない** — 分岐網羅には直接の単体テスト（関数を実際に呼ぶ）が要る。
 
 グラフ検証が見るのはモジュールが*列挙している*ものだけなので、`ControllerModule()` の `fx.Invoke` から漏れた `BindHandler` はこのテストからは見えない。列挙が*網羅的である*こと — `BindHandler` を宣言するハンドラパッケージ 1 つにつき 1 エントリ — は `internal/architest` の `TestBindHandlerDIParity` が別途機械検証する。

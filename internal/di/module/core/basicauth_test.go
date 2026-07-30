@@ -12,6 +12,25 @@ import (
 	"go.uber.org/fx"
 )
 
+// basicAuthDeps は、BasicAuthModule の解決に必要な設定依存を返します。
+func basicAuthDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		fx.Provide(func() testing.TB { return t }),
+		fx.Provide(config.MockConfigForTest),
+		fx.Provide(config.NewMetricsConfig),
+	)
+}
+
+func TestBasicAuthModule_GraphIsValid(t *testing.T) {
+	t.Parallel()
+
+	var b echomw.BasicAuthValidator
+
+	validateGraph(t, basicAuthDeps(t), BasicAuthModule(), fx.Populate(&b))
+}
+
 func TestBasicAuthModule(t *testing.T) {
 	t.Parallel()
 
@@ -23,9 +42,7 @@ func TestBasicAuthModule(t *testing.T) {
 
 			var b echomw.BasicAuthValidator
 			app := fx.New(
-				fx.Provide(func() testing.TB { return t }),
-				fx.Provide(config.MockConfigForTest),
-				fx.Provide(config.NewMetricsConfig),
+				basicAuthDeps(t),
 				BasicAuthModule(),
 				fx.Populate(&b),
 			)

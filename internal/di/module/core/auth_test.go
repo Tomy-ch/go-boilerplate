@@ -33,6 +33,34 @@ func newAuthParams(t *testing.T, env string, logger logging.Logger) authenticato
 	}
 }
 
+// authnDeps は、AuthnModule の解決に必要な設定・時刻・ログ・HTTPClient の依存を返します。
+func authnDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		fx.Provide(func() testing.TB { return t }),
+		fx.Provide(func() *testing.T { return t }),
+		fx.Provide(config.MockConfigForTest),
+		fx.Provide(config.NewApplicationConfig),
+		fx.Provide(config.NewAuthConfig),
+		fx.Provide(system.NewClock),
+		fx.Provide(logging.NewTestLogger),
+		// HTTPClient は infra 層が常設提供する必須依存。test 環境ではスタブ認証で未使用だが、
+		// authenticatorParams の解決に必要なためモックを供給する。
+		fx.Provide(func() httpclient.Client {
+			return mock_httpclient.NewMockClient(gomock.NewController(t))
+		}),
+	)
+}
+
+func TestAuthnModule_GraphIsValid(t *testing.T) {
+	t.Parallel()
+
+	var a authbd.Authenticator
+
+	validateGraph(t, authnDeps(t), AuthnModule(), fx.Populate(&a))
+}
+
 func TestAuthnModule(t *testing.T) {
 	t.Parallel()
 
@@ -44,18 +72,7 @@ func TestAuthnModule(t *testing.T) {
 
 			var a authbd.Authenticator
 			app := fx.New(
-				fx.Provide(func() testing.TB { return t }),
-				fx.Provide(func() *testing.T { return t }),
-				fx.Provide(config.MockConfigForTest),
-				fx.Provide(config.NewApplicationConfig),
-				fx.Provide(config.NewAuthConfig),
-				fx.Provide(system.NewClock),
-				fx.Provide(logging.NewTestLogger),
-				// HTTPClient は infra 層が常設提供する必須依存。test 環境ではスタブ認証で未使用だが、
-				// authenticatorParams の解決に必要なためモックを供給する。
-				fx.Provide(func() httpclient.Client {
-					return mock_httpclient.NewMockClient(gomock.NewController(t))
-				}),
+				authnDeps(t),
 				AuthnModule(),
 				fx.Populate(&a),
 			)

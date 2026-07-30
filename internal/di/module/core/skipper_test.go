@@ -11,6 +11,14 @@ import (
 	"go.uber.org/fx"
 )
 
+func TestSkipperModule_GraphIsValid(t *testing.T) {
+	t.Parallel()
+
+	var s echomw.Skipper
+
+	validateGraph(t, SkipperModule(), fx.Populate(&s))
+}
+
 func TestSkipperModule(t *testing.T) {
 	t.Parallel()
 

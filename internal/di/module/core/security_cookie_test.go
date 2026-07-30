@@ -12,6 +12,25 @@ import (
 	"go.uber.org/fx"
 )
 
+// securityCookieDeps は、SecurityCookieModule の解決に必要な設定依存を返します。
+func securityCookieDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		fx.Provide(func() testing.TB { return t }),
+		fx.Provide(config.MockConfigForTest),
+		fx.Provide(config.NewSecureCookieConfig),
+	)
+}
+
+func TestSecurityCookieModule_GraphIsValid(t *testing.T) {
+	t.Parallel()
+
+	var sc *cookie.SecurityCookie
+
+	validateGraph(t, securityCookieDeps(t), SecurityCookieModule(), fx.Populate(&sc))
+}
+
 func TestSecurityCookieModule(t *testing.T) {
 	t.Parallel()
 
@@ -23,9 +42,7 @@ func TestSecurityCookieModule(t *testing.T) {
 
 			var sc *cookie.SecurityCookie
 			app := fx.New(
-				fx.Provide(func() testing.TB { return t }),
-				fx.Provide(config.MockConfigForTest),
-				fx.Provide(config.NewSecureCookieConfig),
+				securityCookieDeps(t),
 				SecurityCookieModule(),
 				fx.Populate(&sc),
 				fx.NopLogger,
