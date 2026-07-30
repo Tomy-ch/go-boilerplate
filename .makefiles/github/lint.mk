@@ -11,6 +11,7 @@
 .PHONY: actions-shellcheck-ci ## composite action の run シェルを shellcheck で検査(CI用)
 .PHONY: actions-comment-secret-lint-ci ## upsert-pr-comment を使うジョブへの secret 混入を検査(CI用)
 .PHONY: actions-comment-fence-lint-ci ## PRコメント本文の固定長フェンスを検査(CI用)
+.PHONY: actions-node-lint-ci ## node で書かれた検査 3 種をまとめて実行(CI用)
 .PHONY: actions-cutoff-lint-ci ## ジョブ打ち切り時の振る舞いを検査(CI用)
 
 # -----Dockerコンテナ内で実行するコマンド群-----
@@ -18,9 +19,7 @@
 actions-lint:
 	@docker compose run --rm go_tool_runner make actions-actionlint-ci
 	@docker compose run --rm go_tool_runner make actions-shellcheck-ci
-	@docker compose run --rm node_tool_runner make actions-comment-secret-lint-ci
-	@docker compose run --rm node_tool_runner make actions-comment-fence-lint-ci
-	@docker compose run --rm node_tool_runner make actions-cutoff-lint-ci
+	@docker compose run --rm node_tool_runner make actions-node-lint-ci
 
 actions-shellcheck:
 	@docker compose run --rm go_tool_runner make actions-shellcheck-ci
@@ -35,7 +34,11 @@ actions-cutoff-lint:
 	@docker compose run --rm node_tool_runner make actions-cutoff-lint-ci
 
 # -----CI内で実行するコマンド群-----
-actions-lint-ci: actions-actionlint-ci actions-shellcheck-ci actions-comment-secret-lint-ci actions-comment-fence-lint-ci actions-cutoff-lint-ci
+actions-lint-ci: actions-actionlint-ci actions-shellcheck-ci actions-node-lint-ci
+
+# 桁でワークフローを読む検査は、ブロックスカラーが親より深いという YAML の規約に乗っている。
+# actionlint を先に通すことでその前提を担保するため、この順序は入れ替えない。
+actions-node-lint-ci: actions-comment-secret-lint-ci actions-comment-fence-lint-ci actions-cutoff-lint-ci
 
 actions-actionlint-ci:
 	actionlint

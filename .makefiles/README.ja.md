@@ -392,12 +392,13 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make actions-lint` | ワークフロー定義を actionlint で lint し、全 composite action の `run:` スクリプトを shellcheck で検査したうえで、node による 3 つの検査（PR コメントを投稿するジョブへの secret 混入、コメント本文の固定長フェンス、ジョブ打ち切り時の振る舞いが定義されているか）を実行します。 | 各段が 2 つの tool-runner に跨る唯一の lint グループ。actionlint と shellcheck ランナーは Go ツール、残りは node スクリプトのため、単一コンテナ内で 1 つの `-ci` を呼ぶのではなく `go_tool_runner` で `make actions-actionlint-ci` と `make actions-shellcheck-ci`、`node_tool_runner` で 3 つの `*-lint-ci` を呼び出します。 |
+| `make actions-lint` | ワークフロー定義を actionlint で lint し、全 composite action の `run:` スクリプトを shellcheck で検査したうえで、node による 3 つの検査（PR コメントを投稿するジョブへの secret 混入、コメント本文の固定長フェンス、ジョブ打ち切り時の振る舞いが定義されているか）を実行します。 | 各段が 2 つの tool-runner に跨る唯一の lint グループ。actionlint と shellcheck ランナーは Go ツール、残りは node スクリプトのため、単一コンテナ内で 1 つの `-ci` を呼ぶのではなく `go_tool_runner` で `make actions-actionlint-ci` と `make actions-shellcheck-ci`、`node_tool_runner` で `make actions-node-lint-ci` を呼び出します。node の 3 検査は 1 ターゲットに束ねてコンテナ起動 1 回に収めており、これは `md-lint` と同じ形です。 |
 | `make actions-comment-secret-lint` | PR コメント本文への secret 混入検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-comment-secret-lint-ci` を呼び出します。 |
 | `make actions-comment-fence-lint` | PR コメント本文の固定長フェンス検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-comment-fence-lint-ci` を呼び出します。 |
 | `make actions-cutoff-lint` | ジョブ打ち切り時の振る舞い検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-cutoff-lint-ci` を呼び出します。 |
 | `make actions-shellcheck` | `.github/actions/**` の composite action から `runs.steps[].run` を抽出し、`bash` / `sh` のスクリプトを `shellcheck` で検査します。それ以外の shell のステップは skip として報告します（`scripts/actions-shellcheck`）。 | `go_tool_runner` コンテナ内で `make actions-shellcheck-ci` を呼び出します。`actionlint` は `.github/workflows` しか走査せず、`action.yaml` を直接渡すとワークフローとして解釈するため、その死角を埋めます。 |
-| `make actions-lint-ci` | 上記 5 段を直接実行します。 | CI 用ターゲット。 |
+| `make actions-lint-ci` | actionlint、composite action の shellcheck、束ねた node 検査をこの順で直接実行します。 | CI 用ターゲット。actionlint を先に置くのは意図的で、node 側の検査はワークフロー構造を桁で読むため、入力がそもそも YAML としてパースできることに依存します。 |
+| `make actions-node-lint-ci` | node の 3 検査（secret / フェンス / 打ち切り）を直接実行します。 | CI 用ターゲット。 |
 | `make actions-actionlint-ci` | `actionlint` を直接実行します。 | CI 用ターゲット。 |
 | `make actions-shellcheck-ci` | `scripts/actions-shellcheck` を直接実行します。 | CI 用ターゲット。 |
 | `make actions-comment-secret-lint-ci` | `upsert-pr-comment` を使うジョブに `GITHUB_TOKEN` 以外の secret が渡っていれば失敗します（`scripts/pr-comment-secret-lint.mjs`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
