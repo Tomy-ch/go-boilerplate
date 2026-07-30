@@ -123,10 +123,8 @@ scripts/
 
 ## 注意点
 
-- Go ツールのユニットテストを実行するのは `make test-scripts` だけ。`scripts/` はカバレッジゲート付きの
-  テストスイートから除外されているため `make test` では到達しない。このターゲットは pre-commit /
-  pre-push と `Scripts Test` ワークフローに配線されており、実物の `shellcheck` を呼ぶ（host へは
-  `make install-tools` が入れる）
+- Go ツールのユニットテストを実行するのは `make test-scripts` だけ。`make test` は `scripts/` を
+  除外する。配線の詳細は [`.makefiles/README.md`](../.makefiles/README.md) を参照
 - ドキュメント生成スクリプトは Node.js と `js-yaml` が必要（`docker/tools/` 経由でインストール）
 - setup スクリプトは一度だけ使用 — ボイラープレートから新規プロジェクト作成時に実行
 - AI エージェントは明示的な指示がない限りこのディレクトリを変更しないこと

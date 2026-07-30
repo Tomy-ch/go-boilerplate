@@ -147,10 +147,8 @@ The deletion targets and markers for `remove-sample-api.mjs` are declared in [`l
 
 ## Notes
 
-- The Go tools' unit tests run through `make test-scripts` alone — `scripts/` is excluded from the
-  coverage-gated suite, so `make test` never reaches them. That target is wired into pre-commit,
-  pre-push, and the `Scripts Test` workflow, and it shells out to the real `shellcheck`, which
-  `make install-tools` puts on the host.
+- The Go tools' unit tests run through `make test-scripts` alone — `make test` excludes `scripts/`.
+  How it is wired is in [`.makefiles/README.md`](../.makefiles/README.md)
 - Documentation scripts require Node.js with `js-yaml` (installed via `docker/tools/`)
 - Setup scripts are one-time use — run when creating a new project from the boilerplate
 - AI agents should not modify this directory unless explicitly instructed
