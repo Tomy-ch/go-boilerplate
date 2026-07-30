@@ -4,6 +4,7 @@
 .PHONY: gen-test-repo ## テストの実行とテストレポートの生成
 .PHONY: test-cover-ci ## CI用のカバレッジ付きテスト実行
 .PHONY: cover-gate ## 総カバレッジが閾値以上か検証（CIゲート）
+.PHONY: test-scripts ## scripts/ 配下のGoツールのテスト実行（カバレッジゲート対象外）
 
 # カバレッジ対象外パッケージ（test / test-cached / gen-test-repo / test-cover-ci で共有）
 GO_TEST_EXCLUDE := /(gen|cmd|mock|apperror|scripts)(/|$$)
@@ -22,6 +23,12 @@ test:
 test-cached:
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	go test $$TGT_PKGS -cover
+
+# scripts/ は GO_TEST_EXCLUDE によってカバレッジゲートの母数から外れており、上の test 系はどれも
+# 実行しない。ツール自身がゲートである以上その壊れ方は「静かに何も検査しなくなる」方向に出るため、
+# 実行経路をこの専用ターゲットが持つ。テストは DB も env も使わないので GO_TEST_ENV は要らない。
+test-scripts:
+	@go test ./scripts/... -race -count=1
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
