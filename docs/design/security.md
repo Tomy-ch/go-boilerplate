@@ -54,7 +54,7 @@ Where each mechanism sits:
 | Release gates (`trivy-release-gate` / `osv-release-gate`) | Enforcement | Only on PRs into a deploy branch |
 | `dependency-review` | Enforcement | Evaluates only what the PR *adds* |
 | Secret scans (gitleaks / TruffleHog) | Enforcement | A committed secret is never an acceptable trade |
-| `zizmor` | Enforcement | High severity only; exceptions are file-scoped in `.github/zizmor.yml` |
+| `zizmor` | Enforcement | High severity only; exceptions are file-scoped in `.github/zizmor.yml`. Also gates pre-commit, offline audits only |
 | Reporting scanners (`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL) | Detection | Findings reach code scanning and the PR, but do not block |
 | `npm-cooldown-audit` | Detection | Non-blocking by construction — see below |
 | `harden-runner` (`egress-policy: audit`) | Detection | Records egress; does not restrict it |

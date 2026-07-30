@@ -24,6 +24,7 @@ install-tools:
 	@mise install aqua:go-delve/delve
 	@mise install lefthook
 	@mise install golangci-lint
+	@mise install aqua:zizmorcore/zizmor
 	@mise reshim
 	@echo "✅ Go tools installed successfully."
 

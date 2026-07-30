@@ -43,7 +43,8 @@ This guarantees CI parity without redundant per-commit overhead.
 The hook stages and their commands are:
 
 - `pre-commit` (parallel): `lint` (`.go`), `test-cached` (`.go`), `sql-lint` (`.sql`),
-  `md-lint` (`.md`), `actions-lint` (workflow YAML), `docker-lint` (Dockerfiles),
+  `md-lint` (`.md`), `actions-lint` (workflow YAML), `actions-zizmor` (workflow YAML +
+  action YAML + `zizmor.yml`), `docker-lint` (Dockerfiles),
   `pin-actions` (workflow YAML + action YAML + `actions-pin.toml`), `migration-check-version` (`.sql`),
   `migration-check-gap` (`.sql`).
 - `commit-msg`: `commitlint`.
@@ -85,7 +86,11 @@ test run.
 
 ## Notes
 
-- Source: `.lefthook.yaml` lines 1–55.
+- Source: `.lefthook.yaml`.
+- A hook command shares its gate definition with CI through a `make` target rather than
+  restating the tool invocation, so the two cannot drift. `actions-zizmor` runs the offline
+  audits only; the online ones need a GitHub token and stay in CI, which makes the hook a
+  fast subset rather than an exact copy.
 - The bypass-then-verify-once pattern is described in `CLAUDE.md` under "Commit / PR
   execution".
 - Migration gap and version checks enforce the rules documented in

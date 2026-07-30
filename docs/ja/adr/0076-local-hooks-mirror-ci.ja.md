@@ -41,7 +41,8 @@ CI パリティが保証される。
 フックステージとそのコマンド:
 
 - `pre-commit`（並列）: `lint`（`.go`）、`test-cached`（`.go`）、`sql-lint`（`.sql`）、
-  `md-lint`（`.md`）、`actions-lint`（ワークフロー YAML）、`docker-lint`（Dockerfile）、
+  `md-lint`（`.md`）、`actions-lint`（ワークフロー YAML）、`actions-zizmor`（ワークフロー YAML +
+  action YAML + `zizmor.yml`）、`docker-lint`（Dockerfile）、
   `pin-actions`（ワークフロー YAML + action YAML + `actions-pin.toml`）、`migration-check-version`（`.sql`）、
   `migration-check-gap`（`.sql`）。
 - `commit-msg`: `commitlint`。
@@ -81,7 +82,11 @@ CI パリティが保証される。
 
 ## 補足
 
-- ソース: `.lefthook.yaml` の 1〜55 行目。
+- ソース: `.lefthook.yaml`。
+- フックのコマンドはツールの起動方法を書き直すのではなく `make` ターゲットを通じて CI と
+  ゲート定義を共有するため、両者がずれることはない。`actions-zizmor` が走らせるのは
+  オフライン監査だけで、GitHub トークンを要するオンライン監査は CI に残る。つまりフックは
+  完全な複製ではなく高速な部分集合である。
 - バイパス後に一度検証するパターンは `CLAUDE.md` の「Commit / PR execution」に記述されている。
 - マイグレーションギャップとバージョンチェックは [`docs/rules.md`](../rules.ja.md) に文書化された
   ルールを強制する。

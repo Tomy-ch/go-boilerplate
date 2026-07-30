@@ -248,7 +248,7 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 ## `.makefiles/security` 系
 
-CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン）です。image スキャンは CI 専用（`image-scan.yaml`）です。
+CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン、zizmor による Actions 定義の監査）です。image スキャンは CI 専用（`image-scan.yaml`）です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
@@ -265,6 +265,9 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make secret-scan-ci` | `gitleaks dir . --redact` を直接実行します。 | CI 用ターゲット。生成ファイルは `.gitleaks.toml` で allowlist。 |
 | `make secret-scan-history-ci` | `gitleaks git . --redact` を直接実行します。 | CI 用ターゲット。週次実行が使用。`dir` は作業ツリーしか見ないためコミット後に消したシークレットを取りこぼすが、`git` は履歴全体を走査する。 |
 | `make npm-cooldown-audit` | lockfile のエントリのうち、同階層 `.npmrc` の `min-release-age` を満たさないものを報告します。 | ホスト上で実行。報告のみで、検出があっても 0 で終了します（cooldown の解除は意図的な判断であるため）。 |
+| `make actions-zizmor` | ワークフロー / composite action の定義を zizmor で監査し、`high` の指摘で失敗します。 | ホスト上で実行。`--offline` なので pre-commit フックはネットワークも `GH_TOKEN` も不要で、オンライン監査は CI に委ねます。例外設定は `.github/zizmor.yml`。 |
+| `make actions-zizmor-sarif-ci` | zizmor の全指摘を SARIF として標準出力へ書き出します。 | CI 用ターゲット。severity で絞らないため code scanning には全体像が残ります。`make -s` で呼ぶこと。 |
+| `make actions-zizmor-gate-ci` | zizmor の `high` の指摘で失敗します。 | CI 用ターゲット。ゲート条件は `actions-zizmor` と同じで、`GH_TOKEN` を要するオンライン監査が加わります。 |
 
 ## `.makefiles/docker` 系
 
@@ -356,7 +359,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make go-update` | `mise.toml` に記載された Go ランタイムを mise でインストールします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | mise が必須 |
-| `make install-tools` | host 開発用の Go ツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint` を導入します。 |
+| `make install-tools` | host 開発用のツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint`、`zizmor` を導入します。後ろ 2 つは、Alpine の tool-runner 向け musl ビルドが無いため pre-commit フックがホストで実行するツールです。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 | `make sync-versions` | `mise.toml` の go / node / python バージョンを `go.mod` と Dockerfile の `FROM` に反映します。 | `docs/maintenance/go-upgrade.md` の手順で参照されます。`scripts/sync-versions` を実行します。 |
 

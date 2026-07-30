@@ -6,6 +6,8 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      - '.makefiles/security/zizmor.mk'
+      - 'mise.toml'
   push:
     branches:
       - develop
@@ -16,6 +18,8 @@ on:
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/zizmor.yml'
+      - '.makefiles/security/zizmor.mk'
+      - 'mise.toml'
   schedule:
     - cron: '0 8 * * 1'
   workflow_dispatch:
@@ -73,8 +77,16 @@ jobs:
       #   - The gate/PR comment is limited to high severity, so CI fails on
       #     high-signal findings only. Exceptions live in .github/zizmor.yml.
       #
+      # Both passes go through make so the gate definition lives in one place and
+      # cannot drift from the pre-commit hook (.makefiles/security/zizmor.mk).
+      # Going through make costs the tool's own exit code — make reports its own 2
+      # for any failed recipe — so both captures below are read as "zero or not",
+      # never for a specific value. -s guards the SARIF redirect against a recipe
+      # that loses its @ prefix.
+      #
       # GH_TOKEN enables the online audits (unpinned / stale / archived action
-      # lookups), which need API access.
+      # lookups), which need API access. The hook runs --offline and therefore
+      # covers the offline audits only.
       - name: Run zizmor
         id: zizmor
         shell: bash
@@ -84,17 +96,20 @@ jobs:
           set -uo pipefail
           set +e
 
-          mise exec -- zizmor --format sarif --no-progress . > zizmor.sarif
+          make -s actions-zizmor-sarif-ci > zizmor.sarif
           sarif_code=$?
 
-          # -q keeps the per-file INFO lines out of the PR comment body.
-          mise exec -- zizmor -q --format plain --no-progress --min-severity high . 2>&1 | tee zizmor.log
+          # zizmor writes its findings to stdout, so stderr is left on the job log
+          # rather than merged in: zizmor.log becomes the PR comment body, and
+          # make's own "*** [target] Error N" line does not belong there.
+          make -s actions-zizmor-gate-ci | tee zizmor.log
           code=${PIPESTATUS[0]}
 
           set -e
 
-          # 0 = no findings, 14 = findings reported; anything else is a tool error.
-          if [ "$sarif_code" -ne 0 ] && [ "$sarif_code" -ne 14 ]; then
+          # --format sarif returns 0 even when it reports findings, so anything
+          # non-zero here means the document was not produced.
+          if [ "$sarif_code" -ne 0 ]; then
             echo "::warning::zizmor failed to produce SARIF (exit ${sarif_code})"
           fi
 
