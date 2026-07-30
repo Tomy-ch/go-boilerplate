@@ -345,10 +345,11 @@ func TestNormalizeExecResult(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("影響行数が0かつerrorなしの場合、ErrNotFoundを返す", func(t *testing.T) {
+		t.Run("影響行数が0かつerrorなしの場合、pgx.ErrNoRows由来と区別できるErrNotFoundを返す", func(t *testing.T) {
 			t.Parallel()
 			got := NormalizeExecResult(0, nil)
 			require.ErrorIs(t, got, apperror.ErrNotFound)
+			require.NotErrorIs(t, got, pgx.ErrNoRows)
 		})
 
 		t.Run("errorがある場合、NormalizeErrorに委譲する", func(t *testing.T) {
@@ -420,9 +421,11 @@ func Test_NormalizeError(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("pgx.ErrNoRowsはErrNotFoundへ写像する", func(t *testing.T) {
+		t.Run("pgx.ErrNoRowsはErrNotFoundへ写像し元エラーもチェーンに残す", func(t *testing.T) {
 			t.Parallel()
-			require.ErrorIs(t, NormalizeError(pgx.ErrNoRows), apperror.ErrNotFound)
+			got := NormalizeError(pgx.ErrNoRows)
+			require.ErrorIs(t, got, apperror.ErrNotFound)
+			require.ErrorIs(t, got, pgx.ErrNoRows)
 		})
 
 		t.Run("SQLSTATEマップに一致するPgErrorは対応するsentinelへ写像する", func(t *testing.T) {
@@ -430,19 +433,37 @@ func Test_NormalizeError(t *testing.T) {
 			require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "23505"}), apperror.ErrConflict)
 		})
 
-		t.Run("context.CanceledはErrCanceledへ写像する", func(t *testing.T) {
+		t.Run("写像後も元のPgErrorをxerrors.Asでチェーンから取り出せる", func(t *testing.T) {
 			t.Parallel()
-			require.ErrorIs(t, NormalizeError(context.Canceled), apperror.ErrCanceled)
+			got := NormalizeError(&pgconn.PgError{Code: "23505", Message: "dup"})
+
+			var pgErr *pgconn.PgError
+			require.True(t, xerrors.As(got, &pgErr))
+			assert.Equal(t, "23505", pgErr.Code)
 		})
 
-		t.Run("接続不可エラーはErrUnavailableへ写像する", func(t *testing.T) {
+		t.Run("context.CanceledはErrCanceledへ写像し元エラーもチェーンに残す", func(t *testing.T) {
 			t.Parallel()
-			require.ErrorIs(t, NormalizeError(context.DeadlineExceeded), apperror.ErrUnavailable)
+			got := NormalizeError(context.Canceled)
+			require.ErrorIs(t, got, apperror.ErrCanceled)
+			require.ErrorIs(t, got, context.Canceled)
 		})
 
-		t.Run("分類不能なエラーはErrInternalへ写像する", func(t *testing.T) {
+		t.Run("接続不可エラーはErrUnavailableへ写像し元エラーもチェーンに残す", func(t *testing.T) {
 			t.Parallel()
-			require.ErrorIs(t, NormalizeError(xerrors.New("boom")), apperror.ErrInternal)
+			got := NormalizeError(context.DeadlineExceeded)
+			require.ErrorIs(t, got, apperror.ErrUnavailable)
+			require.ErrorIs(t, got, context.DeadlineExceeded)
+		})
+
+		t.Run("分類不能なエラーはErrInternalへ写像し元エラーもチェーンに残す", func(t *testing.T) {
+			t.Parallel()
+			src := xerrors.New("boom")
+
+			got := NormalizeError(src)
+
+			require.ErrorIs(t, got, apperror.ErrInternal)
+			require.ErrorIs(t, got, src)
 		})
 	})
 }
