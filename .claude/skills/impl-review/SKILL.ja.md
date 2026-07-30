@@ -56,7 +56,26 @@
 
 *自動* は、実装者が `sonnet` でなければエージェント定義の既定（`sonnet`）に、そうでなければ別ティアに
 解決する。ユーザーが実装者と同一モデルを選んだ場合は（中核アイデアのとおり）別モデル保証が弱まる旨を
-警告し、確認してから進める。選んだモデルは Step 2・Step 3 の各 `Agent` 呼び出しへ `model` 引数で渡す。
+警告し、確認してから進める。選んだモデルは Step 2・Step 3 の各 `Agent` 呼び出しへ `model` 引数で渡し、
+Step 4.5 では `/test-review` へ `reviewer_model` payload として渡す。
+
+### テスト観点の委譲
+
+同じ `AskUserQuestion` 呼び出しの中で（3つ目の質問として）、テスト観点を `/test-review` へ委譲するかを聞く。
+委譲に監査対象があるかを決めるファイル集合の判定は Step 1（この質問と同時に確定するスコープの後）で行うため、
+質問自体は **無条件** に出す:
+
+```text
+質問: テスト観点を /test-review へ委譲しますか？（既定: 委譲する）
+選択肢:
+  - 委譲する（/test-review を Step 4.5 で実行。test-gap lens は停止）  ← 既定
+  - 委譲しない（test-gap lens のみ。変更シンボルの高シグナル・サブセット）
+```
+
+既定は *委譲する*。`test-gap` lens は自身の定義からして `/test-review` へ委ねるサブセットであり、
+委譲を既定オフにすると「委ねる」が永久に起きず、ギャップは別スキルを打つのを覚えていた人にしか見えない。
+一方で完全監査はレビューのコストをおよそ倍にするため、辞退は実際の選択肢であり、無条件実行ではなく質問として残す。
+どちらに転んでも Step 5 の `テスト観点:` 行に記録する。
 
 ### フラグ
 
@@ -68,7 +87,13 @@
 - どの layer/領域が触られたか検出（`internal/controller/**`, `usecase`, `domain`, `infrastructure`, `pkg`, `openapi/**`, `database/**`）。
 - **エンドポイント** が触られたか（controller handler か `openapi/**`）— Step 4 を回すかの判定。
 - **共有** OpenAPI コンポーネント（複数 operation から参照される `components/*`）が編集されたか — Step 4 を全 consumer に広げる判定。
-- **非生成の本番 `.go`**（`internal/**` / `pkg/**` 配下。`*_test.go` / `*.gen.go` / `*.sql.go` / `*_mock.go` を除く）が触られたか — `test-gap` lens を回すかの判定であり、そのコード起点列挙を駆動する変更シンボル一覧を与える。
+- **非生成の本番 `.go`**（`internal/**` / `pkg/**` 配下。`*_test.go` / `*.gen.go` / `*.sql.go` / `*_mock.go` を除く）が触られたか — コード起点のテスト解析に変更シンボル一覧を与える。
+- **`*_test.go`** が触られたか。前項と合わせて **テスト観点判定式** を確定する: `本番 .go が触られた OR *_test.go が触られた`。テストのみの変更は後者だけで真になり、これは本番ソースを読む `test-gap` には見えないケースであり `/test-review` が存在する理由そのもの。
+  - 判定式が真 **かつ** Step 0 で委譲を選んだ → Step 4.5 を実行し、`test-gap` lens は **起動しない**。
+  - 判定式が真 **かつ** 辞退した → `test-gap` をサブセットとして起動し、Step 4.5 は実行しない。
+  - 判定式が偽 → どちらも実行しない。監査すべきテスト観点が無い。
+
+  この3状態のどれかを記録する — Step 5 の `テスト観点:` 行にそのまま出す。
 
 ## Step 2 — Finder の fan-out（別モデル、lens ごとに1体）
 
@@ -80,11 +105,13 @@
 | `security` | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
 | `architecture` | 常時 |
 | `runtime-gap` | controller / DI / `openapi/**` / `database/**` が触られた時 |
-| `test-gap` | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られた時 |
+| `test-gap` | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られ、**かつ** Step 0 のテスト観点委譲を辞退した時 — Step 4.5 実行中は停止 |
 
 各 subagent プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`CLAUDE.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。`agentType: "adversarial-reviewer"`、`model:` は規則どおり、`label` は `find:security` のように。
 
-**`test-gap` lens 定義**（本 lens は *コード起点* — test ファイルではなく変更された本番ソースを読む）: diff で追加/変更された各本番シンボルについて、その論理分岐 / error sentinel / 境界条件 / zero 値防御を列挙し、ペアの `*_test.go` が各々を到達し*固有に* assert しているか（`require.ErrorIs` で固有 sentinel、区別される値/state — `require.Error` / `NoError` 止まりでない）を確認する。2 形を報告: diff で変更された本番シンボルに **テストが全く無い**、および変更シンボルの到達可能分岐が **未テスト or 空虚 assert**。 これは **high-signal サブセット** — impl-review は *変更された* コードで test ファイル起点の読みが見落とす到達ギャップを挙げるだけで、パッケージ全体の網羅的なシンボル列挙はしない。 変更が test 中心のとき、または全 subject に対する完全な 2 軸マトリクス（Lens 4 分岐×意味 + Lens 5 シンボル網羅）が欲しいときは `/test-review` に委ねる。 指摘は read-only の提案（自動修正しない）で、diff 内の subject 行にアンカーするため他のコード lens 同様インライン投稿される。
+**`test-gap` lens 定義**（本 lens は *コード起点* — test ファイルではなく変更された本番ソースを読む）: diff で追加/変更された各本番シンボルについて、その論理分岐 / error sentinel / 境界条件 / zero 値防御を列挙し、ペアの `*_test.go` が各々を到達し*固有に* assert しているか（`require.ErrorIs` で固有 sentinel、区別される値/state — `require.Error` / `NoError` 止まりでない）を確認する。2 形を報告: diff で変更された本番シンボルに **テストが全く無い**、および変更シンボルの到達可能分岐が **未テスト or 空虚 assert**。 これは **high-signal サブセット** — impl-review は *変更された* コードで test ファイル起点の読みが見落とす到達ギャップを挙げるだけで、パッケージ全体の網羅的なシンボル列挙はしない。 全 subject に対する完全な 2 軸マトリクス（Lens 4 分岐×意味 + Lens 5 シンボル網羅）は `/test-review` の担当であり、実際に引き渡すのが Step 4.5。 指摘は read-only の提案（自動修正しない）で、diff 内の subject 行にアンカーするため他のコード lens 同様インライン投稿される。
+
+**所管は1つ。** 本 lens と `/test-review` は重なる領域を監査するため、走るのは常にどちらか一方。Step 4.5 で委譲したときは `test-gap` を **起動しない**: `/test-review` の Lens 5 が「テストが1つも無いシンボル」を、Lens 4 が分岐×意味を所管しており、その上に本 lens を重ねると同じギャップを2つの severity 語彙で二重報告することになる。`test-gap` は委譲を辞退したときに残るもの — 変更コード上の最悪のギャップを低コストで拾うサブセットであって、冗長なセカンドオピニオンではない。
 
 専用 finder を追加で並列起動する: (1) **comment-reviewer**（`agentType: "comment-reviewer"`, `label: "find:comment"`）— diff がコメントを追加/変更した時（ほぼ常時）、指摘は Step 5.5 で自動修正。(2) **type-design-reviewer**（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）— diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で採点し、指摘は suggestion 級（自動修正しない）。
 
@@ -108,6 +135,21 @@
 
 ランタイムで確証した不具合は CONFIRMED として curl/o11y 証拠付きでレポートに統合。
 
+## Step 4.5 — テスト観点を `/test-review` へ委譲
+
+Step 1 のテスト観点判定式が真 **かつ** Step 0 でユーザーが委譲を選んだときに実行する。それ以外はスキップし、`test-gap` lens（または何も）に委ねる — どちらにせよ Step 5 がどうなったかを述べる。
+
+`test-review` スキルを Skill ツールで起動し、以下を渡す:
+
+- `scope`: 解決済みファイル一覧 — 変更された非生成本番 `.go` と変更された `*_test.go` の **両方**。ペアのテストが存在しない本番ファイルを渡すのは誤りではなく狙いそのもの。その組が Lens 5 の finding になる。
+- `base_ref`: スコープが branch-vs-base の diff のとき、Step 1 で解決したベース。
+- `reviewer_model`: Step 0 でユーザーが選んだモデル。委譲先の finder / verifier も同じ reviewer ≠ implementer 保証を継ぐ。
+- `skip_verifier`: `false`。本スキルは全 finding を verify してから報告する。verify 段を落として速度を買うと、他半分が verify 済みのレポートに未検証の finding が混じることになり、監査しないより悪い。
+
+チェインは **逐次・インライン** — オーケストレーターが `test-review` を読み込み、その手順をこのセッションで実行する。本リポジトリの他のチェインと同じ形。`/test-review` は read-only なので Step 5.5 のような作業ツリー確認は不要で、委譲先が独自の `AskUserQuestion` を出すこともない（`scope` payload が First Step の質問を飛ばす）。Step 2 の fan-out と並走させず Step 3 / Step 4 の後に置くのは、2つの fan-out を融合すると `/test-review` 側のコンテキスト読解ステップを本スキルへ引き上げることになり、既に所管のある手順を二重に持つため。
+
+返ってきたレポートの構造と severity（修正必須 / 補完推奨 / 再考 / 追加検討 + criticality）はそのまま保つ。Step 5 が1節として埋め込む — CONFIRMED / PLAUSIBLE × 重大度 に写像し直さない。「規約に違反している」と「この分岐が未検証」を1軸に潰してしまう。
+
 ## Step 5 — レポート合成（日本語）
 
 1つの日本語レポートを出す:
@@ -115,8 +157,9 @@
 ```text
 ## ローカルレビュー結果（reviewer: <model> / implementer: <model>）
 
-スコープ: <base>...HEAD（<N> files） / lens: correctness, security, architecture, runtime-gap, test-gap
+スコープ: <base>...HEAD（<N> files） / lens: <実際に走らせた lens のみを列挙>
 ランタイム検証: 実施（curl/o11y）/ 対象外（エンドポイント変更なし）
+テスト観点: <下記 3 状態のいずれか>
 
 ### CONFIRMED（要対応）
 - [重大度] タイトル — path:行
@@ -126,12 +169,25 @@
 ### PLAUSIBLE（要確認・判断保留）
 - ...
 
+### テスト観点（/test-review 委譲結果）
+- <委譲したときのみ。/test-review の Step 4 レポートをそのまま埋め込む>
+
 ### 補足
 - REFUTED: <n> 件（finder が挙げたが verifier が否定）
 - ランタイム検証でカバーした経路 / スキップした経路
 ```
 
-重大度順、CONFIRMED を PLAUSIBLE より先に。ランタイムで何を検査し何をスキップしたかは必ず明記（黙って省くと「全部見た」と誤読される）。
+`lens:` 行には実際に走った lens だけを並べる — Step 4.5 で委譲したときは（停止させたので）`test-gap` は載らず、代わりに `/test-review 委譲` が入る。
+
+**`テスト観点:` 行は必須**で、次の3値のいずれか1つを取る:
+
+- `委譲実施（/test-review Lens 1-5 / CONFIRMED <n>・PLAUSIBLE <m>）`
+- `test-gap レンズのみ（変更シンボルの高シグナル・サブセット。全シンボル網羅は未実施）`
+- `未実施（テスト関連の変更なし / ユーザーが委譲を辞退し test-gap も対象外）`
+
+存在理由はランタイム行と同じ。これが無いと、`test-gap` を含む `lens:` の羅列が「テストを監査した」と読めてしまうのに実際は変更シンボルのサブセットしか見ていないし、テスト解析を一切していない実行は痕跡すら残らない。弱いほうのケースこそ明記し、省略をカバレッジと取り違えさせない。
+
+重大度順、CONFIRMED を PLAUSIBLE より先に。ランタイムで何を検査し何をスキップしたかは必ず明記（黙って省くと「全部見た」と誤読される）。委譲したテスト指摘も同様に、独自の severity 語彙のまま専用節に置く。Step 4.5 を実行しなかったときはその節ごと省く（`テスト観点:` 行が既にその事実を伝えている）。
 
 ## Step 5.5 — コメント指摘の適用（既定。`--no-apply` でスキップ）
 
@@ -159,6 +215,10 @@
 ## Step 6 — 指摘を PR にインラインコメント投稿（既定。`--no-comment` でオプトアウト）
 
 既定では Step 5 の後、残った **CONFIRMED + PLAUSIBLE** の指摘を、ブランチの PR に **インラインレビューコメント**として投稿する — 1指摘につき1コメント、その `path:行` にアンカーし、1つの長文コメントにまとめない。**REFUTED は投稿しない。** Step 5 のローカルレポートは常に出す（本ステップは追加動作）。
+
+**委譲したテスト指摘（Step 4.5）** も1つの制約付きで投稿対象に加わる: **アンカー行が PR の diff ハンク内にあるものだけ**。severity は4種すべて（修正必須 / 補完推奨 / 再考 / 追加検討）が対象 — 修正必須に絞ると、停止させた `test-gap` lens が従来投稿していた分岐ギャップが落ち、PR に見える情報が後退する。コード lens と区別がつくよう `🔎 [test-review · <severity> · crit <n>]` を接頭し、severity の語はそのまま残す。
+
+diff 外のテスト指摘（多くは本 PR が触っていないファイルの Lens 5 シンボル）は **ローカルレポートのみ** に留める。diff 外のコード指摘のようにレビュー要約 `body` へ畳み込まない: diff 外のコード指摘は本変更が引き起こす欠陥だが、未テストの既存シンボルは本 PR が持ち込んだものでも、ここで議論する場でもない既存のカバレッジ負債である。何件を伏せたかとその理由をローカルレポートに書き、省略を見えるようにする。
 
 以下のときは本ステップを丸ごとスキップ:
 
@@ -219,11 +279,15 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 - ✅ finder は並列（1メッセージ・複数 `Agent` 呼び出し）、lens ごとに1体。
 - ✅ レポート前に全 finding を独立 verify、REFUTED は落とす。
 - ✅ 触られたエンドポイントはランタイム検証、共有スキーマ編集なら全 consumer に拡大。
+- ✅ Step 0 でテスト観点の委譲を聞き（既定: 委譲する）、委譲したら `test-gap` を停止して Step 4.5 を実行。
+- ✅ どのレポートでもテスト観点の状態を `テスト観点:` 行に明記 — 何も監査しなかった実行を含めて。
 - ✅ 復旧手段が `make db-init` しかない破壊系 curl は事前にユーザー確認。
 - ✅ 既定で CONFIRMED + PLAUSIBLE をブランチの PR にインラインコメント投稿（Step 6）。`--no-comment` か PR 無しのとき抑止。
 - ✅ PR 投稿前に一度だけ確認（外向きアクション）。各コメントは `path:行` にアンカーし、diff 外の指摘はレビュー要約にまとめる。
 - ❌ REFUTED を投稿する / `REQUEST_CHANGES`・`APPROVE` を使う — 投稿レビューは助言的 `COMMENT` のみ。
 - ❌ 修正を当てる — 本スキルは指摘まで（reviewer は構造的に read-only）。
+- ❌ 同じレビューで `test-gap` と `/test-review` の両方を回す — ギャップの所管は1つ、報告も1つ。
+- ❌ 委譲した指摘の severity を CONFIRMED / PLAUSIBLE × 重大度 に写像し直す / diff 外のテスト指摘を PR に投稿する。
 - ❌ reviewer を implementer と同一モデルで回す。
 - ❌ 思いつきの style nit を finding として出す / 網羅に見せるための水増し。
 - ❌ verify 中に生成ファイルや deny リスト対象を編集する。
@@ -232,8 +296,11 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 
 - [ ] `AskUserQuestion` でスコープ確認、ベース ref 解決。
 - [ ] reviewer モデル ≠ implementer モデルを確認。
-- [ ] lens ごとに finder を fan-out（並列）。
+- [ ] Step 0 でテスト観点の委譲を確認、Step 1 で判定式を解決、結果の状態を記録。
+- [ ] lens ごとに finder を fan-out（並列）。`test-gap` は委譲を辞退したときのみ含める。
 - [ ] 全 finding を独立 verify、REFUTED は除外（件数は保持）。
 - [ ] 触られたエンドポイントの curl + o11y 実施（共有スキーマ → 全 consumer）、破壊系は確認済み。
-- [ ] 1つの日本語レポート: CONFIRMED → PLAUSIBLE、ランタイムのカバー範囲を明記。
+- [ ] 委譲したときは Step 4.5 を実行（`scope` / `base_ref` / `reviewer_model` / `skip_verifier: false` を渡し、`test-gap` は起動しない）。
+- [ ] 1つの日本語レポート: CONFIRMED → PLAUSIBLE、ランタイムのカバー範囲を明記、`テスト観点:` 行が3状態のいずれかで存在。
 - [ ] `--no-comment` / PR 無し以外: 一度確認のうえ CONFIRMED + PLAUSIBLE をインライン PR コメント投稿（diff 外 → 要約 body）、REFUTED は除外、`event: COMMENT`。
+- [ ] 委譲したテスト指摘は diff ハンク内にアンカーできるものだけ投稿（severity 4種すべて）、diff 外はローカルに留め伏せた件数を明記。
