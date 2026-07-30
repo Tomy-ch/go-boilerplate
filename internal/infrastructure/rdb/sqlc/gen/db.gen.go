@@ -30,3 +30,5 @@ func (q *Queries) WithTx(tx pgx.Tx) *Queries {
 		db: tx,
 	}
 }
+
+// intentional drift for issue #828 verification — this branch is never merged

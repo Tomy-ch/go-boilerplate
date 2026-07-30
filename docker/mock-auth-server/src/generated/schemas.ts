@@ -190,3 +190,5 @@ export const adminRotateKeysResponse = zod.object({
   "signing_kid": zod.string().describe('現在の署名鍵 ID（published_kids に含まれる）。'),
   "published_kids": zod.array(zod.string()).describe('JWKS で公開中の鍵 ID の集合。')
 }).describe('鍵ローテーション操作後の鍵状態（現署名鍵 \/ 公開集合）。')
+
+// intentional drift for issue #828 verification
