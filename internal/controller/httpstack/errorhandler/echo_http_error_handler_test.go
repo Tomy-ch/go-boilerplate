@@ -86,8 +86,6 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 		t.Run("OpenAPIバリデーション失敗の場合、ミドルウェアが決めた400が解決される", func(t *testing.T) {
 			t.Parallel()
 
-			// 手組みの echo.HTTPError では上流ミドルウェアの包み方の変化を検出できないため、
-			// 実際のバリデーションミドルウェアが返したエラーをそのまま入力にする。
 			spec, err := validator.GetValidator()
 			require.NoError(t, err)
 			skipper := func(*echo.Context) bool { return false }

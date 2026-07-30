@@ -351,7 +351,6 @@ func Test_handleHTTPError(t *testing.T) {
 				echo.ErrMethodNotAllowed,
 			)
 
-			// ボディを書けないケースではログが唯一の痕跡になるため、書き込み分岐の外でログを出す。
 			assert.Equal(t, 1, observed.FilterMessage("errorhandler.client_error").Len())
 		})
 
@@ -589,8 +588,6 @@ func Test_normalizeHTTPError(t *testing.T) {
 		t.Run("ステータスがエラー範囲外でDetailsがnilの場合、Internal由来のDetailsが温存される", func(t *testing.T) {
 			t.Parallel()
 
-			// 再正規化時の Details 上書きは呼び出し元が明示的に持っていた場合のみで、
-			// nil のときは Internal 由来の Details（バリデーション対象フィールド等）を潰さない。
 			internalErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
 			unknownError := &response.HTTPErrorResponse{
 				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
