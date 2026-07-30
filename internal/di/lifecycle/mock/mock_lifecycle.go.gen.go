@@ -63,3 +63,5 @@ func (mr *MockRegistrarMockRecorder) RegisterStop(stop any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterStop", reflect.TypeOf((*MockRegistrar)(nil).RegisterStop), stop)
 }
+
+// intentional drift for issue #828 verification
