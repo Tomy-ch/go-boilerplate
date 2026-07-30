@@ -29,17 +29,21 @@ This directory is the canonical reference for every environment variable read by
 
 ## Changing the Timezone
 
-The timezone is supplied by **two independent mechanisms that set different layers**, so a project that moves off `Asia/Tokyo` has to change both. They are listed here because nothing else in the repository records the full set.
+The timezone is supplied by **three independent mechanisms that set different layers**, so a project that moves off `Asia/Tokyo` has to change all of them. They are listed here because nothing else in the repository records the full set.
 
 - **Session timezone** — `OS_TZ` becomes the `timezone` parameter of the DSN the application uses for every database connection (`internal/infrastructure/rdb/driver/config.go`). This is the only mechanism that decides what the application reads and writes, and it takes precedence over any database-side setting.
 - **Database-side default** — the `TZ` environment variable of the PostgreSQL container. `initdb` writes it into `postgresql.conf`, making it the cluster default that every database created afterwards inherits (`wt<N>_local` / `wt<N>_test` from the worktree slot pool, `gen_schema` from `make dump-schema`). It only affects what a client that does *not* specify a timezone sees, so its purpose is the developer experience of reading timestamps directly through `psql` / pgweb / SchemaSpy.
+- **Application container local time** — the `TZ` environment variable of the application image (`docker/server/Dockerfile`, both the `runtime` and `tooling` stages, which install `tzdata` for it). It is what Go reads to resolve `time.Local`, and therefore what `date` inside the container and the local-time rendering of logs show. `OS_TZ` cannot fill this role: Go reads the plain `TZ` name, and a process with neither `TZ` nor `/etc/localtime` falls back to UTC. Correctness does not rest on it — `time.Local` is banned by `forbidigo` in `.golangci-full.yaml`, so application code takes the timezone from the injected `*time.Location` (`config.NewTimeLocation`) instead. This mechanism exists so that a developer reading the container never sees a timezone the configuration did not ask for.
 
-Both are needed: dropping the first would leave the application at the cluster default, and dropping the second would show UTC in every direct database session. Change all of the following together:
+All three are needed: dropping the first would leave the application at the cluster default, dropping the second would show UTC in every direct database session, and dropping the third would show UTC in every shell and log line inside the container. Change all of the following together:
 
 1. `env/.env` and every `env/.env.<env>` — the `OS_TZ` entry (session timezone; `required`, so it exists in all five files).
 2. `docker-compose.yaml`, the `database` service — `TZ` and `PGTZ`. `TZ` only takes effect during `initdb`, so an existing volume keeps its old cluster default until the volume is recreated; `docs/maintenance/db-worktree-pool.md` owns that procedure and its worktree caveat. `PGTZ` applies per `psql` session and therefore takes effect immediately, even on an old volume.
 3. The PostgreSQL service block of each workflow under `.github/workflows/` that provisions a database — `TZ` and `PGTZ`. GitHub Actions cannot share a service definition between workflows, so the value is repeated in every one of them. Enumerate them by the service image rather than by the variable (`grep -rl 'image: postgres' .github/workflows/`) — grepping for `PGTZ` finds only the workflows that already set it and silently skips the one that still needs it.
-4. Test expectations that pin the value as a literal — `expectedOSTimeZone` in `internal/config/config_testing_mock.go`, plus the assertions in `internal/di/job_test.go`, `internal/di/server/hook/http_server_hook_test.go`, and `internal/infrastructure/rdb/driver/config_test.go`.
+4. `docker/server/Dockerfile` — the `ENV TZ` of the `runtime` and `tooling` stages. Both are stated because they are separate images: `runtime` is what a deployment runs, `tooling` is what `make serve` runs. A deployment can override the value at run time without a rebuild, so treat the `ENV` as the default rather than as the only place it can come from.
+5. Test expectations that pin the value as a literal — `expectedOSTimeZone` in `internal/config/config_testing_mock.go`, plus the assertions in `internal/di/job_test.go`, `internal/di/server/hook/http_server_hook_test.go`, and `internal/infrastructure/rdb/driver/config_test.go`.
+
+`TestTimezoneMechanismValuesMatch` in `internal/architest` fails when items 1 through 4 disagree, so a partially propagated change is caught by `make test` rather than by reading a timestamp in production.
 
 ## Variables by Subsystem
 
@@ -47,7 +51,7 @@ Both are needed: dropping the first would leave the application at the cluster d
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application. The deployment region varies per project, so it is `required` and stated in every env file rather than code-defaulted — the timezone stays where an operator looks for it. Rejected when empty, because an empty value would silently fall back to UTC. Sets the session timezone only; the database-side default is the container's `TZ`, so see [Changing the Timezone](#changing-the-timezone) before moving off `Asia/Tokyo`|
+|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application. The deployment region varies per project, so it is `required` and stated in every env file rather than code-defaulted — the timezone stays where an operator looks for it. Rejected when empty, because an empty value would silently fall back to UTC. Sets the session timezone only; the database-side default and the container's local time each come from a `TZ` of their own, so see [Changing the Timezone](#changing-the-timezone) before moving off `Asia/Tokyo`|
 
 ### Application
 

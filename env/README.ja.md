@@ -29,17 +29,21 @@
 
 ## タイムゾーンを変更する手順
 
-タイムゾーンは**別の層を設定する 2 つの独立した機構**から供給されるため、`Asia/Tokyo` から移るプロジェクトは両方を変更する必要がある。リポジトリの他のどこにも全体像が記録されていないため、ここに一覧を置く。
+タイムゾーンは**別の層を設定する 3 つの独立した機構**から供給されるため、`Asia/Tokyo` から移るプロジェクトはその全てを変更する必要がある。リポジトリの他のどこにも全体像が記録されていないため、ここに一覧を置く。
 
 - **セッションの timezone** — `OS_TZ` は、アプリが DB へ接続するときの DSN の `timezone` パラメータになる（`internal/infrastructure/rdb/driver/config.go`）。アプリが読み書きする時刻を決めるのはこの機構だけで、DB 側の設定より優先される。
 - **DB 側の既定値** — PostgreSQL コンテナの `TZ` 環境変数。`initdb` がこれを `postgresql.conf` へ書き込むためクラスタ既定となり、以降に作られる全 DB が継承する（worktree スロットプールの `wt<N>_local` / `wt<N>_test`、`make dump-schema` の `gen_schema`）。timezone を明示しないクライアントの表示にしか影響しないため、目的は `psql` / pgweb / SchemaSpy で時刻を直接読むときの開発体験である。
+- **アプリコンテナのローカルタイム** — アプリイメージの `TZ` 環境変数（`docker/server/Dockerfile` の `runtime` / `tooling` の両ステージ。そのために `tzdata` を導入している）。Go が `time.Local` を解決するときに読む値であり、コンテナ内の `date` やログのローカル時刻表示を決める。`OS_TZ` はこの役目を果たせない。Go が読むのは素の名前の `TZ` であり、`TZ` も `/etc/localtime` も無いプロセスは UTC へ退行するためである。正しさをこの機構に預けてはいない。`time.Local` は `.golangci-full.yaml` の `forbidigo` で禁止されており、アプリのコードは注入された `*time.Location`（`config.NewTimeLocation`）からタイムゾーンを受け取る。この機構は、コンテナを覗いた開発者が設定と無関係なタイムゾーンを見ないためにある。
 
-どちらも必要である。前者を外すとアプリがクラスタ既定に従ってしまい、後者を外すと DB へ直接繋いだセッションが全て UTC 表示になる。次を全て揃えて変更する。
+3 つとも必要である。1 つ目を外すとアプリがクラスタ既定に従ってしまい、2 つ目を外すと DB へ直接繋いだセッションが全て UTC 表示になり、3 つ目を外すとコンテナ内のシェルとログ行が全て UTC 表示になる。次を全て揃えて変更する。
 
 1. `env/.env` と全ての `env/.env.<env>` — `OS_TZ` のエントリ（セッションの timezone。`required` なので 5 ファイル全てに存在する）。
 2. `docker-compose.yaml` の `database` サービス — `TZ` と `PGTZ`。`TZ` は `initdb` 時にしか効かないため、volume を作り直すまで既存 volume は旧クラスタ既定を保持する。その手順と worktree 特有の注意は `docs/maintenance/db-worktree-pool.md` が所有する。`PGTZ` は `psql` セッション単位で効くため、古い volume でも即座に反映される。
 3. `.github/workflows/` 配下で DB を用意する各 workflow の PostgreSQL サービス定義 — `TZ` と `PGTZ`。GitHub Actions はサービス定義を workflow 間で共有できないため、値は全ファイルに重複して書かれている。列挙は変数ではなくサービスの image で行うこと（`grep -rl 'image: postgres' .github/workflows/`）— `PGTZ` で grep すると既に設定済みの workflow しか見つからず、まだ設定が要る workflow を黙って取りこぼす。
-4. 値をリテラルで固定しているテストの期待値 — `internal/config/config_testing_mock.go` の `expectedOSTimeZone`、および `internal/di/job_test.go` / `internal/di/server/hook/http_server_hook_test.go` / `internal/infrastructure/rdb/driver/config_test.go` のアサーション。
+4. `docker/server/Dockerfile` — `runtime` / `tooling` の両ステージの `ENV TZ`。両方を挙げているのは別のイメージだからである。`runtime` はデプロイ先が動かすもの、`tooling` は `make serve` が動かすものである。デプロイ先は再ビルドせず実行時に値を上書きできるため、`ENV` は唯一の供給元ではなく既定値として扱うこと。
+5. 値をリテラルで固定しているテストの期待値 — `internal/config/config_testing_mock.go` の `expectedOSTimeZone`、および `internal/di/job_test.go` / `internal/di/server/hook/http_server_hook_test.go` / `internal/infrastructure/rdb/driver/config_test.go` のアサーション。
+
+`internal/architest` の `TestTimezoneMechanismValuesMatch` は 1 から 4 の項目が食い違うと失敗するため、伝播漏れは本番の時刻を読んでではなく `make test` で捕まる。
 
 ## 変数一覧（サブシステム別）
 
@@ -47,7 +51,7 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準。配置先の地域はプロジェクトごとに変わるため、コード側の既定値ではなく `required` として全 env ファイルに明記し、タイムゾーンを運用者の見る場所に置く。空文字は UTC へ無警告で退行するため拒否する。設定するのはセッションの timezone のみで、DB 側の既定値はコンテナの `TZ` が持つため、`Asia/Tokyo` から移る前に[タイムゾーンを変更する手順](#タイムゾーンを変更する手順)を参照|
+|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準。配置先の地域はプロジェクトごとに変わるため、コード側の既定値ではなく `required` として全 env ファイルに明記し、タイムゾーンを運用者の見る場所に置く。空文字は UTC へ無警告で退行するため拒否する。設定するのはセッションの timezone のみで、DB 側の既定値とコンテナのローカルタイムはそれぞれ別の `TZ` が持つため、`Asia/Tokyo` から移る前に[タイムゾーンを変更する手順](#タイムゾーンを変更する手順)を参照|
 
 ### Application
 
