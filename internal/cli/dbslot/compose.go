@@ -26,9 +26,12 @@ type Compose interface {
 // 出力（進捗ログ）は stderr へ流します。
 type ExecCompose struct{}
 
-// UpSharedDB は `docker compose --profile database up -d --wait database` を実行します。
+// UpSharedDB は `docker compose --profile database up -d --wait --no-recreate database` を実行します。
+// --no-recreate は、稼働中のコンテナを他の checkout が使っている前提に立つものです。compose の
+// config-hash は bind mount と build context の解決後の絶対パスを含むため、同一コミットでも
+// 呼び出す worktree が違えば差分ありと判定され、既定では毎回作り直しになります。
 func (c ExecCompose) UpSharedDB(ctx context.Context, project string) error {
-	return c.run(ctx, project, "--profile", "database", "up", "-d", "--wait", "database")
+	return c.run(ctx, project, "--profile", "database", "up", "-d", "--wait", "--no-recreate", "database")
 }
 
 // DownServe は `docker compose -f docker-compose.yaml -f docker-compose.attach.yaml down` を実行します。

@@ -37,13 +37,13 @@ func TestExecCompose_UpSharedDB(t *testing.T) { //nolint:paralleltest // stubDoc
 	out := stubDocker(t, 0)
 
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
-		t.Run("固定プロジェクトで database profile を up --wait する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("固定プロジェクトで database profile を up --wait --no-recreate する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			require.NoError(t, ExecCompose{}.UpSharedDB(context.Background(), "myproj"))
 
 			b, err := os.ReadFile(out) //nolint:gosec // テスト内の固定パス
 			require.NoError(t, err)
 			assert.Contains(t, string(b), "proj=myproj")
-			assert.Contains(t, string(b), "compose --profile database up -d --wait database")
+			assert.Contains(t, string(b), "compose --profile database up -d --wait --no-recreate database")
 		})
 	})
 }
