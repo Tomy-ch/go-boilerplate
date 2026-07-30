@@ -138,6 +138,12 @@ func TestMockConfigForTest(t *testing.T) {
 
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("コネクションプールの最小接続数は 0 で、生成直後の一斉確立が起きない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Zero(t, NewDBConnectionConfig(MockConfigForTest(t)).MinConns())
+		})
 	})
 }
 
