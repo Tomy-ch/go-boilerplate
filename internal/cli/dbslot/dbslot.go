@@ -206,7 +206,7 @@ func (p *Pool) finishAcquire(ctx context.Context, slot int, verb string) error {
 	return p.printSlotFile()
 }
 
-// ensureSlotDBs は、wt<N>_local / wt<N>_test を作成し timezone・拡張を設定します。
+// ensureSlotDBs は、wt<N>_local / wt<N>_test を作成し拡張を設定します。
 func (p *Pool) ensureSlotDBs(ctx context.Context, slot int) error {
 	for _, name := range []string{dbLocal(slot), dbTest(slot)} {
 		if err := p.admin.EnsureDatabase(ctx, name); err != nil {
