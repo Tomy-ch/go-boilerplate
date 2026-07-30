@@ -19,6 +19,8 @@
 4. それ以外は、主体がリソース所有者本人（`subject == Resource.OwnerID()`）の場合のみ許可。
 5. いずれにも該当しなければ拒否し、`ErrForbidden`（`apperror.ErrPermissionDenied`、HTTP 403 を wraps）を返す。
 
+手順 1 の「ゼロ値でない」条件は多層防御です。`auth.Authn` 側がゼロ値 UserID の解決を拒否する（`WithUserID()` が `ErrUserIDZero` を返す）ため、通常この Authorizer にゼロ値が渡ることはありません。それでも残すのは、本実装が自分の判断材料の健全性を自分で検証すべきであり、手順 4 が値の一致だけを見る素の比較だからです。
+
 個別 API の action 別認可は各 usecase で行います。本実装はロール/所有権によるベースライン判定を提供します。
 
 ## DI
@@ -28,3 +30,7 @@
 ## 注意点
 
 - サンプルドメインの一部です。`make setup-remove-sample-api` で `user` サンプルと共に削除され、削除後は `provideAuthorizer` が fail-closed エラーへ戻ります。
+
+### カバレッジ例外
+
+- `Authorize` — 手順 1 のうち `subjectID.IsNil()` の分岐は単体テストしていません。`auth.Authn` は `userID` を非公開に保ち、設定経路が `WithUserID()` だけであるため、解決済みゼロ値の `Authn` はパッケージ外から構築できません。分岐は構造上到達不能で、色を付けるには作為的な seam が要ります。同条件の `err != nil` 側（UserID 未解決）はカバー済みです。

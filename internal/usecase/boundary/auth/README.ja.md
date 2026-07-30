@@ -18,7 +18,7 @@
 アイデンティティの中核は Subject（token `sub`）・Issuer（token の発行者）・UserID（内部ユーザー ID）です。
 
 - `Subject()` — 認証された subject（token `sub`）を返します
-- `WithUserID()` — 内部 UserID を解決した複製を返します（アイデンティティ解決は認証とは分離されます）
+- `WithUserID()` — 内部 UserID を解決した複製を返します（アイデンティティ解決は認証とは分離されます）。ゼロ値 UUID の場合は `ErrUserIDZero` を返します
 - `HasUserID()` — 内部 UserID が解決済みかどうかを返します
 - `UserID()` — 内部ユーザーの UUID を返します（未解決の場合は `ErrUserIDUnresolved`）
 - `Issuer()` — token の発行者を返します（例: `"mock"`、IdP の issuer）
@@ -26,6 +26,8 @@
 - `Claims()` — クレームのマップを返します（任意。認可 / UI 制御用）
 
 `New()` は、UserID が**未解決**の状態で認証結果（subject + issuer）を生成します。内部ユーザーの解決は別の関心事（`IdentityResolver`）であり、`WithUserID()` を通じて適用されます。
+
+`WithUserID()` はゼロ値 UUID を拒否するため、解決済みの UserID は非ゼロであることが保証されます。ゼロ値はどのユーザーも指さず、これを通すと「呼出元 ID を保存済みデータと突き合わせる」消費側（とりわけ所有権判定）が各自でゼロ値を弾く責務を負うことになります。
 
 ## IdentityResolver の詳細
 
@@ -41,6 +43,7 @@
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|Subject が空（`apperror.ErrUnauthenticated` をラップ）|
 |`ErrUserIDUnresolved`|内部 UserID が未解決（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrUserIDZero`|`WithUserID()` にゼロ値 UUID が渡された（`apperror.ErrUnauthenticated` をラップ）|
 |`ErrTokenMissing`|トークンが空（`apperror.ErrUnauthenticated` をラップ）|
 |`ErrIdentityNotFound`|issuer + subject に一致する内部ユーザーが存在しない（`apperror.ErrUnauthenticated` をラップ）|
 |`ErrUserUnavailable`|解決したユーザーが利用不可（例: 論理削除済み）（`apperror.ErrUnauthenticated` をラップ）|
@@ -50,6 +53,7 @@
 - 「認証済み」の状態を型で表現する
 - トークンのパースロジックは外側の層（Infrastructure）へ押し出す
 - 認証（subject/issuer の抽出）と内部ユーザーの解決（`IdentityResolver` / `WithUserID`）を分離する
+- 「解決済み UserID は非ゼロ」という不変条件を、消費側ごとではなく値を生成する境界で保証する
 
 ## 実装
 
