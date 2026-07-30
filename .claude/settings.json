@@ -113,6 +113,14 @@
       "Bash(make)",
       "Bash(make *)",
 
+      "Bash(graphify query *)",
+      "Bash(graphify affected *)",
+      "Bash(graphify god-nodes *)",
+      "Bash(graphify path *)",
+      "Bash(graphify explain *)",
+      "Bash(graphify diagnose *)",
+      "Bash(graphify update *)",
+
       "Bash(lefthook run pre-commit)",
 
       "Bash(docker ps *)",
@@ -144,6 +152,17 @@
       "Bash(rm -rf *)",
       "Bash(rm -fr *)",
       "Bash(sudo *)",
+
+      "Bash(graphify claude install*)",
+      "Bash(graphify codex install*)",
+      "Bash(graphify codebuddy install*)",
+      "Bash(graphify opencode install*)",
+      "Bash(graphify aider install*)",
+      "Bash(graphify kilo install*)",
+      "Bash(graphify gemini install*)",
+      "Bash(graphify cursor install*)",
+      "Bash(graphify hook install*)",
+
       "Bash(git push --force*)",
       "Bash(git reset --hard*)",
       "Bash(git rebase *)",
