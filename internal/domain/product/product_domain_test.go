@@ -326,6 +326,38 @@ func Test_newProduct(t *testing.T) {
 	})
 }
 
+func Test_validateQuantity(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最小値の場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateQuantity(minQuantity))
+		})
+
+		t.Run("最大値の場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateQuantity(maxQuantity))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最小値未満の場合、ErrInvalidQuantityを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateQuantity(minQuantity-1), ErrInvalidQuantity)
+		})
+
+		t.Run("最大値を超える場合、ErrInvalidQuantityを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateQuantity(maxQuantity+1), ErrInvalidQuantity)
+		})
+	})
+}
+
 func Test_validateAttributes(t *testing.T) {
 	t.Parallel()
 
@@ -511,6 +543,103 @@ func TestProduct_Update(t *testing.T) {
 			attrs.Name = strings.Repeat("あ", maxNameLength+1)
 
 			require.ErrorIs(t, p.Update(attrs), ErrInvalidName)
+		})
+	})
+}
+
+func TestProduct_AdjustStock(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("正のdeltaを渡した場合、在庫が加算されバージョンは進まない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			before := p.Quantity()
+
+			require.NoError(t, p.AdjustStock(50))
+			assert.Equal(t, before+50, p.Quantity())
+			assert.Equal(t, initialVersion, p.Version())
+		})
+
+		t.Run("負のdeltaを渡した場合、在庫が減算される", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			before := p.Quantity()
+
+			require.NoError(t, p.AdjustStock(-30))
+			assert.Equal(t, before-30, p.Quantity())
+		})
+
+		t.Run("deltaが0の場合、在庫は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			before := p.Quantity()
+
+			require.NoError(t, p.AdjustStock(0))
+			assert.Equal(t, before, p.Quantity())
+		})
+
+		t.Run("減算後がちょうど最小値になる場合、在庫が最小値になる", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+
+			require.NoError(t, p.AdjustStock(minQuantity-p.Quantity()))
+			assert.Equal(t, minQuantity, p.Quantity())
+		})
+
+		t.Run("加算後がちょうど最大値になる場合、在庫が最大値になる", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+
+			require.NoError(t, p.AdjustStock(maxQuantity-p.Quantity()))
+			assert.Equal(t, maxQuantity, p.Quantity())
+		})
+
+		t.Run("在庫以外の属性は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			snapshot := *p
+
+			require.NoError(t, p.AdjustStock(1))
+
+			snapshot.quantity = p.Quantity()
+			assert.Equal(t, snapshot, *p)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("減算後が最小値未満になる場合、ErrInvalidQuantityを返しエンティティを一切変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			snapshot := *p
+
+			err := p.AdjustStock(minQuantity - p.Quantity() - 1)
+			require.ErrorIs(t, err, ErrInvalidQuantity)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+			assert.Equal(t, snapshot, *p)
+		})
+
+		t.Run("加算後が最大値を超える場合、ErrInvalidQuantityを返しエンティティを一切変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			snapshot := *p
+
+			err := p.AdjustStock(maxQuantity - p.Quantity() + 1)
+			require.ErrorIs(t, err, ErrInvalidQuantity)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+			assert.Equal(t, snapshot, *p)
 		})
 	})
 }

@@ -13,6 +13,8 @@ const (
 	ActionProductCreate Action = "product:create"
 	// ActionProductUpdate は、商品の更新操作（admin）を表します。
 	ActionProductUpdate Action = "product:update"
+	// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。
+	ActionProductStockUpdate Action = "product:stock:update"
 	// ActionPurchaseShip は、購入の発送操作（admin）を表します。
 	ActionPurchaseShip Action = "purchase:ship"
 	// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。

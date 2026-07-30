@@ -50,6 +50,22 @@ INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.id = sqlc.arg('product_id_param');
 
+-- === source: database/dml/repository/product/select_product_by_id_for_update.sql ===
+-- name: GetProductByIDForUpdate :one
+-- ID から公開状態を問わない単一商品を、更新のために悲観ロック（FOR UPDATE）して取得します。
+-- 同一商品への並行書き込み（購入の在庫減算・在庫補充）を行ロックで直列化します。
+-- ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
+-- status_name / category_name は商品の付随表示値。
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    sqlc.embed(p)
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.id = sqlc.arg('product_id_param')
+FOR UPDATE OF p;
+
 -- === source: database/dml/repository/product/select_products.sql ===
 -- name: ListPublishedProductsDesc :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
@@ -141,6 +157,23 @@ SET
     category_id = sqlc.arg('category_id'),
     published_at = sqlc.arg('published_at'),
     image_path = sqlc.arg('image_path'),
+    lock_version = products.lock_version + 1,
+    updated_at = NOW()
+WHERE products.id = sqlc.arg('id')
+    AND products.lock_version = sqlc.arg('current_version')
+RETURNING products.lock_version;
+
+-- === source: database/dml/repository/product/update_product_stock.sql ===
+-- name: UpdateProductStock :one
+-- 在庫数を更新し、採番後のバージョンを返します。
+-- lock_version の加算は DB が行い、採番の権威を単一箇所に置きます。
+-- 在庫更新でもバージョンを進めることで、更新前のバージョンを条件とする部分更新（UpdateProduct）が
+-- 在庫の変化を上書きせずに 0 行で弾かれます。
+-- WHERE の lock_version 一致は、行ロックを取らずに呼ばれた場合に備える二重防御で、
+-- 該当行なし（0 行）は呼び出し側が衝突として扱います。
+UPDATE products
+SET
+    quantity = sqlc.arg('quantity'),
     lock_version = products.lock_version + 1,
     updated_at = NOW()
 WHERE products.id = sqlc.arg('id')

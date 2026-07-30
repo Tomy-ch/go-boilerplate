@@ -103,6 +103,21 @@ func (mr *MockUsecaseMockRecorder) UpdateProduct(ctx, authn, id, params any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProduct", reflect.TypeOf((*MockUsecase)(nil).UpdateProduct), ctx, authn, id, params)
 }
 
+// UpdateProductStock mocks base method.
+func (m *MockUsecase) UpdateProductStock(ctx context.Context, authn *auth.Authn, id uuid.UUID, params product.UpdateProductStockParams) (product.ProductView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateProductStock", ctx, authn, id, params)
+	ret0, _ := ret[0].(product.ProductView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateProductStock indicates an expected call of UpdateProductStock.
+func (mr *MockUsecaseMockRecorder) UpdateProductStock(ctx, authn, id, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProductStock", reflect.TypeOf((*MockUsecase)(nil).UpdateProductStock), ctx, authn, id, params)
+}
+
 // UploadProductImage mocks base method.
 func (m *MockUsecase) UploadProductImage(ctx context.Context, authn *auth.Authn, params product.UploadProductImageParams) (product.ProductImageView, error) {
 	m.ctrl.T.Helper()

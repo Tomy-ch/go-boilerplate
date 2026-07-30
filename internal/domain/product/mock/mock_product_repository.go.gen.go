@@ -116,6 +116,21 @@ func (mr *MockRepositoryMockRecorder) FindPublishedList(ctx, params any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPublishedList", reflect.TypeOf((*MockRepository)(nil).FindPublishedList), ctx, params)
 }
 
+// LockByID mocks base method.
+func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockByID", ctx, id)
+	ret0, _ := ret[0].(*product.Product)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockByID indicates an expected call of LockByID.
+func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
+}
+
 // Update mocks base method.
 func (m *MockRepository) Update(ctx context.Context, p *product.Product) (int, error) {
 	m.ctrl.T.Helper()
@@ -129,4 +144,19 @@ func (m *MockRepository) Update(ctx context.Context, p *product.Product) (int, e
 func (mr *MockRepositoryMockRecorder) Update(ctx, p any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRepository)(nil).Update), ctx, p)
+}
+
+// UpdateStock mocks base method.
+func (m *MockRepository) UpdateStock(ctx context.Context, p *product.Product) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateStock", ctx, p)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateStock indicates an expected call of UpdateStock.
+func (mr *MockRepositoryMockRecorder) UpdateStock(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStock", reflect.TypeOf((*MockRepository)(nil).UpdateStock), ctx, p)
 }

@@ -9,20 +9,29 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
+	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/internal/usecase/user/event"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
 
+// aggregateType は、outbox の集約種別です。
+const aggregateType = "user"
+
 // 既存ユーザーが参照する prefecture を解決できない参照整合性破れ（サーバ側データ不整合）を表します。
 var errOrphanPrefecture = xerrors.Wrap(apperror.ErrInternal, "prefecture not found for user")
+
+// 進行中の購入が残っているユーザーの退会要求を表します。
+var errInProgressPurchaseExists = xerrors.Wrap(apperror.ErrConflict, "user has in-progress purchases")
 
 // UserView は、ユーザー取得結果の出力 DTO を表します。
 type UserView struct {
@@ -87,12 +96,14 @@ type PatchParamsDTO struct {
 
 // usecase は、ユーザーに関するユースケースを提供します。
 type usecase struct {
-	tracer     observability.LayerTracer
-	txm        tx.Manager
-	clock      clock.Clock
-	authorizer authz.Authorizer
-	userRepo   user.Repository
-	pftRepo    prefecture.Repository
+	tracer       observability.LayerTracer
+	txm          tx.Manager
+	clock        clock.Clock
+	authorizer   authz.Authorizer
+	userRepo     user.Repository
+	pftRepo      prefecture.Repository
+	purchaseRepo purchase.Repository
+	emit         outbox.EmitUsecase
 }
 
 // Usecase は、ユーザーに関するユースケースを定義します。
@@ -117,7 +128,10 @@ type Usecase interface {
 	// 反映し、未指定 / null は据え置きます（値のクリアは非対応で、クリアには全更新の UpdateUser を使います）。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
-	// DeleteUser は、認可を確認したうえでユーザーを論理削除します。
+	// DeleteUser は、認可を確認したうえでユーザーを退会させます。ユーザーを論理削除し、
+	// 同一トランザクションで退会イベントを発行します。退会に伴う関連データの後始末は、
+	// このイベントを受け取る側の結果整合に委ねます。
+	// 進行中の購入が残っている場合は apperror.ErrConflict を返し、退会させません。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error
 }
@@ -130,14 +144,18 @@ func New(
 	authorizer authz.Authorizer,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
+	purchaseRepo purchase.Repository,
+	emit outbox.EmitUsecase,
 ) Usecase {
 	return &usecase{
-		tracer:     tf.Usecase(),
-		txm:        txm,
-		clock:      clock,
-		authorizer: authorizer,
-		userRepo:   userRepo,
-		pftRepo:    prefectureRepo,
+		tracer:       tf.Usecase(),
+		txm:          txm,
+		clock:        clock,
+		authorizer:   authorizer,
+		userRepo:     userRepo,
+		pftRepo:      prefectureRepo,
+		purchaseRepo: purchaseRepo,
+		emit:         emit,
 	}
 }
 
@@ -401,15 +419,40 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 	}
 
 	now := u.clock.Now()
+	// 論理削除と退会イベントの発行を単一 tx にまとめ、退会だけが成立してイベントが失われることを防ぐ。
+	// 退会を拒む条件（進行中の購入）も同じ tx で判定し、拒否時は論理削除もイベントも残さない。
 	return u.txm.Do(ctx, func(ctx context.Context) error {
 		userEntity, err := u.userRepo.FindByID(ctx, id)
 		if err != nil {
 			return err
 		}
+
+		inProgress, err := u.purchaseRepo.ExistsInProgressByUserID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if inProgress {
+			return errInProgressPurchaseExists
+		}
+
 		if err = userEntity.MarkAsDeleted(now); err != nil {
 			return err
 		}
-		return u.userRepo.Update(ctx, userEntity)
+		if err = u.userRepo.Update(ctx, userEntity); err != nil {
+			return err
+		}
+
+		payload, err := event.BuildWithdrawn(userEntity)
+		if err != nil {
+			return err
+		}
+		_, err = u.emit.Emit(ctx, outbox.EmitInput{
+			AggregateType: aggregateType,
+			AggregateID:   id.String(),
+			EventType:     event.TypeWithdrawn,
+			Payload:       payload,
+		})
+		return err
 	})
 }
 

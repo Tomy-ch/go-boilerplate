@@ -124,6 +124,8 @@ paths:
     $ref: './paths/v1/products.yaml'
   /v1/products/{productId}:
     $ref: './paths/v1/products/productId.yaml'
+  /v1/products/{productId}/stock:
+    $ref: './paths/v1/products/productId/stock.yaml'
   /v1/products/ranking:
     $ref: './paths/v1/products/ranking.yaml'
   /v1/products/images:

@@ -176,6 +176,62 @@ func (q *Queries) GetProductByID(ctx context.Context, productIDParam uuid.UUID) 
 	return &i, err
 }
 
+const getProductByIDForUpdate = `-- name: GetProductByIDForUpdate :one
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.id = $1
+FOR UPDATE OF p
+`
+
+type GetProductByIDForUpdateRow struct {
+	StatusName   string
+	CategoryName string
+	Products     Products
+}
+
+// === source: database/dml/repository/product/select_product_by_id_for_update.sql ===
+// ID から公開状態を問わない単一商品を、更新のために悲観ロック（FOR UPDATE）して取得します。
+// 同一商品への並行書き込み（購入の在庫減算・在庫補充）を行ロックで直列化します。
+// ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
+// status_name / category_name は商品の付随表示値。
+//
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
+//	WHERE p.id = $1
+//	FOR UPDATE OF p
+func (q *Queries) GetProductByIDForUpdate(ctx context.Context, productIDParam uuid.UUID) (*GetProductByIDForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getProductByIDForUpdate, productIDParam)
+	var i GetProductByIDForUpdateRow
+	err := row.Scan(
+		&i.StatusName,
+		&i.CategoryName,
+		&i.Products.ID,
+		&i.Products.Name,
+		&i.Products.Description,
+		&i.Products.Price,
+		&i.Products.Quantity,
+		&i.Products.StockWarningThreshold,
+		&i.Products.StatusID,
+		&i.Products.CategoryID,
+		&i.Products.PublishedAt,
+		&i.Products.ImagePath,
+		&i.Products.LockVersion,
+		&i.Products.CreatedAt,
+		&i.Products.UpdatedAt,
+	)
+	return &i, err
+}
+
 const getPublishedProductByID = `-- name: GetPublishedProductByID :one
 SELECT
     ps.name AS status_name,
@@ -527,6 +583,46 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg *UpdateProductParams) (
 		arg.ID,
 		arg.CurrentVersion,
 	)
+	var lock_version int32
+	err := row.Scan(&lock_version)
+	return lock_version, err
+}
+
+const updateProductStock = `-- name: UpdateProductStock :one
+UPDATE products
+SET
+    quantity = $1,
+    lock_version = products.lock_version + 1,
+    updated_at = NOW()
+WHERE products.id = $2
+    AND products.lock_version = $3
+RETURNING products.lock_version
+`
+
+type UpdateProductStockParams struct {
+	Quantity       int32
+	ID             uuid.UUID
+	CurrentVersion int32
+}
+
+// === source: database/dml/repository/product/update_product_stock.sql ===
+// 在庫数を更新し、採番後のバージョンを返します。
+// lock_version の加算は DB が行い、採番の権威を単一箇所に置きます。
+// 在庫更新でもバージョンを進めることで、更新前のバージョンを条件とする部分更新（UpdateProduct）が
+// 在庫の変化を上書きせずに 0 行で弾かれます。
+// WHERE の lock_version 一致は、行ロックを取らずに呼ばれた場合に備える二重防御で、
+// 該当行なし（0 行）は呼び出し側が衝突として扱います。
+//
+//	UPDATE products
+//	SET
+//	    quantity = $1,
+//	    lock_version = products.lock_version + 1,
+//	    updated_at = NOW()
+//	WHERE products.id = $2
+//	    AND products.lock_version = $3
+//	RETURNING products.lock_version
+func (q *Queries) UpdateProductStock(ctx context.Context, arg *UpdateProductStockParams) (int32, error) {
+	row := q.db.QueryRow(ctx, updateProductStock, arg.Quantity, arg.ID, arg.CurrentVersion)
 	var lock_version int32
 	err := row.Scan(&lock_version)
 	return lock_version, err

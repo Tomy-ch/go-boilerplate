@@ -17,6 +17,7 @@ scripts/
 ├── make_help.mjs                # Generate Make target help output
 ├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
 ├── skill-lint.mjs              # Validate .claude/** skill / agent definitions against reality
+├── pr-comment-secret-lint.mjs  # Reject a secret in a workflow job that posts a PR comment
 ├── genctxkey/                  # Context key code generator (Go)
 ├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)
 ├── pin-images/                 # Pin Dockerfile `FROM` base images to digests (Go)
@@ -46,6 +47,7 @@ scripts/
 |---|---|---|
 |`mermaid-lint.mjs`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
 |`skill-lint.mjs`|Check the skill / agent definitions under `.claude/**` semantically: frontmatter (`name` matches the directory / file name, `name` + `description` present), translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`), and reference existence (every `` `make <target>` `` resolves against `Makefile` / `.makefiles/**`, every repo-root-relative path in inline code exists). Dependency-free ESM. Fills the gap that a skill definition is an agent instruction sheet whose prose nothing else checks against reality. See [Skill Lint](#skill-lint) for scope and the ignore directive.|`make md-lint` / `make md-skill-lint`|
+|`pr-comment-secret-lint.mjs`|Split every workflow in `.github/workflows/` into jobs and fail when a job using `./.github/actions/upsert-pr-comment` references a secret other than `GITHUB_TOKEN`, workflow-wide `env:` included. Dependency-free ESM. Enforces a rule `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why the rule exists. Reach: direct `secrets` references inside a `${{ }}` expression, whether `secrets.NAME`, `secrets['NAME']`, or the whole context (`toJSON(secrets)`); a secret read in one job and handed on through `needs.<job>.outputs` is beyond static reach and passes.|`make actions-lint` / `make actions-comment-secret-lint`|
 
 #### Skill Lint
 

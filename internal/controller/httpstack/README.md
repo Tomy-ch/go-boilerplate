@@ -85,7 +85,7 @@ Do not register middleware directly within `httpstack`. This can cause dependenc
 
 ## Test Strategy
 
-Each sub-package is tested **in isolation as a single middleware**. Registration order and the assembled chain belong to `internal/di/server/extension`, and the composed stack is verified by the `internal/integration` HTTP-boundary tests — do not re-test either here.
+Each sub-package is tested **in isolation as a single unit** — as a single middleware for those that wrap a `next`, and per the shapes in *Sub-packages that are not middleware* for the rest. Registration order and the assembled chain belong to `internal/di/server/extension`, and the composed stack is verified by the `internal/integration` HTTP-boundary tests — do not re-test either here.
 
 ### Real vs mocked
 
@@ -98,6 +98,16 @@ Each sub-package is tested **in isolation as a single middleware**. Registration
 |A collaborator interface the package declares (e.g. `redmetrics.Recorder`)|generated mock under `*/mock/`|
 
 Drive the middleware directly (`Middleware(...)(next)(c)`) when the assertion is about the returned error, and through `e.ServeHTTP` when it is about the response actually written (status / header / body) — the response is only committed on the real Echo path. A middleware that occupies the oapi-codegen `StrictMiddleware` slot (`idempotency`) is driven through that signature instead of `e.Use`.
+
+### Sub-packages that are not middleware
+
+The dividing line is whether the sub-package takes a `next`, not which table it sits in: `oapi` is listed under *OpenAPI Integration* but returns an `echo.MiddlewareFunc` and joins the same `e.Use` chain, so the middleware viewpoints below apply to it in full. The sub-packages that go into a slot Echo or oapi-codegen owns — `ops`, `oapi/skipper`, `oapi/auth`, `oapi/validator`, `basicauth`, `ipextractor` — have no `next`: pass-through and the `Before` / `After` viewpoints do not apply to them, while the *Real vs mocked* table does. They fall into three shapes.
+
+- **Predicates and extractors** (`ops`, `oapi/skipper`, `basicauth`, `ipextractor`) — call the constructed function value directly and assert its verdict; `echo.New()` + `httptest` is only the material for the `*echo.Context` it takes. The viewpoint is the decision boundary from both sides, including the edges a caller can reach but the happy path does not (a trailing slash, an empty credential, an unroutable path), plus the config-selected variants under *Environment-dependent branches*.
+- **Adapter-slot functions** (`oapi/auth`) — driven through the signature the adapter demands (`openapi3filter.AuthenticationFunc`), not through Echo. The result is usually a side effect on the request context rather than a return value, so assert the written value, and on each rejection path assert the error identity rather than merely that an error occurred.
+- **Spec providers** (`oapi/validator`) — the returned `*openapi3.T` is itself the subject, so the tests are contracts over the spec (e.g. every operation outside the public allowlist declares an authenticated `security`). They have no production counterpart by design.
+
+`errorhandler` replaces `e.HTTPErrorHandler` and its viewpoints are package-specific, so it carries its own *Test Strategy* section — see [`errorhandler/README.md`](errorhandler/README.md).
 
 ### Viewpoints every middleware covers
 
