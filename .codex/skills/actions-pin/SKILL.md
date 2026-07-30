@@ -1,6 +1,6 @@
 ---
 name: actions-pin
-description: Audit and update SHA-pinned GitHub Actions in `.github/workflows/**` and `.github/actions/**` using this repository's quarantine-aware lockfile workflow. `check` and `apply` fail closed on lockfile integrity and unpinnable `uses:` notation; quarantine age uses the newer release or commit date. Use for routine Actions pin refreshes, a GitHub Actions security advisory, or a requested major upgrade. Default to same-major updates; accept `major` for major upgrades and `days=N` (default 14) for the minimum release age.
+description: Audit and update SHA-pinned GitHub Actions in `.github/workflows/**` and `.github/actions/**` using this repository's quarantine-aware lockfile workflow. `check` and `apply` fail closed on lockfile integrity and on `uses:` notation the pinner cannot rewrite (flow mapping, quoted key, block scalar, YAML alias); quarantine age uses the newer release or commit date. Use for routine Actions pin refreshes, a GitHub Actions security advisory, or a requested major upgrade. Default to same-major updates; accept `major` for major upgrades and `days=N` (default 14) for the minimum release age.
 ---
 
 # GitHub Actions Pin Update
@@ -13,7 +13,7 @@ uses: owner/repo@<40-hex-sha> # <tag>
 
 `make pin-actions-resolve` resolves eligible tags into the lockfile, and `make pin-actions-apply` updates only the SHAs. Never update an Action release newer than the exclusion window unless the user explicitly passes `days=0`.
 
-Quarantine age is the newer of the release `published_at` and the resolved commit date. This prevents an old release object from making a freshly re-pointed moving tag appear aged: on 2026-07-31, `anthropics/claude-code-action@v1` had `published_at` 2025-08-26 but a head commit dated 2026-07-25, so it is quarantined rather than adopted. The quarantine buys time against automated takeover; reviewing lockfile diffs remains the way to detect a re-point itself.
+Quarantine age is the newer of the release `published_at` and the resolved commit date, so an old release object does not make a freshly re-pointed moving tag appear aged. On 2026-07-31, `anthropics/claude-code-action@v1` had `published_at` 2025-08-26 but a head commit dated 2026-07-25, so it is quarantined rather than adopted. The quarantine buys time against automated takeover; reviewing lockfile diffs remains the way to detect a re-point itself. Reasoning: `docs/design/security.md`, Build inputs.
 
 ## Inputs
 
@@ -61,7 +61,7 @@ Do not use this skill for `mise.toml`, Go, or Go module dependency upgrades. Do 
    | `lockfile に解釈できない行があります` (with a line number) | A lockfile line is not blank, a comment, or a `"key" = "<40-hex>"` assignment. Run `make pin-actions-resolve`, or delete the reported line. |
    | `lockfile にキーの重複があります` | One `owner/repo@tag` is assigned twice, often after a merge-conflict resolution. Run `make pin-actions-resolve`, or delete the duplicate. |
    | `lockfile に参照されていないエントリがあります` | A lockfile key matches no live `uses:`, usually after a workflow deletion. Run `make pin-actions-resolve`, or delete the orphan. |
-   | `固定対象として解釈できない記法の uses: があります` | A YAML flow-mapping `uses:`, such as `- {name: Checkout, uses: actions/checkout@v4}`, cannot be rewritten. Rewrite it in block notation with `- uses: ...`; do not suppress the check. Before this gate, zero matches made success indistinguishable from nothing to pin. |
+   | `固定対象として解釈できない記法の uses: があります` | A `uses:` the pinner cannot rewrite: a flow mapping (`- {name: Checkout, uses: actions/checkout@v4}`), a quoted key (`"uses": ...`), a block scalar deferring the value to the next line (`uses: >-`), or a YAML alias (`uses: *anchor`). The message names the offending value. Rewrite the step in plain block notation with `- uses: owner/repo@sha # tag`; do not suppress the check. Text inside a block scalar is exempt, so a `run:` script printing the string `uses: owner/repo@ref` does not trip it. |
 
    Report each result. Do not automatically roll back on failure.
 
