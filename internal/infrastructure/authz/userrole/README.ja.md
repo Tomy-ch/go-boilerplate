@@ -13,7 +13,7 @@
 
 `Authorize(ctx, authn, action, resource)` は次の順で判定します:
 
-1. 内部 UserID（`authn.UserID()`）が解決済みであること。未解決なら拒否。
+1. 内部 UserID（`authn.UserID()`）が解決済みかつゼロ値でないこと。未解決またはゼロ値なら拒否。ゼロ値 UUID は解決済みの主体を指さず、手順 4 は値の一致だけを見るため、通すとゼロ値の主体がゼロ値の所有者と一致してしまう。
 2. `user.RoleRepository` で主体のロールを取得する。
 3. 管理者ロール（`RoleCodeAdmin`）を持つ場合は許可。
 4. それ以外は、主体がリソース所有者本人（`subject == Resource.OwnerID()`）の場合のみ許可。
