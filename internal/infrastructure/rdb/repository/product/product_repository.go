@@ -210,6 +210,20 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 	return int(lockVersion), nil
 }
 
+// Count は、products の COUNT 集計から登録商品の総数と、published_at が非 NULL の公開済み件数を返します。
+func (r *repository) Count(ctx context.Context) (product.Counts, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	row, err := db.CountProducts(ctx)
+	if err != nil {
+		return product.Counts{}, pgerror.NormalizeError(err)
+	}
+
+	return product.Counts{Total: row.TotalCount, Published: row.PublishedCount}, nil
+}
+
 // intPtrToInt32Ptr は、ドメインの *int を sqlc の *int32 へ変換します（nil はそのまま nil）。
 func intPtrToInt32Ptr(v *int) *int32 {
 	if v == nil {

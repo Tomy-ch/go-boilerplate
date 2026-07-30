@@ -1247,6 +1247,55 @@ func Test_rowsToProducts(t *testing.T) {
 	})
 }
 
+func Test_repository_Count(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開商品は総数と公開数の双方を増やし非公開は総数のみを増やす", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				before, err := repo.Count(ctx)
+				require.NoError(t, err)
+
+				publishedAt := time.Now()
+				insertProduct(ctx, t, drv, "e1000000-0000-4000-8000-000000000001", "集計対象の公開商品",
+					nil, 100, statusInStock, categoryElectronics, &publishedAt)
+				insertProduct(ctx, t, drv, "e1000000-0000-4000-8000-000000000002", "集計対象の非公開商品",
+					nil, 100, statusInStock, categoryElectronics, nil)
+
+				after, err := repo.Count(ctx)
+				require.NoError(t, err)
+
+				assert.Equal(t, before.Total+2, after.Total)
+				assert.Equal(t, before.Published+1, after.Published)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			got, err := repo.Count(ctx)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Zero(t, got.Total)
+		})
+	})
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
