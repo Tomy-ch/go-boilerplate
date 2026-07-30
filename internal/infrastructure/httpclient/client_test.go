@@ -651,20 +651,22 @@ func Test_client_Do_Deadline(t *testing.T) {
 			profile := httpclient.DefaultProfile()
 			profile.MaxAttempts = 20
 			// backoff は極小にして jitter の振れ幅を打ち切り判定に対して無視できるようにし、
-			// 打ち切りは fake clock の固定 step（20ms/サイクル）と overall deadline(60ms) の関係のみで決まる。
+			// 打ち切りは fake clock の固定 step（20s/サイクル）と overall deadline(60s) の関係のみで決まる。
 			profile.BaseBackoff = time.Millisecond
 			profile.MaxBackoff = time.Millisecond
-			profile.OverallTimeout = 60 * time.Millisecond
+			profile.OverallTimeout = 60 * time.Second
+			profile.PerAttemptTimeout = 10 * time.Second // 既定 3s より広く取り、実時間側を打ち切り要因から外す
 			// retry budget が deadline より先に打ち切らないよう十分なトークンを与え、
 			// 打ち切り要因を overall deadline に限定する。
 			profile.RetryBudgetRatio = 10
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
-			// Sleep で fake 時刻を 20ms/サイクル進める clock を注入し、deadline 到達での打ち切りを検証する。
-			// context の overall デッドラインは実時間 60ms だが、fake sleep は即時進むためテストは数 ms で
-			// 完了し実タイマーは発火しない。打ち切りは注入 clock 基準の canRetryWithin（overallDeadline 到達）
-			// のみが担う（実時間・jitter 非依存）。開始時刻は実時刻と混同しないよう遠未来に置く。
-			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Millisecond)
+			// Sleep で fake 時刻を 20s/サイクル進める clock を注入し、打ち切りを注入 clock 基準の
+			// canRetryWithin（overallDeadline 到達）のみに担わせる（jitter 非依存）。
+			// overall(60s) / per-attempt(10s) の実時間 ctx タイマーは、fake sleep が実待機せず往復先も
+			// httptest サーバのためテストが ms オーダーで完了し、発火しない。
+			// 開始時刻は実時刻と混同しないよう遠未来に置く。
+			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Second)
 			client := httpclient.New(
 				observability.NewNoopHTTPClientTransport(t),
 				fakeClock,
@@ -679,7 +681,7 @@ func Test_client_Do_Deadline(t *testing.T) {
 			// circuit-open / sleeper error 経路なら resp==nil になるため、非nil であることが弁別になる。
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-			// 20ms/step × 3 backoff で fakeNow がちょうど deadline(60ms)に達し、hits は決定的に 4（実時間・jitter 非依存）。
+			// 20s/step × 3 backoff で fakeNow がちょうど deadline(60s)に達し、hits は決定的に 4（jitter 非依存）。
 			assert.Equal(t, int32(4), hits.Load())
 		})
 	})

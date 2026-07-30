@@ -286,18 +286,21 @@ func Test_client_doWithRetry(t *testing.T) {
 
 			profile := DefaultProfile()
 			profile.MaxAttempts = 20
-			// backoff は極小にし、打ち切りは StepClock(20ms/step) と OverallTimeout(60ms) の関係のみで決める。
+			// backoff は極小にし、打ち切りは StepClock(20s/step) と OverallTimeout(60s) の関係のみで決める。
 			profile.BaseBackoff = time.Millisecond
 			profile.MaxBackoff = time.Millisecond
-			profile.OverallTimeout = 60 * time.Millisecond
-			profile.RetryBudgetRatio = 100        // budget が deadline より先に絞らないよう十分に確保
-			profile.Breaker.MinRequests = 1 << 30 // breaker を開かせない
+			profile.OverallTimeout = 60 * time.Second
+			profile.PerAttemptTimeout = 10 * time.Second // 既定 3s より広く取り、実時間側を打ち切り要因から外す
+			profile.RetryBudgetRatio = 100               // budget が deadline より先に絞らないよう十分に確保
+			profile.Breaker.MinRequests = 1 << 30        // breaker を開かせない
 			const ds Downstream = "acct"
 			registry := NewRegistry(map[Downstream]Profile{ds: profile})
 
-			// Sleep で fake 時刻を 20ms/サイクル進める clock を注入し、注入 clock 基準の
-			// canRetryWithin（overallDeadline 到達）で決定的に打ち切る（実時間・jitter 非依存）。
-			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Millisecond)
+			// Sleep で fake 時刻を 20s/サイクル進める clock を注入し、打ち切りを注入 clock 基準の
+			// canRetryWithin（overallDeadline 到達）のみに担わせる（jitter 非依存）。
+			// OverallTimeout / PerAttemptTimeout の実時間 ctx タイマーは、fake sleep が実待機せず
+			// 往復先も httptest サーバのためテストが ms オーダーで完了し、発火しない。
+			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Second)
 			c, ok := New(
 				observability.NewNoopHTTPClientTransport(t),
 				fakeClock,
@@ -310,7 +313,7 @@ func Test_client_doWithRetry(t *testing.T) {
 			_, err := c.Do(context.Background(), NewRequest(MethodGet(), ds, srv.URL))
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 
-			// 20ms/step × 3 backoff で fakeNow がちょうど deadline(60ms) に達し、hits=4（= retry 3 回）。
+			// 20s/step × 3 backoff で fakeNow がちょうど deadline(60s) に達し、hits=4（= retry 3 回）。
 			// 4 回目の attempt は canRetryWithin=false で打ち切られ、budget を消費しない。
 			require.Equal(t, int32(4), hits.Load())
 
