@@ -61,7 +61,11 @@ func (c *EchoTestClient) WithAppErrorHandler() *EchoTestClient {
 	cfg := config.MockConfigForTest(c.t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewTestLogFieldBuilder(c.t)
-	errorhandler.New(c.e, newTestDetailPolicy(c.t), logging.NewTestLogger(c.t), lf, obsCfg)
+	errorhandler.New(
+		c.e,
+		errorhandler.Policies{Detail: newTestDetailPolicy(c.t), Allow: newTestAllowPolicy(c.t)},
+		logging.NewTestLogger(c.t), lf, obsCfg,
+	)
 	return c
 }
 
@@ -71,6 +75,16 @@ func newTestDetailPolicy(t *testing.T) errorhandler.DetailPolicy {
 	spec, err := validator.GetValidator()
 	require.NoError(t, err)
 	policy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+	require.NoError(t, err)
+	return policy
+}
+
+// newTestAllowPolicy は、実 OpenAPI spec から Allow ヘッダー解決ポリシー(本番相当)を構築します。
+func newTestAllowPolicy(t *testing.T) errorhandler.AllowPolicy {
+	t.Helper()
+	spec, err := validator.GetValidator()
+	require.NoError(t, err)
+	policy, err := errorhandler.NewOpenAPIAllowPolicy(spec)
 	require.NoError(t, err)
 	return policy
 }

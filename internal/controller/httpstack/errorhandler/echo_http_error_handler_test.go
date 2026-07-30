@@ -1,7 +1,9 @@
 package errorhandler
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"go-boilerplate/internal/controller/error/response"
@@ -90,6 +92,101 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			t.Parallel()
 			ehe := echo.NewHTTPError(http.StatusContinue, "")
 			assert.Nil(t, normalizeEchoHTTPError(ehe))
+		})
+	})
+}
+
+func newAllowTestContext(t *testing.T, echoAllow any) *echo.Context {
+	t.Helper()
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/t", nil)
+	c := echo.New().NewContext(req, httptest.NewRecorder())
+	if echoAllow != nil {
+		c.Set(echo.ContextKeyHeaderAllow, echoAllow)
+	}
+	return c
+}
+
+func Test_setAllowHeader(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("405でEchoのルータが許可メソッドを解決済みの場合、その値がAllowヘッダーになる", func(t *testing.T) {
+			t.Parallel()
+
+			c := newAllowTestContext(t, "OPTIONS, GET")
+			setAllowHeader(c, stubAllowPolicy{allow: "OPTIONS, POST"}, http.StatusMethodNotAllowed)
+
+			assert.Equal(t, "OPTIONS, GET", c.Response().Header().Get(echo.HeaderAllow))
+		})
+
+		t.Run("Echoのルータが解決していない場合、specから解決した値がAllowヘッダーになる", func(t *testing.T) {
+			t.Parallel()
+
+			c := newAllowTestContext(t, nil)
+			setAllowHeader(c, stubAllowPolicy{allow: "OPTIONS, GET"}, http.StatusMethodNotAllowed)
+
+			assert.Equal(t, "OPTIONS, GET", c.Response().Header().Get(echo.HeaderAllow))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("405以外のステータスの場合、Allowヘッダーは付かない", func(t *testing.T) {
+			t.Parallel()
+
+			c := newAllowTestContext(t, "OPTIONS, GET")
+			setAllowHeader(c, stubAllowPolicy{allow: "OPTIONS, GET"}, http.StatusNotFound)
+
+			assert.Empty(t, c.Response().Header().Get(echo.HeaderAllow))
+		})
+
+		t.Run("どちらの情報源からも解決できない場合、Allowヘッダーは付かない", func(t *testing.T) {
+			t.Parallel()
+
+			c := newAllowTestContext(t, nil)
+			setAllowHeader(c, stubAllowPolicy{}, http.StatusMethodNotAllowed)
+
+			assert.Empty(t, c.Response().Header().Get(echo.HeaderAllow))
+		})
+	})
+}
+
+func Test_allowFromEchoRouter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ルータが解決した許可メソッドが返る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, "OPTIONS, GET", allowFromEchoRouter(newAllowTestContext(t, "OPTIONS, GET")))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ルータが許可メソッドを解決していない場合、空文字が返る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, allowFromEchoRouter(newAllowTestContext(t, nil)))
+		})
+
+		t.Run("許可メソッドが空文字の場合、空文字が返る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, allowFromEchoRouter(newAllowTestContext(t, "")))
+		})
+
+		t.Run("許可メソッドが文字列でない場合、空文字が返る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, allowFromEchoRouter(newAllowTestContext(t, 405)))
 		})
 	})
 }
