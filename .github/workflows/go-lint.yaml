@@ -93,7 +93,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- golangci-lint-result -->'
-          title: ${{ steps.golangci.outputs.title || '## ❌ Go lint: CUT OFF (job timeout)' }}
+          title: "${{ steps.golangci.outputs.title || '## ❌ Go lint: CUT OFF (job timeout)' }}"
           body-file: /tmp/golangci-lint.log
           details-summary: 'golangci-lint log'
 
