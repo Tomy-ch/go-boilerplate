@@ -10,6 +10,7 @@ on:
       - 'mise.toml'
       - '.makefiles/github/lint.mk'
       - 'scripts/pr-comment-secret-lint.mjs'
+      - 'scripts/pr-comment-fence-lint.mjs'
   workflow_dispatch:
 
 permissions:
@@ -60,10 +61,10 @@ jobs:
 
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
-            echo "title=## ✅ Actions lint: PASS (actionlint + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Actions lint: PASS (actionlint + pr-comment-secret-lint + pr-comment-fence-lint)" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
-            echo "title=## ❌ Actions lint: FAIL (actionlint + pr-comment-secret-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Actions lint: FAIL (actionlint + pr-comment-secret-lint + pr-comment-fence-lint)" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0
