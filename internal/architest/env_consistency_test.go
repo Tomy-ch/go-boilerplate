@@ -248,7 +248,7 @@ func TestEnvRequiredKeyPresencePolicy(t *testing.T) {
 			continue
 		}
 		if spec[key].hasDefault {
-			assert.Falsef(t, strings.Contains(row.notes, deployInjectedMarker),
+			assert.NotContainsf(t, row.notes, deployInjectedMarker,
 				"%s は envDefault を持ち全 env ファイルでの不在が正常なので、%q は宣言として意味を成さない",
 				key, deployInjectedMarker)
 			continue
