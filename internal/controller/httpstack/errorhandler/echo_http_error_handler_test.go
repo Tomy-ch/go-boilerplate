@@ -4,11 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"go-boilerplate/internal/controller/error/response"
+	"go-boilerplate/internal/controller/httpstack/oapi"
+	"go-boilerplate/internal/controller/httpstack/oapi/validator"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,6 +81,38 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 
 			assert.Equal(t, http.StatusMethodNotAllowed, actual.HTTPStatus)
 			assert.Equal(t, "METHOD_NOT_ALLOWED", actual.Code)
+		})
+
+		t.Run("OpenAPIバリデーション失敗の場合、ミドルウェアが決めた400が解決される", func(t *testing.T) {
+			t.Parallel()
+
+			// 手組みの echo.HTTPError では上流ミドルウェアの包み方の変化を検出できないため、
+			// 実際のバリデーションミドルウェアが返したエラーをそのまま入力にする。
+			spec, err := validator.GetValidator()
+			require.NoError(t, err)
+			skipper := func(*echo.Context) bool { return false }
+			authFunc := func(context.Context, *openapi3filter.AuthenticationInput) error { return nil }
+			mw := oapi.Middleware(spec, skipper, authFunc)
+
+			req := httptest.NewRequestWithContext(
+				context.Background(),
+				http.MethodPost,
+				"/v1/users",
+				strings.NewReader("{}"),
+			)
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			c := echo.New().NewContext(req, httptest.NewRecorder())
+
+			validationErr := mw(func(*echo.Context) error { return nil })(c)
+			require.Error(t, validationErr)
+
+			actual := normalizeEchoHTTPError(validationErr)
+			require.NotNil(t, actual)
+
+			expectedBase := response.NewHTTPErrorFromStatus(http.StatusBadRequest, nil)
+			assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
+			assert.Equal(t, expectedBase.Code, actual.Code)
+			require.Error(t, actual.Internal)
 		})
 	})
 

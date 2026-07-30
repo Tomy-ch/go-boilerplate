@@ -329,6 +329,32 @@ func Test_handleHTTPError(t *testing.T) {
 			assert.Empty(t, rec.Body.String())
 		})
 
+		t.Run("レスポンス送出済みでもエラーログは出力される", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/h", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+			c.Response().WriteHeader(http.StatusOK)
+
+			handleHTTPError(
+				c,
+				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				logger,
+				lf,
+				obsCfg,
+				echo.ErrMethodNotAllowed,
+			)
+
+			// ボディを書けないケースではログが唯一の痕跡になるため、書き込み分岐の外でログを出す。
+			assert.Equal(t, 1, observed.FilterMessage("errorhandler.client_error").Len())
+		})
+
 		t.Run("405以外はAllowPolicyが値を持っていてもAllowヘッダーを返さない", func(t *testing.T) {
 			t.Parallel()
 
@@ -558,6 +584,29 @@ func Test_normalizeHTTPError(t *testing.T) {
 			actual := normalizeHTTPError(&unknownError, expectedRequestID)
 
 			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("ステータスがエラー範囲外でDetailsがnilの場合、Internal由来のDetailsが温存される", func(t *testing.T) {
+			t.Parallel()
+
+			// 再正規化時の Details 上書きは呼び出し元が明示的に持っていた場合のみで、
+			// nil のときは Internal 由来の Details（バリデーション対象フィールド等）を潰さない。
+			internalErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
+			unknownError := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
+					Code:    "E_RAW",
+					Message: "raw message",
+				},
+				HTTPStatus: http.StatusContinue,
+				Internal:   internalErr,
+			}
+
+			actual := normalizeHTTPError(unknownError, expectedRequestID)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, actual.HTTPStatus)
+			require.NotNil(t, actual.Details)
+			assert.Equal(t, []string{"firstName"}, *actual.Details)
+			assert.Equal(t, expectedRequestID, actual.RequestId)
 		})
 
 		t.Run("response.HTTPErrorResponseを渡した場合_ステータスがエラー範囲ならそのまま返る", func(t *testing.T) {
