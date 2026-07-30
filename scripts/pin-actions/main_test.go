@@ -175,6 +175,15 @@ func TestReadLock(t *testing.T) {
 			require.ErrorContains(t, err, "2 行目")
 		})
 
+		t.Run("先頭行がいきなり不正でも行番号を 1 と報告する", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := readLock(writeLockFile(t, "invalid line\n"))
+
+			require.ErrorIs(t, err, errLockInvalidLine)
+			require.ErrorContains(t, err, "1 行目")
+		})
+
 		t.Run("キーが重複していれば後勝ちにせずエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			body := "\"actions/checkout@v7.0.0\" = \"" + shaCheckout + "\"\n" +
@@ -183,6 +192,7 @@ func TestReadLock(t *testing.T) {
 			_, err := readLock(writeLockFile(t, body))
 
 			require.ErrorIs(t, err, errLockDuplicateKey)
+			require.ErrorContains(t, err, "2 行目")
 			require.ErrorContains(t, err, "actions/checkout@v7.0.0")
 		})
 	})
@@ -384,6 +394,13 @@ func TestPickRefTime(t *testing.T) {
 			assert.Equal(t, newer, got)
 		})
 
+		t.Run("両者が同一時刻ならその時刻を返す", func(t *testing.T) {
+			t.Parallel()
+			got, err := pickRefTime(older, older)
+			require.NoError(t, err)
+			assert.Equal(t, older, got)
+		})
+
 		t.Run("Release が無ければ commit 日時を採用する", func(t *testing.T) {
 			t.Parallel()
 			got, err := pickRefTime(time.Time{}, older)
@@ -470,6 +487,21 @@ func TestTargetFiles(t *testing.T) {
 			assert.Equal(t, []string{filepath.Join(root, ".github/workflows/a.yml")}, files)
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("不在以外の走査エラーは握り潰さずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, root, ".github", "")
+
+			_, err := targetFiles(root)
+
+			require.Error(t, err)
+			assert.False(t, xerrors.Is(err, os.ErrNotExist), "不在エラーとして無視されていない")
+		})
+	})
 }
 
 func TestFileRefs(t *testing.T) {
@@ -528,6 +560,26 @@ func TestDetectLooseUses(t *testing.T) {
 			t.Parallel()
 			assert.Empty(t, detectLooseUses("      # uses: actions/checkout@v7.0.0 のように書く\n"))
 		})
+
+		t.Run("run: スクリプト中の uses: を含む文字列は検出しない", func(t *testing.T) {
+			t.Parallel()
+			data := "      - run: |\n" +
+				"          echo \"this workflow uses: actions/checkout@v7.0.0 internally\"\n"
+			assert.Empty(t, detectLooseUses(data))
+		})
+
+		t.Run("ブロックスカラーを抜けた後の行は再び走査対象に戻る", func(t *testing.T) {
+			t.Parallel()
+			data := "      - run: |\n" +
+				"          echo hi\n" +
+				"      - {uses: actions/checkout@v7.0.0}\n"
+			assert.Equal(t, []string{"actions/checkout@v7.0.0"}, detectLooseUses(data))
+		})
+
+		t.Run("uses で終わる別のキーは検出しない", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, detectLooseUses("      disuses: actions/checkout@v7.0.0\n"))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -549,6 +601,31 @@ func TestDetectLooseUses(t *testing.T) {
 			t.Parallel()
 			got := detectLooseUses("      - {name: Init, uses: github/codeql-action/init@v4}\n")
 			assert.Equal(t, []string{"github/codeql-action/init@v4"}, got)
+		})
+
+		t.Run("クオートしたキーの外部参照も検出する", func(t *testing.T) {
+			t.Parallel()
+			got := detectLooseUses("      - name: Checkout\n        \"uses\": actions/checkout@v7.0.0\n")
+			assert.Equal(t, []string{"actions/checkout@v7.0.0"}, got)
+		})
+
+		t.Run("折り畳みブロックスカラーで値を次行へ送った uses: を検出する", func(t *testing.T) {
+			t.Parallel()
+			got := detectLooseUses("      - uses: >-\n          actions/checkout@v7.0.0\n")
+			assert.Equal(t, []string{"uses: の値が同じ行にありません"}, got)
+		})
+
+		t.Run("リテラルブロックスカラーで値を次行へ送った uses: を検出する", func(t *testing.T) {
+			t.Parallel()
+			got := detectLooseUses("      - uses: |-\n          actions/checkout@v7.0.0\n")
+			assert.Equal(t, []string{"uses: の値が同じ行にありません"}, got)
+		})
+
+		t.Run("YAML alias の uses: は解決できないものとして検出する", func(t *testing.T) {
+			t.Parallel()
+			got := detectLooseUses("      - uses: *checkout\n")
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "alias")
 		})
 
 		t.Run("同一参照が複数あっても重複を除いて返す", func(t *testing.T) {
@@ -654,7 +731,7 @@ func TestPlanRewrites(t *testing.T) {
 
 			require.NoError(t, err)
 			require.ErrorIs(t, plan.validate(testLock()), errLockMissingKey)
-			onDisk, err := os.ReadFile(path)
+			onDisk, err := os.ReadFile(path) //nolint:gosec // path は t.TempDir() 由来
 			require.NoError(t, err)
 			assert.Equal(t, body, string(onDisk), "中断時に作業ツリーが書き換わっていない")
 		})
@@ -706,7 +783,7 @@ func TestPlanRewrites(t *testing.T) {
 
 			_, err := planRewrites(root, []string{filepath.Join(root, "absent.yml")}, testLock())
 
-			require.Error(t, err)
+			require.ErrorContains(t, err, "absent.yml")
 		})
 	})
 }

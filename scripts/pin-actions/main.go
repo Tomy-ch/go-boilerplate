@@ -48,8 +48,12 @@ var (
 	// 空白は `[ \t]` に限定する（`\s` だと改行を食って行が結合する）。
 	usesRe = regexp.MustCompile(`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*)([^@\s]+)@([^\s#]+)(?:[ \t]*#[ \t]*(\S+))?[ \t]*$`)
 	lockRe = regexp.MustCompile(`^"([^"]+)"\s*=\s*"([0-9a-f]{40})"`)
-	// usesRe の取りこぼしを拾う緩いパターン。行頭にアンカーせず `owner/repo@ref` の形だけを見る。
-	looseUsesRe = regexp.MustCompile(`uses:[ \t]*["']?([A-Za-z0-9_.-]+/[^\s"'#,}]+@[^\s"'#,}]+)`)
+	// usesRe の取りこぼしを拾う緩いパターン。行頭にアンカーせず、クオートされたキー（`"uses":`）も
+	// 拾い、値は行末までまとめて捉えて呼び出し元が解釈する。直前の文字を見るのは `disuses:` のような
+	// 語末一致を弾くため。
+	looseUsesRe = regexp.MustCompile(`(?:^|[^A-Za-z0-9_-])["']?uses["']?[ \t]*:(.*)$`)
+	// 値がブロックスカラー（`|` / `>`）で始まる行。以降の深い字下げの行はその中身。
+	blockScalarRe = regexp.MustCompile(`:[ \t]*[|>][+-]?[0-9]*[ \t]*(?:#.*)?$`)
 )
 
 var (
@@ -185,28 +189,65 @@ func fileRefs(data string) []ref {
 	return refs
 }
 
-// detectLooseUses は usesRe が取りこぼす記法で書かれた外部アクション参照を返す。
+// detectLooseUses は固定対象として解釈できない uses: を、その値の説明とともに返す（重複除去・昇順）。
 //
-// usesRe は行頭にアンカーしたブロック記法しか一致しないが、steps は
-// `- {name: Checkout, uses: actions/checkout@v4}` のような YAML flow mapping でも正当に書ける。
-// この記法は一致ゼロになり「固定漏れ無し」と区別が付かないため、厳密パターンで解釈できた uses: を
-// 取り除いたうえで残りを緩いパターンで拾い、外部参照が残っていれば呼び出し元が fail-close する。
-// ローカル参照と版を持たない参照は誤検知を避けるため除外する。
+// usesRe は行頭にアンカーしたブロック記法にしか一致しないが、YAML は同じ内容を flow mapping
+// (`- {name: Checkout, uses: actions/checkout@v4}`)、クオートしたキー (`"uses": ...`)、値を次行へ送る
+// ブロックスカラー (`uses: >-`) でも等価に書ける。いずれも usesRe が一致ゼロになり、その状態は
+// 「固定漏れ無し」と区別が付かない。緩いパターンで補い、解釈できない値が残れば呼び出し元が
+// fail-close する。ローカル参照と版を持たない参照は誤検知を避けるため対象外。
+//
+// ブロックスカラーの中身は YAML の構造ではなく単なるテキストなので走査から外す。外さないと
+// `run:` スクリプトが uses: を含む文字列を出力するだけで検出が誤爆する。
 func detectLooseUses(data string) []string {
 	var found []string
-	for line := range strings.SplitSeq(usesRe.ReplaceAllString(data, ""), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "#") {
-			continue
-		}
-		for _, m := range looseUsesRe.FindAllStringSubmatch(line, -1) {
-			if strings.HasPrefix(m[1], ".") {
+	blockIndent := -1
+	for line := range strings.SplitSeq(data, "\n") {
+		trimmed := strings.TrimSpace(line)
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if blockIndent >= 0 {
+			if trimmed == "" || indent > blockIndent {
 				continue
 			}
-			found = append(found, m[1])
+			blockIndent = -1
+		}
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") || usesRe.MatchString(line) {
+			continue
+		}
+		if m := looseUsesRe.FindStringSubmatch(line); m != nil {
+			if note, loose := looseUsesValue(m[1]); loose {
+				found = append(found, note)
+			}
+		}
+		if blockScalarRe.MatchString(line) {
+			blockIndent = indent
 		}
 	}
 	sort.Strings(found)
 	return uniq(found)
+}
+
+// looseUsesValue は緩いパターンで捉えた uses: の値を分類する。第2戻り値が true なら固定対象として
+// 解釈できず、呼び出し元が fail-close すべきもの。第1戻り値はその値を指す報告用の文言。
+func looseUsesValue(rest string) (string, bool) {
+	v := rest
+	if i := strings.IndexAny(v, ",}#"); i >= 0 {
+		v = v[:i]
+	}
+	v = strings.Trim(strings.TrimSpace(v), `"'`)
+	if f := strings.Fields(v); len(f) > 0 {
+		v = f[0]
+	}
+	switch {
+	case v == "" || strings.HasPrefix(v, "|") || strings.HasPrefix(v, ">"):
+		return "uses: の値が同じ行にありません", true
+	case strings.HasPrefix(v, "*") || strings.HasPrefix(v, "&"):
+		return v + "（YAML の alias / anchor は解決できません）", true
+	case strings.HasPrefix(v, "."), !strings.Contains(v, "@"):
+		return "", false
+	default:
+		return v, true
+	}
 }
 
 func resolve(root string, files []string, minAgeDays int) {
@@ -497,7 +538,7 @@ func applyOrCheck(root string, files []string, dryRun bool) {
 		return
 	}
 	for _, f := range paths {
-		if err := os.WriteFile(f, []byte(plan.changes[f]), filePerm); err != nil { //nolint:gosec // workflow ファイル権限
+		if err := os.WriteFile(f, []byte(plan.changes[f]), filePerm); err != nil {
 			log.Fatalf("❌ write %s: %v", rel(root, f), err)
 		}
 		log.Printf("  updated %s", rel(root, f))
