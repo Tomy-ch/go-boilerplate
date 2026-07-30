@@ -659,6 +659,7 @@ func Test_client_Do_Deadline(t *testing.T) {
 			// retry budget が deadline より先に打ち切らないよう十分なトークンを与え、
 			// 打ち切り要因を overall deadline に限定する。
 			profile.RetryBudgetRatio = 10
+			profile.Breaker.MinRequests = 1 << 30 // breaker は開かせない（DefaultProfile の閾値に依存させない）
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
 			// Sleep で fake 時刻を 20s/サイクル進める clock を注入し、打ち切りを注入 clock 基準の
@@ -677,8 +678,9 @@ func Test_client_Do_Deadline(t *testing.T) {
 			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			// 打ち切りが canRetryWithin（deadline 到達）由来であることを last attempt の resp で区別する。
-			// circuit-open / sleeper error 経路なら resp==nil になるため、非nil であることが弁別になる。
+			// 非nil が除外できるのは sleeper error 経路（resp=nil で return）だけで、breaker open は
+			// 直前の resp を返すため弁別にならない（breaker 非関与は上の MinRequests が保証する）。
+			// 打ち切りが canRetryWithin（deadline 到達）由来であることの弁別は下の hits 厳密一致が担う。
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 			// 20s/step × 3 backoff で fakeNow がちょうど deadline(60s)に達し、hits は決定的に 4（jitter 非依存）。
