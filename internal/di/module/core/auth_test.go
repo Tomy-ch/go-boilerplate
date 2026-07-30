@@ -8,10 +8,15 @@ import (
 	"go-boilerplate/internal/infrastructure/auth/local"
 	"go-boilerplate/internal/infrastructure/httpclient"
 	mock_httpclient "go-boilerplate/internal/infrastructure/httpclient/mock"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	mock_observability "go-boilerplate/internal/observability/mock"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
@@ -33,6 +38,77 @@ func newAuthParams(t *testing.T, env string, logger logging.Logger) authenticato
 	}
 }
 
+// authnDeps は、AuthnModule の解決に必要な設定・時刻・ログ・HTTPClient の依存を返します。
+func authnDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		fx.Provide(func() testing.TB { return t }),
+		fx.Provide(func() *testing.T { return t }),
+		fx.Provide(config.MockConfigForTest),
+		fx.Provide(config.NewApplicationConfig),
+		fx.Provide(config.NewAuthConfig),
+		fx.Provide(system.NewClock),
+		fx.Provide(logging.NewTestLogger),
+		// HTTPClient は infra 層が常設提供する必須依存。test 環境ではスタブ認証で未使用だが、
+		// authenticatorParams の解決に必要なためモックを供給する。
+		fx.Provide(func() httpclient.Client {
+			return mock_httpclient.NewMockClient(gomock.NewController(t))
+		}),
+	)
+}
+
+// resolverDeps は、useridentity.New が要求する RDB とトレーサの依存を返します。
+// グラフ検証はコンストラクタを実行しないため、モックに期待呼び出しを設定する必要はありません。
+func resolverDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		fx.Provide(func() driver.DatabaseDriver {
+			return mock_driver.NewMockDatabaseDriver(gomock.NewController(t))
+		}),
+		fx.Provide(func() observability.TracerFactory {
+			return mock_observability.NewMockTracerFactory(gomock.NewController(t))
+		}),
+	)
+}
+
+func TestAuthnModule_GraphIsValid(t *testing.T) {
+	t.Parallel()
+
+	// AuthnModule が登録する 3 つの出力型をすべて要求する。fx は要求された型の依存しか解決しないため、
+	// Authenticator だけを Populate すると IdentityResolver 側の配線が壊れても緑のままになる。
+	populateAll := func() fx.Option {
+		var (
+			authenticator authbd.Authenticator
+			resolver      authbd.IdentityResolver
+			authFunc      openapi3filter.AuthenticationFunc
+		)
+
+		return fx.Populate(&authenticator, &resolver, &authFunc)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュールを組み込めば Authenticator と IdentityResolver と AuthenticationFunc が解決できる", func(t *testing.T) {
+			t.Parallel()
+
+			validateGraph(t, authnDeps(t), resolverDeps(t), AuthnModule(), populateAll())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュール未配線では Authenticator が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			requireGraphIncomplete(t, authnDeps(t), resolverDeps(t), populateAll())
+		})
+	})
+}
+
 func TestAuthnModule(t *testing.T) {
 	t.Parallel()
 
@@ -44,18 +120,7 @@ func TestAuthnModule(t *testing.T) {
 
 			var a authbd.Authenticator
 			app := fx.New(
-				fx.Provide(func() testing.TB { return t }),
-				fx.Provide(func() *testing.T { return t }),
-				fx.Provide(config.MockConfigForTest),
-				fx.Provide(config.NewApplicationConfig),
-				fx.Provide(config.NewAuthConfig),
-				fx.Provide(system.NewClock),
-				fx.Provide(logging.NewTestLogger),
-				// HTTPClient は infra 層が常設提供する必須依存。test 環境ではスタブ認証で未使用だが、
-				// authenticatorParams の解決に必要なためモックを供給する。
-				fx.Provide(func() httpclient.Client {
-					return mock_httpclient.NewMockClient(gomock.NewController(t))
-				}),
+				authnDeps(t),
 				AuthnModule(),
 				fx.Populate(&a),
 			)
