@@ -77,7 +77,9 @@ type routeIndex struct {
 //
 // ルートの列挙は実 DI グラフではなくソースの静的走査で行う（depguard が go/ast を禁じるため、
 // 既存 architest と同じく gofmt 済みソースのテキスト走査を採る）。ソースを見る以上、
-// di へ BindHandler を登録し忘れて実行時にルートが生えない配線漏れは、この検証の範囲外になる。
+// di へ BindHandler を登録し忘れて実行時にルートが生えない配線漏れは本テストでは見えない。
+// その配線漏れは TestBindHandlerDIParity が「BindHandler の宣言 = fx.Invoke の列挙」および
+// 「RegisterHandlers を持つ生成物あり ⇒ BindHandler の実装あり」として補完する。
 //
 // spec 側も手書き正本を読むため、サンプル API を削除すると両者は同時に縮み、この契約は保たれる。
 func TestRouteSpecParity(t *testing.T) {

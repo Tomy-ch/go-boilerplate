@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
@@ -125,6 +126,62 @@ func TestRunJob(t *testing.T) {
 			assert.False(t, ok)
 
 			_ = stop(context.Background())
+		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("start: fx グラフの構築に失敗すると panic せず構築エラーを閉じ済みチャンネルで返すことを期待する", func(t *testing.T) {
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "not-a-duration")
+
+			start, stop := RunJob(30 * time.Second)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			// nil 参照の退行が起きても panic をこのテスト内で捕捉し、同一パッケージの後続テストを巻き込まない。
+			var done <-chan error
+			require.NotPanics(t, func() {
+				done = start(context.Background(), "no-job", []string{})
+			})
+
+			require.ErrorIs(t, <-done, config.ErrFailedToParseConfig)
+
+			_, ok := <-done
+			assert.False(t, ok)
+		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("stop: fx グラフの構築に失敗すると panic せず構築エラーを返すことを期待する", func(t *testing.T) {
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "not-a-duration")
+
+			_, stop := RunJob(30 * time.Second)
+			require.NotNil(t, stop)
+
+			// nil 参照の退行が起きても panic をこのテスト内で捕捉し、同一パッケージの後続テストを巻き込まない。
+			var err error
+			require.NotPanics(t, func() {
+				err = stop(context.Background())
+			})
+
+			require.ErrorIs(t, err, config.ErrFailedToParseConfig)
+		})
+	})
+}
+
+func Test_failClosedChan(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("渡したエラーを 1 件送信した後クローズ済みのチャンネルを返す", func(t *testing.T) {
+			t.Parallel()
+
+			wantErr := xerrors.New("build failed")
+
+			ch := failClosedChan(wantErr)
+			require.ErrorIs(t, <-ch, wantErr)
+
+			_, ok := <-ch
+			assert.False(t, ok)
 		})
 	})
 }

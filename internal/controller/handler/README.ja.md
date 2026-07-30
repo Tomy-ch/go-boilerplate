@@ -453,7 +453,7 @@ type server struct {
 
 ### AI / 開発者向けルール
 
-- 新しい Handler を追加する場合は `internal/di/module/controller.go` の `fx.Invoke(...)` に追加すること
+- 新しい Handler を追加する場合は `internal/di/module/controller.go` の `fx.Invoke(...)` に追加すること — 生成されたルート登録は配線の有無に関わらず存在するため、追加を忘れると実行時に 404 になる。この漏れは `internal/architest` の `TestBindHandlerDIParity` が検出する
 - Handler 内で new して依存を生成しないこと
 - 必ず constructor（BindHandler）経由で依存を受け取ること
 - Usecase は interface を受け取り、具象型に依存しないこと

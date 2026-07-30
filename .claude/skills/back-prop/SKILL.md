@@ -1,7 +1,7 @@
 ---
 name: back-prop
 description: >-
-  Integrator skill for drift detection across all layers. Confirms scope (changed files vs full repo) + detection categories (A/B/C, multi-select) once via `AskUserQuestion`, detects which layers are touched, resolves the per-layer file list, then fans out the relevant read-only `drift-detector-*` subagents (`drift-detector-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + categories so each detector skips its own scope question. Detectors are STRICTLY read-only and only surface findings (A: README→Code, B: Code→README undocumented pattern, C: Skill↔README duplication) with reasoning + candidate options. The integrator then runs the per-item user-approval loop itself (single-threaded) and performs the README / SKILL writes after explicit per-item confirmation. Does NOT modify implementation code — code fixes are surfaced and left to the user. To check a single layer, run this integrator and pick that layer in the scope question. Recommended trigger: after multi-layer refactor or before major PR review, to confirm doc + skill remain in sync with code reality (priority README > Code > SKILL).
+  Integrator skill for drift detection across all layers. Confirms scope (changed files vs full repo) + detection categories (A/B/C/D, multi-select) once via `AskUserQuestion`, detects which layers are touched, resolves the per-layer file list, then fans out the relevant read-only `drift-detector-*` subagents (`drift-detector-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`, plus the corpus-driven `drift-detector-ddd`) IN PARALLEL via the Agent tool — passing scope + resolved files + categories so each detector skips its own scope question. Detectors are STRICTLY read-only and only surface findings (A: README→Code, B: Code→README undocumented pattern, C: Skill↔README duplication, D: DDD pattern ledger ↔ ADR/README corpus) with reasoning + candidate options. The integrator then runs the per-item user-approval loop itself (single-threaded) and performs the README / SKILL / ledger writes after explicit per-item confirmation. Does NOT modify implementation code — code fixes are surfaced and left to the user. To check a single layer, run this integrator and pick that layer in the scope question. Recommended trigger: after multi-layer refactor or before major PR review, to confirm doc + skill remain in sync with code reality (priority README > Code > SKILL).
 ---
 
 # Back-Prop
@@ -36,6 +36,16 @@ Detection is delegated to five **read-only worker subagents** under `.claude/age
 | `drift-detector-infra` | `internal/infrastructure/**` | infra / rdb / pgerror README（principles-focused、sibling code が de facto reference） |
 | `drift-detector-pkg` | `pkg/**` | `pkg/README.md` + 各 `pkg/<name>/README.md` |
 
+One further detector is keyed to the corpus rather than to a layer, and runs only when category (D) is selected:
+
+| Detector subagent | 対象 | Canonical doc(s) |
+| --- | --- | --- |
+| `drift-detector-ddd` | `.agents/ddd-audit/pattern-ledger.yaml` ↔ ADR / README コーパス | 台帳自身の `corpus` グロブ |
+
+これは README↔コードでなく**台帳↔正本**のドリフトを見る。台帳は「どの Evans パターンをどこで解釈したか」
+の帳簿なので、正本が動いた瞬間に静かに嘘になる — しかも誰も読まないファイルなので、放置しても誰も気づかない。
+Evans 原義に忠実かどうかは扱わない（`ddd-audit` / `ddd-origin-auditor` の担当）。
+
 These detectors are the per-layer drift-detection workers. They are **strictly read-only**: they surface (A)(B)(C) findings with reasoning + candidate options, but they **never call `AskUserQuestion` and never write**. The approval + write loop runs in **this integrator**, **single-threaded after aggregation**, so the five read-only detectors can fan out in parallel with zero write contention. Priority remains **README > Code > SKILL**.
 
 ## First Step: Confirm Scope + Detection Categories
@@ -45,10 +55,12 @@ These detectors are the per-layer drift-detection workers. They are **strictly r
 1. 質問: 「back-prop のスコープを選んでください」
    - 選択肢: 「変更ファイルのみ（ベースブランチとの diff、touched layer のみ fan-out）」 / 「リポジトリ全体（5 layer 全部 fan-out）」 / 「特定 layer のみ（layer を続けて指定）」 / 「キャンセル」
 
-2. 質問: 「検出する drift 種別を選んでください（multi-select、既定 3 種類すべて）」
-   - 選択肢: 「(A) README → Code drift」 / 「(B) Code → README undocumented pattern」 / 「(C) Skill ↔ README duplication」
+2. 質問: 「検出する drift 種別を選んでください（multi-select、既定 4 種類すべて）」
+   - 選択肢: 「(A) README → Code drift」 / 「(B) Code → README undocumented pattern」 / 「(C) Skill ↔ README duplication」 / 「(D) DDD 台帳 ↔ ADR/README コーパス」
 
-Detection categories are propagated to every detector.
+Detection categories are propagated to every detector. (D) is the only one that does not depend on
+Go files, so it is worth selecting even when the diff touches no code at all — an ADR-only change is
+exactly the case that rots the ledger.
 
 ## Step 1. Resolve Layers + File Lists in Scope
 
@@ -69,7 +81,11 @@ Map to layers by path prefix, keeping the per-layer file list (you pass it to ea
 | `internal/infrastructure/` | `drift-detector-infra` |
 | `pkg/` | `drift-detector-pkg` |
 
-For "full repo": fan out all 5. For "specific layer": ask user which, fan out only those. No Go changes in changed-files mode → exit cleanly.
+For "full repo": fan out all 5. For "specific layer": ask user which, fan out only those.
+
+When (D) is selected, additionally resolve the **DDD corpus** — not `*.go`-filtered, since the corpus is prose. Read the `corpus` globs from `.agents/ddd-audit/pattern-ledger.yaml` (never hardcode them here) and intersect with the diff for `changed` scope. Add `drift-detector-ddd` to the fan-out whenever that intersection is non-empty, or always in `full` scope.
+
+No Go changes **and** no corpus changes in changed-files mode → exit cleanly. Go-only changes with (D) selected still skip the DDD detector; a diff that touches no prose cannot rot the ledger.
 
 ## Step 2. Fan Out Detector Subagents IN PARALLEL
 
@@ -79,6 +95,10 @@ For each layer in scope, spawn its detector with the **Agent tool**, all in **a 
 - `files` — the pre-resolved newline list of in-scope `.go` files for that layer (from Step 1)
 - `baseRef` — the base branch (fallback)
 - `categories` — the selected subset of `A` / `B` / `C`
+
+`drift-detector-ddd` takes the corpus file list instead of a Go file list, and no `categories` (it
+only ever detects (D)). Spawn it in the **same message** as the layer detectors so everything runs
+concurrently.
 
 Each detector's final message **is** its findings (Japanese, each with reasoning + candidate options). Collect them with their layer label.
 
@@ -97,6 +117,7 @@ back-prop drift 検出結果（scope: <X>, 種別: A/B/C）
 [controller] ...
 [infra]      ...
 [pkg]        ...
+[ddd]        D1 <n> / D2 <m> / D3 <k>
 
 総 finding: <sum>。これから 1 件ずつ承認 / 棄却を確認します。
 ```
@@ -119,7 +140,9 @@ Detector subagents are read-only. For each finding, **the integrator** now drive
 3. If the user chooses a **code fix**: surface it as the user's task (this skill never writes implementation code).
 4. Loop over all findings; the user may abort partway.
 
-Write scope is restricted to: layer READMEs (`internal/<layer>/README.md` and sub-READMEs) and skill `SKILL.md` files. Never implementation code, never generated files, never `AGENTS.md`.
+Write scope is restricted to: layer READMEs (`internal/<layer>/README.md` and sub-READMEs), skill `SKILL.md` files, and — for (D) findings only — `.agents/ddd-audit/pattern-ledger.yaml`. Never implementation code, never generated files, never `AGENTS.md`.
+
+A (D) finding may tempt you to fix the corpus instead of the ledger — rewriting the ADR section the ledger points at, so the pointer becomes true again. Do not. The ledger is bookkeeping and yours to correct; an ADR is a decision record in the maintainer's voice, and a detector editing one would convert its own finding into the record of a decision nobody made. Surface that as the user's task.
 
 After writes, run `make md-lint` (or `make md-fix` then `make md-lint`) to verify the edited Markdown.
 
@@ -145,8 +168,8 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 ## AI Modification Scope
 
 - 読み込み: 各 layer の README + 実装 + 関連 skill 本体（detector subagent が実施）
-- 書き込み: **integrator のみ**、user の per-item 承認 + 理由明示 + draft 提示の後に、layer README / 関連 skill `SKILL.md` へ。detector subagent は一切書き込まない。
-- 触らない: 実装コード、生成物、`AGENTS.md`
+- 書き込み: **integrator のみ**、user の per-item 承認 + 理由明示 + draft 提示の後に、layer README / 関連 skill `SKILL.md` / (D) 時のみ `.agents/ddd-audit/pattern-ledger.yaml` へ。detector subagent は一切書き込まない。
+- 触らない: 実装コード、生成物、`AGENTS.md`、ADR 本文
 
 ## Constraints
 
@@ -157,6 +180,8 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 - ❌ 理由を述べずに draft を実行
 - ❌ 実装コードへの書き込み（surface のみ、修正は user）
 - ❌ recurring threshold 3 未満の (B) pattern を surface（detector 側で抑止、integrator も respect）
+- ❌ (D) の解消として ADR / README 本文を書き換える（台帳側を直す。正本の変更は user 作業）
+- ❌ (D) で Evans 原義への忠実性を判定する（`ddd-audit` の担当）
 - ✅ Japanese aggregated report
 - ✅ Fan out only touched layers (changed-files mode)
 - ✅ per-layer detector / skill が独立 standalone 動作可能であることを維持
@@ -169,6 +194,7 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 - [ ] Scope + 種別を `AskUserQuestion` で確認
 - [ ] Layer + per-layer ファイルリスト解決（changed files / full repo / specific layer）
 - [ ] touched layer の `drift-detector-*` を **1メッセージ内で並列起動**（scope / files / baseRef / categories を渡す）
+- [ ] (D) 選択かつコーパス変更ありなら `drift-detector-ddd` を同じメッセージで並列起動
 - [ ] 各 detector が README + 実装 + skill を読み (A)(B)(C) を read-only 検出
 - [ ] 集約サマリ出力（決定前のチェックポイント）
 - [ ] integrator が per-item で reasoning + user 承認 + draft + 最終確認 + 書き込み（README / skill のみ）

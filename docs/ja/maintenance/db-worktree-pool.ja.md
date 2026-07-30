@@ -140,6 +140,16 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
 - **スキーマ生成は同時実行できない**: `gen_schema` は共有インスタンス上の単一データベース名のため、複数の
   checkout が同時に `make gen-query`（`dump-schema`）を走らせると同じ DB を作り直して互いの出力を壊す。
   スキーマ生成は 1 checkout ずつ行う。
+- **テストの並列実行が奪い合うのは容量ではなく接続の確立**: テストが同時に走ると、変更と無関係な
+  パッケージが `failed to ping DB` で落ちる一方、`too many clients` は出ない。インスタンスの接続数には
+  余裕があり、飽和するのは**同時に確立しようとしている本数**で、待たされている間に ping の予算が尽きる。
+  worktree が 2 つ要るわけでもない — lefthook の `pre-commit` / `pre-push` は `parallel: true` なので、
+  単一 checkout でも `make lint` と `make test` が重なる。テスト経路にはすでに対策が入っている — `ci` が
+  何をどう設定しているかは `env/README.md` の `DBCONN_MIN_CONNS` / `DB_PING_TIMEOUT` を参照。env ファイルを
+  読まない経路は `internal/config` のテスト用設定が同じ値を持つ。
+  再発時の切り分けは、`pgrep -fl "go test"` → `lsof -a -p <pid> -d cwd` でどの checkout がテストを
+  走らせているかを特定し、`pg_stat_activity` をサンプリングしてピークが定常ではなく一過性のスパイクかを見て、
+  `go test -p 1` で green になるなら原因は負荷であって変更ではない、という順に見る。
 - **infra 層の再作成**: `gobp-shared` を動かす checkout が変わったとき、その checkout の compose 定義が
   前回と異なると（ブランチ違いで image の digest pin が変わった等）compose がコンテナを作り直す。
   名前付きボリュームは残るためデータは失われないが、稼働中 app の接続は切れる。

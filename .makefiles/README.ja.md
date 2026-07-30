@@ -407,7 +407,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 
 | コマンド | 説明 | 備考 |
 | --- | --- | --- |
-| `make commitlint COMMIT_MSG_FILE=<file>` | コミットメッセージを commitlint で検証します。 | `node_tool_runner` コンテナ内で `make commitlint-ci` を呼び出します。`commit-msg` フックに配線。`COMMIT_MSG_FILE` 既定は `.git/COMMIT_EDITMSG`。 |
+| `make commitlint COMMIT_MSG_FILE=<file>` | コミットメッセージを commitlint で検証します。 | `node_tool_runner` コンテナ内で `make commitlint-ci` を呼び出します。`commit-msg` フックに配線。`git worktree` では git がフックへ渡すパスがコンテナのマウント範囲 `.:/app` の外にあるため、メッセージファイルを `tmp/` へ写して相対パスで渡します。`COMMIT_MSG_FILE` 既定は `git rev-parse --git-path COMMIT_EDITMSG`。 |
 | `make commitlint-ci COMMIT_MSG_FILE=<file>` | `commitlint --edit <file>` を直接実行します。 | CI 用ターゲット。 |
 
 ### GitHub 設定関連

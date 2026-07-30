@@ -89,6 +89,7 @@ flowchart TB
 - API 契約を定義する前に handler を実装してはいけません
 - 生成された API インターフェースを手動で編集してはいけません
 - Echo に登録するルートは spec の operation と 1:1 で対応しなければならず、例外のための許可リストは持ちません（`internal/architest` の `TestRouteSpecParity` が機械検証します）。HTTP スタックの一部は挙動を spec から解決するため、spec に無いルートはテストが緑のまま実行時の挙動だけを変えます。ハンドラを書くうえで何を意味するかは [handler ガイド](../../internal/controller/handler/README.ja.md#すべてのルートは-openapi-に存在しなければならない)を参照してください。
+- `BindHandler` を宣言するハンドラパッケージは `ControllerModule()` の `fx.Invoke` に列挙されていなければならず、`RegisterHandlers` が生成されているパッケージはそれを実装する `BindHandler` を持たなければなりません（`internal/architest` の `TestBindHandlerDIParity` が機械検証します）。`TestRouteSpecParity` が読むのは生成されたルート登録で、これは DI へ配線したかどうかに関わらず `make gen-api` が spec から作るため、この検証が無いと配線漏れはテストが緑のまま実行時に 404 を返します。
 
 OpenAPI 定義は **APIの唯一のソース（Single Source of Truth）** です。
 

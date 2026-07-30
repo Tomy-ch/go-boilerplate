@@ -407,7 +407,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make commitlint COMMIT_MSG_FILE=<file>` | Lints a commit message with commitlint. | Invokes `make commitlint-ci` inside the `node_tool_runner` container. Wired to the `commit-msg` hook; `COMMIT_MSG_FILE` defaults to `.git/COMMIT_EDITMSG`. |
+| `make commitlint COMMIT_MSG_FILE=<file>` | Lints a commit message with commitlint. | Invokes `make commitlint-ci` inside the `node_tool_runner` container. Wired to the `commit-msg` hook. The message file is copied under `tmp/` and handed over as a relative path, because in a `git worktree` the path git gives the hook lies outside the container's `.:/app` mount. `COMMIT_MSG_FILE` defaults to `git rev-parse --git-path COMMIT_EDITMSG`. |
 | `make commitlint-ci COMMIT_MSG_FILE=<file>` | Runs `commitlint --edit <file>` directly. | CI target. |
 
 ### GitHub configuration related

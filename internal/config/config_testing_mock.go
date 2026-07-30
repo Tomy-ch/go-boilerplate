@@ -76,9 +76,12 @@ var (
 	expectedDBUser     = "postgres"
 	expectedDBPassword = "postgres-password"
 	// DB 名は worktree 毎に変わるため testDBName() で解決する（詳細はその doc）。
-	expectedDBName                        = testDBName()
-	expectedDBSSLMode                     = "disable"
-	expectedDBPingTimeoutCount            = 5
+	expectedDBName    = testDBName()
+	expectedDBSSLMode = "disable"
+	// テストは 1 つの共有インスタンスへ複数の go test プロセスが同時にプールを張るため、順番待ちしている
+	// だけの接続を「DB が落ちている」と読み違えないよう、起動時 fail-fast を意図した本番の予算（env/.env の
+	// 5s）ではなく、その競合を吸収するマージンを取る。
+	expectedDBPingTimeoutCount            = 30
 	expectedDBPingTimeoutStr              = fmt.Sprintf("%ds", expectedDBPingTimeoutCount)
 	expectedDBPingTimeout                 = time.Duration(expectedDBPingTimeoutCount) * time.Second
 	expectedDBSlowQueryWarnThresholdCount = 500
@@ -95,9 +98,12 @@ var (
 	expectedDBTxRetryMaxBackoffStr        = fmt.Sprintf("%dms", expectedDBTxRetryMaxBackoffCount)
 	expectedDBTxRetryMaxBackoff           = time.Duration(expectedDBTxRetryMaxBackoffCount) * time.Millisecond
 	// dbconnection
-	expectedDBMaxConns         = 10
-	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
-	expectedDBMinConns         = 5
+	expectedDBMaxConns      = 10
+	expectedDBMaxConnsInt32 = int32(expectedDBMaxConns)
+	// pgxpool はプール生成の直後に MinConns 本の接続確立を一斉に走らせる。テストの tx は testkit が
+	// advisory lock で全プロセス横断に直列化しており、事前に温めたコネクションが使われることはないため、
+	// この一斉確立は共有インスタンスへの負荷にしかならない。0 にして接続はテストが要求した分だけ張る。
+	expectedDBMinConns         = 0
 	expectedDBMinConnsInt32    = int32(expectedDBMinConns)
 	expectedDBMaxLifetimeCount = 60
 	expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)

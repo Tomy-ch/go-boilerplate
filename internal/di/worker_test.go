@@ -119,5 +119,41 @@ func TestRunWorker(t *testing.T) {
 			cancel()
 			require.Error(t, stop(ctx))
 		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("start: fx グラフの構築に失敗すると panic せず構築エラーを閉じ済みチャンネルで返す", func(t *testing.T) {
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "not-a-duration")
+
+			start, stop := RunWorker(30 * time.Second)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			// nil 参照の退行が起きても panic をこのテスト内で捕捉し、同一パッケージの後続テストを巻き込まない。
+			var done <-chan error
+			require.NotPanics(t, func() {
+				done = start(context.Background(), "no-worker", nil)
+			})
+
+			require.ErrorIs(t, <-done, config.ErrFailedToParseConfig)
+
+			_, ok := <-done
+			require.False(t, ok)
+		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("stop: fx グラフの構築に失敗すると panic せず構築エラーを返す", func(t *testing.T) {
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "not-a-duration")
+
+			_, stop := RunWorker(30 * time.Second)
+			require.NotNil(t, stop)
+
+			// nil 参照の退行が起きても panic をこのテスト内で捕捉し、同一パッケージの後続テストを巻き込まない。
+			var err error
+			require.NotPanics(t, func() {
+				err = stop(context.Background())
+			})
+
+			require.ErrorIs(t, err, config.ErrFailedToParseConfig)
+		})
 	})
 }
