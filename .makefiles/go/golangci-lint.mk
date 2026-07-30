@@ -4,10 +4,11 @@
 
 GOLANGCI_LINT := $(shell mise which golangci-lint 2>/dev/null || command -v golangci-lint 2>/dev/null || echo golangci-lint)
 
-# .golangci-full.yaml の run.timeout は CI ランナーの実測に合わせた値で、複数 worktree を抱えた開発機では
-# 全パッケージのスキャンがそれを超え、issue が 0 件でも "Timeout exceeded" で失敗する。検出内容は同じなので、
-# ローカルの入口だけ余裕のある上限へ引き上げる（CLI 指定が config の run.timeout より優先される）。
-GOLANGCI_LINT_TIMEOUT ?= 20m
+# .golangci-full.yaml は固定 timeout を持たないため、ローカル実行のハング防止ガードはここが持つ。
+# 開発機での実測は単独 2.5m だが、worktree 並行開発でホストが埋まると十数分（観測値 17.5m）まで伸びる。
+# 検査そのものは完走するので、ここは所要の見積もりではなく「応答しなくなった場合の脱出口」として置く。
+# CI は 0（無効）を渡し、打ち切りをジョブの timeout-minutes に委ねる。
+GOLANGCI_LINT_TIMEOUT ?= 60m
 
 lint:
 	@$(GOLANGCI_LINT) run --config .golangci-full.yaml --timeout $(GOLANGCI_LINT_TIMEOUT)

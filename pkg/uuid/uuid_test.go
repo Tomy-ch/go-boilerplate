@@ -112,6 +112,9 @@ func TestUUID_EqualPtr(t *testing.T) {
 	uuid3, err := New()
 	require.NoError(t, err)
 	assert.False(t, uuid1.EqualPtr(uuid3.ToPtr()))
+
+	var zero UUID
+	assert.True(t, zero.EqualPtr(zero.ToPtr()))
 }
 
 func TestParse(t *testing.T) {
