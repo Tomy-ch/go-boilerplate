@@ -40,6 +40,24 @@ make install-tools   # installs gopls / gotests / impl / dlv / lefthook / golang
 make activate-tools  # runs `lefthook install` to wire git hooks
 ```
 
+### 1.3. Install the agent configuration (recommended)
+
+The AI-assist layer ships as configuration: project-scoped official plugins, this repository's own skills under [`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md), and one officially recommended external skill (`graphify`, a queryable knowledge graph of the repository). Two idempotent bootstraps install the parts a clone does not carry:
+
+```sh
+bash .claude/scripts/bootstrap-plugins.sh          # official plugins (project scope)
+bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope: Claude Code + Codex)
+```
+
+`graphify` itself is pinned in `mise.toml` like every other tool, so `mise install` already fetched it; the bootstrap only writes the skill into each assistant's config directory. Which of its commands stay local and which reach an LLM API is documented in [`.claude/README.md`](../../.claude/README.md).
+
+**Declining the AI-assist layer is the adopting architect's call.** This template is built to stay fully maintainable without AI tooling — the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration — so nothing above is load-bearing for building, testing, or shipping. A fork that does not want the layer should remove it deliberately rather than leave it half-configured:
+
+- skip both bootstraps; no other phase of this setup depends on them, and
+- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint.mjs`.
+
+Removing it later costs the same as removing it now, so adopting the recommended configuration first and deciding afterwards is a safe order.
+
 ## Phase 2: Local Startup Verification
 
 Start the application locally and confirm it works without issues.
