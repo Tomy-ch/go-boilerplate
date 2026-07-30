@@ -75,9 +75,9 @@ commands stay local versus call an LLM API, and the uninstall caveat — are in
 - **Keep agent roles narrow and read-only.** The integrating skill owns user confirmation and any
   writes, so delegated work can safely run in parallel.
 - **Skills and agent roles correspond one-to-one with `.claude/`, and `make md-skill-lint` enforces
-  it.** Only existence is checked — bodies are semantic ports, not copies. A skill that belongs to
-  one environment alone must be registered with its reason in the `PLATFORM_ONLY_SKILLS` map in
-  [`scripts/skill-lint.mjs`](../scripts/skill-lint.mjs).
+  it.** Only existence is checked — bodies are semantic ports, not copies. Registering a
+  deliberately one-sided skill is described in [`scripts/README.md`](../scripts/README.md)
+  (Skill Lint).
 - **Discover the available workflow set with `$tool-map`.** It inventories repository-local skills,
   agent roles, and their cross-references.
 - **Do not put personal configuration here.** Use `~/.codex/` for model preferences, credentials,

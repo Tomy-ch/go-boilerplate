@@ -237,7 +237,7 @@ This group handles linting and auto-fixing of Markdown files.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make md-lint` | Lints Markdown (markdownlint + mermaid syntax). | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
+| `make md-lint` | Lints Markdown (markdownlint + mermaid syntax + skill-definition lint). | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
 | `make md-fix` | Auto-fixes Markdown files. | Invokes `make md-fix-ci` inside the `node_tool_runner` container. |
 | `make md-mermaid-lint` | Validates only the ` ```mermaid ` fences. | Invokes `make md-mermaid-lint-ci` inside the `node_tool_runner` container. |
 | `make md-skill-lint` | Validates only the skill / agent definitions under `.claude/**` and their `.codex/**` counterparts. | Invokes `make md-skill-lint-ci` inside the `node_tool_runner` container. |

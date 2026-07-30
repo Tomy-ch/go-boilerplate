@@ -87,7 +87,12 @@ still catches the failure that matters: a skill merged into one environment only
 A skill that intentionally lives in one environment goes in the `PLATFORM_ONLY_SKILLS` map in
 `skill-lint.mjs` **with a reason**. An entry with an empty reason fails, and so does one whose skill
 has since appeared in both environments (or in neither) — so the exception list cannot outlive the
-exception.
+exception. **This is the canonical description of the mechanism; other documents link here rather
+than restating it.**
+
+Agent roles have no such escape hatch: their parity is unconditional. Both environments define the
+same read-only roles for the same layers, so a one-sided agent has never been a deliberate state —
+add the exception mechanism when a real case appears, not before.
 
 ### Versioning
 
