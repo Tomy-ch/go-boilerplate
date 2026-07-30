@@ -88,6 +88,28 @@ What the graph excludes (committed generated artifacts, Japanese mirrors, vendor
 declared in `.graphifyignore`. Changing it requires a full re-extraction — an incremental `update`
 is fail-closed and keeps the now-excluded nodes.
 
+### What the graph is good for here, and what it is not
+
+Measured on this repository, not inherited from upstream's claims:
+
+- **`affected` is the paying command** — reverse traversal from a symbol gives the call sites that
+  break if you change it, each with a relation label and `file:line`. Reach for it when planning a
+  change whose blast radius is unknown. It takes a node **id**, not a symbol name, so go through
+  the wrapper, which resolves the name and lists the candidates when a name is ambiguous:
+
+  ```bash
+  node .claude/scripts/graph-affected.mjs NormalizeError --depth 2
+  ```
+
+- **Raise `--budget` on `query`, or read the truncation warning.** The default (~2000 tokens) cuts
+  the result on a repo this size and says so in the output; the answer may be in the cut part.
+- **Ignore `god-nodes` here.** It ranks by edge count, and the 1:1 test-mapping rule this repo
+  enforces means test scaffolding (`Any()`, `NewTestFromSalt()`, `NewNoopTracerFactory()`) outranks
+  production code. It answers "what has the most edges", which in this repo is not "what is
+  central".
+- **The graph is only as fresh as the last `update`.** For a question about uncommitted work,
+  rebuild first or use `grep` — for a small diff, `grep` is the cheaper of the two.
+
 ## Conventions
 
 - **English is canonical.** Skill/README bodies are written in imperative English; the paired
