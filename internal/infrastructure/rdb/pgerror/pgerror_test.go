@@ -352,10 +352,14 @@ func TestNormalizeExecResult(t *testing.T) {
 			require.NotErrorIs(t, got, pgx.ErrNoRows)
 		})
 
-		t.Run("errorがある場合、NormalizeErrorに委譲する", func(t *testing.T) {
+		t.Run("errorがある場合、NormalizeErrorへ委譲し元エラーもチェーンに残す", func(t *testing.T) {
 			t.Parallel()
-			got := NormalizeExecResult(0, &pgconn.PgError{Code: "23505"})
+			src := &pgconn.PgError{Code: "23505"}
+
+			got := NormalizeExecResult(0, src)
+
 			require.ErrorIs(t, got, apperror.ErrConflict)
+			require.ErrorIs(t, got, src)
 		})
 	})
 }
@@ -435,11 +439,13 @@ func Test_NormalizeError(t *testing.T) {
 
 		t.Run("写像後も元のPgErrorをxerrors.Asでチェーンから取り出せる", func(t *testing.T) {
 			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "23505", Message: "dup"})
+			src := &pgconn.PgError{Code: "23505", Message: "dup"}
+
+			got := NormalizeError(src)
 
 			var pgErr *pgconn.PgError
 			require.True(t, xerrors.As(got, &pgErr))
-			assert.Equal(t, "23505", pgErr.Code)
+			assert.Same(t, src, pgErr)
 		})
 
 		t.Run("context.CanceledはErrCanceledへ写像し元エラーもチェーンに残す", func(t *testing.T) {
