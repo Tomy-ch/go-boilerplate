@@ -25,152 +25,6 @@ func (m mockNonTimeoutNetError) Error() string   { return "connection refused" }
 func (m mockNonTimeoutNetError) Timeout() bool   { return false }
 func (m mockNonTimeoutNetError) Temporary() bool { return false }
 
-func TestNormalizePgError(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("errorがnilの場合", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(nil)
-			require.NoError(t, got)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("contextが期限切れの場合", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(context.DeadlineExceeded)
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrUnavailable)
-		})
-
-		t.Run("contextがキャンセルされた場合はクライアント起因として ErrCanceled", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(context.Canceled)
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrCanceled)
-		})
-
-		t.Run("既に正規化済みのapperrorは分類を保持して素通しする", func(t *testing.T) {
-			t.Parallel()
-			// 二重適用しても ErrInternal に劣化しないこと。
-			once := NormalizeError(&pgconn.PgError{Code: "23505", Message: "dup"})
-			twice := NormalizeError(once)
-			require.ErrorIs(t, twice, apperror.ErrConflict)
-			assert.Equal(t, once, twice)
-		})
-
-		t.Run("ユニーク制約違反", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "23505", Message: "dup"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrConflict)
-		})
-
-		t.Run("外部キー制約違反", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "23503", Message: "fk"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrInvalidArgument)
-		})
-
-		t.Run("NOT NULL制約違反", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "23502", Message: "not null"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrInvalidArgument)
-		})
-
-		t.Run("チェック制約違反", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "23514", Message: "check constraint"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrInvalidArgument)
-		})
-
-		t.Run("文字数超過", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "22001", Message: "too long"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrInvalidArgument)
-		})
-
-		t.Run("型変換エラー", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "22P02", Message: "bad input"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrInvalidArgument)
-		})
-
-		t.Run("権限不足", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "42501", Message: "no permission"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrPermissionDenied)
-		})
-
-		t.Run("直列化失敗", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "40001", Message: "serialization failure"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrUnavailable)
-		})
-
-		t.Run("トランザクションのデッドロック", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "40P01", Message: "transaction failure"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrUnavailable)
-		})
-
-		t.Run("ロック待ちのタイムアウト", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "55P03", Message: "lock not available"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrUnavailable)
-		})
-
-		t.Run("クエリのキャンセル", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "57014", Message: "query canceled"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrUnavailable)
-		})
-
-		t.Run("該当なし（NoRows）", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(pgx.ErrNoRows)
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrNotFound)
-		})
-
-		t.Run("Postgres接続エラー(08xxx)", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "08006", Message: "conn"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrUnavailable)
-		})
-
-		t.Run("不明なPostgresエラー", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(&pgconn.PgError{Code: "99999", Message: "unknown"})
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrInternal)
-		})
-
-		t.Run("その他のエラー", func(t *testing.T) {
-			t.Parallel()
-			got := NormalizeError(xerrors.New("generic"))
-			require.Error(t, got)
-			require.ErrorIs(t, got, apperror.ErrInternal)
-		})
-	})
-}
-
 func TestIsUnavailable(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -402,7 +256,7 @@ func TestNormalizeReconstructError(t *testing.T) {
 	})
 }
 
-func Test_NormalizeError(t *testing.T) {
+func TestNormalizeError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -434,7 +288,71 @@ func Test_NormalizeError(t *testing.T) {
 
 		t.Run("SQLSTATEマップに一致するPgErrorは対応するsentinelへ写像する", func(t *testing.T) {
 			t.Parallel()
-			require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "23505"}), apperror.ErrConflict)
+
+			t.Run("ユニーク制約違反(23505)はErrConflictへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "23505"}), apperror.ErrConflict)
+			})
+
+			t.Run("外部キー制約違反(23503)はErrInvalidArgumentへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "23503"}), apperror.ErrInvalidArgument)
+			})
+
+			t.Run("NOT NULL制約違反(23502)はErrInvalidArgumentへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "23502"}), apperror.ErrInvalidArgument)
+			})
+
+			t.Run("チェック制約違反(23514)はErrInvalidArgumentへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "23514"}), apperror.ErrInvalidArgument)
+			})
+
+			t.Run("文字数超過(22001)はErrInvalidArgumentへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "22001"}), apperror.ErrInvalidArgument)
+			})
+
+			t.Run("型変換エラー(22P02)はErrInvalidArgumentへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "22P02"}), apperror.ErrInvalidArgument)
+			})
+
+			t.Run("権限不足(42501)はErrPermissionDeniedへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "42501"}), apperror.ErrPermissionDenied)
+			})
+
+			t.Run("直列化失敗(40001)はErrUnavailableへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "40001"}), apperror.ErrUnavailable)
+			})
+
+			t.Run("デッドロック(40P01)はErrUnavailableへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "40P01"}), apperror.ErrUnavailable)
+			})
+
+			t.Run("ロック待ちのタイムアウト(55P03)はErrUnavailableへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "55P03"}), apperror.ErrUnavailable)
+			})
+
+			t.Run("クエリのキャンセル(57014)はErrUnavailableへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "57014"}), apperror.ErrUnavailable)
+			})
+		})
+
+		t.Run("SQLSTATEマップに無い接続例外クラス(08006)はErrUnavailableへ写像する", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "08006"}), apperror.ErrUnavailable)
+		})
+
+		t.Run("SQLSTATEマップに無く接続例外でもないPgError(99999)はErrInternalへ写像する", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "99999"}), apperror.ErrInternal)
 		})
 
 		t.Run("写像後も元のPgErrorをxerrors.Asでチェーンから取り出せる", func(t *testing.T) {
