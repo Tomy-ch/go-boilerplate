@@ -23,7 +23,7 @@ var (
 	// composeFilePattern / workflowFilePatterns は、TZ を宣言しうる YAML の全件を列挙する glob です。
 	// 変数名ではなくファイルの所在で列挙するのは、env/README.md が checklist 3 で述べているとおり、
 	// 変数名で grep すると「まだ宣言していないファイル」だけが黙って抜けるためです。
-	composeFilePattern   = filepath.Join("docker-compose*.yaml")
+	composeFilePattern   = "docker-compose*.yaml"
 	workflowFilePatterns = []string{
 		filepath.Join(".github", "workflows", "*.yaml"),
 		filepath.Join(".github", "workflows", "*.yml"),
@@ -162,7 +162,7 @@ func collectDockerfileStages(t *testing.T, root, file string) []dockerfileStage 
 	t.Helper()
 
 	var stages []dockerfileStage
-	for _, line := range strings.Split(readRepoFile(t, root, file), "\n") {
+	for line := range strings.SplitSeq(readRepoFile(t, root, file), "\n") {
 		if from := dockerfileFromRe.FindStringSubmatch(line); from != nil {
 			name := from[1]
 			if name == "" {
