@@ -45,6 +45,12 @@ RUN apk upgrade --no-cache \
     && adduser -S app -G app
 USER app
 
+# コンテナのローカルタイム。tzdata と対で Go の time.Local を決め、シェルの date やログの表示に効く。
+# 実行時 env の TZ で上書きできるため、デプロイ先はここを再ビルドせず環境側で切り替えられる。
+# アプリが読み書きする値は OS_TZ 由来の session timezone が決めるので、この値は表示層に留まる。
+# 機構と変更手順は env/README.md の Changing the Timezone を参照。
+ENV TZ=Asia/Tokyo
+
 # env / migrations はバイナリへ埋め込み済みのため、追加コピーは不要。
 COPY --from=builder --chown=app:app /app/bin/server /app/server
 
@@ -115,6 +121,10 @@ RUN apk add --no-cache \
   gcompat \
   tzdata \
   make
+
+# コンテナのローカルタイム。runtime ステージと揃え、開発中も本番と同じ time.Local で動かす。
+# 詳細は runtime ステージの同じ宣言のコメントを参照。
+ENV TZ=Asia/Tokyo
 
 # tooling_builder から開発用 Go ツールのバイナリだけを取り込む（mise 本体や install キャッシュは含まない）
 COPY --from=tooling_builder /out/ /usr/local/bin/
