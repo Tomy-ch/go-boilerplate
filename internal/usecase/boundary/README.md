@@ -94,7 +94,7 @@ Errors:
 
 Passing the full `auth.Authn` (subject / scopes / claims) plus the target `Resource` lets both RBAC (roles from claims) and ownership (subject == OwnerID) models be expressed. The default implementation is allow-all and restricted to non-production environments.
 
-Passing `ownerID = nil` to `NewResource` declares an **ownerless** resource. Under an owner-or-role policy the ownership comparison can then never match, so the operation is decided by role alone — which is how a usecase declares an admin-only action. The failure mode is safe: forgetting an owner narrows access rather than widening it.
+Passing `ownerID = nil` to `NewResource` declares an **ownerless** resource — the caller is stating that no ownership claim applies, not that the owner is unknown. What an `Authorizer` makes of that is its own policy, but no ownership comparison can succeed against such a resource, so any ownership-based rule can only narrow access, never widen it. Omitting the owner is therefore the safe direction to fail in.
 
 ### clock
 

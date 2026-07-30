@@ -24,24 +24,30 @@ Each module returns an `fx.Option` that registers the corresponding component in
 
 ## Test Strategy
 
-Every module here wraps pure constructors from `internal/controller/httpstack` and friends — nothing in
-their closure needs real infrastructure to start. That affords a second tier of verification the parent
-layer cannot afford, so each module carries two sibling tests:
+No module here needs real infrastructure to start, which affords a second tier of verification the parent
+layer cannot afford. Each module therefore carries two sibling tests:
 
 - **`Test<Module>_GraphIsValid`** — the layer baseline declared in [`../README.md`](../README.md).
-  `fx.ValidateApp` resolves the module together with its declared dependencies, proving the graph is
-  wired with no missing types **without** executing constructors or lifecycle hooks.
-- **`Test<Module>`** — starts a minimal `fx.New` app, `fx.Populate`s the provided component and asserts
-  the value itself (that the environment gate selected `local.New()`, for instance). This reaches exactly
-  what graph validation cannot: that the constructors actually run and yield a usable component.
+  `fx.ValidateApp` resolves the module's output types **without** executing constructors or lifecycle
+  hooks. Because nothing runs, this tier can demand the module's *full* output set against bare mocks:
+  `AuthnModule` resolves its `IdentityResolver` and `AuthenticationFunc` here, which a booting test
+  cannot reach without a usable tracer and database driver. For a module whose constructors take no
+  arguments there is no dependency edge left to miss, and the tier is a formality kept for uniformity.
+- **`Test<Module>`** — starts a minimal `fx.New` app and `fx.Populate`s the provided component, proving
+  the constructors actually run and yield a usable value. Most modules assert only that the component is
+  non-nil, because their constructor has one possible outcome; `AuthnModule`, whose provider selects an
+  implementation per environment, asserts the selected value (`local.New()`).
 
 The second tier is available **only because no module here needs real infrastructure to start**. That is
-the criterion, not the directory: a module whose closure would require a database or a network connection
-belongs in the parent, where `fx.ValidateApp` alone is the strategy.
+the criterion, not the directory: a module whose closure would require a live database or network
+connection belongs in the parent, where `fx.ValidateApp` alone is the strategy.
 
-Provider bodies carrying their own logic (`provideAuthenticator` / `provideJWKSAuthenticator`) are
-unit-tested directly, per the DI layer baseline in [`../../README.md`](../../README.md) — graph validation
-reaches neither, and the environment gate's refusal cases are the point.
+Four of the five modules are thin wrappers over a constructor from `internal/controller/httpstack` and
+friends. `AuthnModule` is the exception: `provideAuthenticator` branches per environment and takes an
+`httpclient.Client`. Provider bodies carrying their own logic (`provideAuthenticator` /
+`provideJWKSAuthenticator`) are unit-tested directly, per the DI layer baseline in
+[`../../README.md`](../../README.md) — graph validation reaches neither, and the environment gate's
+refusal cases are the point.
 
 ## Notes
 

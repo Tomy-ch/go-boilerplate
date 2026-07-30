@@ -29,14 +29,17 @@ cross-cutting structure rules (`t.Parallel()`, subtest groups, assertions) still
   stating separately: one direction is usually the reason the test exists, while the reverse direction
   exists to fail loudly if the scan itself silently shrinks. A test that only says "these must match"
   leaves the next reader unable to tell which failure they are looking at.
-- **Pin the scanning logic against synthetic sources.** Every collector that walks the repository has a
+- **Pin the scanning logic against synthetic sources.** A collector whose matching is non-trivial gets a
   companion `Test_collectXxx` / `Test_scanXxx` driving it over inline sources rather than the real tree.
   This is the viewpoint that keeps the others honest: a scanner that stops recognising a syntax shape
   reports "no violations" and stays green forever, so the scan's own coverage cannot be left to the
-  repository's current contents.
+  repository's current contents. Not every check has one today — the checks that reconcile a declared
+  table against files (`env_consistency`, `idempotency_completeness`, `unit_test_mapping_completeness`)
+  are still driven only through the real tree, which is a gap to close rather than a pattern to copy.
 - **Report violations with their declaration site, in a stable order.** Findings carry the file (and line
   where meaningful) that declared them and are sorted before assertion, so a failure is deterministic and
-  points at what to edit rather than at the invariant in the abstract.
+  points at what to edit rather than at the invariant in the abstract. `idempotency_completeness` is the
+  one check that still reports straight out of map iteration, so its ordering is not yet deterministic.
 - **Pin each deliberate carve-out as a case of its own.** Generated files, `main` / `init`, a test file
   excluding itself from its own scan, and documented `t.Skip` forms are all *expected* not to trip a
   check. Asserting that explicitly is what distinguishes a carve-out from a hole opened later by

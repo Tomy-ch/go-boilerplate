@@ -67,17 +67,15 @@ It is included in `InfrastructureModule()` (the Usecase layer depends on it). Th
 
 ## Test Strategy
 
-Both implementations are **pure in-memory decision points with no real I/O** — `userrole` reaches the database only through the injected `user.RoleRepository`, and `allowall` reaches nothing at all. The infrastructure layer's real-DB strategy therefore does not apply here; these are plain unit tests with the generated `RoleRepository` mock as the only seam.
+An `Authorizer` here is a **pure in-memory decision point with no real I/O** — it reaches a database only through an injected repository, if at all. The infrastructure layer's real-DB strategy therefore does not apply; these are plain unit tests, with whatever repository the implementation needs supplied as a generated mock.
 
-Viewpoints:
+Viewpoints that hold for any implementation in this directory:
 
-- **The decision order is pinned row by row, from both sides.** Admin allows without ownership; a non-admin owner allows; a non-admin non-owner denies. Every deny asserts `ErrForbidden` via `errors.Is`, never a message string.
-- **The subject-resolution guard is verified to run before any role lookup.** A `nil` `Authn`, an unresolved UserID, and a zero-value UserID each deny with the mock expecting *no* call — that ordering is the safeguard, so a test that only checks the return value would miss a regression that leaks a lookup.
-- **An ownerless resource stays admin-only.** A `nil` resource and a resource whose `OwnerID()` is `nil` both deny for a non-admin. This is the only place that contract is fixed, and six admin-only endpoints rest on it.
-- **Repository errors propagate unchanged** rather than being flattened into a deny.
-- **`allowall.New` refuses to construct outside `local` / `ci` / `test`.** The refusal is the fail-closed guarantee, so the environments it must reject matter more than the ones it accepts.
+- **The decision is pinned from both sides.** Every allow path and every deny path gets its own case, and a deny asserts the specific sentinel via `errors.Is` (`ErrForbidden`), never a message string.
+- **A guard that must run before a lookup is verified to actually do so**, by expecting *no* call on the mock rather than only checking the returned error. The ordering is the safeguard, so asserting the return value alone would miss a regression that leaks a lookup.
+- **A constructor that refuses environments refuses them explicitly.** `allowall.New` must fail outside `local` / `ci` / `test`; the refusal is the fail-closed guarantee, so the environments it rejects matter more than the ones it accepts.
 
-The zero-value-subject case cannot be reproduced through the running app: the sole production `WithUserID` call site (`internal/infrastructure/auth/useridentity`) resolves IDs that already passed the domain's `IsNil` guard. These unit tests are the only place that branch is pinned.
+While the `user` sample is present, `userrole` adds the viewpoints its own policy needs: admin allows without ownership, a non-admin owner allows, a non-admin non-owner denies; a `nil` `Authn`, an unresolved UserID and a zero-value UserID each deny before any role lookup; an ownerless resource — a `nil` resource, or one whose `OwnerID()` is `nil` — stays admin-only; and a repository error propagates unchanged instead of being flattened into a deny. The zero-value-subject case cannot be reproduced through the running app, because the sole production `WithUserID` call site (`internal/infrastructure/auth/useridentity`) resolves IDs that already passed the domain's `IsNil` guard, so that unit test is the only place the branch is pinned.
 
 Which environment receives which implementation is DI-layer scope and is verified there (see [`internal/di/README.md`](../../di/README.md), *Environment-gated wiring*), not here.
 

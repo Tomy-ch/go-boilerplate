@@ -8,10 +8,15 @@ import (
 	"go-boilerplate/internal/infrastructure/auth/local"
 	"go-boilerplate/internal/infrastructure/httpclient"
 	mock_httpclient "go-boilerplate/internal/infrastructure/httpclient/mock"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	mock_observability "go-boilerplate/internal/observability/mock"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
@@ -53,12 +58,38 @@ func authnDeps(t *testing.T) fx.Option {
 	)
 }
 
+// resolverDeps は、useridentity.New が要求する RDB とトレーサの依存を返します。
+// グラフ検証はコンストラクタを実行しないため、モックに期待呼び出しを設定する必要はありません。
+func resolverDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		fx.Provide(func() driver.DatabaseDriver {
+			return mock_driver.NewMockDatabaseDriver(gomock.NewController(t))
+		}),
+		fx.Provide(func() observability.TracerFactory {
+			return mock_observability.NewMockTracerFactory(gomock.NewController(t))
+		}),
+	)
+}
+
 func TestAuthnModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
-	var a authbd.Authenticator
+	// AuthnModule が登録する 3 つの出力型をすべて要求する。fx は要求された型の依存しか解決しないため、
+	// Authenticator だけを Populate すると IdentityResolver 側の配線が壊れても緑のままになる。
+	var (
+		authenticator authbd.Authenticator
+		resolver      authbd.IdentityResolver
+		authFunc      openapi3filter.AuthenticationFunc
+	)
 
-	validateGraph(t, authnDeps(t), AuthnModule(), fx.Populate(&a))
+	validateGraph(t,
+		authnDeps(t),
+		resolverDeps(t),
+		AuthnModule(),
+		fx.Populate(&authenticator, &resolver, &authFunc),
+	)
 }
 
 func TestAuthnModule(t *testing.T) {
