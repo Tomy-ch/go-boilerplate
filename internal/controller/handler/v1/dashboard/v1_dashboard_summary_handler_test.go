@@ -29,7 +29,10 @@ func authnContext(t *testing.T, userID uuid.UUID) context.Context {
 	ctx := ctxhelper.WithAuthn(context.Background())
 	authn, err := auth.New("subject", "issuer", nil, nil)
 	require.NoError(t, err)
-	require.True(t, ctxhelper.SetAuthn(ctx, *authn.WithUserID(userID)))
+
+	resolved, err := authn.WithUserID(userID)
+	require.NoError(t, err)
+	require.True(t, ctxhelper.SetAuthn(ctx, *resolved))
 	return ctx
 }
 

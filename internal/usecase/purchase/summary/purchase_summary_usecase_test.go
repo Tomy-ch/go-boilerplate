@@ -20,7 +20,10 @@ func newAuthn(t *testing.T, userID uuid.UUID) *authbd.Authn {
 	t.Helper()
 	a, err := authbd.New("sub-"+userID.String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
-	return a.WithUserID(userID)
+
+	resolved, err := a.WithUserID(userID)
+	require.NoError(t, err)
+	return resolved
 }
 
 func Test_usecase_GetPurchaseSummary(t *testing.T) {

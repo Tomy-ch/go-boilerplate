@@ -986,7 +986,8 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 
 			authn, err := auth.New("ship-uc-subject", "ship-uc-issuer", nil, nil)
 			require.NoError(t, err)
-			other := authn.WithUserID(uuid.NewTestFromSalt(t, "ship_uc_other"))
+			other, err := authn.WithUserID(uuid.NewTestFromSalt(t, "ship_uc_other"))
+			require.NoError(t, err)
 
 			authorizer.EXPECT().Authorize(gomock.Any(), other, gomock.Any(), gomock.Any()).Return(nil)
 			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(paidLockable(t), nil)

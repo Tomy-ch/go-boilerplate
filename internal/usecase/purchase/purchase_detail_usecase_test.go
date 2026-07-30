@@ -25,7 +25,10 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 		t.Helper()
 		a, err := authbd.New("sub-"+userID.String(), authbd.IssuerMock, nil, nil)
 		require.NoError(t, err)
-		return a.WithUserID(userID)
+
+		resolved, err := a.WithUserID(userID)
+		require.NoError(t, err)
+		return resolved
 	}
 
 	newUsecase := func(t *testing.T, qs query.PurchaseDetailQueryService) *usecase {
