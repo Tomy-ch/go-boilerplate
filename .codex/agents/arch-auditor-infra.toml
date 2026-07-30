@@ -1,4 +1,4 @@
-name = "arch-auditor-infrastructure"
+name = "arch-auditor-infra"
 description = "infrastructure 層の domain interface 実装とデータ境界を読み取り専用で監査する"
 developer_instructions = """
 対象は `internal/infrastructure/**/*.go`（生成コード・sqlc・mock・テストを除く）に限定する。

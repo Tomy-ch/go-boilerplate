@@ -1,0 +1,92 @@
+name: Skill Definition Lint
+
+# `make md-lint` is wired into the lefthook pre-commit hook only, so `--no-verify`
+# and edits made through the GitHub web UI reach a merge unchecked. The Claude
+# <-> Codex correspondence this script enforces is exactly the kind of drift that
+# arrives that way, so the semantic check gets its own required-capable job here.
+#
+# Only the `md-skill-lint-ci` stage of `md-lint-ci` runs: `skill-lint.mjs` is
+# dependency-free ESM and needs nothing but node, whereas markdownlint-cli2 and
+# `mermaid-lint.mjs` need the npm tree that today only the node_tool_runner image
+# builds. Bringing those two into CI is separate work.
+#
+# No `paths` filter, deliberately. The script reads only `.claude/**` prose but
+# resolves the paths and make targets it quotes against the whole repository, so
+# renaming `docs/rules.md` or moving a file under `internal/` breaks it without
+# touching anything a filter could name. The run costs ~0.2s of script time on
+# top of checkout and node install, which is the same bill the other unfiltered
+# jobs already pay.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  md-skill-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install node
+        run: mise install node
+
+      - name: Run skill lint
+        id: skill-lint
+        shell: bash
+        run: |
+          set +e
+
+          make md-skill-lint-ci 2>&1 | tee /tmp/skill-lint.log
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Skill definition lint: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Skill definition lint: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Comment skill lint result on PR
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- md-skill-lint-result -->'
+          title: ${{ steps.skill-lint.outputs.title }}
+          body-file: /tmp/skill-lint.log
+          details-summary: 'skill-lint log'
+
+      - name: Fail if skill lint failed
+        if: always() && steps.skill-lint.outputs.status != 'success'
+        run: exit 1

@@ -1,17 +1,34 @@
-// `.claude/**` のスキル / エージェント定義を意味的に検査する lint スクリプト。
-// markdownlint は体裁しか見ないため、「書いてある内容が実態と合っているか」は誰も検査していない。
-// スキル定義はエージェントの挙動を決める指示書であり、腐った参照はそのまま誤った手順の実行につながる。
+// `.claude/**` のスキル / エージェント定義を意味的に検査し、あわせて `.codex/**` との対応を検査する
+// lint スクリプト。markdownlint は体裁しか見ないため、「書いてある内容が実態と合っているか」は誰も
+// 検査していない。スキル定義はエージェントの挙動を決める指示書であり、腐った参照はそのまま誤った
+// 手順の実行につながる。片側の環境にしか無い定義も同様で、その環境を使ったときだけ古い手順を踏む。
 //
 // 検査は Makefile のターゲット一覧・ファイルシステム・見出し抽出から導出できるものだけに限る
 // （判断を含めない）。node の標準ライブラリのみに依存し、ホストでもコンテナでも動く。
 // 1 件でも違反があれば非 0 で終了する。
 import fs from "node:fs"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 
 const REPO_ROOT = process.cwd()
 const CLAUDE_DIR = ".claude"
 const SKILLS_DIR = path.join(CLAUDE_DIR, "skills")
 const AGENTS_DIR = path.join(CLAUDE_DIR, "agents")
+const CODEX_DIR = ".codex"
+const CODEX_SKILLS_DIR = path.join(CODEX_DIR, "skills")
+const CODEX_AGENTS_DIR = path.join(CODEX_DIR, "agents")
+
+// allowlist の在り処。違反メッセージから編集先へ辿れるようにするため、自身のパスを持つ。
+// `URL#pathname` はパーセントエンコードを解かず、空白や非 ASCII を含む clone 先で壊れた相対パスになる。
+const SKILL_LINT_REL = path.relative(REPO_ROOT, fileURLToPath(import.meta.url))
+
+// 片側の環境にしか存在しない skill と、その理由。
+// 未移植そのものは異常ではない（`sync-ai` は逐語コピーではなく意味ポートであり、移植には判断が要る）。
+// 異常なのは「未移植であることが宣言されていない」状態なので、理由を書かせたうえで許可する。
+// 両側に揃ったらこの表から消すこと（残すと stale として落ちる）。
+const PLATFORM_ONLY_SKILLS = new Map([
+  ["supply-chain-triage", "Codex へ未移植。Codex 側の冷却窓スキル群が本スキルへの連鎖を持たないため、移植方針の判断が保留されている。"],
+])
 
 // ファイル索引・参照検査から外すディレクトリ（生成物 / 実行時成果物 / 外部由来）。
 const EXCLUDE_DIRS = new Set([".git", "node_modules", "vendor", "tmp"])
@@ -255,6 +272,93 @@ function checkTranslationPair(canonicalRel, translationRel) {
 }
 
 // ---------------------------------------------------------------------------
+// 環境間対応（.claude ↔ .codex）
+// ---------------------------------------------------------------------------
+
+// 環境間で検査するのは「存在」だけで、本文の追随は見ない。
+// `sync-ai` は逐語コピーではなく意味ポートであり、`CLAUDE.md` ↔ `AGENTS.md` の言い換え・Claude 固有機構
+// （`AskUserQuestion` / `Agent`）の適応・凝縮スタイルへの書き下ろしといった意図的な差分が常に残る。
+// 見出しテキスト集合の一致まで求めても、その意図的な差分を違反として弾くだけで検査にならない。
+// 存在の対応だけなら例外は宣言可能な件数に収まり、片側だけをマージする事故は確実に捕まる。
+
+// 集合差から片側のみの名前を取り出す。
+function onlyIn(names, otherNames) {
+  const other = new Set(otherNames)
+  return names.filter((name) => !other.has(name))
+}
+
+// allowlist 自体の腐りを検査する。理由の無い登録を認めず、移植が済んだ登録は消させる。
+function checkPlatformOnlyAllowlist(claudeSkills, codexSkills) {
+  const claude = new Set(claudeSkills)
+  const codex = new Set(codexSkills)
+  for (const [name, reason] of PLATFORM_ONLY_SKILLS) {
+    if (reason.trim() === "") {
+      report(SKILL_LINT_REL, 1, "cross-env", `\`PLATFORM_ONLY_SKILLS\` の \`${name}\` に理由がありません（理由なしの片側運用は認めません）`)
+    }
+    if (claude.has(name) && codex.has(name)) {
+      report(SKILL_LINT_REL, 1, "cross-env", `\`PLATFORM_ONLY_SKILLS\` の \`${name}\` は両環境に存在します（移植済みなので登録を削除してください）`)
+      continue
+    }
+    if (!claude.has(name) && !codex.has(name)) {
+      report(SKILL_LINT_REL, 1, "cross-env", `\`PLATFORM_ONLY_SKILLS\` の \`${name}\` はどちらの環境にも存在しません（登録を削除してください）`)
+    }
+  }
+}
+
+// skill ディレクトリの環境間対応を検査する。
+function checkSkillParity(claudeSkills, codexSkills) {
+  for (const name of onlyIn(claudeSkills, codexSkills)) {
+    if (PLATFORM_ONLY_SKILLS.has(name)) continue
+    report(
+      path.join(SKILLS_DIR, name),
+      1,
+      "cross-env",
+      `対応する \`${path.join(CODEX_SKILLS_DIR, name)}/\` がありません\n` +
+        `      移植するなら \`sync-ai\` を実行し、意図的に片側だけへ置くなら ${SKILL_LINT_REL} の \`PLATFORM_ONLY_SKILLS\` へ理由付きで登録してください`,
+    )
+  }
+  for (const name of onlyIn(codexSkills, claudeSkills)) {
+    if (PLATFORM_ONLY_SKILLS.has(name)) continue
+    report(
+      path.join(CODEX_SKILLS_DIR, name),
+      1,
+      "cross-env",
+      `対応する \`${path.join(SKILLS_DIR, name)}/\` がありません\n` +
+        `      移植するなら \`sync-ai\` を実行し、意図的に片側だけへ置くなら ${SKILL_LINT_REL} の \`PLATFORM_ONLY_SKILLS\` へ理由付きで登録してください`,
+    )
+  }
+}
+
+// agent 定義の環境間対応を検査する。拡張子は環境ごとに異なる（Claude: `.md` / Codex: `.toml`）ため、
+// 拡張子を落とした名前で突き合わせる。
+function checkAgentParity(claudeAgents, codexAgents) {
+  for (const name of onlyIn(claudeAgents, codexAgents)) {
+    report(path.join(AGENTS_DIR, `${name}.md`), 1, "cross-env", `対応する \`${path.join(CODEX_AGENTS_DIR, `${name}.toml`)}\` がありません`)
+  }
+  for (const name of onlyIn(codexAgents, claudeAgents)) {
+    report(path.join(CODEX_AGENTS_DIR, `${name}.toml`), 1, "cross-env", `対応する \`${path.join(AGENTS_DIR, `${name}.md`)}\` がありません`)
+  }
+}
+
+// Codex の 1 スキルを構成する必須ファイルを検査する（`.codex/README.md` の Layout 表が正）。
+// 対訳（`SKILL.ja.md`）は Codex 側では任意なので、欠落は報告せず、在るときだけ構造を検査する。
+function checkCodexSkillStructure(name) {
+  const canonicalRel = path.join(CODEX_SKILLS_DIR, name, "SKILL.md")
+  const metadataRel = path.join(CODEX_SKILLS_DIR, name, "agents", "openai.yaml")
+  const canonicalExists = fs.existsSync(path.join(REPO_ROOT, canonicalRel))
+  if (!canonicalExists) {
+    report(path.join(CODEX_SKILLS_DIR, name), 1, "structure", "`SKILL.md` がありません")
+  }
+  if (!fs.existsSync(path.join(REPO_ROOT, metadataRel))) {
+    report(path.join(CODEX_SKILLS_DIR, name), 1, "structure", "`agents/openai.yaml`（Codex UI メタデータ）がありません")
+  }
+  const translationRel = path.join(CODEX_SKILLS_DIR, name, "SKILL.ja.md")
+  if (canonicalExists && fs.existsSync(path.join(REPO_ROOT, translationRel))) {
+    checkTranslationPair(canonicalRel, translationRel)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 参照: make ターゲット
 // ---------------------------------------------------------------------------
 
@@ -464,8 +568,29 @@ for (const file of agentFiles) {
   checkFrontmatter(rel, readFile(rel), file.replace(/\.md$/, ""))
 }
 
+const codexSkillDirs = listDirs(CODEX_SKILLS_DIR)
+for (const name of codexSkillDirs) checkCodexSkillStructure(name)
+
+const codexAgentFiles = fs.existsSync(path.join(REPO_ROOT, CODEX_AGENTS_DIR))
+  ? fs
+      .readdirSync(path.join(REPO_ROOT, CODEX_AGENTS_DIR))
+      .filter((name) => name.endsWith(".toml"))
+      .sort()
+  : []
+
+checkSkillParity(skillDirs, codexSkillDirs)
+checkAgentParity(
+  agentFiles.map((file) => file.replace(/\.md$/, "")),
+  codexAgentFiles.map((file) => file.replace(/\.toml$/, "")),
+)
+checkPlatformOnlyAllowlist(skillDirs, codexSkillDirs)
+
 const markdownFiles = collectClaudeMarkdown()
 for (const rel of markdownFiles) checkReferences(rel)
+
+const summary =
+  `${CLAUDE_DIR} ${skillDirs.length} スキル / ${agentFiles.length} エージェント / ${markdownFiles.length} Markdown、` +
+  `${CODEX_DIR} ${codexSkillDirs.length} スキル / ${codexAgentFiles.length} エージェント`
 
 if (findings.length > 0) {
   console.error(`✘ skill-lint: ${findings.length} 件の違反\n`)
@@ -478,8 +603,8 @@ if (findings.length > 0) {
     }
     console.error(`    :${finding.line}  [${finding.rule}] ${finding.message}`)
   }
-  console.error(`\n検査 ${skillDirs.length} スキル / ${agentFiles.length} エージェント / ${markdownFiles.length} Markdown 中 ${findings.length} 件 NG`)
+  console.error(`\n検査 ${summary} 中 ${findings.length} 件 NG`)
   process.exit(1)
 }
 
-console.log(`✓ skill-lint: ${skillDirs.length} スキル / ${agentFiles.length} エージェント / ${markdownFiles.length} Markdown すべて OK`)
+console.log(`✓ skill-lint: ${summary} すべて OK`)

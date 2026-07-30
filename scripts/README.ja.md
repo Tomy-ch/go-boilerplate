@@ -16,7 +16,7 @@ scripts/
 ├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
 ├── make_help.mjs                # Make ターゲットのヘルプ出力生成
 ├── mermaid-lint.mjs            # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
-├── skill-lint.mjs              # .claude/** のスキル / エージェント定義を実態と突き合わせて検証
+├── skill-lint.mjs              # .claude/** のスキル / エージェント定義を実態および .codex/** の対応と突き合わせて検証
 ├── pr-comment-secret-lint.mjs  # PR コメントを投稿するワークフロージョブへの secret 混入を検出
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
 ├── actions-shellcheck/         # composite action の `run:` スクリプトを shellcheck で検査（Go）
@@ -47,7 +47,7 @@ scripts/
 |スクリプト|説明|実行元|
 |---|---|---|
 |`mermaid-lint.mjs`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
-|`skill-lint.mjs`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。依存なしの ESM。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査していない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
+|`skill-lint.mjs`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。依存なしの ESM。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
 |`actions-shellcheck/`|`.github/actions/**` の `action.yaml` / `action.yml` を解析し、composite action の `runs.steps[].run` を抽出して各スクリプトを標準入力経由で `shellcheck` に掛け、指摘を `action.yaml` 上の行番号へ写し戻す。`actionlint` は `.github/workflows` しか走査せず、action マニフェストを直接渡してもワークフローとして解釈して失敗するため、composite action 内のシェルはどのゲートにも掛かっていなかった。その死角を埋める。方言はステップの `shell:` から決め、shebang として渡すことで `-s` を使わずに対象シェルを確定させる。`pwsh` / `python` / `cmd` や式で指定された `shell:` は検査せず skip として数える。`${{ }}` 式は行数を保つプレースホルダへ置換する（ワークフローの `run:` に対して `actionlint` が採る方式と同じ）。検査ステップ数が 0 なら非 0 で終了するため、抽出が壊れた状態が「緑」として通ることはない。|`make actions-lint` / `make actions-shellcheck`|
 |`pr-comment-secret-lint.mjs`|`.github/workflows/` の各ワークフローをジョブ単位に切り出し、`./.github/actions/upsert-pr-comment` を使うジョブが `GITHUB_TOKEN` 以外の secret を参照していれば失敗する（ワークフロー全体の `env:` も対象）。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `${{ }}` 式に現れる secrets の直接参照（`secrets.NAME` / `secrets['NAME']` / `toJSON(secrets)` のようなコンテキスト全体）。別ジョブで読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えず、検査を通る。|`make actions-lint` / `make actions-comment-secret-lint`|
 
@@ -62,6 +62,14 @@ scripts/
 ```markdown
 - `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
 ```
+
+2 つの AI 環境をまたぐ検査は**存在のみ**に限る: `.claude/skills/<name>/` には `.codex/skills/<name>/` があり（逆も同様）、`.claude/agents/<name>.md` には `.codex/agents/<name>.toml` があり（逆も同様）、Codex の各スキルは README が定める `SKILL.md` + `agents/openai.yaml` を持つこと。Codex 側の `SKILL.ja.md` は任意なので、存在するときだけ対訳ペアとして検査する。
+
+本文の追随は意図的に検査しない。`sync-ai` は逐語コピーではなく意味ポートであり、`CLAUDE.md` ↔ `AGENTS.md` の言い換え・Claude 固有機構の適応・凝縮スタイルへの書き下ろしといった意図的な差分が恒久的に残る（共通スキルのうち少なからぬ数は、見出し集合がまったく重ならない）。存在の対応であれば例外は宣言可能な件数に収まり、それでいて肝心の事故 — 片側の環境にだけマージされた skill — は捕まえられる。
+
+意図的に片側の環境だけへ置く skill は、`skill-lint.mjs` の `PLATFORM_ONLY_SKILLS` へ**理由付きで**登録する。理由が空の登録は落ち、両環境に揃った（あるいはどちらにも無くなった）skill の登録も落ちるので、例外リストが例外より長生きすることはない。**この仕組みの正典はここで、他のドキュメントは再掲せずここへリンクする。**
+
+エージェント役割にはこの逃げ道が無く、対応は無条件に要求される。意図的に片側だけへ置いたエージェントはこれまで無く、例外の表を用意してもエントリが 0 件になる — 例外機構は実際の事例が出てから足す。
 
 ### バージョニング
 

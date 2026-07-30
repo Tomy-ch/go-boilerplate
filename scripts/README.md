@@ -16,7 +16,7 @@ scripts/
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
 ├── make_help.mjs                # Generate Make target help output
 ├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
-├── skill-lint.mjs              # Validate .claude/** skill / agent definitions against reality
+├── skill-lint.mjs              # Validate .claude/** skill / agent definitions against reality and their .codex/** counterparts
 ├── pr-comment-secret-lint.mjs  # Reject a secret in a workflow job that posts a PR comment
 ├── genctxkey/                  # Context key code generator (Go)
 ├── actions-shellcheck/         # Check the `run:` scripts of composite actions with shellcheck (Go)
@@ -47,7 +47,7 @@ scripts/
 |Script|Description|Invoked By|
 |---|---|---|
 |`mermaid-lint.mjs`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
-|`skill-lint.mjs`|Check the skill / agent definitions under `.claude/**` semantically: frontmatter (`name` matches the directory / file name, `name` + `description` present), translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`), and reference existence (every `` `make <target>` `` resolves against `Makefile` / `.makefiles/**`, every repo-root-relative path in inline code exists). Dependency-free ESM. Fills the gap that a skill definition is an agent instruction sheet whose prose nothing else checks against reality. See [Skill Lint](#skill-lint) for scope and the ignore directive.|`make md-lint` / `make md-skill-lint`|
+|`skill-lint.mjs`|Check the skill / agent definitions under `.claude/**` semantically: frontmatter (`name` matches the directory / file name, `name` + `description` present), translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`), and reference existence (every `` `make <target>` `` resolves against `Makefile` / `.makefiles/**`, every repo-root-relative path in inline code exists). Also checks that each skill / agent exists in `.codex/**` too. Dependency-free ESM. Fills the gap that a skill definition is an agent instruction sheet whose prose nothing else checks against reality, and that a skill landing on only one of the two AI environments goes unnoticed. See [Skill Lint](#skill-lint) for scope and the ignore directive.|`make md-lint` / `make md-skill-lint`|
 |`actions-shellcheck/`|Parse every `action.yaml` / `action.yml` under `.github/actions/**`, extract `runs.steps[].run` from the composite ones and check each script with `shellcheck` over stdin, remapping every finding back to its line in the `action.yaml`. Fills the gap that `actionlint` walks only `.github/workflows` and cannot be pointed at an action manifest (handed one directly, it parses it as a workflow and fails), so the shell inside a composite action was checked by nothing. The dialect comes from the step's `shell:` — passed to shellcheck as a shebang, which also settles the target shell without a `-s` flag; `pwsh` / `python` / `cmd` and an expression-valued `shell:` are counted as skipped instead. `${{ }}` expressions are masked to a placeholder that preserves the line count, the same approach `actionlint` takes for workflow `run:`. Exits non-zero when it checked zero steps, so a broken extractor cannot pass as a clean run.|`make actions-lint` / `make actions-shellcheck`|
 |`pr-comment-secret-lint.mjs`|Split every workflow in `.github/workflows/` into jobs and fail when a job using `./.github/actions/upsert-pr-comment` references a secret other than `GITHUB_TOKEN`, workflow-wide `env:` included. Dependency-free ESM. Enforces a rule `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why the rule exists. Reach: direct `secrets` references inside a `${{ }}` expression, whether `secrets.NAME`, `secrets['NAME']`, or the whole context (`toJSON(secrets)`); a secret read in one job and handed on through `needs.<job>.outputs` is beyond static reach and passes.|`make actions-lint` / `make actions-comment-secret-lint`|
 
@@ -71,6 +71,29 @@ that lives in the counterpart AI tool's repository — put the ignore directive 
 ```markdown
 - `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
 ```
+
+Across the two AI environments the script checks **existence only**: every `.claude/skills/<name>/`
+has a `.codex/skills/<name>/` and vice versa, every `.claude/agents/<name>.md` has a
+`.codex/agents/<name>.toml` and vice versa, and every Codex skill carries the `SKILL.md` +
+`agents/openai.yaml` pair its README documents. Codex-side `SKILL.ja.md` is optional, so it is
+checked as a translation pair only when present.
+
+Body correspondence is deliberately **not** checked. `sync-ai` performs a semantic port, not a
+verbatim copy, so `CLAUDE.md` ↔ `AGENTS.md` rewording, adaptation of Claude-only mechanisms, and
+condensed rewrites leave permanent intentional differences — for a substantial minority of the
+shared skills the two heading sets do not overlap at all. Existence parity has few enough
+exceptions to declare, and still catches the failure that matters: a skill merged into one
+environment only.
+
+A skill that intentionally lives in one environment goes in the `PLATFORM_ONLY_SKILLS` map in
+`skill-lint.mjs` **with a reason**. An entry with an empty reason fails, and so does one whose skill
+has since appeared in both environments (or in neither) — so the exception list cannot outlive the
+exception. **This is the canonical description of the mechanism; other documents link here rather
+than restating it.**
+
+Agent roles have no such escape hatch: their parity is unconditional. No agent has ever been
+deliberately one-sided, so an exception map for them would carry no entries — add the mechanism
+when a real case appears, not before.
 
 ### Versioning
 
