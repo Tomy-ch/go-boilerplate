@@ -14,6 +14,7 @@ import (
 
 // MakeAvailableAuthn は、テスト用のコンテキストに認証情報を設定します。
 // subject が UUID として解釈できる場合は内部 UserID も解決済みにします。
+// ゼロ値 UUID の subject は解決できないため、テストを失敗させます。
 func MakeAvailableAuthn(ctx context.Context, t *testing.T, subject string) context.Context {
 	t.Helper()
 	authn, err := auth.New(
@@ -25,7 +26,8 @@ func MakeAvailableAuthn(ctx context.Context, t *testing.T, subject string) conte
 	require.NoError(t, err)
 
 	if id, perr := uuid.Parse(subject); perr == nil {
-		authn = authn.WithUserID(id)
+		authn, err = authn.WithUserID(id)
+		require.NoError(t, err)
 	}
 
 	ctx = ctxhelper.WithAuthn(ctx)

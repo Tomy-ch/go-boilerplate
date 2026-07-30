@@ -54,7 +54,7 @@ func (r stubIdentityResolver) Resolve(_ context.Context, authn *authbd.Authn) (*
 	case jwtTestSubjectUnknown:
 		return nil, authbd.ErrIdentityNotFound
 	default:
-		return authn.WithUserID(r.userID), nil
+		return authn.WithUserID(r.userID)
 	}
 }
 

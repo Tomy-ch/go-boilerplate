@@ -63,7 +63,7 @@ Provides interfaces and value objects for authentication.
 |`Authenticator`|Interface to generate `Authn` from `Credential`|
 |`Authn`|Authentication result (subject / userID / issuer / scopes / claims)|
 |`New(subject, issuer, scopes, claims)`|Create `Authn` with the UserID unresolved (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
-|`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved|
+|`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved (a zero-value UUID returns `ErrUserIDZero`)|
 |`Credential`|Value object holding the auth scheme + token|
 |`NewCredential(scheme, token)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
 
@@ -73,6 +73,7 @@ Errors:
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|Subject is empty|
 |`ErrUserIDUnresolved`|Internal UserID is unresolved|
+|`ErrUserIDZero`|`WithUserID()` was given a zero-value UUID|
 |`ErrTokenMissing`|Token is empty|
 
 ### authz

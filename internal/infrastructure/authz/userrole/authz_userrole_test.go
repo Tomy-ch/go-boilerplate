@@ -23,7 +23,10 @@ func newAuthn(t *testing.T, subjectID uuid.UUID) *authbd.Authn {
 	authn, err := authbd.New(subjectID.String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 
-	return authn.WithUserID(subjectID)
+	resolved, err := authn.WithUserID(subjectID)
+	require.NoError(t, err)
+
+	return resolved
 }
 
 func newRole(t *testing.T, code user.RoleCode, name string) *user.Role {
@@ -136,24 +139,6 @@ func Test_authorizer_Authorize(t *testing.T) {
 				authzbd.NewResource("user", nil),
 			)
 			require.ErrorIs(t, actualErr, authzbd.ErrForbidden)
-		})
-
-		t.Run("内部 UserID がゼロ値の場合、リソース所有者が同じゼロ値でもロールを参照せず ErrForbidden を返す", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			roleRepo := mock_user.NewMockRoleRepository(ctrl)
-			zeroID := uuid.UUID{}
-
-			auth := New(roleRepo)
-			err := auth.Authorize(
-				context.Background(),
-				newAuthn(t, zeroID),
-				authzbd.ActionUserGet,
-				authzbd.NewResource("user", &zeroID),
-			)
-			require.ErrorIs(t, err, authzbd.ErrForbidden)
-			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
 
 		t.Run("認証主体が nil の場合、ロールを参照せず ErrForbidden を返す", func(t *testing.T) {

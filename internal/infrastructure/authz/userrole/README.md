@@ -19,6 +19,8 @@ An `Authorizer` implementation backed by the `user_roles` table. It is the sampl
 4. Otherwise allow only when the subject owns the resource (`subject == Resource.OwnerID()`).
 5. Deny otherwise, returning `ErrForbidden` (wraps `apperror.ErrPermissionDenied`, HTTP 403).
 
+Step 1's non-zero condition is defence in depth: `auth.Authn` already refuses to resolve a zero-value UserID (`WithUserID()` returns `ErrUserIDZero`), so an authorizer cannot normally be handed one. It is kept because this implementation must validate the inputs its own decision rests on, and step 4 is a bare value comparison.
+
 Per-API, action-specific authorization is enforced at each usecase; this implementation provides the baseline role/ownership decision.
 
 ## DI
@@ -28,3 +30,7 @@ Wired in `provideAuthorizer` (`internal/di/module/authz.go`) for the `default` (
 ## Notes
 
 - Part of the sample domain: removed together with the `user` sample by `make setup-remove-sample-api`, after which `provideAuthorizer` reverts to the fail-closed error.
+
+### Coverage exception
+
+- `Authorize` — the `subjectID.IsNil()` branch of step 1 is not unit-tested. `auth.Authn` keeps `userID` private and only `WithUserID()` sets it, so a resolved zero-value `Authn` cannot be constructed from outside the package: the branch is unreachable by construction and only a contrived seam could colour it. The `err != nil` half of the same condition (UserID unresolved) is covered.
