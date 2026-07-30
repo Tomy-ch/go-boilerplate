@@ -52,12 +52,18 @@ var (
 	readmeRowRe = regexp.MustCompile(`^\|([A-Z][A-Z0-9_]+)\|`)
 	// codeDefaultRe は、Notes 列の Code default 記法からバッククォートで囲まれた値を捕捉します。
 	codeDefaultRe = regexp.MustCompile("Code default `([^`]*)`")
-	// readmeTagRefRe は、README の散文が参照するタグ名を捕捉します。コロンの有無は綴りの揺れであり、
-	// 参照しているタグは同じものとして扱います。
-	readmeTagRefRe = regexp.MustCompile("`([A-Za-z]\\w*):?` tag")
+	// readmeTagColonRe / readmeTagPhraseRe は、README の散文が参照するタグ名を、2 通りの綴りから捕捉します。
+	// コロン付きはタグ名を名乗る綴りが他に無いため文脈を問わず拾い、コロン無しは普通名詞と区別が付かないため
+	// 直後に tag と続く言い回しに限ります。前者を文脈非依存にしてあるのは、言い回しが変わったときに参照が
+	// 黙って抽出対象から外れる（検証が縮む）のを避けるためです。
+	readmeTagColonRe  = regexp.MustCompile("`([A-Za-z]\\w*):`")
+	readmeTagPhraseRe = regexp.MustCompile("`([A-Za-z]\\w*)` ?(?:tag|タグ)")
 	// structTagRe / structTagKeyRe は、フィールドタグのリテラルと、そこで使われているタグ名を捕捉します。
 	structTagRe    = regexp.MustCompile("`[^`]*`")
 	structTagKeyRe = regexp.MustCompile(`(\w+):"`)
+	// envReadmeFiles は、タグ名の表記を突き合わせる env 変数一覧の全件です。翻訳で綴りが分かれる目印と違い、
+	// タグ名はコードの識別子そのもので訳されないため、対訳側も同じ検証に載せられます。
+	envReadmeFiles = []string{envReadmeFile, "env/README.ja.md"}
 )
 
 // targetStatusCodesPolicy は、OBS_TARGET_STATUS_CODES の環境別ポリシーの宣言です。
@@ -196,8 +202,8 @@ func TestEnvReadmeCodeDefaults(t *testing.T) {
 	}
 }
 
-// TestEnvReadmeTagNames は、env/README.md の散文が参照する struct タグ名が
-// internal/config/envspec.go に実在するタグ名であることを検証します。
+// TestEnvReadmeTagNames は、env 変数一覧の散文が参照する struct タグ名が
+// internal/config/envspec.go に実在するタグ名であることを、英語正本と対訳の両方について検証します。
 // 散文中のタグ名はコードの識別子の手書きの複製で、実在しない名前を書いても Markdown は通り、
 // 既定値の一致を見る TestEnvReadmeCodeDefaults もタグ名そのものは読みません。誤った名前のまま
 // 手順どおりに変数を追加すると、caarlos0/env は未知のタグを黙って読み飛ばし、既定値が効かないまま
@@ -208,13 +214,32 @@ func TestEnvReadmeTagNames(t *testing.T) {
 	root := moduleRoot(t)
 	declared := collectStructTagKeys(t, root)
 
-	referenced := readmeTagRefRe.FindAllStringSubmatch(readRepoFile(t, root, envReadmeFile), -1)
-	require.NotEmptyf(t, referenced, "%s からタグ名の参照を 1 件も抽出できず、検証が空振りする", envReadmeFile)
+	for _, file := range envReadmeFiles {
+		referenced := collectReadmeTagRefs(t, root, file)
+		require.NotEmptyf(t, referenced, "%s からタグ名の参照を 1 件も抽出できず、検証が空振りする", file)
 
-	for _, m := range referenced {
-		assert.Containsf(t, declared, m[1],
-			"%s が参照するタグ名 %s を %s は使っていない", envReadmeFile, m[1], envSpecFile)
+		for _, name := range referenced {
+			assert.Containsf(t, declared, name,
+				"%s が参照するタグ名 %s を %s は使っていない", file, name, envSpecFile)
+		}
 	}
+}
+
+// collectReadmeTagRefs は、env 変数一覧の散文が参照するタグ名の全件を重複を除いて返します。
+func collectReadmeTagRefs(t *testing.T, root, file string) []string {
+	t.Helper()
+
+	readme := readRepoFile(t, root, file)
+
+	names := []string{}
+	for _, re := range []*regexp.Regexp{readmeTagColonRe, readmeTagPhraseRe} {
+		for _, m := range re.FindAllStringSubmatch(readme, -1) {
+			if !slices.Contains(names, m[1]) {
+				names = append(names, m[1])
+			}
+		}
+	}
+	return names
 }
 
 // collectStructTagKeys は、envspec.go のフィールドタグが使っているタグ名の全件を返します。
