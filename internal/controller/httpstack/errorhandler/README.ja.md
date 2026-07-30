@@ -117,6 +117,32 @@ spec 複製から作るため Host 非依存で、proxy / test の Host でも�
 |`echo_http_error_handler.go`|HTTP ステータスを持つエラー → `HTTPErrorResponse` の正規化|
 |`detail_exposure.go`|`DetailPolicy` — OpenAPI spec から解決するエンドポイントごとの `details` opt-in|
 
+## テスト戦略
+
+本パッケージはミドルウェアではなく `e.HTTPErrorHandler` を差し替える。`next` が存在しないため、[`httpstack/README.ja.md`](../README.ja.md) の素通し／`Before`・`After` の観点はいずれも適用されない（*実体を使う対象とモックにする対象* の表は適用される）。ここでの検証対象は 2 つあり、壊れ方が異なる — 起動時に OpenAPI spec から前計算しリクエスト単位で判定するポリシー（`DetailPolicy`）と、正規化 → 書き出し → ログの合流点（`handleHTTPError`）である。
+
+クライアントが実際に受け取る内容を検証するときは `New(e, …)` の後に `e.ServeHTTP` 経由で駆動する（レスポンスが commit されるのは実 Echo 経路のみ）。レスポンスに差が出ない分岐（再入・commit 状態・ログ抑止）を検証するときは `httptest` で組んだ `*echo.Context` を渡して `handleHTTPError` を直接呼ぶ。ポリシーが検証対象のときは実 spec（`oapi/validator.GetValidator()`）を、ハンドラが検証対象のときは固定値を返すパッケージ内 stub を使う。
+
+### ポリシーは fail-closed に倒れる
+
+opt-in を解決 *できない* 経路はすべて「details なし」に着地しなければならない。実 spec と実 router で到達できるのは 2 つで、それぞれにケースが要る — どのルートにも一致しないリクエストと、operation は解決したが opt-in していないリクエストである。default-allow へ緩んだゲートも全リクエストに正常応答を返すため、この異常系ケースだけが検知できる。根拠: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md)。
+
+`DetailPolicy.Allows` の doc コメントが挙げる残りの拒否理由は独立したケースにはならない。`OperationID` が空の場合は未 opt-in と同じ map 参照で落ちる（`buildDetailExposureMap` が空 ID を登録しないため）。そもそも `redocly.yaml` が `operationId` 欠落を spec lint で落とすので、実 spec からは生じない。error が nil のまま route が nil、あるいは `Operation` が nil になる経路は gorillamux の router が作り得ない防御的ガードである（マッチのたびに `Operation` を設定し、メソッド集合を path item の operation から構築するため）。到達させるには `routers.Router` を自作してコンストラクタを迂回して注入するしかないので、作為的に作らず `docs/testing-conventions.md` §9 に従って未カバーのまま残す。
+
+落とすのが **wire だけ**であることも固定する。クライアントへ渡す body から `details` が消え、`resp` とログフィールドには残ること。これはハンドラ側で検証する — `Allows` は bool を返すだけでこれらを一切観測できないため、ポリシーのテストではなく `handleHTTPError` のテストに属する。レスポンス body だけを検証すると、ハンドラが `resp` 上の `details` を破壊的に消すようになっても緑のままになる。それは運用者からも details を奪う、ゲートの目的と正反対の壊れ方である。
+
+**Host 非依存性**はテストが明示しない限り不可視になる。router は spec から `servers` を除去した複製で構築するため、ポリシーのテストが投げるリクエストは `servers` のどれとも一致しない Host を持たせ（`httptest.NewRequest` 既定の `example.com` は `localhost:8080` にも `api.example.com` にも一致しない）、ケース名で Host に依存しないことを述べる。Host マッチが復活する退行は proxy 配下で全エンドポイントを fail-closed に倒すが、応答自体は正当でテストも緑のままになる。
+
+さらに `buildDetailExposureMap` には spec 自身との契約テストを置く。受理する operation 集合を、spec から独立に導出した `ErrorResponseWithDetails` を参照する operation 集合と突き合わせる。production 側に対応関数を持たないのは設計どおりで、spec の成長に伴い「スキーマは宣言したが map に届かないエンドポイント」を捕まえるのがこのテストの役目である。
+
+### ハンドラ
+
+- **正規化の優先順位** — `normalizeHTTPError` の各分岐はエラーの形で選ばれるため、それぞれにケースを置く。すでに `HTTPErrorResponse` で包まれたもの、ステータスを持つエラー（`echo.HTTPError`・型が非公開な Echo の定義済みエラー・OpenAPI バリデーション失敗）、それ以外。400〜599 の外にあるステータスを `Internal` から導出し直しつつ `Details` を温存する矯正は独立したケースにする — 呼び出し側が決めたステータスを上書きする唯一の経路であるため。
+- **再入** — 同一コンテキストで 2 回呼んでもレスポンスの書き出しはちょうど 1 回であること。この回数が契約のすべてで、2 回目の書き込みが成功しても外形からは区別できない。ガードの存在理由は、エラーレスポンスの *書き出し中* に発生したエラーで再帰させないことにある。
+- **リカバリとの協調** — `Recovered` sentinel が立っていれば 500 は返しつつエラーログは出さず、立っていなければ両方行う。500 の欠落もパニックログの二重出力も実害のある壊れ方で、片側だけのテストはもう片側を隠すため、両方向を検証する。
+- **commit 状態** — すでに commit 済みのレスポンスでは書き込み自体を行わず、書き込み失敗はログに出したうえで二重に commit しない。失敗は `Write` が常にエラーを返す `ResponseWriter` で再現する。その失敗の内側にあるフォールバックの `WriteHeader(500)` には *`server.ResponseOf` の縮退* の観点を重ねる必要がある — 同じ writer を `c.SetResponse` でも差し込むと、失敗をまたいで `responseCommitted` が false のままになりフォールバックが動く。JSON の書き込みには 500 以外のステータス（バリデーションエラーでよい）を与える — writer は失敗前に JSON 経路が送ったステータスも記録するため、ステータスが異なることだけが末尾の 500 をフォールバックの結果だと示せる。
+- **ログのゲート** — そもそもログを出すかは `ObservabilityConfig.TargetStatusCodeSet()` が決め、`Error` か `Warn` かは 500 の境界が決める。集合の内側と外側、境界の両側を網羅し、observed エントリのメッセージ（`errorhandler.server_error` / `errorhandler.client_error`）で検証する — アラートが引くのはレベルだけでなくこの文字列である。
+
 ## 注意点
 
 - エラーレスポンスの書き込みに失敗した場合、フォールバックとして `500` ステータスを返し、書き込みエラーをログに出力
