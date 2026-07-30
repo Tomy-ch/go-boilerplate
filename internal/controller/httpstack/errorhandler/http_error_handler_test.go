@@ -440,7 +440,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 			ctxhelper.SetRecoveredToEcho(c, true)
 
-			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			assert.NotEmpty(t, rec.Body.Bytes())
@@ -485,7 +485,7 @@ func Test_handleHTTPError(t *testing.T) {
 			// unwrap できない生の ResponseWriter を差し込み、responseCommitted を常に false にする。
 			c.SetResponse(bw)
 
-			handleHTTPError(c, stubDetailPolicy{allow: true}, logger, lf, obsCfg, xerrors.Wrap(apperror.ErrValidation, "invalid"))
+			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.Wrap(apperror.ErrValidation, "invalid"))
 
 			// 422 は JSON 書き込みが送出したもので、後続の 500 はフォールバック行以外からは発生しない。
 			assert.Equal(t, []int{http.StatusUnprocessableEntity, http.StatusInternalServerError}, bw.wroteHeaders)
