@@ -277,6 +277,21 @@ OpenAPI → `make gen` → 再生成
 
 の順序で修正してください。
 
+### すべてのルートは OpenAPI に存在しなければならない
+
+Echo に登録するルートは、必ず OpenAPI spec の operation（メソッド + パス）と対応していなければなりません。例外のための許可リストは持ちません。許可リスト自体がドリフト源になるためです。
+
+この規約があるのは、HTTP スタックの複数の機能が「登録されたルート = spec の operation」を明示しないまま前提にしているからです。
+
+- **405 の `Allow` ヘッダー** — Echo は該当パスに登録されたルートからこのヘッダーを算出するため、登録集合と spec の operation が一致している間だけ spec の宣言どおりのメソッドを広告する。
+- **リクエストバリデーション** — spec に無いパスはバリデーションを受けない。
+- **`details` の opt-in ゲート** — `DetailPolicy` は spec から operation を解決する fail-closed な仕組みのため、未解決のパスでは `details` が静かに落ちる。
+- **404 / 405 の判定** — OpenAPI バリデーションミドルウェアは自前のルータで判定するため、spec に無いパスは 404 になる。
+
+いずれもテストが緑のまま実行時の挙動だけが変わるため、この対応関係は `internal/architest` の `TestRouteSpecParity` で機械検証しています。除外されるのは `/_internal/` 配下の operation だけで、これは spec 自身が「実装・公開されないコード生成用のアンカー」と宣言しているためです。
+
+したがって手書きのルート登録は、spec が既に宣言している operation に対してのみ許されます（[Handler 構造体のルール](#handler-構造体のルール)の `/metrics` の例外を参照）。メソッドとパスをソースから確定できない登録形（`Any` / `Match` / `Static` / `Group` / `AddRoute`、実行時にメソッドを決めるか `Route` リテラルを渡す `Add`、パスが文字列リテラルでない登録）は spec と突き合わせられないため、同じテストが拒否します。
+
 ## Observability
 
 ### Observability フロー
@@ -428,7 +443,7 @@ type server struct {
 - new を使って内部で依存生成しない
 - interface（Usecase）に依存する
 
-例外：OpenAPI に定義されない運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は生成された `ServerInterface` を持たないため、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外は非 OpenAPI の運用エンドポイントに限ります。
+例外：レスポンスを外部ライブラリのハンドラーが生成する運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は、そのパッケージで oapi-codegen を走らせないため生成された `ServerInterface` を持たず、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外はコード生成についてのものであって **OpenAPI 定義についてではありません** — [すべてのルートは OpenAPI に存在しなければならない](#すべてのルートは-openapi-に存在しなければならない)が要求するとおり、operation は spec に宣言されています。
 
 ### なぜ fx.Invoke を使うのか
 
