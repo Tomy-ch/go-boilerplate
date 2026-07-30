@@ -65,10 +65,16 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
   way, rather than pinning the default port. Like the database name, the value reaches a host-run
   `go test` only through `make` (`make test` / `test-cached` export it) — run DB-backed tests through
   those targets, since a bare `go test` gets neither `DB_NAME_TEST` nor the slot's issuer.
-- **extension / timezone bootstrap**: after `CREATE DATABASE` (guarded by an existence check) for
-  `wt<N>_local` / `wt<N>_test`, acquire sets the `pg_trgm` extension and the `Asia/Tokyo` timezone on
-  each database (the same things the init script applies to `local` / `test`; a dynamically created
-  worktree database needs them set explicitly).
+- **extension bootstrap**: after `CREATE DATABASE` (guarded by an existence check) for
+  `wt<N>_local` / `wt<N>_test`, acquire sets the `pg_trgm` extension on each database (the same thing
+  the init script applies to `local` / `test`; a dynamically created worktree database needs it set
+  explicitly). Timezone is *not* set per database: the `database` service's `TZ` is written into
+  `postgresql.conf` at `initdb` time, so it is the cluster default and a database created later
+  inherits it. The consequence is that a shared volume initialised before `TZ` was set keeps its old
+  cluster default, and a slot leased in it shows that timezone in `psql` — the application is
+  unaffected, because it sets the timezone per connection in the DSN. To pick the new default up,
+  recreate the volume (`docker compose -p gobp-shared down -v` → `make db-init`) once every slot has
+  been freed; the volume is shared by every worktree. See `env/README.md` (Changing the Timezone).
 - **schema safety**: after acquiring, acquire rebuilds `wt<N>_local` / `wt<N>_test` to the current
   branch's schema via drop → migrate → seed. Inheriting a slot another branch used is therefore safe.
 - **schema-generation isolation**: `dump-schema` (behind `make gen-query`) dumps neither the shared

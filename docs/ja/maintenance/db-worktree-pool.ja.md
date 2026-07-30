@@ -55,9 +55,15 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   DB 名と同じく、この値が host 実行の `go test` に届くのは `make` 経由だけ（`make test` / `test-cached` が
   export する）。素の `go test` は `DB_NAME_TEST` も スロットの issuer も受け取らないため、DB を使うテストは
   これらのターゲットから実行すること。
-- **拡張・timezone のブートストラップ**: acquire は `wt<N>_local` / `wt<N>_test` を CREATE DATABASE
-  （存在ガード）した後、各 DB に `pg_trgm` 拡張と `Asia/Tokyo` timezone を設定する（init スクリプトが
-  `local` / `test` に施すのと同じもの。動的に作る worktree DB には明示設定が必要）。
+- **拡張のブートストラップ**: acquire は `wt<N>_local` / `wt<N>_test` を CREATE DATABASE
+  （存在ガード）した後、各 DB に `pg_trgm` 拡張を設定する（init スクリプトが `local` / `test` に施すのと
+  同じもの。動的に作る worktree DB には明示設定が必要）。timezone は DB 単位では設定しない。`database`
+  サービスの `TZ` が `initdb` 時に `postgresql.conf` へ書き込まれてクラスタ既定になり、後から作った DB も
+  それを継承するため。結果として、`TZ` を設定する前に初期化された共有 volume は旧クラスタ既定を保持し、
+  そこでリースしたスロットは `psql` でその timezone を表示する（アプリは接続ごとに DSN で timezone を
+  指定するため影響を受けない）。新しい既定を反映するには、全スロットを解放した上で volume を作り直す
+  （`docker compose -p gobp-shared down -v` → `make db-init`）。volume は全 worktree の共有物である点に
+  注意。詳細は `env/README.md` の Changing the Timezone を参照。
 - **スキーマ安全性**: acquire は取得後に `wt<N>_local` / `wt<N>_test` を drop→migrate→seed で
   自ブランチのスキーマへ作り直す。別ブランチが使ったスロットを引き継いでも安全。
 - **スキーマ生成の隔離**: `make gen-query` の `dump-schema` は共有 `local` も自 worktree DB もダンプ

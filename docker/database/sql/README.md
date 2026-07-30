@@ -24,8 +24,12 @@ Execution is handled automatically by PostgreSQL's `docker-entrypoint-initdb.d` 
 These scripts create/extension-init only the fixed `local` / `test` databases. The DB worktree
 pool (`cmd/db-slot`, core `internal/cli/dbslot`) creates its per-worktree databases
 (`wt<N>_local` / `wt<N>_test`) dynamically **after** startup, so it bootstraps the same extensions
-and timezone itself — keep this setup in sync with `internal/cli/dbslot` (`PgxAdmin.SetupDatabase`).
+itself — keep this setup in sync with `internal/cli/dbslot` (`PgxAdmin.SetupDatabase`).
 See `docs/maintenance/db-worktree-pool.md`.
+
+Timezone is deliberately **not** set here. The `TZ` environment variable of the `database` service
+makes it the cluster default at `initdb` time, which every database created later inherits, so no
+script or tool has to repeat it. See `env/README.md` (Changing the Timezone).
 
 ## What Belongs Here
 

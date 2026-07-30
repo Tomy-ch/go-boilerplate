@@ -26,13 +26,27 @@
    - **普遍的なフレームワーク既定値** → 代わりに `default:` タグを付与し、`.env` ファイルには記載せず、テーブルに **Code default `<値>`** と明記
 4. `make test` を実行して config 構造体がロードできることを確認
 
+## タイムゾーンを変更する手順
+
+タイムゾーンは**別の層を設定する 2 つの独立した機構**から供給されるため、`Asia/Tokyo` から移るプロジェクトは両方を変更する必要がある。リポジトリの他のどこにも全体像が記録されていないため、ここに一覧を置く。
+
+- **セッションの timezone** — `OS_TZ` は、アプリが DB へ接続するときの DSN の `timezone` パラメータになる（`internal/infrastructure/rdb/driver/config.go`）。アプリが読み書きする時刻を決めるのはこの機構だけで、DB 側の設定より優先される。
+- **DB 側の既定値** — PostgreSQL コンテナの `TZ` 環境変数。`initdb` がこれを `postgresql.conf` へ書き込むためクラスタ既定となり、以降に作られる全 DB が継承する（worktree スロットプールの `wt<N>_local` / `wt<N>_test`、`make dump-schema` の `gen_schema`）。timezone を明示しないクライアントの表示にしか影響しないため、目的は `psql` / pgweb / SchemaSpy で時刻を直接読むときの開発体験である。
+
+どちらも必要である。前者を外すとアプリがクラスタ既定に従ってしまい、後者を外すと DB へ直接繋いだセッションが全て UTC 表示になる。次を全て揃えて変更する。
+
+1. `env/.env` と全ての `env/.env.<env>` — `OS_TZ` のエントリ（セッションの timezone。`required` なので 5 ファイル全てに存在する）。
+2. `docker-compose.yaml` の `database` サービス — `TZ` と `PGTZ`。`TZ` は `initdb` 時にしか効かないため、volume を作り直すまで既存 volume は旧クラスタ既定を保持する。その手順と worktree 特有の注意は `docs/maintenance/db-worktree-pool.md` が所有する。`PGTZ` は `psql` セッション単位で効くため、古い volume でも即座に反映される。
+3. `.github/workflows/` 配下で DB を用意する各 workflow の PostgreSQL サービス定義 — `TZ` と `PGTZ`。GitHub Actions はサービス定義を workflow 間で共有できないため、値は全ファイルに重複して書かれている。列挙は変数ではなくサービスの image で行うこと（`grep -rl 'image: postgres' .github/workflows/`）— `PGTZ` で grep すると既に設定済みの workflow しか見つからず、まだ設定が要る workflow を黙って取りこぼす。
+4. 値をリテラルで固定しているテストの期待値 — `internal/config/config_testing_mock.go` の `expectedOSTimeZone`、および `internal/di/job_test.go` / `internal/di/server/hook/http_server_hook_test.go` / `internal/infrastructure/rdb/driver/config_test.go` のアサーション。
+
 ## 変数一覧（サブシステム別）
 
 ### OS
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準。配置先の地域はプロジェクトごとに変わるため、コード側の既定値ではなく `required` として全 env ファイルに明記し、タイムゾーンを運用者の見る場所に置く。空文字は UTC へ無警告で退行するため拒否する|
+|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準。配置先の地域はプロジェクトごとに変わるため、コード側の既定値ではなく `required` として全 env ファイルに明記し、タイムゾーンを運用者の見る場所に置く。空文字は UTC へ無警告で退行するため拒否する。設定するのはセッションの timezone のみで、DB 側の既定値はコンテナの `TZ` が持つため、`Asia/Tokyo` から移る前に[タイムゾーンを変更する手順](#タイムゾーンを変更する手順)を参照|
 
 ### Application
 
