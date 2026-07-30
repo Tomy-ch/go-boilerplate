@@ -279,11 +279,11 @@ OpenAPI → `make gen` → regenerate
 
 ### Every Route Must Exist in OpenAPI
 
-Every route registered on Echo **must** have a matching operation (method + path) in the OpenAPI spec. There is no allowlist for exceptions — an allowlist would itself become a drift source.
+Every route registered on Echo **must** have a matching operation (method + path) in the OpenAPI spec. There is no allowlist for exceptions — an allowlist would itself become a drift source. The rule itself is canonical in [OpenAPI-first Rules](../../../docs/rules.md#openapi-first-rules); this section covers what it means while writing a handler.
 
 The rule exists because several parts of the HTTP stack assume "registered route = spec operation" without stating it:
 
-- **`Allow` header on 405** — Echo derives the header from the routes registered for that path, so it advertises the spec's declared methods only while the two sets agree.
+- **`Allow` header on 405** — the header has to advertise the methods the path actually accepts, and that list is resolvable only while the registered routes and the spec's operations agree.
 - **Request validation** — a path the spec does not declare is never validated.
 - **`details` opt-in gate** — `DetailPolicy` resolves the operation from the spec and is fail-closed, so an unresolved path silently drops `details`.
 - **404 / 405 decision** — the OpenAPI validation middleware routes with its own router, so a path the spec does not declare answers 404.
