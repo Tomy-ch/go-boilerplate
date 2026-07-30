@@ -4,11 +4,7 @@ English | [日本語](../ja/get-started/setup-repository.ja.md)
 
 For details of Make commands, refer to [Make Target List](../../.makefiles/README.md).
 
-## Phase 1: Tool Setup
-
-Install the tools required for VSCode development.
-
-### 1.1. Install mise and activate it in your shell
+## Phase 1: Install mise and activate it in your shell
 
 This project requires [mise](https://mise.jdx.dev) as the tool / runtime version manager. Install it via the [official installation guide](https://mise.jdx.dev/getting-started.html), then **activate it in your shell init** — this is mandatory, not optional. The repository's Make targets resolve `golangci-lint`, `lefthook`, etc. through mise's shims, and the shims are only on `PATH` after activation:
 
@@ -30,7 +26,7 @@ mise --version
 which mise
 ```
 
-### 1.2. Install the Go runtime and project tools
+## Phase 2: Install the Go runtime and project tools
 
 All tool versions (golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthook / ...) are pinned in [`mise.toml`](../../mise.toml) as the single source of truth. The Dockerfiles, the local installer (`.makefiles/go/installer.mk`), and the CI workflows all install only what they need via `mise install <tool>` against the same `mise.toml`.
 
@@ -40,7 +36,7 @@ make install-tools   # installs gopls / gotests / impl / dlv / lefthook / golang
 make activate-tools  # runs `lefthook install` to wire git hooks
 ```
 
-### 1.3. Install the agent configuration (recommended)
+## Phase 3: Install the agent configuration (recommended)
 
 The AI-assist layer ships as configuration: project-scoped official plugins, this repository's own skills under [`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md), and one officially recommended external skill (`graphify`, a queryable knowledge graph of the repository). Two idempotent bootstraps install the parts a clone does not carry:
 
@@ -58,7 +54,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope
 
 Removing it later costs the same as removing it now, so adopting the recommended configuration first and deciding afterwards is a safe order.
 
-## Phase 2: Local Startup Verification
+## Phase 4: Local Startup Verification
 
 Start the application locally and confirm it works without issues.
 
@@ -68,7 +64,7 @@ make tools
 make db-init
 ```
 
-## Phase 3: Execute Localization Script
+## Phase 5: Execute Localization Script
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
 
@@ -99,7 +95,7 @@ make gen-sqlc
 make tidy-lib
 ```
 
-## Phase 4: Localization Verification
+## Phase 6: Localization Verification
 
 Confirm that basic functionality works correctly, including tests, static analysis, code generation, and health checks.
 
@@ -111,7 +107,7 @@ curl http://localhost:8080/health
 curl http://localhost:8080/ready
 ```
 
-## Phase 5: Manual Rewrites
+## Phase 7: Manual Rewrites
 
 1. Rewrite the contents of README.md according to your project.
 2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
@@ -123,7 +119,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
-## Phase 6: Rewrite env Files
+## Phase 8: Rewrite env Files
 
 Rewrite the files in the [env/](../../env/) directory according to your project.
 
@@ -137,7 +133,7 @@ A few subsystems **clamp** out-of-range values to safe defaults instead of faili
 - **Outbox relay** (`OUTBOX_*`) — `provideRelaySettings`; see [internal/controller/outbox/README.md](../../internal/controller/outbox/README.md) (Settings → Clamping).
 - **Secure cookie** (`SECURE_COOKIE_SAME_SITE`) — `normalizeSameSite` clamps any non-`Lax`/`Strict`/`None` value to "do not override"; see [internal/controller/httpstack/cookie/README.md](../../internal/controller/httpstack/cookie/README.md).
 
-## Phase 7: Repository Initialization
+## Phase 9: Repository Initialization
 
 After completing the above steps, initialize the repository after the first push.
 
@@ -162,7 +158,7 @@ make setup-repo
 make branch-minor
 ```
 
-## Phase 8: Create Deployment Configuration
+## Phase 10: Create Deployment Configuration
 
 This boilerplate adopts a configuration that does not depend on a specific cloud provider or deployment method, allowing flexible deployment to various cloud or on-premise environments.
 
@@ -172,16 +168,16 @@ Deployment CI/CD: Complete [.github/workflows/deploy-app.yaml](../../.github/wor
 
 `Note: Please modify this section according to your environment` indicates sections that need to be modified according to your environment.
 
-## Phase 9: Implement Authentication & Authorization
+## Phase 11: Implement Authentication & Authorization
 
 This boilerplate ships **development-only stubs** for both authentication (authn) and authorization (authz), and they are wired **only** for the `local` / `ci` / `test` environments. For `development` / `staging` / `production` the DI providers are **fail-closed**: they refuse to wire the stub and return an error, so the application **deliberately fails to start** until you implement and wire real components.
 
 This is an intentional forcing function — it guarantees a signature-skipping authenticator or an allow-all authorizer can never ship to a real environment. **Implementing both for `development` / `staging` / `production` is a required project-start task.**
 
 > [!IMPORTANT]
-> The `Authorizer` is provided inside `InfrastructureModule`, so **every process that builds a usecase** — the HTTP server **and** the background job / worker processes — requires a configured `Authorizer`. Until Phase 9.2 is done, running any of them with `APP_ENV=development` / `staging` / `production` exits at Fx construction with `no authorizer configured for environment` (authn behaves the same with `no authenticator configured for environment`). Seeing this before you implement the real components is expected, not a bug.
+> The `Authorizer` is provided inside `InfrastructureModule`, so **every process that builds a usecase** — the HTTP server **and** the background job / worker processes — requires a configured `Authorizer`. Until the authorization step below is done, running any of them with `APP_ENV=development` / `staging` / `production` exits at Fx construction with `no authorizer configured for environment` (authn behaves the same with `no authenticator configured for environment`). Seeing this before you implement the real components is expected, not a bug.
 
-### 9.1 Authentication (authn)
+### Authentication (authn)
 
 This boilerplate includes sample code using JWT as an example implementation of authentication. Implement authentication according to your project requirements.
 
@@ -192,7 +188,7 @@ Create authentication functionality by implementing the usecase [Authenticator](
 - Add your `stg` / `prd` implementations (JWT / OAuth2 / OIDC / Cognito / Auth0 など) under `internal/infrastructure/auth/{stg,prd}/`.
 - Wire them per environment by editing the [authentication DI module](../../internal/di/module/core/auth.go) (`provideAuthenticator`): replace the `default` fail-closed branch with `case config.EnvDevelopment / EnvStaging / EnvProduction` returning your real `Authenticator`.
 
-### 9.2 Authorization (authz)
+### Authorization (authz)
 
 This boilerplate ships an **allow-all** authorizer as a development stub. Implement a real policy decision point (PDP) for your project.
 
@@ -205,9 +201,9 @@ Create authorization functionality by implementing the usecase [Authorizer](../.
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
-## Phase 10: Review the template's deliberate exclusions (ADRs)
+## Phase 12: Review the template's deliberate exclusions (ADRs)
 
-Beyond authentication / authorization (Phase 9) and deployment (Phase 8), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
+Beyond authentication / authorization (Phase 11) and deployment (Phase 10), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
 
 Each such non-choice is recorded as an **exclusion ADR** under [docs/adr/](../../docs/adr/), tagged `setup-review`. List them with:
 
@@ -222,7 +218,7 @@ For your project, review each and decide:
 
 The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
-## Phase 11: Decide the dependency-license policy
+## Phase 13: Decide the dependency-license policy
 
 The dependency-license scan (`make trivy-license`, and the `trivy-license` job in [.github/workflows/trivy-fs.yaml](../../.github/workflows/trivy-fs.yaml)) is **report-only, permanently**. It enumerates every dependency's license into the job summary and a PR comment, and never fails the build.
 
@@ -235,7 +231,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
 4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0080](../adr/0080-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
-## Phase 12: Remove Sample APIs
+## Phase 14: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 
