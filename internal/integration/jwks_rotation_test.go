@@ -165,64 +165,72 @@ func TestJWKSRotationIntegration(t *testing.T) {
 		return srv.DoJSON(http.MethodGet, "/protected", nil, bearerHeader(token))
 	}
 
-	t.Run("Phase 遷移で新旧 Token を検証し、退役鍵を拒否する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		clk := &rotClock{now: time.Now()}
-		src := &rotatingJWKS{body: phase1}
-		srv := startRotationServer(t, src, clk)
 
-		// Phase1: key-a 署名 Token を受理。初回の 1 回だけ JWKS を取得する。
-		require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
-		require.Equal(t, 1, src.count())
+		t.Run("Phase 遷移で新旧 Token を検証し、退役鍵を拒否する", func(t *testing.T) {
+			t.Parallel()
+			clk := &rotClock{now: time.Now()}
+			src := &rotatingJWKS{body: phase1}
+			srv := startRotationServer(t, src, clk)
 
-		// 通常リクエスト（既知 kid）では JWKS を再取得しない（受入条件 1）。
-		require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
-		require.Equal(t, 1, src.count(), "既知 kid の通常リクエストで再取得しない")
+			// Phase1: key-a 署名 Token を受理。初回の 1 回だけ JWKS を取得する。
+			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
+			require.Equal(t, 1, src.count())
 
-		// Phase2: 新鍵 key-b を公開集合へ追加。未知 kid の初回で 1 度だけ再取得する（受入条件 2）。
-		clk.advance(rotCooldown + time.Second)
-		src.setPhase(phase2)
-		require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
-		require.Equal(t, 2, src.count(), "未知 kid の初回のみ再取得する")
+			// 通常リクエスト（既知 kid）では JWKS を再取得しない（受入条件 1）。
+			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
+			require.Equal(t, 1, src.count(), "既知 kid の通常リクエストで再取得しない")
 
-		// 移行期は新旧両署名 Token を受理し、追加の再取得は起きない（受入条件 3）。
-		require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
-		require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
-		require.Equal(t, 2, src.count(), "移行期の新旧受理で再取得しない")
+			// Phase2: 新鍵 key-b を公開集合へ追加。未知 kid の初回で 1 度だけ再取得する（受入条件 2）。
+			clk.advance(rotCooldown + time.Second)
+			src.setPhase(phase2)
+			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
+			require.Equal(t, 2, src.count(), "未知 kid の初回のみ再取得する")
 
-		// Phase3: 旧鍵 key-a を退役。cacheTTL 経過で再取得し、退役 kid の Token を拒否する（受入条件 4）。
-		clk.advance(time.Hour + time.Minute)
-		src.setPhase(phase3)
-		AssertErrorResponse(t, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)), http.StatusUnauthorized)
-		require.Equal(t, 3, src.count(), "cacheTTL 経過後に再取得して退役を反映する")
-		require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
+			// 移行期は新旧両署名 Token を受理し、追加の再取得は起きない（受入条件 3）。
+			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
+			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
+			require.Equal(t, 2, src.count(), "移行期の新旧受理で再取得しない")
+
+			// Phase3: 旧鍵 key-a を退役。cacheTTL 経過で再取得し、退役 kid の Token を拒否する（受入条件 4）。
+			clk.advance(time.Hour + time.Minute)
+			src.setPhase(phase3)
+			AssertErrorResponse(t, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)), http.StatusUnauthorized)
+			require.Equal(t, 3, src.count(), "cacheTTL 経過後に再取得して退役を反映する")
+			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
+		})
+
+		t.Run("同時の未知 kid 検証は JWKS 更新を 1 回に抑制する（受入条件 5）", func(t *testing.T) {
+			t.Parallel()
+			clk := &rotClock{now: time.Now()}
+			src := &rotatingJWKS{body: phase1}
+			srv := startRotationServer(t, src, clk)
+
+			var wg sync.WaitGroup
+			for range 8 {
+				wg.Go(func() {
+					_ = get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).Body.Close()
+				})
+			}
+			wg.Wait()
+
+			assert.Equal(t, 1, src.count(), "同時 JWKS 更新は singleflight で 1 回に抑制される")
+		})
 	})
 
-	t.Run("JWKS に存在しない kid の Token を拒否する（unknown-kid / old-key profile 相当）", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		clk := &rotClock{now: time.Now()}
-		src := &rotatingJWKS{body: phase1}
-		srv := startRotationServer(t, src, clk)
 
-		// 有効な鍵で署名しても、JWKS に無い kid では鍵解決に失敗し 401。
-		token := mintRotToken(t, keyA, "mock-key-retired", clk)
-		AssertErrorResponse(t, get(srv, token), http.StatusUnauthorized)
-	})
+		t.Run("JWKS に存在しない kid の Token を拒否する（unknown-kid / old-key profile 相当）", func(t *testing.T) {
+			t.Parallel()
+			clk := &rotClock{now: time.Now()}
+			src := &rotatingJWKS{body: phase1}
+			srv := startRotationServer(t, src, clk)
 
-	t.Run("同時の未知 kid 検証は JWKS 更新を 1 回に抑制する（受入条件 5）", func(t *testing.T) {
-		t.Parallel()
-		clk := &rotClock{now: time.Now()}
-		src := &rotatingJWKS{body: phase1}
-		srv := startRotationServer(t, src, clk)
-
-		var wg sync.WaitGroup
-		for range 8 {
-			wg.Go(func() {
-				_ = get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).Body.Close()
-			})
-		}
-		wg.Wait()
-
-		assert.Equal(t, 1, src.count(), "同時 JWKS 更新は singleflight で 1 回に抑制される")
+			// 有効な鍵で署名しても、JWKS に無い kid では鍵解決に失敗し 401。
+			token := mintRotToken(t, keyA, "mock-key-retired", clk)
+			AssertErrorResponse(t, get(srv, token), http.StatusUnauthorized)
+		})
 	})
 }

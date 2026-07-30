@@ -45,28 +45,32 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 	require.NoError(t, err)
 	innerTxm := driver.NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
 
-	t.Run("実行時にエラーが発生しない場合、正常に終了すること", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		txm := &testTxRunner{
-			inner: innerTxm,
-			db:    db,
-			t:     t,
-		}
-		txm.WithinTx(func(_ context.Context) {})
-	})
 
-	t.Run("Doがロールバックsentinel以外のnilを返す場合、NoError検証まで到達すること", func(t *testing.T) {
-		t.Parallel()
-		// inner.Do が nil を返すと、rollback sentinel 判定を外れて require.NoError の検証経路に到達する。
-		ctrl := gomock.NewController(t)
-		manager := mock_tx.NewMockManager(ctrl)
-		manager.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		t.Run("実行時にエラーが発生しない場合、正常に終了すること", func(t *testing.T) {
+			t.Parallel()
+			txm := &testTxRunner{
+				inner: innerTxm,
+				db:    db,
+				t:     t,
+			}
+			txm.WithinTx(func(_ context.Context) {})
+		})
 
-		txm := &testTxRunner{
-			inner: manager,
-			t:     t,
-		}
-		txm.WithinTx(func(_ context.Context) {})
+		t.Run("Doがロールバックsentinel以外のnilを返す場合、NoError検証まで到達すること", func(t *testing.T) {
+			t.Parallel()
+			// inner.Do が nil を返すと、rollback sentinel 判定を外れて require.NoError の検証経路に到達する。
+			ctrl := gomock.NewController(t)
+			manager := mock_tx.NewMockManager(ctrl)
+			manager.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+
+			txm := &testTxRunner{
+				inner: manager,
+				t:     t,
+			}
+			txm.WithinTx(func(_ context.Context) {})
+		})
 	})
 }
 
