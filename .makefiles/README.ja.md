@@ -417,7 +417,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gh-login` | `gh` コマンドで GitHub にログインします。 | ブラウザ認証方式でログインを行います。 |
 | `make delete-all-labels` | GitHub リポジトリ上の既存ラベルをすべて削除します。 | なし |
 | `make create-default-labels` | `.github/settings/labels.json` をもとに、デフォルトラベルを作成します。 | なし |
-| `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | なし |
+| `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | 一方向の適用です。適用後に JSON を再適用する仕組みも実ルールセットと突き合わせる仕組みも無いため、このファイルが表すのは強制されている状態ではなく意図です。`.github/settings/README.ja.md` を参照してください。 |
 | `make enable-workflows` | `disabled_fork` 状態のワークフローを一括で有効化します。 | 冪等です。fork / テンプレート由来のリポジトリは全ワークフローが無効の状態で作られます。 |
 
 ### GitHub リポジトリ初期化関連
