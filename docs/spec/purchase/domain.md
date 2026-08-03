@@ -208,6 +208,12 @@ fields:
     TerminalStatusCodes（完了 / キャンセル / 配達済み）の否定として判定するため、ステータスが増えた場合は
     既定で進行中側に倒れる。ステータスコードは購入ステータスマスタとの JOIN で解決する
     （FindFeedByUserID と同じ子参照マスタ例外により単一集約の Repository read）。
+- name: FindUserIDsWithPurchases
+  signature: FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)
+  behavior: |
+    与えたユーザー ID のうち、購入を 1 件以上持つものを返す（退会後の物理削除でユーザーを
+    残すかの判定の取得元）。ステータスは問わず、順序は保証しない。userIDs が空なら空を返す。
+    ユーザーは独立集約のため users とは結合せず、ID 群の照会として切り出す。
 ```
 
 なお、状態遷移に伴う購入行の悲観ロック（`FOR UPDATE`）は、書き込みが集約を跨ぐかで担い手が分かれる（[ADR-0029] の判定軸）:

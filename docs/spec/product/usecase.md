@@ -15,6 +15,8 @@ sort は `-publishedAt`（既定=降順）/ `publishedAt`（昇順）の 2 値�
 
 在庫の増減（`PATCH /v1/products/{productId}/stock`）は admin 認可のうえ、`tx.Manager` の境界内で対象商品を悲観ロックしてから在庫を増減する write ユースケース。購入による在庫減算と同じ行を対象とするため、取得〜更新が直列化され、並行する増減は失われず合成される（ADR-0100）。待てば解消しうる競合は一時障害（503）、取得後の変化を検出した恒久的な衝突は 409 として露出する。
 
+在庫僅少一覧（`GET /v1/products/low-stock`）は admin 認可のうえ、在庫が在庫警告閾値以下まで減った商品を在庫の少ない順に上位 `limit` 件返す read-only な thin orchestrator。判定条件と並び順は `product.Repository` の `FindAllLowStock` が持ち、usecase は取得件数の正規化（既定値 20 / 範囲 1〜100 へのクランプ）と DTO への写像のみを担う。cursor ページングは持たない。
+
 商品部分更新（`PATCH /v1/products/{productId}`）は admin 認可のうえ、`tx.Manager` の境界内で read-modify-write を行う write ユースケース。読み込み時点のバージョンを条件に更新することで、並行編集による上書き（lost update）を防ぐ。送られたフィールドのみを反映し、未送信は現在値を据え置き、null 明示はクリアする 3 状態の解決は usecase が担う（domain へは解決後の確定値のみを渡す）。参照の再解決は `statusId` / `categoryId` が指定された場合に限る。
 
 ## Interface
@@ -33,6 +35,8 @@ methods:
     signature: UpdateProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams) (ProductView, error)
   - name: UpdateProductStock
     signature: UpdateProductStock(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductStockParams) (ProductView, error)
+  - name: ListLowStockProducts
+    signature: ListLowStockProducts(ctx context.Context, authn *auth.Authn, params ListLowStockProductsParams) (ProductLowStockListView, error)
 ```
 
 ## DTOs
@@ -134,6 +138,16 @@ methods:
       type: "[]ProductView"
     - name: NextCursor
       type: "*string"        # 最終ページの場合は nil
+- name: ListLowStockProductsParams
+  description: 在庫僅少商品一覧取得の入力。cursor を持たない top-N のため取得件数のみを受け取る。
+  fields:
+    - name: Limit
+      type: int              # 下限（1）未満は既定値 20、上限（100）超過は 100 へクランプ
+- name: ProductLowStockListView
+  description: 在庫僅少商品一覧の取得結果。cursor を持たないため NextCursor はない。
+  fields:
+    - name: Items
+      type: "[]ProductView"  # 在庫の少ない順（同数は商品 ID 昇順）
 ```
 
 ## Dependencies
@@ -141,10 +155,10 @@ methods:
 ```yaml
 - tracer              # observability.TracerFactory -> LayerTracer
 - txm                 # boundary/tx.Manager（CreateProduct / UpdateProduct / UpdateProductStock のトランザクション境界）
-- product_repository  # domain/product.Repository（FindPublishedList / FindPublishedByID / FindByID / LockByID / Create / Update / UpdateStock）
+- product_repository  # domain/product.Repository（FindPublishedList / FindAllLowStock / FindPublishedByID / FindByID / LockByID / Create / Update / UpdateStock）
 - category_repository # domain/product/category.Repository（FindByID でカテゴリ名称を解決）
 - status_repository   # domain/product/status.Repository（FindByID でステータス名称を解決）
-- authorizer          # boundary/authz.Authorizer（CreateProduct / UpdateProduct / UpdateProductStock の admin 認可）
+- authorizer          # boundary/authz.Authorizer（CreateProduct / UpdateProduct / UpdateProductStock / ListLowStockProducts の admin 認可）
 ```
 
 ## Workflow
@@ -275,3 +289,26 @@ errors:
 >
 > 在庫の更新もバージョンを進めるため、更新前のバージョンを持つ部分更新（`UpdateProduct`）は 409 で弾かれる。
 > これにより、悲観ロック（同時更新の直列化）と楽観ロック（読み込み後の変化の検出）が同じ行で噛み合う。
+
+### ListLowStockProducts
+
+```yaml
+tx_required: false
+steps:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）を返す
+  - authorizer.Authorize（ActionProductListLowStock / resource=product・所有者なし）で admin 認可を確認する（拒否は 403）
+  - paging.NewLimit（lowStockLimitPolicy）で取得件数を正規化する（0 以下は既定値 20、上限超過は 100 へクランプ）
+  - product_repository.FindAllLowStock で在庫僅少商品を在庫の少ない順に最大 limit 件取得する
+  - 各 Product を ProductView へ写像する（在庫僅少の再判定は行わない。判定は Repository の契約）
+calls:
+  - product_repository.FindAllLowStock
+errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）
+  - 認可拒否は authz 由来の apperror.ErrPermissionDenied（403）
+  - product_repository.FindAllLowStock のエラーをそのまま伝播する
+```
+
+> `limit` の既定値は OpenAPI の `default: 20` ではなく usecase の `paging.NewLimit` が与える。
+> oapi-codegen は任意クエリパラメータへ既定値を適用せず、未指定は nil のままハンドラへ届くため。
+> 範囲外（1 未満 / 100 超）の要求は OpenAPI リクエストバリデータが 400 で弾くため、クランプは
+> バリデータを通らない経路に対する二重防御として働く。

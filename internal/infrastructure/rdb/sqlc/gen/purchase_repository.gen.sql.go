@@ -383,6 +383,39 @@ func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchases
 	return items, nil
 }
 
+const listUserIDsWithPurchases = `-- name: ListUserIDsWithPurchases :many
+SELECT DISTINCT user_id
+FROM purchases
+WHERE user_id = ANY($1::UUID [])
+`
+
+// === source: database/dml/repository/purchase/select_user_ids_with_purchases.sql ===
+// 与えたユーザー ID のうち、購入を 1 件以上持つものを返す。購入は独立集約のため、
+// ユーザー側の絞り込みと結合せず ID 群の照会として切り出す（docs/rules.md の Repository / QueryService Rules）。
+//
+//	SELECT DISTINCT user_id
+//	FROM purchases
+//	WHERE user_id = ANY($1::UUID [])
+func (q *Queries) ListUserIDsWithPurchases(ctx context.Context, userIds []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listUserIDsWithPurchases, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockPurchaseByID = `-- name: LockPurchaseByID :one
 SELECT
     ps.code AS status_code,

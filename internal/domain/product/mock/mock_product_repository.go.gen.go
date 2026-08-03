@@ -71,6 +71,21 @@ func (mr *MockRepositoryMockRecorder) Create(ctx, p any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, p)
 }
 
+// FindAllLowStock mocks base method.
+func (m *MockRepository) FindAllLowStock(ctx context.Context, limit int32) (product.Products, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindAllLowStock", ctx, limit)
+	ret0, _ := ret[0].(product.Products)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindAllLowStock indicates an expected call of FindAllLowStock.
+func (mr *MockRepositoryMockRecorder) FindAllLowStock(ctx, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAllLowStock", reflect.TypeOf((*MockRepository)(nil).FindAllLowStock), ctx, limit)
+}
+
 // FindByID mocks base method.
 func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
 	m.ctrl.T.Helper()

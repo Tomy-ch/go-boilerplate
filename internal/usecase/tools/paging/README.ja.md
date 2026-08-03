@@ -7,18 +7,24 @@
 - **オフセット方式（`Page`）** — 1ベースの page/perPage を limit/offset に変換。単純で任意ページへのランダムアクセスが可能だが、深いページで `OFFSET` のスキャンが増えて劣化する。
 - **カーソル方式 / keyset（`Cursor`）** — 不透明カーソル（直前ページ末尾行のソートキー）を受け取り、`WHERE (sort_keys) < (:cursor)` クエリに用いる。深いページでも安定して高速で、大規模データや無限スクロールに推奨。本パッケージは**輸送（エンコード/デコード）・検証・件数ポリシー**のみを担い、キーを型付きのソート列へ解釈し直す処理（例: RFC3339 → time、UUID 文字列 → uuid）は**クエリ層**の責務。
 
-両者は同じ件数ポリシー定数（`defaultPerPage` / `maxPerPage`）を共有します。
+本パッケージは**件数ポリシーそのもの**（`Limit` / `LimitPolicy`）も担います。これにより、ページネーションを一切持たない読み取り — ランキングや在庫僅少カードのような top-N 一覧 — も「未指定なら既定値、上限超過ならクランプ」という同じ規約を再実装せずに共有できます。`Page` / `Cursor` は本パッケージ自身の `defaultPerPage` / `maxPerPage` を与えて `Limit` の上に構築されており、top-N の呼び出し元は自前の `LimitPolicy` を渡します（フィールド名を持つため、既定値と上限を呼び出し側で取り違えることがありません）。
 
 ## 定数
 
 |定数|値|説明|
 |---|---|---|
-|`defaultPerPage`|50|デフォルトの1ページあたり件数|
-|`maxPerPage`|200|最大の1ページあたり件数|
+|`defaultPerPage`|50|デフォルトの1ページあたり件数（`Page` / `Cursor`）|
+|`maxPerPage`|200|最大の1ページあたり件数（`Page` / `Cursor`）|
 |`minPage`|1|最小ページ番号|
 |`maxPage`|10,000|最大ページ番号|
 
 ## 挙動
+
+**件数（`Limit`）**
+
+- `first` ≤ 0 または nil → `policy.Default` を使用
+- `first` > `policy.Max` → `policy.Max` にクランプ
+- `Value32()` は安全な int32 変換のため `math.MaxInt32` でクランプ
 
 **オフセット方式（`Page`）**
 
@@ -38,6 +44,15 @@
 - カーソル文字列の形式は**不透明**（`base64url(JSON 文字列配列)`）。クライアント側はブラックボックスとして扱う。
 
 ## 使用例
+
+### top-N（ページネーションなし）
+
+```go
+var lowStockLimitPolicy = paging.LimitPolicy{Default: 20, Max: 100}
+
+limit := paging.NewLimit(req.Limit, lowStockLimitPolicy)
+// req.Limit が nil なら limit.Value() == 20。limit.Value32() を SQL の LIMIT に渡す。
+```
 
 ### オフセット方式
 

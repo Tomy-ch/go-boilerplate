@@ -66,6 +66,8 @@ tags:
     description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
   - name: v1/products/ranking
     description: 商品売上ランキング（認証不要・購入明細の集計 / query_service サンプル）。
+  - name: v1/products/low-stock
+    description: 在庫僅少商品一覧（admin のみ・在庫警告閾値以下の top-N・非 admin は 403）。
   - name: v1/exchange-rates
     description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: v1/addresses
@@ -836,6 +838,44 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/low-stock:
+    get:
+      operationId: GetProductsLowStock
+      tags:
+        - v1/products/low-stock
+      summary: 在庫僅少商品一覧の取得
+      description: |
+        在庫数が在庫警告閾値以下まで減った商品を、在庫の少ない順に上位 limit 件返します。認証必須で、
+        管理者（admin）のみ実行できます。管理者でなければ 403 で拒否します。
+        在庫警告閾値が未設定の商品は警告対象外として除外します。閾値ちょうどの商品は警告対象に含みます。
+        補充の要否は公開状態に依存しないため、未公開の商品も対象に含みます。
+        同一在庫数の商品は商品 ID の昇順で安定的に並びます。ページネーションは行わず、上位 limit 件のみを返します。
+        対象商品がない場合はエラーではなく空配列を返します。
+        本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LowStockLimitParam'
+      responses:
+        '200':
+          description: 在庫数の昇順で取得した在庫僅少商品一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductLowStockResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/products/images:
     post:
       operationId: PostProductsImages
@@ -1495,6 +1535,17 @@ components:
         maximum: 100
         default: 10
         example: 10
+    LowStockLimitParam:
+      name: limit
+      in: query
+      description: 取得する上位件数。在庫の少ない順で上位 limit 件を返します。
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+        example: 20
     PurchaseIdParam:
       name: purchaseId
       in: path
@@ -1935,6 +1986,17 @@ components:
           description: 販売数量の降順で並んだ商品ランキングです。
           items:
             $ref: '#/components/schemas/ProductRankingItem'
+    ProductLowStockResponse:
+      type: object
+      description: 在庫僅少商品一覧のレスポンススキーマ。在庫数の昇順（同数は商品 ID 昇順）で並びます。
+      required:
+        - products
+      properties:
+        products:
+          type: array
+          description: 在庫数の昇順で並んだ在庫僅少商品の一覧です。
+          items:
+            $ref: '#/components/schemas/ProductResponse'
     ProductImageResponse:
       type: object
       description: |

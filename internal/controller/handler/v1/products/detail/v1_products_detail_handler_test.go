@@ -17,6 +17,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/patch"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v5"
@@ -89,26 +90,6 @@ func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
 		Version: int32(dto.Version),
 	}
-}
-
-func Test_intPtrToInt32Ptr(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("nilの場合はnilを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Nil(t, intPtrToInt32Ptr(nil))
-		})
-
-		t.Run("非nilの場合は値を保持したint32ポインタを返す", func(t *testing.T) {
-			t.Parallel()
-			got := intPtrToInt32Ptr(ptr.To(42))
-			require.NotNil(t, got)
-			assert.Equal(t, int32(42), *got)
-		})
-	})
 }
 
 func TestBindHandler(t *testing.T) {
@@ -494,25 +475,6 @@ func Test_int32PtrToIntPtr(t *testing.T) {
 	})
 }
 
-func Test_toInt32(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("int32範囲内の値はそのままint32として返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, int32(1234), toInt32(1234))
-		})
-
-		t.Run("int32の最小値と最大値も値を保ったまま返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, int32(math.MinInt32), toInt32(math.MinInt32))
-			assert.Equal(t, int32(math.MaxInt32), toInt32(math.MaxInt32))
-		})
-	})
-}
-
 func Test_toProductResponse(t *testing.T) {
 	t.Parallel()
 
@@ -522,7 +484,10 @@ func Test_toProductResponse(t *testing.T) {
 		t.Run("全項目が設定されたDTOをレスポンスへ写像する", func(t *testing.T) {
 			t.Parallel()
 			dto := newProductView(t, "conv_full")
-			assert.Equal(t, wantProductResponse(dto), toProductResponse(dto))
+
+			actual, err := toProductResponse(dto)
+			require.NoError(t, err)
+			assert.Equal(t, wantProductResponse(dto), actual)
 		})
 
 		t.Run("任意項目がnilのDTOはレスポンスでもnilのまま写像する", func(t *testing.T) {
@@ -533,12 +498,59 @@ func Test_toProductResponse(t *testing.T) {
 			dto.PublishedAt = nil
 			dto.ImagePath = nil
 
-			actual := toProductResponse(dto)
+			actual, err := toProductResponse(dto)
+			require.NoError(t, err)
 			assert.Nil(t, actual.Description)
 			assert.Nil(t, actual.StockWarningThreshold)
 			assert.Nil(t, actual.PublishedAt)
 			assert.Nil(t, actual.ImagePath)
 			assert.Equal(t, dto.ID.ToPrimitive(), actual.Id)
+		})
+
+		t.Run("int32の境界値も値を保ったまま写像する", func(t *testing.T) {
+			t.Parallel()
+			dto := newProductView(t, "conv_boundary")
+			dto.Quantity = math.MaxInt32
+			dto.Version = math.MaxInt32
+			dto.StockWarningThreshold = ptr.To(math.MaxInt32)
+
+			actual, err := toProductResponse(dto)
+			require.NoError(t, err)
+			assert.Equal(t, int32(math.MaxInt32), actual.Quantity)
+			assert.Equal(t, int32(math.MaxInt32), actual.Version)
+			require.NotNil(t, actual.StockWarningThreshold)
+			assert.Equal(t, int32(math.MaxInt32), *actual.StockWarningThreshold)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("在庫数がint32の範囲を超える場合、オーバーフローとして返す", func(t *testing.T) {
+			t.Parallel()
+			dto := newProductView(t, "conv_over_quantity")
+			dto.Quantity = math.MaxInt32 + 1
+
+			_, err := toProductResponse(dto)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
+
+		t.Run("在庫警告閾値がint32の範囲を超える場合、オーバーフローとして返す", func(t *testing.T) {
+			t.Parallel()
+			dto := newProductView(t, "conv_over_threshold")
+			dto.StockWarningThreshold = ptr.To(math.MaxInt32 + 1)
+
+			_, err := toProductResponse(dto)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
+
+		t.Run("バージョンがint32の範囲を超える場合、オーバーフローとして返す", func(t *testing.T) {
+			t.Parallel()
+			dto := newProductView(t, "conv_over_version")
+			dto.Version = math.MaxInt32 + 1
+
+			_, err := toProductResponse(dto)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 	})
 }

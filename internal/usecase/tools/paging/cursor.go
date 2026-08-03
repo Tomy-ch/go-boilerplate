@@ -30,21 +30,13 @@ type Cursor struct {
 //	0以下または nil の場合は defaultPerPage、maxPerPage を超える場合は maxPerPage を使用します。
 //	keyset はページ番号を持たないため、offset 版のような最大ページ数エラーは発生しません。
 func NewCursor(after *string, first *int) (*Cursor, error) {
-	limit := defaultPerPage
-	if first != nil && *first > 0 {
-		limit = *first
-	}
-	if limit > maxPerPage {
-		limit = maxPerPage
-	}
-
 	keys, err := decodeCursor(after)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Cursor{
-		limit: limit,
+		limit: NewLimit(first, perPagePolicy).Value(),
 		keys:  keys,
 	}, nil
 }

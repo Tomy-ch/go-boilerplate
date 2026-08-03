@@ -8,23 +8,27 @@ import (
 
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/product/ranking/query"
+	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/decimal"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 )
 
 const (
 	// defaultLimit は、limit 未指定時に用いる既定の取得件数です。
 	defaultLimit = 10
-	// minLimit / maxLimit は、取得件数のクランプ範囲です。
-	minLimit = 1
+	// maxLimit は、許容する最大の取得件数です。
 	maxLimit = 100
 )
+
+// rankingLimitPolicy は、商品売上ランキングの取得件数規約です。OpenAPI の limit（既定 10 / 1〜100）と対応します。
+var rankingLimitPolicy = paging.LimitPolicy{Default: defaultLimit, Max: maxLimit}
 
 // GetRankingParams は、ランキング取得ユースケースの入力パラメータです。
 type GetRankingParams struct {
 	// Period は、集計対象期間（"all" / "30d"）です。未知値・空は全期間として扱います。
 	Period string
-	// Limit は、取得する上位件数です。0 以下は既定値、範囲外は [minLimit, maxLimit] にクランプします。
+	// Limit は、取得する上位件数です。0 以下は既定値 10 を適用し、100 を超える値は 100 にクランプします。
 	Limit int
 }
 
@@ -70,7 +74,7 @@ func (u *usecase) GetProductsRanking(ctx context.Context, params GetRankingParam
 
 	results, err := u.qs.ListRanking(ctx, query.RankingQueryParams{
 		Period: normalizePeriod(params.Period),
-		Limit:  normalizeLimit(params.Limit),
+		Limit:  paging.NewLimit(ptr.To(params.Limit), rankingLimitPolicy).Value(),
 	})
 	if err != nil {
 		return RankingView{}, err
@@ -95,15 +99,4 @@ func normalizePeriod(period string) query.Period {
 		return query.Period30d
 	}
 	return query.PeriodAll
-}
-
-// normalizeLimit は、取得件数を既定値の適用とクランプで正規化します。
-func normalizeLimit(limit int) int {
-	if limit <= 0 {
-		return defaultLimit
-	}
-	if limit > maxLimit {
-		return maxLimit
-	}
-	return limit
 }
