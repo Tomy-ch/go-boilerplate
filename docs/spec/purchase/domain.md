@@ -135,6 +135,19 @@ fields:
     判別できるため（配達済みは statusCode != 7 として不正遷移側に落ちる）。
   invariants:
     - 発送済み status（statusCode == 8）は shippedAt を必須とする（一方向。shippedAt は発送後も残り、以降の配達済み等の遷移で status が変わっても保持されるためキャンセルのような双条件にはしない）
+
+- name: Deliver
+  signature: Deliver(now time.Time) error
+  behavior: |
+    購入を配達済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/deliver の状態遷移）。遷移可否は statusCode の等値比較のみで判定する:
+      - 既に配達済み（statusCode == 9）→ ErrAlreadyDelivered（409。二重配達）
+      - 発送済み（statusCode == 8）→ 許可
+      - それ以外（未払い相当 / 支払い済み / 完了 / キャンセル済み）→ ErrDeliverNotAllowed（409）
+    許可時は statusCode を配達済み（9）へ、deliveredAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
+    配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担う。
+    Ship と同じく timestamps ガードを併用しないのは、遷移元が発送済みの 1 状態に限られ statusCode の等値比較だけで判別できるため。
+  invariants:
+    - 配達済み status（statusCode == 9）は deliveredAt を必須とする（一方向。deliveredAt は配達後も残り、以降の遷移で status が変わっても保持されるためキャンセルのような双条件にはしない）
 ```
 
 ## Value Objects
@@ -142,7 +155,7 @@ fields:
 - `PurchaseDetail`（明細）/ `LockedProduct`（ロック済み在庫スナップショット・New の入力）。上記 Entity 参照。
 - `Detail`（購入 1 件の詳細読み取りモデル・read 側）。書き込み集約 Purchase とは別型で、ステータス名（`StatusName`）を
   購入ステータスマスタとの JOIN で解決済み、`PaidAt` は支払い日時（未支払いは nil）、`CanceledAt` はキャンセル日時
-  （未キャンセルは nil）、`ShippedAt` は発送日時（未発送は nil）。`FindDetailByID` の返り値。
+  （未キャンセルは nil）、`ShippedAt` は発送日時（未発送は nil）、`DeliveredAt` は配達日時（未配達は nil）。`FindDetailByID` の返り値。
 
 ## Repository Methods
 
@@ -167,6 +180,11 @@ fields:
   signature: UpdateShipped(ctx context.Context, p *Purchase) error
   behavior: |
     購入の状態更新（status_id は code から解決 / shipped_at）を渡された ctx の tx 内で実行する。配送追跡を扱わないため
+    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
+- name: UpdateDelivered
+  signature: UpdateDelivered(ctx context.Context, p *Purchase) error
+  behavior: |
+    購入の状態更新（status_id は code から解決 / delivered_at）を渡された ctx の tx 内で実行する。配達確認の証跡を扱わないため
     単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
 - name: FindFeedByUserID
   signature: FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
@@ -197,11 +215,12 @@ fields:
 - **キャンセル**は在庫復元（`products`）+ 購入更新（`purchases`）の**複数集約への原子的書き込み**のため CommandService（`LockPurchase` / `CancelPurchase`）が担う（[ADR-0027] / [ADR-0029]）。
 - **支払い**は `purchases` の status/paid_at のみの**単一集約書き込み**（在庫操作なし）のため、CommandService ではなく **Repository（`LockByID` / `UpdatePaid`）**が担う。行ロックは並行制御（二重支払い防止）であって集約横断の原子性ではない。
 - **発送**も `purchases` の status/shipped_at のみの単一集約書き込みのため、支払いと同じく **Repository（`LockByID` / `UpdateShipped`）**が担う。
+- **配達完了**も `purchases` の status/delivered_at のみの単一集約書き込みのため、同じく **Repository（`LockByID` / `UpdateDelivered`）**が担う。
 
 ## Notes
 
 - 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `StatusCodePaid = 7` / `StatusCodeShipped = 8` / `StatusCodeDelivered = 9` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。code 値は状態の到達順序を意味しないため、遷移判定は等値比較のみで行う。
-- エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` / `ErrAlreadyPaid` / `ErrPayNotAllowed` / `ErrAlreadyShipped` / `ErrShipNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
+- エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` / `ErrAlreadyPaid` / `ErrPayNotAllowed` / `ErrAlreadyShipped` / `ErrShipNotAllowed` / `ErrAlreadyDelivered` / `ErrDeliverNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
 
 [ADR-0027]: ../../adr/0027-lightweight-cqrs.md
 [ADR-0029]: ../../adr/0029-commandservice-atomicity-criterion.md
