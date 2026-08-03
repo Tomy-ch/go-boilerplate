@@ -1,0 +1,36 @@
+patch:
+  operationId: PatchPurchasesDeliver
+  tags:
+    - v1/purchases/detail/deliver
+  summary: 購入の配達完了
+  description: |
+    購入を配達済みへ遷移させます。認証必須で、管理者（admin）のみ実行できます。
+    発送済みからのみ遷移でき、status を「配達済み」へ更新し deliveredAt をセットします。
+    未払い相当（未処理 / 受付中 / 確認中 / 処理中）・支払い済み（未発送）・完了・キャンセル済みの購入は 409（不正遷移）、
+    既に配達済みの購入も 409（二重配達）で拒否します。配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱いません。
+    購入者本人であっても管理者でなければ 403 で拒否します。金額はすべて USD セント単位の整数です。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/purchase/PurchaseIdParam.yaml'
+  responses:
+    '200':
+      description: 購入の配達完了に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/schemas/PurchaseDeliverResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../../components/schemas/errors/Forbidden403.yaml'
+    '404':
+      $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '409':
+      $ref: '../../../../components/schemas/errors/Conflict409.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
