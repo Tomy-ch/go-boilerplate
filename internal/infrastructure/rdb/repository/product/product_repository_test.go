@@ -1311,6 +1311,18 @@ func insertStockProduct(
 	require.NoError(t, err)
 }
 
+// insertNegativePriceLowStockProduct は、在庫僅少の条件を満たしつつ価格が負数の行を挿入するヘルパーです。
+func insertNegativePriceLowStockProduct(ctx context.Context, t *testing.T, db driver.DBTX, id string) {
+	t.Helper()
+	_, err := db.Exec(ctx,
+		"INSERT INTO products "+
+			"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+			"VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,NULL)",
+		id, "在庫僅少-価格不正", -1, 0, 100, statusInStock, categoryElectronics,
+	)
+	require.NoError(t, err)
+}
+
 func Test_repository_FindAllLowStock(t *testing.T) {
 	t.Parallel()
 
@@ -1457,6 +1469,20 @@ func Test_repository_FindAllLowStock(t *testing.T) {
 			actual, err := repo.FindAllLowStock(ctx, 10)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, actual)
+		})
+
+		t.Run("不正な行(価格が負数)が含まれるとデータ不整合としてErrInternalを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertNegativePriceLowStockProduct(ctx, t, drv, "ffffffff-0000-4000-8000-0000000000e1")
+
+				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+				assert.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+				require.NotErrorIs(t, err, money.ErrNegativePrice)
+			})
 		})
 	})
 }
