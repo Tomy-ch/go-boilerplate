@@ -106,6 +106,14 @@ WHERE p.user_id = sqlc.arg('user_id')
 ORDER BY p.ordered_at DESC, p.id DESC
 LIMIT sqlc.arg('limit_param');
 
+-- === source: database/dml/repository/purchase/select_user_ids_with_purchases.sql ===
+-- name: ListUserIDsWithPurchases :many
+-- 与えたユーザー ID のうち、購入を 1 件以上持つものを返す。購入は独立集約のため、
+-- ユーザー側の絞り込みと結合せず ID 群の照会として切り出す（docs/rules.md の Repository / QueryService Rules）。
+SELECT DISTINCT user_id
+FROM purchases
+WHERE user_id = ANY(sqlc.arg('user_ids')::UUID []);
+
 -- === source: database/dml/repository/purchase/update_purchase_paid.sql ===
 -- name: UpdatePurchasePaid :exec
 -- 購入を支払い済み状態へ更新する。擬似決済のため単一集約（purchases）のみを更新し、在庫操作は伴わない。
