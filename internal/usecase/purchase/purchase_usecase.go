@@ -150,6 +150,23 @@ type ShipPurchaseView struct {
 	ShippedAt      *time.Time
 }
 
+// DeliverPurchaseView は、配達完了後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+// マスタで解決済みの ID と名称、DeliveredAt は配達日時です。金額はすべて USD セント単位の整数です。
+type DeliverPurchaseView struct {
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	StatusName     string
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetailView
+	OrderedAt      time.Time
+	DeliveredAt    *time.Time
+}
+
 // Usecase は、購入の作成ユースケースを定義します。
 type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫の引当・購入の成立・イベント発行は単一 tx で
@@ -170,6 +187,10 @@ type Usecase interface {
 	// 状態遷移とイベント発行は単一 tx で原子的に成立します。管理者でない場合は 403、不存在は 404、
 	// 二重発送・不正遷移は 409 を返します。
 	ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (ShipPurchaseView, error)
+	// DeliverPurchase は、購入を配達済みへ遷移させます。実行できるのは管理者のみで、購入の所有者であるかは問いません。
+	// 状態遷移とイベント発行は単一 tx で原子的に成立します。管理者でない場合は 403、不存在は 404、
+	// 二重配達・不正遷移は 409 を返します。
+	DeliverPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (DeliverPurchaseView, error)
 	// GetPurchaseDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。
 	// 他ユーザーの購入・不存在はいずれも存在秘匿のため NotFound（404）を返します。
 	GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
@@ -462,6 +483,70 @@ func (u *usecase) ShipPurchase(
 	return toShipPurchaseView(detail), nil
 }
 
+func (u *usecase) DeliverPurchase(
+	ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID,
+) (DeliverPurchaseView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	if authn == nil {
+		return DeliverPurchaseView{}, apperror.ErrUnauthenticated
+	}
+	// 配達完了は運用（admin）の操作で所有者概念を持たないため、所有者なしリソースとして認可する。
+	// 所有者を渡さないことで Authorizer の所有者フォールバックが働かず、admin だけが通る。
+	if err := u.authorizer.Authorize(
+		ctx, authn, authz.ActionPurchaseDeliver, authz.NewResource("purchase", nil),
+	); err != nil {
+		return DeliverPurchaseView{}, err
+	}
+
+	now := u.clock.Now()
+
+	var detail *purchase.Detail
+	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。配達確認の証跡を扱わず
+	// 単一集約（purchases）の状態更新のみのため CommandService ではなく Repository で完結する。
+	// 二重配達は購入行ロック + 状態チェック（ErrAlreadyDelivered）で安全化する。
+	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
+		locked, lerr := u.repo.LockByID(ctx, purchaseID)
+		if lerr != nil {
+			return lerr
+		}
+
+		if derr := locked.Deliver(now); derr != nil {
+			return derr
+		}
+
+		if uerr := u.repo.UpdateDelivered(ctx, locked); uerr != nil {
+			return uerr
+		}
+
+		payload, berr := event.BuildDelivered(locked)
+		if berr != nil {
+			return berr
+		}
+		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
+			AggregateType: aggregateType,
+			AggregateID:   purchaseID.String(),
+			EventType:     event.TypeDelivered,
+			Payload:       payload,
+		}); eerr != nil {
+			return eerr
+		}
+
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
+		if rerr != nil {
+			return rerr
+		}
+		detail = reread
+		return nil
+	}); txErr != nil {
+		return DeliverPurchaseView{}, txErr
+	}
+
+	return toDeliverPurchaseView(detail), nil
+}
+
 // referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。
 // 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
 func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
@@ -558,6 +643,32 @@ func toShipPurchaseView(d *purchase.Detail) ShipPurchaseView {
 		Details:        views,
 		OrderedAt:      d.OrderedAt,
 		ShippedAt:      d.ShippedAt,
+	}
+}
+
+// toDeliverPurchaseView は、購入詳細の読み取りモデルを配達完了レスポンスの出力 DTO へ変換します。
+func toDeliverPurchaseView(d *purchase.Detail) DeliverPurchaseView {
+	views := make([]PurchaseDetailView, len(d.Details))
+	for i, detail := range d.Details {
+		views[i] = PurchaseDetailView{
+			ProductID: detail.ProductID(),
+			Quantity:  detail.Quantity(),
+			UnitPrice: detail.UnitPrice().Decimal(),
+		}
+	}
+	return DeliverPurchaseView{
+		ID:             d.ID,
+		Code:           d.Code,
+		UserID:         d.UserID,
+		StatusID:       d.StatusID,
+		StatusName:     d.StatusName,
+		SubtotalAmount: d.SubtotalAmount,
+		TaxAmount:      d.TaxAmount,
+		ShippingFee:    d.ShippingFee,
+		TotalAmount:    d.TotalAmount,
+		Details:        views,
+		OrderedAt:      d.OrderedAt,
+		DeliveredAt:    d.DeliveredAt,
 	}
 }
 
