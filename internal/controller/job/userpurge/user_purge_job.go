@@ -69,6 +69,7 @@ func (j *jobImpl) Name() string {
 // Execute は、退会から retention を過ぎたユーザーをバッチ物理削除し、件数をログに出力します。
 // --older-than=<duration> で保持期間を、--batch-size=N で 1 バッチの件数を指定でき、
 // --dry-run では削除せず対象件数だけを出力します。
+// 途中で失敗した場合も、確定した件数を出力してからエラーを返します。
 func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 	ctx, endSpan := j.tracer.Start(ctx)
 	defer endSpan()
@@ -79,16 +80,18 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 	}
 
 	result, err := j.purge.PurgeDeleted(ctx, opts.retention, opts.batchSize, opts.dryRun)
+	fields := []*logging.Field{
+		logging.Int64(logging.JobResultKey, result.Purged),
+		logging.Int64(logging.JobSkippedKey, result.SkippedWithPurchases),
+	}
 	if err != nil {
+		// 中断までにコミットされた物理削除は取り消せない。エラーだけを返すと消えた件数が運用者に届かないため、
+		// 確定した件数を記録してから伝播する。
+		j.logging.Named(jobName).Warn(ctx, abortedMessage(opts.dryRun), fields...)
 		return err
 	}
 
-	j.logging.Named(jobName).Info(
-		ctx,
-		resultMessage(opts.dryRun),
-		logging.Int64(logging.JobResultKey, result.Purged),
-		logging.Int64(logging.JobSkippedKey, result.SkippedWithPurchases),
-	)
+	j.logging.Named(jobName).Info(ctx, resultMessage(opts.dryRun), fields...)
 	return nil
 }
 
@@ -137,10 +140,19 @@ func parseArgs(args []string) (options, error) {
 	return opts, nil
 }
 
-// resultMessage は、結果ログのメッセージを返します。dry-run では削除していないことを明示します。
+// resultMessage は、完走時の結果ログのメッセージを返します。dry-run では削除していないことを明示します。
 func resultMessage(dryRun bool) string {
 	if dryRun {
 		return "Result: purge target users (dry-run, nothing deleted)"
 	}
 	return "Result: deleted users purged"
+}
+
+// abortedMessage は、中断時の結果ログのメッセージを返します。
+// dry-run では削除していないことを、実削除では併記した件数が既にコミット済みであることを明示します。
+func abortedMessage(dryRun bool) string {
+	if dryRun {
+		return "Result: purge aborted (dry-run, nothing deleted)"
+	}
+	return "Result: purge aborted, the reported users are already deleted"
 }

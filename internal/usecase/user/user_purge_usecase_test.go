@@ -287,11 +287,11 @@ func Test_purgeUsecase_PurgeDeleted(t *testing.T) {
 			assert.Equal(t, PurgeResult{}, got)
 		})
 
-		t.Run("2バッチ目の失敗では1バッチ目の件数も返さない", func(t *testing.T) {
+		t.Run("2バッチ目が失敗しても1バッチ目のコミット済み件数はエラーと併せて返す", func(t *testing.T) {
 			t.Parallel()
 
-			// 1 バッチ = 1 トランザクションのため、失敗したバッチの結果は巻き戻る。
-			// 途中までの累計を返すと、コミットされていない削除件数を報告することになる。
+			// 失敗したバッチは巻き戻るが、コミット済みのバッチの物理削除は取り消せない。
+			// 累計を捨てると、実際に消えた件数が呼び手から見えなくなる。
 			ctrl := gomock.NewController(t)
 			uc, userRepo, purchaseRepo := newUsecase(t, ctrl, now)
 
@@ -308,7 +308,30 @@ func Test_purgeUsecase_PurgeDeleted(t *testing.T) {
 			got, err := uc.PurgeDeleted(context.Background(), retention, 1, false)
 
 			require.ErrorIs(t, err, testkit.ExpectedDBError())
-			assert.Equal(t, PurgeResult{}, got)
+			assert.Equal(t, PurgeResult{Purged: 1}, got)
+		})
+
+		t.Run("2バッチ目が失敗しても1バッチ目のスキップ件数はエラーと併せて返す", func(t *testing.T) {
+			t.Parallel()
+
+			// スキップは削除の副産物ではなく「消せなかった対象」の報告なので、削除件数と同じく失っては困る。
+			ctrl := gomock.NewController(t)
+			uc, userRepo, purchaseRepo := newUsecase(t, ctrl, now)
+
+			gomock.InOrder(
+				userRepo.EXPECT().FindDeletedBefore(gomock.Any(), cutoff, nil, int32(1)).
+					Return([]uuid.UUID{id1}, nil),
+				userRepo.EXPECT().FindDeletedBefore(gomock.Any(), cutoff, &id1, int32(1)).
+					Return(nil, testkit.ExpectedDBError()),
+			)
+			purchaseRepo.EXPECT().FindUserIDsWithPurchases(gomock.Any(), []uuid.UUID{id1}).
+				Return([]uuid.UUID{id1}, nil)
+			userRepo.EXPECT().PurgeByIDs(gomock.Any(), []uuid.UUID{}).Return(int64(0), nil)
+
+			got, err := uc.PurgeDeleted(context.Background(), retention, 1, false)
+
+			require.ErrorIs(t, err, testkit.ExpectedDBError())
+			assert.Equal(t, PurgeResult{SkippedWithPurchases: 1}, got)
 		})
 	})
 }

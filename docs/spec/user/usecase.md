@@ -310,7 +310,8 @@ calls:
   - purchase_repository.FindUserIDsWithPurchases
   - user_repository.PurgeByIDs
 errors:
-  - 各 Repository のエラーを伝播。バッチが失敗した場合、そのバッチはロールバックされるため累計は返さずゼロ値を返す
+  - 各 Repository のエラーを伝播。失敗したバッチはロールバックされるが、それ以前にコミットされた
+    バッチの物理削除は取り消せないため、エラー時もそこまでの累計を PurgeResult に含めて返す
 notes:
   - 境界は削除可否によらず必ず候補の末尾まで進める。購入保持でスキップされた候補は削除されず残るため、
     境界を進めないと同じ候補を取り直し続け、先頭バッチが全件スキップ対象のときに無限ループする。

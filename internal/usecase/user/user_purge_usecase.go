@@ -35,6 +35,8 @@ type PurgeUsecase interface {
 	// 購入を持つユーザーは削除せず、その件数を結果に含めます。
 	// dryRun が true の場合は削除を行わず、削除対象となった件数だけを結果に返します。
 	// retention / batchSize が 0 以下の場合は、それぞれ既定値を用います。
+	// エラーを返す場合も、失敗したバッチより前にコミット済みの累計を結果に含めます。
+	// 失敗したバッチはロールバックされますが、コミット済みの物理削除は取り消せないためです。
 	PurgeDeleted(ctx context.Context, retention time.Duration, batchSize int32, dryRun bool) (PurgeResult, error)
 }
 
@@ -97,7 +99,9 @@ func (u *purgeUsecase) PurgeDeleted(
 	for {
 		batch, err := u.purgeBatch(ctx, cutoff, afterID, batchSize, dryRun)
 		if err != nil {
-			return PurgeResult{}, err
+			// 失敗したバッチはロールバックされるが、それ以前のバッチのコミット済み削除は戻らない。
+			// 物理削除の実績を呼び手が失わないよう、累計を捨てずに返す。
+			return result, err
 		}
 		result.Purged += batch.purged
 		result.SkippedWithPurchases += batch.skipped

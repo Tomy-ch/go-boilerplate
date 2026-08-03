@@ -30,7 +30,7 @@ English | [日本語](README.ja.md)
 1. Start a controller span (`tracer.Start`) and `defer` its end.
 2. Parse args into a retention window, a batch size and a dry-run flag, then call `purge.PurgeDeleted(...)`.
 3. On success, log at **Info** with the purged count under `logging.JobResultKey` and the skipped count under `logging.JobSkippedKey`. Under `--dry-run` the message states explicitly that nothing was deleted, and the purged count is the number of users that *would* have been erased.
-4. Any usecase error is returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
+4. On failure, log the same two counts at **Warn** before propagating. The usecase reports what it committed before it stopped, and a committed physical delete cannot be undone, so dropping the counts would hide users that are already gone. The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
 
 ## Args
 

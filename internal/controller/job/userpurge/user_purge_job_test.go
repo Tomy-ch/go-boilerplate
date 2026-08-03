@@ -158,6 +158,25 @@ func Test_resultMessage(t *testing.T) {
 	})
 }
 
+func Test_abortedMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("dry-runでは削除していないことを明示する", func(t *testing.T) {
+			t.Parallel()
+			assert.Contains(t, abortedMessage(true), "dry-run")
+		})
+
+		t.Run("実削除では併記した件数が削除済みであることを明示する", func(t *testing.T) {
+			t.Parallel()
+			assert.NotContains(t, abortedMessage(false), "dry-run")
+			assert.Contains(t, abortedMessage(false), "already deleted")
+		})
+	})
+}
+
 func Test_jobImpl_Execute(t *testing.T) {
 	t.Parallel()
 
@@ -228,6 +247,26 @@ func Test_jobImpl_Execute(t *testing.T) {
 
 			job := &jobImpl{logging: logging.NewTestLogger(t), tracer: tf.Controller(), purge: purge}
 			require.ErrorIs(t, job.Execute(t.Context(), nil), wantErr)
+		})
+
+		t.Run("削除が失敗しても中断までに確定した件数はログへ出力する", func(t *testing.T) {
+			t.Parallel()
+
+			// コミット済みの物理削除は取り消せない。エラーだけを返して件数を落とすと、
+			// 実際に消えたユーザーの数が運用者から見えなくなる。
+			ctrl := gomock.NewController(t)
+			purge := mock_user.NewMockPurgeUsecase(ctrl)
+			purge.EXPECT().PurgeDeleted(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(user.PurgeResult{Purged: 5, SkippedWithPurchases: 1}, apperror.ErrUnavailable)
+
+			log, logs := logging.NewObservedTestLogger(t)
+			job := &jobImpl{logging: log, tracer: tf.Controller(), purge: purge}
+			require.Error(t, job.Execute(t.Context(), nil))
+
+			entries := logs.All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, int64(5), entries[0].ContextMap()[logging.JobResultKey])
+			assert.Equal(t, int64(1), entries[0].ContextMap()[logging.JobSkippedKey])
 		})
 	})
 }
