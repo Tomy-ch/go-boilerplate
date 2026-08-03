@@ -1296,6 +1296,171 @@ func Test_repository_Count(t *testing.T) {
 	})
 }
 
+// insertStockProduct は、在庫数・在庫警告閾値・公開日時を明示した商品を挿入するヘルパーです。
+func insertStockProduct(
+	ctx context.Context, t *testing.T, db driver.DBTX,
+	id, name string, quantity int, threshold *int, publishedAt *time.Time,
+) {
+	t.Helper()
+	_, err := db.Exec(ctx,
+		"INSERT INTO products "+
+			"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+			"VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,$8)",
+		id, name, 1000, quantity, threshold, statusInStock, categoryElectronics, publishedAt,
+	)
+	require.NoError(t, err)
+}
+
+func Test_repository_FindAllLowStock(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
+
+	// seed 済み商品にも在庫僅少行が含まれるため、検証は挿入した probe 行に絞り込んで行う。
+	const (
+		below       = "ffffffff-0000-4000-8000-000000000001" // quantity(50) < threshold(100)
+		unpublished = "ffffffff-0000-4000-8000-000000000002" // quantity(55) < threshold(100) / 未公開
+		tieLow      = "ffffffff-0000-4000-8000-000000000003" // quantity(60) / id 小
+		tieHigh     = "ffffffff-0000-4000-8000-000000000004" // quantity(60) / id 大
+		equal       = "ffffffff-0000-4000-8000-000000000005" // quantity(100) == threshold(100)
+		above       = "ffffffff-0000-4000-8000-000000000006" // quantity(101) > threshold(100)
+		noThreshold = "ffffffff-0000-4000-8000-000000000007" // threshold 未設定 / 在庫 0
+	)
+	// probeLimit は、挿入した probe 行が seed 行に押し出されない十分な取得件数です。
+	const probeLimit = 1000
+
+	publishedAt := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	insertProbeSet := func(ctx context.Context, t *testing.T, drv driver.DBTX) {
+		t.Helper()
+		insertStockProduct(ctx, t, drv, below, "在庫僅少-閾値未満", 50, ptr.To(100), &publishedAt)
+		insertStockProduct(ctx, t, drv, unpublished, "在庫僅少-未公開", 55, ptr.To(100), nil)
+		insertStockProduct(ctx, t, drv, tieLow, "在庫僅少-同数A", 60, ptr.To(100), &publishedAt)
+		insertStockProduct(ctx, t, drv, tieHigh, "在庫僅少-同数B", 60, ptr.To(100), &publishedAt)
+		insertStockProduct(ctx, t, drv, equal, "在庫僅少-閾値ちょうど", 100, ptr.To(100), &publishedAt)
+		insertStockProduct(ctx, t, drv, above, "在庫十分-閾値超過", 101, ptr.To(100), &publishedAt)
+		insertStockProduct(ctx, t, drv, noThreshold, "閾値未設定-在庫ゼロ", 0, nil, &publishedAt)
+	}
+
+	// probeIDs は、取得結果から probe 行だけを挿入順ではなく取得順で抜き出します。
+	probeIDs := func(t *testing.T, products domainproduct.Products) []uuid.UUID {
+		t.Helper()
+		probes := map[uuid.UUID]struct{}{
+			mustParse(t, below): {}, mustParse(t, unpublished): {}, mustParse(t, tieLow): {},
+			mustParse(t, tieHigh): {}, mustParse(t, equal): {}, mustParse(t, above): {},
+			mustParse(t, noThreshold): {},
+		}
+		var ids []uuid.UUID
+		for _, p := range products {
+			if _, ok := probes[p.ID()]; ok {
+				ids = append(ids, p.ID())
+			}
+		}
+		return ids
+	}
+
+	// findProbe は、取得結果から指定 ID の probe 行を 1 件取り出します。
+	findProbe := func(t *testing.T, products domainproduct.Products, id string) *domainproduct.Product {
+		t.Helper()
+		for _, p := range products {
+			if p.ID() == mustParse(t, id) {
+				return p
+			}
+		}
+		return nil
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("閾値以下の商品のみを在庫昇順同数はID昇順で返し閾値超過と閾値未設定は返さない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProbeSet(ctx, t, drv)
+
+				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+				require.NoError(t, err)
+
+				assert.Equal(t, []uuid.UUID{
+					mustParse(t, below),
+					mustParse(t, unpublished),
+					mustParse(t, tieLow),
+					mustParse(t, tieHigh),
+					mustParse(t, equal),
+				}, probeIDs(t, actual))
+			})
+		})
+
+		t.Run("未公開商品も在庫僅少であれば返る", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProbeSet(ctx, t, drv)
+
+				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+				require.NoError(t, err)
+
+				found := findProbe(t, actual, unpublished)
+				require.NotNil(t, found)
+				assert.Nil(t, found.PublishedAt())
+			})
+		})
+
+		t.Run("ステータス名とカテゴリ名を結合して復元する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProbeSet(ctx, t, drv)
+
+				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+				require.NoError(t, err)
+
+				found := findProbe(t, actual, below)
+				require.NotNil(t, found)
+				// SQL の結合エイリアス取り違え（status / category の名称入れ替わり）を検出するため、異なる 2 値で検証する。
+				assert.Equal(t, mustParse(t, statusInStock), found.Status().ID())
+				assert.Equal(t, "在庫あり", found.Status().Name())
+				assert.Equal(t, mustParse(t, categoryElectronics), found.Category().ID())
+				assert.Equal(t, "電子機器", found.Category().Name())
+			})
+		})
+
+		t.Run("limitで取得件数が打ち切られる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProbeSet(ctx, t, drv)
+
+				actual, err := repo.FindAllLowStock(ctx, 3)
+				require.NoError(t, err)
+				assert.Len(t, actual, 3)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			actual, err := repo.FindAllLowStock(ctx, 10)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, actual)
+		})
+	})
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
