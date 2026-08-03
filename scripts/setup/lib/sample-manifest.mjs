@@ -13,6 +13,7 @@ export const SAMPLE_DOMAINS = {
       "internal/infrastructure/rdb/query_service/user",
       "internal/controller/handler/v1/users",
       "internal/controller/job/usercount",
+      "internal/controller/job/userpurge",
       "internal/integration/v1_users_test.go",
       "internal/integration/v1_users_detail_test.go",
       "internal/integration/v1_users_me_test.go",

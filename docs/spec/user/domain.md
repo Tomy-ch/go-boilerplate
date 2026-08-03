@@ -147,4 +147,18 @@ fields:
     ID をキーに mutable フィールド（氏名・連絡先・住所・prefectureID）と
     updatedAt / deletedAt を更新する。PUT / PATCH / DELETE（論理削除）すべてが
     load → ドメインメソッドで変更 → 本メソッドで永続化、という共通経路で利用する。
+# 退会後の物理削除ジョブ向け（追記分）
+- name: FindDeletedBefore
+  signature: FindDeletedBefore(ctx context.Context, cutoff time.Time, afterID *uuid.UUID, limit int32) ([]uuid.UUID, error)
+  behavior: |
+    cutoff より前に論理削除されたユーザーの ID を、ID の昇順で最大 limit 件返す。
+    afterID=nil は先頭から、それ以外は afterID より後ろを返す keyset ページネーション。
+    削除できない候補（購入を持つユーザー）を挟んでも前進できるよう、境界を offset ではなく
+    ID で受け取る。エンティティを再構築せず ID だけを返すのは、後続が物理削除のみを行うため。
+- name: PurgeByIDs
+  signature: PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error)
+  behavior: |
+    指定した ID のユーザーを従属データごと物理削除し、削除したユーザーの件数を返す。
+    ids が空の場合は何も削除せず 0 を返す。トランザクション境界は usecase が持つ
+    （1 バッチ = 1 トランザクション）。
 ```
