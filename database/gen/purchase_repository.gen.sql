@@ -41,7 +41,7 @@ WHERE p.id = @id;
 -- ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
 -- 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
 -- 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL、
--- 発送日時（shipped_at）は未発送なら NULL。
+-- 発送日時（shipped_at）は未発送なら NULL、配達日時（delivered_at）は未配達なら NULL。
 -- 存在しない場合は 0 行（NotFound）。
 SELECT
     p.id,
@@ -56,7 +56,8 @@ SELECT
     p.ordered_at,
     p.paid_at,
     p.canceled_at,
-    p.shipped_at
+    p.shipped_at,
+    p.delivered_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.id = @id;
@@ -105,6 +106,22 @@ WHERE p.user_id = sqlc.arg('user_id')
     )
 ORDER BY p.ordered_at DESC, p.id DESC
 LIMIT sqlc.arg('limit_param');
+
+-- === source: database/dml/repository/purchase/update_purchase_delivered.sql ===
+-- name: UpdatePurchaseDelivered :exec
+-- 購入を配達済み状態へ更新する。配達確認の証跡は扱わないため単一集約（purchases）のみを更新し、在庫操作は伴わない。
+-- status_id は code から解決し（seed UUID を焼き込まない）、delivered_at はドメインが決定した時刻（引数）を書き込み、
+-- イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
+-- 遷移可否ガードは付けない（ドメインが SoT）。
+UPDATE purchases
+SET
+    status_id = (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = @status_code
+    ),
+    delivered_at = @delivered_at,
+    updated_at = NOW()
+WHERE purchases.id = @id;
 
 -- === source: database/dml/repository/purchase/update_purchase_paid.sql ===
 -- name: UpdatePurchasePaid :exec

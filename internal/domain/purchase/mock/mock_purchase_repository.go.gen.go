@@ -117,6 +117,20 @@ func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
 }
 
+// UpdateDelivered mocks base method.
+func (m *MockRepository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDelivered", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDelivered indicates an expected call of UpdateDelivered.
+func (mr *MockRepositoryMockRecorder) UpdateDelivered(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDelivered", reflect.TypeOf((*MockRepository)(nil).UpdateDelivered), ctx, p)
+}
+
 // UpdatePaid mocks base method.
 func (m *MockRepository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error {
 	m.ctrl.T.Helper()

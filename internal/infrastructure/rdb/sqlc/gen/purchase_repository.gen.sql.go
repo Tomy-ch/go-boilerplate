@@ -109,7 +109,8 @@ SELECT
     p.ordered_at,
     p.paid_at,
     p.canceled_at,
-    p.shipped_at
+    p.shipped_at,
+    p.delivered_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.id = $1
@@ -129,12 +130,13 @@ type GetPurchaseDetailByIDRow struct {
 	PaidAt         *time.Time
 	CanceledAt     *time.Time
 	ShippedAt      *time.Time
+	DeliveredAt    *time.Time
 }
 
 // ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
 // 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
 // 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL、
-// 発送日時（shipped_at）は未発送なら NULL。
+// 発送日時（shipped_at）は未発送なら NULL、配達日時（delivered_at）は未配達なら NULL。
 // 存在しない場合は 0 行（NotFound）。
 //
 //	SELECT
@@ -150,7 +152,8 @@ type GetPurchaseDetailByIDRow struct {
 //	    p.ordered_at,
 //	    p.paid_at,
 //	    p.canceled_at,
-//	    p.shipped_at
+//	    p.shipped_at,
+//	    p.delivered_at
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE p.id = $1
@@ -171,6 +174,7 @@ func (q *Queries) GetPurchaseDetailByID(ctx context.Context, id uuid.UUID) (*Get
 		&i.PaidAt,
 		&i.CanceledAt,
 		&i.ShippedAt,
+		&i.DeliveredAt,
 	)
 	return &i, err
 }
@@ -428,6 +432,44 @@ func (q *Queries) LockPurchaseByID(ctx context.Context, id uuid.UUID) (*LockPurc
 		&i.Purchases.UpdatedAt,
 	)
 	return &i, err
+}
+
+const updatePurchaseDelivered = `-- name: UpdatePurchaseDelivered :exec
+UPDATE purchases
+SET
+    status_id = (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = $1
+    ),
+    delivered_at = $2,
+    updated_at = NOW()
+WHERE purchases.id = $3
+`
+
+type UpdatePurchaseDeliveredParams struct {
+	StatusCode  int16
+	DeliveredAt *time.Time
+	ID          uuid.UUID
+}
+
+// === source: database/dml/repository/purchase/update_purchase_delivered.sql ===
+// 購入を配達済み状態へ更新する。配達確認の証跡は扱わないため単一集約（purchases）のみを更新し、在庫操作は伴わない。
+// status_id は code から解決し（seed UUID を焼き込まない）、delivered_at はドメインが決定した時刻（引数）を書き込み、
+// イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
+// 遷移可否ガードは付けない（ドメインが SoT）。
+//
+//	UPDATE purchases
+//	SET
+//	    status_id = (
+//	        SELECT ps.id FROM purchase_statuses AS ps
+//	        WHERE ps.code = $1
+//	    ),
+//	    delivered_at = $2,
+//	    updated_at = NOW()
+//	WHERE purchases.id = $3
+func (q *Queries) UpdatePurchaseDelivered(ctx context.Context, arg *UpdatePurchaseDeliveredParams) error {
+	_, err := q.db.Exec(ctx, updatePurchaseDelivered, arg.StatusCode, arg.DeliveredAt, arg.ID)
+	return err
 }
 
 const updatePurchasePaid = `-- name: UpdatePurchasePaid :exec

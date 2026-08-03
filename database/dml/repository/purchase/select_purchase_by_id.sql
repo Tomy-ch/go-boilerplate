@@ -12,7 +12,7 @@ WHERE p.id = @id;
 -- ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
 -- 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
 -- 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL、
--- 発送日時（shipped_at）は未発送なら NULL。
+-- 発送日時（shipped_at）は未発送なら NULL、配達日時（delivered_at）は未配達なら NULL。
 -- 存在しない場合は 0 行（NotFound）。
 SELECT
     p.id,
@@ -27,7 +27,8 @@ SELECT
     p.ordered_at,
     p.paid_at,
     p.canceled_at,
-    p.shipped_at
+    p.shipped_at,
+    p.delivered_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.id = @id;
