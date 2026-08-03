@@ -32,6 +32,22 @@ FROM users AS u
 WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
     AND u.deleted_at IS NOT NULL;
 
+-- === source: database/dml/repository/user/delete_purged_users.sql ===
+-- name: DeleteUserIdentitiesByUserIDs :exec
+-- 物理削除するユーザーに従属する認証アイデンティティを削除する。users より先に消して FK 違反を避ける。
+DELETE FROM user_identities
+WHERE user_id = ANY(sqlc.arg('user_ids')::UUID []);
+
+-- name: DeleteUserRolesByUserIDs :exec
+-- 物理削除するユーザーに従属するロール割り当てを削除する。users より先に消して FK 違反を避ける。
+DELETE FROM user_roles
+WHERE user_id = ANY(sqlc.arg('user_ids')::UUID []);
+
+-- name: DeleteUsersByIDs :execrows
+-- 物理削除の対象ユーザーを削除し、削除件数を返す。従属行の削除後に呼ばれる前提で、参照の残存はここでは検査しない。
+DELETE FROM users
+WHERE id = ANY(sqlc.arg('ids')::UUID []);
+
 -- === source: database/dml/repository/user/insert_user.sql ===
 -- name: CreateUser :exec
 INSERT INTO users (
@@ -62,6 +78,18 @@ INSERT INTO users (
     sqlc.arg('created_at'),
     sqlc.arg('updated_at')
 );
+
+-- === source: database/dml/repository/user/select_purge_candidate_users.sql ===
+-- name: ListPurgeCandidateUserIDs :many
+-- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する。
+-- 物理削除の対象にならない行（購入を持つユーザー）を挟んでも前進できるよう、境界を after_id で受け取る。
+SELECT id
+FROM users
+WHERE deleted_at IS NOT NULL
+    AND deleted_at < sqlc.arg('cutoff')
+    AND (sqlc.narg('after_id')::UUID IS NULL OR id > sqlc.narg('after_id'))
+ORDER BY id ASC
+LIMIT sqlc.arg('limit_param');
 
 -- === source: database/dml/repository/user/select_roles_by_user_id.sql ===
 -- name: GetUserRolesByUserID :many

@@ -35,4 +35,7 @@ type Repository interface {
 	// ExistsInProgressByUserID は、指定ユーザーに進行中の購入が 1 件でも存在するかを返します。
 	// 進行中は TerminalStatusCodes のいずれでもないステータスの購入を指します。
 	ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error)
+	// FindUserIDsWithPurchases は、与えたユーザー ID のうち、購入を 1 件以上持つものを返します。
+	// ステータスは問わず、順序は保証しません。userIDs が空の場合は空を返します。
+	FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)
 }

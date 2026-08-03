@@ -284,6 +284,20 @@ func (r *repository) ExistsInProgressByUserID(ctx context.Context, userID uuid.U
 	return exists, nil
 }
 
+// FindUserIDsWithPurchases は、purchases に 1 件以上の行を持つ user_id を重複排除して返します。
+// ステータスでは絞り込まず、users とは結合しません（集約をまたぐ結合を避けるため ID 群の照会に切り出しています）。
+func (r *repository) FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	ids, err := db.ListUserIDsWithPurchases(ctx, userIDs)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+	return ids, nil
+}
+
 // toFeedItem は、購入履歴フィードの行（First / After で別型・同一フィールド）を読み取りモデルへ変換します。
 // 合計金額は決済スケール（BIGINT セント）を int へ、ステータス ID / 名称は購入ステータスマスタ由来です。
 func toFeedItem(id uuid.UUID, code string, totalAmount int64, orderedAt time.Time, statusID uuid.UUID, statusName string) purchase.FeedItem {

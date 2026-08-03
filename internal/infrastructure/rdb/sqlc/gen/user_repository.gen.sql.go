@@ -216,6 +216,52 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error {
 	return err
 }
 
+const deleteUserIdentitiesByUserIDs = `-- name: DeleteUserIdentitiesByUserIDs :exec
+DELETE FROM user_identities
+WHERE user_id = ANY($1::UUID [])
+`
+
+// === source: database/dml/repository/user/delete_purged_users.sql ===
+// 物理削除するユーザーに従属する認証アイデンティティを削除する。users より先に消して FK 違反を避ける。
+//
+//	DELETE FROM user_identities
+//	WHERE user_id = ANY($1::UUID [])
+func (q *Queries) DeleteUserIdentitiesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserIdentitiesByUserIDs, userIds)
+	return err
+}
+
+const deleteUserRolesByUserIDs = `-- name: DeleteUserRolesByUserIDs :exec
+DELETE FROM user_roles
+WHERE user_id = ANY($1::UUID [])
+`
+
+// 物理削除するユーザーに従属するロール割り当てを削除する。users より先に消して FK 違反を避ける。
+//
+//	DELETE FROM user_roles
+//	WHERE user_id = ANY($1::UUID [])
+func (q *Queries) DeleteUserRolesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserRolesByUserIDs, userIds)
+	return err
+}
+
+const deleteUsersByIDs = `-- name: DeleteUsersByIDs :execrows
+DELETE FROM users
+WHERE id = ANY($1::UUID [])
+`
+
+// 物理削除の対象ユーザーを削除し、削除件数を返す。従属行の削除後に呼ばれる前提で、参照の残存はここでは検査しない。
+//
+//	DELETE FROM users
+//	WHERE id = ANY($1::UUID [])
+func (q *Queries) DeleteUsersByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUsersByIDs, ids)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
@@ -413,6 +459,53 @@ func (q *Queries) ListDeletedUsers(ctx context.Context, arg *ListDeletedUsersPar
 			return nil, err
 		}
 		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurgeCandidateUserIDs = `-- name: ListPurgeCandidateUserIDs :many
+SELECT id
+FROM users
+WHERE deleted_at IS NOT NULL
+    AND deleted_at < $1
+    AND ($2::UUID IS NULL OR id > $2)
+ORDER BY id ASC
+LIMIT $3
+`
+
+type ListPurgeCandidateUserIDsParams struct {
+	Cutoff     *time.Time
+	AfterID    *uuid.UUID
+	LimitParam int32
+}
+
+// === source: database/dml/repository/user/select_purge_candidate_users.sql ===
+// 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する。
+// 物理削除の対象にならない行（購入を持つユーザー）を挟んでも前進できるよう、境界を after_id で受け取る。
+//
+//	SELECT id
+//	FROM users
+//	WHERE deleted_at IS NOT NULL
+//	    AND deleted_at < $1
+//	    AND ($2::UUID IS NULL OR id > $2)
+//	ORDER BY id ASC
+//	LIMIT $3
+func (q *Queries) ListPurgeCandidateUserIDs(ctx context.Context, arg *ListPurgeCandidateUserIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listPurgeCandidateUserIDs, arg.Cutoff, arg.AfterID, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
