@@ -94,3 +94,73 @@ func TestIntToInt32(t *testing.T) {
 		})
 	})
 }
+
+func TestIntPtrToInt32Ptr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilはnilを返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntPtrToInt32Ptr(nil)
+			require.NoError(t, err)
+			assert.Nil(t, result)
+		})
+
+		t.Run("範囲内の値は値を保持したポインタを返す", func(t *testing.T) {
+			t.Parallel()
+			v := 42
+			result, err := IntPtrToInt32Ptr(&v)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.Equal(t, int32(42), *result)
+		})
+
+		t.Run("MaxInt32とMinInt32も値を保持したポインタを返す", func(t *testing.T) {
+			t.Parallel()
+			maxValue, minValue := math.MaxInt32, math.MinInt32
+
+			maxResult, err := IntPtrToInt32Ptr(&maxValue)
+			require.NoError(t, err)
+			require.NotNil(t, maxResult)
+			assert.Equal(t, int32(math.MaxInt32), *maxResult)
+
+			minResult, err := IntPtrToInt32Ptr(&minValue)
+			require.NoError(t, err)
+			require.NotNil(t, minResult)
+			assert.Equal(t, int32(math.MinInt32), *minResult)
+		})
+
+		t.Run("返すポインタは引数とは別の領域を指す", func(t *testing.T) {
+			t.Parallel()
+			v := 7
+			result, err := IntPtrToInt32Ptr(&v)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			v = 99
+			assert.Equal(t, int32(7), *result)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("MaxInt32+1はオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			v := math.MaxInt32 + 1
+			result, err := IntPtrToInt32Ptr(&v)
+			require.ErrorIs(t, err, ErrOverflow)
+			assert.Nil(t, result)
+		})
+
+		t.Run("MinInt32-1はオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			v := math.MinInt32 - 1
+			result, err := IntPtrToInt32Ptr(&v)
+			require.ErrorIs(t, err, ErrOverflow)
+			assert.Nil(t, result)
+		})
+	})
+}

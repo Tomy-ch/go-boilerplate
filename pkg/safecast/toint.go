@@ -26,3 +26,17 @@ func IntToInt32(x int) (int32, error) {
 	}
 	return int32(x), nil
 }
+
+// IntPtrToInt32Ptr は、任意指定の*intを*int32に安全に変換します。
+// nil は変換対象なしとして nil を返し、int32 の範囲外の場合はエラーを返します。
+func IntPtrToInt32Ptr(x *int) (*int32, error) {
+	if x == nil {
+		return nil, nil //nolint:nilnil // 未設定は変換対象なしを表すため nil, nil が正常値
+	}
+
+	v, err := IntToInt32(*x)
+	if err != nil {
+		return nil, err
+	}
+	return &v, nil
+}

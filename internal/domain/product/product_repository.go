@@ -41,6 +41,10 @@ type Repository interface {
 	// 並び順は公開日時（同時刻は ID）で、params.Ascending により昇順／降順を切り替えます。
 	// params.CategoryID / StatusID / Keyword が指定された場合は該当条件で絞り込みます。
 	FindPublishedList(ctx context.Context, params ListParams) (Products, error)
+	// FindAllLowStock は、在庫が在庫警告閾値以下まで減った商品を、在庫の少ない順（同数は ID の昇順）で
+	// 最大 limit 件返します。在庫警告閾値が未設定の商品は警告対象を持たないため含みません。
+	// 補充の要否は公開状態に依存しないため、未公開の商品も含めます。
+	FindAllLowStock(ctx context.Context, limit int32) (Products, error)
 	// FindPublishedByID は、ID から公開中の単一商品を取得します。
 	// 未存在・非公開のいずれも NotFound を返します（未ログイン経路への存在秘匿）。
 	FindPublishedByID(ctx context.Context, id uuid.UUID) (*Product, error)

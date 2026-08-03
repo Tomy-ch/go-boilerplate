@@ -81,6 +81,24 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	})
 }
 
+// FindAllLowStock は、ListLowStockProducts で quantity <= stock_warning_threshold の商品を
+// (quantity, id) の昇順で最大 limit 件取得します。stock_warning_threshold が NULL の行は除外し、
+// published_at では絞りません。
+func (r *repository) FindAllLowStock(ctx context.Context, limit int32) (product.Products, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	rows, err := db.ListLowStockProducts(ctx, limit)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return rowsToProducts(rows, func(row *gen.ListLowStockProductsRow) productRow {
+		return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
+	})
+}
+
 // FindPublishedByID は、ID から公開中（published_at 非 NULL）の単一商品を取得します。
 // 非公開・未存在はいずれも NotFound を返します（存在秘匿）。
 func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
