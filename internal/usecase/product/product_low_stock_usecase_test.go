@@ -134,7 +134,7 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 
 			_, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{Limit: 0})
 			require.NoError(t, err)
-			assert.Equal(t, int32(defaultLimit), capturedLimit)
+			assert.Equal(t, int32(lowStockDefaultLimit), capturedLimit)
 		})
 
 		t.Run("limitが上限超過の場合、上限へクランプした件数がリポジトリへ渡る", func(t *testing.T) {
@@ -152,7 +152,7 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 
 			_, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{Limit: 1000})
 			require.NoError(t, err)
-			assert.Equal(t, int32(maxLimit), capturedLimit)
+			assert.Equal(t, int32(lowStockMaxLimit), capturedLimit)
 		})
 
 		t.Run("対象商品が無い場合、空の一覧を返す", func(t *testing.T) {
@@ -206,32 +206,6 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 			actual, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Empty(t, actual.Items)
-		})
-	})
-}
-
-func Test_normalizeLimit(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("下限未満の場合、既定件数を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, defaultLimit, normalizeLimit(0))
-			assert.Equal(t, defaultLimit, normalizeLimit(-1))
-		})
-
-		t.Run("範囲内の場合、指定値をそのまま返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, minLimit, normalizeLimit(minLimit))
-			assert.Equal(t, 50, normalizeLimit(50))
-			assert.Equal(t, maxLimit, normalizeLimit(maxLimit))
-		})
-
-		t.Run("上限超過の場合、上限へクランプする", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, maxLimit, normalizeLimit(maxLimit+1))
 		})
 	})
 }

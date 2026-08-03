@@ -6,15 +6,19 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
+	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/ptr"
 )
 
 const (
-	// defaultLimit は、limit 未指定時に用いる既定の取得件数です。
-	defaultLimit = 20
-	// minLimit / maxLimit は、取得件数のクランプ範囲です。
-	minLimit = 1
-	maxLimit = 100
+	// lowStockDefaultLimit は、limit 未指定時に用いる既定の取得件数です。
+	lowStockDefaultLimit = 20
+	// lowStockMaxLimit は、許容する最大の取得件数です。
+	lowStockMaxLimit = 100
 )
+
+// lowStockLimitPolicy は、在庫僅少商品一覧の取得件数規約です。OpenAPI の limit（既定 20 / 1〜100）と対応します。
+var lowStockLimitPolicy = paging.LimitPolicy{Default: lowStockDefaultLimit, Max: lowStockMaxLimit}
 
 // ListLowStockProductsParams は、在庫僅少商品一覧取得の入力パラメータです。
 type ListLowStockProductsParams struct {
@@ -44,8 +48,8 @@ func (u *usecase) ListLowStockProducts(
 		return ProductLowStockListView{}, err
 	}
 
-	//nolint:gosec // G115: normalizeLimit が [minLimit, maxLimit] にクランプ済みのため範囲に収まります
-	products, err := u.repo.FindAllLowStock(ctx, int32(normalizeLimit(params.Limit)))
+	limit := paging.NewLimit(ptr.To(params.Limit), lowStockLimitPolicy)
+	products, err := u.repo.FindAllLowStock(ctx, limit.Value32())
 	if err != nil {
 		return ProductLowStockListView{}, err
 	}
@@ -56,15 +60,4 @@ func (u *usecase) ListLowStockProducts(
 	}
 
 	return ProductLowStockListView{Items: items}, nil
-}
-
-// normalizeLimit は、取得件数を既定値の適用とクランプで正規化します。
-func normalizeLimit(limit int) int {
-	if limit < minLimit {
-		return defaultLimit
-	}
-	if limit > maxLimit {
-		return maxLimit
-	}
-	return limit
 }

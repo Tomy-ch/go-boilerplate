@@ -7,18 +7,29 @@ Provides common pagination value objects. Two strategies are offered as **equall
 - **Offset-based (`Page`)** — converts 1-based page/perPage into limit/offset. Simple, allows random page access, but degrades on deep pages (large `OFFSET` scans).
 - **Cursor-based / keyset (`Cursor`)** — carries an opaque cursor (the previous page's last-row sort keys) for `WHERE (sort_keys) < (:cursor)` queries. Stable and fast even on deep pages; recommended for large datasets and infinite scroll. The package owns only **transport (encode/decode), validation, and limit policy**; interpreting the keys back into typed sort columns (e.g. RFC3339 → time, UUID string → uuid) is the **query layer's** responsibility.
 
-Both share the same limit policy constants (`defaultPerPage` / `maxPerPage`).
+The package also owns the **fetch-count policy on its own** (`Limit` / `LimitPolicy`), so a read
+with no pagination at all — a top-N list such as a ranking or a low-stock dashboard card — shares
+the same "unspecified → default, over the ceiling → clamp" rule instead of re-implementing it.
+`Page` and `Cursor` are built on `Limit` with the package's own `defaultPerPage` / `maxPerPage`;
+top-N callers pass their own `LimitPolicy` (its named fields keep the default and the ceiling from
+being swapped at a call site).
 
 ## Constants
 
 |Constant|Value|Description|
 |---|---|---|
-|`defaultPerPage`|50|Default items per page|
-|`maxPerPage`|200|Maximum items per page|
+|`defaultPerPage`|50|Default items per page (`Page` / `Cursor`)|
+|`maxPerPage`|200|Maximum items per page (`Page` / `Cursor`)|
 |`minPage`|1|Minimum page number|
 |`maxPage`|10,000|Maximum page number|
 
 ## Behavior
+
+**Fetch count (`Limit`)**
+
+- `first` ≤ 0 or nil → uses `policy.Default`
+- `first` > `policy.Max` → clamped to `policy.Max`
+- `Value32()` clamps at `math.MaxInt32` for safe int32 conversion
 
 **Offset-based (`Page`)**
 
@@ -38,6 +49,15 @@ Both share the same limit policy constants (`defaultPerPage` / `maxPerPage`).
 - Cursor string format is **opaque**: `base64url(JSON string array)`. Treat it as a black box on the client side.
 
 ## Usage
+
+### Top-N (no pagination)
+
+```go
+var lowStockLimitPolicy = paging.LimitPolicy{Default: 20, Max: 100}
+
+limit := paging.NewLimit(req.Limit, lowStockLimitPolicy)
+// limit.Value() == 20 when req.Limit is nil; limit.Value32() feeds the SQL LIMIT.
+```
 
 ### Offset-based
 

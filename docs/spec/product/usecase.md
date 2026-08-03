@@ -297,7 +297,7 @@ tx_required: false
 steps:
   - authn が nil の場合は apperror.ErrUnauthenticated（401）を返す
   - authorizer.Authorize（ActionProductListLowStock / resource=product・所有者なし）で admin 認可を確認する（拒否は 403）
-  - normalizeLimit で取得件数を正規化する（下限未満は既定値 20、上限超過は 100 へクランプ）
+  - paging.NewLimit（lowStockLimitPolicy）で取得件数を正規化する（0 以下は既定値 20、上限超過は 100 へクランプ）
   - product_repository.FindAllLowStock で在庫僅少商品を在庫の少ない順に最大 limit 件取得する
   - 各 Product を ProductView へ写像する（在庫僅少の再判定は行わない。判定は Repository の契約）
 calls:
@@ -308,7 +308,7 @@ errors:
   - product_repository.FindAllLowStock のエラーをそのまま伝播する
 ```
 
-> `limit` の既定値は OpenAPI の `default: 20` ではなく usecase の `normalizeLimit` が与える。
+> `limit` の既定値は OpenAPI の `default: 20` ではなく usecase の `paging.NewLimit` が与える。
 > oapi-codegen は任意クエリパラメータへ既定値を適用せず、未指定は nil のままハンドラへ届くため。
 > 範囲外（1 未満 / 100 超）の要求は OpenAPI リクエストバリデータが 400 で弾くため、クランプは
 > バリデータを通らない経路に対する二重防御として働く。
