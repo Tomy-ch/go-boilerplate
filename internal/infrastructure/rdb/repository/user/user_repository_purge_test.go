@@ -224,6 +224,7 @@ func Test_repository_PurgeByIDs(t *testing.T) {
 
 	target := "eeeeeeee-1111-4000-8000-000000000001"
 	survivor := "eeeeeeee-1111-4000-8000-000000000002"
+	alive := "eeeeeeee-1111-4000-8000-000000000003"
 	deletedAt := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -263,6 +264,27 @@ func Test_repository_PurgeByIDs(t *testing.T) {
 				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countIdentities, survivorID))
 				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countRoles, survivorID))
 				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countUsers, survivorID))
+			})
+		})
+
+		t.Run("論理削除されていないユーザーは従属データを含め削除しない", func(t *testing.T) {
+			t.Parallel()
+
+			// 物理削除は取り消せないため、候補列挙を誤って現役ユーザーの ID が届いても消えないことを
+			// SQL 側の最終防壁として固定する。users にだけガードを付けると、生存したまま
+			// 認証アイデンティティとロールだけを失ったアカウントが残るため、従属データも併せて検証する。
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				aliveID := insertPurgeUser(ctx, t, drv, alive, nil)
+				insertPurgeUserDependents(ctx, t, drv, aliveID, "eeeeeeee-2222-4000-8000-000000000005")
+
+				got, err := repo.PurgeByIDs(ctx, []uuid.UUID{aliveID})
+				require.NoError(t, err)
+
+				assert.Equal(t, int64(0), got)
+				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countIdentities, aliveID))
+				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countRoles, aliveID))
+				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countUsers, aliveID))
 			})
 		})
 

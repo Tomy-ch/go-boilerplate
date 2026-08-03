@@ -324,6 +324,8 @@ func (r *repository) FindDeletedBefore(ctx context.Context, cutoff time.Time, af
 // PurgeByIDs は、user_identities → user_roles → users の順に削除し、users の削除件数を返します。
 // 子行を先に消すことで FK 違反を避けます。3 クエリは渡された ctx のトランザクションで実行されます
 // （トランザクションの開始は usecase の責務）。
+// 3 クエリとも deleted_at IS NOT NULL を条件に持つため、論理削除されていないユーザーの ID を渡しても
+// そのユーザーは子行を含めて一切削除されず、返る件数が ids の件数を下回ります。
 func (r *repository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

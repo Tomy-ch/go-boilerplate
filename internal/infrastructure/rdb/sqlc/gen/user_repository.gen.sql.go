@@ -218,14 +218,26 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error {
 
 const deleteUserIdentitiesByUserIDs = `-- name: DeleteUserIdentitiesByUserIDs :exec
 DELETE FROM user_identities
-WHERE user_id = ANY($1::UUID [])
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY($1::UUID [])
+            AND u.deleted_at IS NOT NULL
+    )
 `
 
 // === source: database/dml/repository/user/delete_purged_users.sql ===
 // 物理削除するユーザーに従属する認証アイデンティティを削除する。users より先に消して FK 違反を避ける。
+// 対象は論理削除済みのユーザーに限る。users 側のガードと条件を揃えないと、
+// 削除されないユーザーの従属行だけが失われ、ログインできない生存アカウントが残る。
 //
 //	DELETE FROM user_identities
-//	WHERE user_id = ANY($1::UUID [])
+//	WHERE user_id IN (
+//	        SELECT u.id
+//	        FROM users AS u
+//	        WHERE u.id = ANY($1::UUID [])
+//	            AND u.deleted_at IS NOT NULL
+//	    )
 func (q *Queries) DeleteUserIdentitiesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteUserIdentitiesByUserIDs, userIds)
 	return err
@@ -233,13 +245,24 @@ func (q *Queries) DeleteUserIdentitiesByUserIDs(ctx context.Context, userIds []u
 
 const deleteUserRolesByUserIDs = `-- name: DeleteUserRolesByUserIDs :exec
 DELETE FROM user_roles
-WHERE user_id = ANY($1::UUID [])
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY($1::UUID [])
+            AND u.deleted_at IS NOT NULL
+    )
 `
 
 // 物理削除するユーザーに従属するロール割り当てを削除する。users より先に消して FK 違反を避ける。
+// 対象を論理削除済みのユーザーに限る理由は DeleteUserIdentitiesByUserIDs と同じ。
 //
 //	DELETE FROM user_roles
-//	WHERE user_id = ANY($1::UUID [])
+//	WHERE user_id IN (
+//	        SELECT u.id
+//	        FROM users AS u
+//	        WHERE u.id = ANY($1::UUID [])
+//	            AND u.deleted_at IS NOT NULL
+//	    )
 func (q *Queries) DeleteUserRolesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteUserRolesByUserIDs, userIds)
 	return err
@@ -248,12 +271,16 @@ func (q *Queries) DeleteUserRolesByUserIDs(ctx context.Context, userIds []uuid.U
 const deleteUsersByIDs = `-- name: DeleteUsersByIDs :execrows
 DELETE FROM users
 WHERE id = ANY($1::UUID [])
+    AND deleted_at IS NOT NULL
 `
 
 // 物理削除の対象ユーザーを削除し、削除件数を返す。従属行の削除後に呼ばれる前提で、参照の残存はここでは検査しない。
+// 論理削除済みであることは、呼び手が候補列挙を誤っても現役ユーザーを不可逆に消さないための最終防壁として、
+// 保持期間の判定（Usecase の責務）とは別にここでも検査する。
 //
 //	DELETE FROM users
 //	WHERE id = ANY($1::UUID [])
+//	    AND deleted_at IS NOT NULL
 func (q *Queries) DeleteUsersByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteUsersByIDs, ids)
 	if err != nil {
