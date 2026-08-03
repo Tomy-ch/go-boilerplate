@@ -101,7 +101,7 @@ fields:
     購入をキャンセル状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/cancel の状態遷移）。
     遷移可否は statusCode の許可遷移表を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
       - 既にキャンセル（statusCode == 6 または canceledAt != nil）→ ErrAlreadyCanceled（409）
-      - 完了（statusCode == 5）・発送済み（shippedAt != nil）・配達済み（deliveredAt != nil）→ ErrCancelNotAllowed（409）
+      - 完了（statusCode == 5）・配達済み（statusCode == 9）・発送済み（shippedAt != nil）→ ErrCancelNotAllowed（409）
       - それ以外（未処理 / 受付中 / 確認中 / 処理中 / 支払い済み）→ 許可
     許可時は statusCode をキャンセル（6）へ、canceledAt を now へ同時にセットする（status と timestamp の同時セット・
     既存 timestamps は不変という不変条件）。now は時刻境界（clock）から供給し、ドメインは時刻へ直接依存しない。
@@ -115,7 +115,7 @@ fields:
     購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0076）。
     遷移可否は statusCode を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
       - 既に支払い済み（statusCode == 7）→ ErrAlreadyPaid（409。二重支払い）
-      - キャンセル済み（statusCode == 6）・完了（statusCode == 5）・発送済み（shippedAt != nil）・配達済み（deliveredAt != nil）→ ErrPayNotAllowed（409）
+      - キャンセル済み（statusCode == 6）・完了（statusCode == 5）・配達済み（statusCode == 9）・発送済み（shippedAt != nil）→ ErrPayNotAllowed（409）
       - それ以外（未処理 / 受付中 / 確認中 / 処理中）→ 許可
     許可時は statusCode を支払い済み（7）へ、paidAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
     決済 SDK / PSP 連携・金額検証は行わず、paidAt とステータスの記録のみを担う。
@@ -147,7 +147,7 @@ fields:
     配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担う。
     Ship と同じく timestamps ガードを併用しないのは、遷移元が発送済みの 1 状態に限られ statusCode の等値比較だけで判別できるため。
   invariants:
-    - 配達済み status（statusCode == 9）は deliveredAt を必須とする（一方向。deliveredAt は配達後も残り、以降の遷移で status が変わっても保持されるためキャンセルのような双条件にはしない）
+    - 配達済み status（statusCode == 9）と deliveredAt は必ず同時セット（双条件。配達済みは終端状態であり配達後に別 status へ遷移して deliveredAt だけが残ることがないため、paidAt / shippedAt のような一方向にはしない）
 ```
 
 ## Value Objects
