@@ -1,0 +1,37 @@
+get:
+  operationId: GetProductsLowStock
+  tags:
+    - v1/products/low-stock
+  summary: 在庫僅少商品一覧の取得
+  description: |
+    在庫数が在庫警告閾値以下まで減った商品を、在庫の少ない順に上位 limit 件返します。認証必須で、
+    管理者（admin）のみ実行できます。管理者でなければ 403 で拒否します。
+    在庫警告閾値が未設定の商品は警告対象外として除外します。閾値ちょうどの商品は警告対象に含みます。
+    補充の要否は公開状態に依存しないため、未公開の商品も対象に含みます。
+    同一在庫数の商品は商品 ID の昇順で安定的に並びます。ページネーションは行わず、上位 limit 件のみを返します。
+    対象商品がない場合はエラーではなく空配列を返します。
+    本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../components/parameters/product/LowStockLimitParam.yaml'
+  responses:
+    '200':
+      description: 在庫数の昇順で取得した在庫僅少商品一覧
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/products/lowstock/ProductLowStockResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'
