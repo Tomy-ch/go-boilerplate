@@ -15,6 +15,8 @@ const (
 	ActionProductUpdate Action = "product:update"
 	// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。
 	ActionProductStockUpdate Action = "product:stock:update"
+	// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。
+	ActionProductListLowStock Action = "product:low-stock:list"
 	// ActionPurchaseShip は、購入の発送操作（admin）を表します。
 	ActionPurchaseShip Action = "purchase:ship"
 	// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。
