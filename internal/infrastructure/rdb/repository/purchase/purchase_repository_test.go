@@ -568,11 +568,13 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
 				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
 				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
+				// deliveredAt は nil で渡す（配達済み status と deliveredAt は双条件のため、
+				// マスタに無い status と deliveredAt は同居できない）。
 				broken, err := domainpurchase.Reconstruct(
 					locked.ID(), locked.Code(), locked.UserID(), locked.StatusID(),
 					unknownStatusCode,
 					locked.SubtotalAmount(), locked.TaxAmount(), locked.ShippingFee(), locked.TotalAmount(),
-					locked.Details(), locked.OrderedAt(), &paidAt, nil, &shippedAt, &deliveredAt,
+					locked.Details(), locked.OrderedAt(), &paidAt, nil, &shippedAt, nil,
 				)
 				require.NoError(t, err)
 

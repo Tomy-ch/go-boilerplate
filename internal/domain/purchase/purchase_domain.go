@@ -248,10 +248,10 @@ func validateStatusTimestamps(statusCode int, paidAt, canceledAt, shippedAt, del
 	if statusCode == StatusCodeShipped && shippedAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "shipped status requires shippedAt")
 	}
-	// キャンセルは発送前にしか行えない（Cancel が shippedAt / deliveredAt を拒否する）ため、キャンセル
-	// status と発送・配達の記録は同居しない。支払い後のキャンセルは正常なので paidAt は対象外。
-	if statusCode == StatusCodeCanceled && (shippedAt != nil || deliveredAt != nil) {
-		return xerrors.Wrap(ErrInvalidStatusID, "canceled status must not have shippedAt or deliveredAt")
+	// キャンセルは発送前にしか行えない（Cancel が発送済み・配達済みを拒否する）ため、キャンセル status と
+	// 発送の記録は同居しない。支払い後のキャンセルは正常なので paidAt は対象外。
+	if statusCode == StatusCodeCanceled && shippedAt != nil {
+		return xerrors.Wrap(ErrInvalidStatusID, "canceled status must not have shippedAt")
 	}
 	// 発送済みへは支払い済みからのみ遷移し、支払い済みは paidAt を必須とするため、paidAt を欠く発送済みは
 	// 到達不能な状態である。
@@ -262,10 +262,11 @@ func validateStatusTimestamps(statusCode int, paidAt, canceledAt, shippedAt, del
 	if deliveredAt != nil && shippedAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "deliveredAt requires shippedAt")
 	}
-	// 配達済み status は deliveredAt を必須とする（一方向）。deliveredAt は配達後に残り続け、以降の
-	// 遷移で status が変わっても保持されるため、キャンセルのような双条件にはしない。
-	if statusCode == StatusCodeDelivered && deliveredAt == nil {
-		return xerrors.Wrap(ErrInvalidStatusID, "delivered status requires deliveredAt")
+	// 配達済み status と deliveredAt は同時セットの不変条件を持つ。配達済みは終端状態（TerminalStatusCodes）で
+	// あり、配達後に別の status へ遷移して deliveredAt だけが残ることがないため、paidAt / shippedAt のような
+	// 一方向ではなくキャンセルと同じ双条件になる。
+	if (statusCode == StatusCodeDelivered) != (deliveredAt != nil) {
+		return xerrors.Wrap(ErrInvalidStatusID, "delivered status and deliveredAt must be consistent")
 	}
 	return nil
 }
@@ -336,14 +337,16 @@ func (p *Purchase) DeliveredAt() *time.Time { return ptr.Copy(p.deliveredAt) }
 
 // Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /
 // 支払い済み）からのみ遷移でき、statusCode をキャンセル（6）へ、canceledAt を now へ同時に更新します。
-// 既にキャンセル済みなら ErrAlreadyCanceled、完了・発送済み（shippedAt）・配達済み（deliveredAt）なら
+// 既にキャンセル済みなら ErrAlreadyCanceled、完了・配達済み・発送済み（shippedAt）なら
 // ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
 func (p *Purchase) Cancel(now time.Time) error {
 	// canceledAt は Reconstruct の不変条件で statusCode==キャンセル と同値なので status だけで判定できる。
 	if p.statusCode == StatusCodeCanceled {
 		return ErrAlreadyCanceled
 	}
-	if p.statusCode == StatusCodeCompleted || p.shippedAt != nil || p.deliveredAt != nil {
+	// 配達済みも deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも
+	// 遷移不可であり続けるため、status ではなく残り続ける shippedAt で判定する。
+	if p.statusCode == StatusCodeCompleted || p.statusCode == StatusCodeDelivered || p.shippedAt != nil {
 		return ErrCancelNotAllowed
 	}
 	p.statusCode = StatusCodeCanceled
@@ -353,7 +356,7 @@ func (p *Purchase) Cancel(now time.Time) error {
 
 // Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
 // statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。既に支払い済みなら ErrAlreadyPaid、
-// キャンセル済み・完了・発送済み（shippedAt）・配達済み（deliveredAt）なら ErrPayNotAllowed をそれぞれ返します
+// キャンセル済み・完了・配達済み・発送済み（shippedAt）なら ErrPayNotAllowed をそれぞれ返します
 // （いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です
 // （決済 seam の除外は nextjs-boilerplate 側の設計判断）。
 // now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
@@ -361,7 +364,10 @@ func (p *Purchase) Pay(now time.Time) error {
 	if p.statusCode == StatusCodePaid {
 		return ErrAlreadyPaid
 	}
-	if p.statusCode == StatusCodeCanceled || p.statusCode == StatusCodeCompleted || p.shippedAt != nil || p.deliveredAt != nil {
+	// 配達済みは deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも
+	// 遷移不可であり続けるため、status ではなく残り続ける shippedAt で判定する。
+	if p.statusCode == StatusCodeCanceled || p.statusCode == StatusCodeCompleted ||
+		p.statusCode == StatusCodeDelivered || p.shippedAt != nil {
 		return ErrPayNotAllowed
 	}
 	p.statusCode = StatusCodePaid
