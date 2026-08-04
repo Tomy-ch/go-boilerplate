@@ -38,6 +38,13 @@ Sensitive headers (`Authorization` / `Proxy-Authorization` / `Cookie` / `Set-Coo
 this egress boundary, mirroring the HTTP publisher, and empty-valued headers are skipped because SQS
 rejects them with `InvalidParameterValue`.
 
+SQS accepts at most ten message attributes, and `message_id` occupies one of them. A message that
+would exceed the limit is rejected before the send with `ErrTooManyAttributes` rather than trimmed:
+which headers survived a trim would follow Go's map iteration order, so a lost `traceparent` would
+be neither reproducible nor visible. The relay records the error on the outbox row and the message
+goes dead once it runs out of attempts, which is the correct end for a payload no queue will take.
+The limit is SQS's own, so it stays here — `publisher.Message` carries no attribute count.
+
 `NewClient` builds the client; swapping endpoint and credentials is enough to target ElasticMQ,
 LocalStack, or real SQS. Both are built and unit-tested here, but reach a running binary only
 through the outbox publisher's `sqs` branch, which carries a `sample-api` marker. The consuming

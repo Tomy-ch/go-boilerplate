@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -107,6 +108,27 @@ func Test_publisher_Publish(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, messageID.String(), aws.ToString((*got).MessageAttributes[AttrMessageID].StringValue))
 		})
+
+		t.Run("MessageAttributes が上限ちょうどなら送信する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			got := captureSendMessage(t, api)
+
+			headers := make(map[string]string, maxMessageAttributes-1)
+			for i := range maxMessageAttributes - 1 {
+				headers[fmt.Sprintf("x-h%d", i)] = "v"
+			}
+
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				Headers:   headers,
+			})
+
+			require.NoError(t, err)
+			assert.Len(t, (*got).MessageAttributes, maxMessageAttributes)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -123,6 +145,26 @@ func Test_publisher_Publish(t *testing.T) {
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("MessageAttributes が上限を超えたら送信前にエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+
+			headers := make(map[string]string, maxMessageAttributes)
+			for i := range maxMessageAttributes {
+				headers[fmt.Sprintf("x-h%d", i)] = "v"
+			}
+
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				Headers:   headers,
+			})
+
+			require.ErrorIs(t, err, ErrTooManyAttributes)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
 		t.Run("ctx キャンセルを ErrCanceled へ正規化する", func(t *testing.T) {
