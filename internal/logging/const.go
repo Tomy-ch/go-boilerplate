@@ -90,6 +90,8 @@ const (
 	JobResultKey = "job_result"
 	// JobSkippedKey は、ジョブが対象から除外した件数を表すログフィールドのキーです。
 	JobSkippedKey = "job_skipped"
+	// JobScannedKey は、ジョブが処理対象として検査した件数を表すログフィールドのキーです。
+	JobScannedKey = "job_scanned"
 	// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。
 	FilterKey = "filter"
 

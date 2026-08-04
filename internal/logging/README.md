@@ -373,6 +373,7 @@ Log keys defined in `const.go`.
 |`JobErrorKey`|`job_error`|
 |`JobResultKey`|`job_result`|
 |`JobSkippedKey`|`job_skipped`|
+|`JobScannedKey`|`job_scanned`|
 |`FilterKey`|`filter`|
 
 ### Worker

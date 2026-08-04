@@ -112,6 +112,7 @@ export const SAMPLE_DOMAINS = {
   product: {
     description: "サンプル 商品ドメイン（GET /v1/products/statuses 商品ステータスマスタ一覧 / GET /v1/products/categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉 / GET /v1/products/{productId} 公開商品詳細〈未存在・非公開は 404 秘匿〉 / PATCH /v1/products/{productId}/stock 在庫の増減〈admin・行ロックで直列化〉 / GET /v1/products/low-stock 在庫僅少一覧〈admin・閾値以下 top-N〉）",
     paths: [
+      "internal/controller/job/productimagegc",
       "internal/domain/product/status",
       "internal/usecase/product/status",
       "internal/infrastructure/rdb/repository/productstatus",

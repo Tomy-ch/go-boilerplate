@@ -14,7 +14,7 @@ const ROOT_DIR = path.resolve(SETUP_DIR, "../..")
 const SNAPSHOT_PATH = path.join(SETUP_DIR, ".sample-removal-snapshot.json")
 
 // 残留サンプル参照の検出条件。生成物とテストは CI で regen を省くため除外する。
-const DANGLING_PATTERN = "usercount|userpurge|user_roles|prefecture"
+const DANGLING_PATTERN = "usercount|userpurge|productimagegc|user_roles|prefecture"
 const DANGLING_EXCLUDE = "_test\\.go|\\.gen\\.go"
 
 function readRegisteredPaths() {
