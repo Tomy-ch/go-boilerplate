@@ -285,7 +285,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | --- | --- | --- |
 | `INFRA_PROJECT` | `gobp-shared` | 共有インフラの唯一のインスタンスを置く固定 compose プロジェクト。 |
 | `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | app 層の checkout 毎 compose プロジェクト。DB スロット保持時は `SERVE_PROJECT`（`gobp-wt-N`）になります。 |
-| `INFRA_SERVICES` | `database observability garage` | 固定ポートでしか動けないため共有するサービス。 |
+| `INFRA_SERVICES` | `database observability garage elasticmq` | 固定ポートでしか動けないため共有するサービス。 |
 | `APP_SERVICES` | `api_server mock_auth_server` | checkout 毎に起動するサービス。 |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | infra 層向けの compose 呼び出し。 |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | app 層向けの compose 呼び出し。`docker-compose.attach.yaml` が app サービスの接続先を `host.docker.internal` 経由の共有インフラへ差し替えます。 |

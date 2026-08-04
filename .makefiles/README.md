@@ -285,7 +285,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | --- | --- | --- |
 | `INFRA_PROJECT` | `gobp-shared` | Fixed compose project holding the single shared infra instance. |
 | `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | Per-checkout compose project for the app layer. Becomes `SERVE_PROJECT` (`gobp-wt-N`) when a DB slot is held. |
-| `INFRA_SERVICES` | `database observability garage` | Services that can only run on fixed ports, hence shared. |
+| `INFRA_SERVICES` | `database observability garage elasticmq` | Services that can only run on fixed ports, hence shared. |
 | `APP_SERVICES` | `api_server mock_auth_server` | Services started per checkout. |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | Compose invocation for the app layer. `docker-compose.attach.yaml` points the app services at the shared infra via `host.docker.internal`. |
