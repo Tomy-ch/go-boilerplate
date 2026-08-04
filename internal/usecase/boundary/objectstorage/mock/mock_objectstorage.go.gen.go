@@ -41,6 +41,35 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
+// Delete mocks base method.
+func (m *MockStorage) Delete(ctx context.Context, keys []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, keys)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockStorageMockRecorder) Delete(ctx, keys any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockStorage)(nil).Delete), ctx, keys)
+}
+
+// List mocks base method.
+func (m *MockStorage) List(ctx context.Context, query objectstorage.ListQuery) (objectstorage.ListResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, query)
+	ret0, _ := ret[0].(objectstorage.ListResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockStorageMockRecorder) List(ctx, query any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStorage)(nil).List), ctx, query)
+}
+
 // Put mocks base method.
 func (m *MockStorage) Put(ctx context.Context, obj objectstorage.PutObject) (objectstorage.Path, error) {
 	m.ctrl.T.Helper()

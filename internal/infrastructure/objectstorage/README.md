@@ -29,15 +29,19 @@ stops here — the port above exposes only a key, bytes, and content metadata.
 | --- | --- |
 | `Put(ctx, PutObject) (Path, error)` | `PutObject`. `Key` → `Key` (under the configured `Bucket`), `Body` → body + `ContentLength`, `ContentType` → `ContentType`, `CacheControl` → `CacheControl`. An empty `CacheControl` leaves the field unset rather than sending an empty header, so "no caching directive" stays distinguishable from "an empty one" |
 | return `Path` | The key that was written, echoed back. The adapter never returns a URL — composing one is the caller's job, because the delivery origin is not a property of the store |
+| `List(ctx, ListQuery) (ListResult, error)` | `ListObjectsV2`. `Prefix` → `Prefix`, `Limit` → `MaxKeys`, `Cursor` → `ContinuationToken`; each `Contents` entry becomes `Object{Key, ModifiedAt}` from `Key` + `LastModified`. `NextCursor` carries `NextContinuationToken` **only when `IsTruncated`** — otherwise it is empty, so "there is more" stays distinguishable from "this was the last page". An unset `Prefix` / `Cursor` leaves the field off the request rather than sending an empty string |
+| `Delete(ctx, keys) error` | `DeleteObjects` with `Quiet: true`. Each key becomes an `ObjectIdentifier`; an empty `keys` short-circuits without a request. S3 reports per-key failures in the response body rather than as a call error, so a non-empty `Errors` is turned into a failure — silently treating an undeleted key as deleted would make a reclamation job stop reporting the object it failed to remove |
 
 ## Error normalization
 
-Every SDK failure is wrapped into `apperror.ErrUnavailable` at the single call site in `Put`, so
-upper layers branch on the sentinel and never inspect an AWS error type. This is deliberately
-**coarser than the RDB side**: `rdb/pgerror` maps SQLSTATE to distinct sentinels because callers
-act differently on a unique-violation than on a deadlock, whereas the current port has one
-operation whose failures are all "the store did not accept the write". Splitting the mapping is
-worth doing when an operation is added whose caller must distinguish not-found from denied.
+Every SDK failure is wrapped into `apperror.ErrUnavailable` at each call site (`Put` / `List` /
+`Delete`), so upper layers branch on the sentinel and never inspect an AWS error type. This is
+deliberately **coarser than the RDB side**: `rdb/pgerror` maps SQLSTATE to distinct sentinels
+because callers act differently on a unique-violation than on a deadlock, whereas every failure
+of this port means "the store did not accept the operation". `Delete` in particular has no
+not-found case to distinguish — S3 treats deleting an absent key as success, which is what makes
+a reclamation job safe to re-run. Splitting the mapping is worth doing when an operation is added
+whose caller must distinguish not-found from denied.
 
 ## Config
 

@@ -26,10 +26,12 @@
 | --- | --- |
 | `Put(ctx, PutObject) (Path, error)` | `PutObject`。`Key` → `Key`（設定された `Bucket` 配下）、`Body` → body + `ContentLength`、`ContentType` → `ContentType`、`CacheControl` → `CacheControl`。`CacheControl` が空の場合は空ヘッダを送らずフィールドを未設定にするため、「キャッシュ指示が無い」と「空の指示がある」を区別できる |
 | 戻り値 `Path` | 書き込んだキーをそのまま返す。adapter は URL を返さない。配信オリジンはストアの属性ではないため、URL の組み立ては呼び出し側の責務 |
+| `List(ctx, ListQuery) (ListResult, error)` | `ListObjectsV2`。`Prefix` → `Prefix`、`Limit` → `MaxKeys`、`Cursor` → `ContinuationToken`。`Contents` の各要素は `Key` + `LastModified` から `Object{Key, ModifiedAt}` になる。`NextCursor` に `NextContinuationToken` を載せるのは **`IsTruncated` が true のときだけ**で、そうでなければ空にするため「続きがある」と「最終ページ」を区別できる。`Prefix` / `Cursor` が未指定の場合は空文字を送らずフィールドを立てない |
+| `Delete(ctx, keys) error` | `DeleteObjects`（`Quiet: true`）。各キーを `ObjectIdentifier` へ写し、`keys` が空ならリクエストを送らず終了する。S3 はキー単位の失敗を呼び出しエラーではなくレスポンス本文で返すため、`Errors` が空でなければ失敗として扱う。消えていないキーを消えたものとして扱うと、回収ジョブが削除に失敗したオブジェクトを報告しなくなるため |
 
 ## エラー正規化
 
-SDK の失敗はすべて `Put` の単一箇所で `apperror.ErrUnavailable` へ包みます。上位層は sentinel で分岐し、AWS のエラー型を検査することはありません。これは **RDB 側より意図的に粗い**作りです。`rdb/pgerror` が SQLSTATE を個別の sentinel へ写すのは、呼び出し側が一意制約違反とデッドロックで異なる振る舞いを取るからですが、現在のポートは操作が 1 つで、その失敗はいずれも「ストアが書き込みを受け付けなかった」に収束します。not-found と denied を呼び出し側が区別しなければならない操作が加わった時点で、写像を分ける価値が生まれます。
+SDK の失敗は各呼び出し箇所（`Put` / `List` / `Delete`）で `apperror.ErrUnavailable` へ包みます。上位層は sentinel で分岐し、AWS のエラー型を検査することはありません。これは **RDB 側より意図的に粗い**作りです。`rdb/pgerror` が SQLSTATE を個別の sentinel へ写すのは、呼び出し側が一意制約違反とデッドロックで異なる振る舞いを取るからですが、このポートの失敗はいずれも「ストアが操作を受け付けなかった」に収束します。とりわけ `Delete` は区別すべき not-found を持ちません。S3 は存在しないキーの削除を成功として扱い、それが回収ジョブを再実行可能にしている性質です。not-found と denied を呼び出し側が区別しなければならない操作が加わった時点で、写像を分ける価値が生まれます。
 
 ## 設定
 

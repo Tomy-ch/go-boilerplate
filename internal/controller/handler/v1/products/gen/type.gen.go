@@ -173,7 +173,7 @@ type ProductsPostRequest struct {
 	// Description 商品説明（リッチテキスト HTML を許容）。未設定の場合は null です。
 	Description *string `json:"description,omitempty"`
 
-	// ImagePath 画像パス。未設定の場合は null です。画像アップロードで得たパスを渡します。
+	// ImagePath 画像パス。未設定の場合は null です。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
 	ImagePath *string `json:"imagePath,omitempty"`
 
 	// Name 商品名

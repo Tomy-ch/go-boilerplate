@@ -56,6 +56,7 @@ func UsecaseModule() fx.Option {
 			categoryuc.New,
 			rankinguc.New,
 			provideProductUsecase,
+			productuc.NewImageGC,
 			purchaseuc.New,
 			purchasesummaryuc.New,
 			dashboarduc.New,

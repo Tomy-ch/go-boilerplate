@@ -34,6 +34,15 @@ INSERT INTO products (
     sqlc.arg('image_path')
 );
 
+-- === source: database/dml/repository/product/select_existing_image_paths.sql ===
+-- name: ListExistingProductImagePaths :many
+-- 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。
+-- 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
+-- ここに現れなかったパスが孤児にあたる。商品は論理削除を持たないため、生存行だけが参照元になる。
+SELECT DISTINCT image_path
+FROM products
+WHERE image_path = ANY(sqlc.arg('image_paths')::TEXT []);
+
 -- === source: database/dml/repository/product/select_low_stock_products.sql ===
 -- name: ListLowStockProducts :many
 -- 在庫が警告閾値以下の商品を、在庫の少ない順（同数は ID 昇順）で最大 limit 件取得します。

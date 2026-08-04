@@ -39,6 +39,17 @@ methods:
     signature: ListLowStockProducts(ctx context.Context, authn *auth.Authn, params ListLowStockProductsParams) (ProductLowStockListView, error)
 ```
 
+未参照画像の回収はジョブ専用の入口で、HTTP ハンドラが使う `Usecase` とは利用者も依存も異なるため、
+独立したインターフェースに分ける（`outbox.GCUsecase` / `user.PurgeUsecase` と同じ形）。
+
+```yaml
+package: internal/usecase/product
+name: ImageGCUsecase
+methods:
+  - name: SweepOrphans
+    signature: SweepOrphans(ctx context.Context, grace time.Duration, batchSize int32, dryRun bool) (ImageGCResult, error)
+```
+
 ## DTOs
 
 ```yaml
@@ -312,3 +323,34 @@ errors:
 > oapi-codegen は任意クエリパラメータへ既定値を適用せず、未指定は nil のままハンドラへ届くため。
 > 範囲外（1 未満 / 100 超）の要求は OpenAPI リクエストバリデータが 400 で弾くため、クランプは
 > バリデータを通らない経路に対する二重防御として働く。
+
+### SweepOrphans（ImageGCUsecase）
+
+```yaml
+tx_required: false   # DB は読み取りのみ。削除先はオブジェクトストレージで、2 相コミットできない
+steps:
+  - grace / batchSize が 0 以下なら既定値（24 時間 / 1000 件）に置き換える
+  - clock.Now から grace を引いて打ち切り時刻 cutoff を決める
+  - 列挙が尽きるまでページを反復
+      - object_storage.List で prefix="products/" のオブジェクトを最大 batchSize 件取得する
+      - 接頭辞が products/ で、かつ ModifiedAt が cutoff より前のキーだけを候補に絞る（検査件数へ計上）
+      - 候補が 0 件ならそのページは照合も削除も行わない
+      - product_repository.FilterExistingImagePaths で参照済みのパスを特定し、候補から除外する
+      - dryRun でなければ object_storage.Delete で残りを削除し、削除件数を加算（dryRun では対象件数のみ加算）
+      - NextCursor が空なら終了。非空なら次ページへ
+  - 累計の ImageGCResult を返す
+calls:
+  - clock.Now
+  - object_storage.List
+  - product_repository.FilterExistingImagePaths
+  - object_storage.Delete
+errors:
+  - 各依存のエラーを伝播。削除済みのオブジェクトは復元できないため、エラー時もそこまでの累計を
+    ImageGCResult に含めて返す
+notes:
+  - 参照照合が失敗したページでは、オブジェクトを 1 件も削除せずに中断する。
+    「照合エラー = 未参照」と倒れるとバケット内の全画像を消すため、唯一の致命的な失敗モードにあたる。
+  - 猶予期間が方式の核心。アップロード直後のオブジェクトは「商品作成フォーム記入中でまだ参照されていない」
+    正常な状態と区別がつかないため、年齢述語なしでは正常なアップロードを削除してしまう。
+  - 列挙が prefix を無視する実装に当たっても商品画像以外を消さないよう、候補を絞る際に接頭辞を再検査する。
+```
