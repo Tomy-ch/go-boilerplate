@@ -15,10 +15,17 @@
 # バケット未プロビジョニングのまま S3 を触ると 503 になる。
 # garage_init の CLI は garage server と RPC バージョンが一致しないと接続できないため、server の
 # image 更新に取り残された古いイメージで走らないよう --build を付ける（キャッシュは効く）。
+#
+# INFRA_NO_RECREATE: worktree では他 checkout が使用中のインフラを毎回作り直してしまうため、
+# 既存インスタンスを優先する（判定と根拠は compose.mk）。この状態では定義変更の反映は
+# infra-down → infra-up の明示操作になる。単一 checkout では空で、compose の既定どおり再収束する。
+# --no-deps: run は依存サービスも converge するため、直前の up で残した garage を
+# ここで作り直してしまう（garage_init の depends_on は garage のみ）。稼働は直前行の --wait が
+# 保証済み。
 infra-up:
 	@echo "🔄 共有インフラを起動します... (project=$(INFRA_PROJECT))"
-	@$(COMPOSE_INFRA) --profile development up -d --wait $(INFRA_SERVICES)
-	@$(COMPOSE_INFRA) --profile development run --rm --build -T garage_init > /dev/null
+	@$(COMPOSE_INFRA) --profile development up -d --wait $(INFRA_NO_RECREATE) $(INFRA_SERVICES)
+	@$(COMPOSE_INFRA) --profile development run --rm --build --no-deps -T garage_init > /dev/null
 	@echo "✅ 共有インフラが起動しています。Grafana: http://localhost:3000"
 
 infra-down:
@@ -52,9 +59,11 @@ serve-stop:
 	@$(COMPOSE_APP) down
 	@echo "✅ app コンテナを停止しました（共有インフラは稼働したままです）。"
 
+# tools profile は database / garage も含むため、INFRA_NO_RECREATE を落とすと make tools が
+# 共有インフラの再作成経路として残る（理由は infra-up 参照）。
 tools:
 	@echo "🔄 開発ツールを起動します。"
-	@$(COMPOSE_INFRA) --profile tools up -d --build
+	@$(COMPOSE_INFRA) --profile tools up -d --build $(INFRA_NO_RECREATE)
 	@echo "✅ 開発ツールの起動が完了しました。SQL editor: http://localhost:7000 / docs: http://localhost:7001"
 
 all:

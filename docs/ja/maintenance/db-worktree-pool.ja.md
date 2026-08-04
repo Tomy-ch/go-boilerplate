@@ -19,7 +19,8 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
 
 - **infra 層** = 固定 compose プロジェクト `gobp-shared`（`GOBP_DB_SHARED_PROJECT`）。worktree はディレクトリ毎に
   compose の既定プロジェクト名が変わるため、共有側は明示の固定名に固定する。`make infra-up` で起動し、
-  `make serve` / `make job` / `make worker` も冒頭で冪等に呼ぶ。
+  `make serve` / `make job` / `make worker` も冒頭で冪等に呼ぶ。ここでの冪等は非破壊も含む意味で、
+  既に動いているコンテナは作り直さずそのまま残す（Caveats 参照）。
 - **app 層** = `APP_PROJECT`。スロット未取得なら `gobp-app-<ディレクトリ名>`、取得時は `gobp-wt-N`。
   `docker-compose.attach.yaml` を重ね、共有インフラを `host.docker.internal` のホスト公開ポート経由で参照する
   （`DB_HOST` / `OBS_OTLP_ENDPOINT` / `OBJECT_STORAGE_ENDPOINT` を実行時 env で上書きする。`loader.go` は
@@ -150,9 +151,19 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   再発時の切り分けは、`pgrep -fl "go test"` → `lsof -a -p <pid> -d cwd` でどの checkout がテストを
   走らせているかを特定し、`pg_stat_activity` をサンプリングしてピークが定常ではなく一過性のスパイクかを見て、
   `go test -p 1` で green になるなら原因は負荷であって変更ではない、という順に見る。
-- **infra 層の再作成**: `gobp-shared` を動かす checkout が変わったとき、その checkout の compose 定義が
-  前回と異なると（ブランチ違いで image の digest pin が変わった等）compose がコンテナを作り直す。
-  名前付きボリュームは残るためデータは失われないが、稼働中 app の接続は切れる。
+- **infra 層の再作成**: compose はコンテナが最新かどうかを、解決後のサービス定義のハッシュで判定する。
+  このハッシュには bind mount の source と build context が**絶対パス**で入るため、どの worktree も
+  自分のディレクトリ配下へ解決した値を持つ。結果として、まったく同じコミットの checkout 同士でも
+  ハッシュは一致しない。再作成はブランチが分岐したときの例外ではなく常態である。影響を受けるのは
+  `database` と `garage`（`docker/database/sql` と `docker/garage/garage.toml` を bind mount する）で、
+  何もマウントしない `observability` は受けない。そのため worktree から `gobp-shared` へ `up` する際は
+  `--no-recreate` を渡し（`.makefiles/docker/compose.mk` の `INFRA_NO_RECREATE`）、他の checkout が
+  使っているコンテナを置き換えずそのまま使う。
+  代償として、image の digest pin 更新や `garage.toml` の編集といった**正当な定義変更も自動では
+  反映されなくなる**。全 checkout が中断を許容できるタイミングで `make infra-down && make infra-up`
+  を実行すること。`tools` プロファイルも同じで、`docs_viewer` は最初に作った checkout の `docs/` を
+  配り続ける。単一 checkout には奪い合う相手が居ないためフラグは空で、compose は従来どおり
+  定義変更へ再収束する。
 - **オブジェクトストレージは共有**: `garage` のバケットは全 checkout で共通（DB と違いスキーマを持たないため
   ブランチ間で壊れない）。ブランチ毎に隔離したい場合は `OBJECT_STORAGE_BUCKET` を分ける。
 - API 帯 8080–8092 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
