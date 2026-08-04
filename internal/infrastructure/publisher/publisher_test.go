@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/infrastructure/queue/sqs"
+	"go-boilerplate/internal/infrastructure/queue/sqs" // sample-api:line
 	"go-boilerplate/internal/observability"
 )
 
@@ -30,6 +30,7 @@ func TestNew(t *testing.T) {
 			assert.IsType(t, &httpPublisher{}, got)
 		})
 
+		// sample-api:begin
 		t.Run("判別子が sqs なら SQS 実装を返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -57,6 +58,7 @@ func TestNew(t *testing.T) {
 
 			require.NoError(t, err)
 		})
+		// sample-api:end
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -96,6 +98,7 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, ErrInvalidEndpoint)
 		})
 
+		// sample-api:begin
 		t.Run("sqs なのに queue URL が未設定なら起動エラーにする", func(t *testing.T) {
 			t.Parallel()
 
@@ -107,5 +110,6 @@ func TestNew(t *testing.T) {
 
 			require.ErrorIs(t, err, ErrInvalidQueue)
 		})
+		// sample-api:end
 	})
 }

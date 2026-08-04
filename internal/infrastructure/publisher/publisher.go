@@ -13,8 +13,11 @@ import (
 const (
 	// KindHTTP は、受信エンドポイントへ HTTP POST する publish 先種別です。
 	KindHTTP = "http"
+	// sample-api:begin
+
 	// KindSQS は、SQS 互換ブローカーへ送出する publish 先種別です。
-	KindSQS = "sqs" // sample-api:line
+	KindSQS = "sqs"
+	// sample-api:end
 )
 
 // ErrUnknownKind は、判別子が未知の publish 先種別を指していることを示すエラーです。
@@ -54,6 +57,10 @@ func New(
 		), nil
 	// sample-api:end
 	default:
+		// sample-api:replace-begin
 		return nil, xerrors.Wrap(ErrUnknownKind, "OUTBOX_PUBLISHER must be one of: http, sqs")
+		// sample-api:replace-with
+		// = return nil, xerrors.Wrap(ErrUnknownKind, "OUTBOX_PUBLISHER must be one of: http")
+		// sample-api:replace-end
 	}
 }

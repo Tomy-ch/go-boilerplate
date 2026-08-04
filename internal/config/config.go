@@ -129,11 +129,11 @@ func New() (*Config, error) {
 			pollInterval:         cfg.Outbox.PollInterval,
 			errorBackoff:         cfg.Outbox.ErrorBackoff,
 			batchSize:            cfg.Outbox.BatchSize,
-			queueEndpoint:        cfg.Outbox.QueueEndpoint,        // sample-api:line
-			queueRegion:          cfg.Outbox.QueueRegion,          // sample-api:line
-			queueURL:             cfg.Outbox.QueueURL,             // sample-api:line
-			queueAccessKeyID:     cfg.Outbox.QueueAccessKeyID,     // sample-api:line
-			queueSecretAccessKey: cfg.Outbox.QueueSecretAccessKey, // sample-api:line
+			queueEndpoint:        cfg.Outbox.QueueEndpoint,
+			queueRegion:          cfg.Outbox.QueueRegion,
+			queueURL:             cfg.Outbox.QueueURL,
+			queueAccessKeyID:     cfg.Outbox.QueueAccessKeyID,
+			queueSecretAccessKey: cfg.Outbox.QueueSecretAccessKey,
 		},
 		auth: AuthConfig{
 			issuer:             cfg.Auth.Issuer,

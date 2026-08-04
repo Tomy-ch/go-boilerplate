@@ -58,11 +58,11 @@ type Outbox struct {
 	ErrorBackoff time.Duration `env:"ERROR_BACKOFF" envDefault:"5s"`
 	BatchSize    int           `env:"BATCH_SIZE"    envDefault:"100"`
 	// Queue* は PUBLISHER=sqs のときだけ使う。未設定のまま sqs を選ぶと adapter 構築時に落とす。
-	QueueEndpoint        string `env:"QUEUE_ENDPOINT"          envDefault:""` // sample-api:line
-	QueueRegion          string `env:"QUEUE_REGION"            envDefault:""` // sample-api:line
-	QueueURL             string `env:"QUEUE_URL"               envDefault:""` // sample-api:line
-	QueueAccessKeyID     string `env:"QUEUE_ACCESS_KEY_ID"     envDefault:""` // sample-api:line
-	QueueSecretAccessKey string `env:"QUEUE_SECRET_ACCESS_KEY" envDefault:""` // sample-api:line
+	QueueEndpoint        string `env:"QUEUE_ENDPOINT"          envDefault:""`
+	QueueRegion          string `env:"QUEUE_REGION"            envDefault:""`
+	QueueURL             string `env:"QUEUE_URL"               envDefault:""`
+	QueueAccessKeyID     string `env:"QUEUE_ACCESS_KEY_ID"     envDefault:""`
+	QueueSecretAccessKey string `env:"QUEUE_SECRET_ACCESS_KEY" envDefault:""`
 }
 
 // Worker は worker engine の engine-core 設定（broker 非依存）を保持する。

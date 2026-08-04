@@ -138,11 +138,11 @@ type OutboxConfig struct {
 	pollInterval         time.Duration
 	errorBackoff         time.Duration
 	batchSize            int
-	queueEndpoint        string // sample-api:line
-	queueRegion          string // sample-api:line
-	queueURL             string // sample-api:line
-	queueAccessKeyID     string // sample-api:line
-	queueSecretAccessKey string // sample-api:line
+	queueEndpoint        string
+	queueRegion          string
+	queueURL             string
+	queueAccessKeyID     string
+	queueSecretAccessKey string
 }
 
 // AuthConfig は、access token（JWT）検証の設定を保持します。
@@ -454,19 +454,19 @@ func (o *OutboxConfig) Publisher() string { return o.publisher }
 func (o *OutboxConfig) Endpoint() string { return o.endpoint }
 
 // QueueEndpoint は、SQS 互換エンドポイントを返します（空なら SDK 既定の解決に委ねます）。
-func (o *OutboxConfig) QueueEndpoint() string { return o.queueEndpoint } // sample-api:line
+func (o *OutboxConfig) QueueEndpoint() string { return o.queueEndpoint }
 
 // QueueRegion は、SQS の署名に用いるリージョンを返します。
-func (o *OutboxConfig) QueueRegion() string { return o.queueRegion } // sample-api:line
+func (o *OutboxConfig) QueueRegion() string { return o.queueRegion }
 
 // QueueURL は、publish 先キューの URL を返します。
-func (o *OutboxConfig) QueueURL() string { return o.queueURL } // sample-api:line
+func (o *OutboxConfig) QueueURL() string { return o.queueURL }
 
 // QueueAccessKeyID は、SQS の静的資格情報のアクセスキー ID を返します。
-func (o *OutboxConfig) QueueAccessKeyID() string { return o.queueAccessKeyID } // sample-api:line
+func (o *OutboxConfig) QueueAccessKeyID() string { return o.queueAccessKeyID }
 
 // QueueSecretAccessKey は、SQS の静的資格情報のシークレットアクセスキーを返します。
-func (o *OutboxConfig) QueueSecretAccessKey() string { return o.queueSecretAccessKey } // sample-api:line
+func (o *OutboxConfig) QueueSecretAccessKey() string { return o.queueSecretAccessKey }
 
 // PollInterval は、pending を捌き切った後に次 poll まで待機する時間を返します。
 func (o *OutboxConfig) PollInterval() time.Duration { return o.pollInterval }
