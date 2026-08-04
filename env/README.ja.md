@@ -18,6 +18,7 @@
 - `envDefault` を持たないキーは全 env ファイルに記載が必須。唯一の正当な不在は、デプロイ基盤が実行時に注入する値で、備考欄に **Injected at deploy time** と明記して宣言する。宣言が無ければ、欠落と伝播漏れは見分けが付かず、その環境で実際にアプリを起動して `required` バリデーションが落ちるまで顕在化しない。このマーカーは `TestEnvRequiredKeyPresencePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーがどれか 1 つでも env ファイルから欠けていれば落ち、マーカーのあるキーは `local` / `ci` に記載があり `dev` / `stg` / `prd` には無いことが要る。deploy 側のファイルに値が復活した場合も、`Code default` を持つキーにマーカーを付けた場合も落ちる
 - 本ファイルは正本（[README.md](README.md)）の対訳で、値まで含めて表を複製している。このリポジトリの読者の多くは日本語版を読む。散文は翻訳されるが、キー・型・例・`Code default` の値は言語に依らないため正本と一致させること。乖離は `internal/architest`（`TestEnvReadmeTranslationValues`）がビルドを落として検知する。文書構造 — 表を区切るサブシステム見出しと、節・箇条書き項目の個数 — の一致は `TestEnvReadmeTranslationStructure` が検証するので、段落ごと訳し漏らした場合も検知される。`Code default` が空の場合はバッククォートで書けないため、正本では **Code default empty**、対訳では **Code default は空** と綴る。この 2 つの綴りはテストが宣言しており、他の書き方は受け付けない
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `envDefault:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
+- ローカルの値を env ファイルではなく compose スタックから受け取るキーは、本ディレクトリが記述しきれない唯一の経路である。`internal/config` はプロセスの環境変数を先に読むため、`docker-compose*.yaml` の `environment` 指定は埋め込みの `env/.env` に優先し、その経路でしか供給されないキーはどの env ファイルにも現れない — つまり `internal/architest` の突き合わせの外に出る。env ファイルでは値を持てない場合に限って使い、compose 抜きでバイナリが何をするかは読み取れるよう行の `Code default` を正確に保つこと。compose 側の記載が陳腐化してもテストは検知しない
 
 ## 新規変数を追加する手順
 

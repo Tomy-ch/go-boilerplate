@@ -39,8 +39,9 @@ this egress boundary, mirroring the HTTP publisher, and empty-valued headers are
 rejects them with `InvalidParameterValue`.
 
 `NewClient` builds the client; swapping endpoint and credentials is enough to target ElasticMQ,
-LocalStack, or real SQS. Like the consuming side, both are built and unit-tested here but reach a
-running binary only through wiring, which carries a `sample-api` marker.
+LocalStack, or real SQS. Both are built and unit-tested here, but reach a running binary only
+through the outbox publisher's `sqs` branch, which carries a `sample-api` marker. The consuming
+side has no wiring at all.
 
 ## Port mapping
 
