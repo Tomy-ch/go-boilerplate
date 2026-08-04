@@ -318,6 +318,22 @@ export const SAMPLE_DOMAINS = {
     ],
   },
 
+  outboxBroker: {
+    description:
+      "サンプル outbox → broker 経路（SQS 互換 publish adapter + ローカル broker ElasticMQ）。" +
+      "engine / seam / SQS 受信 adapter は core なので残し、配線と送出側だけを削除対象にする。",
+    paths: [
+      "internal/infrastructure/queue/sqs/client.go",
+      "internal/infrastructure/queue/sqs/client_test.go",
+      "internal/infrastructure/queue/sqs/publisher.go",
+      "internal/infrastructure/queue/sqs/publisher_test.go",
+      "internal/infrastructure/publisher/queue_config.go",
+      "internal/infrastructure/publisher/queue_config_test.go",
+
+      "docker/elasticmq",
+    ],
+  },
+
   sampleTooling: {
     description: "サンプル削除ツール自身（削除完了後は不要）",
     paths: [
@@ -342,6 +358,20 @@ export const MARKER_FILES = [
   "internal/di/module/authz.go",
   "internal/di/module/authz_test.go",
   "internal/di/module/job.go",
+  "internal/infrastructure/publisher/publisher.go",
+  "internal/infrastructure/publisher/README.md",
+  "internal/infrastructure/publisher/README.ja.md",
+  "internal/infrastructure/queue/sqs/README.md",
+  "internal/infrastructure/queue/sqs/README.ja.md",
+  "env/README.md",
+  "env/README.ja.md",
+  "docker-compose.attach.yaml",
+  "internal/config/envspec.go",
+  "internal/config/model.go",
+  "internal/config/config.go",
+  "docker-compose.yaml",
+  "env/.env",
+  ".makefiles/docker/compose.mk",
   ".makefiles/github/operation/setup-repository.mk",
   ".makefiles/README.md",
   ".makefiles/README.ja.md",
