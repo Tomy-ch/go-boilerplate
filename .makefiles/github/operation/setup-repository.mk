@@ -152,16 +152,21 @@ setup-replace-codeowners:
 # プレビューは DRY_RUN=1 を付ける（削除も再生成も行わない）。
 # make は起動時に makefile を全読込するため、手順1の node がこの .mk からターゲットを strip（自消滅）
 # しても、実行中のレシピは継続し regen まで走る。
+# サンプル削除で未使用になる直接依存が go.mod に残ると、後日 go.mod を触った無関係な PR で
+# tidy-check が落ちる。tidy-lib は import が確定する gen の後、整理後の状態を lint で検証して
+# 終えられるよう fix/lint の前に置く。各手順は && で連鎖し、途中の失敗が完了メッセージに隠れない。
 setup-remove-sample-api:
 	@docker compose run --rm node_tool_runner node scripts/setup/remove-sample-api.mjs $(SETUP_DRY_RUN_FLAG)
 	@if [ -n "$(DRY_RUN)" ]; then \
 		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
 	else \
-		echo "🔧 mock-auth-server の固定ユーザーを中立な既定へリセットします..."; \
-		make reset-mock-auth-users; \
-		echo "🔧 再生成・整形・検証・DB 再構築を実行します..."; \
-		$(MAKE) db-local-reinit db-test-reinit; \
-		$(MAKE) gen-api gen-query fix lint; \
+		echo "🔧 mock-auth-server の固定ユーザーを中立な既定へリセットします..." && \
+		$(MAKE) reset-mock-auth-users && \
+		echo "🔧 再生成・整形・検証・DB 再構築を実行します..." && \
+		$(MAKE) db-local-reinit db-test-reinit && \
+		$(MAKE) gen-api gen-query && \
+		$(MAKE) tidy-lib && \
+		$(MAKE) fix lint && \
 		echo "✅ サンプルAPIの削除・再生成・検証が完了しました。"; \
 	fi
 # sample-api:end
