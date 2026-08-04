@@ -87,7 +87,7 @@ do X") are tagged `setup-review`.
 | [0041](0041-error-details-opt-in-gate.md) | Opt-in gate for error-response details via schema split (refines 0040) | accepted |
 | [0042](0042-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
 | [0043](0043-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
-| [0044](0044-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | accepted |
+| [0044](0044-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0106](0106-broker-sdk-isolation-verified-after-sample-removal.md) |
 | [0045](0045-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
 | [0046](0046-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
 | [0047](0047-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
@@ -149,6 +149,7 @@ do X") are tagged `setup-review`.
 | [0103](0103-decimal-half-up-rounding.md) | referenceAmount and rate application round half-up at a single point, on exact decimals | accepted |
 | [0104](0104-domain-shared-kernel.md) | Cross-aggregate value objects live in a curated domain shared kernel (`internal/domain/kernel`) | accepted |
 | [0105](0105-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
+| [0106](0106-broker-sdk-isolation-verified-after-sample-removal.md) | Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

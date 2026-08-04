@@ -1,7 +1,8 @@
 ---
-status: accepted
+status: superseded
 date: 2026-07-04
 deciders: [maintainers]
+superseded-by: 0106
 tags: [worker, async, dependencies]
 ---
 
@@ -9,7 +10,7 @@ tags: [worker, async, dependencies]
 
 ## Status
 
-accepted
+superseded by [ADR-0106](0106-broker-sdk-isolation-verified-after-sample-removal.md)
 
 ## Context
 

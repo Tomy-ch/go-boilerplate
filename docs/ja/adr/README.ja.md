@@ -78,7 +78,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0041](0041-error-details-opt-in-gate.ja.md) | スキーマ分割によるエラー details の opt-in ゲート（0040 を精緻化） | accepted |
 | [0042](0042-broker-agnostic-worker-scaffold.ja.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
 | [0043](0043-out-of-scope-push-streaming-brokers.ja.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
-| [0044](0044-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | accepted |
+| [0044](0044-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0106](0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) |
 | [0045](0045-transactional-outbox.ja.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
 | [0046](0046-at-least-once-outbox-poll.ja.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
 | [0047](0047-skip-locked-outbox-relay.ja.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |
@@ -134,6 +134,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0097](0097-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
 | [0098](0098-exchange-rate-cache-gateway-decorator.ja.md) | 為替レート gateway を boundary 継ぎ目上の TTL decorator でキャッシュする | accepted |
 | [0099](0099-reference-amount-half-up-rounding.ja.md) | referenceAmount は整数演算で計算し、丸めは 1 箇所で half-up する | accepted |
+| [0106](0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) | ブローカー SDK の分離は、アダプターを未配線にすることではなくサンプル削除後に検証する | accepted |
 
 フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
 Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。
