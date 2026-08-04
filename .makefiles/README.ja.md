@@ -354,7 +354,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
 | `make cover-gate` | 総カバレッジが閾値を下回ると fail します。 | CI ゲート。`COVERAGE_THRESHOLD`（既定 90）。`coverage.out` が必要（先に `test-cover-ci`）。 |
-| `make test-scripts` | CI 用に `scripts/` 配下ツールのテストを実行します。 | `scripts/` は上記のカバレッジ対象から除外されているため、専用の実行経路が必要です。`cover-gate` の対象には入りません。 |
+| `make test-scripts` | CI 用に `scripts/` 配下ツールのテストを実行します。 | `scripts/` は上記のカバレッジ対象から除外されているため、専用の実行経路が必要です。`cover-gate` の対象には入りません。`actions-shellcheck` のテストは host の `shellcheck`（`install-tools` が導入）を必要とし、無ければ自分で skip します。CI は `REQUIRE_SHELLCHECK` を立てて、その skip を失敗に変えます。 |
 | `make test-scripts-cached` | ローカル用にテストキャッシュを有効にして `scripts/` 配下ツールのテストを実行します。 | pre-commit のローカル実行向け。対象パッケージは `test-scripts` と同じで、`-race -count=1` は付けません。 |
 
 ### Go ツールインストール関連
@@ -362,7 +362,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make go-update` | `mise.toml` に記載された Go ランタイムを mise でインストールします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | mise が必須 |
-| `make install-tools` | host 開発用のツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint`、`zizmor` を導入します。後ろ 2 つは、Alpine の tool-runner 向け musl ビルドが無いため pre-commit フックがホストで実行するツールです。 |
+| `make install-tools` | host 開発用のツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint`、`zizmor`、`shellcheck` を導入します。`golangci-lint` と `zizmor` は、Alpine の tool-runner 向け musl ビルドが無いため pre-commit フックがホストで実行するツールです。`shellcheck` は、フックの `test-scripts` がホストで走らせる `actions-shellcheck` のテストが実物のバイナリを呼ぶためです。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 | `make sync-versions` | `mise.toml` の go / node / python バージョンを `go.mod` と Dockerfile の `FROM` に反映します。 | `docs/maintenance/go-upgrade.md` の手順で参照されます。`scripts/sync-versions` を実行します。 |
 
