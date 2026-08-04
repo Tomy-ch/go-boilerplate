@@ -40,11 +40,10 @@ func Test_newQueueConfig(t *testing.T) {
 
 			_, err := newQueueConfig(cfg)
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, ErrInvalidQueue)
+			require.ErrorIs(t, err, ErrInvalidQueue)
 		})
 
-		t.Run("資格情報が空なら起動時点で弾く", func(t *testing.T) {
+		t.Run("資格情報が両方空なら起動時点で弾く", func(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
@@ -52,8 +51,29 @@ func Test_newQueueConfig(t *testing.T) {
 
 			_, err := newQueueConfig(cfg)
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, ErrInvalidQueue)
+			require.ErrorIs(t, err, ErrInvalidQueue)
+		})
+
+		t.Run("アクセスキーだけ空でも起動時点で弾く", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
+			cfg.SetOutboxQueue(t, "http://elasticmq:9324/000000000000/gobp-events", "us-east-1", "", "s")
+
+			_, err := newQueueConfig(cfg)
+
+			require.ErrorIs(t, err, ErrInvalidQueue)
+		})
+
+		t.Run("シークレットキーだけ空でも起動時点で弾く", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
+			cfg.SetOutboxQueue(t, "http://elasticmq:9324/000000000000/gobp-events", "us-east-1", "k", "")
+
+			_, err := newQueueConfig(cfg)
+
+			require.ErrorIs(t, err, ErrInvalidQueue)
 		})
 
 		t.Run("region が空なら起動時点で弾く", func(t *testing.T) {
@@ -64,8 +84,7 @@ func Test_newQueueConfig(t *testing.T) {
 
 			_, err := newQueueConfig(cfg)
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, ErrInvalidQueue)
+			require.ErrorIs(t, err, ErrInvalidQueue)
 		})
 	})
 }

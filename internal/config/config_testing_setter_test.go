@@ -545,10 +545,14 @@ func TestOutboxConfig_SetOutboxQueue(t *testing.T) {
 				outbox.SetOutboxQueue(t, "http://elasticmq:9324/000000000000/gobp-events", "ap-northeast-1", "k", "s")
 				assert.Equal(t, "http://elasticmq:9324/000000000000/gobp-events", outbox.QueueURL())
 				assert.Equal(t, "ap-northeast-1", outbox.QueueRegion())
+				assert.Equal(t, "k", outbox.QueueAccessKeyID())
+				assert.Equal(t, "s", outbox.QueueSecretAccessKey())
 			})
 
 			assert.Equal(t, expectedOutboxQueueURL, outbox.QueueURL())
 			assert.Equal(t, expectedOutboxQueueRegion, outbox.QueueRegion())
+			assert.Equal(t, expectedOutboxQueueAccessKeyID, outbox.QueueAccessKeyID())
+			assert.Equal(t, expectedOutboxQueueSecretAccessKey, outbox.QueueSecretAccessKey())
 		})
 	})
 }

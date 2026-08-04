@@ -59,7 +59,9 @@ func TestNewPublisher(t *testing.T) {
 
 			p := NewPublisher(api, PublisherConfig{QueueURL: testQueueURL}, observability.NewNoopTracerFactory(t))
 
-			assert.NotNil(t, p)
+			impl, ok := p.(*publisher)
+			require.True(t, ok)
+			assert.Equal(t, testQueueURL, impl.cfg.QueueURL)
 		})
 	})
 }
@@ -116,8 +118,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 		})
 
 		t.Run("ctx キャンセルを ErrCanceled へ正規化する", func(t *testing.T) {
@@ -130,8 +131,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, apperror.ErrCanceled)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
 }

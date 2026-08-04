@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/queue/sqs"
 	"go-boilerplate/internal/observability"
 )
 
@@ -39,9 +40,9 @@ func TestNew(t *testing.T) {
 			got, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
 
 			require.NoError(t, err)
-			require.NotNil(t, got)
-			_, isHTTP := got.(*httpPublisher)
-			assert.False(t, isHTTP)
+			// SQS 実装は別パッケージの非公開型のため、同型のインスタンスを渡して型を固定する。
+			// 「HTTP でない」という消去法だと、分岐が増えたときに取り違えを検知できない。
+			assert.IsType(t, sqs.NewPublisher(nil, sqs.PublisherConfig{}, observability.NewNoopTracerFactory(t)), got)
 		})
 
 		t.Run("判別子が sqs なら OUTBOX_ENDPOINT を要求しない", func(t *testing.T) {
@@ -69,8 +70,7 @@ func TestNew(t *testing.T) {
 
 			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, ErrUnknownKind)
+			require.ErrorIs(t, err, ErrUnknownKind)
 		})
 
 		t.Run("判別子が空でも既定へ流さず起動エラーにする", func(t *testing.T) {
@@ -81,8 +81,7 @@ func TestNew(t *testing.T) {
 
 			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, ErrUnknownKind)
+			require.ErrorIs(t, err, ErrUnknownKind)
 		})
 
 		t.Run("http なのに送信先が未設定なら起動エラーにする", func(t *testing.T) {
@@ -94,8 +93,7 @@ func TestNew(t *testing.T) {
 
 			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, ErrInvalidEndpoint)
+			require.ErrorIs(t, err, ErrInvalidEndpoint)
 		})
 
 		t.Run("sqs なのに queue URL が未設定なら起動エラーにする", func(t *testing.T) {
@@ -107,8 +105,7 @@ func TestNew(t *testing.T) {
 
 			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
 
-			require.Error(t, err)
-			assert.ErrorIs(t, err, ErrInvalidQueue)
+			require.ErrorIs(t, err, ErrInvalidQueue)
 		})
 	})
 }
