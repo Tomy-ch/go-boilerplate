@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"context"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -10,6 +9,7 @@ import (
 
 	"go-boilerplate/internal/observability"
 	boundary "go-boilerplate/internal/usecase/boundary/publisher"
+	"go-boilerplate/pkg/httpheader"
 )
 
 // AttrMessageID は、outbox の message_id を運ぶ MessageAttribute のキーです。
@@ -19,15 +19,6 @@ const AttrMessageID = "message_id"
 
 // attrTypeString は、MessageAttribute の DataType です（SQS は型名の指定を必須とします）。
 const attrTypeString = "String"
-
-// egressHeaderDenylist は、broker へ送出してはならない機微ヘッダ名（小文字正規化済み）です。
-// emit 側の denylist と重複しますが、emit を経由せず INSERT された行に対する egress 境界での防御です。
-var egressHeaderDenylist = map[string]struct{}{
-	"authorization":       {},
-	"proxy-authorization": {},
-	"cookie":              {},
-	"set-cookie":          {},
-}
 
 // 実装漏れをコンパイル時に検出します。
 var _ boundary.Publisher = (*publisher)(nil)
@@ -76,7 +67,8 @@ func (p *publisher) messageAttributes(m boundary.Message) map[string]types.Messa
 	}
 
 	for k, v := range m.Headers {
-		if _, denied := egressHeaderDenylist[strings.ToLower(k)]; denied {
+		// emit 側でも同じ判定を行いますが、emit を経由せず INSERT された行に対する egress 境界での防御です。
+		if httpheader.IsSensitive(k) {
 			continue
 		}
 		if k == AttrMessageID || v == "" {

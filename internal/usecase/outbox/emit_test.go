@@ -101,7 +101,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			assert.Equal(t, want, got)
 		})
 
-		t.Run("機微ヘッダ（Authorization/Cookie 等）は大文字小文字を問わず除外し、他ヘッダは保持する", func(t *testing.T) {
+		t.Run("機微ヘッダ（Authorization/Cookie 等）は大文字小文字と前後空白を問わず除外し、他ヘッダは保持する", func(t *testing.T) {
 			t.Parallel()
 			// egress 起点として、誤って混入した既知の機微ヘッダは denylist で落とし外部へ送出しない。
 			ctrl := gomock.NewController(t)
@@ -122,11 +122,12 @@ func Test_emitUsecase_Emit(t *testing.T) {
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
 					Headers: map[string]string{
-						"traceparent":   "00-abc",
-						"x-custom":      "keep",
-						"Authorization": "Bearer secret",
-						"cookie":        "sid=abc",
-						"Set-Cookie":    "sid=abc",
+						"traceparent":    "00-abc",
+						"x-custom":       "keep",
+						"Authorization":  "Bearer secret",
+						"cookie":         "sid=abc",
+						"Set-Cookie":     "sid=abc",
+						" Authorization": "Bearer secret",
 					},
 				})
 

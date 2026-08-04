@@ -6,24 +6,14 @@ package outbox
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	"go-boilerplate/pkg/httpheader"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
-
-// sensitiveHeaderDenylist は、外部エンドポイントへ送出してはならない明白な機微ヘッダ名（小文字正規化済み）です。
-// 呼び出し側契約（EmitInput.Headers の doc）に加えた defense-in-depth であり、egress 起点である
-// この emit ユースケースで、誤って混入した既知の機微ヘッダを保守的に落とします。
-var sensitiveHeaderDenylist = map[string]struct{}{
-	"authorization":       {},
-	"proxy-authorization": {},
-	"cookie":              {},
-	"set-cookie":          {},
-}
 
 // EmitInput は、ドメインイベントを outbox へ emit する入力です。
 type EmitInput struct {
@@ -64,7 +54,9 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 
 	headers := make(map[string]string, len(in.Headers)+1)
 	for k, v := range in.Headers {
-		if _, denied := sensitiveHeaderDenylist[strings.ToLower(k)]; denied {
+		// 呼び出し側契約（EmitInput.Headers の doc）に加えた defense-in-depth として、
+		// egress の起点であるここで、誤って混入した既知の機微ヘッダを保守的に落とします。
+		if httpheader.IsSensitive(k) {
 			continue
 		}
 		headers[k] = v

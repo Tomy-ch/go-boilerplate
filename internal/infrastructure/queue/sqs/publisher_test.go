@@ -166,7 +166,7 @@ func Test_publisher_messageAttributes(t *testing.T) {
 			assert.Equal(t, "00-trace-span-01", aws.ToString(got["traceparent"].StringValue))
 		})
 
-		t.Run("機微ヘッダは載せない", func(t *testing.T) {
+		t.Run("機微ヘッダは前後空白付きでも載せない", func(t *testing.T) {
 			t.Parallel()
 
 			got := p.messageAttributes(boundary.Message{
@@ -176,6 +176,7 @@ func Test_publisher_messageAttributes(t *testing.T) {
 					"Proxy-Authorization": "Basic secret",
 					"Cookie":              "session=secret",
 					"Set-Cookie":          "session=secret",
+					" Authorization":      "Bearer secret",
 				},
 			})
 

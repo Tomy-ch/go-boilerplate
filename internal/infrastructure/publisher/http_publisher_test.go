@@ -73,7 +73,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		t.Run("機微ヘッダ(Authorization/Cookie等)は egress で落とし通常ヘッダは伝搬する", func(t *testing.T) {
+		t.Run("機微ヘッダ(Authorization/Cookie等)は前後空白付きでも egress で落とし通常ヘッダは伝搬する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
@@ -86,6 +86,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 					assert.NotContains(t, req.Header(), "Cookie")
 					assert.NotContains(t, req.Header(), "Proxy-Authorization")
 					assert.NotContains(t, req.Header(), "Set-Cookie")
+					assert.NotContains(t, req.Header(), " Authorization")
 					assert.Equal(t, []string{"00-x"}, req.Header()["traceparent"])
 					return &httpclient.Response{StatusCode: 200}, nil
 				})
@@ -101,6 +102,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 						"Cookie":              "session=abc",
 						"Proxy-Authorization": "Basic zzz",
 						"Set-Cookie":          "a=b",
+						" Authorization":      "Bearer secret",
 					},
 				})
 
