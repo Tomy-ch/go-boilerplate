@@ -127,8 +127,12 @@ scripts/
 
 ## 注意点
 
-- Go ツールのユニットテストを実行するのは `make test-scripts` だけ。`make test` は `scripts/` を
-  除外する。配線の詳細は [`.makefiles/README.md`](../.makefiles/README.md) を参照
+- Go ツールのユニットテストを実行するのは `make test-scripts` / `make test-scripts-cached` だけ。
+  `make test` は `scripts/` を除外する。配線の詳細は
+  [`.makefiles/README.md`](../.makefiles/README.md) を参照
+- `actions-shellcheck` のテストは実物の `shellcheck` を呼び、無い環境では自分で skip する。
+  `REQUIRE_SHELLCHECK` を立てるとその skip を失敗に変える。skip は既定の出力に現れないため、
+  そのままでは「緑だが報告より少なくしか検査していない」状態が残る
 - ドキュメント生成スクリプトは Node.js と `js-yaml` が必要（`docker/tools/` 経由でインストール）
 - setup スクリプトは一度だけ使用 — ボイラープレートから新規プロジェクト作成時に実行
 - AI エージェントは明示的な指示がない限りこのディレクトリを変更しないこと

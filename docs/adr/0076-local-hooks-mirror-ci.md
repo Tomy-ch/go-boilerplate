@@ -42,7 +42,7 @@ This guarantees CI parity without redundant per-commit overhead.
 
 The hook stages and their commands are:
 
-- `pre-commit` (parallel): `lint` (`.go`), `test-cached` (`.go`), `test-scripts` (`scripts/**/*.go`), `sql-lint` (`.sql`),
+- `pre-commit` (parallel): `lint` (`.go`), `test-cached` (`.go`), `test-scripts-cached` (`scripts/**/*.go`), `sql-lint` (`.sql`),
   `md-lint` (`.md`), `actions-lint` (workflow YAML), `actions-zizmor` (workflow YAML +
   action YAML + `zizmor.yml`), `docker-lint` (Dockerfiles),
   `pin-actions` (workflow YAML + action YAML + `actions-pin.toml`), `migration-check-version` (`.sql`),

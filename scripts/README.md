@@ -151,8 +151,12 @@ The deletion targets and markers for `remove-sample-api.mjs` are declared in [`l
 
 ## Notes
 
-- The Go tools' unit tests run through `make test-scripts` alone — `make test` excludes `scripts/`.
-  How it is wired is in [`.makefiles/README.md`](../.makefiles/README.md)
+- The Go tools' unit tests run through `make test-scripts` / `make test-scripts-cached` alone —
+  `make test` excludes `scripts/`. How they are wired is in
+  [`.makefiles/README.md`](../.makefiles/README.md)
+- `actions-shellcheck`'s tests shell out to the real `shellcheck` and skip themselves when it is
+  absent. `REQUIRE_SHELLCHECK` turns those skips into failures, because a skip is invisible in the
+  default output and would leave a run green while checking less than it reports
 - Documentation scripts require Node.js with `js-yaml` (installed via `docker/tools/`)
 - Setup scripts are one-time use — run when creating a new project from the boilerplate
 - AI agents should not modify this directory unless explicitly instructed
