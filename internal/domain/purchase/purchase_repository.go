@@ -23,6 +23,9 @@ type Repository interface {
 	// UpdateShipped は、購入の状態遷移（→ 発送済み）を、渡された ctx のトランザクション内で実行します。
 	// 配送追跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
 	UpdateShipped(ctx context.Context, p *Purchase) error
+	// UpdateDelivered は、購入の状態遷移（→ 配達済み）を、渡された ctx のトランザクション内で実行します。
+	// 配達確認の証跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
+	UpdateDelivered(ctx context.Context, p *Purchase) error
 	// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 	// 購入ステータスマスタで解決します（購入ステータスは購入集約に属する固定参照マスタのため、
 	// 単一集約の Repository read です）。存在しない場合は NotFound を返します。
@@ -35,4 +38,7 @@ type Repository interface {
 	// ExistsInProgressByUserID は、指定ユーザーに進行中の購入が 1 件でも存在するかを返します。
 	// 進行中は TerminalStatusCodes のいずれでもないステータスの購入を指します。
 	ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error)
+	// FindUserIDsWithPurchases は、与えたユーザー ID のうち、購入を 1 件以上持つものを返します。
+	// ステータスは問わず、順序は保証しません。userIDs が空の場合は空を返します。
+	FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)
 }

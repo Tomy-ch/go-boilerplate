@@ -63,7 +63,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`Authenticator`|`Credential` から `Authn` を生成するインターフェース|
 |`Authn`|認証結果（subject / userID / issuer / scopes / claims）|
 |`New(subject, issuer, scopes, claims)`|`Authn` を UserID 未解決の状態で生成（subject 空は `ErrUnauthenticatedSubjectMissing`）|
-|`WithUserID(userID)`|内部 UserID を解決した `Authn` の複製を返す|
+|`WithUserID(userID)`|内部 UserID を解決した `Authn` の複製を返す（ゼロ値 UUID は `ErrUserIDZero`）|
 |`Credential`|認証スキームとトークンを保持する値オブジェクト|
 |`NewCredential(scheme, token)`|`Credential` を生成（空トークンは `ErrTokenMissing`）|
 
@@ -73,6 +73,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|subject が空|
 |`ErrUserIDUnresolved`|内部 UserID が未解決|
+|`ErrUserIDZero`|`WithUserID()` にゼロ値 UUID が渡された|
 |`ErrTokenMissing`|トークンが空|
 
 ### authz
@@ -93,6 +94,8 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`ErrForbidden`|認可拒否（`apperror.ErrPermissionDenied` をラップ、HTTP 403）|
 
 `auth.Authn`（subject / scopes / claims）と対象 `Resource` を渡すことで、RBAC（claims からロール）と所有権（subject == OwnerID）の双方を表現できます。デフォルト実装は全許可であり、本番以外の環境に限定されます。
+
+`NewResource` に `ownerID = nil` を渡すことは、**所有者を持たない**リソースの宣言です。所有者が不明という意味ではなく、所有権による主張が適用されないことを呼び出し側が表明しています。それを `Authorizer` がどう扱うかは各実装のポリシーですが、そうしたリソースに対して所有権の一致が成立することはないため、所有権に基づく規則はアクセスを狭める方向にしか働きません。所有者の指定を省くことは、安全側に倒れる選択です。
 
 ### clock
 

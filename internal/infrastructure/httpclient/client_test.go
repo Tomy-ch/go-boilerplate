@@ -659,6 +659,7 @@ func Test_client_Do_Deadline(t *testing.T) {
 			// retry budget が deadline より先に打ち切らないよう十分なトークンを与え、
 			// 打ち切り要因を overall deadline に限定する。
 			profile.RetryBudgetRatio = 10
+			profile.Breaker.MinRequests = 1 << 30 // breaker は開かせない（DefaultProfile の閾値に依存させない）
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
 			// Sleep で fake 時刻を 20s/サイクル進める clock を注入し、打ち切りを注入 clock 基準の
@@ -677,8 +678,9 @@ func Test_client_Do_Deadline(t *testing.T) {
 			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			// 打ち切りが canRetryWithin（deadline 到達）由来であることを last attempt の resp で区別する。
-			// circuit-open / sleeper error 経路なら resp==nil になるため、非nil であることが弁別になる。
+			// 非nil が除外できるのは sleeper error 経路（resp=nil で return）だけで、breaker open は
+			// 直前の resp を返すため弁別にならない（breaker 非関与は上の MinRequests が保証する）。
+			// 打ち切りが canRetryWithin（deadline 到達）由来であることの弁別は下の hits 厳密一致が担う。
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 			// 20s/step × 3 backoff で fakeNow がちょうど deadline(60s)に達し、hits は決定的に 4（jitter 非依存）。
@@ -883,6 +885,39 @@ func Test_client_Do_Timeout(t *testing.T) {
 			assert.Equal(t, int32(1), hits.Load())
 			// per-attempt(200ms) が打ち切り要因であることを、overall(5s) より大幅に短い経過時間で確認する
 			// （上限は per-attempt の 10 倍・overall の半分未満に取り、負荷変動に耐える）。
+			assert.Less(t, elapsed, 2*time.Second)
+		})
+
+		t.Run("overallタイムアウト超過はper-attempt発火前にErrUnavailableを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// overall タイムアウトでリクエスト context がキャンセルされるまでブロックするサーバ。
+			var hits atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				hits.Add(1)
+				<-r.Context().Done()
+			}))
+			t.Cleanup(srv.Close)
+
+			profile := httpclient.DefaultProfile()
+			// per-attempt ケースの対称形。overall は接続確立に十分な余裕を持たせ（短すぎるとサーバ到達前に
+			// 発火し hits=0 でフレークする）、per-attempt とは大きく離して overall 単独の打ち切りを
+			// 経過時間で分離検証する（MaxAttempts=1 のため retry は発生しない）。
+			profile.OverallTimeout = 200 * time.Millisecond
+			profile.PerAttemptTimeout = 5 * time.Second
+			profile.MaxAttempts = 1
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"slow": profile})
+
+			client := newClient(t, registry)
+			start := time.Now()
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "slow", srv.URL))
+			elapsed := time.Since(start)
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, resp)
+			assert.Equal(t, int32(1), hits.Load())
+			// overall(200ms) が打ち切り要因であることを、per-attempt(5s) より大幅に短い経過時間で確認する
+			// （上限は overall の 10 倍・per-attempt の半分未満に取り、負荷変動に耐える）。
 			assert.Less(t, elapsed, 2*time.Second)
 		})
 	})

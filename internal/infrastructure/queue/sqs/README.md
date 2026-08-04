@@ -8,15 +8,21 @@ Implements the `worker.Consumer` and `worker.FailureHandler` ports against AWS S
 This is a **reference implementation** that demonstrates the seam works with a second
 implementation (besides the in-memory fake) — proving the abstraction is not fake-shaped.
 
-## Not wired by default (dependency isolation, E3)
+## Wiring and dependency isolation (E3')
 
-This package is **NOT imported by `cmd/`'s default wiring**, so `aws-sdk-go-v2` is **not
-linked into the shipped binary** (`serve` / `worker`). It is still built and tested by CI
-(`go build ./...`, `go test ./...`). To use it in production, an integrator wires
-`NewConsumer` / `NewDeadLetter` into a `worker.Worker` registered in `WorkerModule`.
+Wiring this package links `aws-sdk-go-v2/service/sqs` into the binary. Because `serve` /
+`worker` / `outbox-relay` are subcommands of a **single** binary, linkage cannot be scoped to
+the role that consumes a queue — so isolation is defined over the **post-sample-removal** state
+instead: after `make setup-remove-sample-api`, the coupling must equal what it was before the
+sample was added. Any wiring from the sample set therefore carries a `sample-api` marker.
+See [ADR-0106](../../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.md).
 
-Verify isolation: `go version -m <binary>` for a binary built from `./cmd/` must not list
-`github.com/aws/aws-sdk-go-v2`.
+To use it in production, an integrator wires `NewConsumer` / `NewDeadLetter` into a
+`worker.Worker` registered in `WorkerModule`.
+
+Verify isolation: after a sample removal, `go list -deps ./cmd/` must not list
+`github.com/aws/aws-sdk-go-v2/service/sqs`. The SDK core and `service/s3` are linked
+regardless, via the object-storage adapter.
 
 ## Port mapping
 

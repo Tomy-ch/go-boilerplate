@@ -16,7 +16,7 @@ The canonical reference test is [`internal/domain/user/user_domain_test.go`](../
 ## 1. Structure
 
 - **One `TestXxx` per function or method — strictly 1:1; no bundling.** This applies to getters / accessors as well: do not group them into a `*_Accessors` / `*_Getters` test — one `TestXxx` per accessor. The 1:1 mapping is enforced mechanically by `internal/architest` (`TestUnitTestMappingCompleteness`) over every production function / method — branchless ones included, since a body without an `if` can still carry a contract (a `BindHandler` that only registers a route pins its method + path). Only `main` / `init` and generated files are out of scope.
-- **The mapping is one-directional by design.** It runs production subject → test and exists to catch a *forgotten* test; it makes no claim in reverse. A `TestXxx` whose subject is a contract rather than a function — the consistency between data, generated output, and the documentation describing them — has no production counterpart by construction, and is not a 1:1 violation.
+- **The mapping is one-directional by design**, with the one exception decidable from the same name table: two candidate-named tests for a single subject (`TestFoo` alongside `Test_Foo`) is that subject split in two, and `TestUnitTestMappingCompleteness` fails on it — the alternate names exist to tolerate naming variation, not to license both at once. Otherwise it runs production subject → test to catch a *forgotten* test and makes no claim in reverse. A `TestXxx` whose subject is a contract rather than a function — the consistency between data, generated output, and the documentation describing them — has no production counterpart by construction, and is not a 1:1 violation. A subject split between a candidate-named test and a differently-named one is indistinguishable from such a contract test by name alone, so flagging one would flag the other; that shape is `test-review`'s to catch, not `architest`'s.
 - **`t.Skip` is allowed only when the subject is unverifiable and therefore unreachable** — e.g. a test helper whose failure path calls `tb.Fatalf`, which terminates the calling test. The skip reason states **why the subject cannot be verified**; there is no allowlist, so that reason stays in the code.
 - **"Covered by another test" is not a valid skip reason.** Such a skip makes the subject depend on another test's implementation: it stays green after the covering test shrinks or is deleted, nothing mechanically confirms the covering test really reaches the branch, and a branch added later goes unverified in silence — which reduces the 1:1 mapping to a name-only shell. If the subject is testable, test it, even when a caller / integration / DI-graph test already happens to exercise it. `internal/architest` (`TestSkipReasonDoesNotNameCoveringTest`) fails the build on a skip reason that names another test.
 - Every logical branch is exercised.
@@ -130,3 +130,33 @@ lifts coverage yet reveals nothing.
 - **Responsibility creep** — one `TestXxx` driving multiple subjects (a section-1 1:1 violation). Decompose into one `TestXxx` per subject; do not fold multiple subjects into one test.
 - **Helper duplication** — a 5+-line fixture repeated across 3+ `TestXxx` functions that should be a `t.Helper()`-tagged helper.
 - **Redundant comments** — inline comments that restate the code or narrate *why*; case intent belongs in the Japanese `t.Run` name, not in comments (per the Comment Rules in [`rules.md`](rules.md)).
+
+## 11. Test Strategy sections: ownership and adjudicating drift
+
+Per-layer viewpoints live in each layer README's *Test Strategy* section (see the scope split
+at the top of this document). Generation (`scaffold-test`) and review (`test-review`) resolve
+the governing section by walking up from the package under test to the nearest ancestor README
+that carries one. When that section and the package's actual tests disagree — or no applicable
+section exists — adjudicate by the rules below rather than case by case, so the same situation
+does not get decided two different ways in two different packages.
+
+- **The tests are sound design → amend the declaration.** When the approach the tests take is
+  architecturally justified, the declaration is what failed to describe reality. Fix the README,
+  normally by giving the package its own *Test Strategy* section — and state **the criterion
+  that selects the approach**, not just the approach, so the next package in the same situation
+  applies a rule instead of copying a precedent.
+- **The declaration is the correct intent → amend the tests.** When the deviation has no design
+  justification, the section states what should be true; bring the tests in line with it.
+- **An inherited section governs only where its premises hold.** The nearest ancestor section
+  applies to a sub-package only when its preconditions — substrate, dependencies, real I/O —
+  actually hold there. A strategy written for one substrate (real-database integration tests,
+  say) does not govern a sub-package that has no database. The walk resolving *formally* is not
+  the same as the section applying: treat an inapplicable nearest section exactly like a missing
+  one, as a documentation gap closed by giving the sub-package its own section.
+- **A package that is not a layer still owns its viewpoints.** A test-only package verifying
+  cross-package contracts (`internal/architest`) has no layer README above it by construction.
+  Its viewpoints belong in its own README's *Test Strategy* section like any other package;
+  this document keeps only the cross-cutting structure rules.
+
+Which side an adjudication took, and why, is recorded in the pull request that makes the change —
+neither this document nor the READMEs carry that history.

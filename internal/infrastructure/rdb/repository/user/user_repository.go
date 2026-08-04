@@ -3,6 +3,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -300,6 +301,51 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 	}
 
 	return count, nil
+}
+
+// FindDeletedBefore は、deleted_at が cutoff より古い users の ID を id 昇順で最大 limit 件返します。
+// afterID=nil なら先頭から、それ以外は afterID より大きい id を返します。
+func (r *repository) FindDeletedBefore(ctx context.Context, cutoff time.Time, afterID *uuid.UUID, limit int32) ([]uuid.UUID, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	ids, err := db.ListPurgeCandidateUserIDs(ctx, &gen.ListPurgeCandidateUserIDsParams{
+		Cutoff:     &cutoff,
+		AfterID:    afterID,
+		LimitParam: limit,
+	})
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+	return ids, nil
+}
+
+// PurgeByIDs は、user_identities → user_roles → users の順に削除し、users の削除件数を返します。
+// 子行を先に消すことで FK 違反を避けます。3 クエリは渡された ctx のトランザクションで実行されます
+// （トランザクションの開始は usecase の責務）。
+// 3 クエリとも deleted_at IS NOT NULL を条件に持つため、論理削除されていないユーザーの ID を渡しても
+// そのユーザーは子行を含めて一切削除されず、返る件数が ids の件数を下回ります。
+func (r *repository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	db := gen.New(driver.New(ctx, r.db))
+	if err := db.DeleteUserIdentitiesByUserIDs(ctx, ids); err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+	if err := db.DeleteUserRolesByUserIDs(ctx, ids); err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+	purged, err := db.DeleteUsersByIDs(ctx, ids)
+	if err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+	return purged, nil
 }
 
 // CountByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返します。

@@ -15,3 +15,5 @@ Use the `MakeAvailableAuthn` function to attach authentication context to a test
 ```
 
 This function attaches an authentication context carrying the given user ID, making it available to controllers under test.
+
+The subject doubles as the internal UserID: when it parses as a UUID the returned `Authn` has its UserID resolved, and otherwise it stays unresolved — which is how a test reaches the "authenticated but no internal user" path. A zero-value UUID subject fails the test, because `auth.Authn` refuses to resolve one (`ErrUserIDZero`).

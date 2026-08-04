@@ -49,13 +49,17 @@ type strictHandlerFunc func(ec *echo.Context, request any) (any, error)
 // newEcho は、テスト用の *echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
 // withAuthn なら subject を持つ Authn を ctx に仕込みます。subject が UUID として解釈できる場合は
 // 内部 UserID も解決済みにします（冪等性スコープは内部 UserID を使うため）。
-func newEcho(key string, withAuthn bool, subject string) *echo.Context {
+func newEcho(t *testing.T, key string, withAuthn bool, subject string) *echo.Context {
+	t.Helper()
+
 	ctx := context.Background()
 	if withAuthn {
 		ctx = ctxhelper.WithAuthn(ctx)
-		a, _ := auth.New(subject, "test", nil, nil)
-		if id, err := uuid.Parse(subject); err == nil {
-			a = a.WithUserID(id)
+		a, err := auth.New(subject, "test", nil, nil)
+		require.NoError(t, err)
+		if id, perr := uuid.Parse(subject); perr == nil {
+			a, err = a.WithUserID(id)
+			require.NoError(t, err)
 		}
 		ctxhelper.SetAuthn(ctx, *a)
 	}
@@ -81,7 +85,7 @@ func TestStrictMiddleware(t *testing.T) {
 				return sentinel, nil
 			})
 			// ヘッダ無しは素通しするため、アダプタ越しでも後段がそのまま呼ばれる。
-			ec := newEcho("", true, "user-1")
+			ec := newEcho(t, "", true, "user-1")
 
 			res, err := StrictMiddleware[strictHandlerFunc]()(h, "PostUsers")(ec, spyRequest{})
 
@@ -105,7 +109,7 @@ func Test_handle(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("", true, "user-1")
+			ec := newEcho(t, "", true, "user-1")
 
 			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
 
@@ -123,7 +127,7 @@ func Test_handle(t *testing.T) {
 			})
 			// 空白のみのキーは handle 内の TrimSpace で空になり、ヘッダ無し相当として素通しされる
 			// （validateKey は呼ばれない）。
-			ec := newEcho("   ", true, "user-1")
+			ec := newEcho(t, "   ", true, "user-1")
 
 			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
 
@@ -139,7 +143,7 @@ func Test_handle(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("key-1", false, "")
+			ec := newEcho(t, "key-1", false, "")
 
 			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
 
@@ -156,7 +160,7 @@ func Test_handle(t *testing.T) {
 				return sentinel, nil
 			})
 			// subject が UUID でないため UserID は未解決。冪等性スコープを作れないので素通しする。
-			ec := newEcho("key-1", true, "not-a-uuid")
+			ec := newEcho(t, "key-1", true, "not-a-uuid")
 
 			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
 
@@ -172,7 +176,7 @@ func Test_handle(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("key-abc", true, testUserID)
+			ec := newEcho(t, "key-abc", true, testUserID)
 
 			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{Name: "alice"})
 			require.NoError(t, err)
@@ -219,7 +223,7 @@ func Test_handle(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho(strings.Repeat("a", 256), true, "user-1")
+			ec := newEcho(t, strings.Repeat("a", 256), true, "user-1")
 
 			_, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
 
@@ -234,7 +238,7 @@ func Test_handle(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("key with space", true, "user-1")
+			ec := newEcho(t, "key with space", true, "user-1")
 
 			_, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
 
@@ -249,7 +253,7 @@ func Test_handle(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("key-1", true, testUserID)
+			ec := newEcho(t, "key-1", true, testUserID)
 
 			// chan は json.Marshal できず、弱い指紋を作らずエラーになる。
 			_, err := Middleware()(next, "PostUsers")(ec, make(chan int))
@@ -371,7 +375,7 @@ func TestMiddleware(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			ec := newEcho("key-mw", true, testUserID)
+			ec := newEcho(t, "key-mw", true, testUserID)
 
 			res, err := Middleware()(next, testOperationID)(ec, spyRequest{Name: "alice"})
 			require.NoError(t, err)
@@ -416,9 +420,9 @@ func TestMiddleware(t *testing.T) {
 				return "SECOND", nil
 			}), "PutResources")
 
-			gotFirst, err := first(newEcho("key-1", true, testUserID), spyRequest{})
+			gotFirst, err := first(newEcho(t, "key-1", true, testUserID), spyRequest{})
 			require.NoError(t, err)
-			gotSecond, err := second(newEcho("key-2", true, testUserID), spyRequest{})
+			gotSecond, err := second(newEcho(t, "key-2", true, testUserID), spyRequest{})
 			require.NoError(t, err)
 
 			assert.Equal(t, "FIRST", gotFirst)
@@ -437,7 +441,7 @@ func TestMiddleware(t *testing.T) {
 			boom := xerrors.New("handler boom")
 			next := NextFunc(func(*echo.Context, any) (any, error) { return nil, boom })
 
-			_, err := Middleware()(next, "PostResources")(newEcho("key-1", true, testUserID), spyRequest{})
+			_, err := Middleware()(next, "PostResources")(newEcho(t, "key-1", true, testUserID), spyRequest{})
 
 			require.ErrorIs(t, err, boom)
 		})

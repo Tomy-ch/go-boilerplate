@@ -33,6 +33,16 @@ methods:
     signature: DeleteUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) error
 ```
 
+退会後の物理削除はジョブ専用の入口で、HTTP ハンドラが使う `Usecase` とは利用者も依存も異なるため、独立したインターフェースに分ける（`outbox.GCUsecase` と同じ形）。
+
+```yaml
+package: internal/usecase/user
+name: PurgeUsecase
+methods:
+  - name: PurgeDeleted
+    signature: PurgeDeleted(ctx context.Context, retention time.Duration, batchSize int32, dryRun bool) (PurgeResult, error)
+```
+
 ## DTOs
 
 ```yaml
@@ -116,6 +126,13 @@ methods:
       type: "*string"
     - name: Building
       type: "*string"   # nullable だが、未指定/null とも nil=据え置き扱い。クリアは PUT を使う
+- name: PurgeResult
+  description: 退会後の物理削除の実行結果。
+  fields:
+    - name: Purged
+      type: int64   # 物理削除したユーザー件数。dryRun では削除対象となった件数
+    - name: SkippedWithPurchases
+      type: int64   # 購入を保持しているため削除しなかったユーザー件数
 ```
 
 ## Dependencies
@@ -270,4 +287,32 @@ errors:
   - authn が nil なら ErrUnauthenticated / Authorize 拒否は ErrForbidden(PermissionDenied) を伝播
   - 進行中の購入が残っている場合は ErrConflict
   - FindByID(NotFound) / ExistsInProgressByUserID / MarkAsDeleted(ErrAlreadyDeleted) / Update / Emit を伝播
+```
+
+### PurgeDeleted（PurgeUsecase）
+
+```yaml
+tx_required: true   # 1 バッチ = 1 トランザクション
+steps:
+  - retention / batchSize が 0 以下なら既定値（30 日 / 1000 件）に置き換える
+  - clock.Now から retention を引いて打ち切り時刻 cutoff を決める
+  - 候補が尽きるまでバッチを反復（各バッチをトランザクション内で実行）
+      - user_repository.FindDeletedBefore で cutoff より古い候補を ID 昇順の keyset で最大 batchSize 件取得
+      - 候補が 0 件ならそのバッチは何もしない
+      - purchase_repository.FindUserIDsWithPurchases で購入を持つ候補を特定し、スキップ件数に計上
+      - dryRun でなければ user_repository.PurgeByIDs で残りを物理削除し、削除件数を加算（dryRun では対象件数のみ加算）
+      - 取得件数が batchSize に満たなければ終了。満ちていれば境界を「取得した候補の末尾 ID」へ進めて次バッチへ
+  - 累計の PurgeResult を返す
+calls:
+  - clock.Now
+  - tx_manager.Do
+  - user_repository.FindDeletedBefore
+  - purchase_repository.FindUserIDsWithPurchases
+  - user_repository.PurgeByIDs
+errors:
+  - 各 Repository のエラーを伝播。失敗したバッチはロールバックされるが、それ以前にコミットされた
+    バッチの物理削除は取り消せないため、エラー時もそこまでの累計を PurgeResult に含めて返す
+notes:
+  - 境界は削除可否によらず必ず候補の末尾まで進める。購入保持でスキップされた候補は削除されず残るため、
+    境界を進めないと同じ候補を取り直し続け、先頭バッチが全件スキップ対象のときに無限ループする。
 ```

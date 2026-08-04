@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/internal/observability"
 	productuc "go-boilerplate/internal/usecase/product"
 	"go-boilerplate/pkg/patch"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
@@ -49,7 +50,12 @@ func (s *server) GetProductsDetail(ctx context.Context, request gen.GetProductsD
 		return nil, err
 	}
 
-	return gen.GetProductsDetail200JSONResponse(toProductResponse(dto)), nil
+	res, err := toProductResponse(dto)
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.GetProductsDetail200JSONResponse(res), nil
 }
 
 // PatchProductsDetail は、指定された UUID に該当する商品の属性を部分更新します。
@@ -86,7 +92,12 @@ func (s *server) PatchProductsDetail(
 		return nil, err
 	}
 
-	return gen.PatchProductsDetail200JSONResponse(toProductResponse(dto)), nil
+	res, err := toProductResponse(dto)
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.PatchProductsDetail200JSONResponse(res), nil
 }
 
 // PatchProductsStock は、指定された UUID に該当する商品の在庫を増減します。
@@ -112,7 +123,12 @@ func (s *server) PatchProductsStock(
 		return nil, err
 	}
 
-	return gen.PatchProductsStock200JSONResponse(toProductResponse(dto)), nil
+	res, err := toProductResponse(dto)
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.PatchProductsStock200JSONResponse(res), nil
 }
 
 // toPatchField は、リクエストの 3 状態フィールドを部分更新の指定状態へ変換します。
@@ -137,14 +153,31 @@ func toPatchFieldInt(v nullable.Nullable[int32]) patch.Field[int] {
 	return patch.Value(int(v.MustGet()))
 }
 
-func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
+// toProductResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
+// 在庫数・在庫警告閾値・バージョンが int32 に収まらない場合はエラーを返します。
+func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
+	quantity, err := safecast.IntToInt32(dto.Quantity)
+	if err != nil {
+		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product quantity")
+	}
+
+	threshold, err := safecast.IntPtrToInt32Ptr(dto.StockWarningThreshold)
+	if err != nil {
+		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product stock warning threshold")
+	}
+
+	version, err := safecast.IntToInt32(dto.Version)
+	if err != nil {
+		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product version")
+	}
+
 	return gen.ProductResponse{
 		Id:                    dto.ID.ToPrimitive(),
 		Name:                  dto.Name,
 		Description:           dto.Description,
 		Price:                 dto.Price.String(),
-		Quantity:              toInt32(dto.Quantity),
-		StockWarningThreshold: intPtrToInt32Ptr(dto.StockWarningThreshold),
+		Quantity:              quantity,
+		StockWarningThreshold: threshold,
 		Status: gen.ProductStatusRef{
 			Id:   dto.StatusID.ToPrimitive(),
 			Name: dto.StatusName,
@@ -155,8 +188,8 @@ func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		},
 		PublishedAt: dto.PublishedAt,
 		ImagePath:   dto.ImagePath,
-		Version:     toInt32(dto.Version),
-	}
+		Version:     version,
+	}, nil
 }
 
 // int32PtrToIntPtr は、リクエストの *int32 をユースケース DTO の *int へ変換します（nil はそのまま nil）。
@@ -165,21 +198,5 @@ func int32PtrToIntPtr(v *int32) *int {
 		return nil
 	}
 	i := int(*v)
-	return &i
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される在庫数・在庫警告閾値・バージョン由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
-	return int32(v)
-}
-
-// intPtrToInt32Ptr は、ユースケースの DTO の *int をレスポンスの *int32 へ変換します（nil はそのまま nil）。
-func intPtrToInt32Ptr(v *int) *int32 {
-	if v == nil {
-		return nil
-	}
-	i := toInt32(*v)
 	return &i
 }

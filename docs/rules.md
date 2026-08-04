@@ -436,6 +436,13 @@ containerized tool-runners so they stay reproducible across machines.
   or inside the containers). Host `mise` is only for provisioning versions (`make install-tools`,
   Quick Start). One-off human diagnostics (e.g. checking a version) are not tool execution and
   are exempt.
+- **A tool the runner image cannot hold runs on the host, and `make install-tools` must provision
+  it.** The tool-runner images are Alpine, so a tool whose upstream publishes no musl build cannot
+  live in one; `golangci-lint` and `zizmor` resolve on the host for that reason. Reproducibility is
+  then carried by the `mise.toml` pin alone rather than by the image, which is weaker — so this is a
+  last resort, admitted only where upstream packaging leaves no container path, and never a shortcut
+  around container startup latency. Such a target must fail with an install hint rather than a bare
+  `command not found`.
 
 ## Summary
 

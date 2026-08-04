@@ -15,7 +15,7 @@ internal/controller/job は、CLI（Cobra）から起動される **バッチ/�
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
-配下の `usercount/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
+配下の `usercount/` と `userpurge/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
 
 ## アーキテクチャ
 
@@ -381,6 +381,7 @@ func JobModule() fx.Option {
             idempotencygc.New,
             outboxgc.New,
             usercount.New, // サンプル（setup-remove-sample-api で削除）
+            userpurge.New, // サンプル（setup-remove-sample-api で削除）
         ),
         fx.Provide(
             dijob.ProvideRunner,

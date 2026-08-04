@@ -57,13 +57,42 @@ jobs:
             exit 0
           fi
           echo "status=drift" >> "$GITHUB_OUTPUT"
+
+          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, repeated
+          # because that helper only wraps a body on the details-summary path and this call passes
+          # the body through untouched.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          # The paths reaching this list are the ones sync-versions writes, and its rule table names
+          # every one of them literally, so a pull request cannot steer an arbitrary name in here
+          # today. Fencing anyway keeps that out of the safety argument: a path may hold any byte but
+          # NUL and `/`, and outside a fence a name is live Markdown — a mention notifying third
+          # parties, a fabricated heading or link, posted under the bot's name.
+          # That same literal rule table caps the list at roughly a dozen paths, so unlike the
+          # gen-*-artifacts checks this body cannot approach the action's length cap and needs no
+          # trimming ahead of the fence.
+          list=/tmp/sync-versions-files.txt
+          git diff --name-only > "$list"
+          fence="$(fence_for "$list")"
+
           {
             echo "There is drift when syncing each file from mise.toml (the source of truth) — caused by an unpropagated mise.toml update, or an inconsistent edit to a downstream file."
             echo ""
             echo "Run \`make sync-versions\` locally and commit the changes."
             echo ""
             echo "Files with drift:"
-            git diff --name-only | sed 's/^/  - /'
+            echo ""
+            echo "${fence}text"
+            cat "$list"
+            echo "${fence}"
           } | tee /tmp/sync-versions-drift.md
           exit 1
 

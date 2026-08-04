@@ -271,7 +271,7 @@ func Test_client_attempt(t *testing.T) {
 func Test_client_doWithRetry(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("deadline で打ち切られた retry は budget を消費せず残量が実施 retry 数に一致する", func(t *testing.T) {

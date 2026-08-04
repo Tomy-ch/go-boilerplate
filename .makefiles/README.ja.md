@@ -248,7 +248,7 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 ## `.makefiles/security` 系
 
-CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン）です。image スキャンは CI 専用（`image-scan.yaml`）です。
+CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン、zizmor による Actions 定義の監査）です。image スキャンは CI 専用（`image-scan.yaml`）です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
@@ -265,6 +265,9 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make secret-scan-ci` | `gitleaks dir . --redact` を直接実行します。 | CI 用ターゲット。生成ファイルは `.gitleaks.toml` で allowlist。 |
 | `make secret-scan-history-ci` | `gitleaks git . --redact` を直接実行します。 | CI 用ターゲット。週次実行が使用。`dir` は作業ツリーしか見ないためコミット後に消したシークレットを取りこぼすが、`git` は履歴全体を走査する。 |
 | `make npm-cooldown-audit` | lockfile のエントリのうち、同階層 `.npmrc` の `min-release-age` を満たさないものを報告します。 | ホスト上で実行。報告のみで、検出があっても 0 で終了します（cooldown の解除は意図的な判断であるため）。 |
+| `make actions-zizmor` | ワークフロー / composite action の定義を zizmor で監査し、`high` の指摘で失敗します。 | ホスト上で実行。`--offline` なので pre-commit フックはネットワークも `GH_TOKEN` も不要で、オンライン監査は CI に委ねます。例外設定は `.github/zizmor.yml`。 |
+| `make actions-zizmor-sarif-ci` | zizmor の全指摘を SARIF として標準出力へ書き出します。 | CI 用ターゲット。severity で絞らないため code scanning には全体像が残ります。`make -s` で呼ぶこと。 |
+| `make actions-zizmor-gate-ci` | zizmor の `high` の指摘で失敗します。 | CI 用ターゲット。ゲート条件は `actions-zizmor` と同じで、`GH_TOKEN` を要するオンライン監査が加わります。 |
 
 ## `.makefiles/docker` 系
 
@@ -350,13 +353,15 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
 | `make cover-gate` | 総カバレッジが閾値を下回ると fail します。 | CI ゲート。`COVERAGE_THRESHOLD`（既定 90）。`coverage.out` が必要（先に `test-cover-ci`）。 |
+| `make test-scripts` | CI 用に `scripts/` 配下ツールのテストを実行します。 | `scripts/` は上記のカバレッジ対象から除外されているため、専用の実行経路が必要です。`cover-gate` の対象には入りません。 |
+| `make test-scripts-cached` | ローカル用にテストキャッシュを有効にして `scripts/` 配下ツールのテストを実行します。 | pre-commit のローカル実行向け。対象パッケージは `test-scripts` と同じで、`-race -count=1` は付けません。 |
 
 ### Go ツールインストール関連
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make go-update` | `mise.toml` に記載された Go ランタイムを mise でインストールします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | mise が必須 |
-| `make install-tools` | host 開発用の Go ツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint` を導入します。 |
+| `make install-tools` | host 開発用のツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint`、`zizmor` を導入します。後ろ 2 つは、Alpine の tool-runner 向け musl ビルドが無いため pre-commit フックがホストで実行するツールです。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 | `make sync-versions` | `mise.toml` の go / node / python バージョンを `go.mod` と Dockerfile の `FROM` に反映します。 | `docs/maintenance/go-upgrade.md` の手順で参照されます。`scripts/sync-versions` を実行します。 |
 
@@ -396,7 +401,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make actions-comment-secret-lint` | PR コメント本文への secret 混入検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-comment-secret-lint-ci` を呼び出します。 |
 | `make actions-comment-fence-lint` | PR コメント本文の固定長フェンス検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-comment-fence-lint-ci` を呼び出します。 |
 | `make actions-cutoff-lint` | ジョブ打ち切り時の振る舞い検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-cutoff-lint-ci` を呼び出します。 |
-| `make actions-shellcheck` | `.github/actions/**` の composite action から `runs.steps[].run` を抽出し、`bash` / `sh` のスクリプトを `shellcheck` で検査します。それ以外の shell のステップは skip として報告します（`scripts/actions-shellcheck`）。 | `go_tool_runner` コンテナ内で `make actions-shellcheck-ci` を呼び出します。`actionlint` は `.github/workflows` しか走査せず、`action.yaml` を直接渡すとワークフローとして解釈するため、その死角を埋めます。 |
+| `make actions-shellcheck` | `.github/actions/**` の composite action から `runs.steps[].run` を抽出し、`bash` / `sh` のスクリプトを `shellcheck` で検査します。それ以外の shell のステップは skip として報告します（`scripts/actions-shellcheck`）。 | `go_tool_runner` コンテナ内で `make actions-shellcheck-ci` を呼び出します。`actionlint` は `.github/workflows` しか走査せず、`action.yaml` を直接渡すとワークフローとして解釈するため、その死角を埋めます。`run:` をブロック折り畳み（`>`）で書いた場合はエラーになります（リテラル `\|` で書いてください）。折り畳みは指摘の位置を写し戻す基準である改行を落とすためです。 |
 | `make actions-lint-ci` | actionlint、composite action の shellcheck、束ねた node 検査をこの順で直接実行します。 | CI 用ターゲット。actionlint を先に置くのは意図的で、node 側の検査はワークフロー構造を桁で読むため、入力がそもそも YAML としてパースできることに依存します。 |
 | `make actions-node-lint-ci` | node の 3 検査（secret / フェンス / 打ち切り）を直接実行します。 | CI 用ターゲット。 |
 | `make actions-actionlint-ci` | `actionlint` を直接実行します。 | CI 用ターゲット。 |
@@ -422,7 +427,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gh-login` | `gh` コマンドで GitHub にログインします。 | ブラウザ認証方式でログインを行います。 |
 | `make delete-all-labels` | GitHub リポジトリ上の既存ラベルをすべて削除します。 | なし |
 | `make create-default-labels` | `.github/settings/labels.json` をもとに、デフォルトラベルを作成します。 | なし |
-| `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | なし |
+| `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | 一方向の適用です。適用後に JSON を再適用する仕組みも実ルールセットと突き合わせる仕組みも無いため、このファイルが表すのは強制されている状態ではなく意図です。`.github/settings/README.ja.md` を参照してください。 |
 | `make enable-workflows` | `disabled_fork` 状態のワークフローを一括で有効化します。 | 冪等です。fork / テンプレート由来のリポジトリは全ワークフローが無効の状態で作られます。 |
 
 ### GitHub リポジトリ初期化関連

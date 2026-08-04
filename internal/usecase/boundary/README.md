@@ -63,7 +63,7 @@ Provides interfaces and value objects for authentication.
 |`Authenticator`|Interface to generate `Authn` from `Credential`|
 |`Authn`|Authentication result (subject / userID / issuer / scopes / claims)|
 |`New(subject, issuer, scopes, claims)`|Create `Authn` with the UserID unresolved (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
-|`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved|
+|`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved (a zero-value UUID returns `ErrUserIDZero`)|
 |`Credential`|Value object holding the auth scheme + token|
 |`NewCredential(scheme, token)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
 
@@ -73,6 +73,7 @@ Errors:
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|Subject is empty|
 |`ErrUserIDUnresolved`|Internal UserID is unresolved|
+|`ErrUserIDZero`|`WithUserID()` was given a zero-value UUID|
 |`ErrTokenMissing`|Token is empty|
 
 ### authz
@@ -93,6 +94,8 @@ Errors:
 |`ErrForbidden`|Authorization denied (wraps `apperror.ErrPermissionDenied`, HTTP 403)|
 
 Passing the full `auth.Authn` (subject / scopes / claims) plus the target `Resource` lets both RBAC (roles from claims) and ownership (subject == OwnerID) models be expressed. The default implementation is allow-all and restricted to non-production environments.
+
+Passing `ownerID = nil` to `NewResource` declares an **ownerless** resource — the caller is stating that no ownership claim applies, not that the owner is unknown. What an `Authorizer` makes of that is its own policy, but no ownership comparison can succeed against such a resource, so any ownership-based rule can only narrow access, never widen it. Omitting the owner is therefore the safe direction to fail in.
 
 ### clock
 

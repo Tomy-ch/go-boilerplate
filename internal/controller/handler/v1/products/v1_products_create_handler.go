@@ -35,7 +35,12 @@ func (s *server) PostProducts(ctx context.Context, request gen.PostProductsReque
 		return nil, err
 	}
 
-	return gen.PostProducts201JSONResponse(toProductResponse(view)), nil
+	res, err := toProductResponse(view)
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.PostProducts201JSONResponse(res), nil
 }
 
 // int32PtrToIntPtr は、リクエストの *int32 をユースケース DTO の *int へ変換します（nil はそのまま nil）。

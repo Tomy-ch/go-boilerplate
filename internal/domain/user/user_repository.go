@@ -3,6 +3,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"go-boilerplate/pkg/uuid"
 )
@@ -31,4 +32,11 @@ type Repository interface {
 	// CountByActive は、ユーザーの総件数を返します。
 	// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。
 	CountByActive(ctx context.Context, active *bool) (int64, error)
+	// FindDeletedBefore は、cutoff より前に論理削除されたユーザーの ID を、ID の昇順で最大 limit 件返します。
+	// afterID=nil の場合は先頭から、それ以外は afterID より後ろを返します。
+	FindDeletedBefore(ctx context.Context, cutoff time.Time, afterID *uuid.UUID, limit int32) ([]uuid.UUID, error)
+	// PurgeByIDs は、指定した ID のユーザーを従属データごと物理削除し、削除したユーザーの件数を返します。
+	// 論理削除されていないユーザーは従属データを含めて削除されないため、返る件数が ids の件数を下回ることがあります。
+	// ids が空の場合は何も削除せず 0 を返します。
+	PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error)
 }

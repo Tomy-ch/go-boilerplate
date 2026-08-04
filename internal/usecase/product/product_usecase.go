@@ -83,6 +83,11 @@ type Usecase interface {
 	UpdateProductStock(
 		ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductStockParams,
 	) (ProductView, error)
+	// ListLowStockProducts は、admin が在庫警告閾値以下まで在庫が減った商品を在庫の少ない順に取得します。
+	// 未認証は 401、非 admin は 403 を返します。
+	ListLowStockProducts(
+		ctx context.Context, authn *auth.Authn, params ListLowStockProductsParams,
+	) (ProductLowStockListView, error)
 }
 
 // usecase は、Usecase の実装です。

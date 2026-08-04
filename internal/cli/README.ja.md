@@ -63,8 +63,11 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
 - **殻に silent-wrong なロジックを置かない。** 判断（エラー処理・分岐・整形・削除可否・タイムアウト分岐）は
   `internal/cli/*` に置き、**分岐網羅でユニットテスト**する。`internal/cli/*` はカバレッジゲート対象で 90%+ を満たす。
 - **OS / FS / 外部プロセス / DB / ロガー依存は注入する**（interface または関数シーム）。プロダクションは
-  `cmd/` で実装を結線し、ユニットテストはフェイクを渡す。よって**テストは実ファイルシステムに触れず、
-  外部バイナリ（`pg_dump` / `psql`）を実行せず、DB も開かない**。
+  `cmd/` で実装を結線し、ユニットテストはフェイクを渡す。よって**判断ロジックのテストは実ファイルシステムに
+  触れず、外部バイナリ（`pg_dump` / `psql`）を実行せず、DB も開かない**。唯一の例外は**シームの裏にある
+  実装アダプタ**で、その契約は「外部基盤が期待どおり振る舞うこと」であり、フェイクでは確立できない。
+  よって実物に対してテストしてよい。これを行うパッケージは自身の README でその切り分けを宣言する
+  —— [`dbslot/`](dbslot/README.ja.md) を参照。
 - **薄い `cmd/` 殻はカバレッジゲートから除外**（`gen|cmd|mock|apperror|scripts`）。その実行時の正しさは
   CI boot チェックで担保: `app-di-startup-check`（serve → `/ready`）、`job-boot-check`（job dispatch）、
   `worker-boot-check`（worker dispatch）、`migration-check`（up/down 往復）、`gen-*-artifacts-check`

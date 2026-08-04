@@ -7,6 +7,9 @@ pre-commit:
     go-test:
       glob: "*.go"
       run: make test-cached
+    go-test-scripts:
+      glob: "scripts/**/*.go"
+      run: make test-scripts-cached
     sql-lint:
       glob: "*.sql"
       run: make sql-lint
@@ -22,6 +25,12 @@ pre-commit:
         - "scripts/actions-cutoff-lint.mjs"
         - "scripts/actions-shellcheck/*.go"
       run: make actions-lint
+    actions-zizmor:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/**/*.{yml,yaml}"
+        - ".github/zizmor.yml"
+      run: make actions-zizmor
     oapi-lint:
       glob:
         - "openapi/**/*.yaml"
@@ -67,6 +76,9 @@ pre-push:
     test:
       glob: "*.go"
       run: make test
+    test-scripts:
+      glob: "scripts/**/*.go"
+      run: make test-scripts
     gen-go-check:
       glob:
         - "*.go"

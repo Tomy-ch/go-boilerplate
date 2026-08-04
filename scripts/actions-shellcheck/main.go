@@ -1,3 +1,11 @@
+// Package main は composite action（.github/actions/**）の runs.steps[].run を shellcheck で検査し、
+// 指摘を action 定義ファイルの行・列へ写し戻す。
+//
+// actionlint は .github/workflows しか走査せず、action 定義を直接渡すと workflow として解釈して
+// 構文エラーで落ちるため、composite action の中のシェルはどのゲートにも掛からない。
+//
+// 抽出したステップ数は、YAML をそのままデコードして数えた件数とファイル単位で突き合わせる。
+// 経路が分かれるため、片方が壊れれば件数差として現れ、検査範囲が黙って縮んだまま緑になることを防ぐ。
 package main
 
 import (
@@ -13,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"go-boilerplate/pkg/xerrors"
 
@@ -42,7 +51,6 @@ const (
 var (
 	actionFileNames = []string{"action.yml", "action.yaml"}
 
-	runKeyRe  = regexp.MustCompile(`(?m)^[ \t]*-?[ \t]*run:`)
 	findingRe = regexp.MustCompile(`^[^:]*:(\d+):(\d+):(.*)$`)
 
 	shebangs = map[string]string{
@@ -55,7 +63,9 @@ var (
 	errNoShell           = xerrors.New("composite の run ステップに shell 指定がありません")
 	errShellcheck        = xerrors.New("shellcheck の実行に失敗しました")
 	errUnterminatedExpr  = xerrors.New("閉じていない ${{ があります")
-	errExtractorBroken   = xerrors.New("run: を持つ composite action があるのに 1 ステップも抽出できませんでした")
+	errStepCountMismatch = xerrors.New("run ステップの抽出数が YAML のデコード結果と一致しません")
+	errStepsNotSequence  = xerrors.New("runs.steps がリストとして読めません")
+	errFoldedRun         = xerrors.New("run にブロック折り畳み（>）は使えません。リテラル（|）で書いてください")
 	errShellcheckMissing = xerrors.New("shellcheck が PATH にありません（mise install shellcheck）")
 )
 
@@ -108,10 +118,7 @@ func collectSteps(fsys fs.FS) ([]string, []step, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	var (
-		steps      []step
-		hasRunText bool
-	)
+	var steps []step
 	for _, f := range files {
 		data, err := fs.ReadFile(fsys, f)
 		if err != nil {
@@ -121,13 +128,7 @@ func collectSteps(fsys fs.FS) ([]string, []step, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if len(s) == 0 && runKeyRe.Match(data) && isComposite(data) {
-			hasRunText = true
-		}
 		steps = append(steps, s...)
-	}
-	if len(steps) == 0 && hasRunText {
-		return nil, nil, errExtractorBroken
 	}
 	return files, steps, nil
 }
@@ -157,21 +158,61 @@ func isActionFile(name string) bool {
 	return slices.Contains(actionFileNames, name)
 }
 
-func isComposite(data []byte) bool {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return false
-	}
-	using := mapValue(mapValue(documentRoot(&doc), "runs"), "using")
-	return using != nil && using.Value == compositeUsing
-}
-
 func parseAction(file string, data []byte) ([]step, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, xerrors.Wrap(err, "parse "+file)
 	}
-	runs := mapValue(documentRoot(&doc), "runs")
+	want, err := countRunSteps(file, data)
+	if err != nil {
+		return nil, err
+	}
+	steps, err := extractSteps(file, data, &doc)
+	if err != nil {
+		return nil, err
+	}
+	if len(steps) != want {
+		return nil, xerrors.Wrap(errStepCountMismatch, fmt.Sprintf("%s: 抽出 %d / 期待 %d", file, len(steps), want))
+	}
+	return steps, nil
+}
+
+// countRunSteps はデコード結果から run ステップ数を数える。件数を using の値と無関係に数えるのは、
+// 綴りを取り違えた action（using: Composite など）を「対象外」に寄せると、run を持つのに 1 件も
+// 検査されない状態が緑で通るため。
+func countRunSteps(file string, data []byte) (int, error) {
+	var doc any
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return 0, xerrors.Wrap(err, "decode "+file)
+	}
+	steps := fieldValue(fieldValue(doc, "runs"), "steps")
+	if steps == nil {
+		return 0, nil
+	}
+	// リストとして読めない形を「対象外」に寄せると、検査範囲が黙って縮んだまま緑になる。
+	list, ok := steps.([]any)
+	if !ok {
+		return 0, xerrors.Wrap(errStepsNotSequence, file)
+	}
+	count := 0
+	for _, item := range list {
+		if _, ok := fieldValue(item, "run").(string); ok {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func fieldValue(node any, key string) any {
+	fields, ok := node.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return fields[key]
+}
+
+func extractSteps(file string, data []byte, doc *yaml.Node) ([]step, error) {
+	runs := mapValue(documentRoot(doc), "runs")
 	if using := mapValue(runs, "using"); using == nil || using.Value != compositeUsing {
 		return nil, nil
 	}
@@ -184,6 +225,12 @@ func parseAction(file string, data []byte) ([]step, error) {
 		run := mapValue(node, "run")
 		if run == nil {
 			continue
+		}
+		// ブロック折り畳み（>）は隣接する非空行を空白へ畳むため、本文の行と action 定義ファイルの行が
+		// 1 対 1 で対応しない。指摘の位置を写し戻せないうえ、畳まれた行がソースに無い構文を作って
+		// 誤検知も生むため受け付けない。
+		if run.Style == yaml.FoldedStyle {
+			return nil, xerrors.Wrap(errFoldedRun, fmt.Sprintf("%s:%d", file, run.Line))
 		}
 		shell := mapValue(node, "shell")
 		if shell == nil {
@@ -248,27 +295,41 @@ func resolveAlias(node *yaml.Node) *yaml.Node {
 	return node
 }
 
-func isBlockScalar(run *yaml.Node) bool {
-	return run.Style == yaml.LiteralStyle || run.Style == yaml.FoldedStyle
-}
-
 func bodyFirstLine(run *yaml.Node) int {
-	if isBlockScalar(run) {
+	if run.Style == yaml.LiteralStyle {
 		return run.Line + blockScalarKeyLines
 	}
 	return run.Line
 }
 
 func bodyColumnBase(data []byte, run *yaml.Node, firstLine int) int {
-	if !isBlockScalar(run) {
+	switch run.Style {
+	case yaml.LiteralStyle:
+		// ブロックスカラーの本文はインデントを剥がした形で得られるため、剥がされた幅を足し戻す。
+		return blockIndentWidth(data, firstLine)
+	case yaml.SingleQuotedStyle, yaml.DoubleQuotedStyle:
+		// 引用符付きスカラーは範囲の先頭が開き引用符を指すため、その 1 文字分を読み飛ばす。
+		return run.Column
+	default:
 		return run.Column - firstColumn
 	}
+}
+
+// blockIndentWidth はブロックスカラーのインデント幅を返す。幅を決めるのは最初の非空行（YAML の規則）で、
+// 本文が空行で始まる場合にその行の幅 0 を採ると、そのステップの全指摘の列がずれる。
+func blockIndentWidth(data []byte, firstLine int) int {
 	lines := strings.Split(string(data), "\n")
 	if firstLine < firstBodyIndex || firstLine > len(lines) {
 		return 0
 	}
-	body := lines[firstLine-firstBodyIndex]
-	return len(body) - len(strings.TrimLeft(body, " \t"))
+	for _, body := range lines[firstLine-firstBodyIndex:] {
+		trimmed := strings.TrimLeft(body, " \t")
+		if trimmed == "" {
+			continue
+		}
+		return len(body) - len(trimmed)
+	}
+	return 0
 }
 
 func check(ctx context.Context, steps []step) (result, error) {
@@ -294,16 +355,33 @@ func check(ctx context.Context, steps []step) (result, error) {
 	return res, nil
 }
 
+// shellDialect は shell 指定から shellcheck へ渡す方言名を取り出す。env 経由の指定（shell: env FOO=bar bash）
+// では KEY=VALUE 形の変数代入がインタプリタ名の手前に並ぶため、それらを読み飛ばして最初のコマンドを採る。
 func shellDialect(shell string) string {
 	if strings.Contains(shell, exprOpen) {
 		return ""
 	}
 	for field := range strings.FieldsSeq(shell) {
-		if name := fieldBase(field); name != envCommand {
-			return name
+		if fieldBase(field) == envCommand || isAssignment(field) {
+			continue
 		}
+		return fieldBase(field)
 	}
 	return ""
+}
+
+func isAssignment(field string) bool {
+	name, _, ok := strings.Cut(field, "=")
+	if !ok || name == "" {
+		return false
+	}
+	for i, r := range name {
+		if r == '_' || unicode.IsLetter(r) || (i > 0 && unicode.IsDigit(r)) {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func fieldBase(cmd string) string {

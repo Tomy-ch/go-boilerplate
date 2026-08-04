@@ -248,7 +248,7 @@ This group handles linting and auto-fixing of Markdown files.
 
 ## `.makefiles/security` group
 
-This group runs local security scans (Trivy dependency scan, gitleaks secret scan), mainly to reproduce a CI security finding on the developer's machine. Image scanning is CI-only (`image-scan.yaml`).
+This group runs local security scans (Trivy dependency scan, gitleaks secret scan, zizmor Actions audit), mainly to reproduce a CI security finding on the developer's machine. Image scanning is CI-only (`image-scan.yaml`).
 
 | Command | Description | Notes |
 | --- | --- | --- |
@@ -265,6 +265,9 @@ This group runs local security scans (Trivy dependency scan, gitleaks secret sca
 | `make secret-scan-ci` | Runs `gitleaks dir . --redact` directly. | CI target. Generated files are allowlisted in `.gitleaks.toml`. |
 | `make secret-scan-history-ci` | Runs `gitleaks git . --redact` directly. | CI target, used by the weekly run. `dir` only sees the working tree, so it misses a secret that was committed and later deleted; `git` walks the whole history. |
 | `make npm-cooldown-audit` | Reports lockfile entries younger than the `min-release-age` declared in their own `.npmrc`. | Runs on the host. Reports only — exits 0 even on a finding, because overriding the cooldown is a deliberate call. |
+| `make actions-zizmor` | Audits the workflow / composite-action definitions with zizmor and fails on a `high` finding. | Runs on the host. `--offline`, so the pre-commit hook needs no network and no `GH_TOKEN`; the online audits are left to CI. Exceptions live in `.github/zizmor.yml`. |
+| `make actions-zizmor-sarif-ci` | Writes every zizmor finding to stdout as SARIF. | CI target. Not filtered by severity, so code scanning keeps the full picture; call it with `make -s`. |
+| `make actions-zizmor-gate-ci` | Fails on a `high` zizmor finding. | CI target. Same gate as `actions-zizmor` but with the online audits, which need `GH_TOKEN`. |
 
 ## `.makefiles/docker` group
 
@@ -350,13 +353,15 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gen-test-repo` | Executes tests and generates HTML coverage report. | Output is `docs/coverage/index.html`. |
 | `make test-cover-ci` | Executes tests with coverage. | CI target, outputs `coverage.out`. |
 | `make cover-gate` | Fails if total coverage is below the threshold. | CI gate. `COVERAGE_THRESHOLD` (default 90). Requires `coverage.out` (run `test-cover-ci` first). |
+| `make test-scripts` | Executes the `scripts/` tool tests for CI. | `scripts/` is excluded from the coverage targets above, so its tests need their own entry point. Not part of `cover-gate`. |
+| `make test-scripts-cached` | Executes the `scripts/` tool tests locally with the test cache enabled. | For pre-commit local runs. Same packages as `test-scripts`, without `-race -count=1`. |
 
 ### Go tool installation related
 
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make go-update` | Installs the Go runtime pinned in `mise.toml` via mise. See `docs/maintenance/go-upgrade.md`. | mise required |
-| `make install-tools` | Installs host development Go tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`. |
+| `make install-tools` | Installs the host development tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`, `zizmor`. The last two are the tools the pre-commit hook runs on the host because no musl build exists for the Alpine tool-runners. |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 | `make sync-versions` | Propagates the `mise.toml` go / node / python versions into `go.mod` and the Dockerfile `FROM` lines. | Referenced by the `docs/maintenance/go-upgrade.md` procedure. Runs `scripts/sync-versions`. |
 
@@ -396,7 +401,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make actions-comment-secret-lint` | Runs the PR-comment secret check alone. | Invokes `make actions-comment-secret-lint-ci` inside the `node_tool_runner` container. |
 | `make actions-comment-fence-lint` | Runs the PR-comment fence check alone. | Invokes `make actions-comment-fence-lint-ci` inside the `node_tool_runner` container. |
 | `make actions-cutoff-lint` | Runs the job cut-off check alone. | Invokes `make actions-cutoff-lint-ci` inside the `node_tool_runner` container. |
-| `make actions-shellcheck` | Extracts `runs.steps[].run` from every composite action under `.github/actions/**` and checks each `bash` / `sh` script with `shellcheck`; a step on any other shell is reported as skipped (`scripts/actions-shellcheck`). | Invokes `make actions-shellcheck-ci` inside the `go_tool_runner` container. Covers what `actionlint` cannot see: it only walks `.github/workflows`, and an `action.yaml` handed to it directly is parsed as a workflow. |
+| `make actions-shellcheck` | Extracts `runs.steps[].run` from every composite action under `.github/actions/**` and checks each `bash` / `sh` script with `shellcheck`; a step on any other shell is reported as skipped (`scripts/actions-shellcheck`). | Invokes `make actions-shellcheck-ci` inside the `go_tool_runner` container. Covers what `actionlint` cannot see: it only walks `.github/workflows`, and an `action.yaml` handed to it directly is parsed as a workflow. A `run:` written as a folded scalar (`>`) is rejected — write it as a literal (`\|`) — because folding drops the line breaks a finding's position is mapped back through. |
 | `make actions-lint-ci` | Runs actionlint, the composite-action shellcheck, then the bundled node checks directly. | CI target. actionlint runs first on purpose: the node checks read workflow structure by column and rely on the file parsing as YAML at all. |
 | `make actions-node-lint-ci` | Runs the three node checks (secret / fence / cut-off) directly. | CI target. |
 | `make actions-actionlint-ci` | Runs `actionlint` directly. | CI target. |
@@ -422,7 +427,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gh-login` | Logs in to GitHub using `gh` command. | Uses browser-based authentication. |
 | `make delete-all-labels` | Deletes all existing labels in the GitHub repository. | None |
 | `make create-default-labels` | Creates default labels based on `.github/settings/labels.json`. | None |
-| `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | None |
+| `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | One-directional apply. Nothing re-applies the JSON or compares it against the live ruleset afterwards, so the file states intent rather than the enforced state — see `.github/settings/README.md`. |
 | `make enable-workflows` | Enables every workflow left in `disabled_fork` state. | Idempotent. A fork or template-derived repository starts with all workflows disabled. |
 
 ### GitHub repository initialization related

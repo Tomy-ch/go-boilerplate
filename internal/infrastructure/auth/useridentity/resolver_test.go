@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
@@ -18,6 +19,8 @@ const (
 	testIssuerMock = "mock"
 	// johnUserID は JWT/mock 両 issuer に登録された未削除ユーザー（John Doe）の内部 ID。
 	johnUserID = "550e8400-e29b-41d4-a716-446655440000"
+	// zeroUserSubject は、ゼロ値 UUID のユーザーへ紐づく identity の subject。
+	zeroUserSubject = "user-zero-uuid"
 )
 
 // seed が投入する JWT identity の issuer は環境の AUTH_ISSUER で、worktree の DB スロットでポートがずれる。
@@ -124,6 +127,31 @@ func Test_resolver_Resolve(t *testing.T) {
 				resolved, err := repo.Resolve(ctx, newAuthn(t, "https://evil.example.com", "user-john-doe"))
 				assert.Nil(t, resolved)
 				require.ErrorIs(t, err, authbd.ErrIdentityNotFound)
+			})
+		})
+
+		t.Run("解決したユーザーIDがゼロ値の場合は ErrUserIDZero を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// users.id はゼロ値 UUID を禁じていないため、seed には置けない不正データを
+				// ロールバックされるトランザクション内で直接投入して経路を作る。
+				db := driver.New(ctx, testDB)
+				_, err := db.Exec(ctx, `
+					INSERT INTO users (id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code)
+					VALUES ('00000000-0000-0000-0000-000000000000', 'Zero', 'User', 'zero.user@example.com', '000-0000',
+					        (SELECT id FROM prefectures LIMIT 1), '市区町村', '1-1', '000-0000')`)
+				require.NoError(t, err)
+
+				_, err = db.Exec(ctx, `
+					INSERT INTO user_identities (id, user_id, issuer, subject)
+					VALUES ('3f2a1c4e-0000-4000-8000-0000000000ff', '00000000-0000-0000-0000-000000000000', $1, $2)`,
+					testIssuerMock, zeroUserSubject)
+				require.NoError(t, err)
+
+				resolved, err := repo.Resolve(ctx, newAuthn(t, testIssuerMock, zeroUserSubject))
+				assert.Nil(t, resolved)
+				require.ErrorIs(t, err, authbd.ErrUserIDZero)
 			})
 		})
 

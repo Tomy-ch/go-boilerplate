@@ -35,8 +35,8 @@ lint-oapi-ci:
 # node_tool_runner を経由しないのは、spectral の ruleset が npm パッケージで、Spectral が
 # extends を .spectral.yaml の位置から node の解決規則で探すため。コンテナは依存を
 # /app/scripts/node_modules へ置き、CI とホストは docker/tools/node_modules へ置くので、
-# 両方で成立する単一の extends パスが書けない。CI 専用スキャナ（zizmor / osv-scanner /
-# trufflehog）と同じく、コンテナを介さず直接実行する方式へ寄せる。
+# 両方で成立する単一の extends パスが書けない。コンテナを介さず直接実行するスキャナ
+# （zizmor / osv-scanner / trufflehog）と同じ方式へ寄せる。
 #
 # 事前に `cd docker/tools && npm ci --ignore-scripts` が必要。
 lint-oapi-security-ci:

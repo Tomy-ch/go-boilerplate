@@ -36,7 +36,7 @@ English canonical: [security.md](../../design/security.md)
 | リリースゲート（`trivy-release-gate` / `osv-release-gate`） | 強制 | デプロイ先ブランチ宛 PR でのみ |
 | `dependency-review` | 強制 | PR が**追加する**分だけを評価 |
 | シークレットスキャン（gitleaks / TruffleHog） | 強制 | コミットされたシークレットは許容可能な取引ではない |
-| `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で |
+| `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で。pre-commit でもオフライン監査のみでゲートする |
 | 報告系スキャナ（`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL） | 検知 | code scanning と PR には届くが、ブロックしない |
 | `npm-cooldown-audit` | 検知 | 構造としてブロックしない（後述） |
 | `harden-runner`（`egress-policy: audit`） | 検知 | egress を記録する。制限はしない |
@@ -67,6 +67,8 @@ English canonical: [security.md](../../design/security.md)
 CI が**実行するもの**と、アプリケーションが**リンクするもの**はリスクが異なります。Actions と base image は我々のコードより先に、ジョブの資格情報を持って動くため、より強く固定します。
 
 **バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0081](../adr/0081-sha-pinned-actions.ja.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
+
+**検疫は時間を稼ぐ仕組みであり、日付を検証する仕組みではない。** アクションの経過日数は、リリースの公開日時と解決先 commit の日時のうち**新しい方**を採ります。どちらも単独では信用できません——リリースオブジェクトはタグの*名前*に紐づくため、タグが付け替えられても公開日時は据え置かれます（検疫が想定する脅威そのものです）。一方 commit の日時は committer が任意の過去時点へ設定できます。新しい方を採ることで、どちらか一方でも「新しい」と言う限り検疫が掛かりますが、これは自動化された乗っ取りに対する遅延であって、偽装された日付への防御ではありません。付け替えそのものの検知は lockfile の役割です——解決先の digest が変わり、差分は小さく、人間がそれを読みます。
 
 ## 依存ライブラリ
 

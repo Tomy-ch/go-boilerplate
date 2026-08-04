@@ -57,6 +57,8 @@ flowchart TB
 
 Each module has a sibling `*_test.go` with a `Test<Module>_GraphIsValid` that calls `fx.ValidateApp` (see `graph_helper_test.go`'s `validateGraph` / `commonDeps`). This validates the dependency graph is wired with no missing types — **without** standing up real infrastructure (DB / network), because `fx.ValidateApp` does not execute constructors or lifecycle hooks.
 
+Avoiding real infrastructure is the reason for that shape, so a module that does not depend on any may additionally start a minimal app and assert the component it provides. That is the case throughout [`core/`](core/README.md), which layers the second tier on top of this baseline; the criterion is the module's closure, not its directory.
+
 That same property means a provider / `fx.Invoke` body carrying its own logic (e.g. `provideQueueStatsCollector`) is **not** exercised by the graph-validation test — it needs a direct unit test (call the function) for branch coverage.
 
 Graph validation also only covers what the module *does* enumerate, so a `BindHandler` missing from `ControllerModule()`'s `fx.Invoke` stays invisible to it. That the enumeration is *complete* — one entry per handler package declaring a `BindHandler` — is machine-verified separately by `TestBindHandlerDIParity` in `internal/architest`.
