@@ -24,6 +24,8 @@ type GCMetrics interface {
 // GCUsecase は、TTL 失効した冪等性キーを掃除するユースケースです。
 type GCUsecase interface {
 	// SweepExpired は、失効したエントリを batchSize 件ずつ削除し、合計削除件数を返します。
+	// エラーを返す場合も、失敗したバッチより前にコミット済みの件数を返します。
+	// コミット済みの削除は取り消せないため、呼び手が実績を失わないようにするためです。
 	SweepExpired(ctx context.Context, batchSize int32) (int64, error)
 }
 

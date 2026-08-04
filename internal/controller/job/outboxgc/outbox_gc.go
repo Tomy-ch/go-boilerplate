@@ -18,6 +18,13 @@ const jobName = "outbox-gc"
 
 const batchSizeFlagPrefix = "--batch-size="
 
+const (
+	// resultMessage は、完走時の結果ログのメッセージです。
+	resultMessage = "Result: published outbox rows deleted"
+	// abortedMessage は、中断時の結果ログのメッセージです。
+	abortedMessage = "Result: outbox GC aborted, the reported rows are already deleted"
+)
+
 var (
 	// errUnknownFlag は、未知のフラグが指定された場合のエラーです。
 	errUnknownFlag = xerrors.New("unknown flag")
@@ -52,6 +59,7 @@ func (j *jobImpl) Name() string {
 }
 
 // Execute は、retention を超えた published エントリをバッチ削除します。--batch-size=N で 1 バッチの件数を指定できます。
+// 途中で失敗した場合も、確定した削除件数を出力してからエラーを返します。
 func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 	ctx, endSpan := j.tracer.Start(ctx)
 	defer endSpan()
@@ -63,14 +71,13 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 
 	deleted, err := j.gc.SweepPublished(ctx, batchSize)
 	if err != nil {
+		// 中断までにコミットされた削除は取り消せない。エラーだけを返すと消えた件数が運用者に届かないため、
+		// 確定した件数を記録してから伝播する。
+		j.logging.Named(jobName).Warn(ctx, abortedMessage, logging.Int64(logging.JobResultKey, deleted))
 		return err
 	}
 
-	j.logging.Named(jobName).Info(
-		ctx,
-		"Result: published outbox rows deleted",
-		logging.Int64(logging.JobResultKey, deleted),
-	)
+	j.logging.Named(jobName).Info(ctx, resultMessage, logging.Int64(logging.JobResultKey, deleted))
 	return nil
 }
 

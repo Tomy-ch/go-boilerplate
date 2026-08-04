@@ -115,6 +115,23 @@ func Test_jobImpl_Execute(t *testing.T) {
 			job := &jobImpl{logging: log, tracer: tf.Controller(), gc: gc}
 			require.NoError(t, job.Execute(t.Context(), []string{"--batch-size=100"}))
 		})
+
+		t.Run("削除件数を結果ログのキーへ出力する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			gc := mock_idempotency.NewMockGCUsecase(ctrl)
+			gc.EXPECT().SweepExpired(gomock.Any(), int32(0)).Return(int64(7), nil)
+
+			observedLog, logs := logging.NewObservedTestLogger(t)
+			job := &jobImpl{logging: observedLog, tracer: tf.Controller(), gc: gc}
+			require.NoError(t, job.Execute(t.Context(), nil))
+
+			entries := logs.All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, "info", entries[0].Level.String())
+			assert.Equal(t, resultMessage, entries[0].Message)
+			assert.Equal(t, int64(7), entries[0].ContextMap()[logging.JobResultKey])
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -139,6 +156,26 @@ func Test_jobImpl_Execute(t *testing.T) {
 
 			job := &jobImpl{logging: log, tracer: tf.Controller(), gc: gc}
 			require.ErrorIs(t, job.Execute(t.Context(), nil), idempotencybndry.ErrLockTimeout)
+		})
+
+		t.Run("掃除が失敗しても中断までに確定した件数はログへ出力する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			gc := mock_idempotency.NewMockGCUsecase(ctrl)
+			gc.EXPECT().
+				SweepExpired(gomock.Any(), int32(0)).
+				Return(int64(5), idempotencybndry.ErrLockTimeout)
+
+			observedLog, logs := logging.NewObservedTestLogger(t)
+			job := &jobImpl{logging: observedLog, tracer: tf.Controller(), gc: gc}
+			require.Error(t, job.Execute(t.Context(), nil))
+
+			entries := logs.All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, "warn", entries[0].Level.String())
+			assert.Equal(t, abortedMessage, entries[0].Message)
+			assert.Equal(t, int64(5), entries[0].ContextMap()[logging.JobResultKey])
 		})
 	})
 }
