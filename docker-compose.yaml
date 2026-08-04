@@ -19,6 +19,14 @@ services:
       - .:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
+# sample-api:begin
+    # publish 先の選択だけはサンプル配線に属する。判別子を env/.env に置くと、値が local だけ
+    # 割れている宣言（env/README.md の Per-environment value）が削除後に陳腐化し、Markdown では
+    # その宣言を replace で差し替えられないため、環境別の値の正本ではなく compose 側に置く。
+    # 実行時 env は env/.env より優先されるので、ここで与えた local だけがキューへ向く。
+    environment:
+      OUTBOX_PUBLISHER: sqs
+# sample-api:end
     tty: true
     stdin_open: true
     working_dir: /app
@@ -142,8 +150,7 @@ services:
       - development
       - tools
 
-# sample-api:begin
-  elasticmq: # SQS 互換ブローカー（ローカル開発用。outbox → broker → worker のサンプル経路で使う）
+  elasticmq: # SQS 互換ブローカー（ローカル開発用。テストは in-process の fake を使う）
     image: softwaremill/elasticmq-native:1.6.16@sha256:8383f29ad746c12981ca2128f689a4b4a93815235f1a7851d2f165316503d132
     ports:
       - "9324:9324" # SQS API
@@ -161,7 +168,6 @@ services:
     profiles:
       - development
       - tools
-# sample-api:end
 
 # -------------------------------------
 # 補助サービス

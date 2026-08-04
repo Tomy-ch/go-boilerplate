@@ -6,11 +6,7 @@
 # checkout 毎に必要な api_server / mock_auth_server だけを per-checkout のプロジェクトへ分離し、
 # docker-compose.attach.yaml で共有インフラへ host-gateway 経由で接続する。
 INFRA_PROJECT ?= $(if $(GOBP_DB_SHARED_PROJECT),$(GOBP_DB_SHARED_PROJECT),gobp-shared)
-# sample-api:replace-begin
 INFRA_SERVICES ?= database observability garage elasticmq
-# sample-api:replace-with
-#= INFRA_SERVICES ?= database observability garage
-# sample-api:replace-end
 APP_SERVICES ?= api_server mock_auth_server
 
 # DB ツーリング（go_tool_runner / docker compose exec database）は共有 DB と同じネットワークで
