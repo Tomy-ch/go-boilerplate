@@ -38,4 +38,6 @@ type Detail struct {
 	CanceledAt *time.Time
 	// ShippedAt は、発送日時です。未発送の場合は nil です。
 	ShippedAt *time.Time
+	// DeliveredAt は、配達日時です。未配達の場合は nil です。
+	DeliveredAt *time.Time
 }

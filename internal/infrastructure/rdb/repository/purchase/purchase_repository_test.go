@@ -219,6 +219,7 @@ func Test_repository_FindDetailByID(t *testing.T) {
 				assert.Nil(t, got.PaidAt)
 				assert.Nil(t, got.CanceledAt)
 				assert.Nil(t, got.ShippedAt)
+				assert.Nil(t, got.DeliveredAt)
 				require.Len(t, got.Details, 1)
 				assert.Equal(t, productID, got.Details[0].ProductID())
 			})
@@ -468,6 +469,116 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				require.NoError(t, err)
 
 				require.ErrorIs(t, repo.UpdateShipped(ctx, broken), apperror.ErrInvalidArgument)
+			})
+		})
+	})
+}
+
+func Test_repository_UpdateDelivered(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{tracer: lt, db: testDB}
+	paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+	shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
+	deliveredAt := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
+
+	// ship は、挿入直後の購入を支払い済み → 発送済みまで進め、配達の起点状態を作ります。
+	ship := func(ctx context.Context, t *testing.T, purchaseID uuid.UUID) {
+		t.Helper()
+
+		paid, err := repo.LockByID(ctx, purchaseID)
+		require.NoError(t, err)
+		require.NoError(t, paid.Pay(paidAt))
+		require.NoError(t, repo.UpdatePaid(ctx, paid))
+
+		toShip, err := repo.LockByID(ctx, purchaseID)
+		require.NoError(t, err)
+		require.NoError(t, toShip.Ship(shippedAt))
+		require.NoError(t, repo.UpdateShipped(ctx, toShip))
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("status_idを配達済みへ更新しdelivered_atをセットし在庫は変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000001")
+				ship(ctx, t, purchaseID)
+
+				locked, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				require.NoError(t, locked.Deliver(deliveredAt))
+				require.NoError(t, repo.UpdateDelivered(ctx, locked))
+
+				// 再読込で status_id が配達済み（code=9）へ解決され、delivered_at がセットされる。
+				reread, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				assert.Equal(t, domainpurchase.StatusCodeDelivered, reread.StatusCode())
+				require.NotNil(t, reread.DeliveredAt())
+				assert.Equal(t, deliveredAt.UTC(), reread.DeliveredAt().UTC())
+
+				// 配達完了は在庫を操作しない（挿入時の 20 のまま）。
+				var stock int
+				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", productID).Scan(&stock))
+				assert.Equal(t, 20, stock)
+			})
+		})
+
+		t.Run("読み取りモデルにdelivered_atが反映される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000002")
+				ship(ctx, t, purchaseID)
+
+				locked, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+				require.NoError(t, locked.Deliver(deliveredAt))
+				require.NoError(t, repo.UpdateDelivered(ctx, locked))
+
+				detail, err := repo.FindDetailByID(ctx, purchaseID)
+				require.NoError(t, err)
+				assert.Equal(t, "配達済み", detail.StatusName)
+				require.NotNil(t, detail.DeliveredAt)
+				assert.Equal(t, deliveredAt.UTC(), detail.DeliveredAt.UTC())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("マスタに無いステータスコードの場合はpgエラーをapperrorへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000003")
+
+				locked, err := repo.LockByID(ctx, purchaseID)
+				require.NoError(t, err)
+
+				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
+				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
+				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
+				// deliveredAt は nil で渡す（配達済み status と deliveredAt は双条件のため、
+				// マスタに無い status と deliveredAt は同居できない）。
+				broken, err := domainpurchase.Reconstruct(
+					locked.ID(), locked.Code(), locked.UserID(), locked.StatusID(),
+					unknownStatusCode,
+					locked.SubtotalAmount(), locked.TaxAmount(), locked.ShippingFee(), locked.TotalAmount(),
+					locked.Details(), locked.OrderedAt(), &paidAt, nil, &shippedAt, nil,
+				)
+				require.NoError(t, err)
+
+				require.ErrorIs(t, repo.UpdateDelivered(ctx, broken), apperror.ErrInvalidArgument)
 			})
 		})
 	})

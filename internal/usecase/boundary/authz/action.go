@@ -19,6 +19,8 @@ const (
 	ActionProductListLowStock Action = "product:low-stock:list"
 	// ActionPurchaseShip は、購入の発送操作（admin）を表します。
 	ActionPurchaseShip Action = "purchase:ship"
+	// ActionPurchaseDeliver は、購入の配達完了操作（admin）を表します。
+	ActionPurchaseDeliver Action = "purchase:deliver"
 	// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。
 	ActionDashboardRead Action = "dashboard:read"
 )
