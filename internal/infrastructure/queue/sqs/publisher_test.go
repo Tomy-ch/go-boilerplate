@@ -18,6 +18,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// spacedAuthorization は、前後空白付きの機微ヘッダ名です。map リテラルのキーに空白を書くと
+// gocritic が誤記として弾くため、定数を経由して与えます。
+const spacedAuthorization = " Authorization"
+
 const testQueueURL = "http://elasticmq:9324/000000000000/gobp-events"
 
 func newTestUUID(t *testing.T) uuid.UUID {
@@ -169,15 +173,17 @@ func Test_publisher_messageAttributes(t *testing.T) {
 		t.Run("機微ヘッダは前後空白付きでも載せない", func(t *testing.T) {
 			t.Parallel()
 
+			headers := map[string]string{
+				"Authorization":       "Bearer secret",
+				"Proxy-Authorization": "Basic secret",
+				"Cookie":              "session=secret",
+				"Set-Cookie":          "session=secret",
+			}
+			headers[spacedAuthorization] = "Bearer secret"
+
 			got := p.messageAttributes(boundary.Message{
 				MessageID: newTestUUID(t),
-				Headers: map[string]string{
-					"Authorization":       "Bearer secret",
-					"Proxy-Authorization": "Basic secret",
-					"Cookie":              "session=secret",
-					"Set-Cookie":          "session=secret",
-					" Authorization":      "Bearer secret",
-				},
+				Headers:   headers,
 			})
 
 			assert.Len(t, got, 1)
