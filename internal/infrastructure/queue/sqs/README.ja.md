@@ -24,6 +24,22 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 `github.com/aws/aws-sdk-go-v2/service/sqs` を列挙してはいけません。SDK コアと `service/s3` は
 object storage adapter 経由で常にリンクされます。
 
+<!-- sample-api:begin -->
+## 送出側
+
+`NewPublisher` は outbox の publish 境界を `SendMessage` で実装します。本文は outbox の payload を
+そのまま載せ、受信側が本文を解釈せずに冪等キーを取り出せるよう、outbox の `message_id` は
+`message_id` **メッセージ属性**として運びます（伝搬対象ヘッダの `traceparent` 等も同様）。
+SQS 自身の `MessageId` は broker が採番し再 publish のたびに変わるため、冪等キーには使えません。
+
+機微ヘッダ（`Authorization` / `Proxy-Authorization` / `Cookie` / `Set-Cookie`）は HTTP publisher と
+同じくこの egress 境界で落とします。空値のヘッダは SQS が `InvalidParameterValue` で拒否するため
+スキップします。
+
+クライアントの生成は `NewClient` が担い、endpoint と資格情報の差し替えだけで ElasticMQ・LocalStack・
+本番 SQS のいずれにも向けられます。いずれも削除可能なサンプル群からのみ配線されます。
+<!-- sample-api:end -->
+
 ## ポート対応
 
 | seam | SQS |

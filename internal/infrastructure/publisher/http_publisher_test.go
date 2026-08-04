@@ -19,7 +19,7 @@ import (
 
 const testEndpoint = "https://receiver.example.com/events"
 
-func TestNew(t *testing.T) {
+func TestNewHTTP(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestNew(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
 
-			p := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t))
+			p := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t))
 
 			assert.NotNil(t, p)
 		})
@@ -62,7 +62,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 					return &httpclient.Response{StatusCode: 200}, nil
 				})
 
-			err := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
 					MessageID: msgID,
 					EventType: "e.v1",
@@ -90,7 +90,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 					return &httpclient.Response{StatusCode: 200}, nil
 				})
 
-			err := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
 					MessageID: msgID,
 					EventType: "e.v1",
@@ -119,7 +119,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, wantErr)
 
-			err := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
 					MessageID: uuid.NewTestFromSalt(t, "msg"),
 					EventType: "e.v1",

@@ -510,3 +510,45 @@ func TestAuthConfig_SetAuthJWKSURL(t *testing.T) {
 		})
 	})
 }
+
+func TestOutboxConfig_SetOutboxPublisher(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した種別へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				outbox.SetOutboxPublisher(t, "sqs")
+				assert.Equal(t, "sqs", outbox.Publisher())
+			})
+
+			assert.Equal(t, expectedOutboxPublisher, outbox.Publisher())
+		})
+	})
+}
+
+func TestOutboxConfig_SetOutboxQueue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した queue 設定へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				outbox.SetOutboxQueue(t, "http://elasticmq:9324/000000000000/gobp-events", "ap-northeast-1", "k", "s")
+				assert.Equal(t, "http://elasticmq:9324/000000000000/gobp-events", outbox.QueueURL())
+				assert.Equal(t, "ap-northeast-1", outbox.QueueRegion())
+			})
+
+			assert.Equal(t, expectedOutboxQueueURL, outbox.QueueURL())
+			assert.Equal(t, expectedOutboxQueueRegion, outbox.QueueRegion())
+		})
+	})
+}

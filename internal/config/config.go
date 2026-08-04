@@ -124,10 +124,16 @@ func New() (*Config, error) {
 			nackBackoffMax:            cfg.Worker.NackBackoffMax,
 		},
 		outbox: OutboxConfig{
-			endpoint:     cfg.Outbox.Endpoint,
-			pollInterval: cfg.Outbox.PollInterval,
-			errorBackoff: cfg.Outbox.ErrorBackoff,
-			batchSize:    cfg.Outbox.BatchSize,
+			publisher:            cfg.Outbox.Publisher,
+			endpoint:             cfg.Outbox.Endpoint,
+			pollInterval:         cfg.Outbox.PollInterval,
+			errorBackoff:         cfg.Outbox.ErrorBackoff,
+			batchSize:            cfg.Outbox.BatchSize,
+			queueEndpoint:        cfg.Outbox.QueueEndpoint,        // sample-api:line
+			queueRegion:          cfg.Outbox.QueueRegion,          // sample-api:line
+			queueURL:             cfg.Outbox.QueueURL,             // sample-api:line
+			queueAccessKeyID:     cfg.Outbox.QueueAccessKeyID,     // sample-api:line
+			queueSecretAccessKey: cfg.Outbox.QueueSecretAccessKey, // sample-api:line
 		},
 		auth: AuthConfig{
 			issuer:             cfg.Auth.Issuer,

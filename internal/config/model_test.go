@@ -799,6 +799,78 @@ func TestWorkerConfig_NackBackoffMax(t *testing.T) {
 	})
 }
 
+func TestOutboxConfig_Publisher(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("publish 先の種別を取得できる", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+			assert.Equal(t, expectedOutboxPublisher, outbox.Publisher())
+		})
+	})
+}
+
+func TestOutboxConfig_QueueEndpoint(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("SQS 互換エンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+			assert.Equal(t, expectedOutboxQueueEndpoint, outbox.QueueEndpoint())
+		})
+	})
+}
+
+func TestOutboxConfig_QueueRegion(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("リージョンを取得できる", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+			assert.Equal(t, expectedOutboxQueueRegion, outbox.QueueRegion())
+		})
+	})
+}
+
+func TestOutboxConfig_QueueURL(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("publish 先キューの URL を取得できる", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+			assert.Equal(t, expectedOutboxQueueURL, outbox.QueueURL())
+		})
+	})
+}
+
+func TestOutboxConfig_QueueAccessKeyID(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("アクセスキー ID を取得できる", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+			assert.Equal(t, expectedOutboxQueueAccessKeyID, outbox.QueueAccessKeyID())
+		})
+	})
+}
+
+func TestOutboxConfig_QueueSecretAccessKey(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("シークレットアクセスキーを取得できる", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+			assert.Equal(t, expectedOutboxQueueSecretAccessKey, outbox.QueueSecretAccessKey())
+		})
+	})
+}
+
 func TestOutboxConfig_Endpoint(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

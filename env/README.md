@@ -174,10 +174,16 @@ Settings for the transactional outbox relay.
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OUTBOX_ENDPOINT|Destination endpoint URL for relayed messages|string||Code default empty. Set per project when the relay has a fixed target|
+|OUTBOX_PUBLISHER|Publish target kind (`http` / `sqs`)|string|sqs|Code default `http`. An unknown value fails startup (fail-closed). **Per-environment value**: only local opts into `sqs` so the bundled sample can run against the local broker; every other environment keeps the code default because the publish target is a per-deployment choice|
+|OUTBOX_ENDPOINT|Destination endpoint URL for relayed messages|string||Code default empty. Required when `OUTBOX_PUBLISHER=http`|
 |OUTBOX_POLL_INTERVAL|Wait before the next poll after draining pending rows|duration|1s|Code default `1s`|
 |OUTBOX_ERROR_BACKOFF|Wait after a relay batch returns an error|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|Pending rows claimed per poll|int|100|Code default `100`|
+|OUTBOX_QUEUE_ENDPOINT|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the bundled sample publishes to the ElasticMQ service in compose. Other environments leave it empty because the queue is a per-deployment resource<!-- sample-api:line -->|
+|OUTBOX_QUEUE_REGION|Region used for SigV4 signing|string|us-east-1|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. **Per-environment value**: set only in local, where the bundled sample publishes to the ElasticMQ service in compose. Other environments leave it empty because the queue is a per-deployment resource<!-- sample-api:line -->|
+|OUTBOX_QUEUE_URL|Destination queue URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. Local queue names come from `docker/elasticmq/elasticmq.conf`. **Per-environment value**: set only in local, where the bundled sample publishes to the ElasticMQ service in compose. Other environments leave it empty because the queue is a per-deployment resource<!-- sample-api:line -->|
+|OUTBOX_QUEUE_ACCESS_KEY_ID|Static credential access key ID|string|local-dummy-access-key|Code default empty. ElasticMQ does not verify signatures locally, so any dummy works. **Per-environment value**: set only in local, where the bundled sample publishes to the ElasticMQ service in compose. Other environments leave it empty because the queue is a per-deployment resource<!-- sample-api:line -->|
+|OUTBOX_QUEUE_SECRET_ACCESS_KEY|Static credential secret access key|string|local-dummy-secret-key|Code default empty. Replace with an IAM role or similar in production. **Per-environment value**: set only in local, where the bundled sample publishes to the ElasticMQ service in compose. Other environments leave it empty because the queue is a per-deployment resource<!-- sample-api:line -->|
 
 ### Auth (JWT)
 

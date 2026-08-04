@@ -143,11 +143,17 @@ var (
 	expectedWorkerNackBackoffInitial        = 1 * time.Second
 	expectedWorkerNackBackoffMax            = 30 * time.Second
 
-	// outbox
-	expectedOutboxEndpoint     = ""
-	expectedOutboxPollInterval = 1 * time.Second
-	expectedOutboxErrorBackoff = 5 * time.Second
-	expectedOutboxBatchSize    = 100
+	// outbox（Queue* は PUBLISHER=sqs のときだけ使うため、既定の http では空値）
+	expectedOutboxPublisher            = "http"
+	expectedOutboxEndpoint             = ""
+	expectedOutboxPollInterval         = 1 * time.Second
+	expectedOutboxErrorBackoff         = 5 * time.Second
+	expectedOutboxBatchSize            = 100
+	expectedOutboxQueueEndpoint        = ""
+	expectedOutboxQueueRegion          = ""
+	expectedOutboxQueueURL             = ""
+	expectedOutboxQueueAccessKeyID     = ""
+	expectedOutboxQueueSecretAccessKey = ""
 
 	// auth（local/ci/test では実 JWT authenticator を配線しないため、issuer 等は既定の空値）
 	expectedAuthIssuer             = ""
@@ -266,10 +272,16 @@ func MockConfigForTest(tb testing.TB) *Config {
 			nackBackoffMax:            expectedWorkerNackBackoffMax,
 		},
 		outbox: OutboxConfig{
-			endpoint:     expectedOutboxEndpoint,
-			pollInterval: expectedOutboxPollInterval,
-			errorBackoff: expectedOutboxErrorBackoff,
-			batchSize:    expectedOutboxBatchSize,
+			publisher:            expectedOutboxPublisher,
+			endpoint:             expectedOutboxEndpoint,
+			pollInterval:         expectedOutboxPollInterval,
+			errorBackoff:         expectedOutboxErrorBackoff,
+			batchSize:            expectedOutboxBatchSize,
+			queueEndpoint:        expectedOutboxQueueEndpoint,
+			queueRegion:          expectedOutboxQueueRegion,
+			queueURL:             expectedOutboxQueueURL,
+			queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
+			queueSecretAccessKey: expectedOutboxQueueSecretAccessKey,
 		},
 		auth: AuthConfig{
 			issuer:             expectedAuthIssuer,

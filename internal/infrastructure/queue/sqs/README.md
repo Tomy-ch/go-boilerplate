@@ -4,7 +4,8 @@ AWS SQS reference adapter for the worker seam (`internal/usecase/boundary/worker
 
 ## Role
 
-Implements the `worker.Consumer` and `worker.FailureHandler` ports against AWS SQS.
+Implements the `worker.Consumer` and `worker.FailureHandler` ports (consuming side) and the
+`publisher.Publisher` port (publishing side) against AWS SQS.
 This is a **reference implementation** that demonstrates the seam works with a second
 implementation (besides the in-memory fake) — proving the abstraction is not fake-shaped.
 
@@ -23,6 +24,23 @@ To use it in production, an integrator wires `NewConsumer` / `NewDeadLetter` int
 Verify isolation: after a sample removal, `go list -deps ./cmd/` must not list
 `github.com/aws/aws-sdk-go-v2/service/sqs`. The SDK core and `service/s3` are linked
 regardless, via the object-storage adapter.
+
+<!-- sample-api:begin -->
+## Publishing side
+
+`NewPublisher` implements the outbox publish boundary with `SendMessage`. The message body is the
+outbox payload verbatim, so a consumer can read the dedup key without parsing the body: the outbox
+`message_id` travels as the `message_id` **message attribute**, alongside the propagated headers
+(`traceparent` and friends). SQS's own `MessageId` is broker-assigned and changes on every
+re-publish, which is why it cannot serve as the idempotency key.
+
+Sensitive headers (`Authorization` / `Proxy-Authorization` / `Cookie` / `Set-Cookie`) are dropped at
+this egress boundary, mirroring the HTTP publisher, and empty-valued headers are skipped because SQS
+rejects them with `InvalidParameterValue`.
+
+`NewClient` builds the client; swapping endpoint and credentials is enough to target ElasticMQ,
+LocalStack, or real SQS. Both are wired only from the removable sample set.
+<!-- sample-api:end -->
 
 ## Port mapping
 

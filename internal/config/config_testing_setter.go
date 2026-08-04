@@ -210,6 +210,30 @@ func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string) {
 	tb.Cleanup(func() { o.endpoint = prev })
 }
 
+// SetOutboxPublisher は、テスト用に outbox の publish 先種別を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *OutboxConfig) SetOutboxPublisher(tb testing.TB, publisher string) {
+	tb.Helper()
+	prev := o.publisher
+	o.publisher = publisher
+	tb.Cleanup(func() { o.publisher = prev })
+}
+
+// SetOutboxQueue は、テスト用に SQS publish 先の設定をまとめて行います。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *OutboxConfig) SetOutboxQueue(tb testing.TB, queueURL, region, accessKeyID, secretAccessKey string) {
+	tb.Helper()
+	prev := *o
+	o.queueURL, o.queueRegion = queueURL, region
+	o.queueAccessKeyID, o.queueSecretAccessKey = accessKeyID, secretAccessKey
+	tb.Cleanup(func() {
+		o.queueURL, o.queueRegion = prev.queueURL, prev.queueRegion
+		o.queueAccessKeyID, o.queueSecretAccessKey = prev.queueAccessKeyID, prev.queueSecretAccessKey
+	})
+}
+
 // SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
