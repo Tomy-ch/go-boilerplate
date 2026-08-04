@@ -156,12 +156,14 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   自分のディレクトリ配下へ解決した値を持つ。結果として、まったく同じコミットの checkout 同士でも
   ハッシュは一致しない。再作成はブランチが分岐したときの例外ではなく常態である。影響を受けるのは
   `database` と `garage`（`docker/database/sql` と `docker/garage/garage.toml` を bind mount する）で、
-  何もマウントしない `observability` は受けない。そのため `gobp-shared` への `up` は常に
-  `--no-recreate` を渡し、他の checkout が使っているコンテナを置き換えずそのまま使う。
+  何もマウントしない `observability` は受けない。そのため worktree から `gobp-shared` へ `up` する際は
+  `--no-recreate` を渡し（`.makefiles/docker/compose.mk` の `INFRA_NO_RECREATE`）、他の checkout が
+  使っているコンテナを置き換えずそのまま使う。
   代償として、image の digest pin 更新や `garage.toml` の編集といった**正当な定義変更も自動では
   反映されなくなる**。全 checkout が中断を許容できるタイミングで `make infra-down && make infra-up`
   を実行すること。`tools` プロファイルも同じで、`docs_viewer` は最初に作った checkout の `docs/` を
-  配り続ける。
+  配り続ける。単一 checkout には奪い合う相手が居ないためフラグは空で、compose は従来どおり
+  定義変更へ再収束する。
 - **オブジェクトストレージは共有**: `garage` のバケットは全 checkout で共通（DB と違いスキーマを持たないため
   ブランチ間で壊れない）。ブランチ毎に隔離したい場合は `OBJECT_STORAGE_BUCKET` を分ける。
 - API 帯 8080–8092 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。

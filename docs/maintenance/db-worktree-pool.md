@@ -173,13 +173,15 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   *absolute* paths. Every worktree resolves them under its own directory, so the hash differs
   between checkouts of the very same commit — re-creation is the norm, not a branch-divergence edge
   case. `database` and `garage` are affected (they bind-mount `docker/database/sql` and
-  `docker/garage/garage.toml`); `observability` is not, because it mounts nothing. Every `up`
-  against `gobp-shared` therefore passes `--no-recreate`, which keeps a container another checkout
-  is using rather than replacing it. The cost is that a *legitimate* definition change — a new image
-  digest pin, an edited `garage.toml` — no longer takes effect on its own: run
-  `make infra-down && make infra-up` at a point where every checkout can afford the interruption.
-  The same applies to the `tools` profile, so `docs_viewer` keeps serving the `docs/` of whichever
-  checkout first created it.
+  `docker/garage/garage.toml`); `observability` is not, because it mounts nothing. An `up` against
+  `gobp-shared` from a worktree therefore passes `--no-recreate` (`INFRA_NO_RECREATE` in
+  `.makefiles/docker/compose.mk`), which keeps a container another checkout is using rather than
+  replacing it. The cost is that a *legitimate* definition change — a new image digest pin, an
+  edited `garage.toml` — no longer takes effect on its own: run `make infra-down && make infra-up`
+  at a point where every checkout can afford the interruption. The same applies to the `tools`
+  profile, so `docs_viewer` keeps serving the `docs/` of whichever checkout first created it.
+  A single checkout has no one to contend with, so the flag stays empty there and compose
+  re-converges on a definition change as usual.
 - **Object storage is shared**: the `garage` bucket is common to every checkout (unlike a database it
   has no schema, so it does not break across branches). Point a branch at a different
   `OBJECT_STORAGE_BUCKET` to isolate it. The access key is shared the same way — `garage_init` imports

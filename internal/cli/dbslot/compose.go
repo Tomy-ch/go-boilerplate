@@ -30,6 +30,8 @@ type ExecCompose struct{}
 // --no-recreate は、稼働中のコンテナを他の checkout が使っている前提に立つものです。compose の
 // config-hash は bind mount と build context の解決後の絶対パスを含むため、同一コミットでも
 // 呼び出す worktree が違えば差分ありと判定され、既定では毎回作り直しになります。
+// make 側（INFRA_NO_RECREATE）と違い条件を持ちません。スロットを取ること自体が共有インフラを
+// 他の checkout と分け合うという宣言であり、その状況でだけこの経路が走るためです。
 func (c ExecCompose) UpSharedDB(ctx context.Context, project string) error {
 	return c.run(ctx, project, "--profile", "database", "up", "-d", "--wait", "--no-recreate", "database")
 }
