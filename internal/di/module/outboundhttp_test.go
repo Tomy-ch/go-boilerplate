@@ -1,6 +1,9 @@
 package module
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,17 +51,46 @@ func Test_provideOutboundHTTPClient(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("env に応じた private network 方針でクライアントを構築する", func(t *testing.T) {
+		t.Run("env に応じて private 網宛ての可否が変わる", func(t *testing.T) {
 			t.Parallel()
+			// httptest は loopback（private）で待つ。計装なしの実 transport を使うのは、
+			// テスト用の noop transport が全接続を許可する dial control を持ち、
+			// 方針の違いが結果に出ないため。
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer srv.Close()
 
-			transport := observability.NewNoopHTTPClientTransport(t)
+			// transport を共有すると接続プールも共有され、許可側が張った接続を拒否側が再利用して
+			// dial 時のガードが発火しない。方針ごとに transport を分けて判定する。
+			localErr := getWith(
+				t,
+				provideOutboundHTTPClient(observability.NewGuardedHTTPClientTransport(t), newAppCfgForEnv(t, config.EnvLocal)),
+				srv.URL,
+			)
+			prdErr := getWith(
+				t,
+				provideOutboundHTTPClient(observability.NewGuardedHTTPClientTransport(t), newAppCfgForEnv(t, config.EnvProduction)),
+				srv.URL,
+			)
 
-			for _, env := range []string{config.EnvLocal, config.EnvProduction} {
-				got := provideOutboundHTTPClient(transport, newAppCfgForEnv(t, env))
-
-				require.NotNil(t, got)
-				require.NotNil(t, got.Client)
-			}
+			require.NoError(t, localErr, "local で private 網宛てが拒否されている")
+			require.Error(t, prdErr, "prd で private 網宛てが許可されており、env の方針が下流へ効いていない")
 		})
 	})
+}
+
+// getWith は、指定クライアントで url へ GET し、その結果のエラーだけを返します。
+func getWith(t *testing.T, client *observability.OutboundHTTPClient, url string) error {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	return nil
 }

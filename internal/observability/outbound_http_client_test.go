@@ -37,13 +37,14 @@ func TestNewOutboundHTTPClient(t *testing.T) {
 			assert.IsType(t, policyStampingRoundTripper{}, got.Transport)
 		})
 
-		t.Run("リダイレクトを追従しない", func(t *testing.T) {
+		t.Run("リダイレクト方針を持つ", func(t *testing.T) {
 			t.Parallel()
 
 			got := NewOutboundHTTPClient(NewHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator()), false)
 
 			require.NotNil(t, got.CheckRedirect)
-			assert.Equal(t, http.ErrUseLastResponse, got.CheckRedirect(nil, nil))
+			// 追従範囲そのものは Test_limitedRedirectForOutbound が持つ。ここは方針の結線だけを見る。
+			assert.Equal(t, http.ErrUseLastResponse, got.CheckRedirect(&http.Request{}, nil))
 		})
 	})
 }
@@ -138,16 +139,56 @@ func Test_policyStampingRoundTripper_RoundTrip(t *testing.T) {
 	})
 }
 
-func Test_noFollowRedirectForOutbound(t *testing.T) {
+func Test_limitedRedirectForOutbound(t *testing.T) {
 	t.Parallel()
+
+	// redirectTo は、resp を受けて next へ向かう CheckRedirect の入力を組み立てます。
+	redirectTo := func(t *testing.T, status, hops int) (*http.Request, []*http.Request) {
+		t.Helper()
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://example.com/next", nil)
+		require.NoError(t, err)
+		req.Response = &http.Response{StatusCode: status}
+
+		return req, make([]*http.Request, hops)
+	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("常に ErrUseLastResponse を返して追従を止める", func(t *testing.T) {
+		t.Run("メソッドと本文を保つ 307 / 308 は追従する", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, http.ErrUseLastResponse, noFollowRedirectForOutbound(nil, nil))
+			for _, status := range []int{http.StatusTemporaryRedirect, http.StatusPermanentRedirect} {
+				req, via := redirectTo(t, status, 1)
+				assert.NoErrorf(t, limitedRedirectForOutbound(req, via), "status %d で追従していない", status)
+			}
+		})
+
+		t.Run("メソッドが変わりうる 301 / 302 / 303 は追従しない", func(t *testing.T) {
+			t.Parallel()
+
+			for _, status := range []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther} {
+				req, via := redirectTo(t, status, 1)
+				assert.Equalf(t, http.ErrUseLastResponse, limitedRedirectForOutbound(req, via),
+					"status %d で追従している", status)
+			}
+		})
+
+		t.Run("追従回数の上限を超えたら 307 でも止める", func(t *testing.T) {
+			t.Parallel()
+
+			req, via := redirectTo(t, http.StatusTemporaryRedirect, maxOutboundRedirects)
+
+			assert.Equal(t, http.ErrUseLastResponse, limitedRedirectForOutbound(req, via))
+		})
+
+		t.Run("元レスポンスが無ければ追従しない", func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://example.com", nil)
+			require.NoError(t, err)
+
+			assert.Equal(t, http.ErrUseLastResponse, limitedRedirectForOutbound(req, nil))
 		})
 	})
 }

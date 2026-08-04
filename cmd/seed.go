@@ -80,11 +80,12 @@ func openSeedObjectStorage(logger logging.Logger, database string) (string, seed
 		return "", nil, err
 	}
 	osCfg := config.NewObjectStorageConfig(cfg)
-	// seed の投入先はローカルスタックに限る前提で、呼び出し先が endpoint を見て実環境を拒否する。
-	// その前提でも link-local 宛ては常に拒否したいため、ガード付きクライアントを通す。
+	// private 網の可否はサーバ本体と同じ env 基準で決める。seed は staging でも実行されうるため、
+	// ローカル前提で常時許可にするとその環境だけ SSRF ガードが緩くなる。
+	appEnv := config.NewApplicationConfig(cfg).Env()
 	storage := objectstorageinfra.New(
 		osCfg,
-		observability.NewDisabledOutboundHTTPClient(true),
+		observability.NewDisabledOutboundHTTPClient(config.IsLocalClassEnv(appEnv)),
 		observability.NewDisabledTracerFactory(),
 	)
 

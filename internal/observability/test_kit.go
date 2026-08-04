@@ -159,6 +159,14 @@ func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
 	return newHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator(), permissiveDialControl)
 }
 
+// NewGuardedHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から
+// HTTPClientTransport を生成します。NewNoopHTTPClientTransport と違い SSRF ガードは有効なままなので、
+// private 網宛ての可否そのものを検証する用途に使います。
+func NewGuardedHTTPClientTransport(t *testing.T) *HTTPClientTransport {
+	t.Helper()
+	return NewHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator())
+}
+
 // NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。
 func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	t.Helper()
