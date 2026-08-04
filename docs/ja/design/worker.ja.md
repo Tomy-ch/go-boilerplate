@@ -213,14 +213,14 @@ flowchart LR
 
 | # | 必要な実装 | 置き場（推奨） | 参考 |
 | --- | --- | --- | --- |
-| ① | 業務 `Handler`（冪等、usecase を呼ぶ） | `internal/controller/worker/<name>/` | job の `usercount` 構造 |
+| ① | 業務 `Handler`（冪等、usecase を呼ぶ） | `internal/controller/worker/<name>/` | `worker.Handler` IF |
 | ② | `Consumer`(+`FailureHandler`) adapter | SQS は `infrastructure/queue/sqs` を配線 / 他は新規 package | `sqs.NewConsumer` / `NewDeadLetter` |
 | ③ | `Worker`（Name/Consumer/Handler/FailureHandler を返す）+ `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
 | ④ | `WorkerModule()` の `provideWorkers(...)` に コンストラクタ追加 | `internal/di/module/worker.go` | `provideJobs` と同形 |
 | ⑤ | broker クライアント・adapter `Config` の `fx.Provide` | `internal/di/...` | `sqs.Config` |
 | ⑥ | env（`WORKER_*` は既定あり・上書き任意）／broker 認証／DLQ・redrive(IaC) | `env/` ・IaC | `WorkerConfig` 既定 |
 
-> SQS を本番で使う場合のみ、`cmd` の配線に sqs を import することになり、その時点で `aws-sdk-go-v2` が当該バイナリに入る（既定の serve/worker バイナリには入らない＝E3）。
+> ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、サンプルからの配線も例外ではない。したがって分離は adapter を未配線にすることではなく、`make setup-remove-sample-api` の**後**に検証する（E3'、[ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md)）。
 
 ---
 
@@ -250,4 +250,4 @@ flowchart LR
 | **Settings** | engine-core の挙動設定（engine-local struct）。`config.WorkerConfig` から DI でマッピング。 |
 | **WorkerConfig** | engine-core 設定（broker 非依存、`WORKER_*`・`default` タグ付き）。broker 固有は adapter `Config`。 |
 | **traceparent / 継続** | W3C trace context。`Message.Attributes` から `Extract` して span を継続（D1）。 |
-| **E1/E2/E3** | engine が infra を import しない / fake のみで engine green / 出荷バイナリに broker SDK 非混入。 |
+| **E1/E2/E3'** | engine が infra を import しない / fake のみで engine green / `make setup-remove-sample-api` 後の結合がサンプル追加前と同一（core の `*.go` も core のドキュメントも broker adapter / サンプルを参照せず、シームは元の形へ戻り、不要依存が `go.mod` / `vendor/` から落ちる。[ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md)）。 |

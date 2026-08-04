@@ -1,7 +1,8 @@
 // Package sqs は、worker seam（Consumer / FailureHandler）の AWS SQS 実装を提供します。
 //
-// cmd の default 配線からは import しないこと（出荷バイナリに aws-sdk を含めないため）。
-// 本番利用時は integrator が WorkerModule に配線します。詳細は README.md を参照。
+// 本パッケージの配線は、サンプル削除で外れる形に限ります（削除後の結合をサンプル追加前と
+// 同一に保つため。ADR-0106 の E3'）。本番利用時は integrator が WorkerModule に配線します。
+// 詳細は README.md を参照。
 package sqs
 
 // Config は、SQS Consumer の adapter 固有設定です（engine-core の WorkerConfig とは分離）。
