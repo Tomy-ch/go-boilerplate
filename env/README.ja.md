@@ -18,6 +18,7 @@
 - `envDefault` を持たないキーは全 env ファイルに記載が必須。唯一の正当な不在は、デプロイ基盤が実行時に注入する値で、備考欄に **Injected at deploy time** と明記して宣言する。宣言が無ければ、欠落と伝播漏れは見分けが付かず、その環境で実際にアプリを起動して `required` バリデーションが落ちるまで顕在化しない。このマーカーは `TestEnvRequiredKeyPresencePolicy`（`internal/architest`）が双方向に検証する。マーカーの無いキーがどれか 1 つでも env ファイルから欠けていれば落ち、マーカーのあるキーは `local` / `ci` に記載があり `dev` / `stg` / `prd` には無いことが要る。deploy 側のファイルに値が復活した場合も、`Code default` を持つキーにマーカーを付けた場合も落ちる
 - 本ファイルは正本（[README.md](README.md)）の対訳で、値まで含めて表を複製している。このリポジトリの読者の多くは日本語版を読む。散文は翻訳されるが、キー・型・例・`Code default` の値は言語に依らないため正本と一致させること。乖離は `internal/architest`（`TestEnvReadmeTranslationValues`）がビルドを落として検知する。文書構造 — 表を区切るサブシステム見出しと、節・箇条書き項目の個数 — の一致は `TestEnvReadmeTranslationStructure` が検証するので、段落ごと訳し漏らした場合も検知される。`Code default` が空の場合はバッククォートで書けないため、正本では **Code default empty**、対訳では **Code default は空** と綴る。この 2 つの綴りはテストが宣言しており、他の書き方は受け付けない
 - 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `envDefault:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
+- ローカルの値を env ファイルではなく compose スタックから受け取るキーは、本ディレクトリが記述しきれない唯一の経路である。`internal/config` はプロセスの環境変数を先に読むため、`docker-compose*.yaml` の `environment` 指定は埋め込みの `env/.env` に優先し、その経路でしか供給されないキーはどの env ファイルにも現れない — つまり `internal/architest` の突き合わせの外に出る。env ファイルでは値を持てない場合に限って使い、compose 抜きでバイナリが何をするかは読み取れるよう行の `Code default` を正確に保つこと。compose 側の記載が陳腐化してもテストは検知しない
 
 ## 新規変数を追加する手順
 
@@ -174,10 +175,16 @@ transactional outbox relay の設定。
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OUTBOX_ENDPOINT|メッセージの送信先エンドポイント URL|string||Code default は空。relay の送信先が固定のプロジェクトで設定する|
+|OUTBOX_PUBLISHER|publish 先の種別（`http` / `sqs`）|string|http|Code default `http`。未知の値は起動エラー（fail-closed）。publish 先はデプロイ先ごとの判断なのでどの env ファイルも値を固定せず、キューへ publish するデプロイが実行時に与える|
+|OUTBOX_ENDPOINT|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
 |OUTBOX_POLL_INTERVAL|pending を捌き切った後、次 poll まで待機する時間|duration|1s|Code default `1s`|
 |OUTBOX_ERROR_BACKOFF|relay バッチがエラーを返した後に待機する時間|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|1 回の poll で claim する pending 行数|int|100|Code default `100`|
+|OUTBOX_QUEUE_ENDPOINT|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_REGION|SigV4 署名に用いるリージョン|string|us-east-1|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_URL|publish 先キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` と対。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。本番は IAM ロール等へ差し替える。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 
 ### Auth (JWT)
 

@@ -3,7 +3,7 @@ status: accepted
 date: 2026-08-04
 deciders: [maintainers]
 supersedes: 0044
-tags: [worker, async, dependencies]
+tags: [worker, outbox, async, dependencies]
 ---
 
 # ADR-0106: ブローカー SDK の分離は、アダプターを未配線にすることではなくサンプル削除後に検証する
@@ -22,11 +22,13 @@ accepted（[ADR-0044](0044-sqs-adapter-opt-in.ja.md) を supersede）
 
 **機構がバイナリ構成と噛み合っていない。** 本リポジトリは Cobra のサブコマンド（`serve` / `worker` / `outbox-relay` …）を持つ単一バイナリを出荷する。リンクはバイナリ単位、役割はサブコマンド単位なので、`worker` が同じバイナリにいる限り「`serve` をキュー SDK から遠ざける」は import の統制では達成できない。したがって E3 が実際に保証しているのは軽量な `serve` ではなく、**同梱のリファレンスアダプターが決して配線されず、ゆえに一度も端から端まで実行されない**という状態である。エンジン・シーム・アダプターはいずれもビルドされ単体テストもされているが、本リポジトリでメッセージが通過したことは一度もなく、`internal/di/module/worker.go` の `provideWorkers()` は空のままである。アダプター固有の挙動（可視性タイムアウトの延長、receipt handle の往復、属性マッピング、`ApproximateReceiveCount` のパース）は、モック化したクライアントに対してしか検証されていない。
 
+**同じ問いは送出側にも生じる。** `publisher.Publisher` の実装は HTTP POST の 1 つだけで、core のファイルがブローカーアダプターを参照することは無かった。outbox の publish 先にキューを与えるということは、core のファイル — `internal/infrastructure/publisher` にある実装セレクター — がそれを import するということである。流れる向きは違っても問いの形は同じなので、以下は worker だけでなく両方のシームに対して述べる。
+
 ADR-0044 の背後にある懸念は、リンクではなく**結合**として述べたほうが正確である。すなわち、リポジトリが単一ベンダーに構造的に依存してはならない、ということだ。リンクはその代理指標として粗い。差し替え可能性を保っているのはシーム（`worker.Consumer` / `publisher.Publisher`）であり、アダプターを import しないことはそこに何も足さない。取り除いているのは動く実例だけである。
 
 ## 決定
 
-ブローカーアダプターは、**削除可能なサンプル群の一部としてデフォルトビルドへ配線してよい**。E3 は、リンクではなく結合を測る不変条件へ置き換える。
+ブローカーアダプターは、キューのどちら側であっても、**削除可能なサンプル群の一部としてデフォルトビルドへ配線してよい**。受信側のシーム（`worker.Consumer` / `worker.FailureHandler`）と outbox の publish 側のシーム（`publisher.Publisher`）は同じ扱いとする。E3 は、リンクではなく結合を測る不変条件へ置き換える。
 
 > **E3'**: `make setup-remove-sample-api` の実行後、リポジトリの結合はサンプル追加前と同一である。
 
@@ -34,8 +36,10 @@ E3' は 4 つの条件に分解でき、いずれも機械的に検証できる�
 
 1. **core の `*.go` がブローカーアダプターを参照しない** — `scripts/setup/verify-sample-removal.mjs` の `checkNoDanglingReferences` が検査する。
 2. **core のドキュメントがサンプルを参照しない** — core のドキュメントは構造（`internal/controller/worker/<name>/`）を記述し、サンプルの具体名を参照しない。
-3. **シームがサンプル追加前の形へ戻る** — `internal/usecase/boundary/worker` へのサンプル由来の変更は、退避側にサンプル追加前の形を保持する `sample-api:replace` ブロックで囲む。
+3. **シームがサンプル追加前の形へ戻る** — `internal/usecase/boundary/worker` または `internal/usecase/boundary/publisher` へのサンプル由来の変更は、退避側にサンプル追加前の形を保持する `sample-api:replace` ブロックで囲む。
 4. **不要になった依存が `go.mod` / `vendor/` から落ちる** — 削除チェーンで `make tidy-lib` を実行する。
+
+マーカーが付くのは**配線**であってアダプターではない。アダプターのパッケージ、本物の代わりに立てるローカルブローカーのサービス、およびそれらが読む設定は core であり、削除後も残る — object storage のアダプターとローカルの Garage サービスが既にそうであるように。削除できるのは、core のファイルをブローカーアダプター参照の立場に置くコード、すなわち import・判別子の分岐・それを選ぶ値だけである。条件 1 が測っているのはこれであり、アダプターを削除せずビルドと単体テストまで行ったうえで到達不能に留める理由でもある。
 
 **E1 / E2 は変更しない**。エンジンは infrastructure を import せず、インメモリ fake だけでグリーンになる。
 
@@ -76,4 +80,4 @@ Postgres ベースの pull-ack アダプターであれば、ベンダー SDK �
 - [ADR-0044](0044-sqs-adapter-opt-in.ja.md) を supersede する。親の決定: [ADR-0042](0042-broker-agnostic-worker-scaffold.ja.md)。原則: [ADR-0001](0001-avoid-lock-in.ja.md)。
 - [ADR-0043](0043-out-of-scope-push-streaming-brokers.ja.md) は影響を受けない。push 型・ストリーミングログ型のブローカーは引き続き worker ポートの対象外である。outbox の publish 先として pull-ack ブローカーを選ぶことは、そもそも同 ADR の対象ではなかった。
 - E3' は [`docs/design/worker.md`](../design/worker.ja.md) に記載し、`.github/workflows/sample-removal-check.yaml` が強制する。
-- 参照: [`internal/infrastructure/queue/sqs/README.md`](../../../internal/infrastructure/queue/sqs/README.ja.md)。
+- 参照: アダプターは [`internal/infrastructure/queue/sqs/README.md`](../../../internal/infrastructure/queue/sqs/README.ja.md)、それを選ぶ判別子は [`internal/infrastructure/publisher/README.md`](../../../internal/infrastructure/publisher/README.ja.md)。

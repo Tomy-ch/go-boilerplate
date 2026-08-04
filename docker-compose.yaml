@@ -19,6 +19,13 @@ services:
       - .:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
+# sample-api:begin
+    # 実行時 env は env/.env より優先されるため、local だけがキューへ向く。判別子を env/.env
+    # ではなくここに置くのは、環境差の宣言（env/README.md の Per-environment value）が削除後に
+    # 陳腐化する一方、Markdown の表では replace マーカーで差し替えられないため。
+    environment:
+      OUTBOX_PUBLISHER: sqs
+# sample-api:end
     tty: true
     stdin_open: true
     working_dir: /app
@@ -138,6 +145,25 @@ services:
     env_file:
       - env/.env
     restart: "no"
+    profiles:
+      - development
+      - tools
+
+  elasticmq: # SQS 互換ブローカー（ローカル開発用。テストは in-process の fake を使う）
+    image: softwaremill/elasticmq-native:1.6.16@sha256:8383f29ad746c12981ca2128f689a4b4a93815235f1a7851d2f165316503d132
+    ports:
+      - "9324:9324" # SQS API
+    volumes:
+      # キューと DLQ の定義。起動時に読まれるため初期化用の one-shot コンテナは持たない。
+      - ./docker/elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro
+    healthcheck:
+      # SQS API ポートの受付可否だけを見る。ListQueues を叩くと空レスポンスとの区別が付かず、
+      # 起動直後のキュー作成完了を待てないため、接続可否を判定に使う。
+      test: ["CMD", "nc", "-z", "localhost", "9324"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
     profiles:
       - development
       - tools

@@ -3,7 +3,7 @@ status: accepted
 date: 2026-08-04
 deciders: [maintainers]
 supersedes: 0044
-tags: [worker, async, dependencies]
+tags: [worker, outbox, async, dependencies]
 ---
 
 # ADR-0106: Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired
@@ -38,6 +38,12 @@ travelled through them here, and `provideWorkers()` in `internal/di/module/worke
 adapter's SQS-specific behaviour (visibility-timeout extension, receipt-handle round-trip, attribute
 mapping, `ApproximateReceiveCount` parsing) is covered only against a mocked client.
 
+**The same question arises on the publish side.** `publisher.Publisher` had a single implementation,
+an HTTP POST, so no core file referenced a broker adapter. Giving the outbox a queue target means a
+core file — the implementation selector in `internal/infrastructure/publisher` — imports one. The
+direction of travel differs, but the shape of the question does not, so what follows is stated over
+both seams rather than over the worker alone.
+
 The concern behind ADR-0044 is better stated as **coupling**, not linkage: the repository must not
 become structurally dependent on one vendor. Linkage is a poor proxy for that. Replaceability is
 preserved by the seam (`worker.Consumer` / `publisher.Publisher`), and declining to import the
@@ -45,8 +51,10 @@ adapter adds nothing to it — it only removes the worked example.
 
 ## Decision
 
-A broker adapter **may be wired into the default build as part of the removable sample set**. E3 is
-replaced by an invariant that measures coupling rather than linkage.
+A broker adapter **may be wired into the default build as part of the removable sample set**, on
+either side of the queue: the consuming seam (`worker.Consumer` / `worker.FailureHandler`) and the
+outbox publish seam (`publisher.Publisher`) are governed alike. E3 is replaced by an invariant that
+measures coupling rather than linkage.
 
 > **E3'**: after `make setup-remove-sample-api`, the repository's coupling is identical to what it
 > was before the sample was added.
@@ -58,9 +66,16 @@ E3' decomposes into four conditions, each mechanically verifiable:
 2. **No core document references a sample** — core documents describe structure
    (`internal/controller/worker/<name>/`), never a sample's name.
 3. **The seam returns to its pre-sample shape** — any sample-driven change to
-   `internal/usecase/boundary/worker` is wrapped in a `sample-api:replace` block whose escrow side
-   holds the pre-sample form.
+   `internal/usecase/boundary/worker` or `internal/usecase/boundary/publisher` is wrapped in a
+   `sample-api:replace` block whose escrow side holds the pre-sample form.
 4. **Removed dependencies leave `go.mod` / `vendor/`** — `make tidy-lib` runs in the removal chain.
+
+What carries the marker is the **wiring**, not the adapter. The adapter package, the local broker
+service that stands in for the real one, and the configuration they read are core and survive the
+removal — as the object-storage adapter and its local Garage service already do. Removable is only
+the code that puts a core file in the position of referencing a broker adapter: the import, the
+discriminator branch, and the value that selects it. That is what condition 1 measures, and it is
+why the adapter is left built and unit-tested but unreachable rather than deleted.
 
 **E1 and E2 are unchanged**: the engine does not import infrastructure, and the engine is green
 against the in-memory fake alone.
@@ -122,4 +137,6 @@ introduce. The reference adapter also stays reusable because the local broker is
   publish target was never in its scope.
 - E3' is stated in [`docs/design/worker.md`](../design/worker.md) and enforced by
   `.github/workflows/sample-removal-check.yaml`.
-- Reference: [`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md).
+- Reference: [`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md)
+  for the adapter, [`internal/infrastructure/publisher/README.md`](../../internal/infrastructure/publisher/README.md)
+  for the discriminator that selects it.

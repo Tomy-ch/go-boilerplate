@@ -49,10 +49,20 @@ type Auth struct {
 
 // Outbox は transactional outbox relay の設定を保持する。
 type Outbox struct {
+	// Publisher は publish 先の種別（"http" / "sqs"）です。publish 先は環境ティアではなく
+	// デプロイ先の判断で決まるため、ENV 分岐ではなく明示の判別子で切り替える。
+	// 未知の値は DI で起動エラーにする（fail-closed）。
+	Publisher    string        `env:"PUBLISHER"     envDefault:"http"`
 	Endpoint     string        `env:"ENDPOINT"      envDefault:""`
 	PollInterval time.Duration `env:"POLL_INTERVAL" envDefault:"1s"`
 	ErrorBackoff time.Duration `env:"ERROR_BACKOFF" envDefault:"5s"`
 	BatchSize    int           `env:"BATCH_SIZE"    envDefault:"100"`
+	// Queue* は PUBLISHER=sqs のときだけ使う。未設定のまま sqs を選ぶと adapter 構築時に落とす。
+	QueueEndpoint        string `env:"QUEUE_ENDPOINT"          envDefault:""`
+	QueueRegion          string `env:"QUEUE_REGION"            envDefault:""`
+	QueueURL             string `env:"QUEUE_URL"               envDefault:""`
+	QueueAccessKeyID     string `env:"QUEUE_ACCESS_KEY_ID"     envDefault:""`
+	QueueSecretAccessKey string `env:"QUEUE_SECRET_ACCESS_KEY" envDefault:""`
 }
 
 // Worker は worker engine の engine-core 設定（broker 非依存）を保持する。

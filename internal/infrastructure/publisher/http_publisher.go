@@ -53,8 +53,8 @@ func RequiredDownstream() httpclient.Downstream {
 	return downstream
 }
 
-// New は、publish 境界の HTTP 実装を生成します。
-func New(
+// NewHTTP は、publish 境界の HTTP 実装を生成します。
+func NewHTTP(
 	endpoint Endpoint,
 	client httpclient.Client,
 	tf observability.TracerFactory,

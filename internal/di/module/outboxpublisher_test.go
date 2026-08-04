@@ -27,16 +27,14 @@ func Test_outboxPublisherModule(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("publish 境界の Publisher と送信先 Endpoint を提供する", func(t *testing.T) {
+		t.Run("publish 境界の Publisher を提供する", func(t *testing.T) {
 			t.Parallel()
 
-			var (
-				publisher publisherbd.Publisher
-				endpoint  outboxpublisher.Endpoint
-			)
+			// 送信先の解決は判別子ごとの分岐内で行うため、Endpoint はグラフに露出しない。
+			var publisher publisherbd.Publisher
 
 			validateGraph(t, append(commonDeps(), clockModule(), httpClientModule(), outboxPublisherModule(),
-				fx.Populate(&publisher, &endpoint))...)
+				fx.Populate(&publisher))...)
 		})
 
 		t.Run("outbox 宛の非標準 profile を required と対で寄与する", func(t *testing.T) {

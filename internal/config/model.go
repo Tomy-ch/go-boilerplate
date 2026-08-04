@@ -133,10 +133,16 @@ type WorkerConfig struct {
 
 // OutboxConfig は、transactional outbox relay の設定を保持します。
 type OutboxConfig struct {
-	endpoint     string
-	pollInterval time.Duration
-	errorBackoff time.Duration
-	batchSize    int
+	publisher            string
+	endpoint             string
+	pollInterval         time.Duration
+	errorBackoff         time.Duration
+	batchSize            int
+	queueEndpoint        string
+	queueRegion          string
+	queueURL             string
+	queueAccessKeyID     string
+	queueSecretAccessKey string
 }
 
 // AuthConfig は、access token（JWT）検証の設定を保持します。
@@ -441,8 +447,26 @@ func (w *WorkerConfig) NackBackoffMax() time.Duration { return w.nackBackoffMax 
 // NewOutboxConfig は、outbox relay の設定を返します。
 func NewOutboxConfig(cfg *Config) *OutboxConfig { return &cfg.outbox }
 
+// Publisher は、publish 先の種別（"http" / "sqs"）を返します。
+func (o *OutboxConfig) Publisher() string { return o.publisher }
+
 // Endpoint は、メッセージの送信先エンドポイント URL を返します。
 func (o *OutboxConfig) Endpoint() string { return o.endpoint }
+
+// QueueEndpoint は、SQS 互換エンドポイントを返します（空なら SDK 既定の解決に委ねます）。
+func (o *OutboxConfig) QueueEndpoint() string { return o.queueEndpoint }
+
+// QueueRegion は、SQS の署名に用いるリージョンを返します。
+func (o *OutboxConfig) QueueRegion() string { return o.queueRegion }
+
+// QueueURL は、publish 先キューの URL を返します。
+func (o *OutboxConfig) QueueURL() string { return o.queueURL }
+
+// QueueAccessKeyID は、SQS の静的資格情報のアクセスキー ID を返します。
+func (o *OutboxConfig) QueueAccessKeyID() string { return o.queueAccessKeyID }
+
+// QueueSecretAccessKey は、SQS の静的資格情報のシークレットアクセスキーを返します。
+func (o *OutboxConfig) QueueSecretAccessKey() string { return o.queueSecretAccessKey }
 
 // PollInterval は、pending を捌き切った後に次 poll まで待機する時間を返します。
 func (o *OutboxConfig) PollInterval() time.Duration { return o.pollInterval }

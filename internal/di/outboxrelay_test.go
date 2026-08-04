@@ -27,6 +27,8 @@ func TestNewOutboxRelayApp(t *testing.T) {
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("有効な OUTBOX_ENDPOINT なら relay app が起動可能", func(t *testing.T) {
+			// 送信先の検証対象は HTTP 経路なので、判別子を明示して env の既定に依存させない。
+			t.Setenv("OUTBOX_PUBLISHER", "http")
 			t.Setenv("OUTBOX_ENDPOINT", "http://localhost:9999")
 
 			app := NewOutboxRelayApp(30 * time.Second)
@@ -38,6 +40,7 @@ func TestNewOutboxRelayApp(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Run("OUTBOX_ENDPOINT が空なら起動時に弾かれる", func(t *testing.T) {
+			t.Setenv("OUTBOX_PUBLISHER", "http")
 			t.Setenv("OUTBOX_ENDPOINT", "")
 
 			app := NewOutboxRelayApp(30 * time.Second)
