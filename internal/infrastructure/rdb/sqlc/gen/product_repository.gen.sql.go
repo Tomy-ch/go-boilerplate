@@ -289,6 +289,40 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 	return &i, err
 }
 
+const listExistingProductImagePaths = `-- name: ListExistingProductImagePaths :many
+SELECT DISTINCT image_path
+FROM products
+WHERE image_path = ANY($1::TEXT [])
+`
+
+// === source: database/dml/repository/product/select_existing_image_paths.sql ===
+// 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。
+// 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
+// ここに現れなかったパスが孤児にあたる。商品は論理削除を持たないため、生存行だけが参照元になる。
+//
+//	SELECT DISTINCT image_path
+//	FROM products
+//	WHERE image_path = ANY($1::TEXT [])
+func (q *Queries) ListExistingProductImagePaths(ctx context.Context, imagePaths []string) ([]*string, error) {
+	rows, err := q.db.Query(ctx, listExistingProductImagePaths, imagePaths)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*string
+	for rows.Next() {
+		var image_path *string
+		if err := rows.Scan(&image_path); err != nil {
+			return nil, err
+		}
+		items = append(items, image_path)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLowStockProducts = `-- name: ListLowStockProducts :many
 SELECT
     ps.name AS status_name,

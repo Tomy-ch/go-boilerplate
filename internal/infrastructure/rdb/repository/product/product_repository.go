@@ -242,6 +242,34 @@ func (r *repository) Count(ctx context.Context) (product.Counts, error) {
 	return product.Counts{Total: row.TotalCount, Published: row.PublishedCount}, nil
 }
 
+// FilterExistingImagePaths は、paths のうち products が実際に参照しているものを重複排除して返します。
+// 未参照オブジェクトの回収で「消してよいか」を判定するための照会で、返らなかったパスが孤児にあたります。
+func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	if len(paths) == 0 {
+		return nil, nil
+	}
+
+	db := gen.New(driver.New(ctx, r.db))
+	rows, err := db.ListExistingProductImagePaths(ctx, paths)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	existing := make([]string, 0, len(rows))
+	for _, p := range rows {
+		// image_path は NULL 許容だが、NULL はどの要素とも一致しないため結果には現れない。
+		// それでも nil を空文字として拾うと、参照されていないパスを参照済みと誤判定して孤児を残すため取り除く。
+		if p == nil {
+			continue
+		}
+		existing = append(existing, *p)
+	}
+	return existing, nil
+}
+
 // intPtrToInt32Ptr は、ドメインの *int を sqlc の *int32 へ変換します（nil はそのまま nil）。
 func intPtrToInt32Ptr(v *int) *int32 {
 	if v == nil {
