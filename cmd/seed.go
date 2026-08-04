@@ -80,7 +80,13 @@ func openSeedObjectStorage(logger logging.Logger, database string) (string, seed
 		return "", nil, err
 	}
 	osCfg := config.NewObjectStorageConfig(cfg)
-	storage := objectstorageinfra.New(osCfg, observability.NewDisabledTracerFactory())
+	// seed の投入先はローカルスタックに限る前提で、呼び出し先が endpoint を見て実環境を拒否する。
+	// その前提でも link-local 宛ては常に拒否したいため、ガード付きクライアントを通す。
+	storage := objectstorageinfra.New(
+		osCfg,
+		observability.NewDisabledOutboundHTTPClient(true),
+		observability.NewDisabledTracerFactory(),
+	)
 
 	put := func(ctx context.Context, obj seed.ObjectToPut) error {
 		_, perr := storage.Put(ctx, objectstorage.PutObject{

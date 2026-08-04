@@ -43,7 +43,9 @@ outbox 行へ記録し、試行回数を使い切った時点で dead になり�
 `publisher.Message` は属性数を持ちません。
 
 クライアントの生成は `NewClient` が担い、endpoint と資格情報の差し替えだけで ElasticMQ・LocalStack・
-本番 SQS のいずれにも向けられます。いずれも本パッケージでビルドと単体テストまで行われますが、
+本番 SQS のいずれにも向けられます。`HTTPClient` にはアプリの他の外部通信と同じ SSRF ガード付き
+transport を渡すため、link-local（クラウドメタデータ）へ向けた endpoint は取得される前に dial で
+拒否されます。nil のままにすると SDK 自身の transport に落ち、このガードを失います。いずれも本パッケージでビルドと単体テストまで行われますが、
 実行中のバイナリへ届くのは outbox publisher の `sqs` 分岐（`sample-api` マーカー付き）を経由した
 ときだけです。受信側はそもそも配線されていません。
 

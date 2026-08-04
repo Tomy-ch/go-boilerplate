@@ -20,6 +20,9 @@ type ClientConfig struct {
 	AccessKeyID string
 	// SecretAccessKey は、静的資格情報のシークレットアクセスキーです。
 	SecretAccessKey string
+	// HTTPClient は、SDK が使う HTTP クライアントです。SSRF ガード付きの実装を DI が注入します。
+	// nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。
+	HTTPClient aws.HTTPClient
 }
 
 // NewClient は、設定から SQS クライアントを生成します。
@@ -27,6 +30,7 @@ func NewClient(cfg ClientConfig) *sqs.Client {
 	awsCfg := aws.Config{
 		Region:      cfg.Region,
 		Credentials: awscreds.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
+		HTTPClient:  cfg.HTTPClient,
 	}
 	return sqs.NewFromConfig(awsCfg, func(o *sqs.Options) {
 		if cfg.Endpoint != "" {
