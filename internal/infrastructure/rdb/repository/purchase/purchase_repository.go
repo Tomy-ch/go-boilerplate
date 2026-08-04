@@ -160,6 +160,25 @@ func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) er
 	return nil
 }
 
+// UpdateDelivered は、購入の状態更新（status_id / delivered_at）を渡された tx 内で実行します。
+// 配達確認の証跡を扱わないため単一集約（purchases）のみを更新し、在庫操作は伴いません。
+// status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します。遷移可否のガードは持たず、
+// 対象行が呼び出し側で FOR UPDATE 取得・検証済みであること（ドメインが遷移の source of truth）に依存します。
+func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	if err := db.UpdatePurchaseDelivered(ctx, &gen.UpdatePurchaseDeliveredParams{
+		StatusCode:  toInt16(p.StatusCode()),
+		DeliveredAt: p.DeliveredAt(),
+		ID:          p.ID(),
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	return nil
+}
+
 // FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 // 購入ステータスマスタとの結合で解決します。存在しない場合は NotFound を返します。
 func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchase.Detail, error) {
@@ -198,6 +217,7 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 		PaidAt:         row.PaidAt,
 		CanceledAt:     row.CanceledAt,
 		ShippedAt:      row.ShippedAt,
+		DeliveredAt:    row.DeliveredAt,
 	}, nil
 }
 

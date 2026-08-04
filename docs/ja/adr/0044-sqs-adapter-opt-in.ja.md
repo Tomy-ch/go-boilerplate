@@ -1,7 +1,8 @@
 ---
-status: accepted
+status: superseded
 date: 2026-07-04
 deciders: [maintainers]
+superseded-by: 0106
 tags: [worker, async, dependencies]
 ---
 
@@ -11,7 +12,7 @@ English canonical: [0044-sqs-adapter-opt-in.md](../../adr/0044-sqs-adapter-opt-i
 
 ## ステータス
 
-accepted
+superseded by [ADR-0106](0106-broker-sdk-isolation-verified-after-sample-removal.ja.md)
 
 ## 背景
 

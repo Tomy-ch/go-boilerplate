@@ -47,7 +47,7 @@ The engine is **completed against the in-memory fake** (`internal/usecase/bounda
 - `runner.go` — `Engine` (registry, `Run`, `Healthy`), `run.go` — per-run poll loop / dispatch / drain.
 - `circuit.go` — 3-state breaker (cooldown via `pkg/backoff`). `classify.go` — error → category. `settings.go` — engine-core `Settings`. `dispatch.go` — `PartitionKey` keyed serialization. `state.go` — `worker.State` impl. `errors.go` — registry sentinels. `telemetry.go` — O11Y (traceparent continuation / structured-log fields; the engine-owned metrics themselves live in `observability.WorkerMetrics`).
 
-The SQS reference adapter (`internal/infrastructure/queue/sqs`) is **not wired by default** so `aws-sdk-go-v2` stays out of the shipped binary.
+The SQS reference adapter (`internal/infrastructure/queue/sqs`) may be wired as part of the **removable sample set**. Broker-SDK isolation is verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired — see E3' in [`docs/adr/0106`](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.md).
 
 ## Config clamping (safe defaults, not silent)
 

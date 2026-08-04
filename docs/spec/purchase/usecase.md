@@ -406,6 +406,71 @@ workflow:
     - 未認証は controller で 401（Authn 不在）
 ```
 
+## PATCH 配達完了 (purchase deliver)
+
+`PATCH /v1/purchases/{purchaseId}/deliver`。購入を配達済みへ遷移させる状態遷移経路。`delivered_at` のセットと `status_id` の
+「配達済み」への更新のみを担い、配達確認の証跡（署名 / 受領写真 / GPS 位置）と在庫操作は伴わない。発送と同じく
+**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0029] の判定軸）。
+二重配達は購入行ロック（`repo.LockByID` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyDelivered`）で防ぐ。
+
+発送と同じ **admin 専用の運用操作**であり、認可の扱いも同じ 3 点で支払い・キャンセルと異なる:
+
+- **所有権を問わない**（admin は任意の購入を配達済みにできる）。よって `UserID` を入力に取らず、`Authn` をそのまま受けて認可へ渡す。
+- **認可は Authorizer へ委譲する**。usecase は role を検査せず、`ActionPurchaseDeliver` と所有者なしリソース
+  （`authz.NewResource("purchase", nil)`）を宣言するのみで、ポリシーは Authorizer（`internal/infrastructure/authz/userrole`）が持つ。
+- **不存在を 404 で秘匿しない**（非 admin は認可で先に 403 となり購入の存在を知り得ないため）。
+
+```yaml
+input:
+  args:
+    - name: authn                # 認証主体（認可の判定材料。usecase は role を検査せず Authorizer へ委譲）
+      type: "*auth.Authn"
+    - name: purchaseID           # 配達完了対象の購入 ID
+      type: uuid.UUID
+
+output:
+  struct: DeliverPurchaseView
+  fields:
+    - name: ID / Code / UserID
+      type: uuid.UUID / string / uuid.UUID
+    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（配達済み）
+      type: uuid.UUID / string
+    - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
+      type: int                     # USD セント整数
+    - name: Details
+      type: "[]PurchaseDetailView"
+    - name: OrderedAt
+      type: time.Time
+    - name: DeliveredAt
+      type: "*time.Time"            # 配達日時
+
+dependencies:
+  - authz.Authorizer                # ActionPurchaseDeliver の認可（admin 判定は内部 DB role が SoT）
+  - clock.Clock                     # Deliver(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
+  - tx.Manager                      # 最外 tx（本経路は idempotency を配線しない）
+  - purchase.Repository             # LockByID（FOR UPDATE）/ UpdateDelivered（status/delivered_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
+  - outbox.EmitUsecase              # purchase.delivered.v1 の emit（同一 tx）
+
+workflow:
+  tx_required: true
+  steps:
+    - "① authn が nil なら ErrUnauthenticated（401）"
+    - "② authorizer.Authorize(ActionPurchaseDeliver, Resource{kind: purchase, ownerID: nil}) で認可（tx の外）"
+    - "txm.Do 内で:"
+    - "  ③ repo.LockByID で購入行を FOR UPDATE ロックし明細込みで再構築（並行配達を直列化）"
+    - "  ④ purchase.Deliver(now) で遷移可否検証 + status/delivered_at を同時更新（ドメイン不変条件）"
+    - "  ⑤ repo.UpdateDelivered で purchases の status_id/delivered_at を更新（単一集約・在庫操作なし）"
+    - "  ⑥ emit.Emit(purchase.delivered.v1) を同一 tx で発行する"
+    - "  ⑦ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
+    - DeliverPurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
+  errors:
+    - ErrForbidden → 403（非 admin）
+    - ErrAlreadyDelivered → 409（二重配達）
+    - ErrDeliverNotAllowed → 409（未払い相当・支払い済み・完了・キャンセル済みからの不正遷移）
+    - ErrNotFound → 404（不存在。所有権による秘匿はしない）
+    - 未認証は controller で 401（Authn 不在）
+```
+
 ## Notes
 
 - 冪等スコープは内部 UserID（#581 の確定に追随）。middleware が Scope を設定し、本 usecase 側の固有作業はない。

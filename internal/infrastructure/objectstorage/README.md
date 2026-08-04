@@ -60,10 +60,10 @@ own; failures surface through the normalized error.
 
 ## Wired by default — unlike the SQS adapter
 
-This adapter **is** in the default DI graph, so `aws-sdk-go-v2/service/s3` is linked into the
-shipped binary. That is the opposite of [`queue/sqs`](../queue/sqs/README.md), which is
-deliberately left unwired to keep the AWS SDK out of the binary
-([ADR-0044](../../../docs/adr/0044-sqs-adapter-opt-in.md)).
+This adapter **is** in the default DI graph, so `aws-sdk-go-v2/service/s3` and the SDK core are
+linked into the shipped binary. [`queue/sqs`](../queue/sqs/README.md) is wired only from the
+removable sample set, so `service/sqs` leaves the binary once the sample is removed
+([ADR-0106](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)).
 
 The asymmetry is intentional: a worker has no broker until an integrator chooses one, whereas the
 object-storage port is exercised by the template out of the box and needs a working implementation
