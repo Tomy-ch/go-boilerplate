@@ -188,6 +188,232 @@ func Test_storage_Put(t *testing.T) {
 	})
 }
 
+func Test_storage_List(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("接頭辞に一致するオブジェクトをキーと更新時刻で返す", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+			putObjects(t, s, "products/a.png", "products/b.png", "invoices/c.pdf")
+
+			got, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/"})
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{"products/a.png", "products/b.png"}, listedKeys(got))
+			for _, o := range got.Objects {
+				assert.False(t, o.ModifiedAt.IsZero())
+			}
+		})
+
+		t.Run("接頭辞が一致しないオブジェクトは返さない", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+			putObjects(t, s, "invoices/c.pdf")
+
+			got, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/"})
+
+			require.NoError(t, err)
+			assert.Empty(t, got.Objects)
+		})
+
+		t.Run("Limit を超える場合は次カーソルを返し続きを取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+			putObjects(t, s, "products/a.png", "products/b.png", "products/c.png")
+
+			first, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/", Limit: 2})
+			require.NoError(t, err)
+			require.NotEmpty(t, first.NextCursor)
+			assert.Len(t, first.Objects, 2)
+
+			second, err := s.List(context.Background(),
+				boundary.ListQuery{Prefix: "products/", Cursor: first.NextCursor, Limit: 2})
+			require.NoError(t, err)
+
+			assert.Empty(t, second.NextCursor)
+			assert.Equal(t, []string{"products/a.png", "products/b.png", "products/c.png"},
+				append(listedKeys(first), listedKeys(second)...))
+		})
+
+		t.Run("最終ページでは次カーソルを空で返す", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+			putObjects(t, s, "products/a.png")
+
+			got, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/", Limit: 10})
+
+			require.NoError(t, err)
+			assert.Empty(t, got.NextCursor)
+		})
+
+		t.Run("対象が無ければ空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+
+			got, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/"})
+
+			require.NoError(t, err)
+			assert.Empty(t, got.Objects)
+			assert.Empty(t, got.NextCursor)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しないバケットの列挙は ErrUnavailable へ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, "missing-bucket")
+
+			_, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/"})
+
+			require.Error(t, err)
+			assert.True(t, xerrors.Is(err, apperror.ErrUnavailable))
+		})
+	})
+}
+
+func Test_storage_Delete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したキーのオブジェクトだけを削除する", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+			putObjects(t, s, "products/gone.png", "products/kept.png")
+
+			require.NoError(t, s.Delete(context.Background(), []string{"products/gone.png"}))
+
+			got, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/"})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"products/kept.png"}, listedKeys(got))
+		})
+
+		t.Run("存在しないキーの削除は成功として扱い再実行しても結果が変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			// 冪等性はこのジョブの再実行安全性そのもの。存在しないキーで失敗すると、
+			// 一度回収された孤児が次回以降ジョブ全体を落とすようになる。
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+			putObjects(t, s, "products/a.png")
+
+			require.NoError(t, s.Delete(context.Background(), []string{"products/a.png"}))
+			require.NoError(t, s.Delete(context.Background(), []string{"products/a.png"}))
+
+			got, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/"})
+			require.NoError(t, err)
+			assert.Empty(t, got.Objects)
+		})
+
+		t.Run("キーが空なら何もせず成功する", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+			putObjects(t, s, "products/a.png")
+
+			require.NoError(t, s.Delete(context.Background(), nil))
+
+			got, err := s.List(context.Background(), boundary.ListQuery{Prefix: "products/"})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"products/a.png"}, listedKeys(got))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しないバケットへの削除は ErrUnavailable へ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			ts, _, _ := newFakeS3(t)
+			s := newStorage(t, ts.URL, "missing-bucket")
+
+			err := s.Delete(context.Background(), []string{"products/a.png"})
+
+			require.Error(t, err)
+			assert.True(t, xerrors.Is(err, apperror.ErrUnavailable))
+		})
+
+		t.Run("一部のキーだけ削除に失敗した応答は ErrUnavailable として扱う", func(t *testing.T) {
+			t.Parallel()
+
+			// S3 はキー単位の失敗を呼び出しエラーではなく応答本文で返す。これを成功として扱うと、
+			// 消えていないオブジェクトを消えたものとして数え、回収ジョブが以後その孤児を報告しなくなる。
+			ts := newPartialDeleteFailureS3(t)
+			s := newStorage(t, ts.URL, testBucket)
+
+			err := s.Delete(context.Background(), []string{"products/ok.png", "products/ng.png"})
+
+			require.Error(t, err)
+			assert.True(t, xerrors.Is(err, apperror.ErrUnavailable))
+		})
+	})
+}
+
+// newPartialDeleteFailureS3 は、DeleteObjects に対してキー単位の失敗を含む応答を返す
+// テスト専用の S3 サーバを起動します。gofakes3 のインメモリ実装は部分失敗を作れないため、
+// 応答本文を直接組み立てます。
+func newPartialDeleteFailureS3(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	const body = `<?xml version="1.0" encoding="UTF-8"?>` +
+		`<DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">` +
+		`<Error><Key>products/ng.png</Key><Code>AccessDenied</Code><Message>Access Denied</Message></Error>` +
+		`</DeleteResult>`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+// putObjects は、指定キーのオブジェクトを保存するテストヘルパーです。
+func putObjects(t *testing.T, s boundary.Storage, keys ...string) {
+	t.Helper()
+
+	for _, k := range keys {
+		_, err := s.Put(context.Background(), boundary.PutObject{
+			Key:         k,
+			Body:        []byte("data"),
+			ContentType: "application/octet-stream",
+		})
+		require.NoError(t, err)
+	}
+}
+
+// listedKeys は、列挙結果からキーだけを取り出すテストヘルパーです。
+func listedKeys(r boundary.ListResult) []string {
+	keys := make([]string, 0, len(r.Objects))
+	for _, o := range r.Objects {
+		keys = append(keys, o.Key)
+	}
+	return keys
+}
+
 // readAll は、io.Reader を最後まで読み切って返すテストヘルパーです。
 func readAll(t *testing.T, r io.Reader) []byte {
 	t.Helper()
