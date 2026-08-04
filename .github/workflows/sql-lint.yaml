@@ -19,6 +19,7 @@ concurrency:
 jobs:
   sql-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -147,13 +148,13 @@ jobs:
           done
 
       - name: Comment SQL lint result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sql-lint-result -->'
-          title: ${{ steps.comment.outputs.title }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ SQL Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/sql-lint-comment.md
 
       - name: Fail if SQL lint failed

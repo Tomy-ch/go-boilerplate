@@ -31,6 +31,7 @@ concurrency:
 jobs:
   md-skill-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -77,13 +78,13 @@ jobs:
           exit 0
 
       - name: Comment skill lint result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- md-skill-lint-result -->'
-          title: ${{ steps.skill-lint.outputs.title }}
+          title: "${{ steps.skill-lint.outputs.title || '## ⚠️ Skill Definition Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/skill-lint.log
           details-summary: 'skill-lint log'
 

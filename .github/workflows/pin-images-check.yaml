@@ -20,6 +20,7 @@ concurrency:
 jobs:
   pin-images-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -62,13 +63,13 @@ jobs:
           exit 0
 
       - name: Comment pin-images result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- pin-images-result -->'
-          title: ${{ steps.pin.outputs.title }}
+          title: "${{ steps.pin.outputs.title || '## ⚠️ Pin Images Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/pin-images.log
           details-summary: 'pin-images log'
 

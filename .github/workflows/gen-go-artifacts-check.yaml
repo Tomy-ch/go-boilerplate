@@ -160,13 +160,13 @@ jobs:
           } >> "$out"
 
       - name: Comment generated artifacts result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-go-artifacts-filelist -->'
-          title: ${{ steps.comment.outputs.title }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ Generated Go Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-go-comment.md
 
       - name: Fail if diff exists

@@ -29,6 +29,7 @@ concurrency:
 jobs:
   generate-mock-auth-oapi-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -159,13 +160,13 @@ jobs:
           } >> "$out"
 
       - name: Comment generated artifacts result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-mock-auth-oapi-artifacts-filelist -->'
-          title: ${{ steps.comment.outputs.title }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ Generated Mock-Auth OpenAPI Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-mock-auth-oapi-comment.md
 
       - name: Fail if diff exists

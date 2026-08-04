@@ -22,6 +22,7 @@ concurrency:
 jobs:
   scorecard:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Scorecard must analyse the default branch only:
     #   - the Branch-Protection check can only be evaluated against the default branch, and
     #   - `publish_results` is accepted by the OpenSSF API only for the default branch.

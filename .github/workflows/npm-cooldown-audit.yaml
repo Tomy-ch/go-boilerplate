@@ -44,6 +44,7 @@ concurrency:
 jobs:
   npm-cooldown-audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -128,13 +129,13 @@ jobs:
       # when something is wrong gives no evidence that the detector still works, and
       # this one is expected to stay silent for its whole life.
       - name: Comment npm cooldown result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- npm-cooldown-result -->'
-          title: ${{ steps.audit.outputs.title }}
+          title: "${{ steps.audit.outputs.title || '## ⚠️ npm Cooldown Audit: CUT OFF (no result produced)' }}"
           body-file: npm-cooldown-summary.md
           details-summary: '📄 Summary'
 
