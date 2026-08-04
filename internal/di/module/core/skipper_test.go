@@ -11,6 +11,34 @@ import (
 	"go.uber.org/fx"
 )
 
+func TestSkipperModule_GraphIsValid(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュールを組み込めば Skipper が解決できる", func(t *testing.T) {
+			t.Parallel()
+
+			var s echomw.Skipper
+
+			validateGraph(t, SkipperModule(), fx.Populate(&s))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("モジュール未配線では Skipper が解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var s echomw.Skipper
+
+			requireGraphIncomplete(t, fx.Populate(&s))
+		})
+	})
+}
+
 func TestSkipperModule(t *testing.T) {
 	t.Parallel()
 

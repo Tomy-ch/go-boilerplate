@@ -43,6 +43,7 @@ concurrency:
 jobs:
   osv-scanner:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -126,13 +127,13 @@ jobs:
             osv-scanner-summary.md
 
       - name: Comment OSV Scan result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- osv-scanner-result -->'
-          title: ${{ steps.scan.outputs.title }}
+          title: "${{ steps.scan.outputs.title || '## ⚠️ OSV Scan: CUT OFF (no result produced)' }}"
           body-file: osv-scanner-summary.md
           details-summary: '📄 Summary'
 
@@ -189,6 +190,7 @@ jobs:
   osv-diff:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -304,12 +306,13 @@ jobs:
             osv-diff-summary.md
 
       - name: Comment OSV diff result on PR
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- osv-diff-result -->'
-          title: ${{ steps.diff.outputs.title }}
+          title: "${{ steps.diff.outputs.title || '## ⚠️ OSV Diff: CUT OFF (no result produced)' }}"
           body-file: osv-diff-summary.md
           details-summary: '📄 Summary'
 

@@ -8,15 +8,21 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 これは、シームが（in-memory の fake 以外の）2 つ目の実装でも成立することを示す**参照実装**であり、
 この抽象が fake 都合の形になっていない（fake-shaped でない）ことを証明します。
 
-## デフォルトでは配線されない（依存隔離, E3）
+## 配線と依存隔離（E3'）
 
-このパッケージは **`cmd/` のデフォルト配線から import されない**ため、`aws-sdk-go-v2` は
-出荷バイナリ（`serve` / `worker`）に**リンクされません**。それでも CI ではビルド・テスト対象です
-（`go build ./...`, `go test ./...`）。本番で利用するには、integrator が `NewConsumer` /
-`NewDeadLetter` を `WorkerModule` に登録した `worker.Worker` に配線します。
+このパッケージを配線すると `aws-sdk-go-v2/service/sqs` がバイナリにリンクされます。`serve` /
+`worker` / `outbox-relay` は**単一**バイナリのサブコマンドであり、キューを消費する役割だけに
+リンクを限定することはできません。そのため隔離は**サンプル削除後**の状態で定義します。すなわち
+`make setup-remove-sample-api` の後、結合はサンプル追加前と同一でなければなりません。サンプル群
+からの配線は、いずれも `sample-api` マーカーを伴います。
+[ADR-0106](../../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) を参照。
 
-隔離の検証: `./cmd/` からビルドしたバイナリに対する `go version -m <binary>` は
-`github.com/aws/aws-sdk-go-v2` を列挙してはいけません。
+本番で利用するには、integrator が `NewConsumer` / `NewDeadLetter` を `WorkerModule` に登録した
+`worker.Worker` に配線します。
+
+隔離の検証: サンプル削除後の `go list -deps ./cmd/` は
+`github.com/aws/aws-sdk-go-v2/service/sqs` を列挙してはいけません。SDK コアと `service/s3` は
+object storage adapter 経由で常にリンクされます。
 
 ## ポート対応
 

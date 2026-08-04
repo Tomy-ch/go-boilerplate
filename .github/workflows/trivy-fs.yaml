@@ -36,6 +36,7 @@ concurrency:
 jobs:
   trivy-fs:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Job-scoped rather than workflow-scoped: once this file gained a second job,
     # zizmor's excessive-permissions audit rates a workflow-level pull-requests:
     # write as overly broad, because it would then also cover jobs that never
@@ -130,13 +131,13 @@ jobs:
             trivy-fs-summary.md
 
       - name: Comment Trivy FS result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-fs-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Dependency Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-fs-summary.md
           details-summary: '📄 Summary'
 
@@ -162,6 +163,7 @@ jobs:
   # with hundreds of alerts that nobody has agreed are problems yet.
   trivy-license:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -248,13 +250,13 @@ jobs:
             trivy-license-summary.md
 
       - name: Comment license result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-license-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ License Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-license-summary.md
           details-summary: '📄 Summary'
 

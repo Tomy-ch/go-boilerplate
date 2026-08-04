@@ -32,6 +32,7 @@ concurrency:
 jobs:
   lockfile-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -106,13 +107,13 @@ jobs:
           path: lockfile-lint.log
 
       - name: Comment lockfile result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- lockfile-integrity-result -->'
-          title: ${{ steps.lint.outputs.title }}
+          title: "${{ steps.lint.outputs.title || '## ⚠️ Lockfile Integrity: CUT OFF (no result produced)' }}"
           body-file: lockfile-lint.log
           details-summary: 'lockfile-lint log'
 

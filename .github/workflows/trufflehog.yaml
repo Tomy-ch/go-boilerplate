@@ -16,6 +16,7 @@ concurrency:
 jobs:
   trufflehog:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
@@ -125,13 +126,13 @@ jobs:
           path: trufflehog-summary.md
 
       - name: Comment TruffleHog result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trufflehog-result -->'
-          title: ${{ steps.trufflehog.outputs.title }}
+          title: "${{ steps.trufflehog.outputs.title || '## ⚠️ Secret Scan (TruffleHog): CUT OFF (no result produced)' }}"
           body-file: trufflehog-summary.md
           details-summary: '📄 Summary'
 

@@ -43,6 +43,7 @@ concurrency:
 jobs:
   trivy-config:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -121,13 +122,13 @@ jobs:
             trivy-config-summary.md
 
       - name: Comment Trivy config result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-config-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Config Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-config-summary.md
           details-summary: '📄 Summary'
 

@@ -21,6 +21,9 @@ const (
 	maxOffset = maxPage * maxPerPage
 )
 
+// perPagePolicy は、Page / Cursor が共有する1ページあたりの件数規約です。
+var perPagePolicy = LimitPolicy{Default: defaultPerPage, Max: maxPerPage}
+
 // Page は、ページネーションに必要な取得上限（limit）とオフセット（offset）を保持する値オブジェクトです。
 type Page struct {
 	limit  int
@@ -33,13 +36,7 @@ type Page struct {
 //	page[offsetの係数]は最小値1で、maxPage を超える場合はエラーを返します。
 //	perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPageまで許容します。
 func NewPageFrom1Based(page, perPage *int) (*Page, error) {
-	limit := defaultPerPage
-	if perPage != nil && *perPage > 0 {
-		limit = *perPage
-	}
-	if limit > maxPerPage {
-		limit = maxPerPage
-	}
+	limit := NewLimit(perPage, perPagePolicy).Value()
 
 	pg := minPage
 	if page != nil && *page > 0 {

@@ -71,6 +71,22 @@ func TestRunOutboxReplay(t *testing.T) {
 			require.Error(t, err)
 			assert.Zero(t, count)
 		})
+
+		t.Run("fxグラフの構築に失敗するとpanicせず0件と構築エラーを返す", func(t *testing.T) {
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "not-a-duration")
+
+			// nil 参照の退行が起きても panic をこのテスト内で捕捉し、同一パッケージの後続テストを巻き込まない。
+			var (
+				count int64
+				err   error
+			)
+			require.NotPanics(t, func() {
+				count, err = RunOutboxReplay(context.Background(), nil)
+			})
+
+			require.ErrorIs(t, err, config.ErrFailedToParseConfig)
+			assert.Zero(t, count)
+		})
 	})
 }
 

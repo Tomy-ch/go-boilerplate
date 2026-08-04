@@ -45,6 +45,7 @@ concurrency:
 jobs:
   openapi-security:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -113,13 +114,13 @@ jobs:
           path: spectral.log
 
       - name: Comment OpenAPI security result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- openapi-security-result -->'
-          title: ${{ steps.scan.outputs.title }}
+          title: "${{ steps.scan.outputs.title || '## ⚠️ OpenAPI Security: CUT OFF (no result produced)' }}"
           body-file: spectral.log
           details-summary: 'spectral log'
 

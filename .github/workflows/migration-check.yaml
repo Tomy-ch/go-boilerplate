@@ -14,6 +14,7 @@ permissions:
 jobs:
   migration-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Harden the runner
@@ -85,13 +86,13 @@ jobs:
           fi
 
       - name: Comment migration result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- migration-check-result -->'
-          title: ${{ steps.migration.outputs.title }}
+          title: "${{ steps.migration.outputs.title || '## ⚠️ Migration Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/migration_result.txt
           details-summary: 'migration check log'
 

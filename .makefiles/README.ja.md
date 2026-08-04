@@ -50,9 +50,9 @@ checkout 毎の **app 層**（`api_server` / `mock_auth_server`）は自 checkou
 | `make serve-build` | app イメージをキャッシュ利用で再ビルドし、共有インフラを起動したうえで app サービスを起動します。 | Dockerfile や依存変更の反映 |
 | `make serve-build-clean` | app イメージを `--no-cache --pull` でクリーンビルドし、共有インフラを起動したうえで app サービスを起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
 | `make serve-stop` | 自 checkout の app プロジェクトだけを停止します。 | 共有インフラや他 checkout に触れず API を止める |
-| `make infra-up` | 共有インフラのサービス（`--wait`）と one-shot の `garage_init` を `gobp-shared` プロジェクトで起動します。 | 共有インフラだけを起動する（`serve` / `job` / `worker` が冪等に呼びます） |
+| `make infra-up` | 共有インフラのサービス（`--wait`）と one-shot の `garage_init` を `gobp-shared` プロジェクトで起動します。 | 共有インフラだけを起動する（`serve` / `job` / `worker` が冪等に呼びます）。worktree では `INFRA_NO_RECREATE` も渡し、他の checkout が使っている可能性のある稼働中コンテナは残します。このとき定義変更の反映は `infra-down` → `infra-up` になります |
 | `make infra-down` | 共有インフラのプロジェクトを停止します（名前付きボリュームは保持）。 | インフラを落とす。**全 checkout / worktree に影響します** |
-| `make tools` | `tools` プロファイルの開発支援ツール群を共有インフラのプロジェクトで起動します。 | 開発ツール利用時（SQL editor `:7000` / docs viewer `:7001`） |
+| `make tools` | `tools` プロファイルの開発支援ツール群を共有インフラのプロジェクトで起動します。 | 開発ツール利用時（SQL editor `:7000` / docs viewer `:7001`）。こちらも `INFRA_NO_RECREATE` を渡します（プロファイルに `database` / `garage` が含まれるため） |
 | `make all` | `tools` → `serve-build` の順に全サービスを一括起動します。 | ローカルスタック全体を一度に立ち上げる |
 | `make tool-runners-build` | オンデマンド実行のツールランナー画像(go/node/python)をキャッシュ利用でビルドします（起動はしません）。 | ツールランナーの Dockerfile や依存変更の反映 |
 | `make tool-runners-build-clean` | ツールランナー画像を `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールランナーの base image 更新の取り込み |
@@ -288,6 +288,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `INFRA_SERVICES` | `database observability garage` | 固定ポートでしか動けないため共有するサービス。 |
 | `APP_SERVICES` | `api_server mock_auth_server` | checkout 毎に起動するサービス。 |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | infra 層向けの compose 呼び出し。 |
+| `INFRA_NO_RECREATE` | worktree では `--no-recreate`、それ以外は空 | 他の checkout が使っている共有インフラのコンテナを作り直さずそのまま使います。単一 checkout では空で、compose は従来どおり定義変更へ再収束します。独立した clone を複数持つなど worktree 判定で拾えない構成では明示的に指定してください。 |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | app 層向けの compose 呼び出し。`docker-compose.attach.yaml` が app サービスの接続先を `host.docker.internal` 経由の共有インフラへ差し替えます。 |
 | `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | API / mock 認証サーバーのホスト公開ポート。 |
 | `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | dlv デバッグ / pprof のホスト公開ポート。 |
@@ -353,14 +354,15 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
 | `make cover-gate` | 総カバレッジが閾値を下回ると fail します。 | CI ゲート。`COVERAGE_THRESHOLD`（既定 90）。`coverage.out` が必要（先に `test-cover-ci`）。 |
-| `make test-scripts` | `scripts/` 配下の Go ツールのテストを実行します。 | これを実行する唯一のターゲット。`scripts/` は他のテストターゲットからは常に除外されており、カバレッジゲートの母数に入りません。pre-commit / pre-push と `Scripts Test` ワークフローに配線されています。 |
+| `make test-scripts` | CI 用に `scripts/` 配下ツールのテストを実行します。 | `scripts/` は上記のカバレッジ対象から除外されているため、専用の実行経路が必要です。`cover-gate` の対象には入りません。 |
+| `make test-scripts-cached` | ローカル用にテストキャッシュを有効にして `scripts/` 配下ツールのテストを実行します。 | pre-commit のローカル実行向け。対象パッケージは `test-scripts` と同じで、`-race -count=1` は付けません。 |
 
 ### Go ツールインストール関連
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make go-update` | `mise.toml` に記載された Go ランタイムを mise でインストールします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | mise が必須 |
-| `make install-tools` | host 開発用のツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint`、`zizmor`、`shellcheck` を導入します。`golangci-lint` と `zizmor` は、Alpine の tool-runner 向け musl ビルドが無いため pre-commit フックがホストで実行するツールです。`shellcheck` は `make test-scripts` が実物として呼ぶもので、無いとテストが自分で skip します。 |
+| `make install-tools` | host 開発用のツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint`、`zizmor` を導入します。後ろ 2 つは、Alpine の tool-runner 向け musl ビルドが無いため pre-commit フックがホストで実行するツールです。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 | `make sync-versions` | `mise.toml` の go / node / python バージョンを `go.mod` と Dockerfile の `FROM` に反映します。 | `docs/maintenance/go-upgrade.md` の手順で参照されます。`scripts/sync-versions` を実行します。 |
 
@@ -396,13 +398,18 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make actions-lint` | ワークフロー定義を actionlint で lint し、全 composite action の `run:` スクリプトを shellcheck で検査し、PR コメントを投稿するジョブに secret が渡っていないかを検査します。 | 各段が 2 つの tool-runner に跨る唯一の lint グループ。actionlint と shellcheck ランナーは Go ツール、secret 検査は node スクリプトのため、単一コンテナ内で 1 つの `-ci` を呼ぶのではなく `go_tool_runner` で `make actions-actionlint-ci` と `make actions-shellcheck-ci`、`node_tool_runner` で `make actions-comment-secret-lint-ci` を呼び出します。 |
+| `make actions-lint` | ワークフロー定義を actionlint で lint し、全 composite action の `run:` スクリプトを shellcheck で検査したうえで、node による 3 つの検査（PR コメントを投稿するジョブへの secret 混入、コメント本文の固定長フェンス、ジョブ打ち切り時の振る舞いが定義されているか）を実行します。 | 各段が 2 つの tool-runner に跨る唯一の lint グループ。actionlint と shellcheck ランナーは Go ツール、残りは node スクリプトのため、単一コンテナ内で 1 つの `-ci` を呼ぶのではなく `go_tool_runner` で `make actions-actionlint-ci` と `make actions-shellcheck-ci`、`node_tool_runner` で `make actions-node-lint-ci` を呼び出します。node の 3 検査は 1 ターゲットに束ねてコンテナ起動 1 回に収めており、これは `md-lint` と同じ形です。 |
 | `make actions-comment-secret-lint` | PR コメント本文への secret 混入検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-comment-secret-lint-ci` を呼び出します。 |
-| `make actions-shellcheck` | `.github/actions/**` の composite action から `runs.steps[].run` を抽出し、`bash` / `sh` のスクリプトを `shellcheck` で検査します。それ以外の shell のステップは skip として報告します（`scripts/actions-shellcheck`）。 | `go_tool_runner` コンテナ内で `make actions-shellcheck-ci` を呼び出します。`actionlint` は `.github/workflows` しか走査せず、`action.yaml` を直接渡すとワークフローとして解釈するため、その死角を埋めます。`run:` をブロック折り畳み（`>`）で書いた場合はエラーになります（リテラル `|` で書いてください）。折り畳みは指摘の位置を写し戻す基準である改行を落とすためです。 |
-| `make actions-lint-ci` | 上記 3 段を直接実行します。 | CI 用ターゲット。 |
+| `make actions-comment-fence-lint` | PR コメント本文の固定長フェンス検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-comment-fence-lint-ci` を呼び出します。 |
+| `make actions-cutoff-lint` | ジョブ打ち切り時の振る舞い検査のみを実行します。 | `node_tool_runner` コンテナ内で `make actions-cutoff-lint-ci` を呼び出します。 |
+| `make actions-shellcheck` | `.github/actions/**` の composite action から `runs.steps[].run` を抽出し、`bash` / `sh` のスクリプトを `shellcheck` で検査します。それ以外の shell のステップは skip として報告します（`scripts/actions-shellcheck`）。 | `go_tool_runner` コンテナ内で `make actions-shellcheck-ci` を呼び出します。`actionlint` は `.github/workflows` しか走査せず、`action.yaml` を直接渡すとワークフローとして解釈するため、その死角を埋めます。`run:` をブロック折り畳み（`>`）で書いた場合はエラーになります（リテラル `\|` で書いてください）。折り畳みは指摘の位置を写し戻す基準である改行を落とすためです。 |
+| `make actions-lint-ci` | actionlint、composite action の shellcheck、束ねた node 検査をこの順で直接実行します。 | CI 用ターゲット。actionlint を先に置くのは意図的で、node 側の検査はワークフロー構造を桁で読むため、入力がそもそも YAML としてパースできることに依存します。 |
+| `make actions-node-lint-ci` | node の 3 検査（secret / フェンス / 打ち切り）を直接実行します。 | CI 用ターゲット。 |
 | `make actions-actionlint-ci` | `actionlint` を直接実行します。 | CI 用ターゲット。 |
 | `make actions-shellcheck-ci` | `scripts/actions-shellcheck` を直接実行します。 | CI 用ターゲット。 |
 | `make actions-comment-secret-lint-ci` | `upsert-pr-comment` を使うジョブに `GITHUB_TOKEN` 以外の secret が渡っていれば失敗します（`scripts/pr-comment-secret-lint.mjs`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
+| `make actions-comment-fence-lint-ci` | `run:` ブロックが PR コメント本文を固定長 Markdown フェンスで囲んでいる場合、または複製された `fence_for` の実装が食い違う場合に失敗します（`scripts/pr-comment-fence-lint.mjs`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
+| `make actions-cutoff-lint-ci` | ジョブに `timeout-minutes` が無い場合、または `upsert-pr-comment` を呼ぶステップの `if:` がキャンセルされたジョブから到達できない場合に失敗します（`scripts/actions-cutoff-lint.mjs`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
 | `make pin-actions-resolve` | 各 `uses:` のタグを commit SHA に解決し `.github/actions-pin.toml` lockfile を更新します。 | `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14・0 で無効）より新しい解決先を quarantine。 |
 | `make pin-actions-apply` | lockfile を元に `uses:` を `@<sha> # <tag>` へ固定します。 | なし |
 | `make pin-actions-check` | `uses:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
@@ -421,7 +428,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gh-login` | `gh` コマンドで GitHub にログインします。 | ブラウザ認証方式でログインを行います。 |
 | `make delete-all-labels` | GitHub リポジトリ上の既存ラベルをすべて削除します。 | なし |
 | `make create-default-labels` | `.github/settings/labels.json` をもとに、デフォルトラベルを作成します。 | なし |
-| `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | なし |
+| `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | 一方向の適用です。適用後に JSON を再適用する仕組みも実ルールセットと突き合わせる仕組みも無いため、このファイルが表すのは強制されている状態ではなく意図です。`.github/settings/README.ja.md` を参照してください。 |
 | `make enable-workflows` | `disabled_fork` 状態のワークフローを一括で有効化します。 | 冪等です。fork / テンプレート由来のリポジトリは全ワークフローが無効の状態で作られます。 |
 
 ### GitHub リポジトリ初期化関連

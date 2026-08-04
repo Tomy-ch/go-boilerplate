@@ -22,7 +22,8 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
 - **infra layer** = the fixed compose project `gobp-shared` (`GOBP_DB_SHARED_PROJECT`). A worktree
   gets a different default compose project name per directory, so the shared side is pinned to an
   explicit fixed name. `make infra-up` starts it; `make serve` / `make job` / `make worker` also call
-  it idempotently first.
+  it idempotently first. Idempotent here means non-destructive too: an already-running container is
+  left alone rather than re-created (see Caveats).
 - **app layer** = `APP_PROJECT`: `gobp-app-<directory name>` when no slot is held, `gobp-wt-N` when
   one is. `docker-compose.attach.yaml` is overlaid so the shared infra is reached through
   `host.docker.internal` on its host-published ports (`DB_HOST` / `OBS_OTLP_ENDPOINT` /
@@ -167,10 +168,20 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   `lsof -a -p <pid> -d cwd` identifies which checkout is running tests, sampling `pg_stat_activity`
   shows whether the peak is a momentary spike rather than a plateau, and a re-run with `go test -p 1`
   that comes back green means the failure was load rather than the change under test.
-- **Re-creation of the infra layer**: when the checkout that runs `gobp-shared` changes and its
-  compose definition differs from last time (a different image digest pin on another branch, say),
-  compose re-creates the containers. Named volumes survive, so no data is lost, but running apps lose
-  their connections.
+- **Re-creation of the infra layer**: compose decides whether a container is current by hashing its
+  resolved service definition, and that hash includes bind-mount sources and build contexts as
+  *absolute* paths. Every worktree resolves them under its own directory, so the hash differs
+  between checkouts of the very same commit — re-creation is the norm, not a branch-divergence edge
+  case. `database` and `garage` are affected (they bind-mount `docker/database/sql` and
+  `docker/garage/garage.toml`); `observability` is not, because it mounts nothing. An `up` against
+  `gobp-shared` from a worktree therefore passes `--no-recreate` (`INFRA_NO_RECREATE` in
+  `.makefiles/docker/compose.mk`), which keeps a container another checkout is using rather than
+  replacing it. The cost is that a *legitimate* definition change — a new image digest pin, an
+  edited `garage.toml` — no longer takes effect on its own: run `make infra-down && make infra-up`
+  at a point where every checkout can afford the interruption. The same applies to the `tools`
+  profile, so `docs_viewer` keeps serving the `docs/` of whichever checkout first created it.
+  A single checkout has no one to contend with, so the flag stays empty there and compose
+  re-converges on a definition change as usual.
 - **Object storage is shared**: the `garage` bucket is common to every checkout (unlike a database it
   has no schema, so it does not break across branches). Point a branch at a different
   `OBJECT_STORAGE_BUCKET` to isolate it. The access key is shared the same way — `garage_init` imports

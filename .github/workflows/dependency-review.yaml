@@ -27,6 +27,7 @@ concurrency:
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # The action diffs the base ref against the head ref, so it only has the
     # required context on a pull request. Skip it on workflow_dispatch instead
     # of letting the run fail.

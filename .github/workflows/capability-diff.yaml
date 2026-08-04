@@ -34,6 +34,7 @@ concurrency:
 jobs:
   capability-diff:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -162,12 +163,12 @@ jobs:
             capability-diff-summary.md
 
       - name: Comment capability diff on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- capability-diff-result -->'
-          title: ${{ steps.diff.outputs.title }}
+          title: "${{ steps.diff.outputs.title || '## ⚠️ Capability Diff: CUT OFF (no result produced)' }}"
           body-file: capability-diff-summary.md
           details-summary: '📄 Summary'

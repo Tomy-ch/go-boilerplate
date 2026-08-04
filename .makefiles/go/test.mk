@@ -4,7 +4,8 @@
 .PHONY: gen-test-repo ## テストの実行とテストレポートの生成
 .PHONY: test-cover-ci ## CI用のカバレッジ付きテスト実行
 .PHONY: cover-gate ## 総カバレッジが閾値以上か検証（CIゲート）
-.PHONY: test-scripts ## scripts/ 配下のGoツールのテスト実行（カバレッジゲート対象外）
+.PHONY: test-scripts ## CI用の scripts 配下ツールのテスト実行（キャッシュ無効）
+.PHONY: test-scripts-cached ## ローカル用の scripts 配下ツールのテスト実行（キャッシュ有効・pre-commit向け）
 
 # カバレッジ対象外パッケージ（test / test-cached / gen-test-repo / test-cover-ci で共有）
 GO_TEST_EXCLUDE := /(gen|cmd|mock|apperror|scripts)(/|$$)
@@ -23,12 +24,6 @@ test:
 test-cached:
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	go test $$TGT_PKGS -cover
-
-# scripts/ は GO_TEST_EXCLUDE によってカバレッジゲートの母数から外れており、上の test 系はどれも
-# 実行しない。ツール自身がゲートである以上その壊れ方は「静かに何も検査しなくなる」方向に出るため、
-# 実行経路をこの専用ターゲットが持つ。テストは DB も env も使わないので GO_TEST_ENV は要らない。
-test-scripts:
-	@go test ./scripts/... -race -count=1
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
@@ -51,6 +46,15 @@ test-cover-ci:
 		| tr '\n' ',' \
 		| sed 's/,$$//')"; \
 	go test $$TGT_PKGS -race -coverpkg=$$COVER_PKGS -coverprofile=coverage.out -covermode=atomic -count=1
+
+# scripts 配下の開発ツールは GO_TEST_EXCLUDE でカバレッジ母数から外れており、そのままでは
+# test / test-cached のいずれにも乗らない。ツール自体がゲート（供給網ピン・lint）なので、
+# 壊れ方が「静かに何も検査しなくなる」方向に出る。カバレッジ計測とは切り離して実行だけを足す。
+test-scripts:
+	go test ./scripts/... -race -count=1
+
+test-scripts-cached:
+	go test ./scripts/...
 
 cover-gate:
 	@test -f coverage.out || { echo "❌ coverage.out がありません（先に make test-cover-ci を実行）"; exit 1; }

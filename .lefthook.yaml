@@ -9,7 +9,7 @@ pre-commit:
       run: make test-cached
     go-test-scripts:
       glob: "scripts/**/*.go"
-      run: make test-scripts
+      run: make test-scripts-cached
     sql-lint:
       glob: "*.sql"
       run: make sql-lint
@@ -21,6 +21,8 @@ pre-commit:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
         - "scripts/pr-comment-secret-lint.mjs"
+        - "scripts/pr-comment-fence-lint.mjs"
+        - "scripts/actions-cutoff-lint.mjs"
         - "scripts/actions-shellcheck/*.go"
       run: make actions-lint
     actions-zizmor:

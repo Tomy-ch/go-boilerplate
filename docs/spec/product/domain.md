@@ -121,6 +121,18 @@ fields:
     params.AfterPublishedAt / AfterID が非 nil の場合、その keyset 境界より次ページ側の行のみを返す。
     取得件数は params.Limit で上限を課す（hasNext 判定のため usecase は limit+1 を渡す）。
 
+- name: FindAllLowStock
+  signature: FindAllLowStock(ctx context.Context, limit int32) (Products, error)
+  behavior: |
+    在庫が在庫警告閾値以下（quantity <= stock_warning_threshold）まで減った商品を、
+    在庫の少ない順（quantity ASC / 同数は id ASC）で最大 limit 件返す。
+    在庫警告閾値が未設定（NULL）の商品は警告対象を持たないため WHERE で明示的に除外する
+    （3 値論理による暗黙除外に頼らない）。
+    補充の要否は公開状態に依存しないため published_at で絞らず、未公開商品も返す。
+    在庫僅少の判定は FindPublishedList の公開判定と同じく SQL に閉じ、domain の述語メソッドも
+    usecase / controller の分岐も置かない（ADR-0027: 単一集約の自属性フィルタは Repository）。
+    cursor ページングを持たない top-N で、limit の既定値適用とクランプは usecase が担う。
+
 - name: FindPublishedByID
   signature: FindPublishedByID(ctx context.Context, id uuid.UUID) (*Product, error)
   behavior: |

@@ -50,9 +50,9 @@ per-checkout **app** layer (`api_server` / `mock_auth_server`) runs in this chec
 | `make serve-build` | Rebuilds the app images (cache enabled), brings up the shared infra, then starts the app services. | Reflect Dockerfile or dependency changes |
 | `make serve-build-clean` | Cleanly rebuilds the app images with `--no-cache --pull`, brings up the shared infra, then starts the app services. | Pick up base image updates (e.g., Go version upgrade) |
 | `make serve-stop` | Stops this checkout's app project only. | Stop the API without touching the shared infra or other checkouts |
-| `make infra-up` | Starts the shared infra services (`--wait`) plus the one-shot `garage_init` in the `gobp-shared` project. | Bring up the shared infra alone (called idempotently by `serve` / `job` / `worker`) |
+| `make infra-up` | Starts the shared infra services (`--wait`) plus the one-shot `garage_init` in the `gobp-shared` project. | Bring up the shared infra alone (called idempotently by `serve` / `job` / `worker`). In a worktree it also passes `INFRA_NO_RECREATE`, keeping a running container another checkout may be using — a definition change then takes `infra-down` followed by `infra-up` |
 | `make infra-down` | Stops the shared infra project (named volumes are kept). | Shut the infra down — **affects every checkout / worktree** |
-| `make tools` | Starts development support tools with the `tools` profile in the shared infra project. | When using development tools (SQL editor `:7000` / docs viewer `:7001`) |
+| `make tools` | Starts development support tools with the `tools` profile in the shared infra project. | When using development tools (SQL editor `:7000` / docs viewer `:7001`). Also passes `INFRA_NO_RECREATE` — the profile covers `database` / `garage` too |
 | `make all` | Starts everything: `tools` followed by `serve-build`. | Bring up the whole local stack at once |
 | `make tool-runners-build` | Builds the on-demand tool runner images (go/node/python, cache enabled, no startup). | When updating tool runner Dockerfile or dependencies |
 | `make tool-runners-build-clean` | Cleanly builds the tool runner images with `--no-cache --pull` (no startup). | Pick up base image updates for tool runners |
@@ -288,6 +288,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `INFRA_SERVICES` | `database observability garage` | Services that can only run on fixed ports, hence shared. |
 | `APP_SERVICES` | `api_server mock_auth_server` | Services started per checkout. |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
+| `INFRA_NO_RECREATE` | `--no-recreate` in a worktree, empty otherwise | Keeps a shared-infra container another checkout is using instead of re-creating it. Empty in a single checkout, where compose re-converges on a definition change as usual. Set it explicitly for a topology the worktree test misses, such as several independent clones. |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | Compose invocation for the app layer. `docker-compose.attach.yaml` points the app services at the shared infra via `host.docker.internal`. |
 | `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | Published host ports of the API / mock auth server. |
 | `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | Published host ports of the dlv debug / pprof endpoints. |
@@ -353,14 +354,15 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gen-test-repo` | Executes tests and generates HTML coverage report. | Output is `docs/coverage/index.html`. |
 | `make test-cover-ci` | Executes tests with coverage. | CI target, outputs `coverage.out`. |
 | `make cover-gate` | Fails if total coverage is below the threshold. | CI gate. `COVERAGE_THRESHOLD` (default 90). Requires `coverage.out` (run `test-cover-ci` first). |
-| `make test-scripts` | Executes the tests of the Go tools under `scripts/`. | The one target that runs them: `scripts/` is excluded from every other test target, so it stays out of the coverage gate's denominator. Wired into pre-commit / pre-push and the `Scripts Test` workflow. |
+| `make test-scripts` | Executes the `scripts/` tool tests for CI. | `scripts/` is excluded from the coverage targets above, so its tests need their own entry point. Not part of `cover-gate`. |
+| `make test-scripts-cached` | Executes the `scripts/` tool tests locally with the test cache enabled. | For pre-commit local runs. Same packages as `test-scripts`, without `-race -count=1`. |
 
 ### Go tool installation related
 
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make go-update` | Installs the Go runtime pinned in `mise.toml` via mise. See `docs/maintenance/go-upgrade.md`. | mise required |
-| `make install-tools` | Installs the host development tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`, `zizmor`, `shellcheck`. `golangci-lint` and `zizmor` are the tools the pre-commit hook runs on the host because no musl build exists for the Alpine tool-runners; `shellcheck` is what `make test-scripts` shells out to (its tests skip themselves without it). |
+| `make install-tools` | Installs the host development tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`, `zizmor`. The last two are the tools the pre-commit hook runs on the host because no musl build exists for the Alpine tool-runners. |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 | `make sync-versions` | Propagates the `mise.toml` go / node / python versions into `go.mod` and the Dockerfile `FROM` lines. | Referenced by the `docs/maintenance/go-upgrade.md` procedure. Runs `scripts/sync-versions`. |
 
@@ -396,13 +398,18 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make actions-lint` | Lints workflow definitions with actionlint, shellchecks the `run:` scripts of every composite action, then checks that no job posting a PR comment receives a secret. | The one lint group whose stages span two tool-runners: it invokes `make actions-actionlint-ci` and `make actions-shellcheck-ci` in `go_tool_runner` and `make actions-comment-secret-lint-ci` in `node_tool_runner`, rather than one `-ci` target in one container, because actionlint / the shellcheck runner are Go tools and the secret check a node script. |
+| `make actions-lint` | Lints workflow definitions with actionlint, shellchecks the `run:` scripts of every composite action, then runs the three node checks: no job posting a PR comment receives a secret, no comment body is wrapped in a fixed-length fence, and every job defines what happens when it is cut off. | The one lint group whose stages span two tool-runners: it invokes `make actions-actionlint-ci` and `make actions-shellcheck-ci` in `go_tool_runner` and `make actions-node-lint-ci` in `node_tool_runner`, rather than one `-ci` target in one container, because actionlint / the shellcheck runner are Go tools and the rest node scripts. The three node checks are bundled behind one target so they cost one container start, the same shape `md-lint` uses. |
 | `make actions-comment-secret-lint` | Runs the PR-comment secret check alone. | Invokes `make actions-comment-secret-lint-ci` inside the `node_tool_runner` container. |
-| `make actions-shellcheck` | Extracts `runs.steps[].run` from every composite action under `.github/actions/**` and checks each `bash` / `sh` script with `shellcheck`; a step on any other shell is reported as skipped (`scripts/actions-shellcheck`). | Invokes `make actions-shellcheck-ci` inside the `go_tool_runner` container. Covers what `actionlint` cannot see: it only walks `.github/workflows`, and an `action.yaml` handed to it directly is parsed as a workflow. A `run:` written as a folded scalar (`>`) is rejected — write it as a literal (`|`) — because folding drops the line breaks a finding's position is mapped back through. |
-| `make actions-lint-ci` | Runs all three stages directly. | CI target. |
+| `make actions-comment-fence-lint` | Runs the PR-comment fence check alone. | Invokes `make actions-comment-fence-lint-ci` inside the `node_tool_runner` container. |
+| `make actions-cutoff-lint` | Runs the job cut-off check alone. | Invokes `make actions-cutoff-lint-ci` inside the `node_tool_runner` container. |
+| `make actions-shellcheck` | Extracts `runs.steps[].run` from every composite action under `.github/actions/**` and checks each `bash` / `sh` script with `shellcheck`; a step on any other shell is reported as skipped (`scripts/actions-shellcheck`). | Invokes `make actions-shellcheck-ci` inside the `go_tool_runner` container. Covers what `actionlint` cannot see: it only walks `.github/workflows`, and an `action.yaml` handed to it directly is parsed as a workflow. A `run:` written as a folded scalar (`>`) is rejected — write it as a literal (`\|`) — because folding drops the line breaks a finding's position is mapped back through. |
+| `make actions-lint-ci` | Runs actionlint, the composite-action shellcheck, then the bundled node checks directly. | CI target. actionlint runs first on purpose: the node checks read workflow structure by column and rely on the file parsing as YAML at all. |
+| `make actions-node-lint-ci` | Runs the three node checks (secret / fence / cut-off) directly. | CI target. |
 | `make actions-actionlint-ci` | Runs `actionlint` directly. | CI target. |
 | `make actions-shellcheck-ci` | Runs `scripts/actions-shellcheck` directly. | CI target. |
 | `make actions-comment-secret-lint-ci` | Fails when a job using `upsert-pr-comment` is passed a secret other than `GITHUB_TOKEN` (`scripts/pr-comment-secret-lint.mjs`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
+| `make actions-comment-fence-lint-ci` | Fails when a `run:` block emits a fixed-length Markdown fence around a PR comment body, or the duplicated `fence_for` helpers diverge (`scripts/pr-comment-fence-lint.mjs`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
+| `make actions-cutoff-lint-ci` | Fails when a job carries no `timeout-minutes`, or a step calling `upsert-pr-comment` has an `if:` a cancelled job cannot reach (`scripts/actions-cutoff-lint.mjs`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
 | `make pin-actions-resolve` | Resolves each `uses:` tag to its commit SHA and updates the `.github/actions-pin.toml` lockfile. | Quarantines refs younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14; 0 disables). |
 | `make pin-actions-apply` | Pins `uses:` to `@<sha> # <tag>` from the lockfile. | None |
 | `make pin-actions-check` | Verifies `uses:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
@@ -421,7 +428,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gh-login` | Logs in to GitHub using `gh` command. | Uses browser-based authentication. |
 | `make delete-all-labels` | Deletes all existing labels in the GitHub repository. | None |
 | `make create-default-labels` | Creates default labels based on `.github/settings/labels.json`. | None |
-| `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | None |
+| `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | One-directional apply. Nothing re-applies the JSON or compares it against the live ruleset afterwards, so the file states intent rather than the enforced state — see `.github/settings/README.md`. |
 | `make enable-workflows` | Enables every workflow left in `disabled_fork` state. | Idempotent. A fork or template-derived repository starts with all workflows disabled. |
 
 ### GitHub repository initialization related

@@ -10,7 +10,7 @@ inputs:
     description: HTML comment marker used to detect the same comment
   body-file:
     required: true
-    description: Path to the file read as the comment body
+    description: Path to the file read as the comment body; a missing file is reported as a cut-off job rather than failing the step
   title:
     required: false
     default: ""
@@ -50,15 +50,36 @@ runs:
             core.setFailed('Not a PR context');
             return;
           }
-          if (!fs.existsSync(bodyFile)) {
-            core.setFailed(`${bodyFile} not found`);
-            return;
+          // A cut-off job can stop before the step that writes the body file runs, so a missing
+          // file is the normal shape of the very case this comment has to stay visible for.
+          // Failing the step instead would leave the pull request with no trace of the cut-off at
+          // all, which is exactly what the `always()` guard on every calling step exists to
+          // prevent. The cost is that a miswired path surfaces as a cut-off notice on a green run
+          // rather than as a step failure; that is loud enough to catch, and silence is not.
+          // A step that was cut off *while* writing the file leaves one behind, so absence is not
+          // the whole test — the caller's `title` carries the other half (see below).
+          const cutOff = !fs.existsSync(bodyFile);
+          if (cutOff) {
+            core.warning(`${bodyFile} not found; reporting the job as cut off`);
           }
 
-          let content = fs.readFileSync(bodyFile, 'utf8').trimEnd();
+          let content = cutOff
+            ? `No result was produced: the job did not reach the step that writes \`${bodyFile}\`. See the run log for how far it got.`
+            : fs.readFileSync(bodyFile, 'utf8').trimEnd();
           if (content.length > maxLength) {
             content = content.slice(0, maxLength) + '\n... (truncated)';
           }
+
+          // With no body there is nothing the caller's heading can still be describing, so the
+          // cut-off heading replaces it rather than filling in for a missing one — a literal
+          // title like "Trivy Image Scan" over a cut-off notice reads as a scan that ran. The
+          // wording names no cause: a body can also be missing because an earlier step failed
+          // outright, and only the run log distinguishes that from a timeout. Folding one line
+          // behind a details block would hide the only thing left to say.
+          const heading = cutOff
+            ? '## ⚠️ CUT OFF (no result produced)'
+            : title;
+          const summary = cutOff ? '' : detailsSummary;
 
           const updatedAtJST = new Date().toLocaleString('ja-JP', {
             timeZone: 'Asia/Tokyo',
@@ -94,12 +115,12 @@ runs:
           };
 
           const fence = fenceFor(content);
-          const main = detailsSummary
-            ? [`<details><summary>${detailsSummary}</summary>`, '', fence, content, fence, '', '</details>'].join('\n')
+          const main = summary
+            ? [`<details><summary>${summary}</summary>`, '', fence, content, fence, '', '</details>'].join('\n')
             : content;
 
           const parts = [marker];
-          if (title) parts.push(title, '');
+          if (heading) parts.push(heading, '');
           parts.push(main, '', commitLine, '', updatedLine);
           const body = parts.join('\n');
 
