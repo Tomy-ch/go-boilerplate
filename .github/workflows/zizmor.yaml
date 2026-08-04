@@ -34,6 +34,7 @@ concurrency:
 jobs:
   zizmor:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -141,13 +142,13 @@ jobs:
           category: zizmor
 
       - name: Comment zizmor result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- zizmor-result -->'
-          title: ${{ steps.zizmor.outputs.title }}
+          title: "${{ steps.zizmor.outputs.title || '## ⚠️ Actions Static Analysis: CUT OFF (no result produced)' }}"
           body-file: zizmor.log
           details-summary: 'zizmor log'
 

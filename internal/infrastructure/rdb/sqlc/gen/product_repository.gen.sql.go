@@ -289,6 +289,79 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 	return &i, err
 }
 
+const listLowStockProducts = `-- name: ListLowStockProducts :many
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.stock_warning_threshold IS NOT NULL
+    AND p.quantity <= p.stock_warning_threshold
+ORDER BY p.quantity ASC, p.id ASC
+LIMIT $1
+`
+
+type ListLowStockProductsRow struct {
+	StatusName   string
+	CategoryName string
+	Products     Products
+}
+
+// === source: database/dml/repository/product/select_low_stock_products.sql ===
+// 在庫が警告閾値以下の商品を、在庫の少ない順（同数は ID 昇順）で最大 limit 件取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+// stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
+//
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
+//	WHERE p.stock_warning_threshold IS NOT NULL
+//	    AND p.quantity <= p.stock_warning_threshold
+//	ORDER BY p.quantity ASC, p.id ASC
+//	LIMIT $1
+func (q *Queries) ListLowStockProducts(ctx context.Context, limitParam int32) ([]*ListLowStockProductsRow, error) {
+	rows, err := q.db.Query(ctx, listLowStockProducts, limitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListLowStockProductsRow
+	for rows.Next() {
+		var i ListLowStockProductsRow
+		if err := rows.Scan(
+			&i.StatusName,
+			&i.CategoryName,
+			&i.Products.ID,
+			&i.Products.Name,
+			&i.Products.Description,
+			&i.Products.Price,
+			&i.Products.Quantity,
+			&i.Products.StockWarningThreshold,
+			&i.Products.StatusID,
+			&i.Products.CategoryID,
+			&i.Products.PublishedAt,
+			&i.Products.ImagePath,
+			&i.Products.LockVersion,
+			&i.Products.CreatedAt,
+			&i.Products.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedProductsAsc = `-- name: ListPublishedProductsAsc :many
 SELECT
     ps.name AS status_name,

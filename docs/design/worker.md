@@ -212,14 +212,14 @@ flowchart LR
 
 | # | Required implementation | Location (recommended) | Reference |
 | --- | --- | --- | --- |
-| ① | business `Handler` (idempotent, calls usecases) | `internal/controller/worker/<name>/` | structure of job's `usercount` |
+| ① | business `Handler` (idempotent, calls usecases) | `internal/controller/worker/<name>/` | `worker.Handler` IF |
 | ② | `Consumer` (+ `FailureHandler`) adapter | wire `infrastructure/queue/sqs` for SQS / new package otherwise | `sqs.NewConsumer` / `NewDeadLetter` |
 | ③ | `Worker` (returns Name/Consumer/Handler/FailureHandler) + `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
 | ④ | add the constructor to `provideWorkers(...)` in `WorkerModule()` | `internal/di/module/worker.go` | same shape as `provideJobs` |
 | ⑤ | `fx.Provide` the broker client and adapter `Config` | `internal/di/...` | `sqs.Config` |
 | ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `WorkerConfig` defaults |
 
-> Only when using SQS in production do you import sqs into the `cmd` wiring, and at that point `aws-sdk-go-v2` enters that binary (it is absent from the default serve/worker binary = E3).
+> A wired broker adapter links its SDK into the binary — including the sample wiring, since `serve` / `worker` / `outbox-relay` share one binary. Isolation is therefore verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired (E3', [ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)).
 
 ---
 
@@ -249,4 +249,4 @@ flowchart LR
 | **Settings** | The engine-core behavior settings (an engine-local struct). Mapped from `config.WorkerConfig` via DI. |
 | **WorkerConfig** | The engine-core settings (broker-agnostic, `WORKER_*` with `default` tags). Broker-specific settings live in the adapter `Config`. |
 | **traceparent / continuation** | W3C trace context. `Extract`ed from `Message.Attributes` to continue the span (D1). |
-| **E1/E2/E3** | engine does not import infra / engine is green on the fake alone / the shipped binary contains no broker SDK. |
+| **E1/E2/E3'** | engine does not import infra / engine is green on the fake alone / after `make setup-remove-sample-api` the coupling equals the pre-sample state — no core `*.go` or core document references a broker adapter or a sample, the seam is restored, and removed dependencies leave `go.mod` / `vendor/` ([ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)). |

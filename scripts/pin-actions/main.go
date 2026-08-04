@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -47,6 +48,12 @@ var (
 	// 空白は `[ \t]` に限定する（`\s` だと改行を食って行が結合する）。
 	usesRe = regexp.MustCompile(`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*)([^@\s]+)@([^\s#]+)(?:[ \t]*#[ \t]*(\S+))?[ \t]*$`)
 	lockRe = regexp.MustCompile(`^"([^"]+)"\s*=\s*"([0-9a-f]{40})"`)
+	// usesRe の取りこぼしを拾う緩いパターン。行頭にアンカーせず、クオートされたキー（`"uses":`）も
+	// 拾い、値は行末までまとめて捉えて呼び出し元が解釈する。直前の文字を見るのは `disuses:` のような
+	// 語末一致を弾くため。
+	looseUsesRe = regexp.MustCompile(`(?:^|[^A-Za-z0-9_-])["']?uses["']?[ \t]*:(.*)$`)
+	// 値がブロックスカラー（`|` / `>`）で始まる行。以降の深い字下げの行はその中身。
+	blockScalarRe = regexp.MustCompile(`:[ \t]*[|>][+-]?[0-9]*[ \t]*(?:#.*)?$`)
 )
 
 var (
@@ -54,6 +61,18 @@ var (
 	errGitHubAPIStatus = xerrors.New("unexpected GitHub API status")
 	// errRefNotFound は、指定 ref が upstream に見つからなかった場合のエラー。
 	errRefNotFound = xerrors.New("ref が見つかりません")
+	// errRefDateUnavailable は、解決先の経過日数を判定できる日時が一つも得られなかった場合のエラー。
+	errRefDateUnavailable = xerrors.New("解決先の日時を取得できません")
+	// errLooseUses は、厳密パターンで解釈できない記法の外部アクション参照を検出した場合のエラー。
+	errLooseUses = xerrors.New("固定対象として解釈できない記法の uses: があります")
+	// errLockInvalidLine は、lockfile に代入として解釈できない行があった場合のエラー。
+	errLockInvalidLine = xerrors.New("lockfile に解釈できない行があります")
+	// errLockDuplicateKey は、lockfile に同一キーが複数回現れた場合のエラー。
+	errLockDuplicateKey = xerrors.New("lockfile にキーの重複があります")
+	// errLockOrphanKey は、lockfile にあるがどの uses: からも参照されないエントリがあった場合のエラー。
+	errLockOrphanKey = xerrors.New("lockfile に参照されていないエントリがあります")
+	// errLockMissingKey は、uses: の参照が lockfile に登録されていない場合のエラー。
+	errLockMissingKey = xerrors.New("lockfile に未登録の参照があります")
 )
 
 // ref はアクション参照 1 件。repo は owner/repo、sub はサブパス（codeql-action/init 等）、tag は固定対象の版。
@@ -61,6 +80,18 @@ type ref struct {
 	repo string
 	sub  string
 	tag  string
+}
+
+// rewritePlan は走査結果から導いた固定計画。書き込みは、この計画に問題が無いと確定してから行う。
+type rewritePlan struct {
+	// changes は書き換えが必要なファイルの絶対パスと固定後の内容。
+	changes map[string]string
+	// missing は lockfile に未登録だった参照キー。
+	missing []string
+	// loose は厳密パターンで解釈できなかった uses:（ファイル名付き）。
+	loose []string
+	// used は走査対象から実際に参照された lockfile のキー。
+	used map[string]bool
 }
 
 func (r ref) key() string { return r.repo + "@" + r.tag }
@@ -113,11 +144,14 @@ func parseUses(path, refStr, comment string) (ref, bool) {
 	}, true
 }
 
+// targetFiles は走査対象の workflow / composite action ファイルを返す。
+// composite action は `uses: ./.github/actions/<group>/<name>` のように入れ子へ置けるため再帰的に集める。
+// 1 階層の glob では入れ子のファイルが警告なく走査から消え、そこに書かれた外部参照が
+// 検疫・固定・drift 検査のいずれの対象からも外れる。
 func targetFiles(root string) ([]string, error) {
 	var files []string
 	for _, pat := range []string{
 		".github/workflows/*.yml", ".github/workflows/*.yaml",
-		".github/actions/*/action.yml", ".github/actions/*/action.yaml",
 	} {
 		m, err := filepath.Glob(filepath.Join(root, pat))
 		if err != nil {
@@ -125,12 +159,102 @@ func targetFiles(root string) ([]string, error) {
 		}
 		files = append(files, m...)
 	}
+
+	actionsDir := filepath.Join(root, ".github", "actions")
+	err := filepath.WalkDir(actionsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && (d.Name() == "action.yml" || d.Name() == "action.yaml") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil && !xerrors.Is(err, os.ErrNotExist) {
+		return nil, xerrors.Wrap(err, "walk .github/actions")
+	}
+
 	sort.Strings(files)
 	return files, nil
 }
 
+// fileRefs は data 中の uses: から固定対象の参照を返す（同一キーの重複を含む）。
+func fileRefs(data string) []ref {
+	var refs []ref
+	for _, m := range usesRe.FindAllStringSubmatch(data, -1) {
+		if r, ok := parseUses(m[2], m[3], m[4]); ok {
+			refs = append(refs, r)
+		}
+	}
+	return refs
+}
+
+// detectLooseUses は固定対象として解釈できない uses: を、その値の説明とともに返す（重複除去・昇順）。
+//
+// usesRe は行頭にアンカーしたブロック記法にしか一致しないが、YAML は同じ内容を flow mapping
+// (`- {name: Checkout, uses: actions/checkout@v4}`)、クオートしたキー (`"uses": ...`)、値を次行へ送る
+// ブロックスカラー (`uses: >-`) でも等価に書ける。いずれも usesRe が一致ゼロになり、その状態は
+// 「固定漏れ無し」と区別が付かない。緩いパターンで補い、解釈できない値が残れば呼び出し元が
+// fail-close する。ローカル参照と版を持たない参照は誤検知を避けるため対象外。
+//
+// ブロックスカラーの中身は YAML の構造ではなく単なるテキストなので走査から外す。外さないと
+// `run:` スクリプトが uses: を含む文字列を出力するだけで検出が誤爆する。
+func detectLooseUses(data string) []string {
+	var found []string
+	blockIndent := -1
+	for line := range strings.SplitSeq(data, "\n") {
+		trimmed := strings.TrimSpace(line)
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if blockIndent >= 0 {
+			if trimmed == "" || indent > blockIndent {
+				continue
+			}
+			blockIndent = -1
+		}
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") || usesRe.MatchString(line) {
+			continue
+		}
+		if m := looseUsesRe.FindStringSubmatch(line); m != nil {
+			if note, loose := looseUsesValue(m[1]); loose {
+				found = append(found, note)
+			}
+		}
+		if blockScalarRe.MatchString(line) {
+			blockIndent = indent
+		}
+	}
+	sort.Strings(found)
+	return uniq(found)
+}
+
+// looseUsesValue は緩いパターンで捉えた uses: の値を分類する。第2戻り値が true なら固定対象として
+// 解釈できず、呼び出し元が fail-close すべきもの。第1戻り値はその値を指す報告用の文言。
+func looseUsesValue(rest string) (string, bool) {
+	v := rest
+	if i := strings.IndexAny(v, ",}#"); i >= 0 {
+		v = v[:i]
+	}
+	v = strings.Trim(strings.TrimSpace(v), `"'`)
+	if f := strings.Fields(v); len(f) > 0 {
+		v = f[0]
+	}
+	switch {
+	case v == "" || strings.HasPrefix(v, "|") || strings.HasPrefix(v, ">"):
+		return "uses: の値が同じ行にありません", true
+	case strings.HasPrefix(v, "*") || strings.HasPrefix(v, "&"):
+		return v + "（YAML の alias / anchor は解決できません）", true
+	case strings.HasPrefix(v, "."), !strings.Contains(v, "@"):
+		return "", false
+	default:
+		return v, true
+	}
+}
+
 func resolve(root string, files []string, minAgeDays int) {
-	keys := collectKeys(files)
+	keys, err := collectKeys(root, files)
+	if err != nil {
+		log.Fatalf("❌ %v", err)
+	}
 	// lockfile 不在（初回）は空マップで続行するが、それ以外の読み込み失敗は握り潰さず fail-close する
 	// （既存ピンが lock から脱落し供給網ガードの維持保証が破れるのを防ぐ。applyOrCheck と対称）。
 	existing, err := readLock(filepath.Join(root, lockFile))
@@ -171,20 +295,25 @@ func resolve(root string, files []string, minAgeDays int) {
 	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
 }
 
-func collectKeys(files []string) map[string]ref {
+func collectKeys(root string, files []string) (map[string]ref, error) {
 	keys := map[string]ref{}
+	var loose []string
 	for _, f := range files {
 		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
 		if err != nil {
-			log.Fatalf("❌ read %s: %v", f, err)
+			return nil, xerrors.Wrap(err, "read "+rel(root, f))
 		}
-		for _, m := range usesRe.FindAllStringSubmatch(string(data), -1) {
-			if r, ok := parseUses(m[2], m[3], m[4]); ok {
-				keys[r.key()] = r
-			}
+		for _, r := range fileRefs(string(data)) {
+			keys[r.key()] = r
+		}
+		for _, r := range detectLooseUses(string(data)) {
+			loose = append(loose, rel(root, f)+": "+r)
 		}
 	}
-	return keys
+	if len(loose) > 0 {
+		return nil, xerrors.Wrap(errLooseUses, strings.Join(loose, ", "))
+	}
+	return keys, nil
 }
 
 // quarantine は minAgeDays 未満の新しすぎる解決先を採用しない。第1戻り値（採用 SHA）が "" は skip（初回かつ新しすぎ）。
@@ -207,22 +336,23 @@ func quarantine(ageFn func() (int, error), key, candidate string, minAgeDays int
 	return "", fmt.Sprintf("%s: 解決先が %d 日 (<%d)・既存ピン無しのため skip", key, age, minAgeDays), nil
 }
 
-// refAgeDays は解決先の経過日数を返す。タグに対応する Release があれば published_at（偽装困難）を、
-// 無ければ commit の committer date をフォールバックに使う。
+// refAgeDays は解決先の経過日数を返す。tag に対応する Release の published_at と sha の commit 日時を
+// 常に両方取得し、新しい方から算出する。
 func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
-	var rel struct {
+	var release struct {
 		//nolint:tagliatelle // GitHub API のレスポンスフィールド名(published_at)に合わせる必要があるため
 		PublishedAt time.Time `json:"published_at"`
 	}
-	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &rel)
+	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &release)
 	if err != nil {
 		return 0, err
 	}
-	if st == http.StatusOK && !rel.PublishedAt.IsZero() {
-		return daysSince(rel.PublishedAt), nil
-	}
 	if st != http.StatusOK && st != http.StatusNotFound {
 		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("releases/tags/%s status=%d", tag, st))
+	}
+	var published time.Time
+	if st == http.StatusOK {
+		published = release.PublishedAt
 	}
 
 	var commit struct {
@@ -239,7 +369,31 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 	if st != http.StatusOK {
 		return 0, xerrors.Wrap(errGitHubAPIStatus, fmt.Sprintf("commits/%s status=%d", sha, st))
 	}
-	return daysSince(commit.Commit.Committer.Date), nil
+
+	t, err := pickRefTime(published, commit.Commit.Committer.Date)
+	if err != nil {
+		return 0, err
+	}
+	return daysSince(t), nil
+}
+
+// pickRefTime は Release の公開日時と commit の日時のうち新しい方を返す。どちらも不明ならエラー。
+//
+// Release は tag 名にしか紐づかず、tag が別の commit へ付け替えられても published_at は据え置かれる。
+// published_at だけを見ると、この機構が想定する脅威そのもの（侵害されたアカウントによる moving tag の
+// 付け替え）に対して何年も前の日付が返り、検疫が常に素通りする。逆に commit の committer date は
+// GIT_COMMITTER_DATE で任意の過去日時へ設定できる。どちらか一方でも「新しい」と言う限り検疫が掛かる
+// よう新しい方を採る。日付偽装そのものに耐える保証ではなく、付け替えの検知は lockfile の差分レビューが
+// 担う（docs/design/security.md）。
+func pickRefTime(published, committed time.Time) (time.Time, error) {
+	switch {
+	case published.IsZero() && committed.IsZero():
+		return time.Time{}, errRefDateUnavailable
+	case published.After(committed):
+		return published, nil
+	default:
+		return committed, nil
+	}
 }
 
 // githubGet は GitHub API を GET し、200 のとき out に JSON をデコードして HTTP ステータスを返す。
@@ -294,53 +448,102 @@ func rewritePins(data string, lock map[string]string) (string, []string) {
 	return out, missing
 }
 
+// planRewrites は全ファイルを読み切り、固定後の内容と fail-close 条件を確定させる。
+// 1 ファイルずつ書きながら進むと、未登録参照で中断したときに「exit 1 なのに作業ツリーは書き換え済み」
+// という中途半端な状態が残るため、判定と書き込みを分ける。
+func planRewrites(root string, files []string, lock map[string]string) (*rewritePlan, error) {
+	plan := &rewritePlan{changes: map[string]string{}, used: map[string]bool{}}
+	for _, f := range files {
+		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
+		if err != nil {
+			return nil, xerrors.Wrap(err, "read "+rel(root, f))
+		}
+		for _, r := range detectLooseUses(string(data)) {
+			plan.loose = append(plan.loose, rel(root, f)+": "+r)
+		}
+		for _, r := range fileRefs(string(data)) {
+			plan.used[r.key()] = true
+		}
+		out, miss := rewritePins(string(data), lock)
+		plan.missing = append(plan.missing, miss...)
+		if out != string(data) {
+			plan.changes[f] = out
+		}
+	}
+	return plan, nil
+}
+
+// validate は書き込み前に中断すべき条件を返す。
+func (p *rewritePlan) validate(lock map[string]string) error {
+	if len(p.loose) > 0 {
+		sort.Strings(p.loose)
+		return xerrors.Wrap(errLooseUses, strings.Join(uniq(p.loose), ", "))
+	}
+	if len(p.missing) > 0 {
+		sort.Strings(p.missing)
+		return xerrors.Wrap(errLockMissingKey,
+			strings.Join(uniq(p.missing), ", ")+"（make pin-actions-resolve を実行してください）")
+	}
+	if orphans := orphanKeys(lock, p.used); len(orphans) > 0 {
+		return xerrors.Wrap(errLockOrphanKey,
+			strings.Join(orphans, ", ")+"（make pin-actions-resolve を実行するか該当行を削除してください）")
+	}
+	return nil
+}
+
+// orphanKeys は lockfile にあるがどの uses: からも参照されないキーを返す。
+// 孤児を残すと lockfile が現用インベントリの鏡でなくなり、レビューで lock の差分だけを読めば足りるという
+// 前提が崩れる。
+func orphanKeys(lock map[string]string, used map[string]bool) []string {
+	var orphans []string
+	for k := range lock {
+		if !used[k] {
+			orphans = append(orphans, k)
+		}
+	}
+	sort.Strings(orphans)
+	return orphans
+}
+
 // applyOrCheck は lockfile を SSOT に uses: を固定する。dryRun=true は書き換えず drift を非ゼロ終了で報告する。
 func applyOrCheck(root string, files []string, dryRun bool) {
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
 		log.Fatalf("❌ read lockfile（先に resolve を実行してください）: %v", err)
 	}
-	var missing, drifted []string
-	changed := 0
-	for _, f := range files {
-		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
-		if err != nil {
-			log.Fatalf("❌ read %s: %v", f, err)
-		}
-		out, miss := rewritePins(string(data), lock)
-		missing = append(missing, miss...)
-		if out == string(data) {
-			continue
-		}
-		if dryRun {
-			drifted = append(drifted, rel(root, f))
-			continue
-		}
-		if err := os.WriteFile(f, []byte(out), filePerm); err != nil { //nolint:gosec // workflow ファイル権限
-			log.Fatalf("❌ write %s: %v", f, err)
-		}
-		changed++
-		log.Printf("  updated %s", rel(root, f))
+	plan, err := planRewrites(root, files, lock)
+	if err != nil {
+		log.Fatalf("❌ %v", err)
 	}
-	report(missing, drifted, dryRun, changed)
-}
+	if err := plan.validate(lock); err != nil {
+		log.Fatalf("❌ %v", err)
+	}
 
-func report(missing, drifted []string, dryRun bool, changed int) {
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		log.Fatalf("❌ lockfile に未登録の参照があります（make pin-actions-resolve を実行してください）: %s",
-			strings.Join(uniq(missing), ", "))
+	paths := make([]string, 0, len(plan.changes))
+	for f := range plan.changes {
+		paths = append(paths, f)
 	}
-	if !dryRun {
-		log.Printf("✅ %d ファイルを固定しました", changed)
+	sort.Strings(paths)
+
+	if dryRun {
+		if len(paths) > 0 {
+			drifted := make([]string, 0, len(paths))
+			for _, f := range paths {
+				drifted = append(drifted, rel(root, f))
+			}
+			log.Fatalf("❌ 未固定/古い参照があります（make pin-actions-resolve && make pin-actions-apply してコミットしてください）: %s",
+				strings.Join(drifted, ", "))
+		}
+		log.Printf("✅ 全アクションが lockfile 通りに固定されています")
 		return
 	}
-	if len(drifted) > 0 {
-		sort.Strings(drifted)
-		log.Fatalf("❌ 未固定/古い参照があります（make pin-actions-resolve && make pin-actions-apply してコミットしてください）: %s",
-			strings.Join(drifted, ", "))
+	for _, f := range paths {
+		if err := os.WriteFile(f, []byte(plan.changes[f]), filePerm); err != nil {
+			log.Fatalf("❌ write %s: %v", rel(root, f), err)
+		}
+		log.Printf("  updated %s", rel(root, f))
 	}
-	log.Printf("✅ 全アクションが lockfile 通りに固定されています")
+	log.Printf("✅ %d ファイルを固定しました", len(paths))
 }
 
 // resolveSHA は owner/repo の tag/branch を commit SHA へ解決する。annotated tag は ^{} で deref する。
@@ -408,6 +611,9 @@ func isIgnorableLockErr(err error) bool {
 	return err == nil || xerrors.Is(err, os.ErrNotExist)
 }
 
+// readLock は lockfile を repo@tag→SHA として読む。空行とコメント行以外で代入として解釈できない行、
+// および既出キーの再定義はエラーにする。読み飛ばしや後勝ちの上書きは、そのエントリが「存在しない」
+// あるいは「行順で決まる」状態を警告なく作り、lockfile が SSOT として機能しなくなる。
 func readLock(path string) (map[string]string, error) {
 	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
 	if err != nil {
@@ -416,10 +622,21 @@ func readLock(path string) (map[string]string, error) {
 	defer func() { _ = f.Close() }()
 	lock := map[string]string{}
 	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if m := lockRe.FindStringSubmatch(strings.TrimSpace(sc.Text())); m != nil {
-			lock[m[1]] = m[2]
+	for lineNo := 1; sc.Scan(); lineNo++ {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
+		m := lockRe.FindStringSubmatch(line)
+		if m == nil {
+			return nil, xerrors.Wrap(errLockInvalidLine,
+				fmt.Sprintf("%d 行目: %q（make pin-actions-resolve を実行するか該当行を削除してください）", lineNo, line))
+		}
+		if _, dup := lock[m[1]]; dup {
+			return nil, xerrors.Wrap(errLockDuplicateKey,
+				fmt.Sprintf("%d 行目: %q（make pin-actions-resolve を実行するか重複行を削除してください）", lineNo, m[1]))
+		}
+		lock[m[1]] = m[2]
 	}
 	return lock, sc.Err()
 }

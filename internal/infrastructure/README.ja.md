@@ -160,6 +160,8 @@ flowchart TB
 
 ## テスト戦略
 
+以下の項目が統治するのは、基盤が **DB そのもの** であるサブシステムです。別の基盤の上に build されたサブシステムや、実 I/O を一切持たないサブシステムは、自身のパッケージ README で *Test Strategy* を宣言します。そうしたパッケージから本節へ walk して到達することは、そちらで閉じるべきドキュメントギャップであって、実 DB を要求してよい根拠ではありません。`httpclient/` / `objectstorage/` / `authz/` は宣言済みですが、残る非 DB サブシステム（`auth/` / `publisher/` / `queue/` / `system/` / `webapi/`）は未宣言で、自前の節が無いために本節を継承しているだけの状態です。
+
 - 実DBを用いた Integration Test
 - トランザクション rollback による状態隔離
 - testkit を利用

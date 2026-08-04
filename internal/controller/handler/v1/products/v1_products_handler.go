@@ -12,6 +12,8 @@ import (
 	"go-boilerplate/internal/observability"
 	productuc "go-boilerplate/internal/usecase/product"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/safecast"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
 )
@@ -55,7 +57,11 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 
 	products := make([]gen.ProductResponse, len(list.Items))
 	for i, dto := range list.Items {
-		products[i] = toProductResponse(dto)
+		res, err := toProductResponse(dto)
+		if err != nil {
+			return nil, err
+		}
+		products[i] = res
 	}
 
 	return gen.GetProducts200JSONResponse(gen.ProductListResponse{
@@ -71,14 +77,30 @@ func isAscending(sort *gen.GetProductsParamsSort) bool {
 }
 
 // toProductResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
-func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
+// 在庫数・在庫警告閾値・バージョンが int32 に収まらない場合はエラーを返します。
+func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
+	quantity, err := safecast.IntToInt32(dto.Quantity)
+	if err != nil {
+		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product quantity")
+	}
+
+	threshold, err := safecast.IntPtrToInt32Ptr(dto.StockWarningThreshold)
+	if err != nil {
+		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product stock warning threshold")
+	}
+
+	version, err := safecast.IntToInt32(dto.Version)
+	if err != nil {
+		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product version")
+	}
+
 	return gen.ProductResponse{
 		Id:                    dto.ID.ToPrimitive(),
 		Name:                  dto.Name,
 		Description:           dto.Description,
 		Price:                 dto.Price.String(),
-		Quantity:              toInt32(dto.Quantity),
-		StockWarningThreshold: intPtrToInt32Ptr(dto.StockWarningThreshold),
+		Quantity:              quantity,
+		StockWarningThreshold: threshold,
 		Status: gen.ProductStatusRef{
 			Id:   dto.StatusID.ToPrimitive(),
 			Name: dto.StatusName,
@@ -89,22 +111,6 @@ func toProductResponse(dto productuc.ProductView) gen.ProductResponse {
 		},
 		PublishedAt: dto.PublishedAt,
 		ImagePath:   dto.ImagePath,
-		Version:     toInt32(dto.Version),
-	}
-}
-
-// toInt32 は、ユースケースの DTO の int をレスポンスの int32 へ変換します。
-// 値は 32bit 整数幅で永続化される在庫数・在庫警告閾値・バージョン由来のため範囲に収まります。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は 32bit 整数幅で永続化される値でありオーバーフローしません
-	return int32(v)
-}
-
-// intPtrToInt32Ptr は、ユースケースの DTO の *int をレスポンスの *int32 へ変換します（nil はそのまま nil）。
-func intPtrToInt32Ptr(v *int) *int32 {
-	if v == nil {
-		return nil
-	}
-	i := toInt32(*v)
-	return &i
+		Version:     version,
+	}, nil
 }

@@ -26,6 +26,17 @@ db-slot status      # スロット占有状況を表示
 - **スロットファイル** — `acquire` が `.gobp-db-slot`（gitignore・`make` が `-include` で読む `KEY=VALUE`）を書き出し、`.makefiles/docker/compose.mk` の既定値を上書きする。内容は `SLOT`、`DB_NAME_LOCAL` / `DB_NAME_TEST`、スロット相対のホスト公開ポート `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` / `DLV_HOST_PORT` / `PPROF_HOST_PORT`、`COMPOSE_PROJECT_NAME`（共有 infra プロジェクト）、`SERVE_PROJECT`（`gobp-wt-N`＝app 層プロジェクト）。
 - **env ガード** — `APP_ENV` が deploy 系（`dev` / `stg` / `prd`）のときは実行を拒否する。pool は DB を作成/破棄するため dev/test 専用ツールに留める（`config.IsLocalClassEnv`）。
 
+## Test Strategy
+
+上位層の Testing Policy は、判断ロジックをダブルに対してテストできるよう、依存をすべて seam の裏へ押し出す。ここでも判断ロジックはそれに従う — ただし seam の実装自体はアダプタであり、アダプタは実物を駆動して初めて価値を持つ。したがって各コンポーネントは、その subject が実際に存在する層でテストする。
+
+- **`Pool`**（判断ロジック） — 生成 mock（`MockDBAdmin` / `MockCompose`）に対する単体テスト。Postgres にも docker にも到達しない。acquire / release / reclaim の全分岐をここで固定する。「片方だけでは取りこぼす」ことこそが要点である 2 段構えの in-use 判定も含む。
+- **`Registry`** — `t.TempDir()` 上の実ファイルシステムプリミティブ。subject が `os.Mkdir` / `os.Rename` の**原子性そのもの**なので、FS を fake にしても何も証明できない。二重リースはまさに fake が覆い隠してしまう類の欠陥である。
+- **`ExecCompose`** — `PATH` の先頭に仕込んだスタブ `docker` が、組み立てられた引数列と `COMPOSE_PROJECT_NAME` を記録する。実 compose を走らせずにコマンド構築と環境変数注入を固定する。`PATH` への `t.Setenv` を使うため、これらのケースは `t.Parallel()` と両立しない。
+- **`PgxAdmin`** — `DBAdmin` の唯一の実装。共有 Postgres（`localhost:5432`）に対してテストする。その SQL が実際に実行できることを証明する唯一の網である。到達不能ホストのケースはサーバ無しでエラー経路を固定し、作成した DB は cleanup で drop するので実行を繰り返せる。
+
+基準はパッケージではなく subject にある。契約が**判断**であるコンポーネントはダブルに対して、契約が**外部基盤の振る舞い**であるコンポーネントはその基盤に対してテストする。結果としてここのテストは純粋な単体テストのパッケージより遅く、共有 infra の起動を必要とする。
+
 ## 環境変数
 
 |変数|既定|説明|

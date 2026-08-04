@@ -15,8 +15,10 @@
 - 各外部参照は `uses: owner/repo[/sub]@<40桁hex sha> # <tag>` で固定される。**バージョンの正は末尾コメントの tag** であり、`@<sha>` 側ではない。
 - `.github/actions-pin.toml` が lockfile: `"owner/repo@<tag>" = "<sha>"`（`apply` の SSOT・`resolve` が再生成）。
 - `make pin-actions-resolve` — 各 `uses:` のコメント tag を読み、`git ls-remote` で commit SHA へ解決（annotated tag は commit へ deref）し、隔離を適用して lockfile を再生成。env `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14）でゲートを制御。moving タグの最新 SHA が除外期間内のときは**既存ピンを維持**する（moving タグに対する組み込みのステップバック）。
-- `make pin-actions-apply` — lockfile を元に各 `uses:` の `@<sha>` を書き換え（`# <tag>` は保持）。
-- `make pin-actions-check` — 書き換えなしで lockfile と一致するか検証（CI / hook 用）。
+- **`resolve` がゲートに使う経過日数は、リリースの `published_at` と解決先 commit の日時のうち新しい方**（理由は `docs/design/security.md` の Build inputs 節）。本スキルへの影響: **`published_at` が古いことは、候補が aged であることを意味しなくなった。** 2026-07-31 時点では `anthropics/claude-code-action@v1` がこれに当たる — `v1` のリリース公開は 2025-08-26 だが tag の head commit は 2026-07-25 なので、リリースが 1 年近く前でも `resolve` は隔離する。
+- `make pin-actions-apply` — lockfile を元に各 `uses:` の `@<sha>` を書き換え（`# <tag>` は保持）。全対象ファイルを読み切って可否を確定させて**から**書き込むため、中断しても作業ツリーは変更されない。
+- `make pin-actions-check` — 書き換えなしで lockfile と一致するか検証（CI / hook 用）。drift 以外にも fail-closed で落ちる: lockfile の解釈できない行、キーの重複、孤児エントリ、pin できない記法で書かれた `uses:` はいずれもエラー（手順 7 参照）。
+- 走査対象は `.github/workflows/*.{yml,yaml}` に加え `.github/actions/**/action.{yml,yaml}` を**再帰的に**辿るため、通常の配置より 1 階層深く置かれた composite action も他と同様に固定される。
 - **moving major タグ（`# v6`）は次回 `resolve` で当該メジャー内の最新へ自動追従**する。よって同一メジャーのリフレッシュは `resolve` + `apply` のみ。**メジャー更新はコメント tag の編集（`# v6` → `# v7`）が必要**。**exact 版コメント（`# 0.35.0`）は `resolve` で動かない**ため、更新はコメント編集が必要。
 
 ## 使用タイミング
@@ -74,6 +76,7 @@
 - **マイナーのみ**モードでは `M` は現行メジャーなので通常は手順1が成立し、`make pin-actions-resolve` が処理する（within-major head が新しいときは既存ピンを維持＝手順2相当）。スキルがコメント tag を編集するのは、exact 版へのステップバックを強制する必要があるとき（直近の patch リリースで head が新しい）か、exact 固定アクションの patch を上げるときのみ。
 - **major** モードでは `M` は lockfile キーの無い新メジャーなので、`vM` head が新しいと `resolve` に**skip**され（→ `apply` で missing）。手順2（exact ステップバック）が新メジャーを今採用可能にし、無ければ手順3で保留。
 - exact ステップバック（手順2）は moving-major 慣習から外れる。`vM` が aged になれば `# vM` へ戻せる旨をコミットに記す。`sigstore/cosign-installer`（moving `v4` タグ無し）は恒久的な手順2ケース。
+- **候補の選定は `published_at`、採否は `resolve`。** リリースを `published_at` で並べて候補を選ぶ（手順2）のは引き続き正しいが、その後に掛かるゲートは `published_at` と解決先 commit 日時の新しい方を使う。リリースは古いが head commit が新しい moving `vM` は、リリース一覧上は aged に見えても `resolve` の時点で手順1に失敗し、既存ピンを維持して `⚠️ ... 既存ピンを維持` を出す。エラーではなく、手順1→手順2 のフォールバックが遅れて発火したものとして扱う。
 
 ## 実行ステップ
 
@@ -141,6 +144,17 @@ make actions-lint          # actionlint で workflow 検証
 
 コマンドごとに OK / FAIL を報告。失敗時に自動ロールバックしない（ユーザー判断）。
 
+`pin-actions-check`（および同じ判定を共有する `apply`）は、通常の drift 以外に次の4条件で fail-closed になる。いずれも upstream ではなくリポジトリ側の状態の問題であり、ローカルで解消できる。
+
+| 失敗 | 意味 | 対処 |
+| --- | --- | --- |
+| `lockfile に解釈できない行があります`（行番号付き） | `.github/actions-pin.toml` の行が、空行でもコメントでも `"key" = "<40桁hex>"` の代入でもない。 | `make pin-actions-resolve` を実行するか、報告された行を削除する。 |
+| `lockfile にキーの重複があります` | 同じ `owner/repo@tag` が2回代入されている。lockfile のマージコンフリクトを機械的に解消した残骸として発生しやすい。 | `make pin-actions-resolve` を実行するか、重複行を削除する。 |
+| `lockfile に参照されていないエントリがあります` | lockfile のキーがどの `uses:` とも対応しない。典型的には workflow を削除した際の残骸。lockfile が現用インベントリの鏡でなくなり、「差分を読めば足りる」という前提が崩れる。 | `make pin-actions-resolve`（走査結果からファイルを再生成する）を実行するか、孤児の行を削除する。 |
+| `固定対象として解釈できない記法の uses: があります` | pin ツールが書き換えられない記法の `uses:` で、そのままでは固定されない。該当するのは 4 形: YAML flow mapping（`- {name: Checkout, uses: actions/checkout@v4}`）、クオートしたキー（`"uses": ...`）、値を次行へ送るブロックスカラー（`uses: >-`）、YAML alias（`uses: *anchor`）。メッセージには該当する値が出る。 | その step を素のブロック記法（`- uses: owner/repo@sha # tag` を独立行に）へ書き換える。検査の抑止で済ませない。 |
+
+ブロックスカラーの中身は対象外なので、`run:` スクリプトが `uses: owner/repo@ref` という文字列を出力するだけでは検査に引っかからない。
+
 ### 8. 最終報告
 
 更新したアクション（moving / exact ステップバック）、SHA リフレッシュしたアクション、保留（理由付き・トリアージのバンドとそれを決めた軸があればそれも）、手順 6 で見つかった付け替え済み exact tag、検証結果をまとめる。導入した exact 版 pin は、aged 後に見直せるよう一覧化する。commit / stage / push は行わない — ユーザーが手動で `/commit`（`CI:` プレフィックス）を実行する。
@@ -153,6 +167,7 @@ make actions-lint          # actionlint で workflow 検証
 - **すべてのアクションが moving major タグを持つわけではない。** `# vM` が解決できると仮定する前に必ず `vM` タグを `git ls-remote` する（`sigstore/cosign-installer` は既知の例外 → 恒久 exact 固定）。
 - **`actionlint` ≠ セマンティクスの安全。** workflow 構文は検証するが、更新後アクションの入力・挙動が用途と整合するかは見ない。メジャー更新では手順3 の `with:` レビューが必須。
 - **annotated tag の deref**: `resolve` は deref した commit SHA（`refs/tags/vM^{}`）を採用するため、素朴な `git ls-remote vM` の行と lockfile の SHA が異なる。
+- **リリース日時は、それが指すコードの新しさではない。** 隔離は `published_at` と解決先 commit 日時の新しい方を採る。これは自動化された乗っ取りに対して時間を稼ぐものであり、日時が正直であることの証明ではない。付け替えそのものの検知は引き続き手順6の役割。論拠は `docs/design/security.md`。
 - **`GITHUB_TOKEN`**: `resolve` はリリース日取得で GitHub API を叩く。トークン無しだと匿名 60 req/h 制限に当たる。`gh auth token` を export する。
 - **冪等性**: 再実行すると全て固定済みと表示され、`pin-actions-check` は通る。
 - このスキルは自動 push しない。
@@ -169,6 +184,7 @@ make actions-lint          # actionlint で workflow 検証
 - [ ] メジャーが変わる各アクションで `with:` 互換を検証し、破壊的なものは保留 + 報告
 - [ ] 手順 3 の保留（および勧告起因の出来立て head）を lockfile の SHA を baseline として `/supply-chain-triage` でトリアージ。ステップバックは設計どおりトリアージ対象外
 - [ ] lockfile の diff で **exact** tag の SHA が動いていないか確認（付け替え → `apply` 前に停止・トリアージ・報告）
+- [ ] リリースが aged に見えた tag に `resolve` の隔離ノートが出た場合、commit 日時ゲートの発火でありエラーではないと認識している
 - [ ] 計画（更新 / ステップバック / 保留と理由、トリアージのバンドがあればそれも）を提示し `AskUserQuestion` で確認
 - [ ] 承認した更新のみコメント tag 編集・保留/変更なしは不変
 - [ ] `make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>` + `make pin-actions-apply` を実行

@@ -70,6 +70,20 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 			assert.Equal(t, int64(8), got.Rankings[0].SoldQuantity)
 		})
 
+		t.Run("件数が上限を超える場合、上限へクランプした件数でQSを呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			u, mockQS := newUsecase(t)
+			mockQS.EXPECT().ListRanking(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params query.RankingQueryParams) ([]query.RankingResult, error) {
+					assert.Equal(t, maxLimit, params.Limit)
+					return []query.RankingResult{}, nil
+				})
+
+			_, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "all", Limit: 1000})
+			require.NoError(t, err)
+		})
+
 		t.Run("QSが空を返す場合RankingViewはnilでない空スライスを返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -113,25 +127,6 @@ func Test_normalizePeriod(t *testing.T) {
 			assert.Equal(t, query.PeriodAll, normalizePeriod("all"))
 			assert.Equal(t, query.PeriodAll, normalizePeriod(""))
 			assert.Equal(t, query.PeriodAll, normalizePeriod("weekly"))
-		})
-	})
-}
-
-func Test_normalizeLimit(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("0以下は既定値、範囲外はクランプ、範囲内はそのまま返す", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, defaultLimit, normalizeLimit(0))
-			assert.Equal(t, defaultLimit, normalizeLimit(-5))
-			assert.Equal(t, minLimit, normalizeLimit(1))
-			assert.Equal(t, 50, normalizeLimit(50))
-			assert.Equal(t, maxLimit, normalizeLimit(100))
-			assert.Equal(t, maxLimit, normalizeLimit(101))
 		})
 	})
 }

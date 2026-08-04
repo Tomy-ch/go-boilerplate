@@ -21,6 +21,7 @@ concurrency:
 jobs:
   mod-tidy-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -86,13 +87,13 @@ jobs:
           exit 0
 
       - name: Comment tidy result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- go-mod-tidy-check-result -->'
-          title: ${{ steps.tidy.outputs.title }}
+          title: "${{ steps.tidy.outputs.title || '## ⚠️ Module Tidy Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/go-mod-tidy.diff
           details-summary: '📄 go.mod / go.sum diff'
 

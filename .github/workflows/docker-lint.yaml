@@ -20,6 +20,7 @@ concurrency:
 jobs:
   docker-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -66,13 +67,13 @@ jobs:
           exit 0
 
       - name: Comment Dockerfile lint result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- dockerfile-lint-result -->'
-          title: ${{ steps.hadolint.outputs.title }}
+          title: "${{ steps.hadolint.outputs.title || '## ⚠️ Dockerfile Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/hadolint.log
           details-summary: 'hadolint log'
 

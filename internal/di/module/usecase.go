@@ -47,6 +47,7 @@ func UsecaseModule() fx.Option {
 			// sample-api:begin
 			// サンプルのユースケース
 			user.New,
+			user.NewPurge,
 			search.New,
 			exchangerateuc.New,
 			addressuc.New,

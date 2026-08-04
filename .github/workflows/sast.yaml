@@ -61,6 +61,7 @@ concurrency:
 jobs:
   sast:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -156,13 +157,13 @@ jobs:
             opengrep-summary.md
 
       - name: Comment SAST result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sast-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ SAST: CUT OFF (no result produced)' }}"
           body-file: opengrep-summary.md
           details-summary: '📄 Summary'
 

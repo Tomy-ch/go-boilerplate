@@ -88,6 +88,8 @@ const (
 	JobErrorKey = "job_error"
 	// JobResultKey は、ジョブ結果を表すログフィールドのキーです。
 	JobResultKey = "job_result"
+	// JobSkippedKey は、ジョブが対象から除外した件数を表すログフィールドのキーです。
+	JobSkippedKey = "job_skipped"
 	// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。
 	FilterKey = "filter"
 

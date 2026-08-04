@@ -45,7 +45,7 @@ SDK の失敗はすべて `Put` の単一箇所で `apperror.ErrUnavailable` へ
 
 ## 既定で配線される — SQS adapter との違い
 
-この adapter は既定の DI グラフに**入っています**。したがって `aws-sdk-go-v2/service/s3` は出荷バイナリにリンクされます。これは [`queue/sqs`](../queue/sqs/README.md) と逆で、あちらは AWS SDK をバイナリから外すために意図的に未配線のままにしてあります（[ADR-0044](../../../docs/adr/0044-sqs-adapter-opt-in.md)）。
+この adapter は既定の DI グラフに**入っています**。したがって `aws-sdk-go-v2/service/s3` と SDK コアは出荷バイナリにリンクされます。[`queue/sqs`](../queue/sqs/README.ja.md) は削除可能なサンプル群からのみ配線されるため、サンプルを削除すれば `service/sqs` はバイナリから外れます（[ADR-0106](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md)）。
 
 この非対称性は意図的です。worker は導入者がブローカーを選ぶまでブローカーを持ちませんが、オブジェクトストレージのポートはテンプレートが最初から使っており、宣言以上のものであるためには動く実装が要ります。何も保存しない fork は `InfrastructureModule()` から `objectStorageModule()` を外せます。
 

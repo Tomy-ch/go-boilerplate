@@ -102,6 +102,21 @@ func (mr *MockRepositoryMockRecorder) FindFeedByUserID(ctx, userID, params any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeedByUserID", reflect.TypeOf((*MockRepository)(nil).FindFeedByUserID), ctx, userID, params)
 }
 
+// FindUserIDsWithPurchases mocks base method.
+func (m *MockRepository) FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindUserIDsWithPurchases", ctx, userIDs)
+	ret0, _ := ret[0].([]uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindUserIDsWithPurchases indicates an expected call of FindUserIDsWithPurchases.
+func (mr *MockRepositoryMockRecorder) FindUserIDsWithPurchases(ctx, userIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserIDsWithPurchases", reflect.TypeOf((*MockRepository)(nil).FindUserIDsWithPurchases), ctx, userIDs)
+}
+
 // LockByID mocks base method.
 func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()
@@ -115,6 +130,20 @@ func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.
 func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
+}
+
+// UpdateDelivered mocks base method.
+func (m *MockRepository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDelivered", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDelivered indicates an expected call of UpdateDelivered.
+func (mr *MockRepositoryMockRecorder) UpdateDelivered(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDelivered", reflect.TypeOf((*MockRepository)(nil).UpdateDelivered), ctx, p)
 }
 
 // UpdatePaid mocks base method.

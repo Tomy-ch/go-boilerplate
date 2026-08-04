@@ -23,6 +23,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+//nolint:dupl // 発送/配達完了は対称な admin 専用状態遷移で、HTTP 写像テストの構造の重複は不可避
 func TestV1PurchasesShip_Integration(t *testing.T) {
 	t.Parallel()
 

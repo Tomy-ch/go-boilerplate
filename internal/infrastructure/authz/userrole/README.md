@@ -16,7 +16,7 @@ An `Authorizer` implementation backed by the `user_roles` table. It is the sampl
 1. The internal UserID must be resolved (`authn.UserID()`) and non-zero; otherwise deny. A zero-value UUID does not identify a resolved subject, and step 4 compares values only — letting it through would make a zero-value subject match a zero-value owner.
 2. Fetch the subject's roles via `user.RoleRepository`.
 3. If the subject has the admin role (`RoleCodeAdmin`), allow.
-4. Otherwise allow only when the subject owns the resource (`subject == Resource.OwnerID()`).
+4. Otherwise allow only when the subject owns the resource (`subject == Resource.OwnerID()`). A resource whose `OwnerID()` is `nil` has no owner to compare against, so this fallback can never succeed and only step 3 can allow — the action is effectively **admin-only**. Building a `Resource` without an owner is therefore how a caller declares an admin-only operation, and it fails in the safe direction: omitting an owner narrows access, never widens it.
 5. Deny otherwise, returning `ErrForbidden` (wraps `apperror.ErrPermissionDenied`, HTTP 403).
 
 Step 1's non-zero condition is defence in depth: `auth.Authn` already refuses to resolve a zero-value UserID (`WithUserID()` returns `ErrUserIDZero`), so an authorizer cannot normally be handed one. It is kept because this implementation must validate the inputs its own decision rests on, and step 4 is a bare value comparison.
@@ -25,7 +25,7 @@ Per-API, action-specific authorization is enforced at each usecase; this impleme
 
 ## DI
 
-Wired in `provideAuthorizer` (`internal/di/module/authz.go`) for the `default` (production-like) environments; `local` / `ci` / `test` keep `allowall`.
+Wired in `provideAuthorizer` (`internal/di/module/authz.go`). While the `user` sample is present, `ci` / `test` receive `allowall` and every other known environment — `local`, `development`, `staging`, `production` — receives this implementation, so a local run exercises the real role-based decision. Removing the sample folds `local` into the `allowall` case and reverts the production-like environments to the fail-closed error.
 
 ## Notes
 
