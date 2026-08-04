@@ -35,3 +35,15 @@ LOAD_GH_TOKEN = export GITHUB_TOKEN="$${GITHUB_TOKEN:-$$(gh auth token 2>/dev/nu
 COMPOSE_INFRA = $(LOAD_GH_TOKEN); docker compose -p $(INFRA_PROJECT)
 COMPOSE_APP = $(LOAD_SLOT); $(LOAD_GH_TOKEN); docker compose -p "$(APP_PROJECT_SH)" \
 	-f docker-compose.yaml -f docker-compose.attach.yaml --profile development
+
+# git-dir と git-common-dir は、リンク worktree でだけ食い違う（本体 checkout はどちらも .git、
+# git 管理外なら両方空）。共有インフラを複数 checkout で奪い合う構成かどうかの判定に使う。
+GIT_DIRS := $(shell git rev-parse --git-dir --git-common-dir 2>/dev/null)
+
+# 共有インフラの稼働中コンテナを作り直させないフラグ。compose の config-hash は bind mount の source と
+# build context を解決後の絶対パスで含むため、同一コミットの checkout 同士でもハッシュは一致せず、
+# 既定のままだと共有インフラを触るたびに他 checkout の稼働ごと作り直してしまう。
+# 渡すのは worktree のときだけ。単一 checkout には奪い合う相手が居らず、compose 本来の
+# 「up は定義変更へ再収束する」契約を捨てる理由がないため空にする。独立した clone を複数持つなど
+# この判定で拾えない構成では、`make infra-up INFRA_NO_RECREATE=--no-recreate` のように明示する。
+INFRA_NO_RECREATE ?= $(if $(filter-out $(word 2,$(GIT_DIRS)),$(word 1,$(GIT_DIRS))),--no-recreate,)
