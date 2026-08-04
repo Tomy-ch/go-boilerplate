@@ -24,12 +24,12 @@ Implements the `publisher.Publisher` interface (`internal/usecase/boundary/publi
 
 ## Choosing an implementation
 
-`New(cfg, client, tf)` switches on `OUTBOX_PUBLISHER` (`http` / `sqs`) and returns the matching adapter; an unknown value fails startup rather than falling through to a default, so a typo never publishes to an unintended target. The publish target is a per-deployment decision rather than a function of the environment tier, which is why it is an explicit discriminator instead of an `APP_ENV` branch.
+`New(cfg, client, tf)` switches on `OUTBOX_PUBLISHER` and returns the matching adapter; an unknown value fails startup rather than falling through to a default, so a typo never publishes to an unintended target. The publish target is a per-deployment decision rather than a function of the environment tier, which is why it is an explicit discriminator instead of an `APP_ENV` branch.
 
-Each branch resolves its own settings, so an environment that publishes to a queue is never asked for `OUTBOX_ENDPOINT`, and vice versa. Both resolutions fail at relay startup rather than at the first publish — an unset target would otherwise dead-letter every message silently.
+Each branch resolves its own settings, so a deployment that publishes to a queue is never asked for `OUTBOX_ENDPOINT`, and vice versa. Both resolutions fail at relay startup rather than at the first publish — an unset target would otherwise dead-letter every message silently.
 
 <!-- sample-api:begin -->
-The `sqs` branch is part of the removable sample set (see [ADR-0106](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)); after `make setup-remove-sample-api` only the HTTP branch remains.
+The `sqs` branch — the only branch besides `http` — is wiring from the removable sample set (see [ADR-0106](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)); after `make setup-remove-sample-api` only the HTTP branch remains, while the SQS adapter itself stays as an unwired reference implementation.
 <!-- sample-api:end -->
 
 ## Design Policy

@@ -18,13 +18,12 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 [ADR-0106](../../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) を参照。
 
 本番で利用するには、integrator が `NewConsumer` / `NewDeadLetter` を `WorkerModule` に登録した
-`worker.Worker` に配線します。
+`worker.Worker` に配線し、outbox の publish 先として `NewPublisher` を選びます。
 
 隔離の検証: サンプル削除後の `go list -deps ./cmd/` は
 `github.com/aws/aws-sdk-go-v2/service/sqs` を列挙してはいけません。SDK コアと `service/s3` は
 object storage adapter 経由で常にリンクされます。
 
-<!-- sample-api:begin -->
 ## 送出側
 
 `NewPublisher` は outbox の publish 境界を `SendMessage` で実装します。本文は outbox の payload を
@@ -37,8 +36,8 @@ SQS 自身の `MessageId` は broker が採番し再 publish のたびに変わ�
 スキップします。
 
 クライアントの生成は `NewClient` が担い、endpoint と資格情報の差し替えだけで ElasticMQ・LocalStack・
-本番 SQS のいずれにも向けられます。いずれも削除可能なサンプル群からのみ配線されます。
-<!-- sample-api:end -->
+本番 SQS のいずれにも向けられます。受信側と同じく、いずれも本パッケージでビルドと単体テストまで
+行われますが、実行中のバイナリへ届くのは `sample-api` マーカーを持つ配線を経由したときだけです。
 
 ## ポート対応
 

@@ -19,13 +19,13 @@ sample was added. Any wiring from the sample set therefore carries a `sample-api
 See [ADR-0106](../../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.md).
 
 To use it in production, an integrator wires `NewConsumer` / `NewDeadLetter` into a
-`worker.Worker` registered in `WorkerModule`.
+`worker.Worker` registered in `WorkerModule`, and selects `NewPublisher` as the outbox
+publish target.
 
 Verify isolation: after a sample removal, `go list -deps ./cmd/` must not list
 `github.com/aws/aws-sdk-go-v2/service/sqs`. The SDK core and `service/s3` are linked
 regardless, via the object-storage adapter.
 
-<!-- sample-api:begin -->
 ## Publishing side
 
 `NewPublisher` implements the outbox publish boundary with `SendMessage`. The message body is the
@@ -39,8 +39,8 @@ this egress boundary, mirroring the HTTP publisher, and empty-valued headers are
 rejects them with `InvalidParameterValue`.
 
 `NewClient` builds the client; swapping endpoint and credentials is enough to target ElasticMQ,
-LocalStack, or real SQS. Both are wired only from the removable sample set.
-<!-- sample-api:end -->
+LocalStack, or real SQS. Like the consuming side, both are built and unit-tested here but reach a
+running binary only through wiring, which carries a `sample-api` marker.
 
 ## Port mapping
 

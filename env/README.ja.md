@@ -174,16 +174,16 @@ transactional outbox relay の設定。
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OUTBOX_PUBLISHER|publish 先の種別（`http` / `sqs`）|string|sqs|Code default `http`。未知の値は起動エラー（fail-closed）。**Per-environment value**: 同梱サンプルをローカルブローカーで動かすため local だけが `sqs` を選ぶ。publish 先はデプロイ先ごとの判断なので他環境は code default のまま|
+|OUTBOX_PUBLISHER|publish 先の種別（`http` / `sqs`）|string|http|Code default `http`。未知の値は起動エラー（fail-closed）。publish 先はデプロイ先ごとの判断なのでどの env ファイルも値を固定せず、キューへ publish するデプロイが実行時に与える|
 |OUTBOX_ENDPOINT|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
 |OUTBOX_POLL_INTERVAL|pending を捌き切った後、次 poll まで待機する時間|duration|1s|Code default `1s`|
 |OUTBOX_ERROR_BACKOFF|relay バッチがエラーを返した後に待機する時間|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|1 回の poll で claim する pending 行数|int|100|Code default `100`|
-|OUTBOX_QUEUE_ENDPOINT|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: 同梱サンプルが compose の ElasticMQ へ publish する local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま<!-- sample-api:line -->|
-|OUTBOX_QUEUE_REGION|SigV4 署名に用いるリージョン|string|us-east-1|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。**Per-environment value**: 同梱サンプルが compose の ElasticMQ へ publish する local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま<!-- sample-api:line -->|
-|OUTBOX_QUEUE_URL|publish 先キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` と対。**Per-environment value**: 同梱サンプルが compose の ElasticMQ へ publish する local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま<!-- sample-api:line -->|
-|OUTBOX_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい。**Per-environment value**: 同梱サンプルが compose の ElasticMQ へ publish する local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま<!-- sample-api:line -->|
-|OUTBOX_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。本番は IAM ロール等へ差し替える。**Per-environment value**: 同梱サンプルが compose の ElasticMQ へ publish する local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま<!-- sample-api:line -->|
+|OUTBOX_QUEUE_ENDPOINT|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_REGION|SigV4 署名に用いるリージョン|string|us-east-1|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_URL|publish 先キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` と対。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。本番は IAM ロール等へ差し替える。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 
 ### Auth (JWT)
 

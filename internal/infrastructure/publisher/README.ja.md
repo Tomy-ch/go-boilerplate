@@ -24,12 +24,12 @@ Usecase 層の `publisher.Publisher` インターフェース（`internal/usecas
 
 ## 実装の選択
 
-`New(cfg, client, tf)` が `OUTBOX_PUBLISHER`（`http` / `sqs`）で分岐し、対応する adapter を返します。未知の値は既定へ流さず起動エラーにするため、綴り間違いが意図しない publish 先へ流れることはありません。publish 先は環境ティアの関数ではなくデプロイ先ごとの判断であるため、`APP_ENV` 分岐ではなく明示の判別子にしています。
+`New(cfg, client, tf)` が `OUTBOX_PUBLISHER` で分岐し、対応する adapter を返します。未知の値は既定へ流さず起動エラーにするため、綴り間違いが意図しない publish 先へ流れることはありません。publish 先は環境ティアの関数ではなくデプロイ先ごとの判断であるため、`APP_ENV` 分岐ではなく明示の判別子にしています。
 
-各分岐が自分の設定だけを解決するので、キューへ publish する環境が `OUTBOX_ENDPOINT` を要求されることはなく、逆も同様です。どちらの解決も最初の publish 時ではなく relay 起動時に落とします。未設定のまま起動すると全メッセージが黙って dead 化するためです。
+各分岐が自分の設定だけを解決するので、キューへ publish するデプロイが `OUTBOX_ENDPOINT` を要求されることはなく、逆も同様です。どちらの解決も最初の publish 時ではなく relay 起動時に落とします。未設定のまま起動すると全メッセージが黙って dead 化するためです。
 
 <!-- sample-api:begin -->
-`sqs` 分岐は削除可能なサンプル群の一部です（[ADR-0106](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) を参照）。`make setup-remove-sample-api` の後は HTTP 分岐だけが残ります。
+`http` 以外の唯一の分岐である `sqs` 分岐は、削除可能なサンプル群からの配線です（[ADR-0106](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) を参照）。`make setup-remove-sample-api` の後は HTTP 分岐だけが残り、SQS adapter 自体は未配線の参照実装として残ります。
 <!-- sample-api:end -->
 
 ## 設計方針
