@@ -24,8 +24,6 @@ const (
 	// drift 検出の下限件数。現実装の出現箇所数に揃えており、下回ると abort する。
 	serverDockerfileGolangCount = 3
 	toolsDockerfileGolangCount  = 2
-	dockerReadmeGolangCount     = 3
-	serverReadmeGolangCount     = 2
 )
 
 var (
@@ -57,11 +55,12 @@ type runtimeVersions struct {
 
 // rule はファイル内の regex マッチ箇所を 1 つの version で置換する単位。
 type rule struct {
-	label         string
-	file          string
-	re            *regexp.Regexp
-	version       string
-	replace       func(match string) string
+	label   string
+	file    string
+	re      *regexp.Regexp
+	version string
+	replace func(match string) string
+	// expectedCount はマッチ件数の下限。0 は下限なしを表し、記載が 1 つも無いファイルも許容する。
 	expectedCount int
 }
 
@@ -179,14 +178,17 @@ func dockerfileRule(file, label string, re *regexp.Regexp, version string, count
 	}
 }
 
-func readmeRule(file, label string, re *regexp.Regexp, version string, count int) rule {
+// readmeRule は README 中のイメージ記載を書き換える rule を返す。件数の下限は設けない。
+// README は読み物であり、同じイメージを何回書くか・そもそも書くかは記述側の裁量で、
+// 派生プロジェクトが構成を書き換えれば件数は当然変わる。件数を固定すると、実装が
+// mise.toml と揃っていても文章の書き方が変わっただけで abort することになる。
+func readmeRule(file, label string, re *regexp.Regexp, version string) rule {
 	return rule{
-		label:         label,
-		file:          file,
-		re:            re,
-		version:       version,
-		replace:       fromReplacer(re, version),
-		expectedCount: count,
+		label:   label,
+		file:    file,
+		re:      re,
+		version: version,
+		replace: fromReplacer(re, version),
 	}
 }
 
@@ -209,33 +211,33 @@ func buildRules(v runtimeVersions) []rule {
 		dockerfileRule("docker/tools/Dockerfile",
 			"docker/tools/Dockerfile (python base)", pythonFromRe, v.Python, 1),
 		readmeRule("docker/README.md",
-			"docker/README.md (golang image)", golangImageRe, v.Go, dockerReadmeGolangCount),
+			"docker/README.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/README.md",
-			"docker/README.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/README.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/README.md",
-			"docker/README.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/README.md (python image)", pythonImageRe, v.Python),
 		readmeRule("docker/README.ja.md",
-			"docker/README.ja.md (golang image)", golangImageRe, v.Go, dockerReadmeGolangCount),
+			"docker/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/README.ja.md",
-			"docker/README.ja.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/README.ja.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/README.ja.md",
-			"docker/README.ja.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/README.ja.md (python image)", pythonImageRe, v.Python),
 		readmeRule("docker/server/README.md",
-			"docker/server/README.md (golang image)", golangImageRe, v.Go, serverReadmeGolangCount),
+			"docker/server/README.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/server/README.ja.md",
-			"docker/server/README.ja.md (golang image)", golangImageRe, v.Go, serverReadmeGolangCount),
+			"docker/server/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.md",
-			"docker/tools/README.md (golang image)", golangImageRe, v.Go, 1),
+			"docker/tools/README.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.md",
-			"docker/tools/README.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/tools/README.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/tools/README.md",
-			"docker/tools/README.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/tools/README.md (python image)", pythonImageRe, v.Python),
 		readmeRule("docker/tools/README.ja.md",
-			"docker/tools/README.ja.md (golang image)", golangImageRe, v.Go, 1),
+			"docker/tools/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.ja.md",
-			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/tools/README.ja.md",
-			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python),
 		dockerfileRule("docker/tools/Dockerfile",
 			"docker/tools/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
 		dockerfileRule("docker/server/Dockerfile",
