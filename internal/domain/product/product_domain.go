@@ -50,7 +50,7 @@ type Attributes struct {
 }
 
 // New は、商品エンティティの検証と生成を行います。Price は非負の money.Price（非負検証は Price VO が担保）、
-// Quantity は 0 以上、StockWarningThreshold は指定時 0 以上である必要があります。
+// Quantity は 0 以上、StockWarningThreshold は指定時 0 以上かつ在庫数の上限以下である必要があります。
 // PublishedAt は nil（未公開）を許容し、ImagePath は無検証で保持します。
 // id が nil、Name が長さ制約外、Status / Category がゼロ値の場合はそれぞれ検証エラーを返します。
 // 生成直後のバージョンは initialVersion です。
@@ -103,10 +103,14 @@ func validateAttributes(attrs Attributes) error {
 	if err := validateQuantity(int64(attrs.Quantity)); err != nil {
 		return err
 	}
-	if attrs.StockWarningThreshold != nil && *attrs.StockWarningThreshold < minThreshold {
+	if attrs.StockWarningThreshold != nil &&
+		(*attrs.StockWarningThreshold < minThreshold || *attrs.StockWarningThreshold > maxThreshold) {
 		return xerrors.Wrap(
 			ErrInvalidStockWarningThreshold,
-			fmt.Sprintf("stockWarningThreshold must be %d or greater, got %d", minThreshold, *attrs.StockWarningThreshold),
+			fmt.Sprintf(
+				"stockWarningThreshold must be between %d and %d, got %d",
+				minThreshold, maxThreshold, *attrs.StockWarningThreshold,
+			),
 		)
 	}
 	if attrs.Status.id.IsNil() {

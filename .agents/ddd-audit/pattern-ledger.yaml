@@ -327,18 +327,23 @@ patterns:
     name: Specification
     part: 3
     scope: core
-    status: uninterpreted
+    status: interpreted
     verdict: 差異あり
     gap: >-
-      コーパス内に該当記述が皆無（`specification` の語は全て OpenAPI 仕様書・scaffold 仕様書の同音異義）。
-      Selection 用途は domain README が「Search specifications はドメインの責務ではない」として
-      QueryService / ReadModel へ明示的に送っており、Evans の「基準はドメインに残し実装だけ最適化する」
-      とは逆の解。他の DDD パターンは名指しされている中で Specification だけが一貫して欠けている。
-    interpreted_by: []
+      パターン名はコーパスに現れない（`specification` の語は全て OpenAPI 仕様書・scaffold 仕様書の
+      同音異義）が、selection の中核——基準はドメインの語彙で持ち、実行と射影だけを QueryService /
+      ReadModel へ最適化する——は domain README の Query and Aggregate 節で解釈済み。読み取り経路が
+      集約を迂回してよいこと、全件を FindByID で再構築し直さないことも Evans の想定どおり。
+      差異は validation / building to order の 2 用途への言及が無い点と、基準をドメインに保つ規約が
+      機械強制されていない点。
+    interpreted_by:
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Query and Aggregate"
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
 
   - id: domain-event
     name: Domain Event

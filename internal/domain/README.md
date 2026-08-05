@@ -410,19 +410,24 @@ User cancellation → Subscription stop
 
 ### Query and Aggregate
 
-Aggregate is a **Write Model**
+Aggregate is a **Write Model**. The *execution* of aggregation, reporting, complex search, and
+`GROUP BY` belongs to QueryService / ReadModel, and so does the projection those return.
 
-Do not handle:
+**What moves out is the implementation, never the criterion.** "Which products count as low on
+stock", "which users count as inactive" — the rule that decides membership is domain vocabulary and
+stays in the domain layer, expressed as domain constants and domain predicates. When that rule lives
+only in a `WHERE` clause, the domain has lost a business rule to infrastructure, and nothing in this
+layer can tell you what the rule is any more.
 
-- aggregation
-- reporting
-- complex search
-- GROUP BY
+The distinction matters most where selection is concerned. Naively handing a criterion to a
+Repository means fetching everything and filtering in memory, which is not viable; so the criterion
+is translated into SQL, an index, or a search engine, and the projection comes back as a DTO the
+domain never sees. That translation is expected and correct. What must not travel with it is the
+authorship of the criterion.
 
-These belong to:
-
-- QueryService
-- ReadModel
+Read paths are free to skip the aggregate entirely — a search index is a projection of the system of
+record, and reconstructing every hit through `FindByID` to re-derive it is not a realistic design.
+The domain's claim on a read path is the vocabulary of the question, not the shape of the answer.
 
 ## Dependency inversion for Infrastructure layer
 

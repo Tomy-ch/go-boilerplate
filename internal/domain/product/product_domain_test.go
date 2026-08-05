@@ -235,6 +235,16 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, ErrInvalidStockWarningThreshold)
 		})
 
+		t.Run("stockWarningThresholdが上限超過の場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
+			t.Parallel()
+			invalid := attrs
+			invalid.StockWarningThreshold = ptr.To(maxThreshold)
+			*invalid.StockWarningThreshold++
+			actual, err := New(id, invalid)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidStockWarningThreshold)
+		})
+
 		t.Run("statusがゼロ値の場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
@@ -432,6 +442,15 @@ func Test_validateAttributes(t *testing.T) {
 			attrs := valid
 			attrs.Quantity = minQuantity
 			attrs.StockWarningThreshold = ptr.To(minThreshold - 1)
+			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidStockWarningThreshold)
+		})
+
+		t.Run("stockWarningThresholdが上限超過の場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
+			t.Parallel()
+			attrs := valid
+			attrs.Quantity = minQuantity
+			attrs.StockWarningThreshold = ptr.To(maxThreshold)
+			*attrs.StockWarningThreshold++
 			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidStockWarningThreshold)
 		})
 
