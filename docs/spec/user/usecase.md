@@ -143,6 +143,7 @@ methods:
 - clock             # boundary/clock.Clock
 - authorizer        # boundary/authz.Authorizer（詳細系の認可判定。admin または対象ユーザー本人）
 - user_repository   # domain/user.Repository
+- user_lock_repository   # domain/user.LockRepository（退会時の対象行の排他ロック。ADR-0107）
 - prefecture_repository  # domain/prefecture.Repository
 - purchase_repository    # domain/purchase.Repository（退会時の進行中購入の確認）
 - outbox_emit       # usecase/outbox.EmitUsecase（退会イベントの発行）
@@ -269,7 +270,7 @@ steps:
   - authorizer.Authorize で退会の認可を確認（対象ユーザーを所有者とするリソース。admin または本人のみ許可。authn が nil なら ErrUnauthenticated）
   - clock.Now で現在時刻を取得
   - トランザクション内で（論理削除・イベント発行・拒否判定を単一 tx にまとめ、退会だけが成立してイベントが失われることを防ぐ）
-      - user_repository.LockByID で対象を排他ロックして取得（存在しない / 論理削除済みなら NotFound 伝播。SQL が deleted_at IS NULL でフィルタするため、削除済みへの再 DELETE は NotFound になる）
+      - user_lock_repository.LockByID で対象を排他ロックして取得（存在しない / 論理削除済みなら NotFound 伝播。SQL が deleted_at IS NULL でフィルタするため、削除済みへの再 DELETE は NotFound になる）
       - purchase_repository.ExistsInProgressByUserID で進行中の購入を確認し、残っていれば Conflict で退会を拒否（論理削除もイベントも残さない）
       - user.MarkAsDeleted で deletedAt を設定（ドメイン不変条件として既削除なら ErrAlreadyDeleted を返すが、LockByID フィルタにより通常経路では到達しない防御的チェック）
       - user_repository.Update で永続化（論理削除）
@@ -278,7 +279,7 @@ calls:
   - authorizer.Authorize
   - clock.Now
   - tx_manager.Do
-  - user_repository.LockByID
+  - user_lock_repository.LockByID
   - purchase_repository.ExistsInProgressByUserID
   - user.MarkAsDeleted
   - user_repository.Update

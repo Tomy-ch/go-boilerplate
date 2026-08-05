@@ -44,7 +44,7 @@ Two properties of the codebase decide the shape of the fix:
 1. **Purchase creation guards the purchaser's membership under a shared row lock.** The first
    statement inside the purchase transaction is
    `SELECT u.id FROM users u WHERE u.id = $1 AND u.deleted_at IS NULL FOR SHARE`
-   (`lock_active_user_share_by_id.sql`, exposed as `user.Repository.LockActiveShareByID`). Zero rows
+   (`lock_active_user_share_by_id.sql`, exposed as `user.LockRepository.LockActiveShareByID`). Zero rows
    rejects the purchase. Shared locks are mutually compatible, so concurrent purchases by the same
    user do not serialize against each other; only the withdrawal's exclusive lock conflicts. Under
    READ COMMITTED, `EvalPlanQual` re-evaluates `deleted_at IS NULL` against the newly committed row
@@ -95,8 +95,11 @@ Two properties of the codebase decide the shape of the fix:
   fully independent of the user aggregate.
 - `FOR SHARE` is the first shared row lock in this repository, so the lock-mode vocabulary that
   readers must hold is one wider than before.
-- `internal/usecase/purchase` now depends on `user.Repository`, adding a second cross-aggregate edge
+- `internal/usecase/purchase` now depends on the user aggregate, adding a second cross-aggregate edge
   at the usecase layer (the mirror of the existing `internal/usecase/user` → `purchase.Repository`).
+  The two locking reads live in their own `user.LockRepository` rather than in `user.Repository`, so
+  the purchase side depends on the two methods it uses instead of on all ten a Repository carries —
+  but the user aggregate now presents two repository interfaces where it presented one.
 
 ### Neutral Consequences
 

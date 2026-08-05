@@ -68,7 +68,7 @@ output:
 - name: tx.Manager                       # nested で最外 idempotency tx に乗る
 - name: command.CommandService           # LockProducts / CreatePurchase（infra 実装）
 - name: purchase.Repository              # FindByID（書き込み後の再検証・DTO 取得元）
-- name: user.Repository                  # LockActiveShareByID（購入者の在籍ガード。ADR-0107）
+- name: user.LockRepository              # LockActiveShareByID（購入者の在籍ガード。ADR-0107）
 - name: outbox.EmitUsecase               # purchase.created.v1 の emit（同一 tx）
 - name: exchangerate.Usecase             # referenceAmount の換算消費（#562 成果 / half-up）
 - name: observability.TracerFactory
@@ -83,7 +83,7 @@ output:
   steps:
     - id / code / 各 detail id を UUIDv7 で採番する
     - "txm.Do(nested) 内で:"
-    - "  ⓪ userRepo.LockActiveShareByID で購入者の在籍を共有ロック付きで確認する（退会と直列化。ADR-0107）"
+    - "  ⓪ userLock.LockActiveShareByID で購入者の在籍を共有ロック付きで確認する（退会と直列化。ADR-0107）"
     - "  ① cmd.LockProducts(productID 昇順) で在庫をロックし price/quantity を得る"
     - "  ② purchase.New で入力検証・売り越し検証・金額計算・snapshot・未処理ステータスを行う"
     - "  ③ cmd.CreatePurchase で在庫減算 + purchases/purchase_details を書き込む"
