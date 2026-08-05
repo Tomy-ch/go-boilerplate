@@ -46,39 +46,70 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	db := gen.New(driver.New(ctx, r.db))
 	hasAfter := params.AfterPublishedAt != nil && params.AfterID != nil
 
-	if params.Ascending {
-		rows, err := db.ListPublishedProductsAsc(ctx, &gen.ListPublishedProductsAscParams{
+	// keyset は並び順ごとに「先頭ページ用」「カーソル以降用」の 2 本の固定クエリへ分ける。
+	// 1 本へ畳んでオプショナル述語にすると、実行計画が入力に依存する単一のステートメントになる。
+	toRow := func(p gen.Products, statusName, categoryName string) productRow {
+		return productRow{p: p, statusName: statusName, categoryName: categoryName}
+	}
+
+	switch {
+	case params.Ascending && hasAfter:
+		rows, err := db.ListPublishedProductsAscAfter(ctx, &gen.ListPublishedProductsAscAfterParams{
 			CategoryID:       params.CategoryID,
 			StatusID:         params.StatusID,
 			Keyword:          params.Keyword,
-			HasAfter:         hasAfter,
 			AfterPublishedAt: params.AfterPublishedAt,
-			AfterID:          params.AfterID,
+			AfterID:          *params.AfterID,
 			LimitParam:       params.Limit,
 		})
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
 		}
-		return rowsToProducts(rows, func(row *gen.ListPublishedProductsAscRow) productRow {
-			return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
+		return rowsToProducts(rows, func(row *gen.ListPublishedProductsAscAfterRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
+		})
+	case params.Ascending:
+		rows, err := db.ListPublishedProductsAscFirst(ctx, &gen.ListPublishedProductsAscFirstParams{
+			CategoryID: params.CategoryID,
+			StatusID:   params.StatusID,
+			Keyword:    params.Keyword,
+			LimitParam: params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToProducts(rows, func(row *gen.ListPublishedProductsAscFirstRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
+		})
+	case hasAfter:
+		rows, err := db.ListPublishedProductsDescAfter(ctx, &gen.ListPublishedProductsDescAfterParams{
+			CategoryID:       params.CategoryID,
+			StatusID:         params.StatusID,
+			Keyword:          params.Keyword,
+			AfterPublishedAt: params.AfterPublishedAt,
+			AfterID:          *params.AfterID,
+			LimitParam:       params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescAfterRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
+		})
+	default:
+		rows, err := db.ListPublishedProductsDescFirst(ctx, &gen.ListPublishedProductsDescFirstParams{
+			CategoryID: params.CategoryID,
+			StatusID:   params.StatusID,
+			Keyword:    params.Keyword,
+			LimitParam: params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescFirstRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
 		})
 	}
-
-	rows, err := db.ListPublishedProductsDesc(ctx, &gen.ListPublishedProductsDescParams{
-		CategoryID:       params.CategoryID,
-		StatusID:         params.StatusID,
-		Keyword:          params.Keyword,
-		HasAfter:         hasAfter,
-		AfterPublishedAt: params.AfterPublishedAt,
-		AfterID:          params.AfterID,
-		LimitParam:       params.Limit,
-	})
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-	return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescRow) productRow {
-		return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
-	})
 }
 
 // FindAllLowStock は、ListLowStockProducts で quantity <= stock_warning_threshold の商品を

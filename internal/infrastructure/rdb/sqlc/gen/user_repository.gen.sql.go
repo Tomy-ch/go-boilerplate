@@ -493,35 +493,79 @@ func (q *Queries) ListDeletedUsers(ctx context.Context, arg *ListDeletedUsersPar
 	return items, nil
 }
 
-const listPurgeCandidateUserIDs = `-- name: ListPurgeCandidateUserIDs :many
+const listPurgeCandidateUserIDsAfter = `-- name: ListPurgeCandidateUserIDsAfter :many
 SELECT id
 FROM users
 WHERE deleted_at IS NOT NULL
     AND deleted_at < $1
-    AND ($2::UUID IS NULL OR id > $2)
+    AND id > $2
 ORDER BY id ASC
 LIMIT $3
 `
 
-type ListPurgeCandidateUserIDsParams struct {
+type ListPurgeCandidateUserIDsAfterParams struct {
 	Cutoff     *time.Time
-	AfterID    *uuid.UUID
+	AfterID    uuid.UUID
 	LimitParam int32
 }
 
-// === source: database/dml/repository/user/select_purge_candidate_users.sql ===
 // 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する。
 // 物理削除の対象にならない行（購入を持つユーザー）を挟んでも前進できるよう、境界を after_id で受け取る。
+// 先頭ページは対の First クエリが担う。
 //
 //	SELECT id
 //	FROM users
 //	WHERE deleted_at IS NOT NULL
 //	    AND deleted_at < $1
-//	    AND ($2::UUID IS NULL OR id > $2)
+//	    AND id > $2
 //	ORDER BY id ASC
 //	LIMIT $3
-func (q *Queries) ListPurgeCandidateUserIDs(ctx context.Context, arg *ListPurgeCandidateUserIDsParams) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, listPurgeCandidateUserIDs, arg.Cutoff, arg.AfterID, arg.LimitParam)
+func (q *Queries) ListPurgeCandidateUserIDsAfter(ctx context.Context, arg *ListPurgeCandidateUserIDsAfterParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listPurgeCandidateUserIDsAfter, arg.Cutoff, arg.AfterID, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurgeCandidateUserIDsFirst = `-- name: ListPurgeCandidateUserIDsFirst :many
+SELECT id
+FROM users
+WHERE deleted_at IS NOT NULL
+    AND deleted_at < $1
+ORDER BY id ASC
+LIMIT $2
+`
+
+type ListPurgeCandidateUserIDsFirstParams struct {
+	Cutoff     *time.Time
+	LimitParam int32
+}
+
+// === source: database/dml/repository/user/select_purge_candidate_users.sql ===
+// 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する。
+// 先頭ページを返す。カーソル以降は対の After クエリが担う。
+//
+//	SELECT id
+//	FROM users
+//	WHERE deleted_at IS NOT NULL
+//	    AND deleted_at < $1
+//	ORDER BY id ASC
+//	LIMIT $2
+func (q *Queries) ListPurgeCandidateUserIDsFirst(ctx context.Context, arg *ListPurgeCandidateUserIDsFirstParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listPurgeCandidateUserIDsFirst, arg.Cutoff, arg.LimitParam)
 	if err != nil {
 		return nil, err
 	}
