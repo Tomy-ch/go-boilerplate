@@ -18,6 +18,10 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// spacedAuthorization は、前後空白付きの機微ヘッダ名です。map リテラルのキーに空白を書くと
+// gocritic が誤記として弾くため、定数を経由して与えます。
+const spacedAuthorization = " Authorization"
+
 // traceparentPattern は、W3C traceparent（00-<traceID>-<spanID>-<flags>）の形式を検証する正規表現です。
 var traceparentPattern = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
 
@@ -101,7 +105,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			assert.Equal(t, want, got)
 		})
 
-		t.Run("機微ヘッダ（Authorization/Cookie 等）は大文字小文字を問わず除外し、他ヘッダは保持する", func(t *testing.T) {
+		t.Run("機微ヘッダ（Authorization/Cookie 等）は大文字小文字と前後空白を問わず除外し、他ヘッダは保持する", func(t *testing.T) {
 			t.Parallel()
 			// egress 起点として、誤って混入した既知の機微ヘッダは denylist で落とし外部へ送出しない。
 			ctrl := gomock.NewController(t)
@@ -117,17 +121,20 @@ func Test_emitUsecase_Emit(t *testing.T) {
 					return want, nil
 				})
 
+			headers := map[string]string{
+				"traceparent":   "00-abc",
+				"x-custom":      "keep",
+				"Authorization": "Bearer secret",
+				"cookie":        "sid=abc",
+				"Set-Cookie":    "sid=abc",
+			}
+			headers[spacedAuthorization] = "Bearer secret"
+
 			got, err := outbox.NewEmit(store, observability.NewNoopTracerFactory(t)).
 				Emit(context.Background(), outbox.EmitInput{
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
-					Headers: map[string]string{
-						"traceparent":   "00-abc",
-						"x-custom":      "keep",
-						"Authorization": "Bearer secret",
-						"cookie":        "sid=abc",
-						"Set-Cookie":    "sid=abc",
-					},
+					Headers:   headers,
 				})
 
 			require.NoError(t, err)

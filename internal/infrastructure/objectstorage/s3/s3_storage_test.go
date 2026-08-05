@@ -78,6 +78,15 @@ func newFakeS3(t *testing.T) (*httptest.Server, gofakes3.Backend, *requestHeader
 func newStorage(t *testing.T, endpoint, bucket string) boundary.Storage {
 	t.Helper()
 
+	return newStorageWithOutbound(t, endpoint, bucket, observability.NewDisabledOutboundHTTPClient(true))
+}
+
+// newStorageWithOutbound は、SSRF ガードの方針を指定して S3 実装を組み立てます。
+func newStorageWithOutbound(
+	t *testing.T, endpoint, bucket string, outbound *observability.OutboundHTTPClient,
+) boundary.Storage {
+	t.Helper()
+
 	return s3adapter.New(s3adapter.Config{
 		Endpoint:        endpoint,
 		Region:          "us-east-1",
@@ -85,6 +94,7 @@ func newStorage(t *testing.T, endpoint, bucket string) boundary.Storage {
 		AccessKeyID:     "test",
 		SecretAccessKey: "test",
 		UsePathStyle:    true,
+		HTTPClient:      outbound,
 	}, observability.NewNoopTracerFactory(t))
 }
 
@@ -100,6 +110,28 @@ func TestNew(t *testing.T) {
 			s := newStorage(t, "http://s3.example.com", testBucket)
 
 			assert.NotNil(t, s)
+		})
+
+		t.Run("渡した HTTPClient を SDK が実際に使う", func(t *testing.T) {
+			t.Parallel()
+			// fake は loopback（private）で待つため、private 網を許可した client でのみ到達できる。
+			// ガード付き client が SDK へ届いていなければ、拒否側でも素通りして成功してしまう。
+			ts, _, _ := newFakeS3(t)
+
+			allowed := newStorageWithOutbound(
+				t, ts.URL, testBucket, observability.NewDisabledOutboundHTTPClient(true))
+			_, allowedErr := allowed.Put(context.Background(), boundary.PutObject{
+				Key: "guard-allowed.txt", Body: []byte("x"), ContentType: "text/plain",
+			})
+
+			denied := newStorageWithOutbound(
+				t, ts.URL, testBucket, observability.NewDisabledOutboundHTTPClient(false))
+			_, deniedErr := denied.Put(context.Background(), boundary.PutObject{
+				Key: "guard-denied.txt", Body: []byte("x"), ContentType: "text/plain",
+			})
+
+			require.NoError(t, allowedErr)
+			require.Error(t, deniedErr, "private 網を拒否する client でも到達できており、SDK がガードを使っていない")
 		})
 	})
 }

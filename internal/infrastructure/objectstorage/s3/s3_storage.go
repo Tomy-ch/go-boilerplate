@@ -34,6 +34,9 @@ type Config struct {
 	SecretAccessKey string
 	// UsePathStyle は、path-style アクセスを使うかどうかです（Garage / MinIO は true が必要）。
 	UsePathStyle bool
+	// HTTPClient は、SDK が使う HTTP クライアントです。SSRF ガード付きの実装を DI が注入します。
+	// nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。
+	HTTPClient aws.HTTPClient
 }
 
 // storage は、boundary.Storage の S3 互換実装です。
@@ -48,6 +51,7 @@ func New(cfg Config, tf observability.TracerFactory) boundary.Storage {
 	awsCfg := aws.Config{
 		Region:      cfg.Region,
 		Credentials: awscreds.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
+		HTTPClient:  cfg.HTTPClient,
 	}
 	client := awss3.NewFromConfig(awsCfg, func(o *awss3.Options) {
 		o.UsePathStyle = cfg.UsePathStyle

@@ -80,7 +80,14 @@ func openSeedObjectStorage(logger logging.Logger, database string) (string, seed
 		return "", nil, err
 	}
 	osCfg := config.NewObjectStorageConfig(cfg)
-	storage := objectstorageinfra.New(osCfg, observability.NewDisabledTracerFactory())
+	// private 網の可否はサーバ本体と同じ env 基準で決める。seed は staging でも実行されうるため、
+	// ローカル前提で常時許可にするとその環境だけ SSRF ガードが緩くなる。
+	appEnv := config.NewApplicationConfig(cfg).Env()
+	storage := objectstorageinfra.New(
+		osCfg,
+		observability.NewDisabledOutboundHTTPClient(config.IsLocalClassEnv(appEnv)),
+		observability.NewDisabledTracerFactory(),
+	)
 
 	put := func(ctx context.Context, obj seed.ObjectToPut) error {
 		_, perr := storage.Put(ctx, objectstorage.PutObject{

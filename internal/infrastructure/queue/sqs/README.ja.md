@@ -35,8 +35,17 @@ SQS 自身の `MessageId` は broker が採番し再 publish のたびに変わ�
 同じくこの egress 境界で落とします。空値のヘッダは SQS が `InvalidParameterValue` で拒否するため
 スキップします。
 
+SQS のメッセージ属性は最大 10 件で、うち 1 件は `message_id` が占めます。超過するメッセージは
+切り詰めずに、送信前に `ErrTooManyAttributes` で弾きます。切り詰めるとどのヘッダが残るかが Go の
+map の反復順に従うため、`traceparent` を失っても再現せず気付けないためです。relay がエラーを
+outbox 行へ記録し、試行回数を使い切った時点で dead になります。どのキューも受け取らない
+ペイロードの終わり方として、これが正しい。この上限は SQS 固有なのでここに留め、
+`publisher.Message` は属性数を持ちません。
+
 クライアントの生成は `NewClient` が担い、endpoint と資格情報の差し替えだけで ElasticMQ・LocalStack・
-本番 SQS のいずれにも向けられます。いずれも本パッケージでビルドと単体テストまで行われますが、
+本番 SQS のいずれにも向けられます。`HTTPClient` にはアプリの他の外部通信と同じ SSRF ガード付き
+transport を渡すため、link-local（クラウドメタデータ）へ向けた endpoint は取得される前に dial で
+拒否されます。nil のままにすると SDK 自身の transport に落ち、このガードを失います。いずれも本パッケージでビルドと単体テストまで行われますが、
 実行中のバイナリへ届くのは outbox publisher の `sqs` 分岐（`sample-api` マーカー付き）を経由した
 ときだけです。受信側はそもそも配線されていません。
 

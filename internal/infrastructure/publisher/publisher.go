@@ -27,11 +27,20 @@ var ErrUnknownKind = xerrors.Wrap(apperror.ErrInvalidArgument, "unknown outbox p
 // publish 先の種別は環境ティアではなくデプロイ先の判断で決まるため、環境分岐ではなく明示の
 // 判別子で選びます。対応する case が無い値は、意図しない publish 先へ黙って流れることを防ぐため
 // 起動エラーにします（fail-closed）。
+// sample-api:replace-begin
 func New(
 	cfg *config.OutboxConfig,
 	client httpclient.Client,
+	outbound *observability.OutboundHTTPClient,
 	tf observability.TracerFactory,
 ) (boundary.Publisher, error) {
+	// sample-api:replace-with
+	// = func New(
+	// = 	cfg *config.OutboxConfig,
+	// = 	client httpclient.Client,
+	// = 	tf observability.TracerFactory,
+	// = ) (boundary.Publisher, error) {
+	// sample-api:replace-end
 	switch cfg.Publisher() {
 	case KindHTTP:
 		endpoint, err := NewEndpoint(cfg)
@@ -51,6 +60,7 @@ func New(
 				Region:          cfg.QueueRegion(),
 				AccessKeyID:     cfg.QueueAccessKeyID(),
 				SecretAccessKey: cfg.QueueSecretAccessKey(),
+				HTTPClient:      outbound,
 			}),
 			queueCfg,
 			tf,

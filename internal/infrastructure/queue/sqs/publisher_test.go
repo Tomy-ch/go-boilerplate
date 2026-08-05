@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,6 +18,10 @@ import (
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
+
+// spacedAuthorization は、前後空白付きの機微ヘッダ名です。map リテラルのキーに空白を書くと
+// gocritic が誤記として弾くため、定数を経由して与えます。
+const spacedAuthorization = " Authorization"
 
 const testQueueURL = "http://elasticmq:9324/000000000000/gobp-events"
 
@@ -103,6 +108,27 @@ func Test_publisher_Publish(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, messageID.String(), aws.ToString((*got).MessageAttributes[AttrMessageID].StringValue))
 		})
+
+		t.Run("MessageAttributes が上限ちょうどなら送信する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			got := captureSendMessage(t, api)
+
+			headers := make(map[string]string, maxMessageAttributes-1)
+			for i := range maxMessageAttributes - 1 {
+				headers[fmt.Sprintf("x-h%d", i)] = "v"
+			}
+
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				Headers:   headers,
+			})
+
+			require.NoError(t, err)
+			assert.Len(t, (*got).MessageAttributes, maxMessageAttributes)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -119,6 +145,26 @@ func Test_publisher_Publish(t *testing.T) {
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("MessageAttributes が上限を超えたら送信前にエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+
+			headers := make(map[string]string, maxMessageAttributes)
+			for i := range maxMessageAttributes {
+				headers[fmt.Sprintf("x-h%d", i)] = "v"
+			}
+
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				Headers:   headers,
+			})
+
+			require.ErrorIs(t, err, ErrTooManyAttributes)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
 		t.Run("ctx キャンセルを ErrCanceled へ正規化する", func(t *testing.T) {
@@ -166,17 +212,20 @@ func Test_publisher_messageAttributes(t *testing.T) {
 			assert.Equal(t, "00-trace-span-01", aws.ToString(got["traceparent"].StringValue))
 		})
 
-		t.Run("機微ヘッダは載せない", func(t *testing.T) {
+		t.Run("機微ヘッダは前後空白付きでも載せない", func(t *testing.T) {
 			t.Parallel()
+
+			headers := map[string]string{
+				"Authorization":       "Bearer secret",
+				"Proxy-Authorization": "Basic secret",
+				"Cookie":              "session=secret",
+				"Set-Cookie":          "session=secret",
+			}
+			headers[spacedAuthorization] = "Bearer secret"
 
 			got := p.messageAttributes(boundary.Message{
 				MessageID: newTestUUID(t),
-				Headers: map[string]string{
-					"Authorization":       "Bearer secret",
-					"Proxy-Authorization": "Basic secret",
-					"Cookie":              "session=secret",
-					"Set-Cookie":          "session=secret",
-				},
+				Headers:   headers,
 			})
 
 			assert.Len(t, got, 1)

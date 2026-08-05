@@ -24,7 +24,11 @@ func TestNew(t *testing.T) {
 			cfg, err := config.New()
 			require.NoError(t, err)
 
-			s := objectstorage.New(config.NewObjectStorageConfig(cfg), observability.NewNoopTracerFactory(t))
+			s := objectstorage.New(
+				config.NewObjectStorageConfig(cfg),
+				observability.NewDisabledOutboundHTTPClient(true),
+				observability.NewNoopTracerFactory(t),
+			)
 
 			assert.NotNil(t, s)
 		})

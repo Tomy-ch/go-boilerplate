@@ -6,6 +6,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/internal/observability"
 )
 
 func TestNewClient(t *testing.T) {
@@ -48,6 +50,17 @@ func TestNewClient(t *testing.T) {
 			creds, err := got.Options().Credentials.Retrieve(t.Context())
 			require.NoError(t, err)
 			assert.Equal(t, "dummy-key", creds.AccessKeyID)
+		})
+
+		t.Run("渡した HTTPClient を SDK がそのまま保持する", func(t *testing.T) {
+			t.Parallel()
+			// 非 BuildableClient は SDK が差し替えないため、注入したインスタンスが同一のまま残る。
+			// ここが nil に戻ると SDK 既定のトランスポートになり SSRF ガードを失う。
+			outbound := observability.NewDisabledOutboundHTTPClient(true)
+
+			got := NewClient(ClientConfig{Region: "us-east-1", HTTPClient: outbound})
+
+			assert.Same(t, outbound, got.Options().HTTPClient)
 		})
 	})
 }

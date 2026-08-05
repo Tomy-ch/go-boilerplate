@@ -168,6 +168,33 @@ func TestNewNoopHTTPClientTransport(t *testing.T) {
 	})
 }
 
+func TestNewGuardedHTTPClientTransport(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("SSRFガードを残し方針未指定の loopback 宛てを拒否する", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer srv.Close()
+
+			transport := NewGuardedHTTPClientTransport(t)
+			require.NotNil(t, transport)
+
+			// permissive でない dial control のため、許可を積んでいない loopback 宛ては dial で落ちる。
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+			require.NoError(t, err)
+			_, err = (&http.Client{Transport: transport.RoundTripper()}).Do(req)
+
+			require.Error(t, err)
+		})
+	})
+}
+
 func TestNewStubSpanContext(t *testing.T) {
 	t.Parallel()
 

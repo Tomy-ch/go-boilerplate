@@ -11,7 +11,9 @@ import (
 
 // New は、config から S3 互換アダプタを構築し boundary.Storage を返します。
 // endpoint / 資格情報の差し替えだけで Garage・MinIO・本番 S3 のいずれにも接続します。
-func New(cfg *config.ObjectStorageConfig, tf observability.TracerFactory) boundary.Storage {
+func New(
+	cfg *config.ObjectStorageConfig, outbound *observability.OutboundHTTPClient, tf observability.TracerFactory,
+) boundary.Storage {
 	return s3.New(s3.Config{
 		Endpoint:        cfg.Endpoint(),
 		Region:          cfg.Region(),
@@ -19,5 +21,6 @@ func New(cfg *config.ObjectStorageConfig, tf observability.TracerFactory) bounda
 		AccessKeyID:     cfg.AccessKeyID(),
 		SecretAccessKey: cfg.SecretAccessKey(),
 		UsePathStyle:    cfg.UsePathStyle(),
+		HTTPClient:      outbound,
 	}, tf)
 }

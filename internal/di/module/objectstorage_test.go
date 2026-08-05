@@ -61,10 +61,11 @@ func Test_provideObjectStorage(t *testing.T) {
 			cfg := config.NewObjectStorageConfig(config.MockConfigForTest(t))
 			tf := observability.NewNoopTracerFactory(t)
 
-			got := provideObjectStorage(cfg, tf)
+			outbound := observability.NewDisabledOutboundHTTPClient(true)
+			got := provideObjectStorage(cfg, outbound, tf)
 
 			// 実装の差し替え（別 adapter や decorator の混入）を型で固定する。
-			assert.IsType(t, objectstorage.New(cfg, tf), got)
+			assert.IsType(t, objectstorage.New(cfg, outbound, tf), got)
 		})
 	})
 }

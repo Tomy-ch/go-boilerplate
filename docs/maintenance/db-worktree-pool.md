@@ -188,6 +188,18 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   it under one fixed key name from the running checkout's `env/.env`, so a branch that edits
   `OBJECT_STORAGE_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` changes what every other checkout authenticates
   with. Isolate by bucket, not by credential.
+- **The queue is shared and cannot be isolated by configuration alone**: `elasticmq` serves one set of
+  queues to every checkout, and unlike the object-storage bucket, pointing `OUTBOX_QUEUE_URL` at a
+  different name is not enough — ElasticMQ creates only the queues declared in
+  `docker/elasticmq/elasticmq.conf` and expands no environment variables, so a name nothing declared
+  is simply absent. Two checkouts running `make outbox-relay` at once therefore publish into the same
+  queue, and whichever consumer reads first takes the message. Nothing consumes it today
+  (`provideWorkers()` is empty), so the overlap is invisible until a worker is wired. To isolate a
+  branch, declare an extra queue in `elasticmq.conf` and point `OUTBOX_QUEUE_URL` at it — the conf is
+  read at start-up, so the change needs `make infra-down && make infra-up`, which interrupts every
+  checkout. Per-slot queues are not pre-declared because the pool size is configurable
+  (`GOBP_DB_POOL_MAX`), and a static list in the conf would silently stop covering the pool as soon as
+  that value changed.
 - `sql_editor` / `docs_viewer` have been moved into the 7000 range so they do not collide with the
   API band 8080–8092.
 - The wiring spans `docker/`, `internal/cli/dbslot`, and `.makefiles/`, so update this document

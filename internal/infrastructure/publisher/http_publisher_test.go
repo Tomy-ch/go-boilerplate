@@ -17,6 +17,10 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// spacedAuthorization は、前後空白付きの機微ヘッダ名です。map リテラルのキーに空白を書くと
+// gocritic が誤記として弾くため、定数を経由して与えます。
+const spacedAuthorization = " Authorization"
+
 const testEndpoint = "https://receiver.example.com/events"
 
 func TestNewHTTP(t *testing.T) {
@@ -73,7 +77,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		t.Run("機微ヘッダ(Authorization/Cookie等)は egress で落とし通常ヘッダは伝搬する", func(t *testing.T) {
+		t.Run("機微ヘッダ(Authorization/Cookie等)は前後空白付きでも egress で落とし通常ヘッダは伝搬する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
@@ -86,22 +90,26 @@ func Test_httpPublisher_Publish(t *testing.T) {
 					assert.NotContains(t, req.Header(), "Cookie")
 					assert.NotContains(t, req.Header(), "Proxy-Authorization")
 					assert.NotContains(t, req.Header(), "Set-Cookie")
+					assert.NotContains(t, req.Header(), spacedAuthorization)
 					assert.Equal(t, []string{"00-x"}, req.Header()["traceparent"])
 					return &httpclient.Response{StatusCode: 200}, nil
 				})
+
+			headers := map[string]string{
+				"traceparent":         "00-x",
+				"Authorization":       "Bearer secret",
+				"Cookie":              "session=abc",
+				"Proxy-Authorization": "Basic zzz",
+				"Set-Cookie":          "a=b",
+			}
+			headers[spacedAuthorization] = "Bearer secret"
 
 			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
 					MessageID: msgID,
 					EventType: "e.v1",
 					Payload:   []byte(`{"v":1}`),
-					Headers: map[string]string{
-						"traceparent":         "00-x",
-						"Authorization":       "Bearer secret",
-						"Cookie":              "session=abc",
-						"Proxy-Authorization": "Basic zzz",
-						"Set-Cookie":          "a=b",
-					},
+					Headers:   headers,
 				})
 
 			require.NoError(t, err)

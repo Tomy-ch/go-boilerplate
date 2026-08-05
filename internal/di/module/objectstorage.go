@@ -19,6 +19,10 @@ func objectStorageModule() fx.Option {
 }
 
 // provideObjectStorage は、オブジェクトストレージ実装を組み立てて boundary.Storage を返します。
-func provideObjectStorage(cfg *config.ObjectStorageConfig, tf observability.TracerFactory) objectstoragebd.Storage {
-	return objectstorage.New(cfg, tf)
+func provideObjectStorage(
+	cfg *config.ObjectStorageConfig,
+	outbound *observability.OutboundHTTPClient,
+	tf observability.TracerFactory,
+) objectstoragebd.Storage {
+	return objectstorage.New(cfg, outbound, tf)
 }

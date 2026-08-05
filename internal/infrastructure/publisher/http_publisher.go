@@ -4,24 +4,15 @@ package publisher
 
 import (
 	"context"
-	"strings"
 
 	"go-boilerplate/internal/infrastructure/httpclient"
 	"go-boilerplate/internal/observability"
 	boundary "go-boilerplate/internal/usecase/boundary/publisher"
+	"go-boilerplate/pkg/httpheader"
 )
 
 // downstream は、profile / breaker / metrics / budget の論理依存名です。
 const downstream httpclient.Downstream = "outbox"
-
-// egressHeaderDenylist は、受信エンドポイントへ送出してはならない機微ヘッダ名（小文字正規化済み）です。
-// emit 側 denylist と重複するが、emit を経由せず INSERT された行に対する真の egress 境界での防御。
-var egressHeaderDenylist = map[string]struct{}{
-	"authorization":       {},
-	"proxy-authorization": {},
-	"cookie":              {},
-	"set-cookie":          {},
-}
 
 // Endpoint は、メッセージの送信先エンドポイント URL です（構築時に config から固定注入）。
 type Endpoint string
@@ -75,7 +66,8 @@ func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 
 	header := httpclient.Header{"Content-Type": {"application/json"}}
 	for k, v := range m.Headers {
-		if _, denied := egressHeaderDenylist[strings.ToLower(k)]; denied {
+		// emit 側でも同じ判定を行うが、emit を経由せず INSERT された行に対する真の egress 境界での防御。
+		if httpheader.IsSensitive(k) {
 			continue
 		}
 		header[k] = []string{v}

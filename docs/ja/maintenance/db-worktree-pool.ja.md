@@ -166,5 +166,16 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   定義変更へ再収束する。
 - **オブジェクトストレージは共有**: `garage` のバケットは全 checkout で共通（DB と違いスキーマを持たないため
   ブランチ間で壊れない）。ブランチ毎に隔離したい場合は `OBJECT_STORAGE_BUCKET` を分ける。
+- **キューは共有で、設定だけでは隔離できない**: `elasticmq` は全 checkout へ同じキュー群を提供する。
+  オブジェクトストレージのバケットと違い `OUTBOX_QUEUE_URL` を別名に向けるだけでは足りない。
+  ElasticMQ は `docker/elasticmq/elasticmq.conf` に宣言されたキューしか作らず、環境変数も展開しない
+  ため、どこにも宣言の無い名前は単に存在しないからである。2 つの checkout が同時に
+  `make outbox-relay` を回せば同じキューへ publish し、先に読んだ consumer がメッセージを取る。
+  現状は consumer が居ない（`provideWorkers()` は空）ため、worker を配線するまでこの重なりは
+  表に出ない。ブランチ毎に隔離するなら `elasticmq.conf` へキューを追加し `OUTBOX_QUEUE_URL` を
+  そこへ向ける。conf は起動時に読まれるので `make infra-down && make infra-up` が要り、全 checkout を
+  止めることになる。スロット毎のキューを事前宣言していないのは、プールのサイズが可変
+  （`GOBP_DB_POOL_MAX`）で、conf 側の静的な一覧はその値が変わった時点で黙ってプールを覆わなくなる
+  ためである。
 - API 帯 8080–8092 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
 - `docker/`・`internal/cli/dbslot`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。

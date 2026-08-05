@@ -2,14 +2,17 @@ package sqs
 
 import (
 	"context"
-	"strings"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	boundary "go-boilerplate/internal/usecase/boundary/publisher"
+	"go-boilerplate/pkg/httpheader"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // AttrMessageID は、outbox の message_id を運ぶ MessageAttribute のキーです。
@@ -20,14 +23,12 @@ const AttrMessageID = "message_id"
 // attrTypeString は、MessageAttribute の DataType です（SQS は型名の指定を必須とします）。
 const attrTypeString = "String"
 
-// egressHeaderDenylist は、broker へ送出してはならない機微ヘッダ名（小文字正規化済み）です。
-// emit 側の denylist と重複しますが、emit を経由せず INSERT された行に対する egress 境界での防御です。
-var egressHeaderDenylist = map[string]struct{}{
-	"authorization":       {},
-	"proxy-authorization": {},
-	"cookie":              {},
-	"set-cookie":          {},
-}
+// maxMessageAttributes は、SendMessage が受け付ける MessageAttributes の上限です（SQS の仕様）。
+// 超過するとメッセージ全体が InvalidParameterValue で拒否されます。
+const maxMessageAttributes = 10
+
+// ErrTooManyAttributes は、伝搬対象ヘッダが SQS の MessageAttributes 上限を超えたことを示すエラーです。
+var ErrTooManyAttributes = xerrors.Wrap(apperror.ErrInvalidArgument, "too many message attributes")
 
 // 実装漏れをコンパイル時に検出します。
 var _ boundary.Publisher = (*publisher)(nil)
@@ -53,15 +54,23 @@ func NewPublisher(api API, cfg PublisherConfig, tf observability.TracerFactory) 
 // Publish は、メッセージを SendMessage でキューへ送ります。
 // outbox の message_id と伝搬対象ヘッダは MessageAttributes へ載せます。本文は payload そのままで、
 // 受信側が本文を解釈せずに冪等キーを取り出せるようにするためです。
+// 上限超過は送信前に ErrTooManyAttributes として返します。超過分を落とすと、どのヘッダが残るかが
+// map の反復順に左右され、traceparent を失ったことにも気付けないためです。
 // 送信失敗は apperror へ正規化して返し、再送は relay の次 poll が担います（at-least-once）。
 func (p *publisher) Publish(ctx context.Context, m boundary.Message) error {
 	ctx, endSpan := p.tracer.Start(ctx)
 	defer endSpan()
 
+	attrs := p.messageAttributes(m)
+	if len(attrs) > maxMessageAttributes {
+		return xerrors.Wrap(ErrTooManyAttributes,
+			fmt.Sprintf("%d attributes exceed the SQS limit of %d", len(attrs), maxMessageAttributes))
+	}
+
 	_, err := p.api.SendMessage(ctx, &sqs.SendMessageInput{
 		QueueUrl:          aws.String(p.cfg.QueueURL),
 		MessageBody:       aws.String(string(m.Payload)),
-		MessageAttributes: p.messageAttributes(m),
+		MessageAttributes: attrs,
 	})
 	return normalizeError(err)
 }
@@ -76,7 +85,8 @@ func (p *publisher) messageAttributes(m boundary.Message) map[string]types.Messa
 	}
 
 	for k, v := range m.Headers {
-		if _, denied := egressHeaderDenylist[strings.ToLower(k)]; denied {
+		// emit 側でも同じ判定を行いますが、emit を経由せず INSERT された行に対する egress 境界での防御です。
+		if httpheader.IsSensitive(k) {
 			continue
 		}
 		if k == AttrMessageID || v == "" {

@@ -9,7 +9,19 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/queue/sqs" // sample-api:line
 	"go-boilerplate/internal/observability"
+	boundary "go-boilerplate/internal/usecase/boundary/publisher"
 )
+
+// newTestPublisher は、判別子に対応する publish 実装を構築します。
+// New の引数はサンプル削除で変わるため、呼び出しをここへ集約してマーカーを 1 箇所に留めます。
+func newTestPublisher(t *testing.T, cfg *config.OutboxConfig) (boundary.Publisher, error) {
+	t.Helper()
+	// sample-api:replace-begin
+	return New(cfg, nil, observability.NewDisabledOutboundHTTPClient(true), observability.NewNoopTracerFactory(t))
+	// sample-api:replace-with
+	// = return New(cfg, nil, observability.NewNoopTracerFactory(t))
+	// sample-api:replace-end
+}
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -24,7 +36,7 @@ func TestNew(t *testing.T) {
 			cfg.SetOutboxPublisher(t, KindHTTP)
 			cfg.SetOutboxEndpoint(t, "https://example.com/ingest")
 
-			got, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
+			got, err := newTestPublisher(t, cfg)
 
 			require.NoError(t, err)
 			assert.IsType(t, &httpPublisher{}, got)
@@ -38,7 +50,7 @@ func TestNew(t *testing.T) {
 			cfg.SetOutboxPublisher(t, KindSQS)
 			cfg.SetOutboxQueue(t, "http://elasticmq:9324/000000000000/gobp-events", "us-east-1", "k", "s")
 
-			got, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
+			got, err := newTestPublisher(t, cfg)
 
 			require.NoError(t, err)
 			// SQS 実装は別パッケージの非公開型のため、同型のインスタンスを渡して型を固定する。
@@ -54,7 +66,7 @@ func TestNew(t *testing.T) {
 			cfg.SetOutboxEndpoint(t, "")
 			cfg.SetOutboxQueue(t, "http://elasticmq:9324/000000000000/gobp-events", "us-east-1", "k", "s")
 
-			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
+			_, err := newTestPublisher(t, cfg)
 
 			require.NoError(t, err)
 		})
@@ -70,7 +82,7 @@ func TestNew(t *testing.T) {
 			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
 			cfg.SetOutboxPublisher(t, "kafka")
 
-			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
+			_, err := newTestPublisher(t, cfg)
 
 			require.ErrorIs(t, err, ErrUnknownKind)
 		})
@@ -81,7 +93,7 @@ func TestNew(t *testing.T) {
 			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
 			cfg.SetOutboxPublisher(t, "")
 
-			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
+			_, err := newTestPublisher(t, cfg)
 
 			require.ErrorIs(t, err, ErrUnknownKind)
 		})
@@ -93,7 +105,7 @@ func TestNew(t *testing.T) {
 			cfg.SetOutboxPublisher(t, KindHTTP)
 			cfg.SetOutboxEndpoint(t, "")
 
-			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
+			_, err := newTestPublisher(t, cfg)
 
 			require.ErrorIs(t, err, ErrInvalidEndpoint)
 		})
@@ -106,7 +118,7 @@ func TestNew(t *testing.T) {
 			cfg.SetOutboxPublisher(t, KindSQS)
 			cfg.SetOutboxQueue(t, "", "us-east-1", "k", "s")
 
-			_, err := New(cfg, nil, observability.NewNoopTracerFactory(t))
+			_, err := newTestPublisher(t, cfg)
 
 			require.ErrorIs(t, err, ErrInvalidQueue)
 		})
