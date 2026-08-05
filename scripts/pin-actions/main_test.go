@@ -77,6 +77,18 @@ func TestParseUses(t *testing.T) {
 			_, ok := parseUses("single", "v1", "")
 			assert.False(t, ok)
 		})
+
+		t.Run("docker:// 参照は無意味な repo を作らず対象外", func(t *testing.T) {
+			t.Parallel()
+			_, ok := parseUses("docker://alpine", "3.22", "")
+			assert.False(t, ok)
+		})
+
+		t.Run("owner を持つ docker:// 参照も対象外", func(t *testing.T) {
+			t.Parallel()
+			_, ok := parseUses("docker://ghcr.io/owner/image", "1.0.0", "")
+			assert.False(t, ok)
+		})
 	})
 }
 
@@ -527,6 +539,18 @@ func TestFileRefs(t *testing.T) {
 			refs := fileRefs("      - uses: ./.github/actions/setup-postgres\n")
 			assert.Empty(t, refs)
 		})
+
+		t.Run("docker:// 参照は壊れたキーを作らず含めない", func(t *testing.T) {
+			t.Parallel()
+			refs := fileRefs("      - uses: docker://alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000\n")
+			assert.Empty(t, refs)
+		})
+
+		t.Run("クオートされたブロック記法は壊れたキーを作らず含めない", func(t *testing.T) {
+			t.Parallel()
+			refs := fileRefs("      - uses: 'actions/checkout@v7.0.0'\n")
+			assert.Empty(t, refs)
+		})
 	})
 }
 
@@ -544,6 +568,17 @@ func TestDetectLooseUses(t *testing.T) {
 		t.Run("固定済みのブロック記法も検出しない", func(t *testing.T) {
 			t.Parallel()
 			assert.Empty(t, detectLooseUses("      - uses: actions/checkout@"+shaCheckout+" # v7.0.0\n"))
+		})
+
+		t.Run("クオートされたブロック記法は解釈できない記法として検出する", func(t *testing.T) {
+			t.Parallel()
+			found := detectLooseUses("      - uses: 'actions/checkout@v7.0.0'\n")
+			assert.Equal(t, []string{"actions/checkout@v7.0.0"}, found)
+		})
+
+		t.Run("docker:// 参照は厳密パターンで処理済みとして検出しない", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, detectLooseUses("      - uses: docker://alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"))
 		})
 
 		t.Run("flow mapping でもローカル参照は検出しない", func(t *testing.T) {
