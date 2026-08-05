@@ -15,8 +15,7 @@ feature ごとの spec だけでは足りず、その理由がこのページの
 起きない。** feature 単位の spec しか無いリポジトリが持っているのは方言の集合であって、言語ではない。
 
 このプロジェクトは既に 2 度踏んでいる。どちらも検査ではなく偶然の発見だった。`value object` が
-`internal/domain` と `pkg/` で違う意味を持っていた件（#910）と、`kernel` が 3 つの意味を持っていた件
-（#912）である。
+`internal/domain` と `pkg/` で違う意味を持っていた件と、`kernel` が 3 つの意味を持っていた件である。
 
 ## How a term earns a row
 
