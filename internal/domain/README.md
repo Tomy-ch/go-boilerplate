@@ -794,8 +794,14 @@ Three consequences are specific to Domain:
   SQL type name — `1..32767` is documented as the positive range of a signed 16-bit integer. That
   keeps the constant from reading as a magic number while staying technology-neutral. Put the reason
   on the constant so the exported constructor's doc stays a pure contract.
-- **A reference master is named by its domain name** (the product-status master), never by its table
-  (`product_statuses`).
+- **A reference master is named by its domain name**, never by its table.
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: ドメイン名とテーブル名の対比が無いと、何を避けよという規則なのか分からない。
+       意義: 避けるのはテーブル名の持ち込みであって、名前の長さや語形ではない。
+       書き方: 同じマスタをドメイン名とテーブル名の両方で書き、対比させる。 -->
+  <!-- sample-api:begin -->
+  例: 商品ステータスのマスタは「商品ステータス」と呼び、`product_statuses` とは呼ばない。
+  <!-- sample-api:end -->
 - **A single-fetch method states its not-found behavior** — `FindByID` documents that it returns
   NotFound when the target is absent. The caller branches on that, so it is part of the guarantee,
   not an implementation detail.

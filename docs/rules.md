@@ -232,9 +232,16 @@ Forbidden:
 
 Boundary clarifications (common misreads):
 
-- **"Returns many rows" is not "crosses Aggregates."** Listing every row of one table
-  (e.g. `SELECT * FROM prefectures ORDER BY code`) is a single-Aggregate `list` and stays in
-  Repository. "Cross-Aggregate" means joining or spanning *different* Aggregates, not returning
+- **"Returns many rows" is not "crosses Aggregates."** Listing every row of one table is a
+  single-Aggregate `list` and stays in Repository.
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
+       意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
+       書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
+  <!-- sample-api:begin -->
+  例: `SELECT * FROM prefectures ORDER BY code`。
+  <!-- sample-api:end -->
+   "Cross-Aggregate" means joining or spanning *different* Aggregates, not returning
   multiple rows of one.
 - **"The response is a DTO" is not a QueryService trigger.** Every read is eventually mapped to
   a response DTO. What moves a read to QueryService is a natural shape that would be wasteful to
@@ -261,9 +268,17 @@ Boundary clarifications (common misreads):
   a single-Aggregate Repository read. A JOIN spanning two *independent* Aggregates returns a
   flattened view and is a QueryService read model, not a Repository read.
 - **A reference-master JOIN stays a single-Aggregate Repository read.** A *reference master* —
-  fixed / standing lookup data (an enum-like table such as `purchase_statuses` / `product_statuses`)
-  with no independent write / transactional lifecycle, reached through a mandatory,
-  uniquely-determined FK — is part of the owning Aggregate's semantic set, not a foreign Aggregate.
+  fixed / standing lookup data with no independent write / transactional lifecycle, reached through
+  a mandatory, uniquely-determined FK — is part of the owning Aggregate's semantic set, not a
+  foreign Aggregate.
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: 「参照マスタ」は抽象語のままだと読者が自分のテーブルを当てはめられない。
+       意義: 判定に効くのは「独立した書き込み・トランザクションのライフサイクルを持たないこと」で、
+             テーブルの名前や規模ではない。ここを外すと例が規則を誤解させる。
+       書き方: 列挙型に相当する固定テーブルを 1〜2 個、次の行と同じ 1 文の形で挙げる。 -->
+  <!-- sample-api:begin -->
+  サンプルでの該当例は `purchase_statuses` / `product_statuses`（取扱状態の列挙）。
+  <!-- sample-api:end -->
   Projecting such a master's display attribute (e.g. the status *name*) by JOINing it into the
   owner's list / read is a single-Aggregate Repository read — **not** a cross-Aggregate JOIN — and
   does **not** require a QueryService or a usecase-layer merge. **The criterion is the joined data's
@@ -343,8 +358,15 @@ Per-layer application: `internal/domain/README.md` (attribute structs on entitie
     as-is; prefer context nesting once a context gains a second sub-aggregate.
 - Database DML and sqlc-generated directories use **snake_case matching the table name**
   (`product_category`, `user_identity`), independent of the Go package layout.
-- Controller handler directories match the **HTTP resource (route) name**
-  (`product-categories`, `prefectures`), not the Go package layout.
+- Controller handler directories match the **HTTP resource (route) name**, not the Go package
+  layout.
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: ルート名と Go パッケージ名がずれる実例が無いと、規則が空文に見える。
+       意義: ずれる典型は複数形とハイフンで、Go 側の単数・アンダースコアと形が違う点にある。
+       書き方: 実在するルートを 1〜2 個、バッククォートで挙げる。 -->
+  <!-- sample-api:begin -->
+  例: `product-categories` / `prefectures`。
+  <!-- sample-api:end -->
 - Type names may keep the aggregate noun inside a same-named package
   (`category.Category`, `prefecture.Prefecture`).
 

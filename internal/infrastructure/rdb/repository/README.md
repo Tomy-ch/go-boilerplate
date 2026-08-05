@@ -48,8 +48,16 @@ This separation allows Repository to focus on Aggregate integrity while delegati
 
 > **Reference-master exception (return type / JOIN).** A Repository read MAY JOIN a *fixed reference
 > master* (enum-like lookup data with no independent write lifecycle, reached by a mandatory
-> uniquely-determined FK — e.g. `purchases` joining `purchase_statuses`) and return a small read model
-> carrying the resolved display value (e.g. a `StatusName`), rather than a full Domain Entity. This is
+> uniquely-determined FK) and return a small read model carrying the resolved display value, rather
+> than a full Domain Entity.
+> <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+>      目的: 具体の JOIN と解決される表示値が無いと、どこまでが例外なのか読めない。
+>      意義: 効くのは「参照マスタを必須 FK でたどること」で、返る型の小ささではない。
+>      書き方: 集約の表が参照マスタを JOIN する形と、解決される表示値のフィールド名を挙げる。 -->
+> <!-- sample-api:begin -->
+> （サンプルでの例は `purchases` が `purchase_statuses` を JOIN し `StatusName` を返す形）
+> <!-- sample-api:end -->
+> This is
 > still a single-Aggregate Repository read, not a cross-Aggregate QueryService. The criterion is the
 > joined data's nature, not its Go modeling. See `docs/rules.md` § "Repository / QueryService Rules".
 

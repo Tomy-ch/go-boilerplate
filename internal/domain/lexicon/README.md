@@ -17,8 +17,15 @@ drawer; asking whether a type is part of the business vocabulary keeps that out 
 
 ## Why this exists
 
-A value object like `money.Price` is used by more than one aggregate (`product.price` now,
-`purchase_details.unit_price` / `purchases.*_amount` next). It cannot live in one aggregate (the
+A value object like `money.Price` is used by more than one aggregate.
+<!-- 撤去後にこの箇所へ自分の例を置くための指針。
+     目的: 入場基準（複数集約から使われること）を満たす実例が無いと、何を入れてよいか判断できない。
+     意義: 効くのは利用者が 2 つ以上あることで、型の複雑さではない。
+     書き方: その値オブジェクトを使う集約側のフィールドを 2 つ以上挙げる。 -->
+<!-- sample-api:begin -->
+サンプルでの利用者は `product.price` と `purchase_details.unit_price` / `purchases.*_amount`。
+<!-- sample-api:end -->
+It cannot live in one aggregate (the
 others would have to reach in), and it cannot live in `pkg/` (which forbids business logic). So it
 lives here — see [ADR-0034](../../../docs/adr/0034-domain-lexicon.md).
 
