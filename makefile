@@ -8,6 +8,8 @@ include .makefiles/docker/compose.mk
 include .makefiles/database/vars.mk
 # Go言語関連
 include .makefiles/go/vars.mk
+# 負荷配分（重いターゲットが参照するため、それらより前に読む）
+include .makefiles/load.mk
 
 # 依存されないファイル
 # DB関連

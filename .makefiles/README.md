@@ -322,6 +322,46 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gen-mock-auth-oapi-docs-ci` | Runs `npm run gen:docs` (redocly build-docs) in `docker/mock-auth-server`. | CI target |
 | `make lint-mock-auth-oapi-ci` | Runs `npm run lint:oapi` in `docker/mock-auth-server`. | CI target |
 
+## `.makefiles/load` group
+
+Host CPU is finite, but the number of checkouts working against it is not. When several worktrees each
+run a gate sized for the whole host, the machine saturates and the gates start failing for reasons that
+have nothing to do with the change under test — an untouched test times out, `golangci-lint` takes
+17 minutes, `docker` stops answering. The cost is not the wall time; it is that a gate failure stops
+being evidence about the code.
+
+`.makefiles/load.mk` sizes the heavy gates from the number of open windows (`git worktree list`), so the
+throttling happens without anyone remembering to ask for it. Three bands, resolved at parse time:
+
+| Band | Trigger (default) | Behaviour |
+| --- | --- | --- |
+| `full` | fewer than 3 worktrees | Unchanged from before — tools use their own defaults and the whole host |
+| `low` | 3 or more | Heavy gates get `CPU / windows` of parallelism, run at `nice -n 10`, and run one at a time |
+| `ci-first` | 5 or more | Heavy gates are not run locally at all; the push carries them to CI |
+
+`ci-first` keeps every gate that is cheap **and** cannot be recovered after a push — `commitlint`,
+`secret-scan`, the pin lockfile checks, migration numbering. What it drops is only what CI re-runs
+identically, so nothing goes unverified; it moves where the verification happens.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make load-status` | Prints the resolved band, window count, CPU share and the flags each tool will receive. | Start here when a gate is behaving unexpectedly |
+| `make gate-go` | The `pre-commit` Go gate (`lint` + `test-cached`), bundled so the band decides parallel / serial / deferred. | Called by lefthook, not usually by hand |
+| `make gate-go-push` | The `pre-push` Go gate (`test` + `test-scripts`), same bundling. | Called by lefthook |
+| `make gate-heavy-skip` | Predicate for lefthook's `skip:` — exit 0 means "CI will do this". | Exit status is the whole interface |
+
+Override the band explicitly with `GOBP_LOAD=full|low|ci-first` (e.g. `make lint GOBP_LOAD=low` to run
+one heavy gate by hand while the rest stays deferred). The thresholds are `GOBP_LOW_THRESHOLD` and
+`GOBP_CI_FIRST_THRESHOLD`.
+
+Why the gates are bundled rather than listed individually in `.lefthook.yaml`: lefthook runs a hook's
+commands in parallel, so a per-gate entry multiplies load by the number of gates *on top of* the number
+of windows. Bundling puts the parallel-vs-serial decision in one place that already knows the band.
+
+Only the gates that run on **every** commit and push are throttled. One-shot heavy work (image builds,
+code generation, Trivy scans) is left alone — it is not what saturates a host, because nobody runs it
+in a loop.
+
 ## `.makefiles/go` group
 
 ### Go generation related

@@ -1,14 +1,17 @@
 pre-commit:
   parallel: true
   commands:
-    go-lint:
+    # 重い Go ゲート（lint / test）は 1 command に束ねる。lefthook は commands を parallel で
+    # 走らせるため個別に並べると「窓の数 × フックの同時実行数」で負荷が乗算され、CPU 飽和が
+    # 作業内容と無関係なテスト落ちに化ける。並列/逐次/CI委譲の判断は make 側（.makefiles/load.mk）が
+    # 窓の数から決めるので、ここは委譲先を 1 つにするだけに留める。
+    go-gates:
       glob: "*.go"
-      run: make lint
-    go-test:
-      glob: "*.go"
-      run: make test-cached
+      run: make gate-go
     go-test-scripts:
       glob: "scripts/**/*.go"
+      skip:
+        - run: make -s gate-heavy-skip
       run: make test-scripts-cached
     sql-lint:
       glob: "*.sql"
@@ -71,18 +74,20 @@ commit-msg:
 pre-push:
   parallel: true
   commands:
+    # secret-scan は push 後では手遅れになるため、CI-first でも必ず手元に残す。
     secret-scan:
       run: make secret-scan
-    test:
+    go-gates:
       glob: "*.go"
-      run: make test
-    test-scripts:
-      glob: "scripts/**/*.go"
-      run: make test-scripts
+      run: make gate-go-push
+    # 生成物の再生成は docker のツールランナーを起こすため、窓が多いときは CI の
+    # generate-go-check に委ねる（差分検出は CI でも等価に効く）。
     gen-go-check:
       glob:
         - "*.go"
         - "openapi/**/*.yaml"
+      skip:
+        - run: make -s gate-heavy-skip
       run: make gen-bundle-oapi gen-go-code && git diff --exit-code -- '*.gen.go' '*/mock/mock_*.go' '*_mock.go' openapi/openapi.gen.yaml
     tidy-check:
       glob:

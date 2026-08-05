@@ -39,6 +39,8 @@ Three facts explain almost everything below:
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §9 |
 | `commitlint: not found`, `orval: not found`, stale tool version | §10 |
 | A hook fails for something outside your change | §11 |
+| A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §21 |
+| Want to know why `make lint` skipped, throttled, or deferred itself to CI | §21 |
 | `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §12 |
 | "Migration version gap / duplicate" from pre-commit | §13 |
 | S3 calls return 503 locally | §14 |
@@ -284,9 +286,13 @@ enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are i
 
 | Hook | Glob → command (abridged) |
 | --- | --- |
-| pre-commit | `*.go` → `make lint`, `make test-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
+| pre-commit | `*.go` → `make gate-go` (bundles `lint` + `test-cached`); `scripts/**/*.go` → `make test-scripts-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
-| pre-push | `make secret-scan`; `*.go` → `make test`; `*.go` / `openapi/**` → regenerate and `git diff --exit-code` on `*.gen.go` / mocks / `openapi.gen.yaml`; `go.mod` / `go.sum` → `go mod tidy` + diff |
+| pre-push | `make secret-scan`; `*.go` → `make gate-go-push` (bundles `test` + `test-scripts`); `*.go` / `openapi/**` → regenerate and `git diff --exit-code` on `*.gen.go` / mocks / `openapi.gen.yaml`; `go.mod` / `go.sum` → `go mod tidy` + diff |
+
+The Go gates are bundled because lefthook runs commands within a hook in parallel: separate entries
+would multiply heavy work by both the command count and the number of open worktrees. See §21 for
+how the bundled gates scale under host load.
 
 The pre-push `gen-go-check` regenerates in Docker and fails on any diff — the fix is to commit the
 regenerated output (§2, §4), not to re-run it. When a hook is red for a reason unrelated to your
@@ -419,6 +425,46 @@ this state: no hook or CI check inspects `vendor/` (`tidy-check.yaml` says so ex
 workflows that build the image regenerate it first, so they never fail on it. Re-run the command
 yourself after a base merge that changes dependencies. The same trap hits a manual image build (§16),
 which drives the vendor-mode `Dockerfile` directly.
+
+## 21. A gate failed for a reason unrelated to the change — check how many windows are open
+
+Several active worktrees can saturate the host when every window runs a whole-host lint or test gate.
+The resulting timeout, crawl, or Docker failure is not merely slow: it makes a red gate stop being
+evidence about the change under test.
+
+Before diagnosing anything else, ask the make layer what it decided:
+
+```bash
+make load-status
+```
+
+| Band | Trigger (default) | Behaviour |
+| --- | --- | --- |
+| `full` | fewer than 3 worktrees | Nothing changes — tool defaults, whole host |
+| `low` | 3 or more | `CPU / windows` parallelism, `nice -n 10`, heavy gates run one at a time |
+| `ci-first` | 5 or more | Heavy gates do not run locally; the push carries them to CI |
+
+`ci-first` retains gates that are cheap and unrecoverable after a push (`commitlint`, `secret-scan`,
+pin lockfile checks, migration numbering). It defers only work that CI re-runs identically, so this
+is not a verification hole: the verification moves to CI.
+
+Override the automatic band for one invocation when needed:
+
+```bash
+make lint GOBP_LOAD=low
+make lint GOBP_LOAD=full
+make test GOBP_LOAD=ci-first
+```
+
+The default thresholds are `GOBP_LOW_THRESHOLD` (3) and `GOBP_CI_FIRST_THRESHOLD` (5); set either
+for the invocation if the host needs different limits. Throttling applies only to gates that run on
+every commit and push. One-shot heavy work such as image builds, code generation, and Trivy remains
+unchanged because it is not repeatedly multiplied across windows.
+
+With many windows open, do **not** run `make lint` locally just to reproduce a CI lint failure. Read
+the CI log and run the single tool it identifies; §9 covers choosing the matching golangci config.
+A full local lint can spend minutes saturating the host only to rediscover what CI already printed.
+For a hook already red for an outside reason, §11 covers the `--no-verify` carve-out.
 
 ## Constraints
 

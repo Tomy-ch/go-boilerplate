@@ -26,6 +26,8 @@
 | ローカル golangci-lint が CI と食い違う / `golangci-lint: not found` | §9 |
 | `commitlint: not found` / `orval: not found` / ツールが古い | §10 |
 | 自分の変更と無関係な理由でフックが落ちる | §11 |
+| 複数の worktree を開いている状態で、変更と無関係にゲートが落ちる／異常に遅い | §21 |
+| `make lint` がスキップ・低速化・CI 委譲された理由を知りたい | §21 |
 | `pin-images-check` / `pin-actions-check` が未固定・未登録で落ちる | §12 |
 | pre-commit の "Migration version gap / duplicate" | §13 |
 | ローカルの S3 呼び出しが 503 を返す | §14 |
@@ -205,9 +207,11 @@ commit-msg フックは `node_tool_runner` 経由で `make commitlint COMMIT_MSG
 
 | フック | glob → コマンド（抜粋） |
 | --- | --- |
-| pre-commit | `*.go` → `make lint`・`make test-cached`／`*.sql` → `make sql-lint`／`*.md` → `make md-lint`／`.github/workflows/**` → `make actions-lint`・`make pin-actions-check`／`openapi/**` → `make lint-oapi`／`docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`／`docker/**/Dockerfile`・`docker-compose*.yaml` → `make docker-lint`・`make pin-images-check`／`database/migrations/*.sql` → migration の重複・ギャップ検査 |
+| pre-commit | `*.go` → `make gate-go`（`lint` + `test-cached` を束ねる）／`scripts/**/*.go` → `make test-scripts-cached`／`*.sql` → `make sql-lint`／`*.md` → `make md-lint`／`.github/workflows/**` → `make actions-lint`・`make pin-actions-check`／`openapi/**` → `make lint-oapi`／`docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`／`docker/**/Dockerfile`・`docker-compose*.yaml` → `make docker-lint`・`make pin-images-check`／`database/migrations/*.sql` → migration の重複・ギャップ検査 |
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
-| pre-push | `make secret-scan`／`*.go` → `make test`／`*.go`・`openapi/**` → 再生成して `*.gen.go`・mock・`openapi.gen.yaml` を `git diff --exit-code`／`go.mod`・`go.sum` → `go mod tidy` + diff |
+| pre-push | `make secret-scan`／`*.go` → `make gate-go-push`（`test` + `test-scripts` を束ねる）／`*.go`・`openapi/**` → 再生成して `*.gen.go`・mock・`openapi.gen.yaml` を `git diff --exit-code`／`go.mod`・`go.sum` → `go mod tidy` + diff |
+
+Go のゲートは 1 コマンドずつ並べず `gate-go` / `gate-go-push` に**束ねてある**。lefthook はフック内の commands を並列に走らせるため、ゲートごとにエントリを置くと、開いている窓の数に**加えて**ゲートの数だけホスト負荷が乗算されるためである。どれだけ全力で走るかは §21 が決める。
 
 pre-push の `gen-go-check` は Docker で再生成して差分があれば落ちる。対処は再実行ではなく、再生成物をコミットすること（§2・§4）。自分の変更と無関係な理由で赤いとき（base ブランチに元からある失敗・環境要因）は `--no-verify` で push し、原因は別途つぶす。変更のほうを歪めない。
 
@@ -291,6 +295,35 @@ make serve
 ```
 
 この手順は `make tidy-lib` が所管するが、先に `go mod tidy` を走らせるため `go.mod` を書き換えうる。欠けている `vendor/` を用意するだけなら素の `go mod vendor` を選ぶ。この状態を守る仕組みは無い: フックも CI チェックも `vendor/` を検査せず（`tidy-check.yaml` に明記がある）、イメージをビルドするワークフローは先に作り直すため落ちない。依存が変わるベース取り込みの後は、自分でコマンドを再実行する。同じ罠は手動のイメージビルド（§16）にも当たる——vendor モードの `Dockerfile` を直接叩くためである。
+
+## 21. 変更と無関係な理由でゲートが落ちた — 開いている窓の数を見る
+
+複数の worktree がそれぞれホスト全体を前提としたゲートを回すとホストが飽和し、ゲートは「変更の欠陥に見える形」で落ち始める。触っていないテストがタイムアウトし、`make lint` が 17 分かかり、`docker` が応答を返さなくなる（共有 DB 飽和・CPU 飽和の罠として現れることもある）。失われるのは所要時間ではなく、**ゲートの失敗がコードについての証拠でなくなること**である。
+
+`.makefiles/load.mk` が make のパース時に `git worktree list` から重いゲートの規模を決めるため、誰も絞ることを覚えている必要はない。他を診断する前に、まず何が選ばれたかを訊く。
+
+```bash
+make load-status     # 帯・窓数・CPU シェア・各ツールへ渡るフラグ
+```
+
+| 帯 | 発動条件（既定） | 変わること |
+| --- | --- | --- |
+| `full` | worktree が 3 未満 | 何も変わらない（ツール既定・ホスト全体） |
+| `low` | 3 以上 | `CPU / 窓数` の並列度・`nice -n 10`・重いゲートは 1 つずつ |
+| `ci-first` | 5 以上 | 重いゲートはローカルで走らせない。push が CI へ運ぶ |
+
+`ci-first` が手元に残すのは、**軽く、かつ push 後では取り返しがつかない**ゲートだけである（`commitlint`・`secret-scan`・ピン lockfile 検査・マイグレーション番号）。落とすのは CI が同一に再実行するものだけなので、検証されないものは生じない。検証の場所が動くだけである。
+
+残りを委譲したまま重いゲートを 1 つだけ手で回したいときは、呼び出し単位で上書きする。
+
+```bash
+make lint GOBP_LOAD=low       # これだけ絞って走らせる
+make test GOBP_LOAD=full      # 帯を無視する（単一窓のマシン向け）
+```
+
+閾値は `GOBP_LOW_THRESHOLD` / `GOBP_CI_FIRST_THRESHOLD`。絞る対象は**毎コミット・毎 push で走る**ゲートだけで、単発の重い処理（イメージビルド・コード生成・Trivy）は放置する。ループで回すものではないためである。
+
+**窓が多いときに、CI の lint 失敗を再現するため `make lint` をローカルで回さないこと。** CI のログを読み、そこに名指しされた formatter / linter だけを当てる（config の選択は §9）。フルのローカル実行は、CI が既に出力した内容を再発見するために飽和したホストを数分間占有するだけである。
 
 ## 制約
 

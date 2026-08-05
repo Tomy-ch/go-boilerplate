@@ -15,15 +15,15 @@ COVERAGE_THRESHOLD := 90
 
 # DB を使うテストはテスト用 DB の seed を fixture として読む。その seed の issuer はスロットのポートに
 # 追従する（.makefiles/database/seed.mk）ため、host 実行の go test にも同じ値を渡す。
-GO_TEST_ENV = $(LOAD_SLOT); export AUTH_ISSUER="$(AUTH_ISSUER_SH)";
+GO_TEST_ENV = $(LOAD_SLOT); export AUTH_ISSUER="$(AUTH_ISSUER_SH)"; $(if $(GO_TEST_LOAD_ENV),export $(GO_TEST_LOAD_ENV);,)
 
 test:
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
-	go test $$TGT_PKGS -race -cover -count=1
+	$(GOBP_NICE) go test $$TGT_PKGS -race -cover -count=1 $(GO_TEST_P_FLAG)
 
 test-cached:
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
-	go test $$TGT_PKGS -cover
+	$(GOBP_NICE) go test $$TGT_PKGS -cover $(GO_TEST_P_FLAG)
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
@@ -51,10 +51,10 @@ test-cover-ci:
 # test / test-cached のいずれにも乗らない。ツール自体がゲート（供給網ピン・lint）なので、
 # 壊れ方が「静かに何も検査しなくなる」方向に出る。カバレッジ計測とは切り離して実行だけを足す。
 test-scripts:
-	go test ./scripts/... -race -count=1
+	@$(GOBP_NICE) go test ./scripts/... -race -count=1 $(GO_TEST_P_FLAG)
 
 test-scripts-cached:
-	go test ./scripts/...
+	@$(GOBP_NICE) go test ./scripts/... $(GO_TEST_P_FLAG)
 
 cover-gate:
 	@test -f coverage.out || { echo "❌ coverage.out がありません（先に make test-cover-ci を実行）"; exit 1; }
