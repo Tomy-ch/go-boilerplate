@@ -3,7 +3,10 @@ package ctxhelper
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type authnSlotKey struct{}
@@ -36,4 +39,31 @@ func GetAuthn(ctx context.Context) (auth.Authn, bool) {
 		return auth.Authn{}, false
 	}
 	return slot.authn, true
+}
+
+// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
+var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
+
+// RequireAuthn は、ctx のスロットから Authn を読みます。未設定の場合は ErrUnauthenticatedUser を返します。
+// 認証済み呼び出し元を前提とするハンドラは、GetAuthn を直接呼ばずこちらを使います。
+func RequireAuthn(ctx context.Context) (auth.Authn, error) {
+	authn, ok := GetAuthn(ctx)
+	if !ok {
+		return auth.Authn{}, ErrUnauthenticatedUser
+	}
+	return authn, nil
+}
+
+// RequireUserID は、ctx の Authn から内部 UserID を取り出します。
+// Authn が未設定の場合は ErrUnauthenticatedUser を、UserID が未解決の場合はその原因をラップして返します。
+func RequireUserID(ctx context.Context) (uuid.UUID, error) {
+	authn, err := RequireAuthn(ctx)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+	userID, err := authn.UserID()
+	if err != nil {
+		return uuid.UUID{}, xerrors.Wrap(err, "failed to get user ID from authenticator")
+	}
+	return userID, nil
 }

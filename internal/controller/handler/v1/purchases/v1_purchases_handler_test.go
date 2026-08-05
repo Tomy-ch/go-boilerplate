@@ -175,7 +175,7 @@ func Test_server_PostPurchases(t *testing.T) {
 			_, err := s.PostPurchases(context.Background(), gen.PostPurchasesRequestObject{
 				Body: &gen.PurchasesPostRequest{Details: []gen.PurchaseDetailInput{}},
 			})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("内部UserIDが未解決の場合、エラーを返す", func(t *testing.T) {

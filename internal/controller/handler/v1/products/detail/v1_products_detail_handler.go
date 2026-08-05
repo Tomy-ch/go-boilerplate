@@ -7,7 +7,6 @@ package detail
 import (
 	"context"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/products/detail/gen"
@@ -20,9 +19,6 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/nullable"
 )
-
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -67,9 +63,9 @@ func (s *server) PatchProductsDetail(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	id := conv.UUID(request.ProductId)
@@ -109,9 +105,9 @@ func (s *server) PatchProductsStock(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	id := conv.UUID(request.ProductId)

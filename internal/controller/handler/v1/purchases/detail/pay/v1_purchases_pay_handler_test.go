@@ -125,7 +125,7 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			_, err := s.PatchPurchasesPay(context.Background(), gen.PatchPurchasesPayRequestObject{
 				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_noauth").ToPrimitive(),
 			})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("ユースケースがエラーを返した場合はそのまま伝播する", func(t *testing.T) {

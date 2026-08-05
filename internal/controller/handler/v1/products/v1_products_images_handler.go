@@ -15,18 +15,15 @@ import (
 
 const formFieldImage = "image"
 
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
-
 // PostProductsImages は、admin が商品画像をアップロードし、格納先パスを返します。認証必須です。
 // Content-Type は実バイトから判定（sniff）してユースケースへ渡し、形式・サイズ検証はユースケースが行います。
 func (s *server) PostProductsImages(ctx context.Context, request gen.PostProductsImagesRequestObject) (gen.PostProductsImagesResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	data, err := readImagePart(request.Body)

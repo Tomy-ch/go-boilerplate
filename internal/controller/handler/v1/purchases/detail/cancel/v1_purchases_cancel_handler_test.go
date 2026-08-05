@@ -125,7 +125,7 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			_, err := s.PatchPurchasesCancel(context.Background(), gen.PatchPurchasesCancelRequestObject{
 				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_noauth").ToPrimitive(),
 			})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("ユースケースがエラーを返した場合はそのまま伝播する", func(t *testing.T) {

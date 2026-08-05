@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"net/http"
 	"testing"
 	"time"
@@ -299,7 +300,7 @@ func Test_server_PostUsers(t *testing.T) {
 			resp, err := s.PostUsers(ctx, req)
 
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("認証データのsubjectにuuidが含まれない場合、エラーが返る", func(t *testing.T) {

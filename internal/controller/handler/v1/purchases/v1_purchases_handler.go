@@ -8,7 +8,6 @@ import (
 	"context"
 	"net/http"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/purchases/gen"
@@ -22,9 +21,6 @@ import (
 
 	"github.com/labstack/echo/v5"
 )
-
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -46,13 +42,9 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
-	}
-	userID, err := authn.UserID()
+	userID, err := ctxhelper.RequireUserID(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+		return nil, err
 	}
 
 	cursor, err := paging.NewCursor(request.Params.After, request.Params.First)
@@ -96,13 +88,9 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
-	}
-	userID, err := authn.UserID()
+	userID, err := ctxhelper.RequireUserID(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+		return nil, err
 	}
 
 	details := make([]purchaseuc.DetailParam, len(request.Body.Details))

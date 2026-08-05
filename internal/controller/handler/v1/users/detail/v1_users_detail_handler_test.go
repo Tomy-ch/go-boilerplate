@@ -2,6 +2,7 @@ package detail
 
 import (
 	"context"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"net/http"
 	"testing"
 	"time"
@@ -115,7 +116,7 @@ func Test_server_GetUsersDetail(t *testing.T) {
 
 			resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
@@ -170,7 +171,7 @@ func Test_server_GetUsersMe(t *testing.T) {
 
 			resp, err := s.GetUsersMe(context.Background(), gen.GetUsersMeRequestObject{})
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("内部UserIDが未解決でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
@@ -252,7 +253,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 
 			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
@@ -347,7 +348,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 
 			resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
@@ -397,7 +398,7 @@ func Test_server_DeleteUsersDetail(t *testing.T) {
 
 			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {

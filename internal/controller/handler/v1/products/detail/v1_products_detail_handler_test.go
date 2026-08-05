@@ -303,7 +303,7 @@ func Test_server_PatchProductsDetail(t *testing.T) {
 
 			resp, err := s.PatchProductsDetail(context.Background(), newPatchProductsDetailRequest(t, targetID))
 			assert.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
@@ -390,7 +390,7 @@ func Test_server_PatchProductsStock(t *testing.T) {
 
 			resp, err := s.PatchProductsStock(context.Background(), newRequest(1))
 			assert.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 

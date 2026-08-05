@@ -160,7 +160,7 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			_, err := s.PatchPurchasesDeliver(context.Background(), gen.PatchPurchasesDeliverRequestObject{
 				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
 			})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("非adminの認可エラーをそのまま伝播する", func(t *testing.T) {

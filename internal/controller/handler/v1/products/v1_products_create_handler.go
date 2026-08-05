@@ -15,9 +15,9 @@ func (s *server) PostProducts(ctx context.Context, request gen.PostProductsReque
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	view, err := s.uc.CreateProduct(ctx, &authn, productuc.CreateProductParams{

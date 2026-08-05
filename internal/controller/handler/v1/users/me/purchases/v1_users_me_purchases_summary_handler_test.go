@@ -110,7 +110,7 @@ func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.GetUsersMePurchasesSummary(context.Background(), gen.GetUsersMePurchasesSummaryRequestObject{})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("ユースケースがエラーを返した場合はそのまま伝播する", func(t *testing.T) {

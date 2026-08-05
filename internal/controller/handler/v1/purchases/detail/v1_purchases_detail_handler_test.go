@@ -128,7 +128,7 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			_, err := s.GetPurchasesDetail(context.Background(), gen.GetPurchasesDetailRequestObject{
 				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
 			})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("ユースケースがエラーを返した場合はそのまま伝播する", func(t *testing.T) {

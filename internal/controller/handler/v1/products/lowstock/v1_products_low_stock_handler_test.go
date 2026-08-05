@@ -243,7 +243,7 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 
 			resp, err := s.GetProductsLowStock(context.Background(), gen.GetProductsLowStockRequestObject{})
 			assert.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("ユースケースが権限エラーを返した場合、そのまま伝播する", func(t *testing.T) {

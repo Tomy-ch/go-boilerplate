@@ -7,7 +7,6 @@ package lowstock
 import (
 	"context"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/products/lowstock/gen"
 	"go-boilerplate/internal/observability"
@@ -17,9 +16,6 @@ import (
 
 	"github.com/labstack/echo/v5"
 )
-
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -41,9 +37,9 @@ func (s *server) GetProductsLowStock(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	view, err := s.uc.ListLowStockProducts(ctx, &authn, productuc.ListLowStockProductsParams{
