@@ -218,6 +218,8 @@ export const SAMPLE_DOMAINS = {
       // Go 各層
       "internal/domain/purchase",
       "internal/usecase/purchase",
+      // checkout は purchase と exchangerate を束ねる合成 Usecase なので、両者と生死を共にする
+      "internal/usecase/checkout",
       "internal/infrastructure/rdb/command_service/purchase",
       "internal/infrastructure/rdb/repository/purchase",
       "internal/infrastructure/rdb/query_service/purchase",
