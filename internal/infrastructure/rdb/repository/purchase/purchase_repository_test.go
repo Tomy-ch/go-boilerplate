@@ -355,7 +355,8 @@ func Test_repository_UpdatePaid(t *testing.T) {
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Pay(now))
+				_, err = locked.Pay(now)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, locked))
 
 				// 再読込で status_id が支払い済み（code=7）へ解決され、paid_at がセットされる。
@@ -396,12 +397,14 @@ func Test_repository_UpdateShipped(t *testing.T) {
 
 				paid, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, paid.Pay(paidAt))
+				_, err = paid.Pay(paidAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, paid))
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Ship(shippedAt))
+				_, err = locked.Ship(shippedAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateShipped(ctx, locked))
 
 				// 再読込で status_id が発送済み（code=8）へ解決され、shipped_at がセットされる。
@@ -427,12 +430,14 @@ func Test_repository_UpdateShipped(t *testing.T) {
 
 				paid, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, paid.Pay(paidAt))
+				_, err = paid.Pay(paidAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, paid))
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Ship(shippedAt))
+				_, err = locked.Ship(shippedAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateShipped(ctx, locked))
 
 				detail, err := repo.FindDetailByID(ctx, purchaseID)
@@ -494,12 +499,14 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 		paid, err := repo.LockByID(ctx, purchaseID)
 		require.NoError(t, err)
-		require.NoError(t, paid.Pay(paidAt))
+		_, err = paid.Pay(paidAt)
+		require.NoError(t, err)
 		require.NoError(t, repo.UpdatePaid(ctx, paid))
 
 		toShip, err := repo.LockByID(ctx, purchaseID)
 		require.NoError(t, err)
-		require.NoError(t, toShip.Ship(shippedAt))
+		_, err = toShip.Ship(shippedAt)
+		require.NoError(t, err)
 		require.NoError(t, repo.UpdateShipped(ctx, toShip))
 	}
 
@@ -516,7 +523,8 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Deliver(deliveredAt))
+				_, err = locked.Deliver(deliveredAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateDelivered(ctx, locked))
 
 				// 再読込で status_id が配達済み（code=9）へ解決され、delivered_at がセットされる。
@@ -543,7 +551,8 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Deliver(deliveredAt))
+				_, err = locked.Deliver(deliveredAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateDelivered(ctx, locked))
 
 				detail, err := repo.FindDetailByID(ctx, purchaseID)

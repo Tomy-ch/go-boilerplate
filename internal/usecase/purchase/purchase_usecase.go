@@ -303,7 +303,8 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
 
-		if cerr := locked.Cancel(now); cerr != nil {
+		domainEvent, cerr := locked.Cancel(now)
+		if cerr != nil {
 			return cerr
 		}
 
@@ -315,10 +316,14 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   params.PurchaseID.String(),
-			EventType:     event.TypeCanceled,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -359,7 +364,8 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
 
-		if perr := locked.Pay(now); perr != nil {
+		domainEvent, perr := locked.Pay(now)
+		if perr != nil {
 			return perr
 		}
 
@@ -371,10 +377,14 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   params.PurchaseID.String(),
-			EventType:     event.TypePaid,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -423,7 +433,8 @@ func (u *usecase) ShipPurchase(
 			return lerr
 		}
 
-		if serr := locked.Ship(now); serr != nil {
+		domainEvent, serr := locked.Ship(now)
+		if serr != nil {
 			return serr
 		}
 
@@ -435,10 +446,14 @@ func (u *usecase) ShipPurchase(
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   purchaseID.String(),
-			EventType:     event.TypeShipped,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -487,7 +502,8 @@ func (u *usecase) DeliverPurchase(
 			return lerr
 		}
 
-		if derr := locked.Deliver(now); derr != nil {
+		domainEvent, derr := locked.Deliver(now)
+		if derr != nil {
 			return derr
 		}
 
@@ -499,10 +515,14 @@ func (u *usecase) DeliverPurchase(
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   purchaseID.String(),
-			EventType:     event.TypeDelivered,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr

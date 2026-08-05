@@ -48,7 +48,8 @@ func TestBuildCanceled(t *testing.T) {
 			})
 			require.NoError(t, err)
 			now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
-			require.NoError(t, entity.Cancel(now))
+			_, err = entity.Cancel(now)
+			require.NoError(t, err)
 
 			payload, perr := event.BuildCanceled(entity)
 			require.NoError(t, perr)

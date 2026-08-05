@@ -382,10 +382,11 @@ patterns:
     status: interpreted
     verdict: 差異あり
     gap: >-
-      「集約を小さく保ったまま越境した帰結を結果整合で達成する」という構造的役割は outbox event として
-      実質的に解釈済み。差異はモデル化の側で、イベントがドメインオブジェクトとして存在するか（型・不変性・
-      過去形のユビキタス言語名）、誰が「起きたこと」を宣言するか、event_type / payload の語彙が誰のものか、
-      のいずれも未規定。domain README は構成要素として domain events を挙げるが同ファイル内で二度と現れない。
+      構造的役割（集約を小さく保ったまま越境した帰結を結果整合で達成する）は outbox event として解釈済み。
+      モデル化の側も解決した。イベントはドメインの型として存在し、過去形の名前・不変性・発生時刻を持ち、
+      遷移メソッドが成功時にだけ返すため「状態は変わったがイベントが出ていない」がコンパイル時に書けない。
+      event_type / payload の語彙の所有も分離済み（名前はドメイン、版と wire 表現は詰め替え層）。
+      pending events は採用せず遷移からの返却で同じ保証を得る、と宣言している。
       なお Domain Event は Evans 2003 本体のパターン言語には無く、2015 年の DDD Reference が出典。
     interpreted_by:
       - kind: adr
@@ -395,8 +396,12 @@ patterns:
       - kind: readme
         path: internal/usecase/boundary/README.md
         section: "publisher"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans（DDD Reference）は集約が事象を宣言することを求めるが、実装形として一般的な pending events
+      （集約が内部にイベントを溜め、保存後に drain する）は採用しない。遷移メソッドが成功時にだけ Event を
+      返す形にすれば、状態変更とイベント発生が同一の不変条件になるという同じ保証がコンパイラで得られ、
+      集約に管理すべき可変状態を増やさずに済むため。
     enforced_by: []
     last_audited: "2026-07-30"
 

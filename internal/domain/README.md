@@ -134,6 +134,33 @@ struct-bundling section below.
 primitive without carrying business meaning, which is exactly what disqualifies them from this layer;
 see [`pkg/README.md`](../../pkg/README.md).
 
+## Domain events
+
+A transition that the outside world needs to hear about **returns the fact it produced**:
+
+```go
+func (e *Entity) Cancel(now time.Time) (Event, error)
+```
+
+The aggregate that underwent the change is the only thing that knows it happened, so the aggregate
+is what declares it. Returning the event from the transition means the compiler ties the two
+together: a caller cannot obtain the event without the transition having succeeded, and cannot
+succeed at the transition without being handed the event. "State changed but no event was emitted"
+and "an event was emitted but nothing changed" stop being writable.
+
+An event is a **fact**, so it is past-tense, immutable, and carries the time it occurred — the same
+instant the transition recorded, not a second reading of the clock.
+
+**The name is domain vocabulary; the wire format is not.** What the event is called (`canceled`,
+`shipped`) belongs here. The versioned type string, the JSON field names, and the payload shape are
+a transport contract owned by the layer that publishes it — this layer holds no serialization. A
+mapping in that layer turns a domain event into its published form, which is also where a version
+rises when the payload changes shape while the fact stays the same.
+
+Collecting events on the aggregate to be drained after save (pending events) is **not** used here.
+Returning them from the transition gets the same guarantee without giving the aggregate mutable
+state to manage.
+
 ## Implementation notes
 
 ### Naming / structure

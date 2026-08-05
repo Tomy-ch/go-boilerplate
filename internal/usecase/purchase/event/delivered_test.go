@@ -56,7 +56,8 @@ func TestBuildDelivered(t *testing.T) {
 
 			entity := shipped(t, "bd")
 			now := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
-			require.NoError(t, entity.Deliver(now))
+			_, err := entity.Deliver(now)
+			require.NoError(t, err)
 
 			payload, perr := event.BuildDelivered(entity)
 			require.NoError(t, perr)

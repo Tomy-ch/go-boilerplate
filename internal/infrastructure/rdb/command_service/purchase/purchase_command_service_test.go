@@ -396,7 +396,8 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 
 				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
 				require.NoError(t, err)
-				require.NoError(t, lockedPurchase.Cancel(now))
+				_, err = lockedPurchase.Cancel(now)
+				require.NoError(t, err)
 				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
 
 				// 在庫が明細分（2）復元される（減算の対称）。
@@ -445,7 +446,8 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 
 				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
 				require.NoError(t, err)
-				require.NoError(t, lockedPurchase.Cancel(now))
+				_, err = lockedPurchase.Cancel(now)
+				require.NoError(t, err)
 				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
 
 				var q1, q2 int

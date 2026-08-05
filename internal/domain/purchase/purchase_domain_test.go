@@ -881,7 +881,7 @@ func TestPurchase_Cancel(t *testing.T) {
 		t.Run("キャンセル可能状態からキャンセルすると、statusCodeがキャンセルになりcanceledAtがセットされる", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusUnprocessed, nil, nil, nil)
-			err := p.Cancel(now)
+			_, err := p.Cancel(now)
 			require.NoError(t, err)
 			assert.Equal(t, StatusCanceled, p.Status())
 			require.NotNil(t, p.CanceledAt())
@@ -895,25 +895,29 @@ func TestPurchase_Cancel(t *testing.T) {
 		t.Run("既にキャンセル済み（statusCode）の場合、ErrAlreadyCanceledを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCanceled, &now, nil, nil)
-			require.ErrorIs(t, p.Cancel(now), ErrAlreadyCanceled)
+			_, err := p.Cancel(now)
+			require.ErrorIs(t, err, ErrAlreadyCanceled)
 		})
 
 		t.Run("完了の場合、ErrCancelNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCompleted, nil, nil, nil)
-			require.ErrorIs(t, p.Cancel(now), ErrCancelNotAllowed)
+			_, err := p.Cancel(now)
+			require.ErrorIs(t, err, ErrCancelNotAllowed)
 		})
 
 		t.Run("発送済み（shippedAtセット済）の場合、ErrCancelNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusUnprocessed, nil, &now, nil)
-			require.ErrorIs(t, p.Cancel(now), ErrCancelNotAllowed)
+			_, err := p.Cancel(now)
+			require.ErrorIs(t, err, ErrCancelNotAllowed)
 		})
 
 		t.Run("配達済みの場合、ErrCancelNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusDelivered, nil, &now, &now)
-			require.ErrorIs(t, p.Cancel(now), ErrCancelNotAllowed)
+			_, err := p.Cancel(now)
+			require.ErrorIs(t, err, ErrCancelNotAllowed)
 		})
 	})
 }
@@ -957,7 +961,7 @@ func TestPurchase_Pay(t *testing.T) {
 		t.Run("未払い相当から支払うと、statusCodeが支払い済みになりpaidAtがセットされる", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusUnprocessed, nil, nil, nil, nil)
-			err := p.Pay(now)
+			_, err := p.Pay(now)
 			require.NoError(t, err)
 			assert.Equal(t, StatusPaid, p.Status())
 			require.NotNil(t, p.PaidAt())
@@ -971,31 +975,36 @@ func TestPurchase_Pay(t *testing.T) {
 		t.Run("既に支払い済み（statusCode）の場合、ErrAlreadyPaidを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusPaid, &now, nil, nil, nil)
-			require.ErrorIs(t, p.Pay(now), ErrAlreadyPaid)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrAlreadyPaid)
 		})
 
 		t.Run("キャンセル済みの場合、ErrPayNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCanceled, nil, &now, nil, nil)
-			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrPayNotAllowed)
 		})
 
 		t.Run("完了の場合、ErrPayNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCompleted, nil, nil, nil, nil)
-			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrPayNotAllowed)
 		})
 
 		t.Run("発送済み（shippedAtセット済）の場合、ErrPayNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusUnprocessed, nil, nil, &now, nil)
-			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrPayNotAllowed)
 		})
 
 		t.Run("配達済みの場合、ErrPayNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusDelivered, &now, nil, &now, &now)
-			require.ErrorIs(t, p.Pay(now), ErrPayNotAllowed)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrPayNotAllowed)
 		})
 	})
 }
@@ -1076,7 +1085,7 @@ func TestPurchase_Ship(t *testing.T) {
 		t.Run("支払い済みから発送すると、statusCodeが発送済みになりshippedAtがセットされる", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusPaid, &paidAt, nil, nil, nil)
-			err := p.Ship(now)
+			_, err := p.Ship(now)
 			require.NoError(t, err)
 			assert.Equal(t, StatusShipped, p.Status())
 			require.NotNil(t, p.ShippedAt())
@@ -1086,7 +1095,8 @@ func TestPurchase_Ship(t *testing.T) {
 		t.Run("発送してもpaidAtは保持される", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusPaid, &paidAt, nil, nil, nil)
-			require.NoError(t, p.Ship(now))
+			_, err := p.Ship(now)
+			require.NoError(t, err)
 			require.NotNil(t, p.PaidAt())
 			assert.Equal(t, paidAt, *p.PaidAt())
 		})
@@ -1098,38 +1108,44 @@ func TestPurchase_Ship(t *testing.T) {
 		t.Run("既に発送済み（statusCode）の場合、ErrAlreadyShippedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusShipped, &paidAt, nil, &now, nil)
-			require.ErrorIs(t, p.Ship(now), ErrAlreadyShipped)
+			_, err := p.Ship(now)
+			require.ErrorIs(t, err, ErrAlreadyShipped)
 		})
 
 		t.Run("未払い（未処理）の場合、ErrShipNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusUnprocessed, nil, nil, nil, nil)
-			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+			_, err := p.Ship(now)
+			require.ErrorIs(t, err, ErrShipNotAllowed)
 		})
 
 		t.Run("キャンセル済みの場合、ErrShipNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCanceled, nil, &now, nil, nil)
-			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+			_, err := p.Ship(now)
+			require.ErrorIs(t, err, ErrShipNotAllowed)
 		})
 
 		t.Run("完了の場合、ErrShipNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCompleted, nil, nil, nil, nil)
-			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+			_, err := p.Ship(now)
+			require.ErrorIs(t, err, ErrShipNotAllowed)
 		})
 
 		t.Run("配達済みの場合、二重発送ではなくErrShipNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			deliveredAt := time.Date(2026, time.July, 27, 0, 0, 0, 0, time.UTC)
 			p := build(t, StatusDelivered, &paidAt, nil, &now, &deliveredAt)
-			require.ErrorIs(t, p.Ship(now), ErrShipNotAllowed)
+			_, err := p.Ship(now)
+			require.ErrorIs(t, err, ErrShipNotAllowed)
 		})
 
 		t.Run("遷移に失敗した場合、statusCodeとshippedAtを変更しない", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusUnprocessed, nil, nil, nil, nil)
-			require.Error(t, p.Ship(now))
+			_, err := p.Ship(now)
+			require.Error(t, err)
 			assert.Equal(t, StatusUnprocessed, p.Status())
 			assert.Nil(t, p.ShippedAt())
 		})
@@ -1252,7 +1268,7 @@ func TestPurchase_Deliver(t *testing.T) {
 		t.Run("発送済みから配達すると、statusCodeが配達済みになりdeliveredAtがセットされる", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusShipped, &paidAt, nil, &shippedAt, nil)
-			err := p.Deliver(now)
+			_, err := p.Deliver(now)
 			require.NoError(t, err)
 			assert.Equal(t, StatusDelivered, p.Status())
 			require.NotNil(t, p.DeliveredAt())
@@ -1262,7 +1278,8 @@ func TestPurchase_Deliver(t *testing.T) {
 		t.Run("配達してもpaidAtとshippedAtは保持される", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusShipped, &paidAt, nil, &shippedAt, nil)
-			require.NoError(t, p.Deliver(now))
+			_, err := p.Deliver(now)
+			require.NoError(t, err)
 			require.NotNil(t, p.PaidAt())
 			assert.Equal(t, paidAt, *p.PaidAt())
 			require.NotNil(t, p.ShippedAt())
@@ -1277,38 +1294,44 @@ func TestPurchase_Deliver(t *testing.T) {
 			t.Parallel()
 			deliveredAt := time.Date(2026, time.July, 27, 0, 0, 0, 0, time.UTC)
 			p := build(t, StatusDelivered, &paidAt, nil, &shippedAt, &deliveredAt)
-			require.ErrorIs(t, p.Deliver(now), ErrAlreadyDelivered)
+			_, err := p.Deliver(now)
+			require.ErrorIs(t, err, ErrAlreadyDelivered)
 		})
 
 		t.Run("未払い（未処理）の場合、ErrDeliverNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusUnprocessed, nil, nil, nil, nil)
-			require.ErrorIs(t, p.Deliver(now), ErrDeliverNotAllowed)
+			_, err := p.Deliver(now)
+			require.ErrorIs(t, err, ErrDeliverNotAllowed)
 		})
 
 		t.Run("支払い済み（未発送）の場合、ErrDeliverNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusPaid, &paidAt, nil, nil, nil)
-			require.ErrorIs(t, p.Deliver(now), ErrDeliverNotAllowed)
+			_, err := p.Deliver(now)
+			require.ErrorIs(t, err, ErrDeliverNotAllowed)
 		})
 
 		t.Run("キャンセル済みの場合、ErrDeliverNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			canceledAt := time.Date(2026, time.July, 24, 0, 0, 0, 0, time.UTC)
 			p := build(t, StatusCanceled, nil, &canceledAt, nil, nil)
-			require.ErrorIs(t, p.Deliver(now), ErrDeliverNotAllowed)
+			_, err := p.Deliver(now)
+			require.ErrorIs(t, err, ErrDeliverNotAllowed)
 		})
 
 		t.Run("完了の場合、ErrDeliverNotAllowedを返す", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusCompleted, nil, nil, nil, nil)
-			require.ErrorIs(t, p.Deliver(now), ErrDeliverNotAllowed)
+			_, err := p.Deliver(now)
+			require.ErrorIs(t, err, ErrDeliverNotAllowed)
 		})
 
 		t.Run("遷移に失敗した場合、statusCodeとdeliveredAtを変更しない", func(t *testing.T) {
 			t.Parallel()
 			p := build(t, StatusPaid, &paidAt, nil, nil, nil)
-			require.Error(t, p.Deliver(now))
+			_, err := p.Deliver(now)
+			require.Error(t, err)
 			assert.Equal(t, StatusPaid, p.Status())
 			assert.Nil(t, p.DeliveredAt())
 		})

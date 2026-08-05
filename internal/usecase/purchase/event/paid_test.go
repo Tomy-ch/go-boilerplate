@@ -54,7 +54,8 @@ func TestBuildPaid(t *testing.T) {
 
 			entity := unprocessed(t, "bp")
 			now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
-			require.NoError(t, entity.Pay(now))
+			_, err := entity.Pay(now)
+			require.NoError(t, err)
 
 			payload, perr := event.BuildPaid(entity)
 			require.NoError(t, perr)
