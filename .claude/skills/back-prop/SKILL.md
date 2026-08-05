@@ -36,15 +36,26 @@ Detection is delegated to five **read-only worker subagents** under `.claude/age
 | `drift-detector-infra` | `internal/infrastructure/**` | infra / rdb / pgerror README（principles-focused、sibling code が de facto reference） |
 | `drift-detector-pkg` | `pkg/**` | `pkg/README.md` + 各 `pkg/<name>/README.md` |
 
-One further detector is keyed to the corpus rather than to a layer, and runs only when category (D) is selected:
+Two further detectors are keyed to a corpus rather than to a layer, and each runs only when its category is selected:
 
 | Detector subagent | 対象 | Canonical doc(s) |
 | --- | --- | --- |
 | `drift-detector-ddd` | `.agents/ddd-audit/pattern-ledger.yaml` ↔ ADR / README コーパス | 台帳自身の `corpus` グロブ |
+| `drift-detector-glossary` | `docs/spec/glossary.md` の用語 ↔ README / ADR / `docs/rules.md` | 用語表と Mechanism vocabulary 節 |
 
 これは README↔コードでなく**台帳↔正本**のドリフトを見る。台帳は「どの Evans パターンをどこで解釈したか」
 の帳簿なので、正本が動いた瞬間に静かに嘘になる — しかも誰も読まないファイルなので、放置しても誰も気づかない。
 Evans 原義に忠実かどうかは扱わない（`ddd-audit` / `ddd-origin-auditor` の担当）。
+
+(E) は**業務語彙が家を出ていないか**を見る。業務語は `docs/spec/` に住み、README / ADR は実装の構造と
+その意思決定を述べる側なので、層 README へ育った業務語は家を出た語である。同じ語がどこか別の場所で
+定義し直され、誰も気づかない。用語表そのものの生成・保守は `glossary` の担当で、**back-prop は正本を
+作らず参照するだけ**。(D) と同型である。
+
+(E) には他と違う制約が 1 つある。**findings のうち直せるのは層 README だけ**で、ADR と `docs/rules.md`
+への漏れは報告に留まる。前者は back-prop の write scope そのものだが、後者は決定記録と統べる文書で、
+検出器を満足させるために書き換えれば誰が決めるのかが反転する。detector 側が E1 / E2 として分けて返す
+ので、integrator は E2 を承認対象に載せないこと。
 
 These detectors are the per-layer drift-detection workers. They are **strictly read-only**: they surface (A)(B)(C) findings with reasoning + candidate options, but they **never call `AskUserQuestion` and never write**. The approval + write loop runs in **this integrator**, **single-threaded after aggregation**, so the five read-only detectors can fan out in parallel with zero write contention. Priority remains **README > Code > SKILL**.
 
@@ -56,11 +67,11 @@ These detectors are the per-layer drift-detection workers. They are **strictly r
    - 選択肢: 「変更ファイルのみ（ベースブランチとの diff、touched layer のみ fan-out）」 / 「リポジトリ全体（5 layer 全部 fan-out）」 / 「特定 layer のみ（layer を続けて指定）」 / 「キャンセル」
 
 2. 質問: 「検出する drift 種別を選んでください（multi-select、既定 4 種類すべて）」
-   - 選択肢: 「(A) README → Code drift」 / 「(B) Code → README undocumented pattern」 / 「(C) Skill ↔ README duplication」 / 「(D) DDD 台帳 ↔ ADR/README コーパス」
+   - 選択肢: 「(A) README → Code drift」 / 「(B) Code → README undocumented pattern」 / 「(C) Skill ↔ README duplication」 / 「(D) DDD 台帳 ↔ ADR/README コーパス」 / 「(E) 業務語彙 ↔ README/ADR」
 
-Detection categories are propagated to every detector. (D) is the only one that does not depend on
-Go files, so it is worth selecting even when the diff touches no code at all — an ADR-only change is
-exactly the case that rots the ledger.
+Detection categories are propagated to every detector. (D) and (E) are the ones that do not depend on
+Go files, so they are worth selecting even when the diff touches no code at all — a prose-only change
+is exactly the case that rots the ledger, and the one that lets a business term settle into a README.
 
 ## Step 1. Resolve Layers + File Lists in Scope
 
@@ -85,7 +96,13 @@ For "full repo": fan out all 5. For "specific layer": ask user which, fan out on
 
 When (D) is selected, additionally resolve the **DDD corpus** — not `*.go`-filtered, since the corpus is prose. Read the `corpus` globs from `.agents/ddd-audit/pattern-ledger.yaml` (never hardcode them here) and intersect with the diff for `changed` scope. Add `drift-detector-ddd` to the fan-out whenever that intersection is non-empty, or always in `full` scope.
 
-No Go changes **and** no corpus changes in changed-files mode → exit cleanly. Go-only changes with (D) selected still skip the DDD detector; a diff that touches no prose cannot rot the ledger.
+When (E) is selected, resolve the **prose corpus** the same way: `internal/**/README.md`,
+`pkg/**/README.md`, `docs/adr/*.md`, `docs/rules.md`, `docs/architecture.md`, minus `*.ja.md`.
+Add `drift-detector-glossary` whenever that intersection is non-empty, or always in `full` scope.
+**Skip it, and say why, when `docs/spec/glossary.md` does not exist** — the detector's probe list is
+that page's term table, and without it there is nothing to look for.
+
+No Go changes **and** no corpus changes in changed-files mode → exit cleanly. Go-only changes with (D) or (E) selected still skip those detectors; a diff that touches no prose cannot rot the ledger or move a term.
 
 ## Step 2. Fan Out Detector Subagents IN PARALLEL
 
@@ -96,9 +113,9 @@ For each layer in scope, spawn its detector with the **Agent tool**, all in **a 
 - `baseRef` — the base branch (fallback)
 - `categories` — the selected subset of `A` / `B` / `C`
 
-`drift-detector-ddd` takes the corpus file list instead of a Go file list, and no `categories` (it
-only ever detects (D)). Spawn it in the **same message** as the layer detectors so everything runs
-concurrently.
+`drift-detector-ddd` and `drift-detector-glossary` take a prose file list instead of a Go file list,
+and no `categories` (each only ever detects its own). Spawn them in the **same message** as the layer
+detectors so everything runs concurrently.
 
 Each detector's final message **is** its findings (Japanese, each with reasoning + candidate options). Collect them with their layer label.
 
@@ -142,6 +159,12 @@ Detector subagents are read-only. For each finding, **the integrator** now drive
 
 Write scope is restricted to: layer READMEs (`internal/<layer>/README.md` and sub-READMEs), skill `SKILL.md` files, and — for (D) findings only — `.agents/ddd-audit/pattern-ledger.yaml`. Never implementation code, never generated files, never `AGENTS.md`.
 
+**(E) narrows further, and the split is the detector's, not yours to re-open.** E1 findings sit in
+layer READMEs and are inside the scope above. E2 findings sit in an ADR or `docs/rules.md` and are
+**never put to approval at all** — surface them in the report and leave them there. Nor may you
+"resolve" an E2 by editing `docs/spec/glossary.md`: the vocabulary is `glossary`'s to maintain, and
+deleting a term to silence a finding would destroy the definition rather than move it.
+
 A (D) finding may tempt you to fix the corpus instead of the ledger — rewriting the ADR section the ledger points at, so the pointer becomes true again. Do not. The ledger is bookkeeping and yours to correct; an ADR is a decision record in the maintainer's voice, and a detector editing one would convert its own finding into the record of a decision nobody made. Surface that as the user's task.
 
 After writes, run `make md-lint` (or `make md-fix` then `make md-lint`) to verify the edited Markdown.
@@ -167,9 +190,10 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 
 ## AI Modification Scope
 
-- 読み込み: 各 layer の README + 実装 + 関連 skill 本体（detector subagent が実施）
+- 読み込み: 各 layer の README + 実装 + 関連 skill 本体（detector subagent が実施）。(E) 時は
+  `docs/spec/glossary.md` と `.agents/glossary-drift/exclusions.yaml` も読む（参照のみ）
 - 書き込み: **integrator のみ**、user の per-item 承認 + 理由明示 + draft 提示の後に、layer README / 関連 skill `SKILL.md` / (D) 時のみ `.agents/ddd-audit/pattern-ledger.yaml` へ。detector subagent は一切書き込まない。
-- 触らない: 実装コード、生成物、`AGENTS.md`、ADR 本文
+- 触らない: 実装コード、生成物、`AGENTS.md`、ADR 本文、`docs/spec/**`、`.agents/glossary-drift/exclusions.yaml`
 
 ## Constraints
 
@@ -182,6 +206,9 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 - ❌ recurring threshold 3 未満の (B) pattern を surface（detector 側で抑止、integrator も respect）
 - ❌ (D) の解消として ADR / README 本文を書き換える（台帳側を直す。正本の変更は user 作業）
 - ❌ (D) で Evans 原義への忠実性を判定する（`ddd-audit` の担当）
+- ❌ (E) の E2（ADR / `docs/rules.md` への漏れ）を承認対象に載せる / 書き換える
+- ❌ (E) の解消として `docs/spec/glossary.md` を編集する（用語表は `glossary` の担当）
+- ❌ (E) を `.agents/glossary-drift/exclusions.yaml` へ追記して黙らせる（除外の宣言は user の判断）
 - ✅ Japanese aggregated report
 - ✅ Fan out only touched layers (changed-files mode)
 - ✅ per-layer detector / skill が独立 standalone 動作可能であることを維持

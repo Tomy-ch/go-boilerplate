@@ -1,0 +1,60 @@
+# Glossary drift — declared exclusions.
+#
+# THIS FILE IS A SKILL ARTIFACT, NOT DOCUMENTATION. It is read by the
+# `drift-detector-glossary` agent (drift category (E) of `back-prop`). Humans are not the
+# audience; the human-facing output is that detector's report.
+#
+# What the detector does: it reads the term table in `docs/spec/glossary.md` and reports where
+# those business terms appear in prose that is supposed to hold implementation structure and
+# decisions — layer READMEs, `docs/adr/**`, `docs/rules.md`. Business vocabulary lives in
+# `docs/spec/`; a term growing in a README is a term that has left its home, and the same word
+# will be redefined elsewhere with nothing noticing.
+#
+# What this file does: names the places where that is knowingly not true yet, so the report does
+# not open with a wall of red the first time anyone runs it. A detector whose first run is
+# unreadable is a detector nobody runs again — the classic way a linter dies when it is bolted
+# onto a codebase that predates it.
+#
+# Field reference
+#   path     glob, repo-relative. Matched against the file the finding is in.
+#   terms    optional. Limit the exclusion to these terms; omit to exclude the path entirely.
+#            Prefer listing them — a whole-path exclusion hides the next leak too.
+#   reason   why the vocabulary is there today. One line, in the maintainer's own terms.
+#   until    THE FIELD THAT MATTERS. What has to become true for this entry to be deleted.
+#            Write a condition someone can check, not a date and not "when we get to it".
+#
+# `until` is required, and the detector reports every entry that is still in force on every run.
+# An exclusion nobody can retire is indistinguishable from a rule nobody meant, and the way that
+# happens is not malice — it is one entry added under deadline and never revisited, because
+# nothing in the file asked what would let it go. Making the condition part of the entry is what
+# keeps this file a queue rather than a graveyard.
+#
+# What does NOT belong here
+#   - A term that is genuinely implementation vocabulary. That belongs in the Mechanism
+#     vocabulary section of `docs/spec/glossary.md`, which is about what a word *is*, not about
+#     where it is tolerated.
+#   - A concrete example illustrating a general rule. Wrap it in `sample-api` markers instead;
+#     it is not a leak, it is teaching material with a shorter life than the rule.
+
+schema_version: 1
+
+exclusions:
+  - path: docs/rules.md
+    reason: >-
+      実装の知見を出し切ってから圧縮する計画で、意図的に散文が残っている領域。業務語が
+      規則の説明に混ざったまま棚卸しを待っている。
+    until: >-
+      docs/rules.md のコンパクションが完了し、規則が例と分離された状態になったとき。
+      分離の形は「規則文は例なしで成立し、具体例は sample-api マーカーの内側」。
+
+  - path: docs/adr/009[7-9]-*.md
+    reason: >-
+      同上。0097 以降は実装知見の吐き出し先として新しく、まだ圧縮を通っていない。
+    until: >-
+      当該 ADR がコンパクションを通り、決定の主題と説明のための例が分離されたとき。
+
+  - path: docs/adr/01*.md
+    reason: >-
+      同上（0100 番台）。
+    until: >-
+      当該 ADR がコンパクションを通り、決定の主題と説明のための例が分離されたとき。
