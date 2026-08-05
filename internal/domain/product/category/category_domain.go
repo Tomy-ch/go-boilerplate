@@ -21,10 +21,7 @@ type Category struct {
 	sortKey int
 }
 
-// New は、商品カテゴリエンティティの検証と生成を行います。code・sortKey は 1〜32767 の整数である
-// 必要があります。id が nil の場合は ErrInvalidID、名前長・code 範囲・sortKey 範囲の違反の場合は
-// それぞれ ErrInvalidName / ErrInvalidCode / ErrInvalidSortKey を返します。
-// Attributes は、商品カテゴリの属性一式です。code と sortKey は同じ int かつ同じ値域（1〜32767）で、
+// Attributes は、商品カテゴリの属性一式です。Code と SortKey は同じ int かつ同じ値域（1〜32767）で、
 // 位置引数のままだと取り違えても検証を通過してしまうため構造体で受けます。
 type Attributes struct {
 	Name    string
@@ -32,6 +29,9 @@ type Attributes struct {
 	SortKey int
 }
 
+// New は、商品カテゴリエンティティの検証と生成を行います。Code・SortKey は 1〜32767 の整数である
+// 必要があります。id が nil の場合は ErrInvalidID、名前長・Code 範囲・SortKey 範囲の違反の場合は
+// それぞれ ErrInvalidName / ErrInvalidCode / ErrInvalidSortKey を返します。
 func New(id uuid.UUID, attrs Attributes) (*Category, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")

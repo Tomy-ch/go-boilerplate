@@ -6,15 +6,6 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-// EventType は、購入に起きた事象の種別です。
-//
-// 名前は過去形でユビキタス言語の一部であり、ドメインが所有します。外部へ公開するときの
-// version 付き文字列や JSON のフィールド名は転送契約（Published Language）であって、
-// ドメインではなく詰め替え層が所有します。
-type EventType struct {
-	name string
-}
-
 // 購入に起こりうる事象。
 var (
 	// EventCreated は、購入が作成されたという事象です。
@@ -29,8 +20,14 @@ var (
 	EventDelivered = EventType{name: "delivered"}
 )
 
-// Name は、事象の名前を返します。
-func (t EventType) Name() string { return t.name }
+// EventType は、購入に起きた事象の種別です。
+//
+// 名前は過去形でユビキタス言語の一部であり、ドメインが所有します。外部へ公開するときの
+// version 付き文字列や JSON のフィールド名は転送契約（Published Language）であって、
+// ドメインではなく詰め替え層が所有します。
+type EventType struct {
+	name string
+}
 
 // Event は、購入に起きた事実です。
 //
@@ -44,6 +41,9 @@ type Event struct {
 	purchaseID uuid.UUID
 	occurredAt time.Time
 }
+
+// Name は、事象の名前を返します。
+func (t EventType) Name() string { return t.name }
 
 // newEvent は、購入の事象を生成します。遷移メソッドからのみ呼ばれます。
 func newEvent(typ EventType, purchaseID uuid.UUID, occurredAt time.Time) Event {

@@ -63,11 +63,6 @@ type Purchase struct {
 	deliveredAt    *time.Time
 }
 
-// NewLockedProduct は、ロック済み商品スナップショットを生成します。price は価格スケール（ドル decimal）です。
-func NewLockedProduct(id uuid.UUID, price money.Price, quantity int) LockedProduct {
-	return LockedProduct{id: id, price: price, quantity: quantity}
-}
-
 // PurchaseDetailAttributes は、明細の再構築に必要な属性一式です。id と productID は隣接する
 // 同じ uuid.UUID で、位置引数のままだと取り違えてもコンパイルも検証も通ってしまうため構造体で受けます。
 type PurchaseDetailAttributes struct {
@@ -75,6 +70,31 @@ type PurchaseDetailAttributes struct {
 	Quantity  int
 	// UnitPrice は価格スケール（ドル decimal）です。
 	UnitPrice money.Price
+}
+
+// Attributes は、購入の再構築に必要な属性一式です。金額 4 つは同じ int、イベント日時 4 つは
+// 同じ *time.Time で、位置引数のままだと取り違えても検証の大半を通過してしまうため構造体で受けます。
+// DB 行からの再構築はこの層で最も晒された呼び出し元です。
+type Attributes struct {
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	StatusCode     int
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetail
+	OrderedAt      time.Time
+	PaidAt         *time.Time
+	CanceledAt     *time.Time
+	ShippedAt      *time.Time
+	DeliveredAt    *time.Time
+}
+
+// NewLockedProduct は、ロック済み商品スナップショットを生成します。price は価格スケール（ドル decimal）です。
+func NewLockedProduct(id uuid.UUID, price money.Price, quantity int) LockedProduct {
+	return LockedProduct{id: id, price: price, quantity: quantity}
 }
 
 // NewPurchaseDetail は、永続化済みの明細を再構築します（Repository の読み出しで使用）。
@@ -177,30 +197,10 @@ func New(
 }
 
 // Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。
-// statusCode は購入ステータスマスタで解決した現在状態、paidAt / canceledAt / shippedAt / deliveredAt は
-// 各イベントの発生日時（未発生は nil）です。ID / code / userID / statusID が nil、statusCode が不正、
-// 金額が負、明細が空の場合は検証エラーを返します。statusCode と timestamps の組み合わせが状態遷移では
+// attrs.StatusCode は購入ステータスマスタで解決した現在状態、PaidAt / CanceledAt / ShippedAt / DeliveredAt
+// は各イベントの発生日時（未発生は nil）です。ID / Code / UserID / StatusID が nil、StatusCode が不正、
+// 金額が負、明細が空の場合は検証エラーを返します。StatusCode と timestamps の組み合わせが状態遷移では
 // 到達し得ないもの（発送後のキャンセル、発送を伴わない配達 等）の場合も ErrInvalidStatusID を返します。
-// Attributes は、購入の再構築に必要な属性一式です。金額 4 つは同じ int、イベント日時 4 つは
-// 同じ *time.Time で、位置引数のままだと取り違えても検証の大半を通過してしまうため構造体で受けます。
-// DB 行からの再構築はこの層で最も晒された呼び出し元です。
-type Attributes struct {
-	Code           string
-	UserID         uuid.UUID
-	StatusID       uuid.UUID
-	StatusCode     int
-	SubtotalAmount int
-	TaxAmount      int
-	ShippingFee    int
-	TotalAmount    int
-	Details        []PurchaseDetail
-	OrderedAt      time.Time
-	PaidAt         *time.Time
-	CanceledAt     *time.Time
-	ShippedAt      *time.Time
-	DeliveredAt    *time.Time
-}
-
 func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
@@ -325,9 +325,8 @@ func (p *Purchase) UserID() uuid.UUID { return p.userID }
 // StatusID は、購入ステータス ID を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。
 func (p *Purchase) StatusID() uuid.UUID { return p.statusID }
 
-// StatusCode は、購入ステータスのコードを返します。New で生成した集約は未処理（1）、再構築時は
-// 購入ステータスマスタで解決した現在状態です。Cancel 後はキャンセル（6）になります。
-// Status は、購入のステータスを返します。名前・終端性・遷移可否はこの値に問い合わせます。
+// Status は、購入のステータスを返します。New で生成した集約は未処理、再構築時は購入ステータス
+// マスタで解決した現在状態です。名前・終端性・遷移可否はこの値に問い合わせます。
 func (p *Purchase) Status() Status { return p.status }
 
 // StatusCode は、永続化と外部公開に用いる業務キーを返します。

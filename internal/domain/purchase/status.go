@@ -6,32 +6,42 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// Status は、購入のステータスを表す値オブジェクトです。
-//
-// 内側に持つ code は永続化と外部公開のための業務キーであり、**到達順序を意味しません**
-// （完了=5 / キャンセル=6 より支払い済み=7 のほうが大きい）。したがって遷移の可否や終端性を
-// code の大小で判定してはならず、必ず本型のメソッドを通します。
-type Status struct {
-	code int
-	name string
-}
+// 既知のステータスの業務キー。**到達順序を意味しません**
+// （完了=5 / キャンセル=6 より支払い済み=7 のほうが大きい）。
+const (
+	statusCodeUnprocessed = 1
+	statusCodeCompleted   = 5
+	statusCodeCanceled    = 6
+	statusCodePaid        = 7
+	statusCodeShipped     = 8
+	statusCodeDelivered   = 9
+)
 
 // 既知のステータス。ステータスの UUID はドメインに焼き込まず、永続化時に code から解決します
 // （seed との二重管理を避けるため）。
 var (
 	// StatusUnprocessed は、購入作成直後に設定される「未処理」です。
-	StatusUnprocessed = Status{code: 1, name: "unprocessed"}
+	StatusUnprocessed = Status{code: statusCodeUnprocessed, name: "unprocessed"}
 	// StatusCompleted は、購入完了です。完了後はキャンセルできません。
-	StatusCompleted = Status{code: 5, name: "completed"}
+	StatusCompleted = Status{code: statusCodeCompleted, name: "completed"}
 	// StatusCanceled は、購入キャンセルです。発送前にのみ到達します。
-	StatusCanceled = Status{code: 6, name: "canceled"}
+	StatusCanceled = Status{code: statusCodeCanceled, name: "canceled"}
 	// StatusPaid は、支払い済みです。未払い相当からのみ到達します。
-	StatusPaid = Status{code: 7, name: "paid"}
+	StatusPaid = Status{code: statusCodePaid, name: "paid"}
 	// StatusShipped は、発送済みです。支払い済みからのみ到達します。
-	StatusShipped = Status{code: 8, name: "shipped"}
+	StatusShipped = Status{code: statusCodeShipped, name: "shipped"}
 	// StatusDelivered は、配達済みです。発送済みからのみ到達する終端状態です。
-	StatusDelivered = Status{code: 9, name: "delivered"}
+	StatusDelivered = Status{code: statusCodeDelivered, name: "delivered"}
 )
+
+// Status は、購入のステータスを表す値オブジェクトです。
+//
+// 内側に持つ code は永続化と外部公開のための業務キーであり、到達順序を意味しません。
+// したがって遷移の可否や終端性を code の大小で判定してはならず、必ず本型のメソッドを通します。
+type Status struct {
+	code int
+	name string
+}
 
 // allStatuses は、既知のステータス一覧です。code からの解決に用います。
 func allStatuses() []Status {

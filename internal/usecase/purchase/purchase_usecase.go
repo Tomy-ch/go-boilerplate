@@ -25,8 +25,6 @@ import (
 )
 
 const (
-	// baseCurrency は、購入金額の基軸通貨です。金額は本通貨のセント整数で保持します。
-	baseCurrency = "USD"
 	// aggregateType は、outbox の集約種別です。
 	aggregateType = "purchase"
 )
