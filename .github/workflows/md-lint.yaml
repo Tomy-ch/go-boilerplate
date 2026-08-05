@@ -1,0 +1,119 @@
+name: Markdown Lint
+
+# `make md-lint` is wired into the lefthook pre-commit hook only, so `--no-verify` and edits
+# made through the GitHub web UI reach a merge unchecked. All three stages run here.
+#
+# Until this job covered them, only `md-skill-lint-ci` did: `skill-lint.mjs` is dependency-free
+# ESM, while markdownlint-cli2 and `mermaid-lint.mjs` need tooling the node_tool_runner image
+# builds. markdownlint-cli2 turned out to be a mise npm-backend tool like any other, and the
+# mermaid tree costs ~5s to install, so neither needs the container.
+#
+# A broken mermaid diagram reaches the documentation portal, and markdownlint never looks inside
+# a fence — the mermaid stage is the only thing standing in front of it.
+#
+# No `paths` filter, deliberately. The Markdown checks read every `.md` in the repo, and
+# `skill-lint.mjs` additionally resolves the paths and make targets its prose quotes against the
+# whole tree, so renaming `docs/rules.md` or moving a file under `internal/` breaks it without
+# touching anything a filter could name.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  md-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install node and markdownlint
+        run: mise install node npm:markdownlint-cli2
+
+      # `mermaid-lint.mjs` resolves linkedom through createRequire and mermaid through a dynamic
+      # import; both walk up from `scripts/`, so one `scripts/node_modules` satisfies them.
+      #
+      # The manifests are installed outside the repository and only the resulting tree is moved
+      # in. Placing them under `scripts/` — which is what the container does at build time, where
+      # the image is the working tree — would leave three untracked files behind here, whereas
+      # `node_modules/` is already ignored. The tree is the one `docker/tools/package-lock.json`
+      # pins, so CI and the container resolve the same versions.
+      - name: Install the mermaid tree for scripts/
+        env:
+          TOOLS_DIR: ${{ runner.temp }}/docs-tools
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$TOOLS_DIR"
+          cp docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc "$TOOLS_DIR/"
+          npm ci --ignore-scripts --prefix "$TOOLS_DIR"
+
+          mkdir -p scripts
+          mv "$TOOLS_DIR/node_modules" scripts/node_modules
+
+      - name: Run Markdown lint
+        id: md-lint
+        shell: bash
+        run: |
+          set +e
+
+          make md-lint-ci 2>&1 | tee /tmp/md-lint.log
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Markdown lint: PASS (markdownlint + mermaid + skill-lint)" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Markdown lint: FAIL (markdownlint + mermaid + skill-lint)" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      # The checkout must be as clean as it was before the lint, or a later reader cannot tell a
+      # real drift from this job's own leftovers. `scripts/node_modules` is ignored, so anything
+      # reported here is something this job put in a tracked path.
+      - name: Verify the working tree is clean
+        run: git status --porcelain --untracked-files=all | tee /tmp/md-lint-dirty.log && test ! -s /tmp/md-lint-dirty.log
+
+      - name: Comment Markdown lint result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- md-lint-result -->'
+          title: "${{ steps.md-lint.outputs.title || '## ⚠️ Markdown Lint: CUT OFF (no result produced)' }}"
+          body-file: /tmp/md-lint.log
+          details-summary: 'md-lint log'
+
+      - name: Fail if Markdown lint failed
+        if: always() && steps.md-lint.outputs.status != 'success'
+        run: exit 1

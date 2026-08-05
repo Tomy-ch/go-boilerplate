@@ -186,7 +186,23 @@ func Test_provideAuthenticator(t *testing.T) {
 
 			authenticator, err := provideAuthenticator(p)
 			require.NoError(t, err)
-			assert.NotNil(t, authenticator)
+			// local.Authenticator も非 nil なので、非 nil だけでは local 分岐へ巻き込まれた回帰と区別できない。
+			assert.NotEqual(t, local.New(), authenticator)
+		})
+
+		t.Run("development環境でAUTH設定とHTTPClientが揃えばJWKS authenticatorが返る", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+			p := newAuthParams(t, config.EnvDevelopment, logger)
+			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
+			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
+			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
+			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
+
+			authenticator, err := provideAuthenticator(p)
+			require.NoError(t, err)
+			assert.NotEqual(t, local.New(), authenticator)
 		})
 	})
 
@@ -208,6 +224,8 @@ func Test_provideAuthenticator(t *testing.T) {
 			logger := logging.NewTestLogger(t)
 			authenticator, err := provideAuthenticator(newAuthParams(t, config.EnvDevelopment, logger))
 			require.Error(t, err)
+			// JWKS 構築の失敗であって、case 未一致による default 落ちではないこと。
+			require.NotErrorIs(t, err, errNoAuthenticatorForEnv)
 			assert.Nil(t, authenticator)
 		})
 
@@ -219,6 +237,50 @@ func Test_provideAuthenticator(t *testing.T) {
 		t.Run("production環境では Authenticator を配線せずエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			assertFailClosed(t, config.EnvProduction)
+		})
+	})
+}
+
+func Test_allowInsecureJWKSURL(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("local環境では非httpsのJWKS URLを許容する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, allowInsecureJWKSURL(config.EnvLocal))
+		})
+
+		t.Run("development環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvDevelopment))
+		})
+
+		t.Run("staging環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvStaging))
+		})
+
+		t.Run("production環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvProduction))
+		})
+
+		t.Run("CI環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvCI))
+		})
+
+		t.Run("テスト環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvTest))
 		})
 	})
 }
@@ -253,6 +315,21 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
 			p.AuthCfg.SetAuthJWKSURL(t, "http://issuer.example.com/.well-known/jwks.json")
+			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
+
+			authenticator, err := provideJWKSAuthenticator(p, logger)
+			require.NoError(t, err)
+			assert.NotNil(t, authenticator)
+		})
+
+		t.Run("development環境ではhttpsのJWKS URLで構築できる", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+			p := newAuthParams(t, config.EnvDevelopment, logger)
+			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
+			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
+			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideJWKSAuthenticator(p, logger)

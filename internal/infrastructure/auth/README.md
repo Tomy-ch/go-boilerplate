@@ -133,6 +133,30 @@ prd
 
 the **verification method** is selected (e.g. `local` stub for CI / test; `jwt` for local / development).
 
+## Test Strategy
+
+This directory has no single substrate. What a test must stand up is decided by the verification method,
+not by the directory, so the infrastructure layer's real-DB strategy does not govern it as a whole. Each
+implementation below states what it closes over; the one that genuinely needs a database says so.
+
+- **`local`** — string parsing with nothing to double. Plain unit tests over the token forms it accepts
+  and rejects. Because it is the stub that skips signature verification, the rejections matter more than
+  the acceptances: a malformed token must produce the sentinel, never a partially built `Authn`.
+- **`jwt`** — the only implementation with an external dependency, and it is reached solely through the
+  `httpclient.Client` boundary, so a generated mock scripts the JWKS / discovery responses and no network
+  is touched. Signing material is built in-process (`go-jose`, a fresh key pair per test) rather than
+  committed as a fixture, which is what makes an unknown `kid`, a rotated key and an algorithm outside
+  the allowlist all reachable. Time-dependent claims (`exp` / `nbf` / leeway) go through the injected
+  `clock` testkit — a test that waits on wall time for a token to expire is flaky by construction.
+- **`identity`** — a passthrough with no branch. Its test exists to pin that it *stays* one: the resolver
+  must leave the internal UserID unresolved rather than inventing a value for it.
+- **`useridentity`** — the exception here. It reads `user_identities` through the RDB driver, so the
+  real-DB strategy in [`../README.md`](../README.md) governs it: a real database, `rdb/testkit`, and
+  transaction rollback for state isolation. The identities it reads come from the seed, whose issuer is
+  environment-dependent, so it runs through `make test` rather than a bare `go test`.
+
+Which method a given environment receives is DI-layer scope and is verified there, not here.
+
 ## Design Policy
 
 This directory is designed based on the following policies.

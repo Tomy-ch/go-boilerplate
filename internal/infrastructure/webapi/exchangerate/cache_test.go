@@ -74,6 +74,30 @@ func Test_cacheGateway_GetRate(t *testing.T) {
 			require.NoError(t, err)
 		})
 
+		t.Run("TTLちょうど経過した時点では失効として再度inner_gatewayを呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			inner := mock_exchangerate.NewMockGateway(ctrl)
+			inner.EXPECT().
+				GetRate(gomock.Any(), "USD", "JPY").
+				Return(&boundary.Rate{Base: "USD", Quote: "JPY", Value: decimaltestkit.MustParse(t, "150.5")}, nil).
+				Times(2)
+
+			// 失効判定は expiresAt を含まないため、Now が expiresAt ちょうどなら失効側に倒れる。
+			// TTL と同じ 24h だけ進めてその等号側を固定する（25h 進める上のケースは境界を跨いでしまう）。
+			clk := testkit.NewStepClock(clockStart, 24*time.Hour)
+			cached := exchangerate.NewCache(inner, clk)
+
+			_, err := cached.GetRate(context.Background(), "USD", "JPY")
+			require.NoError(t, err)
+
+			require.NoError(t, clk.Sleep(context.Background(), 0)) // 時刻を expiresAt ちょうどへ前進
+
+			_, err = cached.GetRate(context.Background(), "USD", "JPY")
+			require.NoError(t, err)
+		})
+
 		t.Run("通貨ペアが異なればそれぞれinnerを呼ぶ", func(t *testing.T) {
 			t.Parallel()
 

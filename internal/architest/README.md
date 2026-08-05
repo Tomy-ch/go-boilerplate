@@ -33,13 +33,14 @@ cross-cutting structure rules (`t.Parallel()`, subtest groups, assertions) still
   companion `Test_collectXxx` / `Test_scanXxx` driving it over inline sources rather than the real tree.
   This is the viewpoint that keeps the others honest: a scanner that stops recognising a syntax shape
   reports "no violations" and stays green forever, so the scan's own coverage cannot be left to the
-  repository's current contents. Not every check has one today — the checks that reconcile a declared
-  table against files (`env_consistency`, `idempotency_completeness`, `unit_test_mapping_completeness`)
-  are still driven only through the real tree, which is a gap to close rather than a pattern to copy.
+  repository's current contents. The real-tree walk that finds files stays outside this viewpoint: it
+  reads the filesystem and has no syntax shape to recognise, so what gets a companion is the pure
+  function it hands each file's lines to.
 - **Report violations with their declaration site, in a stable order.** Findings carry the file (and line
   where meaningful) that declared them and are sorted before assertion, so a failure is deterministic and
-  points at what to edit rather than at the invariant in the abstract. `idempotency_completeness` is the
-  one check that still reports straight out of map iteration, so its ordering is not yet deterministic.
+  points at what to edit rather than at the invariant in the abstract. Collecting into a slice and
+  asserting once also reports every violation together, which iterating a map with a per-item assertion
+  cannot do in a reproducible order.
 - **Pin each deliberate carve-out as a case of its own.** Generated files, `main` / `init`, a test file
   excluding itself from its own scan, and documented `t.Skip` forms are all *expected* not to trip a
   check. Asserting that explicitly is what distinguishes a carve-out from a hole opened later by

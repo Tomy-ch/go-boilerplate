@@ -40,6 +40,16 @@ Usecase 層の `publisher.Publisher` インターフェース（`internal/usecas
 - エンドポイント URL は config から一度解決して構築時に注入し、`Content-Type: application/json` とメッセージ自身のヘッダ（`traceparent` 等）を送る。
 - 非 2xx / transport 失敗は substrate が `apperror` sentinel へ写像してそのまま返し、relay の次 poll での再送を促す。
 
+## Test Strategy
+
+ここでの基盤は DB ではなく `httpclient.Client` Boundary であるため、infrastructure 層の実 DB 戦略は適用されません。すべて in-process で閉じます。downstream は `httpclient` の生成モックで、ネットワークへは何も送出しません。
+
+- **結果だけでなくリクエストを assert する。** このアダプタの仕事は outbox メッセージを 1 回の HTTP 呼び出しへ変えることそのものなので、テストは substrate へ渡された `Request` を検査します。メソッド・エンドポイント・`Content-Type`・メッセージ自身のヘッダ（`traceparent`）、そして `Idempotency-Key` として載る `MessageID` です。返り値のエラーだけを見ると、この写像が自由にドリフトします。
+- **無効化した設定は「意図的に off である」ことを固定する。** これらは既定値ではなく安全装置だからです。`AllowRetry = false`（再送は relay の poll ループが所有する）と `PropagateTrace = false`（emit 時の `traceparent` はメッセージヘッダとして運ぶ）。どちらも反転しても無言で通るため、それぞれが独立したケースを持ちます。
+- **機微ヘッダは正規化の抜けに対して固定する。** ヘッダの照合が大文字小文字や前後の空白で破られてはならないため、それらの形を仮定せず明示的にテストします。
+- **substrate のエラーは加工せず伝播する。** 非 2xx / transport 失敗は到達時点で既に `apperror` sentinel です。assert はその sentinel に対する `errors.Is` で行い、アダプタが再ラップも平坦化もしていないことを確かめます。relay の再送判断は、これが無傷で届くことに依存しています。
+- **実装の選択それ自体が subject である。** `OUTBOX_PUBLISHER` で分岐する `New` は、既知の各値に加えて未知の値でもテストします。誤記で起動を失敗させることが契約だからです。各分岐が自分の設定だけを解決すること（queue 構成のデプロイが `OUTBOX_ENDPOINT` を要求されないこと）も同様です。
+
 ## DI 登録
 
 `internal/di/module/outboxpublisher.go` の `outbox_publisher` モジュールに登録します。downstream profile は `httpclient_profiles` グループへ寄与します。
