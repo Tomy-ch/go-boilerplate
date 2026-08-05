@@ -149,6 +149,13 @@ type Users []*User
 - Package name should be the domain name
 - Constructor name should be `New`
 
+> **Departure from Evans.** For Evans a Module is part of the model: the dividing lines and the names
+> are meant to carry an insight about the domain, and the structure is expected to evolve as the model
+> does. The rules above are mechanical beside that — they say what to call things, not what a division
+> should reveal. The gap is structural rather than an oversight. A template has no real domain to have
+> an insight about, so the lines drawn here are the ones the architecture implies; the ones that would
+> express a model belong to whoever forks it.
+
 ### Bundle attributes into a struct when positional arguments can be swapped
 
 The criteria — when a same-typed-parameter swap is a real risk, when it is not, and whether to remedy it
@@ -185,6 +192,16 @@ requires belongs on the Repository's row-to-entity conversion as well as on the 
 - Invariants are guaranteed in `New(...)`
 - setters are prohibited
 - state changes occur through **behavior methods**
+
+`Reconstruct(...)` runs the same invariants as `New(...)`. There is no relaxed path for data that is
+already stored.
+
+> **Departure from Evans.** Evans warns that reconstituting an object from storage is not the same
+> problem as creating one: the data already exists, so a violated invariant may call for a repair
+> strategy rather than a flat refusal. This model always fails hard — a row that breaks an invariant
+> surfaces as an error at load time. A stored violation is a defect to be found, and repairing it
+> silently would hide that defect at the exact moment it becomes observable. The cost is accepted:
+> such a row blocks reads of that aggregate until it is corrected.
 
 ### Access via getter
 
@@ -418,6 +435,13 @@ sub-entity's own fields. **Never give a sub-entity a back-reference to its paren
 attributes are needed to present it, rather than as a bare identity. Those attributes are a
 denormalized copy carried for presentation: the value exposes none of the other aggregate's behavior
 and is never read to reach a decision. A mutable aggregate stays identity-only.
+
+> **Departure from Evans.** Evans permits an aggregate to hold a direct reference to another
+> aggregate's root, trusting that root to guard its own invariants. This model does not: a mutable
+> aggregate is reachable by identity only. A direct reference makes it too easy to load a graph and
+> mutate through it, collapsing two transaction boundaries into one by accident; refusing it costs a
+> lookup and buys a boundary the compiler can see. The reference-master exception above is the single
+> place a non-identity value crosses, and it carries no behavior to mutate through.
 
 ### Reference master aggregates
 

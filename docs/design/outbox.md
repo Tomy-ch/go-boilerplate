@@ -215,6 +215,16 @@ sequenceDiagram
 
 The subsystem ships the **full machinery**: emit/relay/gc/replay usecases, the RDB `Store`, the HTTP `Publisher`, the relay `Engine`, the GC job, DI wiring, and the `outbox-relay` / `replay` / `job outbox-gc` entry points. No event flows by default — the integrator wires the two open ends (the producing call and the consuming endpoint) and operates the processes.
 
+> **Departure from Evans — no Published Language on this side.** The synchronous HTTP surface has one:
+> OpenAPI is committed as a resolved contract that a consumer in another repository can read without
+> this repository's toolchain, and a drift gate keeps it honest. The asynchronous surface has none.
+> [ADR-0048](../adr/0048-message-id-idempotency-propagation.md) fixes a *transport* convention
+> (`Idempotency-Key`), not a language: nothing here defines or publishes the schema of the event
+> payloads or the vocabulary of `event_type`, so a receiver learns both by reading this repository's
+> source. The asymmetry is deliberate to the extent that item ② below hands payload and `event_type`
+> to the integrator — a template cannot publish a language for events it does not own. What is *not*
+> yet provided is the shape that publication should take once the integrator defines those events.
+
 ```mermaid
 flowchart LR
     EM["① call Emit in the business tx<br/>(alongside the domain change)"]:::need

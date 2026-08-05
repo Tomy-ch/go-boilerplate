@@ -245,8 +245,14 @@ patterns:
         section: "Constraints"
       - kind: adr
         id: "0104"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans にとって Module はモデルの一部で、分割線と名前がドメインへの洞察を担い構造もモデルと共に
+      進化する。本リポジトリの規則は機械的で、何と呼ぶかは言うが分割が何を明かすべきかは言わない。
+      テンプレートには洞察を持つべき実ドメインが無く、引かれている線はアーキテクチャが含意するもの
+      であるため。モデルを表現する線は fork 先に属する。宣言は internal/domain/README.md の
+      Naming / structure 節。
+
     enforced_by:
       - kind: depguard
         rule: independent_pkg
@@ -277,8 +283,13 @@ patterns:
         id: "0029"
       - kind: adr
         id: "0104"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans は他集約ルートへの直接参照を許すが、本リポジトリは可変集約への参照を identity のみに
+      限定する。直接参照はグラフを読んでそれ越しに変更するのを容易にし、2 つのトランザクション境界を
+      事故的に 1 つへ潰すため。参照マスタだけは提示に必要な属性を伴ってよいが、変更を通す振る舞いを
+      持たない。宣言は internal/domain/README.md の Cross-aggregate reference 節。
+
     enforced_by:
       - kind: depguard
         rule: maintain_a_sound_domain
@@ -302,8 +313,14 @@ patterns:
       - kind: doc
         path: docs/rules.md
         section: "DTO / Type Boundary Rules"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans は再構築時の不変条件違反に対し修復戦略が要り得ると注意するが、本リポジトリは常に
+      hard-fail する。Reconstruct は New と同じ不変条件を課す。保存された違反は見つけられるべき欠陥で
+      あり、黙って修復するとそれが観測可能になった瞬間に隠すことになるため。代償として、その行は
+      修正されるまで当該集約の読み取りを止める。宣言は internal/domain/README.md の
+      Do not set outside constructor 節。
+
     enforced_by: []
     last_audited: "2026-07-30"
 
@@ -479,8 +496,14 @@ patterns:
         id: "0039"
       - kind: adr
         id: "0098"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      構造的シグネチャは Anticorruption Layer だが、掲げる動機が Evans と異なる。本リポジトリは
+      依存性逆転・置換可能性・transport 隠蔽から論じ、Evans は上流モデルの意味論の侵入を防ぐことから
+      論じる。結果として確実に守られるのは技術型とベンダー語彙であり、外部の概念が自ドメインと
+      食い違うときにどちらへ寄せるかは未決である。当面はこのモデルの語彙へ寄せ、判断を leaf の変換箇所に
+      記録する運用とする。宣言は internal/infrastructure/webapi/README.md の Design Policy 節。
+
     enforced_by: []
     last_audited: "2026-07-30"
 
@@ -509,7 +532,14 @@ patterns:
       - kind: readme
         path: internal/controller/README.md
         section: "Role in Onion Architecture"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      同期 HTTP 面は OpenAPI が公開言語として機能する一方、非同期面（outbox → 外部 receiver）には
+      公開言語が無い。ADR-0048 が定めるのは Idempotency-Key という転送規約であって言語ではなく、
+      イベント payload のスキーマも event_type の語彙も定義・公開されていない。テンプレートは自分が
+      所有しないイベントの言語を公開できないため、この非対称は payload と event_type を integrator に
+      委ねている限りにおいて意図的である。未提供なのは、integrator が定義した後の公開の型。
+      宣言は docs/design/outbox.md の第 4 節。
+
     enforced_by: []
     last_audited: "2026-07-30"
