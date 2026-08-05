@@ -145,8 +145,8 @@ setup-replace-codeowners:
 	@docker compose run --rm node_tool_runner node scripts/setup/replace-codeowners.mjs \
 		--owners "$(OWNERS)" \
 		$(SETUP_DRY_RUN_FLAG)
-
 # sample-api:begin
+
 # サンプルAPIの削除はコンテナ内（node_tool_runner）で行い、削除後の再生成・整形・検証・DB 再構築は
 # Go ツールチェーンが必要なためホスト側の make ターゲットを連鎖させる。
 # プレビューは DRY_RUN=1 を付ける（削除も再生成も行わない）。
