@@ -101,6 +101,12 @@ three responsibilities:
   owns no transaction; a CommandService is a *transaction tool* and is owned by whoever opens the
   transaction. That every condition a CommandService enforces is derived from a domain invariant is
   guaranteed by the Derivation rule below, not by where the file sits.
+- A CommandService method **receives the decided aggregate** — `CreateX(ctx, *x.X)` — symmetric to
+  how a Repository returns one, rather than a decomposed parameter bag. Passing the aggregate keeps
+  the decided write unit intact; a parameter bag scatters the write intent across a signature and
+  breaks that symmetry. This is not a DTO-boundary violation: infrastructure legitimately handles
+  domain entities, since repositories already map rows to and from them, and the DTO-boundary rule
+  targets what the *controller* is exposed to, not what infrastructure receives.
 - After executing a write operation, the Usecase calls back through the Repository for the
   affected aggregate to validate correctness, preserving domain integrity.
 - The Usecase return value is a DTO, not a domain entity.
@@ -113,7 +119,7 @@ three responsibilities:
 
 Repository, QueryService, and CommandService are all registered in `persistenceModule` in
 `internal/di/module/persistence.go` and injected via Uber Fx (see
-[ADR-0032](0032-uber-fx-di.md)). This is not full CQRS: there is no separate read store,
+[ADR-0035](0035-uber-fx-di.md)). This is not full CQRS: there is no separate read store,
 event sourcing, or eventually-consistent projection pipeline.
 
 See [`docs/rules.md`](../rules.md) § "Repository / QueryService Rules" for the
@@ -205,6 +211,14 @@ today. The same holds for any set-based or counter-style write. The seam exists 
 write and for nothing else — the eligibility rule below is what keeps it from becoming a general
 escape hatch.
 
+### Decompose the aggregate into a parameter bag on the CommandService signature
+
+Pass the decided values as individual parameters instead of the aggregate, on the reading that
+infrastructure should not receive a domain entity. Rejected: it scatters the write intent across a
+signature that grows with every field, and it breaks the Repository-symmetry that gives the write
+seam its shape. The premise is also wrong — the DTO-boundary rule exists to keep domain entities out
+of *controller* responses, not out of infrastructure, which already maps rows to and from entities.
+
 **Eligibility.** A write belongs on CommandService only when it cannot be expressed as loading an
 aggregate and saving it: relative updates, set-based operations, and operations that obtain atomicity
 without taking a lock. Anything that can be read-modify-saved goes on the Repository. Without this
@@ -212,7 +226,7 @@ line the seam degrades into "where I put SQL I want to write directly".
 
 **Derivation.** Any condition CommandService enforces must be *derived from* a domain invariant, never
 authored independently. The stock guard in the decrement statement restates the domain's
-insufficient-stock rule as a fail-closed second net ([ADR-0100](0100-purchase-stock-lock-and-amount-contract.md));
+insufficient-stock rule as a fail-closed second net ([ADR-0031](0031-ordered-pessimistic-row-locks.md));
 it is downstream of that rule, so a change to the domain rule obliges a change here, and never the
 reverse. Two independently written copies of one rule diverge silently the first time only one moves.
 

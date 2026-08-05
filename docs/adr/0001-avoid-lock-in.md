@@ -34,6 +34,16 @@ more specific decisions inherit:
   observability) rather than in inner layers.
 - Every third-party library maps to a single, nameable, replaceable responsibility; a
   library that would straddle two upstreams is treated as an explicit, bounded exception.
+- **Wrap the vendor behind `pkg/`.** Where a library supplies a general-purpose *value type*
+  that would otherwise spread through every layer, the concrete vendor is wrapped by a thin
+  `pkg/` package and the rest of the repository depends only on that wrapper (`pkg/uuid`,
+  `pkg/xerrors`, `pkg/decimal`). A direct import of the wrapped vendor from anywhere other than
+  its seam is forbidden, which is checkable by grep and by depguard, so the library can be
+  swapped by editing one package instead of the whole tree. The wrapper carries no business
+  semantics — that is what keeps it admissible in `pkg/` at all — and where the type crosses the
+  database or the HTTP boundary, the wrapper owns those conversions too, so even generated code
+  never names the vendor type. Applying this pattern to a particular library is an instance of
+  this principle and does not warrant an ADR of its own.
 
 This principle is the parent of the library-selection policy, the SQS opt-in isolation, the
 OTLP-only export, and the vendor-neutral deploy skeleton (each recorded as its own ADR).

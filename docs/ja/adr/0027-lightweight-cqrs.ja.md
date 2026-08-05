@@ -56,7 +56,7 @@ accepted
 
 > **実装状況**: CommandService の Go 実装は現在予約済みプレースホルダーである。`command_service` サブモジュールは `persistenceModule`（`internal/di/module/persistence.go`）に宣言済みだが、具体的なプロバイダーはまだ存在しない。本セクションは意図した設計を文書化したものである。
 
-Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0032](0032-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
+Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0035](0035-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
 
 日々の境界適用ルールは[`docs/rules.md`](../rules.ja.md)の§ "Repository / QueryService Rules"参照。
 
