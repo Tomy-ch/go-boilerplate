@@ -9,7 +9,7 @@ Parse `--dry-run` and `--scope=staged|all` (`all` is default). Never commit with
 
 ## Preflight
 
-1. Run `make fix` once. Stop if it fails; include its resulting changes in the candidate set.
+1. Run `make gate-fix` once. It runs on every commit, while `fix` uses the same full-config lint as `lint`, so the load band defers it in `ci-first` and CI's lint reports formatting drift instead; a bare `make fix` still runs unconditionally. When the band defers it, producing no changes is by design and does not mean the tree was already formatted. Stop if it fails; include its resulting changes in the candidate set.
 2. Inspect branch, `HEAD`, staged and unstaged status, diff summaries, and merge/cherry-pick/rebase state.
 3. Stop without writing if the branch is `production`, `develop`, `staging`, or `release/*`; if there is no in-scope change; or if a Git operation is in progress.
 4. When available, inspect the current branch's PR. If it is merged, recommend a fresh feature branch from that PR's base before committing. Do not switch branches without approval. If the PR is open, retain the branch and remember that pushing needs confirmation.
@@ -39,12 +39,12 @@ If one group fails, stop immediately. Report completed commits and the error. Of
 
 ## Verify and hand off
 
-After every commit succeeds, run `lefthook run pre-commit --force` when available, then `make fix`.
+After every commit succeeds, run `lefthook run pre-commit --force` when available, then `make gate-fix`.
 
 The hook sizes itself: `.makefiles/load.mk` decides from the number of open worktrees whether heavy Go gates run at full speed, throttled, or are deferred to CI. `make load-status` reports the current band; `repo-ops` section 21 explains it. Do not work around that decision by invoking `make lint` or `make test` directly to "really" verify: with several worktrees open, a full local lint costs minutes of saturated host to rediscover what CI re-runs identically. Report what the band did and let the push carry the rest.
 
 1. Run `make -s load-status` and note the resolved band, so the later summary can state which verification actually happened: locally under `full` / `low`, or deferred to CI under `ci-first`.
-2. Run `lefthook run pre-commit --force` when available, then `make fix`.
+2. Run `lefthook run pre-commit --force` when available, then `make gate-fix`.
 3. If verification fails, report the failed command and stop; do not roll back commits.
 4. If the final formatter changes files, show the diff and ask whether to create a follow-up commit.
 5. Never push automatically. On an existing PR branch, ask: 「変更はローカルにコミット済みです。これらの変更をプルリクエストにプッシュしますか？」

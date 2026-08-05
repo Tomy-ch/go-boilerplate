@@ -3,7 +3,7 @@ name: commit
 description: >-
   Analyze the current working-tree changes (staged + unstaged), group them into appropriately-scoped commits with the project's prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), and execute each commit in Japanese after user approval. Pre-flight also checks whether the current branch's PR is already merged and, if so, recommends cutting a fresh branch from the base before committing. Commits are made with `git commit --no-verify` to skip lefthook during the split; after all commits succeed, the command runs the full lefthook pre-commit hook (`lefthook run pre-commit --force`) plus `make fix` as a final verification gate. Respects CLAUDE.md's git rules (no direct commits to protected branches, no force-push, no auto-push after PR amend, Co-Authored-By footer, HEREDOC commit messages).
 argument-hint: '[--dry-run] [--scope=staged|all]'
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git reset:*), Bash(git fetch:*), Bash(git switch:*), Bash(gh pr view:*), Bash(make fix:*), Bash(make lint:*), Bash(make test:*), Bash(make sql-lint:*), Bash(make check-migration-up-version:*), Bash(make check-migration-down-version:*), Bash(make check-migration-up-gap:*), Bash(make check-migration-down-gap:*), Read, AskUserQuestion
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git reset:*), Bash(git fetch:*), Bash(git switch:*), Bash(gh pr view:*), Bash(make fix:*), Bash(make gate-fix:*), Bash(make load-status:*), Bash(make lint:*), Bash(make test:*), Bash(make sql-lint:*), Bash(make check-migration-up-version:*), Bash(make check-migration-down-version:*), Bash(make check-migration-up-gap:*), Bash(make check-migration-down-gap:*), Read, AskUserQuestion
 ---
 
 # Commit
@@ -18,13 +18,15 @@ This command intentionally bypasses lefthook on every commit (`git commit --no-v
 
 ## Step 0. Auto-format
 
-Run `make fix` once at the very start to absorb formatting fixes (gofmt / goimports / auto-fixable lint rules). This removes the most common source of noise from the subsequent diff inspection and reduces the chance the Step 6 verification fails on pure formatting.
+Run `make gate-fix` once at the very start to absorb formatting fixes (gofmt / goimports / auto-fixable lint rules). This removes the most common source of noise from the subsequent diff inspection and reduces the chance the Step 6 verification fails on pure formatting.
 
 ```sh
-make fix
+make gate-fix
 ```
 
-If `make fix` itself fails, abort and report the failure to the user. Do not continue. Any changes it produces are folded into the working tree and become part of the candidate change set inspected in Step 2.
+`gate-fix` rather than `fix`, because this runs on every `/commit` and `fix` drives the same full-config golangci-lint as `lint`. `.makefiles/load.mk` therefore defers it in the `ci-first` band along with the other heavy gates (`repo-ops` §21) and CI's lint reports the formatting drift instead. A bare `make fix` still runs unconditionally — an explicitly typed command does what it says.
+
+If `make gate-fix` itself fails, abort and report the failure to the user. Do not continue. Any changes it produces are folded into the working tree and become part of the candidate change set inspected in Step 2. When the band deferred it, it produces no changes by design — do not read that as evidence the tree was already formatted.
 
 ## Step 1. Pre-flight Checks
 
@@ -244,7 +246,7 @@ The hook decides for itself how hard to run. `.makefiles/load.mk` sizes the heav
 0. Run `make -s load-status` and note the resolved band. It tells you, before anything runs, whether the heavy gates will execute locally (`full` / `low`) or be deferred to CI (`ci-first`), so the summary in step 4 can say which verification actually happened.
 1. Run `lefthook run pre-commit --force`. It executes every command under `pre-commit.commands.*` against the working tree (which reflects the committed state) and exits non-zero if any command fails. If `.lefthook.yaml` is absent or `lefthook` is not installed, skip to step 3 (run only `make fix`) and note it.
 2. Read lefthook's per-command summary — it lists each command with ✔️ / ❌ and a timing.
-3. Run `make fix`. If it modifies any tracked file, surface the diff to the user — it indicates the committed state was not fully formatted, and the user must decide whether to stage and commit those fixes.
+3. Run `make gate-fix`. If it modifies any tracked file, surface the diff to the user — it indicates the committed state was not fully formatted, and the user must decide whether to stage and commit those fixes.
 4. Summarize the outcome to the user: lefthook's pass/fail summary (or the note that lefthook was unavailable) plus whether `make fix` produced changes. When the band was `ci-first`, say plainly which gates were deferred and that CI is what verifies them — a summary that reads "検証が通りました" without that qualifier overstates what was checked.
 5. If `lefthook run pre-commit --force` exits non-zero (any command failed), report the failing command (from lefthook's summary) and stop. Do NOT roll back commits — the failure is informational; the user decides whether to add fix-up commits or amend. Tell the user explicitly:
 

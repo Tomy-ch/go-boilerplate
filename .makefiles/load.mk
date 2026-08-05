@@ -55,6 +55,7 @@ GO_TEST_LOAD_ENV := $(if $(GOBP_THROTTLED),GOMAXPROCS=$(GOBP_SHARE),)
 .PHONY: load-status ## 現在の負荷モードと CPU シェアを表示する
 .PHONY: gate-go ## pre-commit の Go ゲート（負荷帯に応じて並列/逐次/CI委譲を切り替える）
 .PHONY: gate-go-push ## pre-push の Go ゲート（負荷帯に応じて並列/逐次/CI委譲を切り替える）
+.PHONY: gate-fix ## 自動フォーマットの委譲先（毎回走る経路から呼ぶ。ci-first では実行しない）
 .PHONY: gate-heavy-skip ## 重いゲートを CI へ委ねる帯かを返す（exit 0 = 委譲する）
 
 # lefthook の skip 条件から呼ぶ述語。終了コードだけが意味を持つ（0 = スキップ）。
@@ -107,3 +108,17 @@ gate-go:
 
 gate-go-push:
 	$(call run_go_gates,test test-scripts)
+
+# 自動フォーマットの委譲先。`/commit` のように人手を介さず毎回走る経路はこちらを呼ぶ。
+# `make fix` を直接叩いたときは帯に関わらず実行する（明示したコマンドは書いたとおりに動く）。
+#
+# fix は lint と同じ full config を回すため、委譲しないとここだけが帯をすり抜ける。
+# 委譲すると CI が赤くなってから直すことになり往復は増えるが、目的は負荷の低減であり、
+# フォーマットのずれは CI の lint が確実に捕まえる（見落として壊れる類の指摘ではない）。
+gate-fix:
+	@if [ "$(GOBP_LOAD_RESOLVED)" = "ci-first" ]; then \
+		echo "⏭  自動フォーマット(fix)は委譲します（窓 $(GOBP_WINDOWS) 個 / GOBP_LOAD=$(GOBP_LOAD_RESOLVED)）。"; \
+		echo "   フォーマットのずれは CI の lint が指摘します。手元で直すなら: make fix GOBP_LOAD=low"; \
+	else \
+		$(MAKE) fix; \
+	fi
