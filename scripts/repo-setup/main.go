@@ -43,8 +43,12 @@ const (
 	commandTimeout = 120 * time.Second
 )
 
-// managedBranches は、初期化時に用意するブランチ。
-var managedBranches = []string{"develop", "staging", defaultBranch}
+var (
+	// managedBranches は、初期化時に用意するブランチ。
+	managedBranches = []string{"develop", "staging", defaultBranch}
+	// errInitialTagExists は、初期タグが既に在り初期化してはいけないことを表す。
+	errInitialTagExists = xerrors.New("があります。初期化を停止します")
+)
 
 // step は、実行する 1 コマンド。allowFail はリモートに対象が無い場合など、
 // 失敗しても続行してよい操作に付ける。
@@ -192,7 +196,7 @@ func runPreflight() error {
 	log.Printf("🔧 設定を確認中...")
 
 	if tagExists(initialTag) {
-		return xerrors.New("❌ タグ 【" + initialTag + "】 があります。初期化を停止します")
+		return xerrors.Wrap(errInitialTagExists, "❌ タグ 【"+initialTag+"】")
 	}
 
 	log.Printf("✅ 初期化を開始します")

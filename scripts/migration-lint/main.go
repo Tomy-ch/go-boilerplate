@@ -30,6 +30,9 @@ import (
 // duplicateThreshold は、同じ連番を「重複」と数え始める出現回数。
 const duplicateThreshold = 2
 
+// errNoVersionPrefix は、マイグレーションのファイル名に連番の区切りが無いことを表す。
+var errNoVersionPrefix = xerrors.New("migration file has no version prefix")
+
 func main() {
 	log.SetFlags(0)
 
@@ -74,7 +77,7 @@ func collectVersions(dir, kind string) ([]string, error) {
 
 		version, _, found := strings.Cut(base, "_")
 		if !found {
-			return nil, xerrors.New("migration file has no version prefix: " + base)
+			return nil, xerrors.Wrap(errNoVersionPrefix, base)
 		}
 
 		versions = append(versions, version)

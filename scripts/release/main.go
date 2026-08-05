@@ -44,6 +44,17 @@ var (
 	semverPattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
 	// errNoTag は、起点となるリリースタグが 1 つも無いことを表す。
 	errNoTag = xerrors.New("❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください")
+	// errNoTagForBranch は、ブランチ作成の起点となるタグが無いことを表す。
+	errNoTagForBranch = xerrors.New("❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です\n" +
+		"➡️ 先に make tag-patch などで初期タグを作成してから再実行してください")
+	// errUnknownBump は、-bump に未知の粒度が渡されたことを表す。
+	errUnknownBump = xerrors.New("unknown -bump (patch / minor / major)")
+	// errNoReleaseNote は、タグ本文にするリリースノートが production に無いことを表す。
+	errNoReleaseNote = xerrors.New("が存在しません。タグとリリースをスキップしました")
+	// errBranchExists は、作成しようとしたブランチが origin に既に在ることを表す。
+	errBranchExists = xerrors.New("は既に存在します。処理を中止します")
+	// errDirtyWorktree は、作業ツリーに未コミットの変更が残っていることを表す。
+	errDirtyWorktree = xerrors.New("❌ 作業ツリーに未コミットの変更があります。変更をコミットまたは退避してから再実行してください")
 )
 
 // version は、リリースタグの意味的なバージョン。
@@ -141,7 +152,7 @@ func bump(v version, kind string) (version, error) {
 	case "major":
 		return version{major: v.major + 1}, nil
 	default:
-		return version{}, xerrors.New("unknown -bump: " + kind + " (patch / minor / major)")
+		return version{}, xerrors.Wrap(errUnknownBump, kind)
 	}
 }
 
@@ -236,7 +247,7 @@ func runTag(args []string) error {
 
 	note := notePath(next.String())
 	if _, err := os.Stat(note); err != nil {
-		return xerrors.New("❌ " + note + " が存在しません。タグとリリースをスキップしました")
+		return xerrors.Wrap(errNoReleaseNote, "❌ "+note)
 	}
 
 	if err := runAll(tagSteps(next.String(), note)); err != nil {
@@ -263,8 +274,7 @@ func runBranch(args []string) error {
 	current, next, err := resolveNext(*bumpKind)
 	if err != nil {
 		if xerrors.Is(err, errNoTag) {
-			return xerrors.New("❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です\n" +
-				"➡️ 先に make tag-patch などで初期タグを作成してから再実行してください")
+			return errNoTagForBranch
 		}
 
 		return err
@@ -279,7 +289,7 @@ func runBranch(args []string) error {
 	log.Printf("🌱 ブランチを作成: %s → 【 %s 】", *base, branch)
 
 	if remoteBranchExists(branch) {
-		return xerrors.New("❌ ブランチ【 " + branch + " 】は既に存在します。処理を中止します")
+		return xerrors.Wrap(errBranchExists, "❌ ブランチ【 "+branch+" 】")
 	}
 
 	status, err := output("git", "status", "--porcelain")
@@ -290,7 +300,7 @@ func runBranch(args []string) error {
 	if strings.TrimSpace(status) != "" {
 		_ = run(step{name: "git", args: []string{"status", "--short"}})
 
-		return xerrors.New("❌ 作業ツリーに未コミットの変更があります。変更をコミットまたは退避してから再実行してください")
+		return errDirtyWorktree
 	}
 
 	if err := runAll(branchSteps(*base, branch)); err != nil {
