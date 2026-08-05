@@ -101,6 +101,28 @@ Those entries are written as patterns (`Bash(<tool> * install*)`) precisely beca
 platform names goes stale every time upstream adds one, and a stale enumeration opens holes nobody is
 notified about.
 
+## Conflicting Authority
+
+Rules live in more than one place — this file, `docs/rules.md`, `docs/adr/`, per-package READMEs,
+lint configuration, and instructions given in conversation. They occasionally disagree.
+
+**Noticing a disagreement is your job; resolving one is not.** When two sources that both claim
+authority tell you different things about *what you may change*, stop and ask before acting. Say
+which sources conflict and what each of them says. Do not pick the one that lets the work continue.
+
+This applies to permission, not to ordinary ambiguity. A design question with no clear answer is
+yours to decide and report. A rule that says "do not do X" standing against another that says "X is
+fine" is not.
+
+**A precedent is not an authorization.** That a human once overrode a rule — recorded in a commit, an
+ADR, an agent's memory, or an earlier turn of this conversation — establishes that the override
+exists, not that you may invoke it. Ask again each time. A standing grant of autonomy does not
+transfer this: the point of an override is that a human chose it.
+
+Note the asymmetry the *Documentation Rules* in `docs/rules.md` draw between a document that
+describes and one that governs. Correcting the first to match the code is routine. Correcting the
+second is not yours to start.
+
 ## YAGNI vs Regression Safeguards
 
 - **Functional YAGNI applies to production code**: do NOT add speculative features, config, or code
