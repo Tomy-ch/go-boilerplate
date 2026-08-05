@@ -177,6 +177,32 @@ Have usecases call Repository methods directly for complex reads, applying in-me
 Avoids a new abstraction but transfers N+1 query and performance concerns to the application
 layer. Rejected for performance and correctness reasons.
 
+### Route every write through the aggregate Repository (abolish CommandService)
+
+Express all writes as "load the aggregate, mutate it, save it", so the Repository is the only
+persistence seam and every write passes through the aggregate that owns the invariant. This is the
+shape Evans describes, and it would remove the asymmetry of having a read seam and a write seam with
+different owners.
+
+Rejected because some writes cannot be expressed that way without changing their concurrency
+properties. Restoring stock on cancellation is a relative update that takes no lock on the product
+row at all; expressing it as "load the product, add back, save" would require introducing a lock the
+cancel path does not currently take, adding contention and a deadlock surface that does not exist
+today. The same holds for any set-based or counter-style write. The seam exists for that class of
+write and for nothing else — the eligibility rule below is what keeps it from becoming a general
+escape hatch.
+
+**Eligibility.** A write belongs on CommandService only when it cannot be expressed as loading an
+aggregate and saving it: relative updates, set-based operations, and operations that obtain atomicity
+without taking a lock. Anything that can be read-modify-saved goes on the Repository. Without this
+line the seam degrades into "where I put SQL I want to write directly".
+
+**Derivation.** Any condition CommandService enforces must be *derived from* a domain invariant, never
+authored independently. The stock guard in the decrement statement restates the domain's
+insufficient-stock rule as a fail-closed second net ([ADR-0100](0100-purchase-stock-lock-and-amount-contract.md));
+it is downstream of that rule, so a change to the domain rule obliges a change here, and never the
+reverse. Two independently written copies of one rule diverge silently the first time only one moves.
+
 ## Notes
 
 - Source: [`internal/infrastructure/rdb/query_service/README.md`](../../internal/infrastructure/rdb/query_service/README.md)

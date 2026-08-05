@@ -16,7 +16,6 @@ import (
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/outbox"
-	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
 	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -184,7 +183,7 @@ type Usecase interface {
 type usecase struct {
 	tracer     observability.LayerTracer
 	txm        tx.Manager
-	cmd        command.CommandService
+	cmd        purchase.CommandService
 	repo       purchase.Repository
 	detailQS   query.PurchaseDetailQueryService
 	emit       outbox.EmitUsecase
@@ -195,7 +194,7 @@ type usecase struct {
 // New は、購入ユースケースを生成します。
 func New(
 	txm tx.Manager,
-	cmd command.CommandService,
+	cmd purchase.CommandService,
 	repo purchase.Repository,
 	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,

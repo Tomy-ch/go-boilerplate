@@ -1,4 +1,4 @@
-// Package purchase は、購入 CommandService（command.CommandService）の RDB 実装を提供します。
+// Package purchase は、購入 CommandService（purchase.CommandService）の RDB 実装を提供します。
 // 在庫減算・購入・明細の書き込みを、渡された ctx のトランザクション内で原子的に実行します。
 package purchase
 
@@ -11,7 +11,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
-	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/pkg/uuid"
 )
 
@@ -24,7 +23,7 @@ type commandService struct {
 func New(
 	db driver.DatabaseDriver,
 	tf observability.TracerFactory,
-) command.CommandService {
+) purchase.CommandService {
 	return &commandService{
 		db:     db,
 		tracer: tf.Infra(),
@@ -55,6 +54,8 @@ func (c *commandService) LockProducts(ctx context.Context, productIDs []uuid.UUI
 
 // CreatePurchase は、在庫減算・purchases INSERT・purchase_details INSERT を渡された tx 内で原子的に実行します。
 // 在庫減算は防御的に売り越しを弾き、更新 0 行の場合は ErrInsufficientStock（409）を返します。
+// この防御は domain の売り越し判定を言い換えた fail-closed の二重防御であり、独立した規則ではありません
+// （ADR-0027 § Derivation）。返すエラーも domain の sentinel をそのまま用います。
 func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()

@@ -18,7 +18,6 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
-	mock_command "go-boilerplate/internal/usecase/purchase/command/mock"
 	"go-boilerplate/internal/usecase/purchase/event"
 	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
 	"go-boilerplate/internal/usecase/testkit"
@@ -83,7 +82,7 @@ func TestNew(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 			txm := testkit.NewMockTransactionManager(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			detailQS := mock_query.NewMockPurchaseDetailQueryService(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
@@ -111,7 +110,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 
 	productA := uuidtestkit.NewTestFromSalt(t, "cp_product")
 	// newUsecase は、指定 mock を注入した usecase を生成するローカルヘルパーです。
-	newUsecase := func(t *testing.T, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
+	newUsecase := func(t *testing.T, cmd *mock_purchase.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
 		t.Helper()
 		return &usecase{
 			tracer: observability.NewNoopTracerFactory(t).Usecase(),
@@ -128,7 +127,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -175,7 +174,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			// 在庫 1 に対し 2 を要求 → domain New が ErrInsufficientStock
 			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 1)}
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(locked, nil)
@@ -195,7 +194,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrUnavailable)
 
 			u := newUsecase(
@@ -213,7 +212,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(enoughStock, nil)
 			cmd.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict)
 
@@ -232,7 +231,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(enoughStock, nil)
 			cmd.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(nil)
@@ -248,7 +247,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(enoughStock, nil)
@@ -329,7 +328,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 	}
 
 	// newUC は、指定 mock を注入した usecase を生成するローカルヘルパーです。
-	newUC := func(t *testing.T, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
+	newUC := func(t *testing.T, cmd *mock_purchase.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
 		t.Helper()
 		return &usecase{
 			tracer: observability.NewNoopTracerFactory(t).Usecase(),
@@ -346,7 +345,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -395,7 +394,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -411,7 +410,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -426,7 +425,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -441,7 +440,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -457,7 +456,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -474,7 +473,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -527,7 +526,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 	}
 
 	// newUC は、指定 mock を注入した usecase を生成するローカルヘルパーです。
-	newUC := func(t *testing.T, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
+	newUC := func(t *testing.T, cmd *mock_purchase.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase) *usecase {
 		t.Helper()
 		return &usecase{
 			tracer: observability.NewNoopTracerFactory(t).Usecase(),
@@ -544,7 +543,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -593,7 +592,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -609,7 +608,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -625,7 +624,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -640,7 +639,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -655,7 +654,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -671,7 +670,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
@@ -688,7 +687,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			cmd := mock_command.NewMockCommandService(ctrl)
+			cmd := mock_purchase.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
