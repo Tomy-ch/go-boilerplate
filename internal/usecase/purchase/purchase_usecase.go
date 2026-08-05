@@ -238,29 +238,50 @@ func New(
 	}
 }
 
+// purchaseDraft は、購入作成のトランザクションへ持ち込む採番済みの入力です。
+type purchaseDraft struct {
+	purchaseID uuid.UUID
+	code       string
+	inputs     []purchase.DetailInput
+	productIDs []uuid.UUID
+}
+
+// newPurchaseDraft は、購入・購入コード・各明細の ID を採番し、ドメイン入力と商品 ID 列を組み立てます。
+// 採番はトランザクションの外で行うため、リトライされても同じ ID が再利用されることはありません。
+func newPurchaseDraft(details []DetailParam) (*purchaseDraft, error) {
+	purchaseID, err := uuid.New()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to generate purchase id")
+	}
+	codeUUID, err := uuid.New()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to generate purchase code")
+	}
+
+	draft := &purchaseDraft{
+		purchaseID: purchaseID,
+		code:       codeUUID.String(),
+		inputs:     make([]purchase.DetailInput, len(details)),
+		productIDs: make([]uuid.UUID, len(details)),
+	}
+	for i, d := range details {
+		detailID, derr := uuid.New()
+		if derr != nil {
+			return nil, xerrors.Wrap(derr, "failed to generate purchase detail id")
+		}
+		draft.inputs[i] = purchase.DetailInput{ID: detailID, ProductID: d.ProductID, Quantity: d.Quantity}
+		draft.productIDs[i] = d.ProductID
+	}
+	return draft, nil
+}
+
 func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	purchaseID, err := uuid.New()
+	draft, err := newPurchaseDraft(params.Details)
 	if err != nil {
-		return PurchaseView{}, xerrors.Wrap(err, "failed to generate purchase id")
-	}
-	codeUUID, err := uuid.New()
-	if err != nil {
-		return PurchaseView{}, xerrors.Wrap(err, "failed to generate purchase code")
-	}
-	code := codeUUID.String()
-
-	inputs := make([]purchase.DetailInput, len(params.Details))
-	productIDs := make([]uuid.UUID, len(params.Details))
-	for i, d := range params.Details {
-		detailID, derr := uuid.New()
-		if derr != nil {
-			return PurchaseView{}, xerrors.Wrap(derr, "failed to generate purchase detail id")
-		}
-		inputs[i] = purchase.DetailInput{ID: detailID, ProductID: d.ProductID, Quantity: d.Quantity}
-		productIDs[i] = d.ProductID
+		return PurchaseView{}, err
 	}
 
 	var created *purchase.Purchase
@@ -271,12 +292,12 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return uerr
 		}
 
-		locked, lerr := u.cmd.LockProducts(ctx, productIDs)
+		locked, lerr := u.cmd.LockProducts(ctx, draft.productIDs)
 		if lerr != nil {
 			return lerr
 		}
 
-		entity, nerr := purchase.New(purchaseID, code, params.UserID, inputs, locked)
+		entity, nerr := purchase.New(draft.purchaseID, draft.code, params.UserID, draft.inputs, locked)
 		if nerr != nil {
 			return nerr
 		}
@@ -291,7 +312,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
-			AggregateID:   purchaseID.String(),
+			AggregateID:   draft.purchaseID.String(),
 			EventType:     event.TypeCreated,
 			Payload:       payload,
 		}); eerr != nil {
@@ -299,7 +320,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		}
 
 		// 書き込み後、Repository 経由でドメイン整合を再検証しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
-		reread, rerr := u.repo.FindByID(ctx, purchaseID)
+		reread, rerr := u.repo.FindByID(ctx, draft.purchaseID)
 		if rerr != nil {
 			return rerr
 		}

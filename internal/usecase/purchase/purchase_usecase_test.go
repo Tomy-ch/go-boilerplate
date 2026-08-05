@@ -373,6 +373,59 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 	})
 }
 
+func Test_newPurchaseDraft(t *testing.T) {
+	t.Parallel()
+
+	productA := uuid.NewTestFromSalt(t, "draft_product_a")
+	productB := uuid.NewTestFromSalt(t, "draft_product_b")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細と同じ並びでドメイン入力と商品ID列を組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			draft, err := newPurchaseDraft([]DetailParam{
+				{ProductID: productA, Quantity: 2},
+				{ProductID: productB, Quantity: 3},
+			})
+			require.NoError(t, err)
+
+			require.Len(t, draft.inputs, 2)
+			require.Len(t, draft.productIDs, 2)
+			assert.Equal(t, []uuid.UUID{productA, productB}, draft.productIDs)
+			assert.Equal(t, productA, draft.inputs[0].ProductID)
+			assert.Equal(t, 2, draft.inputs[0].Quantity)
+			assert.Equal(t, productB, draft.inputs[1].ProductID)
+			assert.Equal(t, 3, draft.inputs[1].Quantity)
+		})
+
+		t.Run("購入ID_購入コード_各明細IDはいずれも異なる値が採番される", func(t *testing.T) {
+			t.Parallel()
+
+			draft, err := newPurchaseDraft([]DetailParam{
+				{ProductID: productA, Quantity: 1},
+				{ProductID: productB, Quantity: 1},
+			})
+			require.NoError(t, err)
+
+			assert.False(t, draft.purchaseID.IsNil())
+			assert.NotEqual(t, draft.purchaseID.String(), draft.code)
+			assert.NotEqual(t, draft.inputs[0].ID, draft.inputs[1].ID)
+			assert.NotEqual(t, draft.purchaseID, draft.inputs[0].ID)
+		})
+
+		t.Run("明細が空でも空のスライスを返す", func(t *testing.T) {
+			t.Parallel()
+
+			draft, err := newPurchaseDraft(nil)
+			require.NoError(t, err)
+			assert.Empty(t, draft.inputs)
+			assert.Empty(t, draft.productIDs)
+		})
+	})
+}
+
 func Test_usecase_ensurePurchaserActive(t *testing.T) {
 	t.Parallel()
 

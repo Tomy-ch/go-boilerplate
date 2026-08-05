@@ -80,7 +80,10 @@ func TestHoldSuiteSerialization(t *testing.T) {
 	db := NewTestDB(t)
 
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
 		t.Run("占有中は他セッションが同じキーを取得できない", func(t *testing.T) {
+			t.Parallel()
 			HoldSuiteSerialization(t, db)
 
 			// 直列化の実体は advisory lock の排他性なので、別セッション（接続プール直）から
