@@ -24,6 +24,7 @@ scripts/
 ├── actions-shellcheck/         # composite action の `run:` スクリプトを shellcheck で検査（Go）
 ├── pin-actions/                # GitHub Actions の `uses:` 参照を commit SHA へ固定（Go）
 ├── pin-images/                 # Dockerfile の `FROM` base image を digest へ固定（Go）
+├── go-cooldown/                # go.mod を供給網 cooldown 窓に対して gate / 棚卸し（Go）
 └── setup/                     # プロジェクト初期設定スクリプト
     ├── replace-module.mjs
     ├── replace-app-metadata.mjs
@@ -105,6 +106,7 @@ scripts/
 |---|---|---|
 |`pin-actions/`|`.github/workflows/**` と `.github/actions/**` の外部 GitHub Actions `uses:` を不変の commit SHA へ固定する。`resolve` は参照を走査し各 tag/branch を `git ls-remote` で SHA へ解決して lockfile `.github/actions-pin.toml`（SSOT）へ書き出す。`PIN_ACTIONS_MIN_AGE_DAYS`（既定 14）日未満の新しすぎるコミットは採用せず既存ピンを維持する supply-chain quarantine 付き。`apply` は lockfile を元に各 `uses:` を `@<sha> # <tag>` へ書き換える。`check` は書き換えずに同じ判定を行い、未固定/古い/未登録があれば非 0 で終了する（CI / hook 用）。既に固定済みの行はコメント末尾の `# <tag>` を版として再解決するため冪等。|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
 |`pin-images/`|`docker/*/Dockerfile` の全 `FROM` base image を不変の digest へ固定する。`resolve` は各 `image:tag` を集め `docker buildx imagetools inspect` で現在 digest へ解決して lockfile `docker/images-pin.toml`（SSOT）へ書き出す。image-config の `created` が `PIN_IMAGES_MIN_AGE_DAYS`（既定 14）日未満の digest は採用しない supply-chain cooldown 付き。mutable tag は履歴を問えないため step-back 先はツール自身の前回 lock で、初回（無い場合）は tag のまま残す。`apply` は lockfile を元に各 `FROM` を `image:tag@sha256:...` へ正規化し、quarantine 中の image は digest を剥がして tag のみへ戻す。`check` は書き換えずに同じ判定を行い、drift があれば非 0 で終了する（CI / hook 用）。tag は版の SSOT として `FROM` 行に残す。|`make pin-images-resolve` / `pin-images-apply` / `pin-images-check`|
+|`go-cooldown/`|Go module proxy が返す公開時刻（`<module>/@v/<version>.info`）で `go.mod` を供給網 cooldown 窓に照らす。GOPROXY プロトコルの一部なので追加依存は不要。`gate` は base ref と比較し、その変更が追加 / 更新した **direct** の require が窓内なら失敗する。indirect は MVS が direct の要求下限より上に固定することがあり PR 側で下げられないため報告に留める。`audit` は全 require を棚卸しし、窓そのものでは失敗しない（既存依存は grandfather）。`.github/go-cooldown-bypass.toml` のエントリが期限切れ・3 ヶ月超・`go.mod` に不在のいずれかなら双方で失敗し、無効なエントリは効力も失うので失効したバイパスがモジュールを通し続けることはない。npm の `min-release-age` と違い Go は解決時に窓を強制しないため、この検査は検知器ではなく防御そのものである。|`make go-cooldown-gate BASE=<ref>` / `make go-cooldown-audit`|
 
 ### 初期設定（`setup/`）
 

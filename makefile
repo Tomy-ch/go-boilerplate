@@ -57,6 +57,7 @@ include .makefiles/markdown/lint.mk
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
 include .makefiles/security/npm-cooldown.mk
+include .makefiles/security/go-cooldown.mk
 include .makefiles/security/zizmor.mk
 # Docker関連
 include .makefiles/docker/lint.mk
