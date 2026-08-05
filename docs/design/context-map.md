@@ -11,10 +11,11 @@ Maintained by [`/context-map`](../../.claude/skills/context-map/SKILL.md); drift
 
 ## An undecided edge is an entry, not a blank
 
-Several of Evans's relationships are distinguished by facts that do not exist in a codebase.
-Customer-Supplier and Conformist look identical from the inside — both are "we consume their model"
-— and differ only in whether the upstream will take our requirements. That is an organisational
-fact, and in a template it is a fact about the *adopting* organisation, not this repository.
+Several of Evans's relationships are distinguished by facts that do not exist in a codebase. On a
+downstream edge, what separates Customer-Supplier from the alternatives is whether the upstream will
+take our requirements — an organisational fact, and in a template a fact about the *adopting*
+organisation rather than about this repository. The code shows what was built at the boundary; it
+cannot show whether anyone on the other side would have listened.
 
 So most edges here are recorded as `未確定` with their evidence and the question that would settle
 them. **That is the correct state for this repository, not an omission.** An unlabelled edge invites
@@ -33,7 +34,7 @@ Both directions count. A map with only outbound edges would claim this system is
 | Counterpart | Direction | Relationship | Evidence | If the other side moves |
 | --- | --- | --- | --- | --- |
 | HTTP API consumers | this system is upstream | **Open Host Service + Published Language** | `openapi/openapi.gen.yaml` is committed as a consumable artifact and kept fresh by a drift gate; the surface is one protocol for all consumers rather than per-consumer endpoints | Consumers break only when the published contract changes, and the gate makes that change visible in review |
-| External IdP | this system is downstream | `未確定` | Token claims are converted to this system's own `Authn` inside the adapter (`internal/infrastructure/auth/jwt/auth_jwt.go:222`); the external vocabulary does not reach the inside — the structural signature of an Anticorruption Layer | An issuer or claim change is absorbed by the adapter; a protocol change is not |
+| External IdP | this system is downstream | `未確定` | The adapter translates the token into this system's own `Authn` (`internal/infrastructure/auth/jwt/auth_jwt.go:243`), deriving subject / issuer / scopes in this system's terms. The raw claim map is carried through as an opaque payload and has no production reader, so the external vocabulary crosses but is never consumed — a translating boundary is in place | An issuer or claim change is absorbed by the adapter; a protocol change is not |
 | Object storage (S3-compatible) | this system is downstream | `未確定` | The port is stated in this system's vocabulary and `internal/usecase/boundary/README.md:144` declares that vendor vocabulary (bucket / region / etag) never crosses the boundary | A vendor swap is confined to the adapter; the port is unaffected |
 | Outbox receivers | this system is upstream | `未確定` | The publish boundary carries a substrate-agnostic envelope, but no payload schema is published — [ADR-0052](../adr/0052-message-id-idempotency-propagation.md) defines only the transport convention. See [`outbox.md`](outbox.md) | A receiver's expectations are not protected by any artifact this system publishes |
 
@@ -42,11 +43,18 @@ Both directions count. A map with only outbound edges would claim this system is
 Each `未確定` edge above is waiting on one thing. Answering it is a decision, not a lookup.
 
 - **External IdP** — can this system's requirements reach whoever runs the IdP? If yes the edge is
-  Customer-Supplier; if the IdP is a standard or a vendor that will not negotiate, it is Conformist.
-  The Anticorruption Layer is present either way — it is the structural remedy, not the relationship.
-- **Object storage** — the same question, with the same Anticorruption Layer already in place. The
-  substitutability the boundary buys suggests the relationship is not load-bearing, but that is a
-  reading of intent, not evidence of one.
+  Customer-Supplier. If not, the translating boundary already in place makes it an Anticorruption
+  Layer.
+
+  **Conformist is not a candidate on either of these two edges, and the reason is worth stating.**
+  Conformist means declining to build a translation layer and taking the upstream model as it comes;
+  Anticorruption Layer means building one. They are the two answers to the same situation, not a
+  label and an accessory to it. An edge whose own evidence is a translating adapter cannot be
+  Conformist — offering both would be reading Evans's vocabulary as if the relationship and the
+  remedy were independent axes, and they are not.
+- **Object storage** — the same question, with the same translating boundary already in place, so
+  the same two candidates. The substitutability the boundary buys suggests the relationship is not
+  load-bearing, but that is a reading of intent, not evidence of one.
 - **Outbox receivers** — are the receivers a known set whose requirements shape the payload
   (Customer-Supplier), or an open set consuming what is emitted (Open Host Service)? The asymmetry
   with the synchronous side is recorded in [`outbox.md`](outbox.md) §4: the language is not published.
@@ -69,8 +77,8 @@ integration added later occupies the same shape and earns its own row in the tab
 ```mermaid
 flowchart LR
     Consumers["HTTP API consumers"] -->|OHS + Published Language| SUT["This system"]
-    IdP["External IdP"] -->|未確定 · ACL present| SUT
-    SUT -->|未確定 · ACL present| Storage["Object storage (S3-compatible)"]
+    IdP["External IdP"] -->|未確定 · translating boundary| SUT
+    SUT -->|未確定 · translating boundary| Storage["Object storage (S3-compatible)"]
     SUT -->|未確定 · no published language| Receivers["Outbox receivers"]
 ```
 
