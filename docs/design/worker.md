@@ -217,7 +217,11 @@ flowchart LR
 | ③ | `Worker` (returns Name/Consumer/Handler/FailureHandler) + `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
 | ④ | add the constructor to `provideWorkers(...)` in `WorkerModule()` | `internal/di/module/worker.go` | same shape as `provideJobs` |
 | ⑤ | `fx.Provide` the broker client and adapter `Config` | `internal/di/...` | `sqs.Config` |
-| ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `WorkerConfig` defaults |
+| ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` defaults |
+
+<!-- sample-api:begin -->
+> A worked example of all six ships as part of the removable sample set: `internal/controller/worker/withdrawalarchive` consumes the withdrawal event the outbox emits and archives it to object storage. `make setup-remove-sample-api` removes it and leaves `provideWorkers()` empty again.
+<!-- sample-api:end -->
 
 > A wired broker adapter links its SDK into the binary — including the sample wiring, since `serve` / `worker` / `outbox-relay` share one binary. Isolation is therefore verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired (E3', [ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)).
 

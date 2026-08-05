@@ -40,20 +40,13 @@ CI パリティが保証される。
 
 フックステージとそのコマンド:
 
-ステージとそのコマンドは以下のとおり。名前は lefthook のコマンド名であり、`--command` が選ぶのはこちらである。
-コマンドが実行する `make` ターゲットとは必ずしも一致しない（`go-lint` は `make lint`、`go-test` は
-`make test-cached` を実行する）。
-
-- `pre-commit`（並列・14 件）: `go-lint`（`.go`）、`go-test`（`.go`）、
-  `go-test-scripts`（`scripts/**/*.go`）、`sql-lint`（`.sql`）、`md-lint`（`.md`）、
-  `actions-lint`（ワークフロー YAML + action YAML + node 製の lint スクリプト）、
-  `actions-zizmor`（ワークフロー YAML + action YAML + `zizmor.yml`）、`oapi-lint`（`openapi/**`）、
-  `mock-auth-oapi-lint`（mock-auth-server の spec）、`docker-lint`（Dockerfile）、
-  `pin-actions`（ワークフロー YAML + action YAML + `actions-pin.toml`）、
-  `pin-images`（Dockerfile + compose + `images-pin.toml`）、
-  `migration-check-version`（`.sql`）、`migration-check-gap`（`.sql`）。
+- `pre-commit`（並列）: `lint`（`.go`）、`test-cached`（`.go`）、`test-scripts-cached`（`scripts/**/*.go`）、`sql-lint`（`.sql`）、
+  `md-lint`（`.md`）、`actions-lint`（ワークフロー YAML）、`actions-zizmor`（ワークフロー YAML +
+  action YAML + `zizmor.yml`）、`docker-lint`（Dockerfile）、
+  `pin-actions`（ワークフロー YAML + action YAML + `actions-pin.toml`）、`migration-check-version`（`.sql`）、
+  `migration-check-gap`（`.sql`）。
 - `commit-msg`: `commitlint`。
-- `pre-push`（並列・5 件）: `secret-scan`、`test`（完全、キャッシュなし、`.go`）、
+- `pre-push`（並列）: `secret-scan`、`test`（完全、キャッシュなし、`.go`）、
   `test-scripts`（`scripts/**/*.go`）、`gen-go-check`（生成成果物ドリフト）、
   `tidy-check`（`go.mod` / `go.sum`）。
 
@@ -71,14 +64,7 @@ CI パリティが保証される。
 ### ネガティブな影響
 
 - 開発者はフックを手動でバイパスできる（`git commit --no-verify`）。これは構造化ワークフローには意図的だが、
-  最終検証を実行するという規律に依存する。加えて GitHub の web UI から編集した場合はフックにそもそも
-  出会わない。フックとしてしか存在しないゲートは実質的に任意になるため、拘束力を持たせるには CI 側の
-  対応物が要る。Markdown 検査についてはそれが `md-lint.yaml` である。
-- 最終検証は `lefthook run pre-commit` であり、`commit-msg` のコマンドには届かない。ステージは自分の名前で
-  定義されたコマンドしか実行しないためである。したがって分割中に書かれたコミットメッセージだけは、この
-  パターンでは回復できない唯一のゲートであり、代わりに `commitlint.yaml` が PR のコミット範囲を CI で
-  検証する。ここで唯一フック側に対応物を持たないゲートでもある。範囲の検証には比較対象となる base が要り、
-  base はプルリクエストが存在して初めて定まるためである。
+  最終検証を実行するという規律に依存する。
 - グロブマッチングはファイル拡張子ベースである。`.go` ファイルに触れないビルドスクリプトへの変更でも
   間接的に Go テストが必要な場合があるが、pre-commit グロブではそれらのテストはトリガーされない。
 - pre-push はキャッシュなしの完全テストスイートと生成成果物チェックを実行するため、大きな変更セットでは

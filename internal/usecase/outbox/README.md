@@ -97,6 +97,27 @@ touches `dead`, and replay never touches `published`.
   to `pending` and returns the count restored. `messageID == nil` replays **all**
   dead entries; a non-nil value targets that single `message_id`.
 
+## The consuming end
+
+This package is only the **producing** end. What happens to a message after `relay` publishes it is
+the worker subsystem's concern, and the two ends are wired by the integrator — an outbox with nothing
+consuming from it is a valid configuration, not an incomplete one.
+
+The two ends meet at the transport, not in code: `relay` hands `publisher.Message` to an adapter,
+which puts the payload in the message body and the event type and `message_id` in named metadata, and
+a `worker.Handler` reads them back from `worker.Message`. Neither end imports the other.
+
+<!-- sample-api:begin -->
+The sample wires both ends so the path can actually be run:
+
+| Stage | Where |
+| --- | --- |
+| emit `user.withdrawn.v1` in the withdrawal transaction | `internal/usecase/user` |
+| relay → publish | `outbox-relay` + `internal/infrastructure/queue/sqs` (`OUTBOX_PUBLISHER=sqs`) |
+| consume → archive the withdrawal | [`internal/controller/worker/withdrawalarchive`](../../controller/worker/withdrawalarchive/README.md) |
+
+<!-- sample-api:end -->
+
 ## Layout
 
 | Concern | Path |

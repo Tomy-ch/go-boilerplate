@@ -470,6 +470,47 @@ go test ./internal/integration/...
 
 ---
 
+## Step 9.5 — The event-driven side (optional)
+
+**Goal:** see the other entry point into the usecase layer. Everything so far was driven by an HTTP
+request; withdrawal additionally emits a domain event that a **worker** consumes.
+
+Nothing you built in Steps 1–9 changes for this. The withdrawal usecase already writes
+`user.withdrawn.v1` to the outbox **inside the same transaction** as the deletion, so the event
+cannot be lost, nor emitted for a withdrawal that rolled back. From there:
+
+|#|Piece|File|
+|---|---|---|
+|①|business `Handler` — decode, classify, call the usecase|`internal/controller/worker/withdrawalarchive/withdrawal_archive_handler.go`|
+|②|`Consumer` / `FailureHandler` adapter|`internal/infrastructure/queue/sqs` (constructed in DI, not here)|
+|③|`Worker` — bundles name / consumer / handler / failure handler|`internal/controller/worker/withdrawalarchive/withdrawal_archive_worker.go`|
+|④|registration|`internal/di/module/worker.go`, inside `sample-api` markers|
+|⑤|broker client + adapter config|`internal/di/module/withdrawalarchive.go`|
+|⑥|env|`CONSUMER_QUEUE_*` in `env/.env`|
+
+**Why the adapter is built in DI rather than in the worker package:** the controller layer must not
+import infrastructure (depguard enforces it), so the worker receives an already-constructed
+`Consumer` and never learns which broker it is reading from. Same rule that keeps the HTTP handler
+away from a repository.
+
+**Two things worth opening the code for:**
+
+- **Idempotency.** Delivery is at-least-once, so this handler will sometimes run twice for one
+  withdrawal. Rather than detect the repeat, the *operation* is made idempotent: the object key is
+  derived from the user ID alone and the body is the payload unmodified, so a second run writes
+  identical bytes. That is stronger than propagating an idempotency key, which only works if the
+  downstream honours it.
+- **Selection.** One queue carries every event the outbox emits, so the handler checks the
+  `event_type` attribute first and acks anything else without processing it. Treating a foreign event
+  as a failure would route every purchase event to the DLQ.
+
+**Verify** — three terminals (`make serve`, `make outbox-relay`, `make worker
+NAME=withdrawal-archive`), then withdraw a user. The full recipe, with what to watch at each hop, is
+in
+[`internal/controller/worker/withdrawalarchive/README.md`](../../internal/controller/worker/withdrawalarchive/README.md).
+
+---
+
 ## Step 10 — Full verification
 
 **Goal:** prove the rebuilt feature is correct, formatted, and meets the coverage gate.
@@ -503,6 +544,7 @@ the Definition of Done, not an optional polish.
 |7|controller|`internal/controller/handler/v1/users/**`, `job/usercount/**`|One method per operationId; handler is a pure template|`go test ./…/users/...`|
 |8|DI|`internal/di/module/*.go`|The only place layers meet; marker blocks keep it removable|`make lint`|
 |9|integration|`internal/integration/v1_users*_test.go`|HTTP boundary with usecase mocked|`go test ./internal/integration/...`|
+|9.5|worker|`internal/controller/worker/withdrawalarchive/**`|A second entry point into the usecase layer; the operation itself is idempotent|`make worker NAME=withdrawal-archive`|
 |10|verify|`make fix` / `make lint` / `make test`|90% floor is part of Done|`make cover-gate`|
 
 ---

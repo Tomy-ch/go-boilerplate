@@ -42,20 +42,13 @@ This guarantees CI parity without redundant per-commit overhead.
 
 The hook stages and their commands are:
 
-The stages and their commands are below. The names are the lefthook command names, which is
-what `--command` selects — they are not always the `make` target the command runs (`go-lint`
-runs `make lint`, `go-test` runs `make test-cached`).
-
-- `pre-commit` (parallel, 14): `go-lint` (`.go`), `go-test` (`.go`),
-  `go-test-scripts` (`scripts/**/*.go`), `sql-lint` (`.sql`), `md-lint` (`.md`),
-  `actions-lint` (workflow YAML + action YAML + the node lint scripts),
-  `actions-zizmor` (workflow YAML + action YAML + `zizmor.yml`), `oapi-lint` (`openapi/**`),
-  `mock-auth-oapi-lint` (the mock-auth-server spec), `docker-lint` (Dockerfiles),
-  `pin-actions` (workflow YAML + action YAML + `actions-pin.toml`),
-  `pin-images` (Dockerfiles + compose + `images-pin.toml`),
-  `migration-check-version` (`.sql`), `migration-check-gap` (`.sql`).
+- `pre-commit` (parallel): `lint` (`.go`), `test-cached` (`.go`), `test-scripts-cached` (`scripts/**/*.go`), `sql-lint` (`.sql`),
+  `md-lint` (`.md`), `actions-lint` (workflow YAML), `actions-zizmor` (workflow YAML +
+  action YAML + `zizmor.yml`), `docker-lint` (Dockerfiles),
+  `pin-actions` (workflow YAML + action YAML + `actions-pin.toml`), `migration-check-version` (`.sql`),
+  `migration-check-gap` (`.sql`).
 - `commit-msg`: `commitlint`.
-- `pre-push` (parallel, 5): `secret-scan`, `test` (full, no cache, `.go`),
+- `pre-push` (parallel): `secret-scan`, `test` (full, no cache, `.go`),
   `test-scripts` (`scripts/**/*.go`), `gen-go-check` (generated artifact drift),
   `tidy-check` (`go.mod` / `go.sum`).
 
@@ -73,16 +66,7 @@ runs `make lint`, `go-test` runs `make test-cached`).
 ### Negative Consequences
 
 - Developers can bypass hooks manually (`git commit --no-verify`). This is intentional
-  for the structured workflow but relies on discipline to run the final verification, and
-  an edit made through the GitHub web UI never meets a hook at all. A gate that exists
-  only as a hook is therefore optional in practice, so each one needs a CI counterpart to
-  be binding — `md-lint.yaml` is that counterpart for the Markdown checks.
-- The final verification is `lefthook run pre-commit`, so it reaches no `commit-msg`
-  command: a stage runs only the commands defined under its own name. Commit messages
-  written during a split are therefore the one gate the pattern cannot restore, and
-  `commitlint.yaml` checks the PR's commit range in CI instead. It is the only gate here
-  with no hook counterpart, because a range needs a base to compare against and a base
-  exists only once a pull request does.
+  for the structured workflow but relies on discipline to run the final verification.
 - Glob matching is file-extension based; a change to a build script that does not touch
   `.go` files still requires Go tests indirectly, but those tests are not triggered by
   the pre-commit glob.
