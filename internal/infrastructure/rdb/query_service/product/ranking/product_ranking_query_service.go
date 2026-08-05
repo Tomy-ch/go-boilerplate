@@ -11,6 +11,8 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/product/ranking/query"
+	"go-boilerplate/pkg/safecast"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // rankingWindow30d は、period=30d の集計対象とする直近期間の長さです。
@@ -38,12 +40,16 @@ func (s *service) ListRanking(ctx context.Context, params query.RankingQueryPara
 
 	filterByPeriod, orderedAfter := resolvePeriod(params.Period, s.clk.Now())
 
+	limitCount, err := safecast.IntToInt32(params.Limit)
+	if err != nil {
+		return nil, xerrors.Wrap(err, "invalid ranking limit")
+	}
+
 	db := gen.New(driver.New(ctx, s.db))
 	rows, err := db.ListProductRanking(ctx, &gen.ListProductRankingParams{
 		FilterByPeriod: filterByPeriod,
 		OrderedAfter:   orderedAfter,
-		//nolint:gosec // G115: limit はユースケースで [1,100] にクランプ済みでありオーバーフローしません
-		LimitCount: int32(params.Limit),
+		LimitCount:     limitCount,
 	})
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)

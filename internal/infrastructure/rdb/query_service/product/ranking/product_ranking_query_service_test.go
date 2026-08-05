@@ -2,6 +2,7 @@ package ranking
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"go-boilerplate/internal/observability"
 	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/product/ranking/query"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -309,6 +311,17 @@ func Test_service_ListRanking(t *testing.T) {
 
 			got, err := svc.ListRanking(canceledContext(t), query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
 			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, got)
+		})
+
+		t.Run("limitがint32に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := svc.ListRanking(
+				context.Background(),
+				query.RankingQueryParams{Period: query.PeriodAll, Limit: math.MaxInt32 + 1},
+			)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 			assert.Nil(t, got)
 		})
 	})

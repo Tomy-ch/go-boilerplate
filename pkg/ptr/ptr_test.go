@@ -1,6 +1,7 @@
 package ptr
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -91,6 +92,41 @@ func TestDeref(t *testing.T) {
 			v := 0
 			actual := Deref(&v, 99)
 			assert.Equal(t, 0, actual)
+		})
+	})
+}
+
+func TestMap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilポインタの場合、値に関数を適用した結果のポインタを返す", func(t *testing.T) {
+			t.Parallel()
+			v := int32(42)
+			actual := Map(&v, func(x int32) int { return int(x) })
+			require.NotNil(t, actual)
+			assert.Equal(t, 42, *actual)
+		})
+
+		t.Run("nilポインタの場合、関数を呼ばずnilを返す", func(t *testing.T) {
+			t.Parallel()
+			called := false
+			actual := Map(nil, func(x int32) int {
+				called = true
+				return int(x)
+			})
+			assert.Nil(t, actual)
+			assert.False(t, called)
+		})
+
+		t.Run("ゼロ値を指すポインタもnilと区別してゼロ値のポインタを返す", func(t *testing.T) {
+			t.Parallel()
+			v := 0
+			actual := Map(&v, strconv.Itoa)
+			require.NotNil(t, actual)
+			assert.Equal(t, "0", *actual)
 		})
 	})
 }

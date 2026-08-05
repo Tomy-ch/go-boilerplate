@@ -272,3 +272,23 @@ Repository / QueryService テストは
 - row → entity 変換（カラム → フィールド対応、NULL 処理）
 
 並行 / ロック競合は既定の `testkit` ヘルパでは再現できません: `WithinTx` はトランザクションを直列化します（最後に rollback する単一 tx）。真に並行なコネクションでしか発火しない分岐 — 例: `Claim` の `lock_timeout` `55P03`（lock_not_available）— は、独立した `TransactionManager.Do` を 2 本（2 コネクション / トランザクション）走らせ、片方が行ロックを保持しもう片方をタイムアウトさせる専用の統合テストが要ります。
+
+#### カバレッジ例外（到達不能な防御分岐）
+
+ドメインの値は `pkg/safecast` を通して sqlc のカラム幅へ絞り込むため、各書き込み箇所には
+`if err != nil` が付きます。ドメインが範囲を保証している以上、呼び出し側からこの分岐へは到達
+できません。範囲チェック本体は `pkg/safecast` にあり全分岐がテスト済みで、呼び出し側に残るのは
+エラープラミングだけなので、[`testing-conventions.md` §9](../../../docs/testing-conventions.md)
+に従い作為的なテストで色を付けるのではなくここに記録します。
+
+|ファイル|関数|未被覆の分岐|到達不能な理由|
+|---|---|---|---|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` のエラー|`product` が `quantity` を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|`product` が閾値を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|同上|
+|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+
+同じメソッド内の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
+範囲外の version は到達可能なため、テストで被覆しています。purchase の `statusCode` / 明細数量の
+変換も同様です。
