@@ -23,16 +23,8 @@ type Repository interface {
 	// active / keywords の意味は SearchByKeyword と同じです。
 	CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error)
 	// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound を返します。
+	// 悲観ロックを伴う取得は LockRepository が持ちます。
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
-	// LockByID は、未削除の単一ユーザーを悲観ロック（排他）して取得します。退会は、このロックを
-	// 退会可否の判定より前に取ることで、購入作成が取る共有ロックと直列化します。
-	// 論理削除済み・不存在はいずれも NotFound を返します。
-	LockByID(ctx context.Context, id uuid.UUID) (*User, error)
-	// LockActiveShareByID は、未削除ユーザーの在籍を共有ロックを取りながら確認します。共有ロック同士は
-	// 両立するため同一ユーザーへの並行確認は直列化されず、LockByID の排他ロックとだけ衝突します。
-	// 在籍の確認のみを行うためエンティティは返しません。
-	// 論理削除済み・不存在はいずれも NotFound を返します。
-	LockActiveShareByID(ctx context.Context, id uuid.UUID) error
 	// Create は、ユーザーを作成します。
 	Create(ctx context.Context, user *User) error
 	// Update は、ユーザーの mutable フィールドと updatedAt / deletedAt を更新します。

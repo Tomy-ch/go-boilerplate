@@ -203,7 +203,7 @@ type usecase struct {
 	txm        tx.Manager
 	cmd        command.CommandService
 	repo       purchase.Repository
-	userRepo   user.Repository
+	userLock   user.LockRepository
 	detailQS   query.PurchaseDetailQueryService
 	emit       outbox.EmitUsecase
 	xr         exchangerate.Usecase
@@ -216,7 +216,7 @@ func New(
 	txm tx.Manager,
 	cmd command.CommandService,
 	repo purchase.Repository,
-	userRepo user.Repository,
+	userLock user.LockRepository,
 	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,
 	xr exchangerate.Usecase,
@@ -229,7 +229,7 @@ func New(
 		txm:        txm,
 		cmd:        cmd,
 		repo:       repo,
-		userRepo:   userRepo,
+		userLock:   userLock,
 		detailQS:   detailQS,
 		emit:       emit,
 		xr:         xr,
@@ -266,13 +266,8 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 	var created *purchase.Purchase
 	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、部分適用を防ぐ。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		// 購入者の在籍を共有ロック付きで押さえ、退会（排他ロック）と直列化する。退会済み・不存在は
-		// 主体の状態と操作の衝突として 409 へ写像する（退会側が進行中購入を 409 で拒む鏡像）。
 		// ロックはユーザー行 → 商品行（id 昇順）の順で取り、順序を全 tx で固定してデッドロックを避ける。
-		if uerr := u.userRepo.LockActiveShareByID(ctx, params.UserID); uerr != nil {
-			if xerrors.Is(uerr, apperror.ErrNotFound) {
-				return xerrors.Wrap(apperror.ErrConflict, "purchaser is withdrawn")
-			}
+		if uerr := u.ensurePurchaserActive(ctx, params.UserID); uerr != nil {
 			return uerr
 		}
 
@@ -559,6 +554,22 @@ func (u *usecase) DeliverPurchase(
 	}
 
 	return toDeliverPurchaseView(detail), nil
+}
+
+// ensurePurchaserActive は、購入者が在籍していることを共有ロック付きで確認します。
+// 退会（排他ロック）と直列化されるため、確認を通った購入者は tx の終了まで退会できません。
+// 退会済み・不存在は、主体の状態と操作の衝突として ErrConflict を返します
+// （退会が進行中購入を ErrConflict で拒む鏡像。購入対象の不存在ではないため NotFound へは畳みません）。
+// それ以外のエラーは、障害を退会済みと区別できなくしないためそのまま返します。
+func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) error {
+	err := u.userLock.LockActiveShareByID(ctx, userID)
+	if err == nil {
+		return nil
+	}
+	if xerrors.Is(err, apperror.ErrNotFound) {
+		return xerrors.Wrap(apperror.ErrConflict, "purchaser is withdrawn")
+	}
+	return err
 }
 
 // referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。

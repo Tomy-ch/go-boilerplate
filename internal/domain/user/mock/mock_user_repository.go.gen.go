@@ -147,35 +147,6 @@ func (mr *MockRepositoryMockRecorder) FindFeed(ctx, after, limit any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeed", reflect.TypeOf((*MockRepository)(nil).FindFeed), ctx, after, limit)
 }
 
-// LockActiveShareByID mocks base method.
-func (m *MockRepository) LockActiveShareByID(ctx context.Context, id uuid.UUID) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LockActiveShareByID", ctx, id)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// LockActiveShareByID indicates an expected call of LockActiveShareByID.
-func (mr *MockRepositoryMockRecorder) LockActiveShareByID(ctx, id any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockActiveShareByID", reflect.TypeOf((*MockRepository)(nil).LockActiveShareByID), ctx, id)
-}
-
-// LockByID mocks base method.
-func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LockByID", ctx, id)
-	ret0, _ := ret[0].(*user.User)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// LockByID indicates an expected call of LockByID.
-func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
-}
-
 // PurgeByIDs mocks base method.
 func (m *MockRepository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
 	m.ctrl.T.Helper()

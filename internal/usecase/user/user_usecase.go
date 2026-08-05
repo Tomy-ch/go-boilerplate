@@ -101,6 +101,7 @@ type usecase struct {
 	clock        clock.Clock
 	authorizer   authz.Authorizer
 	userRepo     user.Repository
+	userLock     user.LockRepository
 	pftRepo      prefecture.Repository
 	purchaseRepo purchase.Repository
 	emit         outbox.EmitUsecase
@@ -143,6 +144,7 @@ func New(
 	clock clock.Clock,
 	authorizer authz.Authorizer,
 	userRepo user.Repository,
+	userLock user.LockRepository,
 	prefectureRepo prefecture.Repository,
 	purchaseRepo purchase.Repository,
 	emit outbox.EmitUsecase,
@@ -153,6 +155,7 @@ func New(
 		clock:        clock,
 		authorizer:   authorizer,
 		userRepo:     userRepo,
+		userLock:     userLock,
 		pftRepo:      prefectureRepo,
 		purchaseRepo: purchaseRepo,
 		emit:         emit,
@@ -424,7 +427,7 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 	return u.txm.Do(ctx, func(ctx context.Context) error {
 		// 進行中購入の判定より前に排他ロックを取ることが、購入作成（共有ロック）との直列化の成立条件。
 		// 判定より後だと「判定通過 → 購入の成立 → 退会の確定」の順序を止められない。
-		userEntity, err := u.userRepo.LockByID(ctx, id)
+		userEntity, err := u.userLock.LockByID(ctx, id)
 		if err != nil {
 			return err
 		}

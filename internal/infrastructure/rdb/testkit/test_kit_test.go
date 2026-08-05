@@ -74,6 +74,32 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 	})
 }
 
+func TestJoinSuiteSerialization(t *testing.T) {
+	t.Parallel()
+
+	db := NewTestDB(t)
+	runner := NewTestTransactionRunner(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("参加中は他セッションが同じキーを取得できない", func(t *testing.T) {
+			t.Parallel()
+			runner.WithinTx(func(ctx context.Context) {
+				require.NoError(t, JoinSuiteSerialization(ctx, db))
+
+				// 直列化の実体は advisory lock の排他性なので、別セッション（接続プール直）から
+				// 同じキーを取れないことで検証する。取れてしまうなら並行実行を止められていない。
+				var acquired bool
+				row := driver.New(context.Background(), db).
+					QueryRow(context.Background(), "SELECT pg_try_advisory_lock($1)", txAdvisoryLockKey)
+				require.NoError(t, row.Scan(&acquired))
+				assert.False(t, acquired)
+			})
+		})
+	})
+}
+
 func Test_getTestDB(t *testing.T) {
 	t.Parallel()
 

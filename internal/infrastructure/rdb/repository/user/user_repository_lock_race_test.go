@@ -20,18 +20,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// errRollbackRaceTx は、購入役の tx を成否に関わらずロールバックさせるための番兵です。
-var errRollbackRaceTx = xerrors.New("rollback race tx")
-
 // raceBlockedGracePeriod は、購入役が退会役のロック解放を待たされていることを確認するために待つ時間です。
 // 高負荷でこの時間内に問い合わせが届かない場合も「まだ完了していない」側に倒れるため、負荷は偽陽性を生みません。
 const raceBlockedGracePeriod = 300 * time.Millisecond
 
+// errRollbackRaceTx は、購入役の tx を成否に関わらずロールバックさせるための番兵です。
+var errRollbackRaceTx = xerrors.New("rollback race tx")
+
 // Test_lockSerializesWithdrawalAgainstPurchase は、#766 の競合順序を実 DB の 2 トランザクションで再現し、
 // 退会（排他ロック）が確定した時点で購入の在籍ガード（共有ロック）が拒否へ転じることを検証します。
-//
-// ロックが効いていない実装（素の SELECT）では購入役が退会前のスナップショットを読んで通過するため、
-// 「退会済みユーザーに進行中の購入がぶら下がる」状態が成立し、このテストが赤くなります。
 //
 // tx を 2 本同時に生かす必要があるため testkit.WithinTx（tx 1 本 + ロールバック）では表現できません。
 // 退会役をコミットさせる必要から、検証用ユーザーは後始末で物理削除します。
@@ -39,7 +36,9 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
-	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+	tracer := observability.NewMockInfraLayerTracer(t)
+	repo := &repository{tracer: tracer, db: testDB}
+	lockRepo := &lockRepository{tracer: tracer, db: testDB}
 
 	newTxManager := func() tx.Manager {
 		return driver.NewTransactionManager(
@@ -88,7 +87,7 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 		defer close(guardDone)
 		<-withdrawalLocked
 		guardResult <- newTxManager().Do(ctx, func(txCtx context.Context) error {
-			if guardErr := repo.LockActiveShareByID(txCtx, targetID); guardErr != nil {
+			if guardErr := lockRepo.LockActiveShareByID(txCtx, targetID); guardErr != nil {
 				return xerrors.Join(errRollbackRaceTx, guardErr)
 			}
 			return errRollbackRaceTx
@@ -97,16 +96,13 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 
 	// 退会役: ユーザー行を排他ロックしてから論理削除を確定させる。
 	require.NoError(t, newTxManager().Do(ctx, func(txCtx context.Context) error {
-		// 同一 DB を共有する他パッケージの CASCADE TRUNCATE と衝突しないよう、テスト tx と同じ直列化に参加する。
-		q := driver.New(txCtx, testDB)
-		if _, lockErr := q.Exec(txCtx, "SET LOCAL lock_timeout = 0"); lockErr != nil {
-			return lockErr
-		}
-		if _, lockErr := q.Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", testkit.TxAdvisoryLockKey); lockErr != nil {
+		// 退会役だけがスイート全体の直列化へ参加する。購入役も参加させるとこの tx の解放待ちになり、
+		// 検証したいユーザー行のロック競合そのものが起きない。
+		if lockErr := testkit.JoinSuiteSerialization(txCtx, testDB); lockErr != nil {
 			return lockErr
 		}
 
-		withdrawing, lockErr := repo.LockByID(txCtx, targetID)
+		withdrawing, lockErr := lockRepo.LockByID(txCtx, targetID)
 		if lockErr != nil {
 			return lockErr
 		}

@@ -19,14 +19,27 @@ const seededActiveUserID = "eaabee3e-3b7a-4f61-8fa9-030944625e92"
 // seededDeletedUserID は、シードの論理削除済みユーザー（Charlie Davis）の ID です。
 const seededDeletedUserID = "d711970c-8e86-4875-8a34-e90bd79096a5"
 
-func Test_repository_LockByID(t *testing.T) {
+func TestNewLockRepository(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	tf := observability.NewNoopTracerFactory(t)
+	expected := &lockRepository{
+		tracer: tf.Infra(),
+		db:     testDB,
+	}
+	actual := NewLockRepository(testDB, tf)
+	assert.Equal(t, expected, actual)
+}
+
+func Test_lockRepository_LockByID(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 
-	repo := &repository{tracer: lt, db: testDB}
+	repo := &lockRepository{tracer: lt, db: testDB}
 
 	activeID, err := uuid.Parse(seededActiveUserID)
 	require.NoError(t, err)
@@ -68,14 +81,14 @@ func Test_repository_LockByID(t *testing.T) {
 	})
 }
 
-func Test_repository_LockActiveShareByID(t *testing.T) {
+func Test_lockRepository_LockActiveShareByID(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 
-	repo := &repository{tracer: lt, db: testDB}
+	repo := &lockRepository{tracer: lt, db: testDB}
 
 	activeID, err := uuid.Parse(seededActiveUserID)
 	require.NoError(t, err)

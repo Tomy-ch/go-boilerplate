@@ -67,6 +67,21 @@ flowchart TD
     A --> B
 ```
 
+### JoinSuiteSerialization
+
+```go
+func JoinSuiteSerialization(ctx context.Context, db driver.DatabaseDriver) error
+```
+
+Enrolls the transaction carried by `ctx` in the suite-wide serialization, so it never runs
+concurrently with the `CASCADE TRUNCATE` another package's tests (a separate process) issue.
+`WithinTx` calls this internally, so ordinary tests never need it.
+
+Call it directly only from a test that keeps **two transactions alive at once** — a lock-contention
+reproduction, for example — which `WithinTx` (one transaction, always rolled back) cannot express.
+Enroll only the transaction that must not overlap other packages; enrolling both sides of the
+contention would make one wait for the other and the contention under test would never occur.
+
 ## Transaction Execution
 
 ### TransactionRunner

@@ -16,13 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TxAdvisoryLockKey は、テスト tx を DB 単位で全プロセス横断に直列化する advisory lock キー。
+// txAdvisoryLockKey は、テスト tx を DB 単位で全プロセス横断に直列化する advisory lock キー。
 // go test はパッケージ毎に別プロセスで走り、プロセス内 txLock だけでは別プロセスの CASCADE TRUNCATE
 // 同士が deadlock しうるため補う。
-//
-// WithinTx は tx 1 本とロールバックに閉じるため、ロック競合の再現のように tx を 2 本同時に生かす
-// 検証は表現できない。そうしたテストが自前で tx を開きつつ同じ直列化に参加できるよう公開する。
-const TxAdvisoryLockKey = 8_246_913
+const txAdvisoryLockKey = 8_246_913
 
 var errRollbackForTest = xerrors.New("rollback for test")
 
@@ -87,13 +84,7 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 	baseCtx := context.Background()
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
-		q := driver.New(txCtx, t.db)
-		// advisory lock 待ちは lock_timeout(10s) の対象で、高負荷で超過すると 55P03（非リトライ）で
-		// 落ちる。取得の間だけ無効化する（直列化ゆえテーブルロック競合は起きず待ち詰まりの懸念はない）。
-		if _, lockErr := q.Exec(txCtx, "SET LOCAL lock_timeout = 0"); lockErr != nil {
-			return lockErr
-		}
-		if _, lockErr := q.Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", TxAdvisoryLockKey); lockErr != nil {
+		if lockErr := JoinSuiteSerialization(txCtx, t.db); lockErr != nil {
 			return lockErr
 		}
 		fn(txCtx)
@@ -104,6 +95,26 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 		return
 	}
 	require.NoError(t.t, err)
+}
+
+// JoinSuiteSerialization は、ctx のトランザクションをスイート全体の直列化へ参加させます。
+// 参加したトランザクションは、他パッケージのテスト（別プロセス）が張る CASCADE TRUNCATE と
+// 同時に走らなくなります。ctx にトランザクションが無い場合、直列化は成立しません。
+//
+// WithinTx はこれを内部で呼ぶため、通常のテストが直接呼ぶ必要はありません。トランザクションを
+// 2 本同時に生かす検証（ロック競合の再現など）は WithinTx では表現できず、自前で開いた
+// トランザクションからこれを呼ぶことになります。
+func JoinSuiteSerialization(ctx context.Context, db driver.DatabaseDriver) error {
+	q := driver.New(ctx, db)
+	// advisory lock 待ちは lock_timeout(10s) の対象で、高負荷で超過すると 55P03（非リトライ）で
+	// 落ちる。取得の間だけ無効化する（直列化ゆえテーブルロック競合は起きず待ち詰まりの懸念はない）。
+	if _, err := q.Exec(ctx, "SET LOCAL lock_timeout = 0"); err != nil {
+		return err
+	}
+	if _, err := q.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", txAdvisoryLockKey); err != nil {
+		return err
+	}
+	return nil
 }
 
 // getTestDB は、テスト用の共有データベースドライバーを返します（初回呼び出し時のみ生成）。
