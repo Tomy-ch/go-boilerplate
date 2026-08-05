@@ -170,3 +170,35 @@ func Test_normalizePeriod(t *testing.T) {
 		})
 	})
 }
+
+func Test_ensurePublished(t *testing.T) {
+	t.Parallel()
+
+	publishedAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全ての行が公開中の場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, ensurePublished([]query.RankingResult{
+				{PublishedAt: ptr.To(publishedAt)},
+				{PublishedAt: ptr.To(publishedAt)},
+			}))
+		})
+
+		t.Run("行が無い場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, ensurePublished(nil))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開日時が未設定の行がある場合、ErrInternalを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, ensurePublished([]query.RankingResult{{PublishedAt: nil}}), apperror.ErrInternal)
+		})
+	})
+}

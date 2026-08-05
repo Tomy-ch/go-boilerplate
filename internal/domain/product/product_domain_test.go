@@ -1082,6 +1082,26 @@ func TestProduct_IsPublished(t *testing.T) {
 	})
 }
 
+func TestIsPublished(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開日時が設定されている場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, IsPublished(ptr.To(time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC))))
+		})
+
+		t.Run("公開日時が未設定の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, IsPublished(nil))
+		})
+	})
+}
+
 func TestProduct_IsLowStock(t *testing.T) {
 	t.Parallel()
 

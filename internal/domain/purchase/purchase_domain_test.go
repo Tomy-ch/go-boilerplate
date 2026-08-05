@@ -2092,3 +2092,69 @@ func Test_validateStatusTimestamps(t *testing.T) {
 		})
 	})
 }
+
+func Test_validateDetails(t *testing.T) {
+	t.Parallel()
+
+	detail := func(t *testing.T, idSalt, productSalt string, quantity int) PurchaseDetail {
+		t.Helper()
+		id := uuid.UUID{}
+		if idSalt != "" {
+			id = uuidtestkit.NewTestFromSalt(t, idSalt)
+		}
+		productID := uuid.UUID{}
+		if productSalt != "" {
+			productID = uuidtestkit.NewTestFromSalt(t, productSalt)
+		}
+
+		return NewPurchaseDetail(id, PurchaseDetailAttributes{
+			ProductID: productID,
+			Quantity:  quantity,
+			UnitPrice: mustPrice(t, "800"),
+		})
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全ての明細が不変条件を満たす場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateDetails([]PurchaseDetail{
+				detail(t, "vd_d1", "vd_p1", 1),
+				detail(t, "vd_d2", "vd_p2", 3),
+			}))
+		})
+
+		t.Run("空の集合は呼び出し元が別のエラーで扱うため、nilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateDetails(nil))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細IDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateDetails([]PurchaseDetail{detail(t, "", "vd_p1", 1)}), ErrInvalidID)
+		})
+
+		t.Run("productIDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateDetails([]PurchaseDetail{detail(t, "vd_d1", "", 1)}), ErrInvalidID)
+		})
+
+		t.Run("数量が最小値未満の場合、ErrInvalidQuantityを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateDetails([]PurchaseDetail{detail(t, "vd_d1", "vd_p1", 0)}), ErrInvalidQuantity)
+		})
+
+		t.Run("同一productIDが重複する場合、ErrDuplicateProductIDを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateDetails([]PurchaseDetail{
+				detail(t, "vd_d1", "vd_p1", 1),
+				detail(t, "vd_d2", "vd_p1", 2),
+			}), ErrDuplicateProductID)
+		})
+	})
+}
