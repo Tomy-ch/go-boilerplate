@@ -460,12 +460,22 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
 				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
 				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
-				broken, err := domainpurchase.Reconstruct(
-					locked.ID(), locked.Code(), locked.UserID(), locked.StatusID(),
-					unknownStatusCode,
-					locked.SubtotalAmount(), locked.TaxAmount(), locked.ShippingFee(), locked.TotalAmount(),
-					locked.Details(), locked.OrderedAt(), nil, nil, &shippedAt, nil,
-				)
+				broken, err := domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
+					Code:           locked.Code(),
+					UserID:         locked.UserID(),
+					StatusID:       locked.StatusID(),
+					StatusCode:     unknownStatusCode,
+					SubtotalAmount: locked.SubtotalAmount(),
+					TaxAmount:      locked.TaxAmount(),
+					ShippingFee:    locked.ShippingFee(),
+					TotalAmount:    locked.TotalAmount(),
+					Details:        locked.Details(),
+					OrderedAt:      locked.OrderedAt(),
+					PaidAt:         nil,
+					CanceledAt:     nil,
+					ShippedAt:      &shippedAt,
+					DeliveredAt:    nil,
+				})
 				require.NoError(t, err)
 
 				require.ErrorIs(t, repo.UpdateShipped(ctx, broken), apperror.ErrInvalidArgument)
@@ -570,12 +580,22 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
 				// deliveredAt は nil で渡す（配達済み status と deliveredAt は双条件のため、
 				// マスタに無い status と deliveredAt は同居できない）。
-				broken, err := domainpurchase.Reconstruct(
-					locked.ID(), locked.Code(), locked.UserID(), locked.StatusID(),
-					unknownStatusCode,
-					locked.SubtotalAmount(), locked.TaxAmount(), locked.ShippingFee(), locked.TotalAmount(),
-					locked.Details(), locked.OrderedAt(), &paidAt, nil, &shippedAt, nil,
-				)
+				broken, err := domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
+					Code:           locked.Code(),
+					UserID:         locked.UserID(),
+					StatusID:       locked.StatusID(),
+					StatusCode:     unknownStatusCode,
+					SubtotalAmount: locked.SubtotalAmount(),
+					TaxAmount:      locked.TaxAmount(),
+					ShippingFee:    locked.ShippingFee(),
+					TotalAmount:    locked.TotalAmount(),
+					Details:        locked.Details(),
+					OrderedAt:      locked.OrderedAt(),
+					PaidAt:         &paidAt,
+					CanceledAt:     nil,
+					ShippedAt:      &shippedAt,
+					DeliveredAt:    nil,
+				})
 				require.NoError(t, err)
 
 				require.ErrorIs(t, repo.UpdateDelivered(ctx, broken), apperror.ErrInvalidArgument)
@@ -710,10 +730,11 @@ func Test_toPurchaseDetails(t *testing.T) {
 		t.Run("明細行を購入明細の値オブジェクトへ写像する", func(t *testing.T) {
 			t.Parallel()
 
+			detailID := mustParse(t, "e2000000-0000-4000-8000-0000000000d1")
 			productID := mustParse(t, "e2000000-0000-4000-8000-000000000001")
 			rows := []*gen.ListPurchaseDetailsByPurchaseIDRow{
 				{PurchaseDetails: gen.PurchaseDetails{
-					ID:        mustParse(t, "e2000000-0000-4000-8000-0000000000d1"),
+					ID:        detailID,
 					ProductID: productID,
 					Quantity:  2,
 					UnitPrice: decimaltestkit.MustParse(t, "800"),
@@ -723,6 +744,8 @@ func Test_toPurchaseDetails(t *testing.T) {
 			details, err := toPurchaseDetails(rows)
 			require.NoError(t, err)
 			require.Len(t, details, 1)
+			// 明細 ID と商品 ID は同じ uuid.UUID なので、取り違えを検出できるよう両方を固定する。
+			assert.Equal(t, detailID, details[0].ID())
 			assert.Equal(t, productID, details[0].ProductID())
 			assert.Equal(t, 2, details[0].Quantity())
 			assert.Equal(t, "800", details[0].UnitPrice().String())

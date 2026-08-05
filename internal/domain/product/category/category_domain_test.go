@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 				sortKey: expectedSortKey,
 			}
 
-			actual, err := New(expectedUUID, expectedName, expectedCode, expectedSortKey)
+			actual, err := New(expectedUUID, Attributes{Name: expectedName, Code: expectedCode, SortKey: expectedSortKey})
 			require.NoError(t, err)
 			assert.Equal(t, expected.id, actual.id)
 			assert.Equal(t, expected.name, actual.name)
@@ -42,28 +42,28 @@ func TestNew(t *testing.T) {
 
 		t.Run("コードが最小値ちょうど(1)の場合、生成される", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(expectedUUID, expectedName, minCode, expectedSortKey)
+			actual, err := New(expectedUUID, Attributes{Name: expectedName, Code: minCode, SortKey: expectedSortKey})
 			require.NoError(t, err)
 			assert.Equal(t, minCode, actual.code)
 		})
 
 		t.Run("コードが最大値ちょうど(32767)の場合、生成される", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(expectedUUID, expectedName, maxCode, expectedSortKey)
+			actual, err := New(expectedUUID, Attributes{Name: expectedName, Code: maxCode, SortKey: expectedSortKey})
 			require.NoError(t, err)
 			assert.Equal(t, maxCode, actual.code)
 		})
 
 		t.Run("表示順が最小値ちょうど(1)の場合、生成される", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(expectedUUID, expectedName, expectedCode, minSortKey)
+			actual, err := New(expectedUUID, Attributes{Name: expectedName, Code: expectedCode, SortKey: minSortKey})
 			require.NoError(t, err)
 			assert.Equal(t, minSortKey, actual.sortKey)
 		})
 
 		t.Run("表示順が最大値ちょうど(32767)の場合、生成される", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(expectedUUID, expectedName, expectedCode, maxSortKey)
+			actual, err := New(expectedUUID, Attributes{Name: expectedName, Code: expectedCode, SortKey: maxSortKey})
 			require.NoError(t, err)
 			assert.Equal(t, maxSortKey, actual.sortKey)
 		})
@@ -75,7 +75,7 @@ func TestNew(t *testing.T) {
 		t.Run("IDがゼロ値の場合、ErrInvalidIDエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			res, err := New(uuid.UUID{}, expectedName, expectedCode, expectedSortKey)
+			res, err := New(uuid.UUID{}, Attributes{Name: expectedName, Code: expectedCode, SortKey: expectedSortKey})
 			require.Nil(t, res)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
@@ -87,7 +87,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidName := strings.Repeat("字", minNameLength-1)
-				res, err := New(expectedUUID, invalidName, expectedCode, expectedSortKey)
+				res, err := New(expectedUUID, Attributes{Name: invalidName, Code: expectedCode, SortKey: expectedSortKey})
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidName)
 			})
@@ -96,7 +96,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidName := strings.Repeat("字", maxNameLength+1)
-				res, err := New(expectedUUID, invalidName, expectedCode, expectedSortKey)
+				res, err := New(expectedUUID, Attributes{Name: invalidName, Code: expectedCode, SortKey: expectedSortKey})
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidName)
 			})
@@ -109,7 +109,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidCode := minCode - 1
-				res, err := New(expectedUUID, expectedName, invalidCode, expectedSortKey)
+				res, err := New(expectedUUID, Attributes{Name: expectedName, Code: invalidCode, SortKey: expectedSortKey})
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidCode)
 			})
@@ -118,7 +118,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidCode := maxCode + 1
-				res, err := New(expectedUUID, expectedName, invalidCode, expectedSortKey)
+				res, err := New(expectedUUID, Attributes{Name: expectedName, Code: invalidCode, SortKey: expectedSortKey})
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidCode)
 			})
@@ -131,7 +131,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidSortKey := minSortKey - 1
-				res, err := New(expectedUUID, expectedName, expectedCode, invalidSortKey)
+				res, err := New(expectedUUID, Attributes{Name: expectedName, Code: expectedCode, SortKey: invalidSortKey})
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidSortKey)
 			})
@@ -140,7 +140,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidSortKey := maxSortKey + 1
-				res, err := New(expectedUUID, expectedName, expectedCode, invalidSortKey)
+				res, err := New(expectedUUID, Attributes{Name: expectedName, Code: expectedCode, SortKey: invalidSortKey})
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidSortKey)
 			})
@@ -160,7 +160,7 @@ func TestCategory_ID(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			category, err := New(id, "書籍", 2, 2)
+			category, err := New(id, Attributes{Name: "書籍", Code: 2, SortKey: 2})
 			require.NoError(t, err)
 
 			assert.Equal(t, id, category.ID())
@@ -180,7 +180,7 @@ func TestCategory_Name(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			category, err := New(id, "書籍", 2, 2)
+			category, err := New(id, Attributes{Name: "書籍", Code: 2, SortKey: 2})
 			require.NoError(t, err)
 
 			assert.Equal(t, "書籍", category.Name())
@@ -200,7 +200,7 @@ func TestCategory_Code(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			category, err := New(id, "書籍", 2, 2)
+			category, err := New(id, Attributes{Name: "書籍", Code: 2, SortKey: 2})
 			require.NoError(t, err)
 
 			assert.Equal(t, 2, category.Code())
@@ -220,7 +220,7 @@ func TestCategory_SortKey(t *testing.T) {
 			id, err := uuid.New()
 			require.NoError(t, err)
 
-			category, err := New(id, "書籍", 2, 3)
+			category, err := New(id, Attributes{Name: "書籍", Code: 2, SortKey: 3})
 			require.NoError(t, err)
 
 			assert.Equal(t, 3, category.SortKey())

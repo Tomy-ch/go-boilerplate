@@ -255,7 +255,11 @@ func TestReconstruct(t *testing.T) {
 		userID := uuidtestkit.NewTestFromSalt(t, "rc_user")
 		statusID := uuidtestkit.NewTestFromSalt(t, "rc_status")
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "rc_d1"), uuidtestkit.NewTestFromSalt(t, "rc_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "rc_d1"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "rc_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
 		orderedAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
 		return id, "rc-code", userID, statusID, details, orderedAt
@@ -267,23 +271,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("有効な入力の場合、永続化済みの購入を再構築する", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			require.NoError(t, err)
 			assert.Equal(t, id, actual.ID())
 			assert.Equal(t, code, actual.Code())
@@ -306,10 +309,22 @@ func TestReconstruct(t *testing.T) {
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			paidAt := orderedAt
 			canceledAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeCanceled, 160000, 16000, 500, 176500, details, orderedAt,
-				&paidAt, &canceledAt, nil, nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeCanceled,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         &paidAt,
+				CanceledAt:     &canceledAt,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			require.NoError(t, err)
 			require.NotNil(t, actual.PaidAt())
 			assert.Equal(t, paidAt, *actual.PaidAt())
@@ -322,10 +337,22 @@ func TestReconstruct(t *testing.T) {
 			paidAt := orderedAt
 			shippedAt := orderedAt.Add(24 * time.Hour)
 			deliveredAt := orderedAt.Add(48 * time.Hour)
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeDelivered, 160000, 16000, 500, 176500, details, orderedAt,
-				&paidAt, nil, &shippedAt, &deliveredAt,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeDelivered,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         &paidAt,
+				CanceledAt:     nil,
+				ShippedAt:      &shippedAt,
+				DeliveredAt:    &deliveredAt,
+			})
 			require.NoError(t, err)
 			require.NotNil(t, actual.PaidAt())
 			require.NotNil(t, actual.ShippedAt())
@@ -341,23 +368,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("statusIDがゼロ値の場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, _, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				uuid.UUID{},
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       uuid.UUID{},
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -365,23 +391,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("金額が負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				-1,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: -1,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
@@ -389,23 +414,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("明細が空の場合、ErrEmptyDetailsを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, _, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				176500,
-				nil,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        nil,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrEmptyDetails)
 		})
@@ -413,23 +437,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("IDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
 			t.Parallel()
 			_, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				uuid.UUID{},
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(uuid.UUID{}, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
@@ -437,23 +460,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("codeが空の場合、ErrInvalidCodeを返す", func(t *testing.T) {
 			t.Parallel()
 			id, _, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				"",
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           "",
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCode)
 		})
@@ -461,23 +483,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("userIDがゼロ値の場合、ErrInvalidUserIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, _, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				uuid.UUID{},
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         uuid.UUID{},
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidUserID)
 		})
@@ -485,23 +506,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("税額が負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				-1,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      -1,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
@@ -509,23 +529,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("送料が負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				-1,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    -1,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
@@ -533,23 +552,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("合計額が負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				-1,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    -1,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})
@@ -557,7 +575,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("statusCodeが不正（未処理未満）の場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, 0, 160000, 16000, 500, 176500, details, orderedAt, nil, nil, nil, nil)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     0,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -565,23 +598,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("キャンセルstatusなのにcanceledAtがnilの場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeCanceled,
-				160000,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeCanceled,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -589,7 +621,22 @@ func TestReconstruct(t *testing.T) {
 		t.Run("支払い済みstatusなのにpaidAtがnilの場合、ErrInvalidStatusIDを返す", func(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
-			actual, err := Reconstruct(id, code, userID, statusID, StatusCodePaid, 160000, 16000, 500, 176500, details, orderedAt, nil, nil, nil, nil)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodePaid,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -598,10 +645,22 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			paidAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeShipped, 160000, 16000, 500, 176500, details, orderedAt,
-				&paidAt, nil, nil, nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeShipped,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         &paidAt,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -611,10 +670,22 @@ func TestReconstruct(t *testing.T) {
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			canceledAt := orderedAt
 			shippedAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeCanceled, 160000, 16000, 500, 176500, details, orderedAt,
-				nil, &canceledAt, &shippedAt, nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeCanceled,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     &canceledAt,
+				ShippedAt:      &shippedAt,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -625,10 +696,22 @@ func TestReconstruct(t *testing.T) {
 			canceledAt := orderedAt
 			shippedAt := orderedAt
 			deliveredAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeCanceled, 160000, 16000, 500, 176500, details, orderedAt,
-				nil, &canceledAt, &shippedAt, &deliveredAt,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeCanceled,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     &canceledAt,
+				ShippedAt:      &shippedAt,
+				DeliveredAt:    &deliveredAt,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -637,10 +720,22 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			shippedAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeShipped, 160000, 16000, 500, 176500, details, orderedAt,
-				nil, nil, &shippedAt, nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeShipped,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      &shippedAt,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -650,10 +745,22 @@ func TestReconstruct(t *testing.T) {
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			paidAt := orderedAt
 			deliveredAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodePaid, 160000, 16000, 500, 176500, details, orderedAt,
-				&paidAt, nil, nil, &deliveredAt,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodePaid,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         &paidAt,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    &deliveredAt,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -663,10 +770,22 @@ func TestReconstruct(t *testing.T) {
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			paidAt := orderedAt
 			shippedAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeDelivered, 160000, 16000, 500, 176500, details, orderedAt,
-				&paidAt, nil, &shippedAt, nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeDelivered,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         &paidAt,
+				CanceledAt:     nil,
+				ShippedAt:      &shippedAt,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -677,10 +796,22 @@ func TestReconstruct(t *testing.T) {
 			paidAt := orderedAt
 			shippedAt := orderedAt
 			deliveredAt := orderedAt
-			actual, err := Reconstruct(
-				id, code, userID, statusID, StatusCodeShipped, 160000, 16000, 500, 176500, details, orderedAt,
-				&paidAt, nil, &shippedAt, &deliveredAt,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeShipped,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         &paidAt,
+				CanceledAt:     nil,
+				ShippedAt:      &shippedAt,
+				DeliveredAt:    &deliveredAt,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -689,23 +820,22 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			id, code, userID, statusID, details, orderedAt := valid(t)
 			canceledAt := orderedAt
-			actual, err := Reconstruct(
-				id,
-				code,
-				userID,
-				statusID,
-				StatusCodeUnprocessed,
-				160000,
-				16000,
-				500,
-				176500,
-				details,
-				orderedAt,
-				nil,
-				&canceledAt,
-				nil,
-				nil,
-			)
+			actual, err := Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     &canceledAt,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -718,15 +848,28 @@ func TestPurchase_Cancel(t *testing.T) {
 	build := func(t *testing.T, statusCode int, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "cancel_d1"), uuidtestkit.NewTestFromSalt(t, "cancel_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "cancel_d1"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "cancel_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := Reconstruct(
-			uuidtestkit.NewTestFromSalt(t, "cancel_id"), "cancel-code",
-			uuidtestkit.NewTestFromSalt(t, "cancel_user"), uuidtestkit.NewTestFromSalt(t, "cancel_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-			nil, canceledAt, shippedAt, deliveredAt,
-		)
+		p, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "cancel_id"), Attributes{
+			Code:           "cancel-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, "cancel_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "cancel_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         nil,
+			CanceledAt:     canceledAt,
+			ShippedAt:      shippedAt,
+			DeliveredAt:    deliveredAt,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -781,15 +924,28 @@ func TestPurchase_Pay(t *testing.T) {
 	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pay_d1"), uuidtestkit.NewTestFromSalt(t, "pay_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pay_d1"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "pay_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := Reconstruct(
-			uuidtestkit.NewTestFromSalt(t, "pay_id"), "pay-code",
-			uuidtestkit.NewTestFromSalt(t, "pay_user"), uuidtestkit.NewTestFromSalt(t, "pay_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-			paidAt, canceledAt, shippedAt, deliveredAt,
-		)
+		p, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "pay_id"), Attributes{
+			Code:           "pay-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, "pay_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "pay_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         paidAt,
+			CanceledAt:     canceledAt,
+			ShippedAt:      shippedAt,
+			DeliveredAt:    deliveredAt,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -869,11 +1025,11 @@ func TestPurchaseDetail_UnitPrice(t *testing.T) {
 		t.Run("明細のサブセント単価スナップショットを返す", func(t *testing.T) {
 			t.Parallel()
 
-			d := NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, "pd_id"),
-				uuidtestkit.NewTestFromSalt(t, "pd_product"),
-				2, mustPrice(t, "1.005"),
-			)
+			d := NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pd_id"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "pd_product"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "1.005"),
+			})
 			assert.Equal(t, "1.005", d.UnitPrice().String())
 			assert.True(t, d.UnitPrice().Decimal().Equal(decimaltestkit.MustParse(t, "1.005")))
 		})
@@ -886,15 +1042,28 @@ func TestPurchase_Ship(t *testing.T) {
 	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "ship_d1"), uuidtestkit.NewTestFromSalt(t, "ship_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "ship_d1"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "ship_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := Reconstruct(
-			uuidtestkit.NewTestFromSalt(t, "ship_id"), "ship-code",
-			uuidtestkit.NewTestFromSalt(t, "ship_user"), uuidtestkit.NewTestFromSalt(t, "ship_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-			paidAt, canceledAt, shippedAt, deliveredAt,
-		)
+		p, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "ship_id"), Attributes{
+			Code:           "ship-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, "ship_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "ship_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         paidAt,
+			CanceledAt:     canceledAt,
+			ShippedAt:      shippedAt,
+			DeliveredAt:    deliveredAt,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -973,20 +1142,33 @@ func TestPurchase_ShippedAt(t *testing.T) {
 	build := func(t *testing.T, shippedAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "sa_d1"), uuidtestkit.NewTestFromSalt(t, "sa_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "sa_d1"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "sa_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
 		statusCode := StatusCodePaid
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
 		if shippedAt != nil {
 			statusCode = StatusCodeShipped
 		}
-		p, err := Reconstruct(
-			uuidtestkit.NewTestFromSalt(t, "sa_id"), "sa-code",
-			uuidtestkit.NewTestFromSalt(t, "sa_user"), uuidtestkit.NewTestFromSalt(t, "sa_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-			&paidAt, nil, shippedAt, nil,
-		)
+		p, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "sa_id"), Attributes{
+			Code:           "sa-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, "sa_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "sa_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         &paidAt,
+			CanceledAt:     nil,
+			ShippedAt:      shippedAt,
+			DeliveredAt:    nil,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -1035,15 +1217,28 @@ func TestPurchase_Deliver(t *testing.T) {
 	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "dlv_d1"), uuidtestkit.NewTestFromSalt(t, "dlv_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "dlv_d1"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "dlv_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := Reconstruct(
-			uuidtestkit.NewTestFromSalt(t, "dlv_id"), "dlv-code",
-			uuidtestkit.NewTestFromSalt(t, "dlv_user"), uuidtestkit.NewTestFromSalt(t, "dlv_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-			paidAt, canceledAt, shippedAt, deliveredAt,
-		)
+		p, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "dlv_id"), Attributes{
+			Code:           "dlv-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, "dlv_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "dlv_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         paidAt,
+			CanceledAt:     canceledAt,
+			ShippedAt:      shippedAt,
+			DeliveredAt:    deliveredAt,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -1126,7 +1321,11 @@ func TestPurchase_DeliveredAt(t *testing.T) {
 	build := func(t *testing.T, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "da_d1"), uuidtestkit.NewTestFromSalt(t, "da_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "da_d1"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "da_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
 		statusCode := StatusCodeShipped
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
@@ -1134,13 +1333,22 @@ func TestPurchase_DeliveredAt(t *testing.T) {
 		if deliveredAt != nil {
 			statusCode = StatusCodeDelivered
 		}
-		p, err := Reconstruct(
-			uuidtestkit.NewTestFromSalt(t, "da_id"), "da-code",
-			uuidtestkit.NewTestFromSalt(t, "da_user"), uuidtestkit.NewTestFromSalt(t, "da_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-			&paidAt, nil, &shippedAt, deliveredAt,
-		)
+		p, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "da_id"), Attributes{
+			Code:           "da-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, "da_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "da_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         &paidAt,
+			CanceledAt:     nil,
+			ShippedAt:      &shippedAt,
+			DeliveredAt:    deliveredAt,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -1190,18 +1398,28 @@ func accessorPurchaseWith(t *testing.T, statusCode int, paidAt, canceledAt *time
 	t.Helper()
 
 	details := []PurchaseDetail{
-		NewPurchaseDetail(
-			uuidtestkit.NewTestFromSalt(t, "acc_detail"),
-			uuidtestkit.NewTestFromSalt(t, "acc_product"),
-			2, mustPrice(t, "800"),
-		),
+		NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "acc_detail"), PurchaseDetailAttributes{
+			ProductID: uuidtestkit.NewTestFromSalt(t, "acc_product"),
+			Quantity:  2,
+			UnitPrice: mustPrice(t, "800"),
+		}),
 	}
-	p, err := Reconstruct(
-		uuidtestkit.NewTestFromSalt(t, "acc_id"), "acc-code-001",
-		uuidtestkit.NewTestFromSalt(t, "acc_user"), uuidtestkit.NewTestFromSalt(t, "acc_status"),
-		statusCode, 160000, 16000, 500, 176500, details,
-		accessorOrderedAt, paidAt, canceledAt, nil, nil,
-	)
+	p, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "acc_id"), Attributes{
+		Code:           "acc-code-001",
+		UserID:         uuidtestkit.NewTestFromSalt(t, "acc_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "acc_status"),
+		StatusCode:     statusCode,
+		SubtotalAmount: 160000,
+		TaxAmount:      16000,
+		ShippingFee:    500,
+		TotalAmount:    176500,
+		Details:        details,
+		OrderedAt:      accessorOrderedAt,
+		PaidAt:         paidAt,
+		CanceledAt:     canceledAt,
+		ShippedAt:      nil,
+		DeliveredAt:    nil,
+	})
 	require.NoError(t, err)
 	return p
 }
@@ -1306,7 +1524,11 @@ func TestNewPurchaseDetail(t *testing.T) {
 			id := uuidtestkit.NewTestFromSalt(t, "new_pd_id")
 			productID := uuidtestkit.NewTestFromSalt(t, "new_pd_product")
 
-			actual := NewPurchaseDetail(id, productID, 4, mustPrice(t, "1.005"))
+			actual := NewPurchaseDetail(id, PurchaseDetailAttributes{
+				ProductID: productID,
+				Quantity:  4,
+				UnitPrice: mustPrice(t, "1.005"),
+			})
 
 			assert.Equal(t, id, actual.ID())
 			assert.Equal(t, productID, actual.ProductID())
@@ -1327,7 +1549,11 @@ func TestPurchaseDetail_ID(t *testing.T) {
 
 			id := uuidtestkit.NewTestFromSalt(t, "pd_detail_id")
 			productID := uuidtestkit.NewTestFromSalt(t, "pd_detail_product")
-			d := NewPurchaseDetail(id, productID, 2, mustPrice(t, "800"))
+			d := NewPurchaseDetail(id, PurchaseDetailAttributes{
+				ProductID: productID,
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			})
 
 			assert.Equal(t, id, d.ID())
 			assert.NotEqual(t, productID, d.ID())
@@ -1346,7 +1572,11 @@ func TestPurchaseDetail_ProductID(t *testing.T) {
 
 			id := uuidtestkit.NewTestFromSalt(t, "pd_product_detail")
 			productID := uuidtestkit.NewTestFromSalt(t, "pd_product_id")
-			d := NewPurchaseDetail(id, productID, 2, mustPrice(t, "800"))
+			d := NewPurchaseDetail(id, PurchaseDetailAttributes{
+				ProductID: productID,
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			})
 
 			assert.Equal(t, productID, d.ProductID())
 			assert.NotEqual(t, id, d.ProductID())
@@ -1363,11 +1593,11 @@ func TestPurchaseDetail_Quantity(t *testing.T) {
 		t.Run("明細の購入数量を返す", func(t *testing.T) {
 			t.Parallel()
 
-			d := NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, "pd_quantity_id"),
-				uuidtestkit.NewTestFromSalt(t, "pd_quantity_product"),
-				9, mustPrice(t, "800"),
-			)
+			d := NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pd_quantity_id"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "pd_quantity_product"),
+				Quantity:  9,
+				UnitPrice: mustPrice(t, "800"),
+			})
 
 			assert.Equal(t, 9, d.Quantity())
 		})
@@ -1451,11 +1681,11 @@ func TestPurchase_Details(t *testing.T) {
 
 			got := p.Details()
 			require.Len(t, got, 1)
-			got[0] = NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, "acc_detail_mutated"),
-				uuidtestkit.NewTestFromSalt(t, "acc_product_mutated"),
-				99, mustPrice(t, "1"),
-			)
+			got[0] = NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "acc_detail_mutated"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "acc_product_mutated"),
+				Quantity:  99,
+				UnitPrice: mustPrice(t, "1"),
+			})
 
 			require.Len(t, p.Details(), 1)
 			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "acc_detail"), p.Details()[0].ID())

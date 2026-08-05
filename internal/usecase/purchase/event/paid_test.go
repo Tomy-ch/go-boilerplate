@@ -20,16 +20,28 @@ func TestBuildPaid(t *testing.T) {
 	unprocessed := func(t *testing.T, salt string) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
-			domainpurchase.NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, salt+"_d"), uuidtestkit.NewTestFromSalt(t, salt+"_product"), 2, mustPrice(t, "800"),
-			),
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, salt+"_d"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, salt+"_product"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		entity, err := domainpurchase.Reconstruct(
-			uuidtestkit.NewTestFromSalt(t, salt+"_id"), salt+"-code",
-			uuidtestkit.NewTestFromSalt(t, salt+"_user"), uuidtestkit.NewTestFromSalt(t, salt+"_status"),
-			domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
-		)
+		entity, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt+"_id"), domainpurchase.Attributes{
+			Code:           salt + "-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, salt+"_status"),
+			StatusCode:     domainpurchase.StatusCodeUnprocessed,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         nil,
+			CanceledAt:     nil,
+			ShippedAt:      nil,
+			DeliveredAt:    nil,
+		})
 		require.NoError(t, err)
 		return entity
 	}

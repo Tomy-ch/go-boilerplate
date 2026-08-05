@@ -45,23 +45,28 @@ func mustPrice(t *testing.T, s string) money.Price {
 func rereadPurchase(t *testing.T) *domainpurchase.Purchase {
 	t.Helper()
 	details := []domainpurchase.PurchaseDetail{
-		domainpurchase.NewPurchaseDetail(
-			uuidtestkit.NewTestFromSalt(t, "reread_detail"),
-			uuidtestkit.NewTestFromSalt(t, "reread_product"),
-			2, mustPrice(t, "800"),
-		),
+		domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "reread_detail"), domainpurchase.PurchaseDetailAttributes{
+			ProductID: uuidtestkit.NewTestFromSalt(t, "reread_product"),
+			Quantity:  2,
+			UnitPrice: mustPrice(t, "800"),
+		}),
 	}
-	p, err := domainpurchase.Reconstruct(
-		uuidtestkit.NewTestFromSalt(t, "reread_id"),
-		"reread-code",
-		uuidtestkit.NewTestFromSalt(t, "reread_user"),
-		uuidtestkit.NewTestFromSalt(t, "reread_status"),
-		domainpurchase.StatusCodeUnprocessed,
-		160000, 16000, 500, 176500,
-		details,
-		time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
-		nil, nil, nil, nil,
-	)
+	p, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, "reread_id"), domainpurchase.Attributes{
+		Code:           "reread-code",
+		UserID:         uuidtestkit.NewTestFromSalt(t, "reread_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "reread_status"),
+		StatusCode:     domainpurchase.StatusCodeUnprocessed,
+		SubtotalAmount: 160000,
+		TaxAmount:      16000,
+		ShippingFee:    500,
+		TotalAmount:    176500,
+		Details:        details,
+		OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+		PaidAt:         nil,
+		CanceledAt:     nil,
+		ShippedAt:      nil,
+		DeliveredAt:    nil,
+	})
 	require.NoError(t, err)
 	return p
 }
@@ -297,18 +302,28 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 	lockable := func(t *testing.T, owner uuid.UUID, statusCode int) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
-			domainpurchase.NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, "cancel_uc_d1"),
-				uuidtestkit.NewTestFromSalt(t, "cancel_uc_p1"),
-				2,
-				mustPrice(t, "800"),
-			),
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "cancel_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "cancel_uc_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := domainpurchase.Reconstruct(
-			purchaseID, "cancel-uc-code", owner, uuidtestkit.NewTestFromSalt(t, "cancel_uc_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
-		)
+		p, err := domainpurchase.Reconstruct(purchaseID, domainpurchase.Attributes{
+			Code:           "cancel-uc-code",
+			UserID:         owner,
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "cancel_uc_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         nil,
+			CanceledAt:     nil,
+			ShippedAt:      nil,
+			DeliveredAt:    nil,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -351,12 +366,11 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(
-						uuidtestkit.NewTestFromSalt(t, "cancel_uc_d1"),
-						uuidtestkit.NewTestFromSalt(t, "cancel_uc_p1"),
-						2,
-						mustPrice(t, "800"),
-					),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "cancel_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+						ProductID: uuidtestkit.NewTestFromSalt(t, "cancel_uc_p1"),
+						Quantity:  2,
+						UnitPrice: mustPrice(t, "800"),
+					}),
 				},
 				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				CanceledAt: &canceledAt,
@@ -486,18 +500,28 @@ func Test_usecase_PayPurchase(t *testing.T) {
 	lockable := func(t *testing.T, owner uuid.UUID, statusCode int, paidAt *time.Time) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
-			domainpurchase.NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, "pay_uc_d1"),
-				uuidtestkit.NewTestFromSalt(t, "pay_uc_p1"),
-				2,
-				mustPrice(t, "800"),
-			),
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pay_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "pay_uc_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := domainpurchase.Reconstruct(
-			purchaseID, "pay-uc-code", owner, uuidtestkit.NewTestFromSalt(t, "pay_uc_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), paidAt, nil, nil, nil,
-		)
+		p, err := domainpurchase.Reconstruct(purchaseID, domainpurchase.Attributes{
+			Code:           "pay-uc-code",
+			UserID:         owner,
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "pay_uc_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         paidAt,
+			CanceledAt:     nil,
+			ShippedAt:      nil,
+			DeliveredAt:    nil,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -540,12 +564,11 @@ func Test_usecase_PayPurchase(t *testing.T) {
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(
-						uuidtestkit.NewTestFromSalt(t, "pay_uc_d1"),
-						uuidtestkit.NewTestFromSalt(t, "pay_uc_p1"),
-						2,
-						mustPrice(t, "800"),
-					),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pay_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+						ProductID: uuidtestkit.NewTestFromSalt(t, "pay_uc_p1"),
+						Quantity:  2,
+						UnitPrice: mustPrice(t, "800"),
+					}),
 				},
 				OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				PaidAt:    &paidAt,
@@ -703,7 +726,11 @@ func Test_toCancelPurchaseView(t *testing.T) {
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tcv_d"), uuidtestkit.NewTestFromSalt(t, "tcv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tcv_d"), domainpurchase.PurchaseDetailAttributes{
+						ProductID: uuidtestkit.NewTestFromSalt(t, "tcv_p"),
+						Quantity:  2,
+						UnitPrice: mustPrice(t, "800"),
+					}),
 				},
 				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				CanceledAt: &canceledAt,
@@ -747,7 +774,11 @@ func Test_toPayPurchaseView(t *testing.T) {
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tpv_d"), uuidtestkit.NewTestFromSalt(t, "tpv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tpv_d"), domainpurchase.PurchaseDetailAttributes{
+						ProductID: uuidtestkit.NewTestFromSalt(t, "tpv_p"),
+						Quantity:  2,
+						UnitPrice: mustPrice(t, "800"),
+					}),
 				},
 				OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				PaidAt:    &paidAt,
@@ -780,18 +811,28 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 	lockable := func(t *testing.T, statusCode int, paidAt, shipped *time.Time) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
-			domainpurchase.NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, "ship_uc_d1"),
-				uuidtestkit.NewTestFromSalt(t, "ship_uc_p1"),
-				2,
-				mustPrice(t, "800"),
-			),
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "ship_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "ship_uc_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := domainpurchase.Reconstruct(
-			purchaseID, "ship-uc-code", ownerID, uuidtestkit.NewTestFromSalt(t, "ship_uc_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), paidAt, nil, shipped, nil,
-		)
+		p, err := domainpurchase.Reconstruct(purchaseID, domainpurchase.Attributes{
+			Code:           "ship-uc-code",
+			UserID:         ownerID,
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "ship_uc_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         paidAt,
+			CanceledAt:     nil,
+			ShippedAt:      shipped,
+			DeliveredAt:    nil,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -817,12 +858,11 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			ShippingFee:    500,
 			TotalAmount:    176500,
 			Details: []domainpurchase.PurchaseDetail{
-				domainpurchase.NewPurchaseDetail(
-					uuidtestkit.NewTestFromSalt(t, "ship_uc_d1"),
-					uuidtestkit.NewTestFromSalt(t, "ship_uc_p1"),
-					2,
-					mustPrice(t, "800"),
-				),
+				domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "ship_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+					ProductID: uuidtestkit.NewTestFromSalt(t, "ship_uc_p1"),
+					Quantity:  2,
+					UnitPrice: mustPrice(t, "800"),
+				}),
 			},
 			OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			ShippedAt: &shippedAt,
@@ -1085,7 +1125,11 @@ func Test_toShipPurchaseView(t *testing.T) {
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tsv_d"), uuidtestkit.NewTestFromSalt(t, "tsv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tsv_d"), domainpurchase.PurchaseDetailAttributes{
+						ProductID: uuidtestkit.NewTestFromSalt(t, "tsv_p"),
+						Quantity:  2,
+						UnitPrice: mustPrice(t, "800"),
+					}),
 				},
 				OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				ShippedAt: &shippedAt,
@@ -1120,18 +1164,28 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 	lockable := func(t *testing.T, statusCode int, paid, shipped, delivered *time.Time) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
-			domainpurchase.NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, "dlv_uc_d1"),
-				uuidtestkit.NewTestFromSalt(t, "dlv_uc_p1"),
-				2,
-				mustPrice(t, "800"),
-			),
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "dlv_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "dlv_uc_p1"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
-		p, err := domainpurchase.Reconstruct(
-			purchaseID, "dlv-uc-code", ownerID, uuidtestkit.NewTestFromSalt(t, "dlv_uc_status"),
-			statusCode, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), paid, nil, shipped, delivered,
-		)
+		p, err := domainpurchase.Reconstruct(purchaseID, domainpurchase.Attributes{
+			Code:           "dlv-uc-code",
+			UserID:         ownerID,
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "dlv_uc_status"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         paid,
+			CanceledAt:     nil,
+			ShippedAt:      shipped,
+			DeliveredAt:    delivered,
+		})
 		require.NoError(t, err)
 		return p
 	}
@@ -1156,12 +1210,11 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 			ShippingFee:    500,
 			TotalAmount:    176500,
 			Details: []domainpurchase.PurchaseDetail{
-				domainpurchase.NewPurchaseDetail(
-					uuidtestkit.NewTestFromSalt(t, "dlv_uc_d1"),
-					uuidtestkit.NewTestFromSalt(t, "dlv_uc_p1"),
-					2,
-					mustPrice(t, "800"),
-				),
+				domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "dlv_uc_d1"), domainpurchase.PurchaseDetailAttributes{
+					ProductID: uuidtestkit.NewTestFromSalt(t, "dlv_uc_p1"),
+					Quantity:  2,
+					UnitPrice: mustPrice(t, "800"),
+				}),
 			},
 			OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			DeliveredAt: &deliveredAt,
@@ -1469,7 +1522,11 @@ func Test_toDeliverPurchaseView(t *testing.T) {
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tdv_d"), uuidtestkit.NewTestFromSalt(t, "tdv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tdv_d"), domainpurchase.PurchaseDetailAttributes{
+						ProductID: uuidtestkit.NewTestFromSalt(t, "tdv_p"),
+						Quantity:  2,
+						UnitPrice: mustPrice(t, "800"),
+					}),
 				},
 				OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				DeliveredAt: &deliveredAt,

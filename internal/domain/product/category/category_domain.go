@@ -24,36 +24,39 @@ type Category struct {
 // New は、商品カテゴリエンティティの検証と生成を行います。code・sortKey は 1〜32767 の整数である
 // 必要があります。id が nil の場合は ErrInvalidID、名前長・code 範囲・sortKey 範囲の違反の場合は
 // それぞれ ErrInvalidName / ErrInvalidCode / ErrInvalidSortKey を返します。
-func New(
-	id uuid.UUID,
-	name string,
-	code int,
-	sortKey int,
-) (*Category, error) {
+// Attributes は、商品カテゴリの属性一式です。code と sortKey は同じ int かつ同じ値域（1〜32767）で、
+// 位置引数のままだと取り違えても検証を通過してしまうため構造体で受けます。
+type Attributes struct {
+	Name    string
+	Code    int
+	SortKey int
+}
+
+func New(id uuid.UUID, attrs Attributes) (*Category, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
-	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
+	if ok, msg := stringkit.ValidateInRange(attrs.Name, minNameLength, maxNameLength); !ok {
 		return nil, xerrors.Wrap(ErrInvalidName, msg)
 	}
-	if code < minCode || maxCode < code {
+	if attrs.Code < minCode || maxCode < attrs.Code {
 		return nil, xerrors.Wrap(
 			ErrInvalidCode,
-			fmt.Sprintf("code must be between %d and %d, got %d", minCode, maxCode, code),
+			fmt.Sprintf("code must be between %d and %d, got %d", minCode, maxCode, attrs.Code),
 		)
 	}
-	if sortKey < minSortKey || maxSortKey < sortKey {
+	if attrs.SortKey < minSortKey || maxSortKey < attrs.SortKey {
 		return nil, xerrors.Wrap(
 			ErrInvalidSortKey,
-			fmt.Sprintf("sort key must be between %d and %d, got %d", minSortKey, maxSortKey, sortKey),
+			fmt.Sprintf("sort key must be between %d and %d, got %d", minSortKey, maxSortKey, attrs.SortKey),
 		)
 	}
 
 	return &Category{
 		id:      id,
-		name:    name,
-		code:    code,
-		sortKey: sortKey,
+		name:    attrs.Name,
+		code:    attrs.Code,
+		sortKey: attrs.SortKey,
 	}, nil
 }
 

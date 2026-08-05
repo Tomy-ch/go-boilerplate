@@ -53,7 +53,7 @@ func Test_repository_FindAll(t *testing.T) {
 			require.NoError(t, err)
 
 			txm.WithinTx(func(ctx context.Context) {
-				expectedReviewing, err := status.New(reviewingID, "検討中", 8, 1)
+				expectedReviewing, err := status.New(reviewingID, status.Attributes{Name: "検討中", Code: 8, SortKey: 1})
 				require.NoError(t, err)
 
 				actual, err := repo.FindAll(ctx)

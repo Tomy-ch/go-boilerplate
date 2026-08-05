@@ -68,9 +68,23 @@ func NewLockedProduct(id uuid.UUID, price money.Price, quantity int) LockedProdu
 	return LockedProduct{id: id, price: price, quantity: quantity}
 }
 
-// NewPurchaseDetail は、永続化済みの明細を再構築します（Repository の読み出しで使用）。unitPrice は価格スケール（ドル decimal）です。
-func NewPurchaseDetail(id, productID uuid.UUID, quantity int, unitPrice money.Price) PurchaseDetail {
-	return PurchaseDetail{id: id, productID: productID, quantity: quantity, unitPrice: unitPrice}
+// PurchaseDetailAttributes は、明細の再構築に必要な属性一式です。id と productID は隣接する
+// 同じ uuid.UUID で、位置引数のままだと取り違えてもコンパイルも検証も通ってしまうため構造体で受けます。
+type PurchaseDetailAttributes struct {
+	ProductID uuid.UUID
+	Quantity  int
+	// UnitPrice は価格スケール（ドル decimal）です。
+	UnitPrice money.Price
+}
+
+// NewPurchaseDetail は、永続化済みの明細を再構築します（Repository の読み出しで使用）。
+func NewPurchaseDetail(id uuid.UUID, attrs PurchaseDetailAttributes) PurchaseDetail {
+	return PurchaseDetail{
+		id:        id,
+		productID: attrs.ProductID,
+		quantity:  attrs.Quantity,
+		unitPrice: attrs.UnitPrice,
+	}
 }
 
 // New は、購入明細の入力とロック済み在庫から購入集約を生成します。
@@ -167,67 +181,73 @@ func New(
 // 各イベントの発生日時（未発生は nil）です。ID / code / userID / statusID が nil、statusCode が不正、
 // 金額が負、明細が空の場合は検証エラーを返します。statusCode と timestamps の組み合わせが状態遷移では
 // 到達し得ないもの（発送後のキャンセル、発送を伴わない配達 等）の場合も ErrInvalidStatusID を返します。
-func Reconstruct(
-	id uuid.UUID,
-	code string,
-	userID uuid.UUID,
-	statusID uuid.UUID,
-	statusCode int,
-	subtotalAmount int,
-	taxAmount int,
-	shippingFee int,
-	totalAmount int,
-	details []PurchaseDetail,
-	orderedAt time.Time,
-	paidAt *time.Time,
-	canceledAt *time.Time,
-	shippedAt *time.Time,
-	deliveredAt *time.Time,
-) (*Purchase, error) {
+// Attributes は、購入の再構築に必要な属性一式です。金額 4 つは同じ int、イベント日時 4 つは
+// 同じ *time.Time で、位置引数のままだと取り違えても検証の大半を通過してしまうため構造体で受けます。
+// DB 行からの再構築はこの層で最も晒された呼び出し元です。
+type Attributes struct {
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	StatusCode     int
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetail
+	OrderedAt      time.Time
+	PaidAt         *time.Time
+	CanceledAt     *time.Time
+	ShippedAt      *time.Time
+	DeliveredAt    *time.Time
+}
+
+func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
-	if code == "" {
+	if attrs.Code == "" {
 		return nil, xerrors.Wrap(ErrInvalidCode, "code is required")
 	}
-	if userID.IsNil() {
+	if attrs.UserID.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidUserID, "userID is required")
 	}
-	if statusID.IsNil() {
+	if attrs.StatusID.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "statusID is required")
 	}
-	if statusCode < StatusCodeUnprocessed {
+	if attrs.StatusCode < StatusCodeUnprocessed {
 		return nil, xerrors.Wrap(ErrInvalidStatusID, "statusCode is required")
 	}
-	if err := validateStatusTimestamps(statusCode, paidAt, canceledAt, shippedAt, deliveredAt); err != nil {
+	if err := validateStatusTimestamps(
+		attrs.StatusCode, attrs.PaidAt, attrs.CanceledAt, attrs.ShippedAt, attrs.DeliveredAt,
+	); err != nil {
 		return nil, err
 	}
-	if subtotalAmount < 0 || taxAmount < 0 || shippingFee < 0 || totalAmount < 0 {
+	if attrs.SubtotalAmount < 0 || attrs.TaxAmount < 0 || attrs.ShippingFee < 0 || attrs.TotalAmount < 0 {
 		return nil, xerrors.Wrap(ErrInvalidAmount, "amounts must not be negative")
 	}
-	if len(details) == 0 {
+	if len(attrs.Details) == 0 {
 		return nil, ErrEmptyDetails
 	}
 
-	copied := make([]PurchaseDetail, len(details))
-	copy(copied, details)
+	copied := make([]PurchaseDetail, len(attrs.Details))
+	copy(copied, attrs.Details)
 
 	return &Purchase{
 		id:             id,
-		code:           code,
-		userID:         userID,
-		statusID:       statusID,
-		statusCode:     statusCode,
-		subtotalAmount: subtotalAmount,
-		taxAmount:      taxAmount,
-		shippingFee:    shippingFee,
-		totalAmount:    totalAmount,
+		code:           attrs.Code,
+		userID:         attrs.UserID,
+		statusID:       attrs.StatusID,
+		statusCode:     attrs.StatusCode,
+		subtotalAmount: attrs.SubtotalAmount,
+		taxAmount:      attrs.TaxAmount,
+		shippingFee:    attrs.ShippingFee,
+		totalAmount:    attrs.TotalAmount,
 		details:        copied,
-		orderedAt:      orderedAt,
-		paidAt:         ptr.Copy(paidAt),
-		canceledAt:     ptr.Copy(canceledAt),
-		shippedAt:      ptr.Copy(shippedAt),
-		deliveredAt:    ptr.Copy(deliveredAt),
+		orderedAt:      attrs.OrderedAt,
+		paidAt:         ptr.Copy(attrs.PaidAt),
+		canceledAt:     ptr.Copy(attrs.CanceledAt),
+		shippedAt:      ptr.Copy(attrs.ShippedAt),
+		deliveredAt:    ptr.Copy(attrs.DeliveredAt),
 	}, nil
 }
 

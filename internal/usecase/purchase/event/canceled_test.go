@@ -24,14 +24,28 @@ func TestBuildCanceled(t *testing.T) {
 
 			productA := uuidtestkit.NewTestFromSalt(t, "bc_product")
 			details := []domainpurchase.PurchaseDetail{
-				domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "bc_d"), productA, 2, mustPrice(t, "800")),
+				domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "bc_d"), domainpurchase.PurchaseDetailAttributes{
+					ProductID: productA,
+					Quantity:  2,
+					UnitPrice: mustPrice(t, "800"),
+				}),
 			}
-			entity, err := domainpurchase.Reconstruct(
-				uuidtestkit.NewTestFromSalt(t, "bc_id"), "bc-code",
-				uuidtestkit.NewTestFromSalt(t, "bc_user"), uuidtestkit.NewTestFromSalt(t, "bc_status"),
-				domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
-				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
-			)
+			entity, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, "bc_id"), domainpurchase.Attributes{
+				Code:           "bc-code",
+				UserID:         uuidtestkit.NewTestFromSalt(t, "bc_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "bc_status"),
+				StatusCode:     domainpurchase.StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			require.NoError(t, err)
 			now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 			require.NoError(t, entity.Cancel(now))
@@ -58,19 +72,28 @@ func TestBuildCanceled(t *testing.T) {
 			t.Parallel()
 
 			details := []domainpurchase.PurchaseDetail{
-				domainpurchase.NewPurchaseDetail(
-					uuidtestkit.NewTestFromSalt(t, "bc_nil_d"),
-					uuidtestkit.NewTestFromSalt(t, "bc_nil_product"),
-					2,
-					mustPrice(t, "800"),
-				),
+				domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "bc_nil_d"), domainpurchase.PurchaseDetailAttributes{
+					ProductID: uuidtestkit.NewTestFromSalt(t, "bc_nil_product"),
+					Quantity:  2,
+					UnitPrice: mustPrice(t, "800"),
+				}),
 			}
-			entity, err := domainpurchase.Reconstruct(
-				uuidtestkit.NewTestFromSalt(t, "bc_nil_id"), "bc-nil-code",
-				uuidtestkit.NewTestFromSalt(t, "bc_nil_user"), uuidtestkit.NewTestFromSalt(t, "bc_nil_status"),
-				domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
-				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
-			)
+			entity, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, "bc_nil_id"), domainpurchase.Attributes{
+				Code:           "bc-nil-code",
+				UserID:         uuidtestkit.NewTestFromSalt(t, "bc_nil_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "bc_nil_status"),
+				StatusCode:     domainpurchase.StatusCodeUnprocessed,
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
 			require.NoError(t, err)
 
 			payload, perr := event.BuildCanceled(entity)

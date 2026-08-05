@@ -53,9 +53,9 @@ func Test_usecase_ListCategories(t *testing.T) {
 			booksID, err := uuid.Parse("b39be992-fe5a-4b4c-9f98-e695f0f5101e")
 			require.NoError(t, err)
 
-			electronics, err := domaincategory.New(electronicsID, "電子機器", 1, 1)
+			electronics, err := domaincategory.New(electronicsID, domaincategory.Attributes{Name: "電子機器", Code: 1, SortKey: 1})
 			require.NoError(t, err)
-			books, err := domaincategory.New(booksID, "書籍", 2, 2)
+			books, err := domaincategory.New(booksID, domaincategory.Attributes{Name: "書籍", Code: 2, SortKey: 2})
 			require.NoError(t, err)
 
 			repo := mock_category.NewMockRepository(ctrl)

@@ -54,23 +54,22 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 	}
 
 	p := row.Purchases
-	entity, err := purchase.Reconstruct(
-		p.ID,
-		p.Code,
-		p.UserID,
-		p.StatusID,
-		int(row.StatusCode),
-		int(p.SubtotalAmount),
-		int(p.TaxAmount),
-		int(p.ShippingFee),
-		int(p.TotalAmount),
-		details,
-		p.OrderedAt,
-		p.PaidAt,
-		p.CanceledAt,
-		p.ShippedAt,
-		p.DeliveredAt,
-	)
+	entity, err := purchase.Reconstruct(p.ID, purchase.Attributes{
+		Code:           p.Code,
+		UserID:         p.UserID,
+		StatusID:       p.StatusID,
+		StatusCode:     int(row.StatusCode),
+		SubtotalAmount: int(p.SubtotalAmount),
+		TaxAmount:      int(p.TaxAmount),
+		ShippingFee:    int(p.ShippingFee),
+		TotalAmount:    int(p.TotalAmount),
+		Details:        details,
+		OrderedAt:      p.OrderedAt,
+		PaidAt:         p.PaidAt,
+		CanceledAt:     p.CanceledAt,
+		ShippedAt:      p.ShippedAt,
+		DeliveredAt:    p.DeliveredAt,
+	})
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
@@ -101,23 +100,22 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 	}
 
 	p := row.Purchases
-	entity, err := purchase.Reconstruct(
-		p.ID,
-		p.Code,
-		p.UserID,
-		p.StatusID,
-		int(row.StatusCode),
-		int(p.SubtotalAmount),
-		int(p.TaxAmount),
-		int(p.ShippingFee),
-		int(p.TotalAmount),
-		details,
-		p.OrderedAt,
-		p.PaidAt,
-		p.CanceledAt,
-		p.ShippedAt,
-		p.DeliveredAt,
-	)
+	entity, err := purchase.Reconstruct(p.ID, purchase.Attributes{
+		Code:           p.Code,
+		UserID:         p.UserID,
+		StatusID:       p.StatusID,
+		StatusCode:     int(row.StatusCode),
+		SubtotalAmount: int(p.SubtotalAmount),
+		TaxAmount:      int(p.TaxAmount),
+		ShippingFee:    int(p.ShippingFee),
+		TotalAmount:    int(p.TotalAmount),
+		Details:        details,
+		OrderedAt:      p.OrderedAt,
+		PaidAt:         p.PaidAt,
+		CanceledAt:     p.CanceledAt,
+		ShippedAt:      p.ShippedAt,
+		DeliveredAt:    p.DeliveredAt,
+	})
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
@@ -236,7 +234,11 @@ func toPurchaseDetails(detailRows []*gen.ListPurchaseDetailsByPurchaseIDRow) ([]
 		if perr != nil {
 			return nil, pgerror.NormalizeReconstructError(perr)
 		}
-		details[i] = purchase.NewPurchaseDetail(d.ID, d.ProductID, int(d.Quantity), unitPrice)
+		details[i] = purchase.NewPurchaseDetail(d.ID, purchase.PurchaseDetailAttributes{
+			ProductID: d.ProductID,
+			Quantity:  int(d.Quantity),
+			UnitPrice: unitPrice,
+		})
 	}
 	return details, nil
 }

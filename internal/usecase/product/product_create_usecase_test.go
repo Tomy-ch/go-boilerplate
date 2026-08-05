@@ -28,7 +28,7 @@ import (
 // mustCategory は、テスト用に有効な商品カテゴリエンティティ（電子機器）を構築します。
 func mustCategory(t *testing.T, id uuid.UUID) *category.Category {
 	t.Helper()
-	c, err := category.New(id, "電子機器", 1, 1)
+	c, err := category.New(id, category.Attributes{Name: "電子機器", Code: 1, SortKey: 1})
 	require.NoError(t, err)
 	return c
 }
@@ -36,7 +36,7 @@ func mustCategory(t *testing.T, id uuid.UUID) *category.Category {
 // mustStatus は、テスト用に有効な商品ステータスエンティティ（在庫あり）を構築します。
 func mustStatus(t *testing.T, id uuid.UUID) *status.Status {
 	t.Helper()
-	s, err := status.New(id, "在庫あり", 1, 1)
+	s, err := status.New(id, status.Attributes{Name: "在庫あり", Code: 1, SortKey: 1})
 	require.NoError(t, err)
 	return s
 }
