@@ -9,6 +9,9 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
+var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
+
 type authnSlotKey struct{}
 
 // authnSlot は、認証前に仕込んで後段ハンドラと共有する Authn の可変スロット。
@@ -40,9 +43,6 @@ func GetAuthn(ctx context.Context) (auth.Authn, bool) {
 	}
 	return slot.authn, true
 }
-
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 // RequireAuthn は、ctx のスロットから Authn を読みます。未設定の場合は ErrUnauthenticatedUser を返します。
 // 認証済み呼び出し元を前提とするハンドラは、GetAuthn を直接呼ばずこちらを使います。
