@@ -112,10 +112,11 @@ three responsibilities:
 - The Usecase return value is a DTO, not a domain entity.
 - Implementation lives in `internal/infrastructure/rdb/command_service/<aggregate>/`.
 
-> **Implementation status**: The CommandService Go implementation is currently a reserved
-> placeholder — the `command_service` sub-module is declared in `persistenceModule`
-> (`internal/di/module/persistence.go`) but contains no concrete providers yet. This section
-> documents the intended design.
+> **Implementation status**: the `command_service` sub-module in `persistenceModule`
+> (`internal/di/module/persistence.go`) holds exactly one provider, and it belongs to the sample
+> purchase feature. Removing the samples empties the sub-module and leaves this section describing
+> an intended design with no occupant — which is the state a fork starts from. The occupant is kept
+> because the eligibility bar below is only legible against a concrete case that meets it.
 
 Repository, QueryService, and CommandService are all registered in `persistenceModule` in
 `internal/di/module/persistence.go` and injected via Uber Fx (see

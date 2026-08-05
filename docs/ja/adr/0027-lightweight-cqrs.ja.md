@@ -54,7 +54,7 @@ accepted
 - Usecase の返り値はドメインエンティティではなく DTO を返す。
 - 実装は `internal/infrastructure/rdb/command_service/<aggregate>/` に置く。
 
-> **実装状況**: CommandService の Go 実装は現在予約済みプレースホルダーである。`command_service` サブモジュールは `persistenceModule`（`internal/di/module/persistence.go`）に宣言済みだが、具体的なプロバイダーはまだ存在しない。本セクションは意図した設計を文書化したものである。
+> **実装状況**: `persistenceModule`（`internal/di/module/persistence.go`）の `command_service` サブモジュールが持つプロバイダーはちょうど 1 つで、それはサンプルの購入機能に属する。サンプルを削除するとサブモジュールは空になり、本セクションは占有者のいない意図した設計の記述に戻る——fork 先が出発する状態がそれである。占有者を残しているのは、後述の適格基準が、それを満たす具体例と突き合わせて初めて読めるものだからである。
 
 Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0035](0035-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
 
