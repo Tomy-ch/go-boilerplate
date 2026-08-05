@@ -158,6 +158,16 @@ func TestParseAction(t *testing.T) {
 			assert.Equal(t, 11, steps[1].colBase)
 		})
 
+		t.Run("明示インデント指示子より深い本文でも列基準は剥がされた幅になる", func(t *testing.T) {
+			t.Parallel()
+			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: |2\n          echo hi\n"
+			steps, err := parseAction("action.yaml", []byte(body))
+			require.NoError(t, err)
+			require.Len(t, steps, 1)
+			assert.Equal(t, "  echo hi\n", steps[0].script)
+			assert.Equal(t, 8, steps[0].colBase)
+		})
+
 		t.Run("ダブルクォートのスカラーの列基準は開き引用符の内側を指す", func(t *testing.T) {
 			t.Parallel()
 			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: \"echo hi\"\n"
@@ -541,12 +551,17 @@ func TestBlockIndentWidth(t *testing.T) {
 
 		t.Run("空行を読み飛ばして最初の非空行のインデント幅を返す", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, 8, blockIndentWidth([]byte("run: |\n\n        echo hi\n"), 2))
+			assert.Equal(t, 8, blockIndentWidth([]byte("run: |\n\n        echo hi\n"), 2, "\necho hi\n"))
+		})
+
+		t.Run("値に残ったインデントの分を差し引く", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, 8, blockIndentWidth([]byte("run: |2\n          echo hi\n"), 2, "  echo hi\n"))
 		})
 
 		t.Run("本文が空行だけなら 0 を返す", func(t *testing.T) {
 			t.Parallel()
-			assert.Zero(t, blockIndentWidth([]byte("run: |\n\n\n"), 2))
+			assert.Zero(t, blockIndentWidth([]byte("run: |\n\n\n"), 2, "\n\n"))
 		})
 	})
 
@@ -556,8 +571,8 @@ func TestBlockIndentWidth(t *testing.T) {
 		t.Run("本文開始行が行範囲の外なら 0 を返す", func(t *testing.T) {
 			t.Parallel()
 			data := []byte("run: |\n        echo hi\n")
-			assert.Zero(t, blockIndentWidth(data, 0))
-			assert.Zero(t, blockIndentWidth(data, 99))
+			assert.Zero(t, blockIndentWidth(data, 0, "echo hi\n"))
+			assert.Zero(t, blockIndentWidth(data, 99, "echo hi\n"))
 		})
 	})
 }

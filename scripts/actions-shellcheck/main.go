@@ -366,7 +366,7 @@ func bodyColumnBase(data []byte, run *yaml.Node, firstLine int) int {
 	switch run.Style {
 	case yaml.LiteralStyle:
 		// ブロックスカラーの本文はインデントを剥がした形で得られるため、剥がされた幅を足し戻す。
-		return blockIndentWidth(data, firstLine)
+		return blockIndentWidth(data, firstLine, run.Value)
 	case yaml.SingleQuotedStyle, yaml.DoubleQuotedStyle:
 		// 引用符付きスカラーは範囲の先頭が開き引用符を指すため、その 1 文字分を読み飛ばす。
 		return run.Column
@@ -375,21 +375,36 @@ func bodyColumnBase(data []byte, run *yaml.Node, firstLine int) int {
 	}
 }
 
-// blockIndentWidth はブロックスカラーのインデント幅を返す。幅を決めるのは最初の非空行（YAML の規則）で、
-// 本文が空行で始まる場合にその行の幅 0 を採ると、そのステップの全指摘の列がずれる。
-func blockIndentWidth(data []byte, firstLine int) int {
+// blockIndentWidth はブロックスカラーから剥がされたインデント幅を返す。
+//
+// 幅を決めるのは最初の非空行だが、その行の空白をそのまま採ると明示インデント指示子（run: |2 など）
+// を書いた本文で列がずれる。指示子は剥がす幅を親ノード基準で固定するので、本文がそれより深く
+// 書かれていれば余りが値側へ残り、生の行の空白は剥がされた幅より広くなる。
+// 生の行の空白から値に残った空白を引けば、指示子の有無に依らず剥がされた幅そのものが出る。
+// 本文が空行で始まる場合に幅 0 を採るとそのステップの全指摘がずれるため、両側とも最初の非空行を見る。
+func blockIndentWidth(data []byte, firstLine int, value string) int {
 	lines := strings.Split(string(data), "\n")
 	if firstLine < firstBodyIndex || firstLine > len(lines) {
 		return 0
 	}
-	for _, body := range lines[firstLine-firstBodyIndex:] {
-		trimmed := strings.TrimLeft(body, " \t")
+	raw, ok := firstIndentWidth(lines[firstLine-firstBodyIndex:])
+	if !ok {
+		return 0
+	}
+	kept, _ := firstIndentWidth(strings.Split(value, "\n"))
+	return raw - kept
+}
+
+// firstIndentWidth は最初の非空行のインデント幅を返す。第2戻り値が false なら非空行が無い。
+func firstIndentWidth(lines []string) (int, bool) {
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
 		if trimmed == "" {
 			continue
 		}
-		return len(body) - len(trimmed)
+		return len(line) - len(trimmed), true
 	}
-	return 0
+	return 0, false
 }
 
 func check(ctx context.Context, steps []step) (result, error) {
