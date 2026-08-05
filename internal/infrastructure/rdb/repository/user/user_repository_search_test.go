@@ -44,6 +44,7 @@ func Test_buildLikeTokens(t *testing.T) {
 	})
 }
 
+//nolint:tparallel // 最上位で t.Parallel() を呼べない理由は関数内のコメントを参照。
 func Test_repository_SearchByKeyword(t *testing.T) {
 	testDB := testkit.NewTestDB(t)
 
@@ -168,6 +169,7 @@ func Test_repository_SearchByKeyword(t *testing.T) {
 	})
 }
 
+//nolint:tparallel // 最上位で t.Parallel() を呼べない理由は関数内のコメントを参照。
 func Test_repository_CountByKeyword(t *testing.T) {
 	testDB := testkit.NewTestDB(t)
 
