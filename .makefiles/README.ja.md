@@ -121,9 +121,10 @@ DB 操作全般を扱うターゲット群です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make db-init` | LocalDB と TestDB の初期化をまとめて実行します。 | `db-init-local` と `db-init-test` を順に呼び出します。 |
-| `make db-init-local` | LocalDB を初期化します。 | `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed` を実行します。 |
-| `make db-init-test` | TestDB を初期化します。 | `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed` を実行します。 |
+| `make db-init` | 所有している local / test データベースの初期化をまとめて実行します。 | `db-init-local` と `db-init-test` を順に呼び出します。 |
+| `make db-init-local` | 所有している local データベースを初期化します。 | `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed` を実行します。 |
+| `make db-init-test` | 所有している test データベースを初期化します。 | `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed` を実行します。 |
+| `make require-db-owner` | この checkout が所有するデータベースがあることを検証します。 | データベース名を解決する全ターゲットの前提条件です。DB スロットを持たないリンク worktree では、主 checkout の `local` / `test` へフォールバックせず失敗します。`docs/ja/maintenance/db-worktree-pool.ja.md` を参照。 |
 
 ### DB マイグレーション関連
 
@@ -138,13 +139,13 @@ DB 操作全般を扱うターゲット群です。
 | `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | 指定した DB に対して、全マイグレーションを初期状態までダウングレードします。 | なし |
 | `make db-migrate-down-<steps> DB=<database>` | 指定した DB に対して、指定段数だけダウングレードします。 | なし |
-| `make db-local-migrate-up` | LocalDB に対して全マイグレーションを最新まで適用します。 | `DB=local` を指定した `db-migrate-up` のエイリアスです。 |
+| `make db-local-migrate-up` | 所有している local データベースに対して全マイグレーションを最新まで適用します。 | `DB=$(DB_LOCAL)`（`local`、スロット保持中は `wt<N>_local`）を指定した `db-migrate-up` のエイリアスです。 |
 | `make db-local-migrate-up-<steps>` | LocalDB に対して指定段数だけマイグレーションを適用します。 | なし |
-| `make db-local-migrate-down` | LocalDB を初期状態までダウングレードします。 | `DB=local` を指定した `db-migrate-down` のエイリアスです。 |
+| `make db-local-migrate-down` | 所有している local データベースを初期状態までダウングレードします。 | `DB=$(DB_LOCAL)` を指定した `db-migrate-down` のエイリアスです。 |
 | `make db-local-migrate-down-<steps>` | LocalDB を指定段数だけダウングレードします。 | なし |
-| `make db-test-migrate-up` | TestDB に対して全マイグレーションを最新まで適用します。 | `DB=test` を指定した `db-migrate-up` のエイリアスです。 |
+| `make db-test-migrate-up` | 所有している test データベースに対して全マイグレーションを最新まで適用します。 | `DB=$(DB_TEST)`（`test`、スロット保持中は `wt<N>_test`）を指定した `db-migrate-up` のエイリアスです。 |
 | `make db-test-migrate-up-<steps>` | TestDB に対して指定段数だけマイグレーションを適用します。 | なし |
-| `make db-test-migrate-down` | TestDB を初期状態までダウングレードします。 | `DB=test` を指定した `db-migrate-down` のエイリアスです。 |
+| `make db-test-migrate-down` | 所有している test データベースを初期状態までダウングレードします。 | `DB=$(DB_TEST)` を指定した `db-migrate-down` のエイリアスです。 |
 | `make db-test-migrate-down-<steps>` | TestDB を指定段数だけダウングレードします。 | なし |
 | `make db-migrate-ci-up DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-up` を実行します。 | CI 用ターゲットです。 |
 | `make db-migrate-ci-up-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-up` を実行します。 | CI 用ターゲットです。 |
@@ -165,8 +166,8 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make db-seed DB=<database>` | 指定した DB に対してシードデータを投入します。 | Docker コンテナ内で `cmd/main.go db-seed` を実行します。 |
 | `make db-seed-ci DB=<database>` | Docker を介さず、直接シード投入処理を実行します。 | CI 用ターゲットです。 |
-| `make db-local-seed` | LocalDB に対してシードデータを投入します。 | `DB=local` を指定した `db-seed` のエイリアスです。 |
-| `make db-test-seed` | TestDB に対してシードデータを投入します。 | `DB=test` を指定した `db-seed` のエイリアスです。 |
+| `make db-local-seed` | 所有している local データベースにシードデータを投入します。 | `DB=$(DB_LOCAL)` を指定した `db-seed` のエイリアスです。 |
+| `make db-test-seed` | 所有している test データベースにシードデータを投入します。 | `DB=$(DB_TEST)` を指定した `db-seed` のエイリアスです。 |
 
 ### DB 生成・補助関連
 
@@ -174,7 +175,7 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make gen-db-schema` | DB スキーマドキュメントを生成します。 | ER 図やスキーマ出力の更新に使用します。 |
 | `make gen-db-schema-ci` | SchemaSpy コンテナを直接実行してスキーマドキュメントを生成します。 | CI 用ターゲットです。 |
-| `make dump-schema` | スキーマダンプを実行します。 | SQLC 生成や DML マージの前処理として利用します。 |
+| `make dump-schema` | スキーマダンプを実行します。 | SQLC 生成や DML マージの前処理として利用します。所有者ごとの使い捨てデータベース（`gen_schema`、スロット保持中は `gen_schema_wt<N>`）を当該ブランチの migration から作り直してダンプします。 |
 | `make dump-schema-ci` | Docker を介さず、直接 `cmd/main.go dump-schema` を実行します。 | CI 用ターゲットです。 |
 | `make fix-collation` | データベースのコラテーションを修正します。 | なし |
 | `make fix-collation-ci` | Docker を介さず、直接コラテーション修正処理を実行します。 | CI 用ターゲットです。 |
