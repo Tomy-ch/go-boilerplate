@@ -211,8 +211,15 @@ Infrastructure コンポーネントは
 
 境界の明確化（よくある誤読）：
 
-- **「多数の行を返す」ことは「Aggregate 横断」ではない。** 1 つのテーブルの全行を列挙すること
-  （例: `SELECT * FROM prefectures ORDER BY code`）は単一 Aggregate の `一覧` であり Repository に留まる。
+- **「多数の行を返す」ことは「Aggregate 横断」ではない。** 1 つのテーブルの全行を列挙することは
+  単一 Aggregate の `一覧` であり Repository に留まる。
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
+       意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
+       書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
+  <!-- sample-api:begin -->
+  例: `SELECT * FROM prefectures ORDER BY code`。
+  <!-- sample-api:end -->
   「Aggregate 横断」とは *異なる* Aggregate を結合・またぐことであり、1 つの Aggregate の複数行を返すことではない。
 - **「レスポンスが DTO である」ことは QueryService のトリガではない。** あらゆる読み取りは最終的にレスポンス
   DTO へ写像される。読み取りを QueryService へ移すのは、full Aggregate として再構築するのが無駄になる
@@ -297,8 +304,14 @@ Infrastructure コンポーネントは
     サブアグリゲートが加わった時点でネストを優先する。
 - データベース DML と sqlc 生成物のディレクトリは、Go パッケージ構成とは独立に、**テーブル名準拠の snake_case**
   を用いる（`product_category`、`user_identity`）。
-- Controller ハンドラのディレクトリは Go パッケージ構成ではなく **HTTP リソース（route）名**に一致させる
-  （`product-categories`、`prefectures`）。
+- Controller ハンドラのディレクトリは Go パッケージ構成ではなく **HTTP リソース（route）名**に一致させる。
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: ルート名と Go パッケージ名がずれる実例が無いと、規則が空文に見える。
+       意義: ずれる典型は複数形とハイフンで、Go 側の単数・アンダースコアと形が違う点にある。
+       書き方: 実在するルートを 1〜2 個、バッククォートで挙げる。 -->
+  <!-- sample-api:begin -->
+  例: `product-categories`、`prefectures`。
+  <!-- sample-api:end -->
 - 型名は同名パッケージ内でもアグリゲート名詞を保持してよい（`category.Category`、`prefecture.Prefecture`）。
 
 ## レイヤ責務ルール

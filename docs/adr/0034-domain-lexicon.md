@@ -15,8 +15,15 @@ accepted
 
 Introducing `money.Price` ([ADR-0033](0033-two-scale-quantity-model.md)) surfaced a gap in the
 layer rules. `Price` is a business-semantic value object (non-negativity, minor-unit conversion)
-shared by **more than one aggregate**: `product.price` today, and `purchase_details.unit_price`
-plus the `purchases.*_amount` settlement figures next. It therefore cannot live in a single
+shared by **more than one aggregate**.
+<!-- 撤去後にこの箇所へ自分の例を置くための指針。
+     目的: 「複数の集約から使われる」が抽象のままだと、入場基準を満たす実例が示せない。
+     意義: 効くのは利用者が 2 つ以上あることで、型そのものの複雑さではない。
+     書き方: その値オブジェクトを使う集約側のフィールドを 2 つ以上挙げる。 -->
+<!-- sample-api:begin -->
+サンプルでの利用者は `product.price` と `purchase_details.unit_price` / `purchases.*_amount`。
+<!-- sample-api:end -->
+It therefore cannot live in a single
 aggregate package (that would force other aggregates to reach into it, or duplicate the VO), and
 it cannot live in `pkg/` (which forbids business logic and must stay context-independent).
 

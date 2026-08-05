@@ -74,9 +74,16 @@ three responsibilities:
   name — a prefecture — to a list) is done in the **usecase layer** by batch-fetching the related
   aggregate through its own Repository (`FindByIDs`) and merging by key — keeping each read a
   single-aggregate Repository read — rather than via a QueryService SQL JOIN.
-- **Reference-master clarification**: a *reference master* — fixed / standing lookup data (an
-  enum-like table such as `purchase_statuses` / `product_statuses`) with no independent write /
-  transactional lifecycle, reached through a mandatory, uniquely-determined FK — is part of the
+- **Reference-master clarification**: a *reference master* — fixed / standing lookup data with no
+  independent write / transactional lifecycle, reached through a mandatory, uniquely-determined FK
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: 「参照マスタ」だけでは読者が自分のテーブルを当てはめられない。
+       意義: 判定は独立した書き込みライフサイクルの有無で決まり、テーブルの名前や規模ではない。
+       書き方: 列挙型に相当する固定テーブルを 1〜2 個挙げる。 -->
+  <!-- sample-api:begin -->
+  （サンプルでの例は `purchase_statuses` / `product_statuses`）
+  <!-- sample-api:end -->
+  — is part of the
   owning aggregate's semantic set, not a foreign aggregate. Projecting its display attribute (e.g. a
   status *name*) by JOINing it into the owner's read is a single-aggregate **Repository** read, not a
   cross-aggregate JOIN, and needs neither a QueryService nor a usecase merge. The criterion is the

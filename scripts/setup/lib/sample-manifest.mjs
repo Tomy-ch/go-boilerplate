@@ -117,6 +117,11 @@ export const SAMPLE_DOMAINS = {
   product: {
     description: "サンプル 商品ドメイン（GET /v1/products/statuses 商品ステータスマスタ一覧 / GET /v1/products/categories 商品カテゴリマスタ一覧 / GET /v1/products 公開商品一覧〈cursor + フィルタ + keyword + sort〉 / GET /v1/products/{productId} 公開商品詳細〈未存在・非公開は 404 秘匿〉 / PATCH /v1/products/{productId}/stock 在庫の増減〈admin・行ロックで直列化〉 / GET /v1/products/low-stock 在庫僅少一覧〈admin・閾値以下 top-N〉）",
     paths: [
+      // ドメイン語彙の唯一の占有者。product と order の双方から使われるが撤去は一括なので、
+      // 最初の利用者である product 側に置けば足りる。非サンプルの import 元は存在しない。
+      // `internal/domain/lexicon` 自体は入場基準を述べる README ごと残し、占有者ゼロで次の語を待つ
+      // 器になる（器を消すと、複数集約から使われる業務値オブジェクトの置き場が規約ごと失われる）。
+      "internal/domain/lexicon/money",
       "internal/controller/job/productimagegc",
       "internal/domain/product/status",
       "internal/usecase/product/status",

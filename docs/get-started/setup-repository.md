@@ -266,6 +266,29 @@ Notes:
 - Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step.
 - The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-api.mjs`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
 
+### Rules keep their examples only until you remove the sample
+
+Several rules in `docs/rules.md`, `docs/adr/**`, and the layer `README`s are stated in general terms
+and then illustrated with a concrete example taken from the sample. **The rule survives removal; the
+example does not.** What is left is a correct statement that no longer shows a reader what it looks
+like in their own system.
+
+Each of those places carries an HTML comment immediately above the removed line, stating **why an
+example is needed there, what the example has to demonstrate, and how to write a replacement**. Find
+them and work through the list:
+
+```bash
+grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/ internal/ pkg/
+```
+
+This is not cosmetic. An abstract rule with no example is the form a rule takes right before people
+stop applying it: every reader has to decide alone what it covers, and they decide differently. The
+comments exist so that decision is made once, by you, with the original intent still in front of you.
+
+The business vocabulary has its own home. The term table in
+[`docs/spec/glossary.md`](../spec/glossary.md) is emptied by the same removal, and the rules for
+filling it back in stay on the page.
+
 <details>
 <summary>Manual procedure (reference — no longer required)</summary>
 

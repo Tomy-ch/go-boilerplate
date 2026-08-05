@@ -133,8 +133,15 @@ than left implicit:
 
 - **Purchase creation — branch 2 and branch 3 together.** Stock validation and decrement must be
   atomic with purchase confirmation: a state where "a purchase succeeded without stock" must never
-  be observable, even momentarily (no overselling). The writes to `purchases` / `purchase_details` /
-  `products` therefore require single-transaction atomicity (branch 3), and the outbox insert joins
+  be observable, even momentarily (no overselling). The writes across the aggregates involved
+  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+       目的: どの表へ同時に書くのかが見えないと、原子性の範囲が伝わらない。
+       意義: 効くのは「途中状態が観測されてはならない」ことで、表の数や名前ではない。
+       書き方: 同一トランザクションで書かれる表を列挙する。 -->
+  <!-- sample-api:begin -->
+  （サンプルでは `purchases` / `purchase_details` / `products`）
+  <!-- sample-api:end -->
+  therefore require single-transaction atomicity (branch 3), and the outbox insert joins
   that same transaction as usual per [ADR-0049](0049-transactional-outbox.md). The outbox insert is
   not what justifies the CommandService — a regular usecase also writes the outbox in its own
   transaction; the justification is the stock/purchase atomicity. Independently, the same
