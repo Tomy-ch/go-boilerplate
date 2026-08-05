@@ -11,7 +11,9 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type repository struct {
@@ -130,9 +132,14 @@ func (r *repository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
+	statusCode, err := safecast.IntToInt16(p.StatusCode())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid purchase status code")
+	}
+
 	db := gen.New(driver.New(ctx, r.db))
 	if err := db.UpdatePurchasePaid(ctx, &gen.UpdatePurchasePaidParams{
-		StatusCode: toInt16(p.StatusCode()),
+		StatusCode: statusCode,
 		PaidAt:     p.PaidAt(),
 		ID:         p.ID(),
 	}); err != nil {
@@ -149,9 +156,14 @@ func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) er
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
+	statusCode, err := safecast.IntToInt16(p.StatusCode())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid purchase status code")
+	}
+
 	db := gen.New(driver.New(ctx, r.db))
 	if err := db.UpdatePurchaseShipped(ctx, &gen.UpdatePurchaseShippedParams{
-		StatusCode: toInt16(p.StatusCode()),
+		StatusCode: statusCode,
 		ShippedAt:  p.ShippedAt(),
 		ID:         p.ID(),
 	}); err != nil {
@@ -168,9 +180,14 @@ func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) 
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
+	statusCode, err := safecast.IntToInt16(p.StatusCode())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid purchase status code")
+	}
+
 	db := gen.New(driver.New(ctx, r.db))
 	if err := db.UpdatePurchaseDelivered(ctx, &gen.UpdatePurchaseDeliveredParams{
-		StatusCode:  toInt16(p.StatusCode()),
+		StatusCode:  statusCode,
 		DeliveredAt: p.DeliveredAt(),
 		ID:          p.ID(),
 	}); err != nil {
@@ -221,10 +238,14 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 	}, nil
 }
 
-// toInt16 は、ドメインの int を sqlc の int16（purchase_statuses.code の SMALLINT 列）へ変換します。
-func toInt16(v int) int16 {
-	//nolint:gosec // G115: 値は purchase_statuses.code（SMALLINT）由来で範囲に収まります
-	return int16(v)
+// mustToInt16 は、ドメイン定数由来の int を sqlc の int16（purchase_statuses.code の SMALLINT 列）へ変換します。
+// 呼び出し側がコンパイル時に確定した定数だけを渡すことを前提とし、範囲外は前提の破壊として panic します。
+func mustToInt16(v int) int16 {
+	code, err := safecast.IntToInt16(v)
+	if err != nil {
+		panic(err)
+	}
+	return code
 }
 
 // toPurchaseDetails は、明細行を購入明細の値オブジェクトへ変換します。単価は価格スケール（ドル decimal）です。
@@ -290,7 +311,7 @@ func (r *repository) ExistsInProgressByUserID(ctx context.Context, userID uuid.U
 	terminalCodes := purchase.TerminalStatusCodes()
 	codes := make([]int16, len(terminalCodes))
 	for i, c := range terminalCodes {
-		codes[i] = toInt16(c)
+		codes[i] = mustToInt16(c)
 	}
 
 	db := gen.New(driver.New(ctx, r.db))

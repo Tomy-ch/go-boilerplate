@@ -98,23 +98,3 @@ func Test_server_PostProducts(t *testing.T) {
 		})
 	})
 }
-
-func Test_int32PtrToIntPtr(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("nilの場合はnilを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Nil(t, int32PtrToIntPtr(nil))
-		})
-
-		t.Run("非nilの場合は値を保持したintポインタを返す", func(t *testing.T) {
-			t.Parallel()
-			got := int32PtrToIntPtr(ptr.To(int32(42)))
-			require.NotNil(t, got)
-			assert.Equal(t, 42, *got)
-		})
-	})
-}

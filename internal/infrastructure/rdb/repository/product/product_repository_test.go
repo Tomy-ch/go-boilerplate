@@ -2,6 +2,7 @@ package product
 
 import (
 	"context"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -332,27 +334,6 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 				require.ErrorIs(t, err, apperror.ErrInternal)
 				require.NotErrorIs(t, err, money.ErrNegativePrice)
 			})
-		})
-	})
-}
-
-func Test_int32PtrToIntPtr(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("nilの場合はnilを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Nil(t, int32PtrToIntPtr(nil))
-		})
-
-		t.Run("非nilの場合は値を保持したintポインタを返す", func(t *testing.T) {
-			t.Parallel()
-			v := int32(7)
-			got := int32PtrToIntPtr(&v)
-			require.NotNil(t, got)
-			assert.Equal(t, 7, *got)
 		})
 	})
 }
@@ -856,7 +837,39 @@ func Test_repository_Update(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			require.NotErrorIs(t, err, domainproduct.ErrVersionConflict)
 		})
+
+		t.Run("versionがINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructWithVersion(t, "update_version_overflow_id", math.MaxInt32+1)
+
+			version, err := repo.Update(context.Background(), entity)
+			assert.Equal(t, 0, version)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 	})
+}
+
+// reconstructWithVersion は、指定バージョンで再構築した最小構成の商品エンティティを返します。
+func reconstructWithVersion(t *testing.T, salt string, version int) *domainproduct.Product {
+	t.Helper()
+
+	statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
+	require.NoError(t, err)
+	categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
+	require.NoError(t, err)
+	price, err := money.NewPrice(decimal.FromInt(100))
+	require.NoError(t, err)
+
+	entity, err := domainproduct.Reconstruct(uuid.NewTestFromSalt(t, salt), domainproduct.Attributes{
+		Name:     "バージョン過大商品",
+		Price:    price,
+		Quantity: 1,
+		Status:   statusRef,
+		Category: categoryRef,
+	}, version)
+	require.NoError(t, err)
+	return entity
 }
 
 func Test_repository_LockByID(t *testing.T) {
@@ -1063,6 +1076,16 @@ func Test_repository_UpdateStock(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			require.NotErrorIs(t, err, domainproduct.ErrVersionConflict)
 		})
+
+		t.Run("versionがINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructWithVersion(t, "update_stock_version_overflow_id", math.MaxInt32+1)
+
+			version, err := repo.UpdateStock(context.Background(), entity)
+			assert.Equal(t, 0, version)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 	})
 }
 
@@ -1159,26 +1182,6 @@ func Test_repository_UpdateStock_concurrentRowLock(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 12, got.Quantity(), "両 tx の増減が失われず合成される")
 	assert.Equal(t, 3, got.Version(), "在庫更新のたびにバージョンが進む")
-}
-
-func Test_intPtrToInt32Ptr(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("nilの場合はnilを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Nil(t, intPtrToInt32Ptr(nil))
-		})
-
-		t.Run("非nilの場合は値を保持したint32ポインタを返す", func(t *testing.T) {
-			t.Parallel()
-			got := intPtrToInt32Ptr(ptr.To(42))
-			require.NotNil(t, got)
-			assert.Equal(t, int32(42), *got)
-		})
-	})
 }
 
 func Test_rowsToProducts(t *testing.T) {

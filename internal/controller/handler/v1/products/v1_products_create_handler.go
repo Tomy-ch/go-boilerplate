@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/products/gen"
 	productuc "go-boilerplate/internal/usecase/product"
+	"go-boilerplate/pkg/ptr"
 )
 
 // PostProducts は、admin が商品を作成し、作成した商品を返します。認証必須です。
@@ -25,7 +26,7 @@ func (s *server) PostProducts(ctx context.Context, request gen.PostProductsReque
 		Description:           request.Body.Description,
 		Price:                 request.Body.Price,
 		Quantity:              int(request.Body.Quantity),
-		StockWarningThreshold: int32PtrToIntPtr(request.Body.StockWarningThreshold),
+		StockWarningThreshold: ptr.Map(request.Body.StockWarningThreshold, func(v int32) int { return int(v) }),
 		CategoryID:            conv.UUID(request.Body.CategoryId),
 		StatusID:              conv.UUID(request.Body.StatusId),
 		PublishedAt:           request.Body.PublishedAt,
@@ -41,13 +42,4 @@ func (s *server) PostProducts(ctx context.Context, request gen.PostProductsReque
 	}
 
 	return gen.PostProducts201JSONResponse(res), nil
-}
-
-// int32PtrToIntPtr は、リクエストの *int32 をユースケース DTO の *int へ変換します（nil はそのまま nil）。
-func int32PtrToIntPtr(v *int32) *int {
-	if v == nil {
-		return nil
-	}
-	i := int(*v)
-	return &i
 }

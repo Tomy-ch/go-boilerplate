@@ -10,6 +10,8 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -149,12 +151,20 @@ func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, 
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
+	quantity, err := safecast.IntToInt32(p.Quantity())
+	if err != nil {
+		return 0, xerrors.Wrap(err, "invalid product quantity")
+	}
+	currentVersion, err := safecast.IntToInt32(p.Version())
+	if err != nil {
+		return 0, xerrors.Wrap(err, "invalid product version")
+	}
+
 	db := gen.New(driver.New(ctx, r.db))
 	lockVersion, err := db.UpdateProductStock(ctx, &gen.UpdateProductStockParams{
-		Quantity: int32(p.Quantity()), //nolint:gosec // G115: quantity は int32 の DB 列に収まる範囲で検証済み
-		ID:       p.ID(),
-		//nolint:gosec // G115: version は int32 の DB 列由来であり範囲に収まります
-		CurrentVersion: int32(p.Version()),
+		Quantity:       quantity,
+		ID:             p.ID(),
+		CurrentVersion: currentVersion,
 	})
 	if err != nil {
 		// 対象行なしは、取得後に他トランザクションが更新しバージョンが進んだことを意味します
@@ -175,14 +185,23 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
+	quantity, err := safecast.IntToInt32(p.Quantity())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid product quantity")
+	}
+	stockWarningThreshold, err := safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid product stockWarningThreshold")
+	}
+
 	db := gen.New(driver.New(ctx, r.db))
-	err := db.CreateProduct(ctx, &gen.CreateProductParams{
+	err = db.CreateProduct(ctx, &gen.CreateProductParams{
 		ID:                    p.ID(),
 		Name:                  p.Name(),
 		Description:           p.Description(),
 		Price:                 p.Price().Decimal(),
-		Quantity:              int32(p.Quantity()), //nolint:gosec // G115: quantity は int32 の DB 列に収まる範囲で検証済み
-		StockWarningThreshold: intPtrToInt32Ptr(p.StockWarningThreshold()),
+		Quantity:              quantity,
+		StockWarningThreshold: stockWarningThreshold,
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
@@ -199,20 +218,32 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
+	quantity, err := safecast.IntToInt32(p.Quantity())
+	if err != nil {
+		return 0, xerrors.Wrap(err, "invalid product quantity")
+	}
+	stockWarningThreshold, err := safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())
+	if err != nil {
+		return 0, xerrors.Wrap(err, "invalid product stockWarningThreshold")
+	}
+	currentVersion, err := safecast.IntToInt32(p.Version())
+	if err != nil {
+		return 0, xerrors.Wrap(err, "invalid product version")
+	}
+
 	db := gen.New(driver.New(ctx, r.db))
 	lockVersion, err := db.UpdateProduct(ctx, &gen.UpdateProductParams{
 		Name:                  p.Name(),
 		Description:           p.Description(),
 		Price:                 p.Price().Decimal(),
-		Quantity:              int32(p.Quantity()), //nolint:gosec // G115: quantity は int32 の DB 列に収まる範囲で検証済み
-		StockWarningThreshold: intPtrToInt32Ptr(p.StockWarningThreshold()),
+		Quantity:              quantity,
+		StockWarningThreshold: stockWarningThreshold,
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
 		ImagePath:             p.ImagePath(),
 		ID:                    p.ID(),
-		//nolint:gosec // G115: version は int32 の DB 列由来であり範囲に収まります
-		CurrentVersion: int32(p.Version()),
+		CurrentVersion:        currentVersion,
 	})
 	if err != nil {
 		// 対象行なしは、読み込み後に他トランザクションが更新しバージョンが進んだことを意味します
@@ -270,16 +301,6 @@ func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []strin
 	return existing, nil
 }
 
-// intPtrToInt32Ptr は、ドメインの *int を sqlc の *int32 へ変換します（nil はそのまま nil）。
-func intPtrToInt32Ptr(v *int) *int32 {
-	if v == nil {
-		return nil
-	}
-	//nolint:gosec // G115: stockWarningThreshold は int32 の DB 列に収まる範囲で検証済み
-	i := int32(*v)
-	return &i
-}
-
 // rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）をドメインエンティティへ変換します。
 // 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToProduct(row productRow) (*product.Product, error) {
@@ -301,7 +322,7 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		Description:           row.p.Description,
 		Price:                 price,
 		Quantity:              int(row.p.Quantity),
-		StockWarningThreshold: int32PtrToIntPtr(row.p.StockWarningThreshold),
+		StockWarningThreshold: ptr.Map(row.p.StockWarningThreshold, func(v int32) int { return int(v) }),
 		Status:                status,
 		Category:              category,
 		PublishedAt:           row.p.PublishedAt,
@@ -324,13 +345,4 @@ func rowsToProducts[T any](rows []T, extract func(T) productRow) (product.Produc
 		products[i] = p
 	}
 	return products, nil
-}
-
-// int32PtrToIntPtr は、sqlc の *int32 をドメインの *int へ変換します（nil はそのまま nil）。
-func int32PtrToIntPtr(v *int32) *int {
-	if v == nil {
-		return nil
-	}
-	i := int(*v)
-	return &i
 }
