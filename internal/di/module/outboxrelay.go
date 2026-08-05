@@ -10,6 +10,8 @@ import (
 	relayhook "go-boilerplate/internal/di/outboxrelay/hook"
 	"go-boilerplate/internal/observability"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
+	"go-boilerplate/pkg/safecast"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -43,11 +45,15 @@ func OutboxRelayModule() fx.Option {
 // provideRelaySettings は、OutboxConfig から relay engine の設定を生成します。
 // BatchSize / PollInterval / ErrorBackoff は 0 以下だとホットループ（スピン / Sleep 即 return）を
 // 招くため、それぞれ既定値へ clamp します。
-func provideRelaySettings(cfg *config.OutboxConfig) outboxengine.Settings {
+// BatchSize が engine の int32 に収まらないときは、既定値へ丸めて誤設定を隠すのではなく起動を失敗させます。
+func provideRelaySettings(cfg *config.OutboxConfig) (outboxengine.Settings, error) {
 	batchSize := outboxuc.DefaultBatchSize
 	if cfg.BatchSize() > 0 {
-		//nolint:gosec // BatchSize は設定由来の小さな正整数であり int32 に収まる
-		batchSize = int32(cfg.BatchSize())
+		v, err := safecast.IntToInt32(cfg.BatchSize())
+		if err != nil {
+			return outboxengine.Settings{}, xerrors.Wrap(err, "outbox relay batch size is out of range")
+		}
+		batchSize = v
 	}
 
 	pollInterval := defaultRelayPollInterval
@@ -64,5 +70,5 @@ func provideRelaySettings(cfg *config.OutboxConfig) outboxengine.Settings {
 		BatchSize:    batchSize,
 		PollInterval: pollInterval,
 		ErrorBackoff: errorBackoff,
-	}
+	}, nil
 }
