@@ -310,9 +310,19 @@ Surface a drift as an error rather than filtering it away. Dropping the row sile
 at the exact moment it becomes observable, and the read then reports a result that no longer matches
 the definition it claims to apply.
 
-This does not reach a QueryService read, which returns a projection with no entity to check against.
-That path's criterion is held by review alone, and deliberately so: verifying it would mean
-reconstructing the aggregate the projection exists to avoid.
+**What limits this check is not the shape of the result but the shape of the criterion.** A criterion
+that says something about the rows that come back can be verified: run the domain predicate over the
+result and the drift shows up. A criterion that removes rows cannot, because the rows it removed are
+not in the result — absence is not observable, and establishing it would mean running the query again
+without the filter, which is the work the read was optimised to avoid.
+
+So a projection is not automatically exempt. When a QueryService returns rows the criterion is about,
+carry the fields the predicate needs and check them, even though no aggregate is reconstructed; the
+definition then still lives in the domain, and infrastructure only executes it. Give the domain a
+predicate over the value, alongside the one on the entity, so both paths share one definition rather
+than growing a second copy in the query layer. Reserve "held by review alone" for criteria that
+subtract — exclusions and the aggregates computed over them — and say so where the query is written,
+since that is the only place a reader can see what was left out.
 
 ## Role in this repository
 

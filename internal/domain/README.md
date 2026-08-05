@@ -228,12 +228,44 @@ requires belongs on the Repository's row-to-entity conversion as well as on the 
 `Reconstruct(...)` runs the same invariants as `New(...)`. There is no relaxed path for data that is
 already stored.
 
+**An aggregate is constructed whole, children included.** One call produces the root and the parts it
+owns, and that call is where the invariants are checked — including the ones no part can judge alone,
+such as uniqueness across siblings or a total that has to agree with the lines it sums. A child's own
+constructor assembles a part; it is not the gate. Giving it one would split a single rule across two
+places and leave the cross-child half with nowhere to live. `Reconstruct(...)` is bound by this too:
+the children arrive already assembled from storage, so the root is the only point at which the set
+can still be rejected.
+
 > **Departure from Evans.** Evans warns that reconstituting an object from storage is not the same
 > problem as creating one: the data already exists, so a violated invariant may call for a repair
 > strategy rather than a flat refusal. This model always fails hard — a row that breaks an invariant
 > surfaces as an error at load time. A stored violation is a defect to be found, and repairing it
 > silently would hide that defect at the exact moment it becomes observable. The cost is accepted:
 > such a row blocks reads of that aggregate until it is corrected.
+
+### The constructor is the Factory
+
+`New(...)` and `Reconstruct(...)` are this model's Factory, and there is no separate Factory type.
+A Factory exists to take the knowledge of how to assemble a valid whole away from the client and give
+it to something that owns it; a constructor in the aggregate's own package does that already. The
+client supplies values, the constructor decides what counts as valid, and a half-built instance is
+never observable. Reconstitution's Factory is the Repository — it reads the row and hands it to
+`Reconstruct(...)`, which is why no outer layer assembles an aggregate field by field.
+
+**A Factory type appears when construction acquires configuration** — something fixed across
+creations, such as a numbering scheme or a rule that varies by tenant. The type holds that
+configuration and its method takes the per-creation data. Data that changes every call is an argument,
+not a field; when nothing is left to hold, the type has no reason to exist and `New(...)` is already
+the whole pattern.
+
+**Construction takes values, never injected collaborators.** Do not give the domain a generator or a
+policy interface to build with. A generator makes the domain perform an effect, so the same inputs
+stop producing the same aggregate. A policy interface is worse: it moves the very rule the constructor
+exists to state back outside the domain and leaves only its name behind — the criterion is then
+authored where it cannot be seen (see § Query and Aggregate for the same failure in a query path).
+Outer layers run the effects — identifiers, clocks — and pass in the results, exactly as behavior
+methods already take `now`. If a choice must be configurable, pass the choice as a domain value and
+keep the branching in the domain.
 
 ### Access via getter
 

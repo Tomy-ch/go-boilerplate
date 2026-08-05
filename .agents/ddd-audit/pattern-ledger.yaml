@@ -25,7 +25,14 @@
 #                                      exclusion is declared. Awaiting a human decision:
 #                                      adopt, or record a deliberate exclusion ADR.
 #                      rejected    — deliberately not adopted, with a declared reason
-#   verdict            the last audit's three-valued result: 差異なし | 差異あり | 逸脱宣言あり
+#   verdict            the last audit's three-valued result:
+#                      差異なし | 差異あり | 逸脱宣言あり(スコープ外).
+#                      Read it paired with `status`; alone it under-determines the entry.
+#                      差異あり in particular covers two situations a reader must not
+#                      conflate: an interpretation exists but diverges from Evans, versus
+#                      no interpretation exists at all. The first is a position somebody
+#                      took, the second is a blank nobody has filled — different evidence,
+#                      different next move. `status` is what separates them.
 #   gap                one line naming the difference from Evans; empty when 差異なし.
 #                      Kept so the next run starts from what was already established
 #                      instead of re-deriving it.
@@ -50,6 +57,31 @@
 #                      "is this entry still current?" once more than one commit lands in a
 #                      day — every corpus change and the audit itself carry the same date.
 #                      This field is the only thing that makes drift computable.
+#
+# Reading `status` × `verdict` — the five pairs that occur, and what each one asks for:
+#
+#   interpreted   × 差異なし                 layer 2 interprets the pattern and the
+#                                            interpretation matches Evans. Nothing open.
+#   interpreted   × 逸脱宣言あり(スコープ外)  interpreted, diverges, and the divergence is
+#                                            declared with its reason. Settled by a
+#                                            decision on record; nothing open.
+#   rejected      × 逸脱宣言あり(スコープ外)  deliberately not adopted, reason declared.
+#                                            Settled the same way.
+#   interpreted   × 差異あり                 an interpretation exists but diverges from
+#                                            Evans, and the divergence is NOT declared.
+#                                            Open: either declare it or close it — which
+#                                            one is a human's call, not the audit's.
+#   uninterpreted × 差異あり                 no interpretation exists. Nothing to declare
+#                                            and nothing to close; the pattern is simply
+#                                            unaddressed, and therefore unwatched.
+#
+#   The last two share a verdict and are not the same finding. Reporting them under one
+#   heading hides the blanks behind the deliberate divergences, which is the failure this
+#   pairing exists to prevent — so the audit report groups them separately.
+#
+#   Pairs outside this list do not occur: `unexamined` / `examining` carry no verdict yet,
+#   and rejecting a pattern is itself a divergence, so `rejected` × 差異なし contradicts
+#   itself.
 #
 # Drift since the last audit (run per pattern, or once with the widest set):
 #
