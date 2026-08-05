@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/domain/service/membership"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
@@ -580,20 +581,21 @@ func (u *usecase) DeliverPurchase(
 	return toDeliverPurchaseView(detail), nil
 }
 
-// ensurePurchaserActive は、購入者が在籍していることを共有ロック付きで確認します。
-// 退会（排他ロック）と直列化されるため、確認を通った購入者は tx の終了まで退会できません。
-// 退会済み・不存在は、主体の状態と操作の衝突として ErrConflict を返します
+// ensurePurchaserActive は、購入者を共有ロック付きで読み出し、購入してよい状態かの判定を
+// ドメインサービスへ委ねます。退会（排他ロック）と直列化されるため、確認を通った購入者は
+// tx の終了まで退会できません。
+// 不存在は、主体の状態と操作の衝突として退会済みと同じく ErrConflict へ畳みます
 // （退会が進行中購入を ErrConflict で拒む鏡像。購入対象の不存在ではないため NotFound へは畳みません）。
 // それ以外のエラーは、障害を退会済みと区別できなくしないためそのまま返します。
 func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) error {
-	err := u.userLock.LockActiveShareByID(ctx, userID)
-	if err == nil {
-		return nil
+	purchaser, err := u.userLock.LockShareByID(ctx, userID)
+	if err != nil {
+		if xerrors.Is(err, apperror.ErrNotFound) {
+			return membership.ErrPurchaserWithdrawn
+		}
+		return err
 	}
-	if xerrors.Is(err, apperror.ErrNotFound) {
-		return xerrors.Wrap(apperror.ErrConflict, "purchaser is withdrawn")
-	}
-	return err
+	return membership.EnsurePurchasable(purchaser)
 }
 
 // toPurchaseView は、購入集約を出力 DTO へ変換します。

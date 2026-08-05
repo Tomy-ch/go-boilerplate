@@ -82,7 +82,7 @@ func Test_lockRepository_LockByID(t *testing.T) {
 	})
 }
 
-func Test_lockRepository_LockActiveShareByID(t *testing.T) {
+func Test_lockRepository_LockShareByID(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -99,10 +99,24 @@ func Test_lockRepository_LockActiveShareByID(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("未削除のユーザーの在籍を確認できる", func(t *testing.T) {
+		t.Run("未削除のユーザーをロックして取得できる", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				require.NoError(t, repo.LockActiveShareByID(ctx, activeID))
+				got, err := repo.LockShareByID(ctx, activeID)
+				require.NoError(t, err)
+				assert.Equal(t, activeID, got.ID())
+				assert.True(t, got.IsActive())
+			})
+		})
+
+		// 在籍しているかの判定はドメインの責務なので、退会済みでも行はそのまま返す。
+		t.Run("論理削除済みのユーザーも取得できる", func(t *testing.T) {
+			t.Parallel()
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := repo.LockShareByID(ctx, deletedID)
+				require.NoError(t, err)
+				assert.Equal(t, deletedID, got.ID())
+				assert.False(t, got.IsActive())
 			})
 		})
 	})
@@ -110,17 +124,10 @@ func Test_lockRepository_LockActiveShareByID(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("論理削除済みのユーザーの場合_NotFound", func(t *testing.T) {
-			t.Parallel()
-			txm.WithinTx(func(ctx context.Context) {
-				require.ErrorIs(t, repo.LockActiveShareByID(ctx, deletedID), apperror.ErrNotFound)
-			})
-		})
-
 		t.Run("存在しないIDの場合_NotFound", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				err := repo.LockActiveShareByID(ctx, uuidtestkit.NewTestFromSalt(t, "share-missing-user"))
+				_, err := repo.LockShareByID(ctx, uuidtestkit.NewTestFromSalt(t, "share-missing-user"))
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
 		})

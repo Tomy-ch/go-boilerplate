@@ -95,18 +95,6 @@ INSERT INTO users (
     sqlc.arg('updated_at')
 );
 
--- === source: database/dml/repository/user/lock_active_user_share_by_id.sql ===
--- name: LockActiveUserShareByID :one
--- ID の未削除ユーザーの存在を、共有ロック（FOR SHARE）を取りながら確認する。
--- 共有ロック同士は両立するため同一ユーザーの並行購入は直列化されず、退会が取る FOR UPDATE とだけ
--- 衝突する。これにより「退会の判定通過 → 購入の成立 → 退会の確定」の順序が成立しなくなる。
--- 論理削除済み・不存在はいずれも 0 行（NotFound）。
-SELECT u.id
-FROM users AS u
-WHERE u.id = sqlc.arg('user_id_param')
-    AND u.deleted_at IS NULL
-FOR SHARE;
-
 -- === source: database/dml/repository/user/lock_user_by_id.sql ===
 -- name: LockUserByID :one
 -- ID から未削除のユーザーを 1 件、悲観ロック（FOR UPDATE）して取得する。
@@ -117,6 +105,19 @@ FROM users AS u
 WHERE u.id = sqlc.arg('user_id_param')
     AND u.deleted_at IS NULL
 FOR UPDATE;
+
+-- === source: database/dml/repository/user/lock_user_share_by_id.sql ===
+-- name: LockUserShareByID :one
+-- ID からユーザーを 1 件、悲観ロック（FOR SHARE）して取得する。
+-- ロックは機構であり、取得した状態が在籍かどうかの判定はドメイン（User.IsActive）が行うため、
+-- ここでは退会済みを除外しない。
+-- 共有ロック同士は両立するため同一ユーザーの並行取得は直列化されず、退会が取る FOR UPDATE とだけ
+-- 衝突する。これにより「退会の判定通過 → 購入の成立 → 退会の確定」の順序が成立しなくなる。
+-- 不存在は 0 行（NotFound）。
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.id = sqlc.arg('user_id_param')
+FOR SHARE;
 
 -- === source: database/dml/repository/user/select_purge_candidate_users.sql ===
 -- name: ListPurgeCandidateUserIDsFirst :many

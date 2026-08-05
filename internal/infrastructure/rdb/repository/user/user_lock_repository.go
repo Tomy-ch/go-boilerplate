@@ -42,16 +42,17 @@ func (r *lockRepository) LockByID(ctx context.Context, id uuid.UUID) (*user.User
 	return rowToUser(row.Users)
 }
 
-// LockActiveShareByID は、未削除ユーザーの在籍を共有ロックを取りながら確認します。
-// 論理削除済み・不存在はいずれも 0 行となり NotFound に正規化したエラーを返します。
-func (r *lockRepository) LockActiveShareByID(ctx context.Context, id uuid.UUID) error {
+// LockShareByID は、単一ユーザーを共有ロック（FOR SHARE）して取得します。退会済みで除外しないため、
+// 在籍していないユーザーもそのまま返します。不存在は 0 行となり NotFound に正規化したエラーを返します。
+func (r *lockRepository) LockShareByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, r.db))
-	if _, err := db.LockActiveUserShareByID(ctx, id); err != nil {
-		return pgerror.NormalizeError(err)
+	row, err := db.LockUserShareByID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
 	}
 
-	return nil
+	return rowToUser(row.Users)
 }

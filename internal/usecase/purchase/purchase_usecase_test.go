@@ -12,6 +12,8 @@ import (
 	mock_product "go-boilerplate/internal/domain/product/mock"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
+	"go-boilerplate/internal/domain/service/membership"
+	domainuser "go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
@@ -34,6 +36,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// purchaserBaseTime は、購入者ユーザーの作成・更新日時の基準です。
+var purchaserBaseTime = time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)
+
 // mustPrice は、テスト用に十進文字列（ドル）から非負の money.Price を構築します。
 //
 //nolint:unparam // テスト補助ヘルパー。現行の呼び出しは同一値だが用途は可変
@@ -42,6 +47,35 @@ func mustPrice(t *testing.T, s string) money.Price {
 	p, err := money.NewPrice(decimaltestkit.MustParse(t, s))
 	require.NoError(t, err)
 	return p
+}
+
+// activePurchaser は、在籍している購入者のユーザーエンティティを生成するテストヘルパーです。
+func activePurchaser(t *testing.T, id uuid.UUID) *domainuser.User {
+	t.Helper()
+	u, err := domainuser.New(id, domainuser.Attributes{
+		Profile: domainuser.Profile{
+			FirstName:    "John",
+			LastName:     "Doe",
+			Email:        "john.doe@example.com",
+			Phone:        "1234567890",
+			PrefectureID: uuidtestkit.NewTestFromSalt(t, "purchaser_prefecture"),
+			City:         "Shibuya",
+			Street:       "1-2-3",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: purchaserBaseTime,
+		UpdatedAt: purchaserBaseTime,
+	})
+	require.NoError(t, err)
+	return u
+}
+
+// withdrawnPurchaser は、退会済みの購入者のユーザーエンティティを生成するテストヘルパーです。
+func withdrawnPurchaser(t *testing.T, id uuid.UUID) *domainuser.User {
+	t.Helper()
+	u := activePurchaser(t, id)
+	require.NoError(t, u.MarkAsDeleted(purchaserBaseTime.Add(time.Hour)))
+	return u
 }
 
 // lockedProducts は、productRepo.LockByIDs が返す悲観ロック済みの商品群を生成するテストヘルパーです。
@@ -138,7 +172,10 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 	// activeUserLock は、購入者が在籍している（在籍ガードを通過する）ユーザー LockRepository モックを返します。
 	activeUserLock := func(ctrl *gomock.Controller) *mock_user.MockLockRepository {
 		r := mock_user.NewMockLockRepository(ctrl)
-		r.EXPECT().LockActiveShareByID(gomock.Any(), gomock.Any()).Return(nil)
+		r.EXPECT().LockShareByID(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, id uuid.UUID) (*domainuser.User, error) {
+				return activePurchaser(t, id), nil
+			})
 		return r
 	}
 	// newUsecase は、指定 mock を注入した usecase を生成するローカルヘルパーです。
@@ -213,7 +250,8 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			userLock := mock_user.NewMockLockRepository(ctrl)
-			userLock.EXPECT().LockActiveShareByID(gomock.Any(), validParams.UserID).Return(apperror.ErrNotFound)
+			userLock.EXPECT().LockShareByID(gomock.Any(), validParams.UserID).
+				Return(withdrawnPurchaser(t, validParams.UserID), nil)
 
 			// 在庫ロック・書き込み・emit・再検証に EXPECT を張らないことで未呼び出しを担保する。
 			u := newUsecase(
@@ -402,7 +440,7 @@ func Test_usecase_ensurePurchaserActive(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			userLock := mock_user.NewMockLockRepository(ctrl)
-			userLock.EXPECT().LockActiveShareByID(gomock.Any(), userID).Return(nil)
+			userLock.EXPECT().LockShareByID(gomock.Any(), userID).Return(activePurchaser(t, userID), nil)
 
 			require.NoError(t, newGuard(t, userLock).ensurePurchaserActive(ctx, userID))
 		})
@@ -411,12 +449,25 @@ func Test_usecase_ensurePurchaserActive(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("退会済みのNotFoundはErrConflictへ写像されNotFoundへは畳まれない", func(t *testing.T) {
+		t.Run("退会済みの購入者はErrConflictで拒否される", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			userLock := mock_user.NewMockLockRepository(ctrl)
-			userLock.EXPECT().LockActiveShareByID(gomock.Any(), userID).Return(apperror.ErrNotFound)
+			userLock.EXPECT().LockShareByID(gomock.Any(), userID).
+				Return(withdrawnPurchaser(t, userID), nil)
+
+			err := newGuard(t, userLock).ensurePurchaserActive(ctx, userID)
+			require.ErrorIs(t, err, membership.ErrPurchaserWithdrawn)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+
+		t.Run("購入者が存在しない場合のNotFoundはErrConflictへ写像されNotFoundへは畳まれない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			userLock.EXPECT().LockShareByID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
 
 			err := newGuard(t, userLock).ensurePurchaserActive(ctx, userID)
 			require.ErrorIs(t, err, apperror.ErrConflict)
@@ -428,7 +479,7 @@ func Test_usecase_ensurePurchaserActive(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			userLock := mock_user.NewMockLockRepository(ctrl)
-			userLock.EXPECT().LockActiveShareByID(gomock.Any(), userID).Return(apperror.ErrUnavailable)
+			userLock.EXPECT().LockShareByID(gomock.Any(), userID).Return(nil, apperror.ErrUnavailable)
 
 			err := newGuard(t, userLock).ensurePurchaserActive(ctx, userID)
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
