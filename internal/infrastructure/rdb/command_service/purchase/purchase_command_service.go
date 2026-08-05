@@ -1,4 +1,4 @@
-// Package purchase は、購入 CommandService（purchase.CommandService）の RDB 実装を提供します。
+// Package purchase は、購入 CommandService（command.CommandService）の RDB 実装を提供します。
 // 在庫減算・購入・明細の書き込みを、渡された ctx のトランザクション内で原子的に実行します。
 package purchase
 
@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/pkg/uuid"
 )
 
@@ -23,33 +24,11 @@ type commandService struct {
 func New(
 	db driver.DatabaseDriver,
 	tf observability.TracerFactory,
-) purchase.CommandService {
+) command.CommandService {
 	return &commandService{
 		db:     db,
 		tracer: tf.Infra(),
 	}
-}
-
-// LockProducts は、指定商品を ID 昇順に悲観ロック（FOR UPDATE）し、価格・在庫を返します。
-func (c *commandService) LockProducts(ctx context.Context, productIDs []uuid.UUID) ([]purchase.LockedProduct, error) {
-	ctx, endSpan := c.tracer.Start(ctx)
-	defer endSpan()
-
-	db := gen.New(driver.New(ctx, c.db))
-	rows, err := db.LockProductsForUpdate(ctx, productIDs)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	locked := make([]purchase.LockedProduct, len(rows))
-	for i, row := range rows {
-		price, perr := money.NewPrice(row.Price)
-		if perr != nil {
-			return nil, pgerror.NormalizeReconstructError(perr)
-		}
-		locked[i] = purchase.NewLockedProduct(row.ID, price, int(row.Quantity))
-	}
-	return locked, nil
 }
 
 // CreatePurchase は、在庫減算・purchases INSERT・purchase_details INSERT を渡された tx 内で原子的に実行します。

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
@@ -16,6 +17,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/outbox"
+	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
 	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -179,21 +181,23 @@ type Usecase interface {
 
 // usecase は、Usecase の実装です。
 type usecase struct {
-	tracer     observability.LayerTracer
-	txm        tx.Manager
-	cmd        purchase.CommandService
-	repo       purchase.Repository
-	detailQS   query.PurchaseDetailQueryService
-	emit       outbox.EmitUsecase
-	clock      clock.Clock
-	authorizer authz.Authorizer
+	tracer      observability.LayerTracer
+	txm         tx.Manager
+	cmd         command.CommandService
+	repo        purchase.Repository
+	productRepo product.Repository
+	detailQS    query.PurchaseDetailQueryService
+	emit        outbox.EmitUsecase
+	clock       clock.Clock
+	authorizer  authz.Authorizer
 }
 
 // New は、購入ユースケースを生成します。
 func New(
 	txm tx.Manager,
-	cmd purchase.CommandService,
+	cmd command.CommandService,
 	repo purchase.Repository,
+	productRepo product.Repository,
 	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,
 	clock clock.Clock,
@@ -201,14 +205,15 @@ func New(
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
-		tracer:     tf.Usecase(),
-		txm:        txm,
-		cmd:        cmd,
-		repo:       repo,
-		detailQS:   detailQS,
-		emit:       emit,
-		clock:      clock,
-		authorizer: authorizer,
+		tracer:      tf.Usecase(),
+		txm:         txm,
+		cmd:         cmd,
+		repo:        repo,
+		productRepo: productRepo,
+		detailQS:    detailQS,
+		emit:        emit,
+		clock:       clock,
+		authorizer:  authorizer,
 	}
 }
 
@@ -240,9 +245,14 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 	var created *purchase.Purchase
 	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、部分適用を防ぐ。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.cmd.LockProducts(ctx, productIDs)
+		// 在庫ロックは商品集約の読み取りなので、購入の書き込みポートではなく商品 Repository を通す。
+		products, lerr := u.productRepo.LockByIDs(ctx, productIDs)
 		if lerr != nil {
 			return lerr
+		}
+		locked := make([]purchase.LockedProduct, len(products))
+		for i, p := range products {
+			locked[i] = purchase.NewLockedProduct(p.ID(), p.Price(), p.Quantity())
 		}
 
 		entity, nerr := purchase.New(purchaseID, code, params.UserID, inputs, locked)

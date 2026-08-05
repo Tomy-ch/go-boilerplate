@@ -55,83 +55,6 @@ func insertTestProduct(ctx context.Context, t *testing.T, db driver.DBTX, id uui
 	require.NoError(t, err)
 }
 
-func Test_commandService_LockProducts(t *testing.T) {
-	t.Parallel()
-
-	testDB := testkit.NewTestDB(t)
-	lt := observability.NewMockInfraLayerTracer(t)
-	txm := testkit.NewTestTransactionRunner(t)
-	svc := &commandService{tracer: lt, db: testDB}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("指定商品をロックし価格と在庫を返す", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				pid := mustParse(t, "c1000000-0000-4000-8000-000000000001")
-				insertTestProduct(ctx, t, drv, pid, 80000, 20)
-
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
-				require.Len(t, locked, 1)
-				assert.Equal(t, pid, locked[0].ID())
-				assert.Equal(t, "80000", locked[0].Price().String())
-				assert.Equal(t, 20, locked[0].Quantity())
-			})
-		})
-
-		t.Run("サブセント単価をNUMERIC精度を保ったままロックする", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				pid := mustParse(t, "c1000000-0000-4000-8000-0000000000aa")
-				// price=19.995（サブセント）を NUMERIC 列へ直接挿入し、価格スケールの往復を検証する。
-				_, err := drv.Exec(ctx,
-					"INSERT INTO products "+
-						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
-						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,NOW())",
-					pid, "subcent-"+pid.String(), nil, "19.995", 20, nil, seedStatusInStock, seedCategory,
-				)
-				require.NoError(t, err)
-
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
-				require.Len(t, locked, 1)
-				assert.Equal(t, "19.995", locked[0].Price().String())
-			})
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("負値の価格は再構築不能としてErrInternalへ正規化する", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				pid := mustParse(t, "c1000000-0000-4000-8000-0000000000bb")
-				// NUMERIC 列は負値を格納できるが、money.Price は非負不変条件を持つ。
-				// 格納行からの Price 再構築失敗が ErrInternal へ正規化されることを検証する。
-				_, err := drv.Exec(ctx,
-					"INSERT INTO products "+
-						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
-						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,NOW())",
-					pid, "neg-"+pid.String(), nil, "-1", 20, nil, seedStatusInStock, seedCategory,
-				)
-				require.NoError(t, err)
-
-				_, err = svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.ErrorIs(t, err, apperror.ErrInternal)
-			})
-		})
-	})
-}
-
 func Test_commandService_CreatePurchase(t *testing.T) {
 	t.Parallel()
 
@@ -152,8 +75,7 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				pid := mustParse(t, "c2000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
 
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 
 				entity := newPurchase(t, userID, pid, 2, locked)
 				require.NoError(t, svc.CreatePurchase(ctx, entity))
@@ -304,8 +226,7 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				drv := driver.New(ctx, testDB)
 				pid := mustParse(t, "d1000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 				created := newPurchase(t, userID, pid, 2, locked)
 				require.NoError(t, svc.CreatePurchase(ctx, created))
 
@@ -385,8 +306,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				drv := driver.New(ctx, testDB)
 				pid := mustParse(t, "d2000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 				created := newPurchase(t, userID, pid, 2, locked)
 				require.NoError(t, svc.CreatePurchase(ctx, created)) // 在庫 20 → 18
 
@@ -426,8 +346,10 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				pid2 := mustParse(t, "d3000000-0000-4000-8000-000000000002")
 				insertTestProduct(ctx, t, drv, pid1, 80000, 20)
 				insertTestProduct(ctx, t, drv, pid2, 1500, 10)
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid1, pid2})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{
+					domainpurchase.NewLockedProduct(pid1, mustPrice(t, "80000"), 20),
+					domainpurchase.NewLockedProduct(pid2, mustPrice(t, "1500"), 10),
+				}
 
 				id, err := uuid.New()
 				require.NoError(t, err)

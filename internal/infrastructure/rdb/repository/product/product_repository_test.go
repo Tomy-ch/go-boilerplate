@@ -927,6 +927,95 @@ func Test_repository_LockByID(t *testing.T) {
 	})
 }
 
+func Test_repository_LockByIDs(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	lowID := "cccccccc-0000-4000-8001-000000000001"
+	highID := "cccccccc-0000-4000-8001-000000000002"
+	negativeID := "cccccccc-0000-4000-8001-0000000000bb"
+	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("複数IDをまとめてID昇順で取得し非公開の商品も含める", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				// 挿入順を id 降順にし、戻り値が挿入順ではなく id 昇順であることを検証する。
+				insertProduct(ctx, t, drv, highID, probeKeyword+"-LOCKS-PUB", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, lowID, probeKeyword+"-LOCKS-UNPUB", nil, 2999, statusInStock, categoryElectronics, nil)
+
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, highID), mustParse(t, lowID)})
+				require.NoError(t, err)
+				require.Len(t, got, 2)
+				assert.Equal(t, mustParse(t, lowID), got[0].ID())
+				assert.Equal(t, mustParse(t, highID), got[1].ID())
+				assert.Nil(t, got[0].PublishedAt())
+				assert.Equal(t, "在庫あり", got[0].Status().Name())
+				assert.Equal(t, "電子機器", got[0].Category().Name())
+			})
+		})
+
+		t.Run("未存在のIDは結果から除外され件数が引数より少なくなる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				existing := "cccccccc-0000-4000-8001-000000000003"
+				insertProduct(ctx, t, drv, existing, probeKeyword+"-LOCKS-PARTIAL", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+
+				ids := []uuid.UUID{mustParse(t, existing), uuidtestkit.NewTestFromSalt(t, "lock_by_ids_missing")}
+				got, err := repo.LockByIDs(ctx, ids)
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(t, existing), got[0].ID())
+			})
+		})
+
+		t.Run("空のID集合は空の結果を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{})
+				require.NoError(t, err)
+				assert.Empty(t, got)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("負値の価格は再構築不能としてErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				// NUMERIC 列は負値を格納できるが、money.Price は非負不変条件を持つ。
+				_, err := drv.Exec(ctx,
+					"INSERT INTO products "+
+						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9)",
+					negativeID, probeKeyword+"-LOCKS-NEG", nil, "-1", 10, nil, statusInStock, categoryElectronics, base,
+				)
+				require.NoError(t, err)
+
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, negativeID)})
+				assert.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+	})
+}
+
 func Test_repository_UpdateStock(t *testing.T) {
 	t.Parallel()
 

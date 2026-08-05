@@ -175,6 +175,23 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*product.Produ
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
+// LockByIDs は、ListProductsByIDsForUpdate で対象行を ID 昇順に悲観ロック（FOR UPDATE）したうえで取得します。
+// 不存在の ID は結果に現れないため、要素数は ids より少なくなり得ます。
+func (r *repository) LockByIDs(ctx context.Context, ids []uuid.UUID) (product.Products, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	rows, err := db.ListProductsByIDsForUpdate(ctx, ids)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return rowsToProducts(rows, func(row *gen.ListProductsByIDsForUpdateRow) productRow {
+		return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
+	})
+}
+
 // UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。
 func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, error) {
 	ctx, endSpan := r.tracer.Start(ctx)

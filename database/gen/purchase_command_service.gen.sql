@@ -66,19 +66,6 @@ INSERT INTO purchase_details (
     @unit_price
 );
 
--- === source: database/dml/command_service/purchase/lock_products_for_update.sql ===
--- name: LockProductsForUpdate :many
--- 指定商品を ID 昇順に悲観ロック（FOR UPDATE）し、価格・在庫を返す。
--- ロック順序を id 昇順に固定することで複数商品購入同士のデッドロックを構造的に避ける（ADR-0100）。
-SELECT
-    p.id,
-    p.price,
-    p.quantity
-FROM products AS p
-WHERE p.id = ANY(@product_ids::UUID [])
-ORDER BY p.id
-FOR UPDATE;
-
 -- === source: database/dml/command_service/purchase/lock_purchase_for_update.sql ===
 -- name: GetPurchaseByIDForUpdate :one
 -- ID から購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。キャンセルの状態遷移の
