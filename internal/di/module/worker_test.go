@@ -27,7 +27,7 @@ func TestWorkerModule_GraphIsValid(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("worker未登録でも engine とフックが欠落なく結線される", func(t *testing.T) {
+		t.Run("engine とフックが欠落なく結線される", func(t *testing.T) {
 			t.Parallel()
 
 			// 個々の worker の振る舞いは controller 層のテストに任せ、ここでは engine と

@@ -34,6 +34,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 				secCfg     *config.SecurityConfig
 				secCookie  *config.SecureCookieConfig
 				workerCfg  *config.WorkerConfig
+				queueCfg   *config.ConsumerQueueConfig
 				outboxCfg  *config.OutboxConfig
 				loc        *time.Location
 			)
@@ -43,7 +44,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 				// テスト対象: 実装側のモジュール
 				ConfigModule(),
 				fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg, &secCfg,
-					&secCookie, &workerCfg, &outboxCfg, &loc),
+					&secCookie, &workerCfg, &queueCfg, &outboxCfg, &loc),
 				fx.NopLogger,
 			)
 
@@ -61,6 +62,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 			assert.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
 			assert.Equal(t, config.NewSecureCookieConfig(cfg).Domain(), secCookie.Domain())
 			assert.Equal(t, config.NewWorkerConfig(cfg).Concurrency(), workerCfg.Concurrency())
+			assert.Equal(t, config.NewConsumerQueueConfig(cfg).URL(), queueCfg.URL())
 			assert.Equal(t, config.NewOutboxConfig(cfg).Endpoint(), outboxCfg.Endpoint())
 		})
 	})
@@ -86,6 +88,7 @@ func TestConfigModule(t *testing.T) {
 				secCfg     *config.SecurityConfig
 				secCookie  *config.SecureCookieConfig
 				workerCfg  *config.WorkerConfig
+				queueCfg   *config.ConsumerQueueConfig
 				outboxCfg  *config.OutboxConfig
 				authCfg    *config.AuthConfig
 				storageCfg *config.ObjectStorageConfig
@@ -97,7 +100,7 @@ func TestConfigModule(t *testing.T) {
 			require.NoError(t, fx.ValidateApp(
 				ConfigModule(),
 				fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg,
-					&secCfg, &secCookie, &workerCfg, &outboxCfg, &authCfg, &storageCfg, &loc),
+					&secCfg, &secCookie, &workerCfg, &queueCfg, &outboxCfg, &authCfg, &storageCfg, &loc),
 				fx.NopLogger,
 			))
 		})
