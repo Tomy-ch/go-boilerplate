@@ -86,7 +86,7 @@
 # Drift since the last audit (run per pattern, or once with the widest set):
 #
 #   git diff --name-only <last_audited_commit>..HEAD -- \
-#     'docs/adr/*.md' docs/architecture.md docs/rules.md 'docs/design/**/*.md' \
+#     'docs/adr/*.md' docs/architecture.md docs/rules.md 'docs/design/**' \
 #     'internal/**/README.md' 'pkg/**/README.md' 'openapi/*.md'
 #
 # A non-empty result means the corpus moved under the recorded verdicts. Map each changed
@@ -118,7 +118,11 @@ corpus:
   - docs/adr/*.md
   - docs/architecture.md
   - docs/rules.md
-  - docs/design/**/*.md
+  # `docs/design/**`, not `docs/design/**/*.md`. Every file here is flat, and a git pathspec of
+  # the latter form requires at least one intermediate directory, so it matched nothing at all —
+  # this glob was added to make Published Language auditable and silently covered none of it until
+  # 2026-08-06. A glob that matches zero files reads exactly like a glob whose files never change.
+  - docs/design/**
   - internal/**/README.md
   - pkg/**/README.md
   - openapi/*.md
@@ -159,12 +163,16 @@ patterns:
       加えて docs/spec/** は本台帳の corpus 外であり、この判定は「正本の不在」に依拠していて
       「正本を読んだ結果」ではない（corpus ブロックのコメント参照）。この横断語彙の不在は
       value object の二重定義（#910）・kernel の三重定義（#912）として既に 2 度実害化した。
+      2026-08-06 の corpus グロブ修正で docs/design/** が初めて実際に読まれた。各サブシステムの
+      Glossary 節を確認したところ、そこにあるのは機構の用語集であって業務語彙ではなかった。
+      「不在の判定がコーパス除外に依拠している」という留保は、docs/design/** の範囲については
+      「読んだうえでの不在」へ格上げされた。docs/spec/** についてはそのまま残る。
     interpreted_by: []
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
 
   - id: layered-architecture
     name: Layered Architecture
@@ -718,21 +726,43 @@ patterns:
     name: Context Map
     part: 4
     scope: strategic
-    status: uninterpreted
-    verdict: 差異あり
+    status: interpreted
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      Context Map という語は ADR-0034 と internal/domain/lexicon/README.md に一度だけ現れるが、
-      Shared Kernel を不採用とする根拠として上位概念に触れているだけで、Context Map 自体の解釈ではない。
-      境界をまたぐ接触点（外部 IdP / 外部 Web API / オブジェクトストレージ / outbox 送信先 / メッセージキュー）は
-      個別には文書化されているが、それらを Evans の関係パターン語彙（Customer-Supplier / Conformist /
-      Open Host Service 等）で特徴づけて一枚に集約した記述は無い。辺のラベルにあたるもののうち
-      Shared Kernel は不採用が宣言され、Anticorruption Layer は構造的に採用されている。
-    interpreted_by: []
-    deviation_declared: false
-    deviation_note: ""
+      専用の地図が新設され、解釈は成立した。接触点の定義（モデルがシステムの外へ渡ること。外部の相手を
+      持たないポートは含めない）、両方向の列挙、辺ごとの関係ラベル・根拠・相手が動いたときの影響、
+      そして地図が扱わない範囲までを持つ。上流に対する 1 辺は Evans の複合語で特徴づけられている。
+      隣接エントリとも整合し、単一モデルであるという立場に矛盾しない。
+      残る差異は、恒久的な辺の過半が関係を確定していない点。Evans の Context Map の眼目は境界ごとの
+      関係を明示して暗黙の混濁を防ぐことにあるので、これは原義との差異である。ただし宣言済み。
+      地図は冒頭で、下流側の辺で関係を分けるのは上流がこちらの要件を通すかどうかであり、それは
+      テンプレートにおいては採用する側の組織についての事実だから、根拠と未解決の問いを伴う未確定が
+      正しい状態である、と述べている。空欄ではなく項目として記録される。
+      なお最初の版は変換境界が在る辺に Conformist を候補として並べており、Evans の語彙の誤用だった
+      （Conformist は変換層を作らないこと、Anticorruption Layer は作ることで、同じ状況への 2 つの答え
+      であって関係と対処の独立な軸ではない）。検証で指摘され、候補から外して理由を明記済み。
+    interpreted_by:
+      - kind: doc
+        path: docs/design/context-map.md
+        section: "An undecided edge is an entry, not a blank / Edges / The open questions / What this map does not cover"
+      - kind: adr
+        id: "0034"
+        slug: domain-lexicon
+      - kind: adr
+        id: "0004"
+        slug: modular-monolith
+    deviation_declared: true
+    deviation_note: >-
+      Evans の Context Map は境界ごとの関係を明示することで暗黙のモデル混濁を防ぐが、本リポジトリの
+      地図は恒久的な辺の過半を未確定のまま記録する。下流側の辺で関係を分けるのは上流がこちらの要件を
+      通すかどうかという組織的事実であり、テンプレートにおいてそれは採用する側の組織についての事実で、
+      このリポジトリには存在しないため。推測で埋めれば、調べた顔をして調べていない地図が残る。
+      ラベルの無い辺は採用者に判断を促すが、誤って貼られた辺は採用者が問いを見る前に判断を閉じる。
+      未確定の辺は根拠と、決着させるための問いを伴って記録する。宣言は docs/design/context-map.md の
+      「An undecided edge is an entry, not a blank」節。
     enforced_by: []
-    last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
 
   - id: shared-kernel
     name: Shared Kernel
@@ -792,6 +822,9 @@ patterns:
       - kind: readme
         path: internal/infrastructure/webapi/README.md
         section: "Design Policy"
+      - kind: doc
+        path: docs/design/context-map.md
+        section: "Edges / The open questions"
       - kind: adr
         id: "0001"
         slug: avoid-lock-in
@@ -809,8 +842,8 @@ patterns:
       食い違うときにどちらへ寄せるかは未決である。当面はこのモデルの語彙へ寄せ、判断を leaf の変換箇所に
       記録する運用とする。宣言は internal/infrastructure/webapi/README.md の Design Policy 節。
     enforced_by: []
-    last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
 
   - id: published-language
     name: Published Language
@@ -828,6 +861,9 @@ patterns:
       - kind: doc
         path: docs/design/outbox.md
         section: "4. What an integrator implements"
+      - kind: doc
+        path: docs/design/context-map.md
+        section: "Edges / The open questions"
       - kind: adr
         id: "0009"
         slug: openapi-first
@@ -852,5 +888,5 @@ patterns:
       委ねている限りにおいて意図的である。未提供なのは、integrator が定義した後の公開の型。
       宣言は docs/design/outbox.md の第 4 節。
     enforced_by: []
-    last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
