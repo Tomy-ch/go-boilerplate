@@ -1015,6 +1015,38 @@ func TestUser_FullName(t *testing.T) {
 	})
 }
 
+func TestUser_IsActive(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("削除日時を持たないユーザーは在籍しているとみなす", func(t *testing.T) {
+			t.Parallel()
+			u, _ := newValidUser(t)
+
+			assert.True(t, u.IsActive())
+		})
+
+		t.Run("削除日時を持つユーザーは在籍していないとみなす", func(t *testing.T) {
+			t.Parallel()
+			u := newAccessorUser(t)
+
+			assert.False(t, u.IsActive())
+		})
+
+		t.Run("論理削除の直後に在籍していない状態へ転じる", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+			require.True(t, u.IsActive())
+
+			require.NoError(t, u.MarkAsDeleted(base.Add(2*time.Hour)))
+
+			assert.False(t, u.IsActive())
+		})
+	})
+}
+
 // newValidUser は、削除されていない有効なユーザーと基準時刻を返すテストヘルパー。
 func newValidUser(t *testing.T) (*User, time.Time) {
 	t.Helper()
