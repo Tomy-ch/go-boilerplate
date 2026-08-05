@@ -476,11 +476,12 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("論理削除と退会イベントの発行が単一トランザクションで完了する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			u := newActiveUser(t, id, prefID, now)
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
 			var emitted outbox.EmitInput
@@ -498,7 +499,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			uc := &usecase{
 				tracer: lt, txm: singleTx, clock: clock, authorizer: allowAuthorizer(ctrl),
-				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
 			}
 			require.NoError(t, uc.DeleteUser(ctx, authn, id))
 
@@ -513,6 +514,30 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			require.NoError(t, json.Unmarshal(emitted.Payload, &payload))
 			assert.Equal(t, id.String(), payload.UserID)
 			assert.Equal(t, now.Format(time.RFC3339Nano), payload.DeletedAt)
+		})
+
+		t.Run("ユーザー行のロックを進行中購入の判定より前に取る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			gomock.InOrder(
+				userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil),
+				purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, nil),
+			)
+			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: purchaseRepo, emit: emit,
+			}
+			require.NoError(t, uc.DeleteUser(ctx, authn, id))
 		})
 	})
 
@@ -535,18 +560,19 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("進行中の購入が残っている場合_ErrConflict", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			u := newActiveUser(t, id, prefID, now)
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			// 退会を拒否するため論理削除もイベント発行も行わない。
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
 			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(true, nil)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
-				userRepo: userRepo, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
 			}
 			err := uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, apperror.ErrConflict)
@@ -556,18 +582,19 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("進行中の購入の確認でエラー", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			expectedErr := xerrors.New("purchase lookup failed")
 			u := newActiveUser(t, id, prefID, now)
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
 			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, expectedErr)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
-				userRepo: userRepo, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
 			}
 			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
 		})
@@ -589,18 +616,19 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("論理削除の永続化でエラー", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			expectedErr := xerrors.New("update failed")
 			u := newActiveUser(t, id, prefID, now)
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
 				// 永続化に失敗した場合はイベントを発行しない（EXPECT を張らず未呼び出しを担保する）。
-				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
 			}
 			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
 		})
@@ -608,19 +636,20 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("退会イベントの発行でエラー", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			expectedErr := xerrors.New("emit failed")
 			u := newActiveUser(t, id, prefID, now)
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, expectedErr)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
-				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
 			}
 			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
 		})
@@ -636,12 +665,13 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("対象ユーザーが存在しない", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			expectedErr := xerrors.New("not found")
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo, userLock: userLock}
 			err := uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, expectedErr)
 		})
@@ -649,6 +679,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("既に削除済みの場合_ErrAlreadyDeleted", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			deletedUser, err := user.New(id, user.Attributes{
 				Profile: user.Profile{
 					FirstName:    "John",
@@ -669,11 +700,11 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now.Add(time.Hour))
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(deletedUser, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(deletedUser, nil)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
-				userRepo: userRepo, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
 			}
 			err = uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, user.ErrAlreadyDeleted)

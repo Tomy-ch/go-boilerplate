@@ -10,6 +10,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
@@ -202,6 +203,7 @@ type usecase struct {
 	txm        tx.Manager
 	cmd        command.CommandService
 	repo       purchase.Repository
+	userLock   user.LockRepository
 	detailQS   query.PurchaseDetailQueryService
 	emit       outbox.EmitUsecase
 	xr         exchangerate.Usecase
@@ -209,11 +211,20 @@ type usecase struct {
 	authorizer authz.Authorizer
 }
 
+// purchaseDraft は、購入作成のトランザクションへ持ち込む採番済みの入力です。
+type purchaseDraft struct {
+	purchaseID uuid.UUID
+	code       string
+	inputs     []purchase.DetailInput
+	productIDs []uuid.UUID
+}
+
 // New は、購入ユースケースを生成します。
 func New(
 	txm tx.Manager,
 	cmd command.CommandService,
 	repo purchase.Repository,
+	userLock user.LockRepository,
 	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,
 	xr exchangerate.Usecase,
@@ -226,6 +237,7 @@ func New(
 		txm:        txm,
 		cmd:        cmd,
 		repo:       repo,
+		userLock:   userLock,
 		detailQS:   detailQS,
 		emit:       emit,
 		xr:         xr,
@@ -234,40 +246,58 @@ func New(
 	}
 }
 
+// newPurchaseDraft は、購入・購入コード・各明細の ID を採番し、ドメイン入力と商品 ID 列を組み立てます。
+// 採番はトランザクションの外で行うため、リトライされても同じ ID が再利用されることはありません。
+func newPurchaseDraft(details []DetailParam) (*purchaseDraft, error) {
+	purchaseID, err := uuid.New()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to generate purchase id")
+	}
+	codeUUID, err := uuid.New()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to generate purchase code")
+	}
+
+	draft := &purchaseDraft{
+		purchaseID: purchaseID,
+		code:       codeUUID.String(),
+		inputs:     make([]purchase.DetailInput, len(details)),
+		productIDs: make([]uuid.UUID, len(details)),
+	}
+	for i, d := range details {
+		detailID, derr := uuid.New()
+		if derr != nil {
+			return nil, xerrors.Wrap(derr, "failed to generate purchase detail id")
+		}
+		draft.inputs[i] = purchase.DetailInput{ID: detailID, ProductID: d.ProductID, Quantity: d.Quantity}
+		draft.productIDs[i] = d.ProductID
+	}
+	return draft, nil
+}
+
 func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	purchaseID, err := uuid.New()
+	draft, err := newPurchaseDraft(params.Details)
 	if err != nil {
-		return PurchaseView{}, xerrors.Wrap(err, "failed to generate purchase id")
-	}
-	codeUUID, err := uuid.New()
-	if err != nil {
-		return PurchaseView{}, xerrors.Wrap(err, "failed to generate purchase code")
-	}
-	code := codeUUID.String()
-
-	inputs := make([]purchase.DetailInput, len(params.Details))
-	productIDs := make([]uuid.UUID, len(params.Details))
-	for i, d := range params.Details {
-		detailID, derr := uuid.New()
-		if derr != nil {
-			return PurchaseView{}, xerrors.Wrap(derr, "failed to generate purchase detail id")
-		}
-		inputs[i] = purchase.DetailInput{ID: detailID, ProductID: d.ProductID, Quantity: d.Quantity}
-		productIDs[i] = d.ProductID
+		return PurchaseView{}, err
 	}
 
 	var created *purchase.Purchase
 	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、部分適用を防ぐ。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.cmd.LockProducts(ctx, productIDs)
+		// ロックはユーザー行 → 商品行（id 昇順）の順で取り、順序を全 tx で固定してデッドロックを避ける。
+		if uerr := u.ensurePurchaserActive(ctx, params.UserID); uerr != nil {
+			return uerr
+		}
+
+		locked, lerr := u.cmd.LockProducts(ctx, draft.productIDs)
 		if lerr != nil {
 			return lerr
 		}
 
-		entity, nerr := purchase.New(purchaseID, code, params.UserID, inputs, locked)
+		entity, nerr := purchase.New(draft.purchaseID, draft.code, params.UserID, draft.inputs, locked)
 		if nerr != nil {
 			return nerr
 		}
@@ -282,7 +312,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
-			AggregateID:   purchaseID.String(),
+			AggregateID:   draft.purchaseID.String(),
 			EventType:     event.TypeCreated,
 			Payload:       payload,
 		}); eerr != nil {
@@ -290,7 +320,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		}
 
 		// 書き込み後、Repository 経由でドメイン整合を再検証しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
-		reread, rerr := u.repo.FindByID(ctx, purchaseID)
+		reread, rerr := u.repo.FindByID(ctx, draft.purchaseID)
 		if rerr != nil {
 			return rerr
 		}
@@ -545,6 +575,22 @@ func (u *usecase) DeliverPurchase(
 	}
 
 	return toDeliverPurchaseView(detail), nil
+}
+
+// ensurePurchaserActive は、購入者が在籍していることを共有ロック付きで確認します。
+// 退会（排他ロック）と直列化されるため、確認を通った購入者は tx の終了まで退会できません。
+// 退会済み・不存在は、主体の状態と操作の衝突として ErrConflict を返します
+// （退会が進行中購入を ErrConflict で拒む鏡像。購入対象の不存在ではないため NotFound へは畳みません）。
+// それ以外のエラーは、障害を退会済みと区別できなくしないためそのまま返します。
+func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) error {
+	err := u.userLock.LockActiveShareByID(ctx, userID)
+	if err == nil {
+		return nil
+	}
+	if xerrors.Is(err, apperror.ErrNotFound) {
+		return xerrors.Wrap(apperror.ErrConflict, "purchaser is withdrawn")
+	}
+	return err
 }
 
 // referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。

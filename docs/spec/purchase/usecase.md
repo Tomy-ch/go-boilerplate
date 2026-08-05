@@ -68,6 +68,7 @@ output:
 - name: tx.Manager                       # nested で最外 idempotency tx に乗る
 - name: command.CommandService           # LockProducts / CreatePurchase（infra 実装）
 - name: purchase.Repository              # FindByID（書き込み後の再検証・DTO 取得元）
+- name: user.LockRepository              # LockActiveShareByID（購入者の在籍ガード。ADR-0107）
 - name: outbox.EmitUsecase               # purchase.created.v1 の emit（同一 tx）
 - name: exchangerate.Usecase             # referenceAmount の換算消費（#562 成果 / half-up）
 - name: observability.TracerFactory
@@ -82,6 +83,7 @@ output:
   steps:
     - id / code / 各 detail id を UUIDv7 で採番する
     - "txm.Do(nested) 内で:"
+    - "  ⓪ userLock.LockActiveShareByID で購入者の在籍を共有ロック付きで確認する（退会と直列化。ADR-0107）"
     - "  ① cmd.LockProducts(productID 昇順) で在庫をロックし price/quantity を得る"
     - "  ② purchase.New で入力検証・売り越し検証・金額計算・snapshot・未処理ステータスを行う"
     - "  ③ cmd.CreatePurchase で在庫減算 + purchases/purchase_details を書き込む"
@@ -91,8 +93,13 @@ output:
     - PurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
   errors:
     - ErrInsufficientStock → 409（売り越し）
+    - 在籍ガードの NotFound → 409（退会済み。主体の状態と操作の衝突であり、購入対象の不存在ではないため 404 へは畳まない）
+    - 在籍ガードのその他のエラーはそのまま伝播（障害を退会済みと区別できなくしないため 409 へ化けさせない）
     - ErrEmptyDetails / ErrDuplicateProductID / ErrInvalidQuantity / ErrProductNotFound → 422
 ```
+
+ロックはユーザー行 → 商品行（id 昇順）の順で取る。全 tx で順序を固定することでデッドロックを構造的に
+避ける（商品行の順序固定は [ADR-0100]、ユーザー行を先頭に置く根拠は [ADR-0107]）。
 
 ## GET 一覧（購入履歴・cursor）
 
@@ -483,3 +490,4 @@ workflow:
 [ADR-0029]: ../../adr/0029-commandservice-atomicity-criterion.md
 [ADR-0099]: ../../adr/0099-reference-amount-half-up-rounding.md
 [ADR-0100]: ../../adr/0100-purchase-stock-lock-and-amount-contract.md
+[ADR-0107]: ../../adr/0107-withdrawal-purchase-row-lock-serialization.md

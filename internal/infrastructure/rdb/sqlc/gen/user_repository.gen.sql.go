@@ -719,6 +719,76 @@ func (q *Queries) ListUsersFeedFirst(ctx context.Context, limitParam int32) ([]*
 	return items, nil
 }
 
+const lockActiveUserShareByID = `-- name: LockActiveUserShareByID :one
+SELECT u.id
+FROM users AS u
+WHERE u.id = $1
+    AND u.deleted_at IS NULL
+FOR SHARE
+`
+
+// === source: database/dml/repository/user/lock_active_user_share_by_id.sql ===
+// ID の未削除ユーザーの存在を、共有ロック（FOR SHARE）を取りながら確認する。
+// 共有ロック同士は両立するため同一ユーザーの並行購入は直列化されず、退会が取る FOR UPDATE とだけ
+// 衝突する。これにより「退会の判定通過 → 購入の成立 → 退会の確定」の順序が成立しなくなる。
+// 論理削除済み・不存在はいずれも 0 行（NotFound）。
+//
+//	SELECT u.id
+//	FROM users AS u
+//	WHERE u.id = $1
+//	    AND u.deleted_at IS NULL
+//	FOR SHARE
+func (q *Queries) LockActiveUserShareByID(ctx context.Context, userIDParam uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockActiveUserShareByID, userIDParam)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const lockUserByID = `-- name: LockUserByID :one
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.id = $1
+    AND u.deleted_at IS NULL
+FOR UPDATE
+`
+
+type LockUserByIDRow struct {
+	Users Users
+}
+
+// === source: database/dml/repository/user/lock_user_by_id.sql ===
+// ID から未削除のユーザーを 1 件、悲観ロック（FOR UPDATE）して取得する。
+// 退会は、この排他ロックを進行中購入の判定より前に取ることで購入作成（FOR SHARE）と直列化する。
+// 論理削除済み・不存在はいずれも 0 行（NotFound）。
+//
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.id = $1
+//	    AND u.deleted_at IS NULL
+//	FOR UPDATE
+func (q *Queries) LockUserByID(ctx context.Context, userIDParam uuid.UUID) (*LockUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, lockUserByID, userIDParam)
+	var i LockUserByIDRow
+	err := row.Scan(
+		&i.Users.ID,
+		&i.Users.FirstName,
+		&i.Users.LastName,
+		&i.Users.Email,
+		&i.Users.Phone,
+		&i.Users.PrefectureID,
+		&i.Users.City,
+		&i.Users.Street,
+		&i.Users.Building,
+		&i.Users.PostalCode,
+		&i.Users.DeletedAt,
+		&i.Users.CreatedAt,
+		&i.Users.UpdatedAt,
+		&i.Users.SearchText,
+	)
+	return &i, err
+}
+
 const searchActiveUsers = `-- name: SearchActiveUsers :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u

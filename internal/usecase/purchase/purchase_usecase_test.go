@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/domain/kernel/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
+	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
@@ -82,6 +83,7 @@ func TestNew(t *testing.T) {
 			txm := testkit.NewMockTransactionManager(t)
 			cmd := mock_command.NewMockCommandService(ctrl)
 			repo := mock_purchase.NewMockRepository(ctrl)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			detailQS := mock_query.NewMockPurchaseDetailQueryService(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			xr := mock_exchangerate.NewMockUsecase(ctrl)
@@ -94,13 +96,14 @@ func TestNew(t *testing.T) {
 				txm:        txm,
 				cmd:        cmd,
 				repo:       repo,
+				userLock:   userLock,
 				detailQS:   detailQS,
 				emit:       emit,
 				xr:         xr,
 				clock:      clk,
 				authorizer: authorizer,
 			}
-			actual := New(txm, cmd, repo, detailQS, emit, xr, clk, authorizer, tf)
+			actual := New(txm, cmd, repo, userLock, detailQS, emit, xr, clk, authorizer, tf)
 			assert.Equal(t, expected, actual)
 		})
 	})
@@ -110,13 +113,19 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 	t.Parallel()
 
 	productA := uuid.NewTestFromSalt(t, "cp_product")
+	// activeUserLock は、購入者が在籍している（在籍ガードを通過する）ユーザー LockRepository モックを返します。
+	activeUserLock := func(ctrl *gomock.Controller) *mock_user.MockLockRepository {
+		r := mock_user.NewMockLockRepository(ctrl)
+		r.EXPECT().LockActiveShareByID(gomock.Any(), gomock.Any()).Return(nil)
+		return r
+	}
 	// newUsecase は、指定 mock を注入した usecase を生成するローカルヘルパーです。
-	newUsecase := func(t *testing.T, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase, xr *mock_exchangerate.MockUsecase) *usecase {
+	newUsecase := func(t *testing.T, userLock *mock_user.MockLockRepository, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase, xr *mock_exchangerate.MockUsecase) *usecase {
 		t.Helper()
 		return &usecase{
 			tracer: observability.NewNoopTracerFactory(t).Usecase(),
 			txm:    testkit.NewMockTransactionManager(t),
-			cmd:    cmd, repo: repo, emit: emit, xr: xr,
+			cmd:    cmd, repo: repo, userLock: userLock, emit: emit, xr: xr,
 			clock: clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)),
 		}
 	}
@@ -140,7 +149,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			reread := rereadPurchase(t)
 			repo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(reread, nil)
 
-			u := newUsecase(t, cmd, repo, emit, xr)
+			u := newUsecase(t, activeUserLock(ctrl), cmd, repo, emit, xr)
 
 			view, err := u.CreatePurchase(context.Background(), CreatePurchaseParams{
 				UserID:  uuid.NewTestFromSalt(t, "cp_user"),
@@ -193,7 +202,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 					}, nil
 				})
 
-			u := newUsecase(t, cmd, repo, emit, xr)
+			u := newUsecase(t, activeUserLock(ctrl), cmd, repo, emit, xr)
 
 			jpy := "JPY"
 			view, err := u.CreatePurchase(context.Background(), CreatePurchaseParams{
@@ -206,6 +215,33 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			assert.Equal(t, "JPY", view.ReferenceAmount.Currency)
 			assert.Equal(t, int64(26475), view.ReferenceAmount.Amount)
 		})
+
+		t.Run("ユーザー行を商品行より先にロックする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			cmd := mock_command.NewMockCommandService(ctrl)
+			repo := mock_purchase.NewMockRepository(ctrl)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+
+			locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 20)}
+			gomock.InOrder(
+				userLock.EXPECT().LockActiveShareByID(gomock.Any(), gomock.Any()).Return(nil),
+				cmd.EXPECT().LockProducts(gomock.Any(), gomock.Any()).Return(locked, nil),
+			)
+			cmd.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(nil)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+			repo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(rereadPurchase(t), nil)
+
+			u := newUsecase(t, userLock, cmd, repo, emit, mock_exchangerate.NewMockUsecase(ctrl))
+
+			_, err := u.CreatePurchase(context.Background(), CreatePurchaseParams{
+				UserID:  uuid.NewTestFromSalt(t, "cp_user_order"),
+				Details: []DetailParam{{ProductID: productA, Quantity: 2}},
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -216,6 +252,27 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			UserID:  uuid.NewTestFromSalt(t, "cp_user_err"),
 			Details: []DetailParam{{ProductID: productA, Quantity: 2}},
 		}
+
+		t.Run("在籍ガードに弾かれた場合は在庫ロック以降を行わない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			userLock.EXPECT().LockActiveShareByID(gomock.Any(), validParams.UserID).Return(apperror.ErrNotFound)
+
+			// 在庫ロック・書き込み・emit・再検証に EXPECT を張らないことで未呼び出しを担保する。
+			u := newUsecase(
+				t,
+				userLock,
+				mock_command.NewMockCommandService(ctrl),
+				mock_purchase.NewMockRepository(ctrl),
+				mock_outbox.NewMockEmitUsecase(ctrl),
+				mock_exchangerate.NewMockUsecase(ctrl),
+			)
+
+			_, err := u.CreatePurchase(context.Background(), validParams)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
 
 		t.Run("在庫不足の場合、ErrInsufficientStockを伝播する", func(t *testing.T) {
 			t.Parallel()
@@ -228,6 +285,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 
 			u := newUsecase(
 				t,
+				activeUserLock(ctrl),
 				cmd,
 				mock_purchase.NewMockRepository(ctrl),
 				mock_outbox.NewMockEmitUsecase(ctrl),
@@ -247,6 +305,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 
 			u := newUsecase(
 				t,
+				activeUserLock(ctrl),
 				cmd,
 				mock_purchase.NewMockRepository(ctrl),
 				mock_outbox.NewMockEmitUsecase(ctrl),
@@ -267,6 +326,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 
 			u := newUsecase(
 				t,
+				activeUserLock(ctrl),
 				cmd,
 				mock_purchase.NewMockRepository(ctrl),
 				mock_outbox.NewMockEmitUsecase(ctrl),
@@ -287,7 +347,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			cmd.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, apperror.ErrInternal)
 
-			u := newUsecase(t, cmd, mock_purchase.NewMockRepository(ctrl), emit, mock_exchangerate.NewMockUsecase(ctrl))
+			u := newUsecase(t, activeUserLock(ctrl), cmd, mock_purchase.NewMockRepository(ctrl), emit, mock_exchangerate.NewMockUsecase(ctrl))
 
 			_, err := u.CreatePurchase(context.Background(), validParams)
 			require.ErrorIs(t, err, apperror.ErrInternal)
@@ -305,10 +365,117 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
 			repo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrNotFound)
 
-			u := newUsecase(t, cmd, repo, emit, mock_exchangerate.NewMockUsecase(ctrl))
+			u := newUsecase(t, activeUserLock(ctrl), cmd, repo, emit, mock_exchangerate.NewMockUsecase(ctrl))
 
 			_, err := u.CreatePurchase(context.Background(), validParams)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+	})
+}
+
+func Test_newPurchaseDraft(t *testing.T) {
+	t.Parallel()
+
+	productA := uuid.NewTestFromSalt(t, "draft_product_a")
+	productB := uuid.NewTestFromSalt(t, "draft_product_b")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細と同じ並びでドメイン入力と商品ID列を組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			draft, err := newPurchaseDraft([]DetailParam{
+				{ProductID: productA, Quantity: 2},
+				{ProductID: productB, Quantity: 3},
+			})
+			require.NoError(t, err)
+
+			require.Len(t, draft.inputs, 2)
+			require.Len(t, draft.productIDs, 2)
+			assert.Equal(t, []uuid.UUID{productA, productB}, draft.productIDs)
+			assert.Equal(t, productA, draft.inputs[0].ProductID)
+			assert.Equal(t, 2, draft.inputs[0].Quantity)
+			assert.Equal(t, productB, draft.inputs[1].ProductID)
+			assert.Equal(t, 3, draft.inputs[1].Quantity)
+		})
+
+		t.Run("購入ID_購入コード_各明細IDはいずれも異なる値が採番される", func(t *testing.T) {
+			t.Parallel()
+
+			draft, err := newPurchaseDraft([]DetailParam{
+				{ProductID: productA, Quantity: 1},
+				{ProductID: productB, Quantity: 1},
+			})
+			require.NoError(t, err)
+
+			assert.False(t, draft.purchaseID.IsNil())
+			assert.NotEqual(t, draft.purchaseID.String(), draft.code)
+			assert.NotEqual(t, draft.inputs[0].ID, draft.inputs[1].ID)
+			assert.NotEqual(t, draft.purchaseID, draft.inputs[0].ID)
+		})
+
+		t.Run("明細が空でも空のスライスを返す", func(t *testing.T) {
+			t.Parallel()
+
+			draft, err := newPurchaseDraft(nil)
+			require.NoError(t, err)
+			assert.Empty(t, draft.inputs)
+			assert.Empty(t, draft.productIDs)
+		})
+	})
+}
+
+func Test_usecase_ensurePurchaserActive(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	userID := uuid.NewTestFromSalt(t, "ensure_active_user")
+
+	newGuard := func(t *testing.T, userLock *mock_user.MockLockRepository) *usecase {
+		t.Helper()
+		return &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), userLock: userLock}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("在籍しているユーザーは通過する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			userLock.EXPECT().LockActiveShareByID(gomock.Any(), userID).Return(nil)
+
+			require.NoError(t, newGuard(t, userLock).ensurePurchaserActive(ctx, userID))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("退会済みのNotFoundはErrConflictへ写像されNotFoundへは畳まれない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			userLock.EXPECT().LockActiveShareByID(gomock.Any(), userID).Return(apperror.ErrNotFound)
+
+			err := newGuard(t, userLock).ensurePurchaserActive(ctx, userID)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+			require.NotErrorIs(t, err, apperror.ErrNotFound)
+		})
+
+		t.Run("NotFound以外はErrConflictへ化けずそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			userLock.EXPECT().LockActiveShareByID(gomock.Any(), userID).Return(apperror.ErrUnavailable)
+
+			err := newGuard(t, userLock).ensurePurchaserActive(ctx, userID)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, apperror.ErrConflict)
 		})
 	})
 }

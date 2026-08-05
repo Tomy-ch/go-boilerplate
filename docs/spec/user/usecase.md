@@ -143,6 +143,7 @@ methods:
 - clock             # boundary/clock.Clock
 - authorizer        # boundary/authz.Authorizer（詳細系の認可判定。admin または対象ユーザー本人）
 - user_repository   # domain/user.Repository
+- user_lock_repository   # domain/user.LockRepository（退会時の対象行の排他ロック。ADR-0107）
 - prefecture_repository  # domain/prefecture.Repository
 - purchase_repository    # domain/purchase.Repository（退会時の進行中購入の確認）
 - outbox_emit       # usecase/outbox.EmitUsecase（退会イベントの発行）
@@ -269,16 +270,16 @@ steps:
   - authorizer.Authorize で退会の認可を確認（対象ユーザーを所有者とするリソース。admin または本人のみ許可。authn が nil なら ErrUnauthenticated）
   - clock.Now で現在時刻を取得
   - トランザクション内で（論理削除・イベント発行・拒否判定を単一 tx にまとめ、退会だけが成立してイベントが失われることを防ぐ）
-      - user_repository.FindByID で対象を取得（存在しない / 論理削除済みなら NotFound 伝播。FindByID が deleted_at IS NULL でフィルタするため、削除済みへの再 DELETE は NotFound になる）
+      - user_lock_repository.LockByID で対象を排他ロックして取得（存在しない / 論理削除済みなら NotFound 伝播。SQL が deleted_at IS NULL でフィルタするため、削除済みへの再 DELETE は NotFound になる）
       - purchase_repository.ExistsInProgressByUserID で進行中の購入を確認し、残っていれば Conflict で退会を拒否（論理削除もイベントも残さない）
-      - user.MarkAsDeleted で deletedAt を設定（ドメイン不変条件として既削除なら ErrAlreadyDeleted を返すが、FindByID フィルタにより通常経路では到達しない防御的チェック）
+      - user.MarkAsDeleted で deletedAt を設定（ドメイン不変条件として既削除なら ErrAlreadyDeleted を返すが、LockByID フィルタにより通常経路では到達しない防御的チェック）
       - user_repository.Update で永続化（論理削除）
       - event.BuildWithdrawn で自己完結スナップショットを構築し、outbox_emit.Emit で user.withdrawn.v1 を発行（退会に伴う関連データの後始末は受信側の結果整合に委ねる）
 calls:
   - authorizer.Authorize
   - clock.Now
   - tx_manager.Do
-  - user_repository.FindByID
+  - user_lock_repository.LockByID
   - purchase_repository.ExistsInProgressByUserID
   - user.MarkAsDeleted
   - user_repository.Update
@@ -286,8 +287,12 @@ calls:
 errors:
   - authn が nil なら ErrUnauthenticated / Authorize 拒否は ErrForbidden(PermissionDenied) を伝播
   - 進行中の購入が残っている場合は ErrConflict
-  - FindByID(NotFound) / ExistsInProgressByUserID / MarkAsDeleted(ErrAlreadyDeleted) / Update / Emit を伝播
+  - LockByID(NotFound) / ExistsInProgressByUserID / MarkAsDeleted(ErrAlreadyDeleted) / Update / Emit を伝播
 ```
+
+ロックの取得順が不変条件である（[ADR-0107]）。`LockByID` は進行中購入の判定より**前**に置く。判定より後だと
+「退会が判定を通過 → 購入作成が成立 → 退会が確定」の順序を止められず、退会済みユーザーに進行中の購入が
+ぶら下がる。購入作成側は同じ行を共有ロックで押さえるため、この排他ロックとだけ衝突して直列化される。
 
 ### PurgeDeleted（PurgeUsecase）
 
@@ -316,3 +321,5 @@ notes:
   - 境界は削除可否によらず必ず候補の末尾まで進める。購入保持でスキップされた候補は削除されず残るため、
     境界を進めないと同じ候補を取り直し続け、先頭バッチが全件スキップ対象のときに無限ループする。
 ```
+
+[ADR-0107]: ../../adr/0107-withdrawal-purchase-row-lock-serialization.md
