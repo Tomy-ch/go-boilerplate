@@ -26,7 +26,7 @@ const (
 	seedUserID         = "550e8400-e29b-41d4-a716-446655440000"
 	seedUnprocessedSID = "a66c996c-86b2-41d8-9bdd-9b685fb7c47d"
 	seedPaidSID        = "4b8f0e2a-1c3d-4a5e-8b7f-2d9c0e1a3b4c"
-	// unknownStatusCode は、購入ステータスマスタに存在しない code です（seed は 1〜9）。
+	// unknownStatusCode は、購入ステータスマスタにもドメインにも存在しない code です（seed は 1〜9）。
 	unknownStatusCode = 99
 )
 
@@ -294,7 +294,7 @@ func Test_repository_LockByID(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, purchaseID, got.ID())
 				assert.Equal(t, mustParse(t, seedUserID), got.UserID())
-				assert.Equal(t, domainpurchase.StatusCodeUnprocessed, got.StatusCode())
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got.StatusCode())
 				assert.Nil(t, got.PaidAt())
 				require.Len(t, got.Details(), 1)
 				assert.Equal(t, productID, got.Details()[0].ProductID())
@@ -311,7 +311,7 @@ func Test_repository_LockByID(t *testing.T) {
 
 				got, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodePaid, got.StatusCode())
+				assert.Equal(t, domainpurchase.StatusPaid.Code(), got.StatusCode())
 				require.NotNil(t, got.PaidAt())
 				assert.Equal(t, paidAt.UTC(), got.PaidAt().UTC())
 			})
@@ -361,7 +361,7 @@ func Test_repository_UpdatePaid(t *testing.T) {
 				// 再読込で status_id が支払い済み（code=7）へ解決され、paid_at がセットされる。
 				reread, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodePaid, reread.StatusCode())
+				assert.Equal(t, domainpurchase.StatusPaid.Code(), reread.StatusCode())
 				require.NotNil(t, reread.PaidAt())
 				assert.Equal(t, now.UTC(), reread.PaidAt().UTC())
 
@@ -407,7 +407,7 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				// 再読込で status_id が発送済み（code=8）へ解決され、shipped_at がセットされる。
 				reread, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodeShipped, reread.StatusCode())
+				assert.Equal(t, domainpurchase.StatusShipped.Code(), reread.StatusCode())
 				require.NotNil(t, reread.ShippedAt())
 				assert.Equal(t, shippedAt.UTC(), reread.ShippedAt().UTC())
 
@@ -447,7 +447,7 @@ func Test_repository_UpdateShipped(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("マスタに無いステータスコードの場合はpgエラーをapperrorへ正規化する", func(t *testing.T) {
+		t.Run("マスタに無いステータスコードはドメインが再構築を拒否し永続化まで届かない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -457,10 +457,9 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
 
-				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
-				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
-				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
-				broken, err := domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
+				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
+				// status_id のサブクエリが NULL になる経路は Status VO の導入で到達不能になった。
+				_, err = domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
 					Code:           locked.Code(),
 					UserID:         locked.UserID(),
 					StatusID:       locked.StatusID(),
@@ -471,14 +470,8 @@ func Test_repository_UpdateShipped(t *testing.T) {
 					TotalAmount:    locked.TotalAmount(),
 					Details:        locked.Details(),
 					OrderedAt:      locked.OrderedAt(),
-					PaidAt:         nil,
-					CanceledAt:     nil,
-					ShippedAt:      &shippedAt,
-					DeliveredAt:    nil,
 				})
-				require.NoError(t, err)
-
-				require.ErrorIs(t, repo.UpdateShipped(ctx, broken), apperror.ErrInvalidArgument)
+				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
 		})
 	})
@@ -529,7 +522,7 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				// 再読込で status_id が配達済み（code=9）へ解決され、delivered_at がセットされる。
 				reread, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodeDelivered, reread.StatusCode())
+				assert.Equal(t, domainpurchase.StatusDelivered.Code(), reread.StatusCode())
 				require.NotNil(t, reread.DeliveredAt())
 				assert.Equal(t, deliveredAt.UTC(), reread.DeliveredAt().UTC())
 
@@ -565,7 +558,7 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("マスタに無いステータスコードの場合はpgエラーをapperrorへ正規化する", func(t *testing.T) {
+		t.Run("マスタに無いステータスコードはドメインが再構築を拒否し永続化まで届かない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -575,12 +568,9 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
 
-				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
-				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
-				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
-				// deliveredAt は nil で渡す（配達済み status と deliveredAt は双条件のため、
-				// マスタに無い status と deliveredAt は同居できない）。
-				broken, err := domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
+				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
+				// status_id のサブクエリが NULL になる経路は Status VO の導入で到達不能になった。
+				_, err = domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
 					Code:           locked.Code(),
 					UserID:         locked.UserID(),
 					StatusID:       locked.StatusID(),
@@ -591,14 +581,8 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 					TotalAmount:    locked.TotalAmount(),
 					Details:        locked.Details(),
 					OrderedAt:      locked.OrderedAt(),
-					PaidAt:         &paidAt,
-					CanceledAt:     nil,
-					ShippedAt:      &shippedAt,
-					DeliveredAt:    nil,
 				})
-				require.NoError(t, err)
-
-				require.ErrorIs(t, repo.UpdateDelivered(ctx, broken), apperror.ErrInvalidArgument)
+				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
 		})
 	})

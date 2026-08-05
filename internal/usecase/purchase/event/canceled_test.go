@@ -34,7 +34,7 @@ func TestBuildCanceled(t *testing.T) {
 				Code:           "bc-code",
 				UserID:         uuidtestkit.NewTestFromSalt(t, "bc_user"),
 				StatusID:       uuidtestkit.NewTestFromSalt(t, "bc_status"),
-				StatusCode:     domainpurchase.StatusCodeUnprocessed,
+				StatusCode:     domainpurchase.StatusUnprocessed.Code(),
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
@@ -64,7 +64,7 @@ func TestBuildCanceled(t *testing.T) {
 			assert.Equal(t, entity.ID().String(), decoded.PurchaseID)
 			assert.Equal(t, "bc-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
-			assert.Equal(t, domainpurchase.StatusCodeCanceled, decoded.StatusCode)
+			assert.Equal(t, domainpurchase.StatusCanceled.Code(), decoded.StatusCode)
 			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.CanceledAt)
 		})
 
@@ -82,7 +82,7 @@ func TestBuildCanceled(t *testing.T) {
 				Code:           "bc-nil-code",
 				UserID:         uuidtestkit.NewTestFromSalt(t, "bc_nil_user"),
 				StatusID:       uuidtestkit.NewTestFromSalt(t, "bc_nil_status"),
-				StatusCode:     domainpurchase.StatusCodeUnprocessed,
+				StatusCode:     domainpurchase.StatusUnprocessed.Code(),
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,

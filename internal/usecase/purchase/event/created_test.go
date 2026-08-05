@@ -65,7 +65,7 @@ func TestBuildCreated(t *testing.T) {
 			assert.Equal(t, entity.ID().String(), decoded.PurchaseID)
 			assert.Equal(t, "bp-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
-			assert.Equal(t, domainpurchase.StatusCodeUnprocessed, decoded.StatusCode)
+			assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), decoded.StatusCode)
 			// subtotal=160000 / tax=16000（切り捨て10%）/ shipping=500 / total=176500
 			assert.Equal(t, 160000, decoded.SubtotalAmount)
 			assert.Equal(t, 16000, decoded.TaxAmount)

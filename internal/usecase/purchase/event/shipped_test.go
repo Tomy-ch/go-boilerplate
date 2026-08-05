@@ -31,7 +31,7 @@ func TestBuildShipped(t *testing.T) {
 			Code:           salt + "-code",
 			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user"),
 			StatusID:       uuidtestkit.NewTestFromSalt(t, salt+"_status"),
-			StatusCode:     domainpurchase.StatusCodePaid,
+			StatusCode:     domainpurchase.StatusPaid.Code(),
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
@@ -71,7 +71,7 @@ func TestBuildShipped(t *testing.T) {
 			assert.Equal(t, entity.ID().String(), decoded.PurchaseID)
 			assert.Equal(t, "bs-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
-			assert.Equal(t, domainpurchase.StatusCodeShipped, decoded.StatusCode)
+			assert.Equal(t, domainpurchase.StatusShipped.Code(), decoded.StatusCode)
 			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.ShippedAt)
 		})
 

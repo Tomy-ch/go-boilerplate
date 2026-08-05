@@ -313,7 +313,7 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, created.ID(), actual.ID())
 				assert.Equal(t, userID, actual.UserID())
-				assert.Equal(t, domainpurchase.StatusCodeUnprocessed, actual.StatusCode())
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), actual.StatusCode())
 				assert.Nil(t, actual.PaidAt())
 				assert.Nil(t, actual.CanceledAt())
 				require.Len(t, actual.Details(), 1)
@@ -411,7 +411,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 					"SELECT ps.code, p.canceled_at FROM purchases AS p "+
 						"INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id WHERE p.id=$1", created.ID(),
 				).Scan(&statusCode, &canceledAt))
-				assert.Equal(t, domainpurchase.StatusCodeCanceled, statusCode)
+				assert.Equal(t, domainpurchase.StatusCanceled.Code(), statusCode)
 				assert.NotNil(t, canceledAt)
 			})
 		})

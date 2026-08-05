@@ -30,7 +30,7 @@ func TestBuildPaid(t *testing.T) {
 			Code:           salt + "-code",
 			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user"),
 			StatusID:       uuidtestkit.NewTestFromSalt(t, salt+"_status"),
-			StatusCode:     domainpurchase.StatusCodeUnprocessed,
+			StatusCode:     domainpurchase.StatusUnprocessed.Code(),
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
@@ -70,7 +70,7 @@ func TestBuildPaid(t *testing.T) {
 			assert.Equal(t, entity.ID().String(), decoded.PurchaseID)
 			assert.Equal(t, "bp-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
-			assert.Equal(t, domainpurchase.StatusCodePaid, decoded.StatusCode)
+			assert.Equal(t, domainpurchase.StatusPaid.Code(), decoded.StatusCode)
 			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.PaidAt)
 		})
 

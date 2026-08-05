@@ -54,7 +54,7 @@ func rereadPurchase(t *testing.T) *domainpurchase.Purchase {
 		Code:           "reread-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "reread_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "reread_status"),
-		StatusCode:     domainpurchase.StatusCodeUnprocessed,
+		StatusCode:     domainpurchase.StatusUnprocessed.Code(),
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
@@ -298,7 +298,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 	purchaseID := uuidtestkit.NewTestFromSalt(t, "cancel_uc_id")
 
 	// lockable は、cmd.LockPurchase が返す再構築済み購入を生成するローカルヘルパーです。
-	lockable := func(t *testing.T, owner uuid.UUID, statusCode int) *domainpurchase.Purchase {
+	lockable := func(t *testing.T, owner uuid.UUID, status domainpurchase.Status) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "cancel_uc_d1"), domainpurchase.PurchaseDetailAttributes{
@@ -311,7 +311,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			Code:           "cancel-uc-code",
 			UserID:         owner,
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "cancel_uc_status"),
-			StatusCode:     statusCode,
+			StatusCode:     status.Code(),
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
@@ -349,7 +349,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed), nil)
 			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
 
@@ -399,7 +399,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
 			otherOwner := uuidtestkit.NewTestFromSalt(t, "cancel_uc_other")
-			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusUnprocessed), nil)
 
 			u := newUC(t, cmd, repo, emit)
 			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
@@ -414,7 +414,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeCompleted), nil)
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCompleted), nil)
 
 			u := newUC(t, cmd, repo, emit)
 			_, err := u.CancelPurchase(context.Background(), CancelPurchaseParams{PurchaseID: purchaseID, UserID: userID})
@@ -444,7 +444,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed), nil)
 			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict)
 
 			u := newUC(t, cmd, repo, emit)
@@ -460,7 +460,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed), nil)
 			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, apperror.ErrInternal)
 
@@ -477,7 +477,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed), nil)
+			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed), nil)
 			cmd.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
 			repo.EXPECT().FindDetailByID(gomock.Any(), purchaseID).Return(nil, apperror.ErrNotFound)
@@ -496,7 +496,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 	purchaseID := uuidtestkit.NewTestFromSalt(t, "pay_uc_id")
 
 	// lockable は、cmd.LockPurchase が返す再構築済み購入を生成するローカルヘルパーです。
-	lockable := func(t *testing.T, owner uuid.UUID, statusCode int, paidAt *time.Time) *domainpurchase.Purchase {
+	lockable := func(t *testing.T, owner uuid.UUID, status domainpurchase.Status, paidAt *time.Time) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pay_uc_d1"), domainpurchase.PurchaseDetailAttributes{
@@ -509,7 +509,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			Code:           "pay-uc-code",
 			UserID:         owner,
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "pay_uc_status"),
-			StatusCode:     statusCode,
+			StatusCode:     status.Code(),
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
@@ -547,7 +547,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed, nil), nil)
 			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
 
@@ -597,7 +597,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
 			otherOwner := uuidtestkit.NewTestFromSalt(t, "pay_uc_other")
-			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusUnprocessed, nil), nil)
 
 			u := newUC(t, cmd, repo, emit)
 			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
@@ -613,7 +613,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
 			paidAt := time.Date(2026, time.July, 24, 0, 0, 0, 0, time.UTC)
-			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodePaid, &paidAt), nil)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusPaid, &paidAt), nil)
 
 			u := newUC(t, cmd, repo, emit)
 			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
@@ -628,7 +628,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeCompleted, nil), nil)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCompleted, nil), nil)
 
 			u := newUC(t, cmd, repo, emit)
 			_, err := u.PayPurchase(context.Background(), PayPurchaseParams{PurchaseID: purchaseID, UserID: userID})
@@ -658,7 +658,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed, nil), nil)
 			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict)
 
 			u := newUC(t, cmd, repo, emit)
@@ -674,7 +674,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed, nil), nil)
 			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, apperror.ErrInternal)
 
@@ -691,7 +691,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusCodeUnprocessed, nil), nil)
+			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, userID, domainpurchase.StatusUnprocessed, nil), nil)
 			repo.EXPECT().UpdatePaid(gomock.Any(), gomock.Any()).Return(nil)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
 			repo.EXPECT().FindDetailByID(gomock.Any(), purchaseID).Return(nil, apperror.ErrNotFound)
@@ -807,7 +807,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 	shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 
 	// lockable は、repo.LockByID が返す再構築済み購入を生成するローカルヘルパーです。
-	lockable := func(t *testing.T, statusCode int, paidAt, shipped *time.Time) *domainpurchase.Purchase {
+	lockable := func(t *testing.T, status domainpurchase.Status, paidAt, shipped *time.Time) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "ship_uc_d1"), domainpurchase.PurchaseDetailAttributes{
@@ -820,7 +820,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			Code:           "ship-uc-code",
 			UserID:         ownerID,
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "ship_uc_status"),
-			StatusCode:     statusCode,
+			StatusCode:     status.Code(),
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
@@ -840,7 +840,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 	paidLockable := func(t *testing.T) *domainpurchase.Purchase {
 		t.Helper()
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
-		return lockable(t, domainpurchase.StatusCodePaid, &paidAt, nil)
+		return lockable(t, domainpurchase.StatusPaid, &paidAt, nil)
 	}
 
 	// shippedDetail は、発送後の再読込で返す詳細読み取りモデルを生成するローカルヘルパーです。
@@ -1006,7 +1006,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			repo.EXPECT().LockByID(gomock.Any(), purchaseID).
-				Return(lockable(t, domainpurchase.StatusCodeShipped, &paidAt, &shippedAt), nil)
+				Return(lockable(t, domainpurchase.StatusShipped, &paidAt, &shippedAt), nil)
 
 			u := newUC(t, repo, emit, authorizer)
 			_, err := u.ShipPurchase(context.Background(), &auth.Authn{}, purchaseID)
@@ -1023,7 +1023,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			repo.EXPECT().LockByID(gomock.Any(), purchaseID).
-				Return(lockable(t, domainpurchase.StatusCodeUnprocessed, nil, nil), nil)
+				Return(lockable(t, domainpurchase.StatusUnprocessed, nil, nil), nil)
 
 			u := newUC(t, repo, emit, authorizer)
 			_, err := u.ShipPurchase(context.Background(), &auth.Authn{}, purchaseID)
@@ -1160,7 +1160,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 	deliveredAt := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
 
 	// lockable は、repo.LockByID が返す再構築済み購入を生成するローカルヘルパーです。
-	lockable := func(t *testing.T, statusCode int, paid, shipped, delivered *time.Time) *domainpurchase.Purchase {
+	lockable := func(t *testing.T, status domainpurchase.Status, paid, shipped, delivered *time.Time) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "dlv_uc_d1"), domainpurchase.PurchaseDetailAttributes{
@@ -1173,7 +1173,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 			Code:           "dlv-uc-code",
 			UserID:         ownerID,
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "dlv_uc_status"),
-			StatusCode:     statusCode,
+			StatusCode:     status.Code(),
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
@@ -1192,7 +1192,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 	// shippedLockable は、配達可能な発送済み購入を返すローカルヘルパーです。
 	shippedLockable := func(t *testing.T) *domainpurchase.Purchase {
 		t.Helper()
-		return lockable(t, domainpurchase.StatusCodeShipped, &paidAt, &shippedAt, nil)
+		return lockable(t, domainpurchase.StatusShipped, &paidAt, &shippedAt, nil)
 	}
 
 	// deliveredDetail は、配達完了後の再読込で返す詳細読み取りモデルを生成するローカルヘルパーです。
@@ -1299,7 +1299,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 			}
 			require.NoError(t, json.Unmarshal(captured.Payload, &payload))
 			assert.Equal(t, purchaseID.String(), payload.PurchaseID)
-			assert.Equal(t, domainpurchase.StatusCodeDelivered, payload.StatusCode)
+			assert.Equal(t, domainpurchase.StatusDelivered.Code(), payload.StatusCode)
 			assert.Equal(t, deliveredAt.Format(time.RFC3339Nano), payload.DeliveredAt)
 		})
 
@@ -1401,7 +1401,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			repo.EXPECT().LockByID(gomock.Any(), purchaseID).
-				Return(lockable(t, domainpurchase.StatusCodeDelivered, &paidAt, &shippedAt, &deliveredAt), nil)
+				Return(lockable(t, domainpurchase.StatusDelivered, &paidAt, &shippedAt, &deliveredAt), nil)
 
 			u := newUC(t, repo, emit, authorizer)
 			_, err := u.DeliverPurchase(context.Background(), &auth.Authn{}, purchaseID)
@@ -1418,7 +1418,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			repo.EXPECT().LockByID(gomock.Any(), purchaseID).
-				Return(lockable(t, domainpurchase.StatusCodePaid, &paidAt, nil, nil), nil)
+				Return(lockable(t, domainpurchase.StatusPaid, &paidAt, nil, nil), nil)
 
 			u := newUC(t, repo, emit, authorizer)
 			_, err := u.DeliverPurchase(context.Background(), &auth.Authn{}, purchaseID)
