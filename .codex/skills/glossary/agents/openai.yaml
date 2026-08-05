@@ -1,0 +1,4 @@
+interface:
+  display_name: "用語集"
+  short_description: "Maintain and audit cross-feature business vocabulary"
+  default_prompt: "Use $glossary to audit and update docs/spec/glossary.md."
