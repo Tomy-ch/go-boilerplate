@@ -59,7 +59,7 @@ Examples:
   [`internal/domain/lexicon`](lexicon/README.md), which every domain package may import. Placement is
   resolved `pkg/` first, and admission is deliberately narrow — the name states the question asked at
   the door: is this a word of the business? See its README.
-  Rationale: [ADR-0104](../../docs/adr/0104-domain-lexicon.md).
+  Rationale: [ADR-0034](../../docs/adr/0034-domain-lexicon.md).
 
   The other path that may import an aggregate is `internal/domain/service/**`, where a rule spanning
   aggregates lives; it has its own depguard rule that repeats every other domain deny. See

@@ -207,7 +207,7 @@ See details below.
 that require single-transaction atomicity (see [ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md)
 / [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)); the first implementation
 is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
-[ADR-0100](../../../docs/adr/0100-purchase-stock-lock-and-amount-contract.md)).
+[ADR-0031](../../../docs/adr/0031-ordered-pessimistic-row-locks.md)).
 
 A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
 the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events

@@ -47,7 +47,7 @@ engine は **in-memory fake**（`internal/usecase/boundary/worker/testkit` の `
 - `runner.go`（`Engine`：registry / `Run` / `Healthy`）、`run.go`（1 Run 単位の poll loop / dispatch / drain）。
 - `circuit.go`（3 状態ブレーカ、cooldown は `pkg/backoff`）、`classify.go`（error→分類）、`settings.go`（engine-core `Settings`）、`dispatch.go`（`PartitionKey` 直列化）、`state.go`（`worker.State` 実装）、`errors.go`（registry sentinel）、`telemetry.go`（O11Y。traceparent 継続／構造化ログのフィールド生成。engine 所有の metric 実体は `observability.WorkerMetrics`）。
 
-SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は**削除可能なサンプル群**の一部として配線してよい。broker SDK の分離は adapter を未配線にすることではなく、`make setup-remove-sample-api` の**後**に検証する — E3'（[`docs/adr/0106`](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md)）を参照。
+SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は**削除可能なサンプル群**の一部として配線してよい。broker SDK の分離は adapter を未配線にすることではなく、`make setup-remove-sample-api` の**後**に検証する — E3'（[`docs/adr/0106`](../../../docs/ja/adr/0048-broker-sdk-isolation-verified-after-sample-removal.ja.md)）を参照。
 
 <!-- sample-api:begin -->
 [`withdrawalarchive/`](withdrawalarchive/README.ja.md) が同梱のサンプル worker であり、`docs/design/worker.md` §4 が integrator に求めるもの一式の実例にあたる。outbox が emit する退会イベントを消費し、サンプル一式と一緒に削除される。

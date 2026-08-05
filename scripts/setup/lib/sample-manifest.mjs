@@ -284,6 +284,9 @@ export const SAMPLE_DOMAINS = {
 
       // internal/usecase/tools/money は paging/search と同様の汎用 usecase ツールであり
       // サンプル削除対象に含めない（後続 purchases も再利用する恒久ヘルパ）。
+
+      // spec
+      "docs/spec/exchange-rate",
     ],
   },
 
@@ -334,7 +337,7 @@ export const SAMPLE_DOMAINS = {
       "outbox を SQS 互換 broker へ向ける配線。engine / seam / SQS adapter は送受信とも core、" +
       "ローカル broker も object storage の Garage と同じくローカルインフラとして残し、" +
       "core から adapter を参照する配線だけを削除対象にする" +
-      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0106 の E3' 条件1）。" +
+      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0048 の E3' 条件1）。" +
       "object storage と揃うのは adapter / ローカルインフラ / config を core に置く点までで、" +
       "判別子の 1 分岐として配線する構造は queue 側だけのもの（object storage に選択肢は無い）。",
     paths: [

@@ -57,7 +57,7 @@ flowchart TB
   そちらへ置けないものは、**ドメイン語彙** [`internal/domain/lexicon`](lexicon/README.ja.md) に置く。
   ここは全ての domain パッケージが import してよい。配置は `pkg/` を先に判定し、入場基準は意図的に
   狭い。名前が入場時の問いを表している——これは業務の語か。その README を参照。
-  根拠: [ADR-0104](../../docs/adr/0104-domain-lexicon.md)。
+  根拠: [ADR-0034](../../docs/adr/0034-domain-lexicon.md)。
 
   集約を import してよいもう一つの場所は `internal/domain/service/**` であり、集約に跨るルールが
   そこに住む。専用の depguard ルールを持ち、domain 層の他の deny はすべて再掲されている。

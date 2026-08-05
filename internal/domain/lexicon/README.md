@@ -20,7 +20,7 @@ drawer; asking whether a type is part of the business vocabulary keeps that out 
 A value object like `money.Price` is used by more than one aggregate (`product.price` now,
 `purchase_details.unit_price` / `purchases.*_amount` next). It cannot live in one aggregate (the
 others would have to reach in), and it cannot live in `pkg/` (which forbids business logic). So it
-lives here — see [ADR-0104](../../../docs/adr/0104-domain-lexicon.md).
+lives here — see [ADR-0034](../../../docs/adr/0034-domain-lexicon.md).
 
 ## Where a type goes
 
@@ -59,4 +59,4 @@ domain→other-aggregate is forbidden.
 ## Packages
 
 - `money` — `Price` value object (non-negative price-scale decimal; owns minor-unit conversion).
-  The exact decimal container is `pkg/decimal` ([ADR-0102](../../../docs/adr/0102-exact-decimal-pkg-wrap.md)).
+  The exact decimal container is `pkg/decimal` ([ADR-0033](../../../docs/adr/0033-two-scale-quantity-model.md)).

@@ -58,7 +58,7 @@ English canonical: [security.md](../../design/security.md)
 
 ### なぜ報告とゲートを分けるのか
 
-通常の PR は報告し、昇格 PR がゲートします。論拠は [ADR-0080](../adr/0080-multi-layer-security-scanning.ja.md) にありますが、要点はこうです。既存の依存ツリーから受け継いだ脆弱性は、その PR が持ち込んだものではなく、その PR の作者に直せるものでもありません。そこでブロックすれば、上流の修正が別のどこかで入るまで無関係な変更がすべて赤くなります。予想される帰結は、チェックの無効化か、赤いまま merge する習慣の定着です。どちらもゲートの価値を上回るコストです。
+通常の PR は報告し、昇格 PR がゲートします。論拠は [ADR-0084](../adr/0084-multi-layer-security-scanning.ja.md) にありますが、要点はこうです。既存の依存ツリーから受け継いだ脆弱性は、その PR が持ち込んだものではなく、その PR の作者に直せるものでもありません。そこでブロックすれば、上流の修正が別のどこかで入るまで無関係な変更がすべて赤くなります。予想される帰結は、チェックの無効化か、赤いまま merge する習慣の定着です。どちらもゲートの価値を上回るコストです。
 
 代わりに検出を抑止する（`ignore-unfixed`、ID の allowlist）のは、別の失敗との交換にすぎません。本当に問題になる昇格の瞬間にも黙らせてしまうためです。分離は両方の場所でシグナルを保ち、**判定**を対処できる人のいる場所へ置きます。
 
@@ -66,7 +66,7 @@ English canonical: [security.md](../../design/security.md)
 
 CI が**実行するもの**と、アプリケーションが**リンクするもの**はリスクが異なります。Actions と base image は我々のコードより先に、ジョブの資格情報を持って動くため、より強く固定します。
 
-**バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0081](../adr/0081-sha-pinned-actions.ja.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
+**バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0085](../adr/0085-sha-pinned-actions.ja.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
 
 **検疫は時間を稼ぐ仕組みであり、日付を検証する仕組みではない。** アクションの経過日数は、リリースの公開日時と解決先 commit の日時のうち**新しい方**を採ります。どちらも単独では信用できません——リリースオブジェクトはタグの*名前*に紐づくため、タグが付け替えられても公開日時は据え置かれます（検疫が想定する脅威そのものです）。一方 commit の日時は committer が任意の過去時点へ設定できます。新しい方を採ることで、どちらか一方でも「新しい」と言う限り検疫が掛かりますが、これは自動化された乗っ取りに対する遅延であって、偽装された日付への防御ではありません。付け替えそのものの検知は lockfile の役割です——解決先の digest が変わり、差分は小さく、人間がそれを読みます。
 
@@ -129,7 +129,7 @@ cooldown は実在しますが、見た目より適用範囲が狭い。`min-rel
 
 **逃げ道は名前付きで狭く、grep できる。** `ContextWithAllowPrivateNetwork`、エラースキーマを詳細露出へ opt-in させる `details` プロパティ、宣言された認証例外としての `/metrics`（[ADR-0016](../adr/0016-metrics-endpoint-auth-exception.ja.md)）は、いずれも検索して列挙できる具体的な seam です。汎用フラグは 1 つもありません。汎用フラグは「全員が立てるもの」になるからです。
 
-2 つの不在は保留ではなく意図です。アプリ内 rate limiter は持たず（[ADR-0094](../adr/0094-no-in-app-rate-limiter.ja.md)）、レスポンスは spec に対して検証しません（[ADR-0013](../adr/0013-spec-driven-request-validation.ja.md)）。SQL インジェクションはレビューではなく構造で扱い、クエリは sqlc 生成のためパラメータ化されます（[ADR-0022](../adr/0022-sqlc-type-safe-sql.ja.md)）。`gosec` は権威ある golangci gate で動きます（[ADR-0075](../adr/0075-two-layer-golangci-config.ja.md)）。
+2 つの不在は保留ではなく意図です。アプリ内 rate limiter は持たず（[ADR-0099](../adr/0099-no-in-app-rate-limiter.ja.md)）、レスポンスは spec に対して検証しません（[ADR-0013](../adr/0013-spec-driven-request-validation.ja.md)）。SQL インジェクションはレビューではなく構造で扱い、クエリは sqlc 生成のためパラメータ化されます（[ADR-0022](../adr/0022-sqlc-type-safe-sql.ja.md)）。`gosec` は権威ある golangci gate で動きます（[ADR-0079](../adr/0079-two-layer-golangci-config.ja.md)）。
 
 再発見ではなくコピーする価値のある具体を 1 つ。Go の `netip.Addr.IsPrivate` は RFC1918 と ULA を覆いますが **CGNAT（`100.64.0.0/10`）を含みません**。そのためガードは自前の prefix チェックを持っています。標準ライブラリだけで dial ガードを再実装した fork は、この穴をそのまま引き継ぎます。
 
@@ -150,8 +150,8 @@ cooldown は実在しますが、見た目より適用範囲が狭い。`min-rel
 
 ## 関連
 
-- [ADR-0080](../adr/0080-multi-layer-security-scanning.ja.md) — 層構成スキャン、報告／ゲートの分離、ランナーのハードニング
-- [ADR-0081](../adr/0081-sha-pinned-actions.ja.md) — Actions の SHA 固定と供給網の隔離期間
-- [ADR-0091](../adr/0091-release-image-supply-chain.ja.md) — リリースイメージの完全性（署名・provenance・SBOM）
-- [ADR-0075](../adr/0075-two-layer-golangci-config.ja.md) — 静的解析時のインプロセスチェックとしての `gosec`
+- [ADR-0084](../adr/0084-multi-layer-security-scanning.ja.md) — 層構成スキャン、報告／ゲートの分離、ランナーのハードニング
+- [ADR-0085](../adr/0085-sha-pinned-actions.ja.md) — Actions の SHA 固定と供給網の隔離期間
+- [ADR-0096](../adr/0096-release-image-supply-chain.ja.md) — リリースイメージの完全性（署名・provenance・SBOM）
+- [ADR-0079](../adr/0079-two-layer-golangci-config.ja.md) — 静的解析時のインプロセスチェックとしての `gosec`
 - [`.github/workflows/README.md`](../../../.github/workflows/README.md) — ワークフロー一覧と完全なトリガーマトリクス

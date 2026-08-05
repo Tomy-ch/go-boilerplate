@@ -1,7 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package purchase は、購入の作成ユースケースを提供します。単価は価格スケール（ドル decimal）、
-// 決済額は決済スケール（整数セント）で扱います（ADR-0101 / ADR-0102）。
+// 決済額は決済スケール（整数セント）で扱います（ADR-0033）。
 package purchase
 
 import (

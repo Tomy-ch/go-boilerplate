@@ -41,7 +41,7 @@ domain パッケージは他の集約を import してはなりません（depgu
 基準がリンタの引く境界を越えて型を押し込むことはできないためです。`pkg/` で落ちたことは lexicon の
 根拠になりません。どちらも満たさない型は所有する集約に残します。入場基準は意図的に狭く（値オブジェクト /
 2 集約以上で使用 / 業務意味論を持つ / 共同所有の判断。詳細はその README）、名前が入場時の問いを
-表しています——これは業務の語か。根拠: [ADR-0104](adr/0104-domain-lexicon.ja.md)。
+表しています——これは業務の語か。根拠: [ADR-0034](adr/0034-domain-lexicon.ja.md)。
 
 ### ドメインサービス
 
@@ -337,8 +337,8 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 - 理由: 到達不能な `if err != nil { return err }` はデッドコードであり、テスト不能・カバレッジ低下・意図の隠蔽を招く。`panic` は不変条件を文書化し、前提が破られたら確実に気づける。
 - **関数本体の中で組み立てた `xerrors.New(...)` を返さない。** package-level のセンチネル（`var errXxx = xerrors.New("...")`）として宣言し、動的な文脈は `xerrors.Wrap(errXxx, ctx)` で付与する。その場で生成したエラーは `errors.Is` から辿れないため、呼び出し側が分岐できず、テストはメッセージ文字列一致に追い込まれる — 一語の文言変更でテストが壊れ、逆に別のエラーでも通ってしまう。`internal/architest`（`TestNoInlineXerrorsNew`）で機械検証しており、allowlist は持たない。`_test.go` は対象外 — テストが注入用のアドホックなエラーを作るのは正当な用法。
 - `apperror` センチネルを元エラーに付与する場合は `pkg/xerrors` を使う。元エラーを文字列へ潰す `Wrap(sentinel, err.Error())` より、型・スタックを chain に残して `Is` / `As` で辿れる `Join(sentinel, err)` を優先する。例外は2つ: 機密（クエリ・userinfo を含む URL 等）を含みうるエラーへの **redact** ルールと、**意図的な型消去** ルール — `Wrap` による潰しは意図的なこともある（元の型を chain から消す）ため、既存の正規化器を `Join` へ変える前に、その型に**マッチしないこと**に依存する下流の `Is` / `As` 述語（例: `*pgconn.PgError` の SQLSTATE を見る tx リトライ述語）をすべて確認する。完全な方針は [`pkg/xerrors/README.md`](../../pkg/xerrors/README.ja.md) を参照。
-- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0040](adr/0040-error-metadata-code-message-details.ja.md)。
-- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0041](adr/0041-error-details-opt-in-gate.ja.md)。
+- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0043](adr/0043-error-metadata-code-message-details.ja.md)。
+- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0044](adr/0044-error-details-opt-in-gate.ja.md)。
 
 ## コメントルール
 

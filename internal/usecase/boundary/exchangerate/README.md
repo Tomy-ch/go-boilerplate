@@ -18,8 +18,7 @@ type Rate struct {
 ```
 
 `Value` is an exact `pkg/decimal.Decimal`, not a `float64`: the rate is a multiplier on the
-money path and a float would corrupt it at ingest ([ADR-0102](../../../../docs/adr/0102-exact-decimal-pkg-wrap.md) /
-[ADR-0103](../../../../docs/adr/0103-decimal-half-up-rounding.md)).
+money path and a float would corrupt it at ingest ([ADR-0033](../../../../docs/adr/0033-two-scale-quantity-model.md)).
 
 ## Why Abstract?
 

@@ -494,7 +494,7 @@ patterns:
     status: rejected
     verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      複数コンテキストへの明示的分割という意味では採用していない。ADR-0104 の Alternatives
+      複数コンテキストへの明示的分割という意味では採用していない。ADR-0034 の Alternatives
       （internal/domain/kernel 節）が Evans の Bounded Context / Context Map を名指しし、
       「Shared Kernel は 2 つの Bounded Context の共同所有物で複数コンテキストの存在を前提とするが、
       本リポジトリは単一モデルである」と明示している。ADR-0004（modular monolith, microservices は
@@ -516,7 +516,7 @@ patterns:
       単一モデル・単一デプロイのモジュラーモノリスであり（ADR-0004: マイクロサービスは non-goal）、
       複数の Bounded Context への明示的分割を行っていない。共有が必要な箇所は集約間の共有
       （internal/domain/lexicon）として扱い、Shared Kernel の語は実際に複数コンテキストを導入する者の
-      ために予約している。宣言は ADR-0104 の Alternatives Considered 節、および
+      ために予約している。宣言は ADR-0034 の Alternatives Considered 節、および
       internal/domain/lexicon/README.md 冒頭の注記。
     enforced_by: []
     last_audited: "2026-08-05"
@@ -529,7 +529,7 @@ patterns:
     status: uninterpreted
     verdict: 差異あり
     gap: >-
-      Context Map という語は ADR-0104 と internal/domain/lexicon/README.md に一度だけ現れるが、
+      Context Map という語は ADR-0034 と internal/domain/lexicon/README.md に一度だけ現れるが、
       Shared Kernel を不採用とする根拠として上位概念に触れているだけで、Context Map 自体の解釈ではない。
       境界をまたぐ接触点（外部 IdP / 為替レート / オブジェクトストレージ / outbox 送信先 / SQS）は
       個別には文書化されているが、それらを Evans の関係パターン語彙（Customer-Supplier / Conformist /
@@ -567,7 +567,7 @@ patterns:
     deviation_note: >-
       Evans の Shared Kernel は 2 つの Bounded Context が共同所有するモデルの部分集合を指し、
       複数コンテキストの存在を前提とする。本リポジトリは単一モデルで、共有は集約間に起きる。
-      前提が成り立たないため語を採用せず internal/domain/lexicon と呼ぶ。ADR-0104 の
+      前提が成り立たないため語を採用せず internal/domain/lexicon と呼ぶ。ADR-0034 の
       Alternatives に「internal/domain/kernel, naming the DDD Shared Kernel」として却下理由を記載。
     enforced_by:
       - kind: depguard
@@ -625,7 +625,7 @@ patterns:
     gap: >-
       同期 HTTP 面は OpenAPI が公開言語の役割をほぼ完全に果たしている（別リポジトリの利用者が公開側
       ツールチェーン無しで消費できる解決済み契約を成果物としてコミットし、drift gate で鮮度を保証）。
-      差異は非対称性で、非同期面（outbox → 外部 receiver）には公開言語が無い。ADR-0048 が定めるのは
+      差異は非対称性で、非同期面（outbox → 外部 receiver）には公開言語が無い。ADR-0052 が定めるのは
       Idempotency-Key という転送規約のみで、公開されるイベント payload のスキーマと事象語彙を定義・
       公開した記述はコーパスに無い。この非対称は docs/design/outbox.md 第 4 節で宣言済み。
     interpreted_by:
@@ -647,7 +647,7 @@ patterns:
     deviation_declared: true
     deviation_note: >-
       同期 HTTP 面は OpenAPI が公開言語として機能する一方、非同期面（outbox → 外部 receiver）には
-      公開言語が無い。ADR-0048 が定めるのは Idempotency-Key という転送規約であって言語ではなく、
+      公開言語が無い。ADR-0052 が定めるのは Idempotency-Key という転送規約であって言語ではなく、
       イベント payload のスキーマも event_type の語彙も定義・公開されていない。テンプレートは自分が
       所有しないイベントの言語を公開できないため、この非対称は payload と event_type を integrator に
       委ねている限りにおいて意図的である。未提供なのは、integrator が定義した後の公開の型。

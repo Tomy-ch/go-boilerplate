@@ -2,7 +2,7 @@
 
 [Worker README](../../internal/controller/worker/README.md) | 日本語: [worker.ja.md](../ja/design/worker.ja.md)
 
-This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0042](../adr/0042-broker-agnostic-worker-scaffold.md) onward).
+This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0045](../adr/0045-broker-agnostic-worker-scaffold.md) onward).
 
 ---
 
@@ -225,7 +225,7 @@ flowchart LR
 > A worked example of all six ships as part of the removable sample set: `internal/controller/worker/withdrawalarchive` consumes the withdrawal event the outbox emits and archives it to object storage. `make setup-remove-sample-api` removes it and leaves `provideWorkers()` empty again.
 <!-- sample-api:end -->
 
-> A wired broker adapter links its SDK into the binary — including the sample wiring, since `serve` / `worker` / `outbox-relay` share one binary. Isolation is therefore verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired (E3', [ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)).
+> A wired broker adapter links its SDK into the binary — including the sample wiring, since `serve` / `worker` / `outbox-relay` share one binary. Isolation is therefore verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired (E3', [ADR-0048](../adr/0048-broker-sdk-isolation-verified-after-sample-removal.md)).
 
 ---
 
@@ -256,4 +256,4 @@ flowchart LR
 | **Settings** | The engine-core behavior settings (an engine-local struct). Mapped from `config.WorkerConfig` via DI. |
 | **WorkerConfig** | The engine-core settings (broker-agnostic, `WORKER_*` with `default` tags). Broker-specific settings live in the adapter `Config`. |
 | **traceparent / continuation** | W3C trace context. `Extract`ed from `Message.Attributes` to continue the span (D1). |
-| **E1/E2/E3'** | engine does not import infra / engine is green on the fake alone / after `make setup-remove-sample-api` the coupling equals the pre-sample state — no core `*.go` or core document references a broker adapter or a sample, the seam is restored, and removed dependencies leave `go.mod` / `vendor/` ([ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)). |
+| **E1/E2/E3'** | engine does not import infra / engine is green on the fake alone / after `make setup-remove-sample-api` the coupling equals the pre-sample state — no core `*.go` or core document references a broker adapter or a sample, the seam is restored, and removed dependencies leave `go.mod` / `vendor/` ([ADR-0048](../adr/0048-broker-sdk-isolation-verified-after-sample-removal.md)). |

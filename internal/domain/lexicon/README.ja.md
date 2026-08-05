@@ -19,7 +19,7 @@
 `money.Price` のような値オブジェクトは複数の集約から使われます（現在は `product.price`、次に
 `purchase_details.unit_price` / `purchases.*_amount`）。どれか 1 つの集約には置けず（他が手を伸ばす
 ことになる）、`pkg/` にも置けません（業務ロジックを禁じているため）。だからここに置きます。
-[ADR-0104](../../../docs/adr/0104-domain-lexicon.md) を参照。
+[ADR-0034](../../../docs/adr/0034-domain-lexicon.md) を参照。
 
 ## 型をどこに置くか
 
@@ -54,4 +54,4 @@ depguard（`.golangci-full.yaml` の `maintain_a_sound_domain`）は domain フ�
 ## パッケージ
 
 - `money` — `Price` 値オブジェクト（非負の価格スケール十進数。最小単位変換を所有）。
-  正確な十進の器は `pkg/decimal`（[ADR-0102](../../../docs/adr/0102-exact-decimal-pkg-wrap.md)）。
+  正確な十進の器は `pkg/decimal`（[ADR-0033](../../../docs/adr/0033-two-scale-quantity-model.md)）。

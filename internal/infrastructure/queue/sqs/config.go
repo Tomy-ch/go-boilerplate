@@ -2,7 +2,7 @@
 // （Publisher）の AWS SQS 実装を提供します。
 //
 // 本パッケージの配線は、サンプル削除で外れる形に限ります（削除後の結合をサンプル追加前と
-// 同一に保つため。ADR-0106 の E3'）。本番利用時は integrator が、受信側を WorkerModule へ
+// 同一に保つため。ADR-0048 の E3'）。本番利用時は integrator が、受信側を WorkerModule へ
 // 配線し、送出側を outbox の publish 先として選びます。詳細は README.md を参照。
 package sqs
 

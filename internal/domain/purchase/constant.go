@@ -2,10 +2,11 @@ package purchase
 
 const (
 	// taxRatePercent は、国内消費税率（パーセント）です。sample の placeholder であり、
-	// 要件化した時点で config / マスタへ移します（ADR-0100）。
+	// 要件化した時点で config / マスタへ移します（docs/spec/purchase/domain.md）。
 	taxRatePercent = 10
 
-	// shippingFeeCents は、固定送料（USD セント）です。sample の placeholder です（ADR-0100）。
+	// shippingFeeCents は、固定送料（USD セント）です。sample の placeholder です
+	// （docs/spec/purchase/domain.md）。
 	shippingFeeCents = 500
 
 	// percentDivisor は、パーセント計算の除数です（taxRatePercent を百分率として扱うため）。

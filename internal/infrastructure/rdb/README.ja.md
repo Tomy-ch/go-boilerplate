@@ -205,7 +205,7 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 （[ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md) /
 [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)）。最初の実装は
 `command_service/purchase`（在庫減算 + 購入 / 明細 INSERT。
-[ADR-0100](../../../docs/adr/0100-purchase-stock-lock-and-amount-contract.md) 参照）です。
+[ADR-0031](../../../docs/adr/0031-ordered-pessimistic-row-locks.md) 参照）です。
 
 CommandService は `ctx` で渡されたトランザクション上で書き込みを実行し（自前では開かない。境界は
 Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベントは発行しません（Usecase の責務で
