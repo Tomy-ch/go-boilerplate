@@ -126,53 +126,54 @@ corpus:
   - internal/**/README.md
   - pkg/**/README.md
   - openapi/*.md
+  # The one file from `docs/spec/**` that belongs here — the cross-cutting business-vocabulary spec.
+  # Added as a single path on purpose; see the blind-spot note below for why the directory glob must
+  # never replace it.
+  - docs/spec/glossary.md
 
 # Known blind spot — `docs/spec/**` is deliberately NOT in the corpus, and must not be added.
 # Per-feature specs carry sample business content, and keeping business content out of the
 # architectural audit is exactly what the ADR work behind this ledger set out to achieve; a
 # `docs/spec/**` glob would drag twelve features' worth of demo vocabulary into every sweep.
 #
-# The cost is `ubiquitous-language`. Its gap names `docs/spec/<feature>/domain.md` as the only
-# document that could host the Ubiquitous Language, and the audit cannot read it — so that verdict
-# rests on the ABSENCE of a cross-cutting home, never on a reading of one. The pattern cannot be
-# audited from the corpus alone until such a home exists.
+# That exclusion used to cost `ubiquitous-language` its auditability: the only document that could
+# host the Ubiquitous Language was `docs/spec/<feature>/domain.md`, which the audit cannot read, so
+# the verdict rested on the ABSENCE of a cross-cutting home rather than on a reading of one.
 #
-# Issue #941 tracks creating it (a cross-cutting business-vocabulary spec, not per-feature). When
-# it lands, add THAT document's specific path to the list above — the one file, never the
-# `docs/spec/**` glob, which would reintroduce the business content this exclusion exists to keep out.
+# `docs/spec/glossary.md` is that home, and it is listed above as a single path — never as a
+# `docs/spec/**` glob, which would reintroduce the per-feature business content this exclusion
+# exists to keep out. The glossary is the exception because it is the one page in that tree whose
+# subject is the language itself rather than one feature's rules.
 
 patterns:
   - id: ubiquitous-language
     name: Ubiquitous Language
     part: 1
     scope: core
-    status: uninterpreted
+    status: interpreted
     verdict: 差異あり
     gap: >-
-      層ごとの語彙規約（domain / application / HTTP / 技術）は整備されているが、それは
-      「機構語彙が上位層の契約に漏れるのを防ぐ」規約であり、Evans の「エキスパートと開発者が
-      単一の言語を共有し、言語の変化がモデルの変化を駆動する」という中核は不在。ドメイン
-      エキスパートは「妥当な値の決定者」としてのみ登場し、言語の共同所有者としては現れない
-      （ADR-0014 / ADR-0015 の「妥当性の権威はドメインエキスパート」がその唯一の登場）。
-      Ubiquitous Language の語自体はコーパスに 1 度も現れない（唯一の hit は ADR-0077 の
-      「ubiquitous and zero-dependency」で同音異義）。
-      差異は前回より広がった。docs/rules.md は業務知識の置き場を docs/spec/** と明示的に指定し、
-      業務語彙は feature 単位のサイロへさらに移った（現在 12 feature ディレクトリ、うち domain.md は
-      7 本）。それらを束ねる文書は無く（横断 spec も glossary も index も不在）、UL の正本たりうる
-      文書は docs/spec/<feature>/domain.md だけという状態が固定化している（#941）。
-      加えて docs/spec/** は本台帳の corpus 外であり、この判定は「正本の不在」に依拠していて
-      「正本を読んだ結果」ではない（corpus ブロックのコメント参照）。この横断語彙の不在は
-      value object の二重定義（#910）・kernel の三重定義（#912）として既に 2 度実害化した。
-      2026-08-06 の corpus グロブ修正で docs/design/** が初めて実際に読まれた。各サブシステムの
-      Glossary 節を確認したところ、そこにあるのは機構の用語集であって業務語彙ではなかった。
-      「不在の判定がコーパス除外に依拠している」という留保は、docs/design/** の範囲については
-      「読んだうえでの不在」へ格上げされた。docs/spec/** についてはそのまま残る。
-    interpreted_by: []
+      横断語彙の器が立った。docs/spec/glossary.md が正本の所在（業務語彙は spec に住み README / ADR には
+      住まない）、行を得る基準（業務を知っている人がそう認めるか）、機構語彙との分離、同音異義と同義の
+      監視を定め、Evans が最も警戒する「1 語 2 義・2 語 1 義」への構造的な応答を持つ。台帳の corpus へ
+      その 1 ファイルだけを足したため、この判定は初めて「正本を読んだ結果」になった。
+      器の Terms 表はサンプル由来でマーカーの内側にあり撤去後は空になるが、規約を述べる各節はマーカーの
+      外にあって行の有無に依存せず読める。空であることは未解釈の理由にならない。
+      残る差異は狭くなった。Evans の中核のうち「エキスパートと開発者が対話を通じて言語を共同所有し、
+      言語の変化がモデルの変化を継続的に駆動する」という生きた慣行が規定されていない。器が定めるのは
+      語の登録手続きであって、相互洗練のループではない。誰がいつ語彙を見直すか、モデル側の発見が語彙を
+      変える経路も書かれていない。
+      これはテンプレートという性質に由来すると読めるが、コーパス自身がそう宣言してはいない。
+      「Evans はこう要求するが、本リポジトリはこうする、理由はこう」の三点が着地していないため未宣言。
+    interpreted_by:
+      - kind: doc
+        path: docs/spec/glossary.md
+        section: "Overview / How a term earns a row / Mechanism vocabulary / Watch list"
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-06"
-    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
+    last_audited_commit: "069f65db52672d417537cc70a94ea1abda0c8d6d"
 
   - id: layered-architecture
     name: Layered Architecture
