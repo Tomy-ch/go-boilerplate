@@ -645,6 +645,13 @@ func TestMaskExpressions(t *testing.T) {
 			require.Error(t, err)
 			require.ErrorIs(t, err, errUnterminatedExpr)
 		})
+
+		t.Run("式内のクォートが奇数個でも後続の式までのシェルを飲み込まない", func(t *testing.T) {
+			t.Parallel()
+			_, err := maskExpressions("echo ${{ inputs.msg == 'it's ok' }}\nrm -rf /\necho ${{ inputs.done }}\n")
+			require.Error(t, err)
+			require.ErrorIs(t, err, errUnterminatedExpr)
+		})
 	})
 }
 
@@ -671,6 +678,11 @@ func TestExprEnd(t *testing.T) {
 		t.Run("閉じが無ければ -1 を返す", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, -1, exprEnd(" a "))
+		})
+
+		t.Run("自身の閉じより先に次の式が始まれば -1 を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, -1, exprEnd(" 'a }} rm -rf / ${{ 'b }}"))
 		})
 	})
 }

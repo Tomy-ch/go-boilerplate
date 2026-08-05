@@ -411,10 +411,20 @@ func maskExpressions(script string) (string, error) {
 	}
 }
 
+// exprEnd は式の開始直後から見た閉じ位置を返す。閉じが無ければ -1。
+//
+// 式の中の ' は文字列リテラルの境界なので、その内側の }} で式を打ち切らないよう引用符を追う。
+// ただし ' が奇数個だと引用符の状態が戻らず、自分の }} を読み飛ばして後続の別の式まで
+// 巻き込む。GitHub Expressions の式は入れ子にならないため、閉じを見つける前に次の ${{ が
+// 来ることは引用符の対応が壊れている証拠であり、そこで未閉じとして扱う。
+// 巻き込んだ区間は maskExpressions が空行へ潰すので、fail-open にするとその間のシェルが
+// 検査対象から丸ごと消える。
 func exprEnd(expr string) int {
 	quoted := false
 	for i := range len(expr) {
 		switch {
+		case strings.HasPrefix(expr[i:], exprOpen):
+			return -1
 		case expr[i] == '\'':
 			quoted = !quoted
 		case !quoted && strings.HasPrefix(expr[i:], exprClose):
