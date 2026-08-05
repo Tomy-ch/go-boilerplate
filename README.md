@@ -243,6 +243,19 @@ Observability and tooling are OSS-first and vendor-neutral. Components under `in
 loosely coupled, so DI allows infrastructure, implementations and middleware to be replaced per
 runtime environment.
 
+### Out of scope: developer-machine hygiene
+
+Supply-chain defence here stops at the repository: dependency cooldown windows, pinned actions and
+base images, SBOM and vulnerability scanning. What runs on a *developer's* laptop — globally
+installed packages, editor and browser extensions, agent/MCP configuration — is outside a project
+template's reach and belongs to whoever administers those machines.
+
+If you need to answer "an advisory names this package and version; which of our machines match right
+now?", [`perplexityai/bumblebee`](https://github.com/perplexityai/bumblebee) is a read-only endpoint
+scanner built for exactly that question. It is mentioned as a pointer, not a dependency — nothing
+here installs, invokes or requires it, and note that it needs an exposure catalog of its own to flag
+anything.
+
 ## Maintainer Policy / Disclaimer
 
 This repository is **independently maintained by the author** and is not affiliated with any

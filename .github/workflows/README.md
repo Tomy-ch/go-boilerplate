@@ -104,6 +104,7 @@ All three rules live in one check rather than three, because they are not three 
 |Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
 |OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
 |npm Cooldown Audit|`npm-cooldown-audit.yaml`|Report lockfile entries that do not satisfy the `.npmrc` supply-chain cooldown (never blocks)|
+|Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
 |SAST|`sast.yaml`|Opengrep (Semgrep-compatible) scan of first-party source with taint tracking|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
@@ -186,6 +187,16 @@ Severity for the OSV gate comes from the advisory's own rating and falls back to
 Each `.npmrc` sets `min-release-age`, npm's own supply-chain quarantine: a version published inside that window cannot be resolved at all. The catch is that it applies only while npm *resolves* dependencies. Every CI job and image build here runs `npm ci`, which replays the lockfile without resolving, so a lockfile produced with the cooldown switched off installs cleanly and shows no symptom anywhere in CI.
 
 `npm-cooldown-audit.yaml` closes that blind spot. It reads the window from each lockfile's own `.npmrc` rather than hardcoding it, and reports any entry younger than the window. The signal is close to noise-free: under an active cooldown npm refuses to resolve an in-window version, so the only way one reaches a lockfile is a deliberate override.
+
+#### Go Cooldown
+
+Go has no counterpart to `min-release-age`: nothing lets `go get` refuse a version for being too new. That inverts the relationship between tool and guard. The npm audit above looks for evidence that an existing guard was bypassed, so reporting is enough; here the check **is** the guard, and reporting alone would leave the window existing nowhere.
+
+`go-cooldown.yaml` therefore gates on a pull request, and only over the requirements the change adds or upgrades — everything already in `go.mod` is grandfathered, so the window applies going forward instead of holding every branch hostage to the state it inherited. Only **direct** requirements fail it. An indirect version is chosen by MVS and can sit above a direct dependency's own lower bound, where lowering it is not something the pull request can do; failing there would produce a red with no remedy, so those are reported.
+
+The window is **7 days**, and the number comes from this repository rather than from npm. Go modules carry no install script — `go mod download` executes nothing — so the class where a freshly published version takes the machine at install time does not exist; what the window buys is time before malicious code is built and shipped. Measured against the history here, 7 days would have stopped 12 of the 47 commits that touched `go.mod` and 14 days only 3 more, so there is no cliff between them, and the one commit that already declared it was picking versions that "satisfy the cooldown" had waited 7.4 days.
+
+Urgent overrides live in [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml), and every entry carries a deadline. An expired deadline, one reaching further than three months out, or an entry matching nothing in `go.mod` fails the check — and an invalid entry also stops working, so a lapsed bypass cannot quietly keep letting its module through. A deadline arrives without `go.mod` changing, which is why the schedule exists: the pull-request trigger alone would never see one expire.
 
 **It never fails the build**, and that is a design decision rather than a default. Overriding the cooldown is a tech-lead / architect call — reacting to a CRITICAL advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The non-blocking property lives in the tool itself, not in workflow configuration, so it cannot be turned into a gate by editing YAML.
 

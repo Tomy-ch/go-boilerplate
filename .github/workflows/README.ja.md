@@ -104,6 +104,7 @@
 |Dependency Review|`dependency-review.yaml`|PR が新たに持ち込む脆弱な依存をマージ前にブロック|
 |OpenSSF Scorecard|`scorecard.yaml`|リポジトリのセキュリティ姿勢のスコアリングと結果の公開|
 |npm Cooldown Audit|`npm-cooldown-audit.yaml`|lockfile が `.npmrc` の供給網 cooldown を満たしているかを報告（ブロックはしない）|
+|Go Cooldown|`go-cooldown.yaml`|cooldown 窓の内側で公開された direct Go モジュールを足す / 上げる PR をゲート|
 |Config Scan|`trivy-config.yaml`|Trivy による Dockerfile の設定不備スキャン（HIGH 以上でゲート）|
 |SAST|`sast.yaml`|Opengrep（Semgrep 互換）による自前ソースの解析（taint 追跡あり）|
 |Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
@@ -186,6 +187,16 @@ OSV ゲートの深刻度は advisory 自身の評価を使い、無ければ os
 各 `.npmrc` は `min-release-age` を宣言しています。これは npm 自身の供給網隔離で、窓内に公開されたバージョンはそもそも依存解決できません。落とし穴は、これが依存**解決**時にしか効かないことです。本リポジトリの CI とイメージビルドは全て `npm ci` で、lockfile を再現するだけで解決を行わないため、cooldown を外して作られた lockfile はそのまま install でき、CI のどこにも症状が出ません。
 
 `npm-cooldown-audit.yaml` はこの死角を埋めます。窓の長さは各 lockfile 自身の `.npmrc` から読み（ハードコードしない）、窓内のエントリを報告します。シグナルはほぼノイズを含みません。cooldown が有効なら npm は窓内バージョンの解決を拒否するので、それが lockfile に載る経路は意図的な解除以外に無いためです。
+
+#### Go モジュールの cooldown
+
+Go には `min-release-age` に当たるものがありません。`go get` に「新しすぎるから採るな」と言わせる手段が無い、ということです。これがツールと防御の関係を逆にします。上の npm 監査は「既にある防御が迂回された証拠」を探すので報告で足りますが、こちらは検査そのものが防御であり、報告に留めれば窓はどこにも存在しないままになります。
+
+そこで `go-cooldown.yaml` は PR でゲートし、対象はその変更が追加 / 更新した require だけに絞ります。既に `go.mod` にあるものは grandfather するので、窓はこれから入るものに効き、引き継いだ状態で全ブランチが人質になることはありません。落とすのは **direct** だけです。indirect の版は MVS が選び、direct が要求する下限より上に固定されることがあります。それを下げるのは PR にできる操作ではないので、落としても打つ手の無い赤になります。よって indirect は報告に留めます。
+
+窓は **7 日**で、この数字は npm からではなく本リポジトリの実績から採りました。Go モジュールには install script が無く `go mod download` は何も実行しないため、公開直後のバージョンが install 時点でマシンを奪うクラスは成立しません。窓が買うのは「悪意あるコードがビルドされ出荷されるまでの時間」です。履歴に当てると、7 日は `go.mod` を触った 47 コミットのうち 12 件を止め、14 日にしても 3 件しか増えないので両者の間に崖がありません。加えて「cooldown を満たす」と明示してバージョンを選んだ唯一のコミットが、実際には 7.4 日待っていました。
+
+緊急の解除は [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml) が受け、エントリは必ず期限を持ちます。期限切れ・3 ヶ月より先の期限・`go.mod` の何にも当たらないエントリは検査を落とします。無効なエントリは効力も失うので、失効したバイパスが黙ってモジュールを通し続けることはありません。期限は `go.mod` が変わらなくても訪れます。定期実行があるのはそのためで、PR トリガーだけでは失効を一度も見られません。
 
 **このワークフローは決してビルドを落としません。** これは既定値ではなく設計上の決定です。cooldown の解除はテックリード / アーキテクトの判断であり、CRITICAL への即応こそがその存在理由なので、ハードゲートは正当な行使をこそ塞いでしまいます。ブロックしない性質はワークフローの設定ではなくツール自身に持たせてあり、YAML の編集だけではゲートに変えられません。
 

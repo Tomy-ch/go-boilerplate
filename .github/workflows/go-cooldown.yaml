@@ -1,0 +1,103 @@
+name: Go Cooldown
+
+# Unlike npm, Go has no resolver-side cooldown: nothing lets `go get` refuse a version for
+# being too new, and `.npmrc`'s `min-release-age` has no counterpart in `go.mod`. This
+# workflow is therefore not a detector for a bypassed guard — it *is* the guard, and the
+# window exists nowhere else.
+#
+# On a pull request it gates: only the requirements the change adds or upgrades are checked,
+# so the modules already in `go.mod` are grandfathered rather than blocking every branch.
+# Only direct requirements fail the check. An indirect version is chosen by MVS and can be
+# pinned below a direct dependency's own lower bound, so failing on one would produce a red
+# nobody can resolve; those are reported instead.
+#
+# The scheduled run audits every requirement and never fails on the window. What it does fail
+# on is the bypass file: an entry whose deadline has passed, whose deadline reaches further
+# than the allowed maximum, or that no longer matches anything in `go.mod`. A deadline arrives
+# without `go.mod` changing, so the pull-request trigger alone would never notice one expiring
+# — the schedule is what collects them.
+
+on:
+  pull_request:
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/go-cooldown/**'
+      - '.github/go-cooldown-bypass.toml'
+      - '.github/workflows/go-cooldown.yaml'
+  schedule:
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-cooldown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The default checkout is shallow, so the base commit is absent and `git show
+      # <base>:go.mod` fails. Fetching the base ref explicitly is what makes the diff
+      # resolvable; without it the gate cannot tell an added requirement from an existing one.
+      - name: Resolve gate base
+        id: base
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BASE_REF}" ]; then
+            echo "base=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=200 origin "${BASE_REF}"
+          echo "base=origin/${BASE_REF}" >> "$GITHUB_OUTPUT"
+
+      # The summary body is written by the tool, which fences every value it did not author
+      # itself: a module path comes out of `go.mod`, which the pull request controls, and the
+      # step summary renders Markdown. The headings stay live so the report reads as a report.
+      - name: Check Go module cooldown
+        shell: bash
+        env:
+          GATE_BASE: ${{ steps.base.outputs.base }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${GATE_BASE}" ]; then
+            go run ./scripts/go-cooldown gate --base="${GATE_BASE}" --github \
+              --summary-out=go-cooldown-summary.md \
+              && status=0 || status=$?
+          else
+            go run ./scripts/go-cooldown audit --github \
+              --summary-out=go-cooldown-summary.md \
+              && status=0 || status=$?
+          fi
+
+          cat go-cooldown-summary.md >> "${GITHUB_STEP_SUMMARY}"
+          exit "${status}"
