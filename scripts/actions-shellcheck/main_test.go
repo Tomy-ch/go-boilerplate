@@ -284,6 +284,15 @@ func TestParseAction(t *testing.T) {
 			require.ErrorIs(t, err, errStepCountMismatch)
 			require.ErrorContains(t, err, "抽出 0 / 期待 1")
 		})
+
+		t.Run("2 番目以降のドキュメントを黙って捨てずエラーにする", func(t *testing.T) {
+			t.Parallel()
+			body := compositeAction + "---\n" + compositeAction
+			_, err := parseAction("action.yaml", []byte(body))
+			require.Error(t, err)
+			require.ErrorIs(t, err, errMultipleDocuments)
+			require.ErrorContains(t, err, "action.yaml")
+		})
 	})
 }
 

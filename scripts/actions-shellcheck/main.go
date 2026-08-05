@@ -9,8 +9,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -70,6 +72,7 @@ var (
 
 	errActionSymlinkDir        = xerrors.New("ディレクトリへのシンボリックリンクは走査できません。実体を置くか、リンクを外してください")
 	errActionSymlinkUnresolved = xerrors.New("解決できないシンボリックリンクがあります")
+	errMultipleDocuments       = xerrors.New("action 定義に複数の YAML ドキュメントがあります。--- 区切りの 2 番目以降は検査されません")
 )
 
 type step struct {
@@ -188,6 +191,9 @@ func isActionFile(name string) bool {
 }
 
 func parseAction(file string, data []byte) ([]step, error) {
+	if err := requireSingleDocument(file, data); err != nil {
+		return nil, err
+	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, xerrors.Wrap(err, "parse "+file)
@@ -204,6 +210,31 @@ func parseAction(file string, data []byte) ([]step, error) {
 		return nil, xerrors.Wrap(errStepCountMismatch, fmt.Sprintf("%s: 抽出 %d / 期待 %d", file, len(steps), want))
 	}
 	return steps, nil
+}
+
+// requireSingleDocument は action 定義ファイルが単一の YAML ドキュメントであることを確かめる。
+//
+// yaml.Unmarshal は --- で区切られた 2 番目以降のドキュメントをエラー無しで捨てるため、
+// 抽出側もデコードして数える側も揃って見落とす。件数差の突き合わせでも検知できないので、
+// ここで落とす。GitHub Actions は action 定義に複数ドキュメントを認めていない。
+func requireSingleDocument(file string, data []byte) error {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	var first any
+	if err := dec.Decode(&first); err != nil {
+		if xerrors.Is(err, io.EOF) {
+			return nil
+		}
+		return xerrors.Wrap(err, "parse "+file)
+	}
+	var second any
+	switch err := dec.Decode(&second); {
+	case err == nil:
+		return xerrors.Wrap(errMultipleDocuments, file)
+	case xerrors.Is(err, io.EOF):
+		return nil
+	default:
+		return xerrors.Wrap(err, "parse "+file)
+	}
 }
 
 // countRunSteps はデコード結果から run ステップ数を数える。件数を using の値と無関係に数えるのは、
