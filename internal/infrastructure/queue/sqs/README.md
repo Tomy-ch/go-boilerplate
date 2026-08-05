@@ -105,6 +105,8 @@ configuration, not application code.
 
 `Config` here is adapter-specific (`QueueURL` / `DLQURL` / `MaxMessages` / `WaitTimeSeconds` /
 `VisibilityTimeout`) and is intentionally separate from the engine-core `config.WorkerConfig`,
-which holds no broker-specific vocabulary. `DLQURL` is only used by `QueueStatsProvider` to read
-the DLQ backlog; leave it empty to skip DLQ depth collection (the engine's dead-letter path is
-`FailureHandler` / redrive, not this URL).
+which holds no broker-specific vocabulary. `DLQURL` names the queue `NewDeadLetter` sends to and the
+queue `QueueStatsProvider` reads the backlog from. Leaving it empty means both are out: wire no
+`FailureHandler` at all and let the broker's redrive policy handle poison messages. Wiring
+`NewDeadLetter` with an empty URL is the one combination to avoid — every send fails, and the engine
+does not ack a message whose dead-lettering failed, so it comes back on every redelivery.

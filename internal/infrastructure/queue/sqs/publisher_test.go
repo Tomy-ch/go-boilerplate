@@ -103,7 +103,10 @@ func Test_publisher_Publish(t *testing.T) {
 			got := captureSendMessage(t, api)
 			messageID := newTestUUID(t)
 
-			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: messageID})
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: messageID,
+				EventType: "user.withdrawn.v1",
+			})
 
 			require.NoError(t, err)
 			assert.Equal(t, messageID.String(), aws.ToString((*got).MessageAttributes[AttrMessageID].StringValue))
@@ -123,6 +126,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
 				Headers:   headers,
 			})
 
@@ -142,9 +146,24 @@ func Test_publisher_Publish(t *testing.T) {
 			api.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				Return(nil, xerrors.New("broker down"))
 
-			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
+			})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("イベント種別が空なら送信前にエラーにする", func(t *testing.T) {
+			t.Parallel()
+			// SQS は空値の属性を拒むため、送っても必ず失敗する。relay が同じ行を延々と再送しないよう手前で弾く。
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
+
+			require.ErrorIs(t, err, ErrMissingEventType)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
 		t.Run("MessageAttributes が上限を超えたら送信前にエラーにする", func(t *testing.T) {
@@ -160,6 +179,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
 				Headers:   headers,
 			})
 
@@ -175,7 +195,10 @@ func Test_publisher_Publish(t *testing.T) {
 			api.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				Return(nil, context.Canceled)
 
-			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
+			})
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})

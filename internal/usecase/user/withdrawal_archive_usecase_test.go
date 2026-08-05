@@ -15,6 +15,9 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// testWithdrawnUserID は、退会証跡テストで使うユーザー ID です。
+const testWithdrawnUserID = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+
 // newArchiveUsecase は、storage mock を差した退会証跡ユースケースを生成します。
 func newArchiveUsecase(t *testing.T) (user.ArchiveUsecase, *mock_objectstorage.MockStorage) {
 	t.Helper()
@@ -52,19 +55,19 @@ func TestArchiveUsecase_ArchiveWithdrawal(t *testing.T) {
 			payload := []byte(`{"userId":"u1","deletedAt":"2026-07-29T12:00:00Z"}`)
 			storage.EXPECT().
 				Put(gomock.Any(), objectstorage.PutObject{
-					Key:         "withdrawals/u1.json",
+					Key:         "withdrawals/"+testWithdrawnUserID+".json",
 					Body:        payload,
 					ContentType: "application/json",
 				}).
-				Return(objectstorage.Path("withdrawals/u1.json"), nil)
+				Return(objectstorage.Path("withdrawals/"+testWithdrawnUserID+".json"), nil)
 
 			got, err := uc.ArchiveWithdrawal(t.Context(), user.ArchiveWithdrawalParams{
-				UserID:  "u1",
+				UserID:  testWithdrawnUserID,
 				Payload: payload,
 			})
 
 			require.NoError(t, err)
-			assert.Equal(t, "withdrawals/u1.json", got)
+			assert.Equal(t, "withdrawals/"+testWithdrawnUserID+".json", got)
 		})
 
 		t.Run("同じ入力で繰り返し実行しても同じ保存内容になる", func(t *testing.T) {
@@ -74,14 +77,14 @@ func TestArchiveUsecase_ArchiveWithdrawal(t *testing.T) {
 			payload := []byte(`{"userId":"u1","deletedAt":"2026-07-29T12:00:00Z"}`)
 			storage.EXPECT().
 				Put(gomock.Any(), objectstorage.PutObject{
-					Key:         "withdrawals/u1.json",
+					Key:         "withdrawals/"+testWithdrawnUserID+".json",
 					Body:        payload,
 					ContentType: "application/json",
 				}).
-				Return(objectstorage.Path("withdrawals/u1.json"), nil).
+				Return(objectstorage.Path("withdrawals/"+testWithdrawnUserID+".json"), nil).
 				Times(2)
 
-			params := user.ArchiveWithdrawalParams{UserID: "u1", Payload: payload}
+			params := user.ArchiveWithdrawalParams{UserID: testWithdrawnUserID, Payload: payload}
 			first, err := uc.ArchiveWithdrawal(t.Context(), params)
 			require.NoError(t, err)
 			second, err := uc.ArchiveWithdrawal(t.Context(), params)
@@ -106,12 +109,25 @@ func TestArchiveUsecase_ArchiveWithdrawal(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 
+		t.Run("ユーザー ID が UUID でなければ保存しない", func(t *testing.T) {
+			t.Parallel()
+			// キーの一部になる値なので、区切り文字を含む値で接頭辞配下の別キーを指せないことを固定する。
+			uc, _ := newArchiveUsecase(t)
+
+			_, err := uc.ArchiveWithdrawal(t.Context(), user.ArchiveWithdrawalParams{
+				UserID:  "../" + testWithdrawnUserID,
+				Payload: []byte(`{}`),
+			})
+
+			require.ErrorIs(t, err, apperror.ErrValidation)
+		})
+
 		t.Run("payload が空なら保存しない", func(t *testing.T) {
 			t.Parallel()
 
 			uc, _ := newArchiveUsecase(t)
 
-			_, err := uc.ArchiveWithdrawal(t.Context(), user.ArchiveWithdrawalParams{UserID: "u1"})
+			_, err := uc.ArchiveWithdrawal(t.Context(), user.ArchiveWithdrawalParams{UserID: testWithdrawnUserID})
 
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
@@ -125,7 +141,7 @@ func TestArchiveUsecase_ArchiveWithdrawal(t *testing.T) {
 				Return(objectstorage.Path(""), xerrors.Wrap(apperror.ErrUnavailable, "storage down"))
 
 			_, err := uc.ArchiveWithdrawal(t.Context(), user.ArchiveWithdrawalParams{
-				UserID:  "u1",
+				UserID:  testWithdrawnUserID,
 				Payload: []byte(`{}`),
 			})
 

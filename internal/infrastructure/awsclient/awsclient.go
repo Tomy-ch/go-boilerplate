@@ -5,6 +5,7 @@ package awsclient
 
 import (
 	"context"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -13,6 +14,11 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/xerrors"
 )
+
+// resolveTimeout は、起動時の資格情報の解決に許す上限時間です。
+// chain は複数のプロバイダを順に試すため、個々のプロバイダの既定タイムアウトだけでは全体の上限が
+// 決まりません。応答しない解決先で起動が止まったままにならないよう、全体へ締切を与えます。
+const resolveTimeout = 10 * time.Second
 
 // ErrInvalidCredentials は、資格情報の指定が解決できる形になっていないことを示すエラーです。
 var ErrInvalidCredentials = xerrors.Wrap(apperror.ErrInvalidArgument, "invalid aws credentials")
@@ -40,14 +46,20 @@ type Config struct {
 // chain の上書きとして扱います。
 //
 // 解決可否は起動時に一度だけ確かめます。誤設定のまま起動すると、最初の API 呼び出しまで
-// 認証エラーが顕在化しません。
+// 認証エラーが顕在化しません。確認には resolveTimeout の締切を与え、応答しない解決先で
+// 起動が止まったままにならないようにします。
 //
-// 資格情報の解決には SDK 既定のトランスポートを使い、cfg.HTTPClient（SSRF ガード付き）は
-// サービス API の呼び出しにだけ割り当てます。IMDS（169.254.169.254）と ECS の
+// cfg.HTTPClient（SSRF ガード付き）はサービス API の呼び出しにだけ割り当て、資格情報の解決は
+// SDK 既定のトランスポートで行います。IMDS（169.254.169.254）と ECS の
 // task metadata（169.254.170.2）は link-local にあり、ガードは link-local を常に拒否するため、
 // 同じクライアントを共有すると EC2 / ECS のロール運用だけが解決不能になります。守る対象が
 // 違う — ガードが防ぐのは外部サービスへの egress であって、自身の実行基盤への資格情報の
 // 問い合わせではありません。
+//
+// 適用外になるのは metadata 経由だけではなく、STS の web identity 交換や SSO も含む credential
+// chain の通信すべてです。宛先 IP の検査も、ガードが行う proxy 環境変数の無効化も効きません。
+// chain の接続先を差し替えられる（AWS_EC2_METADATA_SERVICE_ENDPOINT / HTTPS_PROXY 等）のは
+// プロセスの環境変数を書ける主体だけで、その主体は資格情報そのものにも手が届きます。
 func Resolve(ctx context.Context, cfg Config) (aws.Config, error) {
 	opts := []func(*awsconfig.LoadOptions) error{awsconfig.WithRegion(cfg.Region)}
 
@@ -68,7 +80,9 @@ func Resolve(ctx context.Context, cfg Config) (aws.Config, error) {
 		return aws.Config{}, xerrors.Wrap(ErrInvalidCredentials, err.Error())
 	}
 
-	if _, err := awsCfg.Credentials.Retrieve(ctx); err != nil {
+	retrieveCtx, cancel := context.WithTimeout(ctx, resolveTimeout)
+	defer cancel()
+	if _, err := awsCfg.Credentials.Retrieve(retrieveCtx); err != nil {
 		return aws.Config{}, xerrors.Wrap(ErrInvalidCredentials, err.Error())
 	}
 

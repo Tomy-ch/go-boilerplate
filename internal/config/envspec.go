@@ -30,8 +30,8 @@ type ObjectStorage struct {
 	Bucket   string `env:"BUCKET,required,notEmpty"`
 	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
 	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。
-	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
-	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
+	AccessKeyID     string `env:"ACCESS_KEY_ID"                      envDefault:""`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY"                  envDefault:""`
 	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
 	MaxUploadBytes  int64  `env:"MAX_UPLOAD_BYTES,required,notEmpty"`
 }
@@ -79,7 +79,8 @@ type ConsumerQueue struct {
 	URL             string `env:"URL"               envDefault:""`
 	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
-	// DLQURL は滞留量の収集にだけ使う。空なら DLQ の滞留量を収集しない（退避経路は FailureHandler / redrive）。
+	// DLQURL は Permanent メッセージの退避先であり、滞留量の収集対象でもある。
+	// 空なら app 側の退避経路を持たず、broker の redrive policy に委ねる。
 	DLQURL string `env:"DLQ_URL" envDefault:""`
 	// MaxMessages は ReceiveMessage の最大取得件数（SQS の上限は 10）。
 	MaxMessages int32 `env:"MAX_MESSAGES" envDefault:"10"`

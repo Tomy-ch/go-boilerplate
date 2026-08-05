@@ -73,9 +73,17 @@ func provideWithdrawalArchiveWorker(
 	tf observability.TracerFactory,
 	logger logging.Logger,
 ) workerbd.Worker {
+	// DLQ URL が無いまま退避先を配線すると、Permanent メッセージの退避が必ず失敗する。engine は
+	// 退避に失敗したメッセージを Ack しないため、再配送で戻り続ける。退避先を持たない構成では
+	// FailureHandler を配線せず、broker 側の redrive policy に委ねる。
+	var failure workerbd.FailureHandler
+	if queue.cfg.DLQURL != "" {
+		failure = sqs.NewDeadLetter(queue.api, queue.cfg.DLQURL, tf)
+	}
+
 	return withdrawalarchive.New(
 		sqs.NewConsumer(queue.api, queue.cfg, tf),
-		sqs.NewDeadLetter(queue.api, queue.cfg.DLQURL, tf),
+		failure,
 		archive,
 		tf,
 		logger,

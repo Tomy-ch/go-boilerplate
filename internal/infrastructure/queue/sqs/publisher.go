@@ -39,6 +39,9 @@ const reservedAttributes = 2
 // ErrTooManyAttributes は、伝搬対象ヘッダが SQS の MessageAttributes 上限を超えたことを示すエラーです。
 var ErrTooManyAttributes = xerrors.Wrap(apperror.ErrInvalidArgument, "too many message attributes")
 
+// ErrMissingEventType は、イベント種別を持たないメッセージを publish しようとしたことを示すエラーです。
+var ErrMissingEventType = xerrors.Wrap(apperror.ErrInvalidArgument, "missing event type")
+
 // 実装漏れをコンパイル時に検出します。
 var _ boundary.Publisher = (*publisher)(nil)
 
@@ -69,6 +72,12 @@ func NewPublisher(api API, cfg PublisherConfig, tf observability.TracerFactory) 
 func (p *publisher) Publish(ctx context.Context, m boundary.Message) error {
 	ctx, endSpan := p.tracer.Start(ctx)
 	defer endSpan()
+
+	// SQS は空値の属性を拒むため、送れないメッセージは送信前に弾く。ヘッダと違って落として済ませられない。
+	// 種別を欠いたメッセージは受信側が自分宛かを判定できず、黙って読み捨てられる。
+	if m.EventType == "" {
+		return xerrors.Wrap(ErrMissingEventType, "event type must not be empty")
+	}
 
 	attrs := p.messageAttributes(m)
 	if len(attrs) > maxMessageAttributes {

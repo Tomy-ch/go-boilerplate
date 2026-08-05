@@ -117,6 +117,24 @@ func Test_provideWithdrawalArchiveWorker(t *testing.T) {
 			assert.NotNil(t, got.Consumer())
 			assert.NotNil(t, got.FailureHandler())
 		})
+
+		t.Run("DLQ URL が無ければ退避先を配線しない", func(t *testing.T) {
+			t.Parallel()
+			// 退避先が無いまま配線すると退避が必ず失敗し、engine が Ack しないため再配送で戻り続ける。
+			cfg := config.NewConsumerQueueConfig(config.MockConfigForTest(t))
+			cfg.SetConsumerQueue(t, testConsumerQueueURL, "", "us-east-1", "dummy-key", "dummy-secret")
+			queue, err := provideWithdrawalArchiveQueue(cfg, observability.NewDisabledOutboundHTTPClient(true))
+			require.NoError(t, err)
+
+			got := provideWithdrawalArchiveWorker(
+				queue,
+				mock_user.NewMockArchiveUsecase(gomock.NewController(t)),
+				observability.NewNoopTracerFactory(t),
+				logging.NewTestLogger(t),
+			)
+
+			assert.Nil(t, got.FailureHandler())
+		})
 	})
 }
 
