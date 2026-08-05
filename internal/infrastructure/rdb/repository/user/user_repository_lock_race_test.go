@@ -1,0 +1,131 @@
+package user
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/domain/user"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/infrastructure/system"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
+
+	"github.com/stretchr/testify/require"
+)
+
+// errRollbackRaceTx は、購入役の tx を成否に関わらずロールバックさせるための番兵です。
+var errRollbackRaceTx = xerrors.New("rollback race tx")
+
+// raceBlockedGracePeriod は、購入役が退会役のロック解放を待たされていることを確認するために待つ時間です。
+// 高負荷でこの時間内に問い合わせが届かない場合も「まだ完了していない」側に倒れるため、負荷は偽陽性を生みません。
+const raceBlockedGracePeriod = 300 * time.Millisecond
+
+// Test_lockSerializesWithdrawalAgainstPurchase は、#766 の競合順序を実 DB の 2 トランザクションで再現し、
+// 退会（排他ロック）が確定した時点で購入の在籍ガード（共有ロック）が拒否へ転じることを検証します。
+//
+// ロックが効いていない実装（素の SELECT）では購入役が退会前のスナップショットを読んで通過するため、
+// 「退会済みユーザーに進行中の購入がぶら下がる」状態が成立し、このテストが赤くなります。
+//
+// tx を 2 本同時に生かす必要があるため testkit.WithinTx（tx 1 本 + ロールバック）では表現できません。
+// 退会役をコミットさせる必要から、検証用ユーザーは後始末で物理削除します。
+func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+
+	newTxManager := func() tx.Manager {
+		return driver.NewTransactionManager(
+			testDB,
+			config.NewDatabaseConfig(config.MockConfigForTest(t)),
+			logging.NewTestLogger(t),
+			system.NewSleeper(),
+		)
+	}
+
+	ctx := context.Background()
+	now := time.Now().UTC()
+	targetID := uuid.NewTestFromSalt(t, "race-withdrawal-user")
+	prefectureID, err := uuid.Parse("a03aaec4-3bd6-4bfb-8e47-2fbfa026d344")
+	require.NoError(t, err)
+
+	target, err := user.New(targetID, user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "Race",
+			LastName:     "Target",
+			Email:        "race.target@example.com",
+			Phone:        "777-777-7777",
+			PrefectureID: prefectureID,
+			City:         "新宿区",
+			Street:       "9-9-9",
+			PostalCode:   "160-0009",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+	require.NoError(t, err)
+
+	// 共有シードを退会させると他テストへ波及するため、この検証専用のユーザーを立てて後始末で物理削除する。
+	require.NoError(t, repo.Create(ctx, target))
+	t.Cleanup(func() {
+		_, cleanupErr := driver.New(ctx, testDB).Exec(ctx, "DELETE FROM users WHERE id = $1", targetID)
+		require.NoError(t, cleanupErr)
+	})
+
+	withdrawalLocked := make(chan struct{})
+	guardDone := make(chan struct{})
+	guardResult := make(chan error, 1)
+
+	// 購入役: 退会役がユーザー行を押さえている間に在籍ガードへ入り、退会の確定まで待たされる。
+	go func() {
+		defer close(guardDone)
+		<-withdrawalLocked
+		guardResult <- newTxManager().Do(ctx, func(txCtx context.Context) error {
+			if guardErr := repo.LockActiveShareByID(txCtx, targetID); guardErr != nil {
+				return xerrors.Join(errRollbackRaceTx, guardErr)
+			}
+			return errRollbackRaceTx
+		})
+	}()
+
+	// 退会役: ユーザー行を排他ロックしてから論理削除を確定させる。
+	require.NoError(t, newTxManager().Do(ctx, func(txCtx context.Context) error {
+		// 同一 DB を共有する他パッケージの CASCADE TRUNCATE と衝突しないよう、テスト tx と同じ直列化に参加する。
+		q := driver.New(txCtx, testDB)
+		if _, lockErr := q.Exec(txCtx, "SET LOCAL lock_timeout = 0"); lockErr != nil {
+			return lockErr
+		}
+		if _, lockErr := q.Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", testkit.TxAdvisoryLockKey); lockErr != nil {
+			return lockErr
+		}
+
+		withdrawing, lockErr := repo.LockByID(txCtx, targetID)
+		if lockErr != nil {
+			return lockErr
+		}
+		close(withdrawalLocked)
+
+		// ロックを握ったまま、購入役が素通りしないことを確かめる。
+		select {
+		case <-guardDone:
+			t.Error("購入役が退会役のロックを待たずに完了した")
+		case <-time.After(raceBlockedGracePeriod):
+		}
+
+		if markErr := withdrawing.MarkAsDeleted(time.Now().UTC()); markErr != nil {
+			return markErr
+		}
+		return repo.Update(txCtx, withdrawing)
+	}))
+
+	<-guardDone
+	// 退会が確定した以上、待たされていた購入は在籍を確認できず拒否される。
+	require.ErrorIs(t, <-guardResult, apperror.ErrNotFound)
+}

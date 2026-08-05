@@ -251,6 +251,35 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, er
 	return rowToUser(row.Users)
 }
 
+// LockByID は、未削除の単一ユーザーを悲観ロック（排他）して取得します。
+// 論理削除済み・不存在はいずれも 0 行となり NotFound に正規化したエラーを返します。
+func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	row, err := db.LockUserByID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return rowToUser(row.Users)
+}
+
+// LockActiveShareByID は、未削除ユーザーの在籍を共有ロックを取りながら確認します。
+// 論理削除済み・不存在はいずれも 0 行となり NotFound に正規化したエラーを返します。
+func (r *repository) LockActiveShareByID(ctx context.Context, id uuid.UUID) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	if _, err := db.LockActiveUserShareByID(ctx, id); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	return nil
+}
+
 // Update は、ユーザーの mutable フィールドと updatedAt / deletedAt を更新します。
 // 影響行数 0 は対象不存在として pgerror.NormalizeExecResult が NotFound へ正規化します。
 func (r *repository) Update(ctx context.Context, u *user.User) error {

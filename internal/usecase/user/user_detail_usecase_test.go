@@ -480,7 +480,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
 			var emitted outbox.EmitInput
@@ -514,6 +514,31 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			assert.Equal(t, id.String(), payload.UserID)
 			assert.Equal(t, now.Format(time.RFC3339Nano), payload.DeletedAt)
 		})
+
+		t.Run("ユーザー行のロックを進行中購入の判定より前に取る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			// 判定より後にロックを取ると、その間に購入作成が共有ロックを取れてしまい
+			// 「判定通過 → 購入の成立 → 退会の確定」を止められない。この順序が直列化の成立条件。
+			gomock.InOrder(
+				userRepo.EXPECT().LockByID(gomock.Any(), id).Return(u, nil),
+				purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, nil),
+			)
+			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, purchaseRepo: purchaseRepo, emit: emit,
+			}
+			require.NoError(t, uc.DeleteUser(ctx, authn, id))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -539,7 +564,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			// 退会を拒否するため論理削除もイベント発行も行わない。
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
 			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(true, nil)
@@ -561,7 +586,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
 			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, expectedErr)
 
@@ -594,7 +619,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
 
 			uc := &usecase{
@@ -613,7 +638,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, expectedErr)
@@ -639,7 +664,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			expectedErr := xerrors.New("not found")
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
+			userRepo.EXPECT().LockByID(gomock.Any(), id).Return(nil, expectedErr)
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
 			err := uc.DeleteUser(ctx, authn, id)
@@ -669,7 +694,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now.Add(time.Hour))
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(deletedUser, nil)
+			userRepo.EXPECT().LockByID(gomock.Any(), id).Return(deletedUser, nil)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),

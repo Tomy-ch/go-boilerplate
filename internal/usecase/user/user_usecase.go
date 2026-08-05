@@ -422,7 +422,9 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 	// 論理削除と退会イベントの発行を単一 tx にまとめ、退会だけが成立してイベントが失われることを防ぐ。
 	// 退会を拒む条件（進行中の購入）も同じ tx で判定し、拒否時は論理削除もイベントも残さない。
 	return u.txm.Do(ctx, func(ctx context.Context) error {
-		userEntity, err := u.userRepo.FindByID(ctx, id)
+		// 進行中購入の判定より前に排他ロックを取ることが、購入作成（共有ロック）との直列化の成立条件。
+		// 判定より後だと「判定通過 → 購入の成立 → 退会の確定」の順序を止められない。
+		userEntity, err := u.userRepo.LockByID(ctx, id)
 		if err != nil {
 			return err
 		}

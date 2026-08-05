@@ -16,10 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testTxAdvisoryLockKey は、テスト tx を DB 単位で全プロセス横断に直列化する advisory lock キー。
+// TxAdvisoryLockKey は、テスト tx を DB 単位で全プロセス横断に直列化する advisory lock キー。
 // go test はパッケージ毎に別プロセスで走り、プロセス内 txLock だけでは別プロセスの CASCADE TRUNCATE
 // 同士が deadlock しうるため補う。
-const testTxAdvisoryLockKey = 8_246_913
+//
+// WithinTx は tx 1 本とロールバックに閉じるため、ロック競合の再現のように tx を 2 本同時に生かす
+// 検証は表現できない。そうしたテストが自前で tx を開きつつ同じ直列化に参加できるよう公開する。
+const TxAdvisoryLockKey = 8_246_913
 
 var errRollbackForTest = xerrors.New("rollback for test")
 
@@ -90,7 +93,7 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 		if _, lockErr := q.Exec(txCtx, "SET LOCAL lock_timeout = 0"); lockErr != nil {
 			return lockErr
 		}
-		if _, lockErr := q.Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", testTxAdvisoryLockKey); lockErr != nil {
+		if _, lockErr := q.Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", TxAdvisoryLockKey); lockErr != nil {
 			return lockErr
 		}
 		fn(txCtx)

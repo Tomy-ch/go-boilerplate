@@ -10,6 +10,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
@@ -202,6 +203,7 @@ type usecase struct {
 	txm        tx.Manager
 	cmd        command.CommandService
 	repo       purchase.Repository
+	userRepo   user.Repository
 	detailQS   query.PurchaseDetailQueryService
 	emit       outbox.EmitUsecase
 	xr         exchangerate.Usecase
@@ -214,6 +216,7 @@ func New(
 	txm tx.Manager,
 	cmd command.CommandService,
 	repo purchase.Repository,
+	userRepo user.Repository,
 	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,
 	xr exchangerate.Usecase,
@@ -226,6 +229,7 @@ func New(
 		txm:        txm,
 		cmd:        cmd,
 		repo:       repo,
+		userRepo:   userRepo,
 		detailQS:   detailQS,
 		emit:       emit,
 		xr:         xr,
@@ -262,6 +266,16 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 	var created *purchase.Purchase
 	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、部分適用を防ぐ。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
+		// 購入者の在籍を共有ロック付きで押さえ、退会（排他ロック）と直列化する。退会済み・不存在は
+		// 主体の状態と操作の衝突として 409 へ写像する（退会側が進行中購入を 409 で拒む鏡像）。
+		// ロックはユーザー行 → 商品行（id 昇順）の順で取り、順序を全 tx で固定してデッドロックを避ける。
+		if uerr := u.userRepo.LockActiveShareByID(ctx, params.UserID); uerr != nil {
+			if xerrors.Is(uerr, apperror.ErrNotFound) {
+				return xerrors.Wrap(apperror.ErrConflict, "purchaser is withdrawn")
+			}
+			return uerr
+		}
+
 		locked, lerr := u.cmd.LockProducts(ctx, productIDs)
 		if lerr != nil {
 			return lerr

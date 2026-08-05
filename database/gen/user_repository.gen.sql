@@ -95,6 +95,29 @@ INSERT INTO users (
     sqlc.arg('updated_at')
 );
 
+-- === source: database/dml/repository/user/lock_active_user_share_by_id.sql ===
+-- name: LockActiveUserShareByID :one
+-- ID の未削除ユーザーの存在を、共有ロック（FOR SHARE）を取りながら確認する。
+-- 共有ロック同士は両立するため同一ユーザーの並行購入は直列化されず、退会が取る FOR UPDATE とだけ
+-- 衝突する。これにより「退会の判定通過 → 購入の成立 → 退会の確定」の順序が成立しなくなる。
+-- 論理削除済み・不存在はいずれも 0 行（NotFound）。
+SELECT u.id
+FROM users AS u
+WHERE u.id = sqlc.arg('user_id_param')
+    AND u.deleted_at IS NULL
+FOR SHARE;
+
+-- === source: database/dml/repository/user/lock_user_by_id.sql ===
+-- name: LockUserByID :one
+-- ID から未削除のユーザーを 1 件、悲観ロック（FOR UPDATE）して取得する。
+-- 退会は、この排他ロックを進行中購入の判定より前に取ることで購入作成（FOR SHARE）と直列化する。
+-- 論理削除済み・不存在はいずれも 0 行（NotFound）。
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.id = sqlc.arg('user_id_param')
+    AND u.deleted_at IS NULL
+FOR UPDATE;
+
 -- === source: database/dml/repository/user/select_purge_candidate_users.sql ===
 -- name: ListPurgeCandidateUserIDs :many
 -- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する。
