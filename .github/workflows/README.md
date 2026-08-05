@@ -68,7 +68,8 @@ All three rules live in one check rather than three, because they are not three 
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
 |Worker Boot Check|`worker-boot-check.yaml`|Verify the worker entrypoint boots (DI / DB) and rejects an unknown worker|
 |Dockerfile Lint|`docker-lint.yaml`|Run hadolint on Dockerfiles (via go_tool_runner)|
-|Skill Definition Lint|`md-skill-lint.yaml`|Check the `.claude/**` skill / agent definitions against reality and their `.codex/**` counterparts for existence parity|
+|Markdown Lint|`md-lint.yaml`|Lint Markdown shape with markdownlint, validate every ` ```mermaid ` fence with the real parser, and check the `.claude/**` skill / agent definitions against reality and their `.codex/**` counterparts|
+|Commitlint|`commitlint.yaml`|Lint every commit message the PR adds to the base branch — the route the `commit-msg` hook cannot cover|
 |Pin Actions Check|`pin-actions-check.yaml`|Verify GitHub Actions are pinned to a SHA (supply-chain hardening)|
 |Pin Images Check|`pin-images-check.yaml`|Verify Docker base images are pinned to a digest per the lockfile (supply-chain hardening)|
 

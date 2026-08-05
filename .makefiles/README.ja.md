@@ -24,7 +24,7 @@ Make ターゲットは主に以下の単位で整理されています。
 
 - ターゲット名はハイフン区切りの小文字（`make new-migrate-<name>`、`make gen-api`）
 - ターゲットは 2 種類:
-  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行
+  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行。ただし一部はホスト上のツールを解決する（`lint` / `fix` の `golangci-lint`、`actions-zizmor` の `zizmor`、`npm-cooldown-audit`）。tool-runner が Alpine であり、上流が musl ビルドを配布していないためである。これは規約の例外ではなく [ツールチェイン実行ルール](../docs/ja/rules.ja.md#ツールチェイン実行ルール) が定める最終手段であり、供給は `make install-tools` が担い、イメージが担うはずだった再現性は `mise.toml` のピンが引き受ける
   - **`-ci` ターゲット**: CI ランナー、またはツールをローカルインストール済みの開発者向け低レベルコマンド
 - すべて `.PHONY` 指定し、末尾 `##` コメントで `make help` 出力に載せること
 
@@ -420,6 +420,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | --- | --- | --- |
 | `make commitlint COMMIT_MSG_FILE=<file>` | コミットメッセージを commitlint で検証します。 | `node_tool_runner` コンテナ内で `make commitlint-ci` を呼び出します。`commit-msg` フックに配線。`git worktree` では git がフックへ渡すパスがコンテナのマウント範囲 `.:/app` の外にあるため、メッセージファイルを `tmp/` へ写して相対パスで渡します。`COMMIT_MSG_FILE` 既定は `git rev-parse --git-path COMMIT_EDITMSG`。 |
 | `make commitlint-ci COMMIT_MSG_FILE=<file>` | `commitlint --edit <file>` を直接実行します。 | CI 用ターゲット。 |
+| `make commitlint-range-ci COMMITLINT_FROM=<ref> COMMITLINT_TO=<ref>` | 範囲内の全コミットのメッセージを commitlint で検証します。 | CI 用ターゲットであり、`commit-msg` フックをバイパスして作られたメッセージに届く唯一の経路です。いずれかの ref が未指定のとき、および範囲が空のときは exit 2 で落ちるため、参照解決が壊れた状態が「合格」として通ることはありません。`node_tool_runner` 経由のラッパーはありません。コンテナのマウントは `.:/app` だけで `git worktree` の gitdir はその外にあり、履歴はメッセージファイルのように写して渡せないためです。 |
 
 ### GitHub 設定関連
 

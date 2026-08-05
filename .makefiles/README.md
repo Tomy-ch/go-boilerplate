@@ -24,7 +24,7 @@ Make targets are mainly organized into the following units.
 
 - Target names use dash-separated lower case (`make new-migrate-<name>`, `make gen-api`).
 - Targets are split into two flavors:
-  - **Normal targets**: invoked by developers locally; run inside Docker containers for reproducibility.
+  - **Normal targets**: invoked by developers locally; run inside Docker containers for reproducibility. A few resolve their tool on the host instead — `lint` / `fix` (`golangci-lint`), `actions-zizmor` (`zizmor`), `npm-cooldown-audit` — because the tool-runners are Alpine and upstream publishes no musl build. That is the documented last resort in [Toolchain Execution Rules](../docs/rules.md#toolchain-execution-rules), not an exception to the convention: `make install-tools` provisions those tools, and the `mise.toml` pin carries the reproducibility the image otherwise would.
   - **`-ci` targets**: low-level commands intended to run on bare metal (CI runners, or developers who already have the tool installed).
 - Every target should be `.PHONY` and self-documenting via a trailing `##` comment so `make help` can pick it up.
 
@@ -420,6 +420,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | --- | --- | --- |
 | `make commitlint COMMIT_MSG_FILE=<file>` | Lints a commit message with commitlint. | Invokes `make commitlint-ci` inside the `node_tool_runner` container. Wired to the `commit-msg` hook. The message file is copied under `tmp/` and handed over as a relative path, because in a `git worktree` the path git gives the hook lies outside the container's `.:/app` mount. `COMMIT_MSG_FILE` defaults to `git rev-parse --git-path COMMIT_EDITMSG`. |
 | `make commitlint-ci COMMIT_MSG_FILE=<file>` | Runs `commitlint --edit <file>` directly. | CI target. |
+| `make commitlint-range-ci COMMITLINT_FROM=<ref> COMMITLINT_TO=<ref>` | Lints every commit message in the range. | CI target, and the only route that reaches a message the `commit-msg` hook was bypassed for. Exits 2 when either ref is missing or the range is empty, so a broken ref cannot pass as a clean run. Has no `node_tool_runner` wrapper: the container mounts `.:/app` only, which leaves a worktree's gitdir outside it, and history cannot be copied in the way a message file can. |
 
 ### GitHub configuration related
 

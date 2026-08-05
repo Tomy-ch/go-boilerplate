@@ -1,0 +1,106 @@
+name: Commitlint
+
+# commitlint is reachable from exactly one place, the lefthook `commit-msg` hook, and the
+# repository's own commit workflow bypasses it: commits are split with `--no-verify`, and the
+# single verification pass that follows is `lefthook run pre-commit`, which by definition does
+# not run a `commit-msg` command. A message that took that route was checked by nothing before
+# it reached the base branch, so the PR's commit range is checked here.
+#
+# Merge commits are not the concern. commitlint's defaultIgnores drops both `Merge pull
+# request #N ...` and the `Merge remote-tracking branch 'origin/release/vX.Y.0' into ...` a
+# base catch-up produces. The repository's own `Revert: ...` form keeps its type checked, since
+# the ignore pattern wants a bare `Revert ` with no colon.
+#
+# No `paths` filter, deliberately: what is checked is the commit messages themselves, and no
+# path expression can name them.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # A base..head range exists only in a pull-request context. Rather than invent a substitute
+    # range on workflow_dispatch — which would be the same silent degradation this job exists to
+    # catch — the job is skipped there.
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      # fetch-depth: 0 is required. The default shallow checkout has neither the base branch tip
+      # nor the PR's own commits, and both ends of the range resolve to a bad object.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install commitlint
+        run: mise install npm:@commitlint/cli
+
+      - name: Run commitlint on the PR commit range
+        id: commitlint
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        # The range starts at the base branch tip, not at `pull_request.base.sha`. That payload
+        # field is a snapshot taken when the PR last changed, so a base that has since moved
+        # leaves the branch's own older commits inside the range — including ones predating this
+        # gate — and the job would fail on history it does not own. Against the tip, whatever is
+        # already on the base is outside the range no matter how it got onto the branch.
+        run: |
+          set +e
+
+          make commitlint-range-ci \
+            COMMITLINT_FROM="origin/${GITHUB_BASE_REF}" \
+            COMMITLINT_TO="${HEAD_SHA}" 2>&1 | tee /tmp/commitlint.log
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Commitlint: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Commitlint: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Comment commitlint result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- commitlint-result -->'
+          title: "${{ steps.commitlint.outputs.title || '## ⚠️ Commitlint: CUT OFF (no result produced)' }}"
+          body-file: /tmp/commitlint.log
+          details-summary: 'commitlint log'
+
+      - name: Fail if commitlint failed
+        if: always() && steps.commitlint.outputs.status != 'success'
+        run: exit 1
