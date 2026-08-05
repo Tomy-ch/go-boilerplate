@@ -97,6 +97,27 @@ stateDiagram-v2
   `pending` へ戻し、戻した件数を返します。`messageID == nil` は dead の **すべて** を
   replay し、非 nil の場合は当該 `message_id` のみを対象とします。
 
+## 消費側
+
+このパッケージが担うのは **producing 側**だけです。relay が publish した後にメッセージがどうなるかは
+worker サブシステムの関心であり、両端を配線するのは integrator です。何も消費していない outbox は
+不完全な状態ではなく、正当な構成の 1 つです。
+
+両端はコードではなく transport で出会います。`relay` が `publisher.Message` を adapter へ渡し、adapter が
+payload を本文へ、イベント種別と `message_id` を名前付きのメタデータへ載せ、`worker.Handler` が
+`worker.Message` からそれらを読み戻します。どちらの端も相手を import しません。
+
+<!-- sample-api:begin -->
+サンプルは、この経路を実際に動かせるよう両端を配線しています。
+
+| 段 | 場所 |
+| --- | --- |
+| 退会トランザクション内で `user.withdrawn.v1` を emit | `internal/usecase/user` |
+| relay → publish | `outbox-relay` + `internal/infrastructure/queue/sqs`（`OUTBOX_PUBLISHER=sqs`） |
+| consume → 退会証跡の保存 | [`internal/controller/worker/withdrawalarchive`](../../controller/worker/withdrawalarchive/README.ja.md) |
+
+<!-- sample-api:end -->
+
 ## レイアウト
 
 | 関心事 | パス |
