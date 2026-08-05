@@ -187,8 +187,10 @@ invariant cannot justify deciding on its own.
 ## Notes
 
 - Related: [ADR-0027](0027-lightweight-cqrs.md) (Repository vs CommandService, and the Derivation
-  rule that binds a restated guard), [ADR-0029](0029-commandservice-atomicity-criterion.md) (when a
-  cross-aggregate step needs write atomicity rather than only serialization),
+  rule that binds a restated guard), [ADR-0029](0029-commandservice-atomicity-criterion.md) (the
+  three-way procedure that decides *whether* a cross-aggregate condition must be held — its branch 2
+  is the entry point into this ADR — and when a step needs write atomicity rather than only
+  serialization),
   [ADR-0030](0030-transaction-retry-idempotent-callers.md) (serialization-failure retry),
   [ADR-0042](0042-apperror-protocol-agnostic-errors.md) (`ErrConflict` → 409),
   [ADR-0051](0051-skip-locked-outbox-relay.md) (the contrasting claim-a-queue-row profile),

@@ -73,7 +73,7 @@ do X") are tagged `setup-review`.
 | [0026](0026-master-data-via-migration.md) | Ship master data via migration; keep transactional seed out of production | accepted |
 | [0027](0027-lightweight-cqrs.md) | Adopt lightweight CQRS — Repository for writes, QueryService for reads | accepted |
 | [0028](0028-system-cqrs-dml-category.md) | Introduce system_cqrs as a fourth DML category outside the CQRS split | accepted |
-| [0029](0029-commandservice-atomicity-criterion.md) | Reserve CommandService for writes requiring single-tx atomicity; default is usecase + outbox | accepted |
+| [0029](0029-commandservice-atomicity-criterion.md) | Cross-aggregate operations: usecase + outbox by default, a synchronous lock when a guard must not go stale, CommandService only for single-tx atomicity | accepted |
 | [0030](0030-transaction-retry-idempotent-callers.md) | Retry transactions on serialization conflict; require callers to be idempotent | accepted |
 | [0031](0031-ordered-pessimistic-row-locks.md) | Serialize contended writes with ordered pessimistic row locks taken before the guarded condition | accepted |
 | [0032](0032-uuidv7-identifiers.md) | Use UUIDv7 (time-ordered) identifiers for all entity primary keys | accepted |

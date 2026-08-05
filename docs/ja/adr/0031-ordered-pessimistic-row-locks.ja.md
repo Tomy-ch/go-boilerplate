@@ -91,5 +91,5 @@ T1:                                 そのまま書き込む
 
 ## 補足
 
-- 関連: [ADR-0027](0027-lightweight-cqrs.ja.md)（Repository と CommandService の区分、および再掲されたガードを縛る Derivation ルール）、[ADR-0029](0029-commandservice-atomicity-criterion.ja.md)（集約横断のステップが直列化ではなく書き込みの原子性を要する場合）、[ADR-0030](0030-transaction-retry-idempotent-callers.ja.md)（serialization failure のリトライ）、[ADR-0042](0042-apperror-protocol-agnostic-errors.ja.md)（`ErrConflict` → 409）、[ADR-0051](0051-skip-locked-outbox-relay.ja.md)（対照的な「キュー行を奪い合う」プロファイル）、[ADR-0087](0087-rollback-integration-tests.ja.md)（実データベースに対する結合テスト）。
+- 関連: [ADR-0027](0027-lightweight-cqrs.ja.md)（Repository と CommandService の区分、および再掲されたガードを縛る Derivation ルール）、[ADR-0029](0029-commandservice-atomicity-criterion.ja.md)（集約横断の条件を保持する必要が *あるか* を決める 3 分岐の判定手順。その分岐 2 が本 ADR への入口であり、あわせて直列化ではなく書き込みの原子性を要する場合も扱う）、[ADR-0030](0030-transaction-retry-idempotent-callers.ja.md)（serialization failure のリトライ）、[ADR-0042](0042-apperror-protocol-agnostic-errors.ja.md)（`ErrConflict` → 409）、[ADR-0051](0051-skip-locked-outbox-relay.ja.md)（対照的な「キュー行を奪い合う」プロファイル）、[ADR-0087](0087-rollback-integration-tests.ja.md)（実データベースに対する結合テスト）。
 - どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ上の決定ではなく機能の内容であり、機能とともに記述する。本リポジトリではそれは削除可能なサンプル群（`docs/spec/purchase/` / `docs/spec/user/`）を指す。`make setup-remove-sample-api` で削除される一方で本 ADR は残るため、リンクではなくパスで示す。

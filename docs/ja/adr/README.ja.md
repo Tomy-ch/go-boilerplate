@@ -64,7 +64,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0026](0026-master-data-via-migration.ja.md) | マスターデータをマイグレーション経由で投入する。トランザクショナルシードを本番から除外する | accepted |
 | [0027](0027-lightweight-cqrs.ja.md) | 軽量CQRSの採用 — 書き込みにRepository、読み込みにQueryService | accepted |
 | [0028](0028-system-cqrs-dml-category.ja.md) | CQRSの分割の外に位置する第4のDMLカテゴリとしてsystem_cqrsを導入する | accepted |
-| [0029](0029-commandservice-atomicity-criterion.ja.md) | CommandService は単一トランザクション原子性を要する書き込みに限定 — 既定は usecase + outbox | accepted |
+| [0029](0029-commandservice-atomicity-criterion.ja.md) | 集約を跨ぐ操作の判定 — 既定は usecase + outbox、ガードが陳腐化してはならないなら同期ロック、CommandService は単一トランザクション原子性のときだけ | accepted |
 | [0030](0030-transaction-retry-idempotent-callers.ja.md) | シリアライゼーション競合時はトランザクションをリトライする。呼び出し元は冪等性を保証しなければならない | accepted |
 | [0031](0031-ordered-pessimistic-row-locks.ja.md) | 競合する書き込みを、守る条件より前に取る単一順序の悲観行ロックで直列化する | accepted |
 | [0032](0032-uuidv7-identifiers.ja.md) | すべてのエンティティ主キーに UUIDv7（時刻順）識別子を使用する | accepted |
