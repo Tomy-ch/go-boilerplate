@@ -19,6 +19,6 @@ amount is reduced to.
 
 - Rounding is centralized here so the policy cannot drift across call sites; callers never round.
 - The half-up method and the single-rounding-point rule are recorded in
-  [ADR-0033](../../../../docs/adr/0033-two-scale-quantity-model.md), and the concrete policy in [`docs/spec/exchange-rate/usecase.md`](../../../../docs/spec/exchange-rate/usecase.md).
+  [ADR-0033](../../../../docs/adr/0033-two-scale-quantity-model.md); the concrete policy is stated with the feature that applies it (`docs/spec/exchange-rate/`, sample content).
 - The generic decimal mechanism is [`pkg/decimal`](../../../../pkg/decimal/README.md); this
   package holds only the policy (`minorUnitDigits`, half-up), no infrastructure dependency.

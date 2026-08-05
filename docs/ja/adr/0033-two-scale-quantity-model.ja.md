@@ -89,4 +89,4 @@ accepted
 
 - 器: `pkg/decimal`。それが従うベンダー wrap のパターンは [ADR-0001](0001-avoid-lock-in.ja.md)、満たすべき `pkg/` 独立性ルールは [`docs/rules.md`](../rules.ja.md)。
 - 共有される業務意味を持つ金額の値オブジェクトの置き場所: [ADR-0034](0034-domain-lexicon.ja.md)。
-- どの量がどちらのスケールに属するか、具体的な最小単位桁数、各値に選んだ丸め方式、決済通貨は機能の内容であり、[`docs/spec/purchase/`](../../spec/purchase/domain.md) と [`docs/spec/exchange-rate/`](../../spec/exchange-rate/usecase.md) を参照。
+- どの量がどちらのスケールに属するか、具体的な最小単位桁数、各値に選んだ丸め方式、決済通貨は機能の内容であり、機能とともに記述する。本リポジトリではそれは削除可能なサンプル群（`docs/spec/purchase/` / `docs/spec/exchange-rate/`）を指す。`make setup-remove-sample-api` で削除される一方で本 ADR は残るため、リンクではなくパスで示す。
