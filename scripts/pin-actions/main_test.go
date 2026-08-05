@@ -578,7 +578,10 @@ func TestDetectLooseUses(t *testing.T) {
 
 		t.Run("docker:// 参照は厳密パターンで処理済みとして検出しない", func(t *testing.T) {
 			t.Parallel()
-			assert.Empty(t, detectLooseUses("      - uses: docker://alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"))
+			assert.Empty(
+				t,
+				detectLooseUses("      - uses: docker://alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"),
+			)
 		})
 
 		t.Run("flow mapping でもローカル参照は検出しない", func(t *testing.T) {
