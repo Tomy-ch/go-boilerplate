@@ -34,6 +34,25 @@
 #   deviation_note     required when status is rejected, or when deviation_declared is true
 #   enforced_by        layer-3 deterministic enforcement; empty means "no machine enforcement"
 #   last_audited       ISO date of the last audit that set this entry, or null
+#   last_audited_commit
+#                      the commit whose tree the audit actually read. A date cannot answer
+#                      "is this entry still current?" once more than one commit lands in a
+#                      day — every corpus change and the audit itself carry the same date.
+#                      This field is the only thing that makes drift computable.
+#
+# Drift since the last audit (run per pattern, or once with the widest set):
+#
+#   git diff --name-only <last_audited_commit>..HEAD -- \
+#     'docs/adr/*.md' docs/architecture.md docs/rules.md 'docs/design/**/*.md' \
+#     'internal/**/README.md' 'pkg/**/README.md' 'openapi/*.md'
+#
+# A non-empty result means the corpus moved under the recorded verdicts. Map each changed
+# file back to the patterns whose `interpreted_by` cites it — those are the ones to re-run
+# (`/ddd-audit`, quick scope). A pattern with `interpreted_by: []` is never selected by file
+# overlap, so re-run those whenever anything moves: nobody is watching them by construction.
+#
+# Merging a base branch counts. A merge can rewrite a cited section without the feature
+# branch touching it, and the verdict then describes a corpus that no longer exists.
 #
 # Statuses are set by `/ddd-audit`. Editing them by hand desynchronises the ledger from
 # the corpus; run the skill instead.
@@ -81,6 +100,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: layered-architecture
     name: Layered Architecture
@@ -111,6 +131,7 @@ patterns:
       - kind: depguard
         rule: layer-dependency
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: entity
     name: Entity
@@ -135,6 +156,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: value-object
     name: Value Object
@@ -176,6 +198,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: domain-service
     name: Service (Domain Service)
@@ -204,6 +227,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: application-service
     name: Application Layer Service
@@ -236,6 +260,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: module
     name: Module (Package)
@@ -274,6 +299,7 @@ patterns:
       - kind: depguard
         rule: independent_pkg
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: aggregate
     name: Aggregate
@@ -311,6 +337,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: factory
     name: Factory
@@ -341,6 +368,7 @@ patterns:
       Do not set outside constructor 節。
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: repository
     name: Repository
@@ -385,6 +413,7 @@ patterns:
       適格基準の背景は ADR-0029。
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: specification
     name: Specification
@@ -421,6 +450,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: domain-event
     name: Domain Event
@@ -455,6 +485,7 @@ patterns:
       集約に管理すべき可変状態を増やさずに済むため。宣言は internal/domain/README.md の Domain events 節。
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: bounded-context
     name: Bounded Context
@@ -489,6 +520,7 @@ patterns:
       internal/domain/lexicon/README.md 冒頭の注記。
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: context-map
     name: Context Map
@@ -508,6 +540,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: shared-kernel
     name: Shared Kernel
@@ -540,6 +573,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: anticorruption-layer
     name: Anticorruption Layer
@@ -580,6 +614,7 @@ patterns:
       記録する運用とする。宣言は internal/infrastructure/webapi/README.md の Design Policy 節。
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
 
   - id: published-language
     name: Published Language
@@ -619,3 +654,4 @@ patterns:
       宣言は docs/design/outbox.md の第 4 節。
     enforced_by: []
     last_audited: "2026-08-05"
+    last_audited_commit: "e7f4137d240f86a1ac807e0b798dda5ce9c694b7"
