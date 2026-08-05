@@ -44,8 +44,8 @@ need.
 
 | Service | Image / Dockerfile | Ports | Description |
 | --- | --- | --- | --- |
-| `docs_viewer` | `docker/document/Dockerfile` target `document_viewer` | 7001 | nginx serving `docs/`; portal at `/portal/` |
-| `sql_editor` | `sosedoff/pgweb` | 7000 | Web SQL editor |
+| `docs_viewer` | `docker/document/Dockerfile` target `document_viewer` | 2001 | nginx serving `docs/`; portal at `/portal/` |
+| `sql_editor` | `sosedoff/pgweb` | 2000 | Web SQL editor |
 
 (A lightweight **`database`** profile also exists — `database` + `sql_editor` only — for working
 against the DB without the `api_server` / observability stack; several services carry more than

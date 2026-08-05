@@ -15,6 +15,30 @@ DB の worktree 分離は「別コンテナ・別ポート」ではなく「同�
 5432 を握っていて `make test` が動かせない」も「主 checkout の serve が worktree の DB と衝突する」も起きない。
 o11y は共有が利点になる（全 checkout のトレース / メトリクス / ログが 1 つの Grafana に集まる）。
 
+## 不変条件: データベース : worktree = 1 : 0..1
+
+**1 つのデータベースを 2 箇所から触らせない。** worktree はスロットを取っても取らなくてもよいが、
+取らなかった worktree が所有するデータベースは *無い*。既定の `local` / `test` へフォールバックはしない。
+
+| 誰が | 何を所有するか |
+| --- | --- |
+| 主 checkout | `local` / `test` / `gen_schema` |
+| スロット N を保持する worktree | `wt<N>_local` / `wt<N>_test` / `gen_schema_wt<N>` |
+| スロットを持たない worktree | 無し（データベースを触るターゲットは失敗する） |
+
+既定値へフォールバックさせると主 checkout のデータベースに所有者が 2 つできる。しかもそれは*黙って*
+起きるため、別ブランチの migration が混ざったデータベースでテストが通る、あるいは誰かが migrate 中の
+スキーマから生成物が作り直される、という形で後になって表面化する。そこで
+`make require-db-owner`（`.makefiles/database/pool.mk`）を、データベース名を解決する全ターゲットの
+前提条件に置いている — `db-migrate-*` / `db-seed` / `db-drop-tables` / `db-ensure` / `dump-schema` に加え、
+`make test` / `test-cached` / `gen-test-repo`（host 実行の `go test` が `DB_NAME_TEST` を読む）と
+`make serve` / `serve-build` / `serve-build-clean`（app コンテナが `DB_NAME_LOCAL` を読む）。
+リンク worktree の判定は `git-dir` ≠ `git-common-dir` の食い違いで行うため、主 checkout・CI・
+ツールランナーのコンテナは素通りする。
+
+知っておくべき帰結: worktree では `make slot-acquire` するまで `make test` が落ちる。それが狙いで、
+このガードが無かった頃は共有 `test` データベースに対して黙って走っていた。
+
 ## 仕組み
 
 - **infra 層** = 固定 compose プロジェクト `gobp-shared`（`GOBP_DB_SHARED_PROJECT`）。worktree はディレクトリ毎に
@@ -25,9 +49,10 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   `docker-compose.attach.yaml` を重ね、共有インフラを `host.docker.internal` のホスト公開ポート経由で参照する
   （`DB_HOST` / `OBS_OTLP_ENDPOINT` / `OBJECT_STORAGE_ENDPOINT` を実行時 env で上書きする。`loader.go` は
   実行時 env を `env/.env` より優先する）。
-- **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 12 = wt1〜wt12）。
-  スロットを取らない checkout は既定の `local` / `test` をそのまま使うため、スロット取得は**並列作業のための
-  opt-in** に留まる。
+- **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 12 = wt1〜wt12）と、
+  スキーマ生成が作り直す使い捨て DB `gen_schema_wt<N>`。スロット取得は**並列作業のための opt-in** で、
+  主 checkout には不要だし、データベースを要さない worktree も取らなくてよい。できないのは、
+  所有していないデータベースを使うことだけ（上の不変条件を参照）。
 - **実装** = ホスト実行の Go CLI `cmd/db-slot`（コアは `internal/cli/dbslot`）。リース判定・DB 作成・
   compose 起動をテスト可能な形で担う。make ターゲットは `go run ./cmd/ db-slot <sub>` を呼ぶ。
 - **リース** = ホスト上のロックディレクトリ `${GOBP_DB_POOL_DIR:-~/.cache/gobp-db-pool}/slot-N.lock`。
@@ -41,13 +66,13 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   `-include` して `.makefiles/docker/compose.mk` の既定値を上書きし、全ターゲットへ伝播する:
   - `DB_NAME_LOCAL` / `DB_NAME_TEST` = `wt<N>_local` / `wt<N>_test`（既定 `local` / `test`。host 実行の
     `go test` は共有 DB の localhost:5432 経由でこの名前の自 worktree DB へ繋ぐ。`internal/config` のテスト設定が参照）
-  - `API_HOST_PORT` = `8080+N` / `MOCK_AUTH_HOST_PORT` = `4000+N` / `DLV_HOST_PORT` = `2345+N` /
+  - `API_HOST_PORT` = `8080+N` / `MOCK_AUTH_HOST_PORT` = `2010+N` / `DLV_HOST_PORT` = `2345+N` /
     `PPROF_HOST_PORT` = `6060+N`（app 層のホスト公開ポートは全てスロット番号で相対化する）
   - `SERVE_PROJECT` = `gobp-wt-N`（app 層の compose プロジェクト = `APP_PROJECT`）
   - `COMPOSE_PROJECT_NAME` = `gobp-shared`（DB ツーリング migrate/seed/psql/gen が共有インフラのネットワークで
     動くよう既定プロジェクトを infra 層へ寄せる。未取得時も compose.mk が同じ既定を置く）
 - **ずれたポートに追随する永続データ**: ホスト公開ポートは接続先であるだけでなく、DB に**保存される**値でも
-  ある。JWT の issuer がそれで、mock 認証サーバーは `4000+N` で公開されるため発行トークンの `iss` はスロットで
+  ある。JWT の issuer がそれで、mock 認証サーバーは `2010+N` で公開されるため発行トークンの `iss` はスロットで
   ずれ、resolver が `(issuer, subject)` で突き合わせる `user_identities` の行も一緒にずれていなければならない
   （リテラル固定だと、スロットを取った worktree では認証を要求する全エンドポイントが 401 になる）。そのため
   seed ファイルは URL ではなく `${AUTH_ISSUER}` を持ち、`make db-seed` がそのスロットの値を渡す
@@ -67,11 +92,14 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   注意。詳細は `env/README.md` の Changing the Timezone を参照。
 - **スキーマ安全性**: acquire は取得後に `wt<N>_local` / `wt<N>_test` を drop→migrate→seed で
   自ブランチのスキーマへ作り直す。別ブランチが使ったスロットを引き継いでも安全。
-- **スキーマ生成の隔離**: `make gen-query` の `dump-schema` は共有 `local` も自 worktree DB もダンプ
-  せず、専用の `gen_schema` DB（`SCHEMA_GEN_DB`）を drop → 当該ブランチの migration で migrate-up して
-  からダンプする。並行する別 worktree の migration が生成物（`schema.gen.sql` / `models.gen.go` 等）へ
-  混入しない。ローカル専用のガードで、CI は fresh な postgres service を migrate 済みにして
-  `dump-schema-ci` を直接呼ぶため本経路は通らない。
+- **スキーマ生成の隔離**: `make gen-query` の `dump-schema` は共有 `local` も自分の作業用データベースも
+  ダンプせず、使い捨てデータベース（`SCHEMA_GEN_DB` — スロット保持時は `gen_schema_wt<N>`、主 checkout は
+  `gen_schema`）を drop → 当該ブランチの migration で migrate-up してからダンプする。決定的なダンプには
+  その直前の無条件な drop → migrate が要るが、それは作業用データベースへは打てない（`gen-query` の
+  たびに seed が消え、起動中の `make serve` の足元からテーブルが消える）。使い捨てデータベースも他と
+  同じく所有者ごとに持つため、2 つの checkout が同時に `make gen-query` を走らせても同じデータベースを
+  互いに作り直すことは無くなった。ローカル専用のガードで、CI は fresh な postgres service を migrate 済みに
+  して `dump-schema-ci` を直接呼ぶため本経路は通らない。
 - **解放**: `slot-free` は、このスロットの app プロジェクト（`gobp-wt-N`）のコンテナを停止して
   から lease と `.gobp-db-slot` を削除する。データベースは warm 保持で次に貸す。
 - **stale 回収の安全化**: heartbeat が TTL（既定 1800 秒、`GOBP_DB_POOL_TTL`）超過したリースは acquire 時に
@@ -125,7 +153,7 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
 | `GOBP_DB_POOL_DIR` | `~/.cache/gobp-db-pool` | リースレジストリの置き場所（symlink は拒否） |
 | `GOBP_DB_SHARED_PROJECT` | `gobp-shared` | 共有インフラの固定 compose プロジェクト名 |
 | `GOBP_API_POOL_BASE` | `8080` | `API_HOST_PORT` のベース（スロット N = ベース+N） |
-| `GOBP_MOCK_AUTH_POOL_BASE` | `4000` | `MOCK_AUTH_HOST_PORT` のベース |
+| `GOBP_MOCK_AUTH_POOL_BASE` | `2010` | `MOCK_AUTH_HOST_PORT` のベース |
 | `GOBP_DLV_POOL_BASE` | `2345` | `DLV_HOST_PORT` のベース |
 | `GOBP_PPROF_POOL_BASE` | `6060` | `PPROF_HOST_PORT` のベース |
 | `GOBP_DB_POOL_MAX` | `12` | スロット数（=同時並列数の上限） |
@@ -134,13 +162,11 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
 ## 注意
 
 - **共有インスタンスの blast radius**: 全 checkout が 1 個の Postgres / o11y / オブジェクトストレージを共有する。
-  データベースは分離されるため DDL は DB を跨げないが、reinit の対象 DB 名を取り違えると他 worktree を壊しうる。
-  具体的には `db-init` / `db-local-reinit` / `db-test-reinit` は `DB=local` / `DB=test` を直書きするため、
-  スロット保持中に叩くと自 worktree DB ではなく共有 DB を作り直す。自分の DB を作り直すときは
-  `make db-reinit DB=$DB_NAME_LOCAL` のように対象を明示する。`make infra-down` も同様に全 checkout を止める。
-- **スキーマ生成は同時実行できない**: `gen_schema` は共有インスタンス上の単一データベース名のため、複数の
-  checkout が同時に `make gen-query`（`dump-schema`）を走らせると同じ DB を作り直して互いの出力を壊す。
-  スキーマ生成は 1 checkout ずつ行う。
+  データベースは分離されるため DDL は DB を跨げず、`db-init` / `db-local-reinit` / `db-test-reinit` も
+  `DB=local` / `DB=test` の直書きをやめて保持スロットから対象を解決するようになったため、作り直すのは
+  自分のデータベースになる。ただし `DB=` を明示すれば従来どおり上書きでき、他人の所有名かどうかは
+  検査しない。他 checkout を壊しうる経路として残っているのは `make db-reinit DB=<名前>` だけである。
+  `make infra-down` も同様に全 checkout を止める。
 - **テストの並列実行が奪い合うのは容量ではなく接続の確立**: テストが同時に走ると、変更と無関係な
   パッケージが `failed to ping DB` で落ちる一方、`too many clients` は出ない。インスタンスの接続数には
   余裕があり、飽和するのは**同時に確立しようとしている本数**で、待たされている間に ping の予算が尽きる。
@@ -177,5 +203,7 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   止めることになる。スロット毎のキューを事前宣言していないのは、プールのサイズが可変
   （`GOBP_DB_POOL_MAX`）で、conf 側の静的な一覧はその値が変わった時点で黙ってプールを覆わなくなる
   ためである。
-- API 帯 8080–8092 と被らないよう `sql_editor` / `docs_viewer` は 7000 番台へ退避済み。
+- `sql_editor` / `docs_viewer` / `er_diagram_generator` / `mock_auth_server` は、いずれも自前のデファクト
+  ポートを持たないため `2000` 番台に置いている。規則とその帯が安全な理由は
+  [`local-environment.ja.md`](local-environment.ja.md) にある。
 - `docker/`・`internal/cli/dbslot`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。

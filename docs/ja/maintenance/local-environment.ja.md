@@ -22,9 +22,9 @@ graph TB
     db[("database<br/>PostgreSQL 18<br/>:5432 固定")]
     obs["observability<br/>otel-lgtm<br/>Grafana :3000 / OTLP :4317,:4318"]
     gar["garage (+ garage_init)<br/>S3 互換ストレージ<br/>:3900 / :3903"]
-    docs["docs_viewer :7001"]
-    sql["sql_editor :7000"]
-    er["er_diagram_generator :5433"]
+    docs["docs_viewer :2001"]
+    sql["sql_editor :2000"]
+    er["er_diagram_generator :2002"]
     subgraph runners["tool-runner（profile: generate / user: root）"]
       go["go_tool_runner"]
       node["node_tool_runner"]
@@ -34,7 +34,7 @@ graph TB
 
   subgraph app["app 層 - プロジェクト APP_PROJECT（checkout 毎に 1 つ）"]
     api["api_server<br/>air + dlv<br/>:8080+N / dlv :2345+N / pprof :6060+N"]
-    auth["mock_auth_server<br/>疑似 OIDC / JWKS<br/>:4000+N"]
+    auth["mock_auth_server<br/>疑似 OIDC / JWKS<br/>:2010+N"]
   end
 
   dev -->|make serve| api
@@ -60,8 +60,8 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
   `DB_HOST` / `OBS_OTLP_ENDPOINT` / `OBJECT_STORAGE_ENDPOINT` / `AUTH_ISSUER` を実行時 env で上書きして
   共有インフラを `host.docker.internal` 経由で参照させる（`internal/config` の loader は実行時 env を
   `env/.env` より優先する）。
-- app 層のホスト公開ポートは全てスロット番号 `N` で相対化される: API `8080+N` / mock 認証 `4000+N` /
-  dlv `2345+N` / pprof `6060+N`（スロット未取得なら `8080` / `4000` / `2345` / `6060`）。
+- app 層のホスト公開ポートは全てスロット番号 `N` で相対化される: API `8080+N` / mock 認証 `2010+N` /
+  dlv `2345+N` / pprof `6060+N`（スロット未取得なら `8080` / `2010` / `2345` / `6060`）。
   コンテナ内部のポートは動かない。
 - observability は **全 checkout で共有**。稼働中の全 app の traces / metrics / logs が
   `http://localhost:3000` の 1 つの Grafana に集まる。
@@ -75,17 +75,36 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | サービス | 層 | 由来 | ホストポート | 役割 |
 | --- | --- | --- | --- | --- |
 | `api_server` | app | build `docker/server/Dockerfile` | `${API_HOST_PORT:-8080}:8080` / dlv `${DLV_HOST_PORT:-2345}:2345` / pprof `${PPROF_HOST_PORT:-6060}:6060`（内部ポートは固定） | アプリ本体。dev target は **air** で起動しホットリロード＋delve デバッグ |
-| `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-4000}:4000`（内部 4000） | 疑似 OIDC 認証サーバー（JWT テストプロバイダ）。RS 側の JWKS 検証相手 |
+| `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-2010}:4000`（内部 4000） | 疑似 OIDC 認証サーバー（JWT テストプロバイダ）。RS 側の JWKS 検証相手 |
 | `database` | infra | `postgres:18.4-trixie` | `5432` 固定 | 全 checkout 共有の**単一**インスタンス（並列化は DB 名で行う。下記スロットリング参照） |
 | `observability` | infra | `grafana/otel-lgtm` | `3000`（Grafana UI）/ `4317`（OTLP gRPC）/ `4318`（OTLP HTTP）/ `3200`（Tempo API） | 全 checkout の traces / metrics / logs の受け皿。profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900`（S3 API）/ `3902`（Web API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う）。Web API はオブジェクトを匿名配信する — [`docker/README.md`](../../../docker/README.md) 参照 |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキー / 公開配信の許可の冪等プロビジョニング |
-| `docs_viewer` | infra | build `docker/document/Dockerfile` | `7001:80` | 開発用ドキュメントビューア |
-| `sql_editor` | infra | `sosedoff/pgweb` | `7000:8081` | ブラウザ DB クライアント |
-| `er_diagram_generator` | infra | `schemaspy/schemaspy` | `5433:3000` | ER 図生成 |
+| `docs_viewer` | infra | build `docker/document/Dockerfile` | `2001:80` | 開発用ドキュメントビューア |
+| `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | ブラウザ DB クライアント |
+| `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER 図生成 |
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile`（各 target） | なし（run/exec 実行） | コード生成・lint 等のツールボックス。**`user: root`**・profile: `generate`・リポジトリを `.:/app` にバインド |
 
-> `docs_viewer` / `sql_editor` は API スロット帯（`8080+N`）との衝突回避で **7000 番台へ退避**済み。
+### ホスト公開ポートの採番
+
+ホスト公開ポートは 1 つの規則で決める。
+
+> **そのサービスにデファクトの番号があるならそれを使う。無い（＝番号が恣意的になる）ものは
+> `2000` 番台に連番で置く。**
+
+`5432` / `8080+N` / `2345+N` / `6060+N` / `4317` / `4318` / `3000` / `3200` / `3900` / `3902` /
+`9324` は PostgreSQL・Delve・Go pprof・OpenTelemetry・Grafana・Tempo・garage・elasticmq の
+上流既定なので、読者が期待する位置に置いたままにする。`sql_editor` / `docs_viewer` /
+`er_diagram_generator` / `mock_auth_server` にはその番号が無い（pgweb・nginx・schemaspy が固定して
+いるのは*コンテナ内部*の 8081 / 80 / 3000 だけで、しかも pgweb の 8081 は API スロット帯（`8080+N`）
+の内側に入る）。よって `2000` / `2001` / `2002` / `2010+N` を占める。
+
+`2000` 番台を選んだのは、macOS でも Windows でも実際に LISTEN しているものが無いため。この帯に
+登録されている名前（`callbook` / `dectalk` / `troff` / `xinupageserver` …）は現行 OS に実装を持たない
+死んだプロトコルで、macOS の AirPlay レシーバーが実際に握っている `5000` / `7000` とは性質が違う。
+**`2048` を超えないこと — `2049` は NFS。**
+
+サービスを追加するときは、固定ポートなら `2003`–`2009`、スロット毎の帯が要るなら `2030` 以降。
 
 ### `database` のベース OS 変更後に出る collation version mismatch
 
@@ -179,7 +198,7 @@ graph LR
     pg[("PostgreSQL :5432")]
     obs["observability :3000 / :4318"]
   end
-  main["主 checkout<br/>project gobp-app-&lt;dir&gt;<br/>api :8080 / auth :4000<br/>DB: local / test"]
+  main["主 checkout<br/>project gobp-app-&lt;dir&gt;<br/>api :8080 / auth :2010<br/>DB: local / test"]
   wt1["worktree #1（スロット 1）<br/>project gobp-wt-1<br/>api :8081 / auth :4001<br/>DB: wt1_local / wt1_test"]
   wt2["worktree #2（スロット 2）<br/>project gobp-wt-2<br/>api :8082 / auth :4002<br/>DB: wt2_local / wt2_test"]
 
@@ -192,7 +211,7 @@ graph LR
 ```
 
 - **DB ポートは `5432` 固定**（`5432+N` ではない）。スロット `N` は DB 名 `wt<N>_local` / `wt<N>_test` で分離。
-- `API_HOST_PORT = 8080+N`、`MOCK_AUTH_HOST_PORT = 4000+N`、`DLV_HOST_PORT = 2345+N`、`PPROF_HOST_PORT = 6060+N`。
+- `API_HOST_PORT = 8080+N`、`MOCK_AUTH_HOST_PORT = 2010+N`、`DLV_HOST_PORT = 2345+N`、`PPROF_HOST_PORT = 6060+N`。
 - スロットを取らない checkout は既定の DB 名（`local` / `test`）と既定ポートのまま動くため、
   スロット取得は**並列作業のための opt-in** に留まる。
 - リース・ブートストラップ・`make slot-acquire` / `slot-free` / `slot-release` 等の**全詳細は正本の [db-worktree-pool.ja.md](db-worktree-pool.ja.md) を参照**。

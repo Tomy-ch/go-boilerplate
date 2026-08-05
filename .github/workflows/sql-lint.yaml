@@ -102,12 +102,15 @@ jobs:
               echo "(log not found)" > "$dst"
               return
             fi
-            # iconv: head cuts on a byte boundary and the logs quote SQL carrying Japanese comments,
-            # so an incomplete trailing character would reach the comment as U+FFFD.
+            # head cuts on a byte boundary and the logs quote SQL carrying Japanese comments, so it
+            # can split a trailing multi-byte character. `-c` drops an invalid sequence mid-stream
+            # but not a truncated one at the end: iconv exits non-zero there, which under
+            # `set -euo pipefail` would fail this step over a cut that landed one byte off. It
+            # writes the converted prefix before exiting, which is the wanted result, so the
+            # failure is absorbed rather than propagated.
             # sed: a run this long cannot come from a lint message, and a fence built to out-length
             # one would exceed the size budget above by itself.
-            head -c "$log_limit" "$src" \
-              | iconv -f UTF-8 -t UTF-8 -c \
+            { head -c "$log_limit" "$src" | iconv -f UTF-8 -t UTF-8 -c || true; } \
               | sed -E 's/`{10,}/[long backtick run elided]/g' > "$dst"
             if [ "$(wc -c < "$src")" -gt "$log_limit" ]; then
               printf '\n... (log truncated)\n' >> "$dst"

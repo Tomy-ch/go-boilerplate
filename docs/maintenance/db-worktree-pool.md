@@ -17,6 +17,30 @@ need to allocate a host port per DB, so neither "another worktree holds 5432, so
 run" nor "the main checkout's serve collides with a worktree's DB" can happen. For o11y, sharing is
 an advantage: the traces / metrics / logs of every checkout land in a single Grafana.
 
+## The invariant: database : worktree = 1 : 0..1
+
+**No database is ever reached from two places.** A worktree is free to take a slot or not, but a
+worktree that takes none owns *no database* — it does not fall back to the default `local` / `test`.
+
+| Who | Owns |
+| --- | --- |
+| main checkout | `local` / `test` / `gen_schema` |
+| worktree holding slot N | `wt<N>_local` / `wt<N>_test` / `gen_schema_wt<N>` |
+| worktree holding no slot | nothing — targets that touch a database fail |
+
+Falling back to the defaults would put the main checkout's databases under two owners, and it would
+do so *silently*: the failure surfaces later as a test that passes against another branch's
+migrations, or as a generated artifact rebuilt from a schema someone else was mid-migration on.
+`make require-db-owner` (`.makefiles/database/pool.mk`) is therefore a prerequisite of every target
+that resolves a database name — `db-migrate-*` / `db-seed` / `db-drop-tables` / `db-ensure` /
+`dump-schema`, plus `make test` / `test-cached` / `gen-test-repo` (a host-run `go test` reads
+`DB_NAME_TEST`) and `make serve` / `serve-build` / `serve-build-clean` (the app container reads
+`DB_NAME_LOCAL`). It detects a linked worktree by the `git-dir` ≠ `git-common-dir` split, so the main
+checkout, CI, and the tool-runner containers pass through untouched.
+
+The consequence to know about: in a worktree, `make test` fails until you run `make slot-acquire`.
+That is the point — before this guard it quietly ran against the shared `test` database.
+
 ## How it works
 
 - **infra layer** = the fixed compose project `gobp-shared` (`GOBP_DB_SHARED_PROJECT`). A worktree
@@ -30,8 +54,10 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
   `OBJECT_STORAGE_ENDPOINT` are overridden as runtime env; `loader.go` gives runtime env priority
   over `env/.env`).
 - **slot N** = the database-name pair `wt<N>_local` / `wt<N>_test` inside the shared DB (MAX 12 by
-  default = wt1–wt12). A checkout that takes no slot keeps the default `local` / `test`, so acquiring
-  a slot stays an **opt-in for parallel work**.
+  default = wt1–wt12), plus the throwaway `gen_schema_wt<N>` that schema generation rebuilds.
+  Acquiring a slot is an **opt-in for parallel work**: the main checkout needs none, and a worktree
+  that wants no database need not take one. What a worktree cannot do is use a database it does not
+  own (see the invariant above).
 - **implementation** = the host-run Go CLI `cmd/db-slot` (core in `internal/cli/dbslot`), which owns
   lease decisions, database creation, and compose startup in a testable form. The make targets call
   `go run ./cmd/ db-slot <sub>`.
@@ -49,7 +75,7 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
   - `DB_NAME_LOCAL` / `DB_NAME_TEST` = `wt<N>_local` / `wt<N>_test` (default `local` / `test`; a
     host-run `go test` connects through the shared DB on localhost:5432 to its own worktree database
     under this name — read by the test configuration in `internal/config`)
-  - `API_HOST_PORT` = `8080+N` / `MOCK_AUTH_HOST_PORT` = `4000+N` / `DLV_HOST_PORT` = `2345+N` /
+  - `API_HOST_PORT` = `8080+N` / `MOCK_AUTH_HOST_PORT` = `2010+N` / `DLV_HOST_PORT` = `2345+N` /
     `PPROF_HOST_PORT` = `6060+N` (every app-layer host port is relative to the slot number)
   - `SERVE_PROJECT` = `gobp-wt-N` (the app layer's compose project = `APP_PROJECT`)
   - `COMPOSE_PROJECT_NAME` = `gobp-shared` (moves the default project to the infra layer so DB
@@ -57,7 +83,7 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
     same default even when no slot is held)
 - **persisted data that follows the shifted ports**: a host port is not only something to connect to —
   it can also be *stored* in the database. The JWT issuer is one such value: the mock auth server
-  publishes on `4000+N`, so the `iss` of the tokens it issues shifts with the slot, and the
+  publishes on `2010+N`, so the `iss` of the tokens it issues shifts with the slot, and the
   `user_identities` row that the resolver matches on `(issuer, subject)` has to shift with it — with a
   pinned literal, every authenticated endpoint answers 401 in a worktree that holds a slot. The seed
   file therefore stores `${AUTH_ISSUER}` instead of the URL and `make db-seed` passes this slot's value
@@ -79,11 +105,15 @@ an advantage: the traces / metrics / logs of every checkout land in a single Gra
 - **schema safety**: after acquiring, acquire rebuilds `wt<N>_local` / `wt<N>_test` to the current
   branch's schema via drop → migrate → seed. Inheriting a slot another branch used is therefore safe.
 - **schema-generation isolation**: `dump-schema` (behind `make gen-query`) dumps neither the shared
-  `local` nor your own worktree database. It drops a dedicated `gen_schema` database (`SCHEMA_GEN_DB`),
-  migrates it up from *this* branch's migrations, and dumps that. Migrations from a concurrent
-  worktree therefore cannot leak into the generated artifacts (`schema.gen.sql`, `models.gen.go`, …).
-  This is a local-only guard: CI migrates a fresh postgres service and calls `dump-schema-ci`
-  directly, so it never takes this path.
+  `local` nor your own working database. It drops a throwaway database (`SCHEMA_GEN_DB` —
+  `gen_schema_wt<N>` when a slot is held, `gen_schema` for the main checkout), migrates it up from
+  *this* branch's migrations, and dumps that. A deterministic dump needs an unconditional
+  drop → migrate immediately before it, which cannot be aimed at a working database — it would wipe
+  the seed on every `gen-query` and pull the tables out from under a running `make serve`. Because
+  the throwaway database is per-owner like every other one, two checkouts running `make gen-query`
+  at the same time no longer rebuild the same database underneath each other. This is a local-only
+  guard: CI migrates a fresh postgres service and calls `dump-schema-ci` directly, so it never takes
+  this path.
 - **release**: `slot-free` stops the containers of this slot's app project (`gobp-wt-N`) before
   deleting the lease and `.gobp-db-slot`. The databases are kept warm for the next tenant.
 - **safe stale reclaim**: a lease whose heartbeat has exceeded the TTL (1800 seconds by default,
@@ -139,7 +169,7 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
 | `GOBP_DB_POOL_DIR` | `~/.cache/gobp-db-pool` | Where the lease registry lives (a symlink is rejected) |
 | `GOBP_DB_SHARED_PROJECT` | `gobp-shared` | Fixed compose project name of the shared infra |
 | `GOBP_API_POOL_BASE` | `8080` | Base for `API_HOST_PORT` (slot N = base + N) |
-| `GOBP_MOCK_AUTH_POOL_BASE` | `4000` | Base for `MOCK_AUTH_HOST_PORT` |
+| `GOBP_MOCK_AUTH_POOL_BASE` | `2010` | Base for `MOCK_AUTH_HOST_PORT` |
 | `GOBP_DLV_POOL_BASE` | `2345` | Base for `DLV_HOST_PORT` |
 | `GOBP_PPROF_POOL_BASE` | `6060` | Base for `PPROF_HOST_PORT` |
 | `GOBP_DB_POOL_MAX` | `12` | Number of slots (= the cap on concurrent parallel work) |
@@ -148,14 +178,11 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
 ## Caveats
 
 - **Blast radius of a shared instance**: every checkout shares one Postgres / o11y / object storage.
-  Databases are isolated, so DDL cannot cross a database boundary — but getting the target database
-  name of a reinit wrong can destroy another worktree's. Concretely, `db-init` / `db-local-reinit` /
-  `db-test-reinit` hardcode `DB=local` / `DB=test`, so running them while holding a slot rebuilds the
-  shared databases rather than your worktree's. Name the target explicitly when rebuilding your own,
-  e.g. `make db-reinit DB=$DB_NAME_LOCAL`. `make infra-down` likewise stops every checkout.
-- **Schema generation cannot run concurrently**: `gen_schema` is a single database name inside the
-  shared instance, so two checkouts running `make gen-query` (`dump-schema`) at the same time rebuild
-  the same database and corrupt each other's output. Generate schemas one checkout at a time.
+  Databases are isolated, so DDL cannot cross a database boundary, and `db-init` / `db-local-reinit` /
+  `db-test-reinit` now resolve their target from the slot you hold rather than hardcoding
+  `DB=local` / `DB=test` — so they rebuild your own databases. Passing `DB=` explicitly still overrides
+  that, and a name belonging to another owner is not checked, so `make db-reinit DB=<name>` is the one
+  way left to destroy someone else's. `make infra-down` likewise stops every checkout.
 - **Parallel tests contend over establishing connections, not over capacity**: when tests run at the
   same time, packages unrelated to your change fail with `failed to ping DB`, while `too many clients`
   never appears. The instance has connections to spare; what saturates is how many are being
@@ -200,7 +227,8 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   checkout. Per-slot queues are not pre-declared because the pool size is configurable
   (`GOBP_DB_POOL_MAX`), and a static list in the conf would silently stop covering the pool as soon as
   that value changed.
-- `sql_editor` / `docs_viewer` have been moved into the 7000 range so they do not collide with the
-  API band 8080–8092.
+- `sql_editor` / `docs_viewer` / `er_diagram_generator` / `mock_auth_server` sit in the `2000` range
+  because none of them has a de-facto port of its own. The rule, and why that range is safe, are in
+  [`local-environment.md`](local-environment.md).
 - The wiring spans `docker/`, `internal/cli/dbslot`, and `.makefiles/`, so update this document
   whenever it changes.

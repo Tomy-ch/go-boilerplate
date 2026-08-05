@@ -52,7 +52,7 @@ per-checkout **app** layer (`api_server` / `mock_auth_server`) runs in this chec
 | `make serve-stop` | Stops this checkout's app project only. | Stop the API without touching the shared infra or other checkouts |
 | `make infra-up` | Starts the shared infra services (`--wait`) plus the one-shot `garage_init` in the `gobp-shared` project. | Bring up the shared infra alone (called idempotently by `serve` / `job` / `worker`). In a worktree it also passes `INFRA_NO_RECREATE`, keeping a running container another checkout may be using — a definition change then takes `infra-down` followed by `infra-up` |
 | `make infra-down` | Stops the shared infra project (named volumes are kept). | Shut the infra down — **affects every checkout / worktree** |
-| `make tools` | Starts development support tools with the `tools` profile in the shared infra project. | When using development tools (SQL editor `:7000` / docs viewer `:7001`). Also passes `INFRA_NO_RECREATE` — the profile covers `database` / `garage` too |
+| `make tools` | Starts development support tools with the `tools` profile in the shared infra project. | When using development tools (SQL editor `:2000` / docs viewer `:2001`). Also passes `INFRA_NO_RECREATE` — the profile covers `database` / `garage` too |
 | `make all` | Starts everything: `tools` followed by `serve-build`. | Bring up the whole local stack at once |
 | `make tool-runners-build` | Builds the on-demand tool runner images (go/node/python, cache enabled, no startup). | When updating tool runner Dockerfile or dependencies |
 | `make tool-runners-build-clean` | Cleanly builds the tool runner images with `--no-cache --pull` (no startup). | Pick up base image updates for tool runners |
@@ -121,9 +121,10 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make db-init` | Executes initialization for both LocalDB and TestDB. | Calls `db-init-local` and `db-init-test` sequentially. |
-| `make db-init-local` | Initializes LocalDB. | Executes `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed`. |
-| `make db-init-test` | Initializes TestDB. | Executes `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed`. |
+| `make db-init` | Executes initialization for both the owned local and test databases. | Calls `db-init-local` and `db-init-test` sequentially. |
+| `make db-init-local` | Initializes the owned local database. | Executes `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed`. |
+| `make db-init-test` | Initializes the owned test database. | Executes `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed`. |
+| `make require-db-owner` | Verifies that this checkout owns a database. | Prerequisite of every target that resolves a database name. Fails in a linked worktree that holds no DB slot, instead of falling back to the main checkout's `local` / `test` — see `docs/maintenance/db-worktree-pool.md`. |
 
 ### DB migration related
 
@@ -138,13 +139,13 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 | `make db-migrate-up-<steps> DB=<database>` | Applies the given number of migrations relative to the current position. | Example: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | Downgrades all migrations to the initial state. | None |
 | `make db-migrate-down-<steps> DB=<database>` | Rolls back the given number of migrations. | None |
-| `make db-local-migrate-up` | Applies all migrations to LocalDB. | Alias for `db-migrate-up` with `DB=local`. |
+| `make db-local-migrate-up` | Applies all migrations to the owned local database. | Alias for `db-migrate-up` with `DB=$(DB_LOCAL)` (`local`, or `wt<N>_local` while a slot is held). |
 | `make db-local-migrate-up-<steps>` | Applies the given number of migrations on LocalDB. | None |
-| `make db-local-migrate-down` | Downgrades LocalDB to initial state. | Alias for `db-migrate-down` with `DB=local`. |
+| `make db-local-migrate-down` | Downgrades the owned local database to initial state. | Alias for `db-migrate-down` with `DB=$(DB_LOCAL)`. |
 | `make db-local-migrate-down-<steps>` | Rolls back the given number of migrations on LocalDB. | None |
-| `make db-test-migrate-up` | Applies all migrations to TestDB. | Alias for `db-migrate-up` with `DB=test`. |
+| `make db-test-migrate-up` | Applies all migrations to the owned test database. | Alias for `db-migrate-up` with `DB=$(DB_TEST)` (`test`, or `wt<N>_test` while a slot is held). |
 | `make db-test-migrate-up-<steps>` | Applies the given number of migrations on TestDB. | None |
-| `make db-test-migrate-down` | Downgrades TestDB to initial state. | Alias for `db-migrate-down` with `DB=test`. |
+| `make db-test-migrate-down` | Downgrades the owned test database to initial state. | Alias for `db-migrate-down` with `DB=$(DB_TEST)`. |
 | `make db-test-migrate-down-<steps>` | Rolls back the given number of migrations on TestDB. | None |
 | `make db-migrate-ci-up DB=<database>` | Executes `cmd/main.go migrate-up` directly without Docker. | CI target |
 | `make db-migrate-ci-up-<steps> DB=<database>` | Executes `migrate-up` for the given number of steps without Docker. | CI target |
@@ -165,8 +166,8 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make db-seed DB=<database>` | Inserts seed data into the specified DB. | Executes `cmd/main.go db-seed` inside a Docker container. |
 | `make db-seed-ci DB=<database>` | Executes seed insertion directly without Docker. | CI target |
-| `make db-local-seed` | Inserts seed data into LocalDB. | Alias for `db-seed` with `DB=local`. |
-| `make db-test-seed` | Inserts seed data into TestDB. | Alias for `db-seed` with `DB=test`. |
+| `make db-local-seed` | Inserts seed data into the owned local database. | Alias for `db-seed` with `DB=$(DB_LOCAL)`. |
+| `make db-test-seed` | Inserts seed data into the owned test database. | Alias for `db-seed` with `DB=$(DB_TEST)`. |
 
 ### DB generation / helper related
 
@@ -174,7 +175,7 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make gen-db-schema` | Generates DB schema documentation. | Used to update ER diagrams and schema outputs. |
 | `make gen-db-schema-ci` | Executes SchemaSpy container directly to generate schema docs. | CI target |
-| `make dump-schema` | Executes schema dump. | Used as preprocessing for SQLC generation and DML merge. |
+| `make dump-schema` | Executes schema dump. | Used as preprocessing for SQLC generation and DML merge. Rebuilds the owner's throwaway database (`gen_schema`, or `gen_schema_wt<N>` while a slot is held) from this branch's migrations and dumps that. |
 | `make dump-schema-ci` | Executes `cmd/main.go dump-schema` directly without Docker. | CI target |
 | `make fix-collation` | Fixes database collation. | None |
 | `make fix-collation-ci` | Executes collation fix directly without Docker. | CI target |
@@ -290,7 +291,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
 | `INFRA_NO_RECREATE` | `--no-recreate` in a worktree, empty otherwise | Keeps a shared-infra container another checkout is using instead of re-creating it. Empty in a single checkout, where compose re-converges on a definition change as usual. Set it explicitly for a topology the worktree test misses, such as several independent clones. |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | Compose invocation for the app layer. `docker-compose.attach.yaml` points the app services at the shared infra via `host.docker.internal`. |
-| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | Published host ports of the API / mock auth server. |
+| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `2010` | Published host ports of the API / mock auth server. |
 | `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | Published host ports of the dlv debug / pprof endpoints. |
 | `COMPOSE_PROJECT_NAME` | `$(INFRA_PROJECT)` | Default project for compose calls that don't pass `-p`, so DB tooling shares the infra network. |
 

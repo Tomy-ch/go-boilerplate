@@ -52,7 +52,7 @@ checkout 毎の **app 層**（`api_server` / `mock_auth_server`）は自 checkou
 | `make serve-stop` | 自 checkout の app プロジェクトだけを停止します。 | 共有インフラや他 checkout に触れず API を止める |
 | `make infra-up` | 共有インフラのサービス（`--wait`）と one-shot の `garage_init` を `gobp-shared` プロジェクトで起動します。 | 共有インフラだけを起動する（`serve` / `job` / `worker` が冪等に呼びます）。worktree では `INFRA_NO_RECREATE` も渡し、他の checkout が使っている可能性のある稼働中コンテナは残します。このとき定義変更の反映は `infra-down` → `infra-up` になります |
 | `make infra-down` | 共有インフラのプロジェクトを停止します（名前付きボリュームは保持）。 | インフラを落とす。**全 checkout / worktree に影響します** |
-| `make tools` | `tools` プロファイルの開発支援ツール群を共有インフラのプロジェクトで起動します。 | 開発ツール利用時（SQL editor `:7000` / docs viewer `:7001`）。こちらも `INFRA_NO_RECREATE` を渡します（プロファイルに `database` / `garage` が含まれるため） |
+| `make tools` | `tools` プロファイルの開発支援ツール群を共有インフラのプロジェクトで起動します。 | 開発ツール利用時（SQL editor `:2000` / docs viewer `:2001`）。こちらも `INFRA_NO_RECREATE` を渡します（プロファイルに `database` / `garage` が含まれるため） |
 | `make all` | `tools` → `serve-build` の順に全サービスを一括起動します。 | ローカルスタック全体を一度に立ち上げる |
 | `make tool-runners-build` | オンデマンド実行のツールランナー画像(go/node/python)をキャッシュ利用でビルドします（起動はしません）。 | ツールランナーの Dockerfile や依存変更の反映 |
 | `make tool-runners-build-clean` | ツールランナー画像を `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールランナーの base image 更新の取り込み |
@@ -121,9 +121,10 @@ DB 操作全般を扱うターゲット群です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make db-init` | LocalDB と TestDB の初期化をまとめて実行します。 | `db-init-local` と `db-init-test` を順に呼び出します。 |
-| `make db-init-local` | LocalDB を初期化します。 | `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed` を実行します。 |
-| `make db-init-test` | TestDB を初期化します。 | `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed` を実行します。 |
+| `make db-init` | 所有している local / test データベースの初期化をまとめて実行します。 | `db-init-local` と `db-init-test` を順に呼び出します。 |
+| `make db-init-local` | 所有している local データベースを初期化します。 | `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed` を実行します。 |
+| `make db-init-test` | 所有している test データベースを初期化します。 | `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed` を実行します。 |
+| `make require-db-owner` | この checkout が所有するデータベースがあることを検証します。 | データベース名を解決する全ターゲットの前提条件です。DB スロットを持たないリンク worktree では、主 checkout の `local` / `test` へフォールバックせず失敗します。`docs/ja/maintenance/db-worktree-pool.ja.md` を参照。 |
 
 ### DB マイグレーション関連
 
@@ -138,13 +139,13 @@ DB 操作全般を扱うターゲット群です。
 | `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | 指定した DB に対して、全マイグレーションを初期状態までダウングレードします。 | なし |
 | `make db-migrate-down-<steps> DB=<database>` | 指定した DB に対して、指定段数だけダウングレードします。 | なし |
-| `make db-local-migrate-up` | LocalDB に対して全マイグレーションを最新まで適用します。 | `DB=local` を指定した `db-migrate-up` のエイリアスです。 |
+| `make db-local-migrate-up` | 所有している local データベースに対して全マイグレーションを最新まで適用します。 | `DB=$(DB_LOCAL)`（`local`、スロット保持中は `wt<N>_local`）を指定した `db-migrate-up` のエイリアスです。 |
 | `make db-local-migrate-up-<steps>` | LocalDB に対して指定段数だけマイグレーションを適用します。 | なし |
-| `make db-local-migrate-down` | LocalDB を初期状態までダウングレードします。 | `DB=local` を指定した `db-migrate-down` のエイリアスです。 |
+| `make db-local-migrate-down` | 所有している local データベースを初期状態までダウングレードします。 | `DB=$(DB_LOCAL)` を指定した `db-migrate-down` のエイリアスです。 |
 | `make db-local-migrate-down-<steps>` | LocalDB を指定段数だけダウングレードします。 | なし |
-| `make db-test-migrate-up` | TestDB に対して全マイグレーションを最新まで適用します。 | `DB=test` を指定した `db-migrate-up` のエイリアスです。 |
+| `make db-test-migrate-up` | 所有している test データベースに対して全マイグレーションを最新まで適用します。 | `DB=$(DB_TEST)`（`test`、スロット保持中は `wt<N>_test`）を指定した `db-migrate-up` のエイリアスです。 |
 | `make db-test-migrate-up-<steps>` | TestDB に対して指定段数だけマイグレーションを適用します。 | なし |
-| `make db-test-migrate-down` | TestDB を初期状態までダウングレードします。 | `DB=test` を指定した `db-migrate-down` のエイリアスです。 |
+| `make db-test-migrate-down` | 所有している test データベースを初期状態までダウングレードします。 | `DB=$(DB_TEST)` を指定した `db-migrate-down` のエイリアスです。 |
 | `make db-test-migrate-down-<steps>` | TestDB を指定段数だけダウングレードします。 | なし |
 | `make db-migrate-ci-up DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-up` を実行します。 | CI 用ターゲットです。 |
 | `make db-migrate-ci-up-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-up` を実行します。 | CI 用ターゲットです。 |
@@ -165,8 +166,8 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make db-seed DB=<database>` | 指定した DB に対してシードデータを投入します。 | Docker コンテナ内で `cmd/main.go db-seed` を実行します。 |
 | `make db-seed-ci DB=<database>` | Docker を介さず、直接シード投入処理を実行します。 | CI 用ターゲットです。 |
-| `make db-local-seed` | LocalDB に対してシードデータを投入します。 | `DB=local` を指定した `db-seed` のエイリアスです。 |
-| `make db-test-seed` | TestDB に対してシードデータを投入します。 | `DB=test` を指定した `db-seed` のエイリアスです。 |
+| `make db-local-seed` | 所有している local データベースにシードデータを投入します。 | `DB=$(DB_LOCAL)` を指定した `db-seed` のエイリアスです。 |
+| `make db-test-seed` | 所有している test データベースにシードデータを投入します。 | `DB=$(DB_TEST)` を指定した `db-seed` のエイリアスです。 |
 
 ### DB 生成・補助関連
 
@@ -174,7 +175,7 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make gen-db-schema` | DB スキーマドキュメントを生成します。 | ER 図やスキーマ出力の更新に使用します。 |
 | `make gen-db-schema-ci` | SchemaSpy コンテナを直接実行してスキーマドキュメントを生成します。 | CI 用ターゲットです。 |
-| `make dump-schema` | スキーマダンプを実行します。 | SQLC 生成や DML マージの前処理として利用します。 |
+| `make dump-schema` | スキーマダンプを実行します。 | SQLC 生成や DML マージの前処理として利用します。所有者ごとの使い捨てデータベース（`gen_schema`、スロット保持中は `gen_schema_wt<N>`）を当該ブランチの migration から作り直してダンプします。 |
 | `make dump-schema-ci` | Docker を介さず、直接 `cmd/main.go dump-schema` を実行します。 | CI 用ターゲットです。 |
 | `make fix-collation` | データベースのコラテーションを修正します。 | なし |
 | `make fix-collation-ci` | Docker を介さず、直接コラテーション修正処理を実行します。 | CI 用ターゲットです。 |
@@ -290,7 +291,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | infra 層向けの compose 呼び出し。 |
 | `INFRA_NO_RECREATE` | worktree では `--no-recreate`、それ以外は空 | 他の checkout が使っている共有インフラのコンテナを作り直さずそのまま使います。単一 checkout では空で、compose は従来どおり定義変更へ再収束します。独立した clone を複数持つなど worktree 判定で拾えない構成では明示的に指定してください。 |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | app 層向けの compose 呼び出し。`docker-compose.attach.yaml` が app サービスの接続先を `host.docker.internal` 経由の共有インフラへ差し替えます。 |
-| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `4000` | API / mock 認証サーバーのホスト公開ポート。 |
+| `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `2010` | API / mock 認証サーバーのホスト公開ポート。 |
 | `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | dlv デバッグ / pprof のホスト公開ポート。 |
 | `COMPOSE_PROJECT_NAME` | `$(INFRA_PROJECT)` | `-p` を渡さない compose 呼び出しの既定プロジェクト。DB ツーリングが共有インフラのネットワークで動くようにします。 |
 

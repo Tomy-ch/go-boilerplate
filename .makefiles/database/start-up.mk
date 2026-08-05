@@ -33,7 +33,7 @@ db-init-test:
 # 失われた「ダーティなスキーマ」には使えない。db-drop-tables / db-reinit はその代替で、public の全
 # テーブルを CASCADE で削除してから migrate-up し、down に依存せずクリーンな状態へ戻す。
 # 本リポジトリのマイグレーションは table のみを作るため、テーブル削除で十分（拡張は温存される）。
-db-drop-tables:
+db-drop-tables: require-db-owner
 	@echo "💥 public の全テーブルを削除します（拡張は残す）... (database=$(DB))"
 	@docker compose exec -T database psql -U postgres -d $(DB) -v ON_ERROR_STOP=1 < database/maintenance/drop-all-tables.sql
 	@echo "✅ 全テーブル削除が完了しました。 (database=$(DB))"
@@ -43,8 +43,8 @@ db-reinit:
 	@$(MAKE) db-migrate-up DB=$(DB)
 	@$(MAKE) db-seed DB=$(DB)
 
-db-local-reinit: DB=local
+db-local-reinit: DB=$(DB_LOCAL)
 db-local-reinit: db-reinit
 
-db-test-reinit: DB=test
+db-test-reinit: DB=$(DB_TEST)
 db-test-reinit: db-reinit

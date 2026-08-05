@@ -1,7 +1,7 @@
 # app 層の override（全 checkout / worktree 共通）。api_server / mock_auth_server だけを checkout 毎の
 # compose プロジェクトへ起動し、固定ポートを持つ共有インフラ（database / observability / garage /
 # elasticmq）は gobp-shared の 1 インスタンスを host-gateway 経由で参照する。ホスト公開ポートは DB スロット保持時に
-# 8080+N / 4000+N へずれ、未取得なら既定値のままなので main checkout も同じ経路で起動できる。
+# 8080+N / 2010+N へずれ、未取得なら既定値のままなので main checkout も同じ経路で起動できる。
 services:
   api_server:
     ports: !override
@@ -23,8 +23,8 @@ services:
       OUTBOX_QUEUE_ENDPOINT: http://host.docker.internal:9324
       CONSUMER_QUEUE_ENDPOINT: http://host.docker.internal:9324
       # token の iss は mock 認証サーバーのホスト公開 URL。スロット毎にポートがずれるため追従させる。
-      AUTH_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-4000}
+      AUTH_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-2010}
 
   mock_auth_server:
     environment:
-      OIDC_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-4000}
+      OIDC_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-2010}
