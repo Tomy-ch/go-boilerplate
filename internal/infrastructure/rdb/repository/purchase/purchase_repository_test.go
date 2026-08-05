@@ -375,7 +375,6 @@ func Test_repository_UpdatePaid(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-
 	})
 }
 
@@ -483,7 +482,6 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
 		})
-
 	})
 }
 
@@ -599,7 +597,6 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
 		})
-
 	})
 }
 

@@ -195,7 +195,6 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
 			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
-
 	})
 }
 
@@ -433,7 +432,6 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
 			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
-
 	})
 }
 
