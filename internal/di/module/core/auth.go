@@ -90,6 +90,15 @@ func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
 	}
 }
 
+// allowInsecureJWKSURL は、指定環境で JWKS URL に非 https を許すかを返します。
+// local だけが疑似 provider（http）へ接続するため許容され、それ以外の環境では https を強制します。
+//
+// 許容の可否は https 経由の構築成否に現れないため、呼び出し元から観測できるのは http を渡した
+// ときだけです。環境ごとの対応を直接固定できるよう、判定を独立した関数として切り出しています。
+func allowInsecureJWKSURL(env string) bool {
+	return env == config.EnvLocal
+}
+
 // provideJWKSAuthenticator は、AUTH_* 設定から JWKS backed の JWT authenticator を構築します。
 // JWKS の取得は httpclient substrate に委ねるため、goroutine / lifecycle の管理は不要です（遅延取得）。
 func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (authbd.Authenticator, error) {
@@ -106,8 +115,7 @@ func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (aut
 		CacheTTL:           p.AuthCfg.JWKSCacheTTL(),
 		DiscoveryTTL:       p.AuthCfg.DiscoveryTTL(),
 		UnknownKidCooldown: p.AuthCfg.UnknownKidCooldown(),
-		// local は疑似 provider（http）へ接続するため非 https を許容。それ以外の環境では https を強制する。
-		AllowInsecureURL: p.AppCfg.Env() == config.EnvLocal,
+		AllowInsecureURL:   allowInsecureJWKSURL(p.AppCfg.Env()),
 	}, p.HTTPClient)
 	if err != nil {
 		logger.Error(

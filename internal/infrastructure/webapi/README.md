@@ -30,6 +30,29 @@ Each leaf under `webapi/` implements a semantic gateway interface defined in `in
 - Errors are returned as `apperror` sentinels already mapped by the substrate; JSON decode / domain-shape validation failures are wrapped as `apperror.ErrUnavailable`
 - The endpoint base URL is resolved at construction and injected via DI (a `NewEndpoint` per leaf); each leaf opens a span via `observability.LayerTracer` (`tf.Infra()`)
 
+## Test Strategy
+
+Gateways here are built on the `httpclient` substrate, not on a database, so the infrastructure layer's
+real-DB strategy does not apply. Everything closes in-process behind a generated `httpclient` mock.
+Leaves carry no README of their own, so these viewpoints govern every leaf under `webapi/`.
+
+- **The boundary DTO is the assertion target, not the wire shape.** A leaf exists to stop raw JSON at
+  this layer, so a test asserts the returned boundary output — including the parsed numeric / value types
+  — rather than echoing back the response body it just scripted.
+- **A malformed downstream response is a first-class case.** Undecodable JSON, a well-formed body whose
+  shape the domain rejects, and an empty result set each get their own case, because these are the paths
+  a downstream can take without any transport error to signal them.
+- **The substrate's error mapping is not re-derived.** Non-2xx and transport failures arrive as
+  `apperror` sentinels; assertions go through `errors.Is` against those, never a status code, since the
+  status is the substrate's concern and the sentinel is what the usecase is given.
+- **A cache in front of a gateway is tested on the injected clock**, never on wall time: hit, miss,
+  expiry at the TTL boundary, and concurrent access to a single key. A test that sleeps to let an entry
+  expire is flaky by construction.
+- **The endpoint a leaf resolves is its own subject**, however thin that resolution currently is. The
+  sample leaves return a compile-time constant, so their test pins only which base URL they hand the
+  substrate; a leaf that instead parses a configured URL is expected to reject a bad one at construction,
+  so a misconfigured deployment fails at startup rather than on the first outbound call.
+
 ## DI Registration
 
 Registered by the `webapi` module in `internal/di/module/webapi.go`. Each leaf provides its constructor / endpoint and contributes its `DownstreamProfile` to the `httpclient_profiles` group.

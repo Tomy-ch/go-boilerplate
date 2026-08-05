@@ -210,6 +210,93 @@ func parseEnvContent(t *testing.T, file, content string) map[string]string {
 	return values
 }
 
+func Test_parseEnvContent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("代入行をキーと値の対応へ分解する", func(t *testing.T) {
+			t.Parallel()
+
+			values := parseEnvContent(t, "env/.env", "APP_ENV=local\nOBS_TARGET_STATUS_CODES=403,404\n")
+
+			assert.Equal(t,
+				map[string]string{"APP_ENV": "local", "OBS_TARGET_STATUS_CODES": "403,404"}, values)
+		})
+
+		t.Run("コメント行と空行を値として扱わない", func(t *testing.T) {
+			t.Parallel()
+
+			values := parseEnvContent(t, "env/.env", "# 環境\n\nAPP_ENV=local\n")
+
+			assert.Equal(t, map[string]string{"APP_ENV": "local"}, values)
+		})
+
+		t.Run("クォートで囲んだ値からクォートを外す", func(t *testing.T) {
+			t.Parallel()
+
+			values := parseEnvContent(t, "env/.env", "OBS_TARGET_STATUS_CODES=\"403,404\"\n")
+
+			assert.Equal(t, map[string]string{"OBS_TARGET_STATUS_CODES": "403,404"}, values)
+		})
+
+		t.Run("export 前置の代入行も分解する", func(t *testing.T) {
+			t.Parallel()
+
+			values := parseEnvContent(t, "env/.env", "export APP_ENV=local\n")
+
+			assert.Equal(t, map[string]string{"APP_ENV": "local"}, values)
+		})
+	})
+}
+
+func Test_excludeStatusCodes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したコードを除いた並びを元の順序のまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			got := excludeStatusCodes(t, []string{"403", "404", "405", "429"}, []string{"404", "429"})
+
+			assert.Equal(t, []string{"403", "405"}, got)
+		})
+
+		t.Run("除外が空なら元の並びをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			got := excludeStatusCodes(t, []string{"403", "404"}, nil)
+
+			assert.Equal(t, []string{"403", "404"}, got)
+		})
+
+		t.Run("全件を除外すれば空になる", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, excludeStatusCodes(t, []string{"403"}, []string{"403"}))
+		})
+	})
+}
+
+func Test_policyEnvFiles(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全段のenvファイルを段の順に平坦化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t,
+				[]string{"env/.env", "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"},
+				policyEnvFiles())
+		})
+	})
+}
+
 // readRepoFile は、モジュールルートからの相対パスでリポジトリ内のファイルを読みます。
 func readRepoFile(t *testing.T, root, file string) string {
 	t.Helper()
