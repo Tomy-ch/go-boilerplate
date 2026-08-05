@@ -12,6 +12,8 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/purchases/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
+	checkoutuc "go-boilerplate/internal/usecase/checkout"
+	mock_checkoutuc "go-boilerplate/internal/usecase/checkout/mock"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
@@ -65,7 +67,7 @@ func TestBindHandler(t *testing.T) {
 	tf := observability.NewNoopTracerFactory(t)
 	uc := mock_purchaseuc.NewMockUsecase(gomock.NewController(t))
 
-	BindHandler(e, tf, uc, idempotency.Deps{})
+	BindHandler(e, tf, uc, mock_checkoutuc.NewMockUsecase(gomock.NewController(t)), idempotency.Deps{})
 
 	routes := e.Router().Routes()
 	require.Len(t, routes, 2)
@@ -88,14 +90,14 @@ func Test_server_PostPurchases(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), checkout: checkout, idem: idempotency.Deps{}}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "h_user")
 			productID := uuidtestkit.NewTestFromSalt(t, "h_prod")
-			view := newTestPurchaseView(t)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, params purchaseuc.CreatePurchaseParams) (purchaseuc.PurchaseView, error) {
+			view := checkoutuc.PurchaseView{Purchase: newTestPurchaseView(t)}
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, params checkoutuc.CreatePurchaseParams) (checkoutuc.PurchaseView, error) {
 					assert.Equal(t, userID, params.UserID)
 					require.Len(t, params.Details, 1)
 					assert.Equal(t, productID, params.Details[0].ProductID)
@@ -114,11 +116,11 @@ func Test_server_PostPurchases(t *testing.T) {
 
 			r, ok := resp.(gen.PostPurchases201JSONResponse)
 			require.True(t, ok)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
-			assert.Equal(t, view.Code, r.Code)
-			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
-			assert.Equal(t, view.StatusID.ToPrimitive(), r.StatusId)
-			assert.Equal(t, view.TotalAmount, int(r.TotalAmount))
+			assert.Equal(t, view.Purchase.ID.ToPrimitive(), r.Id)
+			assert.Equal(t, view.Purchase.Code, r.Code)
+			assert.Equal(t, view.Purchase.UserID.ToPrimitive(), r.UserId)
+			assert.Equal(t, view.Purchase.StatusID.ToPrimitive(), r.StatusId)
+			assert.Equal(t, view.Purchase.TotalAmount, int(r.TotalAmount))
 			require.Len(t, r.Details, 1)
 			assert.Equal(t, productID.ToPrimitive(), r.Details[0].ProductId)
 		})
@@ -127,20 +129,22 @@ func Test_server_PostPurchases(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), checkout: checkout, idem: idempotency.Deps{}}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "h_user_dc")
 			productID := uuidtestkit.NewTestFromSalt(t, "h_prod_dc")
-			view := newTestPurchaseView(t)
-			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{
-				Currency: "JPY",
-				Amount:   26475,
-				Rate:     decimaltestkit.MustParse(t, "150.5"),
-				RateDate: "2026-07-21",
+			view := checkoutuc.PurchaseView{
+				Purchase: newTestPurchaseView(t),
+				ReferenceAmount: &checkoutuc.ReferenceAmountView{
+					Currency: "JPY",
+					Amount:   26475,
+					Rate:     decimaltestkit.MustParse(t, "150.5"),
+					RateDate: "2026-07-21",
+				},
 			}
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, params purchaseuc.CreatePurchaseParams) (purchaseuc.PurchaseView, error) {
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, params checkoutuc.CreatePurchaseParams) (checkoutuc.PurchaseView, error) {
 					require.NotNil(t, params.DisplayCurrency)
 					assert.Equal(t, "JPY", *params.DisplayCurrency)
 					return view, nil
@@ -169,8 +173,8 @@ func Test_server_PostPurchases(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), checkout: checkout, idem: idempotency.Deps{}}
 
 			_, err := s.PostPurchases(context.Background(), gen.PostPurchasesRequestObject{
 				Body: &gen.PurchasesPostRequest{Details: []gen.PurchaseDetailInput{}},
@@ -201,11 +205,12 @@ func Test_server_PostPurchases(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), checkout: checkout, idem: idempotency.Deps{}}
 
 			wantErr := xerrors.Wrap(apperror.ErrConflict, "insufficient stock")
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseuc.PurchaseView{}, wantErr)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+				Return(checkoutuc.PurchaseView{}, wantErr)
 
 			userID := uuidtestkit.NewTestFromSalt(t, "h_user_err")
 			productID := uuidtestkit.NewTestFromSalt(t, "h_prod_err")
@@ -221,12 +226,13 @@ func Test_server_PostPurchases(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), checkout: checkout, idem: idempotency.Deps{}}
 
-			view := newTestPurchaseView(t)
-			view.Details[0].Quantity = math.MaxInt32 + 1
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(view, nil)
+			purchaseView := newTestPurchaseView(t)
+			purchaseView.Details[0].Quantity = math.MaxInt32 + 1
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+				Return(checkoutuc.PurchaseView{Purchase: purchaseView}, nil)
 
 			userID := uuidtestkit.NewTestFromSalt(t, "h_user_overflow")
 			productID := uuidtestkit.NewTestFromSalt(t, "h_prod_overflow")
@@ -250,7 +256,7 @@ func Test_toPurchaseResponse(t *testing.T) {
 			t.Parallel()
 
 			view := newTestPurchaseView(t)
-			actual, err := toPurchaseResponse(view)
+			actual, err := toPurchaseResponse(view, nil)
 			require.NoError(t, err)
 			assert.Equal(t, view.ID.ToPrimitive(), actual.Id)
 			assert.Equal(t, view.Code, actual.Code)
@@ -272,13 +278,13 @@ func Test_toPurchaseResponse(t *testing.T) {
 			t.Parallel()
 
 			view := newTestPurchaseView(t)
-			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{
+			ref := &checkoutuc.ReferenceAmountView{
 				Currency: "JPY",
 				Amount:   26475,
 				Rate:     decimaltestkit.MustParse(t, "150.5"),
 				RateDate: "2026-07-21",
 			}
-			actual, err := toPurchaseResponse(view)
+			actual, err := toPurchaseResponse(view, ref)
 			require.NoError(t, err)
 			require.NotNil(t, actual.ReferenceAmount)
 			assert.Equal(t, "JPY", actual.ReferenceAmount.Currency)
@@ -296,7 +302,7 @@ func Test_toPurchaseResponse(t *testing.T) {
 
 			view := newTestPurchaseView(t)
 			view.Details[0].Quantity = math.MaxInt32 + 1
-			_, err := toPurchaseResponse(view)
+			_, err := toPurchaseResponse(view, nil)
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 	})
@@ -316,7 +322,7 @@ func Test_toReferenceAmount(t *testing.T) {
 		t.Run("値がある場合はレスポンス型へ変換する", func(t *testing.T) {
 			t.Parallel()
 			actual := toReferenceAmount(
-				&purchaseuc.ReferenceAmountView{Currency: "JPY", Amount: 15050, Rate: decimaltestkit.MustParse(t, "150.5"), RateDate: "2026-07-21"},
+				&checkoutuc.ReferenceAmountView{Currency: "JPY", Amount: 15050, Rate: decimaltestkit.MustParse(t, "150.5"), RateDate: "2026-07-21"},
 			)
 			require.NotNil(t, actual)
 			assert.Equal(t, int64(15050), actual.Amount)

@@ -15,7 +15,6 @@ import (
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
-	"go-boilerplate/internal/usecase/exchangerate"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
@@ -31,10 +30,6 @@ const (
 	baseCurrency = "USD"
 	// aggregateType は、outbox の集約種別です。
 	aggregateType = "purchase"
-	// centsPerBaseUnit は、基軸通貨（USD）1 単位あたりのセント数です。参考換算の入力金額へ換算します。
-	centsPerBaseUnit = 100
-	// minorUnitDigits は、基軸通貨（USD）の最小単位の小数桁数です（セント = 小数 2 桁）。
-	minorUnitDigits = 2
 )
 
 // DetailParam は、購入明細の入力（商品 ID と数量）です。
@@ -49,8 +44,6 @@ type CreatePurchaseParams struct {
 	UserID uuid.UUID
 	// Details は、購入明細の配列です。
 	Details []DetailParam
-	// DisplayCurrency は、参考換算額の表示通貨です。nil の場合は参考換算額を返しません。
-	DisplayCurrency *string
 }
 
 // PurchaseDetailView は、購入明細のユースケース出力 DTO です。UnitPrice は価格スケール（ドル decimal）です。
@@ -60,27 +53,18 @@ type PurchaseDetailView struct {
 	UnitPrice decimal.Decimal
 }
 
-// ReferenceAmountView は、参考換算額のユースケース出力 DTO です（非永続）。
-type ReferenceAmountView struct {
-	Currency string
-	Amount   int64
-	Rate     decimal.Decimal
-	RateDate string
-}
-
 // PurchaseView は、購入 1 件分のユースケース出力 DTO です。金額はすべて USD セント単位の整数です。
 type PurchaseView struct {
-	ID              uuid.UUID
-	Code            string
-	UserID          uuid.UUID
-	StatusID        uuid.UUID
-	SubtotalAmount  int
-	TaxAmount       int
-	ShippingFee     int
-	TotalAmount     int
-	Details         []PurchaseDetailView
-	OrderedAt       time.Time
-	ReferenceAmount *ReferenceAmountView
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetailView
+	OrderedAt      time.Time
 }
 
 // CancelPurchaseParams は、購入キャンセルの入力パラメータです。
@@ -204,7 +188,6 @@ type usecase struct {
 	repo       purchase.Repository
 	detailQS   query.PurchaseDetailQueryService
 	emit       outbox.EmitUsecase
-	xr         exchangerate.Usecase
 	clock      clock.Clock
 	authorizer authz.Authorizer
 }
@@ -216,7 +199,6 @@ func New(
 	repo purchase.Repository,
 	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,
-	xr exchangerate.Usecase,
 	clock clock.Clock,
 	authorizer authz.Authorizer,
 	tf observability.TracerFactory,
@@ -228,7 +210,6 @@ func New(
 		repo:       repo,
 		detailQS:   detailQS,
 		emit:       emit,
-		xr:         xr,
 		clock:      clock,
 		authorizer: authorizer,
 	}
@@ -300,12 +281,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		return PurchaseView{}, txErr
 	}
 
-	view := toPurchaseView(created)
-	// 参考換算額は tx 外（レスポンス組み立て時）に算出し、取得失敗時は null で degrade する。
-	if params.DisplayCurrency != nil {
-		view.ReferenceAmount = u.referenceAmount(ctx, created.TotalAmount(), *params.DisplayCurrency)
-	}
-	return view, nil
+	return toPurchaseView(created), nil
 }
 
 func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error) {
@@ -545,28 +521,6 @@ func (u *usecase) DeliverPurchase(
 	}
 
 	return toDeliverPurchaseView(detail), nil
-}
-
-// referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。
-// 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
-func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
-	// 決済スケール（整数セント）の合計を価格スケール（ドル decimal）へ戻して換算入力にする。
-	amount := decimal.FromInt(int64(totalCents)).DivRound(decimal.FromInt(centsPerBaseUnit), minorUnitDigits)
-	res, err := u.xr.Convert(ctx, exchangerate.ConvertInput{
-		Base:            baseCurrency,
-		Quote:           displayCurrency,
-		Amount:          amount,
-		DisplayCurrency: &displayCurrency,
-	})
-	if err != nil || res.Reference == nil {
-		return nil
-	}
-	return &ReferenceAmountView{
-		Currency: res.Reference.Currency,
-		Amount:   res.Reference.Amount,
-		Rate:     res.Reference.Rate,
-		RateDate: res.Reference.RateDate,
-	}
 }
 
 // toPurchaseView は、購入集約を出力 DTO へ変換します。
