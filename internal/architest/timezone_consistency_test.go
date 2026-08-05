@@ -77,10 +77,8 @@ func TestTimezoneMechanismValuesMatch(t *testing.T) {
 	want := byFile[envLocalFile]
 	require.NotEmptyf(t, want, "%s に %s が無く、比較の基準が定まらない", envLocalFile, osTimeZoneKey)
 
-	// 単一の値を全機構へ配る前提そのものを固定します。env ファイル間の食い違いは
-	// TestEnvPerEnvironmentValuePolicy も検出しますが、あちらは README が Per-environment value と
-	// 宣言していれば許します。宣言ごと環境別へ倒す変更はあちらを通り抜け、そのとき単一の
-	// ENV TZ と突き合わせるこのテストの前提が崩れるため、ここで別に固定します。
+	// 単一の値を全機構へ配る前提そのものを固定します。env ファイル間で値が割れると、
+	// 単一の ENV TZ と突き合わせる以降の比較は基準を失うため、先にここで揃いを確かめます。
 	for _, file := range slices.Sorted(maps.Keys(byFile)) {
 		assert.Equalf(t, want, byFile[file],
 			"%s の %s が %s と一致しない。単一の値を全機構へ配る前提が崩れるため、"+
