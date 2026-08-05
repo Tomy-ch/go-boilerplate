@@ -16,8 +16,8 @@ accepted
 ## 背景
 
 [ADR-0027](0027-lightweight-cqrs.ja.md) は CommandService という構成要素の
-*構造* を定義している。インターフェースは usecase 層
-（`internal/usecase/<aggregate>/command/`）に置き、実装は
+*構造* を定義している。インターフェースはドメイン層
+（`internal/domain/<aggregate>/`）に置き、実装は
 `internal/infrastructure/rdb/command_service/<aggregate>/` 配下に置き、DTO を返し、
 `persistenceModule` に登録して DI で注入する。一方で ADR-0027 が意図的に空けたままに
 しているのが *配置基準* — どのような書き込み操作であれば、Repository 呼び出しで構成

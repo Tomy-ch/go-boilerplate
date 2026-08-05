@@ -14,7 +14,7 @@ accepted
 ## Context
 
 [ADR-0027](0027-lightweight-cqrs.md) defines the *structure* of the CommandService
-construct: its interface lives in the usecase layer (`internal/usecase/<aggregate>/command/`),
+construct: its interface lives in the domain layer (`internal/domain/<aggregate>/`),
 its implementation lives under `internal/infrastructure/rdb/command_service/<aggregate>/`, it
 returns DTOs, and it is registered in `persistenceModule` and injected via DI. What ADR-0027
 deliberately leaves open is the *placement criterion*: when does a write operation actually

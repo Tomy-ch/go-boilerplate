@@ -8,7 +8,10 @@
 
 ## Role in this project
 
-- Place **Entity / ValueObject / DomainService / Repository (IF)** under `internal/domain/<aggregate>/`.
+- Place **Entity / ValueObject / Repository (IF)** under `internal/domain/<aggregate>/`. A
+  CommandService interface, where one exists, sits here too. A **Domain Service** does *not*: it
+  spans aggregates, so it cannot live inside one of them — see
+  [Where a cross-aggregate Domain Service lives](#where-a-cross-aggregate-domain-service-lives).
 
 Example: `internal/domain/user/`
 
@@ -17,14 +20,12 @@ flowchart TB
     Root["Aggregate: user"]
     A["user_domain.go (Aggregate Root)"]
     B["value.go (ValueObject)"]
-    C["service.go (Domain Service)"]
     D["user_repository.go (Repository IF)"]
     E["error.go (Domain Error)"]
     F["constant.go (Validation Const)"]
 
     Root --> A
     Root --> B
-    Root --> C
     Root --> D
     Root --> E
     Root --> F
