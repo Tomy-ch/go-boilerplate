@@ -369,6 +369,43 @@ func Test_validateQuantity(t *testing.T) {
 	})
 }
 
+func Test_validateStockWarningThreshold(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilの場合、未設定として扱いエラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateStockWarningThreshold(nil))
+		})
+
+		t.Run("最小値の場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateStockWarningThreshold(ptr.To(minThreshold)))
+		})
+
+		t.Run("最大値の場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateStockWarningThreshold(ptr.To(maxThreshold)))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最小値未満の場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateStockWarningThreshold(ptr.To(minThreshold-1)), ErrInvalidStockWarningThreshold)
+		})
+
+		t.Run("最大値を超える場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateStockWarningThreshold(ptr.To(maxThreshold+1)), ErrInvalidStockWarningThreshold)
+		})
+	})
+}
+
 func Test_validateAttributes(t *testing.T) {
 	t.Parallel()
 
@@ -446,12 +483,10 @@ func Test_validateAttributes(t *testing.T) {
 			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidStockWarningThreshold)
 		})
 
-		t.Run("stockWarningThresholdが上限超過の場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
+		t.Run("stockWarningThresholdが最大値を超える場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
 			t.Parallel()
 			attrs := valid
-			attrs.Quantity = minQuantity
-			attrs.StockWarningThreshold = ptr.To(maxThreshold)
-			*attrs.StockWarningThreshold++
+			attrs.StockWarningThreshold = ptr.To(maxThreshold + 1)
 			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidStockWarningThreshold)
 		})
 

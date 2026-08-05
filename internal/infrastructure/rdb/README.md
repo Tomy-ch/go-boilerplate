@@ -307,3 +307,24 @@ A CommandService test additionally verifies:
   unique `23505` → `ErrConflict`)
 
 Concurrency / lock contention cannot be reproduced with the default `testkit` helper: its `WithinTx` serializes transactions (a single tx rolled back at the end). A branch that only fires under genuinely concurrent connections — e.g. `Claim`'s `lock_timeout` `55P03` (lock_not_available) — needs a dedicated integration test that runs two independent `TransactionManager.Do` calls (two connections / transactions) so one holds the row lock while the other times out.
+
+#### Coverage exceptions (infallible defensive branches)
+
+Domain values are narrowed to the sqlc column width through `pkg/safecast`, so each write site
+carries an `if err != nil` that a caller cannot reach once the domain guarantees the range. The
+range check itself lives in `pkg/safecast` and is fully branch-tested there; what remains at the
+call site is error plumbing, and per
+[`testing-conventions.md` §9](../../../docs/testing-conventions.md) it is recorded here rather
+than covered with a contrived test.
+
+|File|Function|Uncovered branch|Why unreachable|
+|---|---|---|---|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` error|`product` validates `quantity` into `[0, math.MaxInt32]`|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|`product` validates the threshold into `[0, math.MaxInt32]`|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` error|同上|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|同上|
+|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
+
+The `version` conversions in the same methods are **not** exempt: the domain only requires
+`version >= 1`, so an out-of-range version is reachable and is covered by a test. The same applies
+to the purchase `statusCode` / detail-quantity conversions.

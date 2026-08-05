@@ -120,6 +120,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- openapi-security-result -->'
+          status: ${{ steps.scan.outputs.status }}
           title: "${{ steps.scan.outputs.title || '## ⚠️ OpenAPI Security: CUT OFF (no result produced)' }}"
           body-file: spectral.log
           details-summary: 'spectral log'

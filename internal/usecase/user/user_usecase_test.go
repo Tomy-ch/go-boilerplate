@@ -40,6 +40,7 @@ func TestNew(t *testing.T) {
 		clock := clocktest.NewMockClock(t, time.Time{})
 		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 		userRepo := mock_user.NewMockRepository(ctrl)
+		userLock := mock_user.NewMockLockRepository(ctrl)
 		pftRepo := mock_prefecture.NewMockRepository(ctrl)
 		purchaseRepo := mock_purchase.NewMockRepository(ctrl)
 		emit := mock_outbox.NewMockEmitUsecase(ctrl)
@@ -50,11 +51,12 @@ func TestNew(t *testing.T) {
 			clock:        clock,
 			authorizer:   authorizer,
 			userRepo:     userRepo,
+			userLock:     userLock,
 			pftRepo:      pftRepo,
 			purchaseRepo: purchaseRepo,
 			emit:         emit,
 		}
-		actual := New(tf, mockTxManager, clock, authorizer, userRepo, pftRepo, purchaseRepo, emit)
+		actual := New(tf, mockTxManager, clock, authorizer, userRepo, userLock, pftRepo, purchaseRepo, emit)
 
 		assert.Equal(t, expected, actual)
 	})

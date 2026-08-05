@@ -137,6 +137,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-fs-result -->'
+          status: "${{ steps.summarize.outputs.count == '0' && 'success' || 'findings' }}"
           title: "${{ steps.summarize.outputs.title || '## ⚠️ Dependency Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-fs-summary.md
           details-summary: '📄 Summary'
@@ -222,6 +223,11 @@ jobs:
             | join(" / ")
           ')
 
+          # This scan has no pass / fail, so what decides whether it is worth a comment is the
+          # same count the body is built around: an inventory where every license is notice /
+          # unencumbered asks nothing of anyone, and the artifact holds the full list either way.
+          echo "review=${REVIEW_COUNT}" >> "$GITHUB_OUTPUT"
+
           echo "title=## 📄 License Scan: ${TOTAL} licenses (${BREAKDOWN})" >> "$GITHUB_OUTPUT"
 
           {
@@ -256,6 +262,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-license-result -->'
+          status: "${{ steps.summarize.outputs.review == '0' && 'success' || 'review' }}"
           title: "${{ steps.summarize.outputs.title || '## ⚠️ License Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-license-summary.md
           details-summary: '📄 Summary'

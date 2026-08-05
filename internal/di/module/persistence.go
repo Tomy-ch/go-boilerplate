@@ -30,6 +30,7 @@ func persistenceModule() fx.Option {
 				// サンプルのリポジトリ
 				user.New,
 				user.NewRoleRepository,
+				user.NewLockRepository,
 				prefecture.New,
 				productstatusrepo.New,
 				productcategory.New,

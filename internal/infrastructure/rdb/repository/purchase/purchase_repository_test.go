@@ -7,13 +7,16 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/lexicon/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,6 +68,39 @@ func insertPurchaseWithDetail(ctx context.Context, t *testing.T, db driver.DBTX,
 	)
 	require.NoError(t, err)
 	return purchaseID, productID
+}
+
+// reconstructWithStatusCode は、指定ステータスコードで再構築した最小構成の購入エンティティを返します。
+// timestamps は全て未発生とし、コードと日時の整合検証に触れずステータスコードだけを狙って与えます。
+func reconstructWithStatusCode(t *testing.T, salt string, statusCode int) *domainpurchase.Purchase {
+	t.Helper()
+
+	unitPrice, err := money.NewPrice(decimaltestkit.MustParse(t, "800"))
+	require.NoError(t, err)
+	detail := domainpurchase.NewPurchaseDetail(
+		uuidtestkit.NewTestFromSalt(t, salt+"_detail_id"),
+		domainpurchase.PurchaseDetailAttributes{
+			ProductID: uuidtestkit.NewTestFromSalt(t, salt+"_product_id"),
+			Quantity:  1,
+			UnitPrice: unitPrice,
+		},
+	)
+
+	entity, err := domainpurchase.Reconstruct(
+		uuidtestkit.NewTestFromSalt(t, salt+"_id"),
+		domainpurchase.Attributes{
+			Code:           "code-" + salt,
+			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user_id"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, salt+"_status_id"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 800,
+			TotalAmount:    800,
+			Details:        []domainpurchase.PurchaseDetail{detail},
+			OrderedAt:      time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC),
+		},
+	)
+	require.NoError(t, err)
+	return entity
 }
 
 func Test_repository_FindByID(t *testing.T) {
@@ -373,6 +409,17 @@ func Test_repository_UpdatePaid(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructWithStatusCode(t, "update_paid_overflow", math.MaxInt16+1)
+			require.ErrorIs(t, repo.UpdatePaid(context.Background(), entity), safecast.ErrOverflow)
+		})
+	})
 }
 
 func Test_repository_UpdateShipped(t *testing.T) {
@@ -478,6 +525,13 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				})
 				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
+		})
+
+		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructWithStatusCode(t, "update_shipped_overflow", math.MaxInt16+1)
+			require.ErrorIs(t, repo.UpdateShipped(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
 }
@@ -593,6 +647,13 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				})
 				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
+		})
+
+		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructWithStatusCode(t, "update_delivered_overflow", math.MaxInt16+1)
+			require.ErrorIs(t, repo.UpdateDelivered(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
 }
@@ -812,7 +873,7 @@ func Test_toFeedItem(t *testing.T) {
 	})
 }
 
-func Test_toInt16(t *testing.T) {
+func Test_mustToInt16(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -821,14 +882,42 @@ func Test_toInt16(t *testing.T) {
 		t.Run("購入ステータスコードを同値のint16へ変換する", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, int16(7), toInt16(7))
+			assert.Equal(t, int16(7), mustToInt16(7))
 		})
 
 		t.Run("int16の下限と上限の値をそのまま変換する", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, int16(math.MinInt16), toInt16(math.MinInt16))
-			assert.Equal(t, int16(math.MaxInt16), toInt16(math.MaxInt16))
+			assert.Equal(t, int16(math.MinInt16), mustToInt16(math.MinInt16))
+			assert.Equal(t, int16(math.MaxInt16), mustToInt16(math.MaxInt16))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("int16の上限を超える場合、オーバーフローエラーでpanicする", func(t *testing.T) {
+			t.Parallel()
+
+			defer func() {
+				err, ok := recover().(error)
+				require.True(t, ok)
+				require.ErrorIs(t, err, safecast.ErrOverflow)
+			}()
+
+			mustToInt16(math.MaxInt16 + 1)
+		})
+
+		t.Run("int16の下限を下回る場合、オーバーフローエラーでpanicする", func(t *testing.T) {
+			t.Parallel()
+
+			defer func() {
+				err, ok := recover().(error)
+				require.True(t, ok)
+				require.ErrorIs(t, err, safecast.ErrOverflow)
+			}()
+
+			mustToInt16(math.MinInt16 - 1)
 		})
 	})
 }

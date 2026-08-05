@@ -74,6 +74,48 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 	})
 }
 
+func TestHoldSuiteSerialization(t *testing.T) {
+	t.Parallel()
+
+	db := NewTestDB(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("占有中は他セッションが同じキーを取得できない", func(t *testing.T) {
+			t.Parallel()
+			HoldSuiteSerialization(t, db)
+
+			// 直列化の実体は advisory lock の排他性なので、別セッション（接続プール直）から
+			// 同じキーを取れないことで検証する。取れてしまうなら並行実行を止められていない。
+			ctx := context.Background()
+			var acquired bool
+			row := driver.New(ctx, db).QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", txAdvisoryLockKey)
+			require.NoError(t, row.Scan(&acquired))
+			assert.False(t, acquired)
+		})
+	})
+}
+
+func Test_lockSuiteSerialization(t *testing.T) {
+	t.Parallel()
+
+	db := NewTestDB(t)
+	runner := NewTestTransactionRunner(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同一トランザクションからの再取得は待たずに成立する", func(t *testing.T) {
+			t.Parallel()
+			// WithinTx が既に同じキーを保持している。advisory lock は同一トランザクション内で再入可能。
+			runner.WithinTx(func(ctx context.Context) {
+				require.NoError(t, lockSuiteSerialization(ctx, driver.New(ctx, db)))
+			})
+		})
+	})
+}
+
 func Test_getTestDB(t *testing.T) {
 	t.Parallel()
 

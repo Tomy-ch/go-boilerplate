@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/observability"
 	productuc "go-boilerplate/internal/usecase/product"
 	"go-boilerplate/pkg/patch"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
@@ -74,7 +75,7 @@ func (s *server) PatchProductsDetail(
 		Version:               int(request.Body.Version),
 		Name:                  request.Body.Name,
 		Price:                 request.Body.Price,
-		Quantity:              int32PtrToIntPtr(request.Body.Quantity),
+		Quantity:              ptr.Map(request.Body.Quantity, func(v int32) int { return int(v) }),
 		CategoryID:            conv.UUIDPtr(request.Body.CategoryId),
 		StatusID:              conv.UUIDPtr(request.Body.StatusId),
 		Description:           toPatchField(request.Body.Description),
@@ -186,13 +187,4 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 		ImagePath:   dto.ImagePath,
 		Version:     version,
 	}, nil
-}
-
-// int32PtrToIntPtr は、リクエストの *int32 をユースケース DTO の *int へ変換します（nil はそのまま nil）。
-func int32PtrToIntPtr(v *int32) *int {
-	if v == nil {
-		return nil
-	}
-	i := int(*v)
-	return &i
 }

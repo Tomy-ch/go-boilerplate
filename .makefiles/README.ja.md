@@ -322,6 +322,43 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gen-mock-auth-oapi-docs-ci` | `docker/mock-auth-server` で `npm run gen:docs`（redocly build-docs）を実行します。 | CI 用ターゲットです。 |
 | `make lint-mock-auth-oapi-ci` | `docker/mock-auth-server` で `npm run lint:oapi` を実行します。 | CI 用ターゲットです。 |
 
+## `.makefiles/load` 系
+
+ホストの CPU は有限ですが、そこへ同時にぶら下がる checkout の数は有限ではありません。複数の worktree
+がそれぞれホスト全体を前提としたゲートを回すとマシンが飽和し、ゲートは「変更内容と無関係な理由」で
+落ち始めます。触っていないテストがタイムアウトし、`golangci-lint` が 17 分かかり、`docker` が応答を
+返さなくなる。失われるのは所要時間ではなく、**ゲートの失敗がコードについての証拠でなくなること**です。
+
+`.makefiles/load.mk` は開いている窓の数（`git worktree list`）から重いゲートの規模を決めます。誰かが
+絞ることを覚えている必要がないよう、パース時に自動で決まります。帯は 3 つです。
+
+| 帯 | 発動条件（既定） | 挙動 |
+| --- | --- | --- |
+| `full` | worktree が 3 未満 | 従来どおり。ツール自身の既定値でホスト全体を使う |
+| `low` | 3 以上 | 重いゲートを `CPU / 窓数` の並列度に絞り、`nice -n 10` で、かつ同時に 1 つずつ走らせる |
+| `ci-first` | 5 以上 | 重いゲートはローカルで走らせない。push が CI へ運ぶ |
+
+`ci-first` が手元に残すのは、**軽く、かつ push 後では取り返しがつかない**ゲートだけです（`commitlint`・
+`secret-scan`・ピン lockfile 検査・マイグレーション番号）。落とすのは CI が同一に再実行するものだけなので、
+検証されないものは生じません。検証の場所が変わるだけです。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make load-status` | 解決された帯・窓数・CPU シェア・各ツールへ渡るフラグを表示します。 | ゲートの挙動が不審なときはまずここを見ます |
+| `make gate-go` | `pre-commit` の Go ゲート（`lint` + `test-cached`）。帯が並列/逐次/委譲を決められるよう束ねてあります。 | lefthook が呼びます |
+| `make gate-go-push` | `pre-push` の Go ゲート（`test` + `test-scripts`）。同じく束ねてあります。 | lefthook が呼びます |
+| `make gate-heavy-skip` | lefthook の `skip:` から呼ぶ述語。exit 0 が「CI がやる」を意味します。 | 終了コードだけが interface です |
+
+帯は `GOBP_LOAD=full|low|ci-first` で明示的に上書きできます（例: 残りは委譲したまま重いゲートを 1 つだけ
+手で回すなら `make lint GOBP_LOAD=low`）。閾値は `GOBP_LOW_THRESHOLD` と `GOBP_CI_FIRST_THRESHOLD` です。
+
+**ゲートを `.lefthook.yaml` に個別に並べず束ねている理由**: lefthook はフック内の commands を並列に
+走らせるため、ゲートごとにエントリを置くと、窓の数に**加えて**ゲートの数だけ負荷が乗算されます。束ねる
+ことで、並列か逐次かの判断を「帯を既に知っている 1 箇所」に置けます。
+
+絞る対象は **毎コミット・毎 push で走るゲートだけ** です。単発の重い処理（イメージビルド・コード生成・
+Trivy スキャン）は放置します。ループで回すものではない以上、ホストを飽和させる原因にならないためです。
+
 ## `.makefiles/go` 系
 
 ### Go 生成関連

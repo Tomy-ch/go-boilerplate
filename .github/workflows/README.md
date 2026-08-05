@@ -18,11 +18,23 @@ The `gen-*-artifacts-check` workflows protect the invariant "the committed gener
 
 Because these workflows pin their generators through `mise.toml`, that file is an input to most of them. A `paths` filter matches whole files, so a bump to any unrelated tool in that shared lockfile also triggers them — including the Postgres-backed `gen-db` job. That over-triggering is accepted deliberately: a generator version bump is exactly the change that should be re-verified, and splitting `mise.toml` to narrow the trigger would cost more than the occasional extra run.
 
+## Result Comments
+
+A pull request here runs some thirty checks and nearly every one of them can comment. A comment per passing check states what no one asked and buries the one comment that has something to say, so a result comment is **created only when the check has something to report**. The `status` input on `upsert-pr-comment` carries that verdict: the literal `success` is the only value that suppresses a comment, and every other value — including the empty string a cut-off job leaves behind — posts one.
+
+Silence is not how a fix gets reported. `success` suppresses *creating* a comment, never updating one, so a check that failed on an earlier push overwrites its own red comment with the green result, in place. The pull request never keeps a failure that no longer holds, and the reader learns it was resolved where the failure was reported rather than by noticing an absence. Deleting the comment instead would leave the fix unrecorded and, on a re-failure, drop the comment at the bottom of a thread that has moved past it.
+
+**The verdict is derived positively — only an explicit clean signal is quiet.** Where a step already publishes a `status` output, the caller passes it through; where the clean state is a count or a flag, the caller tests for that exact value (`steps.<id>.outputs.count == '0' && 'success' || 'findings'`) rather than testing for the finding. The difference shows up when the producing step never ran: the output is empty, which is not the clean value, so the check reports instead of going quiet. Reversing the test would make every unfinished run look like a pass. `✅` in a title and `success` here mean the same thing by construction — the scanners that mark a non-blocking finding `✅` (`osv-scan`) are quiet on it, and the ones that mark it `⚠️` (`sast`) are not.
+
+Two callers pass a constant `report`, both in `image-scan.yaml`: an SBOM inventory and a Trivy table are not verdicts, so neither has a state that means "nothing to say", and that job only runs for a pull request into a deploy branch, where the contents of the image are what is under review.
+
+A comment can outlive the run that wrote it. A `paths` filter means a later push may not run the workflow at all, leaving a red comment standing on a head it never examined; the Commit / UpdatedAt footer every comment carries is what distinguishes it from a current one, and the check run is what carries the authoritative status.
+
 ## Job Cut-off
 
 A job can stop without reaching a verdict — a timeout, a cancellation, a runner fault. What a reader sees on the pull request in that case is not a property of the tool that was running; it follows from how the job and its comment step are declared, and every default here is the wrong one. `make actions-cutoff-lint` enforces the rules below, because keeping every comment step and every job in this directory correct by eye is not something a review can be asked to do.
 
-**Every step that calls `upsert-pr-comment` must be reachable after a cancellation.** Actions prepends an implicit `success() &&` to any custom `if:` that contains no status-check function, so a cut-off job skips the comment step and the pull request keeps no trace at all — while the `Fail if …` step, which usually does carry `always()`, still turns the check red. Red with no readable reason is worse than either half alone. The condition therefore needs `always()` or `cancelled()`; `failure()` does **not** qualify, because it is false for a cancelled job. `sync-versions-check.yaml` is the one condition that is not the plain `always() && github.event_name == 'pull_request'`: it comments only on drift, so it tests the drift status instead of `failure()`, and an empty status — the detection never finished — reads as "comment".
+**Every step that calls `upsert-pr-comment` must be reachable after a cancellation.** Actions prepends an implicit `success() &&` to any custom `if:` that contains no status-check function, so a cut-off job skips the comment step and the pull request keeps no trace at all — while the `Fail if …` step, which usually does carry `always()`, still turns the check red. Red with no readable reason is worse than either half alone. The condition therefore needs `always()` or `cancelled()`; `failure()` does **not** qualify, because it is false for a cancelled job. Every caller now uses the plain `always() && github.event_name == 'pull_request'`: whether a comment is warranted is decided by `status` inside the action, not by skipping the step, because a step that never runs cannot correct a comment an earlier push left behind.
 
 **A missing body file is reported as a cut-off, not as a step failure.** A job cut off early never runs the step that writes the file, so absence is the normal shape of exactly the case the comment has to survive; `upsert-pr-comment` posts a cut-off notice and replaces the caller's heading, since no title the caller set can still describe a body that says the job never ran. The notice names no cause — a body can also be missing because an earlier step failed outright, and only the run log tells those apart. The cost is that a miswired `body-file` path surfaces as a cut-off notice on a green run rather than as a failure — loud enough to catch, which silence on a cut-off is not. Under `cancel-in-progress`, a superseded run may post that notice moments before the new run overwrites the same marker; that is the mechanism working, not a defect to fix.
 
@@ -98,7 +110,7 @@ All three rules live in one check rather than three, because they are not three 
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
 |Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
 
-Every scanner writes SARIF to GitHub code scanning where it can, and comments its result on the PR through the shared `upsert-pr-comment` action.
+Every scanner writes SARIF to GitHub code scanning where it can, and reports a finding on the PR through the shared `upsert-pr-comment` action (see [Result Comments](#result-comments) for when a comment is written at all).
 
 #### Security Trigger Matrix
 
@@ -209,7 +221,7 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
 |Action|Purpose|
 |---|---|
 |`setup-postgres`|Wait for and initialize the Postgres service container (used by DB-dependent jobs)|
-|`upsert-pr-comment`|Marker-based PR comment upsert (detect existing → update / create) with a shared Commit / UpdatedAt footer, used by the result-commenting workflows|
+|`upsert-pr-comment`|Marker-based PR comment upsert (detect existing → update / create) with a shared Commit / UpdatedAt footer, used by the result-commenting workflows; `status: success` updates an existing comment but creates none|
 |`osv-scan`|Run osv-scanner and classify each finding against the release-gate severity policy, shared by the OSV reporting workflow and the OSV release gate|
 
 ## Notes

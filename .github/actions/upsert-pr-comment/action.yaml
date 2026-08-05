@@ -8,6 +8,10 @@ inputs:
   marker:
     required: true
     description: HTML comment marker used to detect the same comment
+  status:
+    required: false
+    default: ""
+    description: The caller's verdict. The literal `success` is the only value that suppresses creating a comment; every other value — including the empty default, which is what a cut-off job produces — posts one
   body-file:
     required: true
     description: Path to the file read as the comment body; a missing file is reported as a cut-off job rather than failing the step
@@ -30,6 +34,7 @@ runs:
     - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       env:
         MARKER: ${{ inputs.marker }}
+        STATUS: ${{ inputs.status }}
         BODY_FILE: ${{ inputs.body-file }}
         TITLE: ${{ inputs.title }}
         DETAILS_SUMMARY: ${{ inputs.details-summary }}
@@ -40,6 +45,7 @@ runs:
           const fs = require('fs');
 
           const marker = process.env.MARKER;
+          const status = process.env.STATUS || '';
           const bodyFile = process.env.BODY_FILE;
           const title = process.env.TITLE || '';
           const detailsSummary = process.env.DETAILS_SUMMARY || '';
@@ -139,6 +145,17 @@ runs:
           const existing = comments.find(
             c => (c.body || '').startsWith(marker) && c.user?.type === 'Bot',
           );
+
+          // A pull request here runs some thirty checks, so a comment per passing one buries the
+          // one that did not pass under the ones that need nothing. What gets suppressed is
+          // *creating* a comment, not updating one: a check that failed and was then fixed still
+          // overwrites its own red comment with the green result, in place, so the pull request
+          // never keeps a failure that no longer holds — and never states a pass no one asked for.
+          // A cut-off produces no status at all, which is not `success` and therefore still posts.
+          if (!existing && !cutOff && status === 'success') {
+            core.info(`status=success and no existing ${marker} comment; nothing to post`);
+            return;
+          }
 
           if (existing) {
             await github.rest.issues.updateComment({

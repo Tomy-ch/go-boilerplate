@@ -176,6 +176,7 @@ Pointer manipulation utilities using generics.
 |---|---|
 |`To[T]`|Create a pointer from a value|
 |`Copy[T]`|Copy a pointer (nil-safe)|
+|`Map[T,U]`|Apply a function to the pointed-to value, preserving nil|
 |`Deref[T]`|Dereference a pointer, returning a fallback when nil|
 
 ### retry
@@ -197,6 +198,7 @@ Provides safe type conversion with overflow detection.
 |---|---|
 |`UintToInt`|Safe conversion from `uint` to `int`|
 |`IntToInt32`|Safe conversion from `int` to `int32`|
+|`IntToInt16`|Safe conversion from `int` to `int16`|
 |`IntPtrToInt32Ptr`|Safe conversion from `*int` to `*int32` (`nil` means nothing to convert and returns `nil`)|
 
 Returns `ErrOverflow` when an overflow occurs.

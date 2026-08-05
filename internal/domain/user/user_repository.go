@@ -23,6 +23,7 @@ type Repository interface {
 	// active / keywords の意味は SearchByKeyword と同じです。
 	CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error)
 	// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound を返します。
+	// 悲観ロックを伴う取得は LockRepository が持ちます。
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
 	// Create は、ユーザーを作成します。
 	Create(ctx context.Context, user *User) error

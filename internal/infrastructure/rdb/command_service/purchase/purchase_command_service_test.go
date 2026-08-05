@@ -14,7 +14,9 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/decimal"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -185,7 +187,53 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				require.ErrorIs(t, svc.CreatePurchase(ctx, entity), apperror.ErrInvalidArgument)
 			})
 		})
+
+		t.Run("明細数量がINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructPurchase(t, "create_quantity_overflow",
+				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
+			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
+		})
+
+		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructPurchase(t, "create_status_overflow", math.MaxInt16+1, 1)
+			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
+		})
 	})
+}
+
+// reconstructPurchase は、指定ステータスコードと明細数量で購入集約を再構築するテストヘルパーです。
+// 生成経路（New）の検証を通らない極端な値を作るため Reconstruct を使います。
+func reconstructPurchase(t *testing.T, salt string, statusCode, quantity int) *domainpurchase.Purchase {
+	t.Helper()
+
+	detail := domainpurchase.NewPurchaseDetail(
+		uuidtestkit.NewTestFromSalt(t, salt+"_detail_id"),
+		domainpurchase.PurchaseDetailAttributes{
+			ProductID: uuidtestkit.NewTestFromSalt(t, salt+"_product_id"),
+			Quantity:  quantity,
+			UnitPrice: mustPrice(t, "800"),
+		},
+	)
+
+	entity, err := domainpurchase.Reconstruct(
+		uuidtestkit.NewTestFromSalt(t, salt+"_id"),
+		domainpurchase.Attributes{
+			Code:           "code-" + salt,
+			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user_id"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, salt+"_status_id"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 800,
+			TotalAmount:    800,
+			Details:        []domainpurchase.PurchaseDetail{detail},
+			OrderedAt:      time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC),
+		},
+	)
+	require.NoError(t, err)
+	return entity
 }
 
 // newPurchase は、単一明細の購入集約を生成するテストヘルパーです。
@@ -380,6 +428,25 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細数量がINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructPurchase(t, "cancel_quantity_overflow",
+				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
+			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
+		})
+
+		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			entity := reconstructPurchase(t, "cancel_status_overflow", math.MaxInt16+1, 1)
+			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
+		})
+	})
 }
 
 func TestNew(t *testing.T) {
@@ -401,44 +468,65 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func Test_toInt16(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("購入ステータスコードを同値のint16へ変換する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, int16(7), toInt16(7))
-		})
-
-		t.Run("int16の下限と上限の値をそのまま変換する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, int16(math.MinInt16), toInt16(math.MinInt16))
-			assert.Equal(t, int16(math.MaxInt16), toInt16(math.MaxInt16))
-		})
-	})
+// detailWithQuantity は、数量だけを指定した購入明細を構築します。
+func detailWithQuantity(t *testing.T, quantity int) domainpurchase.PurchaseDetail {
+	t.Helper()
+	return domainpurchase.NewPurchaseDetail(
+		uuidtestkit.NewTestFromSalt(t, "detail_with_quantity_id"),
+		domainpurchase.PurchaseDetailAttributes{
+			ProductID: uuidtestkit.NewTestFromSalt(t, "detail_with_quantity_product_id"),
+			Quantity:  quantity,
+			UnitPrice: mustPrice(t, "1.00"),
+		},
+	)
 }
 
-func Test_toInt32(t *testing.T) {
+func Test_toDetailQuantities(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("数量を同値のint32へ変換する", func(t *testing.T) {
+		t.Run("明細の数量を順序どおりint32へ変換する", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, int32(3), toInt32(3))
+			actual, err := toDetailQuantities([]domainpurchase.PurchaseDetail{
+				detailWithQuantity(t, 3),
+				detailWithQuantity(t, 7),
+			})
+			require.NoError(t, err)
+			assert.Equal(t, []int32{3, 7}, actual)
 		})
 
-		t.Run("int32の下限と上限の値をそのまま変換する", func(t *testing.T) {
+		t.Run("明細が空の場合、空スライスを返す", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, int32(math.MinInt32), toInt32(math.MinInt32))
-			assert.Equal(t, int32(math.MaxInt32), toInt32(math.MaxInt32))
+			actual, err := toDetailQuantities(nil)
+			require.NoError(t, err)
+			assert.Empty(t, actual)
+		})
+
+		t.Run("int32の上限の数量をそのまま変換する", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := toDetailQuantities([]domainpurchase.PurchaseDetail{detailWithQuantity(t, math.MaxInt32)})
+			require.NoError(t, err)
+			assert.Equal(t, []int32{math.MaxInt32}, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("int32に収まらない数量が含まれる場合、オーバーフローエラーを返し部分結果を返さない", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := toDetailQuantities([]domainpurchase.PurchaseDetail{
+				detailWithQuantity(t, 1),
+				detailWithQuantity(t, math.MaxInt32+1),
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+			assert.Nil(t, actual)
 		})
 	})
 }

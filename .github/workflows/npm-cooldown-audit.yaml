@@ -125,9 +125,10 @@ jobs:
         with:
           summary-file: npm-cooldown-summary.md
 
-      # Reported on every run, not only on a finding: a comment that appears solely
-      # when something is wrong gives no evidence that the detector still works, and
-      # this one is expected to stay silent for its whole life.
+      # This audit is expected to find nothing for its whole life, which once argued for
+      # commenting on every run — a detector that only ever speaks on a finding offers no
+      # evidence it still works. The check run carries that evidence just as well, and it
+      # carries it for the thirty-odd checks a pull request runs rather than for this one.
       - name: Comment npm cooldown result on PR
         if: always() && github.event_name == 'pull_request'
         continue-on-error: true
@@ -135,6 +136,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- npm-cooldown-result -->'
+          status: "${{ steps.audit.outputs.findings == '0' && 'success' || 'findings' }}"
           title: "${{ steps.audit.outputs.title || '## ⚠️ npm Cooldown Audit: CUT OFF (no result produced)' }}"
           body-file: npm-cooldown-summary.md
           details-summary: '📄 Summary'

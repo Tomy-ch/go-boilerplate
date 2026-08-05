@@ -12,7 +12,9 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/purchase/command"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type commandService struct {
@@ -42,13 +44,22 @@ func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchas
 	db := gen.New(driver.New(ctx, c.db))
 	details := p.Details()
 
-	for _, d := range details {
-		affected, err := db.DecrementProductStock(ctx, &gen.DecrementProductStockParams{
-			QuantityParam:  toInt32(d.Quantity()),
+	quantities, err := toDetailQuantities(details)
+	if err != nil {
+		return err
+	}
+	statusCode, err := safecast.IntToInt16(p.StatusCode())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid purchase status code")
+	}
+
+	for i, d := range details {
+		affected, derr := db.DecrementProductStock(ctx, &gen.DecrementProductStockParams{
+			QuantityParam:  quantities[i],
 			ProductIDParam: d.ProductID(),
 		})
-		if err != nil {
-			return pgerror.NormalizeError(err)
+		if derr != nil {
+			return pgerror.NormalizeError(derr)
 		}
 		if affected == 0 {
 			return purchase.ErrInsufficientStock
@@ -59,7 +70,7 @@ func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchas
 		ID:             p.ID(),
 		Code:           p.Code(),
 		UserID:         p.UserID(),
-		StatusCode:     toInt16(p.StatusCode()),
+		StatusCode:     statusCode,
 		SubtotalAmount: int64(p.SubtotalAmount()),
 		TaxAmount:      int64(p.TaxAmount()),
 		ShippingFee:    int64(p.ShippingFee()),
@@ -68,12 +79,12 @@ func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchas
 		return pgerror.NormalizeError(err)
 	}
 
-	for _, d := range details {
+	for i, d := range details {
 		if err := db.InsertPurchaseDetail(ctx, &gen.InsertPurchaseDetailParams{
 			ID:         d.ID(),
 			PurchaseID: p.ID(),
 			ProductID:  d.ProductID(),
-			Quantity:   toInt32(d.Quantity()),
+			Quantity:   quantities[i],
 			UnitPrice:  d.UnitPrice().Decimal(),
 		}); err != nil {
 			return pgerror.NormalizeError(err)
@@ -145,20 +156,30 @@ func (c *commandService) CancelPurchase(ctx context.Context, p *purchase.Purchas
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, c.db))
+	details := p.Details()
 
-	for _, d := range p.Details() {
-		affected, err := db.IncrementProductStock(ctx, &gen.IncrementProductStockParams{
-			QuantityParam:  toInt32(d.Quantity()),
+	quantities, err := toDetailQuantities(details)
+	if err != nil {
+		return err
+	}
+	statusCode, err := safecast.IntToInt16(p.StatusCode())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid purchase status code")
+	}
+
+	for i, d := range details {
+		affected, ierr := db.IncrementProductStock(ctx, &gen.IncrementProductStockParams{
+			QuantityParam:  quantities[i],
 			ProductIDParam: d.ProductID(),
 		})
 		// 対象商品が不存在（影響 0 行）なら fail-closed で NotFound（減算側の売り越しガードと対称の二重防御）。
-		if nerr := pgerror.NormalizeExecResult(affected, err); nerr != nil {
+		if nerr := pgerror.NormalizeExecResult(affected, ierr); nerr != nil {
 			return nerr
 		}
 	}
 
 	if err := db.UpdatePurchaseCanceled(ctx, &gen.UpdatePurchaseCanceledParams{
-		StatusCode: toInt16(p.StatusCode()),
+		StatusCode: statusCode,
 		CanceledAt: p.CanceledAt(),
 		ID:         p.ID(),
 	}); err != nil {
@@ -167,14 +188,16 @@ func (c *commandService) CancelPurchase(ctx context.Context, p *purchase.Purchas
 	return nil
 }
 
-// toInt32 は、ドメインの int を sqlc の int32（DB INTEGER 列）へ変換します。
-func toInt32(v int) int32 {
-	//nolint:gosec // G115: 値は int32 の DB 列（quantity / unit_price / *_amount）由来で範囲に収まります
-	return int32(v)
-}
-
-// toInt16 は、ドメインの int を sqlc の int16（DB SMALLINT 列）へ変換します。
-func toInt16(v int) int16 {
-	//nolint:gosec // G115: 値は purchase_statuses.code（SMALLINT）由来で範囲に収まります
-	return int16(v)
+// toDetailQuantities は、購入明細の数量を sqlc の int32（DB INTEGER 列）へ明細の順序どおりに変換します。
+// 数量が INTEGER 列に収まらない明細が 1 つでもあれば、部分的な書き込みを避けるため変換全体を失敗させます。
+func toDetailQuantities(details []purchase.PurchaseDetail) ([]int32, error) {
+	quantities := make([]int32, len(details))
+	for i, d := range details {
+		q, err := safecast.IntToInt32(d.Quantity())
+		if err != nil {
+			return nil, xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
+		quantities[i] = q
+	}
+	return quantities, nil
 }

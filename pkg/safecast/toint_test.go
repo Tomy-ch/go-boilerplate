@@ -95,6 +95,53 @@ func TestIntToInt32(t *testing.T) {
 	})
 }
 
+func TestIntToInt16(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("0は0を返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt16(0)
+			require.NoError(t, err)
+			assert.Equal(t, int16(0), result)
+		})
+
+		t.Run("MaxInt16と等しい値はMaxInt16を返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt16(math.MaxInt16)
+			require.NoError(t, err)
+			assert.Equal(t, int16(math.MaxInt16), result)
+		})
+
+		t.Run("MinInt16と等しい値はMinInt16を返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt16(math.MinInt16)
+			require.NoError(t, err)
+			assert.Equal(t, int16(math.MinInt16), result)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("MaxInt16+1はオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt16(math.MaxInt16 + 1)
+			require.ErrorIs(t, err, ErrOverflow)
+			assert.Zero(t, result)
+		})
+
+		t.Run("MinInt16-1はオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			result, err := IntToInt16(math.MinInt16 - 1)
+			require.ErrorIs(t, err, ErrOverflow)
+			assert.Zero(t, result)
+		})
+	})
+}
+
 func TestIntPtrToInt32Ptr(t *testing.T) {
 	t.Parallel()
 

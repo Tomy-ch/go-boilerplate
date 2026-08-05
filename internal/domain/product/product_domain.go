@@ -50,7 +50,7 @@ type Attributes struct {
 }
 
 // New は、商品エンティティの検証と生成を行います。Price は非負の money.Price（非負検証は Price VO が担保）、
-// Quantity は 0 以上、StockWarningThreshold は指定時 0 以上かつ在庫数の上限以下である必要があります。
+// Quantity と StockWarningThreshold（指定時）は、いずれも在庫が保持できる範囲に収まる必要があります。
 // PublishedAt は nil（未公開）を許容し、ImagePath は無検証で保持します。
 // id が nil、Name が長さ制約外、Status / Category がゼロ値の場合はそれぞれ検証エラーを返します。
 // 生成直後のバージョンは initialVersion です。
@@ -103,15 +103,8 @@ func validateAttributes(attrs Attributes) error {
 	if err := validateQuantity(int64(attrs.Quantity)); err != nil {
 		return err
 	}
-	if attrs.StockWarningThreshold != nil &&
-		(*attrs.StockWarningThreshold < minThreshold || *attrs.StockWarningThreshold > maxThreshold) {
-		return xerrors.Wrap(
-			ErrInvalidStockWarningThreshold,
-			fmt.Sprintf(
-				"stockWarningThreshold must be between %d and %d, got %d",
-				minThreshold, maxThreshold, *attrs.StockWarningThreshold,
-			),
-		)
+	if err := validateStockWarningThreshold(attrs.StockWarningThreshold); err != nil {
+		return err
 	}
 	if attrs.Status.id.IsNil() {
 		return xerrors.Wrap(ErrInvalidStatusID, "status is required")
@@ -165,6 +158,21 @@ func validateQuantity(quantity int64) error {
 		return xerrors.Wrap(
 			ErrInvalidQuantity,
 			fmt.Sprintf("quantity must be between %d and %d, got %d", minQuantity, maxQuantity, quantity),
+		)
+	}
+	return nil
+}
+
+// validateStockWarningThreshold は、在庫警告閾値が保持できる範囲に収まることを検証します。
+// nil は閾値の未設定を表すため検証を通します。
+func validateStockWarningThreshold(threshold *int) error {
+	if threshold == nil {
+		return nil
+	}
+	if *threshold < minThreshold || *threshold > maxThreshold {
+		return xerrors.Wrap(
+			ErrInvalidStockWarningThreshold,
+			fmt.Sprintf("stockWarningThreshold must be between %d and %d, got %d", minThreshold, maxThreshold, *threshold),
 		)
 	}
 	return nil

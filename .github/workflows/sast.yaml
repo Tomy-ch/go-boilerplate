@@ -128,9 +128,14 @@ jobs:
           echo "gating=${GATING}" >> "$GITHUB_OUTPUT"
 
           if [ "$TOTAL" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
             echo "title=## ✅ SAST: PASS (no findings)" >> "$GITHUB_OUTPUT"
             echo "No findings." > opengrep-summary.md
           else
+            # A non-gating finding still goes on the pull request: it does not block, but it is
+            # a finding in the code under review, and no other surface puts it in front of the
+            # author. Only the empty result is quiet.
+            echo "status=findings" >> "$GITHUB_OUTPUT"
             if [ "$GATING" -eq 0 ]; then
               echo "title=## ⚠️ SAST: ${TOTAL} finding(s), none gating" >> "$GITHUB_OUTPUT"
             else
@@ -163,6 +168,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sast-result -->'
+          status: ${{ steps.summarize.outputs.status }}
           title: "${{ steps.summarize.outputs.title || '## ⚠️ SAST: CUT OFF (no result produced)' }}"
           body-file: opengrep-summary.md
           details-summary: '📄 Summary'

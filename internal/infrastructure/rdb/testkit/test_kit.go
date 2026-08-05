@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testTxAdvisoryLockKey は、テスト tx を DB 単位で全プロセス横断に直列化する advisory lock キー。
+// txAdvisoryLockKey は、テスト tx を DB 単位で全プロセス横断に直列化する advisory lock キー。
 // go test はパッケージ毎に別プロセスで走り、プロセス内 txLock だけでは別プロセスの CASCADE TRUNCATE
 // 同士が deadlock しうるため補う。
-const testTxAdvisoryLockKey = 8_246_913
+const txAdvisoryLockKey = 8_246_913
 
 var errRollbackForTest = xerrors.New("rollback for test")
 
@@ -84,13 +84,7 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 	baseCtx := context.Background()
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
-		q := driver.New(txCtx, t.db)
-		// advisory lock 待ちは lock_timeout(10s) の対象で、高負荷で超過すると 55P03（非リトライ）で
-		// 落ちる。取得の間だけ無効化する（直列化ゆえテーブルロック競合は起きず待ち詰まりの懸念はない）。
-		if _, lockErr := q.Exec(txCtx, "SET LOCAL lock_timeout = 0"); lockErr != nil {
-			return lockErr
-		}
-		if _, lockErr := q.Exec(txCtx, "SELECT pg_advisory_xact_lock($1)", testTxAdvisoryLockKey); lockErr != nil {
+		if lockErr := lockSuiteSerialization(txCtx, driver.New(txCtx, t.db)); lockErr != nil {
 			return lockErr
 		}
 		fn(txCtx)
@@ -101,6 +95,45 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 		return
 	}
 	require.NoError(t.t, err)
+}
+
+// HoldSuiteSerialization は、呼び出したテストが終わるまでスイート全体の直列化を占有します。
+// 占有している間、他パッケージのテスト（別プロセス）が張る CASCADE TRUNCATE は走りません。
+// 解放は t.Cleanup で行われます。
+//
+// 占有は専用のトランザクションで行い、テスト自身のトランザクションはこの直列化に参加しません。
+// 参加させると自分の占有を待つことになり、進みません。
+//
+// 通常のテストは WithinTx が同じ直列化を内部で行うため、これを呼ぶ必要はありません。呼ぶのは、
+// トランザクションを 2 本同時に生かす検証（ロック競合の再現など）のように、WithinTx の
+// 「1 本 + ロールバック」では表現できないテストに限られます。
+func HoldSuiteSerialization(t *testing.T, db driver.DatabaseDriver) {
+	t.Helper()
+
+	txLock.Lock()
+	ctx := context.Background()
+
+	holder, err := db.Begin(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = holder.Rollback(ctx)
+		txLock.Unlock()
+	})
+
+	require.NoError(t, lockSuiteSerialization(ctx, holder))
+}
+
+// lockSuiteSerialization は、q が属するトランザクションでスイート直列化用の advisory lock を取ります。
+func lockSuiteSerialization(ctx context.Context, q driver.DBTX) error {
+	// advisory lock 待ちは lock_timeout(10s) の対象で、高負荷で超過すると 55P03（非リトライ）で
+	// 落ちる。取得の間だけ無効化する（直列化ゆえテーブルロック競合は起きず待ち詰まりの懸念はない）。
+	if _, err := q.Exec(ctx, "SET LOCAL lock_timeout = 0"); err != nil {
+		return err
+	}
+	if _, err := q.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", txAdvisoryLockKey); err != nil {
+		return err
+	}
+	return nil
 }
 
 // getTestDB は、テスト用の共有データベースドライバーを返します（初回呼び出し時のみ生成）。

@@ -93,6 +93,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- go-mod-tidy-check-result -->'
+          status: ${{ steps.tidy.outputs.status }}
           title: "${{ steps.tidy.outputs.title || '## ⚠️ Module Tidy Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/go-mod-tidy.diff
           details-summary: '📄 go.mod / go.sum diff'
