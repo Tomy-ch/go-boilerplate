@@ -6,12 +6,15 @@ package ranking
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/product/ranking/query"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -23,6 +26,9 @@ const (
 
 // rankingLimitPolicy は、商品売上ランキングの取得件数規約です。OpenAPI の limit（既定 10 / 1〜100）と対応します。
 var rankingLimitPolicy = paging.LimitPolicy{Default: defaultLimit, Max: maxLimit}
+
+// errUnpublishedInRanking は、公開中の商品に絞られているはずのランキングに非公開商品が現れた場合のエラーです。
+var errUnpublishedInRanking = xerrors.Wrap(apperror.ErrInternal, "unpublished product in ranking")
 
 // GetRankingParams は、ランキング取得ユースケースの入力パラメータです。
 type GetRankingParams struct {
@@ -80,6 +86,10 @@ func (u *usecase) GetProductsRanking(ctx context.Context, params GetRankingParam
 		return RankingView{}, err
 	}
 
+	if verr := ensurePublished(results); verr != nil {
+		return RankingView{}, verr
+	}
+
 	items := make([]RankingItemView, len(results))
 	for i, r := range results {
 		items[i] = RankingItemView{
@@ -91,6 +101,19 @@ func (u *usecase) GetProductsRanking(ctx context.Context, params GetRankingParam
 	}
 
 	return RankingView{Rankings: items}, nil
+}
+
+// ensurePublished は、集計結果の各行が「公開中」の定義を満たすことをドメインの述語で確かめます。
+// 集約を再構築しない経路のため突き合わせるのは公開日時だけですが、定義の所在はドメインに保たれます。
+// 外れた行はドリフトなので、黙って落とさずエラーにします。
+func ensurePublished(results []query.RankingResult) error {
+	for _, r := range results {
+		if !product.IsPublished(r.PublishedAt) {
+			return xerrors.Wrap(errUnpublishedInRanking, r.ProductID.String())
+		}
+	}
+
+	return nil
 }
 
 // normalizePeriod は、入力期間を集計区分へ正規化します。"30d" のみ直近30日、それ以外は全期間として扱います。

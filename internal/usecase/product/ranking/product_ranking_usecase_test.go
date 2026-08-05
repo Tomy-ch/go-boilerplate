@@ -3,12 +3,14 @@ package ranking
 import (
 	"context"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/product/ranking/query"
 	mock_query "go-boilerplate/internal/usecase/product/ranking/query/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -49,6 +51,7 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 
 			productID, err := uuid.Parse("a1000000-0000-4000-8000-000000000001")
 			require.NoError(t, err)
+			publishedAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
 
 			u, mockQS := newUsecase(t)
 			mockQS.EXPECT().ListRanking(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -56,7 +59,13 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 					assert.Equal(t, query.Period30d, params.Period)
 					assert.Equal(t, defaultLimit, params.Limit)
 					return []query.RankingResult{
-						{ProductID: productID, Name: "商品A", Price: decimaltestkit.MustParse(t, "19.99"), SoldQuantity: 8},
+						{
+							ProductID:    productID,
+							Name:         "商品A",
+							Price:        decimaltestkit.MustParse(t, "19.99"),
+							PublishedAt:  ptr.To(publishedAt),
+							SoldQuantity: 8,
+						},
 					}, nil
 				})
 
@@ -109,6 +118,37 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 
 			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "all", Limit: 10})
 			require.ErrorIs(t, err, apperror.ErrInternal)
+			assert.Empty(t, got.Rankings)
+		})
+
+		t.Run("非公開の商品が集計結果に混ざる場合、ドリフトとしてErrInternalを返し結果を出力しない", func(t *testing.T) {
+			t.Parallel()
+
+			productID, err := uuid.Parse("a1000000-0000-4000-8000-000000000002")
+			require.NoError(t, err)
+			publishedAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
+
+			u, mockQS := newUsecase(t)
+			mockQS.EXPECT().ListRanking(gomock.Any(), gomock.Any()).Return([]query.RankingResult{
+				{
+					ProductID:    uuid.UUID{},
+					Name:         "公開中の商品",
+					Price:        decimaltestkit.MustParse(t, "19.99"),
+					PublishedAt:  ptr.To(publishedAt),
+					SoldQuantity: 8,
+				},
+				{
+					ProductID:    productID,
+					Name:         "非公開の商品",
+					Price:        decimaltestkit.MustParse(t, "29.99"),
+					PublishedAt:  nil,
+					SoldQuantity: 3,
+				},
+			}, nil)
+
+			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "all", Limit: 10})
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			assert.Contains(t, err.Error(), productID.String())
 			assert.Empty(t, got.Rankings)
 		})
 	})

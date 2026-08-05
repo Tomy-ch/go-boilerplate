@@ -61,6 +61,7 @@ func (s *service) ListRanking(ctx context.Context, params query.RankingQueryPara
 			ProductID:    row.ProductID,
 			Name:         row.Name,
 			Price:        row.Price,
+			PublishedAt:  row.PublishedAt,
 			SoldQuantity: row.SoldQuantity,
 		}
 	}
