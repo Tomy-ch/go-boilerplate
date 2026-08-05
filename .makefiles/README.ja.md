@@ -131,10 +131,10 @@ DB 操作全般を扱うターゲット群です。
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make new-migrate-<name>` | 新しいマイグレーションファイルを生成します。 | `database/migrations` 配下に連番付きの `.up.sql` / `.down.sql` を作成します。 |
-| `make check-migration-up-version` | `up` 側マイグレーションのバージョン重複をチェックします。 | なし |
-| `make check-migration-down-version` | `down` 側マイグレーションのバージョン重複をチェックします。 | なし |
-| `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | なし |
-| `make check-migration-down-gap` | `down` 側マイグレーションの連番ギャップをチェックします。 | なし |
+| `make check-migration-up-version` | `up` 側マイグレーションのバージョン重複をチェックします。 | `scripts/migration-lint` を実行します。連番の判定規則はシェル片ではなくそちらにテスト付きで置いています。 |
+| `make check-migration-down-version` | `down` 側マイグレーションのバージョン重複をチェックします。 | `scripts/migration-lint` を実行します。 |
+| `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。マイグレーションが 1 件も無い場合は通過するため、サンプル API の削除でゲートが壊れません。 |
+| `make check-migration-down-gap` | `down` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。 |
 | `make db-migrate-up DB=<database>` | 指定した DB に対して、全マイグレーションを最新まで適用します。 | 例: `make db-migrate-up DB=local` |
 | `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | 指定した DB に対して、全マイグレーションを初期状態までダウングレードします。 | なし |
@@ -484,6 +484,10 @@ Trivy スキャン）は放置します。ループで回すものではない�
 - ブランチルールセット適用
 - ラベル初期化
 
+`git` / `gh` を使う部分は `scripts/repo-setup`（`preflight` / `bootstrap` /
+`prune-release-notes`）が担い、ラベル・ルールセット・ワークフローの各手順は個別の `make`
+ターゲットのまま残しているため、このターゲットは両者の連鎖です。
+
 新規リポジトリを boilerplate として立ち上げる際の初期セットアップ用コマンドです。
 
 #### セットアップ補助コマンド
@@ -501,15 +505,15 @@ Trivy スキャン）は放置します。ループで回すものではない�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make hotfix-patch` | `production` から hotfix ブランチを作成し、GitHub のデフォルトブランチに設定します。 | 現在の最新タグを基準に patch を 1 つ進めます。 |
-| `make branch-patch` | `production` から patch リリース用ブランチを作成し、デフォルトブランチに設定します。 | 現在の最新タグを基準に patch バージョンを進めます。 |
-| `make branch-minor` | `production` から minor リリース用ブランチを作成し、デフォルトブランチに設定します。 | 現在の最新タグを基準に minor バージョンを進めます。 |
-| `make branch-major` | `production` から major リリース用ブランチを作成し、デフォルトブランチに設定します。 | 現在の最新タグを基準に major バージョンを進めます。 |
+| `make hotfix-patch` | `production` から hotfix ブランチを作成し、GitHub のデフォルトブランチに設定します。 | 現在の最新タグを基準に patch を 1 つ進めます。`scripts/release branch` を実行し、`origin` に同名ブランチが既にある場合や作業ツリーが汚れている場合は中止します。 |
+| `make branch-patch` | `production` から patch リリース用ブランチを作成し、デフォルトブランチに設定します。 | 現在の最新タグを基準に patch バージョンを進めます。`scripts/release branch` を実行します。 |
+| `make branch-minor` | `production` から minor リリース用ブランチを作成し、デフォルトブランチに設定します。 | 現在の最新タグを基準に minor バージョンを進めます。`scripts/release branch` を実行します。 |
+| `make branch-major` | `production` から major リリース用ブランチを作成し、デフォルトブランチに設定します。 | 現在の最新タグを基準に major バージョンを進めます。`scripts/release branch` を実行します。 |
 
 ### リリースタグ関連
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make tag-patch` | patch バージョンを 1 つ進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準とし、リリースノートには `.github/release/<version>.md` を使用します。 |
-| `make tag-minor` | minor バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
-| `make tag-major` | major バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
+| `make tag-patch` | patch バージョンを 1 つ進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準とし、リリースノートには `.github/release/<version>.md` を使用します。`scripts/release tag` を実行します。このファイルを探す**前に** `production` を `origin` へ同期します（タグは `production` HEAD に打つため、ノートはそちらに在る必要があります）。 |
+| `make tag-minor` | minor バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。`scripts/release tag` を実行します。 |
+| `make tag-major` | major バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。`scripts/release tag` を実行します。 |

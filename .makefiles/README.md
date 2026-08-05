@@ -131,10 +131,10 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make new-migrate-<name>` | Generates a new migration file. | Creates numbered `.up.sql` / `.down.sql` under `database/migrations`. |
-| `make check-migration-up-version` | Checks duplicate versions in `up` migrations. | None |
-| `make check-migration-down-version` | Checks duplicate versions in `down` migrations. | None |
-| `make check-migration-up-gap` | Checks sequence gaps in `up` migrations. | None |
-| `make check-migration-down-gap` | Checks sequence gaps in `down` migrations. | None |
+| `make check-migration-up-version` | Checks duplicate versions in `up` migrations. | Runs `scripts/migration-lint`; the numbering rules live there with tests, not in a shell snippet. |
+| `make check-migration-down-version` | Checks duplicate versions in `down` migrations. | Runs `scripts/migration-lint`. |
+| `make check-migration-up-gap` | Checks sequence gaps in `up` migrations. | Runs `scripts/migration-lint`. Passes when there are no migrations at all, so removing the sample API cannot break the gate. |
+| `make check-migration-down-gap` | Checks sequence gaps in `down` migrations. | Runs `scripts/migration-lint`. |
 | `make db-migrate-up DB=<database>` | Applies all migrations to the specified DB up to the latest. | Example: `make db-migrate-up DB=local` |
 | `make db-migrate-up-<steps> DB=<database>` | Applies the given number of migrations relative to the current position. | Example: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | Downgrades all migrations to the initial state. | None |
@@ -487,6 +487,10 @@ Performs the following in order.
 - Apply branch rule set
 - Initialize labels
 
+The `git` / `gh` parts run through `scripts/repo-setup` (`preflight` / `bootstrap` /
+`prune-release-notes`); the label, rule set, and workflow steps stay as their own `make` targets, so
+this target is the chain of the two.
+
 This is an initial setup command when launching a new repository as a boilerplate.
 
 #### Setup helper commands
@@ -504,15 +508,15 @@ This is an initial setup command when launching a new repository as a boilerplat
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make hotfix-patch` | Creates a hotfix branch from `production` and sets it as the default branch. | Advances patch by one based on the latest tag. |
-| `make branch-patch` | Creates a patch release branch from `production` and sets it as the default branch. | Advances patch version based on the latest tag. |
-| `make branch-minor` | Creates a minor release branch from `production` and sets it as the default branch. | Advances minor version based on the latest tag. |
-| `make branch-major` | Creates a major release branch from `production` and sets it as the default branch. | Advances major version based on the latest tag. |
+| `make hotfix-patch` | Creates a hotfix branch from `production` and sets it as the default branch. | Advances patch by one based on the latest tag. Runs `scripts/release branch`, which aborts when the branch already exists on `origin` or the worktree is dirty. |
+| `make branch-patch` | Creates a patch release branch from `production` and sets it as the default branch. | Advances patch version based on the latest tag. Runs `scripts/release branch`. |
+| `make branch-minor` | Creates a minor release branch from `production` and sets it as the default branch. | Advances minor version based on the latest tag. Runs `scripts/release branch`. |
+| `make branch-major` | Creates a major release branch from `production` and sets it as the default branch. | Advances major version based on the latest tag. Runs `scripts/release branch`. |
 
 ### Release tag related
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make tag-patch` | Creates a tag with incremented patch version and creates a GitHub Release. | Uses `.github/release/<version>.md` for release notes. |
-| `make tag-minor` | Creates a tag with incremented minor version and creates a GitHub Release. | Based on the latest tag. |
-| `make tag-major` | Creates a tag with incremented major version and creates a GitHub Release. | Based on the latest tag. |
+| `make tag-patch` | Creates a tag with incremented patch version and creates a GitHub Release. | Uses `.github/release/<version>.md` for release notes. Runs `scripts/release tag`, which syncs `production` to `origin` **before** looking for that file — the tag is cut from `production` HEAD, so the note has to exist there. |
+| `make tag-minor` | Creates a tag with incremented minor version and creates a GitHub Release. | Based on the latest tag. Runs `scripts/release tag`. |
+| `make tag-major` | Creates a tag with incremented major version and creates a GitHub Release. | Based on the latest tag. Runs `scripts/release tag`. |
