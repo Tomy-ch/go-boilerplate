@@ -203,10 +203,10 @@ See details below.
 ## command_service
 
 `command_service` implements a **CommandService** — the write-side counterpart of QueryService
-(interface in the Domain layer alongside Repository, implementation here). It is reserved for multi-aggregate writes
+(interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
 that require single-transaction atomicity (see [ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md)
 / [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)); the first implementation
-is `command_service/purchase` (stock lock + decrement + purchase / detail INSERT — see
+is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
 [ADR-0100](../../../docs/adr/0100-purchase-stock-lock-and-amount-contract.md)).
 
 A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —

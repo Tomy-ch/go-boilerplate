@@ -66,8 +66,9 @@ output:
 
 ```yaml
 - name: tx.Manager                       # nested で最外 idempotency tx に乗る
-- name: command.CommandService           # LockProducts / CreatePurchase（infra 実装）
+- name: command.CommandService           # CreatePurchase（infra 実装）
 - name: purchase.Repository              # FindByID（書き込み後の再検証・DTO 取得元）
+- name: product.Repository               # LockByIDs（在庫行の悲観ロック）
 - name: outbox.EmitUsecase               # purchase.created.v1 の emit（同一 tx）
 - name: exchangerate.Usecase             # referenceAmount の換算消費（#562 成果 / half-up）
 - name: observability.TracerFactory
@@ -82,7 +83,7 @@ output:
   steps:
     - id / code / 各 detail id を UUIDv7 で採番する
     - "txm.Do(nested) 内で:"
-    - "  ① cmd.LockProducts(productID 昇順) で在庫をロックし price/quantity を得る"
+    - "  ① productRepo.LockByIDs(productID 昇順) で在庫行をロックし price/quantity を得る"
     - "  ② purchase.New で入力検証・売り越し検証・金額計算・snapshot・未処理ステータスを行う"
     - "  ③ cmd.CreatePurchase で在庫減算 + purchases/purchase_details を書き込む"
     - "  ④ emit.Emit(purchase.created.v1) を同一 tx で発行する（自己完結 snapshot payload）"

@@ -157,6 +157,16 @@ fields:
     （ADR-0100: 購入と在庫補充は同じ行を同じロック規律で扱う）。
     結合する固定参照マスタ（ステータス / カテゴリ）はロック対象に含めない。
 
+- name: LockByIDs
+  signature: LockByIDs(ctx context.Context, ids []uuid.UUID) (Products, error)
+  behavior: |
+    更新のために、ID の集合から公開状態を問わない商品群を悲観ロック（SELECT ... FOR UPDATE）して
+    ID 昇順で取得する。順序を id 昇順に固定するのは、複数商品を同時にロックする処理同士が
+    デッドロックしないためである（ADR-0100: 購入のロック順序規律）。
+    不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得る（不存在の検証は
+    呼び出し側の責務であり、ここでは NotFound を返さない）。
+    結合する固定参照マスタ（ステータス / カテゴリ）はロック対象に含めない。
+
 - name: Create
   signature: Create(ctx context.Context, p *Product) error
   behavior: |

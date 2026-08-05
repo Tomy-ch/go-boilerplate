@@ -89,11 +89,18 @@ three responsibilities:
 
 ### Command Service (command/write path)
 
-- Interface defined in the **domain layer** (`internal/domain/<aggregate>/`), alongside the
-  Repository interface. A CommandService carries a write the aggregate cannot express, and the
-  conditions it enforces are derived from that aggregate's invariants — so the contract is stated
-  in the domain's vocabulary and the domain owns it. This differs from QueryService, whose shape is
-  decided by what a caller wants to read.
+- Interface defined in the **usecase layer** (`internal/usecase/<workflow>/command/`). Ownership of a
+  cross-aggregate write port is decided on the **workflow** axis, not the aggregate axis. Trying to
+  pick an owning aggregate does not generalize: one real write (a coupon redemption, say) can enforce
+  the invariants of user, product and purchase at once, so "the aggregate whose invariant it enforces"
+  is a relation, not a function. A transaction, by contrast, always has exactly one initiator, and
+  [`docs/rules.md`](../rules.md) already gives the usecase layer ownership of transaction boundaries.
+  `internal/usecase/purchase/command/` names a workflow, not an aggregate, so "why purchase and not
+  product?" does not arise.
+- Domain Service and CommandService therefore diverge deliberately: a Domain Service is a *rule* and
+  owns no transaction; a CommandService is a *transaction tool* and is owned by whoever opens the
+  transaction. That every condition a CommandService enforces is derived from a domain invariant is
+  guaranteed by the Derivation rule below, not by where the file sits.
 - After executing a write operation, the Usecase calls back through the Repository for the
   affected aggregate to validate correctness, preserving domain integrity.
 - The Usecase return value is a DTO, not a domain entity.
@@ -120,9 +127,9 @@ day-to-day boundary enforcement rules.
   methods, preserving domain purity per [ADR-0002](0002-onion-architecture.md).
 - QueryService can freely optimize queries (joins, pagination, full-text search) without
   touching domain logic or exposing domain entities to the read path.
-- Interface ownership follows who decides the shape: the read model is a usecase concern, so the
-  QueryService interface sits in the usecase layer; a CommandService enforces conditions derived
-  from aggregate invariants, so its interface sits in the domain layer next to the Repository.
+- Both Service interfaces are owned on the same axis — the workflow that opens the transaction and
+  shapes the read model — so they live together in the usecase layer, and the domain layer keeps
+  exactly one persistence contract: the Repository.
 - CommandService can freely optimize flexible updates, deletes, and other write operations
   without touching domain logic. Routing back through the Repository at the end prevents
   domain integrity from being compromised.
@@ -135,11 +142,11 @@ day-to-day boundary enforcement rules.
 - Three persistence abstractions (Repository, QueryService, and CommandService) require
   developers to decide which to use for a given operation. The boundary is documented in
   `docs/rules.md` but requires understanding.
-- The QueryService interface sits in the usecase layer, further from the domain, which can make
-  intent less obvious when reading domain code in isolation.
-- The domain layer now declares two persistence interfaces, so "Repository is the only way a write
-  reaches storage" no longer holds by inspecting the domain package alone. The eligibility bar below
-  is what keeps the second one from becoming a general escape hatch.
+- Both Service interfaces sit in the usecase layer, further from the domain, which can make intent
+  less obvious when reading domain code in isolation. In particular, reading a domain package alone
+  does not reveal that a write path exists which does not pass through its Repository; the
+  eligibility bar and the Derivation rule below are what keep that path from becoming a general
+  escape hatch.
 - The "no complex reads in Repository" boundary must be maintained by review; there is no
   compiler enforcement for the distinction.
 

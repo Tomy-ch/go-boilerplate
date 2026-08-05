@@ -200,11 +200,11 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 ## command_service
 
 `command_service` は **CommandService** を実装します。QueryService の書き込み側の対称物で、
-インターフェースは Repository と並んで Domain 層に、実装はここに置きます。単一トランザクションでの
+インターフェースは QueryService と並んで Usecase 層に、実装はここに置きます。単一トランザクションでの
 原子性を要する複数集約への書き込みのために予約されています
 （[ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md) /
 [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)）。最初の実装は
-`command_service/purchase`（在庫ロック + 減算 + 購入 / 明細 INSERT。
+`command_service/purchase`（在庫減算 + 購入 / 明細 INSERT。
 [ADR-0100](../../../docs/adr/0100-purchase-stock-lock-and-amount-contract.md) 参照）です。
 
 CommandService は `ctx` で渡されたトランザクション上で書き込みを実行し（自前では開かない。境界は

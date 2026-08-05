@@ -31,7 +31,7 @@ This ADR covers only the authoritative, stored money.
 ## Decision
 
 1. **Row locking — `SELECT ... FOR UPDATE`, ordered by `id`.** Stock rows are locked pessimistically
-   in ascending `product_id` order (`lock_products_for_update.sql`), fixing lock order to structurally
+   in ascending `product_id` order (`select_products_by_ids_for_update.sql`), fixing lock order to structurally
    avoid deadlocks between concurrent multi-product purchases. Duplicate `product_id` in a request is
    rejected as `ErrValidation` (422) before locking so the ordering premise holds. The decrement
    `UPDATE` additionally carries a defensive `WHERE quantity >= :qty`; a 0-row result is treated as
@@ -67,8 +67,10 @@ This ADR covers only the authoritative, stored money.
    Repository ([ADR-0027]), `CreatePurchase(ctx, *purchase.Purchase)` takes the decided domain aggregate —
    symmetric to how a Repository returns one — rather than a decomposed parameter bag. Infra legitimately
    handles domain entities (repositories already map rows↔entities); the DTO-boundary rule targets
-   controller exposure, not infra. `LockProducts(ctx, ids) ([]LockedProduct, error)` stays a separate first
-   phase because locking precedes aggregate construction. This shape is the precedent for future CommandServices.
+   controller exposure, not infra. The lock stays a separate first phase because locking precedes aggregate
+   construction, but it is not a CommandService method: `product.Repository.LockByIDs(ctx, ids)` is a plain
+   pessimistic read of the product aggregate, enforcing no purchase invariant and needing no atomicity of its
+   own, so it belongs on that aggregate's Repository. This shape is the precedent for future CommandServices.
 
 ## Consequences
 

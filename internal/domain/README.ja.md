@@ -9,8 +9,7 @@
 ## このプロジェクトでの役割
 
 - `internal/domain/<aggregate>/` 配下に **Entity / ValueObject / Repository(IF)** を配置する。
-  CommandService インターフェースが存在する場合もここに置く。**Domain Service** は置かない。
-  集約を跨ぐものであり、そのどれか 1 つの内側には住めないためである
+  **Domain Service** は置かない。集約を跨ぐものであり、そのどれか 1 つの内側には住めないためである
   （[集約横断の Domain Service をどこに置くか](#集約横断の-domain-service-をどこに置くか)を参照）。
 
 例）`internal/domain/user/`

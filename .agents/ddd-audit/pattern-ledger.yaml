@@ -355,9 +355,9 @@ patterns:
       Evans の形（load-aggregate-mutate-save 一本化）を名指しし、ロックを取らない相対更新の並行性を理由に
       却下、Eligibility / Derivation で範囲を絞って宣言済み。読み取り側の絞り込み（QueryService 分離）も
       Fat Repository を名指しで退けている。
-      残る差異は、その CommandService IF がドメイン層に置かれ、Repository と並ぶ第二の永続化契約に
-      なっている点。「Repository が集約への唯一の永続化契約である」という原義の前提はコード配置としても
-      成立しなくなったが、これを Evans の語彙で論じた宣言は無い。
+      ドメイン層が宣言する永続化契約は Repository ただ 1 つ。CommandService IF は所有をワークフロー軸で
+      決めてユースケース層（internal/usecase/<workflow>/command/）に置かれるため、「ドメイン層に第二の
+      永続化契約が並ぶ」という差異は無い。残る差異は seam の存在そのものであり、上記のとおり宣言済み。
     interpreted_by:
       - kind: adr
         id: "0027"

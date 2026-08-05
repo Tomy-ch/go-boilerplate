@@ -9,8 +9,8 @@
 ## Role in this project
 
 - Place **Entity / ValueObject / Repository (IF)** under `internal/domain/<aggregate>/`. A
-  CommandService interface, where one exists, sits here too. A **Domain Service** does *not*: it
-  spans aggregates, so it cannot live inside one of them — see
+  **Domain Service** does *not* belong here: it spans aggregates, so it cannot live inside one of
+  them — see
   [Where a cross-aggregate Domain Service lives](#where-a-cross-aggregate-domain-service-lives).
 
 Example: `internal/domain/user/`
