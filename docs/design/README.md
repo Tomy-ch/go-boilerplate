@@ -32,6 +32,7 @@ Two invariants underpin all of them:
 | [observability.md](observability.md) | Observability | the cross-cutting traces / metrics / logs substrate | [observability](../../internal/observability/README.md) |
 | [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider (`mock-auth-server`) | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
 | [security.md](security.md) | Security posture | the threat model, what each control is for (enforcement / detection / deterrence), and where it fires | [workflows](../../.github/workflows/README.md) |
+| [context-map.md](context-map.md) | Context Map | how this system relates to the systems around it, edge by edge | [boundary](../../internal/usecase/boundary/README.md) |
 
 ## Reading order
 

@@ -151,11 +151,16 @@ ddd-audit 結果（スコープ: <X>, 対象 <N> パターン）
 
 台帳鮮度: <corpus 変更あり / 台帳未更新 = 陳腐化の疑い | 同期済み>
 
-[差異あり] <n> 件
+[差異あり・解釈あり] <n> 件
   <pattern> — <CONFIRMED|PLAUSIBLE>
     Evans 原義: <前提（反証可能な形）>
     根拠: <file:line>
-    現状: <解釈が無い / 別解釈 / 別名で実質解釈済み>
+    現状: <別解釈 / 別名で実質解釈済み>
+
+[差異あり・未解釈] <n> 件
+  <pattern> — <CONFIRMED|PLAUSIBLE>
+    Evans 原義: <前提（反証可能な形）>
+    根拠: <参照した範囲と、そこに無かったこと>
 
 [逸脱宣言あり(スコープ外)] <n> 件
   <pattern> — <宣言箇所 file:line と理由の要約>
@@ -166,8 +171,14 @@ ddd-audit 結果（スコープ: <X>, 対象 <N> パターン）
 [検証で棄却] <n> 件
   <pattern> — <棄却理由の 1 行>
 
-総計: 差異あり <n>（うち CONFIRMED <k>）, 逸脱宣言 <n>, 差異なし <n>
+総計: 差異あり <n>（解釈あり <k> / 未解釈 <m>、うち CONFIRMED <c>）, 逸脱宣言 <n>, 差異なし <n>
 ```
+
+**`差異あり` は 2 つに割って出す。** 台帳の `status` がそれを決める——`interpreted` なら解釈あり、
+`uninterpreted` なら未解釈。verdict だけでは「解釈はあるがずれている」と「そもそも解釈が無い」が
+同じ見出しに並び、後者が前者の陰に隠れる。**誰かが取った立場と、誰も埋めていない空白は、読者が次に
+取る手が違う**（前者は宣言するか閉じるか、後者はまず誰かが決めること）。台帳ヘッダの `status` ×
+`verdict` 表がこの対応の正本であり、報告はその読み方をそのまま反映する。
 
 Report findings as observations. Do not write 「修正してください」「対応必須」「違反」— this repo
 advertises DDD alignment, not Evans-strict compliance, and whether a divergence is a deliberate
@@ -214,6 +225,7 @@ After writing, verify the ledger still parses and the entry count is unchanged.
 - ❌ 台帳以外への書き込み、user 承認なしの台帳更新
 - ❌ 台帳鮮度の判定を LLM にやらせる（shell の集合比較で足りる）
 - ❌ パターン一覧 / corpus を skill 本文にハードコード（台帳が SSOT）
+- ❌ `差異あり` を 1 つの見出しにまとめて出す（解釈ありと未解釈が混ざり、空白が逸脱の陰に隠れる）
 - ✅ Japanese aggregated report、3 値判定、`file:line` 根拠
 - ✅ Evans 原義の前提を finding ごとに明示（読者が反証できる形で）
 
@@ -224,6 +236,6 @@ After writing, verify the ledger still parses and the entry count is unchanged.
 - [ ] 台帳鮮度を shell で判定
 - [ ] 選択パターンの `ddd-origin-auditor` を **1メッセージ内で並列起動**
 - [ ] `差異あり` を `review-verifier` で検証し REFUTED を落とす
-- [ ] 集約 Japanese レポート出力（裁定文言なし）
+- [ ] 集約 Japanese レポート出力（裁定文言なし、`差異あり` は status で 2 見出しへ分割）
 - [ ] opt-in 時のみ per-item 承認 → 台帳へ書き込み → パース確認
 - [ ] commit / push なし

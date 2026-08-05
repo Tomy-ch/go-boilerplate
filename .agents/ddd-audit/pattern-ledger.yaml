@@ -723,7 +723,7 @@ patterns:
     gap: >-
       Context Map という語は ADR-0034 と internal/domain/lexicon/README.md に一度だけ現れるが、
       Shared Kernel を不採用とする根拠として上位概念に触れているだけで、Context Map 自体の解釈ではない。
-      境界をまたぐ接触点（外部 IdP / 為替レート / オブジェクトストレージ / outbox 送信先 / SQS）は
+      境界をまたぐ接触点（外部 IdP / 外部 Web API / オブジェクトストレージ / outbox 送信先 / メッセージキュー）は
       個別には文書化されているが、それらを Evans の関係パターン語彙（Customer-Supplier / Conformist /
       Open Host Service 等）で特徴づけて一枚に集約した記述は無い。辺のラベルにあたるもののうち
       Shared Kernel は不採用が宣言され、Anticorruption Layer は構造的に採用されている。

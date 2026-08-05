@@ -1,0 +1,4 @@
+interface:
+  display_name: "コンテキストマップ"
+  short_description: "境界をまたぐシステム間の関係を根拠付きで整理し確認する"
+  default_prompt: "このリポジトリのコンテキストマップを作成し、各辺の関係ラベルは私に確認してください。"

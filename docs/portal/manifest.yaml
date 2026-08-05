@@ -299,6 +299,14 @@ controller:
   - src: internal/controller/httpstack/oapi/skipper/README.ja.md
     dst: docs/portal/guides/ja/controller-httpstack-oapi-skipper.ja.md
 
+context-map-design:
+  # English
+  - src: docs/design/context-map.md
+    dst: docs/portal/guides/context-map-design.md
+  # Japanese
+  - src: docs/ja/design/context-map.ja.md
+    dst: docs/portal/guides/ja/context-map-design.ja.md
+
 worker-design:
   # English
   - src: docs/design/worker.md

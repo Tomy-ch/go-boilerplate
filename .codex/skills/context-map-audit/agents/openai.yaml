@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Map Audit"
+  short_description: "Detect map-to-code contact-point drift."
+  default_prompt: "コンテキストマップと実装上の接触点の乖離を監査して。"
