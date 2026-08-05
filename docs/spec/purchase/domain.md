@@ -1,8 +1,11 @@
 # Purchase — Domain Spec
 
 > `POST /v1/purchases`（購入作成・CommandService 正例・原子性/売り越し禁止）のドメイン spec。
-> 金額はすべて USD セント単位の整数で保持・計算する（float 不使用）。丸めはドメイン内 1 箇所に集約し切り捨てで統一する（[ADR-0100]）。
-> `referenceAmount`（JPY 参考換算）はドメインの関心ではなく usecase 層で half-up 換算する（[ADR-0099]）。
+> 決済通貨は USD のみで、決済スケールの金額はすべて USD セント単位の整数で保持・計算する（float 不使用）。
+> 単価は価格スケール（サブセント可の decimal）で保持し、決済スケールへの変換は最小単位 2 桁（セント）で
+> **切り捨て**、ドメイン内 1 箇所に集約する。2 スケールの型分けそのものは [ADR-0033]。
+> `referenceAmount`（JPY 参考換算）はドメインの関心ではなく usecase 層の関心であり、切り捨てではなく
+> half-up で丸める（非永続の参考表示のため。[`docs/spec/exchange-rate/usecase.md`](../exchange-rate/usecase.md)）。
 
 ## Overview
 
@@ -10,7 +13,7 @@
 
 明細の `unitPrice` は在庫ロック取得直後の `products.price` スナップショットであり、購入成立後の価格改定に不変（CommandService 正例の本質＝価格の一貫性）。金額計算（`subtotal = Σ unitPrice × quantity` / `tax = subtotal × taxRate` / `shippingFee = 定数` / `total = subtotal + tax + shippingFee`）はドメイン内で完結し、税・送料の丸めは切り捨てで 1 箇所に集約する。
 
-初期ステータスは「未処理」（`purchase_statuses.code = 1`）。ドメインは code（安定した業務キー）を定数として持ち、`purchase_statuses` の UUID は焼き込まない（seed との二重管理を避けるため、UUID 解決は永続化時の infra 責務）。`id` / `code` は UUIDv7（[ADR-0031]）で、生成は usecase 層が行いドメインへ渡す（ドメインは乱数・時刻に直接依存しない）。
+初期ステータスは「未処理」（`purchase_statuses.code = 1`）。ドメインは code（安定した業務キー）を定数として持ち、`purchase_statuses` の UUID は焼き込まない（seed との二重管理を避けるため、UUID 解決は永続化時の infra 責務）。`id` / `code` は UUIDv7（[ADR-0032]）で、生成は usecase 層が行いドメインへ渡す（ドメインは乱数・時刻に直接依存しない）。
 
 書き込み後のドメイン整合の再検証とレスポンス組み立ての取得元として、`Repository.FindByID` で永続化済みの購入を明細込みで読み出す（[ADR-0027] / [ADR-0029]）。
 
@@ -112,7 +115,7 @@ fields:
 - name: Pay
   signature: Pay(now time.Time) error
   behavior: |
-    購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0076）。
+    購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0080）。
     遷移可否は statusCode を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
       - 既に支払い済み（statusCode == 7）→ ErrAlreadyPaid（409。二重支払い）
       - キャンセル済み（statusCode == 6）・完了（statusCode == 5）・配達済み（statusCode == 9）・発送済み（shippedAt != nil）→ ErrPayNotAllowed（409）
@@ -226,11 +229,12 @@ fields:
 
 ## Notes
 
-- 定数（[ADR-0100] の placeholder）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `StatusCodePaid = 7` / `StatusCodeShipped = 8` / `StatusCodeDelivered = 9` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。code 値は状態の到達順序を意味しないため、遷移判定は等値比較のみで行う。
+- 定数（`taxRatePercent` / `shippingFeeCents` は sample の placeholder。実要件が立った時点で config / マスタへ移す。
+  送料を 0 ではなく固定の非 0 値にしているのは、`shipping_fee` 列・`total` の計算経路・レスポンス項目を
+  実際に通すため）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `StatusCodePaid = 7` / `StatusCodeShipped = 8` / `StatusCodeDelivered = 9` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。code 値は状態の到達順序を意味しないため、遷移判定は等値比較のみで行う。
 - エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` / `ErrAlreadyPaid` / `ErrPayNotAllowed` / `ErrAlreadyShipped` / `ErrShipNotAllowed` / `ErrAlreadyDelivered` / `ErrDeliverNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
 
 [ADR-0027]: ../../adr/0027-lightweight-cqrs.md
 [ADR-0029]: ../../adr/0029-commandservice-atomicity-criterion.md
-[ADR-0031]: ../../adr/0031-uuidv7-identifiers.md
-[ADR-0099]: ../../adr/0099-reference-amount-half-up-rounding.md
-[ADR-0100]: ../../adr/0100-purchase-stock-lock-and-amount-contract.md
+[ADR-0032]: ../../adr/0032-uuidv7-identifiers.md
+[ADR-0033]: ../../adr/0033-two-scale-quantity-model.md

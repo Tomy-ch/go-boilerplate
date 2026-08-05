@@ -2,7 +2,7 @@
 
 > `POST /v1/purchases`（購入作成）の usecase spec。本リポジトリ初の CommandService（[ADR-0027]）を消費し、
 > 在庫減算・購入作成・明細作成・outbox 発行を単一トランザクションで原子的に行う。最外 tx は `idempotency.Run` が所有し、
-> 本 usecase は nested（`tx.Manager.Do`）で同一 tx に乗る（[ADR-0029] / [ADR-0100]）。
+> 本 usecase は nested（`tx.Manager.Do`）で同一 tx に乗る（[ADR-0029]）。
 
 ## Overview
 
@@ -69,7 +69,7 @@ output:
 - name: command.CommandService           # CreatePurchase（infra 実装）
 - name: purchase.Repository              # FindByID（書き込み後の再検証・DTO 取得元）
 - name: product.Repository               # LockByIDs（在庫行の悲観ロック）
-- name: user.LockRepository              # LockShareByID（購入者の共有ロック取得。ADR-0107 / withdrawal-purchase-row-lock-serialization）
+- name: user.LockRepository              # LockShareByID（購入者の共有ロック取得。退会との直列化。[ADR-0031]）
 - name: domain/service/membership        # EnsurePurchasable（在籍の判定）
 - name: outbox.EmitUsecase               # purchase.created.v1 の emit（同一 tx）
 - name: exchangerate.Usecase             # referenceAmount の換算消費（#562 成果 / half-up）
@@ -85,7 +85,7 @@ output:
   steps:
     - id / code / 各 detail id を UUIDv7 で採番する
     - "txm.Do(nested) 内で:"
-    - "  ⓪ userLock.LockShareByID で購入者を共有ロック付きで読み出し、membership.EnsurePurchasable で在籍を判定する（退会と直列化。ADR-0107 / withdrawal-purchase-row-lock-serialization）"
+    - "  ⓪ userLock.LockShareByID で購入者を共有ロック付きで読み出し、membership.EnsurePurchasable で在籍を判定する（退会と直列化。[ADR-0031]）"
     - "  ① productRepo.LockByIDs(productID 昇順) で在庫行をロックし price/quantity を得る"
     - "  ② purchase.New で入力検証・売り越し検証・金額計算・snapshot・未処理ステータスを行う"
     - "  ③ cmd.CreatePurchase で在庫減算 + purchases/purchase_details を書き込む"
@@ -101,7 +101,14 @@ output:
 ```
 
 ロックはユーザー行 → 商品行（id 昇順）の順で取る。全 tx で順序を固定することでデッドロックを構造的に
-避ける（商品行の順序固定は [ADR-0100]、ユーザー行を先頭に置く根拠は [ADR-0107]）。
+避ける（順序固定・取得位置・ロックモードの規律は [ADR-0031]）。
+
+購入者の在籍判定は、退会（`DELETE /v1/users/{userId}`）の「進行中の購入が残っていれば拒否」と
+**対になる 1 つの業務ルール**である。片方だけを読んでも全体は分からないため、もう一方は
+[`docs/spec/user/usecase.md`](../user/usecase.md) の `DeleteUser` に記述してある。購入側は共有ロックで
+在籍を観測し、退会側は同じ行を排他ロックで押さえる。共有ロック同士は衝突しないため、同一ユーザーの
+並行購入は互いに直列化されず、退会とだけ直列化される。退会済みユーザーによる購入は 409（`ErrConflict`）で、
+退会側の拒否と同じステータスに揃えてある。
 
 ## GET 一覧（購入履歴・cursor）
 
@@ -292,7 +299,7 @@ workflow:
 
 ## PATCH 支払い (purchase pay)
 
-`PATCH /v1/purchases/{purchaseId}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0076）。
+`PATCH /v1/purchases/{purchaseId}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0080）。
 決済 SDK / PSP 連携・金額検証は行わず、`paid_at` のセットと `status_id` の「支払い済み」への更新のみを担う。在庫操作は伴わない。
 **単一集約（`purchases`）のみを更新するため、複数集約の原子性を要する CommandService（[ADR-0029]）ではなく通常 usecase + Repository で完結する**
 （cancel は在庫復元を伴う複数集約書き込みのため CommandService を用いる。判定軸は「集約を跨ぐ書き込みの原子性が要るか」）。
@@ -483,13 +490,15 @@ workflow:
 ## Notes
 
 - 冪等スコープは内部 UserID（#581 の確定に追随）。middleware が Scope を設定し、本 usecase 側の固有作業はない。
-- `referenceAmount` は非永続・参考表示専用。丸めは half-up（[ADR-0099]）で、ドメインの切り捨て金額とは目的が異なるため規則が分かれる（[ADR-0100]）。
+- `referenceAmount` は非永続・参考表示専用。丸めは half-up で、決済額（切り捨て）とは目的が異なるため規則が分かれる
+  （決済額は課金される権威的な値、`referenceAmount` は表示のみの参考値）。丸め方式と最小単位桁数は方式そのものが
+  policy であり、汎用の decimal 機構には焼き込まない（[ADR-0033]）。換算側の仕様は
+  [`docs/spec/exchange-rate/usecase.md`](../exchange-rate/usecase.md)。
 - 購入集計（`GET /v1/users/me/purchases/summary`）の `WHERE user_id = $1` は、購入履歴一覧用の複合インデックス
   `purchases (user_id, ordered_at DESC, id DESC)`（migration 000012）の先頭列で解決できるため、集計専用のインデックス追加は不要。
 
 [ADR-0027]: ../../adr/0027-lightweight-cqrs.md
 [ADR-0028]: ../../adr/0028-system-cqrs-dml-category.md
 [ADR-0029]: ../../adr/0029-commandservice-atomicity-criterion.md
-[ADR-0099]: ../../adr/0099-reference-amount-half-up-rounding.md
-[ADR-0100]: ../../adr/0100-purchase-stock-lock-and-amount-contract.md
-[ADR-0107]: ../../adr/0107-withdrawal-purchase-row-lock-serialization.md
+[ADR-0031]: ../../adr/0031-ordered-pessimistic-row-locks.md
+[ADR-0033]: ../../adr/0033-two-scale-quantity-model.md

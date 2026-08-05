@@ -143,7 +143,7 @@ methods:
 - clock             # boundary/clock.Clock
 - authorizer        # boundary/authz.Authorizer（詳細系の認可判定。admin または対象ユーザー本人）
 - user_repository   # domain/user.Repository
-- user_lock_repository   # domain/user.LockRepository（退会時の対象行の排他ロック。ADR-0107）
+- user_lock_repository   # domain/user.LockRepository（退会時の対象行の排他ロック。[ADR-0031]）
 - prefecture_repository  # domain/prefecture.Repository
 - purchase_repository    # domain/purchase.Repository（退会時の進行中購入の確認）
 - outbox_emit       # usecase/outbox.EmitUsecase（退会イベントの発行）
@@ -291,9 +291,18 @@ errors:
   - LockByID(NotFound) / FindStatusesByUserID / MarkAsDeleted(ErrAlreadyDeleted) / Update / Emit を伝播
 ```
 
-ロックの取得順が不変条件である（[ADR-0107]）。`LockByID` は進行中購入の判定より**前**に置く。判定より後だと
+ロックの取得順が不変条件である（[ADR-0031]）。`LockByID` は進行中購入の判定より**前**に置く。判定より後だと
 「退会が判定を通過 → 購入作成が成立 → 退会が確定」の順序を止められず、退会済みユーザーに進行中の購入が
 ぶら下がる。購入作成側は同じ行を共有ロックで押さえるため、この排他ロックとだけ衝突して直列化される。
+
+この拒否は、購入作成側の「退会済みユーザーは購入できない」と**対になる 1 つの業務ルール**である。片方だけを
+読んでも全体は分からないため、もう一方は [`docs/spec/purchase/usecase.md`](../purchase/usecase.md) の
+`CreatePurchase` に記述してある。両方向とも 409（`ErrConflict`）で答える（主体自身のライフサイクル状態と要求
+操作の衝突であり、他者のリソースの存在を秘匿する 404 とは性質が違う）。
+
+不変条件は入口で閉じているため、**退会側に補償処理は置かない**。`user.withdrawn.v1` の consumer が残った
+進行中購入をキャンセルする設計も考えられるが、閉じた不変条件のもとでは対象が存在しない。既存 consumer
+（`internal/controller/worker/withdrawalarchive`）はアーカイブの責務のみを持ち、キャンセルの責務は負わない。
 
 ### PurgeDeleted（PurgeUsecase）
 
@@ -323,4 +332,4 @@ notes:
     境界を進めないと同じ候補を取り直し続け、先頭バッチが全件スキップ対象のときに無限ループする。
 ```
 
-[ADR-0107]: ../../adr/0107-withdrawal-purchase-row-lock-serialization.md
+[ADR-0031]: ../../adr/0031-ordered-pessimistic-row-locks.md

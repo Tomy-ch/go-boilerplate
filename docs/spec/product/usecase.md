@@ -13,7 +13,7 @@ sort は `-publishedAt`（既定=降順）/ `publishedAt`（昇順）の 2 値�
 
 商品作成（`POST /v1/products`）は admin 認可のうえ、`tx.Manager` の境界内で商品ステータス / カテゴリの名称を ID から解決し、`Product` を構築して登録する write ユースケース。マスタ不在はサーバ側整合性異常（500）、価格・在庫などの業務不変条件違反は 422 に落とす。
 
-在庫の増減（`PATCH /v1/products/{productId}/stock`）は admin 認可のうえ、`tx.Manager` の境界内で対象商品を悲観ロックしてから在庫を増減する write ユースケース。購入による在庫減算と同じ行を対象とするため、取得〜更新が直列化され、並行する増減は失われず合成される（ADR-0100）。待てば解消しうる競合は一時障害（503）、取得後の変化を検出した恒久的な衝突は 409 として露出する。
+在庫の増減（`PATCH /v1/products/{productId}/stock`）は admin 認可のうえ、`tx.Manager` の境界内で対象商品を悲観ロックしてから在庫を増減する write ユースケース。購入による在庫減算と同じ行を対象とするため、取得〜更新が直列化され、並行する増減は失われず合成される（ADR-0031）。待てば解消しうる競合は一時障害（503）、取得後の変化を検出した恒久的な衝突は 409 として露出する。
 
 在庫僅少一覧（`GET /v1/products/low-stock`）は admin 認可のうえ、在庫が在庫警告閾値以下まで減った商品を在庫の少ない順に上位 `limit` 件返す read-only な thin orchestrator。判定条件と並び順は `product.Repository` の `FindAllLowStock` が持ち、usecase は取得件数の正規化（既定値 20 / 範囲 1〜100 へのクランプ）と DTO への写像のみを担う。cursor ページングは持たない。
 
