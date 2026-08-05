@@ -54,7 +54,7 @@ type nopMetrics struct{}
 func Run[T any](
 	ctx context.Context,
 	deps Deps,
-	successStatus int,
+	successStatus int32,
 	businessFn func(ctx context.Context) (T, error),
 ) (T, bool, error) {
 	req, ok := requestFromContext(ctx)
@@ -105,7 +105,7 @@ func Run[T any](
 		if err := deps.Store.Complete(ctx, idempotencybndry.CompleteParams{
 			Scope:           req.Scope,
 			Key:             req.Key,
-			ResponseStatus:  int32(successStatus), //nolint:gosec // HTTP ステータスコードは int32 に収まる
+			ResponseStatus:  successStatus,
 			ResponsePayload: payload,
 		}); err != nil {
 			deps.metrics().IncCompleteFailure(ctx, req.OperationID)
