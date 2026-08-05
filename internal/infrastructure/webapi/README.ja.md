@@ -30,6 +30,16 @@ flowchart TB
 - エラーは substrate が写像済みの `apperror` sentinel として返す。JSON デコード / ドメイン形の検証失敗は `apperror.ErrUnavailable` でラップする。
 - エンドポイントのベース URL は構築時に解決して DI で注入する（各 leaf の `NewEndpoint`）。各 leaf は `observability.LayerTracer`（`tf.Infra()`）で span を開始する。
 
+## Test Strategy
+
+ここの gateway は DB ではなく `httpclient` substrate の上に構築されるため、infrastructure 層の実 DB 戦略は適用されません。すべて `httpclient` の生成モックの背後で in-process に閉じます。leaf は自前の README を持たない規約であるため、以下の観点が `webapi/` 配下の全 leaf を統治します。
+
+- **assert の対象はワイヤ形ではなく境界 DTO である。** leaf は生の JSON をこの層で止めるために存在します。したがってテストは、直前に自分で組み立てた応答ボディを写し返すのではなく、返された境界の出力（パース済みの数値型 / 値オブジェクトを含む）を assert します。
+- **downstream の不正な応答は一級のケースである。** デコード不能な JSON、形は妥当だがドメインが拒否するボディ、そして結果 0 件は、それぞれ独立したケースを持ちます。これらは transport エラーという signal を伴わずに downstream が取り得る経路だからです。
+- **substrate のエラー写像を再導出しない。** 非 2xx と transport 失敗は `apperror` sentinel として到達します。assert はステータスコードではなくその sentinel に対する `errors.Is` で行います。ステータスは substrate の関心事であり、usecase に渡されるのは sentinel だからです。
+- **gateway の手前に置くキャッシュは注入 clock で検証する。** 実時間では検証しません。ヒット・ミス・TTL 境界での失効・単一キーへの並行アクセスです。エントリの失効を sleep で待つテストは構造的に flaky です。
+- **設定の解決それ自体が subject である。** エンドポイントのパースは、拒否すべきものを構築時に拒否します。設定を誤ったデプロイは、最初の外向き呼び出し時ではなく起動時に失敗します。
+
 ## DI 登録
 
 `internal/di/module/webapi.go` の `webapi` モジュールに登録します。各 leaf がコンストラクタ / エンドポイントを provide し、`DownstreamProfile` を `httpclient_profiles` グループへ寄与します。

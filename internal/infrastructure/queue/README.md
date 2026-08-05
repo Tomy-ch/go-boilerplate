@@ -43,3 +43,25 @@ emulator is preferred over a suite that emulates a whole cloud. Notes per choice
 - **Pub/Sub** has no standalone first-party image; the emulator is a component of the Google
   Cloud CLI, published by Google under the `:emulators` tag. It is heavier than the other two.
   Third-party slim wrappers exist and are correspondingly less accountable
+
+## Test Strategy
+
+The substrate is a message broker, not a database, so the infrastructure layer's real-DB strategy does
+not apply. `queue/` itself holds no Go code; these viewpoints govern the adapters under it, and an
+adapter that needs its own is expected to declare one in its package README rather than widen this.
+
+- **The broker is a generated mock of the SDK's API client, and the container above is not a test
+  dependency.** `make test` starts nothing: the emulator table exists for `make serve` and for manual
+  verification of behaviour an SDK mock cannot represent (real visibility timeouts, redrive). Naming a
+  queue URL in a test is a fixture string, never a connection.
+- **The SDK call is asserted, not just the outcome.** An adapter's job is to translate a boundary call
+  into one SDK request, so the input handed to the mock is inspected — queue URL, body, and the message
+  attributes carrying the boundary's headers. Asserting only the returned error would let that
+  translation drift unnoticed.
+- **Error normalisation is pinned per broker error class**, because that mapping is the whole reason the
+  adapter exists as a layer: a retryable broker fault, a permanent rejection, and a cancelled context
+  must each reach the worker seam as the matching `apperror` sentinel, asserted with `errors.Is` rather
+  than by inspecting the SDK error type. `nil` staying `nil` is its own case — a normaliser that
+  manufactures an error from a success is silent and total.
+- **Sensitive headers are pinned against normalisation gaps**, so header matching cannot be defeated by
+  case or surrounding whitespace.
