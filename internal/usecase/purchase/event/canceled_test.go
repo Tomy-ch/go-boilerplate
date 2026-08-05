@@ -69,7 +69,6 @@ func TestBuildCanceled(t *testing.T) {
 			assert.Equal(t, domainpurchase.StatusCanceled.Code(), decoded.StatusCode)
 			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.CanceledAt)
 		})
-
 	})
 
 	t.Run("異常系", func(t *testing.T) {
