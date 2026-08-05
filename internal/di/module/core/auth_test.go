@@ -185,7 +185,8 @@ func Test_provideAuthenticator(t *testing.T) {
 
 			authenticator, err := provideAuthenticator(p)
 			require.NoError(t, err)
-			assert.NotNil(t, authenticator)
+			// local.Authenticator も非 nil なので、非 nil だけでは local 分岐へ巻き込まれた回帰と区別できない。
+			assert.NotEqual(t, local.New(), authenticator)
 		})
 
 		t.Run("development環境でAUTH設定とHTTPClientが揃えばJWKS authenticatorが返る", func(t *testing.T) {
@@ -200,7 +201,7 @@ func Test_provideAuthenticator(t *testing.T) {
 
 			authenticator, err := provideAuthenticator(p)
 			require.NoError(t, err)
-			assert.NotNil(t, authenticator)
+			assert.NotEqual(t, local.New(), authenticator)
 		})
 	})
 
@@ -222,6 +223,8 @@ func Test_provideAuthenticator(t *testing.T) {
 			logger := logging.NewTestLogger(t)
 			authenticator, err := provideAuthenticator(newAuthParams(t, config.EnvDevelopment, logger))
 			require.Error(t, err)
+			// JWKS 構築の失敗であって、case 未一致による default 落ちではないこと。
+			require.NotErrorIs(t, err, errNoAuthenticatorForEnv)
 			assert.Nil(t, authenticator)
 		})
 

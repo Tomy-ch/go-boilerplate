@@ -48,8 +48,10 @@ Leaves carry no README of their own, so these viewpoints govern every leaf under
 - **A cache in front of a gateway is tested on the injected clock**, never on wall time: hit, miss,
   expiry at the TTL boundary, and concurrent access to a single key. A test that sleeps to let an entry
   expire is flaky by construction.
-- **Config resolution is its own subject.** Endpoint parsing rejects what it must reject at construction
-  time, so a misconfigured deployment fails at startup rather than on the first outbound call.
+- **The endpoint a leaf resolves is its own subject**, however thin that resolution currently is. The
+  sample leaves return a compile-time constant, so their test pins only which base URL they hand the
+  substrate; a leaf that instead parses a configured URL is expected to reject a bad one at construction,
+  so a misconfigured deployment fails at startup rather than on the first outbound call.
 
 ## DI Registration
 

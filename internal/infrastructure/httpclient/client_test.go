@@ -566,7 +566,7 @@ func Test_client_Do_Retry(t *testing.T) {
 		// 「AllowRetry あり・冪等性キーなし」のランタイムガードは request_guard_internal_test.go で担保しています。
 		// 公開 API から構築不能（非公開フィールドの直接設定が必要）なため、外部テストからは到達できません。
 
-		t.Run("backoffのスリープ中にctxがキャンセルされたらErrCanceledを返し直前のResponseを破棄する", func(t *testing.T) {
+		t.Run("sleeperには呼び出し元ctx由来のctxを渡しキャンセル時はErrCanceledを返して直前のResponseを破棄する", func(t *testing.T) {
 			t.Parallel()
 
 			srv, _ := countingServer(t, http.StatusServiceUnavailable)
@@ -594,9 +594,7 @@ func Test_client_Do_Retry(t *testing.T) {
 			resp, err := client.Do(callerCtx, httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
-			// 直前の試行で 503 の Response を得ているが、sleeper がエラーを返した経路では返さない。
 			assert.Nil(t, resp)
-			// 呼び出し元 ctx から派生した ctx を渡さないと、backoff 中のキャンセルを sleeper が観測できない。
 			assert.Equal(t, "caller", sleptCallerValue)
 		})
 	})
