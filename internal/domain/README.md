@@ -94,6 +94,45 @@ Allowed examples:
 - `FindByActive`
 - `CountByXXX`
 
+## Entity or Value Object
+
+Before deciding how to implement a domain type, decide **what it is**. The two kinds are separated by
+one question, and it is not "does it deserve invariants" — every domain type deserves those.
+
+**An Entity has an identity that outlives its attributes.** Change every field of a user and it is
+still the same user; that continuity is what an identity is for. Two entities are the same when their
+identities match, whatever their attributes say.
+
+**A Value Object has no identity.** It is the value it holds, so two of them are the same exactly when
+their contents are equal. Nothing about it persists across a change, because changing it produces a
+different value rather than the same thing in a new state. Replace it whole; never mutate it in place.
+
+Deciding for a new type:
+
+1. Ask whether the thing needs to be traceable as *the same one* over time — through updates,
+   through persistence, through being handed around. If yes, it is an Entity and it needs an identity
+   field that never changes.
+2. If it does not, it is a Value Object. Give it equality by content and make it immutable.
+3. If the answer depends on the context — an address is an Entity to a delivery service and a Value
+   Object to a customer record — the answer is the one that holds *in this model*, not in general.
+
+### How far Value Objects go here
+
+Evans models an attribute as a Value Object wherever the attribute carries meaning of its own. **This
+repository does not go that far**: an attribute is wrapped only when it has an invariant worth
+enforcing (a non-negative price, a bounded string), and stays a primitive otherwise.
+
+This is a deliberate departure. Wrapping every attribute buys type-level protection against
+mixing up two same-typed fields, but it multiplies the type count and the conversion noise at every
+boundary, and the protection it adds over a well-named field with a validated constructor is small.
+The cost outruns the benefit at this size. Where the swap risk is real — same-typed adjacent
+parameters — the remedy this repository uses is bundling into an attribute struct instead; see the
+struct-bundling section below.
+
+**`pkg/` does not contain Value Objects in this sense.** Types there wrap a vendor library or a
+primitive without carrying business meaning, which is exactly what disqualifies them from this layer;
+see [`pkg/README.md`](../../pkg/README.md).
+
 ## Implementation notes
 
 ### Naming / structure

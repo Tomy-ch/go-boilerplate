@@ -61,7 +61,7 @@ clamping of out-of-range inputs, and units all belong in the doc comment.
 |---|---|---|
 |`backoff`|Exponential backoff duration (pure, clock/randomness-free)|None|
 |`datetime`|Date/time parsing|Standard library `time`|
-|`decimal`|Exact-decimal value object (money / rate)|`github.com/shopspring/decimal`|
+|`decimal`|Exact-decimal type (money / rate)|`github.com/shopspring/decimal`|
 |`envutil`|Environment variable override (test helper)|Standard library `os`|
 |`exec`|External command execution (interface + mock)|Standard library `os/exec`|
 |`fnmeta`|Function / package name extraction|None|
@@ -72,7 +72,7 @@ clamping of out-of-range inputs, and units all belong in the doc comment.
 |`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|
 |`safecast`|Type conversion with overflow detection|None|
 |`stringkit`|String length validation|None|
-|`uuid`|UUID value object|`github.com/google/uuid`|
+|`uuid`|UUID type|`github.com/google/uuid`|
 |`xerrors`|Errors with stack traces|`github.com/cockroachdb/errors`|
 
 ## Package Details
@@ -106,7 +106,7 @@ All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for par
 
 ### decimal
 
-An exact-decimal value object wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/kernel/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/kernel/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
 
 |Symbol|Description|
 |---|---|
@@ -220,7 +220,7 @@ Each function has a corresponding `ErrorMsg` function for generating validation 
 
 ### uuid
 
-A UUID value object wrapping `github.com/google/uuid`.
+A UUID type wrapping `github.com/google/uuid`.
 
 Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valuer`).
 

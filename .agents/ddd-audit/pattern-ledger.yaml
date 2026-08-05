@@ -112,10 +112,13 @@ patterns:
     status: interpreted
     verdict: 差異あり
     gap: >-
-      扱い方（不変条件・getter・DB カラムと 1:1 でない）は厚く規定されるが、Entity を Entity たらしめる
-      基準——ライフサイクルを貫く同一性——がコーパス内に一度も記述されておらず、新しい型を Entity と
-      Value Object のどちらにするかを決める判断材料が存在しない。同一性による等価判定も未規定。
+      ライフサイクルを貫く同一性という基準、同一性による等価判定、Entity と Value Object のどちらに
+      するかの判断手順が Entity or Value Object 節で明記され、原義との差異は解消済み。文脈によって
+      どちらにもなりうる型の扱い（このモデルでの答えを採る）も記述されている。
     interpreted_by:
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Entity or Value Object"
       - kind: readme
         path: internal/domain/README.md
         section: "Do not set outside constructor / Not every DB column is an entity field / Invariants"
@@ -127,7 +130,7 @@ patterns:
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-07-30"  # 原義への再判定は未実施。/ddd-audit で再評価が必要
 
   - id: value-object
     name: Value Object
@@ -136,11 +139,15 @@ patterns:
     status: interpreted
     verdict: 差異あり
     gap: >-
-      VO 性の判定軸が Evans の「同一性を持たないこと」ではなく「不変条件を持つに値するか」に
-      置き換わっている。無同一性・値等価・丸ごと置換の不変性・WHOLE VALUE のいずれもコーパスに
-      現れない。さらに `pkg/` の汎用ラッパ（ビジネス意味を持たないと明言）にも value object の語が
-      当てられ、語義が二重化している。
+      無同一性・値等価・丸ごと置換の不変性は Entity or Value Object 節で明記され、`pkg/` 側の
+      語義二重化も解消済み（あちらは業務意味を持たないため型と呼び分ける）。残る差異は VO の適用範囲で、
+      Evans は意味を持つ属性を広く VO 化するのに対し、本リポジトリは強制するに値する不変条件を持つ
+      ものだけを包む。これは逸脱として宣言済み（同節「How far Value Objects go here」）。
+      WHOLE VALUE への言及は無い。
     interpreted_by:
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Entity or Value Object"
       - kind: adr
         id: "0104"
       - kind: adr
@@ -154,12 +161,16 @@ patterns:
       - kind: doc
         path: docs/rules.md
         section: "Function Signature Rules"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans は意味を持つ属性を広く Value Object としてモデル化するが、本リポジトリは強制するに値する
+      不変条件を持つ属性だけを包み、それ以外は基本型のままにする。全属性の VO 化は型数と境界ごとの
+      変換ノイズを増やす一方、検証付きコンストラクタを持つ命名済みフィールドに対する上乗せの防御が
+      小さく、この規模では費用が便益を上回るため。同型隣接引数の取り違えには属性構造体への束ねで対処する。
     enforced_by:
       - kind: depguard
         rule: maintain_a_sound_domain
-    last_audited: "2026-07-30"
+    last_audited: "2026-07-30"  # 原義への再判定は未実施。/ddd-audit で再評価が必要
 
   - id: domain-service
     name: Service (Domain Service)
@@ -343,7 +354,7 @@ patterns:
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-08-05"
+    last_audited: "2026-07-30"  # 原義への再判定は未実施。/ddd-audit で再評価が必要
 
   - id: domain-event
     name: Domain Event

@@ -57,7 +57,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 |---|---|---|
 |`backoff`|指数バックオフの待機時間算出（純粋・時刻/乱数非依存）|なし|
 |`datetime`|日時パース|標準ライブラリ `time`|
-|`decimal`|exact-decimal 値オブジェクト（金額 / レート）|`github.com/shopspring/decimal`|
+|`decimal`|exact-decimal 型（金額 / レート）|`github.com/shopspring/decimal`|
 |`envutil`|環境変数の一時上書き（テスト補助）|標準ライブラリ `os`|
 |`exec`|外部コマンド実行（インターフェース + モック）|標準ライブラリ `os/exec`|
 |`fnmeta`|関数 / パッケージ名の抽出|なし|
@@ -68,7 +68,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 |`retry`|有限リトライの行動層（backoff + full jitter, deadline-aware）|なし|
 |`safecast`|オーバーフロー検出付き型変換|なし|
 |`stringkit`|文字列長バリデーション|なし|
-|`uuid`|UUID 値オブジェクト|`github.com/google/uuid`|
+|`uuid`|UUID 型|`github.com/google/uuid`|
 |`xerrors`|スタックトレース付きエラー|`github.com/cockroachdb/errors`|
 
 ## 各パッケージの詳細
@@ -102,7 +102,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 
 ### decimal
 
-`github.com/shopspring/decimal` をラップした exact-decimal 値オブジェクトです。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は `internal/domain/kernel/money` が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
+`github.com/shopspring/decimal` をラップした exact-decimal 型です。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は `internal/domain/kernel/money` が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
 
 |シンボル|説明|
 |---|---|
@@ -215,7 +215,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 
 ### uuid
 
-`github.com/google/uuid` をラップした UUID 値オブジェクトです。
+`github.com/google/uuid` をラップした UUID 型です。
 
 UUIDv7 を生成し、データベース連携（`sql.Scanner` / `driver.Valuer`）をサポートします。
 
