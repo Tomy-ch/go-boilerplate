@@ -234,6 +234,22 @@ func (o *OutboxConfig) SetOutboxQueue(tb testing.TB, queueURL, region, accessKey
 	})
 }
 
+// SetConsumerQueue は、テスト用に consume 対象キューの接続設定をまとめて行います。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (c *ConsumerQueueConfig) SetConsumerQueue(
+	tb testing.TB, url, dlqURL, region, accessKeyID, secretAccessKey string,
+) {
+	tb.Helper()
+	prev := *c
+	c.url, c.dlqURL, c.region = url, dlqURL, region
+	c.accessKeyID, c.secretAccessKey = accessKeyID, secretAccessKey
+	tb.Cleanup(func() {
+		c.url, c.dlqURL, c.region = prev.url, prev.dlqURL, prev.region
+		c.accessKeyID, c.secretAccessKey = prev.accessKeyID, prev.secretAccessKey
+	})
+}
+
 // SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。

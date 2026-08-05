@@ -123,6 +123,17 @@ func New() (*Config, error) {
 			nackBackoffInitial:        cfg.Worker.NackBackoffInitial,
 			nackBackoffMax:            cfg.Worker.NackBackoffMax,
 		},
+		consumerQueue: ConsumerQueueConfig{
+			endpoint:          cfg.ConsumerQueue.Endpoint,
+			region:            cfg.ConsumerQueue.Region,
+			url:               cfg.ConsumerQueue.URL,
+			dlqURL:            cfg.ConsumerQueue.DLQURL,
+			accessKeyID:       cfg.ConsumerQueue.AccessKeyID,
+			secretAccessKey:   cfg.ConsumerQueue.SecretAccessKey,
+			maxMessages:       cfg.ConsumerQueue.MaxMessages,
+			waitTimeSeconds:   cfg.ConsumerQueue.WaitTimeSeconds,
+			visibilityTimeout: cfg.ConsumerQueue.VisibilityTimeout,
+		},
 		outbox: OutboxConfig{
 			publisher:            cfg.Outbox.Publisher,
 			endpoint:             cfg.Outbox.Endpoint,

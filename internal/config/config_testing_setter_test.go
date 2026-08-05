@@ -531,6 +531,41 @@ func TestOutboxConfig_SetOutboxPublisher(t *testing.T) {
 	})
 }
 
+func TestConsumerQueueConfig_SetConsumerQueue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した queue 設定へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				consumerQueue.SetConsumerQueue(
+					t,
+					"http://elasticmq:9324/000000000000/gobp-events",
+					"http://elasticmq:9324/000000000000/gobp-events-dlq",
+					"ap-northeast-1",
+					"k",
+					"s",
+				)
+				assert.Equal(t, "http://elasticmq:9324/000000000000/gobp-events", consumerQueue.URL())
+				assert.Equal(t, "http://elasticmq:9324/000000000000/gobp-events-dlq", consumerQueue.DLQURL())
+				assert.Equal(t, "ap-northeast-1", consumerQueue.Region())
+				assert.Equal(t, "k", consumerQueue.AccessKeyID())
+				assert.Equal(t, "s", consumerQueue.SecretAccessKey())
+			})
+
+			assert.Equal(t, expectedConsumerQueueURL, consumerQueue.URL())
+			assert.Equal(t, expectedConsumerQueueDLQURL, consumerQueue.DLQURL())
+			assert.Equal(t, expectedConsumerQueueRegion, consumerQueue.Region())
+			assert.Equal(t, expectedConsumerQueueAccessKeyID, consumerQueue.AccessKeyID())
+			assert.Equal(t, expectedConsumerQueueSecretAccessKey, consumerQueue.SecretAccessKey())
+		})
+	})
+}
+
 func TestOutboxConfig_SetOutboxQueue(t *testing.T) {
 	t.Parallel()
 

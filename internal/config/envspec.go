@@ -14,6 +14,7 @@ type Loader struct {
 	Security      Security        `envPrefix:"SECURITY_"`
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
 	Worker        Worker          `envPrefix:"WORKER_"`
+	ConsumerQueue ConsumerQueue   `envPrefix:"CONSUMER_QUEUE_"`
 	Outbox        Outbox          `envPrefix:"OUTBOX_"`
 	Auth          Auth            `envPrefix:"AUTH_"`
 	ObjectStorage ObjectStorage   `envPrefix:"OBJECT_STORAGE_"`
@@ -24,11 +25,13 @@ type Loader struct {
 type ObjectStorage struct {
 	// Endpoint は S3 互換エンドポイントです。空の場合は SDK 既定のエンドポイント解決に委ねる（本番 AWS S3 等）
 	// という意味を持つため、空文字を許容する（required のみ・notEmpty は付けない）。
-	Endpoint        string `env:"ENDPOINT,required"`
-	Region          string `env:"REGION,required,notEmpty"`
-	Bucket          string `env:"BUCKET,required,notEmpty"`
-	AccessKeyID     string `env:"ACCESS_KEY_ID,required,notEmpty"`
-	SecretAccessKey string `env:"SECRET_ACCESS_KEY,required,notEmpty"`
+	Endpoint string `env:"ENDPOINT,required"`
+	Region   string `env:"REGION,required,notEmpty"`
+	Bucket   string `env:"BUCKET,required,notEmpty"`
+	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
+	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。
+	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
 	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
 	MaxUploadBytes  int64  `env:"MAX_UPLOAD_BYTES,required,notEmpty"`
 }
@@ -63,6 +66,27 @@ type Outbox struct {
 	QueueURL             string `env:"QUEUE_URL"               envDefault:""`
 	QueueAccessKeyID     string `env:"QUEUE_ACCESS_KEY_ID"     envDefault:""`
 	QueueSecretAccessKey string `env:"QUEUE_SECRET_ACCESS_KEY" envDefault:""`
+}
+
+// ConsumerQueue は worker が consume する broker（SQS 互換）の adapter 設定を保持する。
+// engine-core の Worker は broker 非依存と定めているため、broker 語彙を持つ設定は別軸に置く。
+// publish 端の Outbox.Queue* とは対になる（consume 端がこちら）。
+// 資格情報が両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねる。
+type ConsumerQueue struct {
+	// Endpoint は SQS 互換エンドポイント。空なら SDK 既定のエンドポイント解決に委ねる（本番 AWS SQS 等）。
+	Endpoint        string `env:"ENDPOINT"          envDefault:""`
+	Region          string `env:"REGION"            envDefault:""`
+	URL             string `env:"URL"               envDefault:""`
+	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
+	// DLQURL は滞留量の収集にだけ使う。空なら DLQ の滞留量を収集しない（退避経路は FailureHandler / redrive）。
+	DLQURL string `env:"DLQ_URL" envDefault:""`
+	// MaxMessages は ReceiveMessage の最大取得件数（SQS の上限は 10）。
+	MaxMessages int32 `env:"MAX_MESSAGES" envDefault:"10"`
+	// WaitTimeSeconds は long-poll の待機秒数（0〜20）。上限にすると空ポーリングの往復が最も減る。
+	WaitTimeSeconds int32 `env:"WAIT_TIME_SECONDS" envDefault:"20"`
+	// VisibilityTimeout は受信メッセージの可視性タイムアウト秒数。
+	VisibilityTimeout int32 `env:"VISIBILITY_TIMEOUT" envDefault:"30"`
 }
 
 // Worker は worker engine の engine-core 設定（broker 非依存）を保持する。

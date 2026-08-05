@@ -103,6 +103,17 @@ func TestNew(t *testing.T) {
 					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
 					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
+				consumerQueue: ConsumerQueueConfig{
+					endpoint:          expectedConsumerQueueEndpoint,
+					region:            expectedConsumerQueueRegion,
+					url:               expectedConsumerQueueURL,
+					dlqURL:            expectedConsumerQueueDLQURL,
+					accessKeyID:       expectedConsumerQueueAccessKeyID,
+					secretAccessKey:   expectedConsumerQueueSecretAccessKey,
+					maxMessages:       expectedConsumerQueueMaxMessages,
+					waitTimeSeconds:   expectedConsumerQueueWaitTimeSeconds,
+					visibilityTimeout: expectedConsumerQueueVisibilityTimeout,
+				},
 				outbox: OutboxConfig{
 					publisher:            expectedOutboxPublisher,
 					endpoint:             expectedOutboxEndpoint,

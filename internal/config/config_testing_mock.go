@@ -143,6 +143,17 @@ var (
 	expectedWorkerNackBackoffInitial        = 1 * time.Second
 	expectedWorkerNackBackoffMax            = 30 * time.Second
 
+	// consumerQueue（worker を配線したときだけ使うため、接続情報は既定の空値）
+	expectedConsumerQueueEndpoint          = ""
+	expectedConsumerQueueRegion            = ""
+	expectedConsumerQueueURL               = ""
+	expectedConsumerQueueDLQURL            = ""
+	expectedConsumerQueueAccessKeyID       = ""
+	expectedConsumerQueueSecretAccessKey   = ""
+	expectedConsumerQueueMaxMessages       = int32(10)
+	expectedConsumerQueueWaitTimeSeconds   = int32(20)
+	expectedConsumerQueueVisibilityTimeout = int32(30)
+
 	// outbox（Queue* は PUBLISHER=sqs のときだけ使うため、既定の http では空値）
 	expectedOutboxPublisher            = "http"
 	expectedOutboxEndpoint             = ""
@@ -270,6 +281,17 @@ func MockConfigForTest(tb testing.TB) *Config {
 			progressStaleAfter:        expectedWorkerProgressStaleAfter,
 			nackBackoffInitial:        expectedWorkerNackBackoffInitial,
 			nackBackoffMax:            expectedWorkerNackBackoffMax,
+		},
+		consumerQueue: ConsumerQueueConfig{
+			endpoint:          expectedConsumerQueueEndpoint,
+			region:            expectedConsumerQueueRegion,
+			url:               expectedConsumerQueueURL,
+			dlqURL:            expectedConsumerQueueDLQURL,
+			accessKeyID:       expectedConsumerQueueAccessKeyID,
+			secretAccessKey:   expectedConsumerQueueSecretAccessKey,
+			maxMessages:       expectedConsumerQueueMaxMessages,
+			waitTimeSeconds:   expectedConsumerQueueWaitTimeSeconds,
+			visibilityTimeout: expectedConsumerQueueVisibilityTimeout,
 		},
 		outbox: OutboxConfig{
 			publisher:            expectedOutboxPublisher,
