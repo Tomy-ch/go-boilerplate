@@ -156,3 +156,66 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 		})
 	})
 }
+
+func Test_usecase_referenceAmount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("換算成功時は参考換算額を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			xr := mock_exchangerate.NewMockUsecase(ctrl)
+			xr.EXPECT().Convert(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, in exchangerate.ConvertInput) (*exchangerate.ConvertResult, error) {
+					// 決済スケール（セント整数）を価格スケールへ戻して渡していることを固定する。
+					assert.Equal(t, "100", in.Amount.String())
+					assert.Equal(t, baseCurrency, in.Base)
+					return &exchangerate.ConvertResult{
+						Reference: &exchangerate.ReferenceAmount{
+							Currency: "JPY",
+							Amount:   15050,
+							Rate:     decimaltestkit.MustParse(t, "150.5"),
+							RateDate: "2026-07-21",
+						},
+					}, nil
+				})
+
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), xr: xr}
+			actual := u.referenceAmount(context.Background(), 10000, "JPY")
+			require.NotNil(t, actual)
+			assert.Equal(t, "JPY", actual.Currency)
+			assert.Equal(t, int64(15050), actual.Amount)
+			assert.Equal(t, "150.5", actual.Rate.String())
+			assert.Equal(t, "2026-07-21", actual.RateDate)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("換算失敗時はnilでdegradeする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			xr := mock_exchangerate.NewMockUsecase(ctrl)
+			xr.EXPECT().Convert(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("gateway down"))
+
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), xr: xr}
+			assert.Nil(t, u.referenceAmount(context.Background(), 10000, "JPY"))
+		})
+
+		t.Run("参考換算額が無い場合はnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			xr := mock_exchangerate.NewMockUsecase(ctrl)
+			xr.EXPECT().Convert(gomock.Any(), gomock.Any()).Return(&exchangerate.ConvertResult{Reference: nil}, nil)
+
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), xr: xr}
+			assert.Nil(t, u.referenceAmount(context.Background(), 10000, "JPY"))
+		})
+	})
+}
