@@ -989,6 +989,28 @@ func Test_repository_LockByIDs(t *testing.T) {
 				assert.Empty(t, got)
 			})
 		})
+
+		t.Run("サブセント単価をNUMERIC精度を保ったまま取得する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				subcentID := "cccccccc-0000-4000-8001-0000000000aa"
+				// price=19.995（サブセント）を NUMERIC 列へ直接挿入し、価格スケールの往復を検証する。
+				_, err := drv.Exec(ctx,
+					"INSERT INTO products "+
+						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9)",
+					subcentID, probeKeyword+"-LOCKS-SUBCENT", nil, "19.995", 10, nil, statusInStock, categoryElectronics, base,
+				)
+				require.NoError(t, err)
+
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, subcentID)})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, "19.995", got[0].Price().String())
+			})
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
