@@ -35,7 +35,7 @@
 - ビジネスロジックを含めてはならない
 - `internal/` のパッケージに依存してはならない
 - infrastructure やフレームワーク固有のパッケージに依存してはならない
-- 他の `pkg/` パッケージに依存してはならない — 唯一の例外は `pkg/xerrors`（`.golangci-full.yaml` の depguard `independent_pkg` で強制）
+- 他の `pkg/` パッケージに依存してはならない。例外は 2 つあり、いずれも `.golangci-full.yaml` の depguard `independent_pkg` で強制される。`pkg/xerrors` はどのパッケージからも import してよく、`testkit` サブパッケージは自身の親を import してよい（ルールのファイルパターンが `**/pkg/**/testkit/**.go` を除外している）
 - 1パッケージ = 1責務を守ること
 
 ### doc コメントも状況非依存であること
@@ -62,6 +62,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 |`exec`|外部コマンド実行（インターフェース + モック）|標準ライブラリ `os/exec`|
 |`fnmeta`|関数 / パッケージ名の抽出|なし|
 |`fs`|ファイルシステム操作（インターフェース + モック）|標準ライブラリ `os`|
+|`httpheader`|HTTP ヘッダ名の分類（資格情報を運ぶかどうか）|なし|
 |`patch`|部分更新（PATCH）入力の 3 状態値|なし|
 |`ptr`|ポインタ操作|なし|
 |`retry`|有限リトライの行動層（backoff + full jitter, deadline-aware）|なし|
@@ -112,7 +113,8 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 |`Cmp` / `Equal` / `Sign` / `IsZero` / `IsNegative`|比較・検査|
 |`MarshalJSON` / `UnmarshalJSON`|JSON 文字列のワイヤ表現（復元時は JSON number も受理）|
 |`Scan` / `Value`|`NUMERIC` DB 境界（`sql.Scanner` / `driver.Valuer`）|
-|`MustParse`（テスト専用）|テスト用のパニック付きパース|
+
+テストヘルパーは別パッケージ `pkg/decimal/testkit` にある（`MustParse`）。分離することで `testing` が本番バイナリへリンクされない。
 
 ### envutil
 
@@ -189,6 +191,8 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 |関数|説明|
 |---|---|
 |`UintToInt`|`uint` → `int` の安全な変換|
+|`IntToInt32`|`int` → `int32` の安全な変換|
+|`IntPtrToInt32Ptr`|`*int` → `*int32` の安全な変換（`nil` は変換対象なしとして `nil` を返す）|
 
 オーバーフロー時は `ErrOverflow` を返します。
 

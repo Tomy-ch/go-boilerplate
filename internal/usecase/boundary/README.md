@@ -40,6 +40,7 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 
 |Package|Interface|Description|Implementation|
 |---|---|---|---|
+|`address`|`Gateway`|Semantic gateway to an external postal-address lookup service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/address/`|
 |`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|Decide whether a subject may perform an action on a resource|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|

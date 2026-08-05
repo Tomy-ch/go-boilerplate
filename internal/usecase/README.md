@@ -402,10 +402,20 @@ When wrapping an `apperror.ErrXXX` sentinel, use `pkg/xerrors.Wrap(apperror.ErrX
 (not the standard `fmt.Errorf("%w", ...)`) so the stack trace is preserved while `xerrors.Is`
 still matches the sentinel.
 
+### Output DTO naming
+
+A Usecase's return DTO is named `<Concept>View` — it is a projection built for the caller, not the
+aggregate itself. Keep the suffix even when the projection carries a single field, so a reader can
+tell an outbound projection from a domain type at a glance.
+
 ### Pagination
 
 - Use `NewPageFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
 - If the page number exceeds the allowed maximum, return `apperror.ErrInvalidArgument` (the offset is clamped on int32 conversion).
+- For keyset (cursor) pagination, build on `tools/paging.Cursor` and give each feature a paired
+  `encode<Feature>Cursor` / `decode<Feature>Cursor` codec. The cursor is opaque to the caller: it
+  encodes the ordering-key tuple, and a malformed value or a wrong key count is returned as
+  `apperror.ErrInvalidArgument`.
 
 ## Callable / Non-callable Layers
 
@@ -417,8 +427,22 @@ still matches the sentinel.
 
 ### Forbidden dependencies
 
-- Calling another Usecase directly (avoid cycles and bloating).
+- Calling another **business** Usecase directly (see below).
 - Accessing Infra / Controller / HTTP / OpenAPI / SQL implementations.
+
+#### Why business Usecases are not wired to each other
+
+What is forbidden is not being called — it is the **chain**. Under a rule where A may call B, C
+eventually calls A and D calls C. Nobody can then say where one business operation begins and ends,
+and the transaction boundary stops being traceable.
+
+So when A's business has to be combined with B's, do not call B from A. Introduce a Usecase D that
+**composes** the two. D sits above both and joins their business operations, which keeps the shape a
+composition instead of a chain.
+
+**A technical Usecase is outside this rule.** An operation that is not a business operation itself
+but is needed in the same form by any of them — emitting to the outbox, for instance — cannot form
+the chain this rule exists to prevent, so it may be called directly.
 
 Usecase **must not depend on Infrastructure**.
 
@@ -637,7 +661,7 @@ import (
     // Import packages required for the implementation
 )
 
-// DTO used for communication with lower layers
+// The mutable attribute set shared by the input and the output below.
 type UserMutableFields struct {
     FirstName      string
     LastName       string
@@ -650,7 +674,15 @@ type UserMutableFields struct {
     Building       *string
 }
 
+// Input DTO.
 type CreateUserParamsDTO struct {
+    UserID uuid.UUID
+
+    UserMutableFields
+}
+
+// Output DTO. The `View` suffix marks it as the projection returned to the caller.
+type UserView struct {
     UserID uuid.UUID
 
     UserMutableFields
@@ -669,10 +701,10 @@ type usecase struct {
 // Usecase defines the use cases related to users.
 type Usecase interface {
     // ListUsersByKeyword retrieves a list of users.
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page *paging.Page) ([]UserView, error)
 
     // CreateUser creates a user.
-    CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+    CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error)
 
     // CountUsers returns the total number of users.
     CountUsers(ctx context.Context, active *bool) (int64, error)
@@ -697,7 +729,7 @@ func New(
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]UserView, error) {
     // Start and end the span
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
@@ -750,13 +782,13 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
         return nil, err
     }
 
-    _, dtos, err := observability.RunWithSpan(
-        ctx, u.tracer, "usecase", "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+    _, views, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "buildViews", func(ctx context.Context) ([]UserView, error) {
 
-            // Convert results into DTOs
-            dtos := make([]UserMutableFields, len(us))
+            // Convert results into output DTOs
+            views := make([]UserView, len(us))
             for i, u := range us {
-                dtos[i] = UserMutableFields{
+                views[i] = UserView{
                     FirstName:  u.FirstName(),
                     LastName:   u.LastName(),
                     Email:      u.Email(),
@@ -769,18 +801,18 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
 
                 // Attach prefecture name retrieved from the map
                 if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
-                    dtos[i].PrefectureName = p.Name()
+                    views[i].PrefectureName = p.Name()
                 }
             }
 
-            return dtos, nil
+            return views, nil
         })
 
-    return dtos, err
+    return views, err
 }
 
 // CreateUser is the use case that creates a user.
-func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error) {
 
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
@@ -832,10 +864,10 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
     })
 
     if err != nil {
-        return MutableFields{}, err
+        return UserView{}, err
     }
 
-    return MutableFields{
+    return UserView{
         FirstName:      userEntity.FirstName(),
         LastName:       userEntity.LastName(),
         Email:          userEntity.Email(),

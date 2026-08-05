@@ -37,6 +37,13 @@ Presenter is the conversion process from `Usecase DTO → OpenAPI response type`
 
 When the same conversion is reused across handler methods, define it as a private `toXxxResponse(dto …) gen.XxxResponse` helper inside the handler package (e.g. `toItemResponse`). One-off conversions may stay inline in the handler body.
 
+A Presenter is **not shared across handler packages**, even when two of them convert the same Usecase
+DTO with identical code. Response types are generated per handler package — one `gen` package per
+OpenAPI tag — so a response type of the same name in two packages is two unrelated Go types. A shared
+helper would have to be generic over them, or return one package's type to another. **The
+duplication is deliberate**: keep the copies independent and update them together when the Usecase
+DTO changes.
+
 ## Architecture
 
 ### HTTP Request Flow

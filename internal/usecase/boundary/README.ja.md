@@ -40,6 +40,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 
 |パッケージ|interface|説明|実装場所|
 |---|---|---|---|
+|`address`|`Gateway`|外部の住所検索サービスへの意味的ゲートウェイ（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/address/`|
 |`auth`|`Authenticator`|トークンから認証情報（`Authn`）を取得|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|認証主体がリソースに対し操作を実行してよいか判定|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|現在時刻の取得|`internal/infrastructure/system/`|

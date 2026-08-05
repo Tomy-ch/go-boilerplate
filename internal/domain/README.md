@@ -363,6 +363,38 @@ Order {
 }
 ```
 
+**This rule governs the seam between one aggregate and another — nothing else.** What decides which
+side of that seam a type sits on is whether it has an access path of its own: a type reachable only
+through its parent is a sub-entity of that aggregate, while a type that is queried, listed, or
+maintained on its own is a separate aggregate however its package is nested.
+
+A sub-entity is inseparable from its parent, so this rule does not reach it: it holds its own
+attributes directly. Whether it exposes its own identity is a design decision, not a consequence of
+this rule — exposing it is usually right, because a caller sometimes needs the identity and because
+the alternative invites a back-reference to the parent, which becomes indistinguishable from the
+sub-entity's own fields. **Never give a sub-entity a back-reference to its parent.**
+
+**Exception — reference master.** A reference master may be held as its identity plus whatever
+attributes are needed to present it, rather than as a bare identity. Those attributes are a
+denormalized copy carried for presentation: the value exposes none of the other aggregate's behavior
+and is never read to reach a decision. A mutable aggregate stays identity-only.
+
+### Reference master aggregates
+
+A reference master is a lighter archetype than a mutable aggregate: no state-transition method, no
+optimistic-lock version, no audit timestamps, no logical deletion, and a Repository that exposes
+lookups only, with no write operation. Do not add those to make one resemble the others — **their
+absence is the contract that says the application does not write this data.**
+
+Reference masters exist for two distinct reasons; do not conflate them.
+
+- **A copy of a distinction that exists outside the application** — a standard, a statute, a
+  geography. Its value set is not decided by the business, so it does not grow or shrink with a
+  business decision.
+- **A vocabulary the business defines** — a classification, a status. The business itself decides the
+  value set, so a change to it *is* a business decision. These are often placed as a dimension
+  subordinate to the aggregate that references them.
+
 ### Multi-aggregate rules
 
 Rules across multiple aggregates belong to:
@@ -453,7 +485,7 @@ names, and SQL fragments belong to the Infrastructure doc comment that already s
 detail, and [`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
 implementation for the rule this mirrors.
 
-Two consequences are specific to Domain:
+Three consequences are specific to Domain:
 
 - **A numeric bound whose reason is the storage width is expressed as a Go integer width**, not as a
   SQL type name — `1..32767` is documented as the positive range of a signed 16-bit integer. That
@@ -461,6 +493,9 @@ Two consequences are specific to Domain:
   on the constant so the exported constructor's doc stays a pure contract.
 - **A reference master is named by its domain name** (the product-status master), never by its table
   (`product_statuses`).
+- **A single-fetch method states its not-found behavior** — `FindByID` documents that it returns
+  NotFound when the target is absent. The caller branches on that, so it is part of the guarantee,
+  not an implementation detail.
 
 ## Callable layers
 
